@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Claim 8's link test accepts the official NSW legislation site as the source document for an LEP clause (user decision 2026-09-15), rewords the claim to match, and flips OC-8 to true. A too-loose test would let a number pass with a link that does not open its source, so the accepted origin is exact and the confusable cases are tested.",
-  "commit_hash": "c75877c3",
+  "commit_hash": "52a9c8e5",
   "files": [
     "scripts/outreach_claim_checks.py",
     "tests/test_outreach_claim_checks_ranges_and_citations.py",
@@ -23,26 +23,39 @@
     {
       "name": "every_served_number_is_cited",
       "file_line": "scripts/outreach_claim_checks.py:168",
-      "input": "Every served control read through the serve path, with the registry's per-chapter link map.",
+      "input": "Every served control read through the serve path, with the registry's per-chapter link map, and the legislation ids registered per council.",
       "output": "PASS when every entry that carries a number has a clause, a sentence and a source link; FAIL listing the first four that do not.",
-      "if_none": "A serve-path failure returns UNKNOWN, never PASS; an entry with no number is not counted."
+      "if_none": "A serve-path failure, or an unreadable instrument_registry, returns UNKNOWN, never PASS; an entry with no number is not counted."
+    },
+    {
+      "name": "registered_instruments",
+      "file_line": "scripts/outreach_claim_checks.py:206",
+      "input": "No arguments; reads the active instrument_registry rows.",
+      "output": "A map of council (None for statewide) to the legislation ids (epi-/act-/sl-) found in pco_instrument_id or legislation_url.",
+      "if_none": "Returns None when the registry cannot be read, so the caller reports UNKNOWN instead of judging a legislation link against nothing."
     },
     {
       "name": "is_source_link",
-      "file_line": "scripts/outreach_claim_checks.py:197",
-      "input": "The link the serve path holds for a row's chapter, possibly empty.",
-      "output": "True for a PDF, our R2 mirror, or a page whose URL starts with https://legislation.nsw.gov.au/.",
-      "if_none": "An empty or missing link is False, so the number counts as missing its source."
+      "file_line": "scripts/outreach_claim_checks.py:228",
+      "input": "The link the serve path holds for a row's chapter, possibly empty, and the legislation ids allowed for that council.",
+      "output": "True for a PDF or our R2 mirror, or a legislation.nsw.gov.au view of one instrument whose id is allowed for the council.",
+      "if_none": "An empty link, the site's home page, a search page or another council's instrument is False, so the number counts as missing its source."
     }
   ],
   "values": [
     {
       "value": "registry_pdf_urls[source_chapter_key] from fetch_dcp_setbacks",
-      "read_at": "scripts/outreach_claim_checks.py:181",
+      "read_at": "scripts/outreach_claim_checks.py:185",
       "if_missing": "Treated as an empty link, which fails the number."
     }
   ],
-  "queries": "N/A - no new query; the sub-check reads the existing serve path.",
+  "queries": [
+    {
+      "purpose": "Read which legislation instruments are registered for each council (None = statewide), so a legislation.nsw.gov.au link is accepted only for an instrument the number could have come from.",
+      "file_line": "scripts/outreach_claim_checks.py:206",
+      "where_clause": "SELECT council, pco_instrument_id, legislation_url FROM instrument_registry WHERE is_active -- read-only through dq_db.connect(); any failure returns None and the sub-check reports UNKNOWN"
+    }
+  ],
   "break_it": [
     {
       "scenario": "A served LEP clause links to its page on the official legislation site.",
@@ -62,11 +75,25 @@
       "scenario": "A link on a host such as legislation.nsw.gov.au.example.com.",
       "what_happens": "A prefix test without the trailing slash would accept someone else's site.",
       "mitigated": true,
-      "how": "The accepted origin ends with '/', and the mutation dropping it was caught by the look-alike test.",
+      "how": "Only an exact https://legislation.nsw.gov.au/view/... instrument URL matches; the look-alike case is a test.",
       "repro": "python -m pytest tests/test_outreach_claim_checks_ranges_and_citations.py -o addopts= -k look_alike"
+    },
+    {
+      "scenario": "A row's link is the legislation site's home page, or a view of another council's LEP (cross-review HIGH on the first version of this branch).",
+      "what_happens": "An origin-only test passed it, so claim 8 would report a source link that opens nothing the number came from.",
+      "mitigated": true,
+      "how": "The URL must be a view of one instrument and its id must be registered for the council or statewide; home-page and other-instrument tests catch the reverted forms.",
+      "repro": "python -m pytest tests/test_outreach_claim_checks_ranges_and_citations.py -o addopts= -k \"home_page or another_councils\""
+    },
+    {
+      "scenario": "instrument_registry cannot be read while the check runs.",
+      "what_happens": "Judging legislation links against an empty set would fail them all; treating the gap as a pass would hide it.",
+      "mitigated": true,
+      "how": "registered_instruments returns None and the sub-check reports UNKNOWN; the mutation treating None as empty was caught.",
+      "repro": "python -m pytest tests/test_outreach_claim_checks_ranges_and_citations.py -o addopts= -k unreadable"
     }
   ],
-  "mutation_analysis": "Three mutations of is_source_link run on temporary copies with the test file: legislation link not accepted (1 failed), any host starting with the site name accepted (1 failed), any link accepted (1 failed); the unmutated copy passed 8 of 8. Full file: 10 passed. Live: python scripts/outreach_claim_checks.py OC-8 printed HOLDS with 0 of 738.",
+  "mutation_analysis": "Five mutations run on temporary copies with the test file after the cross-review fix: any legislation instrument accepted (1 failed), any page on the site accepted (2 failed), unreadable registry treated as empty (1 failed), legislation link refused (1 failed); the unmutated copy passed 13 of 13. The first version's three mutations (link refused, look-alike host, any link) were also caught. Live: python scripts/outreach_claim_checks.py OC-8 printed HOLDS with 0 of 737.",
   "residual_risk": "A legislation link opens the instrument at the schedule anchor, not the exact sub-clause; the row's own clause reference carries the rest. Whether a linked LEP clause is still in force is claim 17's and DQ-88's question, not this check's.",
   "post_merge": {
     "db_reset": "No. The check change touches no data.",

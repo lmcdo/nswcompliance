@@ -25,8 +25,9 @@ def _entry(**kw):
     return base
 
 
-def _serve(monkeypatch, *entries, urls=PDF):
+def _serve(monkeypatch, *entries, urls=PDF, instruments=None):
     monkeypatch.setattr(occ, "served_entries", lambda: ([("council", e, urls) for e in entries], ""))
+    monkeypatch.setattr(occ, "registered_instruments", lambda: {} if instruments is None else instruments)
 
 
 # ── claim 8: every served NUMBER is cited ──────────────────────────────────────────────────────────
@@ -50,14 +51,42 @@ def test_a_number_missing_its_sentence_still_fails(monkeypatch):
     assert occ.every_served_number_is_cited()[0] == occ.FAIL
 
 
+SUTHERLAND_LEP = {"council": frozenset({"epi-2015-0319"})}
+
+
+def _lep_row(url):
+    return (_entry(source_chapter_key="sutherland-lep-2015-schedule-3", clause="LEP 2015 Schedule 3",
+                   source_text="A setback from the side boundaries of at least 1.5m"),
+            {"sutherland-lep-2015-schedule-3": url})
+
+
 def test_an_lep_clause_linked_to_the_official_legislation_page_passes(monkeypatch):
     """Sutherland LEP 2015 Sch 3 numbers are published on legislation.nsw.gov.au, not in a council PDF."""
-    urls = {"sutherland-lep-2015-schedule-3":
-            "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2015-0319#sch.3"}
-    _serve(monkeypatch, _entry(source_chapter_key="sutherland-lep-2015-schedule-3", clause="LEP 2015 Schedule 3",
-                               source_text="A setback from side boundaries of at least 1.5m"), urls=urls)
+    entry, urls = _lep_row("https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2015-0319#sch.3")
+    _serve(monkeypatch, entry, urls=urls, instruments=SUTHERLAND_LEP)
     verdict, detail = occ.every_served_number_is_cited()
     assert verdict == occ.PASS and "0 of 1" in detail
+
+
+def test_the_legislation_home_page_is_not_a_source_link(monkeypatch):
+    """Confusable negative: the right site, but no instrument is opened."""
+    entry, urls = _lep_row("https://legislation.nsw.gov.au/")
+    _serve(monkeypatch, entry, urls=urls, instruments=SUTHERLAND_LEP)
+    assert occ.every_served_number_is_cited()[0] == occ.FAIL
+
+
+def test_another_councils_lep_on_the_legislation_site_is_not_a_source_link(monkeypatch):
+    """Confusable negative: a real instrument view, but Woollahra LEP 2014 (epi-2015-0020) is not this council's."""
+    entry, urls = _lep_row("https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2015-0020")
+    _serve(monkeypatch, entry, urls=urls, instruments=SUTHERLAND_LEP)
+    assert occ.every_served_number_is_cited()[0] == occ.FAIL
+
+
+def test_an_unreadable_instrument_registry_is_unknown_not_a_pass(monkeypatch):
+    entry, urls = _lep_row("https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2015-0319#sch.3")
+    _serve(monkeypatch, entry, urls=urls)
+    monkeypatch.setattr(occ, "registered_instruments", lambda: None)
+    assert occ.every_served_number_is_cited()[0] == occ.UNKNOWN
 
 
 def test_a_council_hub_page_or_a_look_alike_host_is_still_not_a_source_link(monkeypatch):

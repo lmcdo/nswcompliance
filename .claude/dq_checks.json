@@ -1048,7 +1048,7 @@
         "OC-8"
       ],
       "blocks_outreach": true,
-      "passes_when": "exit 0 - every served number read through fetch_dcp_setbacks has all three (a link counts when it is a PDF or a page on https://legislation.nsw.gov.au/; user decision 2026-09-15 for LEP clauses), no served number fails its own quote (DQ-39), and no active chapter's public PDF link names a different copy from the one its rules were read from (r2_public_pdf_url ends with r2_current_path)",
+      "passes_when": "exit 0 - every served number read through fetch_dcp_setbacks has all three (a link counts when it is a PDF, or a https://legislation.nsw.gov.au/view/... page of one instrument registered in instrument_registry for that council or statewide; user decision 2026-09-15 for LEP clauses; UNKNOWN if the registry cannot be read), no served number fails its own quote (DQ-39), and no active chapter's public PDF link names a different copy from the one its rules were read from (r2_public_pdf_url ends with r2_current_path)",
       "red_when": "the declared state and the check disagree in either direction"
     },
     "OC-9": {

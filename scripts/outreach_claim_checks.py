@@ -172,6 +172,10 @@ def every_served_number_is_cited() -> Result:
     entries, why = served_entries()
     if entries is None:
         return UNKNOWN, f"served citations: {why}"
+    instruments = registered_instruments()
+    if instruments is None:
+        return UNKNOWN, "served citations: instrument_registry could not be read, so a legislation link cannot be judged"
+    statewide = instruments.get(None, frozenset())
     missing = []
     numbers = 0
     for lga, e, urls in entries:
@@ -179,26 +183,56 @@ def every_served_number_is_cited() -> Result:
             continue
         numbers += 1
         url = urls.get(e.get("source_chapter_key") or "") or ""
-        if not (e.get("clause") or "").strip() or not (e.get("source_text") or "").strip() or not is_source_link(url):
+        allowed = instruments.get(lga, frozenset()) | statewide
+        if (not (e.get("clause") or "").strip() or not (e.get("source_text") or "").strip()
+                or not is_source_link(url, allowed)):
             missing.append(f"{lga}/{e.get('semantic_type')}")
     return ((PASS if not missing else FAIL),
             f"served numbers missing a clause, the council's sentence or a link to its source document: "
             f"{len(missing)} of {numbers} {missing[:4]}")
 
 
-#: The official NSW legislation site. An LEP or SEPP clause is published there, not as a council PDF, so its page
-#: is the source document (user decision 2026-09-15). Only this exact origin counts: a council's DCP hub page is a
-#: list of documents, not one, and a look-alike host must not pass.
+#: A page on the official NSW legislation site is the source document for an LEP or SEPP clause, which is published
+#: there rather than as a council PDF (user decision 2026-09-15). It counts only when it is a view of ONE instrument
+#: and that instrument is registered for the council (or statewide): the site's home page, a search page or another
+#: council's LEP would otherwise pass while opening nothing the number came from (cross-review, same day).
 #: prior-art-checked: extends claim 8's own link test in place; the files the guard named render legislation text or
 #: monitor versions, none decides whether a served number's link opens its source document.
-_LEGISLATION_ORIGIN = "https://legislation.nsw.gov.au/"
+_LEGISLATION_DOC = re.compile(r"^https://legislation\.nsw\.gov\.au/view/(?:whole/)?(?:html|pdf)/(?:inforce|asmade)/"
+                              r"(?:current|\d{4}-\d{2}-\d{2})/((?:epi|act|sl)-\d{4}-\d{3,4})(?:[/#?]|$)")
+_INSTRUMENT_ID = re.compile(r"((?:epi|act|sl)-\d{4}-\d{3,4})")
 
 
-def is_source_link(url: str) -> bool:
+def registered_instruments() -> dict | None:
+    """{council, or None for a statewide instrument: frozenset of legislation ids} from the active
+    instrument_registry rows. None when the registry cannot be read, which the caller reports as UNKNOWN."""
+    conn = _connect()
+    if conn is None:
+        return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT council, pco_instrument_id, legislation_url FROM instrument_registry WHERE is_active")
+            rows = cur.fetchall()
+    except Exception:  # noqa: BLE001 - unreadable registry: UNKNOWN, never a pass
+        return None
+    finally:
+        conn.close()
+    found: dict = {}
+    for council, pco_id, url in rows:
+        m = _INSTRUMENT_ID.search(f"{pco_id or ''} {url or ''}")
+        if m:
+            found.setdefault(council, set()).add(m.group(1))
+    return {k: frozenset(v) for k, v in found.items()}
+
+
+def is_source_link(url: str, legislation_ids: frozenset = frozenset()) -> bool:
     """True for a link that opens the document a number was read from: a PDF (the council's own copy or our R2
-    mirror of it), or a page on the official NSW legislation site."""
-    u = (url or "").strip().lower()
-    return ".pdf" in u or "r2.dev" in u or u.startswith(_LEGISLATION_ORIGIN)
+    mirror of it), or a legislation.nsw.gov.au view of an instrument in ``legislation_ids``."""
+    u = (url or "").strip()
+    if ".pdf" in u.lower() or "r2.dev" in u.lower():
+        return True
+    m = _LEGISLATION_DOC.match(u)
+    return bool(m) and m.group(1) in legislation_ids
 
 
 #: The council's own sentence states a maximum. Read here, independently of how the serve path words it.
