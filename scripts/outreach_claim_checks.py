@@ -179,12 +179,26 @@ def every_served_number_is_cited() -> Result:
             continue
         numbers += 1
         url = urls.get(e.get("source_chapter_key") or "") or ""
-        has_pdf = ".pdf" in url.lower() or "r2.dev" in url.lower()
-        if not (e.get("clause") or "").strip() or not (e.get("source_text") or "").strip() or not has_pdf:
+        if not (e.get("clause") or "").strip() or not (e.get("source_text") or "").strip() or not is_source_link(url):
             missing.append(f"{lga}/{e.get('semantic_type')}")
     return ((PASS if not missing else FAIL),
-            f"served numbers missing a clause, the council's sentence or a PDF link: "
+            f"served numbers missing a clause, the council's sentence or a link to its source document: "
             f"{len(missing)} of {numbers} {missing[:4]}")
+
+
+#: The official NSW legislation site. An LEP or SEPP clause is published there, not as a council PDF, so its page
+#: is the source document (user decision 2026-09-15). Only this exact origin counts: a council's DCP hub page is a
+#: list of documents, not one, and a look-alike host must not pass.
+#: prior-art-checked: extends claim 8's own link test in place; the files the guard named render legislation text or
+#: monitor versions, none decides whether a served number's link opens its source document.
+_LEGISLATION_ORIGIN = "https://legislation.nsw.gov.au/"
+
+
+def is_source_link(url: str) -> bool:
+    """True for a link that opens the document a number was read from: a PDF (the council's own copy or our R2
+    mirror of it), or a page on the official NSW legislation site."""
+    u = (url or "").strip().lower()
+    return ".pdf" in u or "r2.dev" in u or u.startswith(_LEGISLATION_ORIGIN)
 
 
 #: The council's own sentence states a maximum. Read here, independently of how the serve path words it.

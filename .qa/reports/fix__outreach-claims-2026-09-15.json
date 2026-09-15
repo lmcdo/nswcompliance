@@ -1,0 +1,77 @@
+{
+  "tier": "standard",
+  "justification": "Claim 8's link test accepts the official NSW legislation site as the source document for an LEP clause (user decision 2026-09-15), rewords the claim to match, and flips OC-8 to true. A too-loose test would let a number pass with a link that does not open its source, so the accepted origin is exact and the confusable cases are tested.",
+  "commit_hash": "0000000",
+  "files": [
+    "scripts/outreach_claim_checks.py",
+    "tests/test_outreach_claim_checks_ranges_and_citations.py",
+    ".claude/dq_checks.json",
+    ".qa/reports/fix__outreach-claims-2026-09-15.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/outreach_claim_checks.py OC-8",
+    "fails_when": "A served number lacks a clause or the council's sentence, or its chapter's link is neither a PDF nor a page on https://legislation.nsw.gov.au/ (a council hub page or a look-alike host fails); or DQ-39 finds a number its own quote does not state; or an active chapter's public link names a different copy from the one read.",
+    "observed_red": "Before this change the same command printed 'FAIL served numbers missing a clause, the council's sentence or a PDF link: 3 of 739 [sutherland_shire/side_setback, sutherland_shire/rear_setback, sutherland_shire/secondary_street_setback]'. After: 'PASS ... 0 of 738' and 'OC-8: HOLDS'. Three mutations of is_source_link were run on temporary copies: legislation link refused (1 failed), any host starting with the site name accepted (1 failed), any link accepted (1 failed); unmutated 8 passed.",
+    "external_authority": "The user decided on 2026-09-15 that the legislation website is an acceptable source link for LEP clauses. Sutherland Shire LEP 2015 Schedule 3 Division 2 clause 7(1)(a)-(c) as in force on legislation.nsw.gov.au reads 'a setback from any secondary frontage of at least 3m', 'a setback from the rear boundary of at least 6m' and 'a setback from the side boundaries of at least 1.5m'."
+  },
+  "pre_impl": {
+    "existing_data": "fetch_dcp_setbacks builds registry_pdf_urls from COALESCE(r2_public_pdf_url, council_url, council_page_url); registry 732 (sutherland-lep-2015-schedule-3) has only council_page_url, the legislation page with #sch.3.",
+    "assumption_mismatch": "The check equated 'source link' with 'PDF', so a correct verbatim LEP clause could never pass, while a council hub page listing many documents is not a source link either and must keep failing.",
+    "new_vs_existing": "Extends claim 8's own link test in place with one pure helper; no new query and no change to what is served."
+  },
+  "functions": [
+    {
+      "name": "every_served_number_is_cited",
+      "file_line": "scripts/outreach_claim_checks.py:168",
+      "input": "Every served control read through the serve path, with the registry's per-chapter link map.",
+      "output": "PASS when every entry that carries a number has a clause, a sentence and a source link; FAIL listing the first four that do not.",
+      "if_none": "A serve-path failure returns UNKNOWN, never PASS; an entry with no number is not counted."
+    },
+    {
+      "name": "is_source_link",
+      "file_line": "scripts/outreach_claim_checks.py:197",
+      "input": "The link the serve path holds for a row's chapter, possibly empty.",
+      "output": "True for a PDF, our R2 mirror, or a page whose URL starts with https://legislation.nsw.gov.au/.",
+      "if_none": "An empty or missing link is False, so the number counts as missing its source."
+    }
+  ],
+  "values": [
+    {
+      "value": "registry_pdf_urls[source_chapter_key] from fetch_dcp_setbacks",
+      "read_at": "scripts/outreach_claim_checks.py:181",
+      "if_missing": "Treated as an empty link, which fails the number."
+    }
+  ],
+  "queries": "N/A - no new query; the sub-check reads the existing serve path.",
+  "break_it": [
+    {
+      "scenario": "A served LEP clause links to its page on the official legislation site.",
+      "what_happens": "Before, it failed as having no PDF although the page is the published law; now it passes.",
+      "mitigated": true,
+      "how": "Exact origin accepted; test_an_lep_clause_linked_to_the_official_legislation_page_passes caught the mutation that refused it.",
+      "repro": "python -m pytest tests/test_outreach_claim_checks_ranges_and_citations.py -o addopts= -k lep_clause"
+    },
+    {
+      "scenario": "A row links to a council's DCP hub page, which lists documents rather than opening one.",
+      "what_happens": "A reader cannot reach the clause from the link, so the number must still count as missing its source.",
+      "mitigated": true,
+      "how": "Only PDFs, R2 and the legislation origin pass; the hub-page case is a confusable negative in the tests.",
+      "repro": "python -m pytest tests/test_outreach_claim_checks_ranges_and_citations.py -o addopts= -k look_alike"
+    },
+    {
+      "scenario": "A link on a host such as legislation.nsw.gov.au.example.com.",
+      "what_happens": "A prefix test without the trailing slash would accept someone else's site.",
+      "mitigated": true,
+      "how": "The accepted origin ends with '/', and the mutation dropping it was caught by the look-alike test.",
+      "repro": "python -m pytest tests/test_outreach_claim_checks_ranges_and_citations.py -o addopts= -k look_alike"
+    }
+  ],
+  "mutation_analysis": "Three mutations of is_source_link run on temporary copies with the test file: legislation link not accepted (1 failed), any host starting with the site name accepted (1 failed), any link accepted (1 failed); the unmutated copy passed 8 of 8. Full file: 10 passed. Live: python scripts/outreach_claim_checks.py OC-8 printed HOLDS with 0 of 738.",
+  "residual_risk": "A legislation link opens the instrument at the schedule anchor, not the exact sub-clause; the row's own clause reference carries the rest. Whether a linked LEP clause is still in force is claim 17's and DQ-88's question, not this check's.",
+  "post_merge": {
+    "db_reset": "No. The check change touches no data.",
+    "secrets": "None.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "No manual step: the gates run executes the OC-8 check."
+  }
+}

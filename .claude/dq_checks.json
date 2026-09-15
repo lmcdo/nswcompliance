@@ -1038,16 +1038,17 @@
     },
     "OC-8": {
       "kind": "outreach_claim",
-      "claim": "Every served DCP number carries its clause, the council's own sentence and a link to the source PDF.",
+      "claim": "Every served DCP number carries its clause, the council's own sentence and a link to its source document (the council PDF, or the official NSW legislation page for an LEP clause).",
       "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
-      "declared": "false",
+      "declared": "true",
+      "verified": "2026-09-15: check passed against production, 0 of 738 served numbers missing a clause, sentence or source link. The last 3 (Sutherland LEP 2015 Sch 3 Div 2 cl 7(1)(a)-(c): 3m secondary frontage, 6m rear, 1.5m side) link to the official legislation page, accepted as their source document by user decision; their wording and values were checked against today's in-force text on legislation.nsw.gov.au.",
       "check": [
         "python",
         "scripts/outreach_claim_checks.py",
         "OC-8"
       ],
       "blocks_outreach": true,
-      "passes_when": "exit 0 - every served number read through fetch_dcp_setbacks has all three, no served number fails its own quote (DQ-39), and no active chapter's public PDF link names a different copy from the one its rules were read from (r2_public_pdf_url ends with r2_current_path)",
+      "passes_when": "exit 0 - every served number read through fetch_dcp_setbacks has all three (a link counts when it is a PDF or a page on https://legislation.nsw.gov.au/; user decision 2026-09-15 for LEP clauses), no served number fails its own quote (DQ-39), and no active chapter's public PDF link names a different copy from the one its rules were read from (r2_public_pdf_url ends with r2_current_path)",
       "red_when": "the declared state and the check disagree in either direction"
     },
     "OC-9": {

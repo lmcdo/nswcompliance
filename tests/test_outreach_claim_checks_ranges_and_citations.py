@@ -50,6 +50,26 @@ def test_a_number_missing_its_sentence_still_fails(monkeypatch):
     assert occ.every_served_number_is_cited()[0] == occ.FAIL
 
 
+def test_an_lep_clause_linked_to_the_official_legislation_page_passes(monkeypatch):
+    """Sutherland LEP 2015 Sch 3 numbers are published on legislation.nsw.gov.au, not in a council PDF."""
+    urls = {"sutherland-lep-2015-schedule-3":
+            "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2015-0319#sch.3"}
+    _serve(monkeypatch, _entry(source_chapter_key="sutherland-lep-2015-schedule-3", clause="LEP 2015 Schedule 3",
+                               source_text="A setback from side boundaries of at least 1.5m"), urls=urls)
+    verdict, detail = occ.every_served_number_is_cited()
+    assert verdict == occ.PASS and "0 of 1" in detail
+
+
+def test_a_council_hub_page_or_a_look_alike_host_is_still_not_a_source_link(monkeypatch):
+    """Confusable negatives: a DCP hub page lists documents rather than being one, and a host that merely starts
+    with the legislation site's name is someone else's site."""
+    urls = {"hub": "https://www.sutherlandshire.nsw.gov.au/plan-and-build/Planning-considerations/development-control-plan-dcp",
+            "fake": "https://legislation.nsw.gov.au.example.com/view/whole/html/inforce/current/epi-2015-0319"}
+    _serve(monkeypatch, _entry(source_chapter_key="hub"), _entry(source_chapter_key="fake"), urls=urls)
+    verdict, detail = occ.every_served_number_is_cited()
+    assert verdict == occ.FAIL and "2 of 2" in detail
+
+
 # ── claim 17: a range is not a maximum, and a number keeps its unit ────────────────────────────────
 
 def test_a_range_printed_as_a_maximum_the_plan_does_not_state_fails(monkeypatch):
