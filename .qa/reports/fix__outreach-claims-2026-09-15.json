@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Claim 8's link test accepts the official NSW legislation site as the source document for an LEP clause (user decision 2026-09-15), rewords the claim to match, and flips OC-8 to true. A too-loose test would let a number pass with a link that does not open its source, so the accepted origin is exact and the confusable cases are tested.",
-  "commit_hash": "0000000",
+  "commit_hash": "c75877c3",
   "files": [
     "scripts/outreach_claim_checks.py",
     "tests/test_outreach_claim_checks_ranges_and_citations.py",
