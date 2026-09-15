@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Every Wingecarribee number served to a property cited the Bowral Town Plan, which does not govern a Mittagong or Moss Vale property and whose table numbers do not resolve there (DQ-66). The user decided on 2026-09-15 to cite each town's plan. This changes the served citation text for 29 numbers and adds a database table, so a wrong join, a borrowed page or a silent read failure would put a false reference in front of a reader.",
-  "commit_hash": "b0389a2b",
+  "commit_hash": "524ffdc1",
   "files": [
     "migrations/074_dcp_clause_sibling_citations.sql",
     "migrations/075_wingecarribee_sibling_citations_seed.sql",
@@ -11,6 +11,7 @@
     "tests/test_cite_clause.py",
     "tests/test_dcp_setbacks_cite_each_town_plan.py",
     "tests/test_dq_check.py",
+    ".claude/DATA_QUALITY_TRACKER.md",
     ".qa/reports/fix__wingecarribee-cite-each-town-plan.json"
   ],
   "falsifiable_check": {
@@ -132,6 +133,6 @@
     "db_reset": "No reset. Migrations 074 and 075 were applied to production on 2026-09-15 (074 and the rows by a guarded one-off script with registry backup dcp_chapter_registry_pre_wingecarribee_siblings_*; 075 reproduces those rows and is a no-op there). Both are idempotent; any other database gets the same 28 citations by running them.",
     "secrets": "None.",
     "other_repo": "No.",
-    "manual_verify": "python scripts/dq_probe_live.py --id DQ-66 prints count 0; a Wingecarribee report shows three plan names in each DCP citation."
+    "manual_verify": "python scripts/dq_probe_live.py --id DQ-66 prints count 0; a Wingecarribee report shows three plan names in each DCP citation. This PR also declares DQ-88 fixed (ledger and tracker): the Codes SEPP, Inner West LEP and Housing SEPP text refreshes and flag clears were applied to production on 2026-09-15, and dq_probe_live.py --id DQ-88 prints count 0."
   }
 }
