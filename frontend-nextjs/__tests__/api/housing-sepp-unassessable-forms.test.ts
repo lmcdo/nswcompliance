@@ -10,8 +10,10 @@
  * standards for independent living units, so a user was told a Manor House was
  * eligible, with numbers that were never manor house rules, plus a "SEPP allows
  * 9.5m vs LEP" override. The rows now carry their real label and the route treats
- * such a form as not assessed, the same guard services/housing_sepp_eligibility.py
- * applies. Overrides are shown only for forms found eligible, as the brief does.
+ * such a form as not assessed. No form is exempt (cross-review: exempting dual
+ * occupancy let a missing lot row pass silently); only the station-distance apartment
+ * forms, which have no lot row, keep their own check. Overrides are shown only for
+ * forms found eligible, as the brief does.
  *
  * Fixture values are test inputs, not the stored standards.
  */
@@ -49,6 +51,7 @@ function row(developmentType: string, standardType: string, value: string, zones
 
 const ROWS = [
   row('independent_living_unit', 'max_height', '9.5'),
+  row('secondary_dwelling', 'min_lot_size', '450'),
   row('secondary_dwelling', 'max_floor_area', '60'),
   row('dual_occupancy', 'min_lot_size', '400'),
   row('dual_occupancy', 'max_height', '9.5'),
@@ -59,8 +62,8 @@ const ROWS = [
 
 type Result = { developmentType: string; isEligible: boolean; assessmentStatus: string; eligibilityReason: string };
 
-async function check(body: Record<string, unknown>) {
-  mockQuery.mockResolvedValue({ rows: ROWS });
+async function check(body: Record<string, unknown>, rows = ROWS) {
+  mockQuery.mockResolvedValue({ rows });
   const res = await POST(new NextRequest('http://localhost/api/housing-sepp/eligibility', {
     method: 'POST',
     body: JSON.stringify(body),
@@ -69,6 +72,8 @@ async function check(body: Record<string, unknown>) {
   const results: Result[] = json.data.eligibleTypes;
   return { json, form: (t: string) => results.find(r => r.developmentType === t) };
 }
+
+const R2_LOT = { zoneCode: 'R2', lotSize: 600, lotWidth: 15, isLMRArea: true };
 
 describe('housing-sepp eligibility — a form with no lot standard in the dataset', () => {
   beforeEach(() => mockQuery.mockReset());
@@ -79,22 +84,25 @@ describe('housing-sepp eligibility — a form with no lot standard in the datase
   });
 
   it('is not reported eligible, and says it was not assessed', async () => {
-    const { form } = await check({ zoneCode: 'R2', lotSize: 600, lotWidth: 15, isLMRArea: true });
-    const ilu = form('independent_living_unit');
+    const ilu = (await check(R2_LOT)).form('independent_living_unit');
     expect(ilu).toBeDefined();
     expect(ilu!.isEligible).toBe(false);
     expect(ilu!.assessmentStatus).toBe('not_assessed');
     expect(ilu!.eligibilityReason).toMatch(/not in the dataset/);
   });
 
-  it('does not catch the base forms, which are assessed without a lot standard', async () => {
-    const { form } = await check({ zoneCode: 'R2', lotSize: 600, lotWidth: 15, isLMRArea: true });
-    expect(form('secondary_dwelling')!.isEligible).toBe(true);
+  it('exempts no form: dual occupancy whose lot row is missing is not assessed', async () => {
+    const withoutDualLot = ROWS.filter(r => !(r.development_type === 'dual_occupancy' && r.standard_type === 'min_lot_size'));
+    const dual = (await check(R2_LOT, withoutDualLot)).form('dual_occupancy')!;
+    expect(dual.isEligible).toBe(false);
+    expect(dual.assessmentStatus).toBe('not_assessed');
   });
 
   it('still decides a form whose lot standard is in the dataset', async () => {
-    expect((await check({ zoneCode: 'R2', lotSize: 600, lotWidth: 15, isLMRArea: true })).form('dual_occupancy')!.isEligible).toBe(true);
-    const small = (await check({ zoneCode: 'R2', lotSize: 300, lotWidth: 15, isLMRArea: true })).form('dual_occupancy')!;
+    const { form } = await check(R2_LOT);
+    expect(form('dual_occupancy')!.isEligible).toBe(true);
+    expect(form('secondary_dwelling')!.isEligible).toBe(true);
+    const small = (await check({ ...R2_LOT, lotSize: 300 })).form('dual_occupancy')!;
     expect(small.isEligible).toBe(false);
     expect(small.eligibilityReason).toMatch(/below minimum/);
   });
@@ -109,7 +117,7 @@ describe('housing-sepp eligibility — SEPP-over-LEP overrides', () => {
   beforeEach(() => mockQuery.mockReset());
 
   it('are listed only for forms found eligible', async () => {
-    const { json } = await check({ zoneCode: 'R2', lotSize: 600, lotWidth: 15, isLMRArea: false, lepHeight: 8.5 });
+    const { json } = await check({ ...R2_LOT, isLMRArea: false, lepHeight: 8.5 });
     const types = (json.data.overrides ?? []).map((o: { developmentType: string }) => o.developmentType);
     expect(types).toContain('dual_occupancy');
     expect(types).not.toContain('independent_living_unit');

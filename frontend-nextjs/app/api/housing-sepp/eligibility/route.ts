@@ -109,11 +109,6 @@ const DEVELOPMENT_TYPE_NAMES: Record<string, { name: string; description: string
   }
 };
 
-// Forms that are assessed without a minimum lot standard, the same set as
-// services/housing_sepp_eligibility.py _BASE_FORMS. Any other form with no
-// min_lot_size row cannot be assessed from the dataset (see the guard below).
-const BASE_FORMS = new Set(['dwelling_houses', 'dwelling_house', 'dual_occupancy', 'secondary_dwelling']);
-
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
@@ -285,9 +280,11 @@ export async function POST(request: NextRequest) {
       // A form with no lot standard in the dataset would otherwise fall through
       // every check below to "eligible". Until 2026-09-15 that told users a Manor
       // House was eligible from four rows that were really section 108 standards
-      // for independent living units. Same guard as housing_sepp_eligibility.py;
-      // the station-distance apartment forms have their own check further down.
-      if (!BASE_FORMS.has(devType) && !devType.includes('residential_flat_r3r4') && !minLotSize) {
+      // for independent living units. No form is exempt: dual occupancy and
+      // secondary dwellings carry a minimum lot size too, so a missing row is a
+      // data gap, not a pass (cross-review). Only the station-distance apartment
+      // forms, which have no lot row, are decided by their own check further down.
+      if (!devType.includes('residential_flat_r3r4') && !minLotSize) {
         eligibilityResults.push({
           developmentType: devType,
           displayName: displayInfo.name,

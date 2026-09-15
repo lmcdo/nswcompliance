@@ -36,11 +36,12 @@ logger = logging.getLogger(__name__)
 # zone" definition), not this module's LMR-specific eligibility gate.
 RESIDENTIAL_ZONES = {"R1", "R2", "R3", "R4"}
 
-# Low-density / base residential forms that are legitimately permitted without an LMR
-# lot-size uplift gate. Any OTHER (denser) form must have a confirmable min_lot_size in
-# the dataset to be eligible — so a form with a missing lot standard (e.g. manor_house,
-# a known gap) is treated conservatively rather than passed by default.
-_BASE_FORMS = {"dwelling_houses", "dwelling_house", "dual_occupancy", "secondary_dwelling"}
+# Forms the SEPP sets no minimum lot size for. Any OTHER form must have a confirmable
+# min_lot_size in the dataset to be eligible — so a form with a missing lot standard (e.g.
+# manor_house, a known gap) is treated conservatively rather than passed by default.
+# dual_occupancy and secondary_dwelling were in this set until 2026-09-15; both carry a
+# min_lot_size row, so exempting them let a missing row pass as eligible (cross-review).
+_BASE_FORMS = {"dwelling_houses", "dwelling_house"}
 
 
 @dataclass

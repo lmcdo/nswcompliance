@@ -1,49 +1,58 @@
 {
   "tier": "standard",
-  "justification": "The Housing SEPP eligibility route reported every form eligible once its zone matched and no lot row stopped it. A form with no lot standard in the dataset therefore passed by default: until 2026-09-15 that was manor_house, whose rows were really section 108 standards for independent living units, so users were told a Manor House was eligible, with a 'SEPP allows 9.5m vs LEP' override. The rows were relabelled in production on 2026-09-15; without this change the route would now say the same about independent living units.",
-  "commit_hash": "3ac42870",
+  "justification": "The Housing SEPP eligibility route reported every form eligible once its zone matched and no lot row stopped it. A form with no lot standard in the dataset therefore passed by default: until 2026-09-15 that was manor_house, whose rows were really section 108 standards for independent living units, so users were told a Manor House was eligible, with a 'SEPP allows 9.5m vs LEP' override. The rows were relabelled in production on 2026-09-15; without this change the route would now say the same about independent living units. Cross-review then showed both engines exempted dual occupancy and secondary dwellings from the guard, so a missing lot row for them also passed as eligible.",
+  "commit_hash": "9a4ab4bf",
   "files": [
     "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
     "frontend-nextjs/app/planning-standards/page.tsx",
     "frontend-nextjs/__tests__/api/housing-sepp-unassessable-forms.test.ts",
+    "services/housing_sepp_eligibility.py",
+    "tests/test_housing_sepp_eligibility.py",
     ".qa/reports/fix__housing-sepp-route-unconfirmed-forms.json"
   ],
   "falsifiable_check": {
-    "command": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-unassessable-forms.test.ts",
-    "fails_when": "A form with no lot standard in the dataset comes back isEligible true, or a SEPP-over-LEP override is listed for a form that was not found eligible.",
-    "observed_red": "Against the route on main, 2 of the 6 new tests failed: independent_living_unit came back eligible in R2, and the overrides for a lot outside a reform area listed independent_living_unit and residential_flat_r1r2. With the fix all 15 tests in the two eligibility suites pass.",
-    "external_authority": "Housing SEPP (in force 15 Sep 2026) section 108 is headed 'Non-discretionary development standards for independent living units' and states the 9.5m height, 0.5:1 FSR, landscaped area and 15% deep soil standards that the table had filed as manor house rules. No manor house minimum lot standard is in housing_sepp_standards."
+    "command": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-unassessable-forms.test.ts && cd .. && python -m pytest tests/test_housing_sepp_eligibility.py -o addopts= -k missing",
+    "fails_when": "A form with no lot standard in the dataset (other than dwelling houses in the Python engine, and the station-distance apartment forms) comes back eligible, or a SEPP-over-LEP override is listed for a form that was not found eligible.",
+    "observed_red": "Against the route on main, 2 of the new tests failed: independent_living_unit came back eligible in R2, and the overrides for a lot outside a reform area listed independent_living_unit and residential_flat_r1r2. With the dual-occupancy exemption restored, 'exempts no form' fails in jest and test_dual_occupancy_missing_its_lot_row_is_not_passed fails in pytest. With the fix: 15 jest tests across the two eligibility suites and 101 pytest tests across the five eligibility, upzoning and brief suites pass.",
+    "external_authority": "Housing SEPP (in force 15 Sep 2026) section 108 is headed 'Non-discretionary development standards for independent living units' and states the 9.5m height, 0.5:1 FSR, landscaped area and 15% deep soil standards that the table had filed as manor house rules. housing_sepp_standards holds a min_lot_size row for dual_occupancy and secondary_dwelling, and none for independent_living_unit."
   },
   "pre_impl": {
-    "existing_data": "housing_sepp_standards: 45 rows across 8 forms after the 2026-09-15 correction. Only independent_living_unit (4 rows) has no min_lot_size among forms outside the base set and the station-distance apartment forms; dual_occupancy, multi_dwelling, residential_flat_r1r2, secondary_dwelling and terraces all have one.",
-    "assumption_mismatch": "The route assumed every form in the table carries a lot standard, so reaching the end of the checks meant eligible. services/housing_sepp_eligibility.py already treats a missing lot standard as not assessable; the two implementations disagreed.",
-    "new_vs_existing": "Mirrors the existing Python guard (_BASE_FORMS and the residential_flat_r3r4 exemption) and the brief's eligible-only override rule. No new query, no change to the response shape; one display name and one page label added."
+    "existing_data": "housing_sepp_standards: 45 rows across 8 forms after the 2026-09-15 correction. min_lot_size present for dual_occupancy, multi_dwelling, residential_flat_r1r2, secondary_dwelling and terraces; absent for independent_living_unit and the two station-distance residential_flat_r3r4 forms. No dwelling_house rows.",
+    "assumption_mismatch": "The route assumed every form in the table carries a lot standard, so reaching the end of the checks meant eligible. The Python engine guarded that case but exempted dual occupancy and secondary dwellings, which do carry a lot standard, so a dropped row there passed silently too.",
+    "new_vs_existing": "Same guard in both engines: a form with no min_lot_size is not assessed, except the station-distance apartment forms (their own check) and, in Python, dwelling houses (no SEPP lot minimum; no such rows exist, so the route needs no exemption). Overrides only for eligible forms, as the brief does. No new query and no change to the response shape; one display name and one page label added."
   },
   "functions": [
     {
       "name": "POST",
-      "file_line": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:117",
+      "file_line": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:112",
       "input": "zoneCode, lotSize, lotWidth, optional stationDistance, isLMRArea, lepHeight and lepFsr.",
-      "output": "One eligibility result per form applicable to the zone; a form outside the base set with no lot standard in the dataset is isEligible false with assessmentStatus 'not_assessed'; overrides only for forms found eligible.",
+      "output": "One eligibility result per form applicable to the zone; a form with no lot standard in the dataset (other than the station-distance apartment forms) is isEligible false with assessmentStatus 'not_assessed'; overrides only for forms found eligible.",
       "if_none": "No standards rows returns no forms and no overrides; a failed read returns the existing 500 error."
+    },
+    {
+      "name": "evaluate_eligibility",
+      "file_line": "services/housing_sepp_eligibility.py:212",
+      "input": "zone code, lot area and width, coordinates, heritage flag and optional gate inputs.",
+      "output": "Per-form FormEligibility; a form outside {dwelling_houses, dwelling_house} and the station-distance apartment forms with no min_lot_size is ineligible and unconfirmed with the 'not in the dataset' reason.",
+      "if_none": "Unchanged: non-residential zone or an unreadable standards table returns []."
     }
   ],
   "values": [
     {
       "value": "minLotSize",
-      "read_at": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:283",
-      "if_missing": "For a form outside the base set that is not a station-distance apartment form, the result is not assessed instead of eligible."
+      "read_at": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:278",
+      "if_missing": "For any form that is not a station-distance apartment form, the result is not assessed instead of eligible."
     },
     {
       "value": "eligibleForms",
-      "read_at": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:416",
+      "read_at": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:413",
       "if_missing": "A form not found eligible gets no SEPP-over-LEP override line."
     }
   ],
   "queries": [
     {
       "purpose": "Read every Housing SEPP standard with its form, zones, reform-area flag and clause to decide each form's eligibility.",
-      "file_line": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:171",
+      "file_line": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:166",
       "where_clause": "FROM housing_sepp_standards ORDER BY development_type, standard_type (unchanged; all 45 standards are read and filtered by zones in code)"
     }
   ],
@@ -52,15 +61,15 @@
       "scenario": "A form in the table has no lot standard in the dataset (independent living units since the 2026-09-15 relabel; manor houses before it).",
       "what_happens": "Every check is skipped and the form is reported eligible, with its Housing SEPP standard read as an entitlement for that form in any listed zone.",
       "mitigated": true,
-      "how": "The route returns not assessed for such a form, as housing_sepp_eligibility.py does. test 'is not reported eligible, and says it was not assessed'; removing the guard failed 2 tests.",
+      "how": "The route returns not assessed for such a form, as housing_sepp_eligibility.py does. test 'is not reported eligible, and says it was not assessed'; removing the guard failed 3 tests.",
       "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-unassessable-forms.test.ts -t 'not assessed'"
     },
     {
-      "scenario": "The guard also catches the base forms (secondary dwelling, dual occupancy) that are assessed without a lot standard.",
-      "what_happens": "A granny flat would stop being reported eligible on any lot, a false negative on the most common question.",
+      "scenario": "A form that does carry a lot standard loses its min_lot_size row after an incomplete import, e.g. dual occupancy (cross-review HIGH on the first push).",
+      "what_happens": "With dual occupancy exempt from the guard, the form is reported eligible on any lot without the lot threshold ever being checked.",
       "mitigated": true,
-      "how": "BASE_FORMS matches the Python set; dropping the exemption failed 'does not catch the base forms'.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-unassessable-forms.test.ts -t 'base forms'"
+      "how": "No form is exempt in the route; in the Python engine only dwelling houses are, since the SEPP sets them no lot minimum. Re-exempting dual occupancy failed 'exempts no form' (jest) and test_dual_occupancy_missing_its_lot_row_is_not_passed (pytest).",
+      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-unassessable-forms.test.ts -t 'exempts no form' && cd .. && python -m pytest tests/test_housing_sepp_eligibility.py -o addopts= -k dual_occupancy_missing"
     },
     {
       "scenario": "The guard catches the station-distance apartment forms, which have no lot standard row but their own distance check.",
@@ -80,12 +89,19 @@
       "scenario": "The unassessable form is reported as a confirmed negative instead of a check that did not run.",
       "what_happens": "A consumer reading assessmentStatus would tell the user the form is ineligible, a finding nobody made.",
       "mitigated": true,
-      "how": "assessmentStatus is 'not_assessed'; changing it to 'ineligible' failed the first test.",
+      "how": "assessmentStatus is 'not_assessed'; changing it to 'ineligible' failed 2 tests.",
       "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-unassessable-forms.test.ts -t 'not assessed'"
+    },
+    {
+      "scenario": "Narrowing the Python exemption also removes dwelling houses, which have no SEPP lot minimum.",
+      "what_happens": "A dwelling house would stop being reported eligible on every lot.",
+      "mitigated": true,
+      "how": "_BASE_FORMS keeps dwelling_houses/dwelling_house; emptying the set failed 3 existing pytest tests (including test_dwelling_house_is_eligible_with_no_lot_data_and_no_gates).",
+      "repro": "python -m pytest tests/test_housing_sepp_eligibility.py -o addopts= -k dwelling_house"
     }
   ],
-  "mutation_analysis": "Five mutations on route.ts, restored after, against the new suite and __tests__/api/housing-sepp-lmr-default.test.ts: guard removed -> 2 failed; base forms not exempt -> 1 failed; station-distance forms not exempt -> 1 failed; overrides for every form -> 1 failed; status 'ineligible' instead of 'not_assessed' -> 1 failed. Unmutated: 15 passed. The fixture takes its zones from HOUSING_SEPP_LMR.ELIGIBLE_ZONES, the route's own set, rather than a new literal list (zone-code lint).",
-  "residual_risk": "The route is still a separate implementation of services/housing_sepp_eligibility.py (DQ-30 consolidation candidate), so a future change to one will not reach the other. The route still does not read stale_since, so a standard flagged stale by the law monitor is served here without the notice the Python engine carries. /api/tod/parking-rates still selects columns housing_sepp_standards does not have and reports its SEPP tier as degraded on every call; left as is because making it answer would present the conditional 0.5-space minimum in section 179(2)(c) as an overriding rate.",
+  "mutation_analysis": "Route (jest, new suite + housing-sepp-lmr-default): guard removed -> 3 failed; dual occupancy exempt again -> 1 failed; station-distance forms not exempt -> 1 failed; overrides for every form -> 1 failed; status 'ineligible' instead of 'not_assessed' -> 2 failed; unmutated 15 passed. Python (pytest, eligibility + upzoning + brief suites): dual_occupancy back in _BASE_FORMS -> 1 failed; _BASE_FORMS emptied -> 3 failed; unmutated 101 passed. The jest fixture takes its zones from HOUSING_SEPP_LMR.ELIGIBLE_ZONES, the route's own set, rather than a new literal list (zone-code lint). All files restored after each mutation.",
+  "residual_risk": "The route is still a separate implementation of services/housing_sepp_eligibility.py (DQ-30 consolidation candidate); the two now apply the same guard, but a future change to one will not reach the other. The route does not read stale_since, so a standard flagged stale by the law monitor is served there without the notice the Python engine carries. /api/tod/parking-rates still selects columns housing_sepp_standards does not have and reports its SEPP tier as degraded on every call; left as is because making it answer would present the conditional 0.5-space minimum in section 179(2)(c) as an overriding rate.",
   "post_merge": {
     "db_reset": "No reset. The data half was applied to production on 2026-09-15 by a guarded one-off script (backup data/db_rollback_backups/housing_sepp_standards_pre_correction_2026-09-15_2044.csv): 13 standards re-cited to today's Housing SEPP with the quoted text recorded, 4 relabelled manor_house -> independent_living_unit, 1 relabelled max_height -> setback_height_threshold; total unchanged at 45, none stale.",
     "secrets": "None.",

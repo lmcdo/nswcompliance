@@ -146,6 +146,19 @@ def test_form_missing_lot_standard_is_conservatively_ineligible():
     assert r2["manor_house"].eligible is False
 
 
+def test_dual_occupancy_missing_its_lot_row_is_not_passed(monkeypatch):
+    # Cross-review 2026-09-15: dual_occupancy was exempt from the missing-lot guard, so a
+    # dropped min_lot_size row made it eligible on any lot. It carries a lot standard; a
+    # missing one is a data gap. Dwelling houses stay exempt (no SEPP lot minimum).
+    no_dual_lot = {**GROUPED, "dual_occupancy": {**GROUPED["dual_occupancy"], "min_lot_size": None}}
+    monkeypatch.setattr(hse, "_fetch_standards_grouped", lambda: no_dual_lot)
+    r = _by_type(evaluate_eligibility("R2", 900, 25, -33.8, 151.1, gate_inputs=ALL_FALSE))
+    assert r["dual_occupancy"].eligible is False
+    assert r["dual_occupancy"].unconfirmed is True
+    assert "dataset" in r["dual_occupancy"].reason
+    assert r["dwelling_houses"].eligible is True
+
+
 # --- unconfirmed: a data gap must not read as a failed standard ---------------
 # (Bowral regression: an irregular 4,096 m² lot has no measurable frontage, so
 # every width-gated form failed — the UI showed "Not eligible" for a lot that
