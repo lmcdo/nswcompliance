@@ -224,6 +224,7 @@ def test_dq66_needs_a_citation_for_the_rows_own_clause_in_each_sibling_plan():
     assert re.search(r"c\.section_ref = d\.section_ref", flat), "citation not tied to the row's own clause"
     assert re.search(r"c\.sibling_chapter_key = s\.chapter_key", flat), "citation not tied to each sibling plan"
     assert re.search(r"c\.chapter_key = r\.chapter_key", flat), "citation not tied to the plan the row cites"
+    assert re.search(r"btrim\(c\.sibling_section_ref\) <> ''", flat), "a blank sibling clause would count as a citation"
 
 
 # ── An UNFINISHED row must be provable ───────────────────────────────────────

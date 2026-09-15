@@ -581,16 +581,27 @@ def _sibling_citations(cur, lga_slug: str) -> dict:
          AND own.is_active = TRUE
         JOIN dcp_chapter_registry sib
           ON sib.council = c.council AND sib.chapter_key = c.sibling_chapter_key
-         AND sib.is_active = TRUE
+         AND sib.is_active = TRUE AND sib.dcp_name = own.dcp_name
         WHERE c.council = %s
         ORDER BY c.chapter_key, c.section_ref, sib.chapter_label
         """,
         (lga_slug,),
     )
     found: dict = {}
+    incomplete: set = set()
     for chapter_key, section_ref, own_label, sib_label, sib_ref, sib_page, sib_url in cur.fetchall() or []:
-        item = found.setdefault((chapter_key, section_ref), {"plan": own_label, "also": []})
+        key = (chapter_key, section_ref)
+        # A sibling row with no plan name or no clause cannot be cited. Listing the
+        # other siblings without it would silently leave a plan out, so the whole
+        # clause is dropped and cite_clause falls back to its caveat (cross-review
+        # 2026-09-15; migration 075 also refuses blank identifiers).
+        if not (sib_label or "").strip() or not (sib_ref or "").strip():
+            incomplete.add(key)
+            continue
+        item = found.setdefault(key, {"plan": own_label, "also": []})
         item["also"].append((sib_label, sib_ref, sib_page, sib_url))
+    for key in incomplete:
+        found.pop(key, None)
     return found
 
 

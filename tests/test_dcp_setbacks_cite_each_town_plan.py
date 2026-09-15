@@ -32,9 +32,11 @@ class _Cursor:
     def __init__(self, rows, siblings, sibling_read_fails=False):
         self.rows, self.siblings, self.fails = rows, siblings, sibling_read_fails
         self.sql = ""
+        self.executed: list[str] = []
 
     def execute(self, sql, params=None):
         self.sql = sql
+        self.executed.append(sql)
         if "dcp_clause_sibling_citations" in sql and self.fails:
             raise RuntimeError('relation "dcp_clause_sibling_citations" does not exist')
 
@@ -92,6 +94,26 @@ def test_a_sibling_citation_for_another_clause_is_not_borrowed():
     entry = _entry(_Cursor([_row(section_ref="part-c-s2/C2.6.2(e)")], SIBLINGS))
     assert entry["also_cited"] == []
     assert "Mittagong Town Plan (as amended" not in entry["clause"]
+
+
+def test_a_blank_sibling_clause_does_not_leave_a_plan_silently_out():
+    """Cross-review 2026-09-15: with Moss Vale's clause blank, listing Mittagong alone would read as complete. The
+    clause falls back to the caveat instead."""
+    broken = [SIBLINGS[0], SIBLINGS[1][:4] + ("   ",) + SIBLINGS[1][5:]]
+    entry = _entry(_Cursor([_row()], broken))
+    assert entry["also_cited"] == []
+    assert "table numbers differ" in entry["clause"]
+    assert "Mittagong Town Plan (as amended" not in entry["clause"]
+
+
+def test_a_sibling_must_be_a_chapter_of_the_same_plan():
+    """Cross-review 2026-09-15: a citation row pointing at another active chapter of the council under a different
+    DCP must not be served as 'the same clause is in' that plan. The read joins the sibling on the same dcp_name."""
+    import re
+    cur = _Cursor([_row()], SIBLINGS)
+    fetch_dcp_setbacks(_Conn(cur), "wingecarribee", "R2")
+    sql = " ".join(next(s for s in cur.executed if "dcp_clause_sibling_citations" in s).split())
+    assert re.search(r"sib\.dcp_name = own\.dcp_name", sql), "a sibling from a different DCP would be accepted"
 
 
 def test_a_council_with_one_plan_is_unchanged():

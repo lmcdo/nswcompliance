@@ -197,7 +197,8 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "                                  WHERE c.council = r.council "
         "                                    AND c.chapter_key = r.chapter_key "
         "                                    AND c.section_ref = d.section_ref "
-        "                                    AND c.sibling_chapter_key = s.chapter_key))",
+        "                                    AND c.sibling_chapter_key = s.chapter_key "
+        "                                    AND btrim(c.sibling_section_ref) <> ''))",
         (),
         "Each row is served to a whole council area citing one town plan while a "
         "sibling town plan of the same DCP publishes the clause and no citation "
