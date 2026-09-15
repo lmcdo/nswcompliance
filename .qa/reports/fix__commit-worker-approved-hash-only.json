@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The DCP commit worker decides whether a human-approved chapter goes live. Its candidate query took the approval's PDF fingerprint and its count of fingerprints over every queue row, including superseded and rejected history, so any chapter that had been reviewed before on an older PDF was skipped as a mixed or stale approval. A wrong answer here silently keeps reviewed rules off the product, or, if loosened too far, lets a genuinely mixed approval through.",
-  "commit_hash": "afbab0ce",
+  "commit_hash": "2ad23f89",
   "files": [
     "scripts/dcp_commit_approved.py",
     "tests/test_dcp_commit_candidates_ignore_old_history.py",
@@ -43,7 +43,7 @@
   ],
   "break_it": [
     {
-      "scenario": "A chapter was reviewed once, re-read after its PDF changed, and the new rows were approved; the old rows sit as superseded on the old fingerprint.",
+      "scenario": "Chapters reviewed once, re-read after their PDF changed, and whose new rows were approved; the old rows sit as superseded on the old fingerprint, so the list of chapters whose review is complete leaves them out.",
       "what_happens": "Before, the worker counted two fingerprints and skipped the chapter forever; the reviewed rules never went live.",
       "mitigated": true,
       "how": "Both aggregates count approved rows only; test_superseded_history_on_an_older_pdf_does_not_block_the_current_approval.",
