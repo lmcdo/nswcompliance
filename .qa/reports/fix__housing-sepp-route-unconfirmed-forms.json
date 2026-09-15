@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The Housing SEPP eligibility route reported every form eligible once its zone matched and no lot row stopped it. A form with no lot standard in the dataset therefore passed by default: until 2026-09-15 that was manor_house, whose rows were really section 108 standards for independent living units, so users were told a Manor House was eligible, with a 'SEPP allows 9.5m vs LEP' override. The rows were relabelled in production on 2026-09-15; without this change the route would now say the same about independent living units. Cross-review then showed both engines exempted dual occupancy and secondary dwellings from the guard, so a missing lot row for them also passed as eligible.",
-  "commit_hash": "9a4ab4bf",
+  "commit_hash": "d727f400",
   "files": [
     "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
     "frontend-nextjs/app/planning-standards/page.tsx",
