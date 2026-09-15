@@ -200,7 +200,9 @@ def every_served_number_is_cited() -> Result:
 #: monitor versions, none decides whether a served number's link opens its source document.
 _LEGISLATION_DOC = re.compile(r"^https://legislation\.nsw\.gov\.au/view/(?:whole/)?(?:html|pdf)/(?:inforce|asmade)/"
                               r"(?:current|\d{4}-\d{2}-\d{2})/((?:epi|act|sl)-\d{4}-\d{3,4})(?:[/#?]|$)")
-_INSTRUMENT_ID = re.compile(r"((?:epi|act|sl)-\d{4}-\d{3,4})")
+# Bounded on both sides: a longer id such as epi-2024-12345 must register nothing, never its prefix epi-2024-1234
+# (cross-review MEDIUM, 2026-09-15). An unregistered id fails its link visibly instead of passing a different law.
+_INSTRUMENT_ID = re.compile(r"(?<![A-Za-z0-9])((?:epi|act|sl)-\d{4}-\d{3,4})(?!\d)")
 
 
 def registered_instruments() -> dict | None:

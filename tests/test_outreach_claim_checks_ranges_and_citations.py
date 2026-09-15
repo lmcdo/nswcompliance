@@ -82,6 +82,43 @@ def test_another_councils_lep_on_the_legislation_site_is_not_a_source_link(monke
     assert occ.every_served_number_is_cited()[0] == occ.FAIL
 
 
+class _FakeCursor:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def execute(self, *args):
+        pass
+
+    def fetchall(self):
+        return self.rows
+
+
+class _FakeConn:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def cursor(self):
+        return _FakeCursor(self.rows)
+
+    def close(self):
+        pass
+
+
+def test_a_longer_registry_id_does_not_register_its_prefix(monkeypatch):
+    """Confusable negative: epi-2024-12345 must not make epi-2024-1234 count as registered, while an ordinary
+    legislation_url with a section anchor still registers its instrument."""
+    rows = [("council", "epi-2024-12345", None),
+            ("council", None, "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2015-0319#sch.3")]
+    monkeypatch.setattr(occ, "_connect", lambda: _FakeConn(rows))
+    assert occ.registered_instruments() == {"council": frozenset({"epi-2015-0319"})}
+
+
 def test_an_unreadable_instrument_registry_is_unknown_not_a_pass(monkeypatch):
     entry, urls = _lep_row("https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2015-0319#sch.3")
     _serve(monkeypatch, entry, urls=urls)
