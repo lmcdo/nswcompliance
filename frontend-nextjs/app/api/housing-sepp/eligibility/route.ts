@@ -102,6 +102,10 @@ const DEVELOPMENT_TYPE_NAMES: Record<string, { name: string; description: string
   secondary_dwelling: {
     name: 'Secondary Dwelling (Granny Flat)',
     description: 'A self-contained dwelling on the same lot as a principal dwelling — max 60m² floor area'
+  },
+  independent_living_unit: {
+    name: 'Independent Living Units',
+    description: 'Standards the Housing SEPP sets for independent living units (section 108)'
   }
 };
 
@@ -272,6 +276,29 @@ export async function POST(request: NextRequest) {
 
       // Check lot size
       const minLotSize = standards.find(s => s.standardType === 'min_lot_size');
+
+      // A form with no lot standard in the dataset would otherwise fall through
+      // every check below to "eligible". Until 2026-09-15 that told users a Manor
+      // House was eligible from four rows that were really section 108 standards
+      // for independent living units. No form is exempt: dual occupancy and
+      // secondary dwellings carry a minimum lot size too, so a missing row is a
+      // data gap, not a pass (cross-review). Only the station-distance apartment
+      // forms, which have no lot row, are decided by their own check further down.
+      if (!devType.includes('residential_flat_r3r4') && !minLotSize) {
+        eligibilityResults.push({
+          developmentType: devType,
+          displayName: displayInfo.name,
+          description: displayInfo.description,
+          isEligible: false,
+          assessmentStatus: 'not_assessed',
+          eligibilityReason: 'The lot standard for this form is not in the dataset, so eligibility was not assessed',
+          standards,
+          effectiveDate: typeInfo.effectiveDate,
+          legislationUrl: typeInfo.legislationUrl
+        });
+        continue;
+      }
+
       if (minLotSize && lotSize < minLotSize.numericValue) {
         eligibilityResults.push({
           developmentType: devType,
@@ -374,11 +401,16 @@ export async function POST(request: NextRequest) {
 
     // SEPP-LEP override detection: compare Housing SEPP standards against LEP values
     // Rule: SEPP standard applies UNLESS LEP is MORE GENEROUS (higher height/FSR favours applicant)
+    // Only for forms found eligible, as services/intelligence_brief.py does: a
+    // "SEPP allows 9.5m vs LEP" line for a form the property cannot use (or that
+    // was not assessed) reads as an entitlement it does not have.
+    const eligibleForms = new Set(eligibilityResults.filter(r => r.isEligible).map(r => r.developmentType));
     const overrides: SeppLepOverride[] = [];
     if (lepHeight !== null || lepFsr !== null) {
       for (const [devType, standards] of Object.entries(standardsByType)) {
         const typeInfo = developmentTypeInfo[devType];
         if (!typeInfo.applicableZones.includes(zone)) continue;
+        if (!eligibleForms.has(devType)) continue;
 
         const displayInfo = DEVELOPMENT_TYPE_NAMES[devType] || { name: devType, description: '' };
 
