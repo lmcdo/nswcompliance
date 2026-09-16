@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes the base image of two production Railway cron services (Semgrep security scan, mutmut health). A wrong image either fails the deploy again or runs the jobs on an interpreter the tools do not support.",
-  "commit_hash": "",
+  "commit_hash": "854c3ae6",
   "files": [
     "Dockerfile.maintenance",
     "tests/test_dockerfile_python_matches_ci.py"
