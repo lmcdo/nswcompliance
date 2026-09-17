@@ -1,14 +1,16 @@
 {
   "tier": "critical",
   "justification": "Changes when a served DCP control counts as SUPPORTED BY THE COUNCIL'S OWN PDF -- the only check in the repo that compares a number we serve against an authority nothing in our pipeline produced. A wrong loosening ships a false 'the council says this' signal on a planning control. The first full run (2026-09-18) scored 84.9% of 767 checkable controls against a 95% mark fixed before the run, and seven cited pages opened by hand showed the failures were the checker's, not the data's: councils write '1 space per 7 dwellings' where we store 0.143, '4m x 4m' where we store 16, and 'may be built to the rear boundary' where we store 0. Second concern in the same branch: 111 served provisions carry street labels lifted off a map figure (DQ-78) and are rendered today as if they were readable controls.",
-  "commit_hash": "a2db0d92",
+  "commit_hash": "7493e2ec",
   "files": [
     ".github/workflows/data-watch.yml",
+    "docs/EXTRACTION_WHY_IT_RECURS_AND_THE_DURABLE_FIX_2026-07.md",
     "frontend-nextjs/__tests__/lib/map-scrambled-provision-text.test.ts",
     "frontend-nextjs/components/compliance/FormattedProvisionText.tsx",
     "frontend-nextjs/lib/provision-text-formatter.ts",
     "scripts/validate_controls_against_source_pdf.py",
-    "tests/test_controls_against_source_pdf.py"
+    "tests/test_controls_against_source_pdf.py",
+    "tests/test_validate_controls_against_source_pdf_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "services/extracted_data_integrity.explain_row already names each derivation rule (ratio_or_rate, area_from_dimensions, built_to_boundary_zero, unit_conversion, ...) and returns the evidence substring; it is REUSED, not reimplemented. The only new column read is dcp_setback_controls.unit, added to the existing SELECT -- text, nullable, 15 distinct values over the 783 page-citing rows. Values arrive as Decimal, which explain_value's float() accepts. DQ-78's thresholds for the frontend detector are the ones already in scripts/dq_probe_live.py, not new ones.",
@@ -19,9 +21,9 @@
     "user_failure_mode": "Too loose: a control whose number appears nowhere in the council's document reads as supported, and the one independent check we have goes quiet. Guarded three ways -- the derivation must be one explain_row can NAME, every quantity that rule quoted must be on the page, and the term-coverage bar is unchanged at 0.70. Proven by four planted mutations, each caught. On the display side, too aggressive a rule would dim a real control: the DQ-78 ledger records that rows near the detection cut carry binding controls ('This locality is bounded by Ashmore Street to the north'), so nothing is hidden or removed and those exact strings are pinned as must-not-dim tests."
   },
   "falsifiable_check": {
-    "command": "python -m pytest tests/test_controls_against_source_pdf.py -q && cd frontend-nextjs && npx jest --testPathPatterns=map-scrambled",
+    "command": "python -m pytest tests/test_controls_against_source_pdf.py -q && PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest -m database tests/test_validate_controls_against_source_pdf_real_db.py -q -o addopts= && cd frontend-nextjs && npx jest --testPathPatterns=map-scrambled",
     "fails_when": "The derivation path accepts a value no rule explains (waverley 635: stored 15%, quote says 50%), or accepts one whose source quantities are absent from the page (0.143 on a page that only says 'per 5 dwellings'), or reads a rate out of a quote severed at the 400-character cut, or stops firing at all. On the frontend: when ordinary prose is flagged as map text, or when a known real control line ('Building heights are to comply with Figure 6.1') is dimmed.",
-    "observed_red": "Seven mutations planted in the pure core, all CAUGHT: always-accept-derivation (the severed-quote test fails), skip-page-number-check, never-use-derivation, accept-any-evidence-span, never-strip-provenance, strip-every-parenthetical, strip-truncation-blind. Full runs over the live data, each after a change and each with the 95% mark untouched: 84.9% of 767 -> 91.3% -> 91.2% -> 97.3% of 764, with the residue printed by id. 52 passed in tests/test_controls_against_source_pdf.py, 11 in the new Jest suite, 5 in tests/test_data_watch_workflow.py."
+    "observed_red": "Seven mutations planted in the pure core, all CAUGHT: always-accept-derivation (the severed-quote test fails), skip-page-number-check, never-use-derivation, accept-any-evidence-span, never-strip-provenance, strip-every-parenthetical, strip-truncation-blind. Full runs over the live data, each after a change and each with the 95% mark untouched: 84.9% of 767 -> 91.3% -> 91.2% -> 97.3% of 764, with the residue printed by id. 52 passed in tests/test_controls_against_source_pdf.py, 11 in the new Jest suite, 5 in tests/test_data_watch_workflow.py. Real-layer: 4 more tests run ROWS_SQL against the live database and fail if the nine columns main() unpacks positionally change shape or order, if value_min/value_max stop being numbers float() accepts, if the scope widens past served rows, or if the unit column goes all-NULL and silently disables the unit_conversion rule. 4 passed with PYTEST_REAL_DB=1, 4 deselected without it."
   },
   "functions": [
     {

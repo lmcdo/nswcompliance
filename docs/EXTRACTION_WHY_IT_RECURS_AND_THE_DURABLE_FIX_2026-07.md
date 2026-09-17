@@ -307,6 +307,28 @@ Check the council's plan page links against `dcp_chapter_registry.council_url`.
 1. **Nothing checks the words, only the numbers.** A gate that every word of a new reading is on
    its cited page would have caught problems 1 and 2 before review. The one-off version exists
    (the "text on page" classes in the 2026-09-16 review packet); it is not in the pipeline.
+   **Half-closed 2026-09-18 for the CONTROLS table only** (not for provisions, which is the
+   larger half): `scripts/validate_controls_against_source_pdf.py` now runs nightly in
+   `data-watch.yml` and opens the council's own PDF. 97.3% of 764 checkable controls are
+   supported by their cited document, 21 are not and are printed by id.
+
+   What that run taught, which applies to any future word-on-page gate:
+
+   - **A council writes the rate; we store the quotient.** "1 space per 7 dwellings" is stored
+     as 0.143, "4m x 4m" as 16, "may be built to the rear boundary" as 0. Demanding the stored
+     number on the page marked 116 correct rows wrong. Accept a derivation only when
+     `services/extracted_data_integrity.explain_row` can NAME it and the quantities that rule
+     used are themselves on the page — value ← quote ← page, never value ← quote alone.
+   - **Our own citation is not the council's text.** 40 of 67 remaining failures ended in a
+     wrapper we appended, "(Penrith DCP 2014 Part D2)". Its year was being demanded of the page
+     as if it were a control value. Stop *requiring* those words — but keep counting them when
+     the page does carry them, because "(Table C-B)" is often a real column header: deleting
+     them outright fixed 11 rows and broke 11.
+   - **The page spells numbers out.** Burwood's table says "One space per five units" where the
+     row stores 0.2, so a digit test finds nothing. Still open.
+   - **Terse quotes cannot be pinned.** 34 rows are a bare table cell ("2 spaces"); the value is
+     on the page beside one or two words, which is consistent with the row without identifying
+     which table row it came from. Printed as "thinly pinned" rather than counted as clean.
 2. **Stuck chapters raise no alarm** (problem 3). A daily check should alert when a chapter's PDF
    changed and it has not been re-read within a few days.
 3. ~~The pipeline's own junk-ref rejections block good chapters~~ — fixed at the heading stage 2026-09-17 (problem 4); re-read the affected chapters.
