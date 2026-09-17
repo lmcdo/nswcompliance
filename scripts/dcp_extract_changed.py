@@ -1527,6 +1527,36 @@ def _extract_page_text(page: Any, council: str | None) -> str:
 
 # ── PDF Extraction ──────────────────────────────────────────────────────────
 
+#: A heading "number" that is a bare year or a residential zone code is a table row, figure label or
+#: zone list read as a heading ("R1 General Residential or R2 Low Density Residential.", "2012 Western
+#: Distributor"), never a section. Starting a section there filed real rules under a junk key: on
+#: 2026-09-17, 11 live provisions across 6 councils, 7 of them served (parramatta R2/R3 height limits,
+#: city_of_sydney R1 signage). The review gate auto-rejects these keys (_JUNK_REF), which then blocked
+#: the whole chapter, so the heading is skipped here and the text stays in the section it belongs to.
+_JUNK_HEADING_CODE = re.compile(r"^(?:19|20)\d{2}$|^R\d$", re.IGNORECASE)
+
+
+def is_junk_heading_code(code: str) -> bool:
+    return bool(_JUNK_HEADING_CODE.match(code or ""))
+
+
+#: A land-use zone code opening a "title" (R3, IN2, MU1, E4 ...).
+_ZONE_CODE_TITLE = re.compile(r"^(?:R|RU|RE|IN|E|B|MU|SP|W|C)\d\b")
+
+
+def is_junk_heading(code: str, title: str, matched: str) -> bool:
+    """True when a SECTION_RE match is not a section heading.
+
+    Besides a junk code, a bare number alone on its line followed by a line that opens with a zone
+    code is a table row: SECTION_RE's whitespace spans the line break, so georges_river part 3 p43 read the
+    access-handle table ("6" / "R3 Medium Density Residential > Two (2) lots - 6m") as section 6. A
+    real heading such as "4.2 R2 Low Density Residential" sits on one line and is unaffected."""
+    if is_junk_heading_code(code):
+        return True
+    gap = matched[len(code):len(matched) - len(title)] if title and matched.endswith(title) else ""
+    return "\n" in gap and code.isdigit() and bool(_ZONE_CODE_TITLE.match(title))
+
+
 class DCPExtractor:
     """Extract provisions from a single DCP chapter PDF using pdfplumber."""
 
@@ -1583,7 +1613,8 @@ class DCPExtractor:
             explicit = cls.PREFIX_SECTION_RE.search(text)
             if explicit:
                 return explicit
-        return section_re.search(text)
+        return next((m for m in section_re.finditer(text)
+                     if not is_junk_heading(*cls._match_groups(section_re, m), m.group(0))), None)
 
     @staticmethod
     def _match_groups(pattern, match) -> tuple[str, str]:
@@ -3118,7 +3149,8 @@ def split_page_at_headings(text: str, section_re) -> list[str]:
     Pure. Returns [text] when there is nothing to split, so the caller's
     behaviour is bit-identical to before on 0- and 1-heading pages.
     """
-    matches = list(section_re.finditer(text))
+    matches = [m for m in section_re.finditer(text)
+               if not is_junk_heading(*DCPExtractor._match_groups(section_re, m), m.group(0))]
     if len(matches) < 2:
         return [text]
     out = [text[: matches[0].start()]]
