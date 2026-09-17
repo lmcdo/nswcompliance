@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Deletes text from a council's document before it becomes a served provision. City of Sydney's locality pages put street labels inside the map graphic, and the extractor reads them one glyph at a time into the provision text -- 111 served rows (DQ-78), 110 of them this council. Dropping the wrong glyph deletes a planning control silently, which is the worst failure mode this repo has: nothing errors, a number simply stops existing. The measured hazard is real, not theoretical -- an earlier form of this filter would have removed '8' 178 times and '31' 2,170 times from the building-envelope drawings in sections 5 and 6.",
-  "commit_hash": "",
+  "commit_hash": "18c633a2",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_cos_map_labels.py"
@@ -17,7 +17,7 @@
   "falsifiable_check": {
     "command": "python -m pytest tests/test_cos_map_labels.py -q",
     "fails_when": "A page carrying numeric labels loses any of them; a superscript on a prose line inside the drawing's box is dropped (serving a site area of 450m instead of 450m2); tiny text outside the drawing is dropped; another council's pages change; or the filter stops removing street labels from a locality map altogether.",
-    "observed_red": "Measured old-vs-new over the three real City of Sydney sections (802 pages), not fixtures. Section 2 locality statements: scrambled pages 79 -> 1, and the only words lost are street names (Street x376, Road x56, Avenue x27) with NO numbers in the lost list. Sections 5 and 6 are now left entirely untouched by the digit test; before it they would have lost '8' x178, '6' x116, '31' x2170 and '4.5' x20 beside STOREYS, SETBACK, LEVEL and ENVELOPE while STILL leaving 70 of 102 and 57 of 65 pages scrambled. 9 passed in tests/test_cos_map_labels.py."
+    "observed_red": "Measured old-vs-new over the three real City of Sydney sections (802 pages), not fixtures, and re-measured after the digit guard. Section 2 locality statements: scrambled pages 79 -> 1, losing only street names (Street x376, Road x56, Avenue x27). Section 5: 102 -> 83. Section 6: 65 -> 62. NO NUMBER IS LOST IN ANY SECTION -- before the guard, sections 5 and 6 lost '8' x178, '6' x116, '31' x2170 and '4.5' x20 beside STOREYS, SETBACK, LEVEL and ENVELOPE while still leaving 70 of 102 and 57 of 65 pages scrambled. What the two diagram sections now lose is figure wording only (STREET, AVENUE, PRECINCT, PUBLIC OPEN SPACE) on pages whose small text carries no digits. 9 passed in tests/test_cos_map_labels.py."
   },
   "functions": [
     {
@@ -66,7 +66,7 @@
       "what_happens": "A planner reads interleaved street or diagram labels as if they were prose.",
       "mitigated": false,
       "how": "Not fixed here and deliberately not attempted: the filter would have eaten real numbers to half-clean those pages. Handled at display instead -- hasInterleavedMapText in the sibling branch marks the affected provisions and points at the source PDF, keeping every row because rows near DQ-78's cut carry binding controls.",
-      "repro": "Re-run the three-section comparison: section 5 and 6 old and new page counts must be identical."
+      "repro": "Re-run the three-section comparison and read the lost-words list: no entry may be a number. Measured 2026-09-18 -- section 5 lost 399 distinct words, section 6 lost 101, none of them numeric."
     },
     {
       "scenario": "Existing served rows are unchanged by this branch.",
