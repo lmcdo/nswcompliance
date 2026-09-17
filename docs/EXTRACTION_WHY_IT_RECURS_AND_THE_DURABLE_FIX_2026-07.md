@@ -261,12 +261,22 @@ alarmed. Check: `python scripts/dq_probe_live.py --id DQ-70`, then
 provisions_extracted_from_hash AND NOT needs_extraction` — every row there is stuck. Setting the
 flag is a production write; take a backup first.
 
-**4. A chapter will not go live although every good row is approved.** `dcp_commit_approved.py`
-commits a chapter only when EVERY row for its current PDF is approved; one rejected row blocks it,
-including rows the pipeline rejected by itself (junk refs such as `__2012`, `__R1`, reviewed_by
-NULL). Check: `SELECT id, ref_number, reviewed_by FROM dcp_review_queue q JOIN dcp_chapter_registry r
+**4. A chapter will not go live although every good row is approved.**
+`dcp_commit_approved.py` commits a chapter only when EVERY row for its current PDF is approved; one
+rejected row blocks it, including rows the pipeline rejected by itself. Check:
+`SELECT id, ref_number, review_reason FROM dcp_review_queue q JOIN dcp_chapter_registry r
 ON r.council=q.council AND r.chapter_key=q.chapter_key AND r.is_active WHERE q.status='rejected'
 AND q.source_content_hash = r.content_hash AND q.council = '<council>'`.
+**Do not make those rejections non-blocking.** The `junk_ref` ones (keys ending `__2012`, `__R1`,
+`__R2`) were real rules filed under a false heading: a table row or zone list starting "R1 General
+Residential..." or a figure label "2012 Western Distributor" matched the section-heading pattern.
+Committing past them would leave the live rule on old text while the chapter reads as current.
+Fixed where it starts (2026-09-17, `is_junk_heading`): a heading is skipped when its code is a bare year,
+when it is `R` plus one digit and the title names the zone ("R2 Low Density Residential"), or when a lone
+number sits above a zone-code line carrying table values. "R1 Road reserves" and "4.2 R2 Low Density
+Residential" stay headings. A fresh `--review` re-read supersedes the old rejections, so re-read
+the chapter after the fix is deployed. Other rejection types (for example a human's source-verification
+rejection) must be resolved by a person.
 
 **5. The file we hold is not the plan in force.** Waverley's copy is Amendment 0 (2022) while the
 registry label said Amendment 5 and the council is on Amendment 6 (2026). Read the copy's own
@@ -299,5 +309,5 @@ Check the council's plan page links against `dcp_chapter_registry.council_url`.
    (the "text on page" classes in the 2026-09-16 review packet); it is not in the pipeline.
 2. **Stuck chapters raise no alarm** (problem 3). A daily check should alert when a chapter's PDF
    changed and it has not been re-read within a few days.
-3. **The pipeline's own junk-ref rejections block good chapters** (problem 4).
+3. ~~The pipeline's own junk-ref rejections block good chapters~~ — fixed at the heading stage 2026-09-17 (problem 4); re-read the affected chapters.
 4. **The monitor does not follow the council's page** (problem 6).

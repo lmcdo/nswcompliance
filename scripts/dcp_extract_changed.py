@@ -1527,6 +1527,43 @@ def _extract_page_text(page: Any, council: str | None) -> str:
 
 # ── PDF Extraction ──────────────────────────────────────────────────────────
 
+#: Table rows, zone lists and figure labels that SECTION_RE reads as headings ("R1 General Residential
+#: or R2 Low Density Residential.", "2012 Western Distributor"). Starting a section there filed real
+#: rules under a junk key: on 2026-09-17, 11 live provisions across 6 councils, 7 of them served
+#: (parramatta R2/R3 height limits, city_of_sydney R1 signage). The review gate auto-rejects these keys
+#: (_JUNK_REF), which then blocked the whole chapter, so the heading is skipped here and the text stays
+#: in the section it belongs to. Each shape is kept narrow so a real heading is never skipped.
+_YEAR_CODE = re.compile(r"^(?:19|20)\d{2}$")
+_R_ZONE_CODE = re.compile(r"^R\d$", re.IGNORECASE)
+#: How every R-code false heading measured on real PDFs continues: "General Residential", "Low Density
+#: Residential", "Residential General 40", "Medium Height limit:", "Zone". "R1 Road reserves" does not.
+_ZONE_NAME_TITLE = re.compile(r"^(?:General|Low|Medium|High|Large|Residential|Density|Zone)\b", re.IGNORECASE)
+#: A land-use zone code opening a line (R3, IN2, MU1, E4 ...).
+_ZONE_CODE_TITLE = re.compile(r"^(?:R|RU|RE|IN|E|B|MU|SP|W|C)\d\b")
+#: What a table row carries and a heading does not: a comparison, a measurement, a lot count, a percent.
+_TABLE_CELL_SIGNAL = re.compile(r"[<>≤≥%]|\b\d+(?:\.\d+)?\s?m\b|\blots?\b", re.IGNORECASE)
+
+
+def is_junk_heading(code: str, title: str, matched: str) -> bool:
+    """True when a SECTION_RE match is a table row, zone list or figure label, not a heading.
+
+    - a bare year as the code ("2012 Western Distributor");
+    - an R-digit code whose title names the zone (a "Low Density Residential" row), not a section such
+      as road reserves that happens to be coded that way;
+    - a bare number alone on its line above a zone-code line that carries table values: SECTION_RE's
+      whitespace spans the line break, so georges_river part 3 p43 read "6" / "R3 Medium Density
+      Residential > Two (2) lots - 6m" as section 6. A heading split the same way ("6" / "R3 Medium
+      Density Residential zone controls") carries no table values and still matches."""
+    code, title = code or "", title or ""
+    if _YEAR_CODE.match(code):
+        return True
+    if _R_ZONE_CODE.match(code) and _ZONE_NAME_TITLE.match(title):
+        return True
+    gap = matched[len(code):len(matched) - len(title)] if title and matched.endswith(title) else ""
+    return ("\n" in gap and code.isdigit() and bool(_ZONE_CODE_TITLE.match(title))
+            and bool(_TABLE_CELL_SIGNAL.search(title)))
+
+
 class DCPExtractor:
     """Extract provisions from a single DCP chapter PDF using pdfplumber."""
 
@@ -1583,7 +1620,8 @@ class DCPExtractor:
             explicit = cls.PREFIX_SECTION_RE.search(text)
             if explicit:
                 return explicit
-        return section_re.search(text)
+        return next((m for m in section_re.finditer(text)
+                     if not is_junk_heading(*cls._match_groups(section_re, m), m.group(0))), None)
 
     @staticmethod
     def _match_groups(pattern, match) -> tuple[str, str]:
@@ -3118,7 +3156,8 @@ def split_page_at_headings(text: str, section_re) -> list[str]:
     Pure. Returns [text] when there is nothing to split, so the caller's
     behaviour is bit-identical to before on 0- and 1-heading pages.
     """
-    matches = list(section_re.finditer(text))
+    matches = [m for m in section_re.finditer(text)
+               if not is_junk_heading(*DCPExtractor._match_groups(section_re, m), m.group(0))]
     if len(matches) < 2:
         return [text]
     out = [text[: matches[0].start()]]
