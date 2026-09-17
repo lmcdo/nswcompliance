@@ -221,3 +221,79 @@ measurement. Run one chapter through each, count the flags.
   rows initially reported as the most serious finding, then retracted once the source was read.
   Evidence before verdict; partial quotes are common enough that asserting a defect from one is
   how this workstream repeatedly went wrong.
+
+---
+
+# PART 3 — When it happens again: symptoms, causes, what to run (added 2026-09-17)
+
+Written after a session that hit six extraction problems in one day, each of which looked new and
+none of which was. Find the symptom, confirm the cause with the check, then act. Every check here
+is read-only unless it says otherwise.
+
+## Symptom → cause → check
+
+**1. Review rows contain doubled letters: "ttoo bbee aa ooff", "KKuu-- --", "ssttoorreeyy".**
+The PDF draws some text twice (captions, running headers, sometimes the rule itself) and the text
+layer holds every glyph twice. `strip_garbled_header_lines` in `scripts/dcp_extract_changed.py`
+handles it. **Rule: never delete doubled text that sits inside a sentence or carries a number —
+restore it.** Campbelltown's live rules include "rroooomm,, bbuutt oonnllyy iiff::" (room, but only
+if:) and "33..55 mmeettrreess;;" (3.5 metres;); deleting them dropped a condition and a value. Only
+whole header or caption lines are stripped. Before changing this code, run the old and new function
+over every served provision and queued row and list the words each output loses — every lost word
+must be garbage (the 2026-09-17 run: 23 served rows and 15 queued rows changed, none lost a real
+word). Tests: `tests/test_dcp_extraction_fidelity.py::TestDoubledTextIsRestoredNotDeleted`.
+Not the cause: `pdfplumber`'s `dedupe_chars()` does not remove these (measured on the real pages).
+
+**2. A re-read lost a large part of a section.** Woollahra B3 (2026-09-15): B3.5 went from 6,285
+words to 2,780 and B3.8 from 9,860 to 4,595, with `fidelity_status = 'ok'` on every row. The number
+check cannot see missing prose. Compare old and new word counts row by row before approving; a
+row that halves is a failed reading, not an amendment. Do not approve — one rejected row holds the
+whole chapter back until it is re-read.
+
+**3. A council's PDF changed but its rules were never re-read.** Blacktown Part C: the February
+2026 file was in R2 for months, `needs_extraction` was FALSE, nothing re-read it and nothing
+alarmed. Check: `python scripts/dq_probe_live.py --id DQ-70`, then
+`SELECT council, chapter_key FROM dcp_chapter_registry WHERE is_active AND content_hash <>
+provisions_extracted_from_hash AND NOT needs_extraction` — every row there is stuck. Setting the
+flag is a production write; take a backup first.
+
+**4. A chapter will not go live although every good row is approved.** `dcp_commit_approved.py`
+commits a chapter only when EVERY row for its current PDF is approved; one rejected row blocks it,
+including rows the pipeline rejected by itself (junk refs such as `__2012`, `__R1`, reviewed_by
+NULL). Check: `SELECT id, ref_number, reviewed_by FROM dcp_review_queue q JOIN dcp_chapter_registry r
+ON r.council=q.council AND r.chapter_key=q.chapter_key AND r.is_active WHERE q.status='rejected'
+AND q.source_content_hash = r.content_hash AND q.council = '<council>'`.
+
+**5. The file we hold is not the plan in force.** Waverley's copy is Amendment 0 (2022) while the
+registry label said Amendment 5 and the council is on Amendment 6 (2026). Read the copy's own
+amendment table, not the label. `dcp_plan_as_at.currency_date` records the EARLIEST date the
+evidence proves the held version could have taken effect, never later (a later date can hide
+staleness). Byte-compare our R2 copy with the file the council's plan page links today.
+
+**6. The monitor watches a web address the council no longer links.** Penrith moved D2 and C10 to
+new URLs; the old ones still serve the old files, so the monitor sees no change and would miss the
+next amendment. Ku-ring-gai links `/v/5/` while the registry holds `/v/4/` (identical bytes today).
+Check the council's plan page links against `dcp_chapter_registry.council_url`.
+
+## Re-reading and committing, safely
+
+- Re-read one chapter into the review queue (nothing goes live):
+  `python scripts/dcp_extract_changed.py --review --council <c> --chapter <key>`.
+  **Without `--review` it writes straight to the live rules.** The scheduled job uses `--review`.
+- Commit approved chapters: `python scripts/dcp_commit_approved.py` (dry run lists what would go
+  live), then `--commit`. Exit code 2 means "committed something", not failure.
+- Two-column pages: `COUNCIL_COLUMN_CONFIGS` (councils with an Objectives|Controls header pair),
+  `GEOMETRIC_COLUMN_COUNCILS` (gutter detection: ashfield, marrickville, city_of_sydney, hornsby),
+  or `AI_EXTRACTION=1` with Sonnet (used for marrickville and woollahra, 2026-09). The geometric
+  reader was tested on canterbury_bankstown and does not transfer. The `preflight_two_column`
+  flag on a row is a pre-read page heuristic, not evidence the row is wrong.
+
+## Gaps still open (2026-09-17), in the order that prevents most harm
+
+1. **Nothing checks the words, only the numbers.** A gate that every word of a new reading is on
+   its cited page would have caught problems 1 and 2 before review. The one-off version exists
+   (the "text on page" classes in the 2026-09-16 review packet); it is not in the pipeline.
+2. **Stuck chapters raise no alarm** (problem 3). A daily check should alert when a chapter's PDF
+   changed and it has not been re-read within a few days.
+3. **The pipeline's own junk-ref rejections block good chapters** (problem 4).
+4. **The monitor does not follow the council's page** (problem 6).

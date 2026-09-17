@@ -2904,15 +2904,80 @@ def strip_garbled_header_lines(text: str | None) -> str | None:
     this function entirely -- see that function's docstring."""
     if not text:
         return text
-    text = _strip_garbled_phrase_spans(text)
     kept = []
     for line in text.splitlines():
-        letters = sum(ch.isalpha() for ch in line)
-        doubled = sum(len(m.group(0)) for m in _GARBLE_RUN.finditer(line))
-        if letters >= 8 and doubled / max(letters, 1) > 0.6:
+        if _doubling_dominates(line) and not _doubled_token_carries_digit(line):
+            # A running header or figure caption: strip it, and the short doubled words the
+            # phrase patterns leave behind ('ooff', 'KKuu--'), which are too short to match
+            # them on their own.
+            line = _strip_doubled_residue(_strip_garbled_phrase_spans(line))
+        else:
+            # Doubled text inside prose, or carrying a number, is the rule itself rendered
+            # with every glyph twice: campbelltown serves 'rroooomm,, bbuutt oonnllyy iiff::'
+            # and '33..55 mmeettrreess;;'. Blanking it drops a condition or a value, so it is
+            # restored instead. Whatever is still garbled afterwards is stripped as before.
+            line = _strip_garbled_phrase_spans(_undouble_glyph_runs(line))
+        if _doubling_dominates(line):
             continue
         kept.append(line)
     return "\n".join(kept)
+
+
+def _doubling_dominates(line: str) -> bool:
+    letters = sum(ch.isalpha() for ch in line)
+    doubled = sum(len(m.group(0)) for m in _GARBLE_RUN.finditer(line))
+    return letters >= 8 and doubled / max(letters, 1) > 0.6
+
+
+def _fully_doubled(token: str) -> bool:
+    """Every character appears as an identical adjacent pair: 'ooff', 'KKuu--', '7700mm²²'."""
+    return (len(token) >= 2 and len(token) % 2 == 0
+            and all(token[i] == token[i + 1] for i in range(0, len(token), 2)))
+
+
+def _doubled_token_carries_digit(line: str) -> bool:
+    return any(_fully_doubled(t) and len(t) >= 4 and any(ch.isdigit() for ch in t)
+               for t in line.split())
+
+
+def _undouble_glyph_runs(line: str) -> str:
+    """Collapse runs of fully doubled tokens back to single glyphs.
+
+    A run qualifies when it is two or more consecutive doubled tokens and at least one has
+    two letter pairs ('33..55 mmeettrreess;;'), or a single doubled token with four doubled
+    letters ('ssttaannddaarrddss::'). Numbers alone never qualify: '1100', '2288' and
+    '3300mm' are real values that happen to be doubled, and 'Lots AA BB CC' is a real label
+    (two-character tokens only)."""
+    tokens = list(re.finditer(r"\S+", line))
+    out, pos, i = [], 0, 0
+    while i < len(tokens):
+        j = i
+        while j < len(tokens) and _fully_doubled(tokens[j].group(0)):
+            j += 1
+        run = tokens[i:j]
+
+        def letters(t: str) -> int:
+            return sum(ch.isalpha() for ch in t)
+
+        qualifies = (len(run) >= 2 and any(len(m.group(0)) >= 4 and letters(m.group(0)) >= 2 for m in run)) \
+            or (len(run) == 1 and letters(run[0].group(0)) >= 4)
+        if run and qualifies:
+            for m in run:
+                out.append(line[pos:m.start()])
+                out.append(m.group(0)[::2])
+                pos = m.end()
+            i = j
+        else:
+            i = max(j, i + 1)
+    out.append(line[pos:])
+    return "".join(out)
+
+
+def _strip_doubled_residue(line: str) -> str:
+    """Blank doubled tokens left in a line already known to be header or caption garbage.
+    Pure digits are kept: a doubled number is not evidence of garbage on its own."""
+    return re.sub(r"\S+", lambda m: " " if _fully_doubled(m.group(0)) and not m.group(0).isdigit()
+                  else m.group(0), line)
 
 
 # Reasons enqueue_review_changes will auto-reject a 'failed' row for, without a

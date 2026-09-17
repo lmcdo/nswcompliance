@@ -1,0 +1,84 @@
+{
+  "tier": "standard",
+  "justification": "Changes how every DCP re-extraction cleans doubled-glyph text before it reaches the review queue and, once approved, the served rules. A wrong rule either deletes real conditions and values or lets garbage through.",
+  "commit_hash": "",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_dcp_extraction_fidelity.py",
+    "tests/test_dcp_review_enqueue.py",
+    "docs/EXTRACTION_WHY_IT_RECURS_AND_THE_DURABLE_FIX_2026-07.md"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_extraction_fidelity.py tests/test_dcp_review_enqueue.py tests/test_ocr_fallback.py -o addopts= -q",
+    "fails_when": "Doubled text inside a sentence or carrying a number is blanked instead of restored, a doubled header or caption line leaves doubled residue, a real doubled number ('1100', '2288', '3300mm') or label ('Lots AA BB CC') is changed, or any pre-existing stripping expectation regresses.",
+    "observed_red": "69 passed with the change. Mutations: never un-double -> 4 of the new tests fail; residue strip removed -> 2 fail; a lone number allowed to un-double -> 1 fails; a run allowed to un-double without letters -> 1 fails. Old vs new function over production text (2026-09-17): 30,798 served provisions -> 23 outputs differ, 8,646 queued rows -> 15 differ; every word present in the old output and absent from the new is a doubled fragment ('oorr', 'iiff', '2288', 'ooff', 'KKuu'), and the words gained include 'or any other structure', 'room, but only if', 'bedrooms', '28', '3.5', 'metres', 'Bligh Street'.",
+    "external_authority": "Production regulatory_provisions text for campbelltown 3_7_1_6, 3_8_2, 3_7_3 and city_of_sydney 6_3_14_4, and dcp_review_queue 82464/82469 (ku_ring_gai), read 2026-09-17; the residue was reproduced by running DCPExtractor on ku_ring_gai/section-a-part-8-mixed-use (R2 v1.2-2026-09-01)."
+  },
+  "pre_impl": {
+    "existing_data": "25 doubled-glyph hits in served provisions (campbelltown 14, city_of_sydney 8, ku_ring_gai 3) and 20 in queued new_text (ku_ring_gai 10, woollahra 6, canterbury_bankstown 4); 8 of the 30 pending ku_ring_gai rows held on 2026-09-17 carry doubled residue.",
+    "assumption_mismatch": "The 2026-09-07 fix (#1058) treated all doubled text as figure-label bleed and blanked it; campbelltown's served rules show doubled text can be the rule itself, so blanking deleted conditions and values, and short doubled words left behind in caption lines were never removed.",
+    "new_vs_existing": "Extends strip_garbled_header_lines and keeps _strip_garbled_phrase_spans and all its tests unchanged; pdfplumber dedupe_chars was measured and does not remove these glyphs, so it is not used."
+  },
+  "functions": [
+    {
+      "name": "strip_garbled_header_lines",
+      "file_line": "scripts/dcp_extract_changed.py:2895",
+      "input": "Extracted provision text (str or None).",
+      "output": "Per line: a line dominated by doubling with no doubled number is phrase-stripped and its doubled residue blanked; any other line has qualifying doubled runs restored before phrase-stripping; a line still dominated afterwards is dropped.",
+      "if_none": "None or empty text is returned unchanged."
+    },
+    {
+      "name": "_undouble_glyph_runs",
+      "file_line": "scripts/dcp_extract_changed.py:2943",
+      "input": "A single line of extracted provision text, before phrase stripping.",
+      "output": "The line with each qualifying run of fully doubled tokens collapsed to single glyphs; a run qualifies with two or more tokens and one carrying two doubled letters, or a lone token with four doubled letters.",
+      "if_none": "A line with no fully doubled token is returned unchanged."
+    }
+  ],
+  "values": [
+    {
+      "value": "lone doubled token needs >= 4 letters",
+      "read_at": "scripts/dcp_extract_changed.py:2963",
+      "if_missing": "Doubled-looking real numbers such as 1100 or 2288 would be halved."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A real value is written with repeated digits: 'Minimum 1100 mm setback', 'NSW 2288', 'a 3300mm wide driveway'.",
+      "what_happens": "Un-doubling would turn 1100 into 10 and serve a wrong number.",
+      "mitigated": true,
+      "how": "Numbers alone never qualify; a run needs a token with doubled letters. Pinned by test_real_doubled_numbers_and_labels_are_never_touched; forcing a lone 4-character token to qualify failed it.",
+      "repro": "python -m pytest tests/test_dcp_extraction_fidelity.py -o addopts= -q -k never_touched"
+    },
+    {
+      "scenario": "A plan uses two-letter identifiers: 'Lots AA BB CC are subject to separate controls'.",
+      "what_happens": "Un-doubling would print 'Lots A B C'.",
+      "mitigated": true,
+      "how": "Two-character tokens alone never qualify; the Sol-reviewed 5-token spaced-letter rule is unchanged.",
+      "repro": "python -m pytest tests/test_dcp_extraction_fidelity.py -o addopts= -q -k lot_identifier"
+    },
+    {
+      "scenario": "A doubled rule sits on its own short line ('rroooomm,, bbuutt oonnllyy iiff::').",
+      "what_happens": "Blanking it would silently drop a condition from a served rule.",
+      "mitigated": true,
+      "how": "A line only counts as header garbage when doubling dominates it by the existing _GARBLE_RUN measure and it carries no doubled number; otherwise it is restored. Removing the un-double step failed 4 tests.",
+      "repro": "python -m pytest tests/test_dcp_extraction_fidelity.py -o addopts= -q -k condition_in_prose"
+    },
+    {
+      "scenario": "A doubled running header contains a number ('SSeeccttiioonn 33').",
+      "what_happens": "It is restored as a readable header line instead of removed, adding clutter to the provision text.",
+      "mitigated": false,
+      "how": "Accepted: clutter is visible and harmless, while deleting doubled text that carries a number is how values were lost. Recorded as residual risk.",
+      "repro": "python -c \"import sys; sys.path.insert(0,'scripts'); import dcp_extract_changed as d; print(d.strip_garbled_header_lines('SSeeccttiioonn 3344'))\""
+    }
+  ],
+  "mutation_analysis": "Never un-double -> 4 failed; no residue strip -> 2 failed; lone number qualifies -> 1 failed; run needs no letters -> 1 failed; unmutated 69 passed. The production comparison (old vs new over 39,444 texts) is the corpus-level check that no real word is lost.",
+  "residual_risk": "Doubled headers that carry a number now read as a plain header line inside provision text. Rows already served are unchanged until their chapter is re-read. Other residue types in the held ku_ring_gai rows ('H H', 'W aste', overlapping page labels) are not doubled glyphs and are not addressed here.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "After the next dcp-extract run (03:00 UTC, --review) re-reads the held ku_ring_gai chapters, their pending rows contain no 'ttoo bbee', 'ooff' or 'KKuu--' residue."
+  }
+}

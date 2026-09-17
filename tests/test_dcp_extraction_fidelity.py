@@ -10,6 +10,7 @@ fidelity_status was NULL on every row):
 
 import importlib.util
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -156,6 +157,49 @@ class TestPhraseLevelGarbleStrip:
             "Lots AA BB CC are subject to separate controls",
             "Lots AA BB CC DD are subject to separate controls",
         ):
+            assert strip_garbled_header_lines(text) == text
+
+
+class TestDoubledTextIsRestoredNotDeleted:
+    """2026-09-17. Doubled glyphs are not always a caption or a header: campbelltown serves
+    rules whose words and numbers were drawn twice. Blanking them dropped a condition ('but
+    only if') or a value ('3.5 metres'). They are restored instead; only whole header or
+    caption lines are stripped. Fixtures are verbatim from production text."""
+
+    def test_a_condition_in_prose_is_restored(self):
+        out = strip_garbled_header_lines("rroooomm,, bbuutt oonnllyy iiff:: Clause 7.13 Design Excellence")
+        assert "room, but only if:" in out
+        assert "Clause 7.13 Design Excellence" in out
+
+    def test_a_doubled_value_is_restored(self):
+        out = strip_garbled_header_lines("Note: | 33..55 mmeettrreess;; other lot with an access handle,")
+        assert "3.5 metres;" in out
+
+    def test_a_doubled_rate_keeps_every_number(self):
+        out = strip_garbled_header_lines("iiii)) 33++ bbeeddrroooommss == 2288mm²²")
+        assert "ii) 3+ bedrooms = 28m²" in out
+
+    def test_an_address_in_a_drawing_note_is_restored(self):
+        out = strip_garbled_header_lines("44--66 BBlliigghh SSttrreeeett,, SSyyddnneeyy Drawing: Building Envelope")
+        assert "4-6 Bligh Street, Sydney" in out
+
+    def test_a_doubled_caption_leaves_no_doubled_residue(self):
+        """ku_ring_gai part 8: the long caption words were stripped and 'ooff tthhee' was left."""
+        out = strip_garbled_header_lines(
+            "See Figure 8C.9-3.\nEExxiissttiinngg ssuubbddiivviissiioonn ppaatttteerrnn ooff tthhee ssttrreeeett\nOriginal building")
+        assert not re.search(r"\b(ooff|tthhee|EExx)", out)
+        assert "See Figure 8C.9-3." in out and "Original building" in out
+
+    def test_a_doubled_running_header_leaves_no_residue(self):
+        out = strip_garbled_header_lines("KKuu--rriinngg--ggaaii DDeevveellooppmmeenntt CCoonnttrrooll PPllaann\n4.1C.4 Building")
+        assert "KKuu" not in out and "4.1C.4 Building" in out
+
+    def test_real_doubled_numbers_and_labels_are_never_touched(self):
+        for text in ("Minimum 1100 mm setback to the boundary",
+                     "Glendale NSW 2288",
+                     "a 3300mm wide driveway",
+                     "Lots AA BB CC are subject to separate controls",
+                     "bookkeeper committee coffee street"):
             assert strip_garbled_header_lines(text) == text
 
 
