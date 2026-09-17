@@ -2893,26 +2893,91 @@ def fetch_ocr_page_texts(pdf_path, expected_pages: int) -> list[str] | None:
 
 
 def strip_garbled_header_lines(text: str | None) -> str | None:
-    """Drop lines dominated by doubled-glyph runs (letter-spaced running
-    headers whose text layer duplicates every glyph). Only whole LINES are
-    removed, and only when the doubled run covers most of the line's letters —
-    body text containing a legitimate 'LLoyd' or 'III' is untouched.
+    """Clean doubled-glyph text (a text layer that holds every glyph twice) out of a provision.
 
-    Runs _strip_garbled_phrase_spans FIRST (DQ-97 cause 5) to also catch a
-    doubled-glyph PHRASE that sits mid-paragraph, surrounded by enough real
-    prose that it never dominates its line and so would otherwise survive
-    this function entirely -- see that function's docstring."""
+    Doubled text that can be read back is RESTORED, never deleted, wherever it sits: it is
+    sometimes the rule itself (campbelltown serves 'rroooomm,, bbuutt oonnllyy iiff::' = 'room,
+    but only if:' and '33..55 mmeettrreess;;' = '3.5 metres;'), and deleting it drops a
+    condition or a value. A restored line is dropped only when it is a running header: the
+    whole line was doubled and it names the plan or repeats within the same text.
+
+    Whatever cannot be restored (tripled glyphs, interleaved fragments, spaced doubled
+    letters) is still stripped by _strip_garbled_phrase_spans (DQ-97 cause 5), and a line still
+    dominated by doubling afterwards is dropped, as before."""
     if not text:
         return text
-    text = _strip_garbled_phrase_spans(text)
+    lines = text.splitlines()
+    restored = [_undouble_glyph_runs(line) for line in lines]
+    wholly = [_wholly_doubled(line) for line in lines]
+    seen: dict[str, int] = {}
+    for line, whole in zip(restored, wholly):
+        if whole:
+            key = " ".join(line.split()).lower()
+            seen[key] = seen.get(key, 0) + 1
     kept = []
-    for line in text.splitlines():
-        letters = sum(ch.isalpha() for ch in line)
-        doubled = sum(len(m.group(0)) for m in _GARBLE_RUN.finditer(line))
-        if letters >= 8 and doubled / max(letters, 1) > 0.6:
+    for line, whole in zip(restored, wholly):
+        if whole and (seen[" ".join(line.split()).lower()] > 1 or _PLAN_TITLE.search(line)):
+            continue
+        line = _strip_garbled_phrase_spans(line)
+        if _doubling_dominates(line):
             continue
         kept.append(line)
     return "\n".join(kept)
+
+
+#: A restored line that names the plan is a running header, not a rule.
+_PLAN_TITLE = re.compile(r"development\s+control\s+plan|\bDCP\b", re.I)
+
+
+def _doubling_dominates(line: str) -> bool:
+    letters = sum(ch.isalpha() for ch in line)
+    doubled = sum(len(m.group(0)) for m in _GARBLE_RUN.finditer(line))
+    return letters >= 8 and doubled / max(letters, 1) > 0.6
+
+
+def _fully_doubled(token: str) -> bool:
+    """Every character appears as an identical adjacent pair: 'ooff', 'KKuu--', '7700mm²²'."""
+    return (len(token) >= 2 and len(token) % 2 == 0
+            and all(token[i] == token[i + 1] for i in range(0, len(token), 2)))
+
+
+def _doubled_word(token: str) -> bool:
+    """A fully doubled token that can only be doubled text, never a real value or label: no
+    digits, and at least two distinct letters once collapsed ('ooff', 'mmeettrreess;;'; not
+    '1100', '3300mm', 'AAAA' or 'AA')."""
+    if not _fully_doubled(token) or any(ch.isdigit() for ch in token):
+        return False
+    letters = [ch.lower() for ch in token[::2] if ch.isalpha()]
+    return len(letters) >= 2 and len(set(letters)) >= 2
+
+
+def _undouble_glyph_runs(line: str) -> str:
+    """Collapse each run of consecutive fully doubled tokens that contains a doubled word.
+
+    Numbers are collapsed only inside such a run ('iiii)) 33++ bbeeddrroooommss == 2288mm²²');
+    alone or beside other numbers ('Dimensions: 1100 3300mm') doubled-looking values are real
+    and left alone, as are two-letter labels ('Lots AA BB CC')."""
+    tokens = list(re.finditer(r"\S+", line))
+    out, pos, i = [], 0, 0
+    while i < len(tokens):
+        j = i
+        while j < len(tokens) and _fully_doubled(tokens[j].group(0)):
+            j += 1
+        run = tokens[i:j]
+        if run and any(_doubled_word(m.group(0)) for m in run):
+            for m in run:
+                out.append(line[pos:m.start()])
+                out.append(m.group(0)[::2])
+                pos = m.end()
+        i = max(j, i + 1)
+    out.append(line[pos:])
+    return "".join(out)
+
+
+def _wholly_doubled(line: str) -> bool:
+    """Every token on the line is fully doubled and at least one is a doubled word."""
+    tokens = line.split()
+    return bool(tokens) and all(_fully_doubled(t) for t in tokens) and any(_doubled_word(t) for t in tokens)
 
 
 # Reasons enqueue_review_changes will auto-reject a 'failed' row for, without a

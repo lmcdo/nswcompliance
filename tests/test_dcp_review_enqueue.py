@@ -37,6 +37,11 @@ def _load_enqueue():
         exec(re.search(rf"{const} = .+", src).group(0), ns)
     exec(_extract_def(src, "_garble_evidence"), ns)
     exec(_extract_def(src, "_strip_garbled_phrase_spans"), ns)
+    # 2026-09-17: doubled text inside prose or carrying a number is restored, not blanked.
+    exec(re.search(r"_PLAN_TITLE = .+", src).group(0), ns)
+    for helper in ("_doubling_dominates", "_fully_doubled", "_doubled_word",
+                   "_undouble_glyph_runs", "_wholly_doubled"):
+        exec(_extract_def(src, helper), ns)
     exec(_extract_def(src, "strip_garbled_header_lines"), ns)
     exec(_extract_def(src, "classify_row_fidelity"), ns)
     exec(_extract_def(src, "enqueue_review_changes"), ns)

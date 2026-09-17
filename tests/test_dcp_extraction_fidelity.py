@@ -10,6 +10,7 @@ fidelity_status was NULL on every row):
 
 import importlib.util
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -159,6 +160,74 @@ class TestPhraseLevelGarbleStrip:
             assert strip_garbled_header_lines(text) == text
 
 
+class TestDoubledTextIsRestoredNotDeleted:
+    """2026-09-17. Doubled glyphs are not always a caption or a header: campbelltown serves
+    rules whose words and numbers were drawn twice. Blanking them dropped a condition ('but
+    only if') or a value ('3.5 metres'). They are restored instead; only whole header or
+    caption lines are stripped. Fixtures are verbatim from production text."""
+
+    def test_a_condition_in_prose_is_restored(self):
+        out = strip_garbled_header_lines("rroooomm,, bbuutt oonnllyy iiff:: Clause 7.13 Design Excellence")
+        assert "room, but only if:" in out
+        assert "Clause 7.13 Design Excellence" in out
+
+    def test_a_doubled_value_is_restored(self):
+        out = strip_garbled_header_lines("Note: | 33..55 mmeettrreess;; other lot with an access handle,")
+        assert "3.5 metres;" in out
+
+    def test_a_doubled_rate_keeps_every_number(self):
+        out = strip_garbled_header_lines("iiii)) 33++ bbeeddrroooommss == 2288mm²²")
+        assert "ii) 3+ bedrooms = 28m²" in out
+
+    def test_an_address_in_a_drawing_note_is_restored(self):
+        out = strip_garbled_header_lines("44--66 BBlliigghh SSttrreeeett,, SSyyddnneeyy Drawing: Building Envelope")
+        assert "4-6 Bligh Street, Sydney" in out
+
+    def test_a_doubled_caption_is_restored_with_no_doubled_residue(self):
+        """ku_ring_gai part 8: the old cleaner stripped the long caption words and left 'ooff
+        tthhee' behind, which is the junk that held the chapter back."""
+        out = strip_garbled_header_lines(
+            "See Figure 8C.9-3.\nEExxiissttiinngg ssuubbddiivviissiioonn ppaatttteerrnn ooff tthhee ssttrreeeett\nOriginal building")
+        assert not re.search(r"\b(ooff|tthhee|EExx)", out)
+        assert "Existing subdivision pattern of the street" in out
+        assert "See Figure 8C.9-3." in out and "Original building" in out
+
+    def test_a_condition_alone_on_its_line_is_restored(self):
+        """Sol cross-review HIGH on the first push: a wholly doubled line was treated as
+        header garbage and the condition deleted."""
+        out = strip_garbled_header_lines("Attached dwellings\nrroooomm,, bbuutt oonnllyy iiff::\n(a) the room")
+        assert "room, but only if:" in out
+
+    def test_doubled_words_restored_and_the_real_number_and_unit_kept(self):
+        """Sol HIGH: 'mmiinniimmuumm sseettbbaacckk 6 mm' lost its words and unit, leaving a bare 6."""
+        assert strip_garbled_header_lines("mmiinniimmuumm sseettbbaacckk 6 mm") == "minimum setback 6 mm"
+
+    def test_adjacent_real_numbers_are_not_halved(self):
+        """Sol HIGH: '1100 3300mm' is two real values, not doubled text; nothing in the run is a
+        doubled word, so nothing is collapsed."""
+        for text in ("Dimensions: 1100 3300mm", "Setbacks 1100 2200 3300 mm",
+                     "See drawing AABB1122 revision C"):
+            assert strip_garbled_header_lines(text) == text
+
+    def test_a_wholly_doubled_line_that_is_not_a_header_is_kept(self):
+        """Confusable negative for header dropping: a wholly doubled line that neither repeats
+        nor names the plan is kept, restored."""
+        out = strip_garbled_header_lines("mmuusstt nnoott bbee vviissiibbllee ffrroomm tthhee ssttrreeeett")
+        assert out == "must not be visible from the street"
+
+    def test_a_doubled_running_header_leaves_no_residue(self):
+        out = strip_garbled_header_lines("KKuu--rriinngg--ggaaii DDeevveellooppmmeenntt CCoonnttrrooll PPllaann\n4.1C.4 Building")
+        assert "KKuu" not in out and "4.1C.4 Building" in out
+
+    def test_real_doubled_numbers_and_labels_are_never_touched(self):
+        for text in ("Minimum 1100 mm setback to the boundary",
+                     "Glendale NSW 2288",
+                     "a 3300mm wide driveway",
+                     "Lots AA BB CC are subject to separate controls",
+                     "bookkeeper committee coffee street"):
+            assert strip_garbled_header_lines(text) == text
+
+
 class TestClassifyRowFidelity:
     def test_clean_row_is_ok(self):
         status, reason = classify_row_fidelity(
@@ -206,7 +275,10 @@ class TestClassifyRowFidelity:
         genuinely garbled 'GENERAL PROVISIONS' suffix (see
         TestStripGarbledHeaderLines::test_phrase_strip_preserves_real_prefix_
         on_a_mixed_line), so stripping COS_HEADER alone no longer empties."""
-        stripped = strip_garbled_header_lines(_PURE_GARBLE_LINE)
+        # 2026-09-17: a lone doubled line is now restored ("GENERAL PROVISIONS"), because
+        # doubled text can be the rule itself. A running header still empties: it repeats on
+        # every page the provision spans, or names the plan.
+        stripped = strip_garbled_header_lines(_PURE_GARBLE_LINE + "\n" + _PURE_GARBLE_LINE)
         status, reason = classify_row_fidelity("X__3_2", "a real existing clause " * 20,
                                                stripped, "changed")
         assert status == "failed"
