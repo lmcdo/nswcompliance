@@ -90,6 +90,12 @@ import fitz  # PyMuPDF
 import psycopg2
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+from services.extracted_data_integrity import (  # noqa: E402
+    FAILING_STATES,
+    NO_VALUE_STORED,
+    explain_row,
+)
 
 SUPPORTED_ON_CITED_PAGE = "supported_on_cited_page"
 SUPPORTED_ELSEWHERE = "supported_on_another_page"
@@ -111,6 +117,10 @@ SUPPORTED = {SUPPORTED_ON_CITED_PAGE, SUPPORTED_ELSEWHERE}
 HARD_FAIL = {UNSUPPORTED, PAGE_OUT_OF_RANGE}
 
 TERM_COVERAGE_MIN = 0.70
+# Below this many distinguishing words, "supported" means the value is on the page beside
+# the one or two words the quote has -- consistent, not pinned. Reported, not enforced:
+# raising it to a rule would fail 34 rows whose terseness is the council's table design.
+MIN_PINNING_TERMS = 3
 PAGE_TOLERANCE = 1
 DATA_MARK = 0.95
 
@@ -132,6 +142,20 @@ _STOP = {
 }
 _WS = re.compile(r"\s+")
 _NUM = re.compile(r"\d+(?:\.\d+)?")
+# A citation marker is what separates our note from the council's own parenthetical, so
+# the test is the marker, never the brackets: "(Table 4, same as RFB)" goes, "(sites
+# <800m from railway station)" stays.
+_CITE_MARKER = r"DCP|Table|Part(?:\s|$)|Section|Schedule|Figure|Clause|Chapter|s\d|19\d\d|20\d\d"
+_CITATION_TAIL = re.compile(rf"\s*\((?=[^)]*(?:{_CITE_MARKER}))[^)]*\)\s*$", re.I)
+# "Ashfield DCP 2016 A-Part8 Table 2: Flats -- ..." -- a provenance preamble, which is
+# only recognised when it names a plan AND ends at a colon within the first 120
+# characters. Without both, a sentence containing a colon would lose its subject.
+_PROVENANCE_PREAMBLE = re.compile(r"^[^:]{0,120}?\bDCP\b[^:]{0,120}?:\s*", re.I)
+
+# `explain_value` returns evidence as "<quoted span from the source> -> <derived value>"
+# (or "... converted to ...", "... stored as ..."). The quoted span is the part the
+# council wrote; everything outside it is our arithmetic.
+_EVIDENCE_SPAN = re.compile(r"'([^']*)'|\"([^\"]*)\"")
 _WORD = re.compile(r"[a-z][a-z\-']{2,}")
 
 
@@ -149,6 +173,30 @@ def normalise(text: str) -> str:
 def strip_clause_marker(text: str) -> str:
     """Drop a leading clause marker so its digits are never read as a control value."""
     return _CLAUSE_MARKER.sub("", text or "", count=1)
+
+
+def strip_provenance(text: str) -> str:
+    """Remove OUR citation note from a quote, keeping the council's own words.
+
+    `source_text` routinely carries a provenance wrapper that no council page contains:
+    a trailing "(Penrith DCP 2014 Part D2)" or "(Table 4, same as RFB)" -- 40 of the 67
+    rows unsupported on the 2026-09-18 run -- and sometimes a leading "Ashfield DCP 2016
+    A-Part8 Table 2:". Matching those against the page can only ever fail, and it fails in
+    the two worst ways: the year becomes a number demanded of the page (leichhardt 1086
+    was marked unsupported for want of "2013"), and the citation's words dilute term
+    coverage until a control whose value IS on the page misses the bar (penrith 1117,
+    50%, with "more than 24m2 of usable private open space" printed on the cited page).
+
+    Only the wrapper goes. A parenthetical the council wrote -- "(sites <800m from railway
+    station)" -- carries no citation marker and is left alone, because it is exactly what
+    tells two neighbouring table rows apart.
+    """
+    out = _PROVENANCE_PREAMBLE.sub("", text or "", count=1)
+    while True:
+        stripped = _CITATION_TAIL.sub("", out, count=1)
+        if stripped == out:
+            return out.strip()
+        out = stripped
 
 
 def numeric_tokens(text: str) -> list[str]:
@@ -200,8 +248,52 @@ def distinctive_terms(text: str) -> list[str]:
                    if w not in _STOP})
 
 
+def derivation_is_on_page(quote: str, page_nums: set[str],
+                          value_min, value_max, unit) -> str | None:
+    """Name the rule by which the page supports a value that is NOT written on it.
+
+    A council writes the rate, not the quotient. "1 space per 7 dwellings" is stored as
+    0.143, "4m x 4m" as 16, "may be built to the rear boundary" as 0 -- so requiring the
+    stored number on the page marks correct rows unsupported. Measured on the first full
+    run (2026-09-18): 116 of 767 unsupported, and seven pages opened by hand were all of
+    this kind (hornsby 199 "1 space per 7 dwellings", blacktown 350 "1 per 2.5 dwellings",
+    randwick 221 "1 visitor space per 4 dwellings", marrickville 1113 "min 4m x 4m",
+    penrith 50 "built to the rear boundary").
+
+    The derivation is NOT taken on trust, which would make the check unfalsifiable: the
+    rule must be one `explain_row` can name from the quote, AND every quantity that rule
+    quoted must itself appear on the cited page. So the chain is value <- quote <- page,
+    with an independent authority at the end, and a quote that says 50% behind a stored
+    15 (waverley 635) still fails -- no rule explains it.
+
+    Returns the rule name, or None when nothing explains the value from this page.
+    """
+    row = {"value_min": value_min, "value_max": value_max,
+           "source_text": quote, "unit": unit}
+    verdict = explain_row(row, value_fields=["value_min", "value_max"],
+                          source_field="source_text", unit_field="unit")
+    state = verdict["state"]
+    if state in FAILING_STATES or state == NO_VALUE_STORED:
+        return None
+    for detail in verdict["fields"].values():
+        if detail["rule"] == NO_VALUE_STORED:
+            continue
+        evidence = detail.get("evidence")
+        if not evidence:
+            return None
+        # Every number the rule read OUT OF THE QUOTE has to be on the page. Only the
+        # quoted span counts: an evidence string reads "'1 ... per 7' -> 0.1429", and the
+        # part after the arrow is the derived value -- the very number that is not written
+        # on the page and whose absence brought us here. Requiring it would make this
+        # branch dead code that silently never fires.
+        source_side = " ".join(q or qq for q, qq in _EVIDENCE_SPAN.findall(evidence))
+        if not all(n in page_nums for n in numeric_tokens(source_side)):
+            return None
+    return state
+
+
 def page_supports(quote: str, page_text: str,
-                  value_min=None, value_max=None) -> tuple[bool, float, list[str]]:
+                  value_min=None, value_max=None, unit=None) -> tuple[bool, float, list[str]]:
     """Does this page carry the control's stored VALUE, with enough of its wording?
 
     Two independent conditions, both required:
@@ -213,6 +305,8 @@ def page_supports(quote: str, page_text: str,
 
     Returns (supported, term_coverage, missing_values).
     """
+    stored_quote = quote          # the row as stored: length is what marks a severed quote
+    quote = strip_provenance(quote)
     page = normalise(page_text)
     if not page:
         return False, 0.0, required_values(value_min, value_max) or numeric_tokens(quote)
@@ -222,12 +316,24 @@ def page_supports(quote: str, page_text: str,
     wanted = required_values(value_min, value_max)
     if wanted:
         missing = [] if any(w in page_nums for w in wanted) else wanted
+        # The STORED text, not the stripped one: `explain_row` rejects a quote sitting at
+        # the extractor's cut, and trimming even a trailing space would hide that.
+        if missing and derivation_is_on_page(stored_quote, page_nums,
+                                             value_min, value_max, unit):
+            missing = []
     else:
         wanted = numeric_tokens(quote)
         missing = [n for n in wanted if n not in page_nums]
 
+    # Our citation words are not REQUIRED of the page, but they are not thrown away
+    # either: "(Table C-B)" is often printed on the page as a real column header, and
+    # simply deleting it cost coverage on rows that were matching it. So the denominator
+    # is the council's own words and the numerator counts every word that matched --
+    # measured on the 2026-09-18 runs, deleting outright fixed 11 rows and broke 11.
     terms = distinctive_terms(quote)
-    coverage = (sum(1 for t in terms if t in page) / len(terms)) if terms else 0.0
+    all_terms = distinctive_terms(stored_quote)
+    matched = sum(1 for t in all_terms if t in page)
+    coverage = min(1.0, matched / len(terms)) if terms else 0.0
 
     ok = (not missing) and coverage >= TERM_COVERAGE_MIN and bool(wanted) and bool(terms)
     return ok, coverage, missing
@@ -245,13 +351,26 @@ class RowVerdict:
     coverage: float = 0.0
     missing_numbers: list[str] = field(default_factory=list)
     note: str = ""
+    # How many of the council's OWN words this row could be matched on. A bare table cell
+    # ("2 spaces") leaves one or two, and a value found beside one word on a 100-page
+    # parking document is consistent with the row without pinning it to that row. 34 of
+    # 783 are in that position (2026-09-18). Counted and printed, never silently folded
+    # into the pass rate -- an unpinned supported row is weaker evidence than a pinned
+    # one, and a reader of the headline is entitled to know how many there are.
+    required_terms: int = 0
 
 
 def classify(control_id: int, lga: str, control_type: str, quote: str | None,
              cited_page: int | None, page_texts: dict[int, str] | None,
-             page_count: int | None, value_min=None, value_max=None) -> RowVerdict:
+             page_count: int | None, value_min=None, value_max=None,
+             unit=None) -> RowVerdict:
     """Pure: every document access already done by the caller, so this is testable."""
+    # Before the first early return: `mk` closes over it, and a row with no quote
+    # reaches `mk` without ever passing the lines below.
+    term_count = len(distinctive_terms(strip_provenance(quote or "")))
+
     def mk(v: str, **kw) -> RowVerdict:
+        kw.setdefault("required_terms", term_count)
         return RowVerdict(control_id, lga, control_type, cited_page, v, **kw)
 
     if not quote or not quote.strip():
@@ -266,7 +385,7 @@ def classify(control_id: int, lga: str, control_type: str, quote: str | None,
         return mk(PAGE_OUT_OF_RANGE,
                   note=f"cites page {cited_page}; document has {page_count} pages")
 
-    if not required_values(value_min, value_max) and not numeric_tokens(quote):
+    if not required_values(value_min, value_max) and not numeric_tokens(strip_provenance(quote)):
         return mk(NO_TESTABLE_VALUE,
                   note="control stores no number and its quote contains none; "
                        "this method has nothing to look for")
@@ -274,11 +393,11 @@ def classify(control_id: int, lga: str, control_type: str, quote: str | None,
     window = [p for p in range(cited_page - PAGE_TOLERANCE,
                                cited_page + PAGE_TOLERANCE + 1) if 1 <= p]
     best_cov = 0.0
-    best_missing = required_values(value_min, value_max) or numeric_tokens(quote)
+    best_missing = required_values(value_min, value_max) or numeric_tokens(strip_provenance(quote))
     for p in window:
         if p not in page_texts:
             continue
-        ok, cov, missing = page_supports(quote, page_texts[p], value_min, value_max)
+        ok, cov, missing = page_supports(quote, page_texts[p], value_min, value_max, unit)
         if ok:
             return mk(SUPPORTED_ON_CITED_PAGE, found_on_page=p, page_delta=p - cited_page,
                       coverage=cov)
@@ -288,7 +407,7 @@ def classify(control_id: int, lga: str, control_type: str, quote: str | None,
     for p in sorted(page_texts):
         if p in window:
             continue
-        ok, cov, _ = page_supports(quote, page_texts[p], value_min, value_max)
+        ok, cov, _ = page_supports(quote, page_texts[p], value_min, value_max, unit)
         if ok:
             return mk(SUPPORTED_ELSEWHERE, found_on_page=p, page_delta=p - cited_page,
                       coverage=cov,
@@ -373,7 +492,7 @@ def connect():
 
 ROWS_SQL = """
     SELECT c.id, c.lga, c.control_type, c.source_text, c.pdf_page, g.r2_current_path,
-           c.value_min, c.value_max
+           c.value_min, c.value_max, c.unit
     FROM dcp_setback_controls c
     JOIN dcp_chapter_registry g
       ON g.council = c.lga AND g.chapter_key = c.source_chapter_key
@@ -444,15 +563,16 @@ def main() -> int:
         print(f"[{n}/{len(by_doc)}] {r2_path.split('/')[-1]}  ({len(doc_rows)} controls)")
         pdf = download_from_r2(r2_path, cache)
         if pdf is None:
-            for cid, lga, ct, _q, pg, _p, _vn, _vx in doc_rows:
+            for cid, lga, ct, _q, pg, _p, _vn, _vx, _u in doc_rows:
                 s.verdicts.append(RowVerdict(cid, lga, ct, pg, DOC_UNAVAILABLE,
                                              note="fetch failed"))
             continue
         pages, count = read_pages(pdf)
         with_text = sum(1 for t in pages.values() if t.strip())
         print(f"    {count} pages, {with_text} with a text layer")
-        for cid, lga, ct, quote, pg, _p, vmin, vmax in doc_rows:
-            s.verdicts.append(classify(cid, lga, ct, quote, pg, pages, count, vmin, vmax))
+        for cid, lga, ct, quote, pg, _p, vmin, vmax, unit in doc_rows:
+            s.verdicts.append(
+                classify(cid, lga, ct, quote, pg, pages, count, vmin, vmax, unit))
 
     print(f"\n{'=' * 78}\nRESULTS\n{'=' * 78}")
     tally: dict[str, int] = {}
@@ -466,6 +586,11 @@ def main() -> int:
     print(f"\n--- A. DATA: is the control real? ---")
     print(f"  supported by its document      {len(s.supported)} of {len(s.checkable)} checkable"
           f"   ({(s.data_rate or 0):.1%})")
+    thin = [v for v in s.supported if v.required_terms < MIN_PINNING_TERMS]
+    print(f"  ...of those, thinly pinned     {len(thin)}"
+          f"   (quote leaves fewer than {MIN_PINNING_TERMS} distinguishing words, e.g."
+          f" '2 spaces': the value is on the cited page, but the wording does not say"
+          f" which row of the table it came from)")
 
     print(f"\n--- B. CITATION: does the page reference work? (UNGRADED) ---")
     cr = s.citation_rate

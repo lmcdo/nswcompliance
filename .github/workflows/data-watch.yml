@@ -156,6 +156,26 @@ jobs:
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
         run: python scripts/dcp_page_map_gate.py --check
 
+      # The only check that compares a served CONTROL VALUE against the council's own
+      # published PDF. Its sibling above (control source values) compares the value to the
+      # quote stored beside it, which agrees with itself when the quote came from the
+      # wrong place; this opens the document and looks.
+      #
+      # Nightly for the same reason as the step above: it downloads and opens 55 PDFs.
+      # Measured 2026-09-18 -- 97.3% of 764 checkable controls supported by their cited
+      # document, against a 95% mark fixed before the first run, with 21 unsupported rows
+      # printed by id for a human to read.
+      - name: Served control values appear in the council's own PDF (reads R2)
+        id: controls_vs_pdf
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: python scripts/validate_controls_against_source_pdf.py
+
       # github-script, not `gh`. main-red-alarm spent its entire life failing
       # at `gh: command not found` on the self-hosted runners — 12 runs out of
       # 12 — because those images carry neither `gh` nor `jq`. The alarm that
@@ -166,7 +186,7 @@ jobs:
         uses: actions/github-script@v9
         env:
           FAILED: >-
-            ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.lga_flags.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }},${{ steps.answer_quality.outcome }},${{ steps.page_maps.outcome }}
+            ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.lga_flags.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }},${{ steps.answer_quality.outcome }},${{ steps.page_maps.outcome }},${{ steps.controls_vs_pdf.outcome }}
         with:
           script: |
             const { owner, repo } = context.repo;
@@ -176,7 +196,8 @@ jobs:
                            'LGA capability flags',
                            'schema contract', 'controls provenance',
                            'control source values', 'served-answer quality',
-                           'DCP page maps vs their PDFs'];
+                           'DCP page maps vs their PDFs',
+                           'control values vs the council PDF'];
             const outcomes = (process.env.FAILED || '').split(',');
             const failed = names.filter((_, i) => outcomes[i] === 'failure');
             const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
