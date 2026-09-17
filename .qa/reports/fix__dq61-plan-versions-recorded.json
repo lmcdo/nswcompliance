@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Narrows an outreach-blocking check (DQ-61 feeds OC-10 and OC-17) and flips its ledger row to fixed. A wrong narrowing would let an undated council pass the outreach gate.",
-  "commit_hash": "",
+  "commit_hash": "d6ea4592",
   "files": [
     "scripts/dq_probe_live.py",
     ".claude/dq_checks.json",
@@ -20,10 +20,10 @@
   },
   "functions": [
     {
-      "name": "PROBES['DQ-61'] query",
-      "file_line": "scripts/dq_probe_live.py:99",
-      "input": "dcp_setback_controls (served rows) left-joined to dcp_plan_as_at by lga.",
-      "output": "Count of served councils, excluding nsw_statewide, whose currency_date is NULL.",
+      "name": "run",
+      "file_line": "scripts/dq_probe_live.py:1808",
+      "input": "dq_id 'DQ-61'; executes PROBES['DQ-61'] (line 99), which left-joins served dcp_setback_controls to dcp_plan_as_at by lga.",
+      "output": "Prints the count of served councils, excluding nsw_statewide, whose currency_date is NULL; exit 0 only when it is 0.",
       "if_none": "A council with served rows but no dcp_plan_as_at row joins to NULL and is counted, so a missing row still fails the check."
     }
   ],
