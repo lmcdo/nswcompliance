@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes where every DCP extraction starts a section. A wrong rule either keeps filing real rules under false keys or merges a real section into its neighbour.",
-  "commit_hash": "",
+  "commit_hash": "b48b37e0",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_section_headings.py",
