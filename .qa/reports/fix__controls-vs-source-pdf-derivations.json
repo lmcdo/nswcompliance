@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes when a served DCP control counts as SUPPORTED BY THE COUNCIL'S OWN PDF -- the only check in the repo that compares a number we serve against an authority nothing in our pipeline produced. A wrong loosening ships a false 'the council says this' signal on a planning control. The first full run (2026-09-18) scored 84.9% of 767 checkable controls against a 95% mark fixed before the run, and seven cited pages opened by hand showed the failures were the checker's, not the data's: councils write '1 space per 7 dwellings' where we store 0.143, '4m x 4m' where we store 16, and 'may be built to the rear boundary' where we store 0. Second concern in the same branch: 111 served provisions carry street labels lifted off a map figure (DQ-78) and are rendered today as if they were readable controls.",
-  "commit_hash": "6f8493c2",
+  "commit_hash": "77ce4aef",
   "files": [
     ".github/workflows/data-watch.yml",
     "docs/EXTRACTION_WHY_IT_RECURS_AND_THE_DURABLE_FIX_2026-07.md",
