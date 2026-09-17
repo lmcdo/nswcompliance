@@ -233,15 +233,19 @@ is read-only unless it says otherwise.
 ## Symptom → cause → check
 
 **1. Review rows contain doubled letters: "ttoo bbee aa ooff", "KKuu-- --", "ssttoorreeyy".**
-The PDF draws some text twice (captions, running headers, sometimes the rule itself) and the text
-layer holds every glyph twice. `strip_garbled_header_lines` in `scripts/dcp_extract_changed.py`
-handles it. **Rule: never delete doubled text that sits inside a sentence or carries a number —
-restore it.** Campbelltown's live rules include "rroooomm,, bbuutt oonnllyy iiff::" (room, but only
-if:) and "33..55 mmeettrreess;;" (3.5 metres;); deleting them dropped a condition and a value. Only
-whole header or caption lines are stripped. Before changing this code, run the old and new function
-over every served provision and queued row and list the words each output loses — every lost word
-must be garbage (the 2026-09-17 run: 23 served rows and 15 queued rows changed, none lost a real
-word). Tests: `tests/test_dcp_extraction_fidelity.py::TestDoubledTextIsRestoredNotDeleted`.
+The PDF draws some text twice (captions, running headers, and sometimes the rule itself), so the
+text layer holds every glyph twice. `strip_garbled_header_lines` in `scripts/dcp_extract_changed.py`
+handles it. **Rule: restore doubled text, never delete it, unless the line is a running header.**
+Campbelltown's live rules include "rroooomm,, bbuutt oonnllyy iiff::" (room, but only if:) and
+"33..55 mmeettrreess;;" (3.5 metres;), and on a fresh read of ku_ring_gai Part 8 the old cleaner
+deleted a whole guidance paragraph ("Building facades are to be articulated into a series of
+vertically proportioned bays...") and left "ttoo bbee aa ooff" in its place. A restored line is
+dropped only when the whole line was doubled and it repeats in the same text or names the plan
+("Ku-ring-gai Development Control Plan"). Numbers are un-doubled only next to a doubled word:
+"1100 3300mm" and "AABB1122" are real. Before changing this code, run the old and new function over
+every served provision and queued row and list the words each output loses — every lost word must
+be a doubled fragment — and run both over a fresh extraction of a chapter with doubled text.
+Tests: `tests/test_dcp_extraction_fidelity.py::TestDoubledTextIsRestoredNotDeleted`.
 Not the cause: `pdfplumber`'s `dedupe_chars()` does not remove these (measured on the real pages).
 
 **2. A re-read lost a large part of a section.** Woollahra B3 (2026-09-15): B3.5 went from 6,285

@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes how every DCP re-extraction cleans doubled-glyph text before it reaches the review queue and, once approved, the served rules. A wrong rule either deletes real conditions and values or lets garbage through.",
-  "commit_hash": "c8124e2e",
+  "commit_hash": "",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_extraction_fidelity.py",
@@ -10,8 +10,8 @@
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_dcp_extraction_fidelity.py tests/test_dcp_review_enqueue.py tests/test_ocr_fallback.py -o addopts= -q",
-    "fails_when": "Doubled text inside a sentence or carrying a number is blanked instead of restored, a doubled header or caption line leaves doubled residue, a real doubled number ('1100', '2288', '3300mm') or label ('Lots AA BB CC') is changed, or any pre-existing stripping expectation regresses.",
-    "observed_red": "69 passed with the change. Mutations: never un-double -> 4 of the new tests fail; residue strip removed -> 2 fail; a lone number allowed to un-double -> 1 fails; a run allowed to un-double without letters -> 1 fails. Old vs new function over production text (2026-09-17): 30,798 served provisions -> 23 outputs differ, 8,646 queued rows -> 15 differ; every word present in the old output and absent from the new is a doubled fragment ('oorr', 'iiff', '2288', 'ooff', 'KKuu'), and the words gained include 'or any other structure', 'room, but only if', 'bedrooms', '28', '3.5', 'metres', 'Bligh Street'.",
+    "fails_when": "Doubled text that can be restored is blanked (a condition, a value, or a whole guidance line), a running header (wholly doubled line that repeats or names the plan) survives, real doubled-looking values ('1100 3300mm', 'AABB1122', '2288') or two-letter labels ('Lots AA BB CC') are changed, or any pre-existing stripping expectation regresses.",
+    "observed_red": "73 passed. Mutations: never restore -> 9 failed; never drop headers -> 1; drop every wholly doubled line -> 4; numbers count as doubled words -> 1 (after adding the AABB1122 fixture; it survived without it); one letter is a doubled word -> 5. Sol cross-review on the first push found 3 HIGH defects in the earlier version (a wholly doubled condition line deleted; '1100 3300mm' halved; 'mmiinniimmuumm sseettbbaacckk 6 mm' reduced to '6'); each is now a test. Old vs new over production text: 30,798 served provisions -> 20 differ, 8,646 queued rows -> 15 differ, and every word the old output has that the new lacks is a doubled fragment. Fresh extraction of ku_ring_gai part 8 (2,822 lines): the old cleaner deleted a 12-line guidance paragraph ('Building facades are to be articulated into a series of vertically proportioned bays...') and left 'ttoo bbee aa ooff'; the new one restores it, adds no header lines, and leaves 0 doubled runs.",
     "external_authority": "Production regulatory_provisions text for campbelltown 3_7_1_6, 3_8_2, 3_7_3 and city_of_sydney 6_3_14_4, and dcp_review_queue 82464/82469 (ku_ring_gai), read 2026-09-17; the residue was reproduced by running DCPExtractor on ku_ring_gai/section-a-part-8-mixed-use (R2 v1.2-2026-09-01)."
   },
   "pre_impl": {
@@ -23,23 +23,23 @@
     {
       "name": "strip_garbled_header_lines",
       "file_line": "scripts/dcp_extract_changed.py:2895",
-      "input": "Extracted provision text (str or None).",
-      "output": "Per line: a line dominated by doubling with no doubled number is phrase-stripped and its doubled residue blanked; any other line has qualifying doubled runs restored before phrase-stripping; a line still dominated afterwards is dropped.",
+      "input": "Extracted provision text (str or None), before it is written to the review queue.",
+      "output": "Each line with doubled runs restored; a wholly doubled line dropped only when it repeats in the text or names the plan; remaining unrestorable garble stripped and lines still dominated by doubling dropped.",
       "if_none": "None or empty text is returned unchanged."
     },
     {
       "name": "_undouble_glyph_runs",
-      "file_line": "scripts/dcp_extract_changed.py:2943",
+      "file_line": "scripts/dcp_extract_changed.py:2954",
       "input": "A single line of extracted provision text, before phrase stripping.",
-      "output": "The line with each qualifying run of fully doubled tokens collapsed to single glyphs; a run qualifies with two or more tokens and one carrying two doubled letters, or a lone token with four doubled letters.",
-      "if_none": "A line with no fully doubled token is returned unchanged."
+      "output": "The line with each run of consecutive fully doubled tokens collapsed, when the run contains a doubled word (no digits, two or more distinct letters).",
+      "if_none": "A line with no qualifying run is returned unchanged."
     }
   ],
   "values": [
     {
-      "value": "lone doubled token needs >= 4 letters",
-      "read_at": "scripts/dcp_extract_changed.py:2963",
-      "if_missing": "Doubled-looking real numbers such as 1100 or 2288 would be halved."
+      "value": "doubled word: no digits and >= 2 distinct letters",
+      "read_at": "scripts/dcp_extract_changed.py:2951",
+      "if_missing": "Real values such as '1100 3300mm' or codes such as 'AABB1122' would be halved."
     }
   ],
   "queries": [],
@@ -48,7 +48,7 @@
       "scenario": "A real value is written with repeated digits: 'Minimum 1100 mm setback', 'NSW 2288', 'a 3300mm wide driveway'.",
       "what_happens": "Un-doubling would turn 1100 into 10 and serve a wrong number.",
       "mitigated": true,
-      "how": "Numbers alone never qualify; a run needs a token with doubled letters. Pinned by test_real_doubled_numbers_and_labels_are_never_touched; forcing a lone 4-character token to qualify failed it.",
+      "how": "A number is collapsed only inside a run that also holds a doubled word (no digits, two distinct letters). Pinned by test_real_doubled_numbers_and_labels_are_never_touched and test_adjacent_real_numbers_are_not_halved.",
       "repro": "python -m pytest tests/test_dcp_extraction_fidelity.py -o addopts= -q -k never_touched"
     },
     {
@@ -62,7 +62,7 @@
       "scenario": "A doubled rule sits on its own short line ('rroooomm,, bbuutt oonnllyy iiff::').",
       "what_happens": "Blanking it would silently drop a condition from a served rule.",
       "mitigated": true,
-      "how": "A line only counts as header garbage when doubling dominates it by the existing _GARBLE_RUN measure and it carries no doubled number; otherwise it is restored. Removing the un-double step failed 4 tests.",
+      "how": "Every restorable doubled run is restored before any line is judged; a wholly doubled line is dropped only if it repeats or names the plan. Sol found the earlier version deleted this case; test_a_condition_alone_on_its_line_is_restored pins it, and dropping every wholly doubled line fails 4 tests.",
       "repro": "python -m pytest tests/test_dcp_extraction_fidelity.py -o addopts= -q -k condition_in_prose"
     },
     {
@@ -73,8 +73,8 @@
       "repro": "python -c \"import sys; sys.path.insert(0,'scripts'); import dcp_extract_changed as d; print(d.strip_garbled_header_lines('SSeeccttiioonn 3344'))\""
     }
   ],
-  "mutation_analysis": "Never un-double -> 4 failed; no residue strip -> 2 failed; lone number qualifies -> 1 failed; run needs no letters -> 1 failed; unmutated 69 passed. The production comparison (old vs new over 39,444 texts) is the corpus-level check that no real word is lost.",
-  "residual_risk": "Doubled headers that carry a number now read as a plain header line inside provision text. Rows already served are unchanged until their chapter is re-read. Other residue types in the held ku_ring_gai rows ('H H', 'W aste', overlapping page labels) are not doubled glyphs and are not addressed here.",
+  "mutation_analysis": "73 passed. Mutations: never restore -> 9 failed; never drop headers -> 1; drop every wholly doubled line -> 4; numbers count as doubled words -> 1 (after adding the AABB1122 fixture; it survived without it); one letter is a doubled word -> 5.",
+  "residual_risk": "A doubled running header that appears once in a provision and does not name the plan is restored as a readable line (clutter, not a loss). Doubled figure captions are restored as readable words. Rows already served change only when their chapter is re-read. Non-doubled junk in the held ku_ring_gai rows ('H H', 'W aste', overlapping page labels) is not addressed here.",
   "post_merge": {
     "db_reset": "None.",
     "secrets": "None.",
