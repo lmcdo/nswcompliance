@@ -1247,6 +1247,75 @@ def _upright_only(page: Any) -> Any:
     )
 
 
+# City of Sydney's locality statements open each precinct with a vector locality map
+# whose street labels are tiny upright glyphs (Arial-Bold 3.4-6.5pt) placed one by one
+# along the streets. Read in page order they interleave into the text as "Zen B H i i t
+# a n h S n d S in fi t g e r e", and 110 served provisions carried them (DQ-78). Measured
+# across all 171 pages of section 2: 41,250 words under 6pt sit inside the bounding box of
+# the page's vector curves and 3 sit outside (superscript ordinals in prose); the body text
+# is 10pt and 7pt and never inside that box. The prose around the map is kept -- deleting
+# the rows would hide the controls that follow the map (DQ-78's corrected remedy).
+MAP_LABEL_COUNCILS = {"city_of_sydney"}
+_MAP_MIN_CURVES = 200          # a map, not a rule line or a rounded table corner
+_MAP_LABEL_MAX_SIZE = 6.6      # above the 6.0-6.5pt scale-bar letters, below 7pt notes
+_BODY_MIN_SIZE = 8.5           # prose size; a small glyph on a prose line is a superscript
+
+
+def _strip_map_labels(page: Any) -> Any:
+    """Drop tiny glyphs inside a page's vector map, keeping every glyph on a line of prose.
+
+    A superscript (the 2 of m2, the th of 20th) is as small as a map label and can fall
+    inside a large drawing's box on sections 5 and 6, so a small glyph is kept whenever
+    body-size text sits on the same line within a few points of it."""
+    curves = page.curves
+    if len(curves) < _MAP_MIN_CURVES:
+        return page
+    x0 = min(c["x0"] for c in curves)
+    x1 = max(c["x1"] for c in curves)
+    top = min(c["top"] for c in curves)
+    bottom = max(c["bottom"] for c in curves)
+    body_by_line: dict[int, list[dict]] = {}
+    for ch in page.chars:
+        if ch["size"] >= _BODY_MIN_SIZE:
+            body_by_line.setdefault(int(ch["top"] // 4), []).append(ch)
+
+    def on_prose_line(ch: dict) -> bool:
+        band = int(ch["top"] // 4)
+        for b in (band - 3, band - 2, band - 1, band, band + 1, band + 2, band + 3):
+            for body in body_by_line.get(b, ()):
+                if (abs(body["top"] - ch["top"]) < body["size"]
+                        and body["x0"] - 20 <= ch["x0"] <= body["x1"] + 20):
+                    return True
+        return False
+
+    def would_drop(obj: dict) -> bool:
+        if obj.get("object_type") != "char" or obj["size"] >= _MAP_LABEL_MAX_SIZE:
+            return False
+        inside = (x0 <= obj["x0"] and obj["x1"] <= x1
+                  and top <= obj["top"] and obj["bottom"] <= bottom)
+        return inside and not on_prose_line(obj)
+
+    doomed = [ch for ch in page.chars if would_drop(ch)]
+    # A digit among the tiny labels means this is not a locality map but a building
+    # envelope or site diagram, where the small text IS the control. Measured across the
+    # three City of Sydney sections (2026-09-18): section 2's labels are street names and
+    # dropping them clears all 79 scrambled pages, while sections 5 and 6 would lose
+    # '8' x178, '31' x2170 and '4.5' x20 beside STOREYS, SETBACK, LEVEL and ENVELOPE --
+    # and would still leave 70 of 102 and 57 of 65 pages scrambled. Losing a storey count
+    # to tidy a page that stays unreadable anyway is the worse trade, so such a page is
+    # left exactly as it was and the reader is warned at display instead.
+    if any(ch["text"].isdigit() for ch in doomed):
+        return page
+
+    # Keyed by position rather than identity: pdfplumber is free to hand `filter` copies
+    # of the dicts `page.chars` returned, and an identity test would then quietly keep
+    # every glyph -- a filter that does nothing, passing its tests for the wrong reason.
+    doomed_keys = {(ch["x0"], ch["top"], ch["text"]) for ch in doomed}
+    return page.filter(
+        lambda obj: obj.get("object_type") != "char"
+        or (obj["x0"], obj["top"], obj["text"]) not in doomed_keys)
+
+
 # A running section/chapter title some DCP PDF generators print sideways down a
 # page's margin as individually-positioned UPRIGHT glyphs (one letter per short
 # line) rather than one rotated text run — so pdfplumber's own rotation flag
@@ -1452,6 +1521,9 @@ def _extract_page_text(page: Any, council: str | None) -> str:
     else, so it can't corrupt column detection or heading matching downstream.
     """
     page = _strip_vertical_margin_label(page)
+
+    if council in MAP_LABEL_COUNCILS:
+        page = _strip_map_labels(page)
 
     if council in UPRIGHT_ONLY_COUNCILS:
         page = _upright_only(page)
