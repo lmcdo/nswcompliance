@@ -1,0 +1,75 @@
+{
+  "tier": "standard",
+  "justification": "Narrows an outreach-blocking check (DQ-61 feeds OC-10 and OC-17) and flips its ledger row to fixed. A wrong narrowing would let an undated council pass the outreach gate.",
+  "commit_hash": "d6ea4592",
+  "files": [
+    "scripts/dq_probe_live.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-61 && python scripts/dq_check.py --id DQ-61",
+    "fails_when": "Any served council other than nsw_statewide has no dcp_plan_as_at.currency_date, or DQ-61 is declared fixed while that count is above 0.",
+    "observed_red": "On origin/main's query the probe reads 1 (nsw_statewide) and exits 1. On this branch it reads 0 and exits 0; dq_check --id DQ-61 PASSED with declared fixed. Read-only simulation on production (currency_date forced NULL inside the query for one lga): waverley -> 1, nsw_statewide -> 0, an unknown slug -> 0, so a real undated council still fails the check.",
+    "external_authority": "Production dcp_plan_as_at after the 2026-09-17 writes: 24 served councils carry currency_date, each backed by a quote from the council's own document or a sha256 match to the file the council links today (backups dcp_plan_as_at_pre_dq61_currency_2026-09-17_0920.csv and dcp_plan_as_at_pre_dq61_batch2_2026-09-17_1212.csv)."
+  },
+  "pre_impl": {
+    "existing_data": "dq_probe_live.py --id DQ-61 read 25 on 2026-09-16, 13 after the first 12 councils were dated at 09:20, and 1 after the remaining 12 at 12:12; the 1 is nsw_statewide, which has no dcp_plan_as_at row and no council plan.",
+    "assumption_mismatch": "The probe counted nsw_statewide as a council, while check_dcp_as_at_coverage.py and outreach_claim_checks.SERVED already exclude it for exactly that reason, so DQ-61 could never reach 0.",
+    "new_vs_existing": "Reuses the existing exclusion rationale from check_dcp_as_at_coverage.py; no new check, only the missing filter in the existing query plus the ledger and tracker rows."
+  },
+  "functions": [
+    {
+      "name": "run",
+      "file_line": "scripts/dq_probe_live.py:1808",
+      "input": "dq_id 'DQ-61'; executes PROBES['DQ-61'] (line 99), which left-joins served dcp_setback_controls to dcp_plan_as_at by lga.",
+      "output": "Prints the count of served councils, excluding nsw_statewide, whose currency_date is NULL; exit 0 only when it is 0.",
+      "if_none": "A council with served rows but no dcp_plan_as_at row joins to NULL and is counted, so a missing row still fails the check."
+    }
+  ],
+  "values": [
+    {
+      "value": "d.lga <> 'nsw_statewide'",
+      "read_at": "scripts/dq_probe_live.py:122",
+      "if_missing": "The probe reads 1 forever and OC-10/OC-17 cannot pass on DQ-61."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Count served councils with no recorded plan version.",
+      "file_line": "scripts/dq_probe_live.py:119",
+      "where_clause": "d.is_current AND NOT COALESCE(d.needs_review, false) AND d.lga <> 'nsw_statewide' AND a.currency_date IS NULL"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council's currency_date is cleared or a newly served council has none.",
+      "what_happens": "It must count; otherwise the gate passes an undated council.",
+      "mitigated": true,
+      "how": "Only the statewide slug is excluded. Simulated read-only on production: waverley undated -> 1.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-61"
+    },
+    {
+      "scenario": "A newly served council has rows in dcp_setback_controls but no dcp_plan_as_at row at all.",
+      "what_happens": "The LEFT JOIN gives NULL currency_date, so it is counted.",
+      "mitigated": true,
+      "how": "Unchanged join; nsw_statewide was counted this way before, which is how the 1 was found.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-61"
+    },
+    {
+      "scenario": "Statewide numbers drift from the in-force Codes SEPP.",
+      "what_happens": "DQ-61 no longer watches nsw_statewide.",
+      "mitigated": true,
+      "how": "SEPP currency is DQ-88's (instrument_registry + legislation monitor); the 31 statewide numbers were checked against the in-force Codes SEPP on 2026-09-16 and 5 bands corrected 2026-09-17. The Apartment Design Guide (July 2015) has no currency watch; recorded as residual risk.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-88"
+    }
+  ],
+  "mutation_analysis": "Removing the new filter -> probe reads 1, exit 1 (observed on origin/main). Declared left 'open' with the filter -> dq_check reports declared open but check passes (the ledger rule). Excluding every lga instead of nsw_statewide would pass the simulation for waverley wrongly; the simulation reads 1 for waverley, so the filter is narrow.",
+  "residual_risk": "The Apartment Design Guide's currency is watched by nothing. Dates for councils whose copies match the council's current file but have no named amendment are the plan's commencement (earliest possible), which can over-flag staleness but not hide it.",
+  "post_merge": {
+    "db_reset": "None. Production data was written before this PR by guarded one-off scripts with backups (see external_authority).",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "python scripts/dq_check.py --outreach on main: OC-10 and OC-17 show DQ-61 CLEAN."
+  }
+}

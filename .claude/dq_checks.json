@@ -515,7 +515,7 @@
       "why_no_check": "A rule decision, now applied: the stored date is the full DCP commencement per EP&A Regulation 2021. Whether each stored date obeys it is a per-council source check, and the count of undated councils is already ratcheted per council."
     },
     "DQ-61": {
-      "declared": "open",
+      "declared": "fixed",
       "check": [
         "python",
         "scripts/dq_probe_live.py",
@@ -524,7 +524,8 @@
       ],
       "passes_when": "exit 0 - every served council records which version of its plan we hold",
       "red_when": "A council serves controls extracted from a document whose version was never recorded, so staleness cannot be detected for it.",
-      "note": "'No column records the in-force amendment, so there is nothing to probe yet' is now false - currency_date/currency_label/currency_evidence/currency_confirmed_at were added to dcp_plan_as_at on 2026-08-13 and the writer fills them from a plan's own version or amendment table. Measured 27 of 29 served councils still have none. The portal_* columns are NOT the same fact: they record what the Planning Portal advertises and are set on 1 of 28 rows."
+      "note": "'No column records the in-force amendment, so there is nothing to probe yet' is now false - currency_date/currency_label/currency_evidence/currency_confirmed_at were added to dcp_plan_as_at on 2026-08-13 and the writer fills them from a plan's own version or amendment table. Measured 27 of 29 served councils still have none. The portal_* columns are NOT the same fact: they record what the Planning Portal advertises and are set on 1 of 28 rows.",
+      "fixed_by": "2026-09-16/17 - all 24 remaining served councils given a currency_date/label/evidence in production (backups data/db_rollback_backups/dcp_plan_as_at_pre_dq61_currency_2026-09-17_0920.csv and dcp_plan_as_at_pre_dq61_batch2_2026-09-17_1212.csv). Each date is the EARLIEST the evidence proves the held version could have taken effect, never later: a copy's own amendment table or 'In Force' stamp; a dated amendment the copy's wording shows it includes (e.g. 'Inner West LEP 2022', the E1/MU1 zones); or, where a copy is byte-identical to the file the council links today but no amendment names it, the plan's commencement with that stated in the label. Every quote and hash was re-checked by the writing script before commit. nsw_statewide is excluded from the probe, as check_dcp_as_at_coverage.py already excludes it: it has no council plan. Found while doing it: waverley's copy is Amendment 0 (effect 8 Dec 2022) while the council's plan is Amendment 6 (18 Apr 2026), so the tracker's 'we have it' was wrong - a plan-in-force problem for OC-17, not a dating one."
     },
     "DQ-62": {
       "declared": "fixed",
