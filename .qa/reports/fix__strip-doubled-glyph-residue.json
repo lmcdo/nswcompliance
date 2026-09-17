@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes how every DCP re-extraction cleans doubled-glyph text before it reaches the review queue and, once approved, the served rules. A wrong rule either deletes real conditions and values or lets garbage through.",
-  "commit_hash": "",
+  "commit_hash": "303f5e40",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_extraction_fidelity.py",
