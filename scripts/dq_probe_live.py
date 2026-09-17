@@ -109,9 +109,17 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # the document. The two disagreeing is the staleness signal -- liverpool
         # is the live case, portal says 'as amended Dec 2019' while one of our
         # source PDFs is named ...2017.
+        #
+        # nsw_statewide is not a council plan, for the reason
+        # check_dcp_as_at_coverage.py already records: its numbers come from the
+        # Codes SEPP and the Apartment Design Guide, so "which version of the
+        # council's plan do we hold" is a question it cannot answer and counting
+        # it kept this row at 1 forever. The SEPPs' currency is DQ-88's
+        # (instrument_registry and the legislation monitor).
         "SELECT count(DISTINCT d.lga) FROM dcp_setback_controls d "
         "LEFT JOIN dcp_plan_as_at a ON a.lga = d.lga "
         "WHERE d.is_current AND NOT COALESCE(d.needs_review, false) "
+        "  AND d.lga <> 'nsw_statewide' "
         "  AND a.currency_date IS NULL",
         (),
         "Each council serves controls extracted from a document whose version "
