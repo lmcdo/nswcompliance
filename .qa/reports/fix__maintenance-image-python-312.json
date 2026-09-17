@@ -1,0 +1,75 @@
+{
+  "tier": "standard",
+  "justification": "Changes the base image of two production Railway cron services (Semgrep security scan, mutmut health). A wrong image either fails the deploy again or runs the jobs on an interpreter the tools do not support.",
+  "commit_hash": "854c3ae6",
+  "files": [
+    "Dockerfile.maintenance",
+    "tests/test_dockerfile_python_matches_ci.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dockerfile_python_matches_ci.py -o addopts= -q",
+    "fails_when": "Any Dockerfile that installs requirements-test.txt uses a Python version other than the single python-version in .github/workflows/gates.yml, or Dockerfile.maintenance stops being recognised as installing requirements-test.txt (so the check cannot pass with nothing in scope).",
+    "observed_red": "With FROM python:3.11-slim restored: 1 failed ('Dockerfile.maintenance installs requirements-test.txt on python 3.11, but CI validates it on 3.12'). With the install line rewritten as --requirement=requirements-test.txt: 1 failed ('expected Dockerfile.maintenance to install requirements-test.txt'). With the fix: 5 passed. Independently, uv pip compile of scripts/requirements-maintenance.txt + requirements-test.txt for x86_64-manylinux_2_28: Python 3.11 fails with 'numpy==2.5.3 depends on Python>=3.12', the same error as Railway's build log for deployment 88f93680; Python 3.12 resolves (numpy 2.5.3, semgrep 1.177.0, mutmut 3.8.0, matplotlib 3.11.1, rasterio 1.5.1, pymupdf 1.28.2).",
+    "external_authority": "Railway build log for maintenance-security deployment 88f93680 (commit d46b659c): 'ERROR: No matching distribution found for numpy>=2.5.3' under python:3.11-slim; numpy 2.5.x wheels on PyPI declare Requires-Python >=3.12."
+  },
+  "pre_impl": {
+    "existing_data": "railway deployment list shows maintenance-security FAILED on every commit from 81e0e506 (2026-09-14) to d46b659c; nswcompliance web service SUCCESS on d46b659c. The Railway project status lists maintenance-security and maintenance-mutation as 'Deploy failed'.",
+    "assumption_mismatch": "The GitHub 'refreshing-hope / production' deployment status is red on every merge, which reads as the web API failing to deploy; it is these two cron services, and the web service deployed each time.",
+    "new_vs_existing": "Dockerfile.monitors, Dockerfile.python and the Fly legislation monitor already use python:3.12-slim and CI uses 3.12; this aligns the one image left on 3.11. The test is new: no existing test compares a Dockerfile's Python with CI's."
+  },
+  "functions": [
+    {
+      "name": "mismatches",
+      "file_line": "tests/test_dockerfile_python_matches_ci.py:42",
+      "input": "CI's Python version and a mapping of Dockerfile name to its text.",
+      "output": "One message per Dockerfile that installs requirements-test.txt on a Python other than CI's, naming both versions.",
+      "if_none": "No Dockerfile installs the file: returns an empty list, which is why the repo test separately asserts Dockerfile.maintenance is in scope."
+    }
+  ],
+  "values": [
+    {
+      "value": "FROM python:3.12-slim",
+      "read_at": "Dockerfile.maintenance:15",
+      "if_missing": "A non-python base installing requirements-test.txt is reported as 'python None' rather than skipped."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A future requirements bump needs Python 3.13 and CI is moved to 3.13 while the maintenance image stays on 3.12.",
+      "what_happens": "The image would fail to build on Railway again while CI stays green, and the cron jobs keep running an old image without any alert.",
+      "mitigated": true,
+      "how": "test_images_installing_ci_requirements_use_ci_python compares against whatever gates.yml sets, so changing CI alone fails the test in the same PR.",
+      "repro": "python -m pytest tests/test_dockerfile_python_matches_ci.py -o addopts= -q after editing one python-version in gates.yml"
+    },
+    {
+      "scenario": "gates.yml sets two different python-version values across jobs.",
+      "what_happens": "There is no single CI version to compare with, and the image could legitimately match one job and not another.",
+      "mitigated": true,
+      "how": "test_ci_uses_one_python_version fails and names both versions.",
+      "repro": "python -m pytest tests/test_dockerfile_python_matches_ci.py::test_ci_uses_one_python_version -o addopts= -q"
+    },
+    {
+      "scenario": "The pip install line in Dockerfile.maintenance is reworded (--requirement= or a constraints file) so the regex no longer sees requirements-test.txt.",
+      "what_happens": "Nothing would be in scope and the mismatch test would pass while checking nothing.",
+      "mitigated": true,
+      "how": "The repo test asserts Dockerfile.maintenance is in scope; forced by rewriting the line, it failed.",
+      "repro": "sed -i 's/-r requirements-test.txt/--requirement=requirements-test.txt/' Dockerfile.maintenance && python -m pytest tests/test_dockerfile_python_matches_ci.py -o addopts= -q"
+    },
+    {
+      "scenario": "semgrep or mutmut does not run on Python 3.12.",
+      "what_happens": "The image builds but the weekly scan or monthly mutation job fails at run time.",
+      "mitigated": false,
+      "how": "Resolution succeeds for 3.12 (semgrep 1.177.0, mutmut 3.8.0), and both declare 3.12 support, but neither job is run here. Checked after merge by the next Railway run of each service.",
+      "repro": "railway deployment list --service maintenance-security --json (expect SUCCESS on the merge commit)"
+    }
+  ],
+  "mutation_analysis": "FROM python:3.11-slim restored -> 1 failed. Install line reworded -> 1 failed (vacuous-pass guard). Unmutated -> 5 passed. tests/test_doc_claims.py, test_dockerfile_monitors_imports.py and test_railway_cron_drift.py still pass with the new Dockerfile comment (83 passed).",
+  "residual_risk": "The image is not built locally (no Docker run here); only dependency resolution for Linux 3.12 is verified. The Semgrep and mutmut jobs themselves are not executed until their next scheduled run.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "After Railway redeploys the merge commit: railway deployment list --service maintenance-security --json and --service maintenance-mutation show SUCCESS on it, and the GitHub 'refreshing-hope / production' deployment status for the commit is success."
+  }
+}

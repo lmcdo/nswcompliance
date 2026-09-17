@@ -6,7 +6,13 @@
 #
 # Kept separate from Dockerfile.monitors so the lightweight monitor services
 # don't have to pull semgrep + the mutmut/pytest stack.
-FROM python:3.11-slim
+#
+# Python must match CI (.github/workflows/gates.yml): this image installs
+# requirements-test.txt, which CI validates on 3.12. On 3.11 the numpy>=2.5.3
+# pin (Requires-Python >=3.12) made every deploy fail from 2026-09-14, and the
+# cron jobs silently kept running the last image built before that.
+# tests/test_dockerfile_python_matches_ci.py enforces this.
+FROM python:3.12-slim
 
 WORKDIR /app
 
