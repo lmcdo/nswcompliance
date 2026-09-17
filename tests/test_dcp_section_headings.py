@@ -124,6 +124,21 @@ class TestZoneCodesAndYearsAreNotHeadings:
         assert self.code("6 R3 Medium Density Residential zone controls\n") == "6"
         assert self.code("6\nSubdivision controls\n") == "6"
 
+    def test_sol_cross_review_real_headings_are_kept(self):
+        """Sol HIGH x2 and MEDIUM on the first push of this fix: a heading split across two lines, a
+        section genuinely coded R1, and a lower-case zone code in a table row. The last cannot start a
+        section at all: SECTION_RE requires the title to open with a capital, so '6' / 'r3 ...' never
+        matches and the page's real heading is found."""
+        assert self.code("6\nR3 Medium Density Residential zone controls\n") == "6"
+        assert self.code("R1 Road reserves\n") == "R1"
+        page = "6\nr3 Medium Density Residential > Two lots – 6m\n3.16.2 Roads\n"
+        assert self.code(page) == "3.16.2"
+
+    def test_penrith_zone_rows_are_not_headings(self):
+        """penrith D2, verbatim titles of the false R-code sections."""
+        for line in ("R1 Residential General 40", "R3 Medium Density 40% Residential", "R4 Zone"):  # noqa: zone-codes  (verbatim PDF text)
+            assert self.code(line + "\n") is None, line
+
     def test_the_multi_heading_splitter_skips_them_too(self):
         page = ("tail of the previous section\n3.1 Access handles\nZone Width\n"
                 "R2 Low Density Residential ≤ Two (2) lots – 3m\n3.2 Driveways\nbody\n")

@@ -271,8 +271,10 @@ AND q.source_content_hash = r.content_hash AND q.council = '<council>'`.
 `__R2`) were real rules filed under a false heading: a table row or zone list starting "R1 General
 Residential..." or a figure label "2012 Western Distributor" matched the section-heading pattern.
 Committing past them would leave the live rule on old text while the chapter reads as current.
-Fixed where it starts (2026-09-17): headings whose code is a bare year or `R` plus one digit are
-skipped (`is_junk_heading_code`). A fresh `--review` re-read supersedes the old rejections, so re-read
+Fixed where it starts (2026-09-17, `is_junk_heading`): a heading is skipped when its code is a bare year,
+when it is `R` plus one digit and the title names the zone ("R2 Low Density Residential"), or when a lone
+number sits above a zone-code line carrying table values. "R1 Road reserves" and "4.2 R2 Low Density
+Residential" stay headings. A fresh `--review` re-read supersedes the old rejections, so re-read
 the chapter after the fix is deployed. Other rejection types (for example a human's source-verification
 rejection) must be resolved by a person.
 
