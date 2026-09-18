@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Writes to two production tables that decide what a planner is shown and where it came from: dcp_chapter_registry.dcp_name and dcp_setback_controls.source_chapter_key. Re-keying a control to the wrong source would hand its currency to the wrong check and point its citation at the wrong document, both silently. Dry run by default, CSV backup of every changed row, --apply required. The branch also records the confirmations themselves: a field meaning 'a person checked this plan is in force', which must never be written where no check happened.",
-  "commit_hash": "57d24755",
+  "commit_hash": "a74152a9",
   "files": [
     "scripts/confirm_plan_in_force.py",
     "scripts/repair_plan_in_force_tracing.py",
