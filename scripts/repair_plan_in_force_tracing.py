@@ -73,10 +73,12 @@ def _dsn() -> str:
         return url
     env = REPO / ".env"
     if not env.exists():  # a worktree has no .env of its own
-        env = Path(str(REPO).split(".claude")[0]) / ".env"
+        head, sep, _tail = str(REPO).partition(".claude")
+        env = Path(head if sep else str(REPO)) / ".env"
     for line in env.read_text(encoding="utf-8", errors="replace").splitlines():
-        if line.startswith("DATABASE_URL="):
-            return line.split("=", 1)[1].strip().strip('"').strip("'")
+        key, sep, value = line.partition("=")
+        if sep and key.strip() == "DATABASE_URL" and value.strip():
+            return value.strip().strip('"').strip("'")
     raise SystemExit("no DATABASE_URL")
 
 
@@ -166,6 +168,11 @@ def repair_sutherland(cur, apply: bool) -> int:
                    "dcp_setback_controls_pre_sutherland_lep_key", apply)
     print(f"    backup {path}  ({len(movable)} to re-key, {len(held)} held back)")
     if apply:
+        # Deliberately NOT filtered by is_current. This corrects a filing error, not a
+        # value: a superseded row left behind under the old key would keep pointing at the
+        # LEP chapter, so the council would still trace to two plan names the moment
+        # anything looked at history. Every row carrying the key moves whether its
+        # is_current is true or false, and the CSV above records each one.
         cur.execute("UPDATE dcp_setback_controls SET source_chapter_key = %s "
                     "WHERE source_chapter_key = %s AND NOT (id = ANY(%s))",
                     (EXTERNAL_LEP, SUTHERLAND_WRONG_KEY, sorted(HELD_BACK)))

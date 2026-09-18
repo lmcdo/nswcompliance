@@ -64,8 +64,15 @@ HELD_BACK = {
 # The plan name is taken from the same CTE the check uses, never retyped: a confirmation
 # that names a plan the check does not derive fails as loudly as no confirmation at all,
 # and would be harder to see.
+# SERVED is interpolated below and expands to
+# "is_current AND (needs_review IS NULL OR needs_review = FALSE) AND lga <> 'nsw_statewide'
+#  AND lga <> 'inner_west'" -- the currency filter is there, inside the constant, which is
+# the point of borrowing it rather than writing a second one that can drift.
 PLAN_SQL = f"""
 WITH served AS (
+    -- {{SERVED}} below expands to: is_current AND (needs_review IS NULL OR needs_review =
+    -- FALSE) AND lga <> 'nsw_statewide' AND lga <> 'inner_west'. The is_current filter
+    -- lives inside that constant, borrowed from the check so the two cannot drift apart.
     SELECT lga, source_chapter_key FROM dcp_setback_controls
      WHERE {SERVED} AND COALESCE(source_chapter_key, '') NOT LIKE '\\_external\\_%'
 ), traced AS (
@@ -92,10 +99,12 @@ def _dsn() -> str:
         return url
     env = REPO / ".env"
     if not env.exists():  # a worktree has no .env of its own
-        env = Path(str(REPO).split(".claude")[0]) / ".env"
+        head, sep, _tail = str(REPO).partition(".claude")
+        env = Path(head if sep else str(REPO)) / ".env"
     for line in env.read_text(encoding="utf-8", errors="replace").splitlines():
-        if line.startswith("DATABASE_URL="):
-            return line.split("=", 1)[1].strip().strip('"').strip("'")
+        key, sep, value = line.partition("=")
+        if sep and key.strip() == "DATABASE_URL" and value.strip():
+            return value.strip().strip('"').strip("'")
     raise SystemExit("no DATABASE_URL")
 
 

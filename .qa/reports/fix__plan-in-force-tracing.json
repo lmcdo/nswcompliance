@@ -1,10 +1,12 @@
 {
   "tier": "critical",
   "justification": "Writes to two production tables that decide what a planner is shown and where it came from: dcp_chapter_registry.dcp_name and dcp_setback_controls.source_chapter_key. Re-keying a control to the wrong source would hand its currency to the wrong check and point its citation at the wrong document, both silently. Dry run by default, CSV backup of every changed row, --apply required. The branch also records the confirmations themselves: a field meaning 'a person checked this plan is in force', which must never be written where no check happened.",
-  "commit_hash": "c0bc32c4",
+  "commit_hash": "1a3709e2",
   "files": [
     "scripts/confirm_plan_in_force.py",
-    "scripts/repair_plan_in_force_tracing.py"
+    "scripts/repair_plan_in_force_tracing.py",
+    "tests/test_confirm_plan_in_force_real_db.py",
+    "tests/test_repair_plan_in_force_tracing_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "dcp_chapter_registry(council, chapter_key, dcp_name) and dcp_setback_controls(id, lga, control_type, source_chapter_key, source_text), both read live before writing. The `_external_lep` key is the existing convention for state instruments — measured 18 controls across 9 councils, plus _external_adg 12 across 6 — so this reuses it rather than inventing one.",
@@ -15,9 +17,9 @@
     "user_failure_mode": "A number filed under the wrong instrument is checked for currency against a document it did not come from, so it can go stale with every check green. Guarded by reading the registry's own dcp_name before re-keying (the script refuses if the chapter is not registered as a state instrument), by holding back the one row whose value its source does not contain, and by writing every changed row to CSV before the transaction commits."
   },
   "falsifiable_check": {
-    "command": "python scripts/repair_plan_in_force_tracing.py   # dry run; then scripts/outreach_claim_checks.py OC-17",
+    "command": "PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest -m database tests/test_repair_plan_in_force_tracing_real_db.py tests/test_confirm_plan_in_force_real_db.py -q -o addopts=  # then python scripts/outreach_claim_checks.py OC-17",
     "fails_when": "The script re-keys a chapter that is not registered as a state instrument, re-keys the held-back row, or writes anything without --apply. After applying, OC-17's plan-in-force line must stop naming cumberland and sutherland_shire; if it still names them the repair did not do what it claims.",
-    "observed_red": "Dry run against the live database, 2026-09-18: cumberland 1 registry row ('Cumberland DCP Part B — Residential Zones 2021' -> 'Cumberland DCP 2021'); sutherland_shire 7 rows found, 6 to re-key, 1 held back (id=606), with the registry check printing 'Sutherland Shire LEP 2015'. An earlier guard that required each control's source_text to mention the LEP REFUSED the whole set — correctly, since the three served rows carry no citation — which is what sent the question to the instrument itself. No writes; both backup CSVs written with the _dryrun suffix. Before the repair, outreach_claim_checks.py OC-17 lists 21 councils with cumberland and sutherland_shire among them."
+    "observed_red": "Dry run against the live database, 2026-09-18: cumberland 1 registry row ('Cumberland DCP Part B — Residential Zones 2021' -> 'Cumberland DCP 2021'); sutherland_shire 7 rows found, 6 to re-key, 1 held back (id=606), with the registry check printing 'Sutherland Shire LEP 2015'. An earlier guard that required each control's source_text to mention the LEP REFUSED the whole set — correctly, since the three served rows carry no citation — which is what sent the question to the instrument itself. No writes; both backup CSVs written with the _dryrun suffix. Before the repair, outreach_claim_checks.py OC-17 lists 21 councils with cumberland and sutherland_shire among them. Real-layer: 9 opt-in tests run against the live table and fail if cumberland serves more than one plan name again, if any row still carries the old sutherland key beyond the held-back one, if id=606 is re-keyed or quietly corrected without leaving HELD_BACK, if either repair stops being idempotent, if a stored confirmation names a plan the check does not derive, if a held-back council is confirmed, or if any confirmation rests on no recorded evidence. 9 passed with PYTEST_REAL_DB=1, 9 deselected without it."
   },
   "functions": [
     {
