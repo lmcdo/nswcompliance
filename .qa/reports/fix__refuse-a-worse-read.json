@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Decides whether a re-read of a council's plan replaces the rules a planner reads. The commit worker had no gate on whether the text is still readable: count_drop compares row counts, the section-loss guard compares section codes, and regeneration_artifact, map_change and restructure all look at structure. A two-column page read straight across keeps every section, every rule and every citation, and destroys the words. Measured on the live queue, committing city_of_sydney/section-3-general-provisions — which holds 92 of DQ-70's remaining 151 stale rows, so it looks like the fix — would have scrambled a clause that is served clean today.",
-  "commit_hash": null,
+  "commit_hash": "fa854a8a",
   "files": [
     "scripts/dcp_supersede_guard.py",
     "scripts/dcp_commit_approved.py",
@@ -101,7 +101,7 @@
       "repro": "python -m pytest tests/test_dcp_legibility_guard.py -k 'already_garbled or UNSCRAMBLES' -q"
     },
     {
-      "scenario": "The guard runs after the transaction commits.",
+      "scenario": "The guard is called after the transaction has already been committed, instead of before it.",
       "what_happens": "It raises on damage that is already live, so it becomes an alarm rather than a gate, and the rollback that would have saved the chapter never happens.",
       "mitigated": true,
       "how": "A test reads the worker's source and asserts the call sits between the write and conn.commit(). Moving it past the commit fails.",
@@ -122,7 +122,7 @@
       "repro": "python -m pytest tests/test_dcp_legibility_guard.py -k says_what_to_run -q"
     },
     {
-      "scenario": "The interleave defect itself is still there.",
+      "scenario": "The two-column interleave that causes all of this is still in the extractor and is not fixed here.",
       "what_happens": "city_of_sydney section 3, northern_beaches and ku_ring_gai stay stale, so DQ-70 does not fall and OC-10 does not pass.",
       "mitigated": false,
       "how": "Not addressed here, deliberately. This stops the damage being published; it does not fix the two-column reader. The three chapters now fail loudly with a named rule instead of committing gibberish, which is the difference between a known defect and a silent one.",
