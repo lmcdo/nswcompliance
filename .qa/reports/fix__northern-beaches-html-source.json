@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Replaces the SOURCE a council's served controls are read from, and uploads a rendered document to R2 as that council's plan. Get it wrong and a login screen or a draft becomes the instrument we cite. Northern Beaches has been pinned since 2016 to an immutable S3 file ('as amended 7 May 2016'), so its hash could never change and every freshness check read green while the council moved to amendment 23 — Part G10 commenced 15 September 2025, sixteen amendments we never saw.",
-  "commit_hash": "3cefc1d8",
+  "commit_hash": "4a7697fa",
   "files": [
     "scripts/repoint_html_book_source.py",
     "tests/test_repoint_html_book_source.py",
