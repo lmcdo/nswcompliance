@@ -1,10 +1,11 @@
 {
   "tier": "critical",
   "justification": "Replaces the SOURCE a council's served controls are read from, and uploads a rendered document to R2 as that council's plan. Get it wrong and a login screen or a draft becomes the instrument we cite. Northern Beaches has been pinned since 2016 to an immutable S3 file ('as amended 7 May 2016'), so its hash could never change and every freshness check read green while the council moved to amendment 23 — Part G10 commenced 15 September 2025, sixteen amendments we never saw.",
-  "commit_hash": "cf7d7378",
+  "commit_hash": "3cefc1d8",
   "files": [
     "scripts/repoint_html_book_source.py",
-    "tests/test_repoint_html_book_source.py"
+    "tests/test_repoint_html_book_source.py",
+    "tests/test_repoint_html_book_source_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "dcp_chapter_registry(council, chapter_key, council_url, r2_current_path, content_hash, url_content_length, url_last_checked, url_last_changed, check_failures, needs_extraction), read live before writing. The browser is REUSED: scripts/legislation_monitor.py already drives headless Chromium through Playwright for Cloudflare-blocked pages, so no new dependency (wkhtmltopdf, weasyprint) is introduced; playwright imports and chromium launches were verified in this environment first.",
@@ -17,7 +18,7 @@
   "falsifiable_check": {
     "command": "python -m pytest tests/test_repoint_html_book_source.py -q   # then: python scripts/repoint_html_book_source.py  (dry run)",
     "fails_when": "A council not in HTML_BOOK_SOURCES can be targeted; the export URL loses children=true or page=book (which would render a contents page, not the plan); any source points at the draft or at yoursay; the size floor rises above the measured render (refusing every run) or falls low enough to accept a challenge page.",
-    "observed_red": "5 passed. Measured end to end against the live council site 2026-09-18: the export returns HTTP 200 and 2.87 MB of HTML; the render is 23,567,910 bytes over 273 pages carrying 492,731 characters; an earlier browser print of the book's INDEX page produced 1 page with no controls, which is exactly what the children=true assertion exists to prevent. Applied to production with a CSV backup: registry row 315 moved from the 2016 S3 file to the live export, content_hash fa5bb4ee to fd9e28a8, needs_extraction set."
+    "observed_red": "5 passed. Measured end to end against the live council site 2026-09-18: the export returns HTTP 200 and 2.87 MB of HTML; the render is 23,567,910 bytes over 273 pages carrying 492,731 characters; an earlier browser print of the book's INDEX page produced 1 page with no controls, which is exactly what the children=true assertion exists to prevent. Applied to production with a CSV backup: registry row 315 moved from the 2016 S3 file to the live export, content_hash fa5bb4ee to fd9e28a8, needs_extraction set. Real-layer: 5 opt-in tests read the registry row itself and fail if northern_beaches drifts back to a frozen artefact — a council_url naming its own amendment date, the shared-drupal bucket or 2016; an export missing children=true or page=book (which renders a contents page); a stored copy that is not the render; or a source naming the draft. 5 passed with PYTEST_REAL_DB=1, 5 deselected without it."
   },
   "functions": [
     {
