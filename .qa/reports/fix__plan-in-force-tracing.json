@@ -1,8 +1,9 @@
 {
   "tier": "critical",
-  "justification": "Writes to two production tables that decide what a planner is shown and where it came from: dcp_chapter_registry.dcp_name and dcp_setback_controls.source_chapter_key. Re-keying a control to the wrong source would hand its currency to the wrong check and point its citation at the wrong document, both silently. Dry run by default, CSV backup of every changed row, --apply required.",
-  "commit_hash": "",
+  "justification": "Writes to two production tables that decide what a planner is shown and where it came from: dcp_chapter_registry.dcp_name and dcp_setback_controls.source_chapter_key. Re-keying a control to the wrong source would hand its currency to the wrong check and point its citation at the wrong document, both silently. Dry run by default, CSV backup of every changed row, --apply required. The branch also records the confirmations themselves: a field meaning 'a person checked this plan is in force', which must never be written where no check happened.",
+  "commit_hash": "6ecfbe0e",
   "files": [
+    "scripts/confirm_plan_in_force.py",
     "scripts/repair_plan_in_force_tracing.py"
   ],
   "pre_impl": {
@@ -32,6 +33,13 @@
       "input": "An open cursor and the apply flag. Reads cumberland registry rows whose dcp_name is the long Part B spelling.",
       "output": "That row's dcp_name set to 'Cumberland DCP 2021' after a CSV backup; returns the number updated, or 0 on a dry run.",
       "if_none": "Returns 0 and writes nothing if the spelling has already been corrected, so re-running is safe and does not depend on having run it before."
+    },
+    {
+      "name": "main",
+      "file_line": "scripts/confirm_plan_in_force.py — the whole writer; the plan name comes from PLAN_SQL, which is the check's own CTE",
+      "input": "The --apply flag. Reads every served council's traced plan name together with its currency_date, currency_label, currency_evidence and currency_confirmed_at.",
+      "output": "currency_confirmed_at = NOW() and currency_confirmed_plan = the derived plan name, for councils that are not held back, not already confirmed, trace to exactly one plan, and carry recorded evidence. Prints every council it will write and every one it skips with the reason.",
+      "if_none": "A council with no recorded evidence is skipped, not written: no evidence means no check was performed, whatever its date says. The UPDATE also carries AND currency_confirmed_at IS NULL, so a re-run cannot overwrite an existing confirmation or refresh its date."
     }
   ],
   "values": [
@@ -68,17 +76,31 @@
     },
     {
       "scenario": "The script is run twice, or run by something automated.",
-      "what_happens": "Duplicate or unattended writes to production.",
+      "what_happens": "Duplicate or unattended writes reach two production tables with nobody watching the output that names what changed.",
       "mitigated": true,
       "how": "Dry run by default and idempotent: the second run finds no matching rows and writes nothing. It is in no workflow and no cron; it is run by hand with --apply.",
       "repro": "Run it twice with --apply: the second prints 0 rows for both repairs."
     },
     {
-      "scenario": "id=606 stays wrong after this branch.",
+      "scenario": "The held-back Sutherland front setback (id=606) is left in the table still citing an instrument that states a different distance.",
       "what_happens": "A 5.5m front setback sits in the table citing an instrument that says 7.5m.",
       "mitigated": false,
       "how": "Not fixed here, deliberately. It is not served, so nothing is live, and choosing between correcting the value and re-sourcing it to the DCP needs the DCP read first.",
       "repro": "SELECT value_min, source_chapter_key FROM dcp_setback_controls WHERE id=606 — still 5.5 under the LEP chapter."
+    },
+    {
+      "scenario": "A confirmation is written for a council whose served numbers came from a document we no longer hold.",
+      "what_happens": "The record says a person checked the plan in force while the numbers were read from a superseded version — the check goes green on the exact condition it exists to catch.",
+      "mitigated": true,
+      "how": "HELD_BACK names the four councils with chapters whose content_hash differs from provisions_extracted_from_hash (DQ-70) and northern_beaches, whose monitored URL is pinned to a 2016 file and whose copy predates Part G10 (in force 15 Sep 2025). Each entry carries its reason in the code, so adding a council without clearing its reason is visible in review.",
+      "repro": "python scripts/confirm_plan_in_force.py — the skip list must name city_of_sydney, georges_river, ku_ring_gai, woollahra and northern_beaches with their reasons."
+    },
+    {
+      "scenario": "The confirmation names a plan the check does not derive, or a re-run silently refreshes the 90-day clock.",
+      "what_happens": "The first fails as loudly as no confirmation while looking done; the second would let a stale confirmation live forever by being re-run.",
+      "mitigated": true,
+      "how": "The plan name is taken from the check's own CTE rather than retyped, and every UPDATE carries AND currency_confirmed_at IS NULL so an existing confirmation is never touched.",
+      "repro": "Run it twice with --apply: the second prints every council as 'already confirmed' and writes nothing."
     }
   ],
   "post_merge": {
