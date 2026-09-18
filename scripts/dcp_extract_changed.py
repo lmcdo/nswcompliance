@@ -3118,7 +3118,20 @@ def classify_row_fidelity(ref: str | None, old_text: str | None,
     short = (ref or "").split("__")[-1]
     if _garble_evidence(new_text or ""):
         reasons.append("garbled_glyphs")
-    if _JUNK_REF.match(short):
+    # A REMOVAL of a junk-keyed provision is the cleanup, not the defect. Once the
+    # heading fix (#1131) stopped creating provisions keyed off a bare year or a zone
+    # code, the next re-read of an affected chapter naturally emits rows that DELETE the
+    # live ones — and those rows carry the same junk ref they exist to remove. Flagging
+    # them auto-rejected froze the whole chapter, because dcp_commit_approved blocks a
+    # commit while any row is rejected at the current hash: measured 2026-09-18, ids
+    # 83136 (__2012) and 83140 (__R1) held city_of_sydney/section-3-general-provisions
+    # with 105 rows pending, and 83178 (__R2) held georges_river/part-3, between them
+    # pinning DQ-70 at 231. The rule meant to catch the mess was blocking its clean-up.
+    #
+    # The same exemption is two lines below for emptied_by_strip, on identical
+    # reasoning. This is not a licence: the row becomes 'pending', so a person still
+    # rules on the deletion — only the automatic rejection is removed.
+    if change_type != "removed" and _JUNK_REF.match(short):
         reasons.append("junk_ref")
     if change_type != "removed" and new_text is not None and not new_text.strip():
         reasons.append("emptied_by_strip")
