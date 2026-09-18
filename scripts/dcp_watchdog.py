@@ -232,8 +232,19 @@ info_issues = []
 
 if stuck:
     now = datetime.now(timezone.utc)
-    critical = [(c, k, d) for c, k, d in stuck if (now - d).total_seconds() > 48 * 3600]
-    chapter_list = "\n".join(f"  [{c}/{k}] changed {d}" for c, k, d in stuck)
+    # Whole rows, not rebuilt triples. Check 1 selects FOUR columns — the fourth is
+    # url_content_length, added so a chapter whose recorded content is too small to be the
+    # document can be told apart from one that genuinely changed. Rebuilding three-element
+    # tuples here raised ValueError on every run that had a stuck chapter, so the alarm for
+    # stuck chapters was itself dead (Railway logs, 2026-09-16 onward: "too many values to
+    # unpack (expected 3)", exit 1) while 36 chapters sat stuck and a review queue went two
+    # days stale with nothing raised.
+    #
+    # It also broke `non_critical` below: a 3-tuple never equals a 4-tuple, so
+    # `x not in critical` was always true and a chapter stuck past 48 hours was reported as
+    # merely standard. One unpack mismatch, two silent failures.
+    critical = [row for row in stuck if (now - row[2]).total_seconds() > 48 * 3600]
+    chapter_list = "\n".join(f"  [{c}/{k}] changed {d}" for c, k, d, _n in stuck)
     # The old alert told operators to run extraction either way, which was wrong
     # advice for the 2026-07 backlog: extraction had run; 307 rows sat
     # unreviewed for weeks while the same alert repeated. The three states are
@@ -284,7 +295,7 @@ if stuck:
     if non_critical:
         standard_issues.append(
             f"{len(non_critical)} chapters stuck >25h:\n"
-            + "\n".join(f"  [{c}/{k}]" for c, k, _ in non_critical)
+            + "\n".join(f"  [{c}/{k}]" for c, k, _d, _n in non_critical)
         )
     print(f"STUCK CHAPTERS: {len(stuck)} ({len(critical)} critical >48h)")
     for c, k, d, _n in stuck:

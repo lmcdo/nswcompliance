@@ -1,0 +1,91 @@
+{
+  "tier": "critical",
+  "justification": "This is the alarm that tells anyone a chapter's source changed and its provisions were never re-read. It has been dead since 2026-09-10: Check 1's query was widened to four columns and three of its four readers still unpacked three, so every run with a stuck chapter raised ValueError and exited 1. Railway's dcp-watchdog logs show exactly that on 2026-09-16. While it was silent, 36 chapters sat stuck and a review queue went two days stale with nothing raised. A monitoring failure is worse than an ordinary bug because its whole job is to be the thing that notices.",
+  "commit_hash": "43ca329c",
+  "files": [
+    "scripts/dcp_watchdog.py",
+    "tests/test_dcp_watchdog_stuck_unpack.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Check 1 already selects council, chapter_key, url_last_changed, url_content_length from dcp_chapter_registry. No query change, no new column, no write — dcp_watchdog.py is read-only.",
+    "assumption_mismatch": "The assumption was that widening a SELECT is local. It is not: `stuck` is read in four places and only one was updated when url_content_length was added in 76dc15eb (2026-09-10, #1071) — the commit that fixed the alert's WORDING broke its EXECUTION.",
+    "new_vs_existing": "Three readers corrected; no behaviour added. The alert's content, thresholds and three-state split are untouched.",
+    "external_source_error": "None — no network, no external source. The only input is the registry.",
+    "frontend_type": "No API or component touched: the watchdog reports to Telegram and stdout, and nothing it prints reaches a customer surface.",
+    "user_failure_mode": "The silent one: nobody is told that served provisions were read from a document that has since changed. Verified fixed by running the real script against the live database — 36 stuck chapters reported, 36 critical, zero tracebacks, exit 2 (its 'issues found' code), Telegram skipped for want of a local token."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_watchdog_stuck_unpack.py tests/test_dcp_watchdog_blocked.py -q",
+    "fails_when": "Any reader of Check 1's rows binds a number of names that is neither 1 (whole row) nor the query's column count; or the critical/non-critical split puts a chapter in both lists, or downgrades a >48h chapter to standard.",
+    "observed_red": "Both halves of the original defect were re-planted in the source and both were CAUGHT: reverting `critical` to rebuilt 3-tuples, and reverting the non_critical reader to three names. 17 passed with the fix in place (7 new + 10 existing in tests/test_dcp_watchdog_blocked.py, which passes either way and would not have caught this). End-to-end against the live database: before, the script cannot complete; after, it prints 36 stuck chapters — the oldest changed 2026-05-11, 3,110 hours ago — and exits 2 with no traceback."
+  },
+  "functions": [
+    {
+      "name": "stuck_blocked_line",
+      "file_line": "scripts/dcp_watchdog.py — the pure helper the report block calls for a blocked chapter; unchanged here, listed because the corrected loops feed it",
+      "input": "council, chapter_key, pending_rows, flagged_at and now — all passed in, no clock and no database inside.",
+      "output": "One alert line naming the chapter and how long it has been awaiting review, or an UNKNOWN form when the chapter has no url_last_changed.",
+      "if_none": "flagged_at None yields the explicit UNKNOWN wording rather than an age computed from nothing, so a missing timestamp cannot read as freshly flagged."
+    }
+  ],
+  "values": [
+    {
+      "name": "48 * 3600 (the critical threshold)",
+      "value": "48 hours, unchanged",
+      "why": "A chapter stuck beyond two days means served provisions have been read from a superseded document across a full re-read cycle. The threshold is not touched by this fix; what is fixed is that it was being applied to rebuilt tuples that could never match, so a chapter past it was still filed as standard.",
+      "source": "scripts/dcp_watchdog.py, in place since the check was written.",
+      "if_missing": "Without a working split, every stuck chapter arrives at one severity and the critical list stops meaning anything — which is the state the code was in.",
+      "read_at": "scripts/dcp_watchdog.py — used only in the `critical` comprehension."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Check 1: chapters flagged for extraction whose source changed more than 25 hours ago and have not been re-extracted since — the stuck-chapter list.",
+      "file_line": "scripts/dcp_watchdog.py — Check 1",
+      "where_clause": "needs_extraction = TRUE AND (last_extracted_at IS NULL OR url_last_changed > last_extracted_at) AND url_last_changed < NOW() - INTERVAL '25 hours'. Unchanged by this fix; read-only."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A future change widens Check 1's SELECT again and updates only some of its readers.",
+      "what_happens": "The alarm dies again in exactly the same way, and nothing reports it because the thing that would report it is the thing that crashed.",
+      "mitigated": true,
+      "how": "A shape test reads the column count out of the query itself and asserts every `for ... in stuck` and `for ... in non_critical` binds either one name or all of them. It cannot drift from the query because it derives the expected number from the query.",
+      "repro": "Add a column to Check 1's SELECT without touching the loops; tests/test_dcp_watchdog_stuck_unpack.py fails."
+    },
+    {
+      "scenario": "The loops are renamed or removed, so the shape test has nothing to check.",
+      "what_happens": "The guard passes vacuously and the next mismatch ships.",
+      "mitigated": true,
+      "how": "test_there_is_at_least_one_reader_to_check asserts at least one reader exists before the arity rule means anything.",
+      "repro": "Delete the `for ... in stuck` loops; that test fails rather than the suite going quietly green."
+    },
+    {
+      "scenario": "critical and non_critical overlap, so a chapter is alerted at two severities.",
+      "what_happens": "The critical list stops being a short list worth reading, which is how the 2026-07 backlog was ignored.",
+      "mitigated": true,
+      "how": "The split now compares whole rows, and a test asserts the two lists are disjoint and together account for every stuck chapter.",
+      "repro": "python -m pytest tests/test_dcp_watchdog_stuck_unpack.py -k overlap -q"
+    },
+    {
+      "scenario": "The 36 chapters this now reports stay stuck.",
+      "what_happens": "Served provisions keep citing documents that have since changed — DQ-70, which blocks OC-10 and OC-17.",
+      "mitigated": false,
+      "how": "Out of scope here: this restores the alarm, it does not clear the backlog. The oldest has been stuck since 2026-05-11. Clearing them is the re-read plus human approval of the review queue.",
+      "repro": "python scripts/dcp_watchdog.py — STUCK CHAPTERS is 36 today."
+    },
+    {
+      "scenario": "Running the watchdog by hand from a developer machine pages whoever is on the Telegram channel.",
+      "what_happens": "A real alert fires from a test run.",
+      "mitigated": true,
+      "how": "send_telegram returns early when TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is absent, and neither is in the local .env — the live run above printed '[telegram] skipped — no token or chat_id'.",
+      "repro": "Run it locally: the last line reports the skip."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No — the watchdog only reads.",
+    "secrets": "No — it uses DATABASE_URL and the Telegram pair already set on the Railway service.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: confirm the next scheduled dcp-watchdog run on Railway exits without ValueError and sends its alert, since the failure being fixed is one that only shows up on the schedule. Its last logged run failed with exit code 1."
+  }
+}
