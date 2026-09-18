@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "This is the alarm that tells anyone a chapter's source changed and its provisions were never re-read. It has been dead since 2026-09-10: Check 1's query was widened to four columns and three of its four readers still unpacked three, so every run with a stuck chapter raised ValueError and exited 1. Railway's dcp-watchdog logs show exactly that on 2026-09-16. While it was silent, 36 chapters sat stuck and a review queue went two days stale with nothing raised. A monitoring failure is worse than an ordinary bug because its whole job is to be the thing that notices.",
-  "commit_hash": "4beeba50",
+  "commit_hash": "43ca329c",
   "files": [
     "scripts/dcp_watchdog.py",
     "tests/test_dcp_watchdog_stuck_unpack.py"
