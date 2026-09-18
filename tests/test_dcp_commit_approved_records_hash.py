@@ -26,6 +26,7 @@ os.environ.setdefault("R2_ACCOUNT_ID", "x")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
 import dcp_commit_approved as dca  # noqa: E402
+from dcp_supersede_guard import Snapshot  # noqa: E402
 
 COUNCIL, CHAPTER = "city_of_sydney", "section-3-general-provisions"
 _COALESCE = "provisions_extracted_from_hash=COALESCE(%s,provisions_extracted_from_hash)"
@@ -97,8 +98,12 @@ def _wire(monkeypatch, approved_hash, registry_hash="pdf-v2", commit_raises=Fals
         return (3, 3)
 
     monkeypatch.setattr(dca, "commit_reviewed_from_queue", _commit)
-    monkeypatch.setattr(dca, "section_snapshot", lambda cur, council, chapter_key: None)
+    # A real empty Snapshot, not None: the legibility guard reads it, and a stub that
+    # returns None would make this test pass only because that guard crashed.
+    monkeypatch.setattr(dca, "section_snapshot",
+                        lambda cur, council, chapter_key: Snapshot(frozenset(), 0, frozenset()))
     monkeypatch.setattr(dca, "enforce_section_loss", lambda *a, **k: None)
+    monkeypatch.setattr(dca, "enforce_legibility", lambda *a, **k: frozenset())
 
     # Everything after the commit loop is out of scope here and must not reach a network.
     pipeline = type(sys)("enrichment.pipeline")

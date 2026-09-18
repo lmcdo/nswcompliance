@@ -34,11 +34,18 @@ def headers(prefix, n, rows):
 class _Cur:
     def __init__(self, db):
         self.db = db
+        self.sql = ""
 
     def execute(self, sql, params=None):
-        pass
+        self.sql = sql
 
     def fetchall(self):
+        # snapshot() asks twice: section headers, then the scrambled rules with their
+        # ratios. db["scrambled"] holds (identity, shown ref, ratio) triples; this suite
+        # is about section loss, so it defaults to none and the legibility guard is a
+        # no-op here rather than silently crashing the commit it is meant to judge.
+        if "singles" in self.sql:
+            return list(self.db.get("scrambled", []))
         return [(h,) for h in self.db["headers"]]
 
     def fetchone(self):
