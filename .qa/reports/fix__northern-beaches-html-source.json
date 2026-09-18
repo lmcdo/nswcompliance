@@ -1,0 +1,98 @@
+{
+  "tier": "critical",
+  "justification": "Replaces the SOURCE a council's served controls are read from, and uploads a rendered document to R2 as that council's plan. Get it wrong and a login screen or a draft becomes the instrument we cite. Northern Beaches has been pinned since 2016 to an immutable S3 file ('as amended 7 May 2016'), so its hash could never change and every freshness check read green while the council moved to amendment 23 — Part G10 commenced 15 September 2025, sixteen amendments we never saw.",
+  "commit_hash": "470bb7f2",
+  "files": [
+    "scripts/repoint_html_book_source.py",
+    "tests/test_repoint_html_book_source.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry(council, chapter_key, council_url, r2_current_path, content_hash, url_content_length, url_last_checked, url_last_changed, check_failures, needs_extraction), read live before writing. The browser is REUSED: scripts/legislation_monitor.py already drives headless Chromium through Playwright for Cloudflare-blocked pages, so no new dependency (wkhtmltopdf, weasyprint) is introduced; playwright imports and chromium launches were verified in this environment first.",
+    "assumption_mismatch": "The pipeline assumes a council publishes PDFs. Northern Beaches publishes an ePlanning book with no PDF at all, so there was nothing to monitor and the registry stayed pinned to a dead file. Corrected by rendering the council's own whole-book export rather than by scraping page by page.",
+    "new_vs_existing": "One registry row and one R2 object per run, both named in the dry run. No schema change. provisions_extracted_from_hash is deliberately left alone so DQ-70 keeps counting those provisions as read from a superseded document, which they are until the re-read lands.",
+    "external_source_error": "The council's own export is the input. Three refusals guard it: the rendered file must start with the PDF signature, exceed MIN_RENDER_BYTES (a challenge or error screen is orders of magnitude smaller), and contain both the plan's title and its AMENDMENT SCHEDULE in the extracted text — a size check alone would pass a styled error page.",
+    "frontend_type": "No API or component change. The UI links to r2_public_pdf_url as before; the stored object is an ordinary PDF.",
+    "user_failure_mode": "The silent one: a council's plan replaced by something that is not the plan, or by the DRAFT. The draft Northern Beaches DCP was on exhibition to 30 August 2026 and is not law; a test asserts no source URL contains the words draft or yoursay. Verified positively too — the render's text was compared against the user's own browser print of the same URL: 273 pages both, Part G10 9 hits both, setback 332 both, 15 September 2025 once in both. The only words in the manual copy and not the render are the browser's per-page URL footer."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_repoint_html_book_source.py -q   # then: python scripts/repoint_html_book_source.py  (dry run)",
+    "fails_when": "A council not in HTML_BOOK_SOURCES can be targeted; the export URL loses children=true or page=book (which would render a contents page, not the plan); any source points at the draft or at yoursay; the size floor rises above the measured render (refusing every run) or falls low enough to accept a challenge page.",
+    "observed_red": "5 passed. Measured end to end against the live council site 2026-09-18: the export returns HTTP 200 and 2.87 MB of HTML; the render is 23,567,910 bytes over 273 pages carrying 492,731 characters; an earlier browser print of the book's INDEX page produced 1 page with no controls, which is exactly what the children=true assertion exists to prevent. Applied to production with a CSV backup: registry row 315 moved from the 2016 S3 file to the live export, content_hash fa5bb4ee to fd9e28a8, needs_extraction set."
+  },
+  "functions": [
+    {
+      "name": "render_book",
+      "file_line": "scripts/repoint_html_book_source.py — called once per run, before any write",
+      "input": "The council's whole-book export URL and a destination path for the rendered file.",
+      "output": "A PDF of the entire plan, rendered by the same headless Chromium legislation_monitor.py uses. It waits for networkidle rather than a fixed sleep, because the book finishes loading long after the load event fires.",
+      "if_none": "A failed launch or navigation raises, so the run stops before the size and content checks and cannot fall through to writing a partial file. The browser closes in a finally block so a failure does not leak a process."
+    },
+    {
+      "name": "main",
+      "file_line": "scripts/repoint_html_book_source.py — the CLI entry point",
+      "input": "The --council, --chapter and --apply arguments. The council and chapter pair must appear in HTML_BOOK_SOURCES or the run refuses immediately.",
+      "output": "A dry run prints every field that would change and writes a CSV backup carrying the dryrun suffix. With --apply it uploads the render to R2 and updates the one registry row inside a transaction.",
+      "if_none": "No registry row for the pair, a non-PDF render, a render under the size floor, or a render missing the plan's own title or amendment schedule each return 1 having written nothing; the database work happens only after all of them pass."
+    }
+  ],
+  "values": [
+    {
+      "name": "MIN_RENDER_BYTES",
+      "value": "2,000,000 bytes",
+      "why": "The real render is 23.5 MB over 273 pages. A Cloudflare challenge, a login prompt or an error screen renders to a few hundred KB, so any threshold between them separates the cases and 2 MB sits an order of magnitude clear of both. Not load-bearing on its own — the PDF signature and the two text probes carry the weight.",
+      "source": "Measured against the live export, 2026-09-18: 23,567,910 bytes over 273 pages.",
+      "if_missing": "Without a floor, a challenge page would be stored as the council's plan and every downstream control would be read from it.",
+      "read_at": "scripts/repoint_html_book_source.py — module constant, read once in main before any upload."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Read the chapter's registry row before re-pointing it, then update that one row to track the live export.",
+      "file_line": "scripts/repoint_html_book_source.py — main",
+      "where_clause": "council = %s AND chapter_key = %s on the read; WHERE id = %s on the update, using the id just read. Exact equality, one row, inside a transaction that rolls back on any exception."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The render captures the book's contents page instead of the whole plan.",
+      "what_happens": "A council's entire DCP is replaced by an eight-line table of contents and every control reads as deleted.",
+      "mitigated": true,
+      "how": "The children=true and page=book parameters are asserted in the URL by test, and the render must contain the amendment schedule in its text. This is not hypothetical: a browser print of the book's index produced exactly that — 1 page, 68 KB, no controls.",
+      "repro": "python -m pytest tests/test_repoint_html_book_source.py -k councils_own_export -q"
+    },
+    {
+      "scenario": "The source is pointed at the DRAFT consolidated Northern Beaches DCP.",
+      "what_happens": "We would serve controls that are not in force — the precise failure the plan-in-force check exists to catch.",
+      "mitigated": true,
+      "how": "A test asserts no registered URL contains the words draft or yoursay. The draft was on exhibition to 30 August 2026 and is a different document from the in-force Warringah DCP 2011.",
+      "repro": "python -m pytest tests/test_repoint_html_book_source.py -k draft -q"
+    },
+    {
+      "scenario": "A challenge or error page renders and is stored as the plan.",
+      "what_happens": "Silent: the file is a valid PDF, the hash changes, the monitor reports a healthy update, and the chapter re-extracts from a login screen.",
+      "mitigated": true,
+      "how": "Three independent refusals — the PDF signature, MIN_RENDER_BYTES, and the presence of the plan's own title and amendment schedule in the extracted text.",
+      "repro": "Point the table at any error URL and run the dry run: it refuses before touching the database."
+    },
+    {
+      "scenario": "DQ-70 rises after the re-point rather than falling.",
+      "what_happens": "The measured debt goes up, which looks like a regression.",
+      "mitigated": false,
+      "how": "Expected and correct: 231 to 278. Those 47 Northern Beaches provisions were always read from a superseded document; the frozen URL hid it because the hash could never change. The number falls when the chapter is re-read and its rows are approved.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-70"
+    },
+    {
+      "scenario": "Another council is added to HTML_BOOK_SOURCES without checking its export.",
+      "what_happens": "A different site's export may paginate or require a session, and would be stored unverified as that council's plan.",
+      "mitigated": false,
+      "how": "Not automatable: each council's export needs its own comparison against a human-fetched copy, as was done here. The test asserting a single entry forces that decision to be deliberate rather than incidental.",
+      "repro": "Add an entry and run the suite: the length assertion fails until the evidence is recorded."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. The script writes only when run by hand with --apply, and merging it runs nothing. It has already been applied once to northern_beaches, with the CSV backup under data/db_rollback_backups/.",
+    "secrets": "No — it reads DATABASE_URL and the R2 credentials already used by every other R2 script.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: confirm the northern_beaches re-read produces provisions whose pages resolve against the NEW document. The old copy's citations are stale by 16 amendments — measured, controls that cited page 150 now sit on pages 19, 27 and 248 — so the page numbers are the thing to check after re-extraction."
+  }
+}
