@@ -1,0 +1,153 @@
+{
+  "tier": "critical",
+  "justification": "Decides which reviewed rows become live provisions. Ten chapters could not commit at all — every one died on uq_provisions_current_identity and rolled back — because approved rows accumulate across repeated reviews of an unchanged PDF and all of them were inserted. That held 101 controls citing documents they were not read from, and DQ-70 is the only blocker on OC-10. The second revision of this branch changed the dedupe key after a cross-review showed the first one could lose data silently.",
+  "commit_hash": "18f4d908",
+  "files": [
+    "scripts/dcp_commit_approved.py",
+    "tests/test_dcp_commit_approved_latest_per_ref.py",
+    "tests/test_dcp_commit_reviewed.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_review_queue (council, chapter_key, status, ref_number, document_id, new_text, new_page, change_type, created_at, is_full_replace, id) and the unique index uq_provisions_current_identity on regulatory_provisions, both read from the catalog rather than assumed: created_at's DEFAULT is now() and the index is ON (COALESCE(document_id,''), COALESCE(ref_number,''), COALESCE(section_header,''), md5(provision_text)) WHERE is_current. No schema change and no new table — three existing SELECTs gain one predicate and one helper resolves it.",
+    "assumption_mismatch": "Two assumptions were wrong, in opposite directions. The original code assumed a chapter's approved rows describe one version of it; they do not — hornsby/part-1-general carried 24 rows from 28 July, 26 from 2 September and 27 from 18 September, all at one source_content_hash. The first attempted fix then assumed ref_number identifies a provision; it does not — the unique index keys on section_header and the text as well, so two live provisions may share a ref, and five such pairs exist (woollahra C1_4_10 pages 22/94, D5_4 8/20, D5_6 60/107, D1_10 6/55, D6_6_7 4/64). What actually separates a re-read from a second provision is the extraction RUN.",
+    "new_vs_existing": "Applies to every future commit. Changes no stored row by itself; it changes which rows a commit inserts, and which rows its own guards judge. Older runs are left to the cleanup that already follows a successful commit. Verified that the earlier production run, which used the rejected per-ref key, harmed nothing: all five repeated-ref pairs are still two rows each afterwards, so none of those chapters was in that run.",
+    "external_source_error": "None — no network, no document is read here. The council's PDF was parsed long before this point.",
+    "frontend_type": "No API or component change: this runs in the commit worker, and the review UI reads dcp_review_queue directly rather than through this path.",
+    "user_failure_mode": "Three directions, each with a named guard. Too broad and a provision is inserted twice — the duplicate-key rollback this fixes. Too narrow and a rule disappears from the served set: prevented by taking the run whole rather than one row per ref, and by scoping the section-loss guard to the same run so it cannot pass a chapter on rows the insert will not write. Wrong run and September's review is discarded for July's: prevented by ORDER BY created_at DESC, asserted by name. The one row per chapter that an older run holds and the newest does not is correctly left behind — both instances today are garbage the newest read stopped emitting."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_commit_reviewed.py tests/test_dcp_commit_approved_latest_per_ref.py tests/test_dcp_commit_approved_records_hash.py -q",
+    "fails_when": "The insert fetch stops being scoped to one created_at; it starts deduplicating by ref_number again; the run is inferred with a tolerance window, date_trunc or >= instead of an exact timestamp; the oldest run is taken instead of the newest; the section-loss guard, the is_full_replace read or the dry-run count is widened past the run the insert writes; the fragmented-queue refusal is deleted or its threshold inverted; the select list stops matching the five columns the insert loop unpacks positionally; or the multi-hash currency guard or the post-swap section snapshot is removed. The empty-queue early return is deleted; the fragmentation refusal is put back on the mean, where one large old batch masks a one-row newest run; or the loss guard reverts to testing existence rather than counting occurrences, or loses its NULL-safe ref match.",
+    "observed_red": "Fourteen mutations planted in the source, fourteen CAUGHT. Four came from a second cross-review round, which found three real defects in the first form of this fix — the empty-queue fall-through, the averaged fragmentation test, and a loss guard that counted existence rather than occurrences — all three now fixed and pinned: dropping the early return, restoring the mean, reverting the guard to existence, and dropping IS NOT DISTINCT FROM. Seven against the source-shape suite: reverting to DISTINCT ON (ref_number) (4 tests fail), oldest run wins, a 30-minute tolerance window, the section-loss guard widened past the insert, the dry-run count widened, the fragmented-queue refusal deleted, and its threshold inverted. Three more against the behavioural suite, which drives the real function through a recording cursor: the section-loss guard reading the whole approved history, the oldest run returned instead of the newest, and the run resolved after the blanket delete rather than before it. 33 passed across the three commit-worker suites. Verified against production, not only in tests: before any of this the run reported 12 committed / 11 failed with ten failures reading 'duplicate key value violates unique constraint uq_provisions_current_identity'; after the first revision 10 committed / 1 failed and DQ-70 fell 177 -> 151; after this revision the worker reports the same single refusal, 'nothing went backwards', and no regression. That refusal is the section-loss guard holding a chapter whose headings degraded when its OCR fetch timed out — a different defect, correctly caught."
+  },
+  "functions": [
+    {
+      "name": "latest_approved_batch",
+      "file_line": "scripts/dcp_commit_approved.py — defined immediately above commit_reviewed_from_queue",
+      "input": "An open cursor, plus the council slug and chapter_key of the chapter about to be committed.",
+      "output": "(created_at, row_count) of the most recent extraction run whose rows are approved, read by grouping the approved rows on created_at and ordering DESC. One timestamp is one run because created_at DEFAULTs to now() — PostgreSQL transaction time — and a run enqueues inside one transaction.",
+      "if_none": "(None, 0) when the chapter has no approved rows, and commit_reviewed_from_queue then returns (0, 0) immediately rather than falling through. That early return is load-bearing: every query below it is scoped to the run timestamp, so a NULL one matches nothing, bool_or over no rows is NULL, and this function reads NULL as a FULL REPLACE — a caller holding --allow-section-loss would blanket-supersede a live chapter and insert nothing in its place. If the approved rows are spread over more than one timestamp and most of those hold a single row, it raises instead of guessing: that is the signature of created_at no longer being transaction time."
+    },
+    {
+      "name": "commit_reviewed_from_queue",
+      "file_line": "scripts/dcp_commit_approved.py",
+      "input": "A council and chapter_key whose approved rows have already passed the blocking and currency guards.",
+      "output": "Every approved row of the latest run, in ref_number order, each inserted as a provision. Previously every approved row for the chapter regardless of run, which inserted the same provision two or three times.",
+      "if_none": "A chapter with no approved rows yields no rows and inserts nothing; the caller's counters treat that as zero inserted rather than as success."
+    }
+  ],
+  "values": [
+    {
+      "name": "created_at = the single latest timestamp",
+      "value": "An exact equality on one timestamp — not a window, not a date",
+      "why": "A run writes every row of a chapter in one transaction, and created_at DEFAULTs to now(), which in PostgreSQL is transaction time, so a run is exactly one created_at to the microsecond. Any tolerance would merge two runs back together and restore the duplicate insert, so a test rejects interval, date_trunc, ::date and >= in both the helper and the fetch.",
+      "source": "Measured 2026-09-19 on the live queue: city_of_sydney/section-3-general-provisions holds 312 approved rows under 3 timestamps, canterbury_bankstown/chapter-6-2 118 under 2, every single-run chapter 1; across all statuses 117 (chapter, timestamp) groups averaging 89 rows and peaking at 1,573. The column default was read from information_schema.",
+      "if_missing": "Without the scope the commit inserts every approved row ever queued and the chapter rolls back on the unique index — the original defect, which took ten chapters down in one night.",
+      "read_at": "scripts/dcp_commit_approved.py — latest_approved_batch, and the three queries it feeds."
+    },
+    {
+      "name": "the run, not DISTINCT ON (ref_number)",
+      "value": "The whole latest run is committed; no per-ref collapse",
+      "why": "ref_number does not identify a provision. uq_provisions_current_identity keys on document_id, ref_number, section_header and md5(provision_text), so two live provisions may share a ref — five pairs do. A per-ref dedupe would drop one of each and report the chapter committed. Within a run ref_number IS unique, so the run collapses repeated reads exactly; and if a future run ever holds a colliding pair the index rejects it and the chapter rolls back loudly, which is the safe direction.",
+      "source": "Measured 2026-09-19: zero approved batches contain a ref_number twice, against 5 live (council, chapter, ref) groups holding two rows — all woollahra. (ref_number, new_page) was rejected too: 6 refs move page between reads, so it would insert the same provision twice.",
+      "if_missing": "Silent data loss — a rule the council publishes stops being served and nothing reports it. That is strictly worse than the duplicate-key rollback, which at least fails loudly.",
+      "read_at": "scripts/dcp_commit_approved.py — the insert-site fetch."
+    },
+    {
+      "name": "singles * 2 > len(batches)",
+      "value": "The fragmentation refusal tests the distribution's shape, not its mean",
+      "why": "An average is dragged over any per-run threshold by one large historical batch: 100 rows from July beside a single stray row stamped today averages 50, passes, and the stray row is published as the whole run. What distinguishes per-row stamping is that MOST timestamps hold one row. A targeted amendment — one changed rule enqueued after a full read — is one single among a majority that are not, so it still commits.",
+      "source": "Raised by cross-review on this branch against the first form of the guard, which used total / len(batches) < 2; the masking case is arithmetic, and both it and the confusable negative are pinned by tests.",
+      "if_missing": "The guard reports itself as present while passing exactly the input it exists to refuse — worse than no guard, because the refusal is what a reader would rely on.",
+      "read_at": "scripts/dcp_commit_approved.py — latest_approved_batch."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Resolve which extraction run to commit, and refuse rather than guess if the queue's timestamps are not run-shaped.",
+      "file_line": "scripts/dcp_commit_approved.py — latest_approved_batch",
+      "where_clause": "council = %s AND chapter_key = %s AND status = 'approved', GROUP BY created_at ORDER BY created_at DESC. Scoped to one chapter per call."
+    },
+    {
+      "purpose": "Fetch the reviewed rows to insert as live provisions for one chapter, taking the latest run whole.",
+      "file_line": "scripts/dcp_commit_approved.py — commit_reviewed_from_queue",
+      "where_clause": "council = %s AND chapter_key = %s AND status = 'approved' AND created_at = %s, ORDER BY ref_number. Scoped to one chapter per call; the surrounding transaction rolls back the whole chapter on any error."
+    },
+    {
+      "purpose": "The section-loss guard: how many live rules each ref carries against how many the approved run replaces, so a full replace cannot drop one.",
+      "file_line": "scripts/dcp_commit_approved.py — commit_reviewed_from_queue, the live_n > queued_n query",
+      "where_clause": "p.source_council = %s AND p.source_chapter_key = %s AND p.is_current = TRUE, grouped by ref_number, against a correlated COUNT over dcp_review_queue at q.status = 'approved' AND q.created_at = %s — the same run the insert writes — matched with IS NOT DISTINCT FROM because ref_number is nullable. Refuses on live_n > queued_n."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The dedupe hides a genuine second provision that shares a ref_number with another.",
+      "what_happens": "A rule the council publishes silently stops being served, and the chapter still reports as committed.",
+      "mitigated": true,
+      "how": "This is the defect the first revision of this branch actually had, found by cross-review and confirmed against the live data: five (council, chapter, ref) groups hold two current provisions. The unit committed is now the run, which never collapses two rows that a single run produced separately, and a test fails if DISTINCT ON reappears in the fetch.",
+      "repro": "python -m pytest tests/test_dcp_commit_approved_latest_per_ref.py -k does_NOT_deduplicate -q"
+    },
+    {
+      "scenario": "An older run is committed over a newer one.",
+      "what_happens": "Provisions revert to text reviewed against an earlier reading, silently, and the chapter still reports as committed.",
+      "mitigated": true,
+      "how": "ORDER BY created_at DESC and the helper returning batches[0], both asserted by name. Planting ASC is caught.",
+      "repro": "python -m pytest tests/test_dcp_commit_approved_latest_per_ref.py -k NEWEST -q"
+    },
+    {
+      "scenario": "The query that must resolve which extraction run to commit cannot resolve one, because created_at stops being transaction time — a writer moves to clock_timestamp(), or rows are enqueued one transaction each.",
+      "what_happens": "Every run becomes a single row, so the newest run is one provision: the chapter commits a fragment while reporting success, unless the helper refuses instead of guessing.",
+      "mitigated": true,
+      "how": "latest_approved_batch raises when more than one timestamp averages fewer than two rows. A chapter genuinely re-read several times with one row each also lands there, and refusing is right in that case too: it cannot be told apart from the failure. The post-swap enforce_section_loss snapshot is the independent second net.",
+      "repro": "python -m pytest tests/test_dcp_commit_approved_latest_per_ref.py -k fragmented -q"
+    },
+    {
+      "scenario": "A guard reads a wider set of rows than the insert writes.",
+      "what_happens": "The section-loss guard sees a live rule named somewhere in the approved history, passes the chapter, and the insert — scoped to the latest run — does not write it. The rule is superseded and never replaced.",
+      "mitigated": true,
+      "how": "The run timestamp is resolved once and threaded through the is_full_replace read, the section-loss NOT EXISTS and the insert. Three tests assert each one carries it; widening any of them fails.",
+      "repro": "python -m pytest tests/test_dcp_commit_approved_latest_per_ref.py -k TheGuardsJudge -q"
+    },
+    {
+      "scenario": "A chapter with two current provisions under one ref_number is fully replaced by a run carrying only one of them.",
+      "what_happens": "The blanket supersede switches both off, one is re-inserted, and the other disappears from the served set. A section-header snapshot can be unchanged throughout, so nothing reports it.",
+      "mitigated": true,
+      "how": "The loss guard counts occurrences per ref instead of testing existence, and refuses when the live set holds more rows for a ref than the run replaces. Reverting it to an existence test fails a test by name, and so does dropping the NULL-safe match.",
+      "repro": "python -m pytest tests/test_dcp_commit_reviewed.py -k TheLossGuardCounts -q"
+    },
+    {
+      "scenario": "commit_reviewed_from_queue is called for a chapter with nothing approved, by a caller holding --allow-section-loss.",
+      "what_happens": "Every query is scoped to a NULL run timestamp and matches nothing; bool_or over no rows is NULL, which reads as a full replace; the live chapter is blanket-superseded and nothing is inserted in its place.",
+      "mitigated": true,
+      "how": "The function returns (0, 0) before the mode is read or anything is written. Deleting that early return fails a test that asserts no supersede and no insert occur.",
+      "repro": "python -m pytest tests/test_dcp_commit_reviewed.py -k empty_queue_touches_nothing -q"
+    },
+    {
+      "scenario": "The currency guard is dropped because this fix looks like it supersedes it.",
+      "what_happens": "A stale approval — reviewed against a PDF that has since changed — commits silently.",
+      "mitigated": true,
+      "how": "A test asserts the hash_variants > 1 skip is still present. The two guards catch different things: that one a changed document, this one a document read twice.",
+      "repro": "python -m pytest tests/test_dcp_commit_approved_latest_per_ref.py -k multi_hash -q"
+    },
+    {
+      "scenario": "Old approved rows keep accumulating for chapters that never commit.",
+      "what_happens": "The queue grows and every future run carries rows decided months ago.",
+      "mitigated": false,
+      "how": "Not addressed here. The cleanup runs only after a successful commit, so a chapter blocked for another reason keeps its history. It is now harmless to the commit — older runs are simply not read — but it is still there.",
+      "repro": "SELECT council, chapter_key, created_at, count(*) FROM dcp_review_queue WHERE status='approved' GROUP BY 1,2,3"
+    },
+    {
+      "scenario": "A chapter still refuses to commit after this fix, for an unrelated reason.",
+      "what_happens": "It looks like the fix did not work.",
+      "mitigated": false,
+      "how": "Expected: ku_ring_gai/section-a-part-4-1-secondary-dwellings still refuses on the section-loss guard — 12 sections before, 12 after, all 12 different — because its re-read lost every heading when the OCR fetch timed out and fell back to config section names. That is a different defect and the guard is right to hold it.",
+      "repro": "python scripts/dcp_commit_approved.py --commit — the refusal names the chapter and its lost sections."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. The fix changes which rows a commit inserts; it rewrites nothing already live, and both production runs reported 'nothing went backwards'. The earlier run's rejected per-ref key was checked for harm and left none: all five repeated-ref pairs still hold two rows.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No — already verified against production twice: 10 chapters committed that could not commit before and DQ-70 fell 177 to 151, and the revised key reproduces the same single, correct refusal with no regression."
+  }
+}
