@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Decides whether a re-read of a council's plan replaces the rules a planner reads. The commit worker had no gate on whether the text is still readable: count_drop compares row counts, the section-loss guard compares section codes, and regeneration_artifact, map_change and restructure all look at structure. A two-column page read straight across keeps every section, every rule and every citation, and destroys the words. Measured on the live queue, committing city_of_sydney/section-3-general-provisions — which holds 92 of DQ-70's remaining 151 stale rows, so it looks like the fix — would have scrambled a clause that is served clean today.",
-  "commit_hash": "96f08cda",
+  "commit_hash": "00666298",
   "files": [
     "scripts/dcp_supersede_guard.py",
     "scripts/dcp_commit_approved.py",
