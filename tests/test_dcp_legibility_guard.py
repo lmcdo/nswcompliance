@@ -21,9 +21,13 @@ from scripts import dcp_supersede_guard as g
 from scripts.dcp_supersede_guard import Snapshot
 
 
-def snap(rows=40, refs=()):
+def snap(rows=40, refs=(), ratios=None):
+    """refs at a default 0.30, or ratios={ref: ratio} for the score cases."""
+    rules = {r: (r, 0.30) for r in refs}
+    for r, v in (ratios or {}).items():
+        rules[r] = (r, v)
     return Snapshot(codes=frozenset(f"3.{i}" for i in range(1, 9)), rows=rows,
-                    scrambled_refs=frozenset(refs))
+                    scrambled_rules=rules)
 
 
 class TestTheSignatureIsDQ78s:
@@ -63,7 +67,7 @@ class TestOnlyAddedDamageIsRefused:
                 _Cur(["3.2.3 Active frontages"], scrambled=["Sydney__3_2_3"]),
                 "city_of_sydney", "section-3-general-provisions", snap())
         msg = str(exc.value)
-        assert "1 rule(s) are scrambled in this version that were readable" in msg
+        assert "1 rule(s) are newly scrambled" in msg
         assert "0 scrambled before, 1 after" in msg
         assert "Sydney__3_2_3" in msg, "the refusal must name a row a person can open"
 
@@ -71,20 +75,20 @@ class TestOnlyAddedDamageIsRefused:
         """Confusable negative. Holding a chapter hostage to a defect it arrived with
         would block the very re-read that fixes it."""
         cur = _Cur(["3.2.3 x"], scrambled=["a", "b", "c"])
-        assert g.enforce_legibility(cur, "c", "k", snap(refs=["a", "b", "c"])) == frozenset()
+        assert g.enforce_legibility(cur, "c", "k", snap(refs=["a", "b", "c"])) == []
 
     def test_a_commit_that_UNSCRAMBLES_rows_is_allowed(self):
         """The direction matters: fewer scrambled rules is the repair landing, and a
         symmetric 'any change' test would refuse it."""
         cur = _Cur(["3.2.3 x"], scrambled=["a"])
-        assert g.enforce_legibility(cur, "c", "k", snap(refs=["a", "b", "c", "d"])) == frozenset()
+        assert g.enforce_legibility(cur, "c", "k", snap(refs=["a", "b", "c", "d"])) == []
 
     def test_a_first_extraction_with_garble_is_still_refused(self):
         """Nothing to lose is not nothing to damage: a chapter going from no rules to
         scrambled rules is publishing gibberish for the first time."""
         with pytest.raises(g.LegibilityRefused):
             g.enforce_legibility(_Cur([], scrambled=["x"]), "c", "k",
-                                 Snapshot(frozenset(), 0, frozenset()))
+                                 Snapshot(frozenset(), 0, {}))
 
     def test_a_repair_and_a_new_break_do_NOT_cancel_out(self):
         """The real city_of_sydney commit, measured by driving it against production and
@@ -102,10 +106,44 @@ class TestOnlyAddedDamageIsRefused:
             "the message must show the totals that did not move, so the next reader sees "
             "why a count would have missed it")
 
+    def test_an_ALREADY_scrambled_rule_made_much_worse_is_refused(self):
+        """Listing which rules are scrambled cannot see this: the ref is in both sets, so
+        the difference is empty and 0.21 replaced by 0.90 commits. Fifteen live rules sit
+        between 0.62 and 0.91 today, so it is the next thing that would have gone wrong."""
+        before = snap(ratios={"krg__2_1": 0.21})
+        cur = _Cur(["2.1 x"], scrambled=[("krg__2_1", "krg__2_1", 0.90)])
+        with pytest.raises(g.LegibilityRefused) as exc:
+            g.enforce_legibility(cur, "ku_ring_gai", "section-a-part-2-site-analysis", before)
+        assert "0.21 -> 0.90" in str(exc.value), str(exc.value)
+
+    def test_a_scrambled_rule_that_wobbles_is_NOT_refused(self):
+        """Confusable negative, and the reason for a margin rather than any-increase: a
+        sentence added to a 2,000-token rule moves the ratio by under 0.01, and refusing
+        that would wedge the chapter against the repair that fixes it."""
+        before = snap(ratios={"krg__2_1": 0.61})
+        cur = _Cur(["2.1 x"], scrambled=[("krg__2_1", "krg__2_1", 0.63)])
+        assert g.enforce_legibility(cur, "c", "k", before) == []
+
+    def test_the_margin_is_a_fifth_of_the_rise_it_was_built_for(self):
+        assert g.SCRAMBLE_WORSE_MARGIN == 0.05
+        assert g.SCRAMBLE_WORSE_MARGIN < (0.225 - 0.021) / 4
+
+    def test_the_identity_is_not_ref_number_alone(self):
+        """ref_number is nullable and not unique — five refs carry two current provisions
+        each. Keying on it alone would collapse two rows into one, hide damage to the
+        second, and crash sorting a NULL against a string while building the refusal."""
+        cur = _Cur([], scrambled=[])
+        g.snapshot(cur, "c", "k")
+        sql = next(c[0] for c in cur.calls if "singles" in c[0])
+        assert "COALESCE(ref_number, '') || '|' || COALESCE(section_header, '')" in sql
+        assert "MAX(singles::numeric / n)" in sql, (
+            "two rows sharing an identity must keep the WORSE ratio, which errs toward "
+            "refusing rather than toward publishing")
+
     def test_judge_is_pure_and_never_negative(self):
-        assert g.judge_legibility(snap(), snap(refs=["a", "b", "c"])) == {"a", "b", "c"}
-        assert g.judge_legibility(snap(refs=["a", "b", "c"]), snap()) == frozenset()
-        assert g.judge_legibility(snap(refs=["a", "b"]), snap(refs=["a", "b"])) == frozenset()
+        assert [d[0] for d in g.judge_legibility(snap(), snap(refs=["a","b","c"]))] == ["a","b","c"]
+        assert g.judge_legibility(snap(refs=["a", "b", "c"]), snap()) == []
+        assert g.judge_legibility(snap(refs=["a", "b"]), snap(refs=["a", "b"])) == []
 
 
 class TestTheWayPastItIsNamed:
@@ -120,7 +158,7 @@ class TestTheWayPastItIsNamed:
         allowed = frozenset({"city_of_sydney/section-3-general-provisions"})
         assert g.enforce_legibility(_Cur([], scrambled=["x"]), "city_of_sydney",
                                     "section-3-general-provisions", snap(),
-                                    allowed) == {"x"}
+                                    allowed) == [("x", None, 0.30)]
         with pytest.raises(g.LegibilityRefused):
             g.enforce_legibility(_Cur([], scrambled=["x"]), "ku_ring_gai",
                                  "section-a-part-6-multi-dwelling", snap(),
@@ -173,5 +211,6 @@ class _Cur:
 
     def fetchall(self):
         if "singles" in (self.sql or ""):
-            return [(r,) for r in self.scrambled]
+            # (identity, shown ref, ratio) — a bare string means the default 0.30
+            return [(r, r, 0.30) if isinstance(r, str) else r for r in self.scrambled]
         return [(h,) for h in self.headers]

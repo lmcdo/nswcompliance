@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Decides whether a re-read of a council's plan replaces the rules a planner reads. The commit worker had no gate on whether the text is still readable: count_drop compares row counts, the section-loss guard compares section codes, and regeneration_artifact, map_change and restructure all look at structure. A two-column page read straight across keeps every section, every rule and every citation, and destroys the words. Measured on the live queue, committing city_of_sydney/section-3-general-provisions — which holds 92 of DQ-70's remaining 151 stale rows, so it looks like the fix — would have scrambled a clause that is served clean today.",
-  "commit_hash": "fa854a8a",
+  "commit_hash": "96f08cda",
   "files": [
     "scripts/dcp_supersede_guard.py",
     "scripts/dcp_commit_approved.py",
@@ -19,8 +19,8 @@
   },
   "falsifiable_check": {
     "command": "python -m pytest tests/test_dcp_legibility_guard.py tests/test_dcp_supersede_guard.py tests/test_dcp_commit_approved_records_hash.py tests/test_dcp_commit_refuses_section_loss.py -q",
-    "fails_when": "The comparison reverts from the set of scrambled rules to their count, which a repair-plus-a-new-break cancels out; the scramble query filters on v2_is_actionable, which would make the guard permanently dead because rows this worker inserts carry NULL there; the DQ-78 thresholds are re-chosen rather than inherited; the commit worker stops calling the guard, or calls it after conn.commit() where a refusal can no longer roll anything back; the override stops being separate from --allow-section-loss; or a chapter that merely stayed garbled, or got better, starts being refused.",
-    "observed_red": "Five mutations planted in the source, five CAUGHT: counting instead of comparing rows, filtering on v2_is_actionable, loosening the ratio to 0.50, deleting the call from the worker, and moving the call after the commit. 15 tests here and 133 across every related suite. Verified against production rather than only in tests: the real commit_reviewed_from_queue was driven against the live database inside a transaction that was rolled back, and the guard REFUSED with 'city_of_sydney/section-3-general-provisions: 1 rule(s) are scrambled in this version that were readable in the one it replaces (1 scrambled before, 1 after) ... e.g. Sydney_DCP_2012__section_3_general_provisions__3_2_3'. Those equal totals are the proof that the first, count-based version of this guard would have let the damage through."
+    "fails_when": "The comparison reverts from the set of scrambled rules to their count, which a repair-plus-a-new-break cancels out; the scramble query filters on v2_is_actionable, which would make the guard permanently dead because rows this worker inserts carry NULL there; the DQ-78 thresholds are re-chosen rather than inherited; the commit worker stops calling the guard, or calls it after conn.commit() where a refusal can no longer roll anything back; the override stops being separate from --allow-section-loss; or a chapter that merely stayed garbled, or got better, starts being refused. The per-rule score is dropped so an already-scrambled rule can be made arbitrarily worse; the identity reverts to ref_number alone, which is nullable and not unique; or two rows sharing an identity keep the better ratio instead of the worse.",
+    "observed_red": "Nine mutations planted in the source, nine CAUGHT: counting instead of comparing rules, filtering on v2_is_actionable, loosening the ratio to 0.50, deleting the call from the worker, moving the call after the commit, ignoring the per-rule score, keying on ref_number alone, taking MIN instead of MAX where two rows share a key, and widening the worsening margin to 0.80. Four of those nine close defects a cross-review found in the first version of this guard. 19 tests here and 133 across every related suite. Verified against production rather than only in tests: the real commit_reviewed_from_queue was driven against the live database inside a rolled-back transaction, and the guard REFUSED with 'city_of_sydney/section-3-general-provisions: 1 rule(s) are newly scrambled, or materially more scrambled ... (1 scrambled before, 1 after) ... Sydney_DCP_2012__section_3_general_provisions__3_2_3 newly scrambled at 0.22'. Those equal totals are the proof that a count would have let the damage through."
   },
   "functions": [
     {
@@ -47,12 +47,12 @@
   ],
   "values": [
     {
-      "name": "the set of scrambled rules, not their count",
-      "value": "after.scrambled_refs - before.scrambled_refs",
-      "why": "A count nets a repair against a new break. The real city_of_sydney commit deletes the junk row '2012' — a map caption whose ref_number is a year — and scrambles clause 3.2.3, so the total is 1 before and 1 after. The first version of this guard compared counts and would have published that. Comparing which rules are scrambled cannot be cancelled.",
-      "source": "Measured 2026-09-19 by driving the real commit against production inside a rolled-back transaction: BEFORE 1 scrambled ['..__2012'], AFTER 1 scrambled ['..__3_2_3'].",
-      "if_missing": "The guard reports itself as present while passing the exact commit it was built to refuse — the worst kind of gate, because its existence is what a reader would rely on.",
-      "read_at": "scripts/dcp_supersede_guard.py — judge_legibility."
+      "name": "a score per rule, not a list of rules",
+      "value": "{identity: (ref, single-letter ratio)}, compared rule by rule",
+      "why": "Two kinds of damage, and a list sees only one. A rule that was readable and is now scrambled — which a COUNT misses too, because a commit can repair one rule and break another. And a rule already scrambled that is made far worse: its ref is in both lists, so a set difference is empty and 0.21 replaced by 0.90 commits. Fifteen live rules sit between 0.62 and 0.91 today, so the second is not hypothetical.",
+      "source": "The first was measured by driving the real city_of_sydney commit against production inside a rolled-back transaction: BEFORE 1 scrambled ('..__2012' at 0.55), AFTER 1 scrambled ('..__3_2_3' at 0.22) — equal totals, different rules. The second was raised by cross-review on this branch against the list-based version and confirmed against the live scrambled rows.",
+      "if_missing": "The guard reports itself as present while passing the exact commits it was built to refuse.",
+      "read_at": "scripts/dcp_supersede_guard.py — judge_legibility and the snapshot query."
     },
     {
       "name": "SCRAMBLE_MIN_TOKENS = 100, SCRAMBLE_MIN_RATIO = 0.20",
@@ -69,6 +69,22 @@
       "source": "Read off the insert in dcp_commit_approved.commit_reviewed_from_queue: v2_actionable = False if the ref ends 'preamble' else None.",
       "if_missing": "A gate that runs, logs nothing, and never fires — indistinguishable from a gate that is passing.",
       "read_at": "scripts/dcp_supersede_guard.py — the scramble query in snapshot."
+    },
+    {
+      "name": "SCRAMBLE_WORSE_MARGIN = 0.05",
+      "value": "How much an already-scrambled rule may worsen before it is refused",
+      "why": "Any-increase would wedge a chapter against its own repair: a sentence added to a 2,000-token rule moves the ratio by under 0.01. A margin distinguishes noise from a rewrite.",
+      "source": "A fifth of the rise this guard was built for (0.021 -> 0.225 on city_of_sydney 3.2.3), and far below the cross-review's 0.21 -> 0.90. The fifteen scrambled rules live today sit between 0.62 and 0.91, nowhere near a 0.05 band.",
+      "if_missing": "At any-increase the chapter can never be repaired; at 0.80 the 0.21 -> 0.90 rewrite passes.",
+      "read_at": "scripts/dcp_supersede_guard.py — the Legibility constants."
+    },
+    {
+      "name": "identity = ref_number || '|' || section_header, with MAX(ratio)",
+      "value": "The key a rule is tracked by across the write",
+      "why": "ref_number is neither unique nor guaranteed non-null: the column is nullable and five refs carry two current provisions each. Keying on it alone collapses two rows into one, hides damage to the second, and — since Python cannot order None against str — would crash while building the refusal. Where two rows still share a key the WORSE ratio is kept, which errs toward refusing rather than toward publishing.",
+      "source": "Measured 2026-09-19 across 13,172 live DCP provisions: 0 NULL and 0 empty ref_numbers today, but 5 (council, chapter, ref) groups holding two current rows. The NULL case is unreachable now and reachable by schema, so it is closed rather than relied upon.",
+      "if_missing": "A silent collapse in the one place whose whole job is to notice silent damage.",
+      "read_at": "scripts/dcp_supersede_guard.py — the snapshot query."
     }
   ],
   "queries": [
@@ -85,6 +101,20 @@
       "mitigated": true,
       "how": "This is the real city_of_sydney case, found by driving the commit against production rather than reasoning about it, and the first version of this guard had exactly this hole. The comparison is now between the sets of scrambled rules, and a test reproduces the 1-before-1-after shape by name.",
       "repro": "python -m pytest tests/test_dcp_legibility_guard.py -k cancel_out -q"
+    },
+    {
+      "scenario": "A rule that is already scrambled is replaced by one that is very much more scrambled.",
+      "what_happens": "Its ref appears in both versions, so a list-based comparison finds no difference and text at 0.90 replaces text at 0.21 without a word.",
+      "mitigated": true,
+      "how": "Each rule carries its ratio and a rise past SCRAMBLE_WORSE_MARGIN is refused, with the before and after scores in the message. Deleting that branch fails a test by name, and a confusable negative pins that a 0.61 -> 0.63 wobble still passes.",
+      "repro": "python -m pytest tests/test_dcp_legibility_guard.py -k 'made_much_worse or wobbles' -q"
+    },
+    {
+      "scenario": "Two live rules sharing a ref_number, or one with no ref_number at all, are tracked as a single rule.",
+      "what_happens": "Damage to the second is invisible, and a NULL ref sorted against a string raises a TypeError while the refusal is being written — so the guard fails with a confusing error instead of a clear refusal.",
+      "mitigated": true,
+      "how": "The identity is the ref and the section header together, never null, and two rows sharing one keep the worse ratio. Reverting either fails a test.",
+      "repro": "python -m pytest tests/test_dcp_legibility_guard.py -k identity_is_not_ref_number -q"
     },
     {
       "scenario": "The guard is scoped like DQ-78 and filters on v2_is_actionable.",

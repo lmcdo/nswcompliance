@@ -60,7 +60,7 @@ from __future__ import annotations
 
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
@@ -101,6 +101,15 @@ MIN_ROWS = 20          # same floor as COUNT_DROP_MIN_BASELINE in dcp_extract_ch
 SCRAMBLE_MIN_TOKENS = 100   # below this a low token count makes the ratio meaningless
 SCRAMBLE_MIN_RATIO = 0.20   # DQ-78's threshold, read off the distribution
 
+# A rule that is ALREADY scrambled can still be made much worse, and listing which rules
+# are scrambled cannot see that: the ref is in both sets, so the difference is empty and
+# a 0.21 rule replaced by a 0.90 one commits. Each rule therefore carries its ratio and a
+# material rise is refused too. 0.05 is a fifth of the rise this guard was built for
+# (0.021 -> 0.225 on city_of_sydney 3.2.3) and well clear of noise: a sentence added to a
+# 2,000-token rule moves the ratio by under 0.01, while the fifteen scrambled rules live
+# today sit between 0.62 and 0.91, nowhere near a 0.05 band.
+SCRAMBLE_WORSE_MARGIN = 0.05
+
 
 class SectionLossRefused(RuntimeError):
     """A write would have replaced a chapter with a version missing most of its sections."""
@@ -110,11 +119,16 @@ class SectionLossRefused(RuntimeError):
 class Snapshot:
     codes: frozenset
     rows: int
-    scrambled_refs: frozenset = frozenset()   # live rules matching DQ-78's signature
+    # {identity: (ref_number for display, single-letter ratio)} for every live rule
+    # matching DQ-78's signature. Keyed on ref_number AND section_header because
+    # ref_number alone is neither unique nor guaranteed non-null: the column is nullable,
+    # and five refs carry two current provisions each. Where two rows still share a key
+    # the WORSE ratio is kept, which errs toward refusing.
+    scrambled_rules: dict = field(default_factory=dict)
 
     @property
     def scrambled(self) -> int:
-        return len(self.scrambled_refs)
+        return len(self.scrambled_rules)
 
 
 @dataclass(frozen=True)
@@ -162,8 +176,11 @@ def snapshot(cur, council: str, chapter_key: str) -> Snapshot:
     # guard would be permanently dead while appearing to run. A test pins this.
     cur.execute(
         r"""
-        SELECT ref_number FROM (
-            SELECT ref_number,
+        SELECT COALESCE(ref_number, '') || '|' || COALESCE(section_header, '') AS identity,
+               COALESCE(ref_number, section_header, '(unnumbered)') AS shown,
+               MAX(singles::numeric / n) AS ratio
+        FROM (
+            SELECT ref_number, section_header,
                    cardinality(regexp_split_to_array(btrim(provision_text), '\s+')) AS n,
                    (SELECT count(*) FROM unnest(
                         regexp_split_to_array(btrim(provision_text), '\s+')) w
@@ -173,12 +190,13 @@ def snapshot(cur, council: str, chapter_key: str) -> Snapshot:
               AND length(provision_text) > 80
         ) x
         WHERE n >= %s AND singles::numeric / n >= %s
-        ORDER BY ref_number
+        GROUP BY 1, 2
         """,
         (council, chapter_key, SCRAMBLE_MIN_TOKENS, SCRAMBLE_MIN_RATIO),
     )
     return Snapshot(codes=codes, rows=len(headers),
-                    scrambled_refs=frozenset(r[0] for r in cur.fetchall()))
+                    scrambled_rules={ident: (shown, float(ratio))
+                                     for ident, shown, ratio in cur.fetchall()})
 
 
 def judge(before: Snapshot, after: Snapshot) -> Verdict:
@@ -202,24 +220,35 @@ class LegibilityRefused(RuntimeError):
     """A write would have replaced readable rules with two-column interleave."""
 
 
-def judge_legibility(before: Snapshot, after: Snapshot) -> frozenset:
-    """Pure. WHICH rules are scrambled after the write that were not before it?
+def judge_legibility(before: Snapshot, after: Snapshot) -> list:
+    """Pure. Which rules this version damages, and by how much.
 
-    The rules, not the count. Counting nets a repair against a new break: measured on
-    city_of_sydney section 3, committing it would delete one scrambled row (the junk ref
-    "2012", a map caption) and scramble a clean one (clause 3.2.3), so the total moves
-    0 -> 0 and a count would have waved through the exact damage this guard exists to
-    stop. Comparing the rows themselves cannot be cancelled that way.
+    Two kinds of damage, and listing which rules are scrambled sees only the first:
 
-    Only ADDED damage is refused. A chapter already garbled and still garbled passes --
-    holding it hostage to a defect it arrived with would block the very re-read that
-    fixes it -- and so does a commit that unscrambles rows, which is that repair landing.
+      * a rule that was readable and is now scrambled. Counting instead of comparing
+        misses even this, because a commit can repair one rule and break another: measured
+        on city_of_sydney section 3, committing it deletes the scrambled junk ref "2012"
+        and scrambles clause 3.2.3, so the total is 1 before and 1 after.
+      * a rule that was ALREADY scrambled and is now much worse -- 0.21 replaced by 0.90.
+        Its ref is in both sets, so a set difference is empty and the worse text commits.
+        Fifteen live rules sit between 0.62 and 0.91 today, so this is not hypothetical.
+
+    Returns [(shown_ref, before_ratio or None, after_ratio)], worst rise first. Empty when
+    nothing got worse -- which includes a chapter that stayed as garbled as it was, and
+    one that improved. Both must pass, or this would block the re-read that repairs them.
     """
-    return after.scrambled_refs - before.scrambled_refs
+    damaged = []
+    for ident, (shown, after_ratio) in after.scrambled_rules.items():
+        prior = before.scrambled_rules.get(ident)
+        if prior is None:
+            damaged.append((shown, None, after_ratio))
+        elif after_ratio - prior[1] > SCRAMBLE_WORSE_MARGIN:
+            damaged.append((shown, prior[1], after_ratio))
+    return sorted(damaged, key=lambda d: -(d[2] - (d[1] or 0.0)))
 
 
 def enforce_legibility(cur, council: str, chapter_key: str, before: Snapshot,
-                       allowed: frozenset = frozenset()) -> frozenset:
+                       allowed: frozenset = frozenset()) -> list:
     """Judge the chapter's legibility as it now stands in this transaction; raise if worse.
 
     Call after the writes and BEFORE commit, exactly like enforce(). The caller rolls
@@ -229,12 +258,16 @@ def enforce_legibility(cur, council: str, chapter_key: str, before: Snapshot,
     after = snapshot(cur, council, chapter_key)
     added = judge_legibility(before, after)
     if not added:
-        return frozenset()
-    detail = (f"{council}/{chapter_key}: {len(added)} rule(s) are scrambled in this "
-              f"version that were readable in the one it replaces "
-              f"({before.scrambled} scrambled before, {after.scrambled} after). Their "
-              f"text is a two-column page read straight across, so the words are not "
-              f"words. e.g. {', '.join(sorted(added)[:5])}")
+        return []
+    shown = "; ".join(
+        f"{ref} {'newly scrambled at' if was is None else f'{was:.2f} ->'} {now:.2f}"
+        for ref, was, now in added[:5])
+    detail = (f"{council}/{chapter_key}: {len(added)} rule(s) are newly scrambled, or "
+              f"materially more scrambled, in this version than in the one it replaces "
+              f"({before.scrambled} scrambled before, {after.scrambled} after -- totals "
+              f"that can stay level while the rules behind them change). The figure is "
+              f"the fraction of words that are a single letter: a two-column page read "
+              f"straight across, so the words are not words. {shown}")
     if f"{council}/{chapter_key}" in allowed:
         print(f"    [legibility] ALLOWED by --allow-garble: {detail}")
         return added
