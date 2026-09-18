@@ -150,17 +150,41 @@ def main() -> int:
             cur.execute("SET statement_timeout = '30s'")
             cur.execute("""
                 SELECT id, council_url, r2_current_path, content_hash, url_content_length,
-                       needs_extraction
+                       needs_extraction, r2_public_pdf_url
                 FROM dcp_chapter_registry WHERE council = %s AND chapter_key = %s
             """, key)
             row = cur.fetchone()
             if not row:
                 print(f"    REFUSED: no registry row for {args.council}/{args.chapter}")
                 return 1
-            reg_id, old_url, old_path, old_hash, old_len, old_needs = row
+            reg_id, old_url, old_path, old_hash, old_len, old_needs, old_public = row
+
+            # The public link must move with the copy. Leaving it behind is not cosmetic:
+            # conveyancing_db.py serves COALESCE(r2_public_pdf_url, council_url, ...) as
+            # the link under a rule, so the reader would open the superseded document the
+            # rule is no longer read from. That is the defect the OC-8 sub-check was added
+            # for on 2026-09-14, when 15 chapters had it and Waverley DCP 2022's link
+            # opened a 490-page PDF while its rules cited the 448-page one.
+            #
+            # The base is learned from this row rather than hardcoded. confirm_chapter.py
+            # and add_new_chapter.py already hold identical copies of the bucket URL and a
+            # third would be one more place to miss on a bucket change; taking the prefix
+            # off this row's own link keeps the new URL on whatever bucket the old one used.
+            # If it cannot be observed it is not guessed -- a wrong base is a link to
+            # nothing, which looks like a missing document rather than a broken script.
+            public_url = None
+            if old_public and old_path and old_public.endswith("/" + old_path):
+                public_url = old_public[: -len(old_path)] + r2_path
+            elif old_public:
+                print(f"    REFUSED: r2_public_pdf_url does not end with r2_current_path, "
+                      f"so the bucket base cannot be read off it.\n"
+                      f"      public : {old_public}\n      path   : {old_path}")
+                return 1
+
             print(f"\n  registry row {reg_id}")
             print(f"    council_url : {old_url}\n               -> {url}")
             print(f"    r2_path     : {old_path}\n               -> {r2_path}")
+            print(f"    public_url  : {old_public}\n               -> {public_url}")
             print(f"    content_hash: {(old_hash or '')[:16]} -> {digest[:16]}")
             print(f"    url_content_length: {old_len} -> {size:,}")
             print(f"    needs_extraction: {old_needs} -> True")
@@ -174,9 +198,10 @@ def main() -> int:
                 w = csv.writer(f)
                 w.writerow(["id", "council", "chapter_key", "council_url_before",
                             "r2_current_path_before", "content_hash_before",
-                            "url_content_length_before", "needs_extraction_before"])
+                            "url_content_length_before", "needs_extraction_before",
+                            "r2_public_pdf_url_before"])
                 w.writerow([reg_id, args.council, args.chapter, old_url, old_path,
-                            old_hash, old_len, old_needs])
+                            old_hash, old_len, old_needs, old_public])
             print(f"    backup {backup}")
 
             if not args.apply:
@@ -202,9 +227,10 @@ def main() -> int:
                 UPDATE dcp_chapter_registry
                 SET council_url = %s, r2_current_path = %s, content_hash = %s,
                     url_content_length = %s, url_last_checked = NOW(),
-                    url_last_changed = NOW(), check_failures = 0, needs_extraction = TRUE
+                    url_last_changed = NOW(), check_failures = 0, needs_extraction = TRUE,
+                    r2_public_pdf_url = COALESCE(%s, r2_public_pdf_url)
                 WHERE id = %s
-            """, (url, r2_path, digest, size, reg_id))
+            """, (url, r2_path, digest, size, public_url, reg_id))
             conn.commit()
             print(f"\nAPPLIED — {args.council}/{args.chapter} now tracks the live export.")
     except Exception:

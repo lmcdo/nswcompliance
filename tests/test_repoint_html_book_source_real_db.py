@@ -53,7 +53,8 @@ def _row():
         with conn.cursor() as cur:
             cur.execute("SET statement_timeout = '30s'")
             cur.execute("""
-                SELECT council_url, r2_current_path, url_content_length, is_active
+                SELECT council_url, r2_current_path, url_content_length, is_active,
+                       r2_public_pdf_url
                 FROM dcp_chapter_registry WHERE council = %s AND chapter_key = %s
             """, (COUNCIL, CHAPTER))
             return cur.fetchone()
@@ -97,3 +98,46 @@ class TestTheSourceIsNoLongerFrozen:
         _skip_if_no_real_db()
         council_url = (_row()[0] or "").lower()
         assert "yoursay" not in council_url and "draft" not in council_url
+
+
+class TestTheLinkAReaderOpensIsTheCopyTheRulesCameFrom:
+    """The repoint moved r2_current_path and left r2_public_pdf_url behind, so the link
+    under every Northern Beaches rule opened the April copy while the rules were read from
+    the September render. conveyancing_db.py serves COALESCE(r2_public_pdf_url, ...) as
+    that link, so this was served, not merely stored — and it is the shape the OC-8
+    sub-check exists to catch, which it did: 'active chapters whose public PDF link is not
+    their current copy: 1'."""
+
+    def test_the_public_link_ends_with_the_current_path(self):
+        _skip_if_no_real_db()
+        row = _row()
+        path, public = row[1], row[4]
+        assert public, "no public link: the rule has nothing to open"
+        assert public.endswith("/" + path), (
+            f"the link opens a different copy than the rules were read from.\n"
+            f"  public: {public}\n  path  : {path}")
+
+    def test_the_public_link_is_not_the_superseded_april_copy(self):
+        """Named, not inferred: v1.1-2026-04-27 is the copy it was left pointing at."""
+        _skip_if_no_real_db()
+        assert "v1.1-2026-04-27" not in (_row()[4] or "")
+
+    def test_no_active_chapter_anywhere_has_this_shape(self):
+        """The same query OC-8 runs. Scoped to every council, because a repoint script is
+        general and the next one will not be Northern Beaches."""
+        _skip_if_no_real_db()
+        import psycopg2
+        conn = psycopg2.connect(os.environ.get("DATABASE_URL")
+                                or os.environ["SUPABASE_DB_URL"], connect_timeout=20)
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SET statement_timeout = '30s'")
+                cur.execute(
+                    "SELECT council, chapter_key FROM dcp_chapter_registry WHERE is_active "
+                    "AND r2_current_path IS NOT NULL AND r2_public_pdf_url IS NOT NULL "
+                    "AND right(r2_public_pdf_url, length(r2_current_path) + 1) "
+                    "    <> ('/' || r2_current_path)")
+                stale = cur.fetchall()
+        finally:
+            conn.close()
+        assert stale == [], f"chapters whose public link is not their current copy: {stale}"

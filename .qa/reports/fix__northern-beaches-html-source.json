@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Replaces the SOURCE a council's served controls are read from, and uploads a rendered document to R2 as that council's plan. Get it wrong and a login screen or a draft becomes the instrument we cite. Northern Beaches has been pinned since 2016 to an immutable S3 file ('as amended 7 May 2016'), so its hash could never change and every freshness check read green while the council moved to amendment 23 — Part G10 commenced 15 September 2025, sixteen amendments we never saw.",
-  "commit_hash": "4a7697fa",
+  "commit_hash": "b4d89a48",
   "files": [
     "scripts/repoint_html_book_source.py",
     "tests/test_repoint_html_book_source.py",
@@ -88,12 +88,19 @@
       "mitigated": false,
       "how": "Not automatable: each council's export needs its own comparison against a human-fetched copy, as was done here. The test asserting a single entry forces that decision to be deliberate rather than incidental.",
       "repro": "Add an entry and run the suite: the length assertion fails until the evidence is recorded."
+    },
+    {
+      "scenario": "The re-point moves the stored copy but leaves the public link on the old one.",
+      "what_happens": "Every rule of the chapter links to a superseded document while its text comes from the new render. Nothing looks broken — the link opens a real council PDF, just the wrong version — so it reads as correct until someone compares a clause against the page it opens.",
+      "mitigated": true,
+      "how": "This happened: northern_beaches was left pointing at v1.1-2026-04-27 while its rules were read from v-html-2026-09-18, and OC-8's link-currency sub-check caught it ('active chapters whose public PDF link is not their current copy: 1'). The UPDATE now carries r2_public_pdf_url, derived from the row's own link rather than a third hardcoded copy of the bucket URL, and refuses if that base cannot be read off the row. The stale row was repaired with a backup, the new link was confirmed to serve the 23,567,910-byte render before it was written, and a real-DB test now runs OC-8's own query across EVERY council, not just this one.",
+      "repro": "python -m pytest tests/test_repoint_html_book_source.py -k PublicLink -q; PYTEST_REAL_DB=1 pytest -m database tests/test_repoint_html_book_source_real_db.py -o addopts= -q"
     }
   ],
   "post_merge": {
     "db_reset": "No. The script writes only when run by hand with --apply, and merging it runs nothing. It has already been applied once to northern_beaches, with the CSV backup under data/db_rollback_backups/.",
     "secrets": "No — it reads DATABASE_URL and the R2 credentials already used by every other R2 script.",
     "other_repo": "No.",
-    "manual_verify": "Yes: confirm the northern_beaches re-read produces provisions whose pages resolve against the NEW document. The old copy's citations are stale by 16 amendments — measured, controls that cited page 150 now sit on pages 19, 27 and 248 — so the page numbers are the thing to check after re-extraction."
+    "manual_verify": "Done. r2_public_pdf_url was repaired on northern_beaches/warringah-dcp-2011-full (backup data/db_rollback_backups/dcp_chapter_registry_pre_public_link_repair_2026-09-18_1624.csv), the new URL was checked to return 200 application/pdf at 23,567,910 bytes with a %PDF magic before being written, and OC-8 now HOLDS: 0 of 737 served numbers missing a citation, DQ-39 CLEAN, 0 chapters whose public link is not their current copy."
   }
 }

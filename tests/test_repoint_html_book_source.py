@@ -72,3 +72,34 @@ class TestItRefusesAnythingThatIsNotThePlan:
         the re-point would silently never happen."""
         m = _module()
         assert m.MIN_RENDER_BYTES < 23_567_910, "measured render, 2026-09-18"
+
+
+class TestThePublicLinkMovesWithTheCopy:
+    """The first version of this script updated r2_current_path and not r2_public_pdf_url,
+    so the link under every Northern Beaches rule opened the April copy while the rules
+    were read from the September render. conveyancing_db.py serves that column as the
+    reader-facing link, so it was served, not merely stored."""
+
+    SRC = (ROOT / "scripts" / "repoint_html_book_source.py").read_text(encoding="utf-8")
+
+    def test_the_update_writes_the_public_url(self):
+        assert "r2_public_pdf_url = COALESCE(%s, r2_public_pdf_url)" in self.SRC, (
+            "the UPDATE no longer moves the public link; the reader would open the "
+            "superseded document the rule is not read from")
+
+    def test_the_bucket_base_is_read_off_the_row_not_hardcoded(self):
+        """confirm_chapter.py and add_new_chapter.py already hold identical copies of the
+        bucket URL. A third would be one more place to miss on a bucket change, and it
+        would put the new link on a bucket this row never used."""
+        assert "r2.dev" not in self.SRC, "the bucket URL is hardcoded here as a third copy"
+        assert 'old_public.endswith("/" + old_path)' in self.SRC, self.SRC[:0]
+
+    def test_an_unreadable_base_is_refused_not_guessed(self):
+        """A wrong base is a link to nothing, which reads as a missing council document
+        rather than as a broken script — so it must refuse instead."""
+        assert "REFUSED: r2_public_pdf_url does not end with r2_current_path" in self.SRC
+
+    def test_the_backup_records_the_link_it_replaces(self):
+        """A rollback CSV that omits the column cannot roll the column back."""
+        assert '"r2_public_pdf_url_before"' in self.SRC
+        assert "old_needs, old_public]" in self.SRC
