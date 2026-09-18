@@ -165,6 +165,54 @@ def _section_header_from_text(new_text: str, ref_number: str | None = None,
     return repaired_header(head, ref_number, document_id) or head
 
 
+def latest_approved_batch(cur, council: str, chapter_key: str):
+    """The created_at of the most recent extraction run whose rows are approved.
+
+    A run is exactly one timestamp. dcp_review_queue.created_at DEFAULTs to now(), which
+    in PostgreSQL is TRANSACTION time, and dcp_extract_changed.py enqueues a chapter's
+    rows inside one transaction, so every row of a run carries the same created_at to the
+    microsecond. Measured 2026-09-19: city_of_sydney/section-3-general-provisions holds
+    312 approved rows under 3 stamps, canterbury_bankstown/chapter-6-2 118 under 2, and
+    every single-run chapter 1; across all statuses there are 117 (chapter, timestamp)
+    groups averaging 89 rows and peaking at 1,573.
+
+    Why a run and not a ref: approved rows accumulate across repeated reviews of an
+    UNCHANGED document, and every batch was being inserted, so the second copy of a
+    provision hit uq_provisions_current_identity and rolled the whole chapter back.
+    Deduplicating by ref_number instead would be wrong in the other direction -- that
+    index is (document_id, ref_number, section_header, md5(provision_text)), so two live
+    provisions may legitimately share a ref_number, and five such pairs exist today. A run
+    is the only boundary that separates a re-read from a second provision.
+
+    Returns (timestamp, rows_in_batch) and (None, 0) when nothing is approved.
+    """
+    cur.execute(
+        """
+        SELECT created_at, COUNT(*) FROM dcp_review_queue
+        WHERE council = %s AND chapter_key = %s AND status = 'approved'
+        GROUP BY created_at ORDER BY created_at DESC
+        """,
+        (council, chapter_key),
+    )
+    batches = cur.fetchall()
+    if not batches:
+        return None, 0
+    total = sum(n for _ts, n in batches)
+    # If created_at ever stops being transaction time -- a writer switching to
+    # clock_timestamp(), or rows enqueued one transaction each -- every "run" becomes a
+    # single row, and taking the newest would commit one provision while reporting the
+    # chapter committed. That is the silent version of this bug, so refuse instead. A
+    # chapter genuinely re-read several times with one row each also lands here, and a
+    # refusal is the right answer there too: it cannot be told apart from the failure.
+    if len(batches) > 1 and total / len(batches) < 2:
+        raise RuntimeError(
+            f"{council}/{chapter_key}: {total} approved row(s) spread over {len(batches)} "
+            f"created_at values, averaging {total / len(batches):.1f} per run. A run should "
+            f"be one transaction and one timestamp, so the newest run cannot be identified "
+            f"and committing it would commit a fragment. Re-queue the chapter.")
+    return batches[0][0], batches[0][1]
+
+
 def commit_reviewed_from_queue(cur, council: str, chapter_key: str,
                                allow_unqueued: bool = False) -> tuple[int, int]:
     """Make the HUMAN-APPROVED review-queue text the live provisions — verbatim, no
@@ -180,12 +228,20 @@ def commit_reviewed_from_queue(cur, council: str, chapter_key: str,
         every unchanged provision intact. A blanket delete here would drop the unchanged
         rules.
     Returns (superseded, inserted)."""
+    # One run, read once, and used by every query below. The mode, the section-loss guard
+    # and the insert must all judge the SAME rows: a guard that reads the whole approved
+    # history while the insert reads one run would pass a chapter whose live rule is only
+    # in an older run, then not insert it -- a silent loss, which is the failure this
+    # function exists to prevent.
+    batch_ts, _batch_rows = latest_approved_batch(cur, council, chapter_key)
+
     cur.execute(
         """
         SELECT bool_or(is_full_replace) FROM dcp_review_queue
         WHERE council = %s AND chapter_key = %s AND status = 'approved'
+          AND created_at = %s
         """,
-        (council, chapter_key),
+        (council, chapter_key, batch_ts),
     )
     row = cur.fetchone()
     # NULL (legacy rows) -> full replace: the pre-054 baseline is all full re-extractions.
@@ -205,9 +261,10 @@ def commit_reviewed_from_queue(cur, council: str, chapter_key: str,
               AND NOT EXISTS (
                   SELECT 1 FROM dcp_review_queue q
                   WHERE q.council = p.source_council AND q.chapter_key = p.source_chapter_key
-                    AND q.status = 'approved' AND q.ref_number = p.ref_number)
+                    AND q.status = 'approved' AND q.ref_number = p.ref_number
+                    AND q.created_at = %s)
             """,
-            (council, chapter_key),
+            (council, chapter_key, batch_ts),
         )
         unqueued = [r[0] for r in cur.fetchall()]
         if unqueued and not allow_unqueued:
@@ -226,10 +283,11 @@ def commit_reviewed_from_queue(cur, council: str, chapter_key: str,
         )
         superseded = cur.rowcount
 
-    # The LATEST approved row per provision, not every approved row ever left here.
+    # The latest extraction RUN of this chapter, whole -- not every approved row ever left
+    # here.
     #
-    # Approved rows accumulate across repeated extraction runs of an UNCHANGED PDF.
-    # Measured 2026-09-19: hornsby/part-1-general carried three approved batches — 24 from
+    # Approved rows accumulate across repeated runs over an UNCHANGED PDF. Measured
+    # 2026-09-19: hornsby/part-1-general carried three approved batches — 24 from
     # 2026-07-28, 26 from 2026-09-02, 27 from 2026-09-18 — and blacktown/part-a-car-parking
     # and both georges_river chapters the same. Every batch was inserted, so the second
     # copy of a provision hit uq_provisions_current_identity (document_id, ref_number,
@@ -238,18 +296,28 @@ def commit_reviewed_from_queue(cur, council: str, chapter_key: str,
     #
     # The existing currency guard cannot catch this: it skips a chapter whose approved rows
     # span MORE THAN ONE source hash, and these all share one, because the council's
-    # document genuinely has not changed since July. Re-reading the same PDF twice does not
-    # create two provisions, so the newest decision for each ref wins and the older rows are
-    # left to the cleanup that follows a successful commit.
+    # document genuinely has not changed since July. It separates document VERSIONS; these
+    # are repeated READS of one version.
+    #
+    # Taking the whole run, rather than the newest row per ref_number, is deliberate. Two
+    # live provisions may legitimately share a ref_number — the unique index keys on
+    # section_header and the text as well — and five such pairs exist today, so a per-ref
+    # dedupe would drop one of each without reporting it. Within a run ref_number IS
+    # unique (zero exceptions, measured across every approved batch), so the run collapses
+    # repeated reads exactly; and if a future run ever does hold a colliding pair, the
+    # index rejects it and the chapter rolls back loudly rather than losing a rule quietly.
+    # A ref that an older run produced and the newest one did not is correctly left behind:
+    # both such rows today are garbage the newest read stopped emitting (a two-column
+    # interleave, and a zone name mistaken for a clause number).
     cur.execute(
         """
-        SELECT DISTINCT ON (ref_number)
-               document_id, ref_number, new_text, new_page, change_type
+        SELECT document_id, ref_number, new_text, new_page, change_type
         FROM dcp_review_queue
         WHERE council = %s AND chapter_key = %s AND status = 'approved'
-        ORDER BY ref_number, id DESC
+          AND created_at = %s
+        ORDER BY ref_number
         """,
-        (council, chapter_key),
+        (council, chapter_key, batch_ts),
     )
     rows = cur.fetchall()
     inserted = 0
@@ -353,10 +421,19 @@ def main() -> int:
             continue
 
         if dry_run:
+            # Count the rows the real commit would insert -- the latest run only. Counting
+            # every approved row reported three re-reads of one chapter as three times the
+            # provisions, which is how the duplicate-key failure looked like success here.
+            # prior-art-checked: reuse not viable because this is the existing dry-run
+            # branch of this same worker, narrowed by the latest_approved_batch helper
+            # added directly above it; the flagged matches are the frontend review API and
+            # the provisions read paths, which do not decide what a commit inserts.
+            batch_ts, _ = latest_approved_batch(cur, council, chapter_key)
             cur.execute(
                 "SELECT COUNT(*) FROM dcp_review_queue WHERE council=%s AND chapter_key=%s "
-                "AND status='approved' AND change_type <> 'removed' AND new_text IS NOT NULL",
-                (council, chapter_key),
+                "AND status='approved' AND created_at=%s "
+                "AND change_type <> 'removed' AND new_text IS NOT NULL",
+                (council, chapter_key, batch_ts),
             )
             n = cur.fetchone()[0]
             print(f"  [would commit] {council}/{chapter_key} -- {n} reviewed provisions")
