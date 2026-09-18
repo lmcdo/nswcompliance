@@ -1,0 +1,85 @@
+{
+  "tier": "critical",
+  "justification": "Deletes text from a council's document before it becomes a served provision. City of Sydney's locality pages put street labels inside the map graphic, and the extractor reads them one glyph at a time into the provision text -- 111 served rows (DQ-78), 110 of them this council. Dropping the wrong glyph deletes a planning control silently, which is the worst failure mode this repo has: nothing errors, a number simply stops existing. The measured hazard is real, not theoretical -- an earlier form of this filter would have removed '8' 178 times and '31' 2,170 times from the building-envelope drawings in sections 5 and 6.",
+  "commit_hash": "18c633a2",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_cos_map_labels.py"
+  ],
+  "pre_impl": {
+    "existing_data": "pdfplumber's own page geometry, already loaded for every page: page.curves for the drawing's bounding box, and each char's size, x0 and top. No database access, no new query, no new fetch -- this runs inside _extract_page_text before any row is written.",
+    "assumption_mismatch": "The prior assumption was that tiny text inside a large vector drawing is always a map label. False for two of the three City of Sydney sections: sections 5 and 6 are building-envelope drawings whose small text IS the control -- storey counts, setbacks, level numbers. Corrected by a page-local digit test rather than by guessing per chapter.",
+    "new_vs_existing": "Scoped to city_of_sydney (MAP_LABEL_COUNCILS) and applies to future extractions only; it rewrites no stored provision. Existing rows change when their chapter is re-read and approved through the review queue, which a person does.",
+    "external_source_error": "The council's PDF is the input. If a locality map ever carries a digit label, that page is left untouched and stays scrambled -- the conservative direction, and the reader is warned at display by the DQ-78 notice rather than shown a page with a number quietly missing.",
+    "frontend_type": "N/A -- extraction only, no API or component change in this branch.",
+    "user_failure_mode": "A planner reads a control with a number deleted from it and does not know the number was ever there. Guarded by the digit test (any digit among the glyphs that would be dropped leaves the whole page alone), by keeping any glyph that sits on a line of body-size text (a superscript, the 2 of m2), and by scoping to one council. Four mutations were planted in an earlier round and caught; the real-page comparison is the primary evidence."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_cos_map_labels.py -q",
+    "fails_when": "A page carrying numeric labels loses any of them; a superscript on a prose line inside the drawing's box is dropped (serving a site area of 450m instead of 450m2); tiny text outside the drawing is dropped; another council's pages change; or the filter stops removing street labels from a locality map altogether.",
+    "observed_red": "Measured old-vs-new over the three real City of Sydney sections (802 pages), not fixtures, and re-measured after the digit guard. Section 2 locality statements: scrambled pages 79 -> 1, losing only street names (Street x376, Road x56, Avenue x27). Section 5: 102 -> 83. Section 6: 65 -> 62. NO NUMBER IS LOST IN ANY SECTION -- before the guard, sections 5 and 6 lost '8' x178, '6' x116, '31' x2170 and '4.5' x20 beside STOREYS, SETBACK, LEVEL and ENVELOPE while still leaving 70 of 102 and 57 of 65 pages scrambled. What the two diagram sections now lose is figure wording only (STREET, AVENUE, PRECINCT, PUBLIC OPEN SPACE) on pages whose small text carries no digits. 9 passed in tests/test_cos_map_labels.py."
+  },
+  "functions": [
+    {
+      "name": "_strip_map_labels",
+      "file_line": "scripts/dcp_extract_changed.py -- called from _extract_page_text for councils in MAP_LABEL_COUNCILS, after _strip_vertical_margin_label",
+      "input": "A pdfplumber page. Reads page.curves to bound the drawing and every char's size, x0 and top; the council scoping is applied by the caller, so this function is given only pages that are candidates.",
+      "output": "The same page object when there is no dense drawing (fewer than _MAP_MIN_CURVES curves) or when any glyph that would be dropped is a DIGIT; otherwise a filtered page with the tiny in-drawing glyphs removed. Filtering is keyed by (x0, top, text) rather than object identity, because pdfplumber is free to hand `filter` copies and an identity test would quietly keep everything -- a filter that does nothing while passing its tests.",
+      "if_none": "A page with no curves returns unchanged, as does a page whose chars list is empty. There is no path that raises: every branch either returns the original page or a filtered view of it, so an unexpected page shape degrades to the old behaviour rather than losing text."
+    }
+  ],
+  "values": [
+    {
+      "name": "_MAP_LABEL_MAX_SIZE / _BODY_MIN_SIZE / _MAP_MIN_CURVES",
+      "value": "6.6pt for a label, 8.5pt for body text, 200 curves for a drawing",
+      "why": "Read off the real pages: City of Sydney's street labels are 4-6pt inside drawings of several hundred strokes, while body prose is 9-10pt. The gap between 6.6 and 8.5 is deliberately left unclaimed -- a 7pt note inside the box is kept for a human to read rather than guessed at.",
+      "source": "Measured on section-2-locality-statements, section-5-specific-areas and section-6-specific-sites, 2026-09-18.",
+      "if_missing": "A lower curve floor would treat a rounded table corner as a map; a higher label size would start eating body text. Both directions are pinned by tests (a 20-curve page is untouched; a 7pt label survives).",
+      "read_at": "scripts/dcp_extract_changed.py -- module constants read only inside _strip_map_labels."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A building-envelope diagram's tiny text is dropped because it sits inside the drawing like a street label does.",
+      "what_happens": "A storey count or setback disappears from the provision text with no error -- a control silently deleted.",
+      "mitigated": true,
+      "how": "Any digit among the glyphs that would be dropped leaves the entire page untouched. Page-level rather than run-level on purpose: a drawing's number and its word are separate text runs, so keeping only the run with the digit would serve a bare '8' with no unit.",
+      "repro": "python -m pytest tests/test_cos_map_labels.py -k 'NUMBERS_is_left_entirely_alone or stray_digit' -q"
+    },
+    {
+      "scenario": "A superscript on a line of prose that happens to fall inside the drawing's bounding box is dropped.",
+      "what_happens": "'A site area of 450m2' is served as 'A site area of 450m' -- a factor-of-one-hundred error that reads as a plausible number.",
+      "mitigated": true,
+      "how": "A small glyph is kept whenever body-size text sits on the same line within a few points of it, so anything on a prose line survives regardless of size.",
+      "repro": "python -m pytest tests/test_cos_map_labels.py -k superscript -q"
+    },
+    {
+      "scenario": "The filter is applied to councils whose pages were never the problem.",
+      "what_happens": "Text loss across unrelated LGAs for no benefit.",
+      "mitigated": true,
+      "how": "Scoped by MAP_LABEL_COUNCILS = {'city_of_sydney'}, the council holding 110 of DQ-78's 111 rows, and pinned by a test that reads the same page as another council and expects the label intact.",
+      "repro": "python -m pytest tests/test_cos_map_labels.py -k other_councils -q"
+    },
+    {
+      "scenario": "Sections 5 and 6 remain scrambled, and one page of section 2 still is.",
+      "what_happens": "A planner reads interleaved street or diagram labels as if they were prose.",
+      "mitigated": false,
+      "how": "Not fixed here and deliberately not attempted: the filter would have eaten real numbers to half-clean those pages. Handled at display instead -- hasInterleavedMapText in the sibling branch marks the affected provisions and points at the source PDF, keeping every row because rows near DQ-78's cut carry binding controls.",
+      "repro": "Re-run the three-section comparison and read the lost-words list: no entry may be a number. Measured 2026-09-18 -- section 5 lost 399 distinct words, section 6 lost 101, none of them numeric."
+    },
+    {
+      "scenario": "Existing served rows are unchanged by this branch.",
+      "what_happens": "Someone reads the 97-row improvement as already live and reports the DQ-78 count as cleared.",
+      "mitigated": true,
+      "how": "Extraction-time only. The 111 rows change when their chapters are re-read AND a person approves them in the review queue; the DQ-78 probe is what says whether that has happened.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-78 -- the count does not move on merge."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No -- extraction-time change, no database write of any kind.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes -- the City of Sydney chapters must be re-read and the results reviewed in the queue before any served row changes, and the re-read output should be checked against the same three-section comparison before approval. Nothing about this merge alters live data on its own."
+  }
+}
