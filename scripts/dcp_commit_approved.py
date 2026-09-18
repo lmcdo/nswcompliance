@@ -226,12 +226,28 @@ def commit_reviewed_from_queue(cur, council: str, chapter_key: str,
         )
         superseded = cur.rowcount
 
+    # The LATEST approved row per provision, not every approved row ever left here.
+    #
+    # Approved rows accumulate across repeated extraction runs of an UNCHANGED PDF.
+    # Measured 2026-09-19: hornsby/part-1-general carried three approved batches — 24 from
+    # 2026-07-28, 26 from 2026-09-02, 27 from 2026-09-18 — and blacktown/part-a-car-parking
+    # and both georges_river chapters the same. Every batch was inserted, so the second
+    # copy of a provision hit uq_provisions_current_identity (document_id, ref_number,
+    # section_header, md5(provision_text)) and the whole chapter rolled back. Ten chapters
+    # failed that way in one run.
+    #
+    # The existing currency guard cannot catch this: it skips a chapter whose approved rows
+    # span MORE THAN ONE source hash, and these all share one, because the council's
+    # document genuinely has not changed since July. Re-reading the same PDF twice does not
+    # create two provisions, so the newest decision for each ref wins and the older rows are
+    # left to the cleanup that follows a successful commit.
     cur.execute(
         """
-        SELECT document_id, ref_number, new_text, new_page, change_type
+        SELECT DISTINCT ON (ref_number)
+               document_id, ref_number, new_text, new_page, change_type
         FROM dcp_review_queue
         WHERE council = %s AND chapter_key = %s AND status = 'approved'
-        ORDER BY id
+        ORDER BY ref_number, id DESC
         """,
         (council, chapter_key),
     )

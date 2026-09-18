@@ -1,0 +1,91 @@
+{
+  "tier": "critical",
+  "justification": "Decides which reviewed rows become live provisions. Ten chapters could not commit at all — every one died on uq_provisions_current_identity and rolled back — because approved rows accumulate across repeated reviews of an unchanged PDF and all of them were inserted. That held 101 controls citing documents they were not read from, and DQ-70 is the only blocker on OC-10.",
+  "commit_hash": "470bb7f2",
+  "files": [
+    "scripts/dcp_commit_approved.py",
+    "tests/test_dcp_commit_approved_latest_per_ref.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_review_queue (council, chapter_key, status, ref_number, document_id, new_text, new_page, change_type, id) and the unique index uq_provisions_current_identity on regulatory_provisions, read from pg_indexes rather than assumed. No schema change, no new query — one existing SELECT gains a DISTINCT ON.",
+    "assumption_mismatch": "The commit assumed the approved rows for a chapter describe one version of it. They do not: a chapter re-read three times with its PDF unchanged carries three complete approved batches, all with the same source_content_hash. Measured — hornsby/part-1-general 24 + 26 + 27 across 28 July, 2 September and 18 September.",
+    "new_vs_existing": "Applies to every future commit. Changes no stored row by itself; it changes which rows a commit inserts. The older approved rows are left to the cleanup that already follows a successful commit.",
+    "external_source_error": "None — no network, no document is read here. The council's PDF was parsed long before this point.",
+    "frontend_type": "No API or component change: this runs in the commit worker, and the review UI reads the queue rather than this path.",
+    "user_failure_mode": "Two directions. Too broad and a stale July text overwrites September's — prevented by ordering id DESC, which a test pins explicitly. Too narrow and a genuine amendment never lands — prevented because the dedupe is per ref_number, so every distinct provision still commits. The separate currency guard (approved rows spanning more than one source hash) is untouched and pinned by test, because that one catches a different failure: the PDF changing after review rather than being read twice."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_commit_approved_latest_per_ref.py tests/test_dcp_commit_approved_records_hash.py -q",
+    "fails_when": "The insert-site fetch loses DISTINCT ON (ref_number); the ordering flips to id ASC (which would resurrect an older review over a newer one); the select list stops matching the five columns the insert loop unpacks positionally; or the multi-hash currency guard is removed.",
+    "observed_red": "Both halves of the defect were planted in the source and CAUGHT: reverting the dedupe, and keeping the oldest row instead of the newest. 4 passed here and 9 passed in the existing commit-worker suites. Verified against production, not only in tests: before the fix the commit run reported 12 committed / 11 failed with ten of those failures reading 'duplicate key value violates unique constraint uq_provisions_current_identity'; after it, 10 committed / 1 failed, 'nothing went backwards', and DQ-70 fell 177 -> 151. The single remaining failure is the section-loss guard refusing a chapter whose headings degraded because its OCR fetch timed out — a different and correct refusal."
+  },
+  "functions": [
+    {
+      "name": "commit_chapter",
+      "file_line": "scripts/dcp_commit_approved.py — the insert-site fetch inside it",
+      "input": "A council and chapter_key whose approved rows have already passed the blocking, currency and section-loss guards.",
+      "output": "The latest approved row per ref_number, in ref_number order, each inserted as a provision. Previously every approved row for the chapter, oldest first, which inserted the same provision two or three times.",
+      "if_none": "A chapter with no approved rows yields no rows and inserts nothing; the caller's counters treat that as zero inserted rather than as success."
+    }
+  ],
+  "values": [
+    {
+      "name": "ORDER BY ref_number, id DESC",
+      "value": "id DESC — the newest review of each provision wins",
+      "why": "Ascending would take the oldest, so a July text would overwrite the September one that was actually reviewed against the current document. The direction is the whole correctness of the fix, which is why a test asserts DESC by name rather than just asserting a DISTINCT ON is present.",
+      "source": "Measured 2026-09-19 on hornsby, blacktown and georges_river, each holding three dated batches at one source hash.",
+      "if_missing": "Without the ordering clause DISTINCT ON picks an arbitrary row, so the committed text would vary between runs of the same data — the worst version of this bug, because it would look fixed.",
+      "read_at": "scripts/dcp_commit_approved.py — the SELECT feeding the insert loop."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Fetch the reviewed rows to insert as live provisions for one chapter, taking only the most recent decision for each provision.",
+      "file_line": "scripts/dcp_commit_approved.py — commit_chapter",
+      "where_clause": "council = %s AND chapter_key = %s AND status = 'approved', with DISTINCT ON (ref_number) and ORDER BY ref_number, id DESC. Scoped to one chapter per call; the surrounding transaction rolls back the whole chapter on any error."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "An older approved review overwrites a newer one.",
+      "what_happens": "A provision reverts to text reviewed against an earlier reading, silently, and the chapter still reports as committed.",
+      "mitigated": true,
+      "how": "id DESC, asserted by name in a test. Planting id ASC is caught.",
+      "repro": "python -m pytest tests/test_dcp_commit_approved_latest_per_ref.py -k NEWEST -q"
+    },
+    {
+      "scenario": "The dedupe hides a genuine second provision that happens to share a ref_number.",
+      "what_happens": "A genuine clause would never reach the live provisions, and nothing would report its absence.",
+      "mitigated": true,
+      "how": "ref_number is the provision's identity in this pipeline — it is what the unique index keys on alongside document_id and section_header, and what the queue's own removal and change rows are matched by. Two live provisions under one ref_number are not representable downstream.",
+      "repro": "SELECT ref_number, count(*) FROM regulatory_provisions WHERE is_current GROUP BY 1 HAVING count(*) > 1 — the identity the index already enforces."
+    },
+    {
+      "scenario": "The currency guard is dropped because this fix looks like it supersedes it.",
+      "what_happens": "A stale approval — reviewed against a PDF that has since changed — commits silently.",
+      "mitigated": true,
+      "how": "A test asserts the hash_variants > 1 skip is still present. The two guards catch different things: that one a changed document, this one a document read twice.",
+      "repro": "python -m pytest tests/test_dcp_commit_approved_latest_per_ref.py -k multi_hash -q"
+    },
+    {
+      "scenario": "Old approved rows keep accumulating for chapters that never commit.",
+      "what_happens": "The queue grows and every future run re-reads rows that were decided months ago.",
+      "mitigated": false,
+      "how": "Not addressed here. The cleanup runs only after a successful commit, so a chapter blocked for another reason keeps its history. It is now harmless to the commit, but it is still there.",
+      "repro": "SELECT council, chapter_key, created_at::date, count(*) FROM dcp_review_queue WHERE status='approved' GROUP BY 1,2,3"
+    },
+    {
+      "scenario": "A chapter still refuses to commit after this fix, for an unrelated reason.",
+      "what_happens": "It looks like the fix did not work.",
+      "mitigated": false,
+      "how": "Expected: ku_ring_gai/section-a-part-4-1-secondary-dwellings still refuses, on the section-loss guard, because its re-read lost every heading when the OCR fetch timed out and fell back to config section names. That is a different defect and the guard is right to hold it.",
+      "repro": "python scripts/dcp_commit_approved.py --commit — the refusal names the chapter and its lost sections."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. The fix changes which rows a commit inserts; it rewrites nothing that is already live, and the run it enabled reported 'nothing went backwards'.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No — already verified against production: 10 chapters committed that could not commit before, and DQ-70 fell from 177 to 151."
+  }
+}
