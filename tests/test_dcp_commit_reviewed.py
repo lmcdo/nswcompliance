@@ -71,8 +71,10 @@ class _FakeCursor:
         # name; every other fetchall is the queued rows of the run being committed.
         if "GROUP BY created_at" in self._last:
             return self._batches
-        if "NOT EXISTS" in self._last:
-            return [(ref,) for ref in self._unqueued]
+        if "live_n > queued_n" in self._last:
+            # (ref_number, live_n, queued_n) for refs the run does not fully replace.
+            # A bare string in `unqueued` is the old shape: one live row, none queued.
+            return [u if isinstance(u, tuple) else (u, 1, 0) for u in self._unqueued]
         return self._rows
 
 
@@ -252,3 +254,84 @@ class TestOnlyTheLatestExtractionRunIsCommitted:
     def test_no_approved_rows_resolves_to_nothing_rather_than_raising(self):
         cur = _FakeCursor([], full_replace=True, batches=[])
         assert latest_approved_batch(cur, "hornsby", "part-1-general") == (None, 0)
+
+    def test_an_empty_queue_touches_nothing_even_with_the_loss_override(self):
+        """Every query below the resolution is scoped to the run timestamp, so a NULL one
+        matches nothing: bool_or over no rows is NULL, which reads as a full replace, and
+        --allow-section-loss would then blanket-supersede a live chapter and insert nothing
+        in its place. The function must return before any of that."""
+        cur = _FakeCursor([], full_replace=None, batches=[])
+        superseded, inserted = commit_reviewed_from_queue(
+            cur, "hornsby", "part-1-general", allow_unqueued=True)
+        assert (superseded, inserted) == (0, 0)
+        assert not any("is_current = FALSE" in c[0] for c in cur.calls)
+        assert not any("INSERT INTO regulatory_provisions" in c[0] for c in cur.calls)
+
+    def test_one_large_old_batch_cannot_hide_a_one_row_newest_run(self):
+        """The fragmentation test is the shape of the distribution, not its mean. A 100-row
+        July batch beside a single stray row stamped today averages 50 — comfortably past
+        any per-run threshold — and the stray row would be published as the whole run."""
+        cur = _FakeCursor(self._rows(), full_replace=True, batches=[
+            (BATCH_TS, 1),
+            (datetime(2026, 9, 17, 3, 0, tzinfo=timezone.utc), 1),
+            (datetime(2026, 7, 28, 21, 41, tzinfo=timezone.utc), 100),
+        ])
+        with pytest.raises(RuntimeError, match="single row"):
+            commit_reviewed_from_queue(cur, "hornsby", "part-1-general")
+
+    def test_a_targeted_amendment_of_one_rule_is_NOT_refused(self):
+        """Confusable negative: one changed rule enqueued after a full read is a single
+        batch of one among a majority that are not, and must commit."""
+        cur = _FakeCursor(self._rows(), full_replace=True, batches=[
+            (BATCH_TS, 1),
+            (datetime(2026, 7, 28, 21, 41, tzinfo=timezone.utc), 100),
+        ])
+        _, inserted = commit_reviewed_from_queue(cur, "hornsby", "part-1-general")
+        assert inserted == 1
+
+
+class TestTheLossGuardCountsProvisionsNotRefNumbers:
+    """A ref does not identify a provision. Five refs carry two current provisions each
+    (woollahra C1_4_10, D5_4, D5_6, D1_10, D6_6_7), so a guard that merely asks whether
+    the ref appears in the run calls it covered when the run replaces only one of them —
+    and the blanket supersede then drops the other with nothing reporting it."""
+
+    def _rows(self):
+        return [("doc1", "doc1__C1_4_10", "# C1.4.10 Acoustic and visual privacy\n\nbody",
+                 22, "changed")]
+
+    def test_two_live_provisions_under_one_ref_with_one_queued_is_refused(self):
+        cur = _FakeCursor(self._rows(), full_replace=True,
+                          unqueued=[("doc1__C1_4_10", 2, 1)])
+        with pytest.raises(RuntimeError) as exc:
+            commit_reviewed_from_queue(cur, "woollahra", "chapter-c1-paddington-hca")
+        assert "2 live, 1 queued" in str(exc.value)
+        assert not any("is_current = FALSE" in c[0] for c in cur.calls)
+
+    def test_the_refusal_counts_rules_lost_not_refs_affected(self):
+        """Three refs each losing one of two provisions is three rules gone, and saying
+        'three refs' would understate it the moment one ref carried three."""
+        cur = _FakeCursor(self._rows(), full_replace=True, unqueued=[
+            ("doc1__C1_4_10", 2, 1), ("doc1__D5_4", 3, 1), ("doc1__D5_6", 2, 1)])
+        with pytest.raises(RuntimeError) as exc:
+            commit_reviewed_from_queue(cur, "woollahra", "chapter-c1-paddington-hca")
+        assert str(exc.value).startswith("4 live rule(s)"), str(exc.value)
+        assert "across 3 ref(s)" in str(exc.value)
+
+    def test_a_run_that_replaces_both_is_NOT_refused(self):
+        """Confusable negative: the guard must not fire when the run carries as many rows
+        for the ref as the live set holds."""
+        cur = _FakeCursor(self._rows(), full_replace=True, unqueued=[])
+        _, inserted = commit_reviewed_from_queue(cur, "woollahra", "chapter-c1-paddington-hca")
+        assert inserted == 1
+
+    def test_the_count_is_asked_of_the_committed_run_only(self):
+        """Counting queued rows across every run would find July's copy of a ref and call
+        September's run complete when it is not."""
+        cur = _FakeCursor(self._rows(), full_replace=True)
+        commit_reviewed_from_queue(cur, "woollahra", "chapter-c1-paddington-hca")
+        guard = [c for c in cur.calls if "live_n > queued_n" in c[0]]
+        assert guard, "the counting loss guard did not run"
+        assert BATCH_TS in guard[0][1], guard[0][1]
+        assert "IS NOT DISTINCT FROM" in guard[0][0], \
+            "a NULL ref_number on both sides must match; ref_number is nullable"

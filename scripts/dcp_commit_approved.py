@@ -197,18 +197,24 @@ def latest_approved_batch(cur, council: str, chapter_key: str):
     batches = cur.fetchall()
     if not batches:
         return None, 0
-    total = sum(n for _ts, n in batches)
     # If created_at ever stops being transaction time -- a writer switching to
     # clock_timestamp(), or rows enqueued one transaction each -- every "run" becomes a
     # single row, and taking the newest would commit one provision while reporting the
-    # chapter committed. That is the silent version of this bug, so refuse instead. A
-    # chapter genuinely re-read several times with one row each also lands here, and a
-    # refusal is the right answer there too: it cannot be told apart from the failure.
-    if len(batches) > 1 and total / len(batches) < 2:
+    # chapter committed. That is the silent version of this bug, so refuse instead.
+    #
+    # The test is the SHAPE of the distribution, not its mean. An average would be dragged
+    # above the threshold by one large historical batch: 100 rows from July beside a single
+    # stray row stamped today averages 50, passes, and commits the stray row alone. What
+    # actually distinguishes per-row stamping is that most timestamps hold one row --
+    # whereas a targeted amendment, legitimately one changed rule enqueued after a full
+    # read, is one single among a majority that are not.
+    singles = sum(1 for _ts, n in batches if n < 2)
+    if len(batches) > 1 and singles * 2 > len(batches):
+        total = sum(n for _ts, n in batches)
         raise RuntimeError(
-            f"{council}/{chapter_key}: {total} approved row(s) spread over {len(batches)} "
-            f"created_at values, averaging {total / len(batches):.1f} per run. A run should "
-            f"be one transaction and one timestamp, so the newest run cannot be identified "
+            f"{council}/{chapter_key}: {total} approved row(s) under {len(batches)} "
+            f"created_at values, {singles} of them holding a single row. A run should be "
+            f"one transaction and one timestamp, so the newest run cannot be identified "
             f"and committing it would commit a fragment. Re-queue the chapter.")
     return batches[0][0], batches[0][1]
 
@@ -234,6 +240,14 @@ def commit_reviewed_from_queue(cur, council: str, chapter_key: str,
     # in an older run, then not insert it -- a silent loss, which is the failure this
     # function exists to prevent.
     batch_ts, _batch_rows = latest_approved_batch(cur, council, chapter_key)
+    if batch_ts is None:
+        # Nothing approved. Returning here rather than falling through is the whole point:
+        # every query below is scoped to batch_ts, so with NULL they match nothing --
+        # bool_or over no rows is NULL, which this function reads as a FULL REPLACE, and a
+        # caller holding --allow-section-loss would then blanket-supersede a live chapter
+        # and insert nothing in its place. Refusing to act on an empty queue costs nothing;
+        # the caller counts zero inserted, which is the truth.
+        return 0, 0
 
     cur.execute(
         """
@@ -254,25 +268,40 @@ def commit_reviewed_from_queue(cur, council: str, chapter_key: str,
         # 5 open chapters would have lost 92 live rules (waverley 84). Refuse instead; the
         # caller rolls back and keeps the approval. Allowed only for a chapter a person has
         # checked, via the same --allow-section-loss override as the section-loss guard.
+        # Counted per ref, not merely matched. A ref does not identify a provision -- the
+        # live set holds five refs carrying two current provisions each (woollahra
+        # C1_4_10, D5_4, D5_6, D1_10, D6_6_7) -- so an EXISTS test calls a ref covered
+        # when the run replaces only one of the two, and the blanket supersede below then
+        # drops the other with nothing reporting it. Comparing counts refuses instead.
+        # IS NOT DISTINCT FROM so a NULL ref on both sides matches; ref_number is nullable.
         cur.execute(
             """
-            SELECT p.ref_number FROM regulatory_provisions p
-            WHERE p.source_council = %s AND p.source_chapter_key = %s AND p.is_current = TRUE
-              AND NOT EXISTS (
-                  SELECT 1 FROM dcp_review_queue q
-                  WHERE q.council = p.source_council AND q.chapter_key = p.source_chapter_key
-                    AND q.status = 'approved' AND q.ref_number = p.ref_number
-                    AND q.created_at = %s)
+            SELECT ref_number, live_n, queued_n FROM (
+                SELECT p.ref_number AS ref_number, COUNT(*) AS live_n,
+                       (SELECT COUNT(*) FROM dcp_review_queue q
+                        WHERE q.council = %s AND q.chapter_key = %s
+                          AND q.status = 'approved' AND q.created_at = %s
+                          AND q.ref_number IS NOT DISTINCT FROM p.ref_number) AS queued_n
+                FROM regulatory_provisions p
+                WHERE p.source_council = %s AND p.source_chapter_key = %s
+                  AND p.is_current = TRUE
+                GROUP BY p.ref_number
+            ) t WHERE live_n > queued_n
             """,
-            (council, chapter_key, batch_ts),
+            (council, chapter_key, batch_ts, council, chapter_key),
         )
-        unqueued = [r[0] for r in cur.fetchall()]
+        short = cur.fetchall()
+        unqueued = [r[0] for r in short]
         if unqueued and not allow_unqueued:
+            lost = sum(live_n - queued_n for _ref, live_n, queued_n in short)
+            eg = ", ".join(f"{ref} ({live_n} live, {queued_n} queued)"
+                           for ref, live_n, queued_n in short[:3])
             raise RuntimeError(
-                f"{len(unqueued)} live rule(s) of {council}/{chapter_key} are not in the "
-                f"approved queue, and a full replace would drop them (e.g. {unqueued[:3]}). "
-                f"Re-queue the chapter from current code, or pass --allow-section-loss "
-                f"{council}/{chapter_key} after checking the loss against the source document.")
+                f"{lost} live rule(s) of {council}/{chapter_key} across {len(unqueued)} "
+                f"ref(s) are not replaced by the approved run, and a full replace would "
+                f"drop them (e.g. {eg}). Re-queue the chapter from current code, or pass "
+                f"--allow-section-loss {council}/{chapter_key} after checking the loss "
+                f"against the source document.")
         cur.execute(
             """
             UPDATE regulatory_provisions

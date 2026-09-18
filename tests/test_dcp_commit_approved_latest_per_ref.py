@@ -96,7 +96,12 @@ class TestOnlyTheLatestRunIsCommitted:
         fn = _batch_fn()
         assert "raise RuntimeError" in fn, \
             "the fragmented-queue refusal is gone; a per-row timestamp would commit one row"
-        assert re.search(r"len\(batches\)\s*>\s*1\s+and\s+total\s*/\s*len\(batches\)\s*<\s*2", fn), fn
+        # The distribution, not the mean: an average is dragged over any threshold by one
+        # large historical batch, so a single stray row stamped today would pass as a run.
+        assert re.search(r"singles\s*=\s*sum\(1 for _ts, n in batches if n < 2\)", fn), fn
+        assert re.search(r"len\(batches\)\s*>\s*1\s+and\s+singles\s*\*\s*2\s*>\s*len\(batches\)", fn), fn
+        assert "total / len(batches) <" not in fn, \
+            "the refusal is back on the mean, which one large old batch masks"
 
     def test_the_fetch_still_selects_what_the_insert_loop_unpacks(self):
         """Guards the guard: the loop unpacks five columns positionally."""
@@ -113,12 +118,24 @@ class TestTheGuardsJudgeTheRowsTheInsertWrites:
     chapter safe on evidence the commit will not act on."""
 
     def test_the_section_loss_guard_is_scoped_to_the_same_run(self):
-        """It asks which live rules the approved queue does not name. Asking that of every
+        """It asks which live rules the approved run does not replace. Asking that of every
         approved row ever queued would clear a live rule that exists only in an older run —
         and then not insert it."""
-        m = re.search(r"SELECT p\.ref_number FROM regulatory_provisions.*?\"\"\"", SRC, re.S)
-        assert m, "the section-loss NOT EXISTS query could not be located"
+        m = re.search(r"SELECT ref_number, live_n, queued_n FROM.*?\"\"\"", SRC, re.S)
+        assert m, "the counting section-loss query could not be located"
         assert "q.created_at = %s" in m.group(0), m.group(0)
+
+    def test_the_section_loss_guard_compares_counts_not_mere_existence(self):
+        """A ref does not identify a provision: five refs carry two current provisions
+        each. An EXISTS test calls such a ref covered when the run replaces one of the two,
+        and the blanket supersede then drops the other silently."""
+        m = re.search(r"SELECT ref_number, live_n, queued_n FROM.*?\"\"\"", SRC, re.S)
+        assert m, "the counting section-loss query could not be located"
+        q = m.group(0)
+        assert "live_n > queued_n" in q, q
+        assert "NOT EXISTS" not in q, "the guard is back to mere existence"
+        assert "IS NOT DISTINCT FROM" in q, \
+            "ref_number is nullable; = would never match a NULL ref on either side"
 
     def test_the_full_replace_mode_is_read_from_the_same_run(self):
         """is_full_replace decides whether the chapter is blanket-superseded. Reading it
