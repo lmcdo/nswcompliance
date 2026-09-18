@@ -1,0 +1,90 @@
+{
+  "tier": "critical",
+  "justification": "Writes to two production tables that decide what a planner is shown and where it came from: dcp_chapter_registry.dcp_name and dcp_setback_controls.source_chapter_key. Re-keying a control to the wrong source would hand its currency to the wrong check and point its citation at the wrong document, both silently. Dry run by default, CSV backup of every changed row, --apply required.",
+  "commit_hash": "",
+  "files": [
+    "scripts/repair_plan_in_force_tracing.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry(council, chapter_key, dcp_name) and dcp_setback_controls(id, lga, control_type, source_chapter_key, source_text), both read live before writing. The `_external_lep` key is the existing convention for state instruments — measured 18 controls across 9 councils, plus _external_adg 12 across 6 — so this reuses it rather than inventing one.",
+    "assumption_mismatch": "The plan-in-force check reads 'two plan names' as two plans. For cumberland that is one plan under two spellings; for sutherland_shire it is an LEP filed as if it were a council DCP. Neither is a confirmation decision, which is what the check appeared to be asking for.",
+    "new_vs_existing": "Touches exactly 1 registry row and 6 control rows, all named in the dry run. No schema change, no new table, no new column.",
+    "external_source_error": "The three served sutherland setbacks carry no citation in their own text, so they were checked against the instrument: Sutherland Shire LEP 2015 as in force 2026-06-04, page 109, Schedule 3 — 'a setback from any secondary frontage of at least 3m', 'from the rear boundary of at least 6m', 'from the side boundaries of at least 1.5m'. Word-for-word matches. The same page puts the primary street setback at 7.5m while id=606 holds 5.5m, so that row is held back rather than re-keyed.",
+    "frontend_type": "N/A — no API or component change. source_chapter_key already renders for the 18 controls that carry _external_lep today.",
+    "user_failure_mode": "A number filed under the wrong instrument is checked for currency against a document it did not come from, so it can go stale with every check green. Guarded by reading the registry's own dcp_name before re-keying (the script refuses if the chapter is not registered as a state instrument), by holding back the one row whose value its source does not contain, and by writing every changed row to CSV before the transaction commits."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/repair_plan_in_force_tracing.py   # dry run; then scripts/outreach_claim_checks.py OC-17",
+    "fails_when": "The script re-keys a chapter that is not registered as a state instrument, re-keys the held-back row, or writes anything without --apply. After applying, OC-17's plan-in-force line must stop naming cumberland and sutherland_shire; if it still names them the repair did not do what it claims.",
+    "observed_red": "Dry run against the live database, 2026-09-18: cumberland 1 registry row ('Cumberland DCP Part B — Residential Zones 2021' -> 'Cumberland DCP 2021'); sutherland_shire 7 rows found, 6 to re-key, 1 held back (id=606), with the registry check printing 'Sutherland Shire LEP 2015'. An earlier guard that required each control's source_text to mention the LEP REFUSED the whole set — correctly, since the three served rows carry no citation — which is what sent the question to the instrument itself. No writes; both backup CSVs written with the _dryrun suffix. Before the repair, outreach_claim_checks.py OC-17 lists 21 councils with cumberland and sutherland_shire among them."
+  },
+  "functions": [
+    {
+      "name": "repair_sutherland",
+      "file_line": "scripts/repair_plan_in_force_tracing.py — called from main inside one transaction with repair_cumberland",
+      "input": "An open cursor and the apply flag. Reads every dcp_setback_controls row whose source_chapter_key is 'sutherland-lep-2015-schedule-3', and the registry's dcp_name for that chapter.",
+      "output": "Rows re-keyed to _external_lep, excluding HELD_BACK, after a CSV backup; returns the number updated, or 0 on a dry run. Prints every row it found, every row it held back, and the registered plan name it decided on.",
+      "if_none": "Returns 0 when no row carries that key. Refuses entirely — writing nothing — when the chapter is not registered as a state instrument, so a renamed or re-pointed registry row stops the repair rather than silently re-filing council controls as LEP ones."
+    },
+    {
+      "name": "repair_cumberland",
+      "file_line": "scripts/repair_plan_in_force_tracing.py — same transaction",
+      "input": "An open cursor and the apply flag. Reads cumberland registry rows whose dcp_name is the long Part B spelling.",
+      "output": "That row's dcp_name set to 'Cumberland DCP 2021' after a CSV backup; returns the number updated, or 0 on a dry run.",
+      "if_none": "Returns 0 and writes nothing if the spelling has already been corrected, so re-running is safe and does not depend on having run it before."
+    }
+  ],
+  "values": [
+    {
+      "name": "HELD_BACK",
+      "value": "{606} — the Sutherland primary street setback, 5.5m",
+      "why": "Sutherland Shire LEP 2015 page 109 says the primary street setback is at least 7.5m, or the average of the nearest two dwelling houses. The row's stored quote is that sentence with the distance removed, so it states a number its own source does not contain. That resembles an LEP-versus-DCP difference — Schedule 3 is the complying-development pathway and a DCP may set a different merit-DA setback — but then its source would be the DCP, not this chapter. Either the value is wrong or the key is; both want a reading, not a re-key.",
+      "source": "Sutherland Shire LEP 2015, in force 2026-06-04, page 109, read 2026-09-18.",
+      "if_missing": "Without the exclusion the row would be filed as an LEP number and its currency handed to DQ-88, which checks the LEP text it does not match — a wrong number with every check green.",
+      "read_at": "scripts/repair_plan_in_force_tracing.py — module constant, read only in repair_sutherland."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Find the cumberland registry row naming the plan differently, and every control keyed to the sutherland LEP chapter, before re-keying either.",
+      "file_line": "scripts/repair_plan_in_force_tracing.py — repair_cumberland and repair_sutherland",
+      "where_clause": "council = 'cumberland' AND dcp_name = <exact long spelling>; source_chapter_key = 'sutherland-lep-2015-schedule-3'. Exact equality, never LIKE: an underscore is a LIKE wildcard and _external_lep starts with one. The UPDATE adds AND NOT (id = ANY(HELD_BACK))."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A control is re-keyed to _external_lep although it did not come from the LEP.",
+      "what_happens": "Its currency is checked against an instrument it never came from, so it can go stale with every check green, and its citation points at the wrong document.",
+      "mitigated": true,
+      "how": "The registry's own dcp_name must name a state instrument or the repair refuses and writes nothing; the one row whose value the LEP does not contain is held back by id.",
+      "repro": "python scripts/repair_plan_in_force_tracing.py — the output must print the registered plan name and 'HELD BACK id=606' before any backup line."
+    },
+    {
+      "scenario": "The cumberland rename merges two genuinely different plans into one name.",
+      "what_happens": "A council would appear to serve one plan while serving two, defeating the check this repair exists to satisfy.",
+      "mitigated": true,
+      "how": "Both chapters are parts of the same instrument — Part B residential zones and Part G miscellaneous controls of Cumberland DCP 2021, commenced 5 November 2021 — and the Part B copy hashes identical to the file the council serves today.",
+      "repro": "SELECT chapter_key, dcp_name FROM dcp_chapter_registry WHERE council='cumberland' — both rows must name one plan after the repair."
+    },
+    {
+      "scenario": "The script is run twice, or run by something automated.",
+      "what_happens": "Duplicate or unattended writes to production.",
+      "mitigated": true,
+      "how": "Dry run by default and idempotent: the second run finds no matching rows and writes nothing. It is in no workflow and no cron; it is run by hand with --apply.",
+      "repro": "Run it twice with --apply: the second prints 0 rows for both repairs."
+    },
+    {
+      "scenario": "id=606 stays wrong after this branch.",
+      "what_happens": "A 5.5m front setback sits in the table citing an instrument that says 7.5m.",
+      "mitigated": false,
+      "how": "Not fixed here, deliberately. It is not served, so nothing is live, and choosing between correcting the value and re-sourcing it to the DCP needs the DCP read first.",
+      "repro": "SELECT value_min, source_chapter_key FROM dcp_setback_controls WHERE id=606 — still 5.5 under the LEP chapter."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. The script writes only when run by hand with --apply, and merging it runs nothing.",
+    "secrets": "No — it reads DATABASE_URL the way every other repair script does.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: after --apply, re-run python scripts/outreach_claim_checks.py OC-17 and confirm its plan-in-force line no longer names cumberland or sutherland_shire. The CSV backups under data/db_rollback_backups/ are the rollback."
+  }
+}
