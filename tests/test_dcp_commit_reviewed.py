@@ -5,6 +5,7 @@ conftest mocks stub the native deps and we set the env defaults it reads.
 """
 import os
 import sys
+from datetime import datetime, timezone
 
 os.environ.setdefault("DATABASE_URL", "postgresql://x")
 os.environ.setdefault("R2_BUCKET_NAME", "x")
@@ -14,7 +15,13 @@ os.environ.setdefault("R2_ACCOUNT_ID", "x")
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
-from dcp_commit_approved import _section_header_from_text, commit_reviewed_from_queue  # noqa: E402
+import pytest  # noqa: E402
+
+from dcp_commit_approved import (  # noqa: E402
+    _section_header_from_text,
+    commit_reviewed_from_queue,
+    latest_approved_batch,
+)
 
 
 class TestSectionHeaderFromText:
@@ -27,13 +34,22 @@ class TestSectionHeaderFromText:
         assert _section_header_from_text("#   \n\nbody") is None
 
 
+BATCH_TS = datetime(2026, 9, 18, 3, 3, 29, 700277, tzinfo=timezone.utc)
+
+
 class _FakeCursor:
     """Records execute() calls. fetchone() returns the is_full_replace flag; fetchall()
-    returns the queued rows. rowcount is 7 for a blanket delete, 1 for a per-ref delete."""
-    def __init__(self, rows, full_replace=None, unqueued=()):
+    returns the queued rows. rowcount is 7 for a blanket delete, 1 for a per-ref delete.
+
+    `batches` answers the run-resolution query — (created_at, row_count) newest first.
+    The default is one run holding every queued row, which is what a chapter read once
+    looks like; a chapter re-read carries several, and only the newest may be committed.
+    """
+    def __init__(self, rows, full_replace=None, unqueued=(), batches=None):
         self._rows = rows
         self._full_replace = full_replace
         self._unqueued = list(unqueued)
+        self._batches = list(batches) if batches is not None else [(BATCH_TS, len(rows))]
         self.calls = []
         self._last = ""
 
@@ -50,8 +66,11 @@ class _FakeCursor:
         return (self._full_replace,)
 
     def fetchall(self):
-        # The full-replace completeness check asks for live refs the approved queue
-        # does not name; every other fetchall is the queued rows.
+        # The run-resolution query groups the approved rows on created_at; the
+        # full-replace completeness check asks for live refs the approved queue does not
+        # name; every other fetchall is the queued rows of the run being committed.
+        if "GROUP BY created_at" in self._last:
+            return self._batches
         if "NOT EXISTS" in self._last:
             return [(ref,) for ref in self._unqueued]
         return self._rows
@@ -164,3 +183,72 @@ class TestCommitReviewedFromQueue:
         inserts = [c for c in cur.calls if "INSERT INTO regulatory_provisions" in c[0]]
         assert inserts[0][1][-1] is None   # A1.1 -> classifier decides
         assert inserts[1][1][-1] is False  # preamble -> non-actionable
+
+
+class TestOnlyTheLatestExtractionRunIsCommitted:
+    """Approved rows accumulate across repeated reads of an UNCHANGED document. Committing
+    all of them inserted each provision two or three times and the chapter rolled back on
+    uq_provisions_current_identity — ten chapters in the 2026-09-18 run."""
+
+    def _rows(self):
+        return [("doc1", "doc1__A1_1", "# A1.1 TITLE\n\nbody", 5, "changed")]
+
+    def _batch_params(self, cur):
+        """Every query that reads the approved queue, with the params it was given."""
+        return [(sql, params) for sql, params in cur.calls
+                if "dcp_review_queue" in sql and "GROUP BY created_at" not in sql]
+
+    def test_the_run_is_resolved_before_anything_is_read_or_written(self):
+        cur = _FakeCursor(self._rows(), full_replace=True)
+        commit_reviewed_from_queue(cur, "hornsby", "part-1-general")
+        first = cur.calls[0][0]
+        assert "GROUP BY created_at" in first, \
+            f"the run is not resolved first; the first query was: {first}"
+
+    def test_every_read_of_the_queue_is_pinned_to_that_one_run(self):
+        """The mode, the section-loss guard and the insert must judge the same rows. A
+        guard reading the whole approved history would clear a live rule named only in an
+        older run, and the insert — scoped to the newest — would not restore it."""
+        cur = _FakeCursor(self._rows(), full_replace=True)
+        commit_reviewed_from_queue(cur, "hornsby", "part-1-general")
+        reads = self._batch_params(cur)
+        assert reads, "no query read the approved queue"
+        for sql, params in reads:
+            assert BATCH_TS in params, (
+                f"a queue read is not pinned to the run timestamp: {' '.join(sql.split())}")
+
+    def test_an_older_run_is_never_the_one_committed(self):
+        """batches arrive newest first; the function must take the head, not the tail."""
+        older = datetime(2026, 7, 28, 21, 41, 24, tzinfo=timezone.utc)
+        cur = _FakeCursor(self._rows(), full_replace=True,
+                          batches=[(BATCH_TS, 27), (older, 24)])
+        commit_reviewed_from_queue(cur, "hornsby", "part-1-general")
+        for _sql, params in self._batch_params(cur):
+            assert older not in params, "July's run was committed over September's"
+
+    def test_a_queue_whose_timestamps_are_not_runs_is_refused(self):
+        """If created_at ever stops being transaction time, every run is one row and the
+        newest is a single provision. Committing that would publish a fragment and report
+        success, so the resolution refuses instead."""
+        per_row = [(datetime(2026, 9, 18, 3, 3, 29, n, tzinfo=timezone.utc), 1)
+                   for n in range(5)]
+        cur = _FakeCursor(self._rows(), full_replace=True, batches=per_row)
+        with pytest.raises(RuntimeError, match="one transaction and one timestamp"):
+            commit_reviewed_from_queue(cur, "hornsby", "part-1-general")
+        assert not any("INSERT INTO regulatory_provisions" in c[0] for c in cur.calls)
+        assert not any("is_current = FALSE" in c[0] for c in cur.calls)
+
+    def test_a_chapter_read_several_times_with_real_runs_is_NOT_refused(self):
+        """Confusable negative: three genuine runs of 24, 26 and 27 rows — the hornsby
+        shape that started this — must commit, not trip the fragmentation refusal."""
+        cur = _FakeCursor(self._rows(), full_replace=True, batches=[
+            (BATCH_TS, 27),
+            (datetime(2026, 9, 2, 1, 0, tzinfo=timezone.utc), 26),
+            (datetime(2026, 7, 28, 21, 41, tzinfo=timezone.utc), 24),
+        ])
+        _, inserted = commit_reviewed_from_queue(cur, "hornsby", "part-1-general")
+        assert inserted == 1
+
+    def test_no_approved_rows_resolves_to_nothing_rather_than_raising(self):
+        cur = _FakeCursor([], full_replace=True, batches=[])
+        assert latest_approved_batch(cur, "hornsby", "part-1-general") == (None, 0)
