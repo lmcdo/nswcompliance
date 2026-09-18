@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes what a data-quality ratchet measures, which is the one class of change most able to make a real defect invisible. DQ-33 is a blocker on OC-17, so narrowing it moves a public claim closer to passing — exactly the situation where a scoping decision has to be argued from the repair it ratchets rather than from the number it produces.",
-  "commit_hash": null,
+  "commit_hash": "b98ccd62",
   "files": [
     "scripts/dq_probe_live.py",
     "tests/test_dq33_scope_is_council_rows.py"
