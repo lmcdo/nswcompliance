@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Decides whether a queue row lands pre-rejected, and a rejected row blocks its whole chapter from committing under the current content hash. Measured 2026-09-18: three rows whose only job is to DELETE a junk-keyed provision were auto-rejected as junk, freezing city_of_sydney/section-3-general-provisions (105 rows pending), georges_river/part-3-general-planning-considerations (30) and ku_ring_gai/section-a-part-6-multi-dwelling, and holding DQ-70 at 231 — the sole blocker on OC-10 and one of three on OC-17. The rule built to catch the mess was blocking its clean-up.",
-  "commit_hash": "0df926a8",
+  "commit_hash": "b2e9bb57",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_extraction_fidelity.py"
