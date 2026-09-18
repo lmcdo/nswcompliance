@@ -1,0 +1,85 @@
+{
+  "tier": "critical",
+  "justification": "Decides whether a queue row lands pre-rejected, and a rejected row blocks its whole chapter from committing under the current content hash. Measured 2026-09-18: three rows whose only job is to DELETE a junk-keyed provision were auto-rejected as junk, freezing city_of_sydney/section-3-general-provisions (105 rows pending), georges_river/part-3-general-planning-considerations (30) and ku_ring_gai/section-a-part-6-multi-dwelling, and holding DQ-70 at 231 — the sole blocker on OC-10 and one of three on OC-17. The rule built to catch the mess was blocking its clean-up.",
+  "commit_hash": "4beeba50",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_dcp_extraction_fidelity.py"
+  ],
+  "pre_impl": {
+    "existing_data": "classify_row_fidelity is pure — (ref, old_text, new_text, change_type) in, a verdict out. No query, no write, no new column. The same function already exempts removals from emptied_by_strip two lines below, so the exemption pattern is reused rather than invented.",
+    "assumption_mismatch": "The assumption was that a junk ref always marks a defective row. False for a deletion: after #1131 stopped CREATING provisions keyed off a bare year or a zone code, the next re-read emits rows that REMOVE the live ones, and those rows necessarily carry the ref they exist to delete.",
+    "new_vs_existing": "One condition on one line, plus tests. No behaviour added for any other reason class; garbled_glyphs, section_collapsed and oversize_new_provision are untouched.",
+    "external_source_error": "None — no network and no document is read here. The council's PDF has already been parsed by the time this verdict is formed.",
+    "frontend_type": "No API or component change. The review queue UI reads status as before; the only difference is that such a row arrives as 'pending' rather than 'rejected'.",
+    "user_failure_mode": "Too loose would mean a junk-keyed provision is CREATED without anyone noticing, which is the original 2026-07 defect. That cannot happen here: the exemption applies only when change_type == 'removed', and a test asserts an added or changed row with the same ref still fails. Nothing is approved automatically — the row becomes pending, so a person still rules on the deletion."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_extraction_fidelity.py -q",
+    "fails_when": "A removal of a junk-keyed provision is auto-rejected again (the freeze returns), or — the other direction — an added or changed row keyed off a bare year or zone code stops being caught, or a removal carrying doubled-glyph garbage is waved through.",
+    "observed_red": "46 passed. The fix was reverted in the source and the suite CAUGHT it. Three new tests pin both directions: the three real refs from the live queue (__2012, __R1, __R2) as removals must be 'ok'; the same ref as 'changed' or 'added' must still fail on junk_ref; and a removal whose text is the ku_ring_gai interleave must still fail on garbled_glyphs, so the exemption cannot be read as exempting the row wholesale."
+  },
+  "functions": [
+    {
+      "name": "classify_row_fidelity",
+      "file_line": "scripts/dcp_extract_changed.py — called for every row as it is enqueued to dcp_review_queue",
+      "input": "ref (the provision key, whose text after the last '__' is the short key tested), old_text, new_text, and change_type ('added', 'changed' or 'removed').",
+      "output": "('ok', None) or ('failed', '+'-joined reasons). A verdict of 'failed' whose reasons are exclusively garbled_glyphs, junk_ref or emptied_by_strip lands the row pre-rejected; anything else stays pending. junk_ref no longer fires when change_type is 'removed'.",
+      "if_none": "A None or empty ref yields an empty short key, which _JUNK_REF does not match, so a row with no ref is not rejected for a junk ref it does not have. new_text of None is handled by the existing emptied_by_strip branch, which also exempts removals."
+    }
+  ],
+  "values": [
+    {
+      "name": "_AUTO_REJECT_REASONS",
+      "value": "{garbled_glyphs, junk_ref, emptied_by_strip} — unchanged",
+      "why": "The set of reasons certain enough to skip a human click. It is not widened or narrowed here; what changes is when junk_ref is raised at all. Keeping the set fixed means the blast radius of this fix is one condition, and the existing test asserting the set's exact contents still guards it.",
+      "source": "scripts/dcp_extract_changed.py, in place since PR #830.",
+      "if_missing": "If the set were widened instead, size heuristics that can be right about a genuine amendment would start auto-rejecting — the failure Sol's cross-review flagged at MEDIUM 0.91.",
+      "read_at": "scripts/dcp_extract_changed.py — read where the enqueue decides pre-rejection."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A provision keyed off a bare year or zone code is CREATED and the exemption lets it through.",
+      "what_happens": "The original 2026-07 defect returns: a 44k-character provision keyed '2021' reaches the queue undiagnosed.",
+      "mitigated": true,
+      "how": "The exemption is conditioned on change_type == 'removed'. A test asserts the same ref as 'added' and as 'changed' still fails on junk_ref.",
+      "repro": "python -m pytest tests/test_dcp_extraction_fidelity.py -k NOT_a_removal -q"
+    },
+    {
+      "scenario": "A removal is exempted wholesale, so garbage text rides in under change_type='removed'.",
+      "what_happens": "A row carrying doubled-glyph interleave would stop being flagged because it happens to be a deletion.",
+      "mitigated": true,
+      "how": "Only the junk_ref condition is touched. A test runs a removal carrying the real ku_ring_gai interleave and requires garbled_glyphs to still fire.",
+      "repro": "python -m pytest tests/test_dcp_extraction_fidelity.py -k garbled_text_is_still_caught -q"
+    },
+    {
+      "scenario": "The deletion is wrong — the provision still exists in the council's document and the re-read simply missed it.",
+      "what_happens": "Approving the removal would delete a live provision.",
+      "mitigated": true,
+      "how": "The row becomes 'pending', not 'approved'. A person rules on every deletion, which is the standing rule for this queue; this change only stops the machine from pre-deciding it as garbage.",
+      "repro": "Re-run extraction for an affected chapter: the removal appears in the pending list, not the rejected one."
+    },
+    {
+      "scenario": "The three chapters stay blocked after this merges.",
+      "what_happens": "DQ-70 stays at 231 and OC-10 stays failing, despite the fix.",
+      "mitigated": false,
+      "how": "Expected: the fix changes classification at ENQUEUE time, so the already-rejected rows keep their status until those chapters are re-read. Re-extraction supersedes prior rejected rows, so the sequence is merge, re-read the three chapters, then review.",
+      "repro": "SELECT status FROM dcp_review_queue WHERE id IN (83136,83140,83178) — still 'rejected' until a re-read supersedes them."
+    },
+    {
+      "scenario": "A chapter accumulates removals nobody reviews, so it never commits anyway.",
+      "what_happens": "The freeze returns by a different route — pending rows instead of rejected ones.",
+      "mitigated": false,
+      "how": "Not addressed here and worth knowing: the commit still requires every current-hash row to be approved. The watchdog reports such a chapter as awaiting REVIEW, which is the state its three-state alert was written for — and that alert only started working again today.",
+      "repro": "python scripts/dcp_watchdog.py — the awaiting-REVIEW list."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No — this changes no stored row. It changes the verdict given to rows created from here on.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes, and it is the point of the change: after merge, re-read city_of_sydney/section-3-general-provisions, georges_river/part-3-general-planning-considerations and ku_ring_gai/section-a-part-6-multi-dwelling, confirm the removal rows land 'pending' rather than 'rejected', then have a person review them so the chapters can commit and DQ-70 can move off 231."
+  }
+}

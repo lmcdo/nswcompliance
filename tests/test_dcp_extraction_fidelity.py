@@ -245,6 +245,42 @@ class TestClassifyRowFidelity:
         assert status == "failed"
         assert "junk_ref" in reason and "oversize_new_provision" in reason
 
+    def test_removing_a_junk_keyed_provision_is_not_itself_junk(self):
+        """The row that DELETES a bare-year provision must not be auto-rejected as one.
+
+        After #1131 stopped creating provisions keyed off a bare year or a zone code, the
+        next re-read of an affected chapter emits rows that remove the live ones — and
+        those rows carry the very ref they exist to delete. Auto-rejecting them froze the
+        chapter, because a commit is blocked while any row is rejected at the current
+        hash. Measured 2026-09-18: ids 83136 (__2012) and 83140 (__R1) held City of
+        Sydney section 3 with 105 rows pending, 83178 (__R2) held Georges River part 3,
+        and between them DQ-70 could not move off 231.
+        """
+        for ref in ("Sydney_DCP_2012__section_3_general_provisions__2012",
+                    "Sydney_DCP_2012__section_3_general_provisions__R1",
+                    "Georges_River_DCP_2021__part_3__R2"):
+            status, reason = classify_row_fidelity(ref, "the old provision text", "",
+                                                   change_type="removed")
+            assert status == "ok", f"{ref} -> {reason}"
+
+    def test_a_junk_ref_that_is_NOT_a_removal_still_fails(self):
+        """The confusable negative. The exemption is for deletions only: a row that
+        CREATES or CHANGES a provision keyed off a bare year is the original defect and
+        must still be caught."""
+        for change in ("changed", "added"):
+            status, reason = classify_row_fidelity(
+                "Sydney_DCP_2012__section_3_general_provisions__2012",
+                "old", "a substantial body of new text " * 40, change_type=change)
+            assert status == "failed" and "junk_ref" in reason, change
+
+    def test_a_removal_carrying_garbled_text_is_still_caught(self):
+        """Exempting junk_ref must not exempt the row wholesale: a removal whose text is
+        doubled-glyph garbage is still a defect."""
+        status, reason = classify_row_fidelity(
+            "Doc__2021", "old", "body " + KRG_INTERLEAVE, change_type="removed")
+        assert status == "failed"
+        assert "garbled_glyphs" in reason
+
     def test_section_collapse_fails(self):
         """3.13 Parking shrank 43k -> 2.7k when its tables migrated to another key."""
         old = "parking rate clause text. " * 1700   # ~43k chars
