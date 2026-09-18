@@ -16,20 +16,26 @@ from pathlib import Path
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from services.extracted_data_integrity import TRUNCATION_LIMIT  # noqa: E402
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from validate_controls_against_source_pdf import (  # noqa: E402
     required_values,
     strip_clause_marker,
+    strip_provenance,
     DOC_NO_TEXT,
     DOC_UNAVAILABLE,
     NO_QUOTE,
     PAGE_OUT_OF_RANGE,
     SUPPORTED_ELSEWHERE,
     SUPPORTED_ON_CITED_PAGE,
+    TERM_COVERAGE_MIN,
     UNSUPPORTED,
     Summary,
     classify,
+    derivation_is_on_page,
     distinctive_terms,
     normalise,
     numeric_tokens,
@@ -223,6 +229,177 @@ class TestSummaryMark:
         s = self._s([SUPPORTED_ON_CITED_PAGE] * 5 + [SUPPORTED_ELSEWHERE] * 5)
         assert s.data_rate == 1.0          # every control is real
         assert s.citation_rate == 0.5      # half the page references are wrong
+
+
+class TestOurCitationIsNotTheCouncilsText:
+    """`source_text` carries a provenance wrapper the council's page never contains.
+
+    Measured on the 2026-09-18 run: 40 of 67 unsupported rows ended in one. It fails the
+    check twice over -- the year becomes a number demanded of the page, and the citation's
+    words dilute term coverage below the bar.
+    """
+
+    def test_a_trailing_citation_is_removed(self):
+        assert strip_provenance("Secondary dwelling: 24m2 min width 4m "
+                                "(Penrith DCP 2014 Part D2)") == \
+            "Secondary dwelling: 24m2 min width 4m"
+
+    def test_a_leading_plan_preamble_is_removed(self):
+        assert strip_provenance("Ashfield DCP 2016 A-Part8 Table 2: Flats - 1 per 10 "
+                                "flats") == "Flats - 1 per 10 flats"
+
+    def test_a_parenthetical_the_COUNCIL_wrote_survives(self):
+        """The negative that keeps this honest: drop this and two neighbouring table rows
+        ("<800m from a station" vs ">800m") stop being distinguishable."""
+        quote = "1 visitor space per 7 dwellings (sites <800m from railway station)"
+        assert strip_provenance(quote) == quote
+
+    def test_a_year_inside_our_citation_is_not_demanded_of_the_page(self):
+        # leichhardt 1086 was reported unsupported for want of "2013" -- the DCP's year.
+        assert "2013" not in numeric_tokens(
+            strip_provenance("Leichhardt DCP 2013 Part C Section 3: soft landscape areas "
+                             "must be included at the front and rear"))
+
+    def test_an_ordinary_sentence_with_a_colon_keeps_its_subject(self):
+        quote = "Seniors housing: 0.2 per unit for residents"
+        assert strip_provenance(quote) == quote
+
+    def test_a_citation_word_the_page_DOES_carry_still_counts(self):
+        """Deleting the citation outright fixed 11 rows and broke 11 on the 2026-09-18
+        runs: "(Table C-B)" is frequently a real column header on the cited page, so a
+        rule that removes it from the quote throws away a word that was matching. Our
+        words stop being REQUIRED; they never stop counting."""
+        page = ("Table C-B Parking rates near transport\n"
+                "0.9 spaces per 2-bedroom apartment where within 400m of a station")
+        ok, coverage, _missing = page_supports(
+            "0.9 spaces per 2-bedroom apartment near transport (Table C-B)", page,
+            value_min=0.9, unit="spaces/dwelling")
+        assert ok
+        assert coverage == 1.0
+
+    def test_our_citation_stops_costing_coverage(self):
+        """penrith 1117 against its real page 40 text. Stripping the citation lifts this
+        row from 50% coverage to 67%: the stored 24 is found, "secondary" and "dwelling"
+        match, and the ONE word still missing is `width`, which the council wrote as
+        "more than 4m wide".
+
+        So the row is right and the check still cannot pass it. That residue is a
+        word-form difference, not a value defect, and it is left visible rather than
+        papered over with a stemmer -- which would loosen every other comparison in this
+        file to fix a single row a human reads in five seconds.
+        """
+        page = ("1) The secondary dwelling must have more than 24m2 of usable private "
+                "open space.\n2) The private open space area must be more than 4m wide.")
+        quote = "Secondary dwelling: 24m2 min width 4m (Penrith DCP 2014 Part D2)"
+        ok, coverage, missing = page_supports(quote, page, value_min=24, unit="m2")
+        assert missing == []                       # the VALUE is on the page
+        assert 0.60 < coverage < TERM_COVERAGE_MIN  # one word short, and it is "width"
+        assert not ok
+        bare, _cov_bare, _m = page_supports(quote.replace(" min width 4m", ""), page,
+                                            value_min=24, unit="m2")
+        assert bare                                # without that word, it passes
+
+
+class TestDerivedValuesAreSupportedByTheRateOnThePage:
+    """A council writes the rate; we store the quotient. Both must still be checkable.
+
+    Every page here is the real wording from the page the row cites, read on 2026-09-18
+    during the first full run -- which marked all of them unsupported because 0.143 is
+    nowhere on a page that says "1 space per 7 dwellings".
+
+    The negatives are the point: the rule must not become "a derivable value passes".
+    """
+
+    HORNSBY_PAGE = ("Sites < 800m from Railway Station Sites > 800m from Railway Station\n"
+                    "0-2 Bedrooms 1 space/dwelling\n"
+                    "Visitors (see Note***) 1 space per 7 dwellings 1 space per 5 dwellings")
+    HORNSBY_QUOTE = "1 visitor space per 7 dwellings (sites <800m from railway station)"
+
+    def test_a_rate_written_as_one_per_seven_supports_the_stored_quotient(self):
+        ok, _cov, missing = page_supports(self.HORNSBY_QUOTE, self.HORNSBY_PAGE,
+                                          value_min=0.143,
+                                          unit="visitor_spaces/dwelling")
+        assert ok and missing == []
+
+    def test_the_same_quotient_is_unsupported_where_that_rate_is_not_written(self):
+        """The confusable negative: 0.143 is derivable from the QUOTE on any page."""
+        page = ("Sites > 800m from Railway Station\n"
+                "Visitors (see Note***) 1 space per 5 dwellings")
+        ok, _cov, missing = page_supports(self.HORNSBY_QUOTE, page, value_min=0.143,
+                                          unit="visitor_spaces/dwelling")
+        assert not ok and missing == ["0.143", "143"]
+
+    def test_a_value_the_quote_contradicts_stays_unsupported(self):
+        """waverley 635: stored 15%, quote says 50%. No rule explains it, so it fails."""
+        page = "50% of the landscaped area must be deep soil zone."
+        ok, _cov, missing = page_supports("50% of the landscaped area must be deep soil "
+                                          "zone.", page, value_min=15, unit="%")
+        assert not ok and "15" in missing
+
+    def test_an_area_from_its_dimensions_is_supported(self):
+        """marrickville 1113: 4m x 4m stored as 16 m2, and 16 is nowhere on the page."""
+        page = ("A detached secondary dwelling must be provided with private open space "
+                "of at least 4m x 4m accessible from a living area.")
+        quote = "Secondary dwelling: minimum private open space 4m x 4m"
+        assert "16" not in page
+        ok, _cov, _missing = page_supports(quote, page, value_min=16, unit="m2")
+        assert ok
+
+    def test_an_abbreviated_quote_still_fails_on_WORDING_not_on_its_value(self):
+        """The residue this change does NOT fix, pinned so it is not mistaken for a
+        value defect: the quote says "POS", the page says "private open space", so term
+        coverage falls under the bar even though 4m x 4m -> 16 is explained and present.
+        Widening the term test is a separate decision with its own false-positive cost."""
+        page = ("A detached secondary dwelling must be provided with private open space "
+                "of at least 4m x 4m accessible from a living area.")
+        ok, coverage, missing = page_supports("Secondary dwelling: min 4m x 4m POS", page,
+                                              value_min=16, unit="m2")
+        assert not ok
+        assert missing == []          # the VALUE is accounted for
+        assert coverage < 0.70        # the WORDS are what fell short
+
+    def test_built_to_the_boundary_supports_a_nil_setback(self):
+        """penrith 50: 'may be built to the rear boundary' stored as 0m, and 0 is not
+        a number the page contains."""
+        page = ("e) Where located above a garage facing a rear laneway, the building may "
+                "be built to the rear boundary.")
+        ok, _cov, _missing = page_supports(
+            "Where located above a garage facing a rear laneway, the building may be "
+            "built to the rear boundary.", page, value_min=0.0, unit="m")
+        assert ok
+
+    def test_a_derivation_does_not_rescue_a_page_about_something_else(self):
+        """Term coverage still governs: the rate is on the page, the subject is not."""
+        page = "Child care centres: 1 space per 7 children plus 1 space per 2 staff."
+        ok, _cov, _missing = page_supports(self.HORNSBY_QUOTE, page, value_min=0.143,
+                                           unit="visitor_spaces/dwelling")
+        assert not ok
+
+    def test_derivation_is_on_page_names_the_rule_it_used(self):
+        rule = derivation_is_on_page(self.HORNSBY_QUOTE,
+                                     set(numeric_tokens(self.HORNSBY_PAGE)),
+                                     0.143, None, "visitor_spaces/dwelling")
+        assert rule == "ratio_or_rate"
+
+    def test_derivation_is_on_page_returns_none_when_no_rule_explains_the_value(self):
+        assert derivation_is_on_page("50% of the landscaped area must be deep soil zone.",
+                                     {"50"}, 15, None, "%") is None
+
+    def test_a_rate_read_out_of_a_SEVERED_quote_does_not_support_anything(self):
+        """A quote at the extractor's hard cut is not evidence either way (cumberland
+        28/30: one row falsely flagged and one falsely passed, from the same cut). The
+        rate rule still fires on the surviving fragment, so only the state guard rejects
+        it -- without that guard a truncated quote would silently license the value."""
+        quote = "1 visitor space per 7 dwellings for residential flat buildings, "
+        quote = (quote * 10)[:TRUNCATION_LIMIT]
+        assert len(quote) == TRUNCATION_LIMIT
+        assert derivation_is_on_page(quote, {"1", "7"}, 0.143, None,
+                                     "visitor_spaces/dwelling") is None
+        ok, _cov, missing = page_supports(quote, "1 visitor space per 7 dwellings for "
+                                                 "residential flat buildings",
+                                          value_min=0.143,
+                                          unit="visitor_spaces/dwelling")
+        assert not ok and missing == ["0.143", "143"]
 
 
 if __name__ == "__main__":

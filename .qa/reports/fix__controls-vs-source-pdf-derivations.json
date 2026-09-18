@@ -1,0 +1,141 @@
+{
+  "tier": "critical",
+  "justification": "Changes when a served DCP control counts as SUPPORTED BY THE COUNCIL'S OWN PDF -- the only check in the repo that compares a number we serve against an authority nothing in our pipeline produced. A wrong loosening ships a false 'the council says this' signal on a planning control. The first full run (2026-09-18) scored 84.9% of 767 checkable controls against a 95% mark fixed before the run, and seven cited pages opened by hand showed the failures were the checker's, not the data's: councils write '1 space per 7 dwellings' where we store 0.143, '4m x 4m' where we store 16, and 'may be built to the rear boundary' where we store 0. Second concern in the same branch: 111 served provisions carry street labels lifted off a map figure (DQ-78) and are rendered today as if they were readable controls.",
+  "commit_hash": "77ce4aef",
+  "files": [
+    ".github/workflows/data-watch.yml",
+    "docs/EXTRACTION_WHY_IT_RECURS_AND_THE_DURABLE_FIX_2026-07.md",
+    "frontend-nextjs/__tests__/components/formatted-provision-map-text.test.tsx",
+    "frontend-nextjs/__tests__/lib/map-scrambled-provision-text.test.ts",
+    "frontend-nextjs/components/compliance/FormattedProvisionText.tsx",
+    "frontend-nextjs/lib/provision-text-formatter.ts",
+    "scripts/validate_controls_against_source_pdf.py",
+    "tests/test_controls_against_source_pdf.py",
+    "tests/test_validate_controls_against_source_pdf_real_db.py"
+  ],
+  "pre_impl": {
+    "existing_data": "services/extracted_data_integrity.explain_row already names each derivation rule (ratio_or_rate, area_from_dimensions, built_to_boundary_zero, unit_conversion, ...) and returns the evidence substring; it is REUSED, not reimplemented. The only new column read is dcp_setback_controls.unit, added to the existing SELECT -- text, nullable, 15 distinct values over the 783 page-citing rows. Values arrive as Decimal, which explain_value's float() accepts. DQ-78's thresholds for the frontend detector are the ones already in scripts/dq_probe_live.py, not new ones.",
+    "assumption_mismatch": "The prior assumption was that a control's stored number is written on its cited page. False for rates and dimensions: the council writes the rate and we store the quotient, so the number CANNOT be there. Corrected by accepting a named derivation whose own source quantities are on the page -- value <- quote <- page, with the council's document still the authority at the end.",
+    "new_vs_existing": "Applies to every run over every current control. Changes no stored data: the script is read-only against the database. The frontend change affects the 111 DQ-78 rows at display and nothing else.",
+    "external_source_error": "The authority is the council's published PDF text layer. Where that layer is garbled (map-heavy chapters), a genuinely-present number can still fail to match and the row stays UNSUPPORTED -- the safe direction. A truncated stored quote (exactly 400 characters, the extractor's cut) is rejected outright rather than read, because a rule firing on a severed fragment is luck reported as verification.",
+    "frontend_type": "FormattedProvisionText gains two optional props (sourceUrl?: string, sourcePage?: number). Optional on purpose: all five existing call sites compile unchanged, and the notice degrades to text-without-a-link when a caller has no URL to pass.",
+    "user_failure_mode": "Too loose: a control whose number appears nowhere in the council's document reads as supported, and the one independent check we have goes quiet. Guarded three ways -- the derivation must be one explain_row can NAME, every quantity that rule quoted must be on the page, and the term-coverage bar is unchanged at 0.70. Proven by four planted mutations, each caught. On the display side, too aggressive a rule would dim a real control: the DQ-78 ledger records that rows near the detection cut carry binding controls ('This locality is bounded by Ashmore Street to the north'), so nothing is hidden or removed and those exact strings are pinned as must-not-dim tests."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_controls_against_source_pdf.py -q && PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest -m database tests/test_validate_controls_against_source_pdf_real_db.py -q -o addopts= && cd frontend-nextjs && npx jest --testPathPatterns=map-scrambled",
+    "fails_when": "The derivation path accepts a value no rule explains (waverley 635: stored 15%, quote says 50%), or accepts one whose source quantities are absent from the page (0.143 on a page that only says 'per 5 dwellings'), or reads a rate out of a quote severed at the 400-character cut, or stops firing at all. On the frontend: when ordinary prose is flagged as map text, or when a known real control line ('Building heights are to comply with Figure 6.1') is dimmed.",
+    "observed_red": "Seven mutations planted in the pure core, all CAUGHT: always-accept-derivation (the severed-quote test fails), skip-page-number-check, never-use-derivation, accept-any-evidence-span, never-strip-provenance, strip-every-parenthetical, strip-truncation-blind. Full runs over the live data, each after a change and each with the 95% mark untouched: 84.9% of 767 -> 91.3% -> 91.2% -> 97.3% of 764, with the residue printed by id. 52 passed in tests/test_controls_against_source_pdf.py, 11 in the new Jest suite, 5 in tests/test_data_watch_workflow.py. Real-layer: 4 more tests run ROWS_SQL against the live database and fail if the nine columns main() unpacks positionally change shape or order, if value_min/value_max stop being numbers float() accepts, if the scope widens past served rows, or if the unit column goes all-NULL and silently disables the unit_conversion rule. 4 passed with PYTEST_REAL_DB=1, 4 deselected without it. Component layer: 7 React Testing Library tests render the provision a reader actually meets -- the notice appears on a scrambled row and not on ordinary prose, the binding control inside a scrambled row is still rendered, the dimmed spans never contain it, the scrambled characters remain in the document, and the source link carries its page."
+  },
+  "functions": [
+    {
+      "name": "derivation_is_on_page",
+      "file_line": "scripts/validate_controls_against_source_pdf.py (new); called from page_supports only when the stored value is absent from the page",
+      "input": "quote (the row's source_text AS STORED, not stripped), page_nums (numeric tokens of the candidate page), value_min, value_max, unit.",
+      "output": "The name of the derivation rule (e.g. 'ratio_or_rate') when the value is explained by the quote AND every quantity that rule quoted is on the page; otherwise None. A name clears the missing-value list so the row can grade supported; None leaves it unsupported.",
+      "if_none": "Returns None for a failing or absent state -- UNEXPLAINED, MISSING_SOURCE_TEXT, TRUNCATED_EVIDENCE, no value stored -- and for evidence whose numbers are not on the page. It never rescues on absent input, so a missing quote or an unreadable page leaves the row flagged."
+    },
+    {
+      "name": "strip_provenance",
+      "file_line": "scripts/validate_controls_against_source_pdf.py (new); applied to the quote inside page_supports and to the quote's numbers in classify",
+      "input": "A row's source_text, which routinely carries our own citation wrapper ('(Penrith DCP 2014 Part D2)', 'Ashfield DCP 2016 A-Part8 Table 2:').",
+      "output": "The council's own words, with a leading plan preamble and any trailing citation parenthetical removed. A parenthetical the council wrote ('(sites <800m from railway station)') carries no citation marker and is left in place, because it is what tells two neighbouring table rows apart.",
+      "if_none": "Empty or None input returns an empty string rather than raising. Stripping affects only which words are REQUIRED of the page: words removed here still count toward coverage when the page happens to carry them, measured after deleting them outright fixed 11 rows and broke 11."
+    },
+    {
+      "name": "hasInterleavedMapText",
+      "file_line": "frontend-nextjs/lib/provision-text-formatter.ts (new); used by FormattedProvisionText to decide whether to show the DQ-78 notice",
+      "input": "A provision's display text, after council-specific pre-processing has run and after any control marker has been stripped -- i.e. exactly the characters the reader is about to be shown, not the raw database column.",
+      "output": "boolean -- true when the text is longer than 80 characters, carries at least 100 whitespace-separated tokens, and at least 20% of those tokens are a single letter. These are DQ-78's own thresholds, read off the distribution and running in SQL in scripts/dq_probe_live.py; measured 111 served rows, 110 of them city_of_sydney.",
+      "if_none": "Empty, undefined or short text returns false, so an unreadable prop shows the provision normally rather than throwing and blanking the panel. A false verdict never hides anything -- the notice is additive."
+    },
+    {
+      "name": "isMapScrambledLine",
+      "file_line": "frontend-nextjs/lib/provision-text-formatter.ts (new); used per rendered line inside FormattedProvisionText's applyHighlight",
+      "input": "One rendered line of a provision that has already been flagged at row level, passed in as the element's own content string by applyHighlight during render.",
+      "output": "boolean -- true for a line of at least 8 tokens whose single-letter share is at least 35%, i.e. the figure text itself. A true line is dimmed and titled in place; the characters stay selectable, because a planner checking the PDF needs to find them.",
+      "if_none": "Short or empty lines return false. The three real controls the DQ-78 note records as living inside scrambled rows are pinned as tests that must return false, so the dimming can never swallow a binding control."
+    }
+  ],
+  "values": [
+    {
+      "name": "MIN_PINNING_TERMS",
+      "value": "3 -- reported, never enforced",
+      "why": "Below three distinguishing words, 'supported' means the value sits on the cited page beside the one or two words the quote has: consistent with the row, not pinned to it. 34 of 783 rows are in that position, all terse table cells ('2 spaces', '1 space per dwelling'). Enforcing it would fail rows whose terseness is the council's table design, so the count is printed beneath the pass rate instead of being folded into it.",
+      "source": "Measured over the live dcp_setback_controls rows that cite a page, 2026-09-18.",
+      "if_missing": "The headline rate would read the same while concealing how many rows rest on thin wording -- the failure mode this project calls a record of being seen standing in for evidence.",
+      "read_at": "scripts/validate_controls_against_source_pdf.py -- module constant, read only in main's summary print."
+    },
+    {
+      "name": "MAP_SCRAMBLE_MIN_TOKENS / MAP_SCRAMBLE_MIN_RATIO",
+      "value": "100 tokens and a 0.20 single-letter share",
+      "why": "Not new numbers: they are DQ-78's, chosen off the distribution (>=0.50 gives 34 rows, >=0.30 gives 83, >=0.20 gives 128, >=0.10 gives 663) with the 100-token floor separating map scramble from DQ-77's split units. The frontend and the ledger must agree, or the UI would warn about rows the ledger does not count, or stay silent on rows it does.",
+      "source": "scripts/dq_probe_live.py PROBES['DQ-78'], measured 111 rows on 2026-08-15.",
+      "if_missing": "A lower bar dims ordinary prose; a higher one leaves scrambled rows presented as readable controls, which is the condition this change exists to end.",
+      "read_at": "frontend-nextjs/lib/provision-text-formatter.ts -- exported constants, read in hasInterleavedMapText and asserted in the Jest suite."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Every current control that cites a page in a chapter with a document in R2, now also selecting the control's unit so explain_row can apply its unit-conversion rule.",
+      "file_line": "scripts/validate_controls_against_source_pdf.py -- ROWS_SQL",
+      "where_clause": "c.pdf_page IS NOT NULL AND c.is_current = TRUE AND g.r2_current_path IS NOT NULL AND g.r2_current_path <> '' -- served scope only; a superseded control is shown to nobody. Read-only: the script issues no write."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A quote that is almost all citation leaves a tiny required-term denominator, so a couple of matched words can reach full coverage.",
+      "what_happens": "A control reads as supported on thin wording: its value is on the cited page, but nothing says which row of a long parking table it came from.",
+      "mitigated": true,
+      "how": "Counted and printed beneath the pass rate as 'thinly pinned' (34 of 783), never folded into it. Not enforced as a rule because the terseness is the council's table design ('2 spaces'), and failing those rows would manufacture defects out of correct data.",
+      "repro": "python scripts/validate_controls_against_source_pdf.py -- read the 'thinly pinned' line under section A. It must not be 0 while the terse table-cell rows exist."
+    },
+    {
+      "scenario": "The derivation path could be trusted on the quote alone, without checking the page.",
+      "what_happens": "Any value derivable from its own stored quote would pass on every page of the document, and the one independent check we have would silently stop testing anything.",
+      "mitigated": true,
+      "how": "derivation_is_on_page requires every quantity the rule quoted to be present in the cited page's numeric tokens, and the term-coverage bar is unchanged at 0.70. Mutation 'skip-page-number-check' was planted and caught.",
+      "repro": "python -m pytest tests/test_controls_against_source_pdf.py -k 'unsupported_where_that_rate_is_not_written' -q"
+    },
+    {
+      "scenario": "A stored quote severed at the extractor's 400-character cut still fires a rate rule on the surviving fragment.",
+      "what_happens": "A value would be licensed by a fragment whose meaning was cut off -- the cumberland 28/30 failure, where one row was falsely flagged and another falsely passed from the same cut.",
+      "mitigated": true,
+      "how": "explain_row is given the STORED quote, not the provenance-stripped one, because trimming even a trailing space changes the length that marks a severed quote. Mutations 'always-accept-derivation' and 'strip-truncation-blind' were planted and caught.",
+      "repro": "python -m pytest tests/test_controls_against_source_pdf.py -k SEVERED -q"
+    },
+    {
+      "scenario": "The SELECT over dcp_setback_controls could widen beyond served rows, or the new unit column could arrive in a type explain_value cannot read.",
+      "what_happens": "Superseded controls nobody is shown would be graded alongside live ones, changing the rate for reasons unrelated to what customers see; or a unit type mismatch would make the unit_conversion rule silently never fire.",
+      "mitigated": true,
+      "how": "The where clause keeps c.is_current = TRUE and requires an R2 document; the pre-implementation probe measured unit as nullable text with 15 values and value_min/value_max arriving as Decimal, which float() accepts. The script issues no write.",
+      "repro": "python scripts/validate_controls_against_source_pdf.py -- the header line must read '783 current controls citing a page', not the full 1,071-row table."
+    },
+    {
+      "scenario": "The display-time map-text rule could dim or hide a binding control.",
+      "what_happens": "A planner stops seeing a real requirement -- the harmful direction the DQ-78 note names explicitly, since rows near the detection cut carry controls alongside the scramble.",
+      "mitigated": true,
+      "how": "Nothing is hidden or removed: the notice is additive and the characters stay selectable. The three real control strings recorded in the DQ-78 note are pinned as tests that isMapScrambledLine must return false for.",
+      "repro": "cd frontend-nextjs && npx jest --testPathPatterns=map-scrambled"
+    },
+    {
+      "scenario": "penrith 1117 is correct and still fails, because the row says 'min width 4m' and the page says 'more than 4m wide'.",
+      "what_happens": "A correct row sits in the unsupported list, costing review time.",
+      "mitigated": false,
+      "how": "Left visible and named in a test rather than fixed with a stemmer, which would loosen every comparison in the file to rescue one row a human reads in five seconds.",
+      "repro": "python -m pytest tests/test_controls_against_source_pdf.py -k citation_stops_costing_coverage -q"
+    },
+    {
+      "scenario": "21 rows remain unsupported, and two of them are a real data defect (waverley 635/636: stored 15% behind a quote saying 50%, on a page about stormwater).",
+      "what_happens": "A wrong deep-soil percentage stays served until the data is corrected.",
+      "mitigated": false,
+      "how": "Out of scope here: this branch changes the check, not the data. Every unsupported row is printed by id so the list is actionable, and the nightly job now fails when the rate drops below 95%.",
+      "repro": "python scripts/validate_controls_against_source_pdf.py -- see 'EVERY unsupported control, listed'."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No -- the script is read-only against the database and the frontend change writes nothing.",
+    "secrets": "No -- the nightly step reuses the DATABASE_URL and R2_* secrets already present for the DCP page-map step in the same workflow; none is new.",
+    "other_repo": "No -- everything is in this repo.",
+    "manual_verify": "Yes, one thing worth watching: the first nightly data-watch run after merge, because this step downloads and opens 55 PDFs on a self-hosted runner and has never run in CI before. Verified in-session otherwise -- five full runs against the live database and the councils' own R2 documents (84.9% -> 97.3%), 52 pytest, 11 jest, 5 workflow tests, and seven planted mutations all caught."
+  }
+}

@@ -10,7 +10,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { parseProvisionText, FormattedElement, getElementClasses, ParseOptions, ProvisionTheme } from '@/lib/provision-text-formatter';
+import { parseProvisionText, FormattedElement, getElementClasses, ParseOptions, ProvisionTheme, hasInterleavedMapText, isMapScrambledLine } from '@/lib/provision-text-formatter';
 import { preProcessProvisionText } from '@/lib/dcp-format-configs';
 
 interface FormattedProvisionTextProps {
@@ -22,6 +22,48 @@ interface FormattedProvisionTextProps {
   highlightQuery?: string; // Search query to highlight in the text
   theme?: ProvisionTheme; // Color theme: 'purple' (SEPP), 'green' (DCP), 'amber' (LEP)
   councilKey?: string; // formerCouncil.toLowerCase() — enables council-specific artifact cleanup
+  sourceUrl?: string; // Council PDF this provision was read from — shown when text is figure-scrambled
+  sourcePage?: number; // Page within that PDF
+}
+
+/**
+ * DQ-78 notice. Shown above a provision whose text carries street labels lifted off a map
+ * figure and interleaved into the prose. The row is still rendered in full: the ledger
+ * measured that rows near the detection cut contain binding controls alongside the
+ * scramble, so the reader is told what happened rather than shown less.
+ *
+ * Wording is factual and makes no claim about the rest of the text being right: it says
+ * where the characters came from and points at the council's own document.
+ */
+function MapTextNotice({ sourceUrl, sourcePage }: { sourceUrl?: string; sourcePage?: number }) {
+  return (
+    <div
+      role="note"
+      data-testid="map-text-notice"
+      className="mb-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+    >
+      <span className="font-medium">Some characters below came off a map image.</span>{' '}
+      The council&apos;s PDF puts street labels inside the figure on this page, and the
+      extractor read them into the text. Words that run together as single letters are
+      those labels, not controls. Read this page in the council&apos;s document
+      {sourceUrl ? (
+        <>
+          :{' '}
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:no-underline"
+          >
+            open the source PDF{typeof sourcePage === 'number' ? ` (page ${sourcePage})` : ''}
+          </a>
+          .
+        </>
+      ) : (
+        '.'
+      )}
+    </div>
+  );
 }
 
 /**
@@ -50,7 +92,9 @@ export function FormattedProvisionText({
   skipHeadings = false,
   highlightQuery,
   theme = 'purple',
-  councilKey
+  councilKey,
+  sourceUrl,
+  sourcePage
 }: FormattedProvisionTextProps) {
   // Apply council-specific artifact cleanup, then strip the control marker if shown as badge
   const processedText = useMemo(() => {
@@ -63,16 +107,37 @@ export function FormattedProvisionText({
 
   const elements = useMemo(() => parseProvisionText(processedText, { skipHeadings }), [processedText, skipHeadings]);
 
+  // DQ-78: street labels lifted off a map figure and interleaved through the prose.
+  const figureText = useMemo(() => hasInterleavedMapText(processedText), [processedText]);
+
   // Helper to apply highlighting to content
   const applyHighlight = (content: string): React.ReactNode => {
-    return highlightQuery ? highlightText(content, highlightQuery) : content;
+    const highlighted = highlightQuery ? highlightText(content, highlightQuery) : content;
+    // A line that is itself figure text is dimmed and labelled where it sits, so the
+    // control beside it keeps its normal weight. Nothing is removed: the characters stay
+    // selectable and copyable, because a planner checking the PDF needs to find them.
+    if (figureText && isMapScrambledLine(content)) {
+      return (
+        <span
+          data-testid="map-scrambled-line"
+          title="Read off a map image in the source PDF"
+          className="text-gray-400 italic"
+        >
+          {highlighted}
+        </span>
+      );
+    }
+    return highlighted;
   };
 
   if (!elements || elements.length === 0) {
     return (
-      <p className={`text-sm text-gray-700 whitespace-pre-wrap ${className}`}>
-        {applyHighlight(processedText)}
-      </p>
+      <div className={className}>
+        {figureText && <MapTextNotice sourceUrl={sourceUrl} sourcePage={sourcePage} />}
+        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+          {applyHighlight(processedText)}
+        </p>
+      </div>
     );
   }
 
@@ -248,6 +313,7 @@ export function FormattedProvisionText({
 
   return (
     <div className={`space-y-1 ${className}`}>
+      {figureText && <MapTextNotice sourceUrl={sourceUrl} sourcePage={sourcePage} />}
       {renderElements}
     </div>
   );

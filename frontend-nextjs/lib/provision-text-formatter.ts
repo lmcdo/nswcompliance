@@ -19,6 +19,51 @@ function escapeRegex(str: string): string {
 }
 
 /**
+ * DQ-78: text lifted off a map IMAGE, where labels at different angles interleaved
+ * into nonsense -- "Zen B H i i t a n h S n d S in fi t g e r e S ld y e tr s t ee S t".
+ *
+ * Thresholds are DQ-78's own, not new ones: at least 100 whitespace-separated tokens and
+ * at least 20% of them a single letter, over text longer than 80 characters. They were
+ * read off the distribution (>=0.50 gives 34 rows, >=0.30 gives 83, >=0.20 gives 128,
+ * >=0.10 gives 663) and the 100-token floor is what separates this from DQ-77's split
+ * units. `scripts/dq_probe_live.py` runs the same rule in SQL; if one moves, move both.
+ *
+ * Detecting it does NOT license hiding the row. The ledger's remedy note is explicit:
+ * rows nearest the cut carry BINDING CONTROLS with map labels interleaved through them
+ * ("This locality is bounded by Ashmore Street to the north", "Building heights are to
+ * comply with Figure 6.1"), so dropping them hides controls, which is the harmful
+ * direction. The row stays; the reader is told which parts came off a figure.
+ */
+export function mapScrambleRatio(text: string): number {
+  const tokens = (text || '').trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return 0;
+  const singles = tokens.filter((t) => /^[A-Za-z]$/.test(t)).length;
+  return singles / tokens.length;
+}
+
+export const MAP_SCRAMBLE_MIN_TOKENS = 100;
+export const MAP_SCRAMBLE_MIN_RATIO = 0.2;
+
+export function hasInterleavedMapText(text: string): boolean {
+  if (!text || text.length <= 80) return false;
+  const tokens = text.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length < MAP_SCRAMBLE_MIN_TOKENS) return false;
+  return mapScrambleRatio(text) >= MAP_SCRAMBLE_MIN_RATIO;
+}
+
+/**
+ * Which LINE of such a provision is the figure text, so the prose beside it still reads
+ * normally. A line is judged on its own: short lines are exempt because "a" and "I" in a
+ * six-word sentence are not a scramble, and the per-line bar is higher than the row-level
+ * one because a row qualifies on its worst passages while a line has nowhere to hide.
+ */
+export function isMapScrambledLine(line: string): boolean {
+  const tokens = (line || '').trim().split(/\s+/).filter(Boolean);
+  if (tokens.length < 8) return false;
+  return mapScrambleRatio(line) >= 0.35;
+}
+
+/**
  * Strip section header from start of provision text
  *
  * Section headers are structured data in the database (toc_section_title, section_header fields).
