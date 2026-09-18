@@ -53,6 +53,7 @@ import dcp_extract_changed as dx  # noqa: E402
 # Refuses a swap that would lose most of a chapter's sections. See the module docstring.
 from scripts.dcp_supersede_guard import enforce as enforce_section_loss  # noqa: E402
 from scripts.dcp_supersede_guard import snapshot as section_snapshot  # noqa: E402
+from scripts.dcp_supersede_guard import enforce_legibility  # noqa: E402
 
 
 def find_committable_chapters(cur) -> list[dict]:
@@ -397,9 +398,17 @@ def main() -> int:
         help=("Let ONE named chapter through the section-loss guard. Repeatable. Only for "
               "a loss a person has checked against the council's source document."),
     )
+    parser.add_argument(
+        "--allow-garble", action="append", default=[], metavar="COUNCIL/CHAPTER",
+        help=("Let ONE named chapter through the legibility guard. Repeatable. Separate "
+              "from --allow-section-loss on purpose: an override should permit exactly "
+              "what it names, and allowing a chapter to shed sections is not a decision "
+              "to publish text a two-column read has scrambled."),
+    )
     args = parser.parse_args()
     dry_run = not args.commit
     allowed_loss = frozenset(args.allow_section_loss)
+    allowed_garble = frozenset(args.allow_garble)
 
     conn = psycopg2.connect(dx.DATABASE_URL)
     conn.autocommit = False
@@ -483,6 +492,10 @@ def main() -> int:
                 cur, council, chapter_key,
                 allow_unqueued=f"{council}/{chapter_key}" in allowed_loss)
             enforce_section_loss(cur, council, chapter_key, before, allowed_loss)
+            # Sections and rule counts can both survive a version that is unreadable.
+            # Judged on the same before/after snapshot, inside the same uncommitted
+            # transaction, so a refusal rolls the chapter back and keeps the approval.
+            enforce_legibility(cur, council, chapter_key, before, allowed_garble)
             # Resolve the worklist: the reviewed provisions are now live. The status
             # enum has no 'committed', so the resolved rows are deleted (the permanent
             # record is regulatory_provisions, extraction_method='ai-reviewed').

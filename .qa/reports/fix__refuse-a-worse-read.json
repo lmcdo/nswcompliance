@@ -1,0 +1,138 @@
+{
+  "tier": "critical",
+  "justification": "Decides whether a re-read of a council's plan replaces the rules a planner reads. The commit worker had no gate on whether the text is still readable: count_drop compares row counts, the section-loss guard compares section codes, and regeneration_artifact, map_change and restructure all look at structure. A two-column page read straight across keeps every section, every rule and every citation, and destroys the words. Measured on the live queue, committing city_of_sydney/section-3-general-provisions — which holds 92 of DQ-70's remaining 151 stale rows, so it looks like the fix — would have scrambled a clause that is served clean today.",
+  "commit_hash": null,
+  "files": [
+    "scripts/dcp_supersede_guard.py",
+    "scripts/dcp_commit_approved.py",
+    "tests/test_dcp_legibility_guard.py",
+    "tests/test_dcp_supersede_guard.py",
+    "tests/test_dcp_commit_approved_records_hash.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions (source_council, source_chapter_key, is_current, provision_text, ref_number, v2_is_actionable) read through the snapshot dcp_supersede_guard already takes before and after the write. No schema change, no new table, no new write; one existing snapshot gains one field and the commit path gains one call.",
+    "assumption_mismatch": "The commit worker assumed a version that keeps its structure is a version worth publishing. Measured 2026-09-19 against production, by driving the real commit and rolling it back: city_of_sydney/section-3-general-provisions goes from 102 rules and 91 section codes to 97 rules and 96 codes — every existing gate passes it — while clause 3.2.3 goes from a single-letter token ratio of 0.021 to 0.225, which is a two-column page read across. The second assumption was mine, and the live data broke it: counting scrambled rows is not enough, because this commit also DELETES a scrambled junk row, so the total is 1 before and 1 after and a count reports no change.",
+    "new_vs_existing": "Applies to every future commit on this path, and to the extract path through the same module. Rewrites nothing already live. It changes which commits are allowed to land, so its first effect is to refuse a chapter that would otherwise have been committed today.",
+    "external_source_error": "None — no network and no document is read here. The council's PDF was parsed long before this point; this compares two versions of the stored text.",
+    "frontend_type": "No API or component change. The same measure already backs frontend-nextjs/lib/provision-text-formatter.ts, which dims scrambled lines for the reader, so the gate and the page now agree on what scrambled means.",
+    "user_failure_mode": "Two directions. Too loose and gibberish is published as a development control — which is what happens today, and what this refuses. Too tight and a chapter can never be repaired: prevented by refusing only rules that are scrambled now and were not before, so a chapter that arrived garbled is not held hostage to its own defect, and a commit that unscrambles rows passes. Both directions have a named test, and the refusal names the rule and the exact flag that overrides it."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_legibility_guard.py tests/test_dcp_supersede_guard.py tests/test_dcp_commit_approved_records_hash.py tests/test_dcp_commit_refuses_section_loss.py -q",
+    "fails_when": "The comparison reverts from the set of scrambled rules to their count, which a repair-plus-a-new-break cancels out; the scramble query filters on v2_is_actionable, which would make the guard permanently dead because rows this worker inserts carry NULL there; the DQ-78 thresholds are re-chosen rather than inherited; the commit worker stops calling the guard, or calls it after conn.commit() where a refusal can no longer roll anything back; the override stops being separate from --allow-section-loss; or a chapter that merely stayed garbled, or got better, starts being refused.",
+    "observed_red": "Five mutations planted in the source, five CAUGHT: counting instead of comparing rows, filtering on v2_is_actionable, loosening the ratio to 0.50, deleting the call from the worker, and moving the call after the commit. 15 tests here and 133 across every related suite. Verified against production rather than only in tests: the real commit_reviewed_from_queue was driven against the live database inside a transaction that was rolled back, and the guard REFUSED with 'city_of_sydney/section-3-general-provisions: 1 rule(s) are scrambled in this version that were readable in the one it replaces (1 scrambled before, 1 after) ... e.g. Sydney_DCP_2012__section_3_general_provisions__3_2_3'. Those equal totals are the proof that the first, count-based version of this guard would have let the damage through."
+  },
+  "functions": [
+    {
+      "name": "snapshot",
+      "file_line": "scripts/dcp_supersede_guard.py",
+      "input": "An open cursor, a council slug and a chapter_key, read inside the caller's uncommitted transaction.",
+      "output": "The chapter's live section codes, its rule count, and now the set of ref_numbers whose text matches DQ-78's interleave signature — computed in SQL so a chapter's whole text never crosses the wire.",
+      "if_none": "A chapter with no live rules returns empty codes, zero rows and an empty scrambled set, which is the correct baseline for a first extraction: nothing to lose, but still something to damage, so a first extraction that publishes gibberish is refused."
+    },
+    {
+      "name": "judge_legibility",
+      "file_line": "scripts/dcp_supersede_guard.py",
+      "input": "The before and after Snapshots of one chapter.",
+      "output": "The set of rules scrambled after the write that were not scrambled before it. Pure — no cursor, no clock.",
+      "if_none": "An empty set when nothing new is scrambled, which includes a chapter that was already garbled and stayed that way, and a commit that reduced the damage. Both must pass, or the guard would block the re-read that repairs the chapter."
+    },
+    {
+      "name": "enforce_legibility",
+      "file_line": "scripts/dcp_supersede_guard.py, called from dcp_commit_approved.commit path",
+      "input": "The cursor mid-transaction, the council and chapter, the before Snapshot, and the set of chapters a person named on the command line.",
+      "output": "The newly scrambled rules, or a LegibilityRefused naming them and the flag that overrides it. The caller's existing except rolls the chapter back and keeps the approval, so it is refused again every run until the extraction is fixed.",
+      "if_none": "Returns an empty frozenset and the commit proceeds, exactly as before this change for every chapter that does not get worse."
+    }
+  ],
+  "values": [
+    {
+      "name": "the set of scrambled rules, not their count",
+      "value": "after.scrambled_refs - before.scrambled_refs",
+      "why": "A count nets a repair against a new break. The real city_of_sydney commit deletes the junk row '2012' — a map caption whose ref_number is a year — and scrambles clause 3.2.3, so the total is 1 before and 1 after. The first version of this guard compared counts and would have published that. Comparing which rules are scrambled cannot be cancelled.",
+      "source": "Measured 2026-09-19 by driving the real commit against production inside a rolled-back transaction: BEFORE 1 scrambled ['..__2012'], AFTER 1 scrambled ['..__3_2_3'].",
+      "if_missing": "The guard reports itself as present while passing the exact commit it was built to refuse — the worst kind of gate, because its existence is what a reader would rely on.",
+      "read_at": "scripts/dcp_supersede_guard.py — judge_legibility."
+    },
+    {
+      "name": "SCRAMBLE_MIN_TOKENS = 100, SCRAMBLE_MIN_RATIO = 0.20",
+      "value": "DQ-78's thresholds, inherited rather than re-chosen",
+      "why": "The fraction of whitespace-separated tokens that are a single letter. Real prose sits near zero — only 'a' and 'I' — while interleaved text is dominated by them. Reusing DQ-78's numbers means the gate, the data-quality ledger and frontend-nextjs/lib/provision-text-formatter.ts all mean one thing by 'scrambled'; a second definition here would let a row be scrambled for one and clean for another.",
+      "source": "DQ-78 read them off the served distribution rather than choosing them: >=0.50 matched 34 rows, >=0.30 83, >=0.20 128, >=0.10 663, and the 100-token floor is what separates a scrambled page from a short unit split like 's o o m m', which is DQ-77's defect with its own remedy. This chapter's own distribution confirms the line sits in a gap: 0.225, then 0.077, 0.044, 0.044, median 0.016.",
+      "if_missing": "At 0.50 the 0.225 row is invisible and the guard passes the commit it exists to refuse; below 0.10 it would refuse ordinary prose.",
+      "read_at": "scripts/dcp_supersede_guard.py — the Legibility constants."
+    },
+    {
+      "name": "is_current only, NOT v2_is_actionable",
+      "value": "The one deliberate deviation from DQ-78's own query",
+      "why": "Rows this worker inserts get v2_is_actionable NULL — the classifier decides later, and only a preamble is set FALSE. Carrying DQ-78's actionable filter would exclude every newly written row from the AFTER snapshot, so the after set could never exceed the before set and the guard would be permanently dead while appearing to run.",
+      "source": "Read off the insert in dcp_commit_approved.commit_reviewed_from_queue: v2_actionable = False if the ref ends 'preamble' else None.",
+      "if_missing": "A gate that runs, logs nothing, and never fires — indistinguishable from a gate that is passing.",
+      "read_at": "scripts/dcp_supersede_guard.py — the scramble query in snapshot."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Find which of a chapter's live rules are a two-column page read straight across, so the before and after of a commit can be compared.",
+      "file_line": "scripts/dcp_supersede_guard.py — snapshot",
+      "where_clause": "source_council = %s AND source_chapter_key = %s AND is_current = TRUE AND length(provision_text) > 80, then n >= 100 AND singles::numeric / n >= 0.20 over regexp_split_to_array on whitespace. Scoped to one chapter per call, and deliberately without v2_is_actionable."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A commit repairs one scrambled rule and scrambles another.",
+      "what_happens": "The number of scrambled rules is unchanged, a count-based guard reports no regression, and a clause a planner reads becomes gibberish while the chapter reports as committed.",
+      "mitigated": true,
+      "how": "This is the real city_of_sydney case, found by driving the commit against production rather than reasoning about it, and the first version of this guard had exactly this hole. The comparison is now between the sets of scrambled rules, and a test reproduces the 1-before-1-after shape by name.",
+      "repro": "python -m pytest tests/test_dcp_legibility_guard.py -k cancel_out -q"
+    },
+    {
+      "scenario": "The guard is scoped like DQ-78 and filters on v2_is_actionable.",
+      "what_happens": "Newly inserted rows carry NULL there, so the after snapshot never sees them, the added set is always empty, and the guard silently never fires. Every commit passes and the gate looks green.",
+      "mitigated": true,
+      "how": "A test asserts v2_is_actionable is absent from the query and explains why in its message. Planting the filter fails it.",
+      "repro": "python -m pytest tests/test_dcp_legibility_guard.py -k v2_is_actionable -q"
+    },
+    {
+      "scenario": "A chapter that is already garbled can never be re-read.",
+      "what_happens": "The repair that would fix it is refused by the guard meant to protect it, and the chapter stays broken permanently.",
+      "mitigated": true,
+      "how": "Only rules scrambled now and not before are refused. A chapter that stays the same passes, and one that unscrambles rows passes — both pinned as confusable negatives, because a symmetric 'did anything change' test would have refused the repair.",
+      "repro": "python -m pytest tests/test_dcp_legibility_guard.py -k 'already_garbled or UNSCRAMBLES' -q"
+    },
+    {
+      "scenario": "The guard runs after the transaction commits.",
+      "what_happens": "It raises on damage that is already live, so it becomes an alarm rather than a gate, and the rollback that would have saved the chapter never happens.",
+      "mitigated": true,
+      "how": "A test reads the worker's source and asserts the call sits between the write and conn.commit(). Moving it past the commit fails.",
+      "repro": "python -m pytest tests/test_dcp_legibility_guard.py -k after_the_write -q"
+    },
+    {
+      "scenario": "Someone overriding a section loss also overrides this.",
+      "what_happens": "A person deciding a chapter may shed sections unknowingly also decides to publish scrambled text, because one flag covered both.",
+      "mitigated": true,
+      "how": "--allow-garble is separate from --allow-section-loss, and LegibilityRefused is not a subclass of SectionLossRefused, so a caller catching one does not swallow the other. Both are asserted.",
+      "repro": "python -m pytest tests/test_dcp_legibility_guard.py -k separate_override -q"
+    },
+    {
+      "scenario": "A chapter is refused and nobody can tell which rule is the problem.",
+      "what_happens": "The refusal becomes noise, someone reaches for --allow-garble to make it go away, and the damage lands anyway.",
+      "mitigated": true,
+      "how": "The message names up to five newly scrambled ref_numbers, shows the before and after totals — so the reader can see when a count would have missed it — and says to fix the extraction rather than commit it.",
+      "repro": "python -m pytest tests/test_dcp_legibility_guard.py -k says_what_to_run -q"
+    },
+    {
+      "scenario": "The interleave defect itself is still there.",
+      "what_happens": "city_of_sydney section 3, northern_beaches and ku_ring_gai stay stale, so DQ-70 does not fall and OC-10 does not pass.",
+      "mitigated": false,
+      "how": "Not addressed here, deliberately. This stops the damage being published; it does not fix the two-column reader. The three chapters now fail loudly with a named rule instead of committing gibberish, which is the difference between a known defect and a silent one.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-70"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. Nothing already live is rewritten; the guard only decides what a future commit may write.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No — already verified against production by driving the real commit inside a rolled-back transaction and observing the refusal, with the before and after snapshots printed."
+  }
+}

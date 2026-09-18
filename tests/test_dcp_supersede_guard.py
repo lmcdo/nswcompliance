@@ -119,16 +119,26 @@ def test_a_chapter_with_too_few_codes_is_judged_by_its_rules():
 # ---------------------------------------------------------------------------
 
 class _Cur:
-    def __init__(self, headers):
+    """snapshot() issues two queries: the section headers, then the scrambled refs."""
+
+    def __init__(self, headers, scrambled=()):
         self.headers = headers
+        self.scrambled = list(scrambled)
         self.sql = None
         self.params = None
+        self.calls = []
 
     def execute(self, sql, params=None):
         self.sql, self.params = sql, params
+        self.calls.append((sql, params))
 
     def fetchall(self):
+        if "singles" in (self.sql or ""):
+            return [(r,) for r in self.scrambled]
         return [(h,) for h in self.headers]
+
+    def header_call(self):
+        return next(c for c in self.calls if "SELECT section_header" in c[0])
 
 
 def _after_the_bad_swap():
@@ -144,8 +154,9 @@ def test_enforce_refuses_with_the_numbers_and_the_override_command():
     msg = str(exc.value)
     assert "38 sections before, 8 after" in msg
     assert "--allow-section-loss marrickville/part4-s1-low-density" in msg
-    assert "is_current = TRUE" in cur.sql
-    assert cur.params == ("marrickville", "part4-s1-low-density")
+    sql, params = cur.header_call()
+    assert "is_current = TRUE" in sql
+    assert params == ("marrickville", "part4-s1-low-density")
 
 
 def test_the_override_lets_through_the_named_chapter_and_no_other():
