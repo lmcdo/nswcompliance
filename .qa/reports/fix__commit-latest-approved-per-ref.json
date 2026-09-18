@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Decides which reviewed rows become live provisions. Ten chapters could not commit at all — every one died on uq_provisions_current_identity and rolled back — because approved rows accumulate across repeated reviews of an unchanged PDF and all of them were inserted. That held 101 controls citing documents they were not read from, and DQ-70 is the only blocker on OC-10. The second revision of this branch changed the dedupe key after a cross-review showed the first one could lose data silently.",
-  "commit_hash": "39d9f27b",
+  "commit_hash": "18f4d908",
   "files": [
     "scripts/dcp_commit_approved.py",
     "tests/test_dcp_commit_approved_latest_per_ref.py",
