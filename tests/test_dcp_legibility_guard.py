@@ -108,8 +108,9 @@ class TestOnlyAddedDamageIsRefused:
 
     def test_an_ALREADY_scrambled_rule_made_much_worse_is_refused(self):
         """Listing which rules are scrambled cannot see this: the ref is in both sets, so
-        the difference is empty and 0.21 replaced by 0.90 commits. Fifteen live rules sit
-        between 0.62 and 0.91 today, so it is the next thing that would have gone wrong."""
+        the difference is empty and 0.21 replaced by 0.90 commits. 155 live rules are
+        scrambled today across 8 chapters, the worst fifteen between 0.62 and 0.91, so it
+        is the next thing that would have gone wrong."""
         before = snap(ratios={"krg__2_1": 0.21})
         cur = _Cur(["2.1 x"], scrambled=[("krg__2_1", "krg__2_1", 0.90)])
         with pytest.raises(g.LegibilityRefused) as exc:

@@ -1,0 +1,20 @@
+{
+  "tier": "minor",
+  "justification": "Corrects a wrong figure in a merged code comment and a test docstring. No logic, no threshold, no query behaviour changes — but a number that is ten times too small, sitting next to the constant it justifies, is how this codebase gets misled later.",
+  "commit_hash": null,
+  "files": [
+    "scripts/dcp_supersede_guard.py",
+    "tests/test_dcp_legibility_guard.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_legibility_guard.py -q",
+    "fails_when": "The legibility guard's behaviour changed, which it must not — this is a comment and docstring correction only.",
+    "observed_red": "19 tests pass before and after, which is the point: nothing executable changed. The error was found by re-running the census that produced the figure, this time without the LIMIT."
+  },
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No."
+  }
+}

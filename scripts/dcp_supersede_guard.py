@@ -106,8 +106,16 @@ SCRAMBLE_MIN_RATIO = 0.20   # DQ-78's threshold, read off the distribution
 # a 0.21 rule replaced by a 0.90 one commits. Each rule therefore carries its ratio and a
 # material rise is refused too. 0.05 is a fifth of the rise this guard was built for
 # (0.021 -> 0.225 on city_of_sydney 3.2.3) and well clear of noise: a sentence added to a
-# 2,000-token rule moves the ratio by under 0.01, while the fifteen scrambled rules live
-# today sit between 0.62 and 0.91, nowhere near a 0.05 band.
+# 2,000-token rule moves the ratio by under 0.01, while the 155 scrambled rules live today
+# run from 0.20 up to 0.91 — their top fifteen all sit above 0.62 — nowhere near a 0.05
+# band. (The count was first written here as "fifteen": that was a LIMIT 15 in the query it
+# came from, reported as if it were the total. The ratios were right, the population was
+# ten times larger. Re-run it rather than trusting this line:
+#   SELECT count(*) FROM (SELECT cardinality(regexp_split_to_array(btrim(provision_text),
+#     '\s+')) n, (SELECT count(*) FROM unnest(regexp_split_to_array(btrim(provision_text),
+#     '\s+')) w WHERE w ~ '^[A-Za-z]$') singles FROM regulatory_provisions WHERE is_current
+#     AND source_chapter_key IS NOT NULL AND length(provision_text) > 80) x
+#   WHERE n >= 100 AND singles::numeric/n >= 0.20;)
 SCRAMBLE_WORSE_MARGIN = 0.05
 
 
