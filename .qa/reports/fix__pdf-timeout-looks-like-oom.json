@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Three ways a one-hour extraction fails that a one-minute extraction never did, all found by running the real extractor rather than reading it. One of them reports the wrong cause, which is worse than failing: it sent today's debugging to memory limits when the actual cause was a 20-minute cap.",
-  "commit_hash": null,
+  "commit_hash": "a55866a4",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_long_extraction_survives.py",
