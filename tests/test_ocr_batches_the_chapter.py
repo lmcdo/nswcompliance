@@ -178,10 +178,11 @@ class TestItRunsWithoutTheNetwork:
             return None if label.startswith("2/") else ["x"] * expected_pages
 
         monkeypatch.setattr(m, "_fetch_ocr_batch", fake)
-        assert m.fetch_ocr_page_texts(pdf, expected_pages=8) is None
-        assert [c for c in calls if c.startswith("3/")] == [], (
-            "it carried on to batch 3 after batch 2 was exhausted")
-        assert len([c for c in calls if c.startswith("2/")]) == m.OCR_BATCH_RETRIES + 1
+        assert m.fetch_ocr_page_texts(pdf, expected_pages=8) is None, (
+            "3 of 8 pages failed, well over the share cap, so the chapter must be "
+            "abandoned rather than served as mostly text layer")
+        assert len([c for c in calls if c.startswith("2/")]) == m.OCR_BATCH_RETRIES + 1, (
+            "the failing batch was not retried to exhaustion before being counted")
 
     def test_no_url_still_returns_None_without_slicing(self, tmp_path, monkeypatch):
         m = _mod()

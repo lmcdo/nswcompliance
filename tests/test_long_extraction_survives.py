@@ -140,8 +140,14 @@ class TestOneBlipDoesNotLoseTheHour:
         assert len(calls) == 3, f"expected retry then two batches, got {calls}"
 
     def test_a_dead_endpoint_does_not_cost_47_batches_x_3(self, tmp_path, monkeypatch):
-        """The whole-chapter cap. Retrying every batch of a systematically broken
-        endpoint would turn 47 calls into 141 and waste an hour proving it is broken."""
+        """A systematically broken endpoint must be discovered quickly, not one batch at
+        a time across the whole chapter.
+
+        The bound changed when the fallback became per-page: a failed batch no longer
+        abandons the chapter, so the run continues past isolated failures. What stops a
+        DEAD endpoint is the failed-page share, checked as each batch fails rather than
+        only at the end — measured before that check existed, a 20-batch chapter cost 16
+        calls to learn what the first three already said."""
         m = _mod()
         monkeypatch.setenv("MODAL_OCR_URL", "https://example.invalid")
         monkeypatch.setenv("MODAL_OCR_TOKEN", "t")
@@ -150,9 +156,10 @@ class TestOneBlipDoesNotLoseTheHour:
         monkeypatch.setattr(m, "_fetch_ocr_batch",
                             lambda *a, **k: calls.append(1) or None)
         assert m.fetch_ocr_page_texts(self._pdf(tmp_path, 30), expected_pages=30) is None
-        assert len(calls) <= 1 + m.OCR_BATCH_RETRIES, (
-            f"a dead endpoint cost {len(calls)} calls; it should give up on the first "
-            f"batch after its retries")
+        allowed = 3 * (1 + m.OCR_BATCH_RETRIES)
+        assert len(calls) <= allowed, (
+            f"a dead endpoint cost {len(calls)} calls; the failed-page share should "
+            f"stop it within {allowed}, not run the whole chapter")
 
     def test_it_still_abandons_the_chapter_when_retries_run_out(self, tmp_path, monkeypatch):
         """Retrying must not turn into committing half a chapter. A batch that never
