@@ -2918,21 +2918,120 @@ OCR_READ_TIMEOUT = 120         # seconds of SILENCE before giving up
 OCR_TOTAL_DEADLINE = 600
 OCR_MAX_BYTES = 256 * 1024 * 1024  # refuse an unbounded body
 
+# ── Why the PDF is sent in batches ───────────────────────────────────────────
+# Sending a whole chapter in one request could never come back. Measured against
+# the live endpoint 2026-09-19: ~28.4s per page, and the response arrives only
+# when the last page is done. A 3-page slice returned 200 in 85.3s; an 8-page
+# slice was killed by the 120s silence cap after 133.3s, and the real
+# fetch_ocr_page_texts printed "fetch failed (Read timed out. (read
+# timeout=120)) -- staying on text layer". city_of_sydney/section-3 is 141
+# pages, northern_beaches 273, city_of_sydney/section-5 366: every chapter large
+# enough to matter asked for OCR, waited two minutes, gave up, and served its
+# garbled text layer without a word, because falling back is the designed
+# behaviour on failure.
+#
+# Batching also makes the total deadline real. The note above records three
+# measured attempts at bounding total duration in-thread, all defeated because
+# iter_content blocks INSIDE the read so the loop body never runs. BETWEEN
+# batches nothing is blocked, so a monotonic clock checked there does bound the
+# whole fetch -- OCR_TOTAL_DEADLINE is enforceable here for the first time.
+OCR_PAGES_PER_REQUEST = 3      # 3 pages ~85s, comfortably inside OCR_READ_TIMEOUT
+
+# A FIXED total deadline is the same bug one level up. At ~28s a page, 600s stops
+# a chapter at about page 21 -- so every chapter this fix exists for would still
+# fail, just later and for a different reason. The budget scales with the work,
+# keeping 600s as the floor for small chapters so their behaviour is unchanged.
+# 45s a page is headroom over what was measured: 28.4s on a cold container and
+# 17-21s once warm (batch times fell 85s -> 67s -> 51s across one 8-page run).
+# It is logged up front, because an operator should see "this chapter may take
+# 1.8 hours" before it starts rather than infer it from a silence.
+OCR_SECONDS_PER_PAGE = 45
+
+
+def _ocr_pdf_slice(pdf_path, first: int, count: int) -> bytes | None:
+    """Bytes of a `count`-page PDF starting at 0-based page `first`, or None.
+
+    pypdf is already a declared dependency (requirements.txt), and the whole
+    chapter is never re-read: only the pages of one batch are copied.
+    """
+    try:
+        from pypdf import PdfReader, PdfWriter
+    except ImportError:  # pragma: no cover - declared in requirements.txt
+        print("    [OCR] pypdf unavailable — cannot batch, staying on text layer")
+        return None
+    import io
+    # Slicing must not raise out of fetch_ocr_page_texts: that function is
+    # documented to return None on ANY failure so the caller stays on the text
+    # layer, and a truncated or malformed PDF reaching the nightly extractor
+    # would otherwise crash the whole run instead of skipping one chapter.
+    try:
+        reader = PdfReader(str(pdf_path))
+        writer = PdfWriter()
+        for i in range(first, min(first + count, len(reader.pages))):
+            writer.add_page(reader.pages[i])
+        buf = io.BytesIO()
+        writer.write(buf)
+        return buf.getvalue()
+    except Exception as e:
+        print(f"    [OCR] could not read pages {first + 1}-{first + count} of the PDF "
+              f"({e}) — staying on text layer")
+        return None
+
 
 def fetch_ocr_page_texts(pdf_path, expected_pages: int) -> list[str] | None:
-    """POST the PDF to the Modal OCR endpoint; return normalised per-page
-    texts, or None on ANY failure (caller stays on the text layer). The
-    response must carry EXACTLY expected_pages entries — a short response
-    would serve OCR text for the wrong source pages (Sol review of PR #836).
+    """OCR a chapter in page batches; return normalised per-page texts in order,
+    or None on ANY failure (caller stays on the text layer).
 
-    Bounded by OCR_TOTAL_DEADLINE wall-clock, not by requests' timeout — see
-    the note above for why the latter cannot do it.
+    The total must be EXACTLY expected_pages — a short result would serve OCR
+    text for the wrong source pages (Sol review of PR #836) — and each batch is
+    checked the same way before it is accepted, so a short batch cannot shift
+    every page after it.
+
+    One request per chapter could never return: see the note above. Batching is
+    what makes the call completable AND what makes OCR_TOTAL_DEADLINE real,
+    because the clock is read between batches rather than inside a blocked read.
     """
     url = os.getenv("MODAL_OCR_URL", "").strip()
     token = os.getenv("MODAL_OCR_TOKEN", "").strip()
     if not url or not token:
         print("    [OCR] MODAL_OCR_URL/TOKEN not set — staying on text layer")
         return None
+    import time as _time
+
+    started = _time.monotonic()
+    out: list[str] = []
+    batches = (expected_pages + OCR_PAGES_PER_REQUEST - 1) // OCR_PAGES_PER_REQUEST
+    deadline = max(OCR_TOTAL_DEADLINE, expected_pages * OCR_SECONDS_PER_PAGE)
+    print(f"    [OCR] {expected_pages} pages in {batches} batch(es) of "
+          f"{OCR_PAGES_PER_REQUEST}; budget {deadline / 60:.0f} min")
+    for n, first in enumerate(range(0, expected_pages, OCR_PAGES_PER_REQUEST), start=1):
+        spent = _time.monotonic() - started
+        if spent > deadline:
+            print(f"    [OCR] budget of {deadline / 60:.0f} min spent after "
+                  f"{len(out)}/{expected_pages} pages — staying on text layer")
+            return None
+        count = min(OCR_PAGES_PER_REQUEST, expected_pages - first)
+        blob = _ocr_pdf_slice(pdf_path, first, count)
+        if blob is None:
+            return None
+        got = _fetch_ocr_batch(url, token, blob, count, f"{n}/{batches}")
+        if got is None:
+            print(f"    [OCR] batch {n}/{batches} (pages {first + 1}-{first + count}) "
+                  f"failed — staying on text layer")
+            return None
+        out.extend(got)
+    if len(out) != expected_pages:
+        print(f"    [OCR] page count mismatch ({len(out)} vs {expected_pages} in PDF) "
+              f"— staying on text layer")
+        return None
+    print(f"    [OCR] {expected_pages} pages in {batches} batch(es), "
+          f"{_time.monotonic() - started:.0f}s total")
+    return out
+
+
+def _fetch_ocr_batch(url: str, token: str, blob: bytes, expected_pages: int,
+                     label: str) -> list[str] | None:
+    """POST ONE batch; return its normalised page texts, or None on any failure."""
     try:
         import json as _json
         import time as _time
@@ -2942,7 +3041,7 @@ def fetch_ocr_page_texts(pdf_path, expected_pages: int) -> list[str] | None:
         _t0 = _time.monotonic()
         with requests.post(
             url,
-            data=open(pdf_path, "rb").read(),
+            data=blob,
             headers={"X-OCR-Token": token},
             timeout=(OCR_CONNECT_TIMEOUT, OCR_READ_TIMEOUT),
             stream=True,
@@ -2988,17 +3087,18 @@ def fetch_ocr_page_texts(pdf_path, expected_pages: int) -> list[str] | None:
             body = b"".join(chunks)
         _elapsed = _time.monotonic() - _t0
         # Always report duration: a hang you never timed is a hang you cannot see.
-        print(f"    [OCR] endpoint responded in {_elapsed:.0f}s ({size:,} bytes)")
+        print(f"    [OCR] batch {label} responded in {_elapsed:.0f}s ({size:,} bytes)")
         pages = _json.loads(body.decode("utf-8", "replace")).get("pages")
         if not isinstance(pages, list) or not pages:
             print("    [OCR] endpoint returned no pages — staying on text layer")
             return None
         if len(pages) != expected_pages:
-            print(f"    [OCR] page count mismatch ({len(pages)} vs {expected_pages} in PDF) — staying on text layer")
+            print(f"    [OCR] batch {label} returned {len(pages)} pages, expected "
+                  f"{expected_pages} — staying on text layer")
             return None
         return [normalise_ocr_page(p) for p in pages]
     except Exception as e:
-        print(f"    [OCR] fetch failed ({e}) — staying on text layer")
+        print(f"    [OCR] batch {label} failed ({e}) — staying on text layer")
         return None
 
 

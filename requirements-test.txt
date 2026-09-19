@@ -119,3 +119,16 @@ reportlab==5.0.1
 # The test parses with the stdlib html.parser, so lxml is NOT needed here.
 # Pinned to match scripts/requirements-monitor.txt.
 beautifulsoup4>=4.12
+
+# pypdf: the OCR path now slices a chapter into page batches before posting it
+# (scripts/dcp_extract_changed.py:_ocr_pdf_slice), because one request for a
+# whole chapter could never return inside the 120s silence cap. Three test files
+# build real PDFs to drive it -- tests/test_ocr_batches_the_chapter.py,
+# tests/test_ai_extractor.py and tests/test_ocr_fallback.py -- and all three call
+# pytest.importorskip("pypdf"). It was declared only in requirements.txt, which
+# CI does not install: the same gap this file already records for pvlib, PyMuPDF,
+# PyYAML, reportlab and beautifulsoup4. Caught by the doc-claim ratchet on the
+# first push. Without this the tests SKIP in CI, and a skip is green, so the
+# guard on an OCR path that has never once succeeded would itself be dark.
+# Pinned to match requirements.txt.
+pypdf==6.18.0

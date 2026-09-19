@@ -298,6 +298,22 @@ class TestFidelityGateIsDecoupled:
         )
 
 
+def _one_page_pdf(tmp_path, pages: int = 1):
+    """A REAL PDF. The chapter is sliced with pypdf before it is posted, so a
+    b"%PDF-1.4" stub now fails at the slice and never reaches the socket these
+    tests exist to drive."""
+    import pytest as _pytest
+    _pytest.importorskip("pypdf")
+    from pypdf import PdfWriter
+    w = PdfWriter()
+    for _ in range(pages):
+        w.add_blank_page(width=200, height=200)
+    p = tmp_path / "x.pdf"
+    with open(p, "wb") as f:
+        w.write(f)
+    return p
+
+
 class TestOcrCallIsBounded:
     """A scalar requests timeout cannot bound this call.
 
@@ -390,8 +406,10 @@ class TestOcrCallIsBounded:
 
         mod = self._load()
         srv, url = self._serve(Silent)
-        pdf = tmp_path / "x.pdf"
-        pdf.write_bytes(b"%PDF-1.4")
+        # A REAL one-page PDF, not a b"%PDF-1.4" stub: the chapter is now sliced
+        # before it is posted, and a stub would fail at the slice and never reach
+        # the socket this test exists to drive.
+        pdf = _one_page_pdf(tmp_path)
         monkeypatch.setenv("MODAL_OCR_URL", url)
         monkeypatch.setenv("MODAL_OCR_TOKEN", "t")
         monkeypatch.setattr(mod, "OCR_READ_TIMEOUT", 2)
@@ -426,8 +444,7 @@ class TestOcrCallIsBounded:
 
         mod = self._load()
         srv, url = self._serve(Ok)
-        pdf = tmp_path / "x.pdf"
-        pdf.write_bytes(b"%PDF-1.4\n")
+        pdf = _one_page_pdf(tmp_path)
         monkeypatch.setenv("MODAL_OCR_URL", url)
         monkeypatch.setenv("MODAL_OCR_TOKEN", "t")
         try:
@@ -456,8 +473,7 @@ class TestOcrCallIsBounded:
 
         mod = self._load()
         srv, url = self._serve(Short)
-        pdf = tmp_path / "x.pdf"
-        pdf.write_bytes(b"%PDF-1.4\n")
+        pdf = _one_page_pdf(tmp_path, pages=5)
         monkeypatch.setenv("MODAL_OCR_URL", url)
         monkeypatch.setenv("MODAL_OCR_TOKEN", "t")
         try:

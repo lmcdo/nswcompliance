@@ -1,0 +1,151 @@
+{
+  "tier": "critical",
+  "justification": "OCR is the pipeline's only remedy for a chapter whose text layer is unreadable, and it has never once succeeded on a real chapter. Every DCP large enough to matter asked for OCR, waited two minutes, gave up and served its garbled text layer — silently, because falling back is the designed behaviour on failure. This is the root cause behind the text-quality rows blocking OC-4, OC-10 and OC-17.",
+  "commit_hash": "f40ac661",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_ocr_batches_the_chapter.py",
+    "tests/test_ai_extractor.py",
+    "tests/test_ocr_fallback.py"
+  ],
+  "pre_impl": {
+    "existing_data": "No database read or write. The inputs are the chapter PDF on disk and the Modal OCR endpoint, both exercised live rather than mocked. pypdf==6.18.0 is already declared in requirements.txt line 122, so slicing adds no dependency.",
+    "assumption_mismatch": "fetch_ocr_page_texts assumed a chapter could be OCR'd in one request. Measured against the live endpoint 2026-09-19: ~28.4s a page on a cold container, 17-21s once warm, and the response arrives only when the last page is done. OCR_READ_TIMEOUT caps silence at 120s, so anything past three pages dies. The real function, called on an 8-page slice, printed '[OCR] fetch failed (Read timed out. (read timeout=120)) -- staying on text layer' after 133.3s. city_of_sydney/section-3 is 141 pages, northern_beaches 273, city_of_sydney/section-5 366. A second assumption was mine and was tested and discarded: that the OCR TRIGGER was blind to reading-order scrambling. text_layer_garbled() returns True for both chapters, so OCR was already being asked for — the request simply could not complete.",
+    "new_vs_existing": "Changes how an existing call is made. Behaviour for a chapter of three pages or fewer is identical: one request, same contract. For everything larger it turns a guaranteed silent failure into a completable call. Nothing stored changes until a chapter is re-extracted, which remains a separate, gated step.",
+    "external_source_error": "This IS the external-source path. Every failure mode is preserved and returns None so the caller stays on the text layer: no URL or token, a non-200, an oversized body, a short page count, any exception. Two are added — a batch failing, and the budget being spent — and both name what was reached before stopping.",
+    "frontend_type": "No API or component change. This runs in the nightly extractor.",
+    "user_failure_mode": "The dangerous outcome is not a failed OCR, it is a HALF-OCR'd chapter: OCR text for the first pages spliced onto garbled text layer for the rest, with page numbers still correct, which would read as a successful extraction. One failed batch therefore abandons the whole chapter. The second is a budget that quietly kills legitimate work — the same bug this fixes, one level up — so the deadline scales with the page count instead of staying flat at 600s, which would have stopped a 141-page chapter at about page 21."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_ocr_batches_the_chapter.py -q",
+    "fails_when": "The batch size rises past what fits inside the silence cap; the whole file is posted per batch instead of the slice; the total deadline goes back to a flat constant, or stops being checked between batches; the per-page budget drops below the measured cold cost; a failed batch is skipped instead of abandoning the chapter; or either the per-batch or the total page-count check is removed. An unreadable PDF raises out of fetch_ocr_page_texts instead of returning None.",
+    "observed_red": "Eight mutations planted in the source, eight CAUGHT: batch size 8 (the size measured to time out), a flat 600s deadline, posting the whole file per batch, skipping a failed batch, a per-page budget below the measured cost, removing the deadline check entirely, removing the guard that stops an unreadable PDF raising out of the function, and accepting a non-200 response. Two of those are caught behaviourally by driving a fake clock, not only by reading the source — the first version of the deadline test recomputed the max() itself and so PASSED against a flat constant; it was replaced rather than kept. 19 tests. Verified end to end against the live endpoint: the identical 8-page slice that failed before now returns '[OCR] 8 pages in 3 batch(es), 204s total' with every page clean, and the map plate that read 'r r r i v i e g g e h h p d t t u .' scores 0.000 on the single-letter-token ratio, reading 'Sydney Development Control Plan 2012 | Figure 3.7 | Central Sydney retail core map | Legend'."
+  },
+  "functions": [
+    {
+      "name": "fetch_ocr_page_texts",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "A chapter PDF path and the page count the caller read from it.",
+      "output": "Normalised per-page texts in source order, assembled from one request per OCR_PAGES_PER_REQUEST pages, or None on any failure so the caller stays on the text layer.",
+      "if_none": "None means the chapter keeps its text layer, exactly as before. The difference is that None is now rare and explained — a named batch, a page range, or a spent budget — rather than being the only outcome for a chapter over three pages."
+    },
+    {
+      "name": "_fetch_ocr_batch",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "The endpoint URL and token, the bytes of ONE page slice, that slice's page count, and a label for the log.",
+      "output": "That slice's normalised page texts, or None. Holds all the original bounding — the silence timeout, the streamed read, the byte ceiling, the page-count contract — now applied per batch.",
+      "if_none": "The driver abandons the whole chapter rather than continuing, because a partly-OCR'd chapter reads as a success while carrying garbled text under correct page numbers."
+    },
+    {
+      "name": "_ocr_pdf_slice",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "The PDF path, a 0-based first page and a page count.",
+      "output": "Bytes of a PDF holding just those pages, truncated at the end of the document rather than padded, so the final batch of a chapter whose length is not a multiple of the batch size carries its true count.",
+      "if_none": "None only when pypdf is missing, which requirements.txt rules out; the caller then stays on the text layer rather than proceeding with an empty body."
+    }
+  ],
+  "values": [
+    {
+      "name": "OCR_PAGES_PER_REQUEST = 3",
+      "value": "Pages per request",
+      "why": "OCR_READ_TIMEOUT bounds silence between bytes, and the endpoint sends nothing until the last page of a request is done, so the batch must finish inside 120s. Three pages measured 85.3s. Four would be about 114s, leaving no margin for a cold container; eight measured 133.3s and failed.",
+      "source": "Measured against the live Modal endpoint 2026-09-19 on city_of_sydney/section-3 slices.",
+      "if_missing": "At eight the call times out exactly as it did before and the fix is undone while appearing to be present.",
+      "read_at": "scripts/dcp_extract_changed.py — the OCR call bounds."
+    },
+    {
+      "name": "OCR_SECONDS_PER_PAGE = 45, with OCR_TOTAL_DEADLINE as a floor",
+      "value": "The total budget scales with the chapter",
+      "why": "A flat 600s is the same defect one level up: at ~28s a page it stops a chapter at about page 21, so every chapter this fix exists for would still fail, just later and for a different reason. 45s gives headroom over the 28.4s cold cost and the 17-21s warm cost. Keeping 600s as a floor leaves small chapters exactly as they were.",
+      "source": "Measured 2026-09-19: 28.4s a page cold; batch times fell 85s -> 67s -> 51s across one 8-page run as the container warmed.",
+      "if_missing": "Below the measured cost, a chapter that is merely unlucky with container starts is abandoned part-way — which is indistinguishable from the bug being fixed.",
+      "read_at": "scripts/dcp_extract_changed.py — the OCR call bounds."
+    },
+    {
+      "name": "the clock read between batches",
+      "value": "Where the total deadline is enforced",
+      "why": "The existing note in this file records three measured attempts at bounding total duration in-thread, all defeated because iter_content blocks INSIDE the read, so the loop body holding the clock never runs. Between batches nothing is blocked. This is the first place OCR_TOTAL_DEADLINE is actually enforceable, rather than a value kept for an external subprocess cap.",
+      "source": "The file's own 2026-08-14 measurements, and the batching this change introduces.",
+      "if_missing": "Without the check the fetch has no total bound at all and a slow endpoint holds the nightly extraction open for hours.",
+      "read_at": "scripts/dcp_extract_changed.py — the batch loop in fetch_ocr_page_texts."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "None — this change reads and writes no database. The external call it makes is the OCR POST, one page slice at a time.",
+      "file_line": "scripts/dcp_extract_changed.py — _fetch_ocr_batch",
+      "where_clause": "Not applicable: the request is scoped by the page slice it carries, and its response must hold exactly that slice's page count before it is accepted."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A batch fails part-way through a chapter and the rest are kept.",
+      "what_happens": "OCR text for the first pages is spliced onto garbled text-layer text for the rest, under correct page numbers. It reads as a successful extraction and is harder to detect than total failure.",
+      "mitigated": true,
+      "how": "The first failing batch abandons the whole chapter and names the page range. A test plants the skip-and-continue behaviour and catches it.",
+      "repro": "python -m pytest tests/test_ocr_batches_the_chapter.py -k failing_batch -q"
+    },
+    {
+      "scenario": "A batch returns fewer pages than it was sent.",
+      "what_happens": "Every page after it shifts, so OCR text is served under the wrong page numbers — the defect Sol caught on PR #836, now multiplied by the number of batches.",
+      "mitigated": true,
+      "how": "The page count is checked per batch AND on the assembled total, and the slice is truncated rather than padded at the end of the document so the last batch declares its true count.",
+      "repro": "python -m pytest tests/test_ocr_batches_the_chapter.py -k 'ShortAnswer or truncated' -q"
+    },
+    {
+      "scenario": "A truncated or malformed chapter PDF reaches the extractor.",
+      "what_happens": "Slicing parses the file, which posting its raw bytes never did, so pypdf raises out of a function documented to return None on ANY failure — taking down the whole nightly run instead of skipping one chapter.",
+      "mitigated": true,
+      "how": "Found by an existing test breaking rather than by reading the code: three tests in test_ai_extractor.py used a b'%PDF-1.4' stub, which posted fine before and now cannot be sliced. The slice is wrapped and returns None with the page range named; the three tests were given REAL PDFs so they still drive the socket they exist for, rather than being satisfied by the new early return. Removing the wrapper fails a test by name.",
+      "repro": "python -m pytest tests/test_ocr_batches_the_chapter.py -k unreadable_pdf -q"
+    },
+    {
+      "scenario": "The existing OCR tests keep passing while testing nothing.",
+      "what_happens": "Five tests in test_ocr_fallback.py passed __file__ — a .py file — as the PDF. That worked while the bytes were posted verbatim; with slicing it returns None before the request, so every failure-path test would be green without ever reaching its response fake. Only the success test noticed.",
+      "mitigated": true,
+      "how": "They take real PDFs now, and the fixture says why. One was weak beyond that: the 503 case carried an EMPTY body, so it passed even against code with no status check, because the JSON parse failed instead. It now carries a valid payload, so only the status check can reject it — and planting 'accept any status' fails it.",
+      "repro": "python -m pytest tests/test_ocr_fallback.py -q"
+    },
+    {
+      "scenario": "The batch size is raised to make a long chapter finish sooner.",
+      "what_happens": "Batches start exceeding the silence cap and the call fails exactly as it did before, while the batching code is still present and looks like the fix.",
+      "mitigated": true,
+      "how": "A test asserts the batch size times the measured 28.4s a page stays under OCR_READ_TIMEOUT, so raising it fails with the arithmetic in the message.",
+      "repro": "python -m pytest tests/test_ocr_batches_the_chapter.py -k silence_cap -q"
+    },
+    {
+      "scenario": "The total budget goes back to a flat constant.",
+      "what_happens": "A 141-page chapter is abandoned at about page 21 — the same silent failure, later and for a different reason.",
+      "mitigated": true,
+      "how": "Two tests: one reads the source, and one drives a fake clock past 600s on a 30-page chapter and asserts it still completes, with a confusable negative that a chapter genuinely overrunning its budget IS abandoned. The source-only version of this test passed against the flat constant and was replaced.",
+      "repro": "python -m pytest tests/test_ocr_batches_the_chapter.py -k 'flat_deadline or overruns' -q"
+    },
+    {
+      "scenario": "A long chapter now occupies the nightly extractor for hours.",
+      "what_happens": "141 pages is about 106 minutes of budget, 273 about 205, 366 about 274. A run that used to fail in two minutes can now take hours, and a reader with no output would call it a hang.",
+      "mitigated": true,
+      "how": "The page count, batch count and budget are printed before the first request, and every batch prints its own duration. The work is bounded and visible rather than open-ended. It is still real time on a real service, which is the cost of the chapter being readable at all.",
+      "repro": "python -m pytest tests/test_ocr_batches_the_chapter.py -k budget_is_announced -q"
+    },
+    {
+      "scenario": "OCR succeeds and its text is WORSE than the text layer for some pages.",
+      "what_happens": "A page the text layer read correctly is replaced by a worse OCR reading, and nothing in this change compares them.",
+      "mitigated": false,
+      "how": "Not addressed here, and deliberately: the legibility guard merged in #1141 compares the committed result against what is live and refuses a chapter that gets less readable, so this is caught at the commit rather than at the read. Measured on the 8-page slice every page improved or stayed clean, but that is eight pages, not a guarantee.",
+      "repro": "python -m pytest tests/test_dcp_legibility_guard.py -q"
+    },
+    {
+      "scenario": "This is taken to mean the blocked chapters are now fixed.",
+      "what_happens": "They are not. Nothing is re-extracted by this change.",
+      "mitigated": false,
+      "how": "Not addressed. This makes the OCR path completable. Re-reading city_of_sydney/section-3, northern_beaches and ku_ring_gai, reviewing the result and committing it are separate steps, and the OCR endpoint is reachable from Railway rather than from a developer machine.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-70"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. Nothing is written by this change.",
+    "secrets": "No. MODAL_OCR_URL and MODAL_OCR_TOKEN are existing environment variables, unchanged.",
+    "other_repo": "No.",
+    "manual_verify": "Yes, and it is the point of the change: the blocked chapters must be re-extracted with OCR now that it can complete, on Railway where the endpoint is reachable. Until then DQ-70 stays at 151 and the three chapters keep their garbled text — correctly refused at commit by the legibility guard."
+  }
+}

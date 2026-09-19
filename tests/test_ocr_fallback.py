@@ -13,6 +13,7 @@ import os
 import re
 import sys
 from pathlib import Path
+import pytest
 from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -120,6 +121,36 @@ class TestTrigger:
         assert not text_layer_garbled(["", None])
 
 
+@pytest.fixture
+def pdf1(tmp_path):
+    """A REAL 1-page PDF.
+
+    These tests used to pass __file__ — this .py file — as the PDF, which worked
+    while the whole file was posted verbatim. The chapter is now sliced with
+    pypdf before it is posted, so a non-PDF path returns None at the slice and
+    every failure-path test below would PASS WITHOUT EVER REACHING its response
+    fake: green, and asserting nothing. Only test_success caught it.
+    """
+    return _real_pdf(tmp_path, 1)
+
+
+@pytest.fixture
+def pdf3(tmp_path):
+    return _real_pdf(tmp_path, 3)
+
+
+def _real_pdf(tmp_path, pages):
+    pytest.importorskip("pypdf")
+    from pypdf import PdfWriter
+    w = PdfWriter()
+    for _ in range(pages):
+        w.add_blank_page(width=200, height=200)
+    out = tmp_path / f"x{pages}.pdf"
+    with open(out, "wb") as f:
+        w.write(f)
+    return str(out)
+
+
 class TestFetchFailsVisible:
     def test_missing_env_returns_none(self, monkeypatch):
         monkeypatch.delenv("MODAL_OCR_URL", raising=False)
@@ -151,43 +182,47 @@ class TestFetchFailsVisible:
         r.iter_content = lambda chunk_size=None, _b=body: iter([_b] if _b else [])
         return r
 
-    def test_non_200_returns_none(self, monkeypatch):
+    def test_non_200_returns_none(self, monkeypatch, pdf1):
+        """The 503 carries a VALID payload on purpose. With an empty body this
+        test passed even against code with no status check at all, because the
+        JSON parse failed instead — green for the wrong reason. Now only the
+        status check can reject it."""
         self._env(monkeypatch)
         fake = MagicMock()
-        fake.post.return_value = self._resp(503)
+        fake.post.return_value = self._resp(503, {"pages": ["would have been served"]})
         with patch.dict(sys.modules, {"requests": fake}):
-            assert fetch_ocr_page_texts(__file__, 1) is None
+            assert fetch_ocr_page_texts(pdf1, 1) is None
 
-    def test_junk_payload_returns_none(self, monkeypatch):
+    def test_junk_payload_returns_none(self, monkeypatch, pdf1):
         self._env(monkeypatch)
         fake = MagicMock()
         fake.post.return_value = self._resp(200, {"pages": "not-a-list"})
         with patch.dict(sys.modules, {"requests": fake}):
-            assert fetch_ocr_page_texts(__file__, 1) is None
+            assert fetch_ocr_page_texts(pdf1, 1) is None
 
-    def test_page_count_mismatch_returns_none(self, monkeypatch):
+    def test_page_count_mismatch_returns_none(self, monkeypatch, pdf3):
         """Sol #836: 19 pages back for a 20-page PDF would serve OCR text for
         the wrong source pages — reject the whole response."""
         self._env(monkeypatch)
         fake = MagicMock()
         fake.post.return_value = self._resp(200, {"pages": ["a", "b"]})
         with patch.dict(sys.modules, {"requests": fake}):
-            assert fetch_ocr_page_texts(__file__, 3) is None
+            assert fetch_ocr_page_texts(pdf3, 3) is None
 
-    def test_network_error_returns_none(self, monkeypatch):
+    def test_network_error_returns_none(self, monkeypatch, pdf1):
         self._env(monkeypatch)
         fake = MagicMock()
         fake.post.side_effect = RuntimeError("boom")
         with patch.dict(sys.modules, {"requests": fake}):
-            assert fetch_ocr_page_texts(__file__, 1) is None
+            assert fetch_ocr_page_texts(pdf1, 1) is None
 
-    def test_success_returns_normalised_pages(self, monkeypatch):
+    def test_success_returns_normalised_pages(self, monkeypatch, pdf1):
         self._env(monkeypatch)
         fake = MagicMock()
         fake.post.return_value = self._resp(
             200, {"pages": ["<|det|>text [1, 2, 3, 4]<|/det|>Objectives 1 To ensure"]})
         with patch.dict(sys.modules, {"requests": fake}):
-            out = fetch_ocr_page_texts(__file__, 1)
+            out = fetch_ocr_page_texts(pdf1, 1)
         assert out == ["Objectives 1 To ensure"]
 
 
