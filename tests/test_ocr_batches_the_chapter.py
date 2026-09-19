@@ -212,6 +212,22 @@ class TestItRunsWithoutTheNetwork:
                             lambda url, tok, blob, n, label: ["p"] * n)
         assert m.fetch_ocr_page_texts(pdf, expected_pages=30) is None
 
+    def test_an_unreadable_pdf_returns_None_instead_of_raising(self, tmp_path, monkeypatch):
+        """Found by an existing test breaking, not by reading the code. Slicing parses
+        the PDF, which posting its bytes never did, so a truncated or malformed file now
+        raises where it used to sail through. fetch_ocr_page_texts is documented to
+        return None on ANY failure so the caller stays on the text layer — an exception
+        escaping it would take down the whole nightly run instead of skipping one
+        chapter."""
+        m = _mod()
+        bad = tmp_path / "bad.pdf"
+        bad.write_bytes(b"%PDF-1.4\n")          # a header and nothing else
+        monkeypatch.setenv("MODAL_OCR_URL", "https://example.invalid")
+        monkeypatch.setenv("MODAL_OCR_TOKEN", "t")
+        monkeypatch.setattr(m, "_fetch_ocr_batch",
+                            lambda *a, **k: pytest.fail("posted an unreadable PDF"))
+        assert m.fetch_ocr_page_texts(bad, expected_pages=1) is None
+
     def test_the_slice_really_holds_the_pages_asked_for(self, tmp_path):
         pytest.importorskip("pypdf")
         from pypdf import PdfReader

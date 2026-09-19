@@ -1,10 +1,11 @@
 {
   "tier": "critical",
   "justification": "OCR is the pipeline's only remedy for a chapter whose text layer is unreadable, and it has never once succeeded on a real chapter. Every DCP large enough to matter asked for OCR, waited two minutes, gave up and served its garbled text layer — silently, because falling back is the designed behaviour on failure. This is the root cause behind the text-quality rows blocking OC-4, OC-10 and OC-17.",
-  "commit_hash": "b7cdf11f",
+  "commit_hash": "ec0bb670",
   "files": [
     "scripts/dcp_extract_changed.py",
-    "tests/test_ocr_batches_the_chapter.py"
+    "tests/test_ocr_batches_the_chapter.py",
+    "tests/test_ai_extractor.py"
   ],
   "pre_impl": {
     "existing_data": "No database read or write. The inputs are the chapter PDF on disk and the Modal OCR endpoint, both exercised live rather than mocked. pypdf==6.18.0 is already declared in requirements.txt line 122, so slicing adds no dependency.",
@@ -16,8 +17,8 @@
   },
   "falsifiable_check": {
     "command": "python -m pytest tests/test_ocr_batches_the_chapter.py -q",
-    "fails_when": "The batch size rises past what fits inside the silence cap; the whole file is posted per batch instead of the slice; the total deadline goes back to a flat constant, or stops being checked between batches; the per-page budget drops below the measured cold cost; a failed batch is skipped instead of abandoning the chapter; or either the per-batch or the total page-count check is removed.",
-    "observed_red": "Six mutations planted in the source, six CAUGHT: batch size 8 (the size measured to time out), a flat 600s deadline, posting the whole file per batch, skipping a failed batch, a per-page budget below the measured cost, and removing the deadline check entirely. Two of those are caught behaviourally by driving a fake clock, not only by reading the source — the first version of the deadline test recomputed the max() itself and so PASSED against a flat constant; it was replaced rather than kept. 19 tests. Verified end to end against the live endpoint: the identical 8-page slice that failed before now returns '[OCR] 8 pages in 3 batch(es), 204s total' with every page clean, and the map plate that read 'r r r i v i e g g e h h p d t t u .' scores 0.000 on the single-letter-token ratio, reading 'Sydney Development Control Plan 2012 | Figure 3.7 | Central Sydney retail core map | Legend'."
+    "fails_when": "The batch size rises past what fits inside the silence cap; the whole file is posted per batch instead of the slice; the total deadline goes back to a flat constant, or stops being checked between batches; the per-page budget drops below the measured cold cost; a failed batch is skipped instead of abandoning the chapter; or either the per-batch or the total page-count check is removed. An unreadable PDF raises out of fetch_ocr_page_texts instead of returning None.",
+    "observed_red": "Seven mutations planted in the source, seven CAUGHT: batch size 8 (the size measured to time out), a flat 600s deadline, posting the whole file per batch, skipping a failed batch, a per-page budget below the measured cost, removing the deadline check entirely, and removing the guard that stops an unreadable PDF raising out of the function. Two of those are caught behaviourally by driving a fake clock, not only by reading the source — the first version of the deadline test recomputed the max() itself and so PASSED against a flat constant; it was replaced rather than kept. 19 tests. Verified end to end against the live endpoint: the identical 8-page slice that failed before now returns '[OCR] 8 pages in 3 batch(es), 204s total' with every page clean, and the map plate that read 'r r r i v i e g g e h h p d t t u .' scores 0.000 on the single-letter-token ratio, reading 'Sydney Development Control Plan 2012 | Figure 3.7 | Central Sydney retail core map | Legend'."
   },
   "functions": [
     {
@@ -89,6 +90,13 @@
       "mitigated": true,
       "how": "The page count is checked per batch AND on the assembled total, and the slice is truncated rather than padded at the end of the document so the last batch declares its true count.",
       "repro": "python -m pytest tests/test_ocr_batches_the_chapter.py -k 'ShortAnswer or truncated' -q"
+    },
+    {
+      "scenario": "A truncated or malformed chapter PDF reaches the extractor.",
+      "what_happens": "Slicing parses the file, which posting its raw bytes never did, so pypdf raises out of a function documented to return None on ANY failure — taking down the whole nightly run instead of skipping one chapter.",
+      "mitigated": true,
+      "how": "Found by an existing test breaking rather than by reading the code: three tests in test_ai_extractor.py used a b'%PDF-1.4' stub, which posted fine before and now cannot be sliced. The slice is wrapped and returns None with the page range named; the three tests were given REAL PDFs so they still drive the socket they exist for, rather than being satisfied by the new early return. Removing the wrapper fails a test by name.",
+      "repro": "python -m pytest tests/test_ocr_batches_the_chapter.py -k unreadable_pdf -q"
     },
     {
       "scenario": "The batch size is raised to make a long chapter finish sooner.",

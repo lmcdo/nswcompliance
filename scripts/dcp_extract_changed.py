@@ -2960,13 +2960,22 @@ def _ocr_pdf_slice(pdf_path, first: int, count: int) -> bytes | None:
         print("    [OCR] pypdf unavailable — cannot batch, staying on text layer")
         return None
     import io
-    reader = PdfReader(str(pdf_path))
-    writer = PdfWriter()
-    for i in range(first, min(first + count, len(reader.pages))):
-        writer.add_page(reader.pages[i])
-    buf = io.BytesIO()
-    writer.write(buf)
-    return buf.getvalue()
+    # Slicing must not raise out of fetch_ocr_page_texts: that function is
+    # documented to return None on ANY failure so the caller stays on the text
+    # layer, and a truncated or malformed PDF reaching the nightly extractor
+    # would otherwise crash the whole run instead of skipping one chapter.
+    try:
+        reader = PdfReader(str(pdf_path))
+        writer = PdfWriter()
+        for i in range(first, min(first + count, len(reader.pages))):
+            writer.add_page(reader.pages[i])
+        buf = io.BytesIO()
+        writer.write(buf)
+        return buf.getvalue()
+    except Exception as e:
+        print(f"    [OCR] could not read pages {first + 1}-{first + count} of the PDF "
+              f"({e}) — staying on text layer")
+        return None
 
 
 def fetch_ocr_page_texts(pdf_path, expected_pages: int) -> list[str] | None:
