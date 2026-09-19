@@ -3873,6 +3873,34 @@ def _page_count_for_budget(pdf_path) -> int | None:
         return None
 
 
+def revive(conn):
+    """Return a live connection: `conn` if it still answers, else a fresh one.
+
+    The PDF work takes an hour and the connection is opened before it, so the
+    first query afterwards raises "server closed the connection unexpectedly" --
+    measured on both runs that got far enough to reach it. libpq keepalives were
+    tried first and are NOT enough: they hold the TCP socket open while the
+    pooler closes the SESSION, and no socket-level setting reaches that.
+
+    The ping is the only way to know. psycopg2's conn.closed reports what THIS
+    process did to the connection, not what the server did, so a server-side
+    close still reads as open until something is executed on it.
+    """
+    try:
+        with conn.cursor() as c:
+            c.execute("SELECT 1")
+        return conn
+    except Exception:
+        try:
+            conn.close()
+        except Exception:
+            pass
+        print("    [db] connection did not survive the PDF work -- reconnecting")
+        return psycopg2.connect(
+            DATABASE_URL, keepalives=1, keepalives_idle=30,
+            keepalives_interval=10, keepalives_count=5)
+
+
 def extract_pdf_isolated(pdf_path, document_id, council, page_ranges,
                          subsection_patterns, ai_on):
     """Run the PDF work in its own process so a kill cannot take the batch.
@@ -4116,6 +4144,14 @@ def extract_chapter(
             print(f"    [ERROR] {err}")
             cur.close()
             return False, None
+
+        # An hour has passed inside extract_pdf_isolated and `cur` was opened
+        # before it. Everything below this line touches the database, so the
+        # connection is re-established here rather than discovered dead at the
+        # first query -- which is exactly how two complete runs were lost after
+        # doing all the expensive work correctly.
+        conn = revive(conn)
+        cur = conn.cursor()
 
         preflight = result["preflight"]
         sections = result["sections"]
@@ -5200,6 +5236,11 @@ def main() -> None:
             review=args.review,
             allow_section_loss=frozenset(args.allow_section_loss),
         )
+        # extract_chapter takes conn as a PARAMETER, so its own revive cannot
+        # reach this one. Without this the first chapter's hour of PDF work
+        # leaves every later chapter in the batch holding a dead connection --
+        # and the summary and registry updates below would fail too.
+        conn = revive(conn)
         if ok:
             succeeded += 1
             if review_data is not None:
