@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Decides whether a council chapter is read from OCR or from a text layer known to be unreadable. The first complete 47-batch run got 44 batches and discarded all of them, re-enqueueing the same garbled text it existed to replace. Every constant corrected here was sized from a warm idle endpoint and is wrong under real load.",
-  "commit_hash": null,
+  "commit_hash": "662d7819",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_ocr_tuning_from_a_real_run.py",
@@ -39,7 +39,7 @@
     {
       "name": "DcpExtractor._page_text",
       "file_line": "scripts/dcp_extract_changed.py",
-      "input": "A pdfplumber page and its 1-based number.",
+      "input": "A pdfplumber page object and its 1-based page number within the chapter PDF.",
       "output": "The OCR text for that page, or the text layer when the OCR entry is empty.",
       "if_none": "An empty OCR entry means that page's batch failed, so it falls through to the text layer it would have had anyway. Returning the empty string would silently blank a page the reader can still partly use — worse than the defect being worked around. A genuinely blank page falls through to an equally blank text layer, so nothing is lost."
     }
@@ -72,7 +72,7 @@
   ],
   "queries": [
     {
-      "purpose": "None — this change adds no SQL. It decides which text the extractor hands to the existing queries, not what those queries ask.",
+      "purpose": "Decide which text each page contributes to the provisions the extractor later writes: the OCR read, or the page's own text layer.",
       "file_line": "scripts/dcp_extract_changed.py — fetch_ocr_page_texts and _page_text",
       "where_clause": "Not applicable: no query is added or changed, and the rows those queries later write differ only in carrying OCR text rather than a garbled text layer."
     }
@@ -98,6 +98,13 @@
       "mitigated": true,
       "how": "_page_text falls through when the OCR entry is empty. This was NOT the original behaviour: it returned the entry unconditionally, and the per-page design would have blanked those pages. Found by checking the claim rather than asserting it, and pinned by a test.",
       "repro": "python -m pytest tests/test_ocr_tuning_from_a_real_run.py -k falls_back_to_its_text_layer -q"
+    },
+    {
+      "scenario": "The text handed to the extractor is OCR for most pages and text layer for a few, and nothing downstream can tell which is which.",
+      "what_happens": "A provision assembled across a batch boundary mixes a clean OCR page with a garbled one, so a single clause reads half correctly — harder to spot than a wholly unreadable chapter, and it reaches the same queries and the same review queue.",
+      "mitigated": true,
+      "how": "The share cap keeps this to under a tenth of pages, and the failed page numbers are printed so the boundary is visible in the run log. Beyond that the judgement is deliberately made at the write rather than here: the legibility guard merged in #1141 compares the committed result against what is live and refuses a chapter that comes out less readable, whichever pages caused it.",
+      "repro": "python -m pytest tests/test_ocr_tuning_from_a_real_run.py -k too_many_failed -q"
     },
     {
       "scenario": "A dead endpoint is discovered one batch at a time.",
