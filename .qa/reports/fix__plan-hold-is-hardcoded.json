@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Decides which councils may record that the plan behind their served numbers is the plan in force. A hardcoded hold kept three councils blocked after their chapters were repaired, so OC-17's plan-in-force sub-check could not fall no matter what was fixed — the check was watching a constant, not the data.",
-  "commit_hash": null,
+  "commit_hash": "68d3678d",
   "files": [
     "scripts/confirm_plan_in_force.py",
     "tests/test_plan_hold_is_measured_not_listed.py"
