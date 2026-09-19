@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "OCR is the pipeline's only remedy for a chapter whose text layer is unreadable, and it has never once succeeded on a real chapter. Every DCP large enough to matter asked for OCR, waited two minutes, gave up and served its garbled text layer — silently, because falling back is the designed behaviour on failure. This is the root cause behind the text-quality rows blocking OC-4, OC-10 and OC-17.",
-  "commit_hash": "2742f007",
+  "commit_hash": "f40ac661",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_ocr_batches_the_chapter.py",
