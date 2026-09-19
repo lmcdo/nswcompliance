@@ -1,0 +1,99 @@
+{
+  "tier": "standard",
+  "justification": "Changes what a data-quality ratchet measures, which is the one class of change most able to make a real defect invisible. DQ-33 is a blocker on OC-17, so narrowing it moves a public claim closer to passing — exactly the situation where a scoping decision has to be argued from the repair it ratchets rather than from the number it produces.",
+  "commit_hash": "b98ccd62",
+  "files": [
+    "scripts/dq_probe_live.py",
+    "tests/test_dq33_scope_is_council_rows.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions (is_current, v2_is_actionable, v2_dev_type_source, source_council), read live rather than assumed, and scripts/retag_applicability_slug_docids.py, opened to find the population its 1,278 floor was measured on. No schema change and no data write — one WHERE clause and the probe's own explanation.",
+    "assumption_mismatch": "DQ-33 subtracted a floor of 1,278 from every served row reading no_config. That floor came from the 2026-08-01 retag, and the retag selects WHERE source_council = ANY(%s) — it only ever touched rows WITH a council. The count did not: measured 2026-09-19 it holds 1,986 council rows and 4,887 statewide LEP and SEPP rows. A statewide instrument has no council whose config could resolve it, so no_config there is the permanent honest answer rather than a defect, and the ratchet could not fall below 4,887 however much was repaired.",
+    "new_vs_existing": "Changes only what is counted from now on. No stored row changes. The reported number falls 5,595 -> 708, and the 708 council rows it now shows were always the defect — they were hidden inside a number seven times larger.",
+    "external_source_error": "None — no network, no document. This is one SQL predicate over a table already being read.",
+    "frontend_type": "No API or component change. DQ-33 is read by the ledger runner and by OC-17's claim check; nothing renders it to a user.",
+    "user_failure_mode": "Two opposite failures, both plausible and both tested. Widened back to every served row, the ratchet cannot reach zero and stops being believed — the state it was in. Narrowed too far, it reads zero and a check has been deleted while looking like a fix; the test of this change is that 708 is not zero and can still move. A third, subtler one: scoping could quietly change WHICH field is measured, so the field and the floor are both pinned by name."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dq33_scope_is_council_rows.py -q && PYTEST_REAL_DB=1 python -m pytest tests/test_dq33_scope_is_council_rows.py -m database -o addopts= -q",
+    "fails_when": "The scope is widened back to every served row; it is narrowed to a single council, document or chapter, which would read near zero; the 1,278 floor is moved; the measured field stops being v2_dev_type_source = 'no_config'; the retag script stops scoping itself to councils, which would mean this scope no longer matches the population the floor was measured on; the probe's text stops naming the 4,887 excluded rows and why; or, against the real database, the scoped count falls to zero or the statewide rows stop being the bulk of what was excluded.",
+    "observed_red": "Four mutations planted in the source, four CAUGHT: widening back to every served row, narrowing to one council, dropping the floor to 0, and measuring a different field. 7 pure tests plus 2 opt-in real-database tests, all passing. Verified against production: the probe reported 5,595 before and 708 after, and the real-DB tests assert both that statewide rows really did dominate the old count (4,887 against 1,986) and that the scoped number is NOT zero."
+  },
+  "functions": [
+    {
+      "name": "DQ-33 probe entry",
+      "file_line": "scripts/dq_probe_live.py — the DQ-33 tuple in the probe table",
+      "input": "No arguments; the runner executes the recorded SQL against the live database.",
+      "output": "GREATEST(count(*) - 1278, 0) over served COUNCIL rows whose v2_dev_type_source is 'no_config'. 708 as measured 2026-09-19, against 5,595 before.",
+      "if_none": "Zero means the ratchet is at its floor — no council row has fallen through to ALL beyond the residue the retag deliberately left. It is reachable now, which it was not before."
+    }
+  ],
+  "values": [
+    {
+      "name": "source_council IS NOT NULL",
+      "value": "The scope: rows that have a council",
+      "why": "The floor this ratchet subtracts was measured on exactly this population, because the repair that produced it selects WHERE source_council = ANY(%s). Counting statewide rows against a council-scoped floor compared two different things, and the statewide ones can never move: a SEPP has no council config to resolve against, so its no_config is permanent.",
+      "source": "Read from scripts/retag_applicability_slug_docids.py, not inferred. Counts measured on production 2026-09-19: 6,873 total, 1,986 with a council, 4,887 without.",
+      "if_missing": "The ratchet reports 5,595 and cannot fall below 4,887, so it can never reach zero — and a number that large hides the 708 rows that are the actual defect.",
+      "read_at": "scripts/dq_probe_live.py — the DQ-33 query."
+    },
+    {
+      "name": "the 1,278 floor, unchanged",
+      "value": "Left exactly as it was",
+      "why": "It is the residue the retag deliberately left rather than guess a development type, and it sits entirely inside the council population — which is why subtracting it from the council-scoped count is correct and not double-counting. Moving a floor to improve a number is the failure this ledger exists to catch, so the scoping had to stand on its own without touching it.",
+      "source": "The probe's existing comment and the retag script it names; the 9,854 -> 1,278 repair of 2026-08-01.",
+      "if_missing": "Setting it to 0 would report 1,986 and look like a regression appearing out of nowhere; raising it would hide real rows.",
+      "read_at": "scripts/dq_probe_live.py — the DQ-33 query."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Count served council rules that fell through to ALL development types with no config, above the floor the repair deliberately left.",
+      "file_line": "scripts/dq_probe_live.py — DQ-33",
+      "where_clause": "is_current AND v2_is_actionable AND source_council IS NOT NULL AND v2_dev_type_source = 'no_config', with GREATEST(count(*) - 1278, 0). The direction-of-risk rule in the probe's comment is untouched: the floor may fall only by a council gaining real config, never by narrowing applicability, because narrowing HIDES controls."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The scope is widened back to every served row, by someone who reads the filter as an omission.",
+      "what_happens": "The ratchet returns to a number it can never drive to zero, stops being believed, and the 708 council rows disappear back inside it.",
+      "mitigated": true,
+      "how": "A test asserts source_council IS NOT NULL is present, and the probe's own explanation now names the 4,887 rows and why they are out. Removing the clause fails by name.",
+      "repro": "python -m pytest tests/test_dq33_scope_is_council_rows.py -k scoped_to_rows_that_have_a_council -q"
+    },
+    {
+      "scenario": "Someone narrows it further — to one council, one document or one chapter — and it reads zero.",
+      "what_happens": "The ledger says the defect is gone. That is deleting a check while it still looks like one, which is worse than the over-counting it replaced.",
+      "mitigated": true,
+      "how": "A test rejects an equality filter on source_council, document_id or source_chapter_key, and a real-database test asserts the scoped count is still above the floor. Planting a single-council filter fails both.",
+      "repro": "python -m pytest tests/test_dq33_scope_is_council_rows.py -k not_scoped_to_a_single -q"
+    },
+    {
+      "scenario": "The retag script is later changed to touch rows without a council.",
+      "what_happens": "The floor and the scope silently stop describing the same population, and the subtraction is wrong again — in the other direction.",
+      "mitigated": true,
+      "how": "A test reads the retag script and asserts it still scopes itself with WHERE source_council = ANY(%s), so the two must move together.",
+      "repro": "python -m pytest tests/test_dq33_scope_is_council_rows.py -k matches_the_repair -q"
+    },
+    {
+      "scenario": "The scoping is read as having covered the untagged rows too.",
+      "what_happens": "10,103 served rows carry a NULL v2_dev_type_source and were never tagged at all. If this change is taken to have addressed them, a larger gap goes unwatched.",
+      "mitigated": true,
+      "how": "The probe's text still declares them as separate and larger, and a test asserts that declaration survives. They remain unmeasured and still need their own ledger row.",
+      "repro": "python -m pytest tests/test_dq33_scope_is_council_rows.py -k separate_untagged -q"
+    },
+    {
+      "scenario": "The 708 that remain are treated as the whole of OC-17's problem.",
+      "what_happens": "OC-17 also fails on six councils having no confirmed plan in force, and that is untouched here.",
+      "mitigated": false,
+      "how": "Not addressed. This change makes DQ-33 measurable; it does not repair the 708 rows, and OC-17 still fails on its other sub-check.",
+      "repro": "python scripts/outreach_claim_checks.py OC-17"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. Nothing is written; only what is counted changes.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No — verified against production before and after: 5,595 -> 708, with the split (1,986 council, 4,887 statewide) asserted by opt-in real-database tests."
+  }
+}

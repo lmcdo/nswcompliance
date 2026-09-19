@@ -758,17 +758,34 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # hidden binding control is the liability. So the floor may fall only
         # by a council gaining real config, never by invention. GREATEST keeps
         # 0 meaning clean in the runner's contract.
+        # Council rows only, and the reason is in the repair this ratchet watches:
+        # retag_applicability_slug_docids.py selects "WHERE source_council = ANY(%s)",
+        # so it only ever touched rows WITH a council and the 1,278 it deliberately
+        # left is entirely inside that population. Subtracting it from the whole table
+        # was therefore comparing a council-scoped floor against a count that also
+        # held 4,887 statewide LEP and SEPP rows (measured 2026-09-19, against 1,986
+        # council rows). A statewide instrument has no council whose config could
+        # resolve it, so for those rows 'no_config' is the permanent honest answer
+        # rather than a defect, and the check could never fall below 4,887 however
+        # much was repaired -- a ratchet that cannot reach zero measures nothing.
+        # Scoped, it reports 708 and can still move, which is the test that this is a
+        # correction and not a way to go green: a narrowing that produced 0 would be
+        # deleting the check rather than fixing it.
         "SELECT GREATEST(count(*) - 1278, 0) FROM regulatory_provisions "
         "WHERE is_current AND v2_is_actionable "
+        "AND source_council IS NOT NULL "
         "AND v2_dev_type_source = 'no_config'",
         (),
-        "no_config on served rows has risen above the 1,278 left deliberately "
-        "by the 2026-08-01 retag, so document_ids are failing to resolve "
-        "against council config again and those rows silently apply to ALL "
-        "development types. SEPARATE AND LARGER: 10,103 served rows carry a "
-        "NULL v2_dev_type_source and were never tagged at all, so the question "
-        "cannot be asked of them; that gap is not counted here and needs its "
-        "own row.",
+        "no_config on served COUNCIL rows has risen above the 1,278 left "
+        "deliberately by the 2026-08-01 retag, so document_ids are failing to "
+        "resolve against council config again and those rows silently apply to "
+        "ALL development types. Scoped to rows that HAVE a council because the "
+        "retag only touched those: 4,887 served statewide LEP/SEPP rows also "
+        "read no_config and always will, having no council config to resolve "
+        "against, and counting them made this ratchet unable to reach zero. "
+        "SEPARATE AND LARGER: 10,103 served rows carry a NULL v2_dev_type_source "
+        "and were never tagged at all, so the question cannot be asked of them; "
+        "that gap is not counted here and needs its own row.",
     ),
     "DQ-73": (
         "Dated setback controls falling on the 1st of a month",
