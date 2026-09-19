@@ -1733,7 +1733,15 @@ class DCPExtractor:
 
     def _page_text(self, page: Any, page_num: int) -> str:
         if self.ocr_pages and 0 < page_num <= len(self.ocr_pages):
-            return self.ocr_pages[page_num - 1]
+            ocr = self.ocr_pages[page_num - 1]
+            if ocr:
+                return ocr
+            # Empty means THIS page's OCR batch failed after its retries, and the
+            # rest of the chapter was kept. Falling through gives it the text
+            # layer it would have had anyway; returning the empty string would
+            # silently blank a page the reader can still partly use, which is
+            # worse than the defect being worked around. A genuinely blank page
+            # falls through to an equally blank text layer, so nothing is lost.
         return _extract_page_text(page, self.council)
 
     def extract(self) -> list[dict[str, Any]]:
@@ -2912,7 +2920,16 @@ def text_layer_garbled(page_texts: list[str]) -> bool:
 #                                          clock, the only thing that caps total
 #                                          duration in one thread
 OCR_CONNECT_TIMEOUT = 30       # seconds to establish
-OCR_READ_TIMEOUT = 120         # seconds of SILENCE before giving up
+# Seconds of SILENCE before giving up. 120 sat AT the p90 of the real
+# distribution, which is a coin flip rather than a margin. Measured across a
+# complete 47-batch run of city_of_sydney/section-3 (2026-09-19): min 68s,
+# median 104s, p90 118s, max 140s — batches landed at 118, 118, 119, 119 and
+# 120s. The 85.3s that justified a 3-page batch came from a warm idle endpoint;
+# under 47 sustained requests the median is 22% slower and the tail reaches 140s.
+# 300s is over twice the worst observed batch and still calls a dead endpoint
+# within five minutes, which is what this cap is actually for. Total duration is
+# bounded by the chapter budget, not by this.
+OCR_READ_TIMEOUT = 300
 # ⚠ NOT enforceable in-thread — see the note in fetch_ocr_page_texts.
 # Kept as the value an EXTERNAL (subprocess) cap should use.
 OCR_TOTAL_DEADLINE = 600
@@ -2961,7 +2978,24 @@ OCR_SECONDS_PER_PAGE = 45
 # transient blip costs one extra call, a broken endpoint costs three in total
 # and then gives up.
 OCR_BATCH_RETRIES = 2          # extra attempts for ONE batch
-OCR_CHAPTER_RETRY_BUDGET = 6   # extra attempts across the whole chapter
+# Extra attempts across the whole chapter, as a FRACTION of the batches rather
+# than a constant. A fixed 6 cannot cover a 47-batch run: measured on that run,
+# batches 11 and 15 took two retries each and batch 45 was left with two, ran
+# out, and cost the chapter its 138 good pages. The same class of error as a
+# fixed 600s OCR deadline and a fixed 1200s process cap — a constant sized for
+# smaller work. A quarter of the batches tolerates a genuinely flaky endpoint
+# while still giving up long before retrying everything.
+# Above this share of pages failing, the read is not worth having: the chapter is
+# mostly text layer with OCR sprinkled through it, which is harder to reason about
+# than a clean fallback. Below it, keeping 138 of 141 OCR pages is plainly better
+# than keeping none -- which is what the all-or-nothing rule actually did.
+OCR_MAX_FAILED_PAGE_FRACTION = 0.10
+
+OCR_CHAPTER_RETRY_MINIMUM = 6
+
+
+def ocr_chapter_retry_budget(batches: int) -> int:
+    return max(OCR_CHAPTER_RETRY_MINIMUM, batches // 4)
 OCR_RETRY_BACKOFF_SECONDS = 5
 
 
@@ -3017,7 +3051,9 @@ def fetch_ocr_page_texts(pdf_path, expected_pages: int) -> list[str] | None:
 
     started = _time.monotonic()
     out: list[str] = []
-    retries_left = OCR_CHAPTER_RETRY_BUDGET
+    failed_pages: list[int] = []
+    retries_left = ocr_chapter_retry_budget(
+        (expected_pages + OCR_PAGES_PER_REQUEST - 1) // OCR_PAGES_PER_REQUEST)
     batches = (expected_pages + OCR_PAGES_PER_REQUEST - 1) // OCR_PAGES_PER_REQUEST
     deadline = max(OCR_TOTAL_DEADLINE, expected_pages * OCR_SECONDS_PER_PAGE)
     print(f"    [OCR] {expected_pages} pages in {batches} batch(es) of "
@@ -3047,10 +3083,39 @@ def fetch_ocr_page_texts(pdf_path, expected_pages: int) -> list[str] | None:
             if got is not None:
                 break
         if got is None:
+            # Per PAGE, not per chapter. This used to abandon the whole chapter,
+            # justified as "half a chapter of OCR spliced onto half a chapter of
+            # garbled text reads as success" -- but the alternative it chose was a
+            # WHOLE chapter of garbled text. Measured 2026-09-19: one unrecoverable
+            # batch discarded 138 good pages and re-enqueued the same unreadable
+            # text the run existed to replace. An empty string here leaves those
+            # pages on the text layer, exactly as they would have been, and keeps
+            # every page the endpoint did read. The legibility guard (#1141) still
+            # refuses the commit if the result is worse than what is live, so the
+            # safety this rule was protecting is enforced where it belongs -- at
+            # the write, against the actual outcome, rather than here by discarding
+            # work on a prediction.
+            failed_pages.extend(range(first + 1, first + count + 1))
+            out.extend([""] * count)
             print(f"    [OCR] batch {n}/{batches} (pages {first + 1}-{first + count}) "
-                  f"failed — staying on text layer")
-            return None
+                  f"failed — those pages keep their text layer, the rest keep OCR")
+            # Checked HERE and not only at the end, or a DEAD endpoint would be
+            # discovered one batch at a time across the whole chapter: measured, a
+            # 20-batch chapter cost 16 calls to learn what the first three said.
+            # Isolated failures carry on; a broken endpoint stops now.
+            if len(failed_pages) > expected_pages * OCR_MAX_FAILED_PAGE_FRACTION:
+                print(f"    [OCR] {len(failed_pages)}/{expected_pages} pages failed, over "
+                      f"{OCR_MAX_FAILED_PAGE_FRACTION:.0%} — staying on text layer")
+                return None
+            continue
         out.extend(got)
+    if failed_pages:
+        if len(failed_pages) > expected_pages * OCR_MAX_FAILED_PAGE_FRACTION:
+            print(f"    [OCR] {len(failed_pages)}/{expected_pages} pages failed, over "
+                  f"{OCR_MAX_FAILED_PAGE_FRACTION:.0%} — staying on text layer")
+            return None
+        print(f"    [OCR] {len(failed_pages)} page(s) kept their text layer: "
+              f"{failed_pages[:12]}")
     if len(out) != expected_pages:
         print(f"    [OCR] page count mismatch ({len(out)} vs {expected_pages} in PDF) "
               f"— staying on text layer")
@@ -3808,6 +3873,34 @@ def _page_count_for_budget(pdf_path) -> int | None:
         return None
 
 
+def revive(conn):
+    """Return a live connection: `conn` if it still answers, else a fresh one.
+
+    The PDF work takes an hour and the connection is opened before it, so the
+    first query afterwards raises "server closed the connection unexpectedly" --
+    measured on both runs that got far enough to reach it. libpq keepalives were
+    tried first and are NOT enough: they hold the TCP socket open while the
+    pooler closes the SESSION, and no socket-level setting reaches that.
+
+    The ping is the only way to know. psycopg2's conn.closed reports what THIS
+    process did to the connection, not what the server did, so a server-side
+    close still reads as open until something is executed on it.
+    """
+    try:
+        with conn.cursor() as c:
+            c.execute("SELECT 1")
+        return conn
+    except Exception:
+        try:
+            conn.close()
+        except Exception:
+            pass
+        print("    [db] connection did not survive the PDF work -- reconnecting")
+        return psycopg2.connect(
+            DATABASE_URL, keepalives=1, keepalives_idle=30,
+            keepalives_interval=10, keepalives_count=5)
+
+
 def extract_pdf_isolated(pdf_path, document_id, council, page_ranges,
                          subsection_patterns, ai_on):
     """Run the PDF work in its own process so a kill cannot take the batch.
@@ -4051,6 +4144,14 @@ def extract_chapter(
             print(f"    [ERROR] {err}")
             cur.close()
             return False, None
+
+        # An hour has passed inside extract_pdf_isolated and `cur` was opened
+        # before it. Everything below this line touches the database, so the
+        # connection is re-established here rather than discovered dead at the
+        # first query -- which is exactly how two complete runs were lost after
+        # doing all the expensive work correctly.
+        conn = revive(conn)
+        cur = conn.cursor()
 
         preflight = result["preflight"]
         sections = result["sections"]
@@ -5135,6 +5236,11 @@ def main() -> None:
             review=args.review,
             allow_section_loss=frozenset(args.allow_section_loss),
         )
+        # extract_chapter takes conn as a PARAMETER, so its own revive cannot
+        # reach this one. Without this the first chapter's hour of PDF work
+        # leaves every later chapter in the batch holding a dead connection --
+        # and the summary and registry updates below would fail too.
+        conn = revive(conn)
         if ok:
             succeeded += 1
             if review_data is not None:
