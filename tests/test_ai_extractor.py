@@ -413,6 +413,7 @@ class TestOcrCallIsBounded:
         monkeypatch.setenv("MODAL_OCR_URL", url)
         monkeypatch.setenv("MODAL_OCR_TOKEN", "t")
         monkeypatch.setattr(mod, "OCR_READ_TIMEOUT", 2)
+        monkeypatch.setattr(mod, "OCR_RETRY_BACKOFF_SECONDS", 0)
         try:
             t0 = time.monotonic()
             with self._real_requests():
@@ -421,8 +422,14 @@ class TestOcrCallIsBounded:
         finally:
             srv.shutdown()
         assert out is None, "a silent endpoint must not yield OCR text"
-        assert elapsed < 20, (
-            f"waited {elapsed:.0f}s on a silent server against a 2s read timeout"
+        # The bound is now (retries + 1) attempts, because a batch is retried: one
+        # Modal cold start should not cost a 47-batch chapter its whole hour. The
+        # backoff is zeroed above so this measures the TIMEOUT, which is what the
+        # test is about, and not the sleep between attempts.
+        attempts = mod.OCR_BATCH_RETRIES + 1
+        assert elapsed < 2 * attempts + 6, (
+            f"waited {elapsed:.0f}s on a silent server against a 2s read timeout "
+            f"x {attempts} attempts — the per-attempt timeout is not bounding it"
         )
 
     def test_a_healthy_server_still_returns_its_pages(self, tmp_path, monkeypatch):

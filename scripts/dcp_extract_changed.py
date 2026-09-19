@@ -2947,6 +2947,23 @@ OCR_PAGES_PER_REQUEST = 3      # 3 pages ~85s, comfortably inside OCR_READ_TIMEO
 # 1.8 hours" before it starts rather than infer it from a silence.
 OCR_SECONDS_PER_PAGE = 45
 
+# One request became forty-seven, and a design that abandons the chapter on the
+# first failed batch turns every transient blip into a lost hour. Measured
+# 2026-09-19 on the first real run: batch 1 of 47 died with
+# RemoteDisconnected('Remote end closed connection without response') -- a Modal
+# cold start, not a defect in the PDF -- and the whole chapter fell back to its
+# garbled text layer. At even a 2% per-batch failure rate a 47-batch run fails
+# more often than it succeeds, so "abandon on first failure" is right for data
+# integrity and wrong for finishing.
+#
+# A batch is retried, and the WHOLE-CHAPTER cap is what stops a systematic
+# failure (a bad token, a dead endpoint) from turning 47 calls into 141: a
+# transient blip costs one extra call, a broken endpoint costs three in total
+# and then gives up.
+OCR_BATCH_RETRIES = 2          # extra attempts for ONE batch
+OCR_CHAPTER_RETRY_BUDGET = 6   # extra attempts across the whole chapter
+OCR_RETRY_BACKOFF_SECONDS = 5
+
 
 def _ocr_pdf_slice(pdf_path, first: int, count: int) -> bytes | None:
     """Bytes of a `count`-page PDF starting at 0-based page `first`, or None.
@@ -3000,6 +3017,7 @@ def fetch_ocr_page_texts(pdf_path, expected_pages: int) -> list[str] | None:
 
     started = _time.monotonic()
     out: list[str] = []
+    retries_left = OCR_CHAPTER_RETRY_BUDGET
     batches = (expected_pages + OCR_PAGES_PER_REQUEST - 1) // OCR_PAGES_PER_REQUEST
     deadline = max(OCR_TOTAL_DEADLINE, expected_pages * OCR_SECONDS_PER_PAGE)
     print(f"    [OCR] {expected_pages} pages in {batches} batch(es) of "
@@ -3014,7 +3032,20 @@ def fetch_ocr_page_texts(pdf_path, expected_pages: int) -> list[str] | None:
         blob = _ocr_pdf_slice(pdf_path, first, count)
         if blob is None:
             return None
-        got = _fetch_ocr_batch(url, token, blob, count, f"{n}/{batches}")
+        got = None
+        for attempt in range(OCR_BATCH_RETRIES + 1):
+            if attempt:
+                if retries_left <= 0:
+                    print(f"    [OCR] chapter retry budget spent — not retrying "
+                          f"batch {n}/{batches}")
+                    break
+                retries_left -= 1
+                _time.sleep(OCR_RETRY_BACKOFF_SECONDS * attempt)
+                print(f"    [OCR] retry {attempt} of batch {n}/{batches} "
+                      f"({retries_left} chapter retries left)")
+            got = _fetch_ocr_batch(url, token, blob, count, f"{n}/{batches}")
+            if got is not None:
+                break
         if got is None:
             print(f"    [OCR] batch {n}/{batches} (pages {first + 1}-{first + count}) "
                   f"failed — staying on text layer")
@@ -3732,11 +3763,49 @@ TERMINATE_GRACE_SECONDS = 10
 #: at 395s, so this is roughly 3x the worst observed case rather than a guess.
 PDF_WORK_TIMEOUT_SECONDS = int(os.getenv("DCP_PDF_TIMEOUT", "1200"))
 
+
+def pdf_work_budget_seconds(page_count: int | None) -> int:
+    """The wall-clock a chapter's PDF work may take.
+
+    The 1200s default was set as 3x the worst chapter then measured (395s) --
+    before OCR could ever complete. With OCR the cost is pages x ~27s, so a
+    141-page chapter is ~62 minutes and a 366-page one ~2.7 hours: every chapter
+    the batched-OCR fix was built for would be killed at 20 minutes, and killed
+    in a way that reads as an out-of-memory crash.
+
+    Raising the flat default is the wrong fix -- it would let a genuinely hung
+    chapter run for hours. The budget scales with the page count, and ONLY when
+    OCR can actually run (MODAL_OCR_URL set); otherwise a chapter keeps exactly
+    the bound it has today. An explicit DCP_PDF_TIMEOUT always wins, because an
+    operator naming a number should get that number.
+    """
+    if os.getenv("DCP_PDF_TIMEOUT"):
+        return PDF_WORK_TIMEOUT_SECONDS
+    if not page_count or not os.getenv("MODAL_OCR_URL", "").strip():
+        return PDF_WORK_TIMEOUT_SECONDS
+    # The same per-page budget the OCR fetch uses, plus its own floor, so the
+    # outer cap can never be tighter than the work it contains.
+    return max(PDF_WORK_TIMEOUT_SECONDS, int(page_count * OCR_SECONDS_PER_PAGE * 1.3))
+
 #: Address-space ceiling for the child, POSIX only. Measured peaks after the
 #: page-release fix: 127-726 MB across every oversized chapter that could be
 #: tested. 2 GB leaves headroom for an untested pathological file while still
 #: killing a genuine runaway before the host notices.
 PDF_WORK_MEM_LIMIT_BYTES = int(os.getenv("DCP_PDF_MEM_LIMIT", str(2 * 1024 * 1024 * 1024)))
+
+
+def _page_count_for_budget(pdf_path) -> int | None:
+    """Pages in the PDF, read in the PARENT, only to size the child's budget.
+
+    Cheap: pypdf parses the page tree, not the content streams. None on any
+    failure, which falls back to the flat default rather than refusing — this
+    decides how long to WAIT, and a bad PDF has its own errors downstream.
+    """
+    try:
+        from pypdf import PdfReader
+        return len(PdfReader(str(pdf_path)).pages)
+    except Exception:
+        return None
 
 
 def extract_pdf_isolated(pdf_path, document_id, council, page_ranges,
@@ -3777,19 +3846,27 @@ def extract_pdf_isolated(pdf_path, document_id, council, page_ranges,
     # Read BEFORE join. A large sections payload can fill the pipe, and a child
     # blocked on write with a parent blocked on join is a deadlock that would
     # hang the whole batch -- a worse failure than the one being fixed.
+    budget = pdf_work_budget_seconds(_page_count_for_budget(pdf_path))
+    timed_out = False
     try:
-        result = queue.get(timeout=PDF_WORK_TIMEOUT_SECONDS)
+        result = queue.get(timeout=budget)
     except Exception:
         result = None
+        timed_out = True
     proc.join(JOIN_GRACE_SECONDS)
     if proc.is_alive():
+        # This terminate is why a timeout USED to read as an out-of-memory kill:
+        # it sets the child's exitcode to -SIGTERM, and the signal branch below
+        # claimed OOM as the likely cause. The parent knows which happened, so
+        # it says so rather than leaving the exit code to be guessed from.
         proc.terminate()
         proc.join(TERMINATE_GRACE_SECONDS)
 
-    return interpret_isolated_result(result, proc.exitcode)
+    return interpret_isolated_result(result, proc.exitcode,
+                                     timed_out=timed_out, budget=budget)
 
 
-def interpret_isolated_result(result, exitcode):
+def interpret_isolated_result(result, exitcode, timed_out=False, budget=None):
     """Turn (payload-or-None, child exit code) into (payload, error message).
 
     Pulled out as a pure function ON PURPOSE. The interesting cases are a child
@@ -3804,6 +3881,18 @@ def interpret_isolated_result(result, exitcode):
     read "the batch is fine" and not go looking for a lost night's work.
     """
     if result is None:
+        if timed_out:
+            # Checked BEFORE the signal branch on purpose. A timeout is followed
+            # by terminate(), so the exit code says "signal" for both causes and
+            # the signal branch would answer with the wrong one -- which is what
+            # it did: a 141-page chapter over its 20-minute budget reported "out
+            # of memory is the usual cause" on a host with memory to spare.
+            spent = f"{budget}s" if budget else f"{PDF_WORK_TIMEOUT_SECONDS}s"
+            return None, (f"extraction exceeded its {spent} budget and was "
+                          f"stopped. Not a memory problem: raise DCP_PDF_TIMEOUT "
+                          f"if this chapter genuinely needs longer (OCR costs "
+                          f"about {OCR_SECONDS_PER_PAGE}s a page). This chapter "
+                          f"is skipped; the rest of the batch is unaffected.")
         if exitcode is not None and exitcode < 0:
             return None, (f"extraction process was killed by signal {-exitcode} "
                           f"(out of memory is the usual cause). This chapter is "
@@ -4997,7 +5086,15 @@ def main() -> None:
         aws_secret_access_key=R2_SECRET_ACCESS_KEY,
         region_name="auto",
     )
-    conn = psycopg2.connect(DATABASE_URL)
+    # Keepalives because the PDF work now takes an hour, not a minute. Measured
+    # 2026-09-19: the first real OCR run reached diff_provisions and died with
+    # "server closed the connection unexpectedly" — the connection is opened once
+    # for the batch and sits idle through the extraction, so the pooler reaps it.
+    # These are libpq settings, so the OS keeps the socket alive rather than the
+    # application having to poll.
+    conn = psycopg2.connect(
+        DATABASE_URL, keepalives=1, keepalives_idle=30,
+        keepalives_interval=10, keepalives_count=5)
     conn.autocommit = False
 
     print("=" * 60)

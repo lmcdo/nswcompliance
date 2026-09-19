@@ -1,0 +1,137 @@
+{
+  "tier": "critical",
+  "justification": "Three ways a one-hour extraction fails that a one-minute extraction never did, all found by running the real extractor rather than reading it. One of them reports the wrong cause, which is worse than failing: it sent today's debugging to memory limits when the actual cause was a 20-minute cap.",
+  "commit_hash": "a55866a4",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_long_extraction_survives.py",
+    "tests/test_ocr_batches_the_chapter.py",
+    "tests/test_ai_extractor.py"
+  ],
+  "pre_impl": {
+    "existing_data": "No database read or write, and no schema change. The inputs are the chapter PDF, the Modal OCR endpoint and the batch's Postgres connection, all exercised against the real thing.",
+    "assumption_mismatch": "Batching OCR turned one request into forty-seven and a two-minute job into an hour, and three surrounding assumptions were sized for the old job. First, PDF_WORK_TIMEOUT_SECONDS defaults to 1200s, justified in its own comment as 3x the worst chapter then measured (395s) — measured before OCR could ever complete. Second, a failed batch abandons the chapter, which is right for integrity and fatal for finishing across 47 attempts. Third, the batch Postgres connection is opened once in main() and sits idle through the PDF work.",
+    "new_vs_existing": "Changes only how long the parent waits, how a failed batch is handled, and how the connection is configured. A chapter with no OCR configured keeps exactly the bound it has today; a healthy run makes exactly one call per batch as before.",
+    "external_source_error": "Both external sources are involved and both keep failing closed. The OCR endpoint failures are retried a bounded number of times and then abandon the chapter, never leaving a partial result. The database failure is prevented rather than caught — keepalives stop the socket being reaped, and a genuine connection loss still raises.",
+    "frontend_type": "No API or component change. This runs in the nightly extractor.",
+    "user_failure_mode": "The worst outcome is a chapter that reports a plausible wrong cause, because the next person acts on it: today the log said out of memory is the usual cause, on a host with memory to spare, for a chapter that had simply run past 20 minutes. The second is an hour of work lost to one transient blip. The third is a half-OCR'd chapter, which retrying could have introduced and deliberately does not — a batch that never succeeds still abandons the whole chapter."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_long_extraction_survives.py tests/test_ocr_batches_the_chapter.py tests/test_pdf_page_release.py tests/test_ai_extractor.py tests/test_ocr_fallback.py -q",
+    "fails_when": "The timeout branch is deleted or moved after the signal branch, where it is unreachable; a real signal kill stops pointing at memory; the budget stops scaling, scales when no OCR is configured, or overrides an explicit DCP_PDF_TIMEOUT; the page count read in the parent raises instead of falling back; a failed batch is no longer retried, or is retried without the whole-chapter cap; a batch that never succeeds stops abandoning the chapter; or the connection stops asking for keepalives.",
+    "observed_red": "Eight mutations planted, eight CAUGHT: deleting the timeout branch, ignoring the operator override, scaling the budget without OCR, removing the retry, removing the whole-chapter retry cap, retrying without a per-batch cap, removing keepalives, and reverting the retry after the tests were updated. 15 new tests, 376 passing across every related suite. Verified against the real extractor: the first run died with 'extraction process was killed by signal 15 (out of memory is the usual cause)' after 20 minutes on a 141-page chapter, and the same run with DCP_PDF_TIMEOUT=6000 reached the OCR path and reported '141 pages in 47 batch(es) of 3; budget 106 min' before losing batch 1 of 47 to a RemoteDisconnected — which is the failure the retry now covers."
+  },
+  "functions": [
+    {
+      "name": "pdf_work_budget_seconds",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "The chapter page count, or None when it could not be read from the PDF.",
+      "output": "The wall-clock the child may take: the flat default, or pages times OCR_SECONDS_PER_PAGE times 1.3 when OCR can actually run, whichever is larger.",
+      "if_none": "An unknown page count, or no MODAL_OCR_URL, returns the flat default unchanged — so a chapter that cannot OCR keeps exactly the bound it has today rather than inheriting an hours-long one."
+    },
+    {
+      "name": "_page_count_for_budget",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "The PDF path, read in the PARENT before the child process starts.",
+      "output": "The page count, used only to size the budget. pypdf parses the page tree rather than the content streams, so it is cheap.",
+      "if_none": "None on any failure, which falls back to the flat default. This decides how long to WAIT; a malformed PDF has its own errors downstream and must not be turned into a refusal here."
+    },
+    {
+      "name": "interpret_isolated_result",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "The child payload or None, its exit code, and now whether the parent timed out and what budget it allowed.",
+      "output": "A payload, or a message naming the real cause. A timeout says so and names the budget and the variable that changes it; a genuine signal kill still points at memory.",
+      "if_none": "Unchanged for every case it already handled — a clean exit with no payload is still called a bug rather than a chapter problem."
+    }
+  ],
+  "values": [
+    {
+      "name": "the budget scales only when OCR can run",
+      "value": "max(flat default, pages times OCR_SECONDS_PER_PAGE times 1.3), gated on MODAL_OCR_URL",
+      "why": "Raising the flat default would let a genuinely hung chapter run for hours. Gating on OCR being configured means the longer budget exists only where the long work exists, and 1.3 covers a cold container without covering a hang.",
+      "source": "Measured 2026-09-19: 26.4s a page across 30 pages in 10 batches; a 141-page chapter projects to 62 minutes against a 20-minute cap.",
+      "if_missing": "Every chapter the batched-OCR fix was built for is killed at 20 minutes, and killed in a way that reads as an out-of-memory crash.",
+      "read_at": "scripts/dcp_extract_changed.py — pdf_work_budget_seconds."
+    },
+    {
+      "name": "OCR_BATCH_RETRIES = 2 with OCR_CHAPTER_RETRY_BUDGET = 6",
+      "value": "Per-batch retries, capped across the chapter",
+      "why": "Two independent caps because the two failures are different. A transient blip needs one more attempt; a dead endpoint or a bad token must not turn 47 calls into 141 and spend an hour proving it is broken.",
+      "source": "The first real run lost the whole chapter to batch 1 of 47 with RemoteDisconnected, a Modal cold start. At a 2 percent per-batch failure rate a 47-batch run fails more often than it succeeds.",
+      "if_missing": "Without the retry one blip costs an hour. Without the chapter cap a systematic failure costs three hours to discover.",
+      "read_at": "scripts/dcp_extract_changed.py — the OCR call bounds and the batch loop."
+    },
+    {
+      "name": "keepalives_idle = 30",
+      "value": "libpq TCP keepalives on the batch connection",
+      "why": "The connection is opened once in main() and idles through the PDF work, so the pooler reaps it and the first query afterwards dies. 30s is shorter than a single OCR batch at about 85s, so no idle gap goes uncovered.",
+      "source": "Measured 2026-09-19: the first real OCR run reached diff_provisions and raised 'server closed the connection unexpectedly'.",
+      "if_missing": "Every long extraction succeeds at reading the PDF and then dies before it can record anything — the worst place to fail, after all the expensive work.",
+      "read_at": "scripts/dcp_extract_changed.py — the psycopg2.connect in main."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Keep the batch connection alive across an hour of PDF work, so the queries that record the extraction still have a connection when it ends.",
+      "file_line": "scripts/dcp_extract_changed.py — main",
+      "where_clause": "Not applicable: this change adds no SQL. The existing queries are unchanged and run on the same connection, which now carries libpq keepalives so it is still open when the PDF work finishes."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A timeout keeps reporting itself as an out-of-memory kill.",
+      "what_happens": "The next person reads that memory is the usual cause and goes looking at memory limits and PDF sizes for a chapter that simply ran past its budget. That is exactly what happened today.",
+      "mitigated": true,
+      "how": "The parent knows which occurred and passes it, rather than leaving it to be inferred from an exit code that says signal either way — because the timeout path terminates the child. The timeout branch is checked FIRST, and a test asserts that order, because the signal branch would otherwise always win.",
+      "repro": "python -m pytest tests/test_long_extraction_survives.py -k masquerade -q"
+    },
+    {
+      "scenario": "A real out-of-memory kill starts reporting itself as a timeout.",
+      "what_happens": "The opposite misdirection: someone raises DCP_PDF_TIMEOUT for a chapter that actually needs less memory, and it dies again the same way.",
+      "mitigated": true,
+      "how": "Only the parent own timeout sets the flag. A SIGKILL with no timeout keeps its existing message, asserted as a confusable negative.",
+      "repro": "python -m pytest tests/test_long_extraction_survives.py -k REAL_signal -q"
+    },
+    {
+      "scenario": "Retrying a batch turns into committing half a chapter.",
+      "what_happens": "OCR text for some pages and garbled text-layer text for the rest, under correct page numbers — which reads as a success.",
+      "mitigated": true,
+      "how": "Retries change only how many times a batch is attempted. A batch that never succeeds still abandons the whole chapter, and the test that used to assert abandonment on the FIRST failure was rewritten to assert it on exhaustion rather than deleted.",
+      "repro": "python -m pytest tests/test_ocr_batches_the_chapter.py -k never_succeeds -q"
+    },
+    {
+      "scenario": "The longer budget is applied to chapters that cannot OCR.",
+      "what_happens": "A genuinely hung 366-page chapter holds the nightly batch for six hours instead of twenty minutes.",
+      "mitigated": true,
+      "how": "The scaling is gated on MODAL_OCR_URL being set, and a test asserts a 366-page chapter with no OCR configured keeps the flat default exactly.",
+      "repro": "python -m pytest tests/test_long_extraction_survives.py -k without_OCR -q"
+    },
+    {
+      "scenario": "An operator sets DCP_PDF_TIMEOUT and is silently overridden.",
+      "what_happens": "Someone answering this exact question gets a different number, including when they deliberately want a shorter one.",
+      "mitigated": true,
+      "how": "An explicit environment variable short-circuits the scaling entirely, asserted in both directions.",
+      "repro": "python -m pytest tests/test_long_extraction_survives.py -k operators_explicit -q"
+    },
+    {
+      "scenario": "The connection does not survive the work: keepalives keep the socket alive but the server closes the session deliberately.",
+      "what_happens": "Every query that records the extraction fails after the PDF work has already been paid for. The connection is gone at exactly the moment the results are ready to write, so an hour of OCR produces nothing.",
+      "mitigated": false,
+      "how": "Not fully addressed. Keepalives stop the socket being reaped for idleness, which is the failure observed, but a server-side statement or session limit would still end it. The honest position is that this removes the measured cause, not every cause; a reconnect-and-retry layer around the post-extraction queries is the fuller fix and is not attempted here.",
+      "repro": "Run a full extraction and watch for 'server closed the connection unexpectedly' after the PDF work."
+    },
+    {
+      "scenario": "This is taken to mean the blocked chapters are now re-extracted.",
+      "what_happens": "They are not, and the outreach numbers do not move.",
+      "mitigated": false,
+      "how": "Not addressed. This makes a long extraction survivable. The re-read of city_of_sydney/section-3 and the others, their review and their commit all remain to be done.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-70"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. Nothing is written by this change.",
+    "secrets": "No. DCP_PDF_TIMEOUT, MODAL_OCR_URL and DATABASE_URL are existing environment variables, unchanged.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: re-run the city_of_sydney/section-3 extraction and confirm it reaches all 47 batches rather than dying at 20 minutes or on the first blip. That run is the point of the change and had not completed when this was written."
+  }
+}
