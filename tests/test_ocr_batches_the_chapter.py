@@ -157,20 +157,31 @@ class TestItRunsWithoutTheNetwork:
         assert out[0] == "batch1-page0" and out[3] == "batch2-page0"
         assert [n for _lbl, n in seen] == [3, 3, 2], "the last batch must be the remainder"
 
-    def test_a_failing_batch_returns_None_and_stops(self, tmp_path, monkeypatch):
+    def test_a_batch_that_never_succeeds_abandons_the_chapter(self, tmp_path, monkeypatch):
+        """A batch is RETRIED first — one Modal cold start should not lose an hour — but
+        a batch that keeps failing still abandons the whole chapter rather than leaving a
+        hole. Half a chapter of OCR text spliced onto half a chapter of garbled text
+        layer, under correct page numbers, would read as a success.
+
+        This test asserted abandonment on the FIRST failure until retries were added in
+        response to a real run losing 47 batches to one blip.
+        """
         m = _mod()
         pdf = self._pdf(tmp_path, 8)
         monkeypatch.setenv("MODAL_OCR_URL", "https://example.invalid")
         monkeypatch.setenv("MODAL_OCR_TOKEN", "t")
+        monkeypatch.setattr(m, "OCR_RETRY_BACKOFF_SECONDS", 0)
         calls = []
 
         def fake(url, token, blob, expected_pages, label):
             calls.append(label)
-            return None if len(calls) == 2 else ["x"] * expected_pages
+            return None if label.startswith("2/") else ["x"] * expected_pages
 
         monkeypatch.setattr(m, "_fetch_ocr_batch", fake)
         assert m.fetch_ocr_page_texts(pdf, expected_pages=8) is None
-        assert len(calls) == 2, "it kept going after a batch failed"
+        assert [c for c in calls if c.startswith("3/")] == [], (
+            "it carried on to batch 3 after batch 2 was exhausted")
+        assert len([c for c in calls if c.startswith("2/")]) == m.OCR_BATCH_RETRIES + 1
 
     def test_no_url_still_returns_None_without_slicing(self, tmp_path, monkeypatch):
         m = _mod()
