@@ -1,12 +1,13 @@
 {
   "tier": "critical",
   "justification": "Decides whether a council chapter is read from OCR or from a text layer known to be unreadable. The first complete 47-batch run got 44 batches and discarded all of them, re-enqueueing the same garbled text it existed to replace. Every constant corrected here was sized from a warm idle endpoint and is wrong under real load.",
-  "commit_hash": "662d7819",
+  "commit_hash": "eb4555ff",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_ocr_tuning_from_a_real_run.py",
     "tests/test_long_extraction_survives.py",
-    "tests/test_ocr_batches_the_chapter.py"
+    "tests/test_ocr_batches_the_chapter.py",
+    "tests/test_connection_outlives_the_pdf_work.py"
   ],
   "pre_impl": {
     "existing_data": "No database read or write and no schema change. The evidence is one complete run of city_of_sydney/section-3-general-provisions against the live Modal endpoint, 141 pages in 47 batches, 2026-09-19.",
@@ -17,9 +18,9 @@
     "user_failure_mode": "Two directions, and the previous design was wrong about which was safer. Too strict and 138 good pages are thrown away for 3 bad ones, which is what happened and which re-served unreadable text. Too loose and a chapter becomes mostly text layer with OCR sprinkled through it, which is harder to reason about than a clean fallback — so a share cap abandons the chapter past 10 percent of pages, checked as each batch fails rather than only at the end."
   },
   "falsifiable_check": {
-    "command": "python -m pytest tests/test_ocr_tuning_from_a_real_run.py tests/test_long_extraction_survives.py tests/test_ocr_batches_the_chapter.py -q",
-    "fails_when": "The silence cap drops back to or below the observed 140s tail, or rises so far it stops detecting a dead endpoint; the batch size and the cap stop being sized against each other; the retry budget goes flat again, drops below the floor for a small chapter, or grows toward one retry per batch; a failed batch discards the whole chapter again; an empty OCR entry blanks a page instead of falling back to its text layer; the failed-page share cap is loosened; or the share is checked only at the end, so a dead endpoint costs the whole chapter to discover.",
-    "observed_red": "Five mutations planted, five CAUGHT: restoring the 120s cap, flattening the retry budget, removing the early abort, blanking a page instead of falling back, and loosening the share cap to 90 percent. 12 new tests, 47 across the three affected files, 386 across every related suite. Two existing tests failed honestly when the fallback changed from all-or-nothing to per-page and were rewritten to the new contract rather than deleted — and one of those failures found a real regression: without an early share check, a dead endpoint cost 16 calls to learn what the first three batches already said."
+    "command": "python -m pytest tests/test_ocr_tuning_from_a_real_run.py tests/test_connection_outlives_the_pdf_work.py tests/test_long_extraction_survives.py tests/test_ocr_batches_the_chapter.py -q",
+    "fails_when": "The silence cap drops back to or below the observed 140s tail, or rises so far it stops detecting a dead endpoint; the batch size and the cap stop being sized against each other; the retry budget goes flat again, drops below the floor for a small chapter, or grows toward one retry per batch; a failed batch discards the whole chapter again; an empty OCR entry blanks a page instead of falling back to its text layer; the failed-page share cap is loosened; or the share is checked only at the end, so a dead endpoint costs the whole chapter to discover. The connection is not re-established between the PDF work and the first query after it; the cursor is not re-made from the revived connection; main stops reviving its own; liveness is decided by conn.closed rather than by executing; or the replacement connection drops the keepalives.",
+    "observed_red": "Ten mutations planted, ten CAUGHT. Five on the tuning: restoring the 120s cap, flattening the retry budget, removing the early abort, blanking a page instead of falling back, and loosening the share cap to 90 percent. Five on the connection: removing the revive from extract_chapter, reviving but keeping the stale cursor, leaving main's connection dead, trusting conn.closed instead of pinging, and reconnecting without keepalives. 12 new tests, 47 across the three affected files, 386 across every related suite. Two existing tests failed honestly when the fallback changed from all-or-nothing to per-page and were rewritten to the new contract rather than deleted — and one of those failures found a real regression: without an early share check, a dead endpoint cost 16 calls to learn what the first three batches already said."
   },
   "functions": [
     {
@@ -42,6 +43,13 @@
       "input": "A pdfplumber page object and its 1-based page number within the chapter PDF.",
       "output": "The OCR text for that page, or the text layer when the OCR entry is empty.",
       "if_none": "An empty OCR entry means that page's batch failed, so it falls through to the text layer it would have had anyway. Returning the empty string would silently blank a page the reader can still partly use — worse than the defect being worked around. A genuinely blank page falls through to an equally blank text layer, so nothing is lost."
+    },
+    {
+      "name": "revive",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "The batch connection, after it has sat idle through roughly an hour of PDF work in a child process.",
+      "output": "The same connection when it still answers a SELECT 1, otherwise a fresh one with the same keepalive settings, with the dead one closed rather than leaked.",
+      "if_none": "There is no None case: it always returns a usable connection or raises from psycopg2.connect, which the caller already handles as a chapter failure. A close that itself fails is swallowed, because losing the reconnect to its own cleanup would be the same lost hour one layer along."
     }
   ],
   "values": [
@@ -68,6 +76,14 @@
       "source": "Measured: without the early check a 20-batch chapter cost 16 calls to learn what the first three said.",
       "if_missing": "Loosened, a chapter of almost entirely garbled text is served as though OCR succeeded. Removed from the loop, a dead endpoint costs the whole chapter to detect.",
       "read_at": "scripts/dcp_extract_changed.py — the batch loop."
+    },
+    {
+      "name": "a SELECT 1 ping, not conn.closed",
+      "value": "How liveness is decided",
+      "why": "psycopg2's conn.closed reports what THIS process did to the connection, not what the server did, so it still reads open on a connection the pooler has already dropped. Executing something is the only way to find out. Keepalives are kept as well rather than replaced: they still cover the idle socket reap they were added for, they simply cannot cover a pooler closing the session.",
+      "source": "Measured on two complete runs that died at diff_provisions with 'server closed the connection unexpectedly' — the fourth carried keepalives and died identically, which is what disproved the idle-reap theory.",
+      "if_missing": "An hour of correct work is discarded at the last step. The fourth run produced OCR for all 141 pages and extracted 94 sections before losing it.",
+      "read_at": "scripts/dcp_extract_changed.py — revive."
     }
   ],
   "queries": [
@@ -133,12 +149,19 @@
       "mitigated": false,
       "how": "Not claimed. These corrections come from the second run; the third has not completed at the time of writing, and the honest position is that the mechanism is now sized against measured behaviour rather than proven to finish.",
       "repro": "python scripts/dcp_extract_changed.py --council city_of_sydney --chapter section-3-general-provisions --review"
+    },
+    {
+      "scenario": "The connection is revived inside extract_chapter but main keeps holding the dead one.",
+      "what_happens": "The first chapter's hour of PDF work leaves every later chapter in the batch with a corpse, and the run summary and registry updates fail too — so a multi-chapter night dies after the first chapter regardless of how well the rest extract.",
+      "mitigated": true,
+      "how": "extract_chapter takes conn as a parameter, so its rebinding cannot reach main's. main revives its own around each call, and a test asserts that by reading the loop.",
+      "repro": "python -m pytest tests/test_connection_outlives_the_pdf_work.py -k main_revives -q"
     }
   ],
   "post_merge": {
     "db_reset": "No. Nothing is written by this change.",
     "secrets": "No.",
     "other_repo": "No.",
-    "manual_verify": "Yes, and it is the point: re-run city_of_sydney/section-3 and confirm all 47 batches complete, or that any failures fall back per page rather than costing the chapter. Two previous runs failed for different reasons, so this is not assumed."
+    "manual_verify": "Yes: re-run city_of_sydney/section-3. The fourth run produced OCR for all 141 pages and extracted 94 sections before losing it to the dead connection, so the OCR side is demonstrated and the write side is not. Four runs have now failed for four different reasons."
   }
 }
