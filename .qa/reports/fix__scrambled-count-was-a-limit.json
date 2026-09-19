@@ -1,0 +1,29 @@
+{
+  "tier": "minor",
+  "justification": "Corrects a wrong figure in a merged code comment and a test docstring. No logic, no threshold, no query behaviour changes — but a number that is ten times too small, sitting next to the constant it justifies, is how this codebase gets misled later.",
+  "commit_hash": "7fc43558",
+  "files": [
+    "scripts/dcp_supersede_guard.py",
+    "tests/test_dcp_legibility_guard.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_legibility_guard.py -q",
+    "fails_when": "The legibility guard's behaviour changed, which it must not — this is a comment and docstring correction only.",
+    "observed_red": "19 tests pass before and after, which is the point: nothing executable changed. The error was found by re-running the census that produced the figure, this time without the LIMIT."
+  },
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No."
+  },
+  "break_it": [
+    {
+      "scenario": "The corrected figure is treated as permanent and quoted again later without re-running its query.",
+      "what_happens": "155 is today's census, not a constant. Re-extracting any of those 8 chapters changes it, so a future reader justifying a threshold with this line repeats the exact mistake being corrected here — a number outliving the query that produced it.",
+      "mitigated": true,
+      "how": "The comment now carries the SQL that produces the figure and says to re-run it rather than trust the line, which is what the database section of CLAUDE.md asks for. The margin it justifies does not depend on the count in any case — it rests on the 0.021 -> 0.225 rise the guard was built for and the sub-0.01 movement of adding a sentence.",
+      "repro": "Run the query in the comment above SCRAMBLE_WORSE_MARGIN in scripts/dcp_supersede_guard.py"
+    }
+  ]
+}
