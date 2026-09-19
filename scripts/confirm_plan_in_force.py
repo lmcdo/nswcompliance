@@ -52,14 +52,40 @@ from outreach_claim_checks import SERVED  # noqa: E402  (the check's own serve f
 
 # Each name carries the reason it is held back, so this list cannot quietly become a
 # convenience. Adding a council here without clearing its reason is the failure mode.
+# Held for a reason the DATABASE CANNOT EXPRESS, and only that. northern_beaches
+# stays because a legal fact does: Part G10 (Low and Mid-Rise Housing) commenced
+# 15 September 2025 and our copy predates it. Confirming "the plan in force"
+# would attest to a version that is not.
+#
+# The rest of this dict used to list city_of_sydney, georges_river, ku_ring_gai
+# and woollahra, all for DQ-70 staleness -- and that is derivable, so hardcoding
+# it made the hold a frozen snapshot. Measured 2026-09-20, right after the OCR
+# re-read of city_of_sydney/section-3 landed: DQ-70 fell 151 -> 59, those three
+# councils reached ZERO stale chapters, and all three were STILL skipped, because
+# a literal dict does not re-measure. Three councils blocked from a confirmation
+# they qualified for, by a constant nobody had reason to revisit. Derived now, so
+# a council is released the moment its chapters are repaired.
+#
+# The earlier entry for northern_beaches also said the monitored URL "is pinned
+# to the 2016 file and can never change". That stopped being true in #1139, which
+# re-pointed it at the council's live ePlanning export -- the block held while
+# its stated reason had already expired, which is the same failure one level in.
 HELD_BACK = {
-    "city_of_sydney": "source moved since extraction (DQ-70) — re-read pending",
-    "georges_river": "source moved since extraction (DQ-70) — re-read pending",
-    "ku_ring_gai": "8 chapters moved since extraction (DQ-70) — re-read pending",
-    "woollahra": "source moved since extraction (DQ-70) — re-read pending",
-    "northern_beaches": "our copy predates Part G10, in force 15 Sep 2025; monitored URL is "
-                        "pinned to the 2016 file and can never change",
+    "northern_beaches": "our copy predates Part G10, in force 15 Sep 2025 — re-read pending",
 }
+
+#: Councils whose served chapters were read from a document version we no longer
+#: hold. Confirming a plan in force while serving text from a superseded copy
+#: attests to the wrong version, so it is refused -- but as a MEASUREMENT, taken
+#: at run time from the same columns DQ-70 uses, never from a list.
+STALE_CHAPTERS_SQL = """
+SELECT council, count(*)
+  FROM dcp_chapter_registry
+ WHERE is_active
+   AND provisions_extracted_from_hash IS NOT NULL
+   AND content_hash IS NOT NULL
+   AND content_hash <> provisions_extracted_from_hash
+ GROUP BY council"""
 
 # The plan name is taken from the same CTE the check uses, never retyped: a confirmation
 # that names a plan the check does not derive fails as loudly as no confirmation at all,
@@ -118,6 +144,9 @@ def main() -> int:
     try:
         with conn.cursor() as cur:
             cur.execute("SET statement_timeout = '30s'")
+            cur.execute(STALE_CHAPTERS_SQL)
+            stale = dict(cur.fetchall())
+
             cur.execute(PLAN_SQL)
             rows = cur.fetchall()
 
@@ -125,6 +154,10 @@ def main() -> int:
             for lga, untraced, plans, plan, cdate, label, evidence, confirmed in rows:
                 if lga in HELD_BACK:
                     skipped.append((lga, HELD_BACK[lga]))
+                elif lga in stale:
+                    n = stale[lga]
+                    skipped.append((lga, f"{n} chapter(s) moved since extraction "
+                                         f"(DQ-70) — re-read pending"))
                 elif confirmed is not None:
                     skipped.append((lga, "already confirmed"))
                 elif untraced or plans != 1:
