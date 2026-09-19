@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Decides whether a council chapter is read from OCR or from a text layer known to be unreadable. The first complete 47-batch run got 44 batches and discarded all of them, re-enqueueing the same garbled text it existed to replace. Every constant corrected here was sized from a warm idle endpoint and is wrong under real load.",
-  "commit_hash": "eb4555ff",
+  "commit_hash": "e0c70727",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_ocr_tuning_from_a_real_run.py",
