@@ -377,6 +377,18 @@ def enforce_fidelity(cur, council: str, chapter_key: str, batch_ts,
               f"not judged. The gate is opt-out (DCP_FIDELITY_GATE); an unchecked batch "
               f"is not a passing one.")
         return graded, bad, detail
+    # Three outcomes, not two. A batch under the floor has not been measured against the
+    # bar at all, and saying it came in under one is a false statement in a log a person
+    # acts on: 9 failures in 10 rows is 90%, and the old wording announced that as
+    # "under the 5% bar, allowed". Not refusing and having passed are different facts,
+    # so the failures are named here rather than summarised away.
+    if graded < FIDELITY_MIN_GRADED:
+        named = ", ".join(r for r, _s, _x in detail[:5])
+        note = f" -- {bad} did NOT pass: {named}" if bad else ""
+        print(f"    [fidelity] {council}/{chapter_key}: only {graded} graded row(s), "
+              f"below the {FIDELITY_MIN_GRADED}-row floor. The ratio is noise at this "
+              f"size, so this batch is NOT judged against the bar{note}")
+        return graded, bad, detail
     if not judge_fidelity(graded, bad):
         if bad:
             print(f"    [fidelity] {council}/{chapter_key}: {bad}/{graded} "

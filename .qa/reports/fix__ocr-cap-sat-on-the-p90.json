@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Three changes on the path that decides what regulatory text is served. Two fix the extraction splitter, which was handing a whole page to a section that starts partway down it -- serving a parking rule as a stormwater rule. The third makes the commit worker read fidelity_status, which it had never read at all: the one check that compares our output against the council's own PDF could not stop a single write.",
-  "commit_hash": "d5a12126",
+  "commit_hash": "04e7e9bd",
   "files": [
     "scripts/dcp_extract_changed.py",
     "scripts/dcp_supersede_guard.py",
@@ -21,7 +21,7 @@
   "falsifiable_check": {
     "command": "python -m pytest tests/test_a_section_starting_mid_page.py tests/test_the_write_path_reads_the_fidelity_verdict.py tests/test_dcp_commit_refuses_section_loss.py -q",
     "fails_when": "A section starting mid-page is handed the whole page again; the text above such a heading is dropped from the section it belongs to; the heading is left in the body as well as the title; a short first sentence is swallowed into the title and lost from the body; the previous section is not credited with the page it shares; the commit worker stops calling enforce_fidelity, or calls it with a batch timestamp resolved inside the dry-run branch; the fidelity bar leaves the gap the distribution shows; ungraded rows start counting as failures or as passes; 'grounded' is treated as a failure; the batch scope or the approved-status filter is dropped from the fidelity query; or --allow-section-loss starts doubling as --allow-fidelity.",
-    "observed_red": "15 mutations planted, 15 caught. On the splitter (5/5): whole page to the new section, heading left in the body, previous section not credited with the shared page, leading text discarded, and the no-leading-text branch claiming the page. On the fidelity guard (10/10): guard not called, > became >=, bar moved to 20% and to 1%, ungraded counted as failures, grounded counted as a failure, batch scope dropped, size floor removed, stale batch_ts from the dry-run branch, and an override that ignores the chapter name. Full suite 6,627 passed / 2 skipped. Verified against production rather than only in tests: re-extracting northern_beaches/warringah-dcp-2011-full took its failed rows 13 -> 11, and C4 Stormwater went from opening with C3 Parking's tail to opening with its own text."
+    "observed_red": "17 mutations planted, 17 caught. On the splitter (5/5): whole page to the new section, heading left in the body, previous section not credited with the shared page, leading text discarded, and the no-leading-text branch claiming the page. On the fidelity guard (10/10): guard not called, > became >=, bar moved to 20% and to 1%, ungraded counted as failures, grounded counted as a failure, batch scope dropped, size floor removed, stale batch_ts from the dry-run branch, an override that ignores the chapter name, plus two on the below-floor branch raised by the pre-push review (removing it, and dropping the named failures from its message). Full suite 6,627 passed / 2 skipped. Verified against production rather than only in tests: re-extracting northern_beaches/warringah-dcp-2011-full took its failed rows 13 -> 11, and C4 Stormwater went from opening with C3 Parking's tail to opening with its own text."
   },
   "functions": [
     {
@@ -106,6 +106,13 @@
       "mitigated": true,
       "how": "The two checks are now separate and both run. The guard's own comment says which class each covers, and the module docstring no longer implies the ratio is a general corruption detector.",
       "repro": "python -m pytest tests/test_dcp_legibility_guard.py tests/test_the_write_path_reads_the_fidelity_verdict.py -q"
+    },
+    {
+      "scenario": "A batch below the row floor is announced as having passed.",
+      "what_happens": "9 failures in 10 rows is 90%, and the first version of this printed '9/10 (90.0%) did not pass -- under the 5% bar, allowed'. The guard is right not to refuse on a sample that small, but not refusing and having passed are different facts, and the log is what a person acts on. Raised by the pre-push review against this change.",
+      "mitigated": true,
+      "how": "Three outcomes, not two. Below the floor it says the batch is NOT judged against the bar and names the rows that failed, so the abstention is visible rather than dressed up as a pass. The full-size wording is pinned separately as the confusable negative.",
+      "repro": "python -m pytest tests/test_the_write_path_reads_the_fidelity_verdict.py -k small_batch -q"
     }
   ],
   "post_merge": {

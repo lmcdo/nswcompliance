@@ -201,3 +201,46 @@ class TestTheRefusalTellsYouWhatToDoWithIt:
         with pytest.raises(g.FidelityRefused) as e:
             g.enforce_fidelity(cur, "c", "ch", "ts")
         assert "bad0" in str(e.value), "a refusal nobody can act on is a blocked pipeline"
+
+
+class TestASmallBatchIsNotAnnouncedAsHavingPassed:
+    """Raised by the pre-push review, 2026-09-21, against this same change.
+
+    Below the row floor the ratio is noise, so the guard does not refuse. It used to say
+    so as "under the 5% bar, allowed" -- which for 9 failures in 10 rows reads as
+    "90.0% did not pass -- under the 5% bar", a false statement in a log a person acts
+    on. Not refusing and having passed are different facts."""
+
+    def test_it_does_not_claim_a_small_batch_came_in_under_the_bar(self, capsys):
+        g = _guard()
+        cur = FakeCursor(rows(good=1, bad=9))
+        g.enforce_fidelity(cur, "c", "ch", "ts")
+        out = capsys.readouterr().out
+        assert "under the" not in out, (
+            "a batch below the floor was never measured against the bar")
+        assert "NOT judged" in out
+
+    def test_it_names_the_failures_rather_than_summarising_them_away(self, capsys):
+        """The whole point of not refusing is that a person decides instead. They need
+        to be told which rows, or the abstention hides the problem."""
+        g = _guard()
+        cur = FakeCursor(rows(good=1, bad=9))
+        g.enforce_fidelity(cur, "c", "ch", "ts")
+        out = capsys.readouterr().out
+        assert "bad0" in out and "9 did NOT pass" in out
+
+    def test_a_clean_small_batch_says_nothing_alarming(self, capsys):
+        g = _guard()
+        cur = FakeCursor(rows(good=10))
+        g.enforce_fidelity(cur, "c", "ch", "ts")
+        out = capsys.readouterr().out
+        assert "did NOT pass" not in out
+        assert "NOT judged" in out
+
+    def test_the_full_size_wording_is_unchanged(self, capsys):
+        """The confusable negative: at or above the floor, "under the bar" is true and
+        must still be said."""
+        g = _guard()
+        cur = FakeCursor(rows(good=118, bad=2))
+        g.enforce_fidelity(cur, "c", "ch", "ts")
+        assert "under the 5% bar" in capsys.readouterr().out
