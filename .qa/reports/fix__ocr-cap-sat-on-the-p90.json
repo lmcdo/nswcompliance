@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Three changes on the path that decides what regulatory text is served. Two fix the extraction splitter, which was handing a whole page to a section that starts partway down it -- serving a parking rule as a stormwater rule. The third makes the commit worker read fidelity_status, which it had never read at all: the one check that compares our output against the council's own PDF could not stop a single write.",
-  "commit_hash": "70d0604f",
+  "commit_hash": "d5a12126",
   "files": [
     "scripts/dcp_extract_changed.py",
     "scripts/dcp_supersede_guard.py",
@@ -15,7 +15,7 @@
     "assumption_mismatch": "Four in this change, each caught by measuring rather than reasoning. (1) I said the 13 Northern Beaches fidelity failures were a two-column problem; measured, only 1 of 13 was, 7 were headings starting mid-page and 3 were not on the cited page at all. (2) I assumed the legibility guard would catch phrase-level interleave; its worst single-letter ratio across 124 rows was 0.055 against a 0.20 threshold -- 'clean' -- while C3 Parking continued into 'G7 - Evergreen Introduction'. (3) I read the 8 remaining section_collapsed failures as data loss; comparing TOTAL text showed the chapter going 49 rules/537,845 chars -> 113 rules/528,636 chars, i.e. -1.7% -- it is being re-split finer, and a per-row size heuristic cannot see that. (4) My own first version of the heading fix cut the body past every line the title-continuation loop had absorbed, which DELETED a short first sentence ('C2 Setbacks' / 'The front setback is 6m.' lost the setback). A test written for something else caught it.",
     "new_vs_existing": "split_page_at_headings already exists for MULTI_HEADING_COUNCILS and handles SEVERAL headings per page. It is deliberately one council wide -- its own comment says widening it 'must not be done without measuring the council first' -- and it is not widened here. The mid-page fix sits inside its per-segment loop, so a pre-split council reaches it with match.start() == 0 and behaves exactly as before. The remaining Northern Beaches C3/G7 defect IS a multi-heading page and is left for that route, measured, rather than bolted onto this one.",
     "external_source_error": "None -- no network. The extraction was re-run against the real chapter from R2 (273 pages, 23.5 MB) and the before/after compared in the live queue.",
-    "frontend_type": "No API or component change.",
+    "frontend_type": "No API route, component or type change. This is the extraction and commit path behind the served provisions; the frontend reads regulatory_provisions and is unaffected either way.",
     "user_failure_mode": "Both directions. Too loose and a section serves the previous section's text as its own -- C4 Stormwater opened with 'End of trip facilities are not required for schools', a parking rule published as a stormwater control. Too strict and the fidelity guard refuses ordinary re-reads, at which point it gets switched off; the bar is therefore read off the measured distribution and a confusable negative is pinned at 1.7%. The worst outcome for the guard specifically is a third one: appearing to run while grading nothing, which is what reading batch_ts from the dry-run branch would have caused."
   },
   "falsifiable_check": {
@@ -41,7 +41,7 @@
     {
       "name": "judge_fidelity",
       "file_line": "scripts/dcp_supersede_guard.py",
-      "input": "graded and bad counts.",
+      "input": "The count of rows the fidelity gate graded in this batch, and the count of those that did not pass. Nothing else, so it can be driven directly with the real figures from any run.",
       "output": "True to refuse. Split out from the DB access so the thresholds can be driven directly by the real run figures.",
       "if_none": "Under FIDELITY_MIN_GRADED rows it returns False: one bad row in ten is 10% and means nothing."
     }
