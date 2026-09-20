@@ -53,7 +53,7 @@ import dcp_extract_changed as dx  # noqa: E402
 # Refuses a swap that would lose most of a chapter's sections. See the module docstring.
 from scripts.dcp_supersede_guard import enforce as enforce_section_loss  # noqa: E402
 from scripts.dcp_supersede_guard import snapshot as section_snapshot  # noqa: E402
-from scripts.dcp_supersede_guard import enforce_legibility  # noqa: E402
+from scripts.dcp_supersede_guard import enforce_fidelity, enforce_legibility  # noqa: E402
 
 
 def find_committable_chapters(cur) -> list[dict]:
@@ -405,10 +405,18 @@ def main() -> int:
               "what it names, and allowing a chapter to shed sections is not a decision "
               "to publish text a two-column read has scrambled."),
     )
+    parser.add_argument(
+        "--allow-fidelity", action="append", default=[], metavar="COUNCIL/CHAPTER",
+        help=("Let ONE named chapter through the fidelity guard. Repeatable. Separate "
+              "from the other two again: deciding that a chapter may shed sections, or "
+              "that its text is legible, is not deciding that rows the source-page "
+              "check rejected may be published."),
+    )
     args = parser.parse_args()
     dry_run = not args.commit
     allowed_loss = frozenset(args.allow_section_loss)
     allowed_garble = frozenset(args.allow_garble)
+    allowed_fidelity = frozenset(args.allow_fidelity)
 
     conn = psycopg2.connect(dx.DATABASE_URL)
     conn.autocommit = False
@@ -458,6 +466,11 @@ def main() -> int:
             skipped += 1
             continue
 
+        # Which extraction RUN this chapter would commit. Resolved ONCE, above the
+        # dry-run split, because both branches need it and asking twice would be a
+        # second query for an answer already in hand.
+        batch_ts, _ = latest_approved_batch(cur, council, chapter_key)
+
         if dry_run:
             # Count the rows the real commit would insert -- the latest run only. Counting
             # every approved row reported three re-reads of one chapter as three times the
@@ -466,7 +479,6 @@ def main() -> int:
             # branch of this same worker, narrowed by the latest_approved_batch helper
             # added directly above it; the flagged matches are the frontend review API and
             # the provisions read paths, which do not decide what a commit inserts.
-            batch_ts, _ = latest_approved_batch(cur, council, chapter_key)
             cur.execute(
                 "SELECT COUNT(*) FROM dcp_review_queue WHERE council=%s AND chapter_key=%s "
                 "AND status='approved' AND created_at=%s "
@@ -488,6 +500,16 @@ def main() -> int:
             # the approval is kept, so it is refused again every day until a person
             # decides. 2026-09-13: this swap took marrickville low-density 215 -> 26.
             before = section_snapshot(cur, council, chapter_key)
+            # Before the writes, because this one reads the QUEUE: dcp_fidelity_gate has
+            # already graded these rows against the council's own PDF and, until now,
+            # nothing on this path looked at the verdict. Raising here rolls the
+            # transaction back and keeps the approval, like the two guards below.
+            #
+            # batch_ts is resolved above the dry-run split, not inside it. Read from
+            # inside that branch it would be either undefined (first chapter) or left
+            # over from a PREVIOUS chapter, which would scope this guard to another
+            # chapter's run and grade nothing while appearing to run.
+            enforce_fidelity(cur, council, chapter_key, batch_ts, allowed_fidelity)
             superseded, inserted = commit_reviewed_from_queue(
                 cur, council, chapter_key,
                 allow_unqueued=f"{council}/{chapter_key}" in allowed_loss)

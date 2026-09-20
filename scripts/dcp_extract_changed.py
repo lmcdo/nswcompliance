@@ -906,6 +906,29 @@ COUNCIL_COLUMN_CONFIGS: dict[str, dict] = {
         "left_header": "Objectives",
         "right_header": "Controls",
     },
+    "northern_beaches": {
+        # Warringah DCP 2011: Objectives in the left column, Requirements in the
+        # right. Unlike the two above, the boundary MOVES -- measured across the
+        # 23 pages of the council's 273-page export that carry the header pair,
+        # the right header sits at x0 333, 179, 194, 170 and 332, and the left at
+        # 98, 91, 106 and 112. A constant would be wrong on most of them, so the
+        # split is taken from the pair's own position on each page.
+        #
+        # Neither existing mode fits, and both were tried: the geometric reader
+        # returns None here because the document has no consistent gutter (word
+        # density is flat from x=200 to x=339), and a fixed boundary_x cannot
+        # follow a column that moves.
+        #
+        # Without this the page is read straight across: page 160 came out as
+        # "O1 To establish a safe internal R1.1 The road (private or public) and
+        # pedestrian network", one sentence made of two columns.
+        "boundary_x": "from_header_pair",
+        "left_header": "Objectives",
+        "right_header": "Requirements",
+        # The header pair appears on 23 of 273 pages; the rest are single-column
+        # intro, figure and map pages that must not be split.
+        "no_continuation": True,
+    },
     "woollahra": {
         # Woollahra DCP 2015: per-chapter PDFs. Sections use a two-column table:
         # left column = Objectives (O1, O2...), right column = Controls (C1, C2...).
@@ -1552,13 +1575,20 @@ def _extract_page_text(page: Any, council: str | None) -> str:
     # Find matching header pairs at the same Y level (within 5 px).
     # Track both the top and bottom of each matched pair so we can crop
     # the column content to START below the header labels (not at their top).
-    matching_pairs: list[tuple[float, float]] = []  # (top, bottom) of header pair
+    # (top, bottom, split_x) -- split_x is carried so a council whose columns MOVE
+    # can take the boundary from the pair that anchors that page. Measured on
+    # northern_beaches: the right header sits at x0 333, 179, 194, 170 and 332 on
+    # different pages, so a constant is wrong on most of them.
+    matching_pairs: list[tuple[float, float, float]] = []
     for lw in left_words:
         for rw in right_words:
             if abs(lw["top"] - rw["top"]) < 5:
                 pair_top = min(lw["top"], rw["top"])
                 pair_bottom = max(lw["bottom"], rw["bottom"])
-                matching_pairs.append((pair_top, pair_bottom))
+                # Just left of the right-hand header, not the midpoint: the left
+                # column's text runs much closer to the gutter than its heading
+                # does, so a midpoint would cut the ends off its lines.
+                matching_pairs.append((pair_top, pair_bottom, rw["x0"] - 6))
 
     if not matching_pairs:
         # Check if this is a continuation two-column page (content spans two
@@ -1582,6 +1612,12 @@ def _extract_page_text(page: Any, council: str | None) -> str:
     split_y = min(p[0] for p in matching_pairs)        # top of topmost header pair
     col_start_y = min(p[1] for p in matching_pairs)    # bottom of topmost header pair
     bx = cfg["boundary_x"]
+    if bx == "from_header_pair":
+        # Take it from the pair that anchors THIS page. Only reachable when a pair
+        # was found, which is the branch we are in -- the no-pair path above
+        # returns before here for these councils, because a page with no pair is
+        # single-column and must not be split at a guessed x.
+        bx = min(p[2] for p in matching_pairs)
 
     # Full-width section heading area (strictly above the column headers).
     # Subtract 0.5px so pdfplumber's inclusive boundary doesn't pull in
@@ -1868,9 +1904,45 @@ class DCPExtractor:
                         ):
                             current["last_confirmed_page"] = page_num
                             match = None
+                    # Text ABOVE a mid-page heading belongs to the section that was
+                    # already running, not to the one starting here. Without this the
+                    # new section is handed the whole page: measured on
+                    # northern_beaches/warringah-dcp-2011-full, "C4 Stormwater" begins
+                    # 44% down page 34 and inherited the tail of C3 Parking, so the
+                    # stormwater control opened with "End of trip facilities are not
+                    # required for schools". Seven of its eleven failed rows were this,
+                    # at 20%, 44%, 48%, 53%, 55%, 89% and 91% down their pages.
+                    #
+                    # The previous section also ended at page_num - 1, so that text was
+                    # not merely misfiled -- it was dropped from the section it belonged
+                    # to AND prepended to the next one.
+                    page_tail = text
                     if match:
+                        head = text[:match.start()].strip()
+                        # The heading line itself belongs to section_title, not to the
+                        # body. Carrying it in both printed it twice -- "C4 Stormwater
+                        # Applies to Land C4 Stormwater Applies to Land This control
+                        # applies to land..." -- which the mid-page fix above made
+                        # VISIBLE rather than caused: the body used to open with the
+                        # previous section's tail, so the repeat sat far enough down to
+                        # go unnoticed.
+                        #
+                        # ONLY the matched heading is removed. The title-continuation
+                        # loop below also folds short following lines into the title,
+                        # and cutting the body past those as well DELETED them: a
+                        # section whose first sentence is short ("C2 Setbacks" / "The
+                        # front setback is 6m.") lost the sentence, because the loop
+                        # absorbs any line under 50 characters. Leaving them in both
+                        # places repeats a title fragment; cutting them loses a control.
+                        page_tail = text[match.end():]
                         if current:
-                            current["page_end"] = page_num - 1
+                            if head:
+                                current["content"] += "\n\n" + head
+                                current["page_end"] = page_num
+                                if page_num not in current["pages"]:
+                                    current["pages"].append(page_num)
+                            else:
+                                current["page_end"] = page_num - 1
                             sections.append(current)
                         _c, title = self._match_groups(section_re, match)
                         # ── Heading continuation fix ──────────────────────────────
@@ -1936,7 +2008,10 @@ class DCPExtractor:
                         }
 
                     if current:
-                        current["content"] += f"\n\n{text}"
+                        # page_tail is the whole page unless a heading started mid-page,
+                        # in which case it is the text from that heading down -- the
+                        # part that actually belongs to this section.
+                        current["content"] += "\n\n" + page_tail
                         if page_num not in current["pages"]:
                             current["pages"].append(page_num)
                         for tbl in _page_tables_left:

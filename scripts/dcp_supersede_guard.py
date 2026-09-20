@@ -285,6 +285,120 @@ def enforce_legibility(cur, council: str, chapter_key: str, before: Snapshot,
           f"right, re-run with --allow-garble {council}/{chapter_key}")
 
 
+# ── Fidelity ─────────────────────────────────────────────────────────────────
+# The legibility check above reads only our OUTPUT. It measures how many words are a
+# single letter, which catches text whose GLYPHS were interleaved and is blind to text
+# whose PHRASES were: two columns read across each other produce entirely correct words
+# in the wrong order. Measured 2026-09-20 on northern_beaches/warringah-dcp-2011-full,
+# 232 of its 250 text pages two-column: the worst single-letter ratio in 124 queued rows
+# was 0.055 against a 0.20 threshold -- "clean" -- while "C3 Parking Facilities"
+# continued into "G7 - Evergreen Introduction" and "O1 To establish a safe internal"
+# ran into "R1.1 The road (private or public)". The guard would have passed it without
+# comment.
+#
+# There IS a check that reads the council's own PDF: dcp_fidelity_gate grades each
+# queued row against the page it claims to come from and writes fidelity_status.
+# **Nothing on the write path consulted it.** Measured the same day: dcp_commit_approved
+# contains no reference to fidelity_status at all, so a row the gate verified against
+# the source and found wanting committed exactly like a 'grounded' one. The one check
+# that compares our output with the source could not stop a single write.
+#
+# This is therefore an ABSOLUTE check on the incoming batch, not a before/after one like
+# every other guard here. That asymmetry is forced: fidelity_status is a column on
+# dcp_review_queue and regulatory_provisions has no equivalent, so the live rows being
+# replaced carry no verdict to compare against. Confirmed by reading
+# information_schema.columns for both tables rather than assuming it.
+#
+# THE THRESHOLD IS READ OFF THE DISTRIBUTION, NOT CHOSEN. Across all 62 extraction runs
+# holding >=20 graded rows, the fraction of rows the gate did not pass runs:
+#   0.0% x22 ... 0.2, 0.3, 0.4, 0.5, 1.0, 1.3, 1.7, 1.9, 2.2, 2.3, 2.4, 2.7, 3.8,
+#   | 6.1, 6.2, 8.3, 10.5, 16.9, 18.5, 21.1, 23.1, 26.1, 30.2
+# and the same picture appears in the per-rule view -- comparing only rules present in
+# both of two consecutive runs of one chapter, the regression fractions are
+#   0.4, 0.4, 1.3, 1.4, 1.7, 1.8, 2.9, 4.3, | 8.6, 18.5, 23.1, 30.2
+# Both have their widest gap in the same place. 5% sits inside it: above everything the
+# normal runs do and below the cluster that contains the known-bad chapters. The line
+# sits in a gap, not among the data -- the same test the scramble threshold had to pass.
+FIDELITY_MAX_BAD_RATIO = 0.05
+# Below this, one bad row swings the ratio past any threshold and the measure is noise.
+# The same floor MIN_ROWS uses, and the same floor the runs above were selected on.
+FIDELITY_MIN_GRADED = 20
+# 'grounded' means verified against the source page; 'ok' means the row-level checks at
+# insert time found nothing against it. NULL means never graded, which is not a failure
+# and is excluded from both numerator and denominator -- counting ungraded rows as bad
+# would make the gate fire hardest on chapters nobody has checked.
+FIDELITY_PASSING = ("grounded", "ok")
+
+
+class FidelityRefused(RuntimeError):
+    """A batch whose own source-verification says too much of it does not match the PDF."""
+
+
+def fidelity_snapshot(cur, council: str, chapter_key: str, batch_ts) -> tuple:
+    """(graded, bad, [(ref, status, reason), ...]) for one extraction batch.
+
+    Scoped to batch_ts because a chapter's queue holds every run it has ever had, and
+    the commit worker commits ONE run whole. Without the scope this would mix a fresh
+    batch with the superseded ones beside it.
+    """
+    cur.execute(
+        """
+        SELECT COALESCE(ref_number, '(unnumbered)'), fidelity_status,
+               COALESCE(suspect_reason, fidelity_detail, '')
+        FROM dcp_review_queue
+        WHERE council = %s AND chapter_key = %s AND created_at = %s
+          AND status = 'approved' AND fidelity_status IS NOT NULL
+        """,
+        (council, chapter_key, batch_ts),
+    )
+    rows = cur.fetchall()
+    bad = [(r[0], r[1], r[2]) for r in rows if r[1] not in FIDELITY_PASSING]
+    return len(rows), len(bad), bad
+
+
+def judge_fidelity(graded: int, bad: int) -> bool:
+    """True if this batch should be refused. Split out so a test can drive it directly."""
+    if graded < FIDELITY_MIN_GRADED:
+        return False
+    return bad / graded > FIDELITY_MAX_BAD_RATIO
+
+
+def enforce_fidelity(cur, council: str, chapter_key: str, batch_ts,
+                     allowed: frozenset = frozenset()) -> tuple:
+    """Refuse a batch too much of which failed verification against its own source.
+
+    Unlike enforce() and enforce_legibility(), this reads the QUEUE and so may be called
+    BEFORE the writes -- there is nothing about the outcome it needs to see. It is still
+    called inside the transaction so a raise rolls the whole thing back.
+    """
+    graded, bad, detail = fidelity_snapshot(cur, council, chapter_key, batch_ts)
+    if graded == 0:
+        print(f"    [fidelity] {council}/{chapter_key}: no graded rows in this batch -- "
+              f"not judged. The gate is opt-out (DCP_FIDELITY_GATE); an unchecked batch "
+              f"is not a passing one.")
+        return graded, bad, detail
+    if not judge_fidelity(graded, bad):
+        if bad:
+            print(f"    [fidelity] {council}/{chapter_key}: {bad}/{graded} "
+                  f"({bad / graded:.1%}) did not pass -- under the {FIDELITY_MAX_BAD_RATIO:.0%} "
+                  f"bar, allowed.")
+        return graded, bad, detail
+    shown = "; ".join(f"{ref} [{status}{': ' + reason[:60] if reason else ''}]"
+                      for ref, status, reason in detail[:5])
+    msg = (f"{council}/{chapter_key}: {bad} of {graded} graded rows ({bad / graded:.1%}) "
+           f"did not pass verification against the council's own PDF, against a "
+           f"{FIDELITY_MAX_BAD_RATIO:.0%} bar. {shown}")
+    if f"{council}/{chapter_key}" in allowed:
+        print(f"    [fidelity] ALLOWED by --allow-fidelity: {msg}")
+        return graded, bad, detail
+    raise FidelityRefused(
+        "REFUSED: too much of this batch does not match its source. " + msg
+        + f". Read the rows before overriding -- a 'section_collapsed' reason across a "
+          f"whole chapter usually means the extraction re-split it FINER rather than "
+          f"losing anything, which is checked by comparing TOTAL text, not row sizes. "
+          f"If the batch really is right, re-run with --allow-fidelity {council}/{chapter_key}")
+
+
 def enforce(cur, council: str, chapter_key: str, before: Snapshot,
             allowed: frozenset = frozenset()) -> Verdict:
     """Judge the chapter as it now stands in this transaction; raise if refused.
