@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Three changes on the path that decides what regulatory text is served. Two fix the extraction splitter, which was handing a whole page to a section that starts partway down it -- serving a parking rule as a stormwater rule. The third makes the commit worker read fidelity_status, which it had never read at all: the one check that compares our output against the council's own PDF could not stop a single write.",
-  "commit_hash": "PENDING",
+  "commit_hash": "70d0604f",
   "files": [
     "scripts/dcp_extract_changed.py",
     "scripts/dcp_supersede_guard.py",
