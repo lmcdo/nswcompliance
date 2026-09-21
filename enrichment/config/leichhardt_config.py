@@ -114,6 +114,116 @@ LEICHHARDT_CONFIG = {
             "site_conditions": None,
             "is_precinct_specific": True,
         },
+
+        # ── Added 2026-09-21: nine ingested documents had NO config entry ──────
+        # Measured on live regulatory_provisions: 871 served leichhardt rows carried
+        # v2_dev_type_source='no_config', meaning nothing matched and they fell
+        # through to ALL development types. Not a bug -- the config was written for
+        # the documents that existed when it was written, and the corpus grew past
+        # it. Nothing checks that an ingested document resolves to a config key, so
+        # the gap was invisible: the fallthrough is SAFE (shows everything) rather
+        # than broken, and only DQ-33 counts it.
+        #
+        # Each scope below is read from the document's own provisions, not its
+        # title. Where title and content did not agree unambiguously the entry says
+        # ALL, because narrowing hides controls and a hidden binding control is the
+        # liability -- the same direction of risk retag_applicability_slug_docids
+        # states. config_all is an honest state and is NOT no_config: it means the
+        # config says all, rather than nothing matched.
+
+        # C3 provisions are residential built form: "C3.2 Building envelope",
+        # "C3.6 Visual engagement with the public realm - Retaining walls".
+        "Part C Section 3": {
+            "description": "Residential development - built form and amenity",
+            "applicable_zones": RESIDENTIAL_ZONES + MIXED_USE_ZONES,
+            "applicable_dev_types": [
+                "dwelling_house", "dual_occupancy", "attached_dwelling",
+                "multi_dwelling_housing", "residential_flat_building",
+                "secondary_dwelling", "boarding_house", "shop_top_housing",
+            ],
+            "site_conditions": None,
+        },
+
+        # C4 is unambiguously non-residential: "C4.19 Objectives for vehicle repair
+        # stations", "C4.10 Parking compliance for industrial development",
+        # "C4.15 Location of facilities with potential adverse amenity impacts".
+        "Part C Section 4": {
+            "description": "Non-residential development - commercial and industrial",
+            "applicable_zones": BUSINESS_ZONES + INDUSTRIAL_ZONES + MIXED_USE_ZONES,
+            "applicable_dev_types": [
+                "commercial_premises", "retail_premises", "office_premises",
+                "industrial_development", "light_industry", "heavy_industry",
+                "warehouse", "food_and_drink_premises", "mixed_use",
+            ],
+            "site_conditions": None,
+        },
+
+        # Entertainment precincts. NOT narrowed: its controls are noise impacts
+        # ("C5.3 Noise impact from other sources, such as road and rail"), which
+        # bind neighbouring development as much as the venue itself.
+        "Part C Section 5": {
+            "description": "Entertainment precincts - amenity and noise",
+            "applicable_zones": ALL_ZONES,
+            "applicable_dev_types": ALL_DEV_TYPES,
+            "site_conditions": None,
+        },
+
+        # Terrace typologies -- but its section headers span C4 and C6, so the
+        # appendix is referenced from more than one Part. ALL rather than guess.
+        "Appendix B": {
+            "description": "Building typologies - referenced from multiple Parts",
+            "applicable_zones": ALL_ZONES,
+            "applicable_dev_types": ALL_DEV_TYPES,
+            "site_conditions": None,
+        },
+
+        # Waste collection vehicle access and turning circles: any development
+        # that generates waste, which is all of it.
+        "Appendix D": {
+            "description": "Waste management template - collection access",
+            "applicable_zones": ALL_ZONES,
+            "applicable_dev_types": ALL_DEV_TYPES,
+            "site_conditions": None,
+        },
+
+        # Flood and water: "1% AEP Flood Event Extent", "Precautions to Minimise
+        # Flood Risk". Site condition, not development type.
+        "Appendix E": {
+            "description": "Water and flood guidelines",
+            "applicable_zones": ALL_ZONES,
+            "applicable_dev_types": ALL_DEV_TYPES,
+            "site_conditions": None,
+        },
+
+        # Arboricultural reports and pruning limits apply to any DA affecting a
+        # tree, regardless of what is being built.
+        "Tree Management Technical Manual": {
+            "description": "Tree management - arboricultural reports and pruning",
+            "applicable_zones": ALL_ZONES,
+            "applicable_dev_types": ALL_DEV_TYPES,
+            "site_conditions": None,
+        },
+
+        # A precinct amendment covering building design and water management for
+        # George and Upward Streets. Precinct-scoped, not development-scoped.
+        "Amendment 1": {
+            "description": "George and Upward Streets precinct amendment",
+            "applicable_zones": ALL_ZONES,
+            "applicable_dev_types": ALL_DEV_TYPES,
+            "site_conditions": None,
+            "is_precinct_specific": True,
+        },
+
+        # Licensed premises: extended trading hours, venue parking rates.
+        "Amendment 7": {
+            "description": "Licensed premises - trading hours and parking",
+            "applicable_zones": BUSINESS_ZONES + MIXED_USE_ZONES,
+            "applicable_dev_types": [
+                "food_and_drink_premises", "restaurant", "cafe",
+                "take_away_food", "commercial_premises",
+            ],
+            "site_conditions": None,
+        },
     },
 
     # Distinctive Neighbourhood patterns (from Part C Section 2)

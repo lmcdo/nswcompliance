@@ -113,13 +113,32 @@ class TestNeverInventsAKeyTheConfigLacks:
     @pytest.mark.parametrize("doc", [
         "Marrickville_DCP_2011__da_guidelines",
         "Marrickville_DCP_2011__part10_definitions",
-        "Leichhardt_DCP_2013__tree_management_technical_manual",
-        "Leichhardt_DCP_2013__appendix_b_building_typologies",
+        # Leichhardt's tree manual and Appendix B stood here until 2026-09-21. They
+        # were correct examples while the config lacked them: 871 served rows across
+        # nine such documents fell through to ALL because nothing matched. Both are
+        # now DECLARED, so they resolve legitimately and are covered by
+        # tests/test_leichhardt_documents_all_resolve.py.
+        #
+        # The rule this class guards is unchanged and is about invention, not about
+        # these particular files: a slug resolves ONLY to a key the config declares.
+        # So the examples are replaced with documents that genuinely have no entry,
+        # rather than the assertion being weakened.
+        "Leichhardt_DCP_2013__appendix_z_does_not_exist",
+        "Leichhardt_DCP_2013__amendment_99_not_ours",
+        "Leichhardt_DCP_2013__tree_surgery_manual_not_ours",
     ])
     def test_non_part_documents_stay_unresolved(self, tagger, doc):
-        """Guidelines, definitions, manuals and appendices are not parts."""
+        """Guidelines, definitions and UNDECLARED manuals or appendices are not parts."""
         assert (tagger._marrickville_slug_key(doc) is None
                 and tagger._leichhardt_slug_key(doc) is None)
+
+    def test_a_declared_appendix_does_resolve(self, tagger):
+        """The other half of the rule, which the class did not state: declaring an
+        appendix is how it becomes resolvable. Without this, removing the config
+        entries would make the class above pass while 871 rows silently applied to
+        every development type again."""
+        assert tagger._leichhardt_slug_key(
+            "Leichhardt_DCP_2013__appendix_b_building_typologies") == ("part", "Appendix B")
 
 
 class TestEndToEndThroughTag:

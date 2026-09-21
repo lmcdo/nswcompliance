@@ -771,7 +771,17 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # Scoped, it reports 708 and can still move, which is the test that this is a
         # correction and not a way to go green: a narrowing that produced 0 would be
         # deleting the check rather than fixing it.
-        "SELECT GREATEST(count(*) - 1278, 0) FROM regulatory_provisions "
+        # FLOOR LOWERED 1278 -> 1158 on 2026-09-21, after leichhardt's nine
+        # unconfigured documents were declared (871 rows resolved). A ratchet floor
+        # may only FALL: leaving it at 1,278 would have let 120 rows of new
+        # breakage arrive while this still reported 0. 1,158 is the exact count
+        # measured immediately after that repair, not a rounded allowance.
+        #
+        # What the floor still hides, and should not be mistaken for clean:
+        # parramatta 341, canterbury_bankstown 216, marrickville 157, ashfield 118
+        # and five smaller councils. Each needs its unconfigured documents declared
+        # the way leichhardt's were. Lower this again each time one is done.
+        "SELECT GREATEST(count(*) - 1158, 0) FROM regulatory_provisions "
         "WHERE is_current AND v2_is_actionable "
         "AND source_council IS NOT NULL "
         "AND v2_dev_type_source = 'no_config'",

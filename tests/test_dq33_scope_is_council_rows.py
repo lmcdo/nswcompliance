@@ -58,12 +58,34 @@ class TestItAsksOnlyWhereTheAnswerCanChange:
         assert "v2_dev_type_source = 'no_config'" in sql
         assert "is_current" in sql and "v2_is_actionable" in sql
 
-    def test_the_floor_is_unchanged(self):
-        """1,278 is the residue the retag deliberately left, and it sits entirely inside
-        the council population — which is exactly why subtracting it from the council-
-        scoped count is correct rather than double-counting. Moving the floor to make a
-        number look better is the failure this ledger exists to catch."""
-        assert "GREATEST(count(*) - 1278, 0)" in _dq33_sql()
+    def test_the_floor_may_only_FALL(self):
+        """A ratchet floor is allowed to come down and never to go up.
+
+        This asserted `- 1278` unchanged when the scope was narrowed to council rows,
+        and that was right for THAT change: narrowing the population while also moving
+        the floor would have counted the same improvement twice.
+
+        It is now 1,158, lowered on 2026-09-21 after leichhardt's nine unconfigured
+        documents were declared and council no_config fell 1,986 -> 1,158. Leaving it
+        at 1,278 would have let 120 rows of new breakage arrive while the probe still
+        reported 0 — a floor with slack in it stops being a ratchet.
+
+        Raising it is the failure this ledger exists to catch, and the tracker row says
+        so in its own words: "raising a floor to match a measurement is how a ratchet
+        stops meaning anything." Lowering it is how the row eventually closes honestly.
+        """
+        import re
+        m = re.search(r"GREATEST\(count\(\*\) - (\d+), 0\)", _dq33_sql())
+        assert m, f"the floor is gone from the query entirely: {_dq33_sql()}"
+        floor = int(m.group(1))
+        assert floor <= 1278, (
+            f"the floor was RAISED to {floor}. A ratchet floor may only fall; raising it "
+            f"to match a measurement makes the row unable to fail.")
+        assert floor == 1158, (
+            f"the floor is {floor}, not the 1,158 measured immediately after the "
+            f"leichhardt repair. If another council's documents have since been "
+            f"declared, lower it to the new measured residue and update this number "
+            f"in the same commit.")
 
     def test_the_scope_matches_the_repair_it_ratchets(self):
         """Read from the repair, not assumed: if that script ever starts touching rows
