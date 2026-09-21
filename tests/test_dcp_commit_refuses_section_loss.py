@@ -46,6 +46,17 @@ class _Cur:
         # no-op here rather than silently crashing the commit it is meant to judge.
         if "singles" in self.sql:
             return list(self.db.get("scrambled", []))
+        # latest_approved_batch: which extraction run would be committed. It unpacks
+        # (created_at, count) pairs, so returning the header rows here raised
+        # "not enough values to unpack" and failed the commit it exists to measure.
+        if "GROUP BY created_at" in self.sql:
+            return list(self.db.get("batches", [("2026-09-20T00:00:00Z", 1)]))
+        # enforce_fidelity: the graded rows of that batch. None by default, so the
+        # fidelity guard is a no-op in a suite about section loss -- and, because it
+        # declines to judge an ungraded batch rather than passing it, that is a
+        # deliberate abstention and not a silent pass.
+        if "fidelity_status" in self.sql:
+            return list(self.db.get("graded", []))
         return [(h,) for h in self.db["headers"]]
 
     def fetchone(self):
@@ -75,8 +86,8 @@ class _Conn:
         pass
 
 
-def _wire(monkeypatch, before_headers, after_headers):
-    db = {"headers": list(before_headers)}
+def _wire(monkeypatch, before_headers, after_headers, graded=()):
+    db = {"headers": list(before_headers), "graded": list(graded)}
     conn = _Conn(db)
     monkeypatch.setattr(dca.psycopg2, "connect", lambda *a, **k: conn)
     monkeypatch.setattr(dca, "find_committable_chapters", lambda cur: [
@@ -154,3 +165,73 @@ def test_an_ordinary_amendment_commits(monkeypatch):
     rc = dca.main()
 
     assert conn.commits == 1 and rc != 1
+
+
+# ---------------------------------------------------------------------------
+# The fidelity guard, wired through the same main().
+#
+# dcp_fidelity_gate grades every queued row against the council's own PDF and writes
+# fidelity_status. Measured 2026-09-20: this worker contained no reference to that
+# column at all, so a row the gate had checked against the source and rejected
+# committed exactly like a verified one. These pin that it now cannot.
+# ---------------------------------------------------------------------------
+
+def _graded(good, bad):
+    return ([(f"ok{i}", "grounded", "") for i in range(good)]
+            + [(f"bad{i}", "failed", "section_collapsed") for i in range(bad)])
+
+
+def test_a_batch_that_fails_its_own_source_check_is_refused(monkeypatch, capsys):
+    """Sections and rule counts both survive here -- 20 -> 18, an ordinary amendment
+    that commits in the test above. The ONLY thing wrong is that a quarter of the rows
+    do not match the PDF they claim to come from, which nothing on this path could see."""
+    conn = _wire(monkeypatch, headers("2.25", 20, 48), headers("2.25", 18, 44),
+                 graded=_graded(90, 30))
+    monkeypatch.setattr(sys, "argv", ["dcp_commit_approved.py", "--commit"])
+
+    rc = dca.main()
+
+    assert conn.commits == 0, "a batch a quarter of which failed verification committed"
+    assert rc == 1
+    assert "REFUSED" in capsys.readouterr().out
+
+
+def test_a_batch_within_the_bar_still_commits(monkeypatch):
+    """Confusable negative. 2 of 120 is 1.7% -- what a normal re-read does. A guard that
+    refused this would be switched off within a week."""
+    conn = _wire(monkeypatch, headers("2.25", 20, 48), headers("2.25", 18, 44),
+                 graded=_graded(118, 2))
+    monkeypatch.setattr(sys, "argv", ["dcp_commit_approved.py", "--commit"])
+
+    assert dca.main() != 1 and conn.commits == 1
+
+
+def test_an_ungraded_batch_is_not_silently_passed_as_clean(monkeypatch, capsys):
+    """No graded rows means the gate never looked, which is not the same as passing.
+    The commit proceeds -- refusing every ungraded chapter would stop the pipeline
+    dead -- but it must SAY so, or 'no news' reads as verification that never happened."""
+    conn = _wire(monkeypatch, headers("2.25", 20, 48), headers("2.25", 18, 44), graded=())
+    monkeypatch.setattr(sys, "argv", ["dcp_commit_approved.py", "--commit"])
+
+    dca.main()
+
+    out = capsys.readouterr().out
+    assert conn.commits == 1
+    assert "not judged" in out, "an unchecked batch passed without saying it was unchecked"
+
+
+def test_the_fidelity_override_is_separate_from_the_section_loss_one(monkeypatch):
+    """--allow-section-loss must not double as permission to publish rows the source
+    check rejected. They are different decisions and one person may be entitled to make
+    only one of them."""
+    conn = _wire(monkeypatch, headers("2.25", 20, 48), headers("2.25", 18, 44),
+                 graded=_graded(90, 30))
+    monkeypatch.setattr(sys, "argv", ["dcp_commit_approved.py", "--commit",
+                                      "--allow-section-loss", f"{COUNCIL}/{CHAPTER}"])
+    assert dca.main() == 1 and conn.commits == 0
+
+    conn2 = _wire(monkeypatch, headers("2.25", 20, 48), headers("2.25", 18, 44),
+                  graded=_graded(90, 30))
+    monkeypatch.setattr(sys, "argv", ["dcp_commit_approved.py", "--commit",
+                                      "--allow-fidelity", f"{COUNCIL}/{CHAPTER}"])
+    assert dca.main() != 1 and conn2.commits == 1

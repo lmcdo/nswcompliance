@@ -1,167 +1,124 @@
 {
   "tier": "critical",
-  "justification": "Decides whether a council chapter is read from OCR or from a text layer known to be unreadable. The first complete 47-batch run got 44 batches and discarded all of them, re-enqueueing the same garbled text it existed to replace. Every constant corrected here was sized from a warm idle endpoint and is wrong under real load.",
-  "commit_hash": "cdd5d0f8",
+  "justification": "Three changes on the path that decides what regulatory text is served. Two fix the extraction splitter, which was handing a whole page to a section that starts partway down it -- serving a parking rule as a stormwater rule. The third makes the commit worker read fidelity_status, which it had never read at all: the one check that compares our output against the council's own PDF could not stop a single write.",
+  "commit_hash": "83cf3700",
   "files": [
     "scripts/dcp_extract_changed.py",
-    "tests/test_ocr_tuning_from_a_real_run.py",
-    "tests/test_long_extraction_survives.py",
-    "tests/test_ocr_batches_the_chapter.py",
-    "tests/test_connection_outlives_the_pdf_work.py"
+    "scripts/dcp_supersede_guard.py",
+    "scripts/dcp_commit_approved.py",
+    "tests/test_a_section_starting_mid_page.py",
+    "tests/test_the_write_path_reads_the_fidelity_verdict.py",
+    "tests/test_dcp_commit_refuses_section_loss.py"
   ],
   "pre_impl": {
-    "existing_data": "No database read or write and no schema change. The evidence is one complete run of city_of_sydney/section-3-general-provisions against the live Modal endpoint, 141 pages in 47 batches, 2026-09-19.",
-    "assumption_mismatch": "Three constants were sized from a warm idle endpoint. Measured across the 44 batches that responded: min 68s, median 104s, p90 118s, max 140s — against OCR_READ_TIMEOUT of 120s, so the cap sat AT the p90 with batches landing at 118, 118, 119, 119 and 120 seconds. The 85.3s that justified a 3-page batch was a single warm measurement; under 47 sustained requests the median is 22 percent slower and the tail reaches 140s. Separately, a whole-chapter retry budget of 6 was consumed by batches 11 and 15 taking two each, leaving two for batch 45 — a constant that cannot cover 47 batches, the same error as a fixed 600s OCR deadline and a fixed 1200s process cap. Finally the all-or-nothing rule then discarded 138 good pages.",
-    "new_vs_existing": "Changes only how long one batch may be silent, how many retries a chapter may spend, and what happens to the pages of a batch that never succeeds. A healthy run is unchanged: one call per batch, no failed pages, same output.",
-    "external_source_error": "This is entirely about an external source failing. Every failure still fails closed in the direction that matters — a chapter whose OCR is mostly missing is abandoned to its text layer rather than served as a patchwork, and a dead endpoint is now detected within a few batches instead of at the end of the chapter.",
-    "frontend_type": "No API or component change. This runs in the nightly extractor.",
-    "user_failure_mode": "Two directions, and the previous design was wrong about which was safer. Too strict and 138 good pages are thrown away for 3 bad ones, which is what happened and which re-served unreadable text. Too loose and a chapter becomes mostly text layer with OCR sprinkled through it, which is harder to reason about than a clean fallback — so a share cap abandons the chapter past 10 percent of pages, checked as each batch fails rather than only at the end."
+    "existing_data": "dcp_review_queue (fidelity_status, suspect_reason, created_at, status) and regulatory_provisions. No schema change and no new table. information_schema.columns was read for BOTH tables rather than assumed: fidelity_status exists only on dcp_review_queue, and regulatory_provisions has no equivalent -- which is what forces the fidelity guard to be absolute rather than before/after like the two beside it.",
+    "assumption_mismatch": "Four in this change, each caught by measuring rather than reasoning. (1) I said the 13 Northern Beaches fidelity failures were a two-column problem; measured, only 1 of 13 was, 7 were headings starting mid-page and 3 were not on the cited page at all. (2) I assumed the legibility guard would catch phrase-level interleave; its worst single-letter ratio across 124 rows was 0.055 against a 0.20 threshold -- 'clean' -- while C3 Parking continued into 'G7 - Evergreen Introduction'. (3) I read the 8 remaining section_collapsed failures as data loss; comparing TOTAL text showed the chapter going 49 rules/537,845 chars -> 113 rules/528,636 chars, i.e. -1.7% -- it is being re-split finer, and a per-row size heuristic cannot see that. (4) My own first version of the heading fix cut the body past every line the title-continuation loop had absorbed, which DELETED a short first sentence ('C2 Setbacks' / 'The front setback is 6m.' lost the setback). A test written for something else caught it.",
+    "new_vs_existing": "split_page_at_headings already exists for MULTI_HEADING_COUNCILS and handles SEVERAL headings per page. It is deliberately one council wide -- its own comment says widening it 'must not be done without measuring the council first' -- and it is not widened here. The mid-page fix sits inside its per-segment loop, so a pre-split council reaches it with match.start() == 0 and behaves exactly as before. The remaining Northern Beaches C3/G7 defect IS a multi-heading page and is left for that route, measured, rather than bolted onto this one.",
+    "external_source_error": "None -- no network. The extraction was re-run against the real chapter from R2 (273 pages, 23.5 MB) and the before/after compared in the live queue.",
+    "frontend_type": "No API route, component or type change. This is the extraction and commit path behind the served provisions; the frontend reads regulatory_provisions and is unaffected either way.",
+    "user_failure_mode": "Both directions. Too loose and a section serves the previous section's text as its own -- C4 Stormwater opened with 'End of trip facilities are not required for schools', a parking rule published as a stormwater control. Too strict and the fidelity guard refuses ordinary re-reads, at which point it gets switched off; the bar is therefore read off the measured distribution and a confusable negative is pinned at 1.7%. The worst outcome for the guard specifically is a third one: appearing to run while grading nothing, which is what reading batch_ts from the dry-run branch would have caused."
   },
   "falsifiable_check": {
-    "command": "python -m pytest tests/test_ocr_tuning_from_a_real_run.py tests/test_connection_outlives_the_pdf_work.py tests/test_long_extraction_survives.py tests/test_ocr_batches_the_chapter.py -q",
-    "fails_when": "The silence cap drops back to or below the observed 140s tail, or rises so far it stops detecting a dead endpoint; the batch size and the cap stop being sized against each other; the retry budget goes flat again, drops below the floor for a small chapter, or grows toward one retry per batch; a failed batch discards the whole chapter again; an empty OCR entry blanks a page instead of falling back to its text layer; the failed-page share cap is loosened; or the share is checked only at the end, so a dead endpoint costs the whole chapter to discover. The connection is not re-established between the PDF work and the first query after it; the cursor is not re-made from the revived connection; main stops reviving its own; liveness is decided by conn.closed rather than by executing; or the replacement connection drops the keepalives.",
-    "observed_red": "Ten mutations planted, ten CAUGHT. Five on the tuning: restoring the 120s cap, flattening the retry budget, removing the early abort, blanking a page instead of falling back, and loosening the share cap to 90 percent. Five on the connection: removing the revive from extract_chapter, reviving but keeping the stale cursor, leaving main's connection dead, trusting conn.closed instead of pinging, and reconnecting without keepalives. 12 new tests, 47 across the three affected files, 386 across every related suite. Two existing tests failed honestly when the fallback changed from all-or-nothing to per-page and were rewritten to the new contract rather than deleted — and one of those failures found a real regression: without an early share check, a dead endpoint cost 16 calls to learn what the first three batches already said."
+    "command": "python -m pytest tests/test_a_section_starting_mid_page.py tests/test_the_write_path_reads_the_fidelity_verdict.py tests/test_dcp_commit_refuses_section_loss.py -q",
+    "fails_when": "A section starting mid-page is handed the whole page again; the text above such a heading is dropped from the section it belongs to; the heading is left in the body as well as the title; a short first sentence is swallowed into the title and lost from the body; the previous section is not credited with the page it shares; the commit worker stops calling enforce_fidelity, or calls it with a batch timestamp resolved inside the dry-run branch; the fidelity bar leaves the gap the distribution shows; ungraded rows start counting as failures or as passes; 'grounded' is treated as a failure; the batch scope or the approved-status filter is dropped from the fidelity query; or --allow-section-loss starts doubling as --allow-fidelity.",
+    "observed_red": "17 mutations planted, 17 caught. On the splitter (5/5): whole page to the new section, heading left in the body, previous section not credited with the shared page, leading text discarded, and the no-leading-text branch claiming the page. On the fidelity guard (10/10): guard not called, > became >=, bar moved to 20% and to 1%, ungraded counted as failures, grounded counted as a failure, batch scope dropped, size floor removed, stale batch_ts from the dry-run branch, an override that ignores the chapter name, plus two on the below-floor branch raised by the pre-push review (removing it, and dropping the named failures from its message). Full suite 6,627 passed / 2 skipped. Verified against production rather than only in tests: re-extracting northern_beaches/warringah-dcp-2011-full took its failed rows 13 -> 11, and C4 Stormwater went from opening with C3 Parking's tail to opening with its own text."
   },
   "functions": [
     {
-      "name": "ocr_chapter_retry_budget",
+      "name": "page_tail (in _extract_sequential)",
       "file_line": "scripts/dcp_extract_changed.py",
-      "input": "The number of batches the chapter will be split into.",
-      "output": "The retries the whole chapter may spend: a quarter of the batches, never fewer than the floor of 6.",
-      "if_none": "A small chapter keeps exactly the floor it had, so nothing gets stingier. The result is always well under half the batch count, so a dead endpoint cannot spend the run retrying."
+      "input": "One page of text and the regex match for a section heading found on it.",
+      "output": "The text from the END of the heading down -- the part belonging to the section starting here. The text above it is appended to the section already open, and that section keeps the page.",
+      "if_none": "No heading on the page means page_tail is the whole page and it extends the open section, which is the common case and is unchanged."
     },
     {
-      "name": "fetch_ocr_page_texts",
-      "file_line": "scripts/dcp_extract_changed.py",
-      "input": "A chapter PDF path and its page count.",
-      "output": "Per-page texts, with an empty string for any page whose batch never succeeded — the marker that page keeps its text layer. None when too many pages failed, or the budget ran out.",
-      "if_none": "The caller stays on the text layer for the whole chapter, as before. What changed is that this is now reserved for a chapter that is mostly unreadable, rather than triggered by a single bad batch."
+      "name": "enforce_fidelity",
+      "file_line": "scripts/dcp_supersede_guard.py",
+      "input": "A cursor inside the open transaction, the council, the chapter, the created_at of the run being committed, and the set of chapters a person has named.",
+      "output": "(graded, bad, detail), or raises FidelityRefused so the caller rolls back and keeps the approval.",
+      "if_none": "No graded rows means the gate never looked. It prints that it is not judging and lets the commit proceed -- refusing every ungraded chapter would stop the pipeline dead -- but an unchecked batch must not read as a clean one, so the abstention is stated rather than silent. A test pins the message."
     },
     {
-      "name": "DcpExtractor._page_text",
-      "file_line": "scripts/dcp_extract_changed.py",
-      "input": "A pdfplumber page object and its 1-based page number within the chapter PDF.",
-      "output": "The OCR text for that page, or the text layer when the OCR entry is empty.",
-      "if_none": "An empty OCR entry means that page's batch failed, so it falls through to the text layer it would have had anyway. Returning the empty string would silently blank a page the reader can still partly use — worse than the defect being worked around. A genuinely blank page falls through to an equally blank text layer, so nothing is lost."
-    },
-    {
-      "name": "revive",
-      "file_line": "scripts/dcp_extract_changed.py",
-      "input": "The batch connection, after it has sat idle through roughly an hour of PDF work in a child process.",
-      "output": "The same connection when it still answers a SELECT 1, otherwise a fresh one with the same keepalive settings, with the dead one closed rather than leaked.",
-      "if_none": "There is no None case: it always returns a usable connection or raises from psycopg2.connect, which the caller already handles as a chapter failure. A close that itself fails is swallowed, because losing the reconnect to its own cleanup would be the same lost hour one layer along."
+      "name": "judge_fidelity",
+      "file_line": "scripts/dcp_supersede_guard.py",
+      "input": "The count of rows the fidelity gate graded in this batch, and the count of those that did not pass. Nothing else, so it can be driven directly with the real figures from any run.",
+      "output": "True to refuse. Split out from the DB access so the thresholds can be driven directly by the real run figures.",
+      "if_none": "Under FIDELITY_MIN_GRADED rows it returns False: one bad row in ten is 10% and means nothing."
     }
   ],
   "values": [
     {
-      "name": "OCR_READ_TIMEOUT = 300",
-      "value": "Seconds of silence before a batch is abandoned, raised from 120",
-      "why": "120 sat at the p90 of the real distribution, which is a coin flip rather than a margin. 300 is over twice the worst observed batch and still calls a dead endpoint within five minutes, which is what this cap is actually for. Total duration is bounded by the chapter budget, not by this.",
-      "source": "Measured across 44 responding batches of a 47-batch run, 2026-09-19: min 68s, median 104s, p90 118s, max 140s, with batches landing at 118, 118, 119, 119 and 120 seconds.",
-      "if_missing": "At 120 roughly one batch in ten dies on a slow container, and on a 47-batch chapter that is several failures per run.",
-      "read_at": "scripts/dcp_extract_changed.py — the OCR call bounds."
+      "name": "FIDELITY_MAX_BAD_RATIO = 0.05",
+      "value": "The share of a batch that may fail source verification",
+      "why": "Read off the distribution, not chosen. Across all 62 extraction runs holding >=20 graded rows the failure fraction runs 0.0 x22 ... 2.4, 2.7, 3.8, then jumps to 6.1, 6.2, 8.3, 10.5, 16.9, 18.5, 21.1, 23.1, 26.1, 30.2. The per-rule view agrees independently: comparing only rules present in both of two consecutive runs of one chapter, regressions run 0.4, 0.4, 1.3, 1.4, 1.7, 1.8, 2.9, 4.3, then 8.6, 18.5, 23.1, 30.2. Both have their widest gap in the same place and 5% sits inside it.",
+      "source": "Measured 2026-09-20 against the live dcp_review_queue.",
+      "if_missing": "A bar picked by feel either refuses ordinary re-reads until someone disables the guard, or sits above the bad cluster and never fires.",
+      "read_at": "scripts/dcp_supersede_guard.py -- FIDELITY_MAX_BAD_RATIO, with both distributions written out above it."
     },
     {
-      "name": "the retry budget is a share of the batches",
-      "value": "max(6, batches // 4)",
-      "why": "A fixed 6 cannot cover 47 batches. On the run that prompted this, batches 11 and 15 took two retries each and batch 45 was left with two, ran out, and cost the chapter its 138 good pages. A quarter tolerates a genuinely flaky endpoint while staying far below retrying everything.",
-      "source": "The same run: three batches failed, two were rescued, the third exhausted the budget.",
-      "if_missing": "Flat again and a long chapter loses to the third transient blip; unbounded and a dead endpoint spends the wall-clock proving it is dead.",
-      "read_at": "scripts/dcp_extract_changed.py — ocr_chapter_retry_budget."
-    },
-    {
-      "name": "OCR_MAX_FAILED_PAGE_FRACTION = 0.10",
-      "value": "The share of pages that may fall back before the chapter is abandoned",
-      "why": "Keeping 138 of 141 OCR pages is plainly better than keeping none, which is what all-or-nothing actually did. But a chapter that is mostly text layer with OCR sprinkled through it is harder to reason about than a clean fallback, so there has to be a line. It is checked as each batch fails, not only at the end, or a dead endpoint is discovered one batch at a time across the whole chapter.",
-      "source": "Measured: without the early check a 20-batch chapter cost 16 calls to learn what the first three said.",
-      "if_missing": "Loosened, a chapter of almost entirely garbled text is served as though OCR succeeded. Removed from the loop, a dead endpoint costs the whole chapter to detect.",
-      "read_at": "scripts/dcp_extract_changed.py — the batch loop."
-    },
-    {
-      "name": "a SELECT 1 ping, not conn.closed",
-      "value": "How liveness is decided",
-      "why": "psycopg2's conn.closed reports what THIS process did to the connection, not what the server did, so it still reads open on a connection the pooler has already dropped. Executing something is the only way to find out. Keepalives are kept as well rather than replaced: they still cover the idle socket reap they were added for, they simply cannot cover a pooler closing the session.",
-      "source": "Measured on two complete runs that died at diff_provisions with 'server closed the connection unexpectedly' — the fourth carried keepalives and died identically, which is what disproved the idle-reap theory.",
-      "if_missing": "An hour of correct work is discarded at the last step. The fourth run produced OCR for all 141 pages and extracted 94 sections before losing it.",
-      "read_at": "scripts/dcp_extract_changed.py — revive."
+      "name": "FIDELITY_PASSING = (grounded, ok)",
+      "value": "What counts as having passed",
+      "why": "'grounded' is the BEST outcome -- verified against the source page -- and 'ok' means the insert-time row checks found nothing. NULL is excluded from both numerator and denominator: counting ungraded rows as bad would make the guard fire hardest on the chapters nobody has checked.",
+      "source": "dcp_fidelity_gate.gate_chapter writes grounded/flagged; classify_row_fidelity writes ok/failed. Queue totals 2026-09-20: ok 7,493, grounded 5,437, NULL 450, flagged 137, failed 114.",
+      "if_missing": "An approval script written earlier in this same session used `IS DISTINCT FROM 'ok'` and turned 81 grounded rows into failures. A test pins the inverse.",
+      "read_at": "scripts/dcp_supersede_guard.py -- FIDELITY_PASSING."
     }
   ],
   "queries": [
     {
-      "purpose": "Decide which text each page contributes to the provisions the extractor later writes: the OCR read, or the page's own text layer.",
-      "file_line": "scripts/dcp_extract_changed.py — fetch_ocr_page_texts and _page_text",
-      "where_clause": "Not applicable: no query is added or changed, and the rows those queries later write differ only in carrying OCR text rather than a garbled text layer."
+      "purpose": "The graded rows of the one extraction run this commit would publish.",
+      "file_line": "scripts/dcp_supersede_guard.py -- fidelity_snapshot",
+      "where_clause": "council = %s AND chapter_key = %s AND created_at = %s AND status = 'approved' AND fidelity_status IS NOT NULL. The created_at scope matters because a chapter's queue holds every run it has ever had -- northern_beaches alone carries six batches -- and the worker commits ONE run whole."
     }
   ],
   "break_it": [
     {
-      "scenario": "The silence cap is lowered again, or the batch size raised, so batches sit back inside the tail of the duration distribution.",
-      "what_happens": "Roughly one batch in ten dies on a slow container, which on a 47-batch chapter is several failures a run — and before the per-page fallback that meant losing the chapter.",
+      "scenario": "The fidelity guard is given a batch timestamp resolved inside the dry-run branch.",
+      "what_happens": "That branch ends in `continue`, so on the commit path the name is either undefined or left over from the PREVIOUS chapter. The guard would query another chapter's run, find no rows, print 'not judged' and pass -- appearing to run while grading nothing, which is worse than not running.",
       "mitigated": true,
-      "how": "Tests assert the cap clears the worst observed batch with room, and that the batch size times the measured under-load per-page cost still fits inside it, so the two cannot drift apart.",
-      "repro": "python -m pytest tests/test_ocr_tuning_from_a_real_run.py -k CapIsAbove -q"
+      "how": "The lookup is hoisted above the dry-run split and happens exactly once per chapter. A test asserts the assignment precedes `if dry_run:` and that there is only one of them.",
+      "repro": "python -m pytest tests/test_the_write_path_reads_the_fidelity_verdict.py -k resolved_before -q"
     },
     {
-      "scenario": "The cap is raised without limit to stop failures entirely.",
-      "what_happens": "A genuinely dead endpoint stops being detected and holds the nightly extraction open.",
+      "scenario": "A whole chapter is refused because every row looks 'collapsed'.",
+      "what_happens": "Exactly what northern_beaches does: 8 of 11 failures are section_collapsed because the extraction re-split 49 giant rules into 113 properly-sized ones. Nothing is lost -- total text moved -1.7% -- but a per-row size heuristic cannot see that, and a blind --allow-fidelity would follow.",
       "mitigated": true,
-      "how": "A ceiling is asserted as a confusable negative: this cap exists to notice silence, and total duration is bounded by the chapter budget instead.",
-      "repro": "python -m pytest tests/test_ocr_tuning_from_a_real_run.py -k dead_endpoint_within_minutes -q"
+      "how": "The refusal says so, and says how to check: compare TOTAL text, not row sizes. A test asserts that wording is in the message.",
+      "repro": "python -m pytest tests/test_the_write_path_reads_the_fidelity_verdict.py -k re_splitting -q"
     },
     {
-      "scenario": "A page whose batch failed is served blank instead of falling back.",
-      "what_happens": "The empty-string marker is read as 'this page is blank' rather than 'use the text layer', silently deleting text the reader could still partly use — worse than the defect being worked around.",
+      "scenario": "Removing the heading from the body also removes the section's first sentence.",
+      "what_happens": "The title-continuation loop folds any following line under 50 characters into the heading. A first version of this fix cut the body past everything the loop had absorbed, so 'C2 Setbacks' / 'The front setback is 6m.' kept the title and LOST the setback -- a control silently deleted.",
       "mitigated": true,
-      "how": "_page_text falls through when the OCR entry is empty. This was NOT the original behaviour: it returned the entry unconditionally, and the per-page design would have blanked those pages. Found by checking the claim rather than asserting it, and pinned by a test.",
-      "repro": "python -m pytest tests/test_ocr_tuning_from_a_real_run.py -k falls_back_to_its_text_layer -q"
+      "how": "Only the matched heading is removed; continuation lines stay in the body. Repeating a title fragment is untidy, deleting a setback is a wrong answer served as regulation. Tested at both sides of the 50-character cap.",
+      "repro": "python -m pytest tests/test_a_section_starting_mid_page.py -k first_line -q"
     },
     {
-      "scenario": "The text handed to the extractor is OCR for most pages and text layer for a few, and nothing downstream can tell which is which.",
-      "what_happens": "A provision assembled across a batch boundary mixes a clean OCR page with a garbled one, so a single clause reads half correctly — harder to spot than a wholly unreadable chapter, and it reaches the same queries and the same review queue.",
-      "mitigated": true,
-      "how": "The share cap keeps this to under a tenth of pages, and the failed page numbers are printed so the boundary is visible in the run log. Beyond that the judgement is deliberately made at the write rather than here: the legibility guard merged in #1141 compares the committed result against what is live and refuses a chapter that comes out less readable, whichever pages caused it.",
-      "repro": "python -m pytest tests/test_ocr_tuning_from_a_real_run.py -k too_many_failed -q"
-    },
-    {
-      "scenario": "A dead endpoint is discovered one batch at a time.",
-      "what_happens": "Every batch is attempted and retried before the chapter is abandoned, so learning the endpoint is broken costs the whole chapter's wall-clock.",
-      "mitigated": true,
-      "how": "The failed-page share is checked as each batch fails, not only at the end. This regression was introduced BY the per-page fallback and caught by an existing test, which measured 16 calls where three sufficed.",
-      "repro": "python -m pytest tests/test_long_extraction_survives.py -k dead_endpoint -q"
-    },
-    {
-      "scenario": "A chapter is served as a patchwork of OCR and garbled text layer.",
-      "what_happens": "Most pages read correctly and a minority are nonsense, which is harder to spot and reason about than a chapter that is uniformly one or the other.",
-      "mitigated": true,
-      "how": "Past 10 percent of pages the chapter is abandoned to its text layer. Below that, the legibility guard merged in #1141 independently refuses the commit if the result is less readable than what is already live, so the judgement is made against the actual outcome at the write.",
-      "repro": "python -m pytest tests/test_ocr_tuning_from_a_real_run.py -k too_many_failed -q"
-    },
-    {
-      "scenario": "The endpoint degrades further under longer runs than the one measured.",
-      "what_happens": "A 122-batch chapter (city_of_sydney section 5) may show a worse tail than the 47-batch run these numbers come from, and batches start failing again.",
+      "scenario": "The remaining northern_beaches failures are read as the same defect.",
+      "what_happens": "They are not. Of 11: 8 are section_collapsed false positives on a finer re-split, 2 are junk section codes ('21' keyed off a permit number, 'R2' off a control marker), and 1 is C3 Parking still continuing into 'G7 - Evergreen Introduction' -- a page holding TWO headings, which the single-match path cannot fix.",
       "mitigated": false,
-      "how": "Not addressed, and not knowable from this run. 300s is over twice the worst batch seen at 47, but the distribution under 122 sequential requests has not been measured. The per-page fallback and the share cap mean the consequence is now a partial or clean fallback rather than a lost chapter, which is the point.",
-      "repro": "Run the extractor on city_of_sydney/section-5-specific-areas and compare the batch-duration distribution."
+      "how": "Not addressed here. The multi-heading route is split_page_at_headings, which is opt-in per council and whose own comment requires measuring the council before widening it. That measurement is a separate run.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-70"
     },
     {
-      "scenario": "This is taken to mean the chapter now re-extracts successfully.",
-      "what_happens": "It has not yet. Two runs have failed, for different reasons each time.",
-      "mitigated": false,
-      "how": "Not claimed. These corrections come from the second run; the third has not completed at the time of writing, and the honest position is that the mechanism is now sized against measured behaviour rather than proven to finish.",
-      "repro": "python scripts/dcp_extract_changed.py --council city_of_sydney --chapter section-3-general-provisions --review"
-    },
-    {
-      "scenario": "The connection is revived inside extract_chapter but main keeps holding the dead one.",
-      "what_happens": "The first chapter's hour of PDF work leaves every later chapter in the batch with a corpse, and the run summary and registry updates fail too — so a multi-chapter night dies after the first chapter regardless of how well the rest extract.",
+      "scenario": "The legibility guard is assumed to cover this.",
+      "what_happens": "It does not and cannot. Its signature is the fraction of words that are a single letter, which sees GLYPH interleave. Two columns read across each other produce entirely correct words in the wrong order and score near zero: 0.055 worst case on the chapter whose fidelity gate failed 13 of 124.",
       "mitigated": true,
-      "how": "extract_chapter takes conn as a parameter, so its rebinding cannot reach main's. main revives its own around each call, and a test asserts that by reading the loop.",
-      "repro": "python -m pytest tests/test_connection_outlives_the_pdf_work.py -k main_revives -q"
+      "how": "The two checks are now separate and both run. The guard's own comment says which class each covers, and the module docstring no longer implies the ratio is a general corruption detector.",
+      "repro": "python -m pytest tests/test_dcp_legibility_guard.py tests/test_the_write_path_reads_the_fidelity_verdict.py -q"
+    },
+    {
+      "scenario": "A batch below the row floor is announced as having passed.",
+      "what_happens": "9 failures in 10 rows is 90%, and the first version of this printed '9/10 (90.0%) did not pass -- under the 5% bar, allowed'. The guard is right not to refuse on a sample that small, but not refusing and having passed are different facts, and the log is what a person acts on. Raised by the pre-push review against this change.",
+      "mitigated": true,
+      "how": "Three outcomes, not two. Below the floor it says the batch is NOT judged against the bar and names the rows that failed, so the abstention is visible rather than dressed up as a pass. The full-size wording is pinned separately as the confusable negative.",
+      "repro": "python -m pytest tests/test_the_write_path_reads_the_fidelity_verdict.py -k small_batch -q"
     }
   ],
   "post_merge": {
-    "db_reset": "No. Nothing is written by this change.",
+    "db_reset": "No. Nothing here writes. The 14 Ku-ring-gai rows approved during this work were a separate queue-status change with its own CSV backup, and the commit worker has not been run.",
     "secrets": "No.",
     "other_repo": "No.",
-    "manual_verify": "Yes: re-run city_of_sydney/section-3. The fourth run produced OCR for all 141 pages and extracted 94 sections before losing it to the dead connection, so the OCR side is demonstrated and the write side is not. Four runs have now failed for four different reasons."
+    "manual_verify": "Re-run the northern_beaches extraction after merge and confirm the failed-row count holds at 11 or below; the 13 -> 11 measurement was taken from this branch."
   }
 }
