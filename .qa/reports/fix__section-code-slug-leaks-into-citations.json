@@ -1,0 +1,99 @@
+{
+  "tier": "critical",
+  "justification": "An internal identifier was being served to planners as the council's section number. 122 current rows already carry it, and the commit worker recomputes section_header on every commit, so each re-read of an affected chapter converted twelve more citations from the document's code to ours. A citation that does not appear in the council's document cannot be checked against it.",
+  "commit_hash": "PENDING",
+  "files": [
+    "scripts/dcp_section_code.py",
+    "tests/test_a_ref_slug_is_not_a_section_code.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions.section_header and ref_number, read only to measure the scale. No schema change, no write, no new query in the shipped code: the fix is one condition inside a pure function that takes three strings and returns a string.",
+    "assumption_mismatch": "The section-loss guard refused the Ku-ring-gai secondary-dwellings commit with '12 sections before, 12 after -- 12 lost (100%), 12 new', which reads as the council renumbering its chapter. It was not: the codes are identical in the document and the twelve 'new' ones were 4_1a_1 where the twelve 'lost' ones were 4.1a.1. The renumbering was ours. Confirmed by running _section_header_from_text and leading_code over the queued rows rather than by reading the diff.",
+    "new_vs_existing": "No new helper. dcp_section_code already exists for exactly this question and already recovers the correct dotted code for every affected row; the value was being discarded by a short-circuit above it. The function's own docstring had predicted this shape -- that without the fallback it 'recomputes section_header on EVERY commit from the heading line alone, so scripts/dcp_restore_section_codes.py would be undone the next time each chapter was committed'. The fallback existed and never ran.",
+    "external_source_error": "None -- no network, no PDF. The claim that 4.1C.7 is the council's own numbering rests on the document's text, which the provision body quotes back ('SECONDARY DWELLINGS 4.1C.7 VISUAL AND ACOUSTIC PRIVACY'). The slug form appears nowhere in it.",
+    "frontend_type": "No API or component change. section_header is already what the frontend renders as the citation, so the corrected value flows through unchanged.",
+    "user_failure_mode": "Both directions, and they are not symmetric. Too timid and a planner is shown 4_1c_7 for a control the council calls 4.1C.7 -- an unverifiable citation, which is the defect. Too aggressive and a genuine document code gets overwritten by an inference, which is worse: it would fabricate a regulatory reference that looks authoritative. The swap is therefore keyed on an exact character-for-character match with this row's own slug, so it can only ever undo our own substitution."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_a_ref_slug_is_not_a_section_code.py -q",
+    "fails_when": "A header opening with this row's ref slug is left as the slug; the swap starts firing on any code-shaped token, which would rewrite the document's own numbering; the equality is loosened to a prefix or the underscore requirement dropped, either of which lets it fire where it should not; the title is dropped when the code is swapped; a codeless header stops gaining its code, which was this module's original purpose; or a code that legitimately has no dots is returned unchanged as if it were a repair.",
+    "observed_red": "6 mutations planted, 6 caught: the swap removed, the swap firing on any code, the underscore requirement dropped, the equality loosened to a prefix, the title discarded, and the codeless repair broken. 19 tests here, 366 across the related suites. One mutation SURVIVED the first version of this file -- dropping the underscore requirement -- and chasing it found a real reachable case rather than an equivalent mutant: a ref tail of '4a' yields the dotless code '4a', where the loosened condition returns the header unchanged instead of None and makes dcp_restore_section_codes count a no-op as a repair. A test now pins it."
+  },
+  "functions": [
+    {
+      "name": "repaired_header",
+      "file_line": "scripts/dcp_section_code.py",
+      "input": "The header as it stands, the row's ref_number, and its document_id.",
+      "output": "The header the row should carry, or None meaning leave it alone. It now also returns a corrected header when the existing leading token is exactly this row's own underscore slug.",
+      "if_none": "None still means no change, and it is returned for a genuine document code, for a code-shaped token that is not this row's slug, and whenever no code can be recovered at all. Inventing a section number is refused outright -- see .claude/rules/regulatory-data.md."
+    },
+    {
+      "name": "section_code",
+      "file_line": "scripts/dcp_section_code.py",
+      "input": "ref_number and document_id, unchanged by this work.",
+      "output": "The dotted section code, or None. It was already correct for all 122 affected rows; nothing about it needed fixing.",
+      "if_none": "None where the tail is not a section reference, including bare digits, which it refuses because stamping those would fabricate a clause reference."
+    }
+  ],
+  "values": [
+    {
+      "name": "the swap requires an exact slug match",
+      "value": "existing == code.replace('.', '_'), with an underscore present",
+      "why": "This function's founding rule is that a stored code came from the document and a recovered one is an inference, so an existing code is never overwritten. A slug is not the document's -- it is ours, written into the heading line by build_provision_text -- so undoing it is not an exception to the rule. Keying on exact equality with this row's own slug is what keeps the two cases apart: anything else that is code-shaped is the document talking and is left alone.",
+      "source": "Measured 2026-09-21 on live regulatory_provisions: 122 current rows carry a slug header, all ku_ring_gai, and section_code recovers a dotted code for all 122.",
+      "if_missing": "Either the slug keeps being served as the citation, or a genuine council numbering gets silently rewritten by an inference.",
+      "read_at": "scripts/dcp_section_code.py -- repaired_header."
+    },
+    {
+      "name": "the underscore requirement is not redundant",
+      "value": "'_' in existing, beside the equality test",
+      "why": "A code can have no dots at all: a ref tail of '4a' yields '4a'. Without this clause the equality holds trivially, the swap fires, and the function returns the header it was handed instead of None. dcp_restore_section_codes treats any non-None result as a repair to apply, so it would write an identical value and count it -- a repair tally inflated with no-op writes is how a real repair stops being visible.",
+      "source": "A mutation that survived the first version of the test file, then traced to a reachable input rather than dismissed as equivalent.",
+      "if_missing": "Silent no-op writes to production and a misleading repair count.",
+      "read_at": "scripts/dcp_section_code.py -- repaired_header."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Size the defect before fixing it: how many served rows already show a slug where a section code belongs.",
+      "file_line": "ad hoc, recorded here because the shipped code adds no query",
+      "where_clause": "section_header ~ '^[A-Za-z0-9]+(_[A-Za-z0-9]+)+( |$)' AND is_current -- 122 rows, all ku_ring_gai, every one with a recoverable dotted code."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The guard's refusal is read as the council renumbering its chapter.",
+      "what_happens": "Someone passes --allow-section-loss to get the commit through, and twelve citations silently become 4_1a_1. The refusal message says '12 lost, 12 new', which looks exactly like a renumbering and is how it was first read here.",
+      "mitigated": true,
+      "how": "The cause is fixed, so the commit no longer produces new codes and the guard no longer fires on it. The refusal text itself is unchanged -- it was accurate about what it observed.",
+      "repro": "python -u scripts/dcp_commit_approved.py"
+    },
+    {
+      "scenario": "The swap overwrites a genuine council code.",
+      "what_happens": "A fabricated regulatory reference that looks authoritative -- worse than the defect being fixed, because an unverifiable citation at least looks wrong.",
+      "mitigated": true,
+      "how": "It fires only on an exact character-for-character match with this row's own slug. A different code-shaped token, including one containing an underscore, is left alone, and both cases are tested.",
+      "repro": "python -m pytest tests/test_a_ref_slug_is_not_a_section_code.py -k DoesNotRewrite -q"
+    },
+    {
+      "scenario": "The 122 rows already live are assumed to be fixed by this.",
+      "what_happens": "They are not. This stops the defect being created and lets the repair script recover them, but it writes nothing by itself. Believing otherwise would leave 122 wrong citations served while the ledger looked healthy.",
+      "mitigated": false,
+      "how": "Not addressed here, deliberately -- it is a production write and needs its own dry run. scripts/dcp_restore_section_codes.py now returns a corrected header for these rows, so it is the tool for it.",
+      "repro": "python scripts/dcp_restore_section_codes.py --council ku_ring_gai"
+    },
+    {
+      "scenario": "Another council starts showing slugs.",
+      "what_happens": "All 122 rows today are ku_ring_gai, but nothing about the mechanism is council-specific -- any chapter whose heading line carries the slug behaves the same way.",
+      "mitigated": true,
+      "how": "The fix is in the shared helper, not in a council config, so it applies wherever the shape occurs. The measuring query above is the way to check.",
+      "repro": "see queries[0]"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. This change writes nothing.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Run scripts/dcp_restore_section_codes.py --council ku_ring_gai as a dry run and confirm it now offers 122 repairs where it previously offered none; apply only after reading the sample it prints."
+  }
+}

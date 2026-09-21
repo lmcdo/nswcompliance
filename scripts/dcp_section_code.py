@@ -101,9 +101,33 @@ def repaired_header(section_header: str | None, ref_number: str | None,
     recovered one is an inference.
     """
     head = (section_header or "").strip()
-    if head and HAS_CODE.match(head):
-        return None
     code = section_code(ref_number, document_id)
+    if head and HAS_CODE.match(head):
+        # The header already opens with something code-shaped -- but HAS_CODE also
+        # matches our OWN ref slug, because a slug is the code with dots replaced by
+        # underscores. build_provision_text writes "# 4_1c_7 Visual and Acoustic
+        # Privacy" as the first line, dcp_commit_approved reads section_header off
+        # that line, and this function then said "already has a code, leave it" --
+        # so the slug became the served citation. The council's document says
+        # 4.1C.7; 4_1c_7 is an internal identifier that never appeared in it.
+        #
+        # Measured 2026-09-21: 122 CURRENT rows, all ku_ring_gai, carry such a
+        # header, and section_code() recovers a dotted code for every one of them.
+        # It also spreads: the commit worker recomputes section_header on every
+        # commit, so each re-read of an affected chapter converts twelve more
+        # citations from 4.1a.1 to 4_1a_1. The section-loss guard caught it as
+        # "12 sections before, 12 after -- 12 lost, 12 new".
+        #
+        # Swapping it is NOT the rewrite this function refuses to do. That rule
+        # protects a code that came from the document; this fires only when the
+        # existing token is EXACTLY the underscore spelling of the code recovered
+        # for this same row, which makes it our slug and not the document's text.
+        # A genuine code containing an underscore is left alone unless it is
+        # character-for-character our own slug for that row.
+        existing = head.split(maxsplit=1)[0]
+        if code and "_" in existing and existing == code.replace(".", "_"):
+            return (code + head[len(existing):]).strip()
+        return None
     if code is None:
         return None
     return code + " " + head if head else code
