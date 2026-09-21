@@ -6,7 +6,11 @@
     "enrichment/config/leichhardt_config.py",
     "enrichment/extractors/applicability_tagger.py",
     ".claude/dq_checks.json",
-    "tests/test_leichhardt_documents_all_resolve.py"
+    "tests/test_leichhardt_documents_all_resolve.py",
+    "scripts/dq_probe_live.py",
+    "tests/test_dq33_scope_is_council_rows.py",
+    "tests/test_applicability_slug_docids.py",
+    ".claude/DATA_QUALITY_TRACKER.md"
   ],
   "pre_impl": {
     "existing_data": "regulatory_provisions (v2_applicable_zones, v2_applicable_dev_types, v2_zone_source, v2_dev_type_source) read to measure and, via the existing retag script, written. No schema change. LEICHHARDT_CONFIG['parts'] and ApplicabilityTagger._leichhardt_slug_key are the only code touched.",
@@ -62,6 +66,14 @@
       "source": "python scripts/dq_check.py --outreach, 2026-09-21.",
       "if_missing": "The gate stays red on a contradiction while the underlying claims are true.",
       "read_at": ".claude/dq_checks.json -- checks.OC-10, checks.OC-17."
+    },
+    {
+      "name": "DQ-33's floor lowered 1,278 -> 1,158",
+      "value": "The ratchet moved down with the repair, never up",
+      "why": "DQ-33 reports 0 only because it sits under a floor. Leaving the floor at 1,278 after council no_config fell to 1,158 would have let 120 rows of new breakage arrive while the probe still read 0 -- a floor with slack in it is not a ratchet. The tracker row states the opposing rule in its own words, 'raising a floor to match a measurement is how a ratchet stops meaning anything', and that rule is about RAISING; lowering is how the row eventually closes honestly.",
+      "source": "Measured immediately after the leichhardt repair, 2026-09-21: exactly 1,158 served council rows with v2_dev_type_source='no_config'.",
+      "if_missing": "The row reads clean while 120 rows of regression hide beneath the old floor.",
+      "read_at": "scripts/dq_probe_live.py -- DQ-33, and tests/test_dq33_scope_is_council_rows.py::test_the_floor_may_only_FALL."
     }
   ],
   "queries": [
@@ -106,6 +118,13 @@
       "mitigated": false,
       "how": "Not addressed here and it is the durable fix: a check at INGESTION that fails when a document resolves to nothing, while someone is looking at it, rather than a ratchet noticed months later.",
       "repro": "python scripts/dq_probe_live.py --id DQ-33"
+    },
+    {
+      "scenario": "The floor is raised later to make the row go green again.",
+      "what_happens": "The ratchet stops being able to fail. It is the exact failure the tracker row was written to prevent, and it would be invisible because the probe still reports 0.",
+      "mitigated": true,
+      "how": "The test refuses any floor above 1,278, refuses its removal, and refuses a stale value that no longer matches the measured residue. Three mutations planted, three caught.",
+      "repro": "python -m pytest tests/test_dq33_scope_is_council_rows.py -k floor -q"
     }
   ],
   "post_merge": {
