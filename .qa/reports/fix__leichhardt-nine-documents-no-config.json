@@ -26,7 +26,7 @@
     {
       "name": "ApplicabilityTagger._leichhardt_slug_key",
       "file_line": "enrichment/extractors/applicability_tagger.py",
-      "input": "A document_id such as Leichhardt_DCP_2013__appendix_b_building_typologies.",
+      "input": "A document_id string such as Leichhardt_DCP_2013__appendix_b_building_typologies, from which the slug tail is taken and matched against the part, appendix, amendment and tree-manual branches in turn.",
       "output": "('part', key) for a key the config declares, or None.",
       "if_none": "None leaves the row at ALL with source no_config, which is the property this module is built on: an unknown appendix stays unresolved rather than being mapped to a plausible-looking key. Tested with appendix_z and amendment_99."
     },
@@ -101,7 +101,7 @@
       "repro": "see queries[0]"
     },
     {
-      "scenario": "The next council's documents arrive unconfigured.",
+      "scenario": "The next council's documents arrive unconfigured and nobody notices, exactly as these nine did.",
       "what_happens": "Exactly this again. Nothing checks that an ingested document resolves to a config key, and the fallthrough is silent and safe -- a planner sees more than they should, never less, so nothing looks wrong.",
       "mitigated": false,
       "how": "Not addressed here and it is the durable fix: a check at INGESTION that fails when a document resolves to nothing, while someone is looking at it, rather than a ratchet noticed months later.",
