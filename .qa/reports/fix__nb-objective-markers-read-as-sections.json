@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Turns intelligent extraction on by default and makes its deterministic proof mandatory, on the path that decides what regulatory text is served. Both halves were built and decided in July 2026; both then sat switched off or optional while hand-written per-council pattern exceptions accumulated in their place. This flips both defaults, refuses a commit carrying no proof at all, and adds a lint in the pre-commit hook AND in CI so neither can be quietly undone again.",
-  "commit_hash": "7124aed7",
+  "commit_hash": "ef3c7848",
   "files": [
     "scripts/dcp_extract_changed.py",
     "scripts/dcp_supersede_guard.py",
