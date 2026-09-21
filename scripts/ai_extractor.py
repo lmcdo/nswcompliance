@@ -421,6 +421,20 @@ _MODEL_PREFERENCE = (
 )
 
 
+def configured_model() -> str | None:
+    """The model this environment can actually use, or None when no key is set.
+
+    Callers use this to decide whether the LLM path is available at all, without
+    catching an exception to find out. _default_model raises because by the time the
+    extractor is choosing a provider there is no sensible answer but to stop; this is
+    the question asked one step earlier, where "not available here" is a real state.
+    """
+    try:
+        return _default_model()
+    except RuntimeError:
+        return None
+
+
 def _default_model() -> str:
     """The first model whose key is actually present.
 

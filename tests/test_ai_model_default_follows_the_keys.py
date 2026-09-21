@@ -5,17 +5,25 @@
 opt-in: nobody reached it without choosing to.
 
 #1155 made LLM extraction the default on 2026-09-21. That put a bare `KeyError` on the
-path every chapter now takes, in an environment where `ANTHROPIC_API_KEY`,
-`OPENAI_API_KEY` and `GEMINI_API_KEY` are set and `MISTRAL_API_KEY` is not.
+path every chapter now takes, in environments that have `ANTHROPIC_API_KEY` and
+`OPENAI_API_KEY` but no `MISTRAL_API_KEY` — which is the local checkout and, as it
+turned out, the Railway fleet too.
 
 It is the same shape as the data-watch job that died on `os.environ["PGHOST"]` the same
 night — a hard index into the environment for a variable the deployment does not supply
 — and that one blocked every merge in the repository for three days before anybody
 looked past the symptom.
 
-Choosing by what IS configured means a correctly-provisioned environment just works. An
-environment with no provider key at all still fails, because it must, but it fails
-naming every key it looked for rather than whichever happened to be read first.
+Choosing by what IS configured means a correctly-provisioned environment just works.
+
+WHAT I GOT WRONG WHILE WRITING THIS
+-----------------------------------
+Reading only the nightly `dcp-extract` service's variables, I concluded no provider key
+existed anywhere and was about to ask for one. The keys were there the whole time, on
+`dcp-extract-all`, together with `AI_EXTRACTION=1`. Two services, two jobs, deliberately
+different configuration — and a negative claim made from one of them. The lesson is the
+repo's own Prior-Art Four-Sweep rule applied to infrastructure: check every service
+before saying a thing is not configured.
 """
 from __future__ import annotations
 
@@ -115,3 +123,55 @@ class TestThePremise:
         one that is not."""
         for name, _key in ai._MODEL_PREFERENCE:
             assert name in ai._PROVIDERS, f"{name} is not a known provider"
+
+
+class TestAnUnkeyedDeploymentFallsBackRatherThanFailing:
+    """Railway runs two extraction services with different jobs and different config.
+
+    Measured 2026-09-21 with the Railway CLI, after wrongly concluding no provider key
+    existed anywhere:
+
+        dcp-extract-all   quarterly, full re-read   AI_EXTRACTION=1, ANTHROPIC_API_KEY,
+                                                    MISTRAL_API_KEY   -- the LLM runs here
+        dcp-extract       nightly, flagged chapters DATABASE_URL, R2_*, MODAL_OCR_*
+                                                    and no provider key
+
+    So the LLM extractor was never unused -- it is keyed and enabled on the service
+    built for it. What was off was the CODE default, which the nightly service relies on
+    to run the regex reader.
+
+    Flipping that default globally therefore pointed the nightly job at a path its
+    service is not keyed for. Failing there would have stopped every council's nightly
+    extraction in order to enable something that cannot run on that service. It falls
+    back instead -- loudly, because a fallback nobody can see is how the LLM extractor
+    sat behind an opt-in flag for two months after it had been hand-verified.
+    """
+
+    def test_no_key_means_no_model_rather_than_an_exception(self, no_keys):
+        """configured_model answers the question one step earlier than _default_model,
+        where 'not available on this service' is a real state and not an error."""
+        assert ai.configured_model() is None
+
+    def test_a_key_still_selects_the_model(self, no_keys):
+        no_keys.setenv("OPENAI_API_KEY", "x")
+        assert ai.configured_model() == "sol"
+
+    def test_the_extractor_falls_back_instead_of_raising(self):
+        src = (ROOT / "scripts" / "dcp_extract_changed.py").read_text(encoding="utf-8")
+        assert "configured_model()" in src, (
+            "the extractor no longer asks whether a provider is available, so an "
+            "unkeyed service will raise instead of falling back")
+        assert "NO provider key is set" in src, (
+            "the fallback must announce itself; a silent one is how a capability "
+            "stays off without anyone noticing")
+
+    def test_the_fallback_names_what_to_set(self):
+        src = (ROOT / "scripts" / "dcp_extract_changed.py").read_text(encoding="utf-8")
+        for key in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "MISTRAL_API_KEY"):
+            assert key in src, f"the fallback message does not say to set {key}"
+
+    def test_the_llm_path_says_which_model_it_used(self):
+        """Two readers now run in the same fleet. Which one produced a chapter has to
+        be readable from the run, or a regression is unattributable."""
+        src = (ROOT / "scripts" / "dcp_extract_changed.py").read_text(encoding="utf-8")
+        assert "LLM document reader" in src
