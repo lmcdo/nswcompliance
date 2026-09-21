@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Nine ingested Leichhardt documents had no applicability config, so 871 served rows applied to every development type because nothing matched rather than because anything decided so. A planner looking at a terrace house was shown vehicle repair station and industrial parking controls. This declares their scope from the documents' own content and adds the three matcher branches without which six of them could never have resolved however they were configured.",
-  "commit_hash": "acdba914",
+  "commit_hash": "2fd762d2",
   "files": [
     "enrichment/config/leichhardt_config.py",
     "enrichment/extractors/applicability_tagger.py",
