@@ -1,0 +1,99 @@
+{
+  "tier": "standard",
+  "justification": "The nightly data check could not open a database connection, so it had verified nothing for three nights. Because the merge gate asks when data-watch last succeeded, that one unset variable was blocking every open pull request, and the failure it reported named the freshness limit rather than the cause.",
+  "commit_hash": "PENDING",
+  "files": [
+    "scripts/validate_controls_against_source_pdf.py",
+    "tests/test_data_watch_can_connect.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls joined to dcp_chapter_registry, read-only, exactly as before. No schema change, no new query, no write. The only change is which environment variable supplies the connection string.",
+    "assumption_mismatch": "The failing gates step on PR #1149 read 'Live data was checked recently (data-watch freshness)', which looks like a scheduling or runner problem and is how it was first read. It was neither: data-watch had been RUNNING nightly and failing inside one step. The real error was four levels down a traceback, a KeyError on PGHOST, in a script the workflow supplies DATABASE_URL to. Last successful data-watch 2026-09-17; failures 09-18, 09-19 and 09-20; found 09-21.",
+    "new_vs_existing": "No new connection helper. DATABASE_URL is already how every other script under scripts/ connects, so this makes an outlier consistent rather than adding a mechanism. The PG-star path is kept as a fallback because a local shell may still use it.",
+    "external_source_error": "The script reads council PDFs from R2. Unchanged. Run against production with the fix in place it reported PASS (mark A): 97.3% of 764 checkable controls supported by their cited document, against a 95% mark, so the check itself was correct throughout and only the connection was broken.",
+    "frontend_type": "No API route, component or type change. This is a scheduled operator check; nothing the frontend renders is touched by it.",
+    "user_failure_mode": "Two directions, and the dangerous one is not the crash. A crash is loud and blocks the gate, which is what happened. The worse outcome would be the connection silently succeeding against the wrong database, or the .env quietly overriding the credentials the workflow supplies. Either would make the check report a confident verdict about data it was not looking at. load_env uses setdefault so the real environment wins, and a test pins it."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_data_watch_can_connect.py -q",
+    "fails_when": "connect() stops reading DATABASE_URL; a missing credential raises a bare KeyError again instead of naming what is unset; the PG-star fallback is removed, breaking a local run; the connection stops being read-only; find_env sys.exits when there is no .env, which is CI's normal state; or load_env starts overwriting environment variables the workflow supplied instead of filling gaps.",
+    "observed_red": "5 mutations planted, 5 caught: DATABASE_URL ignored, the bare KeyError restored, read-only dropped, find_env exiting again, and the .env overriding the real environment. 8 tests here. Verified against production, not only in tests: the previously-crashing command was run with the PG-star variables explicitly unset and completed with PASS (mark A): 97.3% of 764 checkable controls."
+  },
+  "functions": [
+    {
+      "name": "connect",
+      "file_line": "scripts/validate_controls_against_source_pdf.py",
+      "input": "The process environment: DATABASE_URL if the workflow or shell supplies one, otherwise the four PG-star variables, with the bare repository root's .env filling any gaps.",
+      "output": "A read-only, autocommit psycopg2 connection, or SystemExit naming every credential that is missing.",
+      "if_none": "With neither DATABASE_URL nor a usable PG-star set it exits with a message that lists what is unset and says where each source normally comes from, rather than raising KeyError on whichever variable happened to be indexed first."
+    },
+    {
+      "name": "find_env",
+      "file_line": "scripts/validate_controls_against_source_pdf.py",
+      "input": "No arguments; walks from REPO_ROOT upwards looking for a .env file.",
+      "output": "The path to the bare root's .env, or None when there is none.",
+      "if_none": "None is a normal state, not an error: a CI runner has no .env and passes credentials in the environment. It used to sys.exit here, which made that ordinary case indistinguishable from a broken checkout."
+    }
+  ],
+  "values": [
+    {
+      "name": "DATABASE_URL is preferred over the PG-star variables",
+      "value": "The order the two credential sources are tried in",
+      "why": "The workflow supplies DATABASE_URL and no PG-star variables, and every other script under scripts/ already connects that way. Trying PG-star first would keep an outlier that only works on a machine whose shell happens to export them.",
+      "source": ".github/workflows/data-watch.yml env block, and the traceback from run 35540610771 on 2026-09-20.",
+      "if_missing": "The nightly check crashes before reading a row, and because the gate asks when it last succeeded, every open PR is blocked behind a message about a freshness limit.",
+      "read_at": "scripts/validate_controls_against_source_pdf.py, in connect()."
+    },
+    {
+      "name": "setdefault, not assignment, in load_env",
+      "value": "How the .env interacts with a real environment",
+      "why": "The environment the workflow supplies must win. A checked-out .env overriding it would point this check at a different database while it reported a confident verdict, which is worse than the crash being fixed.",
+      "source": "Pre-existing behaviour, now pinned by a test because the surrounding lines were edited.",
+      "if_missing": "A stale local .env silently redirects a production data check.",
+      "read_at": "scripts/validate_controls_against_source_pdf.py, in load_env()."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Every current setback and parking control that names the page it came from, so its value can be looked for on that page of the council's own PDF.",
+      "file_line": "scripts/validate_controls_against_source_pdf.py, ROWS_SQL",
+      "where_clause": "c.pdf_page IS NOT NULL AND c.is_current = TRUE, joined to dcp_chapter_registry on council and chapter_key for the R2 path. Unchanged by this fix."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The gate's freshness message is read as the problem itself.",
+      "what_happens": "It says nothing has checked the live data within the limit, which reads as a scheduler or runner fault, and that is how it was first read here. data-watch was in fact running every night and failing inside one step, four levels down a traceback.",
+      "mitigated": false,
+      "how": "Not addressed. The freshness check is correct to report what it observes; it cannot know why. Worth recording that a failing nightly job and an absent one produce the same gate message.",
+      "repro": "gh run list --workflow=data-watch.yml --limit 5"
+    },
+    {
+      "scenario": "A stale .env overrides the workflow's credentials.",
+      "what_happens": "The check runs against the wrong database and reports a confident percentage about data it was not looking at, which is a silent wrong answer rather than a loud crash.",
+      "mitigated": true,
+      "how": "load_env uses setdefault, so anything already in the environment wins. A test asserts it, because the lines around it were edited.",
+      "repro": "python -m pytest tests/test_data_watch_can_connect.py -k wins -q"
+    },
+    {
+      "scenario": "Preferring DATABASE_URL breaks somebody's local run.",
+      "what_happens": "A shell that exports the PG-star variables and no DATABASE_URL would stop working.",
+      "mitigated": true,
+      "how": "The PG-star path is kept as the fallback and tested as the confusable negative, not deleted.",
+      "repro": "python -m pytest tests/test_data_watch_can_connect.py -k local_run -q"
+    },
+    {
+      "scenario": "The connection stops being read-only.",
+      "what_happens": "A check that reads production gains the ability to write to it, which is a much larger change than it would look like in a diff of these lines.",
+      "mitigated": true,
+      "how": "set_session(readonly=True) is asserted directly.",
+      "repro": "python -m pytest tests/test_data_watch_can_connect.py -k read_only -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. Read-only throughout.",
+    "secrets": "No. No credential is added, printed or changed, only which existing variable is read.",
+    "other_repo": "No.",
+    "manual_verify": "Run the data-watch workflow once after merge and confirm it goes green, which is what clears the freshness step for every open PR."
+  }
+}
