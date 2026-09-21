@@ -30,7 +30,7 @@
     {
       "name": "section_code",
       "file_line": "scripts/dcp_section_code.py",
-      "input": "ref_number and document_id, unchanged by this work.",
+      "input": "The row's ref_number and its document_id, both plain strings. Unchanged by this work -- it is the caller above it that was discarding the answer.",
       "output": "The dotted section code, or None. It was already correct for all 122 affected rows; nothing about it needed fixing.",
       "if_none": "None where the tail is not a section reference, including bare digits, which it refuses because stamping those would fabricate a clause reference."
     }
@@ -69,7 +69,7 @@
       "repro": "python -u scripts/dcp_commit_approved.py"
     },
     {
-      "scenario": "The swap overwrites a genuine council code.",
+      "scenario": "The swap overwrites a genuine council code that happens to contain an underscore.",
       "what_happens": "A fabricated regulatory reference that looks authoritative -- worse than the defect being fixed, because an unverifiable citation at least looks wrong.",
       "mitigated": true,
       "how": "It fires only on an exact character-for-character match with this row's own slug. A different code-shaped token, including one containing an underscore, is left alone, and both cases are tested.",
@@ -83,11 +83,18 @@
       "repro": "python scripts/dcp_restore_section_codes.py --council ku_ring_gai"
     },
     {
-      "scenario": "Another council starts showing slugs.",
+      "scenario": "Another council starts showing slugs where its section codes belong.",
       "what_happens": "All 122 rows today are ku_ring_gai, but nothing about the mechanism is council-specific -- any chapter whose heading line carries the slug behaves the same way.",
       "mitigated": true,
       "how": "The fix is in the shared helper, not in a council config, so it applies wherever the shape occurs. The measuring query above is the way to check.",
       "repro": "see queries[0]"
+    },
+    {
+      "scenario": "A chapter is re-read BEFORE the 122 rows are repaired.",
+      "what_happens": "The re-read now produces the dotted code while the live rows still hold the slug, so the commit is a genuine change of section_header on those rows -- which is the repair, but it arrives through the commit path rather than the restore script and the section-loss guard sees twelve codes replaced. It will refuse again, this time for the opposite reason: the codes are moving back to the document's numbering.",
+      "mitigated": false,
+      "how": "Not mitigated in code, and deliberately so -- a guard that stayed quiet while every citation in a chapter changed would be the wrong guard. Run the restore script first so live and queued agree, or read the refusal and pass the named override once the direction has been checked.",
+      "repro": "python scripts/dcp_restore_section_codes.py --council ku_ring_gai"
     }
   ],
   "post_merge": {
