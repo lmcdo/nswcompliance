@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The nightly data check could not open a database connection, so it had verified nothing for three nights. Because the merge gate asks when data-watch last succeeded, that one unset variable was blocking every open pull request, and the failure it reported named the freshness limit rather than the cause.",
-  "commit_hash": "PENDING",
+  "commit_hash": "063bae63",
   "files": [
     "scripts/validate_controls_against_source_pdf.py",
     "tests/test_data_watch_can_connect.py"
