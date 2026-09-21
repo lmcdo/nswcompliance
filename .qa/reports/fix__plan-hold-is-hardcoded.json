@@ -1,0 +1,106 @@
+{
+  "tier": "standard",
+  "justification": "Decides which councils may record that the plan behind their served numbers is the plan in force. A hardcoded hold kept three councils blocked after their chapters were repaired, so OC-17's plan-in-force sub-check could not fall no matter what was fixed — the check was watching a constant, not the data.",
+  "commit_hash": "68d3678d",
+  "files": [
+    "scripts/confirm_plan_in_force.py",
+    "tests/test_plan_hold_is_measured_not_listed.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry (is_active, content_hash, provisions_extracted_from_hash) and dcp_plan_as_at, both already read by this script and by DQ-70. No schema change and no new table.",
+    "assumption_mismatch": "HELD_BACK was a literal dict of five councils, four of them held for DQ-70 staleness, written when that list was accurate. It never re-measures. Measured 2026-09-20, immediately after the OCR re-read of city_of_sydney/section-3-general-provisions committed: DQ-70 fell 151 to 59 and the only chapters still carrying content_hash <> provisions_extracted_from_hash were ku_ring_gai (2) and northern_beaches (1). city_of_sydney, georges_river and woollahra had ZERO stale chapters and were still skipped. The dict also asserted that northern_beaches' monitored URL 'is pinned to the 2016 file and can never change', which stopped being true in #1139 when it was re-pointed at the council's live ePlanning export — the block held while its stated reason had already expired. Its ku_ring_gai entry said 8 chapters; there are 2.",
+    "new_vs_existing": "Changes only which councils the script offers to confirm. Applied once on production: three confirmations written (city_of_sydney/Sydney DCP 2012, georges_river/Georges River DCP 2021, woollahra/Woollahra DCP 2015), taking OC-17's failing-council count from 6 to 3.",
+    "external_source_error": "None — no network. The one fact that cannot be derived stays declared: Part G10 commenced 15 September 2025 and the Northern Beaches copy predates it, which no column records.",
+    "frontend_type": "No API or component change. This is an operator script feeding a data-quality claim.",
+    "user_failure_mode": "Two directions. Too strict and a council stays blocked forever after its chapters are repaired, which is the defect being fixed and which silently caps a public claim. Too loose and a confirmation is written while the council still serves text read from a superseded copy — attesting to the wrong version, which is the thing the confirmation exists to prevent. The hold is now derived from the same columns DQ-70 uses, so it releases exactly when the ledger says the staleness is gone, and a test pins the two together."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_plan_hold_is_measured_not_listed.py -q",
+    "fails_when": "A council held for staleness is hardcoded back into HELD_BACK; the derived hold is removed, releasing councils whose chapters have moved; the hold's condition stops matching DQ-70's columns, so a council can be released here while the ledger still counts its rows as stale; the skip message stops naming the measured count; northern_beaches stops being held, or its reason reverts to the expired claim about the 2016 URL; or the declared list grows, meaning holds are being hardcoded again rather than measured.",
+    "observed_red": "Four mutations planted, four CAUGHT: hardcoding a stale council again, removing the derived hold entirely, changing the hold's condition so it no longer matches DQ-70, and reverting the northern_beaches reason to the expired URL claim. 8 tests here, 101 across the related suites. Verified against production: the script offered 0 councils before and 3 after, and OC-17's failing-council list went from 6 to ['ku_ring_gai (no confirmation)', 'northern_beaches (no confirmation)', 'sutherland_shire (2 plan names served)']. One of these tests also had to be fixed rather than the code: it read the probe's SQL out of the source file, where the clauses never appear contiguously because the query is assembled from adjacent string literals."
+  },
+  "functions": [
+    {
+      "name": "STALE_CHAPTERS_SQL",
+      "file_line": "scripts/confirm_plan_in_force.py",
+      "input": "No parameters; executed once per run against the live registry.",
+      "output": "Councils mapped to how many of their active chapters carry content_hash <> provisions_extracted_from_hash — the same condition DQ-70 counts rows under.",
+      "if_none": "A council absent from the result has no stale chapters and is eligible, which is the release this change exists to make possible. It is a measurement taken at run time, so a repaired council is released on the next run without anyone editing the file."
+    },
+    {
+      "name": "HELD_BACK",
+      "file_line": "scripts/confirm_plan_in_force.py",
+      "input": "A declared mapping, now holding one council.",
+      "output": "The single hold the database cannot express: Northern Beaches' copy predates Part G10, which commenced 15 September 2025.",
+      "if_none": "An empty dict would mean every hold is derived, which is the target state. A growing dict is the warning sign, and a test caps it."
+    }
+  ],
+  "values": [
+    {
+      "name": "the hold is derived, not listed",
+      "value": "A run-time query replacing four dict entries",
+      "why": "The four entries were all DQ-70 staleness, which is derivable. Hardcoding it made the hold a snapshot: three councils reached zero stale chapters and stayed blocked because a literal does not re-measure, and nobody had reason to revisit it. Deriving it means a council is released the moment its chapters are repaired.",
+      "source": "Measured 2026-09-20 right after committing the city_of_sydney section-3 re-read: DQ-70 151 -> 59, three councils at zero stale chapters, all three still skipped.",
+      "if_missing": "OC-17's plan-in-force sub-check cannot fall no matter what is repaired, because the thing gating it is a constant.",
+      "read_at": "scripts/confirm_plan_in_force.py — HELD_BACK and STALE_CHAPTERS_SQL."
+    },
+    {
+      "name": "northern_beaches stays declared",
+      "value": "The one hold that is not derivable",
+      "why": "Its reason is a legal fact: Part G10 (Low and Mid-Rise Housing) commenced 15 September 2025 and our copy predates it. No column in the registry records what is in force, so nothing can derive it. Its old wording also claimed the monitored URL could never change, which #1139 made false — the block was right while its justification had expired, so the wording was corrected rather than carried forward.",
+      "source": "The commencement date, and #1139 which re-pointed the monitored URL at the council's live ePlanning export.",
+      "if_missing": "Dropping it would confirm a plan while serving text that predates a commenced amendment.",
+      "read_at": "scripts/confirm_plan_in_force.py — HELD_BACK."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Find which councils still have chapters read from a document version we no longer hold, so their confirmation is withheld until the re-read lands.",
+      "file_line": "scripts/confirm_plan_in_force.py — STALE_CHAPTERS_SQL",
+      "where_clause": "is_active AND provisions_extracted_from_hash IS NOT NULL AND content_hash IS NOT NULL AND content_hash <> provisions_extracted_from_hash, grouped by council. Deliberately the same three conditions DQ-70 applies, so the hold and the ledger cannot disagree."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Someone adds a council back to the dict when it is temporarily stale.",
+      "what_happens": "It stays held forever after its chapters are repaired, because the dict does not re-measure — which is exactly what happened to city_of_sydney, georges_river and woollahra.",
+      "mitigated": true,
+      "how": "A test asserts none of the four previously-listed councils appears in HELD_BACK, and another caps the dict's size so holds cannot quietly accumulate.",
+      "repro": "python -m pytest tests/test_plan_hold_is_measured_not_listed.py -k no_longer_listed -q"
+    },
+    {
+      "scenario": "The derived hold is removed, so every council becomes eligible.",
+      "what_happens": "A confirmation is written for a council still serving text read from a superseded copy, attesting to the wrong version — the precise failure the confirmation field exists to prevent.",
+      "mitigated": true,
+      "how": "A test asserts the derived skip is present and that its message names the measured count. Removing the branch fails both.",
+      "repro": "python -m pytest tests/test_plan_hold_is_measured_not_listed.py -k still_skipped -q"
+    },
+    {
+      "scenario": "The hold's condition drifts from DQ-70's.",
+      "what_happens": "A council is released here while the ledger still counts its rows as stale, so the confirmation contradicts the measurement sitting beside it and neither is obviously wrong.",
+      "mitigated": true,
+      "how": "A test reads DQ-70's BUILT query from the probe and asserts all three conditions appear in both, normalising away the table aliases DQ-70 carries because it joins.",
+      "repro": "python -m pytest tests/test_plan_hold_is_measured_not_listed.py -k same_columns -q"
+    },
+    {
+      "scenario": "A hold keeps a reason that has since expired.",
+      "what_happens": "The block survives on a justification that is no longer true, so the next reader either acts on a false premise or removes a hold that is still needed. The northern_beaches entry did exactly this: still correctly held, but for a URL condition #1139 had already fixed.",
+      "mitigated": true,
+      "how": "Its wording was corrected to the fact that still holds, and tests assert the expired claim cannot come back.",
+      "repro": "python -m pytest tests/test_plan_hold_is_measured_not_listed.py -k can_change -q"
+    },
+    {
+      "scenario": "The remaining three councils are read as needing the same fix.",
+      "what_happens": "They do not. ku_ring_gai and northern_beaches need their chapters re-read; sutherland_shire fails for a different reason entirely — it serves numbers under two plan names.",
+      "mitigated": false,
+      "how": "Not addressed here. This change releases the councils that had already been repaired; the other three each need their own work, and sutherland_shire's is not a confirmation problem at all.",
+      "repro": "python scripts/outreach_claim_checks.py OC-17"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. Three confirmation rows were written to dcp_plan_as_at by the script's normal --apply path, with its own CSV backup, and nothing else changed.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No — already verified against production: 0 councils offered before, 3 after, and OC-17's failing-council count fell from 6 to 3."
+  }
+}
