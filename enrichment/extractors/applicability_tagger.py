@@ -283,6 +283,36 @@ class ApplicabilityTagger:
             key = f"Part {m.group(1).upper()}"
             if key in parts:
                 return ("part", key)
+
+        # Appendices, amendments and technical manuals. Added 2026-09-21: six
+        # Leichhardt documents matched NO branch here at all, so no config entry
+        # could have resolved them however carefully it was written --
+        # appendix_b_building_typologies, appendix_d_waste_template,
+        # appendix_e_water_guidelines, tree_management_technical_manual,
+        # amendment_1_george_upward_streets, amendment_7_licensed_premises.
+        # Together with Part C Sections 3/4/5 they held 871 served rows tagged
+        # no_config, i.e. applying to every development type because nothing
+        # matched rather than because anything decided so.
+        #
+        # Each still resolves ONLY to a key the config declares. An unknown
+        # appendix returns None and stays no_config, which is the property this
+        # module is built on: the number may not be improved by inventing a key.
+        m = re.match(r"appendix_([a-z])(?:_|$)", t)
+        if m:
+            key = f"Appendix {m.group(1).upper()}"
+            if key in parts:
+                return ("part", key)
+
+        m = re.match(r"amendment_(\d+)(?:_|$)", t)
+        if m:
+            key = f"Amendment {int(m.group(1))}"
+            if key in parts:
+                return ("part", key)
+
+        if t.startswith("tree_management"):
+            key = "Tree Management Technical Manual"
+            if key in parts:
+                return ("part", key)
         return None
 
     def _get_ashfield_config(self, document_id: str) -> Dict[str, Any]:

@@ -1,0 +1,117 @@
+{
+  "tier": "critical",
+  "justification": "Nine ingested Leichhardt documents had no applicability config, so 871 served rows applied to every development type because nothing matched rather than because anything decided so. A planner looking at a terrace house was shown vehicle repair station and industrial parking controls. This declares their scope from the documents' own content and adds the three matcher branches without which six of them could never have resolved however they were configured.",
+  "commit_hash": "PENDING",
+  "files": [
+    "enrichment/config/leichhardt_config.py",
+    "enrichment/extractors/applicability_tagger.py",
+    ".claude/dq_checks.json",
+    "tests/test_leichhardt_documents_all_resolve.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions (v2_applicable_zones, v2_applicable_dev_types, v2_zone_source, v2_dev_type_source) read to measure and, via the existing retag script, written. No schema change. LEICHHARDT_CONFIG['parts'] and ApplicabilityTagger._leichhardt_slug_key are the only code touched.",
+    "assumption_mismatch": "Three. (1) DQ-33 reads as a tagger regression -- 'document_ids are failing to resolve against council config AGAIN'. It is not: the config was written from a partial reading of the plan and the corpus grew past it. Its own docstring lists eight parts as the structure; the DCP has Part C Sections 3, 4 and 5 plus six appendices, amendments and manuals. (2) I assumed config alone would fix it. Six of the nine slugs match no regex branch in the tagger at all, so no config entry could ever have been reached. (3) I assumed the honest fix might require narrowing everything. It does not: config_all is a real state distinct from no_config, and five of the nine are genuinely all-development documents.",
+    "new_vs_existing": "No new mechanism. The parts dict, the slug matcher and scripts/retag_applicability_slug_docids.py all existed; this adds entries, three branches in the same shape as the two already there, and re-runs the existing retag. The retag was used rather than a bespoke update because it carries the safety this needs: dry-run default, backup table, per-row optimistic-concurrency guard and printed rollback SQL.",
+    "external_source_error": "No network. Every scope below was read from the affected provisions themselves rather than from the document title, because the titles are what made this look simple: 'appendix_b_building_typologies' sounds residential and its section headers span C4 and C6, so it is declared ALL rather than narrowed on the strength of its name.",
+    "frontend_type": "No API, component or type change. The served values change; their shape does not.",
+    "user_failure_mode": "Asymmetric, and that asymmetry decided every entry. Too broad and a planner is shown controls that do not apply -- noise, and the status quo. Too narrow and a binding control is hidden from the property it binds, which is the liability and is silent. So a part is narrowed only where its own provisions and its title agree unambiguously, and says ALL otherwise."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_leichhardt_documents_all_resolve.py -q",
+    "fails_when": "any of the nine documents stops resolving to a config key; an unknown appendix or amendment starts resolving to an invented key; a part that was declared ALL is quietly narrowed; Part C Section 4 stops being non-residential or Section 3 stops being residential; or the appendix/amendment/tree-manual branches are removed, which would make six of the nine unreachable again.",
+    "observed_red": "Verified against production, not only in tests. Before: 1,986 served council rows with v2_dev_type_source='no_config', of which leichhardt 871. After the retag: 1,069 total and leichhardt absent from the list entirely. DQ-33 went from 708 over its floor to 0, and OC-17 went from FAILS to HOLDS. 25,315 rows updated, 0 skipped by the concurrency guard, backup table regulatory_provisions_dq33_backup_20260921.",
+    "manual_probe": "The first --apply attempt ABORTED on its own safety check -- 'backup smaller than plan' -- because it reused the August backup table (22,007 rows) against a 25,315-row plan. Nothing was written. A fresh backup table name was required, which is the guard behaving exactly as intended."
+  },
+  "functions": [
+    {
+      "name": "ApplicabilityTagger._leichhardt_slug_key",
+      "file_line": "enrichment/extractors/applicability_tagger.py",
+      "input": "A document_id such as Leichhardt_DCP_2013__appendix_b_building_typologies.",
+      "output": "('part', key) for a key the config declares, or None.",
+      "if_none": "None leaves the row at ALL with source no_config, which is the property this module is built on: an unknown appendix stays unresolved rather than being mapped to a plausible-looking key. Tested with appendix_z and amendment_99."
+    },
+    {
+      "name": "LEICHHARDT_CONFIG['parts']",
+      "file_line": "enrichment/config/leichhardt_config.py",
+      "input": "A declared mapping of part name to zones, development types and site conditions.",
+      "output": "Nine new entries: Part C Sections 3, 4 and 5; Appendices B, D and E; the Tree Management Technical Manual; Amendments 1 and 7.",
+      "if_none": "A document whose part is absent falls through to ALL and is counted by DQ-33. That fallthrough is deliberate and stays."
+    }
+  ],
+  "values": [
+    {
+      "name": "Part C Section 4 is non-residential",
+      "value": "commercial, retail, office, industrial, light and heavy industry, warehouse, food and drink, mixed use",
+      "why": "Read from its own provisions, not its title: 'C4.19 Objectives for vehicle repair stations', 'C4.10 Parking compliance for industrial development', 'C4.15 Location of facilities with potential adverse amenity impacts'. 286 served rows.",
+      "source": "Sampled from regulatory_provisions 2026-09-21.",
+      "if_missing": "Industrial and vehicle-repair controls are shown against houses, which is the state this fixes.",
+      "read_at": "enrichment/config/leichhardt_config.py -- 'Part C Section 4'."
+    },
+    {
+      "name": "five of the nine stay ALL",
+      "value": "Part C Section 5, Appendix B, Appendix D, Appendix E, Tree Management, Amendment 1",
+      "why": "Each genuinely applies to any development. Section 5's controls are noise impacts that bind neighbours as much as venues; Appendix E is the 1% AEP flood extent, a site condition; the tree manual governs arboricultural reports for any DA affecting a tree; Appendix B's headers span C4 and C6, so it is referenced from more than one Part and narrowing it would guess. config_all is not no_config: it means the config says all, rather than nothing matched.",
+      "source": "Sampled provisions from each document, 2026-09-21.",
+      "if_missing": "Narrowing these on the strength of their titles would hide binding controls, which is the failure this is most careful to avoid.",
+      "read_at": "enrichment/config/leichhardt_config.py -- the 2026-09-21 block."
+    },
+    {
+      "name": "OC-10 and OC-17 declared true",
+      "value": "The declared state catching up with the checks",
+      "why": "Both now pass: DQ-70 is 0 after the northern_beaches commit, every served council has a confirmed plan in force, and DQ-33 is 0 after this retag. The gate reports a claim declared false whose check passes as CONTRADICTED, which is the correct behaviour and is how it surfaced.",
+      "source": "python scripts/dq_check.py --outreach, 2026-09-21.",
+      "if_missing": "The gate stays red on a contradiction while the underlying claims are true.",
+      "read_at": ".claude/dq_checks.json -- checks.OC-10, checks.OC-17."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Size the defect per council and per document before writing any config, so the scope of each entry is read from its own rows.",
+      "file_line": "ad hoc; the shipped change adds no query",
+      "where_clause": "is_current AND v2_is_actionable AND source_council IS NOT NULL AND v2_dev_type_source='no_config', grouped by council and then by document_id."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The number is made green by declaring everything ALL.",
+      "what_happens": "no_config clears and nothing about what is served changes. DQ-33's complaint is that these rows apply to every development type when they should not, so relabelling 'silently ALL' as 'explicitly ALL' fixes the label and leaves the defect.",
+      "mitigated": true,
+      "how": "Three of the nine are narrowed from their own content, covering 491 of the 871 rows. The five left at ALL each carry the evidence for why in the entry itself.",
+      "repro": "python -m pytest tests/test_leichhardt_documents_all_resolve.py -k narrowed -q"
+    },
+    {
+      "scenario": "A part is narrowed on the strength of its title.",
+      "what_happens": "A binding control is hidden from the property it binds, silently. appendix_b_building_typologies reads residential from its name and its section headers span C4 and C6.",
+      "mitigated": true,
+      "how": "Narrowed only where title and provisions agree unambiguously; ALL otherwise, with the reason recorded.",
+      "repro": "python -m pytest tests/test_leichhardt_documents_all_resolve.py -k appendix_b -q"
+    },
+    {
+      "scenario": "An unknown appendix arrives and gets mapped to a plausible key.",
+      "what_happens": "A document is scoped by resemblance rather than by declaration, which is the failure the module's own comment forbids: the count may not be improved by inventing a key.",
+      "mitigated": true,
+      "how": "Each branch resolves only to a key the config already declares; appendix_z and amendment_99 return None and stay no_config. Tested.",
+      "repro": "python -m pytest tests/test_leichhardt_documents_all_resolve.py -k unknown -q"
+    },
+    {
+      "scenario": "The other councils are assumed fixed by this.",
+      "what_happens": "1,069 no_config rows remain -- parramatta 341, canterbury_bankstown 216, marrickville 157, ashfield 118 and five smaller. DQ-33 is under its floor, so it reports 0 and stops naming them.",
+      "mitigated": false,
+      "how": "Not addressed. Each needs the same treatment: read the unconfigured documents, declare their scope. DQ-33 going green does NOT mean those rows are correctly scoped, only that there are fewer than the floor.",
+      "repro": "see queries[0]"
+    },
+    {
+      "scenario": "The next council's documents arrive unconfigured.",
+      "what_happens": "Exactly this again. Nothing checks that an ingested document resolves to a config key, and the fallthrough is silent and safe -- a planner sees more than they should, never less, so nothing looks wrong.",
+      "mitigated": false,
+      "how": "Not addressed here and it is the durable fix: a check at INGESTION that fails when a document resolves to nothing, while someone is looking at it, rather than a ratchet noticed months later.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-33"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Not needed, but reversible: 25,315 rows were updated and the prior values are in regulatory_provisions_dq33_backup_20260921. The rollback UPDATE is printed by the script and reproduced in the commit message.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Confirm on a Leichhardt terrace address that vehicle-repair and industrial parking controls no longer appear, and that flood, tree and waste controls still do."
+  }
+}

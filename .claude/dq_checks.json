@@ -1071,7 +1071,7 @@
       "kind": "outreach_claim",
       "claim": "Planning Portal data is queried live; DCP data is dated to the plan it came from.",
       "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
-      "declared": "false",
+      "declared": "true",
       "check": [
         "python",
         "scripts/outreach_claim_checks.py",
@@ -1174,7 +1174,7 @@
       "kind": "outreach_claim",
       "claim": "The rules and numbers shown apply to this property, from the plan in force.",
       "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
-      "declared": "false",
+      "declared": "true",
       "check": [
         "python",
         "scripts/outreach_claim_checks.py",
