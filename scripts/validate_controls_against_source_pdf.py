@@ -463,16 +463,26 @@ class Summary:
 
 # ---------------------------------------------------------------------- I/O
 
-def find_env() -> Path:
-    """This repo is BARE; only the bare root holds .env, never a worktree."""
+def find_env() -> Path | None:
+    """This repo is BARE; only the bare root holds .env, never a worktree.
+
+    None when there is none. CI has no .env -- it passes the credentials in the
+    environment -- so an absent file is a normal state here, not a fatal one. It
+    used to sys.exit, which made a runner's missing .env indistinguishable from a
+    broken checkout.
+    """
     for base in [REPO_ROOT, *REPO_ROOT.parents]:
         if (base / ".env").exists():
             return base / ".env"
-    sys.exit(f"FATAL: no .env at or above {REPO_ROOT}")
+    return None
 
 
 def load_env() -> None:
-    for line in find_env().read_text(encoding="utf-8", errors="replace").splitlines():
+    """Fill gaps from the bare root's .env. setdefault, so a real environment wins."""
+    path = find_env()
+    if path is None:
+        return
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
             k, _, v = line.partition("=")
@@ -480,12 +490,36 @@ def load_env() -> None:
 
 
 def connect():
+    """Read-only connection, from DATABASE_URL if there is one and PG* if not.
+
+    This indexed os.environ["PGHOST"] directly, and .github/workflows/data-watch.yml
+    passes DATABASE_URL and R2_* and no PG* variables at all -- so the nightly run
+    died with KeyError: 'PGHOST' before reading a single row. It had failed every
+    night since 2026-09-18 (last success 2026-09-17) when this was found on
+    2026-09-21, and because the merge gate's freshness step asks when data-watch
+    last SUCCEEDED, that one missing variable was blocking every open PR.
+
+    DATABASE_URL is how every other script under scripts/ connects, so it is
+    preferred here rather than added as an afterthought. When neither is available
+    the failure names what is missing, instead of a bare KeyError on whichever
+    variable happened to be read first.
+    """
     load_env()
-    conn = psycopg2.connect(
-        host=os.environ["PGHOST"], user=os.environ["PGUSER"],
-        password=os.environ["PGPASSWORD"], dbname=os.environ["PGDATABASE"],
-        port=os.environ.get("PGPORT", "5432"),
-        sslmode=os.environ.get("PGSSLMODE", "require"), connect_timeout=30)
+    dsn = (os.environ.get("DATABASE_URL") or "").strip()
+    if dsn:
+        conn = psycopg2.connect(dsn, connect_timeout=30)
+    else:
+        missing = [k for k in ("PGHOST", "PGUSER", "PGPASSWORD", "PGDATABASE")
+                   if not (os.environ.get(k) or "").strip()]
+        if missing:
+            sys.exit("FATAL: no DATABASE_URL, and no usable PG* fallback -- "
+                     f"unset: {', '.join(missing)}. The data-watch workflow "
+                     "supplies DATABASE_URL; a local run reads the bare root's .env.")
+        conn = psycopg2.connect(
+            host=os.environ["PGHOST"], user=os.environ["PGUSER"],
+            password=os.environ["PGPASSWORD"], dbname=os.environ["PGDATABASE"],
+            port=os.environ.get("PGPORT", "5432"),
+            sslmode=os.environ.get("PGSSLMODE", "require"), connect_timeout=30)
     conn.set_session(readonly=True, autocommit=True)
     return conn
 
