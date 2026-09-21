@@ -1817,8 +1817,27 @@ class DCPExtractor:
         (ce-ai-extraction-decision-2026-07). The result is the same section-dict
         shape, so the downstream diff/enqueue/guard pipeline is unchanged."""
         if ai_extraction_enabled():
-            from scripts.ai_extractor import ai_extract_chapter
-            return ai_extract_chapter(self.pdf_path, self.council)
+            from scripts.ai_extractor import ai_extract_chapter, configured_model
+            _model = configured_model()
+            if _model:
+                print(f"    [extractor] LLM document reader ({_model})")
+                return ai_extract_chapter(self.pdf_path, self.council)
+            # Enabled, but this deployment has no provider key. Fall back rather than
+            # fail: making the LLM the default (2026-09-21) must not break a nightly
+            # job that has always run the reader below. Measured the same day, the
+            # Railway dcp-extract service carries DATABASE_URL, R2_* and MODAL_OCR_*
+            # and no provider key at all, so a hard failure here would have stopped
+            # every council's extraction to enable something that could not run there.
+            #
+            # LOUD, not silent. The distinction that matters is not fallback-versus-
+            # failure, it is whether anyone can tell afterwards: this prints on every
+            # affected run, and the reader it falls back to is the one that needs
+            # per-council config and produced the junk section codes this default was
+            # flipped to stop producing.
+            print("    [extractor] AI_EXTRACTION is ON but NO provider key is set in "
+                  "this environment -- falling back to the regex/geometry reader. "
+                  "That reader needs per-council config; set ANTHROPIC_API_KEY, "
+                  "OPENAI_API_KEY or MISTRAL_API_KEY on this service to use the LLM.")
         # Reached only when someone has explicitly set AI_EXTRACTION=0. Say so, and
         # say it on the extraction output where a person reading a review queue will
         # see it -- a fallback nobody notices is how this path stayed the default for

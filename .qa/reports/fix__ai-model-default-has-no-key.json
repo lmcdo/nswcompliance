@@ -1,0 +1,106 @@
+{
+  "tier": "standard",
+  "justification": "LLM extraction became the default on 2026-09-21, and AI_MODEL defaulted to a provider whose key is not set in this environment, reading it with a bare os.environ[...]. Every chapter extraction now takes that path, so the default configuration raised KeyError before reading a page.",
+  "commit_hash": "944e543c",
+  "files": [
+    "scripts/ai_extractor.py",
+    "tests/test_ai_model_default_follows_the_keys.py"
+  ],
+  "pre_impl": {
+    "existing_data": "No database, no schema, no network in the change itself. The only inputs are environment variables and the existing _PROVIDERS mapping, which is unchanged.",
+    "assumption_mismatch": "Turning AI_EXTRACTION on by default was treated as a one-line switch. It was not: it moved a previously opt-in code path onto every extraction, and that path had an unguarded os.environ['MISTRAL_API_KEY'] behind a default of AI_MODEL='mistral'. Measured in this environment: ANTHROPIC_API_KEY, OPENAI_API_KEY and GEMINI_API_KEY are set and MISTRAL_API_KEY is not. The module docstring also still read 'Enabled by AI_EXTRACTION=1; off by default', which the same change had made false.",
+    "new_vs_existing": "No new provider and no new mechanism. _PROVIDERS already maps four models to their call functions; this adds a preference list over the same names and a helper that returns the first whose key is present. The explicit AI_MODEL setting is still consulted first and still wins.",
+    "external_source_error": "This is the code that chooses which paid API to call. A missing key now fails before any request with a message naming every key it looked for. A key that is present but unusable -- the Anthropic account was out of credit when this was found -- is a different failure and still surfaces as the provider's own error, loudly, from _call_with_retry. Deliberately not papered over: a credit problem is not a configuration problem and should not be silently routed around.",
+    "frontend_type": "No API, component or type change.",
+    "user_failure_mode": "Two directions. Defaulting to an unconfigured provider makes every extraction fail on a KeyError that names one variable and explains nothing -- the same shape as the data-watch job that died on os.environ['PGHOST'] the same night and blocked every merge for three days. Silently falling back to any provider that answers would be worse: the models are not interchangeable, haiku made a real-chapter error which is why sonnet was added, and a chapter read by a model nobody chose is a result nobody can reason about. So the choice is deterministic, ordered by evidence, and stated."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_ai_model_default_follows_the_keys.py -q",
+    "fails_when": "the default reverts to a fixed model name; a blank or whitespace-only key counts as configured; the no-key case returns a guess instead of raising; the preference order stops putting the hand-verified model first; an explicit AI_MODEL stops overriding the default; the error message stops naming every key it looked for or the AI_EXTRACTION=0 escape; a preference entry names a model that is not in _PROVIDERS; or the module docstring goes back to claiming the extractor is off by default.",
+    "observed_red": "5 mutations planted, 5 caught: default reverted to a fixed model, blank key treated as configured, no-key case returning 'mistral' instead of raising, preference order flipped to put mistral first, and the stale docstring restored. 12 tests here."
+  },
+  "functions": [
+    {
+      "name": "_default_model",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "No arguments; reads the provider key environment variables named in _MODEL_PREFERENCE.",
+      "output": "The name of the first model whose key is present and non-blank, or RuntimeError naming every key it looked for.",
+      "if_none": "No provider key at all raises rather than guessing. That is correct and must stay: extraction is now the default path, so a silent fallback would read a whole council's plan with a model nobody selected."
+    },
+    {
+      "name": "_MODEL_PREFERENCE",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "A declared ordering of (model name, env key) pairs.",
+      "output": "The order _default_model walks. Ordered by evidence of working on a real chapter, not by price.",
+      "if_none": "An empty list would make _default_model always raise, which a test would catch via the provider-name check."
+    }
+  ],
+  "values": [
+    {
+      "name": "sonnet is preferred over mistral",
+      "value": "The order of _MODEL_PREFERENCE",
+      "why": "Not a price ranking. sonnet was hand-verified on marrickville/part7-s3-sex-industry -- 49 of 49 objectives and controls, every section number correct -- and was added on 2026-09-05 specifically because haiku made a real-chapter error. mistral is the cheapest and was the old default, but it answered 429 on both attempts ever made with it, and its key is absent here.",
+      "source": "project-ai-extraction-decided-but-unused-2026-09 and the module's own validation notes.",
+      "if_missing": "The default picks whichever provider is alphabetically or accidentally first, and a council's plan is read by a model chosen by nothing.",
+      "read_at": "scripts/ai_extractor.py -- _MODEL_PREFERENCE."
+    },
+    {
+      "name": "a blank key is not a configured key",
+      "value": "(os.getenv(k) or '').strip() rather than k in os.environ",
+      "why": "Setting a variable to an empty string is how a deployment records one it has not filled in yet. Treating that as configured selects a provider that will fail on its first call, after the download and the chunking.",
+      "source": "Standard deployment behaviour; pinned by a test because the membership test reads as equivalent.",
+      "if_missing": "A half-provisioned environment fails late and expensively instead of immediately.",
+      "read_at": "scripts/ai_extractor.py -- _default_model."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "None. This change reads environment variables only and issues no SQL.",
+      "file_line": "scripts/ai_extractor.py -- _default_model",
+      "where_clause": "n/a"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A provider key is present but the account cannot be used.",
+      "what_happens": "Exactly what happened when this was found: ANTHROPIC_API_KEY was set and the API answered 'Your credit balance is too low'. The run failed, wrote nothing, and left needs_extraction=TRUE for retry.",
+      "mitigated": false,
+      "how": "Deliberately not handled here. A credit or quota problem is not a configuration problem, and routing around it silently would pick a different model for one chapter and not the next -- which is exactly the non-determinism the proof gate exists to bound. It surfaces as the provider's own error from _call_with_retry, loudly.",
+      "repro": "AI_MODEL=sonnet python scripts/dcp_extract_changed.py --council northern_beaches --chapter warringah-dcp-2011-full --review"
+    },
+    {
+      "scenario": "Someone adds a provider to _PROVIDERS but not to _MODEL_PREFERENCE.",
+      "what_happens": "It is never chosen by default, however well configured. Not an error, but a capability that quietly does nothing -- the same shape as the extractor that sat off for two months.",
+      "mitigated": false,
+      "how": "Not caught. The test asserts the reverse direction, that every preference entry names a real provider, because a typo there silently skips a configured provider and falls through to one that is not.",
+      "repro": "python -m pytest tests/test_ai_model_default_follows_the_keys.py -k real_provider -q"
+    },
+    {
+      "scenario": "The preference order is treated as a cost ranking and re-sorted.",
+      "what_happens": "mistral returns to the front on price and the default becomes a model that has answered 429 on every attempt, in an environment with no key for it.",
+      "mitigated": true,
+      "how": "The ordering carries its reasoning inline, and a test pins sonnet ahead of mistral when both keys are present.",
+      "repro": "python -m pytest tests/test_ai_model_default_follows_the_keys.py -k wins_over -q"
+    },
+    {
+      "scenario": "No provider key at all, and the change guesses one anyway.",
+      "what_happens": "The chapter is read by a model nobody selected and the failure appears later as a provider auth error, after the PDF download and chunking, attributed to the wrong thing.",
+      "mitigated": true,
+      "how": "It raises, naming every key it looked for and the AI_EXTRACTION=0 escape. A planted mutation that returns 'mistral' instead is caught.",
+      "repro": "python -m pytest tests/test_ai_model_default_follows_the_keys.py -k raises -q"
+    },
+    {
+      "scenario": "The docstring keeps saying the extractor is off by default.",
+      "what_happens": "The next reader believes a switch is opt-in when it is the default, which is how it was left off for two months after being verified.",
+      "mitigated": true,
+      "how": "Corrected, and a test asserts the old wording cannot come back.",
+      "repro": "python -m pytest tests/test_ai_model_default_follows_the_keys.py -k docstring -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. This change writes nothing.",
+    "secrets": "No. It reads the presence of provider key variables and never prints, logs or transmits their values.",
+    "other_repo": "No.",
+    "manual_verify": "Confirm the Railway dcp-extract service has at least one provider key set, since extraction is now the default path there; without one every nightly run will now raise this error by design rather than silently reading with the regex reader."
+  }
+}

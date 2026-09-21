@@ -4,7 +4,8 @@ Reads any PDF layout via a document-capable LLM (no per-council regex/config), a
 returns section dicts in the SAME shape the regex extractor produces, so the
 downstream diff / enqueue / guard pipeline is unchanged.
 
-Enabled by AI_EXTRACTION=1; off by default. Model picked by AI_MODEL
+Enabled by default since 2026-09-21 (#1155); set AI_EXTRACTION=0 to disable.
+Model picked by AI_MODEL
 (haiku | sonnet | mistral | sol). Validated on the watermarked Woollahra c2: Haiku 141
 clean / $0.63, Mistral-small 89 clean / $0.04 (regex got 1 garbage blob). sol (OpenAI
 gpt-5.6-sol, OPENAI_API_KEY) added 2026-09-13 when Anthropic credit ran out.
@@ -406,6 +407,60 @@ def _is_retryable(exc: Exception) -> bool:
         or status in (429, 500, 502, 503, 529)
 
 
+#: Preference order when AI_MODEL is unset, by EVIDENCE OF WORKING ON A REAL CHAPTER
+#: rather than by price. sonnet was hand-verified on marrickville/part7-s3-sex-industry
+#: -- 49 of 49 objectives and controls, every section number correct -- and was added
+#: on 2026-09-05 precisely because haiku made a real-chapter error. mistral is the
+#: cheapest and was the old default, but it answered 429 on both attempts that have
+#: ever been made with it, and its key is not present in every environment.
+_MODEL_PREFERENCE = (
+    ("sonnet", "ANTHROPIC_API_KEY"),
+    ("haiku", "ANTHROPIC_API_KEY"),
+    ("sol", "OPENAI_API_KEY"),
+    ("mistral", "MISTRAL_API_KEY"),
+)
+
+
+def configured_model() -> str | None:
+    """The model this environment can actually use, or None when no key is set.
+
+    Callers use this to decide whether the LLM path is available at all, without
+    catching an exception to find out. _default_model raises because by the time the
+    extractor is choosing a provider there is no sensible answer but to stop; this is
+    the question asked one step earlier, where "not available here" is a real state.
+    """
+    try:
+        return _default_model()
+    except RuntimeError:
+        return None
+
+
+def _default_model() -> str:
+    """The first model whose key is actually present.
+
+    AI_MODEL used to default to "mistral" unconditionally and _call_mistral reads
+    os.environ["MISTRAL_API_KEY"] with no guard. That was survivable while extraction
+    was opt-in: nobody reached it without choosing to. #1155 made extraction the
+    default on 2026-09-21, which put a bare KeyError on the path every chapter now
+    takes, in an environment where that key is not set -- the same shape as the
+    data-watch job that died on os.environ["PGHOST"] the same night and blocked every
+    merge for three days.
+
+    Choosing by what is configured, rather than failing on what is not, means a
+    correctly-provisioned environment just works. An environment with NO provider key
+    still fails -- it must -- but it fails naming every key it looked for instead of
+    the one that happened to be read first.
+    """
+    for name, env_key in _MODEL_PREFERENCE:
+        if (os.getenv(env_key) or "").strip():
+            return name
+    raise RuntimeError(
+        "AI extraction is enabled but no provider key is set. Looked for: "
+        + ", ".join(sorted({k for _n, k in _MODEL_PREFERENCE}))
+        + ". Set one, or set AI_EXTRACTION=0 to use the regex reader (which needs "
+          "per-council config and is why the LLM path is the default).")
+
+
 def _call_with_retry(model: str, pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     fn = _PROVIDERS.get(model)
     if fn is None:
@@ -491,7 +546,7 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
     DCPExtractor.extract(). `council` is accepted for signature parity (the model
     needs no per-council config)."""
     from pypdf import PdfReader
-    model = (model or os.getenv("AI_MODEL", "mistral")).strip().lower()
+    model = (model or os.getenv("AI_MODEL") or _default_model()).strip().lower()
     reader = PdfReader(str(pdf_path))
     total = len(reader.pages)
     collected: list[dict] = []
