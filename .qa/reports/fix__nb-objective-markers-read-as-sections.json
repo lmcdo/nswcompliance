@@ -1,106 +1,141 @@
 {
-  "tier": "standard",
-  "justification": "Warringah's objective and requirement markers were being read as section headings, so about one row in nine of a Northern Beaches re-read cited a clause number the document has no section for. One of those rows was auto-rejected and blocked the whole chapter from committing, which is the last thing standing between OC-10 and passing.",
-  "commit_hash": "84177226",
+  "tier": "critical",
+  "justification": "Turns intelligent extraction on by default and makes its deterministic proof mandatory, on the path that decides what regulatory text is served. Both halves were built and decided in July 2026; both then sat switched off or optional while hand-written per-council pattern exceptions accumulated in their place. This flips both defaults, refuses a commit carrying no proof at all, and adds a lint in the pre-commit hook AND in CI so neither can be quietly undone again.",
+  "commit_hash": "PENDING",
   "files": [
     "scripts/dcp_extract_changed.py",
-    "tests/test_warringah_markers_are_not_sections.py"
+    "scripts/dcp_supersede_guard.py",
+    "scripts/lint_extraction_defaults.py",
+    "scripts/measure_heading_detection.py",
+    ".githooks/pre-commit",
+    ".github/workflows/gates.yml",
+    "tests/test_extraction_stays_intelligent_and_proven.py",
+    "tests/test_warringah_markers_are_not_sections.py",
+    "tests/test_the_write_path_reads_the_fidelity_verdict.py",
+    "tests/test_dcp_commit_refuses_section_loss.py",
+    "tests/conftest.py",
+    "tests/test_a_section_starting_mid_page.py",
+    "tests/test_pdf_page_release.py",
+    "tests/test_dcp_extract_changed.py"
   ],
   "pre_impl": {
-    "existing_data": "dcp_review_queue rows from the 2026-09-20 re-read, read only to measure which refs the current pattern produces. No schema change, no write, no new query: the change is one entry in COUNCIL_SECTION_RE_OVERRIDES, a dict that already holds three councils.",
-    "assumption_mismatch": "The rejected R2 row looked like the junk_ref class already fixed at heading detection in #1131, so the first instinct was to supersede it and move on. Two measurements stopped that. First, its text is real control wording -- front-door visibility, facade articulation, side setbacks -- and searching the whole batch and the live rows for 'front door directly visible from the street' returned that row and nothing else, so superseding it would lose controls. Second, counting prefixes across the batch showed it was not one row but fourteen: O1, O4, O5, O8, O16, O21, O24, O26, O27, R2, R10, R11, R13, R23. A single-row decision would have left thirteen more.",
-    "new_vs_existing": "No new mechanism. COUNCIL_SECTION_RE_OVERRIDES exists for exactly this, and two of its three entries were added for the same defect in other plans: Woollahra excludes O1/C1 (2026-05) and Marrickville excludes C8/O9. This adds a fourth entry in the same shape. The alternative considered and rejected was widening is_junk_heading, which is shared by every council and would risk plans where O or R is a real part letter.",
-    "external_source_error": "The reader opens the council's PDF from R2. Unchanged. The claim that O and R are markers rather than parts is read off the document's own wording, which the rows quote back: 'O1 To establish a safe internal access road network that serves the development' and 'R2 Dwellings with a street frontage to have a front door directly visible from the street.' Neither is a section title.",
-    "frontend_type": "No API, component or type change. This alters which headings the extractor recognises, upstream of anything the frontend reads.",
-    "user_failure_mode": "Two directions and the second is far worse. Too loose and fourteen provisions cite clause numbers that do not exist as sections, which is unverifiable against the source. Too strict and a genuine part stops being extracted altogether, so its controls are simply absent with nothing to show they are missing -- and Warringah numbers some of its parts, so requiring a letter prefix would silently drop '12 Key Sites' and '14 Residential Flat Buildings'. The letter is therefore restricted but kept optional, and both halves are tested."
+    "existing_data": "dcp_review_queue (fidelity_status, status, created_at) read by the guard; no schema change, no new table, no migration. The extractor reads council PDFs from R2 exactly as before. The only behavioural change to data is which reader produces a queued row and whether an unproven batch may commit.",
+    "assumption_mismatch": "Four, each caught by measuring. (1) I argued for a typography-based heading detector and built a measurement to prove it; the measurement said the regex was better on recall and typography better on precision, and then showed my own first version was scoring contents-page lines as headings because it read only the first 120 pages of a 396-page document. (2) I assumed a coverage check would be sufficient proof; it is not, because a wrong-but-complete partition satisfies it -- the mid-page bug fixed earlier the same night would have passed. (3) I assumed the AI extractor needed building; it already existed, had been run on marrickville's 26 chapters, and had been hand-verified at 49 of 49 controls on its worst chapter. (4) I listed four proof failures as needing a human; on challenge, every one is answerable by re-reading the cited pages and feeding the failure back, which is what the design now says.",
+    "new_vs_existing": "No new extractor and no new gate. scripts/ai_extractor.py already existed behind AI_EXTRACTION; dcp_fidelity_gate already graded rows against source pages; enforce_fidelity was added earlier the same night. This changes two defaults, closes one hole in the guard, and adds a lint. The lint follows lint_hardcoded_zone_codes.py's shape and check_test_quarantine.py's ratchet semantics rather than inventing either. measure_heading_detection.py is new and is a measurement tool, not a pipeline component.",
+    "external_source_error": "The extractor calls a paid LLM provider. Failures are not absorbed: provider errors re-raise after retries and ChunkLoss refuses to return a partial chapter rather than dropping pages, so a failed read stops the chapter instead of quietly falling back. Tests can no longer reach a provider at all -- three test files began making real calls the moment the default flipped, and only failed because the provider rate-limited them.",
+    "frontend_type": "No API route, component or type change. This is the extraction and commit path behind the served provisions.",
+    "user_failure_mode": "Three directions. Reading badly and publishing it -- which is the status quo the regex reader produced: fourteen clause markers filed as sections on northern_beaches, our own ref slug served as a council section number on 122 live rows. Reading well and publishing it unproven -- which is what an abstaining fidelity guard allowed, and which is the more dangerous of the two because it looks clean. And refusing too much, which stops the pipeline and gets the guard switched off; the bar is therefore read off the measured distribution and each refusal names a chapter-scoped override."
   },
   "falsifiable_check": {
-    "command": "python -m pytest tests/test_warringah_markers_are_not_sections.py -q",
-    "fails_when": "An O or R marker is accepted as a section heading again; the letter class is widened back to A-Z, which is the defect; the letter is made mandatory, which loses Warringah's numbered parts; the class is narrowed below H, which loses Part G10; the override stops being scoped to northern_beaches; or the pattern stops exposing exactly two groups, which the extractor's _match_groups assumes for an override.",
-    "observed_red": "4 mutations planted, 4 caught: the class widened back to A-Z, the letter made mandatory, the class narrowed to A-F, and the pattern neutered to match nothing. 22 tests here. Every accepted and rejected case in the file is a real ref from the 124-row 2026-09-20 batch rather than an invented one, and a re-extraction with the override in place is the end-to-end check."
+    "command": "python -m pytest tests/test_extraction_stays_intelligent_and_proven.py tests/test_warringah_markers_are_not_sections.py tests/test_the_write_path_reads_the_fidelity_verdict.py tests/test_dcp_commit_refuses_section_loss.py -q && python scripts/lint_extraction_defaults.py",
+    "fails_when": "AI_EXTRACTION or DCP_FIDELITY_GATE becomes opt-in again; ai_extraction_enabled is removed or renamed; the disabled path stops announcing itself; the no-proof-no-commit branch is removed or stops raising, so a batch with no fidelity verdict can commit; a ninth per-council exception is added without a justification comment; the lint is dropped from the pre-commit hook or from gates.yml; a test regains the ability to call a real provider; or an O/R clause marker is accepted as a Warringah section heading.",
+    "observed_red": "Ten mutations planted across two rounds, ten caught -- but four of them SURVIVED the first version of the lint and each survivor was a real defect in it, not an equivalent mutant: it scanned every string in a function including the docstring, so a docstring mentioning 0/false/no/off disguised a flipped switch; it matched 'raise FidelityRefused' as text, so commenting the statement out passed; it handled only ast.Assign, so the annotated COUNCIL_SECTION_RE_OVERRIDES was invisible to the very check written for it; and it decoded git output as cp1252, so on Windows it crashed in a reader thread rather than reporting. Full suite 6,713 passed, 2 skipped, 0 failed.",
+    "manual_probe": "The lint was run against mutated copies of the real files rather than asserted against source text, because a lint that cannot fail is exactly the failure being guarded against."
   },
   "functions": [
     {
-      "name": "COUNCIL_SECTION_RE_OVERRIDES['northern_beaches']",
+      "name": "ai_extraction_enabled",
       "file_line": "scripts/dcp_extract_changed.py",
-      "input": "One page of text, matched line by line in MULTILINE mode by the extractor's heading finder.",
-      "output": "Two groups, the section code and its title, for lines whose code is optional-letter-A-to-H plus digits with optional dotted parts.",
-      "if_none": "No match means the page carries no heading and extends the section already open, which is the common case and is unchanged by this entry."
+      "input": "The AI_EXTRACTION environment variable, absent by default in every environment.",
+      "output": "True unless explicitly set to 0/false/no/off, so the LLM document extractor is the default reader.",
+      "if_none": "Unset means enabled. That is the whole change: the flag was opt-in and stayed off for the two months after the extractor had been hand-verified, while per-council regex exceptions accumulated in its place."
     },
     {
-      "name": "DCPExtractor.SECTION_RE",
-      "file_line": "scripts/dcp_extract_changed.py",
-      "input": "The same page text, for every council that has no override entry of its own.",
-      "output": "Unchanged by this work. It still allows any [A-Z] prefix, which is correct for plans that do not reserve letters for clause markers.",
-      "if_none": "Unchanged. A test asserts the default still admits 'O1 ...', because if it ever stops doing so this override is inert and should be re-read rather than trusted."
+      "name": "enforce_fidelity",
+      "file_line": "scripts/dcp_supersede_guard.py",
+      "input": "A cursor in the open transaction, the council, the chapter, the created_at of the run being committed, and the chapters a person has named on the command line.",
+      "output": "(graded, bad, detail), or raises FidelityRefused so the caller rolls back and keeps the approval.",
+      "if_none": "A batch with approved rows and NOT ONE fidelity verdict is now refused rather than narrated. Rows the gate deliberately skips are a different case and are simply absent from the graded count, so a chapter of boilerplate does not trip it."
+    },
+    {
+      "name": "lint_extraction_defaults.is_opt_out",
+      "file_line": "scripts/lint_extraction_defaults.py",
+      "input": "A module's full source text and the name of the function to inspect within it, both plain strings, so the lint can be run against a mutated copy rather than only against the files on disk.",
+      "output": "True when that function reads its flag as opt-out, judged from the RETURNED EXPRESSION only.",
+      "if_none": "None when the function is absent, which is itself reported -- a switch that has been deleted is not a switch that is on."
+    },
+    {
+      "name": "measure_heading_detection.main",
+      "file_line": "scripts/measure_heading_detection.py",
+      "input": "Councils from the registry and/or local PDF paths, so a council with no registry row can be tested.",
+      "output": "Recall and precision for the typography reader and for the incumbent regex, scored against each document's own embedded outline, with the ground-truth source named per row.",
+      "if_none": "NO_TEXT_LAYER, NO_LADDER and NO_GROUND_TRUTH are distinct outcomes and count as a pass for neither method."
     }
   ],
   "values": [
     {
-      "name": "the letter class is A-H",
-      "value": "Which letters Warringah uses for its parts",
-      "why": "Read off the document rather than chosen: the 124-row batch carries A, B, C, D, E, F, G and H prefixes and nothing else, while O and R appear only on objective and requirement sentences. Narrowing further would lose Part G10; widening to A-Z is the defect itself.",
-      "source": "Prefix counts over the 2026-09-20 re-read of northern_beaches/warringah-dcp-2011-full.",
-      "if_missing": "Fourteen provisions per re-read cite clause numbers with no matching section, and the auto-rejected one blocks the chapter from committing at all.",
-      "read_at": "scripts/dcp_extract_changed.py -- COUNCIL_SECTION_RE_OVERRIDES."
+      "name": "AI_EXTRACTION is opt-out",
+      "value": "Default ON, disable with AI_EXTRACTION=0",
+      "why": "The extractor was decided in July 2026 and verified on 2026-09-05/06 against marrickville's worst chapter -- part7-s3-sex-industry, 28 pages, read line by line against the council's PDF: 49 of 49 objectives and controls, every section number correct, zero mislabelling. It then stayed off. A capability that is off by default is a capability nobody turns on, which fidelity_gate_enabled in the same file had already learned.",
+      "source": "project-ai-extraction-decided-but-unused-2026-09 and ce-ai-extraction-decision-2026-07.",
+      "if_missing": "The regex reader keeps running and keeps needing per-council exceptions: four heading overrides so far, each added after something broke downstream.",
+      "read_at": "scripts/dcp_extract_changed.py -- ai_extraction_enabled."
     },
     {
-      "name": "the letter stays optional",
-      "value": "[A-H]? rather than [A-H]",
-      "why": "Warringah numbers some of its parts -- '12 Key Sites', '14 Residential Flat Buildings' -- and those carry real controls. Requiring a letter would drop them silently, which is worse than the defect being fixed because an absent control leaves nothing behind to notice.",
-      "source": "The same batch: both parts appear as genuine sections with substantive text.",
-      "if_missing": "Two real parts of the plan stop being extracted with no error.",
-      "read_at": "scripts/dcp_extract_changed.py -- COUNCIL_SECTION_RE_OVERRIDES."
+      "name": "no proof, no commit",
+      "value": "A batch with approved rows and zero fidelity verdicts is refused",
+      "why": "The entire safety argument for letting a model read the document is that its output is proven against the source before it is served. A guard that abstains when it did not run removes the proof and leaves the model. It previously printed 'not judged' and committed.",
+      "source": "Written earlier the same night, then found to abstain when reviewing what the guard actually does on an ungraded batch.",
+      "if_missing": "An unchecked batch commits exactly like a verified one, and the log line saying so scrolls past.",
+      "read_at": "scripts/dcp_supersede_guard.py -- enforce_fidelity."
+    },
+    {
+      "name": "the lint runs in two places",
+      "value": "pre-commit AND .github/workflows/gates.yml",
+      "why": "A pre-commit hook is bypassable with --no-verify, and a check that can be skipped is the precise failure this guards. gates.yml runs on every pull request and on push to main, so a bypassed commit still has to pass.",
+      "source": "The repo's own history: #398 untracked the QA report and a sitemap PR re-added it three days later, invisible for ten weeks.",
+      "if_missing": "The ratchet becomes advisory and the next per-council exception lands unremarked, as the previous four did.",
+      "read_at": ".githooks/pre-commit and .github/workflows/gates.yml."
     }
   ],
   "queries": [
     {
-      "purpose": "Establish that the markers are a class and not a single bad row, by counting what letter each ref in the batch starts with.",
-      "file_line": "ad hoc, recorded here because the shipped change adds no query",
-      "where_clause": "dcp_review_queue WHERE council='northern_beaches' AND created_at = (SELECT max(created_at) ...) -- 124 rows, prefixes D 17, B 11, E 11, O 9, G 8, C 8, R 5, F 4, A 2, H 1, plus 45 digit-keyed."
+      "purpose": "The graded rows of the one extraction run this commit would publish, plus every approved row of it, so an ungraded batch is distinguishable from an empty one.",
+      "file_line": "scripts/dcp_supersede_guard.py -- fidelity_snapshot",
+      "where_clause": "council = %s AND chapter_key = %s AND created_at = %s AND status = 'approved'. The fidelity_status IS NOT NULL filter was REMOVED from the SQL and the partition moved into Python, because with it in the query 'no grading' and 'nothing to commit' were the same empty result."
     }
   ],
   "break_it": [
     {
-      "scenario": "The rejected R2 row is superseded instead of the reader being fixed.",
-      "what_happens": "Its text is real control wording that appears nowhere else in the batch or in the live rows, so the controls are lost -- and thirteen more marker-keyed rows commit as provisions citing clauses with no section.",
-      "mitigated": true,
-      "how": "The reader no longer produces them, so the requirement text is absorbed by the section it belongs to instead of becoming a section of its own. A re-extraction is the check.",
-      "repro": "python scripts/dcp_extract_changed.py --council northern_beaches --chapter warringah-dcp-2011-full --review"
-    },
-    {
-      "scenario": "The override is applied to every council rather than this one.",
-      "what_happens": "Another plan that genuinely uses O or R as a part letter loses those parts entirely, with no error to show for it.",
-      "mitigated": true,
-      "how": "It is one entry in a per-council dict, and a test asserts the other three councils do not share the pattern object.",
-      "repro": "python -m pytest tests/test_warringah_markers_are_not_sections.py -k scoped -q"
-    },
-    {
-      "scenario": "The digit-keyed rows are assumed to be fixed by this too.",
-      "what_happens": "They are not, and they are a mixed bag: '12 Key Sites' and '14 Residential Flat Buildings' are genuine parts, while '10.5', '13.1' and '1.1' are requirement markers and '01'/'1' look like figure legends. Treating them as one class would either lose real parts or keep junk.",
+      "scenario": "The LLM proposes a structure that is complete but wrong.",
+      "what_happens": "Every character is present and filed under a heading, so a coverage check passes -- and the text is served under the wrong clause. This is not hypothetical: the mid-page split fixed earlier the same night put a parking rule under a stormwater heading with no text missing at all.",
       "mitigated": false,
-      "how": "Deliberately untouched. They need the same measurement this entry got -- read what the document does with them -- before any pattern change, and that is a separate piece of work.",
-      "repro": "see queries[0]"
+      "how": "Not closed by this change. The fidelity gate compares each row against its cited page, which catches much of it, but the full remedy is corroborating each proposed heading independently -- typography, the PDF outline, or the contents page. measure_heading_detection.py is the groundwork for that and is a measurement tool here, not yet a gate.",
+      "repro": "python scripts/measure_heading_detection.py --council burwood --council fairfield --limit 2"
     },
     {
-      "scenario": "Part G10 is lost while narrowing the letter class.",
-      "what_happens": "G10 (Low and Mid-Rise Housing) commenced 15 September 2025 and is the amendment the plan-in-force hold exists for. Losing it would hide the very thing this chapter is being re-read to capture, while the re-read looked successful.",
+      "scenario": "A test starts calling a real LLM provider.",
+      "what_happens": "The suite spends money and becomes flaky in proportion to the network. Three test files did exactly this the moment the default flipped, and only failed because the provider returned HTTP 429.",
       "mitigated": true,
-      "how": "H is the upper bound, not F, and a test names G10 specifically rather than relying on the range being read correctly.",
-      "repro": "python -m pytest tests/test_warringah_markers_are_not_sections.py -k g10 -q"
+      "how": "An autouse fixture in tests/conftest.py replaces every provider entry point with one that raises. A test exercising the LLM path must patch the provider visibly; a test exercising the regex reader sets AI_EXTRACTION=0 and says why. The default is deliberately NOT forced off globally, because that would hide the production behaviour from the whole suite.",
+      "repro": "python -m pytest tests/test_a_section_starting_mid_page.py -q"
     },
     {
-      "scenario": "The next council's markers are found the same way, by hand, after the fact.",
-      "what_happens": "This is the third council needing the same remedy -- Woollahra 2026-05, Marrickville 2026-08, Northern Beaches now -- and each was found only when something downstream broke.",
+      "scenario": "Someone flips a default back with a convincing docstring.",
+      "what_happens": "The lint reads the function's strings and sees the opt-out words in the prose, so an opt-in switch passes. This was a real survivor of the first mutation round.",
+      "mitigated": true,
+      "how": "is_opt_out inspects the RETURNED EXPRESSION only, never the docstring, and a test plants exactly that disguise.",
+      "repro": "python -m pytest tests/test_extraction_stays_intelligent_and_proven.py -k docstring -q"
+    },
+    {
+      "scenario": "The guard is left in place but stops refusing.",
+      "what_happens": "Commenting out the raise leaves the words in the file, so a substring check passes and an unproven batch commits. Also a real survivor of the first round.",
+      "mitigated": true,
+      "how": "The lint walks the AST for the no-proof branch specifically and asserts it contains a Raise -- not that the file mentions FidelityRefused, which it does twice.",
+      "repro": "python scripts/lint_extraction_defaults.py"
+    },
+    {
+      "scenario": "The LLM path is slower or costlier than expected across 231 chapters.",
+      "what_happens": "A re-extraction pass becomes expensive or long. The known notes record chunking limits and a Mistral rate-limit, and one dense 23-page chapter needed a smaller chunk than the default.",
       "mitigated": false,
-      "how": "Not addressed here. The durable form is a check that every served section code appears as a heading in its own source PDF, which would surface this class on the first extraction rather than the third incident. Recorded as the next piece of work.",
-      "repro": "docs/EXTRACTION_WHY_IT_RECURS_AND_THE_DURABLE_FIX_2026-07.md, PART 3, open gap 1"
+      "how": "Not addressed here and not measured at scale. The cost is one-time per source version rather than per run, and the answer if it bites is to pin the derived structure to the source hash and replay it, which also removes the non-determinism objection.",
+      "repro": "project-ai-extraction-decided-but-unused-2026-09, operational notes"
     }
   ],
   "post_merge": {
-    "db_reset": "No. This change writes nothing by itself.",
-    "secrets": "No.",
+    "db_reset": "No. Nothing in this change writes to the database.",
+    "secrets": "No. Provider credentials already exist in the environment; none is added, printed or changed.",
     "other_repo": "No.",
-    "manual_verify": "Re-extract northern_beaches/warringah-dcp-2011-full and confirm no ref in the new batch starts with O or R, and that C3, D21, E11, F4, G10, 12 and 14 are all still present."
+    "manual_verify": "After merge, run one chapter end to end with the default unset and confirm the LLM path is taken, the fidelity gate grades the rows, and the commit worker refuses if it did not. Then confirm gates.yml runs the defaults lint and passes on main."
   }
 }

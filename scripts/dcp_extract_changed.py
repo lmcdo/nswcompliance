@@ -1816,9 +1816,17 @@ class DCPExtractor:
         document extractor that reads any layout with no per-council config
         (ce-ai-extraction-decision-2026-07). The result is the same section-dict
         shape, so the downstream diff/enqueue/guard pipeline is unchanged."""
-        if os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes"):
+        if ai_extraction_enabled():
             from scripts.ai_extractor import ai_extract_chapter
             return ai_extract_chapter(self.pdf_path, self.council)
+        # Reached only when someone has explicitly set AI_EXTRACTION=0. Say so, and
+        # say it on the extraction output where a person reading a review queue will
+        # see it -- a fallback nobody notices is how this path stayed the default for
+        # two months after the LLM extractor was verified.
+        print(f"    [extractor] AI_EXTRACTION is DISABLED -- falling back to the "
+              f"regex/geometry reader for {self.council}. That reader needs "
+              f"per-council config and has produced junk section codes on every "
+              f"council that lacked it. Unset AI_EXTRACTION to restore the default.")
         self._maybe_route_via_ocr()
         sections = self._extract_sequential()
         if self.council in TOC_DRIVEN_COUNCILS:
@@ -3497,6 +3505,47 @@ def suspect_reason(review_data: dict) -> str | None:
 # extract correctly today — 8 and 644 real sections — so widening this is not
 # justified by evidence and must not be done without measuring the council first.
 MULTI_HEADING_COUNCILS = {"marrickville"}
+
+
+def ai_extraction_enabled() -> bool:
+    """Whether to read a chapter with the LLM document extractor. Default ON.
+
+    WHY THIS IS OPT-OUT, AS OF 2026-09-21
+    -------------------------------------
+    It was `AI_EXTRACTION=1`, off by default, and stayed off for the two months
+    AFTER it had been verified. ce-ai-extraction-decision-2026-07 decided it in
+    July; 2026-09-05/06 ran it for real against marrickville's 26 broken chapters
+    and hand-checked the worst of them (part7-s3-sex-industry, 28 pages) line by
+    line against the council's PDF: **49 of 49 objectives and controls extracted,
+    every section number correct, zero mislabelling**. Then the flag went back to
+    its default and the regex reader kept running.
+
+    What the regex reader cost in that time, all of it found by an incident rather
+    than by a check: four per-council heading overrides (woollahra 2026-05,
+    marrickville 2026-08, ku_ring_gai, northern_beaches 2026-09-21) and eight
+    per-council exception tables in this file. On northern_beaches alone it read
+    fourteen clause markers -- "O1 To establish a safe internal access road
+    network", "R2 Dwellings with a street frontage to have a front door directly
+    visible from the street" -- as section headings, and served our own ref slug
+    ("4_1c_7") as the council's section number on 122 live rows. None of those are
+    mistakes a reader makes. They are the mistakes of not reading.
+
+    This is the same argument, and the same remedy, as fidelity_gate_enabled()
+    directly below: a capability that is off by default is a capability nobody
+    turns on. Set AI_EXTRACTION=0 to disable, and only with a reason -- the
+    fallback path announces itself loudly when you do.
+
+    FAILS CLOSED, NOT QUIET
+    -----------------------
+    scripts/ai_extractor.py raises rather than degrading: provider errors re-raise
+    after retries, and ChunkLoss refuses to return a partial chapter instead of
+    silently dropping pages ("which is how marrickville lost 94 pages of source
+    across 4 chapters"). A failed AI read therefore stops the chapter; it does not
+    quietly fall back to the reader this replaces.
+    """
+    return os.getenv("AI_EXTRACTION", "").strip().lower() not in (
+        "0", "false", "no", "off",
+    )
 
 
 def fidelity_gate_enabled() -> bool:

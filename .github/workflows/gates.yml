@@ -166,6 +166,8 @@ jobs:
       # from the default branch, API unreachable — each prints its own reason
       # and passes, because failing a stranger's PR for a dead cron is how a
       # check gets deleted, and a deleted check protects nothing.
+      - name: Extraction stays intelligent and proven (defaults lint)
+        run: python scripts/lint_extraction_defaults.py --ci
       - name: Live data was checked recently (data-watch freshness)
         if: always()
         env:
