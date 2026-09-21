@@ -1,0 +1,106 @@
+{
+  "tier": "standard",
+  "justification": "Warringah's objective and requirement markers were being read as section headings, so about one row in nine of a Northern Beaches re-read cited a clause number the document has no section for. One of those rows was auto-rejected and blocked the whole chapter from committing, which is the last thing standing between OC-10 and passing.",
+  "commit_hash": "PENDING",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_warringah_markers_are_not_sections.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_review_queue rows from the 2026-09-20 re-read, read only to measure which refs the current pattern produces. No schema change, no write, no new query: the change is one entry in COUNCIL_SECTION_RE_OVERRIDES, a dict that already holds three councils.",
+    "assumption_mismatch": "The rejected R2 row looked like the junk_ref class already fixed at heading detection in #1131, so the first instinct was to supersede it and move on. Two measurements stopped that. First, its text is real control wording -- front-door visibility, facade articulation, side setbacks -- and searching the whole batch and the live rows for 'front door directly visible from the street' returned that row and nothing else, so superseding it would lose controls. Second, counting prefixes across the batch showed it was not one row but fourteen: O1, O4, O5, O8, O16, O21, O24, O26, O27, R2, R10, R11, R13, R23. A single-row decision would have left thirteen more.",
+    "new_vs_existing": "No new mechanism. COUNCIL_SECTION_RE_OVERRIDES exists for exactly this, and two of its three entries were added for the same defect in other plans: Woollahra excludes O1/C1 (2026-05) and Marrickville excludes C8/O9. This adds a fourth entry in the same shape. The alternative considered and rejected was widening is_junk_heading, which is shared by every council and would risk plans where O or R is a real part letter.",
+    "external_source_error": "The reader opens the council's PDF from R2. Unchanged. The claim that O and R are markers rather than parts is read off the document's own wording, which the rows quote back: 'O1 To establish a safe internal access road network that serves the development' and 'R2 Dwellings with a street frontage to have a front door directly visible from the street.' Neither is a section title.",
+    "frontend_type": "No API, component or type change. This alters which headings the extractor recognises, upstream of anything the frontend reads.",
+    "user_failure_mode": "Two directions and the second is far worse. Too loose and fourteen provisions cite clause numbers that do not exist as sections, which is unverifiable against the source. Too strict and a genuine part stops being extracted altogether, so its controls are simply absent with nothing to show they are missing -- and Warringah numbers some of its parts, so requiring a letter prefix would silently drop '12 Key Sites' and '14 Residential Flat Buildings'. The letter is therefore restricted but kept optional, and both halves are tested."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_warringah_markers_are_not_sections.py -q",
+    "fails_when": "An O or R marker is accepted as a section heading again; the letter class is widened back to A-Z, which is the defect; the letter is made mandatory, which loses Warringah's numbered parts; the class is narrowed below H, which loses Part G10; the override stops being scoped to northern_beaches; or the pattern stops exposing exactly two groups, which the extractor's _match_groups assumes for an override.",
+    "observed_red": "4 mutations planted, 4 caught: the class widened back to A-Z, the letter made mandatory, the class narrowed to A-F, and the pattern neutered to match nothing. 22 tests here. Every accepted and rejected case in the file is a real ref from the 124-row 2026-09-20 batch rather than an invented one, and a re-extraction with the override in place is the end-to-end check."
+  },
+  "functions": [
+    {
+      "name": "COUNCIL_SECTION_RE_OVERRIDES['northern_beaches']",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "One page of text, matched line by line in MULTILINE mode by the extractor's heading finder.",
+      "output": "Two groups, the section code and its title, for lines whose code is optional-letter-A-to-H plus digits with optional dotted parts.",
+      "if_none": "No match means the page carries no heading and extends the section already open, which is the common case and is unchanged by this entry."
+    },
+    {
+      "name": "DCPExtractor.SECTION_RE",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "The same page text, for every council that has no override entry of its own.",
+      "output": "Unchanged by this work. It still allows any [A-Z] prefix, which is correct for plans that do not reserve letters for clause markers.",
+      "if_none": "Unchanged. A test asserts the default still admits 'O1 ...', because if it ever stops doing so this override is inert and should be re-read rather than trusted."
+    }
+  ],
+  "values": [
+    {
+      "name": "the letter class is A-H",
+      "value": "Which letters Warringah uses for its parts",
+      "why": "Read off the document rather than chosen: the 124-row batch carries A, B, C, D, E, F, G and H prefixes and nothing else, while O and R appear only on objective and requirement sentences. Narrowing further would lose Part G10; widening to A-Z is the defect itself.",
+      "source": "Prefix counts over the 2026-09-20 re-read of northern_beaches/warringah-dcp-2011-full.",
+      "if_missing": "Fourteen provisions per re-read cite clause numbers with no matching section, and the auto-rejected one blocks the chapter from committing at all.",
+      "read_at": "scripts/dcp_extract_changed.py -- COUNCIL_SECTION_RE_OVERRIDES."
+    },
+    {
+      "name": "the letter stays optional",
+      "value": "[A-H]? rather than [A-H]",
+      "why": "Warringah numbers some of its parts -- '12 Key Sites', '14 Residential Flat Buildings' -- and those carry real controls. Requiring a letter would drop them silently, which is worse than the defect being fixed because an absent control leaves nothing behind to notice.",
+      "source": "The same batch: both parts appear as genuine sections with substantive text.",
+      "if_missing": "Two real parts of the plan stop being extracted with no error.",
+      "read_at": "scripts/dcp_extract_changed.py -- COUNCIL_SECTION_RE_OVERRIDES."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Establish that the markers are a class and not a single bad row, by counting what letter each ref in the batch starts with.",
+      "file_line": "ad hoc, recorded here because the shipped change adds no query",
+      "where_clause": "dcp_review_queue WHERE council='northern_beaches' AND created_at = (SELECT max(created_at) ...) -- 124 rows, prefixes D 17, B 11, E 11, O 9, G 8, C 8, R 5, F 4, A 2, H 1, plus 45 digit-keyed."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The rejected R2 row is superseded instead of the reader being fixed.",
+      "what_happens": "Its text is real control wording that appears nowhere else in the batch or in the live rows, so the controls are lost -- and thirteen more marker-keyed rows commit as provisions citing clauses with no section.",
+      "mitigated": true,
+      "how": "The reader no longer produces them, so the requirement text is absorbed by the section it belongs to instead of becoming a section of its own. A re-extraction is the check.",
+      "repro": "python scripts/dcp_extract_changed.py --council northern_beaches --chapter warringah-dcp-2011-full --review"
+    },
+    {
+      "scenario": "The override is applied to every council rather than this one.",
+      "what_happens": "Another plan that genuinely uses O or R as a part letter loses those parts entirely, with no error to show for it.",
+      "mitigated": true,
+      "how": "It is one entry in a per-council dict, and a test asserts the other three councils do not share the pattern object.",
+      "repro": "python -m pytest tests/test_warringah_markers_are_not_sections.py -k scoped -q"
+    },
+    {
+      "scenario": "The digit-keyed rows are assumed to be fixed by this too.",
+      "what_happens": "They are not, and they are a mixed bag: '12 Key Sites' and '14 Residential Flat Buildings' are genuine parts, while '10.5', '13.1' and '1.1' are requirement markers and '01'/'1' look like figure legends. Treating them as one class would either lose real parts or keep junk.",
+      "mitigated": false,
+      "how": "Deliberately untouched. They need the same measurement this entry got -- read what the document does with them -- before any pattern change, and that is a separate piece of work.",
+      "repro": "see queries[0]"
+    },
+    {
+      "scenario": "Part G10 is lost while narrowing the letter class.",
+      "what_happens": "G10 (Low and Mid-Rise Housing) commenced 15 September 2025 and is the amendment the plan-in-force hold exists for. Losing it would hide the very thing this chapter is being re-read to capture, while the re-read looked successful.",
+      "mitigated": true,
+      "how": "H is the upper bound, not F, and a test names G10 specifically rather than relying on the range being read correctly.",
+      "repro": "python -m pytest tests/test_warringah_markers_are_not_sections.py -k g10 -q"
+    },
+    {
+      "scenario": "The next council's markers are found the same way, by hand, after the fact.",
+      "what_happens": "This is the third council needing the same remedy -- Woollahra 2026-05, Marrickville 2026-08, Northern Beaches now -- and each was found only when something downstream broke.",
+      "mitigated": false,
+      "how": "Not addressed here. The durable form is a check that every served section code appears as a heading in its own source PDF, which would surface this class on the first extraction rather than the third incident. Recorded as the next piece of work.",
+      "repro": "docs/EXTRACTION_WHY_IT_RECURS_AND_THE_DURABLE_FIX_2026-07.md, PART 3, open gap 1"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. This change writes nothing by itself.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Re-extract northern_beaches/warringah-dcp-2011-full and confirm no ref in the new batch starts with O or R, and that C3, D21, E11, F4, G10, 12 and 14 are all still present."
+  }
+}

@@ -989,6 +989,31 @@ COUNCIL_SECTION_RE_OVERRIDES: dict[str, re.Pattern] = {
     "woollahra": re.compile(
         r'^([A-Z]\d+\.\d[\d.]*)\s+([A-Z][^\n]+)$', re.MULTILINE
     ),
+    # Warringah DCP 2011 (northern_beaches): the default pattern's optional [A-Z]
+    # prefix admits this document's CLAUSE MARKERS as section headings. Warringah
+    # writes its objectives "O1 To establish a safe internal access road network..."
+    # and its requirements "R2 Dwellings with a street frontage to have a front door
+    # directly visible from the street." Both are sentences inside a section, not
+    # titles of one, and both match ([A-Z]?\d+)\s+([A-Z]...).
+    #
+    # Measured on the 124-row 2026-09-20 re-read: 14 rows were keyed off such a
+    # marker -- O1, O4, O5, O8, O16, O21, O24, O26, O27, R2, R10, R11, R13, R23 --
+    # about one row in nine. Each becomes a provision citing a clause number the
+    # document has no section for: the same defect class as the ref slug served as
+    # a citation (#1153). The auto-rejected R2 row also blocked the whole chapter
+    # from committing, and its text is real control wording that appears nowhere
+    # else in the batch, so neither approving nor dropping it was right.
+    #
+    # The letter is restricted to A-H, which is what this plan uses for its parts:
+    # the same batch carries A, B, C, D, E, F, G and H and nothing else. It stays
+    # OPTIONAL so Warringah's numbered parts -- "12 Key Sites", "14 Residential Flat
+    # Buildings" -- keep matching; those are genuine sections and requiring a letter
+    # would lose them. Same remedy as Woollahra's override above for O1/C1 (2026-05)
+    # and Marrickville's for C8/O9, and scoped to one council for the same reason:
+    # another plan may use O or R as a real part letter.
+    "northern_beaches": re.compile(
+        r'^([A-H]?\d+(?:\.\d+)*)\s+([A-Z][^\n]+)$', re.MULTILINE
+    ),
 }
 
 
