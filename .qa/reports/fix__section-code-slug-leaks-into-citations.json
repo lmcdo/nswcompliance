@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "An internal identifier was being served to planners as the council's section number. 122 current rows already carry it, and the commit worker recomputes section_header on every commit, so each re-read of an affected chapter converted twelve more citations from the document's code to ours. A citation that does not appear in the council's document cannot be checked against it.",
-  "commit_hash": "PENDING",
+  "commit_hash": "3d858209",
   "files": [
     "scripts/dcp_section_code.py",
     "tests/test_a_ref_slug_is_not_a_section_code.py"
