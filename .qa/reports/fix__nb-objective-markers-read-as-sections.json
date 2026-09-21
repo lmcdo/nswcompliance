@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Warringah's objective and requirement markers were being read as section headings, so about one row in nine of a Northern Beaches re-read cited a clause number the document has no section for. One of those rows was auto-rejected and blocked the whole chapter from committing, which is the last thing standing between OC-10 and passing.",
-  "commit_hash": "PENDING",
+  "commit_hash": "84177226",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_warringah_markers_are_not_sections.py"
