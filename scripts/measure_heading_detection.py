@@ -162,9 +162,12 @@ def read_lines(path: Path, max_pages: int) -> tuple[list[Line], int, list]:
         outline = []
     out: list[Line] = []
     for pno in range(min(total, max_pages)):
-        for blk in doc[pno].get_text("dict").get("blocks", []):
-            for ln in blk.get("lines", []):
-                spans = ln.get("spans", [])
+        # `or []` after each get, not a default: fitz returns these keys with a None
+        # value on some malformed pages, and a default is not used when the key
+        # EXISTS. A None here would raise mid-document and lose the whole run.
+        for blk in doc[pno].get_text("dict").get("blocks") or []:
+            for ln in blk.get("lines") or []:
+                spans = ln.get("spans") or []
                 if not spans:
                     continue
                 text = "".join(s["text"] for s in spans).strip()
