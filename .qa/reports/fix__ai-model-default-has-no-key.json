@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "LLM extraction became the default on 2026-09-21, and AI_MODEL defaulted to a provider whose key is not set in this environment, reading it with a bare os.environ[...]. Every chapter extraction now takes that path, so the default configuration raised KeyError before reading a page.",
-  "commit_hash": "PENDING",
+  "commit_hash": "f11e9065",
   "files": [
     "scripts/ai_extractor.py",
     "tests/test_ai_model_default_follows_the_keys.py"
