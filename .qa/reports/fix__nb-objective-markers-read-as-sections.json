@@ -1,0 +1,141 @@
+{
+  "tier": "critical",
+  "justification": "Turns intelligent extraction on by default and makes its deterministic proof mandatory, on the path that decides what regulatory text is served. Both halves were built and decided in July 2026; both then sat switched off or optional while hand-written per-council pattern exceptions accumulated in their place. This flips both defaults, refuses a commit carrying no proof at all, and adds a lint in the pre-commit hook AND in CI so neither can be quietly undone again.",
+  "commit_hash": "fd50bc66",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "scripts/dcp_supersede_guard.py",
+    "scripts/lint_extraction_defaults.py",
+    "scripts/measure_heading_detection.py",
+    ".githooks/pre-commit",
+    ".github/workflows/gates.yml",
+    "tests/test_extraction_stays_intelligent_and_proven.py",
+    "tests/test_warringah_markers_are_not_sections.py",
+    "tests/test_the_write_path_reads_the_fidelity_verdict.py",
+    "tests/test_dcp_commit_refuses_section_loss.py",
+    "tests/conftest.py",
+    "tests/test_a_section_starting_mid_page.py",
+    "tests/test_pdf_page_release.py",
+    "tests/test_dcp_extract_changed.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_review_queue (fidelity_status, status, created_at) read by the guard; no schema change, no new table, no migration. The extractor reads council PDFs from R2 exactly as before. The only behavioural change to data is which reader produces a queued row and whether an unproven batch may commit.",
+    "assumption_mismatch": "Four, each caught by measuring. (1) I argued for a typography-based heading detector and built a measurement to prove it; the measurement said the regex was better on recall and typography better on precision, and then showed my own first version was scoring contents-page lines as headings because it read only the first 120 pages of a 396-page document. (2) I assumed a coverage check would be sufficient proof; it is not, because a wrong-but-complete partition satisfies it -- the mid-page bug fixed earlier the same night would have passed. (3) I assumed the AI extractor needed building; it already existed, had been run on marrickville's 26 chapters, and had been hand-verified at 49 of 49 controls on its worst chapter. (4) I listed four proof failures as needing a human; on challenge, every one is answerable by re-reading the cited pages and feeding the failure back, which is what the design now says.",
+    "new_vs_existing": "No new extractor and no new gate. scripts/ai_extractor.py already existed behind AI_EXTRACTION; dcp_fidelity_gate already graded rows against source pages; enforce_fidelity was added earlier the same night. This changes two defaults, closes one hole in the guard, and adds a lint. The lint follows lint_hardcoded_zone_codes.py's shape and check_test_quarantine.py's ratchet semantics rather than inventing either. measure_heading_detection.py is new and is a measurement tool, not a pipeline component.",
+    "external_source_error": "The extractor calls a paid LLM provider. Failures are not absorbed: provider errors re-raise after retries and ChunkLoss refuses to return a partial chapter rather than dropping pages, so a failed read stops the chapter instead of quietly falling back. Tests can no longer reach a provider at all -- three test files began making real calls the moment the default flipped, and only failed because the provider rate-limited them.",
+    "frontend_type": "No API route, component or type change. This is the extraction and commit path behind the served provisions.",
+    "user_failure_mode": "Three directions. Reading badly and publishing it -- which is the status quo the regex reader produced: fourteen clause markers filed as sections on northern_beaches, our own ref slug served as a council section number on 122 live rows. Reading well and publishing it unproven -- which is what an abstaining fidelity guard allowed, and which is the more dangerous of the two because it looks clean. And refusing too much, which stops the pipeline and gets the guard switched off; the bar is therefore read off the measured distribution and each refusal names a chapter-scoped override."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_extraction_stays_intelligent_and_proven.py tests/test_warringah_markers_are_not_sections.py tests/test_the_write_path_reads_the_fidelity_verdict.py tests/test_dcp_commit_refuses_section_loss.py -q && python scripts/lint_extraction_defaults.py",
+    "fails_when": "AI_EXTRACTION or DCP_FIDELITY_GATE becomes opt-in again; ai_extraction_enabled is removed or renamed; the disabled path stops announcing itself; the no-proof-no-commit branch is removed or stops raising, so a batch with no fidelity verdict can commit; a ninth per-council exception is added without a justification comment; the lint is dropped from the pre-commit hook or from gates.yml; a test regains the ability to call a real provider; or an O/R clause marker is accepted as a Warringah section heading.",
+    "observed_red": "Ten mutations planted across two rounds, ten caught -- but four of them SURVIVED the first version of the lint and each survivor was a real defect in it, not an equivalent mutant: it scanned every string in a function including the docstring, so a docstring mentioning 0/false/no/off disguised a flipped switch; it matched 'raise FidelityRefused' as text, so commenting the statement out passed; it handled only ast.Assign, so the annotated COUNCIL_SECTION_RE_OVERRIDES was invisible to the very check written for it; and it decoded git output as cp1252, so on Windows it crashed in a reader thread rather than reporting. Full suite 6,713 passed, 2 skipped, 0 failed.",
+    "manual_probe": "The lint was run against mutated copies of the real files rather than asserted against source text, because a lint that cannot fail is exactly the failure being guarded against."
+  },
+  "functions": [
+    {
+      "name": "ai_extraction_enabled",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "The AI_EXTRACTION environment variable, absent by default in every environment.",
+      "output": "True unless explicitly set to 0/false/no/off, so the LLM document extractor is the default reader.",
+      "if_none": "Unset means enabled. That is the whole change: the flag was opt-in and stayed off for the two months after the extractor had been hand-verified, while per-council regex exceptions accumulated in its place."
+    },
+    {
+      "name": "enforce_fidelity",
+      "file_line": "scripts/dcp_supersede_guard.py",
+      "input": "A cursor in the open transaction, the council, the chapter, the created_at of the run being committed, and the chapters a person has named on the command line.",
+      "output": "(graded, bad, detail), or raises FidelityRefused so the caller rolls back and keeps the approval.",
+      "if_none": "A batch with approved rows and NOT ONE fidelity verdict is now refused rather than narrated. Rows the gate deliberately skips are a different case and are simply absent from the graded count, so a chapter of boilerplate does not trip it."
+    },
+    {
+      "name": "lint_extraction_defaults.is_opt_out",
+      "file_line": "scripts/lint_extraction_defaults.py",
+      "input": "A module's full source text and the name of the function to inspect within it, both plain strings, so the lint can be run against a mutated copy rather than only against the files on disk.",
+      "output": "True when that function reads its flag as opt-out, judged from the RETURNED EXPRESSION only.",
+      "if_none": "None when the function is absent, which is itself reported -- a switch that has been deleted is not a switch that is on."
+    },
+    {
+      "name": "measure_heading_detection.main",
+      "file_line": "scripts/measure_heading_detection.py",
+      "input": "Councils from the registry and/or local PDF paths, so a council with no registry row can be tested.",
+      "output": "Recall and precision for the typography reader and for the incumbent regex, scored against each document's own embedded outline, with the ground-truth source named per row.",
+      "if_none": "NO_TEXT_LAYER, NO_LADDER and NO_GROUND_TRUTH are distinct outcomes and count as a pass for neither method."
+    }
+  ],
+  "values": [
+    {
+      "name": "AI_EXTRACTION is opt-out",
+      "value": "Default ON, disable with AI_EXTRACTION=0",
+      "why": "The extractor was decided in July 2026 and verified on 2026-09-05/06 against marrickville's worst chapter -- part7-s3-sex-industry, 28 pages, read line by line against the council's PDF: 49 of 49 objectives and controls, every section number correct, zero mislabelling. It then stayed off. A capability that is off by default is a capability nobody turns on, which fidelity_gate_enabled in the same file had already learned.",
+      "source": "project-ai-extraction-decided-but-unused-2026-09 and ce-ai-extraction-decision-2026-07.",
+      "if_missing": "The regex reader keeps running and keeps needing per-council exceptions: four heading overrides so far, each added after something broke downstream.",
+      "read_at": "scripts/dcp_extract_changed.py -- ai_extraction_enabled."
+    },
+    {
+      "name": "no proof, no commit",
+      "value": "A batch with approved rows and zero fidelity verdicts is refused",
+      "why": "The entire safety argument for letting a model read the document is that its output is proven against the source before it is served. A guard that abstains when it did not run removes the proof and leaves the model. It previously printed 'not judged' and committed.",
+      "source": "Written earlier the same night, then found to abstain when reviewing what the guard actually does on an ungraded batch.",
+      "if_missing": "An unchecked batch commits exactly like a verified one, and the log line saying so scrolls past.",
+      "read_at": "scripts/dcp_supersede_guard.py -- enforce_fidelity."
+    },
+    {
+      "name": "the lint runs in two places",
+      "value": "pre-commit AND .github/workflows/gates.yml",
+      "why": "A pre-commit hook is bypassable with --no-verify, and a check that can be skipped is the precise failure this guards. gates.yml runs on every pull request and on push to main, so a bypassed commit still has to pass.",
+      "source": "The repo's own history: #398 untracked the QA report and a sitemap PR re-added it three days later, invisible for ten weeks.",
+      "if_missing": "The ratchet becomes advisory and the next per-council exception lands unremarked, as the previous four did.",
+      "read_at": ".githooks/pre-commit and .github/workflows/gates.yml."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "The graded rows of the one extraction run this commit would publish, plus every approved row of it, so an ungraded batch is distinguishable from an empty one.",
+      "file_line": "scripts/dcp_supersede_guard.py -- fidelity_snapshot",
+      "where_clause": "council = %s AND chapter_key = %s AND created_at = %s AND status = 'approved'. The fidelity_status IS NOT NULL filter was REMOVED from the SQL and the partition moved into Python, because with it in the query 'no grading' and 'nothing to commit' were the same empty result."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The LLM proposes a structure that is complete but wrong.",
+      "what_happens": "Every character is present and filed under a heading, so a coverage check passes -- and the text is served under the wrong clause. This is not hypothetical: the mid-page split fixed earlier the same night put a parking rule under a stormwater heading with no text missing at all.",
+      "mitigated": false,
+      "how": "Not closed by this change. The fidelity gate compares each row against its cited page, which catches much of it, but the full remedy is corroborating each proposed heading independently -- typography, the PDF outline, or the contents page. measure_heading_detection.py is the groundwork for that and is a measurement tool here, not yet a gate.",
+      "repro": "python scripts/measure_heading_detection.py --council burwood --council fairfield --limit 2"
+    },
+    {
+      "scenario": "A test starts calling a real LLM provider.",
+      "what_happens": "The suite spends money and becomes flaky in proportion to the network. Three test files did exactly this the moment the default flipped, and only failed because the provider returned HTTP 429.",
+      "mitigated": true,
+      "how": "An autouse fixture in tests/conftest.py replaces every provider entry point with one that raises. A test exercising the LLM path must patch the provider visibly; a test exercising the regex reader sets AI_EXTRACTION=0 and says why. The default is deliberately NOT forced off globally, because that would hide the production behaviour from the whole suite.",
+      "repro": "python -m pytest tests/test_a_section_starting_mid_page.py -q"
+    },
+    {
+      "scenario": "Someone flips a default back with a convincing docstring.",
+      "what_happens": "The lint reads the function's strings and sees the opt-out words in the prose, so an opt-in switch passes. This was a real survivor of the first mutation round.",
+      "mitigated": true,
+      "how": "is_opt_out inspects the RETURNED EXPRESSION only, never the docstring, and a test plants exactly that disguise.",
+      "repro": "python -m pytest tests/test_extraction_stays_intelligent_and_proven.py -k docstring -q"
+    },
+    {
+      "scenario": "The guard is left in place but stops refusing.",
+      "what_happens": "Commenting out the raise leaves the words in the file, so a substring check passes and an unproven batch commits. Also a real survivor of the first round.",
+      "mitigated": true,
+      "how": "The lint walks the AST for the no-proof branch specifically and asserts it contains a Raise -- not that the file mentions FidelityRefused, which it does twice.",
+      "repro": "python scripts/lint_extraction_defaults.py"
+    },
+    {
+      "scenario": "The LLM path is slower or costlier than expected across 231 chapters.",
+      "what_happens": "A re-extraction pass becomes expensive or long. The known notes record chunking limits and a Mistral rate-limit, and one dense 23-page chapter needed a smaller chunk than the default.",
+      "mitigated": false,
+      "how": "Not addressed here and not measured at scale. The cost is one-time per source version rather than per run, and the answer if it bites is to pin the derived structure to the source hash and replay it, which also removes the non-determinism objection.",
+      "repro": "project-ai-extraction-decided-but-unused-2026-09, operational notes"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. Nothing in this change writes to the database.",
+    "secrets": "No. Provider credentials already exist in the environment; none is added, printed or changed.",
+    "other_repo": "No.",
+    "manual_verify": "After merge, run one chapter end to end with the default unset and confirm the LLM path is taken, the fidelity gate grades the rows, and the commit worker refuses if it did not. Then confirm gates.yml runs the defaults lint and passes on main."
+  }
+}

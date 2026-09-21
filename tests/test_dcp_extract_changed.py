@@ -37,6 +37,14 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import dcp_extract_changed as dx  # noqa: E402
 
+# This file exercises the regex/geometry reader, not the LLM one. AI_EXTRACTION
+# became opt-out on 2026-09-21, so extract() now routes to the LLM unless a caller
+# says otherwise -- these tests began trying to open a real PDF and phone a real
+# provider (HTTP 429). Saying which reader is under test is the honest fix; turning
+# the default off globally in conftest would hide the production behaviour from
+# every other test in the suite.
+os.environ["AI_EXTRACTION"] = "0"
+
 
 def _chapter(**overrides) -> dict:
     base = {

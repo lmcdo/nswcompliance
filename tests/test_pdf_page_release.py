@@ -27,6 +27,15 @@ import sys
 from pathlib import Path
 
 import pytest
+import os
+
+# This file exercises the regex/geometry reader, not the LLM one. AI_EXTRACTION
+# became opt-out on 2026-09-21, so extract() now routes to the LLM unless a caller
+# says otherwise -- these tests began trying to open a real PDF and phone a real
+# provider (HTTP 429). Saying which reader is under test is the honest fix; turning
+# the default off globally in conftest would hide the production behaviour from
+# every other test in the suite.
+os.environ["AI_EXTRACTION"] = "0"
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))

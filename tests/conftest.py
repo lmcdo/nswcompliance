@@ -302,3 +302,39 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         terminalreporter.write_line(f"  {dep:<28} {len(by_dep[dep])} test(s)")
     terminalreporter.write_line(
         f"  {len(found)} test(s) skipped for a missing import — these are NOT passing tests.")
+
+
+# ── No test may call a real LLM provider ─────────────────────────────────────
+# AI_EXTRACTION became opt-out on 2026-09-21, so DCPExtractor.extract() now routes
+# to the LLM by default. Three test files immediately began making real provider
+# calls and only failed because the provider rate-limited them (HTTP 429). Without
+# that accident they would have silently spent money and been flaky in proportion
+# to the network.
+#
+# So the ban is explicit: every provider entry point raises during a test run. A
+# test that wants to exercise the LLM path must patch the provider itself, which
+# is visible in the diff. A test that wants the regex/geometry reader sets
+# AI_EXTRACTION=0 and says why.
+#
+# This does NOT force AI_EXTRACTION off globally. Doing that would hide the
+# production default from the whole suite, which is how the switch stayed off for
+# two months in the first place.
+@pytest.fixture(autouse=True)
+def _no_real_llm_calls(monkeypatch):
+    def _refuse(*_a, **_k):
+        raise AssertionError(
+            "a test tried to call a real LLM provider. Patch the provider in the "
+            "test, or set AI_EXTRACTION=0 if you are exercising the regex reader. "
+            "Never let the suite phone a paid API.")
+
+    try:
+        import scripts.ai_extractor as _ai
+    except Exception:  # noqa: BLE001 -- the module needs optional SDKs; absent is fine
+        return
+    for _name in ("_call_anthropic", "_call_haiku", "_call_sonnet",
+                  "_call_mistral", "_call_sol"):
+        if hasattr(_ai, _name):
+            monkeypatch.setattr(_ai, _name, _refuse, raising=False)
+    if hasattr(_ai, "_PROVIDERS"):
+        monkeypatch.setattr(_ai, "_PROVIDERS",
+                            {k: _refuse for k in _ai._PROVIDERS}, raising=False)

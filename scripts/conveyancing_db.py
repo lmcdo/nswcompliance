@@ -710,6 +710,37 @@ def fetch_dcp_setbacks(
                 # of a registry chapter that still has a URL under its
                 # canonical key — see CHAPTER_KEY_ALIASES above.
                 registry_pdf_urls = apply_chapter_key_aliases(registry_pdf_urls, lga_slug)
+                # A control sourced from a STATE instrument carries the sentinel key
+                # "_external_lep" (or "_external_adg") and deliberately has no
+                # dcp_chapter_registry row -- an LEP is not one of the council's DCP
+                # chapters. That left it resolving to no source link at all.
+                #
+                # It went unnoticed because no such control had a NUMBER until
+                # 2026-09-21: OC-8 counts only entries carrying a value, and every
+                # other council's external rows are unnumbered notes. Re-keying
+                # sutherland_shire's LEP setbacks off a council chapter (3m secondary,
+                # 1.5m side, 6m rear, Sutherland Shire LEP 2015 Schedule 3) created the
+                # first numbered ones and OC-8 went CONTRADICTED.
+                #
+                # The link for those is the official NSW legislation page, which is the
+                # source document for an LEP clause -- OC-8 says exactly that, and
+                # instrument_registry already stores it per council. Read from there
+                # rather than composed here: a URL built from an id would be a second
+                # place to get the instrument wrong.
+                cur.execute(
+                    """
+                    SELECT legislation_url FROM instrument_registry
+                     WHERE is_active AND council = %s AND legislation_url IS NOT NULL
+                     ORDER BY pco_instrument_id LIMIT 1
+                    """,
+                    (lga_slug,),
+                )
+                _lep = cur.fetchone()
+                if _lep and _lep[0]:
+                    # setdefault, never overwrite: if a council ever does register an
+                    # _external_lep chapter with its own URL, that is more specific
+                    # than the instrument's landing page and wins.
+                    registry_pdf_urls.setdefault("_external_lep", _lep[0])
                 cur.execute("RELEASE SAVEPOINT pdf_map_probe")
             except Exception as e:
                 logger.warning("fetch_dcp_setbacks registry pdf map: %s", e)

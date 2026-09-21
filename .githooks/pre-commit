@@ -137,6 +137,25 @@ if [ "$FAILSOFT_EXIT" -ne 0 ]; then
 fi
 echo "✅ Brief fail-soft lint passed"
 
+# ── 8a. Extraction defaults ──────────────────────────────────────────────────
+# Intelligent extraction ON, its deterministic proof MANDATORY, and per-council
+# pattern exceptions not growing silently. Also runs in gates.yml, because this
+# hook is bypassable with --no-verify and that is exactly the failure this guards.
+echo ""
+echo "Running extraction-defaults lint..."
+python scripts/lint_extraction_defaults.py
+EXTRACTION_EXIT=$?
+if [ "$EXTRACTION_EXIT" -ne 0 ]; then
+  echo ""
+  echo "COMMIT REJECTED - extraction defaults."
+  echo "   Intelligent extraction with deterministic proof is the decided design."
+  echo "   Turning either half off, or hand-patching around it with another"
+  echo "   per-council exception, needs a reason on the line:"
+  echo "       # council-exception-justified: <why the general path cannot>"
+  exit 1
+fi
+echo "Extraction-defaults lint passed"
+
 # ── 8. Hardcoded zone-code lint ──────────────────────────────────────────────
 echo ""
 echo "🔍 Running zone-code lint on staged .py/.ts/.tsx changes..."

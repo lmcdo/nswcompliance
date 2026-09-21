@@ -206,18 +206,31 @@ def test_a_batch_within_the_bar_still_commits(monkeypatch):
     assert dca.main() != 1 and conn.commits == 1
 
 
-def test_an_ungraded_batch_is_not_silently_passed_as_clean(monkeypatch, capsys):
-    """No graded rows means the gate never looked, which is not the same as passing.
-    The commit proceeds -- refusing every ungraded chapter would stop the pipeline
-    dead -- but it must SAY so, or 'no news' reads as verification that never happened."""
-    conn = _wire(monkeypatch, headers("2.25", 20, 48), headers("2.25", 18, 44), graded=())
+def test_a_batch_with_no_fidelity_verdict_at_all_is_REFUSED(monkeypatch, capsys):
+    """Approved rows, not one of them checked against the council's PDF.
+
+    This used to commit with a "not judged" line in the log. That made the one check
+    that reads the source optional in practice. AI_EXTRACTION is opt-out as of
+    2026-09-21, and the entire safety argument for an LLM reading the document is that
+    its output is proven against the source before it is served -- so a batch carrying
+    no proof is refused, not narrated."""
+    ungraded = [(f"r{i}", None, "") for i in range(40)]
+    conn = _wire(monkeypatch, headers("2.25", 20, 48), headers("2.25", 18, 44),
+                 graded=ungraded)
     monkeypatch.setattr(sys, "argv", ["dcp_commit_approved.py", "--commit"])
 
-    dca.main()
+    rc = dca.main()
 
-    out = capsys.readouterr().out
-    assert conn.commits == 1
-    assert "not judged" in out, "an unchecked batch passed without saying it was unchecked"
+    assert conn.commits == 0, "a batch with no proof at all was committed"
+    assert rc == 1
+    assert "no proof" in capsys.readouterr().out.lower()
+
+
+def test_an_empty_batch_does_not_trip_the_no_proof_rule(monkeypatch):
+    """Confusable negative: nothing approved is not the same as nothing checked."""
+    conn = _wire(monkeypatch, headers("2.25", 20, 48), headers("2.25", 18, 44), graded=())
+    monkeypatch.setattr(sys, "argv", ["dcp_commit_approved.py", "--commit"])
+    assert dca.main() != 1 and conn.commits == 1
 
 
 def test_the_fidelity_override_is_separate_from_the_section_loss_one(monkeypatch):

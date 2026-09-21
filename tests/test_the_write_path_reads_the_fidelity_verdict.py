@@ -147,15 +147,34 @@ class TestTheThresholdSitsInTheGapItWasReadFrom:
 
 
 class TestWhatCountsAsPassing:
-    def test_ungraded_rows_are_neither_pass_nor_fail(self):
-        """NULL means the gate never looked. Counting those as bad would make the guard
-        fire hardest on the chapters nobody has checked -- the opposite of its purpose --
-        and counting them as good would let an ungraded batch through as 'clean'."""
+    def test_an_ungraded_row_is_not_counted_as_a_failure(self):
+        """NULL means the gate never looked at THAT row -- classify_provision skips
+        boilerplate on purpose. Such a row must not inflate the bad count, or the
+        guard would fire hardest on chapters full of administrative text."""
         g = _guard()
-        assert "fidelity_status IS NOT NULL" in GUARD_SRC
-        cur = FakeCursor([])
+        cur = FakeCursor(rows(good=90) + [("skipped1", None, ""), ("skipped2", None, "")])
         graded, bad, _ = g.enforce_fidelity(cur, "c", "ch", "ts")
-        assert (graded, bad) == (0, 0), "an unchecked batch must not be judged"
+        assert graded == 90, "ungraded rows must not count toward the denominator"
+        assert bad == 0, "an ungraded row is not a failed one"
+
+    def test_a_batch_with_NO_verdict_at_all_is_refused(self):
+        """The whole batch ungraded is different from one row skipped: it means the
+        gate did not run. AI_EXTRACTION is opt-out, and the entire safety argument for
+        an LLM reading the document is that its output is proven against the source
+        before it is served. No proof, no commit."""
+        g = _guard()
+        cur = FakeCursor([(f"r{i}", None, "") for i in range(40)])
+        with pytest.raises(g.FidelityRefused) as e:
+            g.enforce_fidelity(cur, "c", "ch", "ts")
+        assert "NOT ONE carries" in str(e.value)
+        assert "--allow-fidelity" in str(e.value)
+
+    def test_an_empty_batch_is_not_refused(self):
+        """Confusable negative. Nothing approved is not the same as nothing checked,
+        and refusing it would fail every chapter with no pending work."""
+        g = _guard()
+        graded, bad, _ = g.enforce_fidelity(FakeCursor([]), "c", "ch", "ts")
+        assert (graded, bad) == (0, 0)
 
     def test_grounded_and_ok_both_pass(self):
         g = _guard()

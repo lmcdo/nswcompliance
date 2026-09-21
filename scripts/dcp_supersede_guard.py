@@ -335,11 +335,15 @@ class FidelityRefused(RuntimeError):
 
 
 def fidelity_snapshot(cur, council: str, chapter_key: str, batch_ts) -> tuple:
-    """(graded, bad, [(ref, status, reason), ...]) for one extraction batch.
+    """(graded, bad, detail, approved) for one extraction batch.
 
     Scoped to batch_ts because a chapter's queue holds every run it has ever had, and
     the commit worker commits ONE run whole. Without the scope this would mix a fresh
     batch with the superseded ones beside it.
+
+    `approved` is every approved row of the batch, graded or not, and it is what makes
+    an ungraded batch distinguishable from an empty one. Without it, "no grading" and
+    "nothing to commit" look identical and the first reads as the second.
     """
     cur.execute(
         """
@@ -347,13 +351,14 @@ def fidelity_snapshot(cur, council: str, chapter_key: str, batch_ts) -> tuple:
                COALESCE(suspect_reason, fidelity_detail, '')
         FROM dcp_review_queue
         WHERE council = %s AND chapter_key = %s AND created_at = %s
-          AND status = 'approved' AND fidelity_status IS NOT NULL
+          AND status = 'approved'
         """,
         (council, chapter_key, batch_ts),
     )
     rows = cur.fetchall()
-    bad = [(r[0], r[1], r[2]) for r in rows if r[1] not in FIDELITY_PASSING]
-    return len(rows), len(bad), bad
+    graded = [r for r in rows if r[1] is not None]
+    bad = [(r[0], r[1], r[2]) for r in graded if r[1] not in FIDELITY_PASSING]
+    return len(graded), len(bad), bad, len(rows)
 
 
 def judge_fidelity(graded: int, bad: int) -> bool:
@@ -371,11 +376,38 @@ def enforce_fidelity(cur, council: str, chapter_key: str, batch_ts,
     BEFORE the writes -- there is nothing about the outcome it needs to see. It is still
     called inside the transaction so a raise rolls the whole thing back.
     """
-    graded, bad, detail = fidelity_snapshot(cur, council, chapter_key, batch_ts)
+    graded, bad, detail, approved = fidelity_snapshot(cur, council, chapter_key, batch_ts)
+    # NO PROOF, NO COMMIT.
+    #
+    # This used to print "not judged" and let the batch through. That made the one
+    # check that reads the council's own PDF optional in practice: a batch the gate
+    # never touched committed exactly like a verified one, and the log line saying so
+    # scrolled past. The extraction side is an LLM reading a document (AI_EXTRACTION
+    # is opt-out as of 2026-09-21); the whole safety argument for that is that its
+    # output is PROVEN against the source before it is served. A gate that abstains
+    # when it did not run removes the proof and leaves the model.
+    #
+    # Rows the gate deliberately SKIPS are not ungraded: classify_provision leaves
+    # boilerplate and administrative text alone on purpose, and those rows are simply
+    # absent from `graded`. This refuses only when a batch has approved rows and NONE
+    # of them carries a verdict, which means the gate did not run at all -- a broken
+    # DCP_FIDELITY_GATE, an unreachable R2, or a chapter whose PDF could not be read.
+    # Each of those is a thing to stop for.
+    if approved and graded == 0:
+        msg = (f"{council}/{chapter_key}: {approved} approved row(s) and NOT ONE carries "
+               f"a fidelity verdict, so nothing here has been checked against the "
+               f"council's own PDF. The gate is opt-out (DCP_FIDELITY_GATE) and should "
+               f"have run; that it did not is the finding.")
+        if f"{council}/{chapter_key}" in allowed:
+            print(f"    [fidelity] ALLOWED by --allow-fidelity, UNVERIFIED: {msg}")
+            return graded, bad, detail
+        raise FidelityRefused(
+            "REFUSED: this batch carries no proof at all. " + msg
+            + f" Re-run the fidelity gate for this chapter, or, if it genuinely cannot "
+              f"be checked and you accept serving it unverified, re-run with "
+              f"--allow-fidelity {council}/{chapter_key}")
     if graded == 0:
-        print(f"    [fidelity] {council}/{chapter_key}: no graded rows in this batch -- "
-              f"not judged. The gate is opt-out (DCP_FIDELITY_GATE); an unchecked batch "
-              f"is not a passing one.")
+        print(f"    [fidelity] {council}/{chapter_key}: nothing approved in this batch.")
         return graded, bad, detail
     # Three outcomes, not two. A batch under the floor has not been measured against the
     # bar at all, and saying it came in under one is a false statement in a log a person

@@ -1819,6 +1819,49 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "the per-chapter breakdown before triaging or fixing anything from "
         "this number alone.",
     ),
+    "DQ-100": (
+        "SERVED provisions from a council DCP that carry NO source_council, so every "
+        "council-scoped check skips them",
+        # A DCP is always a council's document. A served row whose document_id names
+        # one and whose source_council is NULL is mislabelled, not statewide -- and
+        # the label is what every council-scoped query filters on.
+        #
+        # Measured 2026-09-21: 1,336 such rows, ALL of them Inner West Ashfield DCP
+        # 2016 chapters (E1 Heritage 887, C Sustainability 181, A Miscellaneous 140,
+        # F Development Categories 71, D Precinct Guidelines 48, B Public Domain 9),
+        # while 2,041 rows of the SAME document family correctly carry 'ashfield'.
+        # One document set, split two ways.
+        #
+        # WHY IT MATTERS MORE THAN ITS SIZE. These rows are invisible to anything
+        # scoped by council: the DQ-70 staleness join, the plan-in-force confirmation,
+        # per-council coverage counts, and DQ-33 -- which was narrowed to
+        # `source_council IS NOT NULL` on 2026-09-19 for the sound reason that a
+        # statewide instrument has no council config to resolve against. That
+        # narrowing is right for real statewide rows and wrong for these, so the
+        # ratchet beside this one is quietly excluding 1,336 rows of council data.
+        #
+        # NOT counted here: 554 served LEP rows also carry no council. Whether an LEP
+        # belongs to its council or is statewide is a real question with a defensible
+        # answer either way -- instrument_registry files LEPs per council, which
+        # suggests it does -- and mixing it in would make this number unarguable
+        # rather than exact. It needs its own row and its own decision.
+        "SELECT count(*) FROM regulatory_provisions "
+        "WHERE is_current AND v2_is_actionable AND source_council IS NULL "
+        # %% not % -- psycopg2 reads a lone % as a parameter placeholder even when
+        # the parameter tuple is empty, and raises IndexError before the query runs.
+        "AND (document_id ILIKE '%%DCP%%' "
+        "     OR document_id ILIKE '%%Development Control Plan%%' "
+        "     OR document_id ILIKE '%%Development_Control_Plan%%')",
+        (),
+        "Each row is a control we serve that came from a named council's DCP but "
+        "carries no council, so every council-scoped check passes over it: staleness "
+        "(DQ-70), the plan-in-force confirmation, coverage counts, and the no_config "
+        "ratchet (DQ-33), which was deliberately narrowed to rows that HAVE a council. "
+        "Clears by setting source_council on the affected rows, which is a data repair "
+        "and not a code change -- and the repair must decide what Inner West's "
+        "pre-amalgamation Ashfield chapters should say, since 2,041 sibling rows "
+        "already say 'ashfield'.",
+    ),
 }
 
 

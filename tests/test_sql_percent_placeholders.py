@@ -120,9 +120,40 @@ def test_fetch_dcp_setbacks_link_map_survives_real_parameter_formatting() -> Non
     result = fetch_dcp_setbacks(conn, "penrith", "R2 Low Density")
 
     assert result is not None and result["setbacks"]
+    # "_external_lep" is the council's registered LEP landing page, added 2026-09-21.
+    # A control sourced from a state instrument has no dcp_chapter_registry row on
+    # purpose -- an LEP is not one of the council's DCP chapters -- so without this it
+    # resolved to no source link at all and OC-8 went CONTRADICTED the moment a
+    # NUMBERED one existed. The fetchone above stands in for instrument_registry.
     assert result["registry_pdf_urls"] == {
-        "part-3-residential": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/x.pdf"
+        "part-3-residential": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/x.pdf",
+        "_external_lep": "https://example.gov.au/dcp",
     }
+
+
+def test_no_registered_instrument_means_no_invented_lep_link() -> None:
+    """The confusable negative. A council with no instrument_registry row must get NO
+    _external_lep key, not a guessed one: a fabricated legislation link is worse than
+    an absent one, because it looks like a citation and opens the wrong law."""
+    def psycopg2_like_execute(sql, params=None):
+        if params is not None:
+            sql % tuple("'x'" for _ in params)
+
+    cur = MagicMock()
+    cur.execute.side_effect = psycopg2_like_execute
+    cur.fetchall.side_effect = [
+        [("dwelling_house", "front_setback", 4.5, None, "m", "", "Provide a front setback.",
+          "A-1.1", "general", False, "part-3-residential", 12, "v2022-current", None, None, None)],
+        [("part-3-residential", "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/x.pdf")],
+    ]
+    cur.fetchone.return_value = None          # nothing registered for this council
+    conn = MagicMock()
+    conn.cursor.return_value = cur
+
+    result = fetch_dcp_setbacks(conn, "penrith", "R2 Low Density")
+
+    assert result is not None
+    assert "_external_lep" not in result["registry_pdf_urls"]
 
 
 def test_detector_skips_calls_psycopg2_does_not_format() -> None:
