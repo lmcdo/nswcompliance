@@ -1183,6 +1183,30 @@
       "blocks_outreach": true,
       "passes_when": "exit 0 - no precinct or town rule is served council-wide (DQ-99, DQ-66), no slot is ambiguous (DQ-32c), plans are versioned and current (DQ-61, DQ-70), no active chapter comes from a repealed plan, no range is printed as a maximum, every council's served numbers trace to one registered plan that a person confirmed in force within 90 days by name (dcp_plan_as_at.currency_confirmed_plan), no served row applies to a retired zone code but not its successor, amended instruments are applied (DQ-88), and no rule is served to a development type its own text excludes (DQ-33)",
       "red_when": "the declared state and the check disagree in either direction"
+    },
+    "DQ-102": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_applicability_config.py",
+        "--id",
+        "DQ-102"
+      ],
+      "passes_when": "exit 0 - every served row in a council that HAS an applicability config resolves to an entry in it. Reachable only by writing the missing chapter entries against each chapter's own Application section, never by deleting the council from COUNCIL_CONFIGS, which would make the rows unreachable rather than resolved.",
+      "red_when": "a chapter is registered and extracted but never given a config entry, so its rows take their scope from a text regex that is recorded as a TRUSTED source and the omission never surfaces.",
+      "note": "Found 2026-09-23 while writing the Canterbury-Bankstown and Campbelltown entries. DQ-33 cannot see this: it counts `v2_dev_type_source = 'no_config'`, and a row only reaches no_config when the config missed it AND its own text yielded nothing either. A chapter whose provisions happen to contain the words 'dwelling house' or 'R2' is recorded as text_regex, which TRUSTED_ALL_SOURCES treats as a decision - so the missing chapter looks decided. Measured 138 served rows across 25 documents: woollahra (d5 double bay centre, f2 educational establishments, f4 telecommunications), ku_ring_gai (the section_b part_14x local-centre and site-specific parts), canterbury_bankstown (10_6 commercial land uses, 10_8 telecommunications, 11_2 undercliffe bridge, 11_6 potts hill, 3_3 waste management, 1_1 introduction) and city_of_sydney. Not fixed here on purpose: each entry has to be written from its chapter's own Application section, and guessing one to clear a count is the behaviour DQ-33 exists to refuse."
+    },
+    "DQ-103": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_applicability_config.py",
+        "--id",
+        "DQ-103"
+      ],
+      "passes_when": "exit 0 - no served row is left reading ALL on a key its config entry declined to decide while its own text carries evidence for a narrower answer. Reachable either by the tagger consulting the text for a config_silent key, or by those entries gaining a real decision.",
+      "red_when": "`tag_with_provenance` discards a row's own text evidence because SOME OTHER key of the same config entry was decided.",
+      "note": "Found 2026-09-23. `tag_with_provenance` guards text extraction with `if text and not config` - so a matched entry suppresses the regex for BOTH keys, including one the entry deliberately omitted. `config_silent` means 'an entry matched and nobody decided this key' (ApplicabilityTagger._resolve), so suppressing evidence on its account is a non-decision overruling data that exists. Direction is SAFE - the row ends up ALL, so nothing is hidden from anyone - but it is served as universal on no authority, which is the same unauditable ALL that DQ-33 was opened for. Measured 500 served rows across 22 documents, concentrated in campbelltown part 3 (111), waverley (97) and the five city_of_sydney sections (218 between them). The probe runs the TAGGER over the served corpus rather than reading the stored column, so it measures what the tagger would produce today; that is deliberate, because the defect is in the tagger, not in any one stored row. NOT fixed in the same change as the Campbelltown and Canterbury-Bankstown configs: the guard is shared by all six config-driven councils, so lifting it re-tags waverley, woollahra, city_of_sydney and ku_ring_gai at the same time and every resulting narrowing needs adjudicating against its own chapter first."
     }
   }
 }

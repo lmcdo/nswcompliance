@@ -1,223 +1,229 @@
 {
   "tier": "critical",
-  "justification": "Three changes to the path that decides what reaches regulatory_provisions. (1) A provision whose own text carries a serious extraction artifact was enqueued 'pending' for a human; the extractor already knew which rows those were and threw the row identity away, keeping only a per-chapter count. (2) preflight_two_column marked every LLM-read chapter SUSPECT forever, because it measures the SOURCE's column count, which no amount of correct extraction can change - a permanent block on exactly the documents the good reader fixes. (3) The run log named the wrong model, making a future regression unattributable. Measured on live data: 16 of 2,416 pending rows carry a serious artifact and ELEVEN of those are currently graded 'grounded', i.e. approvable today.",
-  "commit_hash": "2360f971",
+  "justification": "Two applicability configs and the script that writes them to production. These decide which property is shown which control: v2_applicable_zones and v2_applicable_dev_types are HARD filters on the served answer (frontend-nextjs/app/api/provisions/for-property/route.ts:1012 and :1222, app/api/permissibility/check/route.ts:207), so a value named here removes the row from every query that does not name it. This is also the change that takes DQ-33 under its floor and unblocks OC-17, so the temptation to clear a count by asserting ALL is live throughout.",
+  "commit_hash": "f6e5848a",
   "files": [
-    "scripts/dcp_extract_changed.py",
-    ".claude/dcp_pipeline_manifest.json",
-    "tests/test_the_pipeline_cannot_lose_a_stage.py",
-    "tests/test_a_broken_row_is_not_left_for_a_human.py",
-    "tests/test_the_good_reader_is_not_permanently_suspect.py",
-    "tests/test_page_proof_gate_dq101.py",
-    "tests/test_dcp_review_enqueue.py",
-    "tests/test_dcp_extraction_fidelity.py",
-    "scripts/run_monitors.py",
-    "enrichment/rule_extraction_pipeline.py",
+    "enrichment/config/campbelltown_config.py",
     "enrichment/config/canterbury_bankstown_config.py",
     "enrichment/config/__init__.py",
-    "enrichment/extractors/applicability_tagger.py",
+    "scripts/retag_applicability_slug_docids.py",
+    "scripts/dq_probe_applicability_config.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "tests/test_campbelltown_applicability.py",
     "tests/test_canterbury_bankstown_applicability.py",
-    "scripts/dcp_fidelity_gate.py"
+    "tests/test_retag_narrowing_is_classified.py",
+    ".gitignore"
   ],
   "pre_impl": {
-    "existing_data": "dcp_review_queue (status, suspect_reason) written by the existing enqueue path; no schema change - 'rejected' is already a value that path sets via _AUTO_REJECT_REASONS. regulatory_provisions is NOT touched. Blast radius measured before writing code by running the real check_provision over all 2,416 live pending rows.",
-    "assumption_mismatch": "Four. (1) I assumed the corruption was undetected. It was fully detected - check_provision grades every provision and the result was collapsed to a count, so schema_fail said '12 of 49 seriously broken' while the same run's fidelity gate said '39 grounded'. Two detectors, one pipeline, disagreeing, and the blind one gates approval. (2) I assumed re-extraction would fix these chapters because the doubled-glyph guard decodes the strings in isolation; it does not - ku_ring_gai's run carries digits injected mid-word (PRREEC8C5ININCCTT) which terminates the pattern, and 5 of 5 chapters came back refused on the deterministic reader. (3) I assumed SERIOUS_ARTIFACT_LABELS already rejected rows; it has ZERO overlap with _AUTO_REJECT_REASONS. (4) I assumed HC_PING_URL was only partially wired; it is generic in run_monitors.py and covers every monitor - corrected in the manifest rather than recorded wrong.",
-    "new_vs_existing": "No new mechanism in the extractor. 'rejected' status, _AUTO_REJECT_REASONS, check_provision and SERIOUS_ARTIFACT_LABELS all existed; this connects two of them that were never wired together, behind one named seam (_serious_artifacts) so the offline enqueue harness can stub it exactly as it already stubs suspect_reason. The manifest gate IS new, and is the item docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md Phase 0 calls 'the single check that would have caught #506; build it first' - specified 2026-06-20 in commit 4115dbe6 whose own message says 'enforced by gates, not documentation' and ends 'Docs-only.'",
-    "external_source_error": "No network in the change. The evidence behind it came from live runs: the Anthropic org has no API credit (three keys tested; two 'credit balance too low', one invalid - a Claude subscription is not API credit), so the LLM reader ran on sol/OpenAI, which works.",
-    "frontend_type": "One new read-only internal page and its API route. Every pool.query row shape is declared as an interface because getPool() returns untyped rows, so callbacks were implicit any and tsc failed. Null handling uses `== null` rather than `=== null` throughout: a key the API omits arrives as undefined, not null, and an age of 0 ('today') is a real value a truthiness test would swallow. No existing component or type changed.",
-    "user_failure_mode": "Asymmetric, and it decided the direction. A row wrongly rejected leaves the EXISTING provision current - no silent drop - so the cost is a stale chapter, which is visible. A row wrongly left 'pending' is approvable by a human who sees plausible text, and on 2026-09-09 a backlog of 8,875 was cleared in one night, putting 578 bad rows into production. So the change only ever moves pending -> rejected and never the reverse."
+    "existing_data": "regulatory_provisions.v2_applicable_zones / v2_applicable_dev_types / v2_zone_source / v2_dev_type_source. No schema change. Blast radius measured against live data before writing anything: 2,075 served council rows read no_config against a floor of 1,158 (canterbury_bankstown 883, parramatta 341, campbelltown 268, marrickville 157, ashfield 118, then a tail). Re-running the tagger over both councils' whole corpus predicts no_config 883 -> 0 and 268 -> 0, leaving 924, which is 234 under the floor.",
+    "assumption_mismatch": "Four, and two of them reversed the plan. (1) The handoff's proposed fix -- drop applicable_zones from the Canterbury-Bankstown entries so text-derived zones survive -- does not work: tag_with_provenance guards text extraction with `if text and not config`, so a matched entry suppresses the regex whether or not it decided that key. Checked before relying on it; the finding is now its own ledger row, DQ-103. (2) 'Widening the retag list is not safe: 468 value changes including 140 narrowings' was a mislabel, not a measurement -- both narrowing counters tested `!=`, counting every change in either direction. Classified properly the same plan holds 201 narrowings in 10 distinct shapes, every one traceable to a chapter's own Application section. (3) chapter_9_1 was configured as industrial by its position in the numbering; the PDF's own section 1 scopes it to Zone E4 and its controls govern vehicle body repair workshops and food premises, so the existing dev-type list was deleting 5.10 from every food_and_drink_premises query. (4) chapter_10_4's list was built from the tagger's 16-term vocabulary and looked complete; the serving taxonomy in frontend-nextjs/lib/see/devTypeHierarchy.ts is wider and carries neighbourhood_shop and serviced_apartment, which are sections 3 and 4 of that very chapter.",
+    "new_vs_existing": "No new mechanism. campbelltown_config.py is the seventh file of an existing shape, registered in the existing COUNCIL_CONFIGS; the four-state model (config_specific / config_all / config_silent / no_config) already existed in ApplicabilityTagger._resolve and is used, not extended. The retag script gains a --councils argument in place of a hardcoded tuple, a real narrow-vs-widen classifier in place of two `!=` counters, and two refusals. dq_probe_applicability_config.py is new because dq_probe_live.py is SQL-only by construction -- its PROBES map holds a SQL string the runner executes -- and both new questions need the tagger to run against each row's own document_id and text.",
+    "external_source_error": "The only external reads are the four chapter PDFs from R2, fetched to a scratch directory and read with pdfplumber. Every scope claim in both configs is quoted from the section that states it, not from a chapter title -- which is exactly how chapter_9_1 came to be mis-scoped in the first place. Campbelltown's Part 4 PDF renumbers itself Part 5 relative to the registry key; recorded in the config rather than silently reconciled.",
+    "frontend_type": "No frontend file changed. The frontend is read as evidence, not edited: it is where the hard filters live, and the reason a narrowing is the only direction that can hide a control.",
+    "user_failure_mode": "A binding control disappears from the answer for a property it governs, silently, because a config named a partial list. That is the asymmetric failure, and it is why several of the entries end in an OMITTED key rather than a short list."
   },
   "falsifiable_check": {
-    "command": "python -m pytest tests/test_the_pipeline_cannot_lose_a_stage.py tests/test_a_broken_row_is_not_left_for_a_human.py tests/test_the_good_reader_is_not_permanently_suspect.py -q",
-    "fails_when": "a pipeline stage loses its scheduled job, is repointed at another script, or drops the --review argument that keeps it off the live table; the manifest is deleted or its unbuilt ceiling raised; a gap is ticked 'done' instead of removed; a serious-artifact row is enqueued 'pending' again; a label is dropped from SERIOUS_ARTIFACT_LABELS; the two-column exemption widens beyond an 'llm:' prefix, is granted to an unknown reader, or starts suppressing a CONTENT check (coverage_fail, truncation_fail, attribution_collapsed, schema_fail, count_drop, coverage_unknown, preflight_empty_layer).",
-    "observed_red": "9 mutations planted, 9 caught, in two rounds. Round 1 on the reader exemption: 3 of 4 caught, and the survivor was real - my 'not an LLM' fixture was 'geometric-columnar', which contains no 'llm' at all and so could not distinguish prefix-matching from substring-matching. Added fixtures that DO contain the substring ('regex-after-llm-fallback', 'regex(no-llm-key)', 'ocr+llm-disabled'); 3/3 after. Round 2 on the manifest gate: 6/6, including the actual #506 mutation - deleting the dcp-extract stage from run_monitors.MONITORS turns the gate red with 'chapters will be flagged as changed and never re-read, with no error anywhere'.",
-    "manual_probe": "Full suite 6,812 passed / 0 failed / 3 xfailed. An earlier run reported 52 failures; that was my own -o addopts= flag pulling in tests pytest.ini deselects with -m 'not database' - they need PYTEST_REAL_DB and fail on a MagicMock cursor. Verified, not assumed, before committing."
+    "command": "python scripts/dq_probe_live.py --id DQ-33 && python scripts/dq_probe_applicability_config.py --id DQ-102",
+    "fails_when": "DQ-33 exits 1 while no_config on served council rows is above 1,158; DQ-102 exits 1 while any served row in a council that HAS a config resolves to no entry in it.",
+    "observed_red": "DQ-33 = 917 over the floor (2,075 against 1,158) before the change. DQ-102 = 138 and DQ-103 = 500, both measured for the first time on 2026-09-23 and both registered open.",
+    "manual_probe": "python scripts/retag_applicability_slug_docids.py --councils canterbury_bankstown campbelltown -- the dry run prints the 10 distinct narrowing shapes, grouped, with an example id for each."
   },
   "functions": [
     {
-      "name": "_serious_artifacts",
-      "file_line": "scripts/dcp_extract_changed.py",
-      "input": "One provision's text (may be None for a removed row).",
-      "output": "Sorted list of the SERIOUS artifact labels that text carries, or [] .",
-      "if_none": "[] for empty/None input, so a removed row carrying new_text=None is never rejected for being empty. Advisory labels such as short_provision are excluded by intersecting with SERIOUS_ARTIFACT_LABELS - a genuinely short rule ('No fences forward of the building line.') is a control, not a defect."
+      "name": "classify",
+      "file_line": "scripts/retag_applicability_slug_docids.py",
+      "input": "The tag value before and after, as lists.",
+      "output": "one of same / narrowed / narrowed_from_all / widened / widened_to_all / swapped.",
+      "if_none": "None and [] are both treated as ['ALL'] -- 'applies to everything' -- because that is how the serving query reads them (`IS NULL OR 'ALL' = ANY(...)`). Treating [] as an empty set would classify [] -> ['E4'] as a WIDENING, the inversion that lets a hidden control through unexamined; pinned by test_empty_and_ALL_are_the_same_state."
     },
     {
-      "name": "suspect_reason",
-      "file_line": "scripts/dcp_extract_changed.py",
-      "input": "review_data, the per-chapter dict built by extract_chapter, now carrying reader_used alongside the existing preflight, diff and coverage/truncation/attribution flags.",
-      "output": "Unchanged except that preflight_two_column is skipped when reader_used starts with 'llm:'.",
-      "if_none": "A missing or unknown reader_used is read as 'regex', the conservative direction: the flag stays. Tested with None and with three non-LLM strings that contain the substring 'llm'."
+      "name": "probe_102",
+      "file_line": "scripts/dq_probe_applicability_config.py",
+      "input": "Every served row of regulatory_provisions as (council, document_id, text, stored source), plus a constructed ApplicabilityTagger.",
+      "output": "(count, {(council, document_id): n}) for rows whose council has a config but whose chapter matches no entry.",
+      "if_none": "A council with no config at all is skipped, not counted: those rows are DQ-33's population, and counting them here would report the same defect twice under two ids."
     },
     {
-      "name": "DCPExtractor.reader_used",
-      "file_line": "scripts/dcp_extract_changed.py",
-      "input": "Set during DCPExtractor.extract(): 'llm:<model>' when the LLM reader produced the sections, or 'regex' on every fallback path, including the no-provider-key one.",
-      "output": "Travels to the parent through the subprocess queue.",
-      "if_none": "Defaulted to 'regex' at the queue boundary AND again at the parent, so an older worker's payload cannot grant the LLM exemption by omission."
+      "name": "probe_103",
+      "file_line": "scripts/dq_probe_applicability_config.py",
+      "input": "Every served row of regulatory_provisions as (council, document_id, text, stored source), plus a constructed ApplicabilityTagger.",
+      "output": "(count, by-document map) for rows where an entry matched, left dev types undecided, and the row's own text yields at least one dev type.",
+      "if_none": "Rows whose entry DECIDED the key are excluded, config_all included: an explicit assertion of universality is a decision, and overriding it with a regex is the opposite defect."
     }
   ],
   "values": [
     {
-      "name": "preflight_two_column is exempted for the LLM reader ONLY",
-      "value": "reader_used.startswith('llm:')",
-      "why": "It is a PRE-READ measurement of the source ('this PDF has two columns'), not a finding about the output, and the census states it outright: 'a pre-read page heuristic, not evidence the row is wrong'. The LLM reader was adopted to read two-column bodies, so the flag marks every chapter it repairs as suspect and can never be cleared by doing better.",
-      "source": "Measured 2026-09-22: canterbury_bankstown/chapter-7-6 read by sol produced 431 sections, 0 serious artifacts, 0 rows tripping the DQ-78 signature (worst single-letter ratio 0.047 vs a 0.20 threshold) - against 10 scrambled rows in the served version - and its ONLY complaint was preflight_two_column (67/141 pages).",
-      "if_missing": "The hard chapters stay permanently unapprovable and a correct extraction is indistinguishable from a failed one.",
-      "read_at": "scripts/dcp_extract_changed.py -- suspect_reason."
+      "name": "canterbury_bankstown chapter_9_1 applicable_zones = ['E4']",
+      "value": "['E4']",
+      "why": "The chapter's own section 1: controls 'to enhance the function, design and amenity of the industrial precincts within Zone E4 General Industrial'. E4 is the only zone the chapter names as its own scope -- checked across the whole PDF, where the sole other zone reference is a control about adjoining land.",
+      "source": "R2 source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-9-1-general-requirements.pdf, page 4, read 2026-09-23. E4 is a current code in lep_zone_coverage for this LGA.",
+      "read_at": "enrichment/config/canterbury_bankstown_config.py -- chapter_topics['chapter_9_1_general_requirements']['applicable_zones']; reaches the row through ApplicabilityTagger._get_config_driven.",
+      "if_missing": "The key is absent and the entry resolves config_silent on zones, so the chapter is served to every zone. Noise, not a hidden control -- which is why omitting is the safe default everywhere the chapter does not say."
     },
     {
-      "name": "every CONTENT check still applies to the LLM",
-      "value": "count_drop, schema_fail, coverage_fail, truncation_fail, attribution_collapsed, coverage_unknown, preflight_empty_layer",
-      "why": "Exempting a reader from a guard is the shape of change that goes wrong quietly. coverage/truncation/attribution exist SPECIFICALLY to police the LLM's own failure modes. preflight_empty_layer is deliberately NOT exempted: a page with no text layer has nothing for any text reader to read, unlike two columns, which only defeats a reader that sorts left to right.",
-      "source": "Seven tests in TestTheLlmIsStillPoliced, one per check.",
-      "if_missing": "A false block is traded for a silent hole, which is strictly worse.",
-      "read_at": "tests/test_the_good_reader_is_not_permanently_suspect.py."
+      "name": "canterbury_bankstown chapter_9_1 declares NO development types",
+      "value": "applicable_dev_types omitted -> config_silent",
+      "why": "The same page says 'Non-industrial development will be limited to land uses that are compatible with the primary employment role of the precinct', and the chapter's controls bear it out: 3.16 vehicle body repair workshops, 5.10 food premises. The previous ['industrial_development','light_industry','warehouse'] deleted 5.10 from every food_and_drink_premises query.",
+      "source": "Same PDF, sections 3 and 5; the affected rows are ids 122463-122467.",
+      "read_at": "enrichment/config/canterbury_bankstown_config.py -- the absence of applicable_dev_types on that entry; ApplicabilityTagger._resolve turns the missing key into config_silent.",
+      "if_missing": "If someone adds the key back, dev types become a hard filter again and 5.10 food premises leaves every food_and_drink_premises answer. Pinned by test_no_entry_reintroduces_a_dev_type_list_on_the_two_corrected_chapters."
     },
     {
-      "name": "unbuilt_ceiling = 5",
-      "value": "The Phase 0/1 items verified absent on 2026-09-22",
-      "why": "durable_queue_claim, dead_letter_to_human, golden_pdf_corpus, cosmetic_auto_approve_with_audit_sample, provision_schema_validation. Each records the grep that showed it absent, so a later reader can tell a real gap from an assumption. The ceiling may only FALL - the same rule DQ-33's floor carries.",
-      "source": "Audited with greps recorded in the manifest's verified_absent_on fields.",
-      "if_missing": "The backlog is invisible and grows silently, which is how Phase 0 stayed unexecuted for three months.",
-      "read_at": ".claude/dcp_pipeline_manifest.json."
+      "name": "canterbury_bankstown chapter_10_4 applicable_zones = ['R2','R3','R4']",
+      "value": "['R2','R3','R4']",
+      "why": "Section 1: controls 'to manage the design and operation of non-residential land uses within Zone R2 Low Density Residential, Zone R3 Medium Density Residential and Zone R4 High Density Residential'.",
+      "source": "R2 .../chapter-10-4-non-residential-land-uses.pdf, page 4, read 2026-09-23. The stored R1 that one row loses came from the text regex, not the chapter.",
+      "read_at": "enrichment/config/canterbury_bankstown_config.py -- chapter_topics['chapter_10_4_non_residential_land_uses']['applicable_zones'].",
+      "if_missing": "Zones resolve config_silent and the chapter is served in every zone, including industrial land it does not govern. Wrong, but in the direction that shows too much rather than too little."
     },
     {
-      "name": "DQ-101's three failing cases are xfail(strict=True), not deleted",
-      "value": "The fidelity grader is diagnosed, not fixed",
-      "why": "The grader scores only [a-z]{4,} words, as an unordered set, with substring matching, so map-label interleave, reversed word order and split numbers all read as 'grounded'. strict=True means the moment it is fixed the test FAILS FOR PASSING, forcing the marker's removal instead of leaving a stale lie behind. A plain skip would have hidden it.",
-      "source": "Measured: 3 of 4 corruption cases certified grounded; the reversed-word-order case returned detail=None.",
-      "if_missing": "The defect is either invisible (skip) or the suite is red and the gate gets bypassed.",
-      "read_at": "tests/test_page_proof_gate_dq101.py -- the `blind` marker."
+      "name": "campbelltown Part 3 applicable_zones = ['R2','R3','R4','R5']",
+      "value": "['R2','R3','R4','R5']",
+      "why": "Section 3.1 Application states the same four zones on every one of its sub-lists, beginning 'General Requirements for all Types of Residential Development in areas zoned R2, R3, R4 and R5'.",
+      "source": "R2 source-pdfs/dcps/campbelltown/v1.1-2026-04-27/campbelltown-dcp-part3-low-medium.pdf, page 2, read 2026-09-23. All four are current codes in lep_zone_coverage for this LGA.",
+      "read_at": "enrichment/config/campbelltown_config.py -- chapter_topics['campbelltown_dcp_part3_low_medium']['applicable_zones'].",
+      "if_missing": "Part 3 is served to every Campbelltown zone, including RU2, RU5, E1 and SP2 where the chapter states it does not apply. 185 served rows."
     },
     {
-      "name": "rule formulation is scheduled as dcp-rules, fill-blanks-only",
-      "value": "enrichment/rule_extraction_pipeline.py --phase deterministic",
-      "why": "The pipeline was written, works, and was NEVER scheduled. Measured 2026-09-22 across 19,243 served actionable provisions: 6,117 complete, 1,737 review_needed, 11,389 with NO VERDICT (59%). The numbers a planner reads were produced by hand-run per-council scripts instead, which is why they kept going stale. A dry run over 500 genuinely unprocessed rows: 463 complete deterministically (92.6%), 31 needs_llm, 6 needs_human, 0 errors.",
-      "source": "Live measurement and dry run, 2026-09-22.",
-      "if_missing": "Every new extraction adds prose with no structured rule behind it, and the gap grows with the corpus.",
-      "read_at": "scripts/run_monitors.py -- MONITORS['dcp-rules']; .claude/dcp_pipeline_manifest.json."
+      "name": "campbelltown Part 3 declares NO development types",
+      "value": "applicable_dev_types omitted -> config_silent",
+      "why": "The chapter binds all residential development PLUS fencing, outbuildings and swimming pools PLUS section 3.8 subdivision. Semi-detached and attached dwellings have no term in DEV_TYPE_PATTERNS at all, and a residential-only list would delete 3.3 from a `fence` DA, 3.5 from an `outbuilding` DA, the pool controls from a `pool` DA and 3.8 from a `subdivision` DA -- every one of those selectable in frontend-nextjs/lib/see/ancillaryWorks.ts.",
+      "source": "Same PDF, the structure diagram on page 3.",
+      "read_at": "enrichment/config/campbelltown_config.py -- the absence of applicable_dev_types on that entry.",
+      "if_missing": "Adding a residential-only list would remove Part 3 from a fence, outbuilding, pool or subdivision DA. Pinned by test_development_types_are_left_UNDECIDED_not_enumerated."
     },
     {
-      "name": "Canterbury-Bankstown applicability uses THREE states, not one",
-      "value": "config_all for place/topic chapters, config_specific for expressible land uses, config_silent where the vocabulary has no term",
-      "why": "883 CB provisions were no_config -- ALL because nothing matched. Declaring every chapter ['ALL'] would clear DQ-33 in one line and be a lie: _resolve documents config_all as 'a real assertion of universality; trust it', so asserting it for chapter_10_7_sex_services_premises is WORSE than the no_config it replaces. DEV_TYPE_PATTERNS has no term for a school, a place of public worship or a home business, so those three omit the key and land on config_silent ('matched; nobody decided'), which is exactly true.",
-      "source": "Chapter content read 2026-09-22, not titles: 7.5/7.6 carry dwelling mix, non-residential building separation, flood, tree canopy and named key-site design principles together -- a precinct chapter.",
-      "if_missing": "Either 883 rows keep applying to every development type by accident, or the count goes green on a false assertion.",
-      "read_at": "enrichment/config/canterbury_bankstown_config.py; tests/test_canterbury_bankstown_applicability.py."
+      "name": "campbelltown Part 4 declares NO zones",
+      "value": "applicable_zones omitted -> config_silent",
+      "why": "Four of the six zones section 5.1 names -- B1, B2, B3, B4 -- were retired by the 2022 employment-zone reform and none appears in lep_zone_coverage for this LGA. ['R4','RU5'] alone would hide every mixed-use control from the centres the chapter was written for, and mapping B3/B4 onto E2/MU1 in a config file would be interpreting the instrument.",
+      "source": "R2 .../part-4-rfb-mixed-use.pdf, page 2, read 2026-09-23; lep_zone_coverage for campbelltown queried the same day and holds no B-series zone.",
+      "read_at": "enrichment/config/campbelltown_config.py -- the absence of applicable_zones on chapter_topics['part_4_rfb_mixed_use'].",
+      "if_missing": "Declaring the chapter's own B1/B2/B3/B4 would put retired codes into the served set and turn OC-17's retired-zone sub-check red. Pinned by test_no_retired_zone_code_is_declared."
     },
     {
-      "name": "DQ-101 FIXED: the grader now asks the reverse question",
-      "value": "unsourced-token ratio (short tokens counted), word-pair adjacency, whole-token number match",
-      "why": "It only ever asked 'are the row's words on the page'. _content_words is [a-z]{4,} so scrambled map labels were discarded BEFORE scoring; prov_words is a set so order was never checked; membership was substring so '50 00' passed against '5000'. All three now fire. The xfail(strict=True) markers went XPASS the moment the fix landed and were removed in the same change, which is what strict xfail is for.",
-      "source": "Measured 2026-09-22; the same run on canterbury_bankstown/chapter-7-5 had the extractor at 12/49 seriously broken and this gate at 39 grounded.",
-      "if_missing": "Corrupt text keeps being certified approvable, which is how 578 bad rows reached production on 2026-09-09.",
-      "read_at": "scripts/dcp_fidelity_gate.py -- ground_row."
+      "name": "The retag's backup table name is no longer a fixed string",
+      "value": "regulatory_provisions_dq33_backup_<timestamp>, and the run aborts if the name is taken",
+      "why": "CREATE TABLE IF NOT EXISTS ... AS SELECT is a NO-OP when the name exists, and the guard that follows counted rows in whatever was already there. regulatory_provisions_dq33_backup_20260801 has held 22,007 rows since the first run, so every later run on the old default would have passed its own backup check against 2026-08-01 data and written with no usable rollback.",
+      "source": "Measured 2026-09-23: three dq33 backup tables exist in production -- 20260801 with 22,007 rows, 20260921 and 20260922 with 25,315 each.",
+      "read_at": "scripts/retag_applicability_slug_docids.py -- the --backup-table default and the to_regclass guard immediately before CREATE TABLE.",
+      "if_missing": "The run writes against a backup that silently contains someone else's rows, so the printed ROLLBACK statement restores the wrong values for the ids it holds and does nothing for the ids it does not."
     }
   ],
   "queries": [
     {
-      "purpose": "Size the blast radius before writing code: how many live pending rows would newly be rejected, and what the current gate says about them.",
-      "file_line": "ad hoc; the shipped change adds no SQL",
-      "where_clause": "dcp_review_queue WHERE status='pending' AND new_text IS NOT NULL -- 2,416 rows scanned, 16 carry a serious artifact (0.7%), of which 11 are fidelity_status='grounded'."
+      "purpose": "Size the defect before touching it, per council rather than in total.",
+      "file_line": "ad hoc read-only; the shipped change adds no SQL",
+      "where_clause": "regulatory_provisions WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL AND v2_dev_type_source='no_config' GROUP BY source_council -- 2,075 rows; canterbury_bankstown 883, parramatta 341, campbelltown 268."
+    },
+    {
+      "purpose": "Confirm every zone about to be declared is a current code for its LGA, so no config reintroduces a retired one -- OC-17 checks for exactly that.",
+      "file_line": "ad hoc read-only",
+      "where_clause": "lep_zone_coverage WHERE lower(lga) LIKE ... -- canterbury_bankstown holds E4, R2, R3, R4; campbelltown holds R2, R3, R4, R5 and no B-series zone at all."
+    },
+    {
+      "purpose": "Find which served chapters resolve to no config entry, which is what DQ-102 now counts on every run.",
+      "file_line": "scripts/dq_probe_applicability_config.py",
+      "where_clause": "regulatory_provisions WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL -- 138 rows across 25 documents."
     }
   ],
   "break_it": [
     {
-      "scenario": "The two-column exemption is widened to a substring match.",
-      "what_happens": "Any reader label containing 'llm' is exempted. The fallback path's own log line says 'AI_EXTRACTION is DISABLED', so a future label recording that fact is likely to contain those letters while meaning the opposite.",
+      "scenario": "classify() treats ALL as an ordinary set member.",
+      "what_happens": "['ALL'] -> ['E4'] reads as a swap rather than narrowed_from_all, and the single case that can hide a whole chapter stops being counted.",
       "mitigated": true,
-      "how": "Prefix match, pinned by fixtures that contain the substring but are not the LLM reader. This mutation SURVIVED the first round and the test was strengthened.",
-      "repro": "python -m pytest tests/test_the_good_reader_is_not_permanently_suspect.py -k accident -q"
+      "how": "o_all/n_all are computed before any subset test, with [] and None folded into ALL. Mutation `if o_all and not n_all:` -> `if False:` was planted and failed 4 tests.",
+      "repro": "python -m pytest tests/test_retag_narrowing_is_classified.py -q"
     },
     {
-      "scenario": "A row is rejected that was actually fine.",
-      "what_happens": "The existing provision stays current and the chapter does not update. 0.7% of pending rows are affected, and two_col_interleave/two_col_numeric can fire on a legitimately formatted table.",
+      "scenario": "The direction test is inverted -- n > o read as a narrowing.",
+      "what_happens": "Widening rows are gated and narrowing rows pass unexamined, which is precisely backwards.",
+      "mitigated": true,
+      "how": "Every direction case has a confusable negative beside it in the parametrised table. Mutation `if n < o:` -> `if n > o:` was planted and failed 3 tests.",
+      "repro": "python -m pytest tests/test_retag_narrowing_is_classified.py -k direction -q"
+    },
+    {
+      "scenario": "A swap is dropped from NARROWING because it gains as many members as it loses.",
+      "what_happens": "['food_and_drink_premises'] -> ['warehouse'] applies without acknowledgement, and the food premises control vanishes from the query it was written for.",
+      "mitigated": true,
+      "how": "NARROWING includes 'swapped'; mutation to ('narrowed',) alone was planted and failed 2 tests.",
+      "repro": "python -m pytest tests/test_retag_narrowing_is_classified.py -k swap -q"
+    },
+    {
+      "scenario": "Someone completes chapter_9_1 or chapter_10_4 by naming development types again -- the edit looks like an improvement.",
+      "what_happens": "The hard filter returns and the chapter disappears from every type not listed, which is what the chapters' own text contradicts.",
+      "mitigated": true,
+      "how": "test_no_entry_reintroduces_a_dev_type_list_on_the_two_corrected_chapters asserts on the config dict rather than the resolved entry, so the failure names the file being edited and carries the reason.",
+      "repro": "python -m pytest tests/test_canterbury_bankstown_applicability.py -k reintroduces -q"
+    },
+    {
+      "scenario": "A future edit clears the no_config count by declaring ['ALL'] on both keys of every Campbelltown entry.",
+      "what_happens": "The number goes green and nothing about what is served changes. config_all is documented as 'a real assertion of universality; trust it', so it becomes a false claim carried by a trusted source.",
+      "mitigated": true,
+      "how": "test_no_entry_asserts_universality_on_either_key fails on either key of either chapter.",
+      "repro": "python -m pytest tests/test_campbelltown_applicability.py -k universality -q"
+    },
+    {
+      "scenario": "A retired B-series zone is copied out of Part 4's text into the config, since the PDF prints them.",
+      "what_happens": "OC-17's 'served rows that apply to a retired zone code but not to its successor' check goes red, and rows are served to a zone that no longer exists.",
+      "mitigated": true,
+      "how": "test_no_retired_zone_code_is_declared enumerates the retired B and IN series.",
+      "repro": "python -m pytest tests/test_campbelltown_applicability.py -k retired -q"
+    },
+    {
+      "scenario": "The Campbelltown registry key changes, or a third chapter is onboarded.",
+      "what_happens": "The new chapter matches nothing and its rows go straight back to no_config, invisibly -- the defect this config was written for.",
+      "mitigated": true,
+      "how": "test_both_registered_chapters_are_covered pins the entry set, and DQ-102 now counts an unmatched served chapter on every run for every config-driven council.",
+      "repro": "python scripts/dq_probe_applicability_config.py --id DQ-102"
+    },
+    {
+      "scenario": "A typo in a development type, e.g. residential_flat_buildings.",
+      "what_happens": "The chapter narrows to a type nothing matches, hiding every control in it -- silently, in the harmful direction.",
+      "mitigated": true,
+      "how": "test_every_declared_dev_type_exists_in_the_vocabulary, for both councils.",
+      "repro": "python -m pytest tests/test_campbelltown_applicability.py tests/test_canterbury_bankstown_applicability.py -q"
+    },
+    {
+      "scenario": "--apply is run without reading the dry run.",
+      "what_happens": "201 narrowings land on production with nobody having looked at one.",
+      "mitigated": true,
+      "how": "--apply refuses unless --expect-narrowings carries the EXACT count. A bare acknowledgement flag could be passed without reading the number, so it takes an integer.",
+      "repro": "python scripts/retag_applicability_slug_docids.py --councils campbelltown --apply"
+    },
+    {
+      "scenario": "The default backup table name is reused and the backup silently no-ops.",
+      "what_happens": "The row-count guard passes against a stale table and the UPDATE runs with no usable rollback.",
+      "mitigated": true,
+      "how": "Timestamped default, a to_regclass check, and CREATE TABLE without IF NOT EXISTS. Pinned by TestTheBackupCannotBeSilentlyStale, which asserts on the source so the guard cannot be removed quietly.",
+      "repro": "python -m pytest tests/test_retag_narrowing_is_classified.py -k stale -q"
+    },
+    {
+      "scenario": "The unit test passes but tag_with_provenance's combine step undoes the config.",
+      "what_happens": "_get_config_driven returns the right entry and the row still writes ALL/ALL, because the combine step only adopts a value when it is not ['ALL'].",
+      "mitigated": true,
+      "how": "TestTheWholeRowComesOutRight asserts the full (zones, dev_types, provenance) triple through the public method for both Campbelltown chapters.",
+      "repro": "python -m pytest tests/test_campbelltown_applicability.py -k WholeRow -q"
+    },
+    {
+      "scenario": "DQ-102 or DQ-103 is 'fixed' by deleting a council from COUNCIL_CONFIGS.",
+      "what_happens": "The probe's scope shrinks and the count falls while every row becomes unreachable again -- strictly worse than the state being measured.",
       "mitigated": false,
-      "how": "Accepted deliberately and one-way: a stale chapter is visible (the chapter keeps surfacing), whereas a wrong rule served is silent. The rejected row records WHICH labels fired, so an over-eager guard is diagnosable rather than mysterious. Not mitigated further, and this is the residual risk of the change.",
-      "repro": "SELECT suspect_reason FROM dcp_review_queue WHERE status='rejected' AND suspect_reason LIKE '%artifacts:%'"
+      "how": "Not guarded in code. DQ-33 catches it from the other side: removing a council sends its rows to no_config and pushes DQ-33 back over its floor, so the two checks cannot both be satisfied by that move.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-33"
     },
     {
-      "scenario": "Someone deletes a pipeline stage again, as #506 did.",
-      "what_happens": "Nothing used to fail; detection kept flagging chapters, the queue stayed empty, dashboards stayed green. A missing stage and an idle stage look identical.",
+      "scenario": "The retag is run later and the live corpus has moved since the dry run.",
+      "what_happens": "The narrowing count no longer matches what was reviewed.",
       "mitigated": true,
-      "how": "The manifest gate fails at pre-push, naming what breaks. Verified by planting the actual mutation.",
-      "repro": "python -m pytest tests/test_the_pipeline_cannot_lose_a_stage.py -q"
-    },
-    {
-      "scenario": "The unbuilt backlog is emptied by raising the ceiling rather than building anything.",
-      "what_happens": "The ratchet stops meaning anything and the gate reports clean while five Phase 0/1 items remain unbuilt.",
-      "mitigated": true,
-      "how": "A test pins the ceiling at <= 5 and another rejects a 'status: done' field on a gap, so an item leaves the list only by being deleted with the ceiling lowered.",
-      "repro": "python -m pytest tests/test_the_pipeline_cannot_lose_a_stage.py -k ceiling -q"
-    },
-    {
-      "scenario": "The fidelity grader keeps certifying corrupt text as grounded.",
-      "what_happens": "Exactly what happens today: 11 of the 16 artifact rows are graded 'grounded'. This change rejects them on the EXTRACTOR's verdict, which routes around the blind grader rather than fixing it.",
-      "mitigated": false,
-      "how": "NOT fixed here, and it is the larger half. DQ-101 is registered with a failing-by-design test and a spec. The artifact check and the grader look at different things, so a row the extractor cannot label is still graded by the blind one.",
-      "repro": "python -m pytest tests/test_page_proof_gate_dq101.py -q -rx"
-    },
-    {
-      "scenario": "The LLM reader is trusted because this change exempted it from one flag.",
-      "what_happens": "Its real failure modes - dropped TOC sections, truncation, collapsed sub-sections - are the ones that matter, and they are invisible to a two-column heuristic anyway.",
-      "mitigated": true,
-      "how": "Seven tests assert each content check still fires for an llm: reader. The exemption is one heuristic about the SOURCE, not a grant of trust.",
-      "repro": "python -m pytest tests/test_the_good_reader_is_not_permanently_suspect.py -k Policed -q"
-    },
-    {
-      "scenario": "The scheduled run overwrites verdicts a human already set.",
-      "what_happens": "review_needed rows someone adjudicated are silently re-decided on every tick, because the original SELECT had no v2_extraction_status filter and reprocessed the whole corpus.",
-      "mitigated": true,
-      "how": "Fill-blanks-only by default (v2_extraction_status IS NULL), matching the convention every enrichment phase already follows. --reprocess-all is an explicit, documented opt-in for a deliberate re-sweep.",
-      "repro": "python enrichment/rule_extraction_pipeline.py --dry-run --phase deterministic --limit 50"
-    },
-    {
-      "scenario": "A thousands separator is treated as a mere formatting difference, reversing the deliberate decision that 1,500 and 1500 are different numbers.",
-      "what_happens": "A committed batch leaves the result set (status no longer NULL), so OFFSET=processed steps over that many UNPROCESSED rows -- they are never formulated and nothing reports it.",
-      "mitigated": true,
-      "how": "Offset is 0 while the set is shrinking (filtering AND writing); normal paging only for dry runs and --reprocess-all, where the set is stable.",
-      "repro": "enrichment/rule_extraction_pipeline.py -- the offset comment in run_batch"
-    },
-    {
-      "scenario": "The count is cleared by declaring every chapter ALL.",
-      "what_happens": "DQ-33 goes green, nothing served changes, and a specific-land-use chapter now ASSERTS that it binds every development type.",
-      "mitigated": true,
-      "how": "A test walks every chapter_10_* entry and fails if any resolves to config_all; three chapters are pinned to config_silent specifically.",
-      "repro": "python -m pytest tests/test_canterbury_bankstown_applicability.py -k land_use -q"
-    },
-    {
-      "scenario": "The config is registered under the wrong spelling.",
-      "what_happens": "document_ids are 'Canterbury-Bankstown_...' (hyphenated). Registering only the underscored key matches nothing, every row stays no_config, and the config file sits there looking correct.",
-      "mitigated": true,
-      "how": "Both spellings registered; a test asserts the hyphenated document_id resolves.",
-      "repro": "python -m pytest tests/test_canterbury_bankstown_applicability.py -k hyphenated -q"
-    },
-    {
-      "scenario": "The new checks flag correct rows because they demand OUR OWN markup appear on the council's page.",
-      "what_happens": "Exactly what happened while writing this: blacktown 10_4_3_1 (three stitched tables, a real fixture) scored 34% unsourced and flagged. All 16 absent tokens were ours -- the '# 10.4.3.1 ...' heading and the '**Table N** (Page P)' captions this pipeline stamps. Same class as the 2026-09-18 run where 40 of 67 failures ended in a citation we appended.",
-      "mitigated": true,
-      "how": "_council_text strips our heading and captions before the three checks run. A mutation removing it is caught by the real-shape flood-row test.",
-      "repro": "python -m pytest tests/test_dcp_fidelity_gate.py -k flood_row -q"
-    },
-    {
-      "scenario": "A thousands separator is treated as a formatting difference.",
-      "what_happens": "The FIRST version of the DQ-101 test asserted that a row storing '1500' should ground against a page printing '1,500'. That reverses commit cc3f15f0 (Sol cross-review HIGH 0.97), which made a thousands-separated value a DIFFERENT number because '500' was matching inside '1,500' and grounding a 500 m2 minimum lot size against a chapter stating 1,500.",
-      "mitigated": true,
-      "how": "The wrong test was deleted, not the decision. _tokens still strips separators so the three NEW checks stay silent on that formatting rather than piling a second complaint onto it; the existing number check is untouched.",
-      "repro": "python -m pytest tests/test_page_proof_gate_dq101.py -k thousands -q"
-    },
-    {
-      "scenario": "The publish-stage age is read from a field that is source metadata rather than a write time.",
-      "what_happens": "Sol raised this [MEDIUM 0.8]: a provision carrying a council amendment date of 2020, committed today, would leave the dashboard showing the publish stage years stale. Checked against the schema rather than accepted: regulatory_provisions.last_modified_date has DEFAULT now(), so it IS the database write timestamp, and the 2026-09-22 publish set it to 05:00:57, the exact commit time. created_at, which the finding proposed instead, has NO default and its maximum across the live table is 2025-11-11 -- it is not set on new inserts at all, so taking that advice would have made the stage permanently read as ten months stale.",
-      "mitigated": true,
-      "how": "Finding adjudicated as not applicable to this schema; no change made. The reasoning is recorded here because 'being repeated is not evidence either way' and the next reviewer will raise it again from the field name alone.",
-      "repro": "SELECT column_default FROM information_schema.columns WHERE table_name='regulatory_provisions' AND column_name IN ('created_at','last_modified_date')"
+      "how": "--expect-narrowings is compared against the freshly computed plan, so a changed corpus refuses the run rather than applying a stale adjudication. The per-row UPDATE is separately guarded on the values read during planning.",
+      "repro": "python scripts/retag_applicability_slug_docids.py --councils canterbury_bankstown campbelltown --apply --expect-narrowings 0"
     }
   ],
   "post_merge": {
-    "db_reset": "No. This change writes nothing new; it changes the status a row is enqueued WITH. Rows already 'pending' are unaffected until their chapter is re-extracted, and the enqueue path is idempotent per chapter (it clears and re-inserts pending rows).",
-    "secrets": "No. Provider keys were tested for validity by fingerprint and HTTP response; no key value is printed, logged or committed.",
-    "other_repo": "No.",
-    "manual_verify": "Re-run any two-column chapter with the LLM reader and confirm it is no longer flagged SUSPECT while a chapter with a real content failure still is. Measured on the five chapters re-read with sol on 2026-09-22: 1,200 rows, ZERO tripping the DQ-78 scramble signature, ZERO doubled-glyph matches, ZERO serious artifacts - against 18 DQ-78 and 8 DQ-29 defects in the versions those chapters currently serve."
+    "db_reset": "None. The code change writes nothing; the production write is a separate, explicit, operator-run command (--apply --expect-narrowings 201) that takes its own timestamped backup table and prints the rollback UPDATE on completion.",
+    "secrets": "None added or read beyond DATABASE_URL, which the script already required.",
+    "other_repo": "None.",
+    "manual_verify": "After the retag: python scripts/dq_probe_live.py --id DQ-33 (expect 0, i.e. no_config on served council rows at 924 against a floor of 1,158), then python scripts/outreach_claim_checks.py OC-17 (expect exit 0 -- DQ-33 was its only failing sub-check on 2026-09-23; the other ten passed)."
   }
 }

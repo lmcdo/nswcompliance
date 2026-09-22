@@ -32,6 +32,20 @@ Predicted before the first run (2026-08-01): 22,007 rows in scope, 1,928 values
 change, 815 served rows narrow on zones, 882 on dev types, and `no_config` on
 served rows falls 9,854 -> 1,278.
 
+THE COUNCIL LIST IS AN ARGUMENT, NOT A CONSTANT (2026-09-23)
+------------------------------------------------------------
+It was hardcoded to the three Inner West councils the slug fix was written for,
+which made every number this script printed -- including "no_config served" --
+silently scoped to those three while reading like a global measurement. Pass
+--councils to run it anywhere a config was added.
+
+AND "NARROWED" NOW MEANS NARROWED. The two counters named served_zone_narrowed
+and served_devtype_narrowed tested `!=`, so they counted every change in either
+direction. Widening to ALL is noise; narrowing hides a binding control, and that
+is the only number worth gating on. They are now classified properly, printed
+apart, and --apply refuses unless --expect-narrowings names the exact count, so
+nobody applies a narrowing without having looked at one.
+
 SAFETY
 ------
 Backup table first, aborts if the backup is smaller than the plan, per-row UPDATE
@@ -43,9 +57,12 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from datetime import datetime
 from collections import Counter
 
-COUNCILS = ("marrickville", "ashfield", "leichhardt")
+#: Default scope: the three councils the 2026-08-01 slug fix was written for.
+#: Override with --councils; see the docstring for why this is not a constant.
+DEFAULT_COUNCILS = ("marrickville", "ashfield", "leichhardt")
 
 
 def _connect():
@@ -73,7 +90,43 @@ def _connect():
 TABLE = "regulatory_provisions"
 
 
-def build_plan(cur):
+def classify(old: list, new: list) -> str:
+    """How a tag VALUE moved: the direction is the risk, not the fact of change.
+
+    `narrowed` is the only outcome that can hide a binding control from a
+    property it applies to, because both v2_applicable_zones and
+    v2_applicable_dev_types are HARD filters on the served answer
+    (frontend-nextjs/app/api/provisions/for-property/route.ts:1012 and :1222,
+    and app/api/permissibility/check/route.ts:207). A row survives only if the
+    column is NULL, holds 'ALL', or overlaps the query.
+
+    `['ALL']` and `[]` are the same state here -- "applies to everything" -- so
+    losing ALL for a named list is `narrowed_from_all`, not a swap.
+    """
+    o, n = set(old or []), set(new or [])
+    if o == n:
+        return "same"
+    o_all = (not o) or o == {"ALL"}
+    n_all = n == {"ALL"}
+    if o_all and not n_all:
+        return "narrowed_from_all"
+    if n_all and not o_all:
+        return "widened_to_all"
+    if o_all and n_all:
+        return "same"
+    if n < o:
+        return "narrowed"
+    if n > o:
+        return "widened"
+    return "swapped"
+
+
+#: Outcomes that remove a row from some property's answer. A `swapped` value
+#: loses at least one member it used to carry, so it counts here too.
+NARROWING = ("narrowed", "narrowed_from_all", "swapped")
+
+
+def build_plan(cur, councils):
     """Rows whose tag VALUES change, plus the provenance for every row in scope."""
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from enrichment.extractors.applicability_tagger import ApplicabilityTagger
@@ -83,10 +136,10 @@ def build_plan(cur):
                    id, document_id, provision_text,
                    v2_applicable_zones, v2_applicable_dev_types
             FROM {TABLE} WHERE source_council = ANY(%s)""",
-        (list(COUNCILS),),
+        (list(councils),),
     )
     tagger = ApplicabilityTagger()
-    plan, prov_only = [], []
+    plan, prov_only, narrowings = [], [], []
     stats = Counter()
     for served, pid, doc, txt, old_z, old_d in cur.fetchall():
         zones, devs, prov = tagger.tag_with_provenance(txt or "", doc)
@@ -96,32 +149,70 @@ def build_plan(cur):
                old_z, old_d)
         if zones != old_z or devs != old_d:
             plan.append(row)
-            if zones != old_z and served:
-                stats["served_zone_narrowed"] += 1
-            if devs != old_d and served:
-                stats["served_devtype_narrowed"] += 1
+            if served:
+                zk, dk = classify(old_z, zones), classify(old_d, devs)
+                stats[f"served_zone_{zk}"] += 1
+                stats[f"served_devtype_{dk}"] += 1
+                if zk in NARROWING:
+                    narrowings.append((pid, doc, "zones", old_z, zones, zk))
+                if dk in NARROWING:
+                    narrowings.append((pid, doc, "dev_types", old_d, devs, dk))
         else:
             prov_only.append(row)
-    return plan, prov_only, stats
+    return plan, prov_only, stats, narrowings
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--apply", action="store_true",
                     help="Execute. Without this nothing is written.")
-    ap.add_argument("--backup-table", default="regulatory_provisions_dq33_backup_20260801")
+    ap.add_argument("--councils", nargs="+", default=list(DEFAULT_COUNCILS),
+                    help="source_council slugs to re-tag (default: the three "
+                         "Inner West councils the 2026-08-01 slug fix targeted).")
+    ap.add_argument("--backup-table", default=None,
+                    help="Defaults to a timestamped name. The table must NOT "
+                         "already exist -- see the abort below.")
+    ap.add_argument("--expect-narrowings", type=int, default=None,
+                    help="Required with --apply when the plan narrows any served "
+                         "row. Must equal the printed count exactly.")
     ap.add_argument("--limit-print", type=int, default=15)
     args = ap.parse_args()
+    backup_table = args.backup_table or (
+        "regulatory_provisions_dq33_backup_"
+        + datetime.now().strftime("%Y%m%d_%H%M%S"))
 
     conn, cur = _connect()
     try:
-        plan, prov_only, stats = build_plan(cur)
+        plan, prov_only, stats, narrowings = build_plan(cur, args.councils)
         print(f"\n=== DQ-33 re-tag plan ===")
+        print(f"  councils                 : {', '.join(args.councils)}")
         print(f"  rows in scope            : {len(plan) + len(prov_only):,}")
         print(f"  VALUES change            : {len(plan):,}")
         print(f"  provenance only          : {len(prov_only):,}")
-        print(f"  served rows narrowed — zones {stats['served_zone_narrowed']:,}, "
-              f"dev types {stats['served_devtype_narrowed']:,}")
+        for field in ("zone", "devtype"):
+            pre = f"served_{field}_"
+            # `stats` mixes tuple keys (source, served-ness) with these string
+            # counters, and str/tuple do not compare -- filter before sorting.
+            parts = [f"{k[len(pre):]} {v:,}" for k, v in
+                     sorted((kv for kv in stats.items()
+                             if isinstance(kv[0], str) and kv[0].startswith(pre)))]
+            print(f"  served {field:<8} changes  : " + (", ".join(parts) or "none"))
+        print(f"  SERVED ROWS NARROWED     : {len(narrowings):,}"
+              "   <- the only direction that can hide a control")
+        # Grouped, not listed. 201 narrowings on 2026-09-23 were 8 distinct
+        # shapes repeated; printing them one per row buries the 8 decisions an
+        # operator actually has to make under 200 identical lines.
+        shapes = {}
+        for pid, doc, field, before, after, kind in narrowings:
+            shapes.setdefault(
+                (doc, field, kind, tuple(before), tuple(after)), []).append(pid)
+        print(f"  distinct narrowing shapes : {len(shapes):,}")
+        for (doc, field, kind, before, after), pids in sorted(
+                shapes.items(), key=lambda kv: -len(kv[1])):
+            print(f"    {len(pids):>5,} row(s)  {field} {kind}: "
+                  f"{list(before)} -> {list(after)}")
+            print(f"            {doc}")
+            print(f"            e.g. id={pids[0]}")
         print("\n  predicted provenance after:")
         # `stats` mixes tuple keys (source, served-ness) with two plain string
         # counters, so filter by key SHAPE before unpacking rather than assuming.
@@ -137,17 +228,34 @@ def main() -> int:
             print("\nDRY RUN — nothing written. Re-run with --apply to execute.")
             return 0
 
+        if narrowings and args.expect_narrowings != len(narrowings):
+            print(f"ERROR: the plan narrows {len(narrowings):,} served row(s) and "
+                  f"--expect-narrowings is {args.expect_narrowings}. Read the list "
+                  f"above, then pass the exact count. Nothing was written.",
+                  file=sys.stderr)
+            return 2
+
         all_rows = plan + prov_only
         ids = [r[0] for r in all_rows]
-        print(f"\nCreating backup table {args.backup_table} ...")
+        # NOT "IF NOT EXISTS". A name that already holds a table makes that form
+        # a no-op, and the row-count guard below then passes against the OLD
+        # contents -- 22,007 rows from 2026-08-01 are still sitting under this
+        # script's former default name, so every later run with the default was
+        # one keystroke from writing with no usable rollback.
+        cur.execute("SELECT to_regclass(%s)", (backup_table,))
+        if cur.fetchone()[0] is not None:
+            print(f"ERROR: backup table {backup_table} already exists. Pick "
+                  f"another name; nothing was written.", file=sys.stderr)
+            return 2
+        print(f"\nCreating backup table {backup_table} ...")
         cur.execute(
-            f"CREATE TABLE IF NOT EXISTS {args.backup_table} AS "
+            f"CREATE TABLE {backup_table} AS "
             f"SELECT id, v2_applicable_zones, v2_applicable_dev_types, "
             f"       v2_zone_source, v2_dev_type_source "
             f"FROM {TABLE} WHERE id = ANY(%s)",
             (ids,),
         )
-        cur.execute(f"SELECT count(*) FROM {args.backup_table}")
+        cur.execute(f"SELECT count(*) FROM {backup_table}")
         n_backup = cur.fetchone()[0]
         conn.commit()
         print(f"  backed up {n_backup:,} rows")
@@ -179,7 +287,7 @@ def main() -> int:
         print(f"\nROLLBACK:\n  UPDATE {TABLE} t SET v2_applicable_zones = b.v2_applicable_zones, "
               f"v2_applicable_dev_types = b.v2_applicable_dev_types, "
               f"v2_zone_source = b.v2_zone_source, v2_dev_type_source = b.v2_dev_type_source "
-              f"FROM {args.backup_table} b WHERE t.id = b.id;")
+              f"FROM {backup_table} b WHERE t.id = b.id;")
         return 0
     except Exception as exc:  # noqa: BLE001
         conn.rollback()

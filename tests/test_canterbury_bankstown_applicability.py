@@ -86,10 +86,53 @@ class TestLandUseChaptersAreNarrowed:
         got = resolve(tagger, "chapter_10_1_child_care_centres")
         assert got["applicable_dev_types"] == ["child_care_centre"]
 
-    def test_industrial_requirements_exclude_houses(self, tagger):
+    def test_the_industrial_chapter_is_scoped_by_ZONE_and_leaves_types_undecided(self, tagger):
+        """Corrected 2026-09-23 after reading the chapter instead of its title.
+
+        This entry used to declare ["industrial_development", "light_industry",
+        "warehouse"]. Chapter 9.1 section 1 says the controls apply to "the
+        industrial precincts within Zone E4 General Industrial" and, on the same
+        page, that "Non-industrial development will be limited to land uses that
+        are compatible with the primary employment role of the precinct". Its own
+        controls prove it: 3.16 governs vehicle body repair workshops and 5.10
+        food premises. v2_applicable_dev_types is a HARD filter on the served
+        answer, so that list deleted 5.10 from every food_and_drink_premises
+        query -- a control hidden from the development it binds.
+        """
         got = resolve(tagger, "chapter_9_1_general_requirements")
-        assert "industrial_development" in got["applicable_dev_types"]
-        assert "dwelling_house" not in got["applicable_dev_types"]
+        assert got["applicable_zones"] == ["E4"]
+        assert got["zone_source"] == "config_specific"
+        assert got["dev_type_source"] == "config_silent", (
+            "chapter 9.1 must not name development types: the chapter is scoped "
+            "by zone and expressly contemplates non-industrial uses inside it")
+
+    def test_non_residential_land_uses_is_scoped_by_ZONE_not_by_type(self, tagger):
+        """Same correction, same day. Chapter 10.4 section 1 scopes itself to
+        "non-residential land uses within Zone R2 ... Zone R3 ... and Zone R4",  # noqa: zone-codes (verbatim chapter text)
+        and its five subject sections are health consulting rooms, neighbourhood
+        shops, serviced apartments, other non-residential development and site
+        facilities. The old list named commercial/retail/office/food-and-drink/
+        industrial/warehouse: industrial and warehouse development does not occur
+        in R2-R4, and `neighbourhood_shop` and `serviced_apartment` -- both real  # noqa: zone-codes (verbatim chapter text)
+        selectable types in frontend-nextjs/lib/see/devTypeHierarchy.ts -- were
+        missing, so sections 3 and 4 were hidden from the very DAs they govern.
+        """
+        got = resolve(tagger, "chapter_10_4_non_residential_land_uses")
+        assert got["applicable_zones"] == ["R2", "R3", "R4"]  # noqa: zone-codes (quoted from chapter 10.4 section 1)
+        assert got["dev_type_source"] == "config_silent"
+
+    def test_no_entry_reintroduces_a_dev_type_list_on_the_two_corrected_chapters(self):
+        """The regression has a shape: a future edit that 'completes' either
+        chapter by naming types reintroduces a hard filter the chapter's own text
+        contradicts. Assert on the config, not the resolved entry, so the failure
+        names the file being edited."""
+        topics = CANTERBURY_BANKSTOWN_CONFIG["chapter_topics"]
+        for slug in ("chapter_9_1_general_requirements",
+                     "chapter_10_4_non_residential_land_uses"):
+            assert "applicable_dev_types" not in topics[slug], (
+                f"{slug} declares development types again. Read the chapter's own "
+                f"Application section first: both are scoped by ZONE, and naming "
+                f"types here removes rows from every type not listed")
 
     @pytest.mark.parametrize("slug", [
         "chapter_10_2_schools",
