@@ -11,7 +11,7 @@ interface Stage {
   id: string;
   label: string;
   last: string | null;
-  staleDays: number | null;
+  staleDays: number | null | undefined;
 }
 interface QueueRow {
   council: string;
@@ -22,7 +22,7 @@ interface QueueRow {
 interface StuckChapter {
   council: string;
   chapter_key: string;
-  changedDaysAgo: number | null;
+  changedDaysAgo: number | null | undefined;
 }
 interface Status {
   generatedAt: string;
@@ -32,7 +32,7 @@ interface Status {
     rows: { status: string; n: number }[];
     notProcessed: number;
     totalActionable: number;
-    formulatedPct: number | null;
+    formulatedPct: number | null | undefined;
   };
   corpus: { served: number; council_rows: number } | null;
   queue: QueueRow[];
@@ -43,15 +43,17 @@ interface Status {
 const AGE_WARN_DAYS = 3;
 const AGE_BAD_DAYS = 14;
 
-function ageTone(days: number | null): string {
-  if (days === null) return 'text-gray-500';
+function ageTone(days: number | null | undefined): string {
+  // `== null` on purpose: a key the API omits arrives as undefined, not null, and an
+  // age of 0 ('today') is a real value that must not be swallowed by a truthiness test.
+  if (days == null) return 'text-gray-500';
   if (days >= AGE_BAD_DAYS) return 'text-red-600 font-semibold';
   if (days >= AGE_WARN_DAYS) return 'text-amber-600';
   return 'text-green-700';
 }
 
-function ago(days: number | null): string {
-  if (days === null) return 'never';
+function ago(days: number | null | undefined): string {
+  if (days == null) return 'never';
   if (days === 0) return 'today';
   if (days === 1) return 'yesterday';
   return `${days} days ago`;
@@ -177,7 +179,7 @@ export default function PipelineStatus() {
           makes a planner&apos;s number real.
         </p>
         <p className="mt-2 text-3xl font-semibold">
-          {rf.formulatedPct === null ? '—' : `${rf.formulatedPct}%`}
+          {rf.formulatedPct == null ? '—' : `${rf.formulatedPct}%`}
         </p>
         <p className="text-sm text-gray-600">
           of {rf.totalActionable.toLocaleString()} served rules have a structured rule behind
@@ -193,7 +195,7 @@ export default function PipelineStatus() {
             ))}
           </tbody>
         </table>
-        {corpus && (
+        {corpus != null && (
           <p className="mt-2 text-sm text-gray-600">
             {corpus.served.toLocaleString()} rules served in total,{' '}
             {corpus.council_rows.toLocaleString()} of them from a council plan (the rest are

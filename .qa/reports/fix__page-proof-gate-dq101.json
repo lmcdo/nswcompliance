@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Three changes to the path that decides what reaches regulatory_provisions. (1) A provision whose own text carries a serious extraction artifact was enqueued 'pending' for a human; the extractor already knew which rows those were and threw the row identity away, keeping only a per-chapter count. (2) preflight_two_column marked every LLM-read chapter SUSPECT forever, because it measures the SOURCE's column count, which no amount of correct extraction can change - a permanent block on exactly the documents the good reader fixes. (3) The run log named the wrong model, making a future regression unattributable. Measured on live data: 16 of 2,416 pending rows carry a serious artifact and ELEVEN of those are currently graded 'grounded', i.e. approvable today.",
-  "commit_hash": "e515a60e",
+  "commit_hash": "82b6be64",
   "files": [
     "scripts/dcp_extract_changed.py",
     ".claude/dcp_pipeline_manifest.json",
@@ -24,7 +24,7 @@
     "assumption_mismatch": "Four. (1) I assumed the corruption was undetected. It was fully detected - check_provision grades every provision and the result was collapsed to a count, so schema_fail said '12 of 49 seriously broken' while the same run's fidelity gate said '39 grounded'. Two detectors, one pipeline, disagreeing, and the blind one gates approval. (2) I assumed re-extraction would fix these chapters because the doubled-glyph guard decodes the strings in isolation; it does not - ku_ring_gai's run carries digits injected mid-word (PRREEC8C5ININCCTT) which terminates the pattern, and 5 of 5 chapters came back refused on the deterministic reader. (3) I assumed SERIOUS_ARTIFACT_LABELS already rejected rows; it has ZERO overlap with _AUTO_REJECT_REASONS. (4) I assumed HC_PING_URL was only partially wired; it is generic in run_monitors.py and covers every monitor - corrected in the manifest rather than recorded wrong.",
     "new_vs_existing": "No new mechanism in the extractor. 'rejected' status, _AUTO_REJECT_REASONS, check_provision and SERIOUS_ARTIFACT_LABELS all existed; this connects two of them that were never wired together, behind one named seam (_serious_artifacts) so the offline enqueue harness can stub it exactly as it already stubs suspect_reason. The manifest gate IS new, and is the item docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md Phase 0 calls 'the single check that would have caught #506; build it first' - specified 2026-06-20 in commit 4115dbe6 whose own message says 'enforced by gates, not documentation' and ends 'Docs-only.'",
     "external_source_error": "No network in the change. The evidence behind it came from live runs: the Anthropic org has no API credit (three keys tested; two 'credit balance too low', one invalid - a Claude subscription is not API credit), so the LLM reader ran on sol/OpenAI, which works.",
-    "frontend_type": "No API, component or type change.",
+    "frontend_type": "One new read-only internal page and its API route. Every pool.query row shape is declared as an interface because getPool() returns untyped rows, so callbacks were implicit any and tsc failed. Null handling uses `== null` rather than `=== null` throughout: a key the API omits arrives as undefined, not null, and an age of 0 ('today') is a real value a truthiness test would swallow. No existing component or type changed.",
     "user_failure_mode": "Asymmetric, and it decided the direction. A row wrongly rejected leaves the EXISTING provision current - no silent drop - so the cost is a stale chapter, which is visible. A row wrongly left 'pending' is approvable by a human who sees plausible text, and on 2026-09-09 a backlog of 8,875 was cleared in one night, putting 578 bad rows into production. So the change only ever moves pending -> rejected and never the reverse."
   },
   "falsifiable_check": {
@@ -44,14 +44,14 @@
     {
       "name": "suspect_reason",
       "file_line": "scripts/dcp_extract_changed.py",
-      "input": "review_data, now including reader_used.",
+      "input": "review_data, the per-chapter dict built by extract_chapter, now carrying reader_used alongside the existing preflight, diff and coverage/truncation/attribution flags.",
       "output": "Unchanged except that preflight_two_column is skipped when reader_used starts with 'llm:'.",
       "if_none": "A missing or unknown reader_used is read as 'regex', the conservative direction: the flag stays. Tested with None and with three non-LLM strings that contain the substring 'llm'."
     },
     {
       "name": "DCPExtractor.reader_used",
       "file_line": "scripts/dcp_extract_changed.py",
-      "input": "Set during extract(): 'llm:<model>' or 'regex'.",
+      "input": "Set during DCPExtractor.extract(): 'llm:<model>' when the LLM reader produced the sections, or 'regex' on every fallback path, including the no-provider-key one.",
       "output": "Travels to the parent through the subprocess queue.",
       "if_none": "Defaulted to 'regex' at the queue boundary AND again at the parent, so an older worker's payload cannot grant the LLM exemption by omission."
     }
@@ -172,7 +172,7 @@
       "repro": "python enrichment/rule_extraction_pipeline.py --dry-run --phase deterministic --limit 50"
     },
     {
-      "scenario": "Fill-blanks paging skips rows.",
+      "scenario": "A thousands separator is treated as a mere formatting difference, reversing the deliberate decision that 1,500 and 1500 are different numbers.",
       "what_happens": "A committed batch leaves the result set (status no longer NULL), so OFFSET=processed steps over that many UNPROCESSED rows -- they are never formulated and nothing reports it.",
       "mitigated": true,
       "how": "Offset is 0 while the set is shrinking (filtering AND writing); normal paging only for dry runs and --reprocess-all, where the set is stable.",
