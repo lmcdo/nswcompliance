@@ -6,14 +6,15 @@
     "scripts/dq_probe_unchecked_rows.py",
     "tests/test_dq_probe_unchecked_rows.py",
     ".claude/dq_checks.json",
-    "tests/test_dq_probe_unchecked_rows_real_db.py"
+    "tests/test_dq_probe_unchecked_rows_real_db.py",
+    "frontend-nextjs/app/api/dcp-review/route.ts"
   ],
   "pre_impl": {
     "existing_data": "Read-only throughout; no statement in this change writes. dcp_plan_as_at (23 columns, 28 rows, keyed by `lga` -- which is DQ-43's premise, confirmed not assumed), dcp_chapter_registry, regulatory_provisions, information_schema. `url_page_last_status` confirmed ABSENT, which is what DQ-58's own note prescribed building.",
     "assumption_mismatch": "Five, and three changed the code. (1) DQ-31: I assumed both implementations spelled the gate `isLMRArea`; the Python service spells it `in_lmr_area`, so the one file that matters was missed while two irrelevant ones were reported. (2) DQ-31 again: `isLMRArea?: boolean` -- TypeScript's optional-property marker -- matched a pattern meant for ternaries, so a presentational component counted as an implementation of a regulated decision. (3) DQ-53: my first detector looked for a live call shaped like `.to_dict(` and accused three working tests, two of which call a plain function and a classmethod. (4) DQ-43: ku_ring_gai looked like a live instance of the defect -- two plan names, renders a date -- and is not; the names are one plan registered three ways, checked against the council's own document tree before reporting it. (5) The regex escapes were mangled through nested shell heredocs into literal \\x08 backspace characters, which grep renders invisibly; the file was deleted and rewritten rather than patched.",
     "new_vs_existing": "No new mechanism. The probe copies dq_probe_live.py's contract exactly (exit 0 only at zero, exit 2 when the source is unreachable, every number prints its own derivation) and is a sibling of dq_probe_applicability_config.py in shape. It is a separate file because dq_probe_live.py is SQL-only by construction -- its PROBES map holds a SQL string the runner executes -- and two of these five are static analyses of the repo.",
     "external_source_error": "None. DQ-58 deliberately does NOT fetch by default: nine council websites in CI's dependency graph, three behind Cloudflare which 403s automated clients, is a check that goes red for reasons unrelated to the defect and then gets deleted. The default asks whether the recording instrument exists; `--live` fetches on demand.",
-    "frontend_type": "No frontend file changed. frontend-nextjs is READ by DQ-31's static probe, which is why the TypeScript optional-property marker mattered.",
+    "frontend_type": "One route changed: app/api/dcp-review/route.ts. It gains the same denyIfUnauthenticated() its two sibling write routes already carry (no-op unless NEXT_PUBLIC_AUTH_ENABLED is 'true', so it cannot lock anyone out of an environment that does not run auth), stops returning the driver's error text to the caller, and orders the queue by fidelity SEVERITY instead of testing one status value. No type changes: the row shape the UI consumes is unchanged, and the new ORDER BY is a CASE over an existing column.",
     "user_failure_mode": "A defect sits open for months while the ledger reports nothing, because the row tracking it has no check. Or -- worse, and the risk this change itself carried -- a check fires on correct code and someone repairs a working test."
   },
   "falsifiable_check": {
@@ -194,6 +195,20 @@
       "mitigated": true,
       "how": "test_dq43_states_its_blind_spot_rather_than_hiding_it FAILS when no served row lacks a chapter key, and its message says to delete the paragraph rather than leave it.",
       "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_dq_probe_unchecked_rows_real_db.py -k blind_spot -o addopts="
+    },
+    {
+      "scenario": "Worst-first sorting tests one status value instead of ranking severity.",
+      "what_happens": "`ORDER BY (fidelity_status = 'flagged') DESC` puts flagged rows on top and leaves 'failed' -- which is WORSE, the gate could not match the row to its source page at all -- sorted among the unchecked bulk. Measured 2026-09-23 while re-grading: 3 of the first 9 rows needing a person were 'failed' and sat below ~490 rows that needed nobody.",
+      "mitigated": true,
+      "how": "A CASE ranking failed < flagged < ungraded < grounded, so a new status added later falls into the middle (unknown) rather than silently to the bottom.",
+      "repro": "GET /api/dcp-review and read the first rows' fidelity_status"
+    },
+    {
+      "scenario": "An internal READ route ships with the auth check on its page only.",
+      "what_happens": "The whole pending queue -- council chapter names, every provision's old and new text, the gate's verdicts -- is readable by anyone who knows the path. Same shape as app/api/internal/pipeline-status, found the same day.",
+      "mitigated": true,
+      "how": "The route now carries the same guard as its two sibling WRITE routes, and the catch logs the detail server-side while returning a fixed string.",
+      "repro": "NEXT_PUBLIC_AUTH_ENABLED=true, request /api/dcp-review with no session cookie -- expect 401."
     }
   ],
   "post_merge": {
