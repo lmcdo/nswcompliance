@@ -264,6 +264,13 @@
       "mitigated": true,
       "how": "DQ-105 is per-council and has no floor. It counts COUNCILS rather than rows, because how many of a council's rows fall through depends on whether the text regex happened to match and moves on every re-extraction.",
       "repro": "python scripts/dq_probe_unchecked_rows.py --id DQ-105"
+    },
+    {
+      "scenario": "A check about the tagger asks a question ADJACENT to the tagger's own.",
+      "what_happens": "DQ-105 got this wrong twice in one afternoon. It compared `source_council` to the config registry while the tagger keys on `document_id`, so Inner West -- the most deeply configured council in the product -- was reported as having no config, on 11 rows that are Marrickville and Ashfield plans carrying the parent slug. Corrected to call the tagger, it then passed an EMPTY provision text, and Waverley and Woollahra key on a section code read out of that text, so Waverley was reported as unconfigured while serving 392 rows with zero fallthrough.",
+      "mitigated": true,
+      "how": "Resolved per ROW, calling the tagger's own entry points with that row's own text. Six configured councils are pinned as must-never-appear against the live corpus, beside a confusable negative asserting the probe still names parramatta -- a resolver that matched everything would silence it entirely and read the same as 'all configured'.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_dq_probe_unchecked_rows_real_db.py -k DQ105 -o addopts="
     }
   ],
   "post_merge": {

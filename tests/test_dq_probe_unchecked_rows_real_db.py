@@ -134,6 +134,53 @@ def test_dq58_takes_the_branch_production_actually_dictates(cur):
         assert count > 0, "the column is absent, so every page URL is unrecorded"
 
 
+class TestDQ105AsksTheTaggersQuestion:
+    """Both corrections, pinned against the live corpus.
+
+    The check is "does this council have an applicability config", and it got
+    that wrong twice in one afternoon by asking something ADJACENT to the
+    question the tagger asks:
+
+      1. It compared each `source_council` string to COUNCIL_CONFIGS. The tagger
+         keys on DOCUMENT_ID, so `inner_west` was reported as unconfigured on
+         the strength of 11 rows -- 10 from "Marrickville_DCP_2011__..." and 1
+         from "Ashfield_DCP_2007__..." -- which the tagger resolves perfectly
+         well. Inner West is the most deeply configured council in the product.
+      2. It then resolved each document_id with an EMPTY provision text.
+         Waverley and Woollahra key on a section code read out of the text, so
+         both resolved to nothing and waverley was reported as unconfigured
+         while serving 392 rows with zero fallthrough.
+    """
+
+    @pytest.mark.parametrize("council", ["inner_west", "waverley", "woollahra",
+                                         "marrickville", "ashfield", "leichhardt"])
+    def test_a_configured_council_is_never_reported(self, cur, council):
+        _count, detail = probe.probe_105(cur)
+        named = {c for c, _ in detail}
+        assert council not in named, (
+            f"{council} has a working config -- if it is reported here the probe "
+            f"is asking something other than what the tagger asks")
+
+    def test_it_still_reports_the_councils_that_genuinely_have_none(self, cur):
+        """The confusable negative for the corrections: a fix that made the
+        probe resolve EVERYTHING would silence it completely, which reads the
+        same as 'all configured'."""
+        count, detail = probe.probe_105(cur)
+        assert count > 0, (
+            "no council reports as unconfigured -- either every config has been "
+            "written (check by hand before believing it) or the resolver now "
+            "matches anything")
+        named = {c for c, _ in detail}
+        assert "parramatta" in named, (
+            "parramatta serves 616 rules with no config and must still be named")
+
+    def test_the_count_is_councils_not_rows(self, cur):
+        """Counting rows would let a council with no config read 0 because its
+        prose happened to match the text regex."""
+        count, detail = probe.probe_105(cur)
+        assert count == len(detail)
+
+
 @pytest.mark.parametrize("dq_id", ["DQ-42", "DQ-43", "DQ-58"])
 def test_the_exit_code_matches_the_count(dq_id):
     """The ledger reads the exit code, not the printed text. A probe that

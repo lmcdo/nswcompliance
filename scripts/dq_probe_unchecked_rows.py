@@ -413,20 +413,54 @@ def probe_105(cur):
 
     Reachable only by writing the configs. Deleting a council's rows would also
     take it to zero, which is why `passes_when` names the direction.
-    """
-    from enrichment.config import COUNCIL_CONFIGS
 
-    have = {k.replace("-", "_") for k in COUNCIL_CONFIGS} | _DEDICATED_MATCHER_COUNCILS
+    ASKS THE TAGGER, not the registry, and the first version did not. It
+    compared each `source_council` string against COUNCIL_CONFIGS, which is a
+    different question from the one that decides a row's scope: the tagger keys
+    on DOCUMENT_ID. Measured 2026-09-23, `inner_west` was reported as an
+    unconfigured council on the strength of 11 rows -- 10 of them from
+    "Marrickville_DCP_2011__..." and 1 from "Ashfield_DCP_2007__...", both of
+    which the tagger resolves perfectly well, with 10 of the 11 already tagged.
+    Inner West is the most deeply configured council in the product. The rows
+    simply carry the parent slug in `source_council` while naming a predecessor
+    plan in their document_id, and only the latter is consulted.
+
+    So: a council is unconfigured when NOT ONE of its served rows reaches a
+    config. A council where some chapters resolve and others do not is DQ-102's
+    population, not this one.
+
+    RESOLVED PER ROW, WITH ITS OWN TEXT -- the second correction, from the same
+    afternoon. Passing an empty string in place of the provision text breaks the
+    `parts`-path councils: Waverley and Woollahra key on a section code that
+    `_extract_section_code` reads OUT OF THE TEXT, so with no text they resolve
+    to nothing and a fully configured council is reported as having none.
+    Measured 2026-09-23 that is exactly what happened to waverley -- 392 served
+    rows, ZERO of them falling through, which is itself proof its config works.
+    Both corrections have the same shape: the check must ask the question the
+    TAGGER asks, with the inputs the tagger gets.
+    """
+    from enrichment.extractors.applicability_tagger import ApplicabilityTagger
+
+    tagger = ApplicabilityTagger()
     cur.execute(
-        """SELECT source_council, count(*)::int,
-                  count(*) FILTER (WHERE v2_dev_type_source = 'no_config')::int
+        """SELECT source_council, document_id, provision_text, v2_dev_type_source
              FROM regulatory_provisions
-            WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
-            GROUP BY 1 ORDER BY 2 DESC"""
+            WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL"""
     )
+    by_council = {}
+    for council, doc, text, source in cur.fetchall():
+        served, fallthrough, any_resolved = by_council.get(council, (0, 0, False))
+        served += 1
+        if source == "no_config":
+            fallthrough += 1
+        if not any_resolved:
+            any_resolved = (tagger._detect_council(doc) is not None
+                            or tagger._get_config_driven(doc, text or "") is not None)
+        by_council[council] = (served, fallthrough, any_resolved)
+
     hits = {}
-    for council, served, fallthrough in cur.fetchall():
-        if council not in have:
+    for council, (served, fallthrough, any_resolved) in sorted(by_council.items()):
+        if not any_resolved:
             hits[(council, "%d served, %d applying to every development type"
                   % (served, fallthrough))] = 1
     return len(hits), hits
