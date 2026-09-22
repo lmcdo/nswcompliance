@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Three changes to the path that decides what reaches regulatory_provisions. (1) A provision whose own text carries a serious extraction artifact was enqueued 'pending' for a human; the extractor already knew which rows those were and threw the row identity away, keeping only a per-chapter count. (2) preflight_two_column marked every LLM-read chapter SUSPECT forever, because it measures the SOURCE's column count, which no amount of correct extraction can change - a permanent block on exactly the documents the good reader fixes. (3) The run log named the wrong model, making a future regression unattributable. Measured on live data: 16 of 2,416 pending rows carry a serious artifact and ELEVEN of those are currently graded 'grounded', i.e. approvable today.",
-  "commit_hash": "cf92b7fe",
+  "commit_hash": "e515a60e",
   "files": [
     "scripts/dcp_extract_changed.py",
     ".claude/dcp_pipeline_manifest.json",
@@ -16,7 +16,8 @@
     "enrichment/config/canterbury_bankstown_config.py",
     "enrichment/config/__init__.py",
     "enrichment/extractors/applicability_tagger.py",
-    "tests/test_canterbury_bankstown_applicability.py"
+    "tests/test_canterbury_bankstown_applicability.py",
+    "scripts/dcp_fidelity_gate.py"
   ],
   "pre_impl": {
     "existing_data": "dcp_review_queue (status, suspect_reason) written by the existing enqueue path; no schema change - 'rejected' is already a value that path sets via _AUTO_REJECT_REASONS. regulatory_provisions is NOT touched. Blast radius measured before writing code by running the real check_provision over all 2,416 live pending rows.",
@@ -103,6 +104,14 @@
       "source": "Chapter content read 2026-09-22, not titles: 7.5/7.6 carry dwelling mix, non-residential building separation, flood, tree canopy and named key-site design principles together -- a precinct chapter.",
       "if_missing": "Either 883 rows keep applying to every development type by accident, or the count goes green on a false assertion.",
       "read_at": "enrichment/config/canterbury_bankstown_config.py; tests/test_canterbury_bankstown_applicability.py."
+    },
+    {
+      "name": "DQ-101 FIXED: the grader now asks the reverse question",
+      "value": "unsourced-token ratio (short tokens counted), word-pair adjacency, whole-token number match",
+      "why": "It only ever asked 'are the row's words on the page'. _content_words is [a-z]{4,} so scrambled map labels were discarded BEFORE scoring; prov_words is a set so order was never checked; membership was substring so '50 00' passed against '5000'. All three now fire. The xfail(strict=True) markers went XPASS the moment the fix landed and were removed in the same change, which is what strict xfail is for.",
+      "source": "Measured 2026-09-22; the same run on canterbury_bankstown/chapter-7-5 had the extractor at 12/49 seriously broken and this gate at 39 grounded.",
+      "if_missing": "Corrupt text keeps being certified approvable, which is how 578 bad rows reached production on 2026-09-09.",
+      "read_at": "scripts/dcp_fidelity_gate.py -- ground_row."
     }
   ],
   "queries": [
@@ -182,6 +191,20 @@
       "mitigated": true,
       "how": "Both spellings registered; a test asserts the hyphenated document_id resolves.",
       "repro": "python -m pytest tests/test_canterbury_bankstown_applicability.py -k hyphenated -q"
+    },
+    {
+      "scenario": "The new checks flag correct rows because they demand OUR OWN markup appear on the council's page.",
+      "what_happens": "Exactly what happened while writing this: blacktown 10_4_3_1 (three stitched tables, a real fixture) scored 34% unsourced and flagged. All 16 absent tokens were ours -- the '# 10.4.3.1 ...' heading and the '**Table N** (Page P)' captions this pipeline stamps. Same class as the 2026-09-18 run where 40 of 67 failures ended in a citation we appended.",
+      "mitigated": true,
+      "how": "_council_text strips our heading and captions before the three checks run. A mutation removing it is caught by the real-shape flood-row test.",
+      "repro": "python -m pytest tests/test_dcp_fidelity_gate.py -k flood_row -q"
+    },
+    {
+      "scenario": "A thousands separator is treated as a formatting difference.",
+      "what_happens": "The FIRST version of the DQ-101 test asserted that a row storing '1500' should ground against a page printing '1,500'. That reverses commit cc3f15f0 (Sol cross-review HIGH 0.97), which made a thousands-separated value a DIFFERENT number because '500' was matching inside '1,500' and grounding a 500 m2 minimum lot size against a chapter stating 1,500.",
+      "mitigated": true,
+      "how": "The wrong test was deleted, not the decision. _tokens still strips separators so the three NEW checks stay silent on that formatting rather than piling a second complaint onto it; the existing number check is untouched.",
+      "repro": "python -m pytest tests/test_page_proof_gate_dq101.py -k thousands -q"
     }
   ],
   "post_merge": {

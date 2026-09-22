@@ -126,26 +126,23 @@ def pages(text: str, anchor: int = 3) -> dict:
     }
 
 
-#: DQ-101 is DIAGNOSED, not yet fixed. These three cases fail today, and that failure is
-#: the finding — measured 2026-09-22, not predicted. They are marked xfail(strict=True)
-#: rather than deleted or softened so that:
-#:   * the pre-push suite stays green while a known defect is open, and
-#:   * the moment the grader is fixed, the test FAILS FOR PASSING (XPASS under strict),
-#:     which forces this marker to be removed rather than left behind as a lie.
-#: A plain skip would have hidden it; a soft xfail would have let the fix land unnoticed.
-#: Removing this marker is the definition of done for DQ-101.
-blind = pytest.mark.xfail(
-    strict=True,
-    reason="DQ-101: the fidelity grader scores only [a-z]{4,} words, as an unordered "
-           "set, with substring matching — so map-label interleave, reversed word order "
-           "and LaTeX-split numbers all read as 'grounded'. Diagnosed 2026-09-22, "
-           "unfixed. See ~/.claude/plans/ce-page-proof-gate-SPEC-2026-09-22.md")
-
+# DQ-101 WAS diagnosed here and is now FIXED (2026-09-22, same day).
+#
+# These three cases shipped as xfail(strict=True) while the defect was open, so that
+# fixing the grader would fail the test FOR PASSING (XPASS) and force the marker off
+# rather than leave a stale claim behind. That is exactly what happened: adding the
+# reverse checks to ground_row turned all three XPASS(strict), and the markers were
+# removed in the same change. A plain skip would have hidden the fix as well as the bug.
+#
+# What the grader now also asks, having only ever asked "are the row's words on the page":
+#   * unsourced-token ratio, counting SHORT tokens -- catches scrambled figure labels,
+#     which are single letters and were discarded by [a-z]{4,} before scoring
+#   * word-pair adjacency -- catches column interleave, the right words in the wrong order
+#   * whole-token number match -- catches "50 00" against a page that says "5000"
 
 class TestTheGateMustRefuse:
     """Each of these is real corruption that the gate currently certifies as grounded."""
 
-    @blind
     def test_a_split_number_is_not_the_number_on_the_page(self):
         """'50 00 L' against a page that says '5000 L'.
 
@@ -157,7 +154,6 @@ class TestTheGateMustRefuse:
             "a fuel-tank capacity stored as '50 00 L' was certified against a page "
             f"stating '5000 L' (detail={got['detail']!r})")
 
-    @blind
     def test_map_labels_swept_into_prose_are_refused(self):
         """The injected tokens are single letters, so `[a-z]{4,}` never sees them."""
         got = fg.ground_row(LOCALITY_ROW_MAP_INTERLEAVE, "sydney__6_2_12",
@@ -172,7 +168,6 @@ class TestTheGateMustRefuse:
             "a provision carrying 'UURRBBAA83NN P PRREEC8C5ININCCTT' was certified as "
             f"grounded (detail={got['detail']!r})")
 
-    @blind
     def test_the_right_words_in_the_wrong_order_are_refused(self):
         """Two-column interleave. Set membership scores this 100%.
 
@@ -212,6 +207,38 @@ class TestTheGateMustStillAccept:
         got = fg.ground_row(row, "sepp__3_5", p)
         assert got["status"] == "grounded", (
             f"a clause straddling a page break was flagged (detail={got['detail']!r})")
+
+    def test_the_new_checks_add_nothing_to_a_thousands_separated_page(self):
+        """The page prints "1,500 m2"; the row stores "1500 m2".
+
+        The EXISTING number check flags this, deliberately. Commit cc3f15f0 (Sol
+        cross-review, HIGH 0.97) made a thousands-separated value a different number
+        because "500" was matching inside "1,500" and grounding a 500 m² minimum lot size
+        against a chapter stating 1,500. That decision is not this change's to reverse —
+        the first version of this test asserted the opposite and was wrong.
+
+        What DQ-101's three checks must not do is pile on a second, different-sounding
+        complaint about the same formatting. `_tokens` strips the separator before
+        tokenising precisely so they stay quiet here: a row carrying the page's own words
+        in the page's own order has no unsourced tokens and no broken pairs, whatever the
+        commas do. A mutation removing that normalisation is caught by this test.
+        """
+        page = (
+            "4.2 Lot requirements\n"
+            "The minimum lot size for a dual occupancy is 1,500 m2 and the maximum gross "
+            "floor area is 12,000 m2 where the site adjoins a classified road."
+        )
+        row = (
+            "The minimum lot size for a dual occupancy is 1500 m2 and the maximum gross "
+            "floor area is 12000 m2 where the site adjoins a classified road."
+        )
+        src = " ".join(pages(page).values())
+        assert fg._unsourced_ratio(row, src) == 0.0, (
+            "the separator made the row's own numbers look absent from its own page")
+        assert fg._adjacency_ratio(row, src) == 1.0, (
+            "the separator broke word-pair matching on text that is word-for-word the page")
+        assert fg._split_numbers(row, src, set()) == [], (
+            "a separated page number was reported as a reader-split number")
 
     def test_the_rows_own_section_code_is_not_demanded_of_the_page(self):
         """`code_nums` exists so a ref like `3_5` is not hunted for as a control value."""

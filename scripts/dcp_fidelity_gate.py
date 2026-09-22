@@ -325,6 +325,119 @@ def _straddle_grounded(num: str, text: str, whole_chapter: str) -> bool:
     return False
 
 
+# ── DQ-101 "Page Proof" ────────────────────────────────────────────────────────────────
+# Everything above asks one question: "are the row's words on the page?" It never asks the
+# reverse -- "is there text in this row that is NOT on the page?" -- and three kinds of
+# corruption live entirely in that gap.
+#
+# Measured 2026-09-22, same run, canterbury_bankstown/chapter-7-5:
+#     extractor : schema_fail -- 12 of 49 provisions with serious artifacts
+#     this gate : 39 grounded, 3 ok, 3 flagged
+#
+# Why, exactly:
+#   1. `vf._content_words` is `[a-z]{4,}`. A scrambled map label is single letters
+#      ("S T R E E T"), so the corruption is DISCARDED before the ratio is computed and
+#      cannot lower it. DQ-78's rows were invisible by construction.
+#   2. `prov_words` is a SET, so order is never checked. Two-column interleave is the
+#      right words in the wrong order and scores 100%.
+#   3. Membership is a SUBSTRING test, so a LaTeX-split "50 00" passes against a page
+#      stating "5000" -- both halves are substrings of the real number.
+#
+# These three checks close that gap. Each can only ADD a flag, so the worst case is a
+# human reviewing a correct row, never a wrong row being served.
+
+#: Below this many tokens a ratio is noise, not evidence (a one-line table cell).
+_MIN_TOKENS = 20
+#: Fraction of the row's tokens that may be absent from source as WHOLE tokens.
+_UNSOURCED_MAX = 0.20
+#: Fraction of the row's word-pairs that must survive in the source.
+_ADJACENCY_MIN = 0.35
+_MIN_BIGRAMS = 15
+_TOKEN_RE = re.compile(r"[a-z0-9]+")
+
+
+#: Markup THIS PIPELINE adds to a row, which is legitimately not on the council's page:
+#: the "# <ref> <title>" heading dcp_extract_changed writes, and the
+#: "**Table N** (Page P)" captions it stamps on stitched tables.
+_OUR_MARKUP_RE = re.compile(
+    r"^\s*#.*$"                       # our heading line
+    r"|\*\*Table\s+\d+\*\*\s*\(Page\s+\d+\)",   # our table captions
+    re.MULTILINE,
+)
+
+
+def _council_text(text: str) -> str:
+    """The row with OUR OWN additions removed, so only the council's words are judged.
+
+    Demanding our wrapper appear on the council's page is a known, expensive mistake: of
+    67 remaining failures in the 2026-09-18 controls run, 40 ended in a citation we had
+    appended ourselves, and its year was being demanded of the page as if it were a
+    control value.
+
+    Measured here on blacktown 10_4_3_1 (three stitched tables, a real fixture): 16 of 47
+    tokens are absent from the source and EVERY ONE of them is ours -- the heading
+    "10.4.3.1 land use by vulnerability to flooding" and the captions "Table 1 (Page 61)",
+    "Table 3 (Page 63)". Without this the row scores 34% unsourced and is flagged, which
+    is a false positive on correct text.
+    """
+    return _OUR_MARKUP_RE.sub(" ", text or "")
+
+
+def _tokens(text: str) -> list:
+    """Every alphanumeric run, INCLUDING one- and two-character ones.
+
+    The absent length floor is the whole point: `_content_words` drops anything under
+    four letters, which is exactly what a map-label interleave is made of.
+
+    Thousands separators are stripped first so a page's "1,500" and a row's "1500" are the
+    same token -- without that, correct rows flag. Spaces are NOT stripped, because a space
+    is precisely what splits "5000" into the bogus "50 00".
+    """
+    return _TOKEN_RE.findall(re.sub(r"(?<=\d),(?=\d)", "", (text or "").lower()))
+
+
+def _unsourced_ratio(text: str, source: str) -> float:
+    """Fraction of the row's tokens that appear nowhere in the source as a whole token."""
+    toks = _tokens(text)
+    if len(toks) < _MIN_TOKENS:
+        return 0.0
+    src = set(_tokens(source))
+    return sum(1 for t in toks if t not in src) / len(toks)
+
+
+def _adjacency_ratio(text: str, source: str) -> float:
+    """Fraction of the row's consecutive token PAIRS that also sit together in the source.
+
+    Order is the only thing separating two-column interleave from clean text: the words are
+    identical, so nothing treating them as a set can see it. `_tokens` already normalises
+    punctuation and whitespace away, so a re-wrapped or re-exported PDF still scores 1.0 --
+    word ORDER has to change for this to fall, not layout.
+    """
+    toks = _tokens(text)
+    pairs = list(zip(toks, toks[1:]))
+    if len(pairs) < _MIN_BIGRAMS:
+        return 1.0
+    src = _tokens(source)
+    src_pairs = set(zip(src, src[1:]))
+    return sum(1 for p in pairs if p in src_pairs) / len(pairs)
+
+
+def _split_numbers(text: str, source: str, code_nums: set) -> list:
+    """Numbers present in the source ONLY as a substring of a different number.
+
+    "50" and "00" are both substrings of "5000", so the existing numeric check finds them
+    and certifies the row against a page stating a value 100x larger.
+    """
+    src = set(_tokens(source))
+    out = []
+    for n in _TOKEN_RE.findall(re.sub(r"(?<=\d),(?=\d)", "", (text or "").lower())):
+        if not n.isdigit() or n in code_nums or n in src:
+            continue
+        if n in source:               # present, but only inside a bigger number
+            out.append(n)
+    return out
+
+
 def ground_row(text: str, ref_number: str, pages: dict) -> dict:
     """Grade one row. Returns dict(status, detail, verified_page)."""
     prov_words = set(vf._content_words(text))
@@ -351,12 +464,35 @@ def ground_row(text: str, ref_number: str, pages: dict) -> dict:
     grounded_words = sum(1 for w in prov_words if w in word_source)
     ground_ratio = grounded_words / len(prov_words) if prov_words else 1.0
 
-    if absent or ground_ratio < 0.75:
+    # DQ-101: the reverse direction — what is in the row that is NOT on the page.
+    # Scored against the same windows the checks above use, so a clause straddling a
+    # page break is judged against its neighbours too and is not flagged for it.
+    # Judge the COUNCIL's words, not the heading and table captions this pipeline
+    # appends -- those are legitimately absent from the council's page.
+    own = _council_text(text)
+    unsourced = _unsourced_ratio(own, word_source)
+    adjacency = _adjacency_ratio(own, word_source)
+    split = _split_numbers(own, number_source, code_nums)
+
+    if absent or ground_ratio < 0.75 or unsourced > _UNSOURCED_MAX \
+            or adjacency < _ADJACENCY_MIN or split:
         detail = []
         if absent:
             detail.append(f"numbers not in source: {', '.join(absent)}")
         if ground_ratio < 0.75:
             detail.append(f"only {int(ground_ratio*100)}% of words found in source")
+        if split:
+            detail.append(
+                f"number split by the reader: {', '.join(split)} appear only inside a "
+                f"different number on the page")
+        if unsourced > _UNSOURCED_MAX:
+            detail.append(
+                f"{int(unsourced*100)}% of tokens are not on the page at all "
+                f"(short tokens counted — scrambled figure labels live here)")
+        if adjacency < _ADJACENCY_MIN:
+            detail.append(
+                f"only {int(adjacency*100)}% of word pairs survive in the source — the "
+                f"words are the page's but the ORDER is not (column interleave)")
         quote = _source_quote(text, absent, number_source) if absent else None
         return {"status": "flagged", "detail": "; ".join(detail),
                 "verified_page": verified_page, "source_quote": quote}
