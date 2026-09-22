@@ -129,8 +129,8 @@ export default function PipelineStatus() {
           <ul className="mt-2 space-y-2">
             {needsYou.approvedUncommitted > 0 && (
               <li className="rounded border border-amber-300 bg-amber-50 p-3">
-                <strong>{needsYou.approvedUncommitted}</strong> rules are approved but not
-                published yet — the work is done and not live.
+                <strong>{needsYou.approvedUncommitted}</strong> rules have cleared review and
+                are not live yet — the work is done and nobody can see it.
               </li>
             )}
             {needsYou.pending > 0 && (

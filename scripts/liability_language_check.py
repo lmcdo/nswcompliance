@@ -77,6 +77,13 @@ EXCLUDE_PATTERNS = [
     # assigned to a Status key, so prose such as "your application is
     # approved" is still caught.
     r"\b[Ss]tatus:\s*['\"](?:Approved|Determined|Refused|Withdrawn)['\"]",
+    # dcp_review_queue's own state vocabulary appearing as a DATA VALUE in a query
+    # or a comparison -- rule (b), an internal value, exactly as the Planning Portal
+    # determination statuses above are rule (a). Narrow on purpose: `status` must be
+    # immediately followed by a comparison or SQL IN and a quoted queue state, so
+    # prose such as "your application is approved", or "these rules are approved" in
+    # any user-facing sentence, is still caught.
+    r"status\s*(?:={2,3}|IN)\s*\(?\s*['\"](?:pending|approved|rejected|superseded)['\"]",
 ]
 
 
