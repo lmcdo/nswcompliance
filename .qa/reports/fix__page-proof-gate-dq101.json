@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Three changes to the path that decides what reaches regulatory_provisions. (1) A provision whose own text carries a serious extraction artifact was enqueued 'pending' for a human; the extractor already knew which rows those were and threw the row identity away, keeping only a per-chapter count. (2) preflight_two_column marked every LLM-read chapter SUSPECT forever, because it measures the SOURCE's column count, which no amount of correct extraction can change - a permanent block on exactly the documents the good reader fixes. (3) The run log named the wrong model, making a future regression unattributable. Measured on live data: 16 of 2,416 pending rows carry a serious artifact and ELEVEN of those are currently graded 'grounded', i.e. approvable today.",
-  "commit_hash": "",
+  "commit_hash": "da3ddce9",
   "files": [
     "scripts/dcp_extract_changed.py",
     ".claude/dcp_pipeline_manifest.json",
