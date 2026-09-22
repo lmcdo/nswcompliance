@@ -5,7 +5,8 @@
   "files": [
     "scripts/dq_probe_unchecked_rows.py",
     "tests/test_dq_probe_unchecked_rows.py",
-    ".claude/dq_checks.json"
+    ".claude/dq_checks.json",
+    "tests/test_dq_probe_unchecked_rows_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "Read-only throughout; no statement in this change writes. dcp_plan_as_at (23 columns, 28 rows, keyed by `lga` -- which is DQ-43's premise, confirmed not assumed), dcp_chapter_registry, regulatory_provisions, information_schema. `url_page_last_status` confirmed ABSENT, which is what DQ-58's own note prescribed building.",
@@ -179,6 +180,20 @@
       "mitigated": true,
       "how": "Measured before shipping rather than assumed: EXPLAIN (ANALYZE, BUFFERS) over the three-table join returns Execution Time 59.043 ms against the full served set. Two orders of magnitude inside the 30s statement timeout, so no batching.",
       "repro": "python scripts/dq_probe_unchecked_rows.py --id DQ-43"
+    },
+    {
+      "scenario": "The DB-backed probes are run with psycopg2 stubbed by conftest_mocks.py.",
+      "what_happens": "cur.fetchall() returns a MagicMock, so probe_42 and probe_43 iterate nothing and report 0, and probe_58 compares a mock to an int. A probe that never touched a row reports the same 'clean' as one that did.",
+      "mitigated": true,
+      "how": "A @pytest.mark.database file asserts each SQL parses against the live schema, that DQ-43's three-table join matches a non-empty slice, that DQ-58 takes the branch production dictates rather than a flag, and that each exit code matches its own printed count.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_dq_probe_unchecked_rows_real_db.py -o addopts="
+    },
+    {
+      "scenario": "probe_43's stated blind spot is quietly fixed upstream and the caveat rots.",
+      "what_happens": "The docstring keeps warning that 7,254 served rows have no chapter key long after they all do, so a future reader distrusts a number that is now complete -- a stale caveat is its own defect.",
+      "mitigated": true,
+      "how": "test_dq43_states_its_blind_spot_rather_than_hiding_it FAILS when no served row lacks a chapter key, and its message says to delete the paragraph rather than leave it.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_dq_probe_unchecked_rows_real_db.py -k blind_spot -o addopts="
     }
   ],
   "post_merge": {

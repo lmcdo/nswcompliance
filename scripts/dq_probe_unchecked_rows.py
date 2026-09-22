@@ -129,17 +129,31 @@ _FIXTURE_LOAD = re.compile(
 _PROJECT_PKGS = ("services", "src", "enrichment", "scripts")
 
 
+def _root_pkg(dotted) -> str:
+    """First segment of a dotted module name, or '' when there is none.
+
+    `"".split(".")` returns `['']`, not `[]`, so indexing is safe in CPython --
+    but a relative import (``from . import x``) gives ``n.module = None`` and a
+    future ast change need not preserve either. Returning '' for anything empty
+    keeps the caller's membership test correct without an IndexError, and ''
+    matches no entry in _PROJECT_PKGS.
+    """
+    head = (dotted or "").strip().split(".")
+    return head[0] if head else ""
+
+
 def _project_names(tree):
     """Names bound by an import FROM this project, anywhere in the module."""
     out = set()
     for n in ast.walk(tree):
         if isinstance(n, ast.ImportFrom) and n.module:
-            if n.module.split(".")[0] in _PROJECT_PKGS:
+            if _root_pkg(n.module) in _PROJECT_PKGS:
                 out.update(a.asname or a.name for a in n.names)
         elif isinstance(n, ast.Import):
             for a in n.names:
-                if a.name.split(".")[0] in _PROJECT_PKGS:
-                    out.add(a.asname or a.name.split(".")[0])
+                root = _root_pkg(a.name)
+                if root in _PROJECT_PKGS:
+                    out.add(a.asname or root)
     return out
 
 
