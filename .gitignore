@@ -243,7 +243,20 @@ backups/
 extraction_logs/
 extraction_outputs/
 extraction_temp/
-enrichment/
+# `enrichment/*`, not `enrichment/`. Git does not descend into an excluded
+# DIRECTORY, so every `!enrichment/...` line below was decorative: a new file
+# here stayed ignored, `git add` exited 0 and did nothing, and the only reason
+# the existing configs are tracked is that each was force-added. Measured
+# 2026-09-23 -- qa_gate's doc-claim check caught campbelltown_config.py on its
+# way to being lost the way PR #982 lost the student brief. Excluding the
+# CONTENTS instead lets the directory negations below actually re-include.
+enrichment/*
+!enrichment/config/
+enrichment/config/*
+!enrichment/extractors/
+enrichment/extractors/*
+!enrichment/tests/
+enrichment/tests/*
 # Whitelist enrichment config and extractor files (committed as part of core pipeline)
 !enrichment/__init__.py
 !enrichment/pipeline.py
@@ -257,6 +270,8 @@ enrichment/
 !enrichment/config/woollahra_config.py
 !enrichment/config/city_of_sydney_config.py
 !enrichment/config/ku_ring_gai_config.py
+!enrichment/config/canterbury_bankstown_config.py
+!enrichment/config/campbelltown_config.py
 !enrichment/config/structural_categories.py
 !enrichment/config/zone_taxonomy.py
 !enrichment/extractors/

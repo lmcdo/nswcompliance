@@ -1791,6 +1791,12 @@ class DCPExtractor:
         # Set when the text layer proved garbled and OCR page texts were
         # fetched — _page_text then serves these instead of pdfplumber's.
         self.ocr_pages: list[str] | None = None
+        # Which reader actually produced the sections: "llm:<model>" or "regex".
+        # Recorded rather than inferred because the two are judged by DIFFERENT
+        # evidence -- `preflight_two_column` is a warning ABOUT the regex reader and
+        # is meaningless for the LLM reader, whose entire purpose is reading a
+        # two-column body (ce-ai-extraction-decision-2026-07).
+        self.reader_used: str | None = None
 
     def _page_text(self, page: Any, page_num: int) -> str:
         if self.ocr_pages and 0 < page_num <= len(self.ocr_pages):
@@ -1818,9 +1824,16 @@ class DCPExtractor:
         shape, so the downstream diff/enqueue/guard pipeline is unchanged."""
         if ai_extraction_enabled():
             from scripts.ai_extractor import ai_extract_chapter, configured_model
-            _model = configured_model()
+            # An explicit AI_MODEL wins inside ai_extract_chapter, so asking
+            # configured_model() alone NAMES THE WRONG READER: on 2026-09-22 a run with
+            # AI_MODEL=sol printed "(sonnet)" while Anthropic had no credit at all and
+            # the chapter was in fact read by sol. A log line that misattributes which
+            # model produced a chapter makes any later regression unattributable, which
+            # is the one thing this line exists to prevent.
+            _model = (os.getenv("AI_MODEL") or "").strip() or configured_model()
             if _model:
                 print(f"    [extractor] LLM document reader ({_model})")
+                self.reader_used = f"llm:{_model}"
                 return ai_extract_chapter(self.pdf_path, self.council)
             # Enabled, but this deployment has no provider key. Fall back rather than
             # fail: making the LLM the default (2026-09-21) must not break a nightly
@@ -1846,6 +1859,10 @@ class DCPExtractor:
               f"regex/geometry reader for {self.council}. That reader needs "
               f"per-council config and has produced junk section codes on every "
               f"council that lacked it. Unset AI_EXTRACTION to restore the default.")
+        # Every path that reaches here used the regex/geometry reader, whether by
+        # choice (AI_EXTRACTION=0) or by absence of a provider key. This is the reader
+        # `preflight_two_column` was written to warn about, so the flag stays live.
+        self.reader_used = "regex"
         self._maybe_route_via_ocr()
         sections = self._extract_sequential()
         if self.council in TOC_DRIVEN_COUNCILS:
@@ -2602,6 +2619,21 @@ SERIOUS_ARTIFACT_LABELS = frozenset({
 })
 SCHEMA_FAIL_MIN_PROVISIONS = 10
 SCHEMA_FAIL_RATIO = 0.10
+
+
+def _serious_artifacts(text: str | None) -> list[str]:
+    """The SERIOUS artifact labels this one provision's own text carries.
+
+    A single named seam so the enqueue path can ask "is this row machine-detectably
+    broken?" without importing the checker at every call site, and so the offline
+    enqueue test can stub it the way it already stubs suspect_reason.
+
+    check_provision is imported lazily because verify_dcp_formatting is a CLI module;
+    it pulls in stdlib only, so this stays usable in the mocked pre-push environment.
+    """
+    from scripts.verify_dcp_formatting import check_provision
+
+    return sorted(set(check_provision(text or "")[0]) & SERIOUS_ARTIFACT_LABELS)
 
 
 def is_schema_fail(total_provisions: int, serious_flagged: int) -> bool:
@@ -3502,7 +3534,25 @@ def suspect_reason(review_data: dict) -> str | None:
         return (f"truncation_fail ({review_data.get('truncation_flagged')}/"
                 f"{review_data.get('total_provisions')} provisions truncated)")
     pf = review_data.get("preflight") or {}
-    if pf.get("two_column_fail"):
+    # `two_column_fail` is a PRE-READ measurement of the SOURCE ("this PDF has two
+    # columns"), not a finding about the output. It is a warning about the regex reader,
+    # whose left-to-right sort interleaves the columns. The LLM reader was adopted
+    # precisely to read a two-column body (ce-ai-extraction-decision-2026-07), so
+    # applying this flag to its output marks every chapter it FIXES as suspect, and no
+    # amount of correctness can ever clear it -- a permanent block on exactly the
+    # documents the good reader exists for.
+    #
+    # Measured 2026-09-22, canterbury_bankstown/chapter-7-6-belmore-and-lakemba read by
+    # sol: 431 sections, ZERO serious artifacts, ZERO rows tripping the DQ-78 scramble
+    # signature (worst single-letter ratio 0.047 against a 0.20 threshold), down from 10
+    # scrambled rows in the served version -- and still flagged SUSPECT for this alone.
+    #
+    # Every content-based check above still applies to the LLM reader and runs first:
+    # count_drop, schema_fail, coverage_fail, truncation_fail and attribution_collapsed
+    # are all evidence about the OUTPUT, and coverage/truncation/attribution exist
+    # specifically to police the LLM. Only this source-shape heuristic is exempted.
+    if pf.get("two_column_fail") and not str(review_data.get("reader_used") or
+                                             "regex").startswith("llm:"):
         return (f"preflight_two_column ({pf.get('two_column_pages')}/"
                 f"{pf.get('text_pages')} text pages two-column — interleave likely)")
     if pf.get("empty_layer_fail"):
@@ -3979,8 +4029,12 @@ def _pdf_work_child(queue, pdf_path, document_id, council, page_ranges,
         else:
             sections = extractor.extract()
             ranged = False
+        # extract_by_page_ranges is a regex-reader path and never sets reader_used,
+        # so default it rather than letting None mean "unknown" downstream: an unknown
+        # reader must be treated as the regex one, never given the LLM's exemption.
         queue.put({"ok": True, "preflight": preflight, "sections": sections,
-                   "page_count": extractor.page_count, "ranged": ranged})
+                   "page_count": extractor.page_count, "ranged": ranged,
+                   "reader_used": extractor.reader_used or "regex"})
     except Exception as exc:  # noqa: BLE001 - reported to the parent, not raised
         queue.put({"ok": False, "error": f"{type(exc).__name__}: {exc}"})
 
@@ -4325,6 +4379,9 @@ def extract_chapter(
         sections = result["sections"]
         page_count = result["page_count"]
         ranged = result["ranged"]
+        # .get, not [], so a result produced by an older worker still loads; absent
+        # means regex, which is the conservative reading (keeps the two-column flag).
+        reader_used = result.get("reader_used") or "regex"
 
         if preflight:
             print(
@@ -4525,6 +4582,7 @@ def extract_chapter(
                 "content_hash": chapter.get("content_hash"),
                 "diff": review_diff,
                 "preflight": preflight,
+                "reader_used": reader_used,
             }
 
         # 3. Provision count gate — before touching the DB.
@@ -4994,10 +5052,33 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
             # human's judgment on the whole batch -- there's nothing here to auto-reject.
             new_t = strip_garbled_header_lines(new_t)
             fidelity, row_reason = classify_row_fidelity(ref, old_t, new_t, change_type)
-            merged_reason = "; ".join(x for x in (reason, row_reason) if x) or None
+            # DQ-101 — act on what this pipeline has ALREADY detected.
+            #
+            # check_provision() grades EVERY provision for serious extraction artifacts,
+            # but its result was collapsed to a per-chapter COUNT (serious_flagged ->
+            # is_schema_fail) and the ROW IDENTITY thrown away. So a chapter reported
+            # "schema_fail (12/49 provisions with serious artifacts)" while all 49 rows
+            # were still enqueued 'pending', and dcp_fidelity_gate then re-judged them --
+            # scoring only words of 4+ letters, which is blind to exactly this corruption.
+            # Same run, canterbury_bankstown/chapter-7-5, 2026-09-22: extractor said 12 of
+            # 49 seriously broken; the gate said 39 grounded, 3 flagged.
+            #
+            # A row whose OWN TEXT is machine-detectably broken is not a judgement call,
+            # so it does not wait on a human. Measured over 2,416 live pending rows before
+            # shipping: 16 carry a serious artifact (0.7%) and ELEVEN of those are
+            # currently graded 'grounded' -- i.e. approvable today.
+            #
+            # Direction is deliberate and one-way: this can only move a row
+            # pending -> rejected. A rejected row leaves the existing provision current
+            # (never a silent drop), so a false positive costs a stale chapter, which is
+            # visible, rather than wrong text served, which is silent.
+            artifact_labels = _serious_artifacts(new_t)
+            artifact_note = ("artifacts: " + "+".join(artifact_labels)) if artifact_labels else None
+            merged_reason = "; ".join(
+                x for x in (reason, row_reason, artifact_note) if x) or None
             reason_tags = set((row_reason or "").split("+")) if row_reason else set()
             auto_reject = fidelity == "failed" and reason_tags and reason_tags <= _AUTO_REJECT_REASONS
-            row_status = "rejected" if auto_reject else "pending"
+            row_status = "rejected" if (auto_reject or artifact_labels) else "pending"
             cur.execute(
                 """
                 INSERT INTO dcp_review_queue

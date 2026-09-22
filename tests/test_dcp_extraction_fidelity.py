@@ -366,7 +366,16 @@ class TestRowLevelFailurePreRejected:
 
     def test_status_is_derived_from_fidelity_not_hardcoded(self):
         block = self._enqueue_src()
-        assert "row_status = \"rejected\" if auto_reject else \"pending\"" in block
+        # Derived from the row's own verdicts, never a constant. DQ-101 (2026-09-22)
+        # added a second rejecting condition -- a row whose text carries a SERIOUS
+        # artifact -- so this asserts the SHAPE (rejected-if-<conditions>-else-pending)
+        # rather than one exact expression, which would have to be rewritten every time
+        # a condition is added and would tempt the next person to just update the string.
+        assert 'row_status = "rejected" if' in block and 'else "pending"' in block
+        assert "auto_reject" in block, "the fidelity-based rejection was dropped"
+        assert "artifact_labels" in block, (
+            "a row whose own text carries a serious extraction artifact must not be "
+            "left 'pending' for a human -- that is the DQ-101 regression")
         # the INSERT must use the derived variable, not a literal 'pending'
         insert = block[block.index("INSERT INTO dcp_review_queue"):]
         insert = insert[:insert.index(")\n")]

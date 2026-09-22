@@ -21,6 +21,8 @@ from .waverley_config import WAVERLEY_CONFIG
 from .woollahra_config import WOOLLAHRA_CONFIG
 from .city_of_sydney_config import CITY_OF_SYDNEY_CONFIG
 from .ku_ring_gai_config import KU_RING_GAI_CONFIG
+from .canterbury_bankstown_config import CANTERBURY_BANKSTOWN_CONFIG
+from .campbelltown_config import CAMPBELLTOWN_CONFIG
 
 # Registry for config-driven LayerTopicTagger dispatch.
 # Keys are substrings matched against document_id.lower().
@@ -32,12 +34,21 @@ COUNCIL_CONFIGS: dict[str, dict] = {
     "sydney_dcp":     CITY_OF_SYDNEY_CONFIG,   # alias: document_id is "Sydney_DCP_2012__..."
     "ku_ring_gai":   KU_RING_GAI_CONFIG,
     "ku-ring-gai":   KU_RING_GAI_CONFIG,   # alias: document_id is "Ku-ring-gai_DCP_2024__..."
+    # document_id is "Canterbury-Bankstown_DCP_2023__chapter_7_6_..." -- HYPHENATED,
+    # so the underscored spelling is registered too rather than assumed absent.
+    "canterbury-bankstown": CANTERBURY_BANKSTOWN_CONFIG,
+    "canterbury_bankstown": CANTERBURY_BANKSTOWN_CONFIG,
+    # document_id is "Campbelltown_(Sustainable_City)_DCP_2015__campbelltown_dcp_part3_low_medium".
+    # No hyphenated spelling exists for this council, so only one key is registered.
+    "campbelltown": CAMPBELLTOWN_CONFIG,
 }
 
 __all__ = [
     'ASHFIELD_CONFIG',
     'LEICHHARDT_CONFIG',
     'MARRICKVILLE_CONFIG',
+    'CANTERBURY_BANKSTOWN_CONFIG',
+    'CAMPBELLTOWN_CONFIG',
     'WAVERLEY_CONFIG',
     'WOOLLAHRA_CONFIG',
     'CITY_OF_SYDNEY_CONFIG',

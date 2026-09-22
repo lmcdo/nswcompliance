@@ -193,4 +193,44 @@ if [ $? -ne 0 ]; then
 fi
 echo "✅ Commit author is plausible"
 
+# ── Cheap gates moved EARLIER (2026-09-22) ─────────────────────────────────────────
+# These two ran at pre-push only, BEHIND the full pytest suite. Both take about two
+# seconds; the suite takes seven minutes. So a two-second problem -- a shallow QA field,
+# the word "approved" in new copy -- was discovered only after a seven-minute wait, and
+# every re-attempt paid the seven minutes again. Measured 2026-09-22: four push attempts,
+# roughly forty minutes, for three defects that a four-second check names instantly.
+#
+# They still run at pre-push. This is early feedback, not a replacement: pre-push remains
+# the gate, and nothing here can be the only thing standing between a defect and origin.
+echo "🔍 Liability language (staged diff)..."
+python scripts/liability_language_check.py
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "   Each flagged term must be (a) a regulatory quotation, (b) an internal"
+  echo "   identifier or data value, or (c) reworded. See"
+  echo "   docs/qa/language-audit-2026-05-18.md"
+  exit 1
+fi
+echo "✅ Liability language check passed"
+
+# The QA report is per-branch. On a branch's FIRST commit it does not exist yet, and
+# blocking there would make it impossible to create -- so an absent report warns and a
+# PRESENT-but-invalid one blocks. pre-push still hard-fails on absence, which is where
+# that rule belongs.
+QA_REPORT="$(python scripts/qa_report_path.py --target --relative 2>/dev/null)"
+if [ -n "$QA_REPORT" ] && [ -f "$QA_REPORT" ]; then
+  echo "🔍 QA report validity ($QA_REPORT)..."
+  python scripts/qa_gate.py "$QA_REPORT" >/dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo ""
+    echo "   The QA report for this branch does not validate. Fix it now rather than"
+    echo "   at push time, when it costs a full test run to find out:"
+    echo "     python scripts/qa_gate.py $QA_REPORT"
+    exit 1
+  fi
+  echo "✅ QA report validates"
+else
+  echo "ℹ  No QA report yet for this branch — pre-push will require one."
+fi
+
 echo "✅ Pre-commit checks complete"

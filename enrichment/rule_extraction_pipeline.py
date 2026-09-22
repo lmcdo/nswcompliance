@@ -260,28 +260,44 @@ def process_provision(provision: dict) -> dict:
     }
 
 
+#: Rows this pipeline has already decided on. Selecting only NULL makes a run
+#: FILL-BLANKS-ONLY, which is the convention every phase in enrichment/pipeline.py
+#: already follows: "safe to run repeatedly and cannot overwrite a value a human or an
+#: earlier run established." Without it a scheduled run reprocesses the whole corpus on
+#: every tick and silently overwrites `review_needed` verdicts someone has acted on --
+#: which is why this pipeline could never be put on a schedule.
+_UNPROCESSED_ONLY = " AND v2_extraction_status IS NULL"
+
+_BASE_WHERE = """
+        WHERE is_current = true
+          AND v2_is_actionable = true
+          AND provision_text IS NOT NULL
+          AND provision_text != ''
+"""
+
+
 def run_batch(
     limit: Optional[int] = None,
     dry_run: bool = False,
     batch_size: int = 500,
+    only_unprocessed: bool = True,
 ) -> dict:
     """
-    Run deterministic extraction on all actionable provisions.
+    Run deterministic extraction on actionable provisions.
+
+    only_unprocessed=True (the default) processes only rows with no verdict yet, so the
+    run is idempotent and schedulable. Pass False for a full re-sweep after the
+    extractor itself changes -- that is a deliberate, destructive re-decision, not a
+    routine run.
 
     Returns stats and writes review queue file.
     """
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
+    where = _BASE_WHERE + (_UNPROCESSED_ONLY if only_unprocessed else "")
 
     # Count provisions to process
-    cur.execute("""
-        SELECT COUNT(*) as total
-        FROM regulatory_provisions
-        WHERE is_current = true
-          AND v2_is_actionable = true
-          AND provision_text IS NOT NULL
-          AND provision_text != ''
-    """)
+    cur.execute("SELECT COUNT(*) as total FROM regulatory_provisions" + where)
     total = cur.fetchone()["total"]
     if limit:
         total = min(total, limit)
@@ -304,17 +320,19 @@ def run_batch(
     processed = 0
 
     while processed < total:
+        # OFFSET is 0 while filling blanks for real: each committed batch LEAVES the
+        # result set (its status is no longer NULL), so advancing the offset as well
+        # would step over that many unprocessed rows and silently skip them. When the
+        # set is NOT shrinking -- a dry run, or a full re-sweep -- normal paging applies.
+        offset = 0 if (only_unprocessed and not dry_run) else processed
         cur.execute("""
             SELECT id, provision_text, v2_has_numeric_value, section_header,
                    v2_topic, source_council, document_id
             FROM regulatory_provisions
-            WHERE is_current = true
-              AND v2_is_actionable = true
-              AND provision_text IS NOT NULL
-              AND provision_text != ''
+        """ + where + """
             ORDER BY id
             LIMIT %s OFFSET %s
-        """, (batch_size, processed))
+        """, (batch_size, offset))
         provisions = cur.fetchall()
 
         if not provisions:
@@ -470,6 +488,13 @@ def main():
     parser.add_argument("--limit", type=int, help="Max provisions to process")
     parser.add_argument("--dry-run", action="store_true", help="Don't commit changes")
     parser.add_argument("--batch-size", type=int, default=500, help="Batch size")
+    parser.add_argument(
+        "--reprocess-all", action="store_true",
+        help=("Re-decide provisions that already have a verdict. Default is "
+              "fill-blanks-only, which is what makes a scheduled run safe. Use this "
+              "only after changing the extractor itself -- it OVERWRITES existing "
+              "verdicts, including review_needed rows a human may have acted on."),
+    )
 
     args = parser.parse_args()
 
@@ -478,6 +503,7 @@ def main():
             limit=args.limit,
             dry_run=args.dry_run,
             batch_size=args.batch_size,
+            only_unprocessed=not args.reprocess_all,
         )
     elif args.phase == "review":
         run_review()

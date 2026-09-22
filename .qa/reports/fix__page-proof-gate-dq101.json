@@ -1,0 +1,312 @@
+{
+  "tier": "critical",
+  "justification": "Two applicability configs and the script that writes them to production. These decide which property is shown which control: v2_applicable_zones and v2_applicable_dev_types are HARD filters on the served answer (frontend-nextjs/app/api/provisions/for-property/route.ts:1012 and :1222, app/api/permissibility/check/route.ts:207), so a value named here removes the row from every query that does not name it. This is also the change that takes DQ-33 under its floor and unblocks OC-17, so the temptation to clear a count by asserting ALL is live throughout.",
+  "commit_hash": "1e252fcf",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dcp_pipeline_manifest.json",
+    ".claude/dq_checks.json",
+    ".githooks/pre-commit",
+    ".gitignore",
+    "enrichment/config/__init__.py",
+    "enrichment/config/campbelltown_config.py",
+    "enrichment/config/canterbury_bankstown_config.py",
+    "enrichment/extractors/applicability_tagger.py",
+    "enrichment/rule_extraction_pipeline.py",
+    "frontend-nextjs/app/api/internal/pipeline-status/route.ts",
+    "frontend-nextjs/app/internal/page.tsx",
+    "frontend-nextjs/app/internal/pipeline/PipelineStatus.tsx",
+    "frontend-nextjs/app/internal/pipeline/page.tsx",
+    "scripts/dcp_extract_changed.py",
+    "scripts/dcp_fidelity_gate.py",
+    "scripts/dq_probe_applicability_config.py",
+    "scripts/liability_language_check.py",
+    "scripts/retag_applicability_slug_docids.py",
+    "scripts/run_monitors.py",
+    "tests/test_a_broken_row_is_not_left_for_a_human.py",
+    "tests/test_campbelltown_applicability.py",
+    "tests/test_canterbury_bankstown_applicability.py",
+    "tests/test_dcp_extraction_fidelity.py",
+    "tests/test_dcp_review_enqueue.py",
+    "tests/test_dq_probe_applicability_config_real_db.py",
+    "tests/test_page_proof_gate_dq101.py",
+    "tests/test_retag_applicability_slug_docids_real_db.py",
+    "tests/test_retag_narrowing_is_classified.py",
+    "tests/test_the_good_reader_is_not_permanently_suspect.py",
+    "tests/test_the_pipeline_cannot_lose_a_stage.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions.v2_applicable_zones / v2_applicable_dev_types / v2_zone_source / v2_dev_type_source. No schema change. Blast radius measured against live data before writing anything: 2,075 served council rows read no_config against a floor of 1,158 (canterbury_bankstown 883, parramatta 341, campbelltown 268, marrickville 157, ashfield 118, then a tail). Re-running the tagger over both councils' whole corpus predicts no_config 883 -> 0 and 268 -> 0, leaving 924, which is 234 under the floor.",
+    "assumption_mismatch": "Four, and two of them reversed the plan. (1) The handoff's proposed fix -- drop applicable_zones from the Canterbury-Bankstown entries so text-derived zones survive -- does not work: tag_with_provenance guards text extraction with `if text and not config`, so a matched entry suppresses the regex whether or not it decided that key. Checked before relying on it; the finding is now its own ledger row, DQ-103. (2) 'Widening the retag list is not safe: 468 value changes including 140 narrowings' was a mislabel, not a measurement -- both narrowing counters tested `!=`, counting every change in either direction. Classified properly the same plan holds 197 narrowings in 9 distinct shapes, every one traceable to a chapter's own Application section. (3) chapter_9_1 was configured as industrial by its position in the numbering; the PDF's own section 1 scopes it to Zone E4 and its controls govern vehicle body repair workshops and food premises, so the existing dev-type list was deleting 5.10 from every food_and_drink_premises query. (4) chapter_10_4's list was built from the tagger's 16-term vocabulary and looked complete; the serving taxonomy in frontend-nextjs/lib/see/devTypeHierarchy.ts is wider and carries neighbourhood_shop and serviced_apartment, which are sections 3 and 4 of that very chapter.",
+    "new_vs_existing": "No new mechanism. campbelltown_config.py is the seventh file of an existing shape, registered in the existing COUNCIL_CONFIGS; the four-state model (config_specific / config_all / config_silent / no_config) already existed in ApplicabilityTagger._resolve and is used, not extended. The retag script gains a --councils argument in place of a hardcoded tuple, a real narrow-vs-widen classifier in place of two `!=` counters, and two refusals. dq_probe_applicability_config.py is new because dq_probe_live.py is SQL-only by construction -- its PROBES map holds a SQL string the runner executes -- and both new questions need the tagger to run against each row's own document_id and text.",
+    "external_source_error": "The only external reads are the four chapter PDFs from R2, fetched to a scratch directory and read with pdfplumber. Every scope claim in both configs is quoted from the section that states it, not from a chapter title -- which is exactly how chapter_9_1 came to be mis-scoped in the first place. Campbelltown's Part 4 PDF renumbers itself Part 5 relative to the registry key; recorded in the config rather than silently reconciled.",
+    "frontend_type": "One route changed: app/api/internal/pipeline-status/route.ts gains the same `denyIfUnauthenticated()` helper app/api/internal/structure-labels/route.ts already carries, and stops returning the driver's error text to the caller. The page that consumes it is a client component doing a same-origin `fetch`, so the session cookie travels with the request and `createClient()` (an async function -- awaited) reads it; the page already renders `json.error` for any non-ok response, so a 401 shows 'unauthorised' and a 500 shows the generic message, and its own rule -- a status page that silently renders nothing is the bug -- still holds. Otherwise the frontend is read as evidence, not edited: it is where the applicability hard filters live.",
+    "user_failure_mode": "A binding control disappears from the answer for a property it governs, silently, because a config named a partial list. That is the asymmetric failure, and it is why several of the entries end in an OMITTED key rather than a short list."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-33 && python scripts/dq_probe_applicability_config.py --id DQ-102",
+    "fails_when": "DQ-33 exits 1 while no_config on served council rows is above 1,158; DQ-102 exits 1 while any served row in a council that HAS a config resolves to no entry in it.",
+    "observed_red": "DQ-33 = 917 over the floor (2,075 against 1,158) before the change. DQ-102 = 138 and DQ-103 = 744, both measured for the first time on 2026-09-23 and both registered open. DQ-103 read 500 until it was widened to ask about zones as well as dev types.",
+    "manual_probe": "python scripts/retag_applicability_slug_docids.py --councils canterbury_bankstown campbelltown -- the dry run prints the 9 distinct narrowing shapes, grouped, with an example id for each."
+  },
+  "functions": [
+    {
+      "name": "classify",
+      "file_line": "scripts/retag_applicability_slug_docids.py",
+      "input": "The tag value before and after: a list, or None where the column held SQL NULL. The caller must not coerce.",
+      "output": "one of same / narrowed / narrowed_from_all / widened / widened_to_all / swapped.",
+      "if_none": "THREE states, not two. The serving clause is `col && $q OR col IS NULL OR 'ALL' = ANY(col)`, so NULL is universal, ['ALL'] is universal, and [] matches NOTHING -- NULL and [] are opposite ends. An earlier version folded them together \"because that is how the serving query reads them\", misreading `IS NULL` as covering `= '{}'`, which scored NULL -> [] (a total hiding) as `same`. Measured 2026-09-23: 0 served rows hold NULL and 0 hold an empty array in either column, so nothing was misclassified in practice and the retag plan is byte-identical before and after the correction -- but the wrong reason was written into a test where the next person would copy it."
+    },
+    {
+      "name": "probe_102",
+      "file_line": "scripts/dq_probe_applicability_config.py",
+      "input": "Every served row of regulatory_provisions as (council, document_id, text, stored source), plus a constructed ApplicabilityTagger.",
+      "output": "(count, {(council, document_id): n}) for rows whose council has a config but whose chapter matches no entry.",
+      "if_none": "A council with no config at all is skipped, not counted: those rows are DQ-33's population, and counting them here would report the same defect twice under two ids."
+    },
+    {
+      "name": "probe_103",
+      "file_line": "scripts/dq_probe_applicability_config.py",
+      "input": "Every served row of regulatory_provisions as (council, document_id, text, stored source), plus a constructed ApplicabilityTagger.",
+      "output": "(count, by-document map) counted once per key -- zones and dev types independently -- that a matched entry left silent while the row's own text carries evidence for it.",
+      "if_none": "Rows whose entry DECIDED the key are excluded, config_all included: an explicit assertion of universality is a decision, and overriding it with a regex is the opposite defect. The first version asked about dev types only, and the suppression is per-ENTRY not per-key, so the check could have read zero with the defect fully present on zones -- 1,146 served rows carry v2_zone_source='config_silent'. Counting both took the measurement 500 -> 744."
+    },
+    {
+      "name": "build_plan (stats keys)",
+      "file_line": "scripts/retag_applicability_slug_docids.py",
+      "input": "An open cursor and the list of source_council slugs to re-tag.",
+      "output": "(value-changes, provenance-only, stats, narrowings). stats keys are now (column, source, served-ness) -- 'zone' or 'devtype' -- not (source, served-ness).",
+      "if_none": "It used to record zone_source alone, so the 'predicted provenance after' block described zones while the ratchet it serves, DQ-33, counts v2_dev_type_source. The two differ: 7 served canterbury_bankstown rows resolve no_config on zones and text_regex on dev types, so the zone-only view showed work outstanding that DQ-33 does not count -- and would equally have hidden the reverse. Caught by test_the_repair_removes_no_config_from_the_column_dq33_counts failing at 7 while the real number was already 0."
+    }
+  ],
+  "values": [
+    {
+      "name": "canterbury_bankstown chapter_9_1 applicable_zones = ['E4']",
+      "value": "['E4']",
+      "why": "The chapter's own section 1: controls 'to enhance the function, design and amenity of the industrial precincts within Zone E4 General Industrial'. E4 is the only zone the chapter names as its own scope -- checked across the whole PDF, where the sole other zone reference is a control about adjoining land.",
+      "source": "R2 source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-9-1-general-requirements.pdf, page 4, read 2026-09-23. E4 is a current code in lep_zone_coverage for this LGA.",
+      "read_at": "enrichment/config/canterbury_bankstown_config.py -- chapter_topics['chapter_9_1_general_requirements']['applicable_zones']; reaches the row through ApplicabilityTagger._get_config_driven.",
+      "if_missing": "The key is absent and the entry resolves config_silent on zones, so the chapter is served to every zone. Noise, not a hidden control -- which is why omitting is the safe default everywhere the chapter does not say."
+    },
+    {
+      "name": "canterbury_bankstown chapter_9_1 declares NO development types",
+      "value": "applicable_dev_types omitted -> config_silent",
+      "why": "The same page says 'Non-industrial development will be limited to land uses that are compatible with the primary employment role of the precinct', and the chapter's controls bear it out: 3.16 vehicle body repair workshops, 5.10 food premises. The previous ['industrial_development','light_industry','warehouse'] deleted 5.10 from every food_and_drink_premises query.",
+      "source": "Same PDF, sections 3 and 5; the affected rows are ids 122463-122467.",
+      "read_at": "enrichment/config/canterbury_bankstown_config.py -- the absence of applicable_dev_types on that entry; ApplicabilityTagger._resolve turns the missing key into config_silent.",
+      "if_missing": "If someone adds the key back, dev types become a hard filter again and 5.10 food premises leaves every food_and_drink_premises answer. Pinned by test_no_entry_reintroduces_a_dev_type_list_on_the_two_corrected_chapters."
+    },
+    {
+      "name": "canterbury_bankstown chapter_10_4 applicable_zones = ['R2','R3','R4']",
+      "value": "['R2','R3','R4']",
+      "why": "Section 1: controls 'to manage the design and operation of non-residential land uses within Zone R2 Low Density Residential, Zone R3 Medium Density Residential and Zone R4 High Density Residential'.",
+      "source": "R2 .../chapter-10-4-non-residential-land-uses.pdf, page 4, read 2026-09-23. The stored R1 that one row loses came from the text regex, not the chapter.",
+      "read_at": "enrichment/config/canterbury_bankstown_config.py -- chapter_topics['chapter_10_4_non_residential_land_uses']['applicable_zones'].",
+      "if_missing": "Zones resolve config_silent and the chapter is served in every zone, including industrial land it does not govern. Wrong, but in the direction that shows too much rather than too little."
+    },
+    {
+      "name": "campbelltown Part 3 applicable_zones = ['R2','R3','R4','R5']",
+      "value": "['R2','R3','R4','R5']",
+      "why": "Section 3.1 Application states the same four zones on every one of its sub-lists, beginning 'General Requirements for all Types of Residential Development in areas zoned R2, R3, R4 and R5'.",
+      "source": "R2 source-pdfs/dcps/campbelltown/v1.1-2026-04-27/campbelltown-dcp-part3-low-medium.pdf, page 2, read 2026-09-23. All four are current codes in lep_zone_coverage for this LGA.",
+      "read_at": "enrichment/config/campbelltown_config.py -- chapter_topics['campbelltown_dcp_part3_low_medium']['applicable_zones'].",
+      "if_missing": "Part 3 is served to every Campbelltown zone, including RU2, RU5, E1 and SP2 where the chapter states it does not apply. 185 served rows."
+    },
+    {
+      "name": "campbelltown Part 3 declares NO development types",
+      "value": "applicable_dev_types omitted -> config_silent",
+      "why": "The chapter binds all residential development PLUS fencing, outbuildings and swimming pools PLUS section 3.8 subdivision. Semi-detached and attached dwellings have no term in DEV_TYPE_PATTERNS at all, and a residential-only list would delete 3.3 from a `fence` DA, 3.5 from an `outbuilding` DA, the pool controls from a `pool` DA and 3.8 from a `subdivision` DA -- every one of those selectable in frontend-nextjs/lib/see/ancillaryWorks.ts.",
+      "source": "Same PDF, the structure diagram on page 3.",
+      "read_at": "enrichment/config/campbelltown_config.py -- the absence of applicable_dev_types on that entry.",
+      "if_missing": "Adding a residential-only list would remove Part 3 from a fence, outbuilding, pool or subdivision DA. Pinned by test_development_types_are_left_UNDECIDED_not_enumerated."
+    },
+    {
+      "name": "campbelltown Part 4 declares NEITHER key",
+      "value": "both keys omitted -> config_silent, with `layer` keeping the entry non-empty",
+      "why": "Zones: four of the six section 5.1 names -- B1, B2, B3, B4 -- were retired by the 2022 employment-zone reform and none appears in lep_zone_coverage for this LGA; mapping them onto their successors in a config file would be interpreting the instrument. Dev types: the first draft named five of the chapter's own list and stopped, dropping \"community facilities and medical centres\", for which the serving taxonomy has no term. Not merely incomplete -- child_care_centre and educational_establishment expand only to THEMSELVES in devTypeHierarchy.ts, unlike pub / neighbourhood_shop / serviced_apartment which expand through commercial_premises, so a childcare or school application inside a mixed-use centre would have overlapped nothing in the list and lost the chapter outright. Identical to the chapter_10_4 defect corrected in the same change; found by the cross-review because the rule had been applied once and not twice.",
+      "source": "R2 .../part-4-rfb-mixed-use.pdf, page 2, read 2026-09-23; lep_zone_coverage for campbelltown queried the same day and holds no B-series zone; devTypeHierarchy.ts lines 67-69 for the expansions.",
+      "read_at": "enrichment/config/campbelltown_config.py -- the absence of BOTH keys on chapter_topics['part_4_rfb_mixed_use'], which therefore holds only `layer`.",
+      "if_missing": "If `layer` goes too the entry is an EMPTY DICT, and _resolve opens with `if not entry: return ['ALL'], 'no_config'` -- so all 14 served Part 4 rows fall straight back to the state this config exists to clear, with every value-level test still green. Pinned by test_an_entry_that_decides_NEITHER_key_does_not_collapse_to_no_config."
+    },
+    {
+      "name": "The retag's backup table name is no longer a fixed string",
+      "value": "regulatory_provisions_dq33_backup_<timestamp>, and the run aborts if the name is taken",
+      "why": "CREATE TABLE IF NOT EXISTS ... AS SELECT is a NO-OP when the name exists, and the guard that follows counted rows in whatever was already there. regulatory_provisions_dq33_backup_20260801 has held 22,007 rows since the first run, so every later run on the old default would have passed its own backup check against 2026-08-01 data and written with no usable rollback.",
+      "source": "Measured 2026-09-23: three dq33 backup tables exist in production -- 20260801 with 22,007 rows, 20260921 and 20260922 with 25,315 each.",
+      "read_at": "scripts/retag_applicability_slug_docids.py -- the --backup-table default and the to_regclass guard immediately before CREATE TABLE.",
+      "if_missing": "The run writes against a backup that silently contains someone else's rows, so the printed ROLLBACK statement restores the wrong values for the ids it holds and does nothing for the ids it does not."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Size the defect before touching it, per council rather than in total.",
+      "file_line": "ad hoc read-only; the shipped change adds no SQL",
+      "where_clause": "regulatory_provisions WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL AND v2_dev_type_source='no_config' GROUP BY source_council -- 2,075 rows; canterbury_bankstown 883, parramatta 341, campbelltown 268."
+    },
+    {
+      "purpose": "Confirm every zone about to be declared is a current code for its LGA, so no config reintroduces a retired one -- OC-17 checks for exactly that.",
+      "file_line": "ad hoc read-only",
+      "where_clause": "lep_zone_coverage WHERE lower(lga) LIKE ... -- canterbury_bankstown holds E4, R2, R3, R4; campbelltown holds R2, R3, R4, R5 and no B-series zone at all."
+    },
+    {
+      "purpose": "Find which served chapters resolve to no config entry, which is what DQ-102 now counts on every run.",
+      "file_line": "scripts/dq_probe_applicability_config.py",
+      "where_clause": "regulatory_provisions WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL -- 138 rows across 25 documents."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "classify() treats ALL as an ordinary set member.",
+      "what_happens": "['ALL'] -> ['E4'] reads as a swap rather than narrowed_from_all, and the single case that can hide a whole chapter stops being counted.",
+      "mitigated": true,
+      "how": "o_all/n_all are computed before any subset test, with [] and None folded into ALL. Mutation `if o_all and not n_all:` -> `if False:` was planted and failed 4 tests.",
+      "repro": "python -m pytest tests/test_retag_narrowing_is_classified.py -q"
+    },
+    {
+      "scenario": "The direction test is inverted -- n > o read as a narrowing.",
+      "what_happens": "Widening rows are gated and narrowing rows pass unexamined, which is precisely backwards.",
+      "mitigated": true,
+      "how": "Every direction case has a confusable negative beside it in the parametrised table. Mutation `if n < o:` -> `if n > o:` was planted and failed 3 tests.",
+      "repro": "python -m pytest tests/test_retag_narrowing_is_classified.py -k direction -q"
+    },
+    {
+      "scenario": "A swap is dropped from NARROWING because it gains as many members as it loses.",
+      "what_happens": "['food_and_drink_premises'] -> ['warehouse'] applies without acknowledgement, and the food premises control vanishes from the query it was written for.",
+      "mitigated": true,
+      "how": "NARROWING includes 'swapped'; mutation to ('narrowed',) alone was planted and failed 2 tests.",
+      "repro": "python -m pytest tests/test_retag_narrowing_is_classified.py -k swap -q"
+    },
+    {
+      "scenario": "Someone completes chapter_9_1 or chapter_10_4 by naming development types again -- the edit looks like an improvement.",
+      "what_happens": "The hard filter returns and the chapter disappears from every type not listed, which is what the chapters' own text contradicts.",
+      "mitigated": true,
+      "how": "test_no_entry_reintroduces_a_dev_type_list_on_the_two_corrected_chapters asserts on the config dict rather than the resolved entry, so the failure names the file being edited and carries the reason.",
+      "repro": "python -m pytest tests/test_canterbury_bankstown_applicability.py -k reintroduces -q"
+    },
+    {
+      "scenario": "A future edit clears the no_config count by declaring ['ALL'] on both keys of every Campbelltown entry.",
+      "what_happens": "The number goes green and nothing about what is served changes. config_all is documented as 'a real assertion of universality; trust it', so it becomes a false claim carried by a trusted source.",
+      "mitigated": true,
+      "how": "test_no_entry_asserts_universality_on_either_key fails on either key of either chapter.",
+      "repro": "python -m pytest tests/test_campbelltown_applicability.py -k universality -q"
+    },
+    {
+      "scenario": "A retired B-series zone is copied out of Part 4's text into the config, since the PDF prints them.",
+      "what_happens": "OC-17's 'served rows that apply to a retired zone code but not to its successor' check goes red, and rows are served to a zone that no longer exists.",
+      "mitigated": true,
+      "how": "test_no_retired_zone_code_is_declared enumerates the retired B and IN series.",
+      "repro": "python -m pytest tests/test_campbelltown_applicability.py -k retired -q"
+    },
+    {
+      "scenario": "The Campbelltown registry key changes, or a third chapter is onboarded.",
+      "what_happens": "The new chapter matches nothing and its rows go straight back to no_config, invisibly -- the defect this config was written for.",
+      "mitigated": true,
+      "how": "test_both_registered_chapters_are_covered pins the entry set, and DQ-102 now counts an unmatched served chapter on every run for every config-driven council.",
+      "repro": "python scripts/dq_probe_applicability_config.py --id DQ-102"
+    },
+    {
+      "scenario": "A typo in a development type, e.g. residential_flat_buildings.",
+      "what_happens": "The chapter narrows to a type nothing matches, hiding every control in it -- silently, in the harmful direction.",
+      "mitigated": true,
+      "how": "test_every_declared_dev_type_exists_in_the_vocabulary, for both councils.",
+      "repro": "python -m pytest tests/test_campbelltown_applicability.py tests/test_canterbury_bankstown_applicability.py -q"
+    },
+    {
+      "scenario": "--apply is run without reading the dry run.",
+      "what_happens": "197 narrowings land on production with nobody having looked at one.",
+      "mitigated": true,
+      "how": "--apply refuses unless --expect-narrowings carries the EXACT count. A bare acknowledgement flag could be passed without reading the number, so it takes an integer.",
+      "repro": "python scripts/retag_applicability_slug_docids.py --councils campbelltown --apply"
+    },
+    {
+      "scenario": "The default backup table name is reused and the backup silently no-ops.",
+      "what_happens": "The row-count guard passes against a stale table and the UPDATE runs with no usable rollback.",
+      "mitigated": true,
+      "how": "Timestamped default, a to_regclass check, and CREATE TABLE without IF NOT EXISTS. Pinned by TestTheBackupCannotBeSilentlyStale, which asserts on the source so the guard cannot be removed quietly.",
+      "repro": "python -m pytest tests/test_retag_narrowing_is_classified.py -k stale -q"
+    },
+    {
+      "scenario": "The unit test passes but tag_with_provenance's combine step undoes the config.",
+      "what_happens": "_get_config_driven returns the right entry and the row still writes ALL/ALL, because the combine step only adopts a value when it is not ['ALL'].",
+      "mitigated": true,
+      "how": "TestTheWholeRowComesOutRight asserts the full (zones, dev_types, provenance) triple through the public method for both Campbelltown chapters.",
+      "repro": "python -m pytest tests/test_campbelltown_applicability.py -k WholeRow -q"
+    },
+    {
+      "scenario": "DQ-102 or DQ-103 is 'fixed' by deleting a council from COUNCIL_CONFIGS.",
+      "what_happens": "The probe's scope shrinks and the count falls while every row becomes unreachable again -- strictly worse than the state being measured.",
+      "mitigated": false,
+      "how": "Not guarded in code. DQ-33 catches it from the other side: removing a council sends its rows to no_config and pushes DQ-33 back over its floor, so the two checks cannot both be satisfied by that move.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-33"
+    },
+    {
+      "scenario": "The retag is run later and the live corpus has moved since the dry run.",
+      "what_happens": "The narrowing count no longer matches what was reviewed.",
+      "mitigated": true,
+      "how": "--expect-narrowings is compared against the freshly computed plan, so a changed corpus refuses the run rather than applying a stale adjudication. The per-row UPDATE is separately guarded on the values read during planning.",
+      "repro": "python scripts/retag_applicability_slug_docids.py --councils canterbury_bankstown campbelltown --apply --expect-narrowings 0"
+    },
+    {
+      "scenario": "The probe or the plan is run with psycopg2 stubbed by conftest_mocks.py.",
+      "what_happens": "cur.fetchall() yields nothing, both probes count 0 and exit 0, and the plan comes back empty printing '0 narrowings' -- identical to a correct, finished run.",
+      "mitigated": true,
+      "how": "Two @pytest.mark.database files assert the query returns rows, that the result is narrower than the whole table, that the two probes disagree (they partition disjoint states), and that each probe's exit code matches its own printed count.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_dq_probe_applicability_config_real_db.py tests/test_retag_applicability_slug_docids_real_db.py -o addopts="
+    },
+    {
+      "scenario": "A narrowing appears in a chapter whose Application section nobody read.",
+      "what_happens": "--expect-narrowings is bumped to the new total by reflex and a scope change lands that no source supports.",
+      "mitigated": true,
+      "how": "test_no_narrowing_lands_outside_a_chapter_whose_scope_was_read names the four adjudicated chapters and fails with the stray document, against the live corpus.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_retag_applicability_slug_docids_real_db.py -k stray -o addopts="
+    },
+    {
+      "scenario": "The `layer` key is removed from the Part 4 entry as dead weight.",
+      "what_happens": "The entry becomes an empty dict, which is falsy, so _resolve's first line returns no_config for both keys and all 14 served rows revert -- the config that was written to clear no_config producing no_config.",
+      "mitigated": true,
+      "how": "test_an_entry_that_decides_NEITHER_key_does_not_collapse_to_no_config asserts the entry is truthy AND that both sources resolve config_silent. Forced: deleting both `layer` lines fails 5 tests.",
+      "repro": "python -m pytest tests/test_campbelltown_applicability.py -k NEITHER -q"
+    },
+    {
+      "scenario": "A dev-type list is written from the chapter's prose without checking what each candidate type EXPANDS to.",
+      "what_happens": "A type that expands only to itself (child_care_centre, educational_establishment) overlaps nothing in the list and loses the chapter, even though the list looks like a faithful reading of the text.",
+      "mitigated": true,
+      "how": "Both Part 4 and chapter_10_4 leave the key silent, and each test carries the expansion rule in its failure message so the next editor checks before narrowing.",
+      "repro": "python -m pytest tests/test_campbelltown_applicability.py -k enumerated -q"
+    },
+    {
+      "scenario": "DQ-103 asks about one applicability key while the defect sits on the other.",
+      "what_happens": "The suppression in tag_with_provenance is per-ENTRY, so an entry that names dev types and omits zones discards the row's zone evidence identically. A dev-type-only probe reads zero with the defect fully present -- a check watching the field the fix abandoned.",
+      "mitigated": true,
+      "how": "probe_103 evaluates both keys independently and counts once per silent key with evidence. Widening it took the measurement 500 -> 744 across 22 -> 27 documents, so the shortfall was a third of the real number, not a rounding error.",
+      "repro": "python scripts/dq_probe_applicability_config.py --id DQ-103"
+    },
+    {
+      "scenario": "A stored applicability column goes from NULL to an empty array.",
+      "what_happens": "NULL matches every query; an empty array matches none. The row goes from visible to every property to visible to no property, and the old classify scored it `same`, so the narrowing gate never fired.",
+      "mitigated": true,
+      "how": "classify keeps None and [] apart, build_plan stops coercing before calling it, and the parametrised table now carries NULL -> [], ['ALL'] -> [], [] -> named and named -> NULL. No live instance: 0 served rows hold NULL or an empty array in either column, and the plan is identical before and after the fix (197 narrowings, 9 shapes).",
+      "repro": "python -m pytest tests/test_retag_narrowing_is_classified.py -k OPPOSITE -q"
+    },
+    {
+      "scenario": "An applicability array holds 'ALL' alongside a named value.",
+      "what_happens": "`'ALL' = ANY(col)` makes the row universal to the serving query, but a classifier testing `set == {'ALL'}` sees an ordinary named set, so ['ALL','R1'] -> ['R1'] scores `narrowed` when it is a universal row losing its universality.",
+      "mitigated": true,
+      "how": "Universality is membership (`'ALL' in o`), matching the SQL. No live instance -- 0 rows in the whole table hold ALL beside another value -- but the classifier's one job is to be right about direction. Three mixed-ALL cases in the parametrised table.",
+      "repro": "python -m pytest tests/test_retag_narrowing_is_classified.py -k direction -q"
+    },
+    {
+      "scenario": "An /internal API route is shipped with the auth check on the PAGE only.",
+      "what_happens": "A page gate protects a page, not an endpoint. Anyone knowing the path reads council chapter names, the review queue's contents, which rows were auto-rejected and why, corpus counts, and the raw postgres error text -- which carries the failing SQL and sometimes a row value -- without meeting the login screen.",
+      "mitigated": true,
+      "how": "The route now calls the same denyIfUnauthenticated() as its sibling before touching the pool, and the catch logs the detail server-side while returning a fixed string. Verified the odd-one-out reading rather than taking it on trust: structure-labels carries the guard, pipeline-status did not, and it is the newer of the two.",
+      "repro": "NEXT_PUBLIC_AUTH_ENABLED=true, then request /api/internal/pipeline-status with no session cookie -- expect 401 {\"error\":\"unauthorised\"}."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. The code change writes nothing; the production write is a separate, explicit, operator-run command (--apply --expect-narrowings 197) that takes its own timestamped backup table and prints the rollback UPDATE on completion.",
+    "secrets": "None added or read beyond DATABASE_URL, which the script already required.",
+    "other_repo": "None.",
+    "manual_verify": "After the retag: python scripts/dq_probe_live.py --id DQ-33 (expect 0, i.e. no_config on served council rows at 924 against a floor of 1,158), then python scripts/outreach_claim_checks.py OC-17 (expect exit 0 -- DQ-33 was its only failing sub-check on 2026-09-23; the other ten passed)."
+  }
+}

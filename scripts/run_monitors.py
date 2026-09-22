@@ -54,6 +54,26 @@ MONITORS = {
         # it write; without it the worker is a dry run. The human gate is the queue.
         "cmd": ["python", "scripts/dcp_commit_approved.py", "--commit"],
     },
+    "dcp-rules": {
+        # Rule formulation: turn committed provision TEXT into structured, queryable
+        # rules (v2_extracted_rules + v2_extraction_status). Runs after dcp-commit.
+        #
+        # This pipeline was written, works, and was never scheduled. Measured
+        # 2026-09-22 across the served set: 6,117 provisions complete, 1,737
+        # review_needed and 11,389 with NO VERDICT AT ALL -- 59% of what is served --
+        # because nothing ever ran it. A dry run over 500 of those untouched rows:
+        # 463 complete deterministically (92.6%), 31 needing the LLM, 6 needing a
+        # human, 0 errors. The numbers a planner reads were instead being produced by
+        # hand-run per-council scripts (enrichment/extractors/extract_*.py,
+        # scripts/insert_*.py), which is why they kept going stale.
+        #
+        # Fill-blanks-only by default: it selects on v2_extraction_status IS NULL, so
+        # repeated runs are safe and it can never overwrite a review_needed verdict a
+        # human has acted on. --reprocess-all exists for a deliberate re-sweep after
+        # the extractor itself changes, and is NOT used here.
+        "cmd": ["python", "enrichment/rule_extraction_pipeline.py",
+                "--phase", "deterministic"],
+    },
     "dcp-watchdog": {
         "cmd": ["python", "scripts/dcp_watchdog.py"],
     },

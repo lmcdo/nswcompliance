@@ -90,6 +90,7 @@ const GROUPS: Group[] = [
     items: [
       { path: '/internal/leads', title: 'Leads — system of record', note: 'qualified duplex referrals + consent audit', status: 'live' },
       { path: '/internal/setback-review', title: 'Setback value review', status: 'live' },
+      { path: '/internal/pipeline', title: 'Pipeline status', note: 'live: what needs you, whether each stage is running, how much of the corpus has structured rules. Read from data, not hand-maintained.', status: 'live' },
       { path: '/internal/dcp-review', title: 'DCP review queue', status: 'live' },
     ],
   },

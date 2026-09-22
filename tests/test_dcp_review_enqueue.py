@@ -25,7 +25,13 @@ def _load_enqueue():
     # enqueue_review_changes calls module-level suspect_reason() (stubbed) and
     # the fidelity helpers (real implementations — they're pure and part of the
     # behaviour under test since the 2026-07 fidelity gate).
-    ns: dict = {"suspect_reason": lambda ch: ch.get("suspect_reason"), "re": re}
+    # _serious_artifacts is the DQ-101 seam: the enqueue path asks it whether a row's
+    # own text is machine-detectably broken, and rejects the row if so. Stubbed here
+    # (like suspect_reason) so this offline harness needs no verify_dcp_formatting
+    # import; the real behaviour is covered by
+    # tests/test_a_broken_row_is_not_left_for_a_human.py against the real checker.
+    ns: dict = {"suspect_reason": lambda ch: ch.get("suspect_reason"),
+                "_serious_artifacts": lambda t: [], "re": re}
     garble = re.search(r"_GARBLE_RUN = .+", src).group(0)
     junk = re.search(r"_JUNK_REF = .+", src).group(0)
     exec(garble, ns)

@@ -1,0 +1,91 @@
+{
+  "_what_this_is": "The DCP pipeline's contract. Every stage listed here MUST have a scheduled job, and every unbuilt item MUST stay visible. tests/test_the_pipeline_cannot_lose_a_stage.py enforces both at the pre-push pytest gate.",
+  "_why_it_exists": "PR #506 migrated CI from GitHub Actions to Railway and silently DELETED the extract-to-review stage. Nothing failed, nothing alerted; the pipeline just stopped half-way and stayed that way for months. docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md calls the fix 'the single check that would have caught #506; build it first'. It was specified on 2026-06-20 in commit 4115dbe6, whose own message says 'enforced by gates, not documentation' and ends 'Docs-only.' — 32 lines of markdown and no code. This file is that check finally existing.",
+  "_source": "docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md §4 Phase 0/1, §5.2 operating model, §5.3 enforced testing",
+
+  "stages": [
+    {
+      "id": "dcp-monitor",
+      "script": "scripts/r2_monitor.py",
+      "purpose": "Detect: fetch each council source, compare bytes, set needs_extraction + content_hash.",
+      "if_deleted": "No chapter is ever flagged as changed again. Councils amend their DCPs and nothing notices — the served text silently goes stale with no error anywhere."
+    },
+    {
+      "id": "dcp-extract",
+      "script": "scripts/dcp_extract_changed.py",
+      "requires_args": ["--review"],
+      "purpose": "Extract-to-review: re-read flagged chapters in memory and enqueue the diff. NO provision writes.",
+      "if_deleted": "THIS IS THE STAGE #506 DELETED. Detection keeps flagging chapters and nothing ever reads them, so the queue stays empty and the pipeline looks healthy while doing nothing."
+    },
+    {
+      "id": "dcp-extract-all",
+      "script": "scripts/dcp_extract_changed.py",
+      "requires_args": ["--all", "--review"],
+      "purpose": "Quarterly full re-read of every active chapter, independent of the byte signal.",
+      "if_deleted": "A silent in-place amendment that does not move the byte hash is never found. This stage exists because the byte signal both false-positives on re-exports and false-negatives on in-place edits."
+    },
+    {
+      "id": "dcp-commit",
+      "script": "scripts/dcp_commit_approved.py",
+      "requires_args": ["--commit"],
+      "purpose": "Commit chapters whose queue rows a human approved, currency-guarded.",
+      "if_deleted": "Approved work never reaches regulatory_provisions. A reviewer clears the queue and nothing changes for users."
+    },
+    {
+      "id": "dcp-rules",
+      "script": "enrichment/rule_extraction_pipeline.py",
+      "requires_args": ["--phase", "deterministic"],
+      "purpose": "Rule formulation: turn committed provision TEXT into structured queryable rules (v2_extracted_rules, v2_extraction_status). Fill-blanks-only, so it is idempotent.",
+      "if_deleted": "Provisions are served as PROSE with no structured rule behind them. Measured 2026-09-22 before this stage was scheduled: 11,389 of 19,243 served actionable provisions (59%) had no verdict at all, because this pipeline existed, worked, and was never run. The numbers a planner reads then come from hand-run per-council scripts instead, which is why they went stale."
+    },
+    {
+      "id": "dcp-watchdog",
+      "script": "scripts/dcp_watchdog.py",
+      "purpose": "Alert on chapters whose PDF changed but which have not been re-read.",
+      "if_deleted": "A chapter wedged between detect and extract raises no alarm — the failure mode the dead-man's-switch exists for."
+    },
+    {
+      "id": "legislation",
+      "script": "scripts/legislation_monitor.py",
+      "purpose": "Detect amendments to SEPPs/LEPs in instrument_registry.",
+      "if_deleted": "Served state law silently cites superseded provisions."
+    }
+  ],
+
+  "unbuilt": [
+    {
+      "id": "durable_queue_claim",
+      "doc": "§4 Phase 1 — Postgres review-queue table",
+      "what": "Claim queue rows with SELECT ... FOR UPDATE SKIP LOCKED so concurrent workers cannot double-process.",
+      "verified_absent_on": "2026-09-22, grep for 'FOR UPDATE SKIP LOCKED' across scripts/ services/ tests/"
+    },
+    {
+      "id": "dead_letter_to_human",
+      "doc": "§5.2 invariant 6 (no silent drop) + §4 Phase 1",
+      "what": "A poison item escalates to a human instead of being retried forever or dropped.",
+      "verified_absent_on": "2026-09-22, grep for 'dead_letter|dead-letter'"
+    },
+    {
+      "id": "golden_pdf_corpus",
+      "doc": "§4 Phase 1 [TEST] Golden-PDF regression corpus",
+      "what": "Real council PDF fixtures + expected provision output, asserted offline, so a pdfplumber bump or page-range edit that changes output blocks the push.",
+      "verified_absent_on": "2026-09-22, tests/fixtures holds no .pdf files"
+    },
+    {
+      "id": "cosmetic_auto_approve_with_audit_sample",
+      "doc": "§5.2 'Everything automated (unattended)' — cosmetic auto-approve + 5% sample",
+      "what": "Byte-identical-number changes commit themselves; 5% sampled and logged. The human gate stays on cited numbers and clause changes ONLY.",
+      "why_it_matters": "Its absence is the reason the queue holds thousands of rows rather than 'only real, risky changes' as §5.2 requires — and why a backlog of 8,875 was bulk-approved in one night on 2026-09-09, pushing 578 bad rows live.",
+      "verified_absent_on": "2026-09-22, no cosmetic lane in the commit path"
+    },
+    {
+      "id": "provision_schema_validation",
+      "doc": "§5.2 invariant 4 — schema-validate before commit",
+      "what": "Per-control type/unit/range validation (clause format, units present, setback < ~30m). Failure routes to a human, never a live write.",
+      "verified_absent_on": "2026-09-22, grep for 'pandera|jsonschema|validate_provision|schema_validate' found nothing"
+    }
+  ],
+
+  "unbuilt_ceiling": 5,
+  "_ceiling_rule": "unbuilt_ceiling may only FALL. Raising it to accommodate a new gap is how a ratchet stops meaning anything — the same rule DQ-33's floor carries. Build the item, then lower the number."
+}
