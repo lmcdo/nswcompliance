@@ -257,6 +257,13 @@
       "mitigated": true,
       "how": "change_type != 'removed', the same exemption junk_ref and emptied_by_strip carry, pinned as a test.",
       "repro": "python -m pytest tests/test_reversed_text_is_rejected_not_queued.py -k Removal -q"
+    },
+    {
+      "scenario": "A newly onboarded council ships with no applicability config.",
+      "what_happens": "Its rules apply to every development type by fallthrough. DQ-33 counts the same defect globally against a floor of 1,158 and read 924 on 2026-09-23 -- 234 rows of headroom -- so the new council hides inside it and nothing goes red. Everything else a new council meets is universal; this is the one onboarding step nothing can derive.",
+      "mitigated": true,
+      "how": "DQ-105 is per-council and has no floor. It counts COUNCILS rather than rows, because how many of a council's rows fall through depends on whether the text regex happened to match and moves on every re-extraction.",
+      "repro": "python scripts/dq_probe_unchecked_rows.py --id DQ-105"
     }
   ],
   "post_merge": {

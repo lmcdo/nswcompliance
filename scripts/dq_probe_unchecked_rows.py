@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checks for the five ledger rows that had none.
+"""Ledger checks that need Python, not SQL.
 
 prior-art-checked: reuse not viable because `scripts/dq_probe_live.py` is
 SQL-only by construction (its PROBES map holds a SQL string the runner
@@ -35,8 +35,10 @@ rather than by inventing a target:
             the monitor, then a probe over the column. Assert the column, and
             offer the live fetch behind an explicit opt-in.
 
-DQ-104 was added here afterwards for the same reason the other five are here:
-it needs a tokeniser, so no SQL string in `dq_probe_live.py` can express it.
+DQ-104 and DQ-105 were added afterwards for the same reason the first five are
+here -- one needs a tokeniser, the other needs the config registry imported --
+so no SQL string in `dq_probe_live.py` can express either. The file is named for
+the five it started with; it is now simply the home for checks SQL cannot ask.
 
 Contract copied from `dq_probe_live.py` deliberately: exit 0 only when the count
 is 0, exit 2 when the source cannot be reached, and every number prints how it
@@ -372,7 +374,73 @@ def probe_104(cur):
     return len(hits), hits
 
 
+#: The Inner West three reach their scope through dedicated matchers in
+#: `tag_with_provenance`, not through COUNCIL_CONFIGS, so they are configured
+#: even though the registry does not list them.
+_DEDICATED_MATCHER_COUNCILS = frozenset({"marrickville", "ashfield", "leichhardt"})
+
+
+def probe_105(cur):
+    """Served rules belonging to a council with NO applicability config at all.
+
+    DQ-33 counts the same defect globally, against a floor of 1,158 that may
+    only fall. That works as a ratchet on the councils already configured and
+    FAILS COMPLETELY as an onboarding check: measured 2026-09-23 the global
+    count was 924, so a brand-new council could publish 234 rules that apply to
+    every development type and nothing would say a word. A total hides a
+    per-council regression -- `feedback-counting-is-not-comparing` -- and here
+    the thing it hides is the one step of onboarding that is not automatic.
+
+    Everything else a new council meets is universal. `classify_row_fidelity`
+    takes no council argument, so reversed text, garbled glyphs, junk refs and
+    emptied provisions are caught for any council from its first extraction.
+    The applicability config is the exception: it is a hand-written file saying
+    which zones and development types each chapter binds, read from that
+    council's own Application sections, and nothing can derive it.
+
+    Measured 2026-09-23: 8 of 14 serving councils have none -- parramatta,
+    blacktown, northern_beaches, penrith, hornsby, georges_river, cumberland
+    and inner_west -- serving 1,052 rules between them, of which 559 actually
+    fall through to every development type today.
+
+    COUNTS COUNCILS, NOT ROWS, and the distinction is deliberate. The defect is
+    that a council has no config; how many of its rows currently fall through
+    depends on whether the text regex happened to find a zone or a type in each
+    one, which is noise. Counting rows would let a council with no config read
+    0 because its prose happened to match, and would move up and down on
+    re-extraction without anything being decided. The row exposure is carried in
+    the detail so the size stays visible.
+
+    Reachable only by writing the configs. Deleting a council's rows would also
+    take it to zero, which is why `passes_when` names the direction.
+    """
+    from enrichment.config import COUNCIL_CONFIGS
+
+    have = {k.replace("-", "_") for k in COUNCIL_CONFIGS} | _DEDICATED_MATCHER_COUNCILS
+    cur.execute(
+        """SELECT source_council, count(*)::int,
+                  count(*) FILTER (WHERE v2_dev_type_source = 'no_config')::int
+             FROM regulatory_provisions
+            WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
+            GROUP BY 1 ORDER BY 2 DESC"""
+    )
+    hits = {}
+    for council, served, fallthrough in cur.fetchall():
+        if council not in have:
+            hits[(council, "%d served, %d applying to every development type"
+                  % (served, fallthrough))] = 1
+    return len(hits), hits
+
+
 PROBES = {
+    "DQ-105": (
+        "Councils serving rules with NO applicability config at all",
+        "Their rules apply to EVERY development type by fallthrough rather than by "
+        "decision. DQ-33 counts the same defect globally against a floor, so a newly "
+        "onboarded council hides inside the headroom -- 234 rows of it on 2026-09-23. "
+        "This is per-council and cannot hide. Writing the config is the one onboarding "
+        "step nothing can derive.",
+        probe_105, True),
     "DQ-104": (
         "SERVED provisions whose text was read backwards by the reader",
         "Each row shows a planner mirrored words where a control should be -- "
