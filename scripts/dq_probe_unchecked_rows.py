@@ -35,6 +35,9 @@ rather than by inventing a target:
             the monitor, then a probe over the column. Assert the column, and
             offer the live fetch behind an explicit opt-in.
 
+DQ-104 was added here afterwards for the same reason the other five are here:
+it needs a tokeniser, so no SQL string in `dq_probe_live.py` can express it.
+
 Contract copied from `dq_probe_live.py` deliberately: exit 0 only when the count
 is 0, exit 2 when the source cannot be reached, and every number prints how it
 was produced. Read-only throughout -- no statement here writes.
@@ -329,7 +332,54 @@ def probe_58(cur, live: bool = False):
     return len(rows), {(r[0], "status=%s %s" % (r[2], r[1])): 1 for r in rows}
 
 
+def probe_104(cur):
+    """SERVED provisions whose text was read BACKWARDS by the reader.
+
+    A PDF laid out right-to-left in places -- most often inside a figure or a
+    table -- comes back mirrored: `kcabtes` for setback, `etis yradnuob
+    htaptoof` for "site boundary footpath", `sertem syerots thgieh` for "metres
+    storeys height". These are served to a planner as development controls.
+
+    Found 2026-09-23 from a screenshot of the review queue, where a reviewer was
+    being asked to confirm whether 0.41 was correct in a row whose own text read
+    `kcabtes m0.2`. There is no judgement to make about that, and nothing
+    detected it: `_AUTO_REJECT_REASONS` named three failures and none of them
+    was this, so the row became `pending` instead of being rejected for a
+    re-read. The detector now exists and this counts what is ALREADY LIVE,
+    which the enqueue-time gate cannot reach.
+
+    The vocabulary is IMPORTED from `dcp_extract_changed`, not restated. Two
+    copies would drift, and a probe measuring a different rule from the gate is
+    how a number stops meaning what its row says it means.
+
+    Same family as DQ-78 (scrambled map labels) and distinct from it: DQ-78
+    counts a run of single letters, this counts whole words in reverse. Neither
+    sees the other -- measured 2026-09-23, DQ-78 reads 34 and this reads 27.
+    """
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from dcp_extract_changed import reversed_text_tokens
+
+    cur.execute(
+        """SELECT id, source_council, provision_text
+             FROM regulatory_provisions
+            WHERE is_current AND v2_is_actionable"""
+    )
+    hits = {}
+    for pid, council, text in cur.fetchall():
+        toks = {t.lower() for t in reversed_text_tokens(text)}
+        if len(toks) >= 2:
+            hits[(council or "STATEWIDE", "id=%d %s" % (pid, sorted(toks)[:4]))] = 1
+    return len(hits), hits
+
+
 PROBES = {
+    "DQ-104": (
+        "SERVED provisions whose text was read backwards by the reader",
+        "Each row shows a planner mirrored words where a control should be -- "
+        "`kcabtes` for setback, `etis yradnuob` for site boundary. Not a number "
+        "to check: there is nothing to adjudicate in reversed text, which is why "
+        "the fix is to reject and re-read rather than to queue it for a person.",
+        probe_104, True),
     "DQ-31": (
         "Independent implementations of the Housing SEPP eligibility decision, beyond the first",
         "Each extra copy is one regulated decision written twice and free to drift. "

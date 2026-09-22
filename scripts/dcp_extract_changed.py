@@ -3449,7 +3449,61 @@ def _wholly_doubled(line: str) -> bool:
 # human click -- see the comment at its call site. Deliberately excludes
 # section_collapsed and oversize_new_provision: those are SIZE heuristics that
 # can legitimately fire on a genuine amendment, not certain-garbage detectors.
-_AUTO_REJECT_REASONS = {"garbled_glyphs", "junk_ref", "emptied_by_strip"}
+_AUTO_REJECT_REASONS = {"garbled_glyphs", "junk_ref", "emptied_by_strip", "reversed_text"}
+
+#: Words that appear in every DCP. Used ONLY in reverse: a token that is not one
+#: of these, whose reversal IS one of these, was emitted backwards by the reader.
+#: Deliberately small and domain-specific -- a general dictionary would sweep in
+#: ordinary reversible pairs (drawer/reward, straw/warts, desserts/stressed) and
+#: the whole value of this check is that it cannot fire on real prose.
+_PLANNING_WORDS = frozenset({
+    "setback", "setbacks", "minimum", "maximum", "building", "buildings",
+    "bedroom", "bathroom", "kitchen", "dining", "living", "storey", "storeys",
+    "height", "width", "depth", "garden", "boundary", "street", "frontage",
+    "parking", "landscape", "landscaped", "private", "habitable", "separation",
+    "courtyard", "balcony", "dwelling", "development", "residential",
+    "commercial", "ground", "floor", "front", "rear", "window", "windows",
+    "driveway", "garage", "storage", "metres", "footpath", "paved",
+    # 4 letters, and the most common word on a site-plan figure. Its reversal
+    # `etis` is not an English word, so it carries no false-positive cost --
+    # unlike `area`, whose reversal `aera` is a plausible typo of area itself
+    # and is deliberately NOT here. Omitting `site` was caught by the test
+    # asserting against a REAL served row (city_of_sydney id=95623), which is
+    # why that test quotes production text rather than an invented string.
+    "site",
+})
+_REVERSED_PLANNING_WORDS = frozenset(w[::-1] for w in _PLANNING_WORDS)
+_WORD_TOKEN = re.compile(r"[A-Za-z]{3,}")
+
+
+def reversed_text_tokens(text: str | None) -> list[str]:
+    """Tokens the reader emitted BACKWARDS, evidenced by their own reversal.
+
+    A PDF whose text is laid out right-to-left in places -- most often a figure
+    or a table -- comes back with whole words mirrored: `kcabtes` for setback,
+    `etis yradnuob htaptoof` for "site boundary footpath". Measured 2026-09-23,
+    five SERVED city_of_sydney provisions carry exactly this, all of them figure
+    labels flattened into the text of a control.
+
+    Nothing detected it. `_AUTO_REJECT_REASONS` held three reasons and none of
+    them names this, so a row of mirrored word salad reached the review queue
+    and a person was asked to confirm a number inside it -- an unanswerable
+    question, because there is no judgement to make about "kcabtes m0.2".
+    §5.2's rule is that a row which cannot be proven is REJECTED and the chapter
+    retries; only genuine ambiguity reaches a person.
+
+    Evidence-based on purpose: a token counts only when its own reversal is a
+    word this domain uses and the token itself is not. A LIKE-style substring
+    probe for the same thing matched 40 served rows of which 35 were false
+    positives (`nimm`, `xamm` inside ordinary words), which is why that shape
+    must not ship as a gate.
+    """
+    out = []
+    for tok in _WORD_TOKEN.findall(text or ""):
+        low = tok.lower()
+        if low in _REVERSED_PLANNING_WORDS and low not in _PLANNING_WORDS:
+            out.append(tok)
+    return out
 
 
 def classify_row_fidelity(ref: str | None, old_text: str | None,
@@ -3495,6 +3549,16 @@ def classify_row_fidelity(ref: str | None, old_text: str | None,
         reasons.append("section_collapsed")
     if not old_text and new_text and len(new_text) > 20000:
         reasons.append("oversize_new_provision")
+    # TWO distinct reversed words, not one. A single hit can be a genuine token
+    # (a surname, a product name, an acronym that happens to mirror a planning
+    # word); two independent ones in the same provision is a reading direction,
+    # not a coincidence. All five served instances measured 2026-09-23 carry
+    # three or more. A removal is exempt for the same reason junk_ref is: the
+    # row that DELETES a mirrored provision carries its text, and auto-rejecting
+    # the clean-up freezes the chapter it is cleaning.
+    if change_type != "removed" and len(set(
+            t.lower() for t in reversed_text_tokens(new_text))) >= 2:
+        reasons.append("reversed_text")
     if reasons:
         return "failed", "+".join(reasons)
     return "ok", None

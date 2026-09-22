@@ -7,7 +7,12 @@
     "tests/test_dq_probe_unchecked_rows.py",
     ".claude/dq_checks.json",
     "tests/test_dq_probe_unchecked_rows_real_db.py",
-    "frontend-nextjs/app/api/dcp-review/route.ts"
+    "frontend-nextjs/app/api/dcp-review/route.ts",
+    "scripts/dcp_extract_changed.py",
+    "tests/test_reversed_text_is_rejected_not_queued.py",
+    "tests/test_dcp_review_enqueue.py",
+    "tests/test_dcp_extraction_fidelity.py",
+    ".claude/DATA_QUALITY_TRACKER.md"
   ],
   "pre_impl": {
     "existing_data": "Read-only throughout; no statement in this change writes. dcp_plan_as_at (23 columns, 28 rows, keyed by `lga` -- which is DQ-43's premise, confirmed not assumed), dcp_chapter_registry, regulatory_provisions, information_schema. `url_page_last_status` confirmed ABSENT, which is what DQ-58's own note prescribed building.",
@@ -44,6 +49,13 @@
       "input": "An open read-only cursor against the production database; the query and its scope are written inside the function, not passed in.",
       "output": "(count, {(council, detail): 1}) for served councils whose current rows span more than one plan NAME.",
       "if_none": "It measures the precondition, not the harm, and says so: a council with several names for one plan is indistinguishable from a genuine two-plan council, which is exactly why the plan-identity model cannot be built yet. It also declares its own blind spot -- 7,254 of 20,261 served rows carry a NULL source_chapter_key and drop out of the registry join."
+    },
+    {
+      "name": "reversed_text_tokens",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "One provision's text, which may be None or empty for a removal row.",
+      "output": "The tokens the reader emitted backwards, evidenced by their own reversal being a word this domain uses.",
+      "if_none": "Empty input yields []. A token counts only when its reversal is in _PLANNING_WORDS AND the token itself is not, so a palindrome ('level', 'civic') can never fire and an ordinary reversible English pair ('drawer'/'reward') is not in the vocabulary at all. classify_row_fidelity then requires TWO DISTINCT such tokens: one can be a surname or an acronym, two is a reading direction."
     }
   ],
   "values": [
@@ -78,6 +90,14 @@
       "source": "Measured after wiring: 29 unresolved rows, 0 without a check. The ratchet tests failed on the old cap of 3 and are what demanded the change.",
       "read_at": ".claude/dq_checks.json -- _max_unverified_unresolved.",
       "if_missing": "The cap stays above reality and a row can be added with no check without anything noticing -- the exact state this change closed."
+    },
+    {
+      "name": "The reversed-text threshold is two DISTINCT tokens",
+      "value": "len(set(lowered tokens)) >= 2",
+      "why": "One hit can be a genuine token that happens to mirror a planning word. Two independent ones in the same provision is a page read right-to-left. Counting OCCURRENCES rather than distinct words would let one repeated figure label trip the gate on its own.",
+      "source": "All five instances found by the crude probe carry three or more; the full-corpus scan with the real detector found 27 served rows, every one with two or more.",
+      "read_at": "scripts/dcp_extract_changed.py -- classify_row_fidelity's reversed_text branch.",
+      "if_missing": "At a threshold of one, an ordinary provision containing a single mirrored-looking token is auto-REJECTED and a real control is thrown away."
     }
   ],
   "queries": [
@@ -209,6 +229,34 @@
       "mitigated": true,
       "how": "The route now carries the same guard as its two sibling WRITE routes, and the catch logs the detail server-side while returning a fixed string.",
       "repro": "NEXT_PUBLIC_AUTH_ENABLED=true, request /api/dcp-review with no session cookie -- expect 401."
+    },
+    {
+      "scenario": "The reversed-text detector is written as a substring probe.",
+      "what_happens": "Looking for 'kcabtes'/'nimm'/'xamm' as substrings matched 40 served rows on 2026-09-23 of which 35 were FALSE POSITIVES -- those letter runs occur inside ordinary words. As an auto-REJECT that discards real controls.",
+      "mitigated": true,
+      "how": "Token-level and evidence-based: the reversal must be a word this domain uses and the token itself must not be. Verified against the full served corpus, not a sample: 20,261 rows scanned, 27 hits.",
+      "repro": "python scripts/dq_probe_unchecked_rows.py --id DQ-104"
+    },
+    {
+      "scenario": "The vocabulary is swapped for a general English dictionary.",
+      "what_happens": "English is full of words that reverse into other words -- drawer/reward, straw/warts, desserts/stressed -- and palindromes reverse into themselves. Ordinary prose starts auto-rejecting.",
+      "mitigated": true,
+      "how": "A small domain vocabulary, with eleven ordinary reversible/palindromic words pinned as tests that must NOT fire.",
+      "repro": "python -m pytest tests/test_reversed_text_is_rejected_not_queued.py -k ordinary -q"
+    },
+    {
+      "scenario": "The probe and the enqueue gate drift apart.",
+      "what_happens": "The number the ledger reports stops describing the rule the pipeline enforces, so a row can read clean in one and dirty in the other.",
+      "mitigated": true,
+      "how": "The probe IMPORTS reversed_text_tokens from dcp_extract_changed; there is one vocabulary.",
+      "repro": "python scripts/dq_probe_unchecked_rows.py --id DQ-104"
+    },
+    {
+      "scenario": "A row that DELETES a mirrored provision is auto-rejected.",
+      "what_happens": "The removal row carries the mirrored text it exists to remove, so the clean-up is rejected and the chapter freezes -- measured 2026-09-18 on junk_ref, where two such rows held a 105-row chapter.",
+      "mitigated": true,
+      "how": "change_type != 'removed', the same exemption junk_ref and emptied_by_strip carry, pinned as a test.",
+      "repro": "python -m pytest tests/test_reversed_text_is_rejected_not_queued.py -k Removal -q"
     }
   ],
   "post_merge": {

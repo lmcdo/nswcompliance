@@ -49,6 +49,16 @@ def _load_enqueue():
                    "_undouble_glyph_runs", "_wholly_doubled"):
         exec(_extract_def(src, helper), ns)
     exec(_extract_def(src, "strip_garbled_header_lines"), ns)
+    # 2026-09-23 (DQ-104): classify_row_fidelity now calls reversed_text_tokens,
+    # which needs the domain vocabulary. _PLANNING_WORDS spans several lines, so
+    # the single-line `{const} = .+` pattern used above cannot reach it -- take
+    # it from its opening to the line that closes the frozenset instead.
+    planning = re.search(r"_PLANNING_WORDS = frozenset\(\{.*?\n\}\)", src, re.S)
+    assert planning, "_PLANNING_WORDS moved or changed shape"
+    exec(planning.group(0), ns)
+    for const in ("_REVERSED_PLANNING_WORDS", "_WORD_TOKEN"):
+        exec(re.search(rf"{const} = .+", src).group(0), ns)
+    exec(_extract_def(src, "reversed_text_tokens"), ns)
     exec(_extract_def(src, "classify_row_fidelity"), ns)
     exec(_extract_def(src, "enqueue_review_changes"), ns)
     return ns["enqueue_review_changes"]

@@ -401,12 +401,22 @@ class TestRowLevelFailurePreRejected:
 
     def test_auto_reject_reasons_exclude_the_two_size_heuristics(self):
         """Source pin for the Sol MEDIUM finding: section_collapsed and
-        oversize_new_provision must never be in the auto-reject set."""
+        oversize_new_provision must never be in the auto-reject set.
+
+        The two exclusions are the assertion; the membership list is pinned
+        beside them so a reason cannot be added without someone reading this
+        docstring. `reversed_text` joined it 2026-09-23 (DQ-104): whole words
+        mirrored by a right-to-left page, e.g. `kcabtes` for setback. It belongs
+        with the other three because there is nothing for a human to decide
+        about mirrored text -- unlike a size heuristic, which is a judgement
+        about whether a shrink is real, and must stay with a person.
+        """
         assert _extract.classify_row_fidelity is not None  # module loaded
         auto_reject = _extract._AUTO_REJECT_REASONS
         assert "section_collapsed" not in auto_reject
         assert "oversize_new_provision" not in auto_reject
-        assert auto_reject == {"garbled_glyphs", "junk_ref", "emptied_by_strip"}
+        assert auto_reject == {"garbled_glyphs", "junk_ref", "emptied_by_strip",
+                               "reversed_text"}
 
     def test_near_certain_reasons_still_auto_reject(self):
         for fidelity, row_reason, expect_reject in (
