@@ -12,7 +12,15 @@
     "tests/test_reversed_text_is_rejected_not_queued.py",
     "tests/test_dcp_review_enqueue.py",
     "tests/test_dcp_extraction_fidelity.py",
-    ".claude/DATA_QUALITY_TRACKER.md"
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "enrichment/config/blacktown_config.py",
+    "enrichment/config/penrith_config.py",
+    "enrichment/config/hornsby_config.py",
+    "enrichment/config/georges_river_config.py",
+    "scripts/dcp_fidelity_gate.py",
+    "scripts/dcp_approve_graded.py",
+    "tests/test_four_council_applicability_configs.py",
+    "tests/test_fidelity_gate_catches_an_invented_citation.py"
   ],
   "pre_impl": {
     "existing_data": "Read-only throughout; no statement in this change writes. dcp_plan_as_at (23 columns, 28 rows, keyed by `lga` -- which is DQ-43's premise, confirmed not assumed), dcp_chapter_registry, regulatory_provisions, information_schema. `url_page_last_status` confirmed ABSENT, which is what DQ-58's own note prescribed building.",
@@ -56,6 +64,13 @@
       "input": "One provision's text, which may be None or empty for a removal row.",
       "output": "The tokens the reader emitted backwards, evidenced by their own reversal being a word this domain uses.",
       "if_none": "Empty input yields []. A token counts only when its reversal is in _PLANNING_WORDS AND the token itself is not, so a palindrome ('level', 'civic') can never fire and an ordinary reversible English pair ('drawer'/'reward') is not in the vocabulary at all. classify_row_fidelity then requires TWO DISTINCT such tokens: one can be a surname or an acronym, two is a reading direction."
+    },
+    {
+      "name": "_urls_not_in_source",
+      "file_line": "scripts/dcp_fidelity_gate.py",
+      "input": "The council's own text from one row, and the whole chapter's extracted text.",
+      "output": "Sorted distinct HOSTS the row cites that appear nowhere in the chapter.",
+      "if_none": "An empty chapter returns [] -- no source URLs means no basis for comparison, and accusing every URL because the source text failed to extract would fire hardest on the rows already in trouble. A host the source carries in truncated form is accepted by a prefix test in either direction: a line wrap that eats `au/...` is a broken link, not an invented source."
     }
   ],
   "values": [
@@ -98,6 +113,14 @@
       "source": "All five instances found by the crude probe carry three or more; the full-corpus scan with the real detector found 27 served rows, every one with two or more.",
       "read_at": "scripts/dcp_extract_changed.py -- classify_row_fidelity's reversed_text branch.",
       "if_missing": "At a threshold of one, an ordinary provision containing a single mirrored-looking token is auto-REJECTED and a real control is thrown away."
+    },
+    {
+      "name": "The URL check matches HOST, not the whole URL",
+      "value": "https?://([^/\\s)>\\]\"'}]+)",
+      "why": "The path is where extraction damage is most common and least consequential -- a wrapped line loses a segment and the link breaks. A wrong DOMAIN is a citation to somebody else entirely, which is the thing worth failing on.",
+      "source": "Measured 2026-09-23 against the real row: the council's PDF carries epa.nsw.gov.au and penrithcity.nsw.gov.au; the row carried epa.ny.gov.gov.uk and pernitchlq.nsw.gov.au.",
+      "read_at": "scripts/dcp_fidelity_gate.py -- _URL_HOST.",
+      "if_missing": "Whole-URL matching flags every line-wrapped citation in the corpus, and a check that cries wolf on ordinary extraction damage is switched off within a week."
     }
   ],
   "queries": [
@@ -271,6 +294,20 @@
       "mitigated": true,
       "how": "Resolved per ROW, calling the tagger's own entry points with that row's own text. Six configured councils are pinned as must-never-appear against the live corpus, beside a confusable negative asserting the probe still names parramatta -- a resolver that matched everything would silence it entirely and read the same as 'all configured'.",
       "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_dq_probe_unchecked_rows_real_db.py -k DQ105 -o addopts="
+    },
+    {
+      "scenario": "The reader invents a citation by completing a damaged URL into a plausible one.",
+      "what_happens": "It takes a real URL from a damaged scan and completes it into something plausible -- epa.nsw.gov.au became epa.ny.gov.gov.uk, penrithcity.nsw.gov.au became pernitchlq.nsw.gov.au -- and the fidelity gate could not see it, because it checks numbers and words and a URL is neither. A fabricated citation passed a gate built to catch fabrication.",
+      "mitigated": true,
+      "how": "_urls_not_in_source compares the row's hosts against the whole chapter's and takes the row to flagged. Both real inventions are pinned as tests, beside five kinds of ordinary extraction damage that must NOT fire.",
+      "repro": "python -m pytest tests/test_fidelity_gate_catches_an_invented_citation.py -q"
+    },
+    {
+      "scenario": "A council's config is written from its Part TITLES.",
+      "what_happens": "Penrith 'D2 Residential Development' reads residential-only and is not: its own contents include 2.6 NON RESIDENTIAL DEVELOPMENTS. Declaring the residential types deletes that section from every non-residential application it governs -- the same defect as canterbury_bankstown 9.1, which was configured industrial by its position in the numbering.",
+      "mitigated": true,
+      "how": "All eight scopes are quoted from the Part's own scope section in its PDF, and each test carries the quotation. penrith_d2 decides NEITHER key as a result.",
+      "repro": "python -m pytest tests/test_four_council_applicability_configs.py -q"
     }
   ],
   "post_merge": {
