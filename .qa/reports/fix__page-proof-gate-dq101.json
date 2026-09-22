@@ -1,19 +1,39 @@
 {
   "tier": "critical",
   "justification": "Two applicability configs and the script that writes them to production. These decide which property is shown which control: v2_applicable_zones and v2_applicable_dev_types are HARD filters on the served answer (frontend-nextjs/app/api/provisions/for-property/route.ts:1012 and :1222, app/api/permissibility/check/route.ts:207), so a value named here removes the row from every query that does not name it. This is also the change that takes DQ-33 under its floor and unblocks OC-17, so the temptation to clear a count by asserting ALL is live throughout.",
-  "commit_hash": "12c58fac",
+  "commit_hash": "74037fc7",
   "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dcp_pipeline_manifest.json",
+    ".claude/dq_checks.json",
+    ".githooks/pre-commit",
+    ".gitignore",
+    "enrichment/config/__init__.py",
     "enrichment/config/campbelltown_config.py",
     "enrichment/config/canterbury_bankstown_config.py",
-    "enrichment/config/__init__.py",
-    "scripts/retag_applicability_slug_docids.py",
+    "enrichment/extractors/applicability_tagger.py",
+    "enrichment/rule_extraction_pipeline.py",
+    "frontend-nextjs/app/api/internal/pipeline-status/route.ts",
+    "frontend-nextjs/app/internal/page.tsx",
+    "frontend-nextjs/app/internal/pipeline/PipelineStatus.tsx",
+    "frontend-nextjs/app/internal/pipeline/page.tsx",
+    "scripts/dcp_extract_changed.py",
+    "scripts/dcp_fidelity_gate.py",
     "scripts/dq_probe_applicability_config.py",
-    ".claude/dq_checks.json",
-    ".claude/DATA_QUALITY_TRACKER.md",
+    "scripts/liability_language_check.py",
+    "scripts/retag_applicability_slug_docids.py",
+    "scripts/run_monitors.py",
+    "tests/test_a_broken_row_is_not_left_for_a_human.py",
     "tests/test_campbelltown_applicability.py",
     "tests/test_canterbury_bankstown_applicability.py",
+    "tests/test_dcp_extraction_fidelity.py",
+    "tests/test_dcp_review_enqueue.py",
+    "tests/test_dq_probe_applicability_config_real_db.py",
+    "tests/test_page_proof_gate_dq101.py",
+    "tests/test_retag_applicability_slug_docids_real_db.py",
     "tests/test_retag_narrowing_is_classified.py",
-    ".gitignore"
+    "tests/test_the_good_reader_is_not_permanently_suspect.py",
+    "tests/test_the_pipeline_cannot_lose_a_stage.py"
   ],
   "pre_impl": {
     "existing_data": "regulatory_provisions.v2_applicable_zones / v2_applicable_dev_types / v2_zone_source / v2_dev_type_source. No schema change. Blast radius measured against live data before writing anything: 2,075 served council rows read no_config against a floor of 1,158 (canterbury_bankstown 883, parramatta 341, campbelltown 268, marrickville 157, ashfield 118, then a tail). Re-running the tagger over both councils' whole corpus predicts no_config 883 -> 0 and 268 -> 0, leaving 924, which is 234 under the floor.",
@@ -50,6 +70,13 @@
       "input": "Every served row of regulatory_provisions as (council, document_id, text, stored source), plus a constructed ApplicabilityTagger.",
       "output": "(count, by-document map) for rows where an entry matched, left dev types undecided, and the row's own text yields at least one dev type.",
       "if_none": "Rows whose entry DECIDED the key are excluded, config_all included: an explicit assertion of universality is a decision, and overriding it with a regex is the opposite defect."
+    },
+    {
+      "name": "build_plan (stats keys)",
+      "file_line": "scripts/retag_applicability_slug_docids.py",
+      "input": "An open cursor and the list of source_council slugs to re-tag.",
+      "output": "(value-changes, provenance-only, stats, narrowings). stats keys are now (column, source, served-ness) -- 'zone' or 'devtype' -- not (source, served-ness).",
+      "if_none": "It used to record zone_source alone, so the 'predicted provenance after' block described zones while the ratchet it serves, DQ-33, counts v2_dev_type_source. The two differ: 7 served canterbury_bankstown rows resolve no_config on zones and text_regex on dev types, so the zone-only view showed work outstanding that DQ-33 does not count -- and would equally have hidden the reverse. Caught by test_the_repair_removes_no_config_from_the_column_dq33_counts failing at 7 while the real number was already 0."
     }
   ],
   "values": [
@@ -218,6 +245,20 @@
       "mitigated": true,
       "how": "--expect-narrowings is compared against the freshly computed plan, so a changed corpus refuses the run rather than applying a stale adjudication. The per-row UPDATE is separately guarded on the values read during planning.",
       "repro": "python scripts/retag_applicability_slug_docids.py --councils canterbury_bankstown campbelltown --apply --expect-narrowings 0"
+    },
+    {
+      "scenario": "The probe or the plan is run with psycopg2 stubbed by conftest_mocks.py.",
+      "what_happens": "cur.fetchall() yields nothing, both probes count 0 and exit 0, and the plan comes back empty printing '0 narrowings' -- identical to a correct, finished run.",
+      "mitigated": true,
+      "how": "Two @pytest.mark.database files assert the query returns rows, that the result is narrower than the whole table, that the two probes disagree (they partition disjoint states), and that each probe's exit code matches its own printed count.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_dq_probe_applicability_config_real_db.py tests/test_retag_applicability_slug_docids_real_db.py -o addopts="
+    },
+    {
+      "scenario": "A narrowing appears in a chapter whose Application section nobody read.",
+      "what_happens": "--expect-narrowings is bumped to the new total by reflex and a scope change lands that no source supports.",
+      "mitigated": true,
+      "how": "test_no_narrowing_lands_outside_a_chapter_whose_scope_was_read names the four adjudicated chapters and fails with the stray document, against the live corpus.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_retag_applicability_slug_docids_real_db.py -k stray -o addopts="
     }
   ],
   "post_merge": {

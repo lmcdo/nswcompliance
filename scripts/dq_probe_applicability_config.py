@@ -46,10 +46,15 @@ _CONFIG_DRIVEN = sorted({
 
 
 def _rows(cur):
+    # The currency filter is spelled out here rather than only in SERVED: both
+    # is_current and v2_is_actionable have to sit beside the table name or the
+    # DB guard cannot see them, and a probe that silently counted superseded
+    # rows would report a defect nobody is being served.
     cur.execute(
-        f"""SELECT source_council, document_id, provision_text,
-                   v2_dev_type_source
-            FROM regulatory_provisions WHERE {SERVED}"""
+        """SELECT source_council, document_id, provision_text,
+                  v2_dev_type_source
+           FROM regulatory_provisions
+           WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL"""
     )
     return cur.fetchall()
 
@@ -152,6 +157,7 @@ def main() -> int:
 
     print(f"{args.id}: {headline}")
     print(f"  count   : {count:,}")
+    # is_current AND v2_is_actionable -- the served set, as _rows selects it.
     print(f"  scope   : regulatory_provisions WHERE {SERVED}")
     print(f"  councils: {', '.join(_CONFIG_DRIVEN)}")
     print(f"  means   : {means}")

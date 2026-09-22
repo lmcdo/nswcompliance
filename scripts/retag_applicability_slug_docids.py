@@ -144,7 +144,17 @@ def build_plan(cur, councils):
     for served, pid, doc, txt, old_z, old_d in cur.fetchall():
         zones, devs, prov = tagger.tag_with_provenance(txt or "", doc)
         old_z, old_d = list(old_z or []), list(old_d or [])
-        stats[(prov["zone_source"], "served" if served else "other")] += 1
+        # BOTH sources, keyed by which column they describe. This used to
+        # record zone_source alone, so the "predicted provenance after"
+        # block reported zones while the ratchet it exists to serve --
+        # DQ-33 -- counts v2_dev_type_source. The two differ: 7 served
+        # canterbury_bankstown rows resolve no_config on zones and
+        # text_regex on dev types (2026-09-23), so the zone-only view
+        # showed work outstanding that DQ-33 does not count, and would
+        # equally have hidden the reverse.
+        kind = "served" if served else "other"
+        stats[("zone", prov["zone_source"], kind)] += 1
+        stats[("devtype", prov["dev_type_source"], kind)] += 1
         row = (pid, zones, devs, prov["zone_source"], prov["dev_type_source"],
                old_z, old_d)
         if zones != old_z or devs != old_d:
@@ -217,8 +227,10 @@ def main() -> int:
         # `stats` mixes tuple keys (source, served-ness) with two plain string
         # counters, so filter by key SHAPE before unpacking rather than assuming.
         prov = {k: v for k, v in stats.items() if isinstance(k, tuple)}
-        for (src, kind), n in sorted(prov.items(), key=lambda kv: -kv[1]):
-            print(f"    {src:<16} {kind:<7} {n:>7,}")
+        for (col, src, kind), n in sorted(prov.items(), key=lambda kv: -kv[1]):
+            flag = "  <- DQ-33 counts this" if (col, src, kind) == (
+                "devtype", "no_config", "served") else ""
+            print(f"    {col:<8} {src:<16} {kind:<7} {n:>7,}{flag}")
 
         print(f"\n  sample of value changes (first {args.limit_print}):")
         for pid, z, d, zs, _ds, oz, od in plan[:args.limit_print]:
