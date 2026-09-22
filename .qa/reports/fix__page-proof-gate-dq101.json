@@ -1,0 +1,143 @@
+{
+  "tier": "critical",
+  "justification": "Three changes to the path that decides what reaches regulatory_provisions. (1) A provision whose own text carries a serious extraction artifact was enqueued 'pending' for a human; the extractor already knew which rows those were and threw the row identity away, keeping only a per-chapter count. (2) preflight_two_column marked every LLM-read chapter SUSPECT forever, because it measures the SOURCE's column count, which no amount of correct extraction can change - a permanent block on exactly the documents the good reader fixes. (3) The run log named the wrong model, making a future regression unattributable. Measured on live data: 16 of 2,416 pending rows carry a serious artifact and ELEVEN of those are currently graded 'grounded', i.e. approvable today.",
+  "commit_hash": "",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    ".claude/dcp_pipeline_manifest.json",
+    "tests/test_the_pipeline_cannot_lose_a_stage.py",
+    "tests/test_a_broken_row_is_not_left_for_a_human.py",
+    "tests/test_the_good_reader_is_not_permanently_suspect.py",
+    "tests/test_page_proof_gate_dq101.py",
+    "tests/test_dcp_review_enqueue.py",
+    "tests/test_dcp_extraction_fidelity.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_review_queue (status, suspect_reason) written by the existing enqueue path; no schema change - 'rejected' is already a value that path sets via _AUTO_REJECT_REASONS. regulatory_provisions is NOT touched. Blast radius measured before writing code by running the real check_provision over all 2,416 live pending rows.",
+    "assumption_mismatch": "Four. (1) I assumed the corruption was undetected. It was fully detected - check_provision grades every provision and the result was collapsed to a count, so schema_fail said '12 of 49 seriously broken' while the same run's fidelity gate said '39 grounded'. Two detectors, one pipeline, disagreeing, and the blind one gates approval. (2) I assumed re-extraction would fix these chapters because the doubled-glyph guard decodes the strings in isolation; it does not - ku_ring_gai's run carries digits injected mid-word (PRREEC8C5ININCCTT) which terminates the pattern, and 5 of 5 chapters came back refused on the deterministic reader. (3) I assumed SERIOUS_ARTIFACT_LABELS already rejected rows; it has ZERO overlap with _AUTO_REJECT_REASONS. (4) I assumed HC_PING_URL was only partially wired; it is generic in run_monitors.py and covers every monitor - corrected in the manifest rather than recorded wrong.",
+    "new_vs_existing": "No new mechanism in the extractor. 'rejected' status, _AUTO_REJECT_REASONS, check_provision and SERIOUS_ARTIFACT_LABELS all existed; this connects two of them that were never wired together, behind one named seam (_serious_artifacts) so the offline enqueue harness can stub it exactly as it already stubs suspect_reason. The manifest gate IS new, and is the item docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md Phase 0 calls 'the single check that would have caught #506; build it first' - specified 2026-06-20 in commit 4115dbe6 whose own message says 'enforced by gates, not documentation' and ends 'Docs-only.'",
+    "external_source_error": "No network in the change. The evidence behind it came from live runs: the Anthropic org has no API credit (three keys tested; two 'credit balance too low', one invalid - a Claude subscription is not API credit), so the LLM reader ran on sol/OpenAI, which works.",
+    "frontend_type": "No API, component or type change.",
+    "user_failure_mode": "Asymmetric, and it decided the direction. A row wrongly rejected leaves the EXISTING provision current - no silent drop - so the cost is a stale chapter, which is visible. A row wrongly left 'pending' is approvable by a human who sees plausible text, and on 2026-09-09 a backlog of 8,875 was cleared in one night, putting 578 bad rows into production. So the change only ever moves pending -> rejected and never the reverse."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_the_pipeline_cannot_lose_a_stage.py tests/test_a_broken_row_is_not_left_for_a_human.py tests/test_the_good_reader_is_not_permanently_suspect.py -q",
+    "fails_when": "a pipeline stage loses its scheduled job, is repointed at another script, or drops the --review argument that keeps it off the live table; the manifest is deleted or its unbuilt ceiling raised; a gap is ticked 'done' instead of removed; a serious-artifact row is enqueued 'pending' again; a label is dropped from SERIOUS_ARTIFACT_LABELS; the two-column exemption widens beyond an 'llm:' prefix, is granted to an unknown reader, or starts suppressing a CONTENT check (coverage_fail, truncation_fail, attribution_collapsed, schema_fail, count_drop, coverage_unknown, preflight_empty_layer).",
+    "observed_red": "9 mutations planted, 9 caught, in two rounds. Round 1 on the reader exemption: 3 of 4 caught, and the survivor was real - my 'not an LLM' fixture was 'geometric-columnar', which contains no 'llm' at all and so could not distinguish prefix-matching from substring-matching. Added fixtures that DO contain the substring ('regex-after-llm-fallback', 'regex(no-llm-key)', 'ocr+llm-disabled'); 3/3 after. Round 2 on the manifest gate: 6/6, including the actual #506 mutation - deleting the dcp-extract stage from run_monitors.MONITORS turns the gate red with 'chapters will be flagged as changed and never re-read, with no error anywhere'.",
+    "manual_probe": "Full suite 6,812 passed / 0 failed / 3 xfailed. An earlier run reported 52 failures; that was my own -o addopts= flag pulling in tests pytest.ini deselects with -m 'not database' - they need PYTEST_REAL_DB and fail on a MagicMock cursor. Verified, not assumed, before committing."
+  },
+  "functions": [
+    {
+      "name": "_serious_artifacts",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "One provision's text (may be None for a removed row).",
+      "output": "Sorted list of the SERIOUS artifact labels that text carries, or [] .",
+      "if_none": "[] for empty/None input, so a removed row carrying new_text=None is never rejected for being empty. Advisory labels such as short_provision are excluded by intersecting with SERIOUS_ARTIFACT_LABELS - a genuinely short rule ('No fences forward of the building line.') is a control, not a defect."
+    },
+    {
+      "name": "suspect_reason",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "review_data, now including reader_used.",
+      "output": "Unchanged except that preflight_two_column is skipped when reader_used starts with 'llm:'.",
+      "if_none": "A missing or unknown reader_used is read as 'regex', the conservative direction: the flag stays. Tested with None and with three non-LLM strings that contain the substring 'llm'."
+    },
+    {
+      "name": "DCPExtractor.reader_used",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "Set during extract(): 'llm:<model>' or 'regex'.",
+      "output": "Travels to the parent through the subprocess queue.",
+      "if_none": "Defaulted to 'regex' at the queue boundary AND again at the parent, so an older worker's payload cannot grant the LLM exemption by omission."
+    }
+  ],
+  "values": [
+    {
+      "name": "preflight_two_column is exempted for the LLM reader ONLY",
+      "value": "reader_used.startswith('llm:')",
+      "why": "It is a PRE-READ measurement of the source ('this PDF has two columns'), not a finding about the output, and the census states it outright: 'a pre-read page heuristic, not evidence the row is wrong'. The LLM reader was adopted to read two-column bodies, so the flag marks every chapter it repairs as suspect and can never be cleared by doing better.",
+      "source": "Measured 2026-09-22: canterbury_bankstown/chapter-7-6 read by sol produced 431 sections, 0 serious artifacts, 0 rows tripping the DQ-78 signature (worst single-letter ratio 0.047 vs a 0.20 threshold) - against 10 scrambled rows in the served version - and its ONLY complaint was preflight_two_column (67/141 pages).",
+      "if_missing": "The hard chapters stay permanently unapprovable and a correct extraction is indistinguishable from a failed one.",
+      "read_at": "scripts/dcp_extract_changed.py -- suspect_reason."
+    },
+    {
+      "name": "every CONTENT check still applies to the LLM",
+      "value": "count_drop, schema_fail, coverage_fail, truncation_fail, attribution_collapsed, coverage_unknown, preflight_empty_layer",
+      "why": "Exempting a reader from a guard is the shape of change that goes wrong quietly. coverage/truncation/attribution exist SPECIFICALLY to police the LLM's own failure modes. preflight_empty_layer is deliberately NOT exempted: a page with no text layer has nothing for any text reader to read, unlike two columns, which only defeats a reader that sorts left to right.",
+      "source": "Seven tests in TestTheLlmIsStillPoliced, one per check.",
+      "if_missing": "A false block is traded for a silent hole, which is strictly worse.",
+      "read_at": "tests/test_the_good_reader_is_not_permanently_suspect.py."
+    },
+    {
+      "name": "unbuilt_ceiling = 5",
+      "value": "The Phase 0/1 items verified absent on 2026-09-22",
+      "why": "durable_queue_claim, dead_letter_to_human, golden_pdf_corpus, cosmetic_auto_approve_with_audit_sample, provision_schema_validation. Each records the grep that showed it absent, so a later reader can tell a real gap from an assumption. The ceiling may only FALL - the same rule DQ-33's floor carries.",
+      "source": "Audited with greps recorded in the manifest's verified_absent_on fields.",
+      "if_missing": "The backlog is invisible and grows silently, which is how Phase 0 stayed unexecuted for three months.",
+      "read_at": ".claude/dcp_pipeline_manifest.json."
+    },
+    {
+      "name": "DQ-101's three failing cases are xfail(strict=True), not deleted",
+      "value": "The fidelity grader is diagnosed, not fixed",
+      "why": "The grader scores only [a-z]{4,} words, as an unordered set, with substring matching, so map-label interleave, reversed word order and split numbers all read as 'grounded'. strict=True means the moment it is fixed the test FAILS FOR PASSING, forcing the marker's removal instead of leaving a stale lie behind. A plain skip would have hidden it.",
+      "source": "Measured: 3 of 4 corruption cases certified grounded; the reversed-word-order case returned detail=None.",
+      "if_missing": "The defect is either invisible (skip) or the suite is red and the gate gets bypassed.",
+      "read_at": "tests/test_page_proof_gate_dq101.py -- the `blind` marker."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Size the blast radius before writing code: how many live pending rows would newly be rejected, and what the current gate says about them.",
+      "file_line": "ad hoc; the shipped change adds no SQL",
+      "where_clause": "dcp_review_queue WHERE status='pending' AND new_text IS NOT NULL -- 2,416 rows scanned, 16 carry a serious artifact (0.7%), of which 11 are fidelity_status='grounded'."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The two-column exemption is widened to a substring match.",
+      "what_happens": "Any reader label containing 'llm' is exempted. The fallback path's own log line says 'AI_EXTRACTION is DISABLED', so a future label recording that fact is likely to contain those letters while meaning the opposite.",
+      "mitigated": true,
+      "how": "Prefix match, pinned by fixtures that contain the substring but are not the LLM reader. This mutation SURVIVED the first round and the test was strengthened.",
+      "repro": "python -m pytest tests/test_the_good_reader_is_not_permanently_suspect.py -k accident -q"
+    },
+    {
+      "scenario": "A row is rejected that was actually fine.",
+      "what_happens": "The existing provision stays current and the chapter does not update. 0.7% of pending rows are affected, and two_col_interleave/two_col_numeric can fire on a legitimately formatted table.",
+      "mitigated": false,
+      "how": "Accepted deliberately and one-way: a stale chapter is visible (the chapter keeps surfacing), whereas a wrong rule served is silent. The rejected row records WHICH labels fired, so an over-eager guard is diagnosable rather than mysterious. Not mitigated further, and this is the residual risk of the change.",
+      "repro": "SELECT suspect_reason FROM dcp_review_queue WHERE status='rejected' AND suspect_reason LIKE '%artifacts:%'"
+    },
+    {
+      "scenario": "Someone deletes a pipeline stage again, as #506 did.",
+      "what_happens": "Nothing used to fail; detection kept flagging chapters, the queue stayed empty, dashboards stayed green. A missing stage and an idle stage look identical.",
+      "mitigated": true,
+      "how": "The manifest gate fails at pre-push, naming what breaks. Verified by planting the actual mutation.",
+      "repro": "python -m pytest tests/test_the_pipeline_cannot_lose_a_stage.py -q"
+    },
+    {
+      "scenario": "The unbuilt backlog is emptied by raising the ceiling rather than building anything.",
+      "what_happens": "The ratchet stops meaning anything and the gate reports clean while five Phase 0/1 items remain unbuilt.",
+      "mitigated": true,
+      "how": "A test pins the ceiling at <= 5 and another rejects a 'status: done' field on a gap, so an item leaves the list only by being deleted with the ceiling lowered.",
+      "repro": "python -m pytest tests/test_the_pipeline_cannot_lose_a_stage.py -k ceiling -q"
+    },
+    {
+      "scenario": "The fidelity grader keeps certifying corrupt text as grounded.",
+      "what_happens": "Exactly what happens today: 11 of the 16 artifact rows are graded 'grounded'. This change rejects them on the EXTRACTOR's verdict, which routes around the blind grader rather than fixing it.",
+      "mitigated": false,
+      "how": "NOT fixed here, and it is the larger half. DQ-101 is registered with a failing-by-design test and a spec. The artifact check and the grader look at different things, so a row the extractor cannot label is still graded by the blind one.",
+      "repro": "python -m pytest tests/test_page_proof_gate_dq101.py -q -rx"
+    },
+    {
+      "scenario": "The LLM reader is trusted because this change exempted it from one flag.",
+      "what_happens": "Its real failure modes - dropped TOC sections, truncation, collapsed sub-sections - are the ones that matter, and they are invisible to a two-column heuristic anyway.",
+      "mitigated": true,
+      "how": "Seven tests assert each content check still fires for an llm: reader. The exemption is one heuristic about the SOURCE, not a grant of trust.",
+      "repro": "python -m pytest tests/test_the_good_reader_is_not_permanently_suspect.py -k Policed -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. This change writes nothing new; it changes the status a row is enqueued WITH. Rows already 'pending' are unaffected until their chapter is re-extracted, and the enqueue path is idempotent per chapter (it clears and re-inserts pending rows).",
+    "secrets": "No. Provider keys were tested for validity by fingerprint and HTTP response; no key value is printed, logged or committed.",
+    "other_repo": "No.",
+    "manual_verify": "Re-run any two-column chapter with the LLM reader and confirm it is no longer flagged SUSPECT while a chapter with a real content failure still is. Measured on the five chapters re-read with sol on 2026-09-22: 1,200 rows, ZERO tripping the DQ-78 scramble signature, ZERO doubled-glyph matches, ZERO serious artifacts - against 18 DQ-78 and 8 DQ-29 defects in the versions those chapters currently serve."
+  }
+}
