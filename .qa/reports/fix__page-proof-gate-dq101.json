@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Two applicability configs and the script that writes them to production. These decide which property is shown which control: v2_applicable_zones and v2_applicable_dev_types are HARD filters on the served answer (frontend-nextjs/app/api/provisions/for-property/route.ts:1012 and :1222, app/api/permissibility/check/route.ts:207), so a value named here removes the row from every query that does not name it. This is also the change that takes DQ-33 under its floor and unblocks OC-17, so the temptation to clear a count by asserting ALL is live throughout.",
-  "commit_hash": "6c42e8d0",
+  "commit_hash": "cf154253",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dcp_pipeline_manifest.json",
@@ -40,7 +40,7 @@
     "assumption_mismatch": "Four, and two of them reversed the plan. (1) The handoff's proposed fix -- drop applicable_zones from the Canterbury-Bankstown entries so text-derived zones survive -- does not work: tag_with_provenance guards text extraction with `if text and not config`, so a matched entry suppresses the regex whether or not it decided that key. Checked before relying on it; the finding is now its own ledger row, DQ-103. (2) 'Widening the retag list is not safe: 468 value changes including 140 narrowings' was a mislabel, not a measurement -- both narrowing counters tested `!=`, counting every change in either direction. Classified properly the same plan holds 197 narrowings in 9 distinct shapes, every one traceable to a chapter's own Application section. (3) chapter_9_1 was configured as industrial by its position in the numbering; the PDF's own section 1 scopes it to Zone E4 and its controls govern vehicle body repair workshops and food premises, so the existing dev-type list was deleting 5.10 from every food_and_drink_premises query. (4) chapter_10_4's list was built from the tagger's 16-term vocabulary and looked complete; the serving taxonomy in frontend-nextjs/lib/see/devTypeHierarchy.ts is wider and carries neighbourhood_shop and serviced_apartment, which are sections 3 and 4 of that very chapter.",
     "new_vs_existing": "No new mechanism. campbelltown_config.py is the seventh file of an existing shape, registered in the existing COUNCIL_CONFIGS; the four-state model (config_specific / config_all / config_silent / no_config) already existed in ApplicabilityTagger._resolve and is used, not extended. The retag script gains a --councils argument in place of a hardcoded tuple, a real narrow-vs-widen classifier in place of two `!=` counters, and two refusals. dq_probe_applicability_config.py is new because dq_probe_live.py is SQL-only by construction -- its PROBES map holds a SQL string the runner executes -- and both new questions need the tagger to run against each row's own document_id and text.",
     "external_source_error": "The only external reads are the four chapter PDFs from R2, fetched to a scratch directory and read with pdfplumber. Every scope claim in both configs is quoted from the section that states it, not from a chapter title -- which is exactly how chapter_9_1 came to be mis-scoped in the first place. Campbelltown's Part 4 PDF renumbers itself Part 5 relative to the registry key; recorded in the config rather than silently reconciled.",
-    "frontend_type": "No frontend file changed. The frontend is read as evidence, not edited: it is where the hard filters live, and the reason a narrowing is the only direction that can hide a control.",
+    "frontend_type": "One route changed: app/api/internal/pipeline-status/route.ts gains the same `denyIfUnauthenticated()` helper app/api/internal/structure-labels/route.ts already carries, and stops returning the driver's error text to the caller. The page that consumes it is a client component doing a same-origin `fetch`, so the session cookie travels with the request and `createClient()` (an async function -- awaited) reads it; the page already renders `json.error` for any non-ok response, so a 401 shows 'unauthorised' and a 500 shows the generic message, and its own rule -- a status page that silently renders nothing is the bug -- still holds. Otherwise the frontend is read as evidence, not edited: it is where the applicability hard filters live.",
     "user_failure_mode": "A binding control disappears from the answer for a property it governs, silently, because a config named a partial list. That is the asymmetric failure, and it is why several of the entries end in an OMITTED key rather than a short list."
   },
   "falsifiable_check": {
@@ -294,6 +294,13 @@
       "mitigated": true,
       "how": "Universality is membership (`'ALL' in o`), matching the SQL. No live instance -- 0 rows in the whole table hold ALL beside another value -- but the classifier's one job is to be right about direction. Three mixed-ALL cases in the parametrised table.",
       "repro": "python -m pytest tests/test_retag_narrowing_is_classified.py -k direction -q"
+    },
+    {
+      "scenario": "An /internal API route is shipped with the auth check on the PAGE only.",
+      "what_happens": "A page gate protects a page, not an endpoint. Anyone knowing the path reads council chapter names, the review queue's contents, which rows were auto-rejected and why, corpus counts, and the raw postgres error text -- which carries the failing SQL and sometimes a row value -- without meeting the login screen.",
+      "mitigated": true,
+      "how": "The route now calls the same denyIfUnauthenticated() as its sibling before touching the pool, and the catch logs the detail server-side while returning a fixed string. Verified the odd-one-out reading rather than taking it on trust: structure-labels carries the guard, pipeline-status did not, and it is the newer of the two.",
+      "repro": "NEXT_PUBLIC_AUTH_ENABLED=true, then request /api/internal/pipeline-status with no session cookie -- expect 401 {\"error\":\"unauthorised\"}."
     }
   ],
   "post_merge": {
