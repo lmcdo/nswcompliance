@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Two applicability configs and the script that writes them to production. These decide which property is shown which control: v2_applicable_zones and v2_applicable_dev_types are HARD filters on the served answer (frontend-nextjs/app/api/provisions/for-property/route.ts:1012 and :1222, app/api/permissibility/check/route.ts:207), so a value named here removes the row from every query that does not name it. This is also the change that takes DQ-33 under its floor and unblocks OC-17, so the temptation to clear a count by asserting ALL is live throughout.",
-  "commit_hash": "f6e5848a",
+  "commit_hash": "12c58fac",
   "files": [
     "enrichment/config/campbelltown_config.py",
     "enrichment/config/canterbury_bankstown_config.py",
