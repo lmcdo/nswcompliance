@@ -90,30 +90,48 @@ def _connect():
 TABLE = "regulatory_provisions"
 
 
-def classify(old: list, new: list) -> str:
+def classify(old, new) -> str:
     """How a tag VALUE moved: the direction is the risk, not the fact of change.
 
     `narrowed` is the only outcome that can hide a binding control from a
     property it applies to, because both v2_applicable_zones and
     v2_applicable_dev_types are HARD filters on the served answer
     (frontend-nextjs/app/api/provisions/for-property/route.ts:1012 and :1222,
-    and app/api/permissibility/check/route.ts:207). A row survives only if the
-    column is NULL, holds 'ALL', or overlaps the query.
+    and app/api/permissibility/check/route.ts:207). The clause is
 
-    `['ALL']` and `[]` are the same state here -- "applies to everything" -- so
-    losing ALL for a named list is `narrowed_from_all`, not a swap.
+        col && $query  OR  col IS NULL  OR  'ALL' = ANY(col)
+
+    so THREE states exist and only two of them are universal:
+
+        NULL   -> matches every query          (universal)
+        ['ALL']-> matches every query          (universal)
+        []     -> matches NOTHING              (the empty set)
+
+    NULL and `[]` are therefore OPPOSITE, not interchangeable -- an empty array
+    hides the row from every property on earth. An earlier version of this
+    function folded them together "because that is how the serving query reads
+    them", which misread `IS NULL` as covering `= '{}'`; the cross-review caught
+    it on 2026-09-23. Measured the same day: 0 served rows hold NULL and 0 hold
+    an empty array in either column, so nothing was misclassified in practice --
+    but NULL -> [] is a total hiding, and the old code called it `same`.
+
+    `None` means the column was NULL. `[]` means an empty array. Callers must
+    keep those apart rather than coercing on the way in.
     """
+    o_null, n_null = old is None, new is None
     o, n = set(old or []), set(new or [])
-    if o == n:
-        return "same"
-    o_all = (not o) or o == {"ALL"}
-    n_all = n == {"ALL"}
-    if o_all and not n_all:
-        return "narrowed_from_all"
-    if n_all and not o_all:
-        return "widened_to_all"
+    o_all = o_null or o == {"ALL"}
+    n_all = n_null or n == {"ALL"}
     if o_all and n_all:
         return "same"
+    if o == n and o_null == n_null:
+        return "same"
+    if o_all:
+        # Universal -> anything else. `[]` is the extreme case: from every
+        # property to none of them.
+        return "narrowed_from_all"
+    if n_all:
+        return "widened_to_all"
     if n < o:
         return "narrowed"
     if n > o:
@@ -143,6 +161,12 @@ def build_plan(cur, councils):
     stats = Counter()
     for served, pid, doc, txt, old_z, old_d in cur.fetchall():
         zones, devs, prov = tagger.tag_with_provenance(txt or "", doc)
+        # NULL is kept as None through classify(), because NULL and an empty
+        # array are opposite states in the serving query. The coerced copies
+        # below are what the plan carries: the UPDATE guard compares with
+        # `coalesce(col, '{}') IS NOT DISTINCT FROM %s`, so it needs [] where
+        # the row holds NULL, and planning has always written [] back.
+        raw_z, raw_d = old_z, old_d
         old_z, old_d = list(old_z or []), list(old_d or [])
         # BOTH sources, keyed by which column they describe. This used to
         # record zone_source alone, so the "predicted provenance after"
@@ -160,7 +184,7 @@ def build_plan(cur, councils):
         if zones != old_z or devs != old_d:
             plan.append(row)
             if served:
-                zk, dk = classify(old_z, zones), classify(old_d, devs)
+                zk, dk = classify(raw_z, zones), classify(raw_d, devs)
                 stats[f"served_zone_{zk}"] += 1
                 stats[f"served_devtype_{dk}"] += 1
                 if zk in NARROWING:

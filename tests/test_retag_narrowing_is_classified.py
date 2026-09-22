@@ -41,31 +41,48 @@ class TestDirectionIsRead:
         # --- losing members: the liability direction ---
         (["R1", "R2", "R3"], ["R2", "R3"],  "narrowed"),  # noqa: zone-codes (fixture values for a direction test, not a lookup table)
         (["ALL"],            ["E4"],        "narrowed_from_all"),
-        ([],                 ["E4"],        "narrowed_from_all"),
-        (None,               ["E4"],        "narrowed_from_all"),
+        (None,               ["E4"],        "narrowed_from_all"),   # NULL is universal
+        (None,               [],            "narrowed_from_all"),   # every property -> none
+        (["ALL"],            [],            "narrowed_from_all"),
         # --- gaining members: noise, never a hidden control ---
         (["R2", "R3"],       ["R1", "R2", "R3"], "widened"),  # noqa: zone-codes
         (["E4"],             ["ALL"],       "widened_to_all"),
+        (["E4"],             None,          "widened_to_all"),   # NULL is universal
+        ([],                 ["E4"],        "widened"),          # nothing -> something
+        ([],                 ["ALL"],       "widened_to_all"),
         # --- neither a subset nor a superset: loses at least one member ---
         (["food_and_drink_premises"], ["warehouse"], "swapped"),
         # --- no movement ---
-        (["R2"],             ["R2"],        "same"),
+        (["R2"],             ["R2"],        "same"),  # noqa: zone-codes
         (["ALL"],            ["ALL"],       "same"),
-        ([],                 ["ALL"],       "same"),
         (None,               ["ALL"],       "same"),
+        (None,               None,          "same"),
+        ([],                 [],            "same"),
         # order is not a change; these columns are sets in meaning
         (["R3", "R2"],       ["R2", "R3"],  "same"),  # noqa: zone-codes
     ])
     def test_it_names_the_direction(self, before, after, expected):
         assert classify(before, after) == expected
 
-    def test_empty_and_ALL_are_the_same_state(self):
-        """`[]` and `['ALL']` both mean "applies to everything" to the serving
-        query (`v2_applicable_dev_types IS NULL OR 'ALL' = ANY(...)`). Treating
-        `[]` as an empty set instead would call `[] -> ['E4']` a WIDENING -- the
-        exact inversion that lets a hidden control through unexamined."""
-        assert classify([], ["E4"]) == classify(["ALL"], ["E4"])
-        assert classify([], ["E4"]) in NARROWING
+    def test_NULL_and_an_empty_array_are_OPPOSITE_states(self):
+        """The serving clause is `col && $q OR col IS NULL OR 'ALL' = ANY(col)`.
+        NULL matches every query; an empty array matches NOTHING. They are
+        opposite ends, not synonyms.
+
+        This test used to assert the reverse -- that `[]` and `['ALL']` were the
+        same state, "because that is how the serving query reads them" -- which
+        misread `IS NULL` as covering `= '{}'`. The cross-review caught it on
+        2026-09-23. Nothing had been misclassified in practice (0 served rows
+        hold NULL and 0 hold an empty array in either column, measured the same
+        day), but the wrong reason was written down where the next person would
+        copy it, and NULL -> [] hides a row from every property while scoring
+        `same`.
+        """
+        assert classify(None, ["E4"]) in NARROWING      # universal -> one zone
+        assert classify(None, []) in NARROWING          # universal -> nothing
+        assert classify([], ["E4"]) not in NARROWING    # nothing -> one zone
+        assert classify([], ["E4"]) == "widened"
+        assert classify(None, []) != classify([], None)
 
     def test_a_swap_counts_as_a_narrowing(self):
         """It loses `food_and_drink_premises`, so some property stops seeing the
@@ -74,7 +91,7 @@ class TestDirectionIsRead:
 
     def test_widening_is_never_a_narrowing(self):
         for before, after in ((["R2"], ["R2", "R3"]), (["E4"], ["ALL"]),  # noqa: zone-codes
-                              (["R2"], ["R2"])):
+                              (["R2"], ["R2"]), ([], ["E4"]), (["E4"], None)):  # noqa: zone-codes
             assert classify(before, after) not in NARROWING
 
 

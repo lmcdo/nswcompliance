@@ -89,8 +89,8 @@ def probe_102(rows, tagger):
 
 
 def probe_103(rows, tagger):
-    """Served rows where a config entry matched, left dev types undecided, and
-    the row's OWN text carries dev-type evidence that is thrown away.
+    """Served rows where a config entry matched, left a key undecided, and the
+    row's OWN text carries evidence for that key which is thrown away.
 
     `tag_with_provenance` skips text extraction whenever ANY config entry
     matched -- `if text and not config` -- on the stated grounds that "the config
@@ -99,16 +99,32 @@ def probe_103(rows, tagger):
     left reading ALL although evidence for a narrower answer sits in its own
     text. Evidence discarded because of a NON-decision.
 
-    Counted as: the entry matched, omitted `applicable_dev_types`, and
-    `_extract_dev_types_from_text` finds at least one type in the row's text.
+    BOTH KEYS, evaluated independently. The first version counted dev types
+    alone, and the suppression is per-ENTRY, not per-key: an entry that names
+    dev types and omits zones discards the row's zone evidence in exactly the
+    same way and would not have been counted, so the check could have read zero
+    with the defect fully present on the other column. 1,146 served rows carry
+    `v2_zone_source = 'config_silent'` (measured 2026-09-23), so that population
+    is real, not hypothetical. Found by the cross-review; it is the shape
+    `feedback-a-check-can-watch-the-field-the-fix-abandoned` describes.
+
+    A row counts once per key that is silent AND has discarded evidence, so a
+    row silent on both with evidence for both contributes 2.
     """
     hits = {}
     for council, doc, text, _src in rows:
         cfg = tagger._get_config_driven(doc, text or "")
-        if not cfg or cfg.get("dev_type_source") != "config_silent":
+        if not cfg:
             continue
-        if tagger._extract_dev_types_from_text(text or ""):
-            hits[(council, doc)] = hits.get((council, doc), 0) + 1
+        n = 0
+        if (cfg.get("dev_type_source") == "config_silent"
+                and tagger._extract_dev_types_from_text(text or "")):
+            n += 1
+        if (cfg.get("zone_source") == "config_silent"
+                and tagger._extract_zones_from_text(text or "")):
+            n += 1
+        if n:
+            hits[(council, doc)] = hits.get((council, doc), 0) + n
     return sum(hits.values()), hits
 
 
@@ -124,12 +140,14 @@ PROBES = {
     ),
     "DQ-103": (
         probe_103,
-        "Served rows where config_silent discards the row's own text evidence",
+        "Discarded text evidence on a key a config entry left undecided (both columns)",
         "`tag_with_provenance` skips text extraction whenever any config entry "
-        "matched. For `config_silent` -- which means nobody decided this key -- "
-        "that discards evidence the row carries in its own text and leaves it "
-        "reading ALL. Safe direction (nothing is hidden), but the row is served "
-        "as universal on the strength of a non-decision.",
+        "matched, for BOTH keys -- including one the entry deliberately left "
+        "undecided. `config_silent` means nobody decided that key, so the row is "
+        "left reading ALL although evidence for a narrower answer sits in its own "
+        "text. Safe direction (nothing is hidden), but the row is served as "
+        "universal on the strength of a non-decision. Counted once per silent key "
+        "with evidence, zones and dev types alike.",
     ),
 }
 

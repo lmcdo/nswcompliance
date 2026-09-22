@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Two applicability configs and the script that writes them to production. These decide which property is shown which control: v2_applicable_zones and v2_applicable_dev_types are HARD filters on the served answer (frontend-nextjs/app/api/provisions/for-property/route.ts:1012 and :1222, app/api/permissibility/check/route.ts:207), so a value named here removes the row from every query that does not name it. This is also the change that takes DQ-33 under its floor and unblocks OC-17, so the temptation to clear a count by asserting ALL is live throughout.",
-  "commit_hash": "773f2d6b",
+  "commit_hash": "b30192d7",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dcp_pipeline_manifest.json",
@@ -46,16 +46,16 @@
   "falsifiable_check": {
     "command": "python scripts/dq_probe_live.py --id DQ-33 && python scripts/dq_probe_applicability_config.py --id DQ-102",
     "fails_when": "DQ-33 exits 1 while no_config on served council rows is above 1,158; DQ-102 exits 1 while any served row in a council that HAS a config resolves to no entry in it.",
-    "observed_red": "DQ-33 = 917 over the floor (2,075 against 1,158) before the change. DQ-102 = 138 and DQ-103 = 500, both measured for the first time on 2026-09-23 and both registered open.",
+    "observed_red": "DQ-33 = 917 over the floor (2,075 against 1,158) before the change. DQ-102 = 138 and DQ-103 = 744, both measured for the first time on 2026-09-23 and both registered open. DQ-103 read 500 until it was widened to ask about zones as well as dev types.",
     "manual_probe": "python scripts/retag_applicability_slug_docids.py --councils canterbury_bankstown campbelltown -- the dry run prints the 9 distinct narrowing shapes, grouped, with an example id for each."
   },
   "functions": [
     {
       "name": "classify",
       "file_line": "scripts/retag_applicability_slug_docids.py",
-      "input": "The tag value before and after, as lists.",
+      "input": "The tag value before and after: a list, or None where the column held SQL NULL. The caller must not coerce.",
       "output": "one of same / narrowed / narrowed_from_all / widened / widened_to_all / swapped.",
-      "if_none": "None and [] are both treated as ['ALL'] -- 'applies to everything' -- because that is how the serving query reads them (`IS NULL OR 'ALL' = ANY(...)`). Treating [] as an empty set would classify [] -> ['E4'] as a WIDENING, the inversion that lets a hidden control through unexamined; pinned by test_empty_and_ALL_are_the_same_state."
+      "if_none": "THREE states, not two. The serving clause is `col && $q OR col IS NULL OR 'ALL' = ANY(col)`, so NULL is universal, ['ALL'] is universal, and [] matches NOTHING -- NULL and [] are opposite ends. An earlier version folded them together \"because that is how the serving query reads them\", misreading `IS NULL` as covering `= '{}'`, which scored NULL -> [] (a total hiding) as `same`. Measured 2026-09-23: 0 served rows hold NULL and 0 hold an empty array in either column, so nothing was misclassified in practice and the retag plan is byte-identical before and after the correction -- but the wrong reason was written into a test where the next person would copy it."
     },
     {
       "name": "probe_102",
@@ -68,8 +68,8 @@
       "name": "probe_103",
       "file_line": "scripts/dq_probe_applicability_config.py",
       "input": "Every served row of regulatory_provisions as (council, document_id, text, stored source), plus a constructed ApplicabilityTagger.",
-      "output": "(count, by-document map) for rows where an entry matched, left dev types undecided, and the row's own text yields at least one dev type.",
-      "if_none": "Rows whose entry DECIDED the key are excluded, config_all included: an explicit assertion of universality is a decision, and overriding it with a regex is the opposite defect."
+      "output": "(count, by-document map) counted once per key -- zones and dev types independently -- that a matched entry left silent while the row's own text carries evidence for it.",
+      "if_none": "Rows whose entry DECIDED the key are excluded, config_all included: an explicit assertion of universality is a decision, and overriding it with a regex is the opposite defect. The first version asked about dev types only, and the suppression is per-ENTRY not per-key, so the check could have read zero with the defect fully present on zones -- 1,146 served rows carry v2_zone_source='config_silent'. Counting both took the measurement 500 -> 744."
     },
     {
       "name": "build_plan (stats keys)",
@@ -273,6 +273,20 @@
       "mitigated": true,
       "how": "Both Part 4 and chapter_10_4 leave the key silent, and each test carries the expansion rule in its failure message so the next editor checks before narrowing.",
       "repro": "python -m pytest tests/test_campbelltown_applicability.py -k enumerated -q"
+    },
+    {
+      "scenario": "DQ-103 asks about one applicability key while the defect sits on the other.",
+      "what_happens": "The suppression in tag_with_provenance is per-ENTRY, so an entry that names dev types and omits zones discards the row's zone evidence identically. A dev-type-only probe reads zero with the defect fully present -- a check watching the field the fix abandoned.",
+      "mitigated": true,
+      "how": "probe_103 evaluates both keys independently and counts once per silent key with evidence. Widening it took the measurement 500 -> 744 across 22 -> 27 documents, so the shortfall was a third of the real number, not a rounding error.",
+      "repro": "python scripts/dq_probe_applicability_config.py --id DQ-103"
+    },
+    {
+      "scenario": "A stored applicability column goes from NULL to an empty array.",
+      "what_happens": "NULL matches every query; an empty array matches none. The row goes from visible to every property to visible to no property, and the old classify scored it `same`, so the narrowing gate never fired.",
+      "mitigated": true,
+      "how": "classify keeps None and [] apart, build_plan stops coercing before calling it, and the parametrised table now carries NULL -> [], ['ALL'] -> [], [] -> named and named -> NULL. No live instance: 0 served rows hold NULL or an empty array in either column, and the plan is identical before and after the fix (197 narrowings, 9 shapes).",
+      "repro": "python -m pytest tests/test_retag_narrowing_is_classified.py -k OPPOSITE -q"
     }
   ],
   "post_merge": {
