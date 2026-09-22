@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Three changes to the path that decides what reaches regulatory_provisions. (1) A provision whose own text carries a serious extraction artifact was enqueued 'pending' for a human; the extractor already knew which rows those were and threw the row identity away, keeping only a per-chapter count. (2) preflight_two_column marked every LLM-read chapter SUSPECT forever, because it measures the SOURCE's column count, which no amount of correct extraction can change - a permanent block on exactly the documents the good reader fixes. (3) The run log named the wrong model, making a future regression unattributable. Measured on live data: 16 of 2,416 pending rows carry a serious artifact and ELEVEN of those are currently graded 'grounded', i.e. approvable today.",
-  "commit_hash": "82b6be64",
+  "commit_hash": "2360f971",
   "files": [
     "scripts/dcp_extract_changed.py",
     ".claude/dcp_pipeline_manifest.json",
@@ -205,6 +205,13 @@
       "mitigated": true,
       "how": "The wrong test was deleted, not the decision. _tokens still strips separators so the three NEW checks stay silent on that formatting rather than piling a second complaint onto it; the existing number check is untouched.",
       "repro": "python -m pytest tests/test_page_proof_gate_dq101.py -k thousands -q"
+    },
+    {
+      "scenario": "The publish-stage age is read from a field that is source metadata rather than a write time.",
+      "what_happens": "Sol raised this [MEDIUM 0.8]: a provision carrying a council amendment date of 2020, committed today, would leave the dashboard showing the publish stage years stale. Checked against the schema rather than accepted: regulatory_provisions.last_modified_date has DEFAULT now(), so it IS the database write timestamp, and the 2026-09-22 publish set it to 05:00:57, the exact commit time. created_at, which the finding proposed instead, has NO default and its maximum across the live table is 2025-11-11 -- it is not set on new inserts at all, so taking that advice would have made the stage permanently read as ten months stale.",
+      "mitigated": true,
+      "how": "Finding adjudicated as not applicable to this schema; no change made. The reasoning is recorded here because 'being repeated is not evidence either way' and the next reviewer will raise it again from the field name alone.",
+      "repro": "SELECT column_default FROM information_schema.columns WHERE table_name='regulatory_provisions' AND column_name IN ('created_at','last_modified_date')"
     }
   ],
   "post_merge": {
