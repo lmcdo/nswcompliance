@@ -105,22 +105,30 @@ class TestPart3IsScopedByZone:
         assert resolve(tagger, PART3)["zone_source"] != "config_all"
 
 
-class TestPart4IsScopedByDevelopmentType:
-    def test_the_types_come_from_the_chapters_own_definition(self, tagger):
-        """Section 5.1 Application covers "residential flat buildings in areas
-        zoned R4" and mixed use development, defined there as development "which
+class TestPart4DecidesNeitherKey:
+    def test_development_types_are_left_UNDECIDED_not_partially_enumerated(self, tagger):
+        """Section 5.1 defines mixed use development as development "which
         includes residential uses (such as shop top housing where relevant) in
         conjunction with one or more uses such as, business premises, commercial
-        offices, retail shops, community facilities and medical centres"."""
-        got = resolve(tagger, PART4)
-        assert set(got["applicable_dev_types"]) == {
-            "residential_flat_building", "shop_top_housing",
-            "commercial_premises", "office_premises", "retail_premises"}
-        assert got["dev_type_source"] == "config_specific"
+        offices, retail shops, community facilities and medical centres".
 
-    def test_a_low_density_type_is_excluded(self, tagger):
-        """The separation from Part 3 is the whole point of the two entries."""
-        assert "dwelling_house" not in resolve(tagger, PART4)["applicable_dev_types"]
+        The first draft named five of those and stopped. It was not merely
+        incomplete: the serving taxonomy has no term for a community facility or
+        a medical centre, and `child_care_centre` and `educational_establishment`
+        expand only to THEMSELVES in devTypeHierarchy.ts -- unlike pub,
+        neighbourhood_shop or serviced_apartment, which all expand through
+        commercial_premises. So a childcare or school application inside a
+        mixed-use centre would have overlapped nothing in the list and lost the
+        chapter outright. Same defect as canterbury_bankstown chapter_10_4, and
+        the cross-review caught it because the rule had been applied once and
+        not twice.
+        """
+        got = resolve(tagger, PART4)
+        assert got["dev_type_source"] == "config_silent", (
+            "Part 4 now names development types. Before doing that, check every "
+            "use in its own definition against devTypeHierarchy.ts AND check "
+            "what each candidate type expands to -- a type that does not expand "
+            "through one of the names listed loses the chapter completely")
 
     def test_zones_are_left_UNDECIDED_because_the_chapter_names_retired_codes(self, tagger):
         """Four of the six zones section 5.1 names -- B1, B2, B3, B4 -- were  # noqa: zone-codes (verbatim chapter text, and the point of the test)
@@ -132,6 +140,22 @@ class TestPart4IsScopedByDevelopmentType:
         mapping lands with its own citation.
         """
         assert resolve(tagger, PART4)["zone_source"] == "config_silent"
+
+    def test_an_entry_that_decides_NEITHER_key_does_not_collapse_to_no_config(self, tagger):
+        """The trap this entry sits one keystroke away from.
+        `ApplicabilityTagger._resolve` opens with `if not entry: return
+        ['ALL'], 'no_config'` -- and a dict holding neither applicability key is
+        EMPTY, so it is falsy. Deleting the `layer` line would send all 14
+        served Part 4 rows straight back to no_config: the state this config
+        exists to clear, reached by writing the config meant to clear it, with
+        every other test here still green.
+        """
+        assert CAMPBELLTOWN_CONFIG["chapter_topics"][PART4], (
+            "the Part 4 entry is empty; an empty dict resolves to no_config, "
+            "not config_silent")
+        got = resolve(tagger, PART4)
+        assert got["zone_source"] == "config_silent"
+        assert got["dev_type_source"] == "config_silent"
 
 
 class TestItRefusesTheEasyWaysToGoGreen:
@@ -181,14 +205,16 @@ class TestTheWholeRowComesOutRight:
         assert prov == {"zone_source": "config_specific",
                         "dev_type_source": "config_silent"}
 
-    def test_part4_row_keeps_its_types_and_stays_undecided_on_zones(self, tagger):
+    def test_part4_row_is_undecided_on_both_keys_and_still_not_no_config(self, tagger):
+        """`config_silent` on both is the honest answer for this chapter, and it
+        is a DIFFERENT answer from `no_config` even though the stored value is
+        identical. That distinction is the whole reason DQ-33 can be measured."""
         zones, devs, prov = tagger.tag_with_provenance(
             "Building separation for a residential flat building is 12m.",
             DOC.format(PART4))
-        assert zones == ["ALL"]
-        assert "residential_flat_building" in devs
+        assert zones == ["ALL"] and devs == ["ALL"]
         assert prov == {"zone_source": "config_silent",
-                        "dev_type_source": "config_specific"}
+                        "dev_type_source": "config_silent"}
 
     def test_neither_row_can_come_back_as_no_config(self, tagger):
         """The defect this config was written for. `no_config` means nothing

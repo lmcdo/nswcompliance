@@ -80,7 +80,22 @@ CAMPBELLTOWN_CONFIG: dict = {
         # premises, commercial offices, retail shops, community facilities and
         # medical centres".
         #
-        # DEV TYPES follow directly from that sentence and are recorded.
+        # BOTH keys are OMITTED -> config_silent on each.
+        #
+        # applicable_dev_types was first written as residential_flat_building,
+        # shop_top_housing, commercial_premises, office_premises and
+        # retail_premises. That list drops the last two items of the chapter's
+        # own definition -- "community facilities and medical centres" -- and
+        # the serving taxonomy has no term for either, so there is nothing
+        # honest to add. It is not merely incomplete: `child_care_centre` and
+        # `educational_establishment` expand only to THEMSELVES in
+        # frontend-nextjs/lib/see/devTypeHierarchy.ts (unlike pub, neighbourhood
+        # shop or serviced apartment, which all expand through
+        # commercial_premises), so a childcare or school DA inside a mixed-use
+        # centre would have matched nothing in the list and lost the chapter
+        # entirely. Exactly the defect corrected in canterbury_bankstown's
+        # chapter_10_4 in the same change; caught here by the cross-review
+        # because the same rule had not been applied twice.
         #
         # applicable_zones is OMITTED -> config_silent, and this is the point of
         # having the state: four of the six zones the chapter names — B1, B2, B3,
@@ -93,10 +108,14 @@ CAMPBELLTOWN_CONFIG: dict = {
         # repo does not do in a config file. The successor mapping belongs in the
         # zone-migration data with its own citation, and until it lands the
         # honest state is that nobody has decided this key.
+        #
+        # `layer` is NOT decoration. `_resolve` opens with `if not entry:
+        # return ['ALL'], 'no_config'`, so an entry that declares neither
+        # applicability key is an EMPTY DICT and collapses straight back to
+        # no_config -- the state this whole file exists to clear, reached by
+        # writing the config that was supposed to clear it.
         "part_4_rfb_mixed_use": {
-            "applicable_dev_types": ["residential_flat_building", "shop_top_housing",
-                                     "commercial_premises", "office_premises",
-                                     "retail_premises"],
+            "layer": "generic",
         },
     },
 }
