@@ -25,8 +25,8 @@
     "the gap stays visible. An invented check that cannot fail is what produced",
     "DQ-30's '0% drift' verification — worse than no check."
   ],
-  "_max_no_check": 48,
-  "_max_unverified_unresolved": 3,
+  "_max_no_check": 43,
+  "_max_unverified_unresolved": 0,
   "_max_fixed_without_check": 38,
   "checks": {
     "DQ-54": {
@@ -101,8 +101,15 @@
     },
     "DQ-53": {
       "declared": "partial",
-      "check": null,
-      "why_no_check": "One instance fixed; the suite-wide census of contract-vs-fixture tests was never done, so there is no measurable target to check against yet."
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-53"
+      ],
+      "passes_when": "exit 0 - no contract test loads a stored artefact and compares it to another stored artefact without calling into services/ src/ enrichment/ or scripts/.",
+      "red_when": "a test named for a contract never exercises the thing it claims to lock, so the contract and the fixture can drift in the same direction and stay green.",
+      "note": "CHECK WRITTEN 2026-09-23, and running it IS the census the old reason said had never been done. Reads 0: the one named instance was fixed and no other contract test in the suite compares two stored artefacts. A 0 from a detector nobody has seen fire means nothing, so tests/test_dq_probe_unchecked_rows.py plants a fixture-only contract test and asserts it IS caught, beside two confusable negatives. Those two are real false positives the first detector produced: it looked for a live call shaped like `.to_dict(` and so accused test_db_contract_normalise_roundtrip (which calls a plain function) and test_strata_contract_accepts_registration_date (which calls model_validate). Asking 'does it call into the project at all' is the question that separates them."
     },
     "DQ-50": {
       "declared": "fixed",
@@ -119,13 +126,27 @@
     },
     "DQ-43": {
       "declared": "latent",
-      "check": null,
-      "why_no_check": "Explicitly not live today — depends on the plan-identity model that does not exist yet. A check now would assert against a design that has not been built."
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-43"
+      ],
+      "passes_when": "exit 0 - every served council's current rows resolve to a single plan NAME, so the one as-at date dcp_plan_as_at holds per LGA cannot be attached to rows from another plan. Reachable by reconciling the registry's names OR by the plan-identity model landing.",
+      "red_when": "a council's served rows span more than one plan name, so nobody can tell a genuine two-plan council from a sloppily-registered one, and the LGA-keyed date is applied to both.",
+      "note": "CHECK WRITTEN 2026-09-23. The old reason -- 'depends on a plan-identity model that does not exist yet' -- is answered by measuring the PRECONDITION instead of the harm. Reads 2: inner_west (Ashfield DCP 2007 + Marrickville DCP 2011, renders no date) and ku_ring_gai (renders a date). ku_ring_gai was nearly reported as a live instance of this defect and is NOT one: its three spellings -- 'Ku-ring-gai DCP' for the Section B parts, 'Ku-ring-gai DCP 2024' for Section A, and a third for Part 5 -- are ONE plan registered three ways, checked against the council's own document tree. That ambiguity is what the count is for. BLIND SPOT, stated in the probe: the registry join needs source_chapter_key and 7,254 of 20,261 served rows carry NULL there, so it sees 13,007 rows; a council serving a second plan entirely through key-less rows is invisible."
     },
     "DQ-42": {
       "declared": "guarded",
-      "check": null,
-      "why_no_check": "Upstream NSW Planning Portal staleness, not fixable here. The guard is the identity match in fetch_dcp_as_at_dates.py; a check should assert the guard exists rather than that the portal is correct."
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-42"
+      ],
+      "passes_when": "exit 0 - no portal date is stored against a plan whose identity differs from the one served. Measures the guard's OUTCOME, not that its code exists.",
+      "red_when": "a stale Planning Portal record has dated a plan it does not name, giving a council an as-at date belonging to a different instrument.",
+      "note": "CHECK WRITTEN 2026-09-23, and it follows this row's own prescription -- 'a check should assert the guard exists rather than that the portal is correct' -- with one correction: it asserts the guard's RESULT rather than its presence. A check that greps for the guard passes on a guard that has stopped working, which is feedback-detect-a-guard-by-forcing-its-failure. Reads 0 against 28 dcp_plan_as_at rows: no portal date is attached across a plan-identity mismatch today."
     },
     "DQ-39": {
       "declared": "fixed",
@@ -155,8 +176,15 @@
     },
     "DQ-31": {
       "declared": "partial",
-      "check": null,
-      "why_no_check": "Over-eligibility closed 2026-08-01; the consolidation onto the Python service is open. A check needs a definition of 'consolidated' that does not exist yet."
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-31"
+      ],
+      "passes_when": "exit 0 - exactly ONE file applies the Housing SEPP LMR gate to produce an eligibility verdict. Reachable only by the frontend route delegating to services/housing_sepp_eligibility.py, never by deleting the service, which would satisfy the count while removing the source of truth.",
+      "red_when": "the same regulated decision is implemented in more than one place, so the two can answer differently for the same property and nothing says which is right.",
+      "note": "CHECK WRITTEN 2026-09-23. The old reason -- 'a check needs a definition of consolidated that does not exist yet' -- was answered by not needing one: count the independent implementations and compare to one. Reads 1 (a copy beyond the first): frontend-nextjs/app/api/housing-sepp/eligibility/route.ts and services/housing_sepp_eligibility.py, which is exactly the pair the service's own docstring names when it says it PORTS 'the only prior implementation' and that 'the LEP/SEPP tab migrates onto it (P3)' is outstanding. Two earlier versions of the detector were wrong and both are recorded in its docstring: one counted MENTIONS (reporting a comment and a prop declaration), and one read TypeScript's optional-property marker `isLMRArea?:` as a ternary. Applying-not-naming is the distinction, and each wrong version is pinned as a test."
     },
     "DQ-30": {
       "declared": "fixed",
@@ -450,8 +478,15 @@
     },
     "DQ-58": {
       "declared": "open",
-      "check": null,
-      "why_no_check": "Needs a network probe over ~30 registry page URLs. Writing it as a live fetch would make CI depend on nine council websites, three of which are behind Cloudflare and 403 automated clients - a check that is red for reasons unrelated to the defect gets deleted. The right shape is a stored url_page_last_status column written by the existing monitor, then a probe that counts non-200s. That column does not exist yet."
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-58"
+      ],
+      "passes_when": "exit 0 - every active registry page URL has a recorded reachability status and that status is 200. Reachable only by the monitor writing url_page_last_status, never by deleting the URLs.",
+      "red_when": "a citation link's reachability is recorded nowhere, or is recorded as dead. Either way nobody finds out until a user clicks it, and that council can never earn an 'observed current' date.",
+      "note": "CHECK WRITTEN 2026-09-23, following this row's own prescription exactly: a stored url_page_last_status written by the monitor, then a probe over the column. The column does not exist, so the default asks for the INSTRUMENT and reads 25 -- the distinct active page URLs whose status is recorded nowhere. It can only go green by building the recording, and `--live` does the real fetch on demand. Writing it as a live fetch by default would put nine council websites into CI's dependency graph, three of them behind Cloudflare, and a check that goes red for reasons unrelated to the defect gets deleted."
     },
     "DQ-59": {
       "declared": "fixed",

@@ -1,0 +1,190 @@
+{
+  "tier": "critical",
+  "justification": "The ledger polices a declared status in both directions -- fixed-but-failing and open-but-passing both go red -- for every row that HAS a check. A row declared open with `check: null` is the one state it cannot see: it can rot, be silently fixed, or be quietly wrong, and nothing says so. Five rows sat there. This closes that blind spot to zero and lowers the ratchet so it cannot reopen. Critical because a check written wrong is worse than none -- it sends someone to repair working code -- and three of the five detectors here were wrong on their first draft.",
+  "commit_hash": "a6655b07",
+  "files": [
+    "scripts/dq_probe_unchecked_rows.py",
+    "tests/test_dq_probe_unchecked_rows.py",
+    ".claude/dq_checks.json"
+  ],
+  "pre_impl": {
+    "existing_data": "Read-only throughout; no statement in this change writes. dcp_plan_as_at (23 columns, 28 rows, keyed by `lga` -- which is DQ-43's premise, confirmed not assumed), dcp_chapter_registry, regulatory_provisions, information_schema. `url_page_last_status` confirmed ABSENT, which is what DQ-58's own note prescribed building.",
+    "assumption_mismatch": "Five, and three changed the code. (1) DQ-31: I assumed both implementations spelled the gate `isLMRArea`; the Python service spells it `in_lmr_area`, so the one file that matters was missed while two irrelevant ones were reported. (2) DQ-31 again: `isLMRArea?: boolean` -- TypeScript's optional-property marker -- matched a pattern meant for ternaries, so a presentational component counted as an implementation of a regulated decision. (3) DQ-53: my first detector looked for a live call shaped like `.to_dict(` and accused three working tests, two of which call a plain function and a classmethod. (4) DQ-43: ku_ring_gai looked like a live instance of the defect -- two plan names, renders a date -- and is not; the names are one plan registered three ways, checked against the council's own document tree before reporting it. (5) The regex escapes were mangled through nested shell heredocs into literal \\x08 backspace characters, which grep renders invisibly; the file was deleted and rewritten rather than patched.",
+    "new_vs_existing": "No new mechanism. The probe copies dq_probe_live.py's contract exactly (exit 0 only at zero, exit 2 when the source is unreachable, every number prints its own derivation) and is a sibling of dq_probe_applicability_config.py in shape. It is a separate file because dq_probe_live.py is SQL-only by construction -- its PROBES map holds a SQL string the runner executes -- and two of these five are static analyses of the repo.",
+    "external_source_error": "None. DQ-58 deliberately does NOT fetch by default: nine council websites in CI's dependency graph, three behind Cloudflare which 403s automated clients, is a check that goes red for reasons unrelated to the defect and then gets deleted. The default asks whether the recording instrument exists; `--live` fetches on demand.",
+    "frontend_type": "No frontend file changed. frontend-nextjs is READ by DQ-31's static probe, which is why the TypeScript optional-property marker mattered.",
+    "user_failure_mode": "A defect sits open for months while the ledger reports nothing, because the row tracking it has no check. Or -- worse, and the risk this change itself carried -- a check fires on correct code and someone repairs a working test."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_check.py --coverage",
+    "fails_when": "any unresolved ledger row has no check, or a declared status disagrees with what its check just returned. `_max_unverified_unresolved` is now 0, so adding a row without a check fails immediately rather than in six months.",
+    "observed_red": "Before: 5 unresolved rows with `check: null` (DQ-31, DQ-42, DQ-43, DQ-53, DQ-58) and `_max_unverified_unresolved: 3`. After: 0, cap lowered to 0, `_max_no_check` 48 -> 43. The ratchet tests failed on the un-lowered caps and were the thing that demanded it.",
+    "manual_probe": "python scripts/dq_probe_unchecked_rows.py --id DQ-31  (and 42, 43, 53, 58). Reads 1, 0, 2, 0, 25 respectively on 2026-09-23."
+  },
+  "functions": [
+    {
+      "name": "probe_31",
+      "file_line": "scripts/dq_probe_unchecked_rows.py",
+      "input": "Nothing; it walks frontend-nextjs and services under the module's ROOT.",
+      "output": "(copies beyond the first, {(path, ''): 1}) for files that APPLY the LMR gate to produce an eligibility verdict.",
+      "if_none": "A file that merely NAMES the gate is not an implementation -- a comment quoting old code, a prop declaration and an object-literal pass-through all exist in this repo and all three were wrongly counted by the first draft. Counting them would also make consolidation unreachable: the number could never fall to zero however much was merged, which is a ratchet that measures nothing."
+    },
+    {
+      "name": "probe_53",
+      "file_line": "scripts/dq_probe_unchecked_rows.py",
+      "input": "Nothing; it parses every tests/test_*.py under the module's ROOT with ast.",
+      "output": "(count, {(path, funcname): 1}) for contract tests that load a stored artefact and never call into the project.",
+      "if_none": "'Calls into the project' is resolved from the module's own imports of services/ src/ enrichment/ scripts/, not from a list of call shapes. Enumerating shapes is a way of missing one, and the miss accuses a working test -- the harmful direction."
+    },
+    {
+      "name": "probe_43",
+      "file_line": "scripts/dq_probe_unchecked_rows.py",
+      "input": "An open read-only cursor against the production database; the query and its scope are written inside the function, not passed in.",
+      "output": "(count, {(council, detail): 1}) for served councils whose current rows span more than one plan NAME.",
+      "if_none": "It measures the precondition, not the harm, and says so: a council with several names for one plan is indistinguishable from a genuine two-plan council, which is exactly why the plan-identity model cannot be built yet. It also declares its own blind spot -- 7,254 of 20,261 served rows carry a NULL source_chapter_key and drop out of the registry join."
+    }
+  ],
+  "values": [
+    {
+      "name": "DQ-31 counts copies BEYOND the first",
+      "value": "max(len(hits) - 1, 0)",
+      "why": "One implementation of a regulated decision is the target state, not a defect. Counting files instead would make the check unsatisfiable, and an unsatisfiable ratchet gets ignored.",
+      "source": "services/housing_sepp_eligibility.py's own docstring: it PORTS the gate logic from the frontend route, 'the only prior implementation', and records that 'the LEP/SEPP tab migrates onto it (P3)' is outstanding.",
+      "read_at": "scripts/dq_probe_unchecked_rows.py -- probe_31's return.",
+      "if_missing": "The count reads one higher than the truth forever and can never reach zero, so nobody acts on it."
+    },
+    {
+      "name": "The ternary alternative excludes `?:`",
+      "value": "\\?(?!:)",
+      "why": "TypeScript's optional-property marker is `isLMRArea?: boolean`. A bare `\\?` reads that as the start of a ternary, and that one character made HousingSEPPEligibilityCard.tsx -- which declares the flag as a prop and passes it through -- count as an implementation of the eligibility decision.",
+      "source": "Measured 2026-09-23: the count read 2 with the bare `\\?` and 1 without.",
+      "read_at": "scripts/dq_probe_unchecked_rows.py -- _GATE_APPLIED.",
+      "if_missing": "Any component that accepts the flag as an optional prop is reported as a second copy of the decision, so the count can never fall to zero."
+    },
+    {
+      "name": "DQ-58's default asks for the instrument, not the answer",
+      "value": "count of distinct active page URLs when url_page_last_status does not exist",
+      "why": "The row prescribes a stored status written by the monitor, then a probe over the column. The column does not exist, so the honest measurement is how many URLs have no recorded status -- a number that can only fall by building the recording.",
+      "source": "Measured 2026-09-23: information_schema has no url_page_last_status on dcp_chapter_registry; 25 distinct council_page_url values on active chapters.",
+      "read_at": "scripts/dq_probe_unchecked_rows.py -- probe_58's first branch.",
+      "if_missing": "Defaulting to a live fetch puts nine council sites in CI, three behind Cloudflare. A check red for reasons unrelated to the defect gets deleted, which is how this row ended up with no check in the first place."
+    },
+    {
+      "name": "_max_unverified_unresolved lowered to 0",
+      "value": "0",
+      "why": "The cap exists so the blind spot can only shrink. At 0 it becomes a hard floor: a new unresolved row without a check fails the ratchet immediately.",
+      "source": "Measured after wiring: 29 unresolved rows, 0 without a check. The ratchet tests failed on the old cap of 3 and are what demanded the change.",
+      "read_at": ".claude/dq_checks.json -- _max_unverified_unresolved.",
+      "if_missing": "The cap stays above reality and a row can be added with no check without anything noticing -- the exact state this change closed."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Confirm DQ-43's premise rather than assume it: is dcp_plan_as_at really keyed by LGA?",
+      "file_line": "scripts/dq_probe_unchecked_rows.py -- probe_43",
+      "where_clause": "information_schema.columns for dcp_plan_as_at -- 23 columns, primary key `lga`, 28 rows."
+    },
+    {
+      "purpose": "Size the join's blind spot before relying on it.",
+      "file_line": "ad hoc read-only, pre-implementation",
+      "where_clause": "regulatory_provisions WHERE is_current AND v2_is_actionable -- 7,254 of 20,261 carry a NULL source_chapter_key and drop out of the registry join; 13,007 join. Stated in probe_43's docstring rather than hidden."
+    },
+    {
+      "purpose": "Timeout risk on the heaviest query.",
+      "file_line": "EXPLAIN (ANALYZE, BUFFERS) over probe_43's join",
+      "where_clause": "Execution Time 59.043 ms. No batching needed; well inside the 30s statement timeout."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A detector is written that cannot fire, and its 0 is read as clean.",
+      "what_happens": "DQ-53 reads 0 on this repo. Without evidence that it CAN report something else, that is indistinguishable from a pattern that matches nothing -- which is the '0% drift' verification the ledger's own README names as worse than no check.",
+      "mitigated": true,
+      "how": "A synthetic fixture-only contract test is planted in a tmp tree and asserted to be CAUGHT, beside two confusable negatives that must not fire.",
+      "repro": "python -m pytest tests/test_dq_probe_unchecked_rows.py -k CanActuallyFire -q"
+    },
+    {
+      "scenario": "The DQ-53 detector enumerates live-call SHAPES instead of asking whether the project is called.",
+      "what_happens": "It accuses working tests. Measured: three false positives on this suite, two of which call a plain function and a classmethod that the shape list did not name. Someone then 'repairs' a correct test.",
+      "mitigated": true,
+      "how": "Resolution is by import: any call whose root name was imported from services/ src/ enrichment/ scripts/ counts. The three real false positives are pinned by name against the real suite, not a fixture.",
+      "repro": "python -m pytest tests/test_dq_probe_unchecked_rows.py -k accused -q"
+    },
+    {
+      "scenario": "A prop declaration is counted as a decision.",
+      "what_happens": "`isLMRArea?: boolean` matches a ternary pattern, so a presentational component is reported as a second implementation of a regulated eligibility decision and the count can never reach zero.",
+      "mitigated": true,
+      "how": "`\\?(?!:)`, pinned by test_a_prop_declaration_is_not_an_implementation.",
+      "repro": "python -m pytest tests/test_dq_probe_unchecked_rows.py -k prop_declaration -q"
+    },
+    {
+      "scenario": "A caller that forwards to the service is counted as a copy.",
+      "what_happens": "Consolidation becomes unreachable -- the thing the fix produces (a delegating frontend) would still read as a defect.",
+      "mitigated": true,
+      "how": "Delegation names the fields without applying the gate; pinned as a confusable negative.",
+      "repro": "python -m pytest tests/test_dq_probe_unchecked_rows.py -k forwards -q"
+    },
+    {
+      "scenario": "DQ-43's count is read as 'these councils serve two plans'.",
+      "what_happens": "ku_ring_gai gets reported as a live instance of a defect the row says is not live. It nearly was: two names, renders a date. Checked against the council's own document tree, they are Section A and Section B of ONE plan registered three ways.",
+      "mitigated": true,
+      "how": "The probe's docstring and the ledger note both say what the number is -- a precondition, an ambiguity -- and name ku_ring_gai as the case that is NOT the harm.",
+      "repro": "python scripts/dq_probe_unchecked_rows.py --id DQ-43"
+    },
+    {
+      "scenario": "DQ-43's join silently ignores a third of the corpus.",
+      "what_happens": "7,254 of 20,261 served rows have a NULL source_chapter_key. A council serving a second plan entirely through key-less rows reads clean.",
+      "mitigated": false,
+      "how": "Not closed. Stated in the probe's docstring and the ledger note, with the fix named: give those rows a chapter key, do not loosen the join. Loosening it would trade a stated blind spot for an unstated wrong answer.",
+      "repro": "python scripts/dq_probe_unchecked_rows.py --id DQ-43"
+    },
+    {
+      "scenario": "DQ-58 is 'fixed' by making the live fetch the default.",
+      "what_happens": "CI depends on nine council websites, three behind Cloudflare. The check goes red for reasons unrelated to the defect and is deleted -- which is how this row came to have no check at all.",
+      "mitigated": true,
+      "how": "The default reads the column; --live is explicit and opt-in. The row's own note records the reasoning so the next person does not re-derive it.",
+      "repro": "python scripts/dq_probe_unchecked_rows.py --id DQ-58"
+    },
+    {
+      "scenario": "DQ-58 is 'fixed' by deleting the page URLs.",
+      "what_happens": "The count falls to zero and every citation link is gone.",
+      "mitigated": true,
+      "how": "passes_when says it outright: reachable only by the monitor writing the status, never by removing the URLs. Not guarded in code; guarded by the as-at coverage check, which needs those URLs to derive an 'observed current' basis.",
+      "repro": "python scripts/check_dcp_as_at_coverage.py --baseline"
+    },
+    {
+      "scenario": "DQ-31 is 'fixed' by deleting the Python service.",
+      "what_happens": "The count falls to zero by removing the consolidation's single source of truth, leaving the frontend copy as the only implementation -- the state DQ-31 was opened against.",
+      "mitigated": true,
+      "how": "passes_when names the direction: reachable only by the route delegating to the service. Not enforced in code; the service's own tests would go with it and the capacity brief ceiling derives from it.",
+      "repro": "python scripts/dq_probe_unchecked_rows.py --id DQ-31"
+    },
+    {
+      "scenario": "A row is added to the ledger later with no check.",
+      "what_happens": "The blind spot reopens silently, exactly as it did for these five over several months.",
+      "mitigated": true,
+      "how": "_max_unverified_unresolved lowered 3 -> 0, so the ratchet fails on the first such row. _max_no_check lowered 48 -> 43 in the same move.",
+      "repro": "python -m pytest tests/test_dq_check.py tests/test_dq_ratchet_enforcement.py -q"
+    },
+    {
+      "scenario": "A regex is written through nested shell escaping.",
+      "what_happens": "`\\b` became a literal \\x08 backspace in the source. grep renders it invisibly, so the file LOOKED correct while every word boundary was a control character and the pattern matched nothing. The probe read 0 and would have been committed as clean.",
+      "mitigated": true,
+      "how": "The file was deleted and rewritten through the editor rather than patched through a heredoc, and checked for control bytes afterwards. This repo already has tests/test_ledger_has_no_control_chars.py for the same class.",
+      "repro": "python -c \"import io;print([c for c in (8,11,12,27) if bytes([c]) in io.open('scripts/dq_probe_unchecked_rows.py','rb').read()])\""
+    },
+    {
+      "scenario": "The registry join is slow enough to be killed by the statement timeout.",
+      "what_happens": "The probe exits non-zero for an infrastructure reason, which the ledger reads as the defect being present -- a check red for the wrong reason, and the shape that got DQ-58 deleted before it was ever written.",
+      "mitigated": true,
+      "how": "Measured before shipping rather than assumed: EXPLAIN (ANALYZE, BUFFERS) over the three-table join returns Execution Time 59.043 ms against the full served set. Two orders of magnitude inside the 30s statement timeout, so no batching.",
+      "repro": "python scripts/dq_probe_unchecked_rows.py --id DQ-43"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. Every query in this change is read-only.",
+    "secrets": "None added. DQ-42, DQ-43 and DQ-58 use the DATABASE_URL the ledger already needs.",
+    "other_repo": "None.",
+    "manual_verify": "python scripts/dq_check.py --coverage (expect OK across all 106 rows), then python -c on dq_checks.json to confirm 0 unresolved rows without a check."
+  }
+}
