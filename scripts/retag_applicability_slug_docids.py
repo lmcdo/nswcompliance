@@ -103,9 +103,9 @@ def classify(old, new) -> str:
 
     so THREE states exist and only two of them are universal:
 
-        NULL   -> matches every query          (universal)
-        ['ALL']-> matches every query          (universal)
-        []     -> matches NOTHING              (the empty set)
+        NULL             -> matches every query   (universal)
+        anything with ALL -> matches every query   (universal, by ANY())
+        []               -> matches NOTHING       (the empty set)
 
     NULL and `[]` are therefore OPPOSITE, not interchangeable -- an empty array
     hides the row from every property on earth. An earlier version of this
@@ -120,8 +120,15 @@ def classify(old, new) -> str:
     """
     o_null, n_null = old is None, new is None
     o, n = set(old or []), set(new or [])
-    o_all = o_null or o == {"ALL"}
-    n_all = n_null or n == {"ALL"}
+    # MEMBERSHIP, not equality. The serving test is `'ALL' = ANY(col)`, so
+    # ['ALL', 'R1'] is universal to the query even though it is not the set
+    # {'ALL'}. Equality here scored ['ALL','R1'] -> ['R1'] as an ordinary
+    # `narrowed` when it is a universal row losing its universality. No live
+    # instance -- 0 rows in the whole table hold ALL beside another value,
+    # measured 2026-09-23 -- but the classifier's one job is to be right about
+    # direction, and the SQL is what defines it.
+    o_all = o_null or "ALL" in o
+    n_all = n_null or "ALL" in n
     if o_all and n_all:
         return "same"
     if o == n and o_null == n_null:

@@ -41,6 +41,11 @@ class TestDirectionIsRead:
         # --- losing members: the liability direction ---
         (["R1", "R2", "R3"], ["R2", "R3"],  "narrowed"),  # noqa: zone-codes (fixture values for a direction test, not a lookup table)
         (["ALL"],            ["E4"],        "narrowed_from_all"),
+        # `'ALL' = ANY(col)` is MEMBERSHIP: a mixed array is universal too, so
+        # losing the ALL is losing universality, not an ordinary narrowing.
+        (["ALL", "R1"],      ["R1"],        "narrowed_from_all"),  # noqa: zone-codes
+        (["ALL", "R1"],      ["ALL"],       "same"),  # noqa: zone-codes
+        (["R1"],             ["ALL", "R1"], "widened_to_all"),  # noqa: zone-codes
         (None,               ["E4"],        "narrowed_from_all"),   # NULL is universal
         (None,               [],            "narrowed_from_all"),   # every property -> none
         (["ALL"],            [],            "narrowed_from_all"),

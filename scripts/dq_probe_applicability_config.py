@@ -145,9 +145,10 @@ PROBES = {
         "matched, for BOTH keys -- including one the entry deliberately left "
         "undecided. `config_silent` means nobody decided that key, so the row is "
         "left reading ALL although evidence for a narrower answer sits in its own "
-        "text. Safe direction (nothing is hidden), but the row is served as "
-        "universal on the strength of a non-decision. Counted once per silent key "
-        "with evidence, zones and dev types alike.",
+        "text. This does not hide the control from anyone; it serves the row to "
+        "properties the evidence in its own text does not reach, on the strength "
+        "of a non-decision. Counted once per silent key with evidence, zones and "
+        "dev types alike.",
     ),
 }
 
