@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Three changes to the path that decides what reaches regulatory_provisions. (1) A provision whose own text carries a serious extraction artifact was enqueued 'pending' for a human; the extractor already knew which rows those were and threw the row identity away, keeping only a per-chapter count. (2) preflight_two_column marked every LLM-read chapter SUSPECT forever, because it measures the SOURCE's column count, which no amount of correct extraction can change - a permanent block on exactly the documents the good reader fixes. (3) The run log named the wrong model, making a future regression unattributable. Measured on live data: 16 of 2,416 pending rows carry a serious artifact and ELEVEN of those are currently graded 'grounded', i.e. approvable today.",
-  "commit_hash": "26d4105d",
+  "commit_hash": "cf92b7fe",
   "files": [
     "scripts/dcp_extract_changed.py",
     ".claude/dcp_pipeline_manifest.json",
@@ -12,7 +12,11 @@
     "tests/test_dcp_review_enqueue.py",
     "tests/test_dcp_extraction_fidelity.py",
     "scripts/run_monitors.py",
-    "enrichment/rule_extraction_pipeline.py"
+    "enrichment/rule_extraction_pipeline.py",
+    "enrichment/config/canterbury_bankstown_config.py",
+    "enrichment/config/__init__.py",
+    "enrichment/extractors/applicability_tagger.py",
+    "tests/test_canterbury_bankstown_applicability.py"
   ],
   "pre_impl": {
     "existing_data": "dcp_review_queue (status, suspect_reason) written by the existing enqueue path; no schema change - 'rejected' is already a value that path sets via _AUTO_REJECT_REASONS. regulatory_provisions is NOT touched. Blast radius measured before writing code by running the real check_provision over all 2,416 live pending rows.",
@@ -91,6 +95,14 @@
       "source": "Live measurement and dry run, 2026-09-22.",
       "if_missing": "Every new extraction adds prose with no structured rule behind it, and the gap grows with the corpus.",
       "read_at": "scripts/run_monitors.py -- MONITORS['dcp-rules']; .claude/dcp_pipeline_manifest.json."
+    },
+    {
+      "name": "Canterbury-Bankstown applicability uses THREE states, not one",
+      "value": "config_all for place/topic chapters, config_specific for expressible land uses, config_silent where the vocabulary has no term",
+      "why": "883 CB provisions were no_config -- ALL because nothing matched. Declaring every chapter ['ALL'] would clear DQ-33 in one line and be a lie: _resolve documents config_all as 'a real assertion of universality; trust it', so asserting it for chapter_10_7_sex_services_premises is WORSE than the no_config it replaces. DEV_TYPE_PATTERNS has no term for a school, a place of public worship or a home business, so those three omit the key and land on config_silent ('matched; nobody decided'), which is exactly true.",
+      "source": "Chapter content read 2026-09-22, not titles: 7.5/7.6 carry dwelling mix, non-residential building separation, flood, tree canopy and named key-site design principles together -- a precinct chapter.",
+      "if_missing": "Either 883 rows keep applying to every development type by accident, or the count goes green on a false assertion.",
+      "read_at": "enrichment/config/canterbury_bankstown_config.py; tests/test_canterbury_bankstown_applicability.py."
     }
   ],
   "queries": [
@@ -156,6 +168,20 @@
       "mitigated": true,
       "how": "Offset is 0 while the set is shrinking (filtering AND writing); normal paging only for dry runs and --reprocess-all, where the set is stable.",
       "repro": "enrichment/rule_extraction_pipeline.py -- the offset comment in run_batch"
+    },
+    {
+      "scenario": "The count is cleared by declaring every chapter ALL.",
+      "what_happens": "DQ-33 goes green, nothing served changes, and a specific-land-use chapter now ASSERTS that it binds every development type.",
+      "mitigated": true,
+      "how": "A test walks every chapter_10_* entry and fails if any resolves to config_all; three chapters are pinned to config_silent specifically.",
+      "repro": "python -m pytest tests/test_canterbury_bankstown_applicability.py -k land_use -q"
+    },
+    {
+      "scenario": "The config is registered under the wrong spelling.",
+      "what_happens": "document_ids are 'Canterbury-Bankstown_...' (hyphenated). Registering only the underscored key matches nothing, every row stays no_config, and the config file sits there looking correct.",
+      "mitigated": true,
+      "how": "Both spellings registered; a test asserts the hyphenated document_id resolves.",
+      "repro": "python -m pytest tests/test_canterbury_bankstown_applicability.py -k hyphenated -q"
     }
   ],
   "post_merge": {

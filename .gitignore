@@ -257,6 +257,7 @@ enrichment/
 !enrichment/config/woollahra_config.py
 !enrichment/config/city_of_sydney_config.py
 !enrichment/config/ku_ring_gai_config.py
+!enrichment/config/canterbury_bankstown_config.py
 !enrichment/config/structural_categories.py
 !enrichment/config/zone_taxonomy.py
 !enrichment/extractors/

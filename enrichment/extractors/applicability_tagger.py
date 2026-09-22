@@ -585,11 +585,18 @@ class ApplicabilityTagger:
         parts = config.get("parts", {})
         chapter_topics = config.get("chapter_topics")
 
-        # chapter_topics path (City of Sydney, Ku-ring-gai)
+        # chapter_topics path (City of Sydney, Ku-ring-gai, Canterbury-Bankstown)
         if chapter_topics:
             for chapter_key, entry in chapter_topics.items():
                 if chapter_key in doc_lower:
-                    return self._from_entry(entry)
+                    # Carry is_precinct_specific through, as the ashfield and
+                    # leichhardt paths already do. Without it a config that declares
+                    # a chapter precinct-scoped has that statement silently dropped
+                    # here — the config looks correct and the flag never arrives.
+                    return self._from_entry(
+                        entry,
+                        is_precinct_specific=entry.get('is_precinct_specific', False),
+                    )
             return None
 
         # parts path (Woollahra, Waverley) — extract section code from heading
