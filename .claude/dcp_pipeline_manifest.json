@@ -32,6 +32,13 @@
       "if_deleted": "Approved work never reaches regulatory_provisions. A reviewer clears the queue and nothing changes for users."
     },
     {
+      "id": "dcp-rules",
+      "script": "enrichment/rule_extraction_pipeline.py",
+      "requires_args": ["--phase", "deterministic"],
+      "purpose": "Rule formulation: turn committed provision TEXT into structured queryable rules (v2_extracted_rules, v2_extraction_status). Fill-blanks-only, so it is idempotent.",
+      "if_deleted": "Provisions are served as PROSE with no structured rule behind them. Measured 2026-09-22 before this stage was scheduled: 11,389 of 19,243 served actionable provisions (59%) had no verdict at all, because this pipeline existed, worked, and was never run. The numbers a planner reads then come from hand-run per-council scripts instead, which is why they went stale."
+    },
+    {
       "id": "dcp-watchdog",
       "script": "scripts/dcp_watchdog.py",
       "purpose": "Alert on chapters whose PDF changed but which have not been re-read.",

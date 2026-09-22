@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Three changes to the path that decides what reaches regulatory_provisions. (1) A provision whose own text carries a serious extraction artifact was enqueued 'pending' for a human; the extractor already knew which rows those were and threw the row identity away, keeping only a per-chapter count. (2) preflight_two_column marked every LLM-read chapter SUSPECT forever, because it measures the SOURCE's column count, which no amount of correct extraction can change - a permanent block on exactly the documents the good reader fixes. (3) The run log named the wrong model, making a future regression unattributable. Measured on live data: 16 of 2,416 pending rows carry a serious artifact and ELEVEN of those are currently graded 'grounded', i.e. approvable today.",
-  "commit_hash": "da3ddce9",
+  "commit_hash": "26d4105d",
   "files": [
     "scripts/dcp_extract_changed.py",
     ".claude/dcp_pipeline_manifest.json",
@@ -10,7 +10,9 @@
     "tests/test_the_good_reader_is_not_permanently_suspect.py",
     "tests/test_page_proof_gate_dq101.py",
     "tests/test_dcp_review_enqueue.py",
-    "tests/test_dcp_extraction_fidelity.py"
+    "tests/test_dcp_extraction_fidelity.py",
+    "scripts/run_monitors.py",
+    "enrichment/rule_extraction_pipeline.py"
   ],
   "pre_impl": {
     "existing_data": "dcp_review_queue (status, suspect_reason) written by the existing enqueue path; no schema change - 'rejected' is already a value that path sets via _AUTO_REJECT_REASONS. regulatory_provisions is NOT touched. Blast radius measured before writing code by running the real check_provision over all 2,416 live pending rows.",
@@ -81,6 +83,14 @@
       "source": "Measured: 3 of 4 corruption cases certified grounded; the reversed-word-order case returned detail=None.",
       "if_missing": "The defect is either invisible (skip) or the suite is red and the gate gets bypassed.",
       "read_at": "tests/test_page_proof_gate_dq101.py -- the `blind` marker."
+    },
+    {
+      "name": "rule formulation is scheduled as dcp-rules, fill-blanks-only",
+      "value": "enrichment/rule_extraction_pipeline.py --phase deterministic",
+      "why": "The pipeline was written, works, and was NEVER scheduled. Measured 2026-09-22 across 19,243 served actionable provisions: 6,117 complete, 1,737 review_needed, 11,389 with NO VERDICT (59%). The numbers a planner reads were produced by hand-run per-council scripts instead, which is why they kept going stale. A dry run over 500 genuinely unprocessed rows: 463 complete deterministically (92.6%), 31 needs_llm, 6 needs_human, 0 errors.",
+      "source": "Live measurement and dry run, 2026-09-22.",
+      "if_missing": "Every new extraction adds prose with no structured rule behind it, and the gap grows with the corpus.",
+      "read_at": "scripts/run_monitors.py -- MONITORS['dcp-rules']; .claude/dcp_pipeline_manifest.json."
     }
   ],
   "queries": [
@@ -132,6 +142,20 @@
       "mitigated": true,
       "how": "Seven tests assert each content check still fires for an llm: reader. The exemption is one heuristic about the SOURCE, not a grant of trust.",
       "repro": "python -m pytest tests/test_the_good_reader_is_not_permanently_suspect.py -k Policed -q"
+    },
+    {
+      "scenario": "The scheduled run overwrites verdicts a human already set.",
+      "what_happens": "review_needed rows someone adjudicated are silently re-decided on every tick, because the original SELECT had no v2_extraction_status filter and reprocessed the whole corpus.",
+      "mitigated": true,
+      "how": "Fill-blanks-only by default (v2_extraction_status IS NULL), matching the convention every enrichment phase already follows. --reprocess-all is an explicit, documented opt-in for a deliberate re-sweep.",
+      "repro": "python enrichment/rule_extraction_pipeline.py --dry-run --phase deterministic --limit 50"
+    },
+    {
+      "scenario": "Fill-blanks paging skips rows.",
+      "what_happens": "A committed batch leaves the result set (status no longer NULL), so OFFSET=processed steps over that many UNPROCESSED rows -- they are never formulated and nothing reports it.",
+      "mitigated": true,
+      "how": "Offset is 0 while the set is shrinking (filtering AND writing); normal paging only for dry runs and --reprocess-all, where the set is stable.",
+      "repro": "enrichment/rule_extraction_pipeline.py -- the offset comment in run_batch"
     }
   ],
   "post_merge": {
