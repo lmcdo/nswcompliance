@@ -90,11 +90,52 @@ def pytest_files(*paths: str, k: str | None = None) -> Result:
     return verdict, f"pytest {' '.join(paths)}{' -k ' + k if k else ''}: {_last(out)}"
 
 
+def _borrowable_node_modules():
+    """The main checkout's node_modules, when this one has none.
+
+    Used only to TELL THE OPERATOR how to make the check runnable. Borrowing
+    the runner itself does not work and was tried: JavaScript module resolution
+    walks directories, so pointing a borrowed jest at this checkout with
+    --rootDir makes it fail in jest.setup.js on the first import, and widening
+    --moduleDirectories makes it swallow the file argument and run all 104
+    suites. The tree genuinely needs its own node_modules, or a junction to one.
+    """
+    try:
+        done = subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            cwd=str(ROOT), capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if done.returncode != 0 or not done.stdout.strip():
+        return None
+    main_root = Path(done.stdout.strip())
+    if main_root.name == ".git":
+        main_root = main_root.parent
+    if main_root.resolve() == ROOT.resolve():
+        return None
+    candidate = main_root / "frontend-nextjs" / "node_modules"
+    return candidate if candidate.is_dir() else None
+
+
 def jest_file(test_path: str) -> Result:
+    """Run a frontend test, or say EXACTLY how to make it runnable.
+
+    WHY THE MESSAGE MATTERS. "could not run here" is not a failure, which makes
+    it easy to accept and move past. It was: OC-9 sat NOT VERIFIED while three
+    of its four sub-checks passed and the fourth was one command away from
+    running. The same blind spot cost five Vercel deployments the same day,
+    where "Type check skipped: node_modules absent" read as a pass for two
+    days. An unrunnable check has to hand back the fix, not just the excuse.
+    """
     name = "jest.cmd" if sys.platform == "win32" else "jest"
     jest = ROOT / "frontend-nextjs" / "node_modules" / ".bin" / name
     if not jest.exists():
-        return UNKNOWN, f"jest {test_path}: frontend-nextjs/node_modules is absent, so it could not run here"
+        borrow = _borrowable_node_modules()
+        how = (f"link the main checkout's: cd frontend-nextjs && "
+               f'cmd //c mklink //J node_modules "{borrow}"'
+               if borrow else "install them: cd frontend-nextjs && npm ci")
+        return UNKNOWN, (f"jest {test_path}: frontend-nextjs/node_modules is absent, "
+                         f"so it could not run here. This is NOT a pass -- {how}")
     rc, out = _run([str(jest), test_path], cwd=ROOT / "frontend-nextjs")
     return (PASS if rc == 0 else FAIL), f"jest {test_path}: {_last(out)}"
 

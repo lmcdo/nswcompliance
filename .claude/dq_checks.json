@@ -1100,7 +1100,7 @@
       "blocks_outreach": true,
       "passes_when": "exit 0 - the three-state and fabricated-verdict tests pass, DQ-50 is clean, and the lead-verdict integrity test passes",
       "red_when": "the declared state and the check disagree in either direction",
-      "verified": "2026-09-14: check passed on the gate's first full run against production"
+      "verified": "2026-09-24: HOLDS. Re-verified after it had been reported NOT VERIFIED HERE for want of frontend-nextjs/node_modules in the worktree -- three sub-checks passed and the fourth was a jest test one junction away from running. The checker now returns that exact command with the UNKNOWN, because an UNKNOWN is not a failure and is therefore easy to accept and move past."
     },
     "OC-10": {
       "kind": "outreach_claim",
