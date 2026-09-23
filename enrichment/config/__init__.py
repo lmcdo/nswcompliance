@@ -28,6 +28,7 @@ from .penrith_config import PENRITH_CONFIG
 from .hornsby_config import HORNSBY_CONFIG
 from .georges_river_config import GEORGES_RIVER_CONFIG
 from .northern_beaches_config import NORTHERN_BEACHES_CONFIG
+from .parramatta_config import PARRAMATTA_CONFIG
 
 # Registry for config-driven LayerTopicTagger dispatch.
 # Keys are substrings matched against document_id.lower().
@@ -58,6 +59,10 @@ COUNCIL_CONFIGS: dict[str, dict] = {
     # reference via the `parts` path, not on document_id. See its docstring.
     "warringah": NORTHERN_BEACHES_CONFIG,
     "northern_beaches": NORTHERN_BEACHES_CONFIG,
+    # Also a whole-DCP document, also the `parts` path, but keyed on NUMBERED
+    # parts (1-17) rather than letters. See its docstring for why nothing in
+    # it narrows: bare-number misreads resolve to a Part directly.
+    "parramatta": PARRAMATTA_CONFIG,
 }
 
 __all__ = [
@@ -66,6 +71,7 @@ __all__ = [
     'MARRICKVILLE_CONFIG',
     'CANTERBURY_BANKSTOWN_CONFIG',
     'CAMPBELLTOWN_CONFIG',
+    'PARRAMATTA_CONFIG',
     'BLACKTOWN_CONFIG',
     'PENRITH_CONFIG',
     'HORNSBY_CONFIG',

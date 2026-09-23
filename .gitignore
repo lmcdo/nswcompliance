@@ -277,6 +277,7 @@ enrichment/tests/*
 !enrichment/config/hornsby_config.py
 !enrichment/config/georges_river_config.py
 !enrichment/config/northern_beaches_config.py
+!enrichment/config/parramatta_config.py
 !enrichment/config/structural_categories.py
 !enrichment/config/zone_taxonomy.py
 !enrichment/extractors/
