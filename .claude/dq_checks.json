@@ -1281,6 +1281,18 @@
       "red_when": "a script UPDATEs v2_applicable_zones with no ground-truth consultation, so a plan published before the 2022 employment-zone reform can put a retired B or IN code into the served set. v2_applicable_zones is a HARD filter (for-property/route.ts:1012), so a retired code DELETES that provision from every answer for the successor zone, silently and with no error",
       "note": "DQ-30 already forbade retired codes IN THE TABLE and has been green for months. It runs after the write, in the post-commit completeness report. This is the per-WRITER half: on 2026-09-23 retag_applicability_slug_docids.py was one keystroke from narrowing 34 served Warringah rows onto B1/B2/B5/B6/B7 and was caught by a person reading a dry run, not by any gate; grepping for other writers the next day found sync_v2_to_supabase.py UPDATEing the column across ~48.8k rows behind nothing but an input() prompt. Fixing callers one at a time leaves the hole open for the next one, so this asserts the property over the whole tree. Forced failures: removing valid_zones= from the retag makes its own gate report 68 rows and exit 2; adding a new blind writer turns this check red.",
       "fixed_by": "2026-09-24 - pre-write gate in retag_applicability_slug_docids.py (retired_zone_codes) + zone gate and dry-run default in sync_v2_to_supabase.py + this per-writer check"
+    },
+    "DQ-107": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-107"
+      ],
+      "passes_when": "exit 0 - no section code carries two scope statements naming development types that cannot both be true. Reachable by SPLITTING the document into the plans it actually contains and re-registering them, which is also what makes an applicability config writable. Deleting the rows would take it to zero too and is not the fix.",
+      "red_when": "a registered document is really several plans concatenated, so the same section code appears under each with a different scope. An applicability config is keyed on a document_id or a section code and both assume the code identifies ONE thing, so no entry can be written that is true of all of them - whatever is declared mis-scopes the rest.",
+      "note": "THE GATE AN LGA MUST PASS BEFORE A CONFIG CAN BE WRITTEN FOR IT AT ALL, which is why it is general rather than a cumberland special case. Opened 2026-09-24 when DQ-105 reached 0 with cumberland WATCHED rather than configured: its DCP Part B is five sub-parts sharing one document_id, each with its own '1.1 Land to which this Part applies' naming a different development type, and every one of them also has a 2.4. Without this check that finding rested in a comment. Precision was measured rather than assumed: same code with any differing heading text = 1,180 pairs (provision splitting, noise); differing scope SENTENCES = 35; scopes naming DISJOINT development types = 1. The 35 are mostly complementary statements about one plan - woollahra pairs 'all land within the Woollahra municipality' with 'development that requires development consent', both true at once - or the same sentence read twice with HTML table debris. Verified reachable: excluding cumberland's rows takes the count to 0."
     }
   }
 }

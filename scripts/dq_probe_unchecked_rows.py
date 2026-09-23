@@ -504,7 +504,106 @@ def probe_105(cur):
     return len(hits), {**hits, **watched}
 
 
+#: A plan stating its own reach. Every phrasing here is one actually used by a
+#: council in the served set, not a guess at how a DCP might be worded.
+_SCOPE_SENTENCE = re.compile(
+    r"(?:This (?:Part|Section|Chapter|DCP)[^.]{0,40}?applies to"
+    r"|provisions of this (?:Part|Section)[^.]{0,30}?apply to"
+    r"|Land to which this (?:Part|Section) applies)"
+    r"\s*(?P<what>[^.]{5,150})\.", re.I)
+
+
+def probe_107(cur):
+    """One section code that means two different plans — a document holding several.
+
+    THE ONBOARDING CHECK THIS EXISTS FOR. An applicability config is keyed on
+    either a document_id or a section code read out of the provision text. Both
+    assume a code identifies ONE thing. When a registered document is actually
+    several plans concatenated, the same code appears under each of them with a
+    different scope, and no config entry can be written that is true of all of
+    them — whatever you declare mis-scopes the others.
+
+    It is not a style complaint. cumberland, measured 2026-09-24, is the live
+    case: its DCP Part B is five sub-parts sharing one document_id, each with
+    its own "1.1 Land to which this Part applies" naming a different
+    development type -- all residential except single dwelling houses, low rise
+    dual occupancy, residential flat buildings, boarding houses, and dwelling
+    house plus secondary dwelling -- and every one of them also has a 2.4.
+    DQ-105 reports cumberland as WATCHED for exactly this reason. This check is
+    what makes that watched state honest: the defect stays red until the
+    document is split, rather than resting in a comment.
+
+    WHY "DISJOINT DEVELOPMENT TYPES" AND NOT "DIFFERENT TEXT". Measured the
+    same day, over the whole served set:
+
+        same code, any differing heading text    1,180 pairs  -- provision
+                                                                splitting, noise
+        same code, differing scope SENTENCES        35 pairs
+        ...of which name DISJOINT dev types          1 pair   -- the real thing
+
+    The 35 are mostly complementary statements about ONE plan, not a collision:
+    woollahra pairs "all land within the Woollahra municipality" with
+    "development that requires development consent" (a land scope and a
+    development scope, both true at once); city_of_sydney's are the boilerplate
+    "to the extent of the inconsistency"; three parramatta pairs are the same
+    sentence twice, once clean and once carrying HTML table debris from
+    extraction. None of those make a code ambiguous.
+
+    Two scopes naming development types that CANNOT both be true of one
+    provision do. That is the mechanical form of "these are different plans",
+    and it is what a config cannot express.
+
+    Reachable by splitting the document into its real parts and re-registering
+    them, which also makes a config writable. Deleting the rows would take it to
+    zero too, which is why `passes_when` names the direction.
+    """
+    import itertools
+
+    from enrichment.extractors.applicability_tagger import ApplicabilityTagger
+
+    tagger = ApplicabilityTagger()
+    cur.execute(
+        """SELECT source_council, document_id, provision_text
+             FROM regulatory_provisions
+            WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL"""
+    )
+    groups = {}
+    for council, doc, text in cur.fetchall():
+        code = tagger._extract_section_code(text or "")
+        if not code:
+            continue
+        flat = re.sub(r"\s+", " ", text or "")
+        for m in _SCOPE_SENTENCE.finditer(flat):
+            what = m.group("what").strip()
+            types = frozenset(tagger._extract_dev_types_from_text(what))
+            if types:
+                # Keyed on the sentence so the SAME statement read twice --
+                # once clean, once with table debris -- counts once.
+                groups.setdefault((council, doc, code), {})[what[:70].lower()] = types
+
+    hits = {}
+    for (council, doc, code), scopes in sorted(groups.items()):
+        sets = list(scopes.values())
+        if len(sets) < 2:
+            continue
+        if any(a.isdisjoint(b) for a, b in itertools.combinations(sets, 2)):
+            named = sorted({t for s in sets for t in s})
+            hits[("%s  section %s" % (council, code),
+                  "%d scopes naming %s -- no single config entry is true of all"
+                  % (len(sets), ", ".join(named[:5])))] = 1
+    return len(hits), hits
+
+
 PROBES = {
+    "DQ-107": (
+        "Section codes that mean two different plans (a document holding several)",
+        "An applicability config is keyed on a document_id or a section code, both "
+        "of which assume the code identifies ONE thing. Where a registered document "
+        "is really several plans concatenated, the same code carries scopes naming "
+        "development types that cannot both be true, and NO config entry can be "
+        "written that is true of all of them. This is the check an LGA must pass "
+        "before a config can be written for it at all.",
+        probe_107, True),
     "DQ-105": (
         "Councils serving rules with NO applicability config at all",
         "Their rules apply to EVERY development type by fallthrough rather than by "
