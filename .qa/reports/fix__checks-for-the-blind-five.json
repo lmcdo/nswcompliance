@@ -20,7 +20,10 @@
     "scripts/dcp_fidelity_gate.py",
     "scripts/dcp_approve_graded.py",
     "tests/test_four_council_applicability_configs.py",
-    "tests/test_fidelity_gate_catches_an_invented_citation.py"
+    "tests/test_fidelity_gate_catches_an_invented_citation.py",
+    "enrichment/config/northern_beaches_config.py",
+    "enrichment/extractors/applicability_tagger.py",
+    "tests/test_northern_beaches_whole_dcp_scope.py"
   ],
   "pre_impl": {
     "existing_data": "Read-only throughout; no statement in this change writes. dcp_plan_as_at (23 columns, 28 rows, keyed by `lga` -- which is DQ-43's premise, confirmed not assumed), dcp_chapter_registry, regulatory_provisions, information_schema. `url_page_last_status` confirmed ABSENT, which is what DQ-58's own note prescribed building.",
@@ -308,6 +311,27 @@
       "mitigated": true,
       "how": "All eight scopes are quoted from the Part's own scope section in its PDF, and each test carries the quotation. penrith_d2 decides NEITHER key as a result.",
       "repro": "python -m pytest tests/test_four_council_applicability_configs.py -q"
+    },
+    {
+      "scenario": "A whole-DCP council is 'fixed' by splitting its PDF and re-extracting.",
+      "what_happens": "Re-extraction risks what dcp_commit_approved's section-loss guard exists to catch -- a re-read has gutted a chapter before -- and changes every affected provision's provenance, to recover structure the data already holds.",
+      "mitigated": true,
+      "how": "The Part is already in each rule's own section reference; the EXISTING `parts` path reads it and strips progressively (G9.1 -> G9 -> G). Measured: a code is readable on 1,560 of 1,602 Warringah rows, and the config took rows applying to every development type from 1,535 to 237 with no new code.",
+      "repro": "python -m pytest tests/test_northern_beaches_whole_dcp_scope.py -q"
+    },
+    {
+      "scenario": "The retag runs without the LGA's zone list, so the DQ-30 filter is bypassed.",
+      "what_happens": "Warringah DCP 2011 predates the 2022 employment-zone reform and names B1, B2, B5, B6 and B7 throughout. The text regex picked them up and the retag NARROWED 34 served rows onto zone codes that no longer exist -- wrong, and an immediate OC-17 failure on its retired-zone sub-check.",
+      "mitigated": true,
+      "how": "build_plan now loads lep_zone_coverage per LGA and passes valid_zones, so an absent code is filtered to ALL rather than narrowed onto. Narrowings fell 135 -> 92 and every remaining shape is in a chapter whose scope statement was read. Returns None (do not filter) for a council with no coverage, because silently dropping every zone would look like a successful narrowing.",
+      "repro": "python scripts/retag_applicability_slug_docids.py --councils northern_beaches blacktown penrith hornsby georges_river"
+    },
+    {
+      "scenario": "A config declares a Part precinct-scoped and the `parts` path discards it.",
+      "what_happens": "`_get_config_driven`'s parts branch called `_from_entry(entry)` without is_precinct_specific, so the declaration never arrived. The config file looks correct and the flag is gone -- the same defect already fixed in the chapter_topics branch, left live in this one. waverley_config.py declares it on Part E 'Site-Specific Provisions' today.",
+      "mitigated": true,
+      "how": "The parts branch now carries it through, matching chapter_topics and the ashfield/leichhardt paths. Found by a test written for the new config failing against the OLD code path. ⚠ Inert today: nothing downstream consumes the flag from the tagger's output, and DQ-99's guard reads a different column.",
+      "repro": "python -m pytest tests/test_northern_beaches_whole_dcp_scope.py -k precinct -q"
     }
   ],
   "post_merge": {

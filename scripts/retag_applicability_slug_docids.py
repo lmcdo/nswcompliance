@@ -156,18 +156,52 @@ def build_plan(cur, councils):
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from enrichment.extractors.applicability_tagger import ApplicabilityTagger
 
+    # The LGA zone lists FIRST: a second execute() on this cursor would discard
+    # the row result set, and the rows are what the loop below consumes.
+    cur.execute(
+        """SELECT lower(lga), array_agg(DISTINCT zone) FROM lep_zone_coverage
+            WHERE zone IS NOT NULL GROUP BY 1"""
+    )
+    by_lga = {lga: set(z) for lga, z in cur.fetchall()}
+
     cur.execute(
         f"""SELECT is_current AND v2_is_actionable AS served,
                    id, document_id, provision_text,
-                   v2_applicable_zones, v2_applicable_dev_types
+                   v2_applicable_zones, v2_applicable_dev_types,
+                   source_council
             FROM {TABLE} WHERE source_council = ANY(%s)""",
         (list(councils),),
     )
+    rows = cur.fetchall()
     tagger = ApplicabilityTagger()
+
+    # DQ-30's zone-validity filter, which this script BYPASSED until 2026-09-23.
+    # `tag_with_provenance` drops any zone not in the LGA's own land-use table
+    # when it is given one, and the whole point of that filter is a plan naming
+    # a code that no longer exists. Warringah DCP 2011 predates the 2022
+    # employment-zone reform and still names B1, B2, B5, B6 and B7 throughout;
+    # without this the retag NARROWED 34 served rows onto those retired codes,
+    # which is both wrong and an immediate OC-17 failure ("served rows that
+    # apply to a retired zone code but not to its successor"). Caught by reading
+    # the dry run's narrowing shapes before applying.
+    def _valid_zones_for(council: str):
+        """The LGA's real zone list, or None when we have no ground truth.
+
+        None means "do not filter", which is deliberate: silently dropping every
+        zone for a council we have no coverage for would look exactly like a
+        successful narrowing.
+        """
+        key = (council or "").replace("_", " ").lower()
+        for lga, zones in by_lga.items():
+            if key and (key in lga or lga in key):
+                return zones
+        return None
+
     plan, prov_only, narrowings = [], [], []
     stats = Counter()
-    for served, pid, doc, txt, old_z, old_d in cur.fetchall():
-        zones, devs, prov = tagger.tag_with_provenance(txt or "", doc)
+    for served, pid, doc, txt, old_z, old_d, council in rows:
+        zones, devs, prov = tagger.tag_with_provenance(
+            txt or "", doc, valid_zones=_valid_zones_for(council))
         # NULL is kept as None through classify(), because NULL and an empty
         # array are opposite states in the serving query. The coerced copies
         # below are what the plan carries: the UPDATE guard compares with

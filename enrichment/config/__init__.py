@@ -27,6 +27,7 @@ from .blacktown_config import BLACKTOWN_CONFIG
 from .penrith_config import PENRITH_CONFIG
 from .hornsby_config import HORNSBY_CONFIG
 from .georges_river_config import GEORGES_RIVER_CONFIG
+from .northern_beaches_config import NORTHERN_BEACHES_CONFIG
 
 # Registry for config-driven LayerTopicTagger dispatch.
 # Keys are substrings matched against document_id.lower().
@@ -53,6 +54,10 @@ COUNCIL_CONFIGS: dict[str, dict] = {
     "penrith": PENRITH_CONFIG,
     "hornsby": HORNSBY_CONFIG,
     "georges_river": GEORGES_RIVER_CONFIG,
+    # Whole-DCP document: keys on the PART code in each rule's own section
+    # reference via the `parts` path, not on document_id. See its docstring.
+    "warringah": NORTHERN_BEACHES_CONFIG,
+    "northern_beaches": NORTHERN_BEACHES_CONFIG,
 }
 
 __all__ = [
@@ -65,6 +70,7 @@ __all__ = [
     'PENRITH_CONFIG',
     'HORNSBY_CONFIG',
     'GEORGES_RIVER_CONFIG',
+    'NORTHERN_BEACHES_CONFIG',
     'WAVERLEY_CONFIG',
     'WOOLLAHRA_CONFIG',
     'CITY_OF_SYDNEY_CONFIG',
