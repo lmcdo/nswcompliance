@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "The ledger polices a declared status in both directions -- fixed-but-failing and open-but-passing both go red -- for every row that HAS a check. A row declared open with `check: null` is the one state it cannot see: it can rot, be silently fixed, or be quietly wrong, and nothing says so. Five rows sat there. This closes that blind spot to zero and lowers the ratchet so it cannot reopen. Critical because a check written wrong is worse than none -- it sends someone to repair working code -- and three of the five detectors here were wrong on their first draft.",
-  "commit_hash": "a7669a7c",
+  "commit_hash": "34793fba",
   "files": [
     "scripts/dq_probe_unchecked_rows.py",
     "tests/test_dq_probe_unchecked_rows.py",
