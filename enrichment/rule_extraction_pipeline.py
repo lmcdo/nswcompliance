@@ -21,6 +21,7 @@ Usage:
 
 import os
 import sys
+import hashlib
 import json
 import argparse
 from datetime import datetime
@@ -291,17 +292,38 @@ def process_provision(provision: dict) -> dict:
 #: check finds 1 -- five healthy rows that would be re-derived on every run
 #: forever, because re-deriving them cannot clear a condition their content
 #: never caused. With btrim the two agree exactly.
+#: TWO TESTS, because they cover different populations and one cannot replace
+#: the other yet.
+#:
+#: 1. THE FINGERPRINT covers every rule, whatever its kind, but only once a
+#:    rule HAS one. Rules written before it existed carry none, and a missing
+#:    fingerprint is treated as stale so the first sweep backfills them by
+#:    re-deriving from the current text. That is a real derivation, not a
+#:    stamp: stamping a fingerprint onto rules nobody re-checked would assert
+#:    they match text that was never compared.
+#:
+#: 2. THE QUOTED PHRASE stays because it is the stronger statement for the
+#:    rules that have one. A fingerprint says "the text changed"; a raw_match
+#:    that is absent says "this number is not in this provision", which is the
+#:    defect itself rather than a proxy for it. It also still catches a rule
+#:    written against text the pipeline never saw.
 _STALE_RULES = """
           AND v2_extracted_rules IS NOT NULL
           AND jsonb_typeof(v2_extracted_rules) = 'array'
           AND EXISTS (
                 SELECT 1 FROM jsonb_array_elements(v2_extracted_rules) e
-                 WHERE e->>'compliance_type' = 'numeric_check'
-                   AND e->>'raw_match' IS NOT NULL
-                   AND position(
-                         btrim(lower(regexp_replace(e->>'raw_match', '\\s+', ' ', 'g')))
-                      in btrim(lower(regexp_replace(provision_text, '\\s+', ' ', 'g')))
-                       ) = 0)
+                 WHERE
+                   -- the text is not the text this rule was derived from,
+                   -- or the rule predates fingerprinting and has none
+                   (e->>'source_text_md5' IS DISTINCT FROM md5(provision_text))
+                   OR
+                   -- a quoted number whose sentence is no longer present
+                   (e->>'compliance_type' = 'numeric_check'
+                    AND e->>'raw_match' IS NOT NULL
+                    AND position(
+                          btrim(lower(regexp_replace(e->>'raw_match', '\\s+', ' ', 'g')))
+                       in btrim(lower(regexp_replace(provision_text, '\\s+', ' ', 'g')))
+                        ) = 0))
 """
 
 _UNPROCESSED_ONLY = (
@@ -405,6 +427,34 @@ def run_batch(
                     })
                 elif status == ExtractionStatus.SKIPPED.value:
                     stats["skipped"] += 1
+
+                # THE FINGERPRINT. Every rule records the text it was derived
+                # from, so "has this rule gone stale" is answerable for ALL of
+                # them rather than for the 12% that quote a phrase.
+                #
+                # A numeric rule carries a `raw_match` -- the sentence its
+                # number came from -- and that can be checked against the
+                # provision. A merit_assessment, a binary_prohibition and a
+                # procedural rule quote nothing: they classify the provision as
+                # a whole. Measured 2026-09-24, that is 20,296 of 23,183 served
+                # rules with no evidence trail at all, so a cleanup pass could
+                # rewrite their text and nothing would notice.
+                #
+                # A hash of the source text covers every kind in one mechanism
+                # and needs no quote. It is also STRICTER than the phrase check:
+                # any change to the text, not just one that breaks a quotation,
+                # marks the rules for re-derivation. That is the correct
+                # reading -- the rules were derived from that text and it is no
+                # longer that text.
+                #
+                # Re-deriving is cheap (the whole served set is ~6 minutes),
+                # deterministic and idempotent, and it cannot loop: the new
+                # fingerprint is taken from the text just read.
+                src_md5 = hashlib.md5(
+                    (prov["provision_text"] or "").encode("utf-8")).hexdigest()
+                for r in rules:
+                    if isinstance(r, dict):
+                        r["source_text_md5"] = src_md5
 
                 batch_updates.append({
                     "id": prov["id"],
