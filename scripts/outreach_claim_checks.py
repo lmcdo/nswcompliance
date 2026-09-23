@@ -100,11 +100,20 @@ def _borrowable_node_modules():
     --moduleDirectories makes it swallow the file argument and run all 104
     suites. The tree genuinely needs its own node_modules, or a junction to one.
     """
+    # env=git_env() is NOT optional here, and DQ-54's ratchet caught it missing.
+    # This runs inside git hooks, which export GIT_DIR. With it set, `git
+    # rev-parse --git-common-dir` answers for the hook's repository rather than
+    # this one -- so the function would confidently return some other
+    # checkout's node_modules and the message would send an operator to link
+    # the wrong dependencies.
     try:
+        from qa_report_path import git_env
+
         done = subprocess.run(
             ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
-            cwd=str(ROOT), capture_output=True, text=True, timeout=30)
-    except (OSError, subprocess.SubprocessError):
+            cwd=str(ROOT), env=git_env(), capture_output=True, text=True,
+            timeout=30)
+    except (OSError, subprocess.SubprocessError, ImportError):
         return None
     if done.returncode != 0 or not done.stdout.strip():
         return None
@@ -115,6 +124,28 @@ def _borrowable_node_modules():
         return None
     candidate = main_root / "frontend-nextjs" / "node_modules"
     return candidate if candidate.is_dir() else None
+
+
+def _lockfiles_agree(main_modules) -> bool:
+    """Do this checkout and the one we would borrow from pin the same packages?
+
+    RAISED BY THE PRE-PUSH REVIEW, and it is right: if this worktree changes
+    package-lock.json and the main checkout has not, borrowing its node_modules
+    runs the test against the OLD dependencies. It would pass, and a clean
+    `npm ci` here might not. That is the same shape as everything else this
+    file is about -- a check that answers a question adjacent to the one asked.
+
+    So the junction is only offered when the two lockfiles match, and when they
+    do not the operator is told to install rather than borrow.
+    """
+    here = ROOT / "frontend-nextjs" / "package-lock.json"
+    there = main_modules.parent / "package-lock.json"
+    try:
+        if not (here.is_file() and there.is_file()):
+            return False
+        return here.read_bytes() == there.read_bytes()
+    except OSError:
+        return False
 
 
 def jest_file(test_path: str) -> Result:
@@ -131,9 +162,15 @@ def jest_file(test_path: str) -> Result:
     jest = ROOT / "frontend-nextjs" / "node_modules" / ".bin" / name
     if not jest.exists():
         borrow = _borrowable_node_modules()
-        how = (f"link the main checkout's: cd frontend-nextjs && "
-               f'cmd //c mklink //J node_modules "{borrow}"'
-               if borrow else "install them: cd frontend-nextjs && npm ci")
+        if borrow and _lockfiles_agree(borrow):
+            how = (f"link the main checkout's: cd frontend-nextjs && "
+                   f'cmd //c mklink //J node_modules "{borrow}"')
+        elif borrow:
+            how = ("install them: cd frontend-nextjs && npm ci  "
+                   "(NOT the main checkout's — this worktree's package-lock.json "
+                   "differs from it, so borrowing would test the wrong packages)")
+        else:
+            how = "install them: cd frontend-nextjs && npm ci"
         return UNKNOWN, (f"jest {test_path}: frontend-nextjs/node_modules is absent, "
                          f"so it could not run here. This is NOT a pass -- {how}")
     rc, out = _run([str(jest), test_path], cwd=ROOT / "frontend-nextjs")
