@@ -23,7 +23,8 @@
     "tests/test_fidelity_gate_catches_an_invented_citation.py",
     "enrichment/config/northern_beaches_config.py",
     "enrichment/extractors/applicability_tagger.py",
-    "tests/test_northern_beaches_whole_dcp_scope.py"
+    "tests/test_northern_beaches_whole_dcp_scope.py",
+    "tests/test_dcp_approve_graded_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "Read-only throughout; no statement in this change writes. dcp_plan_as_at (23 columns, 28 rows, keyed by `lga` -- which is DQ-43's premise, confirmed not assumed), dcp_chapter_registry, regulatory_provisions, information_schema. `url_page_last_status` confirmed ABSENT, which is what DQ-58's own note prescribed building.",
@@ -332,6 +333,13 @@
       "mitigated": true,
       "how": "The parts branch now carries it through, matching chapter_topics and the ashfield/leichhardt paths. Found by a test written for the new config failing against the OLD code path. ⚠ Inert today: nothing downstream consumes the flag from the tagger's output, and DQ-99's guard reads a different column.",
       "repro": "python -m pytest tests/test_northern_beaches_whole_dcp_scope.py -k precinct -q"
+    },
+    {
+      "scenario": "The approve script writes during what the operator asked to be a dry run.",
+      "what_happens": "It is pointed at the table that decides what reaches a planner, and the last bulk approval on this queue put 578 bad rows live. A tool that writes when told not to is worse than one that refuses to write at all.",
+      "mitigated": true,
+      "how": "A @pytest.mark.database test runs the real script against the real queue and asserts the FULL status census is unchanged -- a census rather than a pending count, so a row moved between two other statuses would still show. Under the stubbed driver the plan is empty and prints 'to approve: 0', which reads exactly like an already-clear queue, so this cannot be tested offline.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_dcp_approve_graded_real_db.py -k dry -o addopts="
     }
   ],
   "post_merge": {
