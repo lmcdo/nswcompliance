@@ -167,7 +167,15 @@ def main() -> int:
         for pid, council, chapter, fidelity, detail, page, text in rows:
             cls, reason = _classify(fidelity, detail, page, text)
             if cls is None or cls not in args.classes:
-                held[reason.split(" --")[0][:70] if cls is None else cls] += 1
+                # The held-reason heading, trimmed at the first " --" so the
+                # printed tally groups by CAUSE rather than by the specific
+                # numbers each row names. `_classify` always returns a reason,
+                # and `"".split(x)` yields `['']` rather than `[]`, so neither
+                # an empty string nor a missing separator can raise -- but the
+                # fallback is explicit rather than resting on that.
+                head = (reason or "unclassified").split(" --")
+                label = (head[0] if head else "") or "unclassified"
+                held[label[:70] if cls is None else cls] += 1
                 continue
             plan.setdefault((cls, reason), []).append(pid)
             backup.append((pid, council, chapter, "pending", fidelity, detail))
