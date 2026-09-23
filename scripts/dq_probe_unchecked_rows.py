@@ -458,12 +458,50 @@ def probe_105(cur):
                             or tagger._get_config_driven(doc, text or "") is not None)
         by_council[council] = (served, fallthrough, any_resolved)
 
-    hits = {}
+    hits, watched = {}, {}
     for council, (served, fallthrough, any_resolved) in sorted(by_council.items()):
-        if not any_resolved:
-            hits[(council, "%d served, %d applying to every development type"
-                  % (served, fallthrough))] = 1
-    return len(hits), hits
+        if any_resolved:
+            continue
+        note = ("%d served, %d applying to every development type"
+                % (served, fallthrough))
+        if fallthrough == 0:
+            # NO CONFIG, BUT NOTHING FALLING THROUGH. Watched, not counted --
+            # and it is a narrow exception rather than an amnesty: the moment
+            # `fallthrough` rises above 0 this council counts again, on the
+            # next run, with no edit to this file.
+            #
+            # The docstring above argues against counting ROWS, because a
+            # council could read 0 "because its prose happened to match" and
+            # drift on re-extraction with nothing decided. That holds, and is
+            # why the count is still per-council. It does not justify demanding
+            # a config that cannot be written truthfully, which is the case
+            # this branch exists for.
+            #
+            # cumberland, measured 2026-09-24: 29 served, 0 falling through.
+            # Its DCP Part B is FIVE separate sub-parts sharing ONE
+            # document_id, each carrying its own "1.1 Land to which this Part
+            # applies" and naming a different scope -- "all residential
+            # development types except for single dwelling house development",
+            # "low rise dual occupancy", "residential flat building
+            # development", "boarding house", and dwelling house plus secondary
+            # dwelling. Their section codes COLLIDE: every sub-part has a 1.1
+            # and a 2.4. Neither key the tagger uses -- document_id or section
+            # code -- can separate them, so one entry would mis-scope four of
+            # the five. The text regex reads each row's scope from its own
+            # prose and gets all 29 right, which is why nothing falls through.
+            #
+            # The real defect is the DOCUMENT, not the missing config: five
+            # plans registered as one. Until they are split, a config here
+            # would be an invention.
+            watched[(council, note + "  [watched: no config can be written "
+                                     "while its sub-parts share a document_id]")] = 1
+        else:
+            hits[(council, note)] = 1
+    # The count is offenders only. `watched` still prints, so a council that
+    # genuinely needs a config cannot disappear from the report -- and a
+    # watched one reappears in the count the moment a row starts falling
+    # through.
+    return len(hits), {**hits, **watched}
 
 
 PROBES = {
