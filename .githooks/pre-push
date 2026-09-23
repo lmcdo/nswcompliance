@@ -87,9 +87,43 @@ else
   PY_CHANGED="unknown"
 fi
 
+# PYTEST_FULL=1 restores the whole suite here. Default is the CHANGED-FILE
+# subset, for one reason: this run gates nothing. `gates.yml` runs the full
+# suite on every PR and on every push to main, and check_pr_gates.py refuses a
+# merge without a passing run against the head sha. So the same tests were
+# executing three times on identical code — commit, push, CI — and only the
+# third could stop anything reaching main.
+#
+# Measured 2026-09-24: 430s serial, 188s after -n auto, paid on EVERY push
+# regardless of the change. What this trades away is learning about an
+# unrelated breakage at push time instead of ~3 minutes later on the PR.
+# Nothing broken gets further either way.
+#
+# Fail closed in both directions: if the merge base cannot be resolved, or the
+# subset cannot be derived, run everything.
 if [ -z "$PY_CHANGED" ]; then
   echo "Skipped: no .py changed vs origin/main on this branch."
   echo "  CI still runs the full suite on the PR — this only moves the wait."
+elif [ "$PY_CHANGED" != "unknown" ] && [ "${PYTEST_FULL:-0}" != "1" ]; then
+  # Tests for the changed files, plus any test file changed itself. A changed
+  # module with no matching test contributes nothing here, which is precisely
+  # why CI still runs everything before the merge.
+  TARGETS=$(
+    { echo "$PY_CHANGED" | grep -E '^tests/.*\.py$' || true
+      for f in $PY_CHANGED; do
+        base=$(basename "$f" .py)
+        ls "tests/test_${base}"*.py 2>/dev/null || true
+      done
+    } | sort -u | tr '\n' ' '
+  )
+  if [ -z "$(echo "$TARGETS" | tr -d ' ')" ]; then
+    echo "No test file maps to the changed Python; running the full suite."
+    python -m pytest tests/ -n auto -x -q --tb=short 2>&1
+  else
+    echo "Changed-file subset (PYTEST_FULL=1 for everything; CI runs it all on the PR):"
+    echo "  $TARGETS"
+    python -m pytest $TARGETS -n auto -x -q --tb=short 2>&1
+  fi
 else
   # -n auto: pytest-xdist is already a dependency and was simply never used, so
   # every push ran the whole suite on one core. Measured 2026-09-24 on a 20-core
