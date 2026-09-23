@@ -266,7 +266,47 @@ def process_provision(provision: dict) -> dict:
 #: earlier run established." Without it a scheduled run reprocesses the whole corpus on
 #: every tick and silently overwrites `review_needed` verdicts someone has acted on --
 #: which is why this pipeline could never be put on a schedule.
-_UNPROCESSED_ONLY = " AND v2_extraction_status IS NULL"
+#: A rule whose own quoted phrase is no longer in the provision it came from.
+#:
+#: WHY FILL-BLANKS-ONLY WAS NOT ENOUGH. Selecting on `v2_extraction_status IS
+#: NULL` is what makes this pipeline safe to schedule: it never revisits a
+#: provision that already has a verdict, so it cannot overwrite a review_needed
+#: row a person has acted on. The same property means a rule OUTLIVES the text
+#: it was derived from. Re-read a chapter, the provision's text is replaced,
+#: and its rules stay exactly as they were -- now describing a page that no
+#: longer says it. Nothing recomputed them and nothing compared them.
+#:
+#: Measured 2026-09-24: provision 40278 is current and actionable, its text
+#: reads "(e), (f) (Repealed) (g) the minimum internal area, if any, specified
+#: in the Apartment Design Guide for the type of residential development," and
+#: it carried rules for 4, 5 and 1 parking spaces at extraction_confidence
+#: "high". The words "parking space" occur in it zero times. DQ-108 reports it.
+#:
+#: So the sweep now also picks up STALE rows, and re-deriving one reads the
+#: CURRENT text, which is what takes it back out of the set.
+#:
+#: btrim IS LOAD-BEARING, not tidiness. Several stored raw_match values carry
+#: trailing whitespace ("minimum\n3 metres "). Normalising runs of whitespace
+#: without trimming the ends made this condition match 6 rows where the Python
+#: check finds 1 -- five healthy rows that would be re-derived on every run
+#: forever, because re-deriving them cannot clear a condition their content
+#: never caused. With btrim the two agree exactly.
+_STALE_RULES = """
+          AND v2_extracted_rules IS NOT NULL
+          AND jsonb_typeof(v2_extracted_rules) = 'array'
+          AND EXISTS (
+                SELECT 1 FROM jsonb_array_elements(v2_extracted_rules) e
+                 WHERE e->>'compliance_type' = 'numeric_check'
+                   AND e->>'raw_match' IS NOT NULL
+                   AND position(
+                         btrim(lower(regexp_replace(e->>'raw_match', '\\s+', ' ', 'g')))
+                      in btrim(lower(regexp_replace(provision_text, '\\s+', ' ', 'g')))
+                       ) = 0)
+"""
+
+_UNPROCESSED_ONLY = (
+    " AND (v2_extraction_status IS NULL OR (TRUE " + _STALE_RULES + "))"
+)
 
 _BASE_WHERE = """
         WHERE is_current = true

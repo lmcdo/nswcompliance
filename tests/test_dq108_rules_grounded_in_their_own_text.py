@@ -29,6 +29,7 @@ So it checks the PHRASE, normalised on both sides, and never the digits.
 """
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -147,3 +148,61 @@ class TestItCanReachZero:
              [_numeric("setback of at least 6m", value_min=6.0)]),
         ])
         assert count == 0
+
+
+class TestThePipelineRepairsThemItself:
+    """The systemic half. Reporting a stale rule is a smoke alarm; re-deriving
+    it is the fix, and it belongs in the same sweep that writes them."""
+
+    def test_the_sweep_selects_stale_rows_as_well_as_blank_ones(self):
+        from enrichment import rule_extraction_pipeline as rp
+
+        assert "v2_extraction_status IS NULL" in rp._UNPROCESSED_ONLY, (
+            "blank rows are no longer selected -- the sweep would stop filling")
+        assert rp._STALE_RULES.strip(), "the stale condition has been emptied"
+        assert rp._STALE_RULES.strip() in rp._UNPROCESSED_ONLY, (
+            "the stale condition exists but is not wired into the selection")
+        assert "numeric_check" in rp._UNPROCESSED_ONLY, (
+            "fill-blanks-only again: a rule would outlive its text with nothing "
+            "to re-derive it")
+
+    def test_btrim_is_present_and_is_load_bearing(self):
+        """Normalising runs of whitespace WITHOUT trimming the ends made the SQL
+        condition match 6 rows where the Python probe finds 1 -- five healthy
+        rows that would be re-derived on every run forever, because re-deriving
+        cannot clear a condition their content never caused."""
+        from enrichment import rule_extraction_pipeline as rp
+
+        assert rp._UNPROCESSED_ONLY.count("btrim") == 2, (
+            "both sides of the comparison must be trimmed, or the sweep picks "
+            "up rows it can never clear")
+
+
+@pytest.mark.database
+@pytest.mark.skipif(os.getenv("PYTEST_REAL_DB") != "1",
+                    reason="compares two live implementations of the same rule")
+class TestTheSqlAndThePythonAgree:
+    """Two implementations of 'is this rule still grounded' now exist: the SQL
+    the sweep selects on, and the Python DQ-108 reads with. They must agree, or
+    the check reports rows the repair never touches -- or worse, the repair
+    chases rows the check calls healthy. They disagreed 6 to 1 on first write.
+    """
+
+    def test_they_find_the_same_rows(self):
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import dq_db
+        from enrichment import rule_extraction_pipeline as rp
+
+        conn = dq_db.connect()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT count(*)::int FROM regulatory_provisions"
+                        + rp._BASE_WHERE
+                        + " AND v2_extraction_status IS NOT NULL"
+                        + rp._STALE_RULES)
+            sql_rows = cur.fetchone()[0]
+            count, _ = probe_108(conn.cursor())
+        finally:
+            conn.close()
+        assert sql_rows == 0 or count > 0, (
+            f"the sweep sees {sql_rows} stale row(s) the check does not report")
