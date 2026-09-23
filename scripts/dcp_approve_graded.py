@@ -70,7 +70,22 @@ _MISSING = re.compile(r"numbers not in source: ([^;]+)")
 #: and `7.8` through as "reference numbers" on a verified page. A one-decimal
 #: number in planning range is the single most likely thing to BE a control, so
 #: it is held whether or not the page resolved.
-def _is_control_shaped(tok: str) -> bool:
+def _is_control_shaped(tok) -> bool:
+    # Non-str first. `re.fullmatch(pattern, None)` raises TypeError, not
+    # ValueError, so the `except ValueError` below would NOT have caught it --
+    # a None token would have killed the whole approve run partway through,
+    # after some rows had already been updated. No live path produces one today
+    # (`missing` is built by `.strip()`ing regex groups, which always yields
+    # str), but the crash would be silent about which rows had landed.
+    #
+    # It answers False rather than True because the question this function asks
+    # is literally "is this token a decimal in planning range" — a None is not,
+    # and claiming otherwise would hold rows for a person under a reason that
+    # names a number that does not exist. The row is still protected by the
+    # other rules in `_classify`: reversed text, and >6 unmatched numbers on a
+    # page the gate could not locate.
+    if not isinstance(tok, str):
+        return False
     if not re.fullmatch(r"\d{1,3}\.\d{1,2}", tok):
         return False
     try:

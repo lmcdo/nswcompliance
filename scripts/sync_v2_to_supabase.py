@@ -52,6 +52,12 @@ load_dotenv()
 import psycopg2
 from psycopg2.extras import RealDictCursor, execute_values
 
+# argparse prints this module's docstring as --help, and that docstring
+# carries a warning glyph. On a Windows console stdout defaults to cp1252,
+# which cannot encode it, so `--help` died with a UnicodeEncodeError before
+# printing a single option. Same reconfigure as scripts/dcp_approve_graded.py.
+sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 V2_COLUMNS = [
