@@ -91,7 +91,19 @@ if [ -z "$PY_CHANGED" ]; then
   echo "Skipped: no .py changed vs origin/main on this branch."
   echo "  CI still runs the full suite on the PR — this only moves the wait."
 else
-  python -m pytest tests/ -x -q --tb=short 2>&1
+  # -n auto: pytest-xdist is already a dependency and was simply never used, so
+  # every push ran the whole suite on one core. Measured 2026-09-24 on a 20-core
+  # machine: 430s serial vs 188s parallel, with an identical result (7,015
+  # passed, 2 skipped) — the suite is xdist-safe, it just was not told to be.
+  # That wait is paid on EVERY push whatever the change, which makes it the
+  # single largest fixed cost in the edit-verify loop.
+  #
+  # -x still stops at the first failure, but under xdist that means "shortly
+  # after" rather than "immediately": workers already in flight finish their
+  # current test, so a failing run can report one failure plus a few extra
+  # passes. That is the trade — a couple of seconds of overshoot against four
+  # minutes saved every time.
+  python -m pytest tests/ -n auto -x -q --tb=short 2>&1
 fi
 echo ""
 
