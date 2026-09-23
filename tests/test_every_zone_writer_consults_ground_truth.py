@@ -50,7 +50,9 @@ the rule below was narrowed to ASSIGNMENT of the column.
 """
 from __future__ import annotations
 
+import ast
 import re
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -80,12 +82,62 @@ _SETS_DIRECTLY = re.compile(r"SET\s[\s\S]{0,400}?" + COLUMN + r"\s*=")
 _IN_COLUMN_LIST = re.compile(r"['\"]" + COLUMN + r"['\"]\s*,")
 _SETS_FROM_LIST = re.compile(r"\{col\}\s*=|\{c\}\s*=")
 
-#: Consulting the ground truth, in any of the three shapes the repo uses.
-_CONSULTS = re.compile(
-    r"valid_zones"                      # passed into the tagger
-    r"|validate_zone_code_validity"     # imports the checker module
-    r"|load_ground_truth"               # calls its loader directly
-)
+#: Consulting the ground truth, in any of the shapes the repo uses. These are
+#: matched as IDENTIFIERS in the parsed syntax tree, never as text.
+_CONSULT_NAMES = frozenset({
+    "valid_zones",                  # the keyword argument passed to the tagger
+    "validate_zone_code_validity",  # the checker module, imported
+    "load_ground_truth",            # its loaders, called directly
+    "load_slug_resolution",
+})
+
+
+def _identifiers(src: str) -> set[str]:
+    """Every NAME the parsed module actually uses.
+
+    WHY AST AND NOT A REGEX. The regex this replaced matched `valid_zones`
+    anywhere in the file -- including a comment. A script that wrote zones
+    blind and carried `# TODO: wire up valid_zones here` passed the check that
+    exists to catch exactly that script. Verified on 2026-09-24 by writing one:
+    7 passed, no offender reported.
+
+    A comment is not in the tree at all, and a docstring is a Constant, not an
+    identifier, so neither can vote here. That is the whole point: the question
+    is "does this file CALL the guard", and only the tree can answer it.
+
+    A file that will not parse is reported as consulting NOTHING rather than
+    skipped, so a syntax error surfaces as a failure instead of an exemption.
+    """
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:
+        return set()
+
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            names.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            names.add(node.attr)
+        elif isinstance(node, ast.arg):
+            names.add(node.arg)
+        elif isinstance(node, ast.keyword) and node.arg:
+            names.add(node.arg)          # `f(valid_zones=...)`
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            names.update(node.module.split("."))
+            names.update(a.asname or a.name for a in node.names)
+        elif isinstance(node, ast.Import):
+            for a in node.names:
+                names.update(a.name.split("."))
+                if a.asname:
+                    names.add(a.asname)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.add(node.name)
+    return names
+
+
+def _consults_ground_truth(src: str) -> bool:
+    return bool(_identifiers(src) & _CONSULT_NAMES)
 
 
 def _sets_the_zone_column(src: str) -> bool:
@@ -160,7 +212,7 @@ class TestEveryLiveWriterConsultsGroundTruth:
         consults an LGA land-use table fails here, at the commit that adds it,
         rather than in a completeness report after the rows are live."""
         offenders = sorted(p for p, src in _writers().items()
-                           if not _CONSULTS.search(src))
+                           if not _consults_ground_truth(src))
         assert not offenders, (
             "these write %s without consulting ground truth: %s\n"
             "Pass valid_zones= to the tagger, or import load_ground_truth from "
@@ -176,6 +228,63 @@ class TestEveryLiveWriterConsultsGroundTruth:
         a writer — renamed, or its SQL rebuilt in a shape the regex misses — the
         check above would pass by ignoring it."""
         assert path in _writers(), f"{path} is no longer detected as a writer"
+
+
+class TestAMentionIsNotAConsultation:
+    """The hole that regex version of this check had, pinned shut.
+
+    `_CONSULTS` used to be `re.compile(r"valid_zones|...")` searched over the
+    raw file, so ANY appearance counted -- including a comment. Verified on
+    2026-09-24 by writing a blind writer whose only nod to the guard was
+    `# TODO: wire up valid_zones here`: the suite reported 7 passed and no
+    offender. The check meant to catch precisely that script waved it through.
+    """
+
+    #: A zone writer whose only nod to the guard is prose: the guard's names
+    #: appear in a docstring and in a comment, and nothing calls anything.
+    BLIND = textwrap.dedent(
+        '''\
+        """Writes zones and consults nothing.
+
+        A real one would pass valid_zones= to the tagger, or import
+        load_ground_truth from validate_zone_code_validity. Prose only.
+        """
+        def go(cur, pid, zones):
+            # TODO: wire up valid_zones here
+            cur.execute(
+                "UPDATE regulatory_provisions SET v2_applicable_zones = %s",
+                (zones,))
+        '''
+    )
+
+    def test_a_comment_does_not_count_as_consulting(self):
+        assert _sets_the_zone_column(self.BLIND), "fixture must be a zone writer"
+        assert not _consults_ground_truth(self.BLIND), (
+            "a comment mentioning the guard was accepted as calling it")
+
+    def test_a_docstring_does_not_count_either(self):
+        """A Constant, not an identifier. The fixture names both loaders in its
+        docstring and calls neither."""
+        assert not _consults_ground_truth(self.BLIND)
+
+    def test_the_real_thing_does_count(self):
+        """The confusable positive: the same file, with the guard actually
+        called. One keyword argument is the entire difference, and it is the
+        difference the regex could not see."""
+        real = self.BLIND.replace(
+            "    cur.execute(",
+            "    zones = tag(text, doc, valid_zones=allowed)\n    cur.execute(")
+        assert _consults_ground_truth(real)
+
+    def test_an_import_of_the_checker_counts(self):
+        assert _consults_ground_truth(
+            "from validate_zone_code_validity import load_ground_truth\n"
+            "def go(): pass\n")
+
+    def test_a_file_that_will_not_parse_is_reported_not_skipped(self):
+        """A syntax error must surface as an offender, never as an exemption --
+        a file nothing can read is not a file anything has checked."""
+        assert not _consults_ground_truth("def broken(:\n")
 
 
 class TestTheDetectorDoesNotCryWolf:

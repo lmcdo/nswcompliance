@@ -23,6 +23,7 @@ file exists to prevent, hence the opt-in:
 """
 from __future__ import annotations
 
+import ast
 import os
 import subprocess
 import sys
@@ -132,21 +133,63 @@ class TestItCannotWriteWithoutBeingAsked:
     def test_the_gate_runs_before_the_confirmation_prompt_and_before_any_update(self):
         """Order matters. A prompt asks whether the operator MEANT to run it; it
         cannot tell them the payload is wrong. The gate has to come first, and
-        it has to exit rather than warn."""
-        # Every anchor is the ASSIGNMENT, not the bare call. This assertion
-        # failed twice against perfectly correct code before that: once because
-        # a bare `index()` on the call text found `def sync_to_supabase(...)`
-        # above main(), and once because the module docstring QUOTES the
-        # confirmation prompt, putting "prompt" at line 27 — ahead of
-        # everything. A source-text check that reads prose is measuring the
-        # wrong file.
-        src = (ROOT / "scripts" / "sync_v2_to_supabase.py").read_text(
-            encoding="utf-8")
-        gate = src.index("bad = rows_with_retired_zones(supa_conn, data)")
-        prompt = src.index('confirm = input("Continue? (yes/no): ")')
-        write = src.index("= sync_to_supabase(supa_conn, data)")
-        assert gate < prompt < write, "the gate must precede the prompt and the write"
-        assert "sys.exit(2)" in src[gate:prompt], "the gate warns instead of refusing"
+        it has to refuse rather than warn.
+
+        PARSED, NOT SEARCHED, and that is the whole lesson of this file. Written
+        as string searches, this assertion failed twice against perfectly
+        correct code: a bare `index()` on the call text found
+        `def sync_to_supabase(...)` sitting above `main()`, and then the module
+        docstring — which QUOTES the confirmation prompt — put "prompt" at line
+        27, ahead of everything. A source check that reads prose is measuring
+        the wrong thing. A `def` is not a call and a docstring is not code, and
+        only the syntax tree knows the difference.
+        """
+        tree = ast.parse(
+            (ROOT / "scripts" / "sync_v2_to_supabase.py").read_text(encoding="utf-8"))
+        main = next(n for n in tree.body
+                    if isinstance(n, ast.FunctionDef) and n.name == "main")
+
+        def line_of(callee):
+            """Line of the first CALL to `callee` inside main(), or None."""
+            for node in ast.walk(main):
+                if not isinstance(node, ast.Call):
+                    continue
+                fn = node.func
+                name = getattr(fn, "id", None) or getattr(fn, "attr", None)
+                if name == callee:
+                    return node.lineno
+            return None
+
+        gate = line_of("rows_with_retired_zones")
+        prompt = line_of("input")
+        write = line_of("sync_to_supabase")
+        assert gate, "main() never calls the zone gate"
+        assert prompt, "the confirmation prompt has gone"
+        assert write, "main() never calls the writer"
+        assert gate < prompt < write, (
+            f"gate at line {gate} must precede the prompt ({prompt}) "
+            f"and the write ({write})")
+
+        # And it must REFUSE, not warn. "An exit somewhere between the gate and
+        # the prompt" is NOT good enough and was caught surviving a mutation on
+        # 2026-09-24: the dry-run branch's own `sys.exit(0)` sits in that range,
+        # so deleting the gate's `sys.exit(2)` entirely still passed. The exit
+        # has to be inside the branch that the gate's own result opens.
+        guard = next(
+            (n for n in ast.walk(main)
+             if isinstance(n, ast.If) and isinstance(n.test, ast.Name)
+             and n.test.id == "bad"),
+            None)
+        assert guard is not None, (
+            "nothing branches on the gate's result -- it is computed and dropped")
+        codes = [a.value for n in ast.walk(guard)
+                 if isinstance(n, ast.Call)
+                 and getattr(n.func, "attr", None) == "exit"
+                 for a in n.args if isinstance(a, ast.Constant)]
+        assert codes, "the gate reports the bad rows and then carries on"
+        assert all(c != 0 for c in codes), (
+            f"the gate exits {codes} -- a zero exit reads as success to any "
+            f"caller, hook or CI step that checks the status code")
 
     def test_help_does_not_touch_the_database(self):
         """`--help` must not open a production connection just to print usage."""
