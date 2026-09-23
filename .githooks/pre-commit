@@ -82,11 +82,49 @@ TSC_BASELINE=677
 cd frontend-nextjs || exit 0
 
 # A git worktree without its own node_modules makes tsc fail to resolve types,
-# which inflates the error count and false-fails this gate (the number is
-# meaningless without dependencies installed). Skip the count there — the gate
-# still runs in any normal checkout, and the Vercel build type-checks on deploy.
+# which inflates the error count and false-fails this gate. That is why the
+# count was skipped here. The skip was too wide: it also threw away SYNTAX
+# errors, which need no dependencies at all to detect.
+#
+# It cost five failed Vercel deployments on 2026-09-24. A backtick inside a SQL
+# comment closed the JS template literal it lived in, and
+# app/api/dcp-review/route.ts had not compiled since 9db6d850 —
+# `error TS1005: ',' expected`. Every push printed "Type check skipped" and went
+# green. An absent check and a passing one read identically in a log, which is
+# the failure this repo keeps re-learning: a correct check that is never reached.
+#
+# So: borrow the main checkout's node_modules (a worktree always has one, and
+# `git rev-parse --git-common-dir` is the supported way to find it) and run the
+# real check. Refuse only if there is nothing to borrow — never skip silently.
 if [ ! -d node_modules ]; then
-  echo "⏭  Type check skipped: frontend-nextjs/node_modules absent (bare worktree); tsc count unreliable here. Enforced in normal checkouts + on deploy."
+  COMMON_DIR=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+  MAIN_MODULES="${COMMON_DIR%/.git}/frontend-nextjs/node_modules"
+
+  if [ -d "$MAIN_MODULES" ]; then
+    echo "🔍 Type check: borrowing node_modules from the main checkout..."
+    # Syntax-only. --noResolve stops tsc chasing imports it cannot see from
+    # here, so the error count stays meaningful instead of being inflated by
+    # unresolved types — and TS1xxx parse errors are found regardless.
+    SYNTAX=$(NODE_PATH="$MAIN_MODULES" "$MAIN_MODULES/.bin/tsc" \
+               --noEmit --skipLibCheck --noResolve 2>&1 \
+             | grep -E "error TS1[0-9]{3}:" || true)
+    if [ -n "$SYNTAX" ]; then
+      echo ""
+      echo "❌ COMMIT REJECTED — TypeScript SYNTAX error(s). These do not depend"
+      echo "   on installed types, so this is a real parse failure:"
+      echo "$SYNTAX" | head -20
+      exit 1
+    fi
+    echo "✅ No TypeScript syntax errors."
+  else
+    echo ""
+    echo "❌ COMMIT REJECTED — TYPE CHECK COULD NOT RUN."
+    echo "   frontend-nextjs/node_modules is absent here and no main checkout"
+    echo "   was found at: $MAIN_MODULES"
+    echo "   This is NOT a pass. Install deps, or link the main checkout's:"
+    echo "     cd frontend-nextjs && cmd //c mklink //J node_modules <main>/frontend-nextjs/node_modules"
+    exit 1
+  fi
 else
   echo "🔍 Running type check (error count gate, baseline $TSC_BASELINE)..."
   COUNT=$(npx tsc --noEmit --skipLibCheck 2>&1 | grep -c "error TS" || true)
