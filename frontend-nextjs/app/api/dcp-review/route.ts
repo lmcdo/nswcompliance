@@ -47,7 +47,7 @@ export async function GET() {
              ON r.council = q.council AND r.chapter_key = q.chapter_key
       WHERE q.status = 'pending'
       -- Worst first, by SEVERITY rather than by one status value. The previous
-      -- ordering tested `fidelity_status = 'flagged'` alone, so 'failed' -- which is
+      -- ordering tested fidelity_status = 'flagged' alone, so 'failed' -- which is
       -- WORSE, the gate could not match the row to its source page at all -- sorted
       -- with the unchecked bulk. Measured 2026-09-23 after re-grading the backlog:
       -- 9 rows in the whole queue needed a person, and 3 of them were 'failed', so a
