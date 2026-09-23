@@ -594,7 +594,83 @@ def probe_107(cur):
     return len(hits), hits
 
 
+def probe_108(cur):
+    """A structured numeric rule whose own words are not in its own provision.
+
+    The formulate stage turns committed provision TEXT into structured rules in
+    `v2_extracted_rules`. Every numeric rule it writes carries a `raw_match` --
+    the exact phrase it read the number out of, e.g. "maximum height of 4m".
+    That phrase must be IN the provision it was read from. When it is not, the
+    number in front of a planner came from nowhere.
+
+    THE MECHANISM, and it is not a bad regex. The stage is FILL-BLANKS-ONLY,
+    which is what makes it safe to schedule: it never revisits a provision that
+    already has a verdict. The same property means a rule OUTLIVES the text it
+    was derived from. Re-read a chapter, replace the provision's text, and the
+    rules stay exactly as they were, now describing a page that no longer says
+    it. Nothing recomputes them and nothing compares them.
+
+    Measured 2026-09-24 over the 7,854 rows already carrying rules: 2,097
+    numeric rules, of which 3 fail -- all on provision 40278, whose text is
+    "(e), (f) (Repealed) (g) the minimum internal area, if any, specified in the
+    Apartment Design Guide for the type of residential development," and which
+    carries rules for 4, 5 and 1 parking spaces at `extraction_confidence:
+    high`. The phrase "parking space" does not occur in it once. That row is
+    current and actionable.
+
+    WHITESPACE IS NORMALISED ON BOTH SIDES and that is not cosmetic. A first
+    pass compared a flattened provision against an unflattened `raw_match` and
+    accused 44 healthy rules whose phrase merely spanned a line break
+    ("minimum\\n3 metres"). A detector that reports 44 defects where there are 3
+    teaches everyone to ignore it.
+
+    IT CHECKS THE PHRASE, NOT THE DIGITS. `600mm in height` is legitimately
+    stored as 0.6 with unit m, so demanding the stored value appear literally
+    would fail 18 correct unit conversions -- the trap named in
+    `feedback-verify-the-derivation-not-the-digits`.
+
+    Reachable by re-deriving the offending rows (`--reprocess-all` overwrites
+    verdicts, including review_needed rows a person may have acted on, so it is
+    not a blanket fix) or by clearing their rules so the next fill-blanks run
+    rewrites them from the current text.
+    """
+    import json
+
+    cur.execute(
+        """SELECT id, source_council, provision_text, v2_extracted_rules
+             FROM regulatory_provisions
+            WHERE is_current AND v2_is_actionable
+              AND v2_extracted_rules IS NOT NULL"""
+    )
+    hits = {}
+    for pid, council, text, rules in cur.fetchall():
+        if isinstance(rules, str):
+            try:
+                rules = json.loads(rules)
+            except (ValueError, TypeError):
+                continue
+        items = rules if isinstance(rules, list) else (rules or {}).get("rules", [])
+        haystack = re.sub(r"\s+", " ", text or "").strip().lower()
+        for r in items or []:
+            if not isinstance(r, dict) or r.get("compliance_type") != "numeric_check":
+                continue
+            raw = re.sub(r"\s+", " ", str(r.get("raw_match") or "")).strip().lower()
+            if raw and raw not in haystack:
+                hits[("id=%s %s" % (pid, council or "(statewide)"),
+                      "rule reads %r, which is not in this provision's own text"
+                      % (r.get("raw_match"),))] = 1
+    return len(hits), hits
+
+
 PROBES = {
+    "DQ-108": (
+        "Structured numeric rules whose phrase is absent from their own provision",
+        "The formulate stage is fill-blanks-only, so a rule is never re-derived once "
+        "written -- which means it outlives the text it came from. Re-read a chapter, "
+        "replace the provision's text, and the rule stays, now describing a page that "
+        "no longer says it. The number a planner reads then came from nowhere, and "
+        "nothing else compares the two.",
+        probe_108, True),
     "DQ-107": (
         "Section codes that mean two different plans (a document holding several)",
         "An applicability config is keyed on a document_id or a section code, both "

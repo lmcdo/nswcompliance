@@ -1293,6 +1293,18 @@
       "passes_when": "exit 0 - no section code carries two scope statements naming development types that cannot both be true. Reachable by SPLITTING the document into the plans it actually contains and re-registering them, which is also what makes an applicability config writable. Deleting the rows would take it to zero too and is not the fix.",
       "red_when": "a registered document is really several plans concatenated, so the same section code appears under each with a different scope. An applicability config is keyed on a document_id or a section code and both assume the code identifies ONE thing, so no entry can be written that is true of all of them - whatever is declared mis-scopes the rest.",
       "note": "THE GATE AN LGA MUST PASS BEFORE A CONFIG CAN BE WRITTEN FOR IT AT ALL, which is why it is general rather than a cumberland special case. Opened 2026-09-24 when DQ-105 reached 0 with cumberland WATCHED rather than configured: its DCP Part B is five sub-parts sharing one document_id, each with its own '1.1 Land to which this Part applies' naming a different development type, and every one of them also has a 2.4. Without this check that finding rested in a comment. Precision was measured rather than assumed: same code with any differing heading text = 1,180 pairs (provision splitting, noise); differing scope SENTENCES = 35; scopes naming DISJOINT development types = 1. The 35 are mostly complementary statements about one plan - woollahra pairs 'all land within the Woollahra municipality' with 'development that requires development consent', both true at once - or the same sentence read twice with HTML table debris. Verified reachable: excluding cumberland's rows takes the count to 0."
+    },
+    "DQ-108": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-108"
+      ],
+      "passes_when": "exit 0 - every numeric rule in v2_extracted_rules carries a raw_match phrase that occurs in its own provision_text. Reachable by re-deriving the offending rows from their current text; deleting the rules would also take it to zero and is not the fix.",
+      "red_when": "a structured numeric rule quotes a phrase its provision does not contain, so the number shown to a planner came from nowhere. The formulate stage is FILL-BLANKS-ONLY -- it never revisits a provision that already has a verdict -- so a rule outlives the text it was derived from: re-read a chapter, replace the text, and the rule stays, describing a page that no longer says it.",
+      "note": "Opened 2026-09-24 while verifying the formulate stage before running it on 13,909 provisions. The NEW extractions were clean - 3,506 numeric rules, 0 ungrounded - but the 7,854 rows already carrying rules held 3 that were not, all on provision 40278: its text is '(e), (f) (Repealed) (g) the minimum internal area, if any, specified in the Apartment Design Guide for the type of residential development,' and it carries rules for 4, 5 and 1 parking spaces at extraction_confidence 'high'. 'parking space' does not occur in it once, and the row is current and actionable. TWO TRAPS the detector had to avoid, both measured: comparing an unflattened raw_match against flattened text accuses 44 healthy rules whose phrase spans a line break; demanding the stored VALUE appear literally fails 18 correct unit conversions (600mm stored as 0.6 m). It checks the PHRASE, normalised on both sides."
     }
   }
 }
