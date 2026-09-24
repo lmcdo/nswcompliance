@@ -108,7 +108,7 @@ def plan_council(conn, s3, bucket, cache_dir: Path, council: str | None):
         readings = probe.chapter_lines(s3, bucket, r2_path, cache_dir)
         status = {r[2]: cp.prove_citation_any(r[5], r[7], readings, (r[8] or [None])[0])["status"]
                   for r in prow}
-        lead = cd.chapter_leading([r[5].split("__")[-1].replace("_", ".")
+        lead = cd.chapter_leading([(r[5] or "").rsplit("__", 1)[-1].replace("_", ".")
                                    for r in prow if status[r[2]] == "proven"])
         for doc_id, header, rid, cncl, chapter, ref, _p, text, pages in prow:
             hint = (pages or [None])[0]
