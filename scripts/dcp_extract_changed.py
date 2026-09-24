@@ -3734,6 +3734,30 @@ def ai_extraction_enabled() -> bool:
     )
 
 
+def llm_reader_available() -> bool:
+    """AI extraction is on AND this deployment has a model to run it.
+
+    The page-map decision below needs both halves. Enabled with no provider key,
+    DCPExtractor.extract() falls back to the default regex path, which is worse
+    than a council's hand-built page map, so the map should still win there.
+    Found 2026-09-24: that decision read the raw AI_EXTRACTION env as OPT-IN
+    ("1"/"true"), so after #1155 made extraction opt-out every council with a
+    page map -- all of ashfield, 25 ku_ring_gai chapters, waverley -- was read
+    by the regex reader with no error while a model key sat unused.
+    """
+    if not ai_extraction_enabled():
+        return False
+    from scripts.ai_extractor import _MODEL_PREFERENCE, configured_model
+    named = (os.getenv("AI_MODEL") or "").strip().lower()
+    if named:
+        # A named model counts only with ITS key. AI_MODEL=sol without
+        # OPENAI_API_KEY would otherwise bypass the page map for a reader that
+        # cannot run (cross-review, 2026-09-24).
+        key = dict(_MODEL_PREFERENCE).get(named)
+        return bool(key and os.getenv(key))
+    return bool(configured_model())
+
+
 def fidelity_gate_enabled() -> bool:
     """Whether to grade queued rows against their source PDF. Default ON.
 
@@ -4561,7 +4585,7 @@ def extract_chapter(
             print(f"    [page-map] {len(page_ranges)} parts derived from the running "
                   f"headers of {len(header_texts)} pages")
         subsection_patterns = COUNCIL_SUBSECTION_PATTERNS.get(council)
-        ai_on = os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes")
+        ai_on = llm_reader_available()
 
         # A hardcoded page map is only valid for the document it was written
         # against, and nothing tied the two together. waverley's map describes a
@@ -4744,13 +4768,16 @@ def extract_chapter(
 
             schema_fail = is_schema_fail(len(provision_texts), serious_flagged)
 
-            # AI-path railguards (absolute-quality; only when AI extraction is on).
+            # AI-path railguards (absolute-quality; only when the LLM read this chapter).
             # LLMs can silently drop whole sections or truncate a provision mid-text.
+            # Keyed on WHICH READER RAN, not on the env flag: the flag was read as
+            # opt-in after #1155 made extraction opt-out, so these guards never ran
+            # on an LLM-read chapter from 2026-09-21 to 2026-09-24.
             coverage_fail = truncation_fail = coverage_unknown = False
             attribution_fail = False
             attr_sections = attr_listed = 0
             coverage_toc = coverage_missing = truncation_flagged = 0
-            if os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes"):
+            if reader_used.startswith("llm"):
                 from scripts.ai_extractor import (
                     attribution_collapsed, coverage_gap, truncation_rate,
                     toc_codes_from_pdf, COVERAGE_MISS_RATIO, TRUNCATION_RATIO,
@@ -5729,6 +5756,11 @@ def main() -> None:
 
     if args.review and review_chapters:
         review_path = write_review_file(args.council or "all", review_chapters)
+        # Every chapter above ran before this line, and a long batch leaves the
+        # connection idle past the server's limit: ashfield's re-read on
+        # 2026-09-24 did all its reading and then died here on "server closed the
+        # connection unexpectedly", queueing nothing. Same remedy as per chapter.
+        conn = revive(conn)
         queued = enqueue_review_changes(conn, review_chapters)
         print(f"\n{'='*60}")
         print(f"REVIEW FILE WRITTEN")

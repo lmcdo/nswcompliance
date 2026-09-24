@@ -1,0 +1,161 @@
+{
+  "tier": "critical",
+  "justification": "Served DCP rules carry clause numbers their council never printed (DQ-111). This branch corrects them from the council's own page where that is provably safe, queues the chapters that need a re-read, and fixes a regression that sent every page-mapped council (ashfield, 25 ku_ring_gai chapters, waverley) to the regex reader and switched the LLM railguards off since 2026-09-21. Critical because it writes citations users see, and a wrong correction is worse than an honest refusal.",
+  "commit_hash": "2d39c624",
+  "files": [
+    "scripts/citation_derive.py",
+    "scripts/dcp_restore_citations.py",
+    "scripts/dcp_queue_reread.py",
+    "scripts/dcp_extract_changed.py",
+    "scripts/lint_extraction_defaults.py",
+    "tests/test_citation_derive.py",
+    "tests/test_ai_extractor.py",
+    "tests/test_dcp_restore_citations_real_db.py",
+    "tests/test_dcp_queue_reread_real_db.py",
+    ".qa/reports/fix__citation-code-fix.json"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions: 14,509 served council rows; ref_number = document_id + '__' + code, text starts '# <code> <title>', section_header = code + title (measured on all 734 woollahra rows). Dependents link by provision id; setback_rules (the one ref_number copy) is empty. uq_provisions_current_identity(document_id, ref_number, section_header, md5(text)) WHERE is_current.",
+    "assumption_mismatch": "Three, each from reading pages in the woollahra dry run. (1) 'A citation that proves is a correct fix' is false when the stored text is cut in the wrong place: B1.1.5 -> B1.1.4 proved. (2) A fix could leave its chapter: B3.7 -> E1. (3) Adding a label to a row that had none picked the previous section's last control: C1.3.9 -> 'C1.3.8 C22'. Planned fixes fell 227 -> 20. The all-council dry run then showed the guards do not hold for warringah, ashfield and marrickville layouts, so the repair is run per council only where samples read true on the page.",
+    "new_vs_existing": "Reuses citation_proof (the gate's proof), the DQ-111 probe's cached PDF reader, dcp_commit_approved._section_header_from_text, and dcp_restore_section_codes.py's dry-run/backup/collision/undo shape. New: deriving a citation from the page; queueing an unchanged chapter for re-read on purpose.",
+    "external_source_error": "An R2 download failure raises in probe.chapter_lines and aborts the plan before any write. A dropped DB connection at enqueue now revives first (it had killed ashfield's re-read).",
+    "frontend_type": "No frontend change. ref_number and section_header are read by existing API routes as strings; corrected values keep the same shapes.",
+    "user_failure_mode": "A wrong correction would serve a clause number that is printed but belongs to a different rule. Mitigated by proof, uniqueness, shape and chapter guards, per-council dry runs read by eye, every written row re-proven, a 5% audit CSV, and a backup table with UNDO."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_section_code_not_in_source.py --council woollahra",
+    "fails_when": "any served woollahra row's citation is not proven on its source page; the count must fall by exactly the rows corrected and never rise.",
+    "observed_red": "Before the woollahra pilot: 266 not proven incl. 4 rows citing the prompt example C4.9. After: 246, C4.9 rows 0, 20/20 corrected rows re-proven, DQ-33 and DQ-105 still pass, 734 rows before and after.",
+    "manual_probe": "python scripts/dcp_restore_citations.py --council <c>  (dry run; read the planned before -> after lines against the page before any --apply)"
+  },
+  "functions": [
+    {
+      "name": "citation_derive.derive_citation",
+      "file_line": "scripts/citation_derive.py",
+      "input": "A served row's ref_number, its stored text, both line readings of its source PDF, a page hint and the chapter's leading code.",
+      "output": "derived with the printed code when exactly one citation proves, else ambiguous, deferred or not_derivable with a reason.",
+      "if_none": "No heading above the rule, or wording not located, returns not_derivable; nothing is ever guessed or offered unproven."
+    },
+    {
+      "name": "dcp_restore_citations.plan_council / main",
+      "file_line": "scripts/dcp_restore_citations.py",
+      "input": "A council name, the served rows for it, and each chapter's cached PDF lines from R2 through the probe reader.",
+      "output": "A dry-run plan by default; with --apply a backup table, in-place updates pinned to the old ref, re-proof and an audit CSV.",
+      "if_none": "A row whose first line does not start with its stored code, or that would collide on identity, is left and counted."
+    },
+    {
+      "name": "dcp_extract_changed.llm_reader_available",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "The AI_EXTRACTION switch through ai_extraction_enabled plus AI_MODEL or any configured provider key in the environment.",
+      "output": "True only when extraction is on and a model can run, so the page map yields to the LLM reader only when it can read.",
+      "if_none": "With no provider key it returns False and the council's hand-built page map is used rather than the default regex path."
+    },
+    {
+      "name": "dcp_queue_reread.main",
+      "file_line": "scripts/dcp_queue_reread.py",
+      "input": "Named council/chapter pairs or the first N of DQ111_TOP, with --apply required before anything is written to the registry.",
+      "output": "needs_extraction set TRUE on exactly those active registry rows, with the ids printed and an UNDO statement.",
+      "if_none": "A name matching zero or several active registry rows stops the run with nothing written."
+    }
+  ],
+  "values": [
+    {
+      "name": "audit share",
+      "value": "0.05",
+      "why": "User decision 2026-09-24: auto-approve proven corrections with a random 5% checked by a person.",
+      "source": "conversation 2026-09-24",
+      "read_at": "dcp_restore_citations --audit-share default",
+      "if_missing": "defaults to 5%"
+    },
+    {
+      "name": "unlabelled rule reach",
+      "value": "3 lines",
+      "why": "A rule with no label of its own starts right under its heading; further means it spilled over from the previous rule (woollahra B1.1.5).",
+      "source": "woollahra dry run 2026-09-24",
+      "read_at": "citation_derive._candidates",
+      "if_missing": "n/a - constant"
+    },
+    {
+      "name": "chapter leading share",
+      "value": ">= 60%",
+      "why": "A chapter's proven codes must mostly share a leading part before it is used to refuse fixes that leave the chapter (B3.7 -> E1).",
+      "source": "woollahra dry run 2026-09-24",
+      "read_at": "citation_derive.chapter_leading",
+      "if_missing": "no majority means no chapter constraint is claimed"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Rows to correct: the DQ-111 served set for one council, with document_id and section_header",
+      "file_line": "scripts/dcp_restore_citations.py plan_council (probe.SERVED_SQL)",
+      "where_clause": "rp.is_current AND rp.v2_is_actionable AND rp.source_council IS NOT NULL AND rp.source_council = %s, joined to an active registry PDF"
+    },
+    {
+      "purpose": "Identity collision check before any write",
+      "file_line": "scripts/dcp_restore_citations.py drop_collisions",
+      "where_clause": "is_current AND id <> %s AND document_id, ref_number, section_header, md5(provision_text) all equal the planned row"
+    },
+    {
+      "purpose": "The correction itself",
+      "file_line": "scripts/dcp_restore_citations.py main",
+      "where_clause": "UPDATE ... WHERE id = %s AND is_current AND ref_number = <old ref> (a row changed since the dry run is left alone)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The stored text of a rule opens with the previous clause's last lines, so the heading above its start is wrong",
+      "what_happens": "The derived citation proves on the page but names the previous rule (woollahra B1.1.5 -> B1.1.4), a confident wrong fix.",
+      "mitigated": true,
+      "how": "An unlabelled rule must start within three lines of its heading; a label is never added to a row that had none.",
+      "repro": "python -m pytest tests/test_citation_derive.py -k never_added -q"
+    },
+    {
+      "scenario": "A heading from another chapter is the nearest code-shaped line above a rule on a figure page",
+      "what_happens": "B3.7 would be rewritten as E1, moving a rule into a chapter it does not belong to.",
+      "mitigated": true,
+      "how": "The fix must share the leading code most of the chapter's proven citations share, measured per chapter.",
+      "repro": "python -m pytest tests/test_citation_derive.py -k own_chapter -q"
+    },
+    {
+      "scenario": "The same objective wording is printed under two different sections of one chapter",
+      "what_happens": "Code would pick one arbitrarily and could correct a right citation into a wrong one.",
+      "mitigated": true,
+      "how": "More than one proving citation returns ambiguous; the row is left for a re-read or a person.",
+      "repro": "python -m pytest tests/test_citation_derive.py -k two_sections -q"
+    },
+    {
+      "scenario": "Rows to correct selection: a row outside the served set, or from another council, enters the plan",
+      "what_happens": "A superseded or non-actionable row, or another council's row, would be rewritten from the wrong PDF.",
+      "mitigated": true,
+      "how": "The plan reuses the DQ-111 probe's served-set query (is_current AND v2_is_actionable, one active registry PDF) filtered by source_council; the probe's real-DB test proves one row per served row.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_dq_probe_section_code_not_in_source_real_db.py -m database -o addopts= -q"
+    },
+    {
+      "scenario": "Identity collision check before any write: two rows, or a row and a planned fix, share one identity",
+      "what_happens": "uq_provisions_current_identity would abort the whole batch midway, or two rules would become indistinguishable.",
+      "mitigated": true,
+      "how": "drop_collisions checks each planned identity against current rows and against the batch itself, and skips and reports a clash.",
+      "repro": "python scripts/dcp_restore_citations.py --council woollahra  (dry run prints 'would collide' count; 0 on 2026-09-24)"
+    },
+    {
+      "scenario": "The correction itself: a row changes between the dry run and the --apply write",
+      "what_happens": "A later re-read or commit could be overwritten with a correction computed for text that no longer exists.",
+      "mitigated": true,
+      "how": "Each UPDATE is pinned to the old ref_number and is_current; a changed row updates zero rows, and a backup table precedes any write.",
+      "repro": "python scripts/dcp_restore_citations.py --council woollahra --apply  (prints WROTE n of m; n < m means rows moved)"
+    },
+    {
+      "scenario": "A page-mapped council is queued for re-read after AI extraction became the default everywhere",
+      "what_happens": "The page map read the flag as opt-in and ran the regex reader silently, reproducing the defect being fixed.",
+      "mitigated": true,
+      "how": "llm_reader_available decides; lint_extraction_defaults fails any raw AI_EXTRACTION read outside the switch.",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k call_site_no_longer -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None from merging. Writes happen only when a person runs dcp_restore_citations --apply or dcp_queue_reread --apply.",
+    "secrets": "Railway dcp-extract needs AI_MODEL and OPENAI_API_KEY (set by the user 2026-09-24).",
+    "other_repo": "None.",
+    "manual_verify": "After merge, confirm Railway dcp-extract deployed the merge commit; a page-mapped council re-read must print '[extractor] LLM document reader', not 'Page-range extraction'."
+  }
+}

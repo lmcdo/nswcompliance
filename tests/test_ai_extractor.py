@@ -302,16 +302,22 @@ class TestFidelityGateIsDecoupled:
 
     def test_the_call_site_no_longer_reads_AI_EXTRACTION(self):
         """Structural: the grading block must be gated on the new predicate.
-        Three OTHER AI_EXTRACTION sites are legitimate and must survive — it
-        swaps the extractor, selects that path per council, and runs railguards
-        that only mean anything for LLM output."""
+
+        This used to demand THREE raw AI_EXTRACTION reads. Two of them -- the
+        page-map choice and the LLM railguards -- read the flag as OPT-IN, and
+        after #1155 made it opt-out that silently sent every page-mapped council
+        to the regex reader and switched the railguards off (found 2026-09-24).
+        The test was pinning the bug. Now only the switch reads the env; the
+        other two ask llm_reader_available() and which reader actually ran."""
         mod = self._load()
         src = __import__("pathlib").Path(mod.__file__).read_text(encoding="utf-8")
         code = "\n".join(l for l in src.splitlines() if not l.lstrip().startswith("#"))
         assert "if fidelity_gate_enabled():" in code
-        assert code.count('os.getenv("AI_EXTRACTION", "").strip().lower()') == 3, (
-            "expected exactly the three legitimate AI_EXTRACTION sites to remain"
+        assert code.count('os.getenv("AI_EXTRACTION", "").strip().lower()') == 1, (
+            "only ai_extraction_enabled() may read AI_EXTRACTION itself"
         )
+        assert "ai_on = llm_reader_available()" in code
+        assert 'if reader_used.startswith("llm"):' in code
 
 
 def _one_page_pdf(tmp_path, pages: int = 1):
@@ -932,3 +938,19 @@ class TestEmptyParseRetry:
         provs = _call_and_parse_with_empty_retry("sonnet", b"%PDF", "prompt")
         assert provs == []
         assert calls["n"] == 1 + _ai_extractor_mod._EMPTY_PARSE_MAX_RETRIES
+
+
+def test_a_named_model_without_its_key_is_not_a_reader(monkeypatch):
+    """Cross-review 2026-09-24: AI_MODEL=sol with no OPENAI_API_KEY would bypass a
+    council's page map for a reader that cannot run."""
+    import importlib
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    dx = importlib.import_module("scripts.dcp_extract_changed")
+    monkeypatch.delenv("AI_EXTRACTION", raising=False)
+    monkeypatch.setenv("AI_MODEL", "sol")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    assert dx.llm_reader_available() is False
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    assert dx.llm_reader_available() is True
+    monkeypatch.setenv("AI_EXTRACTION", "0")
+    assert dx.llm_reader_available() is False
