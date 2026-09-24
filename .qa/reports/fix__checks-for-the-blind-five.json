@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "The ledger polices a declared status in both directions -- fixed-but-failing and open-but-passing both go red -- for every row that HAS a check. A row declared open with `check: null` is the one state it cannot see: it can rot, be silently fixed, or be quietly wrong, and nothing says so. Five rows sat there. This closes that blind spot to zero and lowers the ratchet so it cannot reopen. Critical because a check written wrong is worse than none -- it sends someone to repair working code -- and three of the five detectors here were wrong on their first draft.",
-  "commit_hash": "9a9e7d22",
+  "commit_hash": "92bb57a6",
   "files": [
     "scripts/dq_probe_unchecked_rows.py",
     "tests/test_dq_probe_unchecked_rows.py",
@@ -24,7 +24,27 @@
     "enrichment/config/northern_beaches_config.py",
     "enrichment/extractors/applicability_tagger.py",
     "tests/test_northern_beaches_whole_dcp_scope.py",
-    "tests/test_dcp_approve_graded_real_db.py"
+    "tests/test_dcp_approve_graded_real_db.py",
+    ".githooks/pre-commit",
+    ".githooks/pre-push",
+    ".gitignore",
+    "enrichment/config/__init__.py",
+    "enrichment/config/parramatta_config.py",
+    "enrichment/rule_extraction_pipeline.py",
+    "scripts/outreach_claim_checks.py",
+    "scripts/retag_applicability_slug_docids.py",
+    "scripts/scrape_lep_land_use.py",
+    "scripts/sync_v2_to_supabase.py",
+    "tests/test_dcp_extract_changed.py",
+    "tests/test_dq105_watched_councils.py",
+    "tests/test_dq107_one_code_two_plans.py",
+    "tests/test_dq108_rules_grounded_in_their_own_text.py",
+    "tests/test_dq109_shared_pdf_registry_rows.py",
+    "tests/test_every_zone_writer_consults_ground_truth.py",
+    "tests/test_parramatta_numbered_parts_scope.py",
+    "tests/test_retag_narrowing_is_classified.py",
+    "tests/test_shared_pdf_page_slicing.py",
+    "tests/test_sync_v2_to_supabase_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "Read-only throughout; no statement in this change writes. dcp_plan_as_at (23 columns, 28 rows, keyed by `lga` -- which is DQ-43's premise, confirmed not assumed), dcp_chapter_registry, regulatory_provisions, information_schema. `url_page_last_status` confirmed ABSENT, which is what DQ-58's own note prescribed building.",
