@@ -1,7 +1,7 @@
 {
   "tier": "critical",
-  "justification": "The ledger polices a declared status in both directions -- fixed-but-failing and open-but-passing both go red -- for every row that HAS a check. A row declared open with `check: null` is the one state it cannot see: it can rot, be silently fixed, or be quietly wrong, and nothing says so. Five rows sat there. This closes that blind spot to zero and lowers the ratchet so it cannot reopen. Critical because a check written wrong is worse than none -- it sends someone to repair working code -- and three of the five detectors here were wrong on their first draft.",
-  "commit_hash": "92bb57a6",
+  "justification": "The ledger polices a declared status in both directions -- fixed-but-failing and open-but-passing both go red -- for every row that HAS a check. A row declared open with `check: null` is the one state it cannot see: it can rot, be silently fixed, or be quietly wrong, and nothing says so. Five rows sat there. This closes that blind spot to zero and lowers the ratchet so it cannot reopen. Critical because a check written wrong is worse than none -- it sends someone to repair working code -- and three of the five detectors here were wrong on their first draft. | DQ-111 (same branch, 2026-09-24): served provisions carried clause numbers their council never printed -- the extraction prompt's own example 'C4.9' among them -- and the fidelity gate stripped the code before checking. citation_proof proves a code against the page's lines; the gate and the ledger now share it; the prompt copies instead of composing.",
+  "commit_hash": "3ec58d66",
   "files": [
     "scripts/dq_probe_unchecked_rows.py",
     "tests/test_dq_probe_unchecked_rows.py",
@@ -44,7 +44,14 @@
     "tests/test_parramatta_numbered_parts_scope.py",
     "tests/test_retag_narrowing_is_classified.py",
     "tests/test_shared_pdf_page_slicing.py",
-    "tests/test_sync_v2_to_supabase_real_db.py"
+    "tests/test_sync_v2_to_supabase_real_db.py",
+    "scripts/citation_proof.py",
+    "scripts/dq_probe_section_code_not_in_source.py",
+    "scripts/ai_extractor.py",
+    "tests/test_citation_proof.py",
+    "tests/test_dq111_section_code_not_in_source.py",
+    "tests/test_dcp_fidelity_gate.py",
+    "tests/test_ai_extractor.py"
   ],
   "pre_impl": {
     "existing_data": "Read-only throughout; no statement in this change writes. dcp_plan_as_at (23 columns, 28 rows, keyed by `lga` -- which is DQ-43's premise, confirmed not assumed), dcp_chapter_registry, regulatory_provisions, information_schema. `url_page_last_status` confirmed ABSENT, which is what DQ-58's own note prescribed building.",
@@ -95,6 +102,34 @@
       "input": "The council's own text from one row, and the whole chapter's extracted text.",
       "output": "Sorted distinct HOSTS the row cites that appear nowhere in the chapter.",
       "if_none": "An empty chapter returns [] -- no source URLs means no basis for comparison, and accusing every URL because the source text failed to extract would fire hardest on the rows already in trouble. A host the source carries in truncated form is accepted by a prefix test in either direction: a line wrap that eats `au/...` is a broken link, not an invented source."
+    },
+    {
+      "name": "citation_proof.prove_citation / prove_citation_any",
+      "file_line": "scripts/citation_proof.py",
+      "input": "A row's ref_number, its stored provision text, the chapter PDF's lines in both reading orders, and an optional page hint.",
+      "output": "A status of proven, imprecise, not_proven, text_not_found or unjudged, with the failing reason and the evidence line.",
+      "if_none": "An empty or wordless ref is unjudged with a named reason; wording that cannot be located is text_not_found and is never proven."
+    },
+    {
+      "name": "dcp_fidelity_gate.ground_row(readings=) / gate_chapter",
+      "file_line": "scripts/dcp_fidelity_gate.py",
+      "input": "One queued row's text and ref, the flattened page strings, and the chapter's line readings from citation_proof.",
+      "output": "The row flagged with 'citation not proven on its page' whenever the proof fails or is only imprecise, else graded as before.",
+      "if_none": "If the chapter's lines cannot be read, every graded row in that chapter is flagged unchecked rather than grounded on words alone."
+    },
+    {
+      "name": "dcp_approve_graded._classify",
+      "file_line": "scripts/dcp_approve_graded.py",
+      "input": "A pending row's fidelity status, its fidelity detail string, verified page and stored text from the queue.",
+      "output": "None with a re-read reason for any row whose detail carries the citation finding, so it is never approved by class.",
+      "if_none": "Before this rule a citation-only flag had no unmatched number and fell through to flagged_other, which approves."
+    },
+    {
+      "name": "ai_extractor.dedupe_provisions + PROMPT",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "The provisions the model returned for a chapter, each carrying a code, a title and the provision text.",
+      "output": "Blank codes and exact repeats of the same code and text are dropped; different rules sharing one code are both kept.",
+      "if_none": "The prompt forbids an empty code because provisions_to_sections silently drops a provision whose code is blank."
     }
   ],
   "values": [
@@ -162,6 +197,12 @@
       "purpose": "Timeout risk on the heaviest query.",
       "file_line": "EXPLAIN (ANALYZE, BUFFERS) over probe_43's join",
       "where_clause": "Execution Time 59.043 ms. No batching needed; well inside the 30s statement timeout."
+    },
+    {
+      "purpose": "DQ-111 served set: every current actionable council row and its active source PDF",
+      "file_line": "scripts/dq_probe_section_code_not_in_source.py SERVED_SQL",
+      "where_clause": "rp.is_current AND rp.v2_is_actionable AND rp.source_council IS NOT NULL, joined to dcp_chapter_registry ON council+chapter_key AND reg.is_active",
+      "verified": "14,509 rows, each joins exactly one active registry row (0 with >1) -- measured 2026-09-24"
     }
   ],
   "break_it": [
@@ -360,6 +401,48 @@
       "mitigated": true,
       "how": "A @pytest.mark.database test runs the real script against the real queue and asserts the FULL status census is unchanged -- a census rather than a pending count, so a row moved between two other statuses would still show. Under the stubbed driver the plan is empty and prints 'to approve: 0', which reads exactly like an already-clear queue, so this cannot be tested offline.",
       "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_dcp_approve_graded_real_db.py -k dry -o addopts="
+    },
+    {
+      "scenario": "A cited code is printed elsewhere in the PDF but not as the heading above the rule",
+      "what_happens": "The first DQ-111 probe passed it: Leichhardt rows citing G10.5.2 under a printed G6.12 counted as fine because G10.5.2 exists on another page.",
+      "mitigated": true,
+      "how": "The proof requires the nearest heading of the code's family above the rule; a same-family heading in between ends the scope.",
+      "repro": "python -m pytest tests/test_citation_proof.py -k shallower_heading -q"
+    },
+    {
+      "scenario": "A page number such as City of Sydney's 6.2-20 is served as if it were a clause",
+      "what_happens": "Row 95840 cited its own page footer. A footer read as a heading can also prove a clause that is printed nowhere.",
+      "mitigated": true,
+      "how": "Margin page numbers are removed per page; a test pins a section-scoped footer beside a list item.",
+      "repro": "python -m pytest tests/test_citation_proof.py -k page_number -q"
+    },
+    {
+      "scenario": "A row flagged only for its citation reaches the class-based approve script",
+      "what_happens": "It carries no unmatched number, falls through to flagged_other and is approved, so the gate's finding changes nothing.",
+      "mitigated": true,
+      "how": "_classify returns None for any detail carrying citation_proof.CITATION_FINDING before any class is considered.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_dcp_approve_graded_real_db.py -m database -o addopts= -k citation -q"
+    },
+    {
+      "scenario": "The chapter PDF's lines cannot be read while its page text can",
+      "what_happens": "Without a guard every row would be graded on words alone and pass with an unproven citation.",
+      "mitigated": true,
+      "how": "gate_chapter flags every graded row in that chapter as citation unchecked; a mutation removing this is caught.",
+      "repro": "python -m pytest tests/test_dcp_fidelity_gate.py -k unreadable -q"
+    },
+    {
+      "scenario": "Two different rules come back from the model with the same printed code",
+      "what_happens": "dedupe_provisions kept the first per code, so the second rule vanished before any stage could see it.",
+      "mitigated": true,
+      "how": "Dedupe keys on code and whitespace-normalised text; the extractor suffixes the repeated number downstream.",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k sharing_a_code -q"
+    },
+    {
+      "scenario": "Someone puts a concrete example code back into the extraction prompt text",
+      "what_happens": "The model copies the example when it cannot see a number, which is how C4.9 was served as a citation.",
+      "mitigated": true,
+      "how": "A test fails on any section-shaped or label-shaped code in PROMPT; it was checked against the old example.",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k no_concrete_code -q"
     }
   ],
   "post_merge": {
