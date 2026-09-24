@@ -75,7 +75,7 @@ def chapter_lines(s3, bucket, r2_path: str, cache_dir: Path):
                 for pno, page in enumerate(doc, 1):
                     width = width or page.rect.width
                     for block in page.get_text("dict")["blocks"]:
-                        for ln in block.get("lines", []):
+                        for ln in block.get("lines") or []:
                             t = " ".join(s["text"] for s in ln["spans"]).strip().lower()
                             if t:
                                 raw.append([pno, ln["bbox"][1], ln["bbox"][0], t])
@@ -91,8 +91,24 @@ def kind_of(verdict: dict) -> str:
     return (verdict["detail"] or "").split(": ", 1)[-1].split(":")[0].split(";")[0]
 
 
+# prior-art-checked: reuse not viable because this is the probe's OWN existing
+# SELECT (SERVED_SQL / SERVED_COUNT_SQL, unchanged) moved out of main() so the
+# real-DB test can call exactly what the probe runs -- no new data source.
+def fetch_served(conn, council: str | None = None) -> tuple[int, list]:
+    """(served council rows in total, the rows to judge). Read-only."""
+    cur = conn.cursor()
+    cur.execute(SERVED_COUNT_SQL)
+    served_total = cur.fetchone()[0]
+    sql, params = SERVED_SQL, []
+    if council:
+        sql += " AND rp.source_council = %s"
+        params.append(council)
+    cur.execute(sql, params)
+    return served_total, cur.fetchall()
+
+
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "DQ-111").strip().splitlines()[0])
     ap.add_argument("--cache-dir", default=str(Path(tempfile.gettempdir()) / "dq111_lines"))
     ap.add_argument("--council", help="Limit to one council.")
     ap.add_argument("--csv", help="Write every row that is not proven here.")
@@ -116,15 +132,10 @@ def main() -> int:
     cache_dir = Path(args.cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    cur = conn.cursor()
-    cur.execute(SERVED_COUNT_SQL)
-    served_total = cur.fetchone()[0]
-    sql, params = SERVED_SQL, []
-    if args.council:
-        sql += " AND rp.source_council = %s"
-        params.append(args.council)
-    cur.execute(sql, params)
-    rows = cur.fetchall()
+    try:
+        served_total, rows = fetch_served(conn, args.council)
+    finally:
+        conn.close()
     print(f"served council rows: {served_total}  ({SERVED_COUNT_SQL})")
     print(f"rows joined to an active registry PDF: {len(rows)}")
 
@@ -171,7 +182,8 @@ def main() -> int:
                 per_chapter[f"{council}/{chapter}"] += 1
                 failing.append((rid, council, chapter, ref, v["status"], k, v["detail"]))
                 if len(examples[council]) < args.examples:
-                    examples[council].append(f"{chapter}: {ref.split('__')[-1]!r} -> {v['detail']}")
+                    tail = (ref or "").rsplit("__", 1)[-1]
+                    examples[council].append(f"{chapter}: {tail!r} -> {v['detail']}")
         print(f"  [{n}/{len(by_pdf)}] {len(prow):5} rows  {r2_path}", file=sys.stderr)
 
     judged = status["proven"] + status["imprecise"] + status["not_proven"] + status["text_not_found"]

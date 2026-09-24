@@ -226,7 +226,7 @@ def read_raw_lines(pdf_path: str) -> tuple[list[Line], float | None]:
         for pno, page in enumerate(doc, 1):
             width = width or page.rect.width
             for block in page.get_text("dict")["blocks"]:
-                for ln in block.get("lines", []):
+                for ln in block.get("lines") or []:
                     t = " ".join(s["text"] for s in ln["spans"]).strip().lower()
                     if t:
                         raw.append(Line(pno, ln["bbox"][1], ln["bbox"][0], t))

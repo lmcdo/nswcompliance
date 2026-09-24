@@ -141,7 +141,7 @@ def dedupe_provisions(provs: list[dict]) -> list[dict]:
     out: list[dict] = []
     for p in provs:
         code = str(p.get("code", "")).strip()
-        key = (code, " ".join(str(p.get("text", "")).split()))
+        key = (code, " ".join(str(p.get("text") or "").split()))
         if code and key not in seen:
             seen.add(key)
             out.append(p)
