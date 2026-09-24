@@ -4395,7 +4395,42 @@ def chapter_page_slice(cur, chapter: dict) -> tuple[tuple[int, int] | None, str 
     key = chapter["chapter_key"]
     mine = next((r for r in rows if r[0] == key), None)
     if mine and mine[1] is not None and mine[2] is not None:
-        return (int(mine[1]), int(mine[2])), None
+        lo, hi = int(mine[1]), int(mine[2])
+        # A DECLARED RANGE ITS OWN PROVISIONS CONTRADICT IS NOT A SLICE.
+        #
+        # Raised by the pre-push review, and it is the sharp edge of this
+        # design. page_start/page_end mean a page COUNT on 121 rows and a
+        # front-matter offset on 14, and once a row shares a PDF there is
+        # nothing in the columns themselves to tell a slice from either. A row
+        # carrying an old page-count of 1-100 against a 400-page shared file
+        # would be read as a slice and pages 101-400 would vanish, silently.
+        #
+        # No row is in that state today -- measured 2026-09-24, zero shared-PDF
+        # rows declare a range -- but the fix for DQ-107 and DQ-109 IS to add
+        # ranges to shared-PDF rows, so the intended repair is what creates the
+        # hazard. Guarding it now is cheaper than remembering to later.
+        #
+        # The chapter's own live provisions are the evidence, and they are
+        # evidence of what was actually READ out of this document rather than
+        # of what someone typed into a column. A chapter with no provisions yet
+        # returns NULL here and is not judged: there is nothing to contradict,
+        # and nothing to lose.
+        cur.execute(
+            """SELECT min(pdf_page)::int, max(pdf_page)::int
+                 FROM regulatory_provisions
+                WHERE source_council = %s AND source_chapter_key = %s
+                  AND is_current AND pdf_page IS NOT NULL""",
+            (chapter["council"], key),
+        )
+        seen = cur.fetchone()
+        if seen and seen[0] is not None and (seen[0] < lo or seen[1] > hi):
+            return None, (
+                f"{key} declares pages {lo}-{hi}, but its live provisions run "
+                f"{seen[0]}-{seen[1]}. The range contradicts what was read from "
+                f"this document, so it is a page COUNT or a stale range rather "
+                f"than a slice, and extracting on it would drop served "
+                f"controls. Correct page_start/page_end before re-running.")
+        return (lo, hi), None
 
     others = ", ".join(sorted(r[0] for r in rows if r[0] != key))
     return None, (

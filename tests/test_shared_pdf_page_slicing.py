@@ -107,24 +107,37 @@ class TestOwnedPages:
 class TestWhenToSlice:
     """`chapter_page_slice` decides. Its inputs are registry rows."""
 
-    def _cur(self, rows):
+    def _cur(self, rows, seen=None):
+        """Answers the registry query, then the provisions min/max aggregate.
+
+        `seen` is (min_pdf_page, max_pdf_page) of the chapter's live provisions,
+        or None for a chapter that has none yet.
+        """
         class C:
+            def __init__(self):
+                self.calls = 0
+
             def execute(self, *_a, **_k):
+                self.calls += 1
                 return None
 
             def fetchall(self):
                 return rows
 
+            def fetchone(self):
+                return seen if seen is not None else (None, None)
+
             def close(self):
                 return None
         return C()
 
-    def _call(self, rows, key="mine"):
+    def _call(self, rows, key="mine", seen=None):
         from dcp_extract_changed import chapter_page_slice
 
         return chapter_page_slice(
-            self._cur(rows),
-            {"chapter_key": key, "r2_current_path": "r2://f.pdf"})
+            self._cur(rows, seen),
+            {"chapter_key": key, "council": "somewhere",
+             "r2_current_path": "r2://f.pdf"})
 
     def test_a_lone_row_is_never_sliced(self):
         """Owns its PDF. This is the 135-row case, including every row whose
@@ -163,4 +176,60 @@ class TestWhenToSlice:
         from dcp_extract_changed import chapter_page_slice
 
         assert chapter_page_slice(
-            self._cur([]), {"chapter_key": "k", "r2_current_path": None}) == (None, None)
+            self._cur([]),
+            {"chapter_key": "k", "council": "c",
+             "r2_current_path": None}) == (None, None)
+
+
+class TestAPageCountIsNotASlice:
+    """The sharp edge, raised by the pre-push review.
+
+    `page_start`/`page_end` mean a page COUNT on 121 rows and a front-matter
+    offset on 14. Once a row SHARES a PDF there is nothing in the columns to
+    tell any of those apart from a slice — so an old page-count of 1-100 on a
+    400-page shared file would be read as a slice and pages 101-400 would
+    vanish silently.
+
+    No row is in that state today (zero shared-PDF rows declare a range,
+    measured 2026-09-24), but the fix for DQ-107 and DQ-109 is precisely to add
+    ranges to shared-PDF rows. **The intended repair is what creates the
+    hazard**, which is why the guard exists before the repair does.
+
+    The evidence is the chapter's own live provisions: what was actually read
+    out of the document, not what someone typed into a column.
+    """
+
+    _cur = TestWhenToSlice._cur
+    _call = TestWhenToSlice._call
+
+    def test_the_reviews_scenario_is_refused(self):
+        """Two rows on a 400-page PDF; this one says 1-100 but its provisions
+        run to page 380. Extracting on that range drops 280 pages of served
+        controls."""
+        rng, refusal = self._call(
+            [("mine", 1, 100), ("other", None, None)], seen=(3, 380))
+        assert rng is None
+        assert refusal and "contradicts" in refusal
+        assert "1-100" in refusal and "3-380" in refusal
+
+    def test_a_provision_before_the_range_also_refuses(self):
+        """A range starting after content that is already live means the start
+        is wrong, not just the end."""
+        rng, refusal = self._call(
+            [("mine", 40, 60), ("other", None, None)], seen=(8, 55))
+        assert rng is None and refusal
+
+    def test_a_range_its_provisions_sit_inside_is_honoured(self):
+        """The confusable negative. Cumberland's houses sub-part: pages 8-25
+        declared, provisions read on pages 8-25."""
+        rng, refusal = self._call(
+            [("mine", 8, 25), ("other", 31, 35)], seen=(8, 25))
+        assert rng == (8, 25) and refusal is None
+
+    def test_a_chapter_with_no_provisions_yet_is_not_judged(self):
+        """A new slice has nothing to contradict and nothing to lose. Judging
+        it would block every first extraction, which is the whole point of the
+        feature."""
+        rng, refusal = self._call(
+            [("mine", 8, 25), ("other", 31, 35)], seen=(None, None))
+        assert rng == (8, 25) and refusal is None
