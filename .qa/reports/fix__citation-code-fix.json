@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Served DCP rules carry clause numbers their council never printed (DQ-111). This branch corrects them from the council's own page where that is provably safe, queues the chapters that need a re-read, and fixes a regression that sent every page-mapped council (ashfield, 25 ku_ring_gai chapters, waverley) to the regex reader and switched the LLM railguards off since 2026-09-21. Critical because it writes citations users see, and a wrong correction is worse than an honest refusal.",
-  "commit_hash": "7cd4b053",
+  "commit_hash": "2d39c624",
   "files": [
     "scripts/citation_derive.py",
     "scripts/dcp_restore_citations.py",
