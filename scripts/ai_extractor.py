@@ -555,43 +555,55 @@ class ChunkLoss(Exception):
     """A chunk containing substantial text returned no provisions."""
 
 
-#: Words a page must carry to be able to hold a rule. A page with none of them
-#: -- a contents page, a suburb history, a glossary -- legitimately yields no
-#: provisions, and an empty answer for it is not content loss.
-_RULE_LANGUAGE = re.compile(
+#: Signs a page can hold a rule: rule words, OR any labelled item at a line
+#: start -- C1, O2, PC1, "a)", "1.", "ii)", a bullet. DCP controls are nearly
+#: always labelled, so an imperative with none of the words ("Retain existing
+#: trees") still counts by its label; narrative history carries neither.
+_RULE_WORDS = re.compile(
     r"\b(shall|must|should|required|requirements?|minimum|maximum|controls?|objectives?|"
-    r"not permitted|is to be|are to be)\b", re.IGNORECASE)
+    r"not permitted|is to be|are to be|provide|retain|avoid|ensure)\b", re.IGNORECASE)
+_ITEM_LABEL = re.compile(
+    r"(?m)^\s*(?:\(?[a-z]{1,3}\d{1,3}[a-z]?[.)]?\s|\(?\d{1,2}[.)]\s|\(?[a-z][.)]\s"
+    r"|\(?[ivx]{1,4}\)\s|[•■▪●–-]\s)", re.IGNORECASE)
+#: A contents line: a title, dot leaders, a page number. A table of numeric
+#: standards ("Maximum building height 8.5") ends in digits too, but has no leaders.
+_CONTENTS_LINE = re.compile(r"(?:\.{4,}|…{2,}|(?:\. ){3,})\s*\d{1,4}\s*$")
+#: One rule-bearing page this size returning nothing is loss -- measured per
+#: page, so a single page of controls in a batch of history still counts.
+RULE_PAGE_MIN_CHARS = 300
 
 
 def _is_contents_page(text: str) -> bool:
-    """Most lines end in a page number: a table of contents, not rules."""
+    """Most lines are title .... page-number: a table of contents, not rules."""
     lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
     if len(lines) < 8:
         return False
-    return sum(1 for ln in lines if ln[-1:].isdigit()) / len(lines) >= 0.5
+    return sum(1 for ln in lines if _CONTENTS_LINE.search(ln)) / len(lines) >= 0.5
 
 
-def _chunk_rule_chars(reader, a: int, b: int) -> int:
-    """Characters in pages [a, b) that COULD hold a rule: not a contents page,
-    and carrying rule language. What the chunk-loss guard should weigh.
+def _rule_bearing_pages(reader, a: int, b: int) -> list[tuple[int, int]]:
+    """(page number, characters) for pages in [a, b) that could hold a rule:
+    not a contents page, and carrying rule words or labelled items. A page
+    pypdf cannot read counts as rule-bearing, as before -- the guard errs
+    toward reporting loss.
 
     Leichhardt part-c-s2 was refused twice (2026-09-24) for pages 1-12: five
     contents pages and seven suburb-history profiles, 31,028 characters and not
     one control -- the model was right to return nothing. Counting all text made
-    that indistinguishable from the marrickville loss this guard exists for. A
-    page pypdf cannot read still counts in full, as before.
+    that indistinguishable from marrickville's real loss of 94 pages.
     """
-    total = 0
+    out = []
     for i in range(a, min(b, len(reader.pages))):
         try:
             text = reader.pages[i].extract_text() or ""
         except Exception:
-            total += CHUNK_LOSS_MIN_TEXT_CHARS
+            out.append((i + 1, CHUNK_LOSS_MIN_TEXT_CHARS))
             continue
-        if _is_contents_page(text) or not _RULE_LANGUAGE.search(text):
+        if _is_contents_page(text):
             continue
-        total += len(text)
-    return total
+        if _RULE_WORDS.search(text) or _ITEM_LABEL.search(text):
+            out.append((i + 1, len(text)))
+    return out
 
 
 # ── entrypoint ───────────────────────────────────────────────────────────────
@@ -615,9 +627,9 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
             # content loss, and accepting it silently is what cost marrickville
             # 94 pages of source document. A genuinely blank chunk has no text
             # and is passed over without complaint.
-            chars = _chunk_rule_chars(reader, a, b)
-            if chars >= CHUNK_LOSS_MIN_TEXT_CHARS:
-                lost.append({"pages": (a + 1, b), "text_chars": chars})
+            bearing = _rule_bearing_pages(reader, a, b)
+            if any(n >= RULE_PAGE_MIN_CHARS for _p, n in bearing):
+                lost.append({"pages": (a + 1, b), "text_chars": sum(n for _p, n in bearing)})
         for p in chunk_provs:
             p.setdefault("page", a + 1)  # approximate: first page of the chunk
             collected.append(p)

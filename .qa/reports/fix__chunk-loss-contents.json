@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "The AI reader's chunk-loss guard refused whole chapters when a 12-page batch held only contents pages and narrative history: Leichhardt part-c-s2 twice (31,028 characters, not one control). It now weighs only pages that can hold a rule. Critical because this guard is what stops a chapter losing pages silently (marrickville, 94 pages).",
-  "commit_hash": "17be5cb1",
+  "commit_hash": "985f3efe",
   "files": [
     "scripts/ai_extractor.py",
     "tests/test_ai_chunk_loss.py"
@@ -22,27 +22,35 @@
   },
   "functions": [
     {
-      "name": "ai_extractor._chunk_rule_chars",
+      "name": "ai_extractor._rule_bearing_pages",
       "file_line": "scripts/ai_extractor.py",
       "input": "The pypdf reader for the chapter and a page range [a, b) of one batch sent to the model.",
-      "output": "Characters on pages in the range that are not contents pages and carry rule language, which the guard weighs.",
-      "if_none": "A page pypdf cannot read counts as CHUNK_LOSS_MIN_TEXT_CHARS, so unreadable pages still trip the guard."
+      "output": "(page, characters) for pages that are not contents and carry rule words or labelled items; any one of 300+ chars returning nothing is loss.",
+      "if_none": "A page pypdf cannot read counts as rule-bearing at CHUNK_LOSS_MIN_TEXT_CHARS, so unreadable pages still trip the guard."
     },
     {
       "name": "ai_extractor._is_contents_page",
       "file_line": "scripts/ai_extractor.py",
       "input": "The extracted text of one PDF page, split into its non-empty lines for the page-number check.",
-      "output": "True when at least eight lines exist and half or more of them end in a page number, as a contents page does.",
+      "output": "True when at least eight lines exist and half or more end in dot leaders then a page number, as contents lines do.",
       "if_none": "Empty or short text returns False, so the page falls through to the rule-language check instead."
     }
   ],
   "values": [
     {
-      "name": "contents share",
-      "value": ">= 50% of >= 8 lines end in a digit",
-      "why": "Leichhardt part-c-s2 contents pages measured 38-46 of 39-49 lines.",
-      "source": "PDF pages 1-5, 2026-09-24",
-      "read_at": "_is_contents_page",
+      "name": "rule page minimum",
+      "value": "300 characters on one page",
+      "why": "Measured per page so one page of controls in a batch of history still counts (cross-review finding 3).",
+      "source": "cross-review 2026-09-25",
+      "read_at": "RULE_PAGE_MIN_CHARS",
+      "if_missing": "n/a - constant"
+    },
+    {
+      "name": "contents line",
+      "value": "dot leaders then a page number",
+      "why": "A table of numeric standards ends in digits too but has no leaders (cross-review finding 2).",
+      "source": "cross-review 2026-09-25",
+      "read_at": "_CONTENTS_LINE",
       "if_missing": "n/a - constant"
     }
   ],
@@ -82,12 +90,19 @@
       "mitigated": true,
       "how": "Only contents and rule-free pages are excluded; the controls' characters still count and exceed the threshold.",
       "repro": "python -m pytest tests/test_ai_chunk_loss.py -q"
+    },
+    {
+      "scenario": "Controls written as bare imperatives with none of the rule words, and the model returns nothing",
+      "what_happens": "Pages like 'Retain existing trees' would not count and the lost controls would pass (cross-review finding 1).",
+      "mitigated": true,
+      "how": "A labelled item at a line start (C1, O2, a), 1., ii), a bullet) makes the page rule-bearing on its own.",
+      "repro": "python -m pytest tests/test_ai_chunk_loss.py -k unworded -q"
     }
   ],
   "post_merge": {
     "db_reset": "None.",
     "secrets": "None.",
     "other_repo": "None.",
-    "manual_verify": "Re-read leichhardt/part-c-s2-urban-character: it must enqueue, not raise ChunkLoss at pages 1-12."
+    "manual_verify": "Known and accepted: leichhardt part-c-s2 is still refused at pages 1-12 because page 6's introduction carries 'should' and 'objectives'. Its live rows are unchanged."
   }
 }
