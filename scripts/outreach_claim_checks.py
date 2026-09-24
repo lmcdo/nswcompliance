@@ -551,8 +551,9 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
     "OC-11": [
         lambda: sql_count("councils whose LEP zones are all complete",
                           "SELECT count(*) FROM (SELECT lga FROM lep_zone_coverage GROUP BY lga "
-                          "HAVING bool_and(COALESCE(is_complete, FALSE))) t", expect=26),
-    ],
+                          "HAVING bool_and(COALESCE(is_complete, FALSE))) t", expect=28),
+    ],  # 26 -> 28 on 2026-09-24 (user decision): the repaired zone scraper added
+        # Wollongong and Newcastle. Exact on purpose, so the claim moves with the data.
     # Reworded 2026-09-14: "No council data is stored" was contradicted by the council PDFs kept so each rule
     # can link to its page. The claim is now what is true, and the retired wording must stay gone.
     "OC-12": [

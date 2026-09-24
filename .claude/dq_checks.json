@@ -1118,7 +1118,7 @@
     },
     "OC-11": {
       "kind": "outreach_claim",
-      "claim": "Permitted uses by zone for 26 councils.",
+      "claim": "Permitted uses by zone for 28 councils.",
       "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
       "declared": "true",
       "check": [
@@ -1127,9 +1127,9 @@
         "OC-11"
       ],
       "blocks_outreach": true,
-      "passes_when": "exit 0 - 26 councils have every LEP zone marked complete",
+      "passes_when": "exit 0 - 28 councils have every LEP zone marked complete",
       "red_when": "the declared state and the check disagree in either direction",
-      "verified": "2026-09-14: check passed on the gate's first full run against production"
+      "verified": "2026-09-14: check passed on the gate's first full run against production | 2026-09-24: 26 -> 28 by user decision after the repaired zone scraper completed Wollongong and Newcastle; check read 28 against production."
     },
     "OC-12": {
       "kind": "outreach_claim",
