@@ -302,16 +302,22 @@ class TestFidelityGateIsDecoupled:
 
     def test_the_call_site_no_longer_reads_AI_EXTRACTION(self):
         """Structural: the grading block must be gated on the new predicate.
-        Three OTHER AI_EXTRACTION sites are legitimate and must survive — it
-        swaps the extractor, selects that path per council, and runs railguards
-        that only mean anything for LLM output."""
+
+        This used to demand THREE raw AI_EXTRACTION reads. Two of them -- the
+        page-map choice and the LLM railguards -- read the flag as OPT-IN, and
+        after #1155 made it opt-out that silently sent every page-mapped council
+        to the regex reader and switched the railguards off (found 2026-09-24).
+        The test was pinning the bug. Now only the switch reads the env; the
+        other two ask llm_reader_available() and which reader actually ran."""
         mod = self._load()
         src = __import__("pathlib").Path(mod.__file__).read_text(encoding="utf-8")
         code = "\n".join(l for l in src.splitlines() if not l.lstrip().startswith("#"))
         assert "if fidelity_gate_enabled():" in code
-        assert code.count('os.getenv("AI_EXTRACTION", "").strip().lower()') == 3, (
-            "expected exactly the three legitimate AI_EXTRACTION sites to remain"
+        assert code.count('os.getenv("AI_EXTRACTION", "").strip().lower()') == 1, (
+            "only ai_extraction_enabled() may read AI_EXTRACTION itself"
         )
+        assert "ai_on = llm_reader_available()" in code
+        assert 'if reader_used.startswith("llm"):' in code
 
 
 def _one_page_pdf(tmp_path, pages: int = 1):

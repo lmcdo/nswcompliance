@@ -190,6 +190,31 @@ def main() -> int:
                                 f"stayed off for two months after the extractor it "
                                 f"guards had been hand-verified.")
 
+    # 1b. ...and nobody reads the raw flag around the switch.
+    #
+    # Check 1 proved ai_extraction_enabled() opt-out while two OTHER places in the
+    # same file read os.getenv("AI_EXTRACTION") as opt-in ("1"/"true"). Found
+    # 2026-09-24: every council with a page map was read by the regex reader, and
+    # the LLM railguards never ran on an LLM-read chapter, from #1155 until then.
+    # Only the switch itself may read the env; everyone else asks the switch.
+    src = read(EXTRACT, staged)
+    if src:
+        try:
+            tree = ast.parse(src)
+        except SyntaxError:
+            tree = None
+        owners = {"ai_extraction_enabled"}
+        for fn in (n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)) if tree else ():
+            for call in (c for c in ast.walk(fn) if isinstance(c, ast.Call)):
+                named = [a.value for a in call.args
+                         if isinstance(a, ast.Constant) and a.value == "AI_EXTRACTION"]
+                if named and fn.name not in owners:
+                    problems.append(
+                        f"{EXTRACT}:{call.lineno} {fn.name}() reads AI_EXTRACTION itself. "
+                        f"Ask ai_extraction_enabled() / llm_reader_available(): a raw read "
+                        f"is how the page-map path stayed opt-in after the switch went "
+                        f"opt-out.")
+
     # 2. the proof must stay mandatory
     for path, needles in MUST_CONTAIN.items():
         src = read(path, staged)
