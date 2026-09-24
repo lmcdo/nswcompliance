@@ -118,9 +118,19 @@ class ChapterLines:
     #: without it Warringah (1,600 rules) rescans every line per rule per reading.
     heads_at: dict = field(default_factory=dict)
     full_text: str = ""
+    #: Codes named by running headers ("e6 | sustainability"). Never a heading
+    #: for a rule, but evidence that a PARENT piece is the council's own:
+    #: Woollahra prints its chapter code only there and numbers sections
+    #: inside without it, so E6 > 1.1 has no other printed "e6".
+    header_codes: set = field(default_factory=set)
 
     @classmethod
-    def build(cls, raw: list[Line], page_width: float | None = None) -> "ChapterLines":
+    def build(cls, raw: list[Line], page_width: float | None = None,
+              keep_order: bool = False) -> "ChapterLines":
+        """keep_order: trust the PDF's own reading order (PyMuPDF block order)
+        instead of sorting each page top-to-bottom. Sorting interleaves a
+        two-column page line by line (Hornsby, Campbelltown), so a rule's
+        wording is never found intact."""
         by_page = collections.defaultdict(list)
         for ln in raw:
             by_page[ln.page].append(ln)
@@ -129,27 +139,32 @@ class ChapterLines:
             hits = sum(1 for x in pl if _TOC_LINE.search(x.text) and len(x.text) > 12)
             if pl and hits / len(pl) > 0.4:
                 toc.add(page)
-        # Running headers/footers repeat; a code line is kept even when it
-        # repeats (a section named in every footer is still its heading).
-        # ...but ONLY in the top and bottom margins. A council repeats real
-        # control wording per site -- Leichhardt prints "Buildings are to be
+        # Running headers/footers: a line repeated on 3+ pages, ONLY in the top
+        # and bottom margins. Everywhere, it deleted real control wording a
+        # council repeats per site -- Leichhardt prints "Buildings are to be
         # designed in accordance with the desired future character statement"
-        # under many sites -- and a repetition rule alone deleted the very line
-        # being cited.
-        bottom = max((x.y for x in raw), default=0.0)
+        # under many sites. A header that names a section ("chapter 7.6 belmore
+        # and lakemba") is still a header: the heading itself is printed once,
+        # in the body. Margins are per page because Canterbury-Bankstown mixes
+        # landscape and portrait pages, and a document-wide bottom left its
+        # landscape header mid-page, where it read as heading "7.6".
+        bottom = {p: max(x.y for x in pl) for p, pl in by_page.items()}
 
         def in_margin(ln):
-            return ln.y < 0.08 * bottom or ln.y > 0.92 * bottom
+            b = bottom[ln.page]
+            return ln.y < 0.08 * b or ln.y > 0.92 * b
 
         rep = collections.Counter(x.text for x in raw if in_margin(x))
-        furniture = {t for t, n in rep.items() if n >= 3 and not CODE_AT_START.match(t)}
+        furniture = {t for t, n in rep.items() if n >= 3}
         kept = []
         for page in sorted(by_page):
-            for ln in sorted(by_page[page], key=lambda x: (x.y, x.x)):
+            ordered = by_page[page] if keep_order else sorted(by_page[page], key=lambda x: (x.y, x.x))
+            for ln in ordered:
                 if in_margin(ln) and (ln.text in furniture or _PAGE_NUMBER.match(ln.text)):
                     continue
                 kept.append(ln)
         out = cls(kept, toc, page_width=page_width)
+        out.header_codes = {m.group(1) for t in furniture if (m := CODE_AT_START.match(t))}
         heads = collections.defaultdict(list)
         for i, ln in enumerate(kept):
             m = CODE_AT_START.match(ln.text)
@@ -168,6 +183,18 @@ class ChapterLines:
         return out
 
 
+def both_orders(raw: list[Line], page_width: float | None) -> tuple[ChapterLines, ChapterLines]:
+    """The same lines read two ways: the PDF's own reading order, and top-to-bottom.
+
+    Neither is right everywhere. Top-to-bottom interleaves a two-column page
+    (Hornsby); reading order can put a left-hand heading column AFTER the text
+    column it heads (Canterbury-Bankstown). A citation printed above its rule
+    in either reading is the council's; a wrong one has to fail in both.
+    """
+    return (ChapterLines.build(raw, page_width=page_width, keep_order=True),
+            ChapterLines.build(raw, page_width=page_width, keep_order=False))
+
+
 def load_lines(pdf_path: str) -> ChapterLines:
     """Read a PDF's lines with PyMuPDF (already a dependency) -- geometry the
     flattened page strings the gate grades words against do not keep."""
@@ -182,13 +209,13 @@ def load_lines(pdf_path: str) -> ChapterLines:
                     t = " ".join(s["text"] for s in ln["spans"]).strip().lower()
                     if t:
                         raw.append(Line(pno, ln["bbox"][1], ln["bbox"][0], t))
-    return ChapterLines.build(raw, page_width=width)
+    return ChapterLines.build(raw, page_width=width, keep_order=True)
 
 
 # -- proof -------------------------------------------------------------------------
 
 _RANK = {"absent": 0, "cross_ref_only": 1, "not_nearest": 2, "ancestor_missing": 3,
-         "item_missing": 4, "item_format": 5}
+         "item_missing": 4, "item_format": 5, "imprecise": 6}
 
 
 def _starts(text: str, code: str) -> bool:
@@ -213,7 +240,7 @@ def _heading_like(line: Line, page_width: float | None) -> bool:
             and (page_width is None or line.x < 0.75 * page_width))
 
 
-def _ends_scope(other: str, leaf: str) -> bool:
+def _ends_scope(other: str, leaf: str, item_family: str = "") -> bool:
     """Does a heading ``other``, printed between ``leaf`` and the rule, close leaf's scope?
 
     Same family (letter prefix) and either the same depth (8.2.39.6 after
@@ -222,12 +249,19 @@ def _ends_scope(other: str, leaf: str) -> bool:
     A bare number or an undotted, unprefixed line is a list item, never a
     heading here: "2." inside a section must not end it, and neither must a
     table cell "1.5 car space per service room" under section 3.2.
+
+    An undotted lettered code ("c11") in the row's OWN item family is an item
+    label, not a heading. Leichhardt Part C numbers sections C2.2.4.1 and its
+    controls C1..C11 in the same letter; reading "c11" as a closing heading
+    rejected correct rows by the hundred.
     """
     if other == leaf or leaf.startswith(other + ".") or other.startswith(leaf + "."):
         return False
     fam_o, depth_o = _shape(other)
     fam_l, depth_l = _shape(leaf)
     if fam_o != fam_l or ("." not in other and not fam_o):
+        return False
+    if "." not in other and fam_o == item_family:
         return False
     if depth_o == depth_l:
         return True
@@ -274,6 +308,7 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
         if _RANK[verdict.split(":")[0]] > _RANK[best.split(":")[0]]:
             best = verdict
 
+    item_family = re.match(r"[a-z]*", item or "").group(0)
     for pieces, numbered in _readings(group):
         leaf = pieces[-1]
         at = ch.heads_at.get(leaf, [])
@@ -281,7 +316,11 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
         # A heading set in a side column can sort just after the rule's first line.
         heads += [i for i in at if end < i < end + 12 and L[i].page == L[end].page]
         if not heads:
-            if leaf in ch.full_text:
+            if leaf in ch.header_codes:
+                # "E2 C6": the chapter, named only in its running header. True,
+                # but C6 recurs in every section, so nobody can find the rule.
+                keep("imprecise:names only the chapter")
+            elif leaf in ch.full_text:
                 keep("cross_ref_only")
             continue
         above = [i for i in heads if i <= end]
@@ -289,13 +328,20 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
         lo = min(h, start)
         between = [L[i].text for i in range(lo + 1, end + 1)
                    if L[i].page not in toc and _heading_like(L[i], ch.page_width)
-                   and (m := CODE_AT_START.match(L[i].text)) and _ends_scope(m.group(1), leaf)]
+                   and (m := CODE_AT_START.match(L[i].text)) and _ends_scope(m.group(1), leaf, item_family)]
         if between:
             keep("not_nearest:" + between[-1][:30])
             continue
-        if not all(any(i <= end for i in ch.heads_at.get(a, [])) for a in pieces[:-1]):
+        if not all(a in ch.header_codes or any(i <= end for i in ch.heads_at.get(a, []))
+                   for a in pieces[:-1]):
             keep("ancestor_missing")
             continue
+        # A MORE specific heading printed between the cited one and the rule:
+        # true but coarse -- the collapsed-parent defect (2.25 for a rule under
+        # 2.25.3.4). Counted apart from wrong citations, never as proven.
+        finer = [L[i].text for i in range(lo + 1, end + 1)
+                 if L[i].page not in toc and _heading_like(L[i], ch.page_width)
+                 and (m := CODE_AT_START.match(L[i].text)) and m.group(1).startswith(leaf + ".")]
         hi = min(len(L), end + 3)
         if numbered and not any(re.match(r"^\(?" + re.escape(numbered) + r"[.)]\s", L[i].text)
                                 for i in range(lo, hi)):
@@ -304,13 +350,24 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
         if item:
             if any(_starts(L[i].text, item) or re.match("^" + re.escape(item) + r"[.)]", L[i].text)
                    for i in range(lo, hi)):
+                if finer:
+                    keep("imprecise:" + finer[-1][:30])
+                    continue
                 return "proven"
             digits = re.sub(r"^[a-z]+", "", item)
-            if digits and any(re.match(r"^\(?" + re.escape(digits) + r"[.)]\s", L[i].text)
+            # The council's own label for the same position: "7." (Warringah) or
+            # "g)" (Campbelltown letters its controls; we store "C7" for both).
+            printed = [re.escape(digits)]
+            if digits.isdigit() and 1 <= int(digits) <= 26:
+                printed.append(chr(ord("a") + int(digits) - 1))
+            if digits and any(re.match(r"^\(?(?:" + "|".join(printed) + r")[.)]\s", L[i].text)
                               for i in range(lo, hi)):
-                keep("item_format")    # council prints "7." -- we store "C7"
+                keep("item_format")    # printed under the council's own label, not ours
                 continue
             keep("item_missing")
+            continue
+        if finer:
+            keep("imprecise:" + finer[-1][:30])
             continue
         return "proven"
     return best
@@ -366,7 +423,11 @@ def _anchors(ch: ChapterLines, text: str, page_hint) -> list[tuple[int, int]]:
 
 def prove_citation(ref_number: str | None, text: str | None, ch: ChapterLines,
                    page_hint: int | None = None) -> dict:
-    """-> {"status": proven | not_proven | unjudged | text_not_found, "detail": str|None}."""
+    """-> {"status": proven | imprecise | not_proven | unjudged | text_not_found, "detail"}.
+
+    imprecise: every piece is the council's and above the rule, but a more
+    specific printed heading sits between -- true, too coarse to find the rule.
+    """
     sections, item, why = split_ref(ref_number)
     if why:
         return {"status": "unjudged", "detail": why}
@@ -378,12 +439,31 @@ def prove_citation(ref_number: str | None, text: str | None, ch: ChapterLines,
     if not anchors:
         return {"status": "text_not_found", "detail": "the rule's wording is not in its source"}
     item_code = render(item).lower() if item else None
-    worst = None
+    worst = coarse = None
     for end, start in anchors:
         verdicts = [_prove_group(ch, end, start, g, item_code) for g in sections]
         if all(v == "proven" for v in verdicts):
             return {"status": "proven", "detail": None}
+        if coarse is None and all(v == "proven" or v.startswith("imprecise") for v in verdicts):
+            coarse = verdicts
         if worst is None:
             worst = verdicts
+    if coarse is not None:
+        return {"status": "imprecise",
+                "detail": "; ".join(f"{render(g)}: {v}" for g, v in zip(sections, coarse)
+                                    if v != "proven")}
     failed = [f"{render(g)}: {v}" for g, v in zip(sections, worst) if v != "proven"]
     return {"status": "not_proven", "detail": "; ".join(failed)}
+
+
+_BEST = {"proven": 3, "imprecise": 2}
+
+
+def prove_citation_any(ref_number, text, readings, page_hint=None) -> dict:
+    """Proven if proven under ANY reading order (see both_orders). Otherwise the
+    first reading's verdict, so the report names a real reason."""
+    verdicts = [prove_citation(ref_number, text, ch, page_hint) for ch in readings]
+    best = max(verdicts, key=lambda v: _BEST.get(v["status"], 0))
+    if best["status"] in _BEST:
+        return best
+    return verdicts[0]

@@ -202,3 +202,100 @@ def test_a_section_scoped_page_number_is_not_a_heading():
 def test_the_heading_above_wins_over_a_repeat_below():
     ch = doc(["g9.6.4 basements", "o1", BODY, "g9.6.4 continues over the page"])
     assert prove("G9_6_4 O1", ch)["status"] == "proven"
+
+
+def test_campbelltown_lettered_control_is_an_item_format_verdict():
+    # Campbelltown prints "b)"; the reader stored "C2" for the same control.
+    ch = doc(["3.7.2.10 multi dwelling housing and waste", "a) first control", "b) " + BODY])
+    r = prove("3_7_2_10 C2", ch)
+    assert r["status"] == "not_proven" and "item_format" in r["detail"]
+    # ...and a letter that is NOT the matching position is not excused.
+    ch2 = doc(["3.7.2.10 multi dwelling housing and waste", "a) first control", "d) " + BODY])
+    assert "item_format" not in (prove("3_7_2_10 C2", ch2)["detail"] or "")
+
+
+def test_leichhardt_control_label_sharing_the_section_letter_does_not_close_it():
+    ch = doc(["c2.2.4.1 sub-area controls", "c10 an earlier control", "c11", BODY])
+    assert prove("C2_2_4_1 C11", ch)["status"] == "proven"
+    # ...a DOTTED code in that letter still does.
+    ch2 = doc(["c2.2.4.1 sub-area controls", "c2.2.4.2 another sub-area", "c11", BODY])
+    assert prove("C2_2_4_1 C11", ch2)["status"] == "not_proven"
+
+
+def test_two_column_page_in_reading_order():
+    # Narrow columns: no line holds six words, so the wording is only found
+    # across line breaks. Sorted top-to-bottom, the right column's lines
+    # interleave the left column's and it is never found intact.
+    left = ["e. structures such", "as paths, letter", "boxes and electricity", "kiosks may be", "located in setbacks."]
+    right = ["note one here", "note two here", "note three here", "note four here", "note five here"]
+    raw = [C.Line(1, 100.0, 60.0, "3.3.5 setbacks")]
+    raw += [C.Line(1, 120.0 + 20 * i, 60.0, t) for i, t in enumerate(left)]
+    raw += [C.Line(1, 120.0 + 20 * i, 320.0, t) for i, t in enumerate(right)]
+    text = "# t\n\ne. Structures such as paths, letter boxes and electricity kiosks may be located"
+    kept = C.ChapterLines.build(raw, page_width=595.0, keep_order=True)
+    assert C.prove_citation("D__c__3_3_5", text, kept)["status"] == "proven"
+    interleaved = C.ChapterLines.build(raw, page_width=595.0)
+    assert C.prove_citation("D__c__3_3_5", text, interleaved)["status"] == "text_not_found"
+
+
+def test_either_reading_order_can_prove_but_both_must_fail():
+    # Heading column sorts first top-to-bottom, but last in reading order.
+    raw = [C.Line(1, 120.0, 320.0, "c3."), C.Line(1, 140.0, 320.0, BODY),
+           C.Line(1, 100.0, 50.0, "5.4.3 energy efficiency")]
+    readings = C.both_orders(raw, 842.0)
+    assert C.prove_citation("D__c__5_4_3 C3", "# t\n\n" + BODY, readings[0])["status"] != "proven"
+    assert C.prove_citation_any("D__c__5_4_3 C3", "# t\n\n" + BODY, readings)["status"] == "proven"
+    assert C.prove_citation_any("D__c__5_4_4 C3", "# t\n\n" + BODY, readings)["status"] == "not_proven"
+
+
+def test_landscape_page_running_header_is_furniture():
+    pages = []
+    for p in (1, 2, 3):
+        # Landscape page, 595 tall: the header sits at its foot, which is
+        # mid-page by the measure of an 842-tall portrait page.
+        pages += [C.Line(p, 60.0, 51.0, f"5.4.{p} heading {p}"), C.Line(p, 80.0, 51.0, "c1."),
+                  C.Line(p, 100.0, 51.0, f"rule words number {p} " + BODY),
+                  C.Line(p, 560.0, 597.0, "chapter 7.6 belmore and lakemba precinct"),
+                  C.Line(p, 575.0, 400.0, f"footer text {p}")]
+    pages += [C.Line(4, 800.0, 70.0, "a tall portrait page line")]      # document-wide bottom 800
+    ch = C.ChapterLines.build(pages, page_width=842.0)
+    assert all("chapter 7.6" not in ln.text for ln in ch.lines)
+
+
+def test_running_header_proves_a_parent_but_is_never_the_heading():
+    # Woollahra: "e6 | sustainability" in every page header, sections "1.1".
+    raw = []
+    for p in (1, 2, 3):
+        raw += [C.Line(p, 35.0, 70.0, "e6 | sustainability"),
+                C.Line(p, 100.0, 70.0, f"1.{p} topic {p}"),
+                C.Line(p, 120.0, 70.0, f"page {p} words " + BODY),
+                C.Line(p, 775.0, 70.0, "2 december 2024")]
+    ch = C.ChapterLines.build(raw, page_width=595.0)
+    assert prove("E6_1_2", ch, text=f"page 2 words {BODY}")["status"] == "proven"
+    # ...but the header cannot stand in for the section heading itself: "E6"
+    # alone for a rule printed under 1.2 is true but coarse, never proven.
+    assert prove("E6", ch, text=f"page 2 words {BODY}")["status"] == "imprecise"
+
+
+def test_collapsed_parent_is_imprecise_not_proven():
+    # Marrickville's collapsed-parent defect: 2.25 cited for a rule under 2.25.3.4.
+    ch = doc(["2.25 stormwater", "2.25.3 detention", "2.25.3.4 osd sizing", "c11", BODY])
+    assert prove("2_25_C11", ch)["status"] == "imprecise"
+    assert prove("2_25_3_4_C11", ch)["status"] == "proven"
+
+
+def test_chapter_named_only_in_the_running_header_is_imprecise():
+    raw = []
+    for p in (1, 2, 3):
+        raw += [C.Line(p, 35.0, 70.0, "e2 | stormwater and flood risk management"),
+                C.Line(p, 100.0, 70.0, f"e2.{p}.1 topic {p}"), C.Line(p, 110.0, 70.0, "c6"),
+                C.Line(p, 120.0, 70.0, f"page {p} words " + BODY),
+                C.Line(p, 775.0, 70.0, "2 december 2024")]
+    ch = C.ChapterLines.build(raw, page_width=595.0)
+    assert prove("E2 C6", ch, text=f"page 2 words {BODY}")["status"] == "imprecise"
+
+
+def test_collapsed_parent_without_an_item_label_is_imprecise_too():
+    ch = doc(["2.25 stormwater", "2.25.3 detention", "2.25.3.4 osd sizing", BODY])
+    assert prove("2_25", ch)["status"] == "imprecise"
+    assert prove("2_25_3_4", ch)["status"] == "proven"
