@@ -555,16 +555,42 @@ class ChunkLoss(Exception):
     """A chunk containing substantial text returned no provisions."""
 
 
-def _chunk_text_chars(reader, a: int, b: int) -> int:
-    """Extractable characters in pages [a, b). Cheap; no model call."""
+#: Words a page must carry to be able to hold a rule. A page with none of them
+#: -- a contents page, a suburb history, a glossary -- legitimately yields no
+#: provisions, and an empty answer for it is not content loss.
+_RULE_LANGUAGE = re.compile(
+    r"\b(shall|must|should|required|requirements?|minimum|maximum|controls?|objectives?|"
+    r"not permitted|is to be|are to be)\b", re.IGNORECASE)
+
+
+def _is_contents_page(text: str) -> bool:
+    """Most lines end in a page number: a table of contents, not rules."""
+    lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
+    if len(lines) < 8:
+        return False
+    return sum(1 for ln in lines if ln[-1:].isdigit()) / len(lines) >= 0.5
+
+
+def _chunk_rule_chars(reader, a: int, b: int) -> int:
+    """Characters in pages [a, b) that COULD hold a rule: not a contents page,
+    and carrying rule language. What the chunk-loss guard should weigh.
+
+    Leichhardt part-c-s2 was refused twice (2026-09-24) for pages 1-12: five
+    contents pages and seven suburb-history profiles, 31,028 characters and not
+    one control -- the model was right to return nothing. Counting all text made
+    that indistinguishable from the marrickville loss this guard exists for. A
+    page pypdf cannot read still counts in full, as before.
+    """
     total = 0
     for i in range(a, min(b, len(reader.pages))):
         try:
-            total += len(reader.pages[i].extract_text() or "")
+            text = reader.pages[i].extract_text() or ""
         except Exception:
-            # A page pypdf cannot read is not evidence of emptiness. Treat it as
-            # text-bearing so the guard errs toward reporting loss, not hiding it.
             total += CHUNK_LOSS_MIN_TEXT_CHARS
+            continue
+        if _is_contents_page(text) or not _RULE_LANGUAGE.search(text):
+            continue
+        total += len(text)
     return total
 
 
@@ -589,7 +615,7 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
             # content loss, and accepting it silently is what cost marrickville
             # 94 pages of source document. A genuinely blank chunk has no text
             # and is passed over without complaint.
-            chars = _chunk_text_chars(reader, a, b)
+            chars = _chunk_rule_chars(reader, a, b)
             if chars >= CHUNK_LOSS_MIN_TEXT_CHARS:
                 lost.append({"pages": (a + 1, b), "text_chars": chars})
         for p in chunk_provs:
@@ -608,7 +634,7 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
         raise ChunkLoss(
             str(len(lost)) + " of " + str(len(chunk_ranges(total))) + " chunks "
             "returned NO provisions while holding " + str(chars) + " characters "
-            "of text (pages " + pages + "). Refusing to return a partial chapter: "
+            "of rule-bearing text (pages " + pages + "). Refusing to return a partial chapter: "
             "committing it would silently drop those pages, which is how "
             "marrickville lost 94 pages of source across 4 chapters.")
     return provisions_to_sections(dedupe_provisions(collected))

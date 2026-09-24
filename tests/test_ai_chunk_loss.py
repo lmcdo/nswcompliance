@@ -25,7 +25,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
 from ai_extractor import (  # noqa: E402
-    CHUNK_LOSS_MIN_TEXT_CHARS, ChunkLoss, _chunk_text_chars,
+    CHUNK_LOSS_MIN_TEXT_CHARS, ChunkLoss, _chunk_rule_chars,
 )
 
 
@@ -45,24 +45,35 @@ class _Reader:
 
 
 class TestChunkTextMeasurement:
-    def test_counts_the_characters_in_the_range_only(self):
-        r = _Reader(["a" * 100, "b" * 200, "c" * 400])
-        assert _chunk_text_chars(r, 0, 2) == 300
-        assert _chunk_text_chars(r, 2, 3) == 400
+    RULE = "development must comply with the controls. "
+
+    def test_counts_rule_bearing_characters_in_the_range_only(self):
+        r = _Reader([self.RULE * 2, self.RULE * 4, self.RULE * 8])
+        assert _chunk_rule_chars(r, 0, 2) == len(self.RULE) * 6
+        assert _chunk_rule_chars(r, 2, 3) == len(self.RULE) * 8
 
     def test_a_blank_chunk_measures_zero(self):
         r = _Reader(["", "", ""])
-        assert _chunk_text_chars(r, 0, 3) == 0
+        assert _chunk_rule_chars(r, 0, 3) == 0
 
     def test_a_page_that_cannot_be_read_counts_as_text_bearing(self):
         # Erring the other way would let an unreadable page masquerade as blank
         # and silence the guard -- the failure direction this repair exists for.
         r = _Reader([None])
-        assert _chunk_text_chars(r, 0, 1) >= CHUNK_LOSS_MIN_TEXT_CHARS
+        assert _chunk_rule_chars(r, 0, 1) >= CHUNK_LOSS_MIN_TEXT_CHARS
 
     def test_range_past_the_end_does_not_raise(self):
-        r = _Reader(["x" * 50])
-        assert _chunk_text_chars(r, 0, 99) == 50
+        r = _Reader([self.RULE])
+        assert _chunk_rule_chars(r, 0, 99) == len(self.RULE)
+
+    def test_contents_and_history_pages_hold_no_rule(self):
+        # Leichhardt part-c-s2 pages 1-12, refused twice on 2026-09-24: five
+        # contents pages and seven suburb histories, 31,028 characters, no control.
+        contents = "\n".join(f"c2.1.{i} suburb profile ....................... {100 + i}"
+                             for i in range(12))
+        history = ("The first phase of settlement followed the subdivision of the "
+                   "estate into small lots for workers' cottages near the wharves. ") * 20
+        assert _chunk_rule_chars(_Reader([contents] * 5 + [history] * 7), 0, 12) == 0
 
 
 class TestGuardFires:
@@ -186,3 +197,17 @@ class TestAttributionGuard:
         toc = {"3." + str(i) for i in range(1, 21)}
         assert self._g({"3 C1"}, toc)[0] is True
         assert self._g({"3." + str(i) for i in range(1, 21)}, toc)[0] is False
+
+
+def test_a_chunk_of_contents_and_history_does_not_raise(monkeypatch):
+    """Leichhardt part-c-s2: the model rightly returned nothing for contents
+    pages and suburb histories; the guard refused the whole chapter twice."""
+    contents = "\n".join(f"c2.1.{i} suburb profile ....................... {100 + i}"
+                         for i in range(12))
+    history = ("The first phase of settlement followed the subdivision of the estate "
+               "into small lots for workers' cottages near the wharves. ") * 20
+    rules = "development must comply with the controls. " * 60
+    pages = [contents] * 5 + [history] * 7 + [rules] * 12
+    out = TestGuardFires()._run(monkeypatch, pages, 12,
+                                [[], [{"code": "C2.2.1", "title": "T", "text": "x"}]])
+    assert len(out) == 1
