@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "The AI reader's chunk-loss guard refused whole chapters when a 12-page batch held only contents pages and narrative history: Leichhardt part-c-s2 twice (31,028 characters, not one control). It now weighs only pages that can hold a rule. Critical because this guard is what stops a chapter losing pages silently (marrickville, 94 pages).",
-  "commit_hash": "985f3efe",
+  "commit_hash": "371e48d8",
   "files": [
     "scripts/ai_extractor.py",
     "tests/test_ai_chunk_loss.py"
