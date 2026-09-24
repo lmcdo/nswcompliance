@@ -411,15 +411,50 @@ class TestGateChapterScopesToActionableRows:
     only (see TestMainScopesToLiveChapters below for that half)."""
 
     @staticmethod
-    def _run_gate_chapter(rows, pages):
+    def _readings_printing(rows):
+        """Chapter lines that print each row's own section code as a heading
+        directly above its text -- a PDF where every citation is the council's."""
+        import citation_proof as cp
+        raw, y = [], 100.0
+        for _id, ref, text in rows:
+            code = ref.split("__")[-1].replace("_", ".")
+            for t in (f"{code} heading", text.lower()):
+                raw.append(cp.Line(1, y, 70.0, t))
+                y += 20.0
+        return cp.both_orders(raw, 595.0)
+
+    @classmethod
+    def _run_gate_chapter(cls, rows, pages, readings="printed"):
         """rows: list of (id, ref_number, new_text). Mocks the cursor and the
-        real R2/pdfplumber fetch so this stays a fast, offline unit test."""
+        real R2 fetches so this stays a fast, offline unit test. readings:
+        "printed" = every row's code printed above it; None = lines unreadable."""
         from unittest.mock import MagicMock, patch
         cur = MagicMock()
         cur.fetchall.return_value = rows
-        with patch.object(_gate.vf, "_page_text_for_chapter", return_value=pages):
+        lines = cls._readings_printing(rows) if readings == "printed" else readings
+        side = OSError("lines unreadable") if lines is None else None
+        with patch.object(_gate.vf, "_page_text_for_chapter", return_value=pages), \
+                patch.object(_gate, "_citation_readings", return_value=lines, side_effect=side):
             g, f, s = _gate.gate_chapter(cur, s3=None, council="x", chapter_key="y", r2_path="z")
         return g, f, s, cur
+
+    def test_unproven_citation_is_flagged_even_when_every_word_is_on_the_page(self):
+        # DQ-111: the words and the number are the council's; the clause number
+        # is not printed anywhere above the rule.
+        text = "front setback is 4.5 metres from the primary road boundary"
+        rows = [(1, "x__9_9", text)]
+        lines = self._readings_printing([(1, "x__1_1", text)])
+        g, f, s, cur = self._run_gate_chapter(rows, {1: text}, readings=lines)
+        assert (g, f, s) == (0, 1, 0)
+        upd = [c for c in cur.execute.call_args_list if "UPDATE" in c.args[0]][0]
+        assert upd.args[1][0] == "flagged" and _gate.CITATION_FINDING in upd.args[1][1]
+
+    def test_unreadable_lines_flag_every_row_never_pass_it(self):
+        text = "front setback is 4.5 metres from the primary road boundary"
+        g, f, s, cur = self._run_gate_chapter([(1, "x__1_1", text)], {1: text}, readings=None)
+        assert (g, f, s) == (0, 1, 0)
+        upd = [c for c in cur.execute.call_args_list if "UPDATE" in c.args[0]][0]
+        assert "lines unreadable" in upd.args[1][1]
 
     def test_non_actionable_row_is_skipped_not_graded(self):
         rows = [(1, "x__intro", "# Introduction\n\nThis Part provides additional "

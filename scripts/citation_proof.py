@@ -33,6 +33,11 @@ import collections
 import re
 from dataclasses import dataclass, field
 
+#: Prefix of every citation finding the fidelity gate writes to fidelity_detail.
+#: dcp_approve_graded refuses rows carrying it. One definition, here, because
+#: this module imports nothing and both of those can import it.
+CITATION_FINDING = "citation not proven on its page"
+
 # -- the ref's code ------------------------------------------------------------
 
 _HEAD = re.compile(r"^([A-Za-z]{1,3})?(\d+[A-Za-z]?)$")
@@ -195,9 +200,14 @@ def both_orders(raw: list[Line], page_width: float | None) -> tuple[ChapterLines
             ChapterLines.build(raw, page_width=page_width, keep_order=False))
 
 
-def load_lines(pdf_path: str) -> ChapterLines:
-    """Read a PDF's lines with PyMuPDF (already a dependency) -- geometry the
-    flattened page strings the gate grades words against do not keep."""
+# prior-art-checked: reuse not viable because dcp_extract_changed._extract_page_text
+# returns flattened pdfplumber page strings with no per-line position, and
+# measure_heading_detection's fitz reader keeps font size/bold but not x/y --
+# the proof needs line starts and positions (side columns, margins, order).
+def read_raw_lines(pdf_path: str) -> tuple[list[Line], float | None]:
+    """A PDF's lines in its own reading order, with PyMuPDF (already a
+    dependency) -- geometry the flattened page strings the gate grades words
+    against do not keep."""
     import fitz
     raw = []
     width = None
@@ -209,7 +219,19 @@ def load_lines(pdf_path: str) -> ChapterLines:
                     t = " ".join(s["text"] for s in ln["spans"]).strip().lower()
                     if t:
                         raw.append(Line(pno, ln["bbox"][1], ln["bbox"][0], t))
+    return raw, width
+
+
+def load_lines(pdf_path: str) -> ChapterLines:
+    """One reading (the PDF's own order). Proof should use load_readings."""
+    raw, width = read_raw_lines(pdf_path)
     return ChapterLines.build(raw, page_width=width, keep_order=True)
+
+
+def load_readings(pdf_path: str) -> tuple[ChapterLines, ChapterLines]:
+    """Both readings of a PDF, for prove_citation_any."""
+    raw, width = read_raw_lines(pdf_path)
+    return both_orders(raw, width)
 
 
 # -- proof -------------------------------------------------------------------------

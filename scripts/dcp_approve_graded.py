@@ -114,6 +114,13 @@ def _classify(fidelity, detail, page_verified, text):
                 "than grading them")
 
     if fidelity in ("flagged", "failed"):
+        # DQ-111. Before this line, a citation-only flag has no unmatched number
+        # and would fall through to "flagged_other" and be APPROVED. A clause
+        # number the council never printed is re-read, never approved by class.
+        from scripts.citation_proof import CITATION_FINDING
+        if CITATION_FINDING in detail:
+            return None, ("clause number not proven on its source page -- re-read, "
+                          "not approvable by class: %s" % detail[:120])
         m = _MISSING.search(detail)
         missing = [x.strip() for x in m.group(1).split(",")] if m else []
         control_shaped = [x for x in missing if _is_control_shaped(x)]

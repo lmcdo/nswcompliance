@@ -151,3 +151,16 @@ class TestTheShapeOfTheClassifier:
             "# 5.2 kcabtes m0.2 etis yradnuob htaptoof")
         assert cls is None
         assert "reversed" in reason
+
+    def test_citation_only_flag_is_never_approved_by_class(self):
+        """DQ-111. A row flagged ONLY for its clause number carries no unmatched
+        number, so without this rule it fell to `flagged_other` and was approved:
+        the gate's finding would have been decoration."""
+        from scripts.citation_proof import CITATION_FINDING
+        detail = f"{CITATION_FINDING} (not_proven): G10.5.2: not_nearest:g6.12"
+        cls, reason = _classify("flagged", detail, 37, "# G10.5.2 O1 x\n\nto ensure buildings are modulated")
+        assert cls is None
+        assert "re-read" in reason
+        # ...while a flag that is NOT about the citation still takes its class.
+        cls2, _ = _classify("flagged", "only 70% of words found in source", 37, "some words")
+        assert cls2 == "flagged_other"
