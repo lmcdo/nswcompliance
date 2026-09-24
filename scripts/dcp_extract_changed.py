@@ -1783,10 +1783,30 @@ class DCPExtractor:
         title = match.group(2) or match.group(4) or ""
         return code.strip(), title.strip()
 
-    def __init__(self, pdf_path: Path, document_id: str, council: str | None = None):
+    def __init__(self, pdf_path: Path, document_id: str, council: str | None = None,
+                 page_range: tuple[int, int] | None = None):
         self.pdf_path = pdf_path
         self.document_id = document_id
         self.council = council
+        #: The pages of this PDF that belong to THIS chapter, 1-indexed and
+        #: inclusive, or None for the whole document.
+        #:
+        #: WHY THIS EXISTS. Councils publish several plans in one file. Four
+        #: registry rows already point at a shared PDF with no way to say which
+        #: pages are theirs, so running them would extract the whole document
+        #: once per row -- DQ-109. Cumberland is the other half: one row over a
+        #: file holding five sub-plans whose section codes collide, so no
+        #: applicability config can be written for it (DQ-107).
+        #:
+        #: PAGE NUMBERS ARE NOT REBASED, and that is the point. Cutting the PDF
+        #: into a new file would renumber pages 8-25 to 1-18, and every citation
+        #: link behind those provisions points into the ORIGINAL document. So
+        #: the range filters which pages are read while `page_num` keeps meaning
+        #: what it means everywhere else: the page in the file the reader will
+        #: open. It is also why this is not implemented by slicing bytes.
+        #:
+        #: None is the default and leaves every existing chapter untouched.
+        self.page_range = page_range
         self.page_count: int = 0
         # Set when the text layer proved garbled and OCR page texts were
         # fetched — _page_text then serves these instead of pdfplumber's.
@@ -1797,6 +1817,27 @@ class DCPExtractor:
         # is meaningless for the LLM reader, whose entire purpose is reading a
         # two-column body (ce-ai-extraction-decision-2026-07).
         self.reader_used: str | None = None
+
+    def _owned_pages(self, pdf: Any):
+        """(page_num, page) for the pages this chapter owns, original numbering.
+
+        One place decides what "this chapter's pages" means, because the class
+        opens the PDF in four separate loops and a range honoured by three of
+        them would read as a clean extraction that had quietly dropped a
+        quarter of the document.
+
+        An out-of-range end is CLAMPED rather than refused: a registry row
+        saying 8-25 of a file that turned out to be 20 pages long is a stale
+        range, and the completeness guard downstream already compares what was
+        extracted against what is live. Refusing here would stall the chapter
+        on a number instead of on its content.
+        """
+        total = len(pdf.pages)
+        lo, hi = self.page_range or (1, total)
+        lo, hi = max(1, lo), min(hi, total)
+        for i, p in enumerate(pdf.pages, start=1):
+            if lo <= i <= hi:
+                yield i, p
 
     def _page_text(self, page: Any, page_num: int) -> str:
         if self.ocr_pages and 0 < page_num <= len(self.ocr_pages):
@@ -1880,10 +1921,12 @@ class DCPExtractor:
         those page ranges."""
         with pdfplumber.open(self.pdf_path) as pdf:
             total = len(pdf.pages)
-            page_texts = []
-            for i, p in enumerate(pdf.pages):
-                page_texts.append(
-                    _clean_page_text(self._page_text(p, i + 1), self.council))
+            # Indexed by ORIGINAL page number, so a sliced chapter's entries
+            # sit where the rest of this method expects to find them.
+            page_texts = [""] * total
+            for i, p in self._owned_pages(pdf):
+                page_texts[i - 1] = _clean_page_text(
+                    self._page_text(p, i), self.council)
                 _release_page(p)
         entries = parse_toc_entries(page_texts)
         seq_codes = [(s.get("section_number") or "") for s in sequential]
@@ -1919,7 +1962,7 @@ class DCPExtractor:
         with pdfplumber.open(self.pdf_path) as pdf:
             total = len(pdf.pages)
             self.page_count = total
-            for page_num, page in enumerate(pdf.pages, start=1):
+            for page_num, page in self._owned_pages(pdf):
                 print(f"    page {page_num}/{total}", end="\r")
 
                 text = self._page_text(page, page_num)
@@ -2124,7 +2167,10 @@ class DCPExtractor:
             return
         with pdfplumber.open(self.pdf_path) as _pdf:
             _raw = []
-            for _p in _pdf.pages:
+            # Only this chapter's pages: judging a slice's text layer on the
+            # whole document would route it to OCR for a neighbour's scan, or
+            # clear it on a neighbour's clean text.
+            for _i, _p in self._owned_pages(_pdf):
                 _raw.append(_extract_page_text(_p, self.council) or "")
                 _release_page(_p)
         # Empty text layers are as unreadable as garbled ones: scanned pages
@@ -2167,8 +2213,15 @@ class DCPExtractor:
                 content = ""
                 tables: list[dict] = []
                 pages_included: list[int] = []
-                clipped_end = min(page_end, self.page_count)
-                for page_num in range(page_start, clipped_end + 1):
+                # Clamped to this chapter's own pages as well as to the file's.
+                # The TOC locator can only have found codes on owned pages --
+                # `_owned_pages` gates the text it reads -- but a range that
+                # ran past the end of a slice would silently pull a NEIGHBOUR
+                # plan's pages into this chapter, which is the exact confusion
+                # slicing exists to end.
+                own_lo, own_hi = self.page_range or (1, self.page_count)
+                clipped_end = min(page_end, self.page_count, own_hi)
+                for page_num in range(max(page_start, own_lo), clipped_end + 1):
                     page = pdf.pages[page_num - 1]
                     text = self._page_text(page, page_num)
                     text = _clean_page_text(text, self.council)
@@ -4070,7 +4123,8 @@ OVERSIZED_PDF_SKIP_BYTES = 30 * 1024 * 1024
 
 
 def _pdf_work_child(queue, pdf_path, document_id, council, page_ranges,
-                    subsection_patterns, ai_on, mem_limit_bytes):
+                    subsection_patterns, ai_on, mem_limit_bytes,
+                    chapter_pages=None):
     """Everything that touches the PDF, run in a CHILD process.
 
     Pure with respect to the database: it opens no connection and writes no
@@ -4086,7 +4140,11 @@ def _pdf_work_child(queue, pdf_path, document_id, council, page_ranges,
             except Exception:  # noqa: BLE001 - no rlimit is not a failure
                 pass
         preflight = preflight_layout(pdf_path, council)
-        extractor = DCPExtractor(Path(pdf_path), document_id, council=council)
+        # chapter_pages is THIS chapter's slice of a shared PDF; page_ranges
+        # above is the section map WITHIN a chapter. Different things, and
+        # naming them apart is why they can both be passed safely.
+        extractor = DCPExtractor(Path(pdf_path), document_id, council=council,
+                                 page_range=chapter_pages)
         if page_ranges and not ai_on:
             sections = extractor.extract_by_page_ranges(page_ranges, subsection_patterns)
             ranged = True
@@ -4188,7 +4246,7 @@ def revive(conn):
 
 
 def extract_pdf_isolated(pdf_path, document_id, council, page_ranges,
-                         subsection_patterns, ai_on):
+                         subsection_patterns, ai_on, chapter_pages=None):
     """Run the PDF work in its own process so a kill cannot take the batch.
 
     WHY. The nightly batch was SIGKILLed (exit -9) and every chapter queued
@@ -4218,7 +4276,8 @@ def extract_pdf_isolated(pdf_path, document_id, council, page_ranges,
     proc = ctx.Process(
         target=_pdf_work_child,
         args=(queue, str(pdf_path), document_id, council, page_ranges,
-              subsection_patterns, ai_on, PDF_WORK_MEM_LIMIT_BYTES),
+              subsection_patterns, ai_on, PDF_WORK_MEM_LIMIT_BYTES,
+              chapter_pages),
         daemon=True,
     )
     proc.start()
@@ -4292,6 +4351,60 @@ def interpret_isolated_result(result, exitcode, timed_out=False, budget=None):
     return result, None
 
 
+def chapter_page_slice(cur, chapter: dict) -> tuple[tuple[int, int] | None, str | None]:
+    """This chapter's pages when it SHARES its PDF. Returns (range, refusal).
+
+    Councils publish several plans in one file, and the registry already has
+    four PDFs covered by more than one active row with no way to say which
+    pages belong to which (DQ-109: bayside, burwood, fairfield, camden, 11 rows
+    between them). The extractor reads whatever PDF a row points at and
+    extracts ALL of it, so running those rows would produce one complete copy
+    of the document per row, live and served. cumberland is the same gap from
+    the other side: one row over a file holding five sub-plans whose section
+    codes collide, so no applicability config can be written (DQ-107).
+
+    WHY "SHARED" IS THE TRIGGER, and not simply "a page range is set".
+    `page_start`/`page_end` already carry three meanings and 229 active rows
+    use them. Measured 2026-09-24: 121 rows use them as a page COUNT (start at
+    1), 14 mean "content begins after the front matter" -- ashfield
+    `chapter-e1-heritage` is p3-392 with 348 live provisions, `waverley-dcp-2022`
+    is p12-473 with 602 -- and exactly 0 mean a slice. Honouring the columns
+    wherever they appear would change extraction for 2,717 live provisions in
+    one step. Sharing a PDF is the condition that actually needs slicing, it is
+    derivable from data already held, and it needs no migration.
+
+    THE REFUSAL IS THE POINT. If a PDF is shared and this row declares no
+    range, there is no honest way to extract it: taking the whole file
+    duplicates a neighbour, and guessing a range invents a boundary. So it
+    refuses and names the rows it collides with, rather than silently
+    producing a second copy of a council.
+    """
+    r2_path = chapter.get("r2_current_path")
+    if not r2_path:
+        return None, None
+    cur.execute(
+        """SELECT chapter_key, page_start, page_end
+             FROM dcp_chapter_registry
+            WHERE is_active AND r2_current_path = %s""",
+        (r2_path,),
+    )
+    rows = cur.fetchall()
+    if len(rows) < 2:
+        return None, None            # owns its PDF: nothing changes for it
+
+    key = chapter["chapter_key"]
+    mine = next((r for r in rows if r[0] == key), None)
+    if mine and mine[1] is not None and mine[2] is not None:
+        return (int(mine[1]), int(mine[2])), None
+
+    others = ", ".join(sorted(r[0] for r in rows if r[0] != key))
+    return None, (
+        f"{len(rows)} active registry rows share this PDF and {key} declares no "
+        f"page_start/page_end. Extracting it would read the whole file and "
+        f"duplicate: {others}. Set the page range on each row, or deactivate "
+        f"the rows that should not have been registered separately.")
+
+
 def extract_chapter(
     chapter: dict,
     s3,
@@ -4342,6 +4455,23 @@ def extract_chapter(
         chapter.get("council_url"), chapter.get("r2_current_path"))
     if narrow:
         print(f"    [preflight] repealed check ran NARROW: {narrow}")
+
+    # Shared-PDF gate, BEFORE the download for the same reason the repealed
+    # check is: the evidence is in the registry, and there is nothing to learn
+    # by fetching a file we have no honest way to divide.
+    _slice_cur = conn.cursor()
+    try:
+        chapter_pages, slice_refusal = chapter_page_slice(_slice_cur, chapter)
+    finally:
+        _slice_cur.close()
+    if slice_refusal:
+        print(f"    [preflight] SHARED PDF, NO PAGE RANGE: {slice_refusal}")
+        print("    [preflight] chapter REJECTED - extracting it would duplicate "
+              "a council, which nothing downstream would flag")
+        return False, None
+    if chapter_pages:
+        print(f"    [preflight] shares its PDF; extracting pages "
+              f"{chapter_pages[0]}-{chapter_pages[1]} only")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         pdf_path = Path(tmpdir) / f"{chapter_key}.pdf"
@@ -4425,7 +4555,8 @@ def extract_chapter(
         # The PDF work runs in its own process. Everything below this point is
         # cheap post-processing on plain dicts.
         result, err = extract_pdf_isolated(
-            pdf_path, document_id, council, page_ranges, subsection_patterns, ai_on)
+            pdf_path, document_id, council, page_ranges, subsection_patterns, ai_on,
+            chapter_pages=chapter_pages)
         if result is None:
             print(f"    [ERROR] {err}")
             cur.close()
