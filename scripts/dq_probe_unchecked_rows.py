@@ -662,7 +662,74 @@ def probe_108(cur):
     return len(hits), hits
 
 
+def probe_109(cur):
+    """Two live registry rows over ONE PDF, neither saying which pages are theirs.
+
+    The extractor downloads whatever PDF a registry row points at and extracts
+    the WHOLE file. Its query selects r2_current_path and never page_start or
+    page_end -- verified 2026-09-24 by reading it. So when several active rows
+    point at one PDF and none declares a page range, running them produces one
+    COMPLETE COPY OF THE DOCUMENT PER ROW, every copy live and served.
+
+    AN ABANDONED CAPABILITY, NOT AN ACCIDENT, and the chapter names say so.
+    burwood registers `part-4-residential`, `s4-landscaping` and
+    `s4-table-4-parking`, all three pointing at part-4-residential.pdf;
+    fairfield registers `chapter-5-dwelling-houses`, `landscaping-controls` and
+    `parking-controls` at one file. That is precisely the onboarding default in
+    docs/DCP_SCOPE_CONFIG_REFERENCE.md -- take roughly six topic chapters, not
+    the whole DCP -- written down by someone who expected slicing to exist.
+
+    Measured 2026-09-24: 4 PDFs, 11 rows, across bayside, burwood, fairfield
+    and camden. NONE extracted, which is the only reason no duplicate exists
+    today; nothing prevents one, and flipping needs_extraction on any of them
+    is enough. Northern Beaches is the near-miss: 4 active rows on one PDF, one
+    extracted at 1,772 provisions and three dormant at zero.
+
+    A SHARED PDF IS NOT ITSELF THE DEFECT. A row declaring its page range is
+    making a real statement about which part of the file is its own, so a group
+    is only counted when TWO OR MORE rows in it declare nothing -- one unranged
+    row owning the file beside a ranged row carving a piece out is coherent.
+    That is also the intended fix: declare the ranges, and teach the extractor
+    to slice when a PDF is shared and only then, which leaves untouched the 135
+    rows that own their PDF outright and whose page_start means something else
+    entirely (a page count, or where the content starts after front matter).
+
+    Reachable by declaring the ranges, or by deactivating rows that should
+    never have been registered separately. Deleting them would reach zero too,
+    which is why passes_when names the direction.
+    """
+    cur.execute(
+        """SELECT council, r2_current_path,
+                  count(*)::int AS rows,
+                  count(*) FILTER (WHERE page_start IS NULL
+                                     OR page_end IS NULL)::int AS unranged,
+                  count(*) FILTER (WHERE last_extracted_at IS NOT NULL)::int AS done,
+                  string_agg(chapter_key, ', ' ORDER BY chapter_key) AS keys
+             FROM dcp_chapter_registry
+            WHERE is_active AND r2_current_path IS NOT NULL
+            GROUP BY 1, 2
+           HAVING count(*) > 1"""
+    )
+    hits = {}
+    for council, _path, rows, unranged, done, keys in cur.fetchall():
+        if unranged < 2:
+            continue
+        hits[("%s  %d rows on one PDF" % (council, rows),
+              "%d declare no page range, %d already extracted -- each would "
+              "extract the WHOLE file: %s" % (unranged, done, str(keys)[:110]))] = 1
+    return len(hits), hits
+
+
 PROBES = {
+    "DQ-109": (
+        "One PDF, several live registry rows, none saying which pages are theirs",
+        "The extractor takes whatever PDF a row points at and extracts all of it -- "
+        "its query never reads page_start or page_end. Several rows on one PDF with "
+        "no ranges therefore produce one complete copy of the document PER ROW, all "
+        "live. The chapter names show this was an attempt at the documented "
+        "onboarding default (roughly six topic chapters, not the whole DCP) that "
+        "assumed a slicing capability which does not exist.",
+        probe_109, True),
     "DQ-108": (
         "Structured numeric rules whose phrase is absent from their own provision",
         "The formulate stage is fill-blanks-only, so a rule is never re-derived once "
