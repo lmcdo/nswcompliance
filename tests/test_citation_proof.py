@@ -10,6 +10,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
@@ -193,9 +195,10 @@ def test_a_section_scoped_page_number_is_not_a_heading():
     # City of Sydney prints "6.3-18" in the footer. With the footer read as the
     # heading "6.3" and a list item "4." beside the rule, 6.3.4 -- printed
     # nowhere -- would be proven.
-    raw = [C.Line(1, 100.0, 70.0, "a site heading in words only"),
+    raw = [C.Line(1, 20.0, 480.0, "6.3-18"),                 # page number, top margin
+           C.Line(1, 100.0, 70.0, "a site heading in words only"),
            C.Line(1, 120.0, 70.0, "4. " + BODY),
-           C.Line(1, 800.0, 480.0, "6.3-18")]
+           C.Line(1, 800.0, 70.0, "footer words")]
     assert prove("6_3_4", C.ChapterLines.build(raw, page_width=595.0))["status"] == "not_proven"
 
 
@@ -318,3 +321,41 @@ def test_a_numbered_list_item_is_not_section_n():
              ["section 12 – warehouses", "11. an eleventh list item", "c1 " + BODY])
     assert prove("11 C1", ch)["status"] == "not_proven"
     assert prove("12 C1", ch)["status"] == "proven"
+
+
+def test_the_next_sections_heading_below_the_rule_proves_nothing():
+    # Cross-review 2026-09-24: 2.2 printed just BELOW a rule under 2.1 proved a
+    # row citing 2.2, through the side-column allowance.
+    ch = doc(["2.1 first section", "c1 " + BODY, "2.2 second section", "c1 other words"])
+    assert prove("2_2 C1", ch)["status"] == "not_proven"
+    assert prove("2_1 C1", ch)["status"] == "proven"
+
+
+def test_one_shared_phrase_does_not_decide_where_a_rule_sits():
+    # Cross-review 2026-09-24: a generic opening repeated under 4.2 anchored a
+    # rule whose substance is printed only under 7.1.
+    generic = "development must be designed to ensure"
+    rule = generic + " that stormwater is detained on site and released slowly to the street drainage system"
+    ch = doc(["4.2 heading four two", "c1 " + generic + " privacy is kept for neighbours"],
+             ["7.1 heading seven one", "c1 " + rule])
+    assert prove("4_2 C1", ch, text=rule)["status"] == "not_proven"
+    assert prove("7_1 C1", ch, text=rule)["status"] == "proven"
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "KNOWN LIMITATION, 2026-09-24: when the stored text only half matches the "
+    "page, two places tie on coverage and proof under EITHER is accepted. Needs "
+    "a choose-the-best-anchor rule, not any-anchor. Kept as a failing test so it "
+    "cannot be forgotten; strict, so fixing it turns this red until unmarked."))
+def test_closing_words_repeated_after_the_next_heading_do_not_move_the_rule():
+    # The stored rule ends differently from the page, and its closing words
+    # appear only further on, under the NEXT heading. Searched loosely, the end
+    # of the rule jumped there and proved a row citing that next section.
+    body = "planting along the eastern boundary is to be retained and maintained"
+    tail = "as shown on the approved landscape plan"
+    filler = " ".join(f"filler{n}" for n in range(30))
+    ch = doc(["2.1 landscaping", "c1 " + body + " per the council plan", filler,
+              "2.2 fencing", "c1 fences are to match " + tail])
+    stored = body + " " + tail
+    assert prove("2_2 C1", ch, text=stored)["status"] != "proven"
+    assert prove("2_1 C1", ch, text=stored)["status"] == "proven"

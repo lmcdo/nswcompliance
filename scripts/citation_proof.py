@@ -347,8 +347,12 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
         leaf = pieces[-1]
         at = (ch.keyword_heads if bare else ch.heads_at).get(leaf, [])
         heads = [i for i in at if i <= end and L[i].page not in toc]
-        # A heading set in a side column can sort just after the rule's first line.
-        heads += [i for i in at if end < i < end + 12 and L[i].page == L[end].page]
+        # A heading set in a side column can sort just after the rule's first line --
+        # but only if it sits level with or above that line on the page. Without
+        # the geometry, the NEXT section's heading printed below the rule proved
+        # a row citing that next section (cross-review, 2026-09-24).
+        heads += [i for i in at if end < i < end + 12 and L[i].page == L[start].page
+                  and L[i].y <= L[start].y + 2.0]
         if not heads:
             if leaf in ch.header_codes:
                 # "E2 C6": the chapter, named only in its running header. True,
@@ -442,6 +446,23 @@ def _anchors(ch: ChapterLines, text: str, page_hint) -> list[tuple[int, int]]:
         if occ:
             used.append(st)
             firsts += [k for k in occ if all(abs(k - f) > 3 for f in firsts)]
+    # A place counts only if MOST of the rule's wording is there, not one phrase.
+    # A single six-word match let a generic phrase repeated under another
+    # heading anchor the rule there (cross-review, 2026-09-24). Samples found
+    # nowhere in the document (extraction noise) are not held against anyone.
+    samples = [(o, tuple(words[o:o + 6])) for o in range(0, max(1, len(words) - 5), 6)]
+    located = [(o, w) for o, w in samples if ch.index.get(w)]
+
+    def at_offset(first, o, k):
+        # where word o of the rule should sit if the rule starts at token
+        # `first`, with room for words the reader dropped or the page adds
+        return abs(k - (first + o)) <= 15 + o // 10
+
+    def coverage(first):
+        hit = sum(1 for o, w in located if any(at_offset(first, o, k) for k in ch.index[w]))
+        return hit / len(located) if located else 1.0
+
+    firsts = [f for f in firsts if coverage(f) >= 0.5]
     # The hint only ORDERS the tries. The AI reader restarts its page count per
     # chunk, so a stored page can point at the wrong copy of wording a council
     # repeats per site (Leichhardt G6.15 C1 was rejected that way).
@@ -454,7 +475,7 @@ def _anchors(ch: ChapterLines, text: str, page_hint) -> list[tuple[int, int]]:
         out.append((ch.token_line[min(first + 5, last)], ch.token_line[first]))
         for st in range(len(words) - 6, -1, -1):
             occ = [k for k in ch.index.get(tuple(words[st:st + 6]), [])
-                   if first <= k <= first + len(words) + 60]
+                   if first <= k and at_offset(first, st, k)]
             if occ:
                 out.append((ch.token_line[min(occ[0] + 5, last)], ch.token_line[first]))
                 break
