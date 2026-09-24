@@ -26,11 +26,14 @@ Usage:
 
 import argparse
 import sys
+import tempfile
+from pathlib import Path
 
 import re
 
 import psycopg2
 
+import citation_proof as cp
 import dcp_extract_changed as dx
 import verify_extraction_fidelity as vf
 # dcp_extract_changed already inserts the repo root onto sys.path for its own
@@ -422,6 +425,66 @@ def _adjacency_ratio(text: str, source: str) -> float:
     return sum(1 for p in pairs if p in src_pairs) / len(pairs)
 
 
+# prior-art-checked: reuse not viable. The two existing URL patterns answer
+# different questions. `scripts/doc_claims.py::_URL_RE` is `https?://\S+` and
+# exists to BLANK urls out of prose before claim-checking, so it has no host
+# extraction and its greedy tail swallows a trailing bracket or quote into what
+# would be the domain. `scripts/validate_requirement_data.py::R2_URL_PATTERN` is
+# an exact-prefix test for our own R2 bucket. Neither compares a provision's
+# citations against the document it was read from, which is the whole question
+# here. `vf` (services/verify_dcp_formatting) has no URL handling at all.
+_URL_RE = re.compile(r"https?://[^\s)>\]\"'}]+", re.I)
+
+#: The DOMAIN only. The path is where extraction damage is least consequential
+#: and most common -- a wrapped line loses a segment, and that is a broken link
+#: rather than an invented source. A wrong DOMAIN is a citation to somebody
+#: else entirely, which is the thing worth failing on.
+_URL_HOST = re.compile(r"https?://([^/\s)>\]\"'}]+)", re.I)
+
+
+def _urls_not_in_source(text: str, whole_chapter: str) -> list:
+    """Hosts this row cites that appear nowhere in the council's own chapter.
+
+    Found 2026-09-23. A Canterbury-Bankstown provision carried
+    ``https://www.epa.ny.gov.gov.uk/.../varricool/fgpl502-...`` and
+    ``https://www.pernitchlq.nsw.gov.au/...``. Neither is a real domain. The
+    council's PDF carries ``https://www.epa.nsw.gov.au/-/media/epa/`` and
+    ``https://www.penrithcity.nsw.gov.au/...`` -- so the reader took real URLs
+    and completed them into plausible-looking inventions. The same row carried
+    an ``SLR Ref No: 628.18852.9021-4-8-8.8000`` that is nowhere in the source.
+
+    THE GATE COULD NOT SEE IT. It checks numbers and it checks words; a URL is
+    neither. `_content_words` is `[a-z]{4,}`, which shreds a domain into
+    fragments that then match ordinary prose, and the digits inside a reference
+    code look like any other number. So a FABRICATED CITATION walked through a
+    gate built to catch fabrication -- the failure this project treats as
+    unacceptable above all others.
+
+    Matched on HOST, against the WHOLE CHAPTER rather than the anchor page: a
+    council commonly lists its references once, pages away from the clause that
+    cites them, and flagging that would be flagging the document's own layout.
+    """
+    if not whole_chapter:
+        return []
+    source_hosts = {h.lower().strip(".") for h in _URL_HOST.findall(whole_chapter)}
+    if not source_hosts:
+        # The chapter cites nothing, so there is nothing to compare against and
+        # no basis to call a row's URL invented. Silence beats a guess.
+        return []
+    out = []
+    for url in _URL_RE.findall(text or ""):
+        m = _URL_HOST.match(url)
+        if not m:
+            continue
+        host = m.group(1).lower().strip(".")
+        # A host the source DOES carry, merely truncated by a line wrap, is not
+        # an invention: accept a prefix relationship in either direction.
+        if any(host.startswith(s) or s.startswith(host) for s in source_hosts):
+            continue
+        out.append(host)
+    return sorted(set(out))
+
+
 def _split_numbers(text: str, source: str, code_nums: set) -> list:
     """Numbers present in the source ONLY as a substring of a different number.
 
@@ -438,8 +501,33 @@ def _split_numbers(text: str, source: str, code_nums: set) -> list:
     return out
 
 
-def ground_row(text: str, ref_number: str, pages: dict) -> dict:
-    """Grade one row. Returns dict(status, detail, verified_page)."""
+CITATION_FINDING = cp.CITATION_FINDING
+
+
+def _citation_finding(citation: dict | None) -> str | None:
+    """The detail line for a citation that is not proven, or None.
+
+    DQ-111: `code_nums` below strips the row's own code numbers so they are not
+    graded as values -- correct for the NUMERIC check, and the reason nothing
+    ever checked the code itself. This is that check. "unjudged" (no clause
+    number claimed) is not a finding; "imprecise" is -- a true but coarse
+    citation is re-read, never served as the council's reference.
+    """
+    if citation is None or citation["status"] in ("proven", "unjudged"):
+        return None
+    if citation["status"] == "text_not_found":
+        return (f"{CITATION_FINDING}: the rule's wording could not be located line by "
+                f"line, so its clause number cannot be proven")
+    return f"{CITATION_FINDING} ({citation['status']}): {citation['detail']}"
+
+
+def ground_row(text: str, ref_number: str, pages: dict, readings=None) -> dict:
+    """Grade one row. Returns dict(status, detail, verified_page).
+
+    readings: the chapter's lines (citation_proof.load_readings). Without them
+    only words and numbers are graded -- gate_chapter always supplies them, and
+    flags the chapter's rows if it cannot.
+    """
     prov_words = set(vf._content_words(text))
     page, confident = _best_page(prov_words, pages)
     verified_page = page if confident else None
@@ -473,10 +561,21 @@ def ground_row(text: str, ref_number: str, pages: dict) -> dict:
     unsourced = _unsourced_ratio(own, word_source)
     adjacency = _adjacency_ratio(own, word_source)
     split = _split_numbers(own, number_source, code_nums)
+    invented_urls = _urls_not_in_source(own, whole_chapter)
+    citation = None
+    if readings is not None:
+        citation = _citation_finding(
+            cp.prove_citation_any(ref_number, text, readings, verified_page or page))
 
     if absent or ground_ratio < 0.75 or unsourced > _UNSOURCED_MAX \
-            or adjacency < _ADJACENCY_MIN or split:
+            or adjacency < _ADJACENCY_MIN or split or invented_urls or citation:
         detail = []
+        if citation:
+            detail.append(citation)
+        if invented_urls:
+            detail.append(
+                f"URL not in source: {', '.join(invented_urls)} — the reader "
+                f"produced a citation the council's page does not carry")
         if absent:
             detail.append(f"numbers not in source: {', '.join(absent)}")
         if ground_ratio < 0.75:
@@ -500,6 +599,14 @@ def ground_row(text: str, ref_number: str, pages: dict) -> dict:
             "source_quote": None}
 
 
+def _citation_readings(s3, r2_path: str):
+    """Both line readings of the chapter PDF, for the citation proof."""
+    with tempfile.TemporaryDirectory() as tmp:
+        local = Path(tmp) / "chapter.pdf"
+        s3.download_file(dx.R2_BUCKET_NAME, r2_path, str(local))
+        return cp.load_readings(str(local))
+
+
 # prior-art-checked: reuses enrichment.extractors.actionable_classifier.classify_provision
 # verbatim (regex-based, the project's one existing actionable/boilerplate classifier,
 # already used at extraction time) -- no new classifier, no new pattern list. This call
@@ -519,6 +626,17 @@ def gate_chapter(cur, s3, council: str, chapter_key: str, r2_path: str) -> tuple
     except Exception as exc:  # noqa: BLE001 — a bad PDF shouldn't abort the run
         print(f"    [warn] {council}/{chapter_key}: cannot read PDF ({exc}); left unchecked.")
         return 0, 0, 0
+    # Lines for the citation proof. A second download of the same object: the
+    # page-text reader above flattens pages and cannot give line positions. If
+    # the lines cannot be read, no citation here is proven -- so every graded
+    # row is FLAGGED as unchecked, never waved through on its words alone.
+    readings, lines_error = None, None
+    try:
+        readings = _citation_readings(s3, r2_path)
+    except Exception as exc:  # noqa: BLE001
+        lines_error = str(exc)[:120]
+        print(f"    [warn] {council}/{chapter_key}: cannot read PDF lines ({lines_error}); "
+              f"every row flagged, citation unchecked.")
     cur.execute(
         "SELECT id, ref_number, new_text FROM dcp_review_queue "
         "WHERE council=%s AND chapter_key=%s AND status IN ('pending','in_progress') "
@@ -531,7 +649,11 @@ def gate_chapter(cur, s3, council: str, chapter_key: str, r2_path: str) -> tuple
         if not is_actionable:
             skipped += 1
             continue
-        r = ground_row(new_text, ref_number, pages)
+        r = ground_row(new_text, ref_number, pages, readings)
+        if readings is None:
+            unchecked = f"{CITATION_FINDING}: lines unreadable ({lines_error})"
+            r = {**r, "status": "flagged",
+                 "detail": "; ".join(x for x in (unchecked, r["detail"]) if x)}
         cur.execute(
             "UPDATE dcp_review_queue SET fidelity_status=%s, fidelity_detail=%s, "
             "source_page_verified=%s, fidelity_source_quote=%s WHERE id=%s",

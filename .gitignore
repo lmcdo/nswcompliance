@@ -272,6 +272,12 @@ enrichment/tests/*
 !enrichment/config/ku_ring_gai_config.py
 !enrichment/config/canterbury_bankstown_config.py
 !enrichment/config/campbelltown_config.py
+!enrichment/config/blacktown_config.py
+!enrichment/config/penrith_config.py
+!enrichment/config/hornsby_config.py
+!enrichment/config/georges_river_config.py
+!enrichment/config/northern_beaches_config.py
+!enrichment/config/parramatta_config.py
 !enrichment/config/structural_categories.py
 !enrichment/config/zone_taxonomy.py
 !enrichment/extractors/

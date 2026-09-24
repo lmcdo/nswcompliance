@@ -627,7 +627,23 @@ class ApplicabilityTagger:
             entry = parts.get(section_code[0])
 
         if entry:
-            return self._from_entry(entry)
+            # Carry is_precinct_specific through, exactly as the chapter_topics
+            # branch above and the ashfield/leichhardt paths already do. This
+            # branch did not, so a `parts` config declaring a Part
+            # precinct-scoped had that statement silently discarded: the config
+            # file looked correct, the flag never arrived, and a precinct
+            # control was served LGA-wide -- which is DQ-99's harm.
+            #
+            # Not hypothetical. waverley_config.py already declares it on one
+            # entry, and Warringah's Part G ("applies controls to special areas
+            # of Warringah ... where there is inconsistency with Parts C, D and
+            # E, the requirements of Part G will prevail") is entirely
+            # place-scoped. Found 2026-09-23 by a test written for the new
+            # config, which failed on the OLD code path.
+            return self._from_entry(
+                entry,
+                is_precinct_specific=entry.get('is_precinct_specific', False),
+            )
 
         return None
 

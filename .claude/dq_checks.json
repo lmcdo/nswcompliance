@@ -25,8 +25,8 @@
     "the gap stays visible. An invented check that cannot fail is what produced",
     "DQ-30's '0% drift' verification — worse than no check."
   ],
-  "_max_no_check": 48,
-  "_max_unverified_unresolved": 3,
+  "_max_no_check": 43,
+  "_max_unverified_unresolved": 0,
   "_max_fixed_without_check": 38,
   "checks": {
     "DQ-54": {
@@ -101,8 +101,15 @@
     },
     "DQ-53": {
       "declared": "partial",
-      "check": null,
-      "why_no_check": "One instance fixed; the suite-wide census of contract-vs-fixture tests was never done, so there is no measurable target to check against yet."
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-53"
+      ],
+      "passes_when": "exit 0 - no contract test loads a stored artefact and compares it to another stored artefact without calling into services/ src/ enrichment/ or scripts/.",
+      "red_when": "a test named for a contract never exercises the thing it claims to lock, so the contract and the fixture can drift in the same direction and stay green.",
+      "note": "CHECK WRITTEN 2026-09-23, and running it IS the census the old reason said had never been done. Reads 0: the one named instance was fixed and no other contract test in the suite compares two stored artefacts. A 0 from a detector nobody has seen fire means nothing, so tests/test_dq_probe_unchecked_rows.py plants a fixture-only contract test and asserts it IS caught, beside two confusable negatives. Those two are real false positives the first detector produced: it looked for a live call shaped like `.to_dict(` and so accused test_db_contract_normalise_roundtrip (which calls a plain function) and test_strata_contract_accepts_registration_date (which calls model_validate). Asking 'does it call into the project at all' is the question that separates them."
     },
     "DQ-50": {
       "declared": "fixed",
@@ -119,13 +126,27 @@
     },
     "DQ-43": {
       "declared": "latent",
-      "check": null,
-      "why_no_check": "Explicitly not live today — depends on the plan-identity model that does not exist yet. A check now would assert against a design that has not been built."
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-43"
+      ],
+      "passes_when": "exit 0 - every served council's current rows resolve to a single plan NAME, so the one as-at date dcp_plan_as_at holds per LGA cannot be attached to rows from another plan. Reachable by reconciling the registry's names OR by the plan-identity model landing.",
+      "red_when": "a council's served rows span more than one plan name, so nobody can tell a genuine two-plan council from a sloppily-registered one, and the LGA-keyed date is applied to both.",
+      "note": "CHECK WRITTEN 2026-09-23. The old reason -- 'depends on a plan-identity model that does not exist yet' -- is answered by measuring the PRECONDITION instead of the harm. Reads 2: inner_west (Ashfield DCP 2007 + Marrickville DCP 2011, renders no date) and ku_ring_gai (renders a date). ku_ring_gai was nearly reported as a live instance of this defect and is NOT one: its three spellings -- 'Ku-ring-gai DCP' for the Section B parts, 'Ku-ring-gai DCP 2024' for Section A, and a third for Part 5 -- are ONE plan registered three ways, checked against the council's own document tree. That ambiguity is what the count is for. BLIND SPOT, stated in the probe: the registry join needs source_chapter_key and 7,254 of 20,261 served rows carry NULL there, so it sees 13,007 rows; a council serving a second plan entirely through key-less rows is invisible."
     },
     "DQ-42": {
       "declared": "guarded",
-      "check": null,
-      "why_no_check": "Upstream NSW Planning Portal staleness, not fixable here. The guard is the identity match in fetch_dcp_as_at_dates.py; a check should assert the guard exists rather than that the portal is correct."
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-42"
+      ],
+      "passes_when": "exit 0 - no portal date is stored against a plan whose identity differs from the one served. Measures the guard's OUTCOME, not that its code exists.",
+      "red_when": "a stale Planning Portal record has dated a plan it does not name, giving a council an as-at date belonging to a different instrument.",
+      "note": "CHECK WRITTEN 2026-09-23, and it follows this row's own prescription -- 'a check should assert the guard exists rather than that the portal is correct' -- with one correction: it asserts the guard's RESULT rather than its presence. A check that greps for the guard passes on a guard that has stopped working, which is feedback-detect-a-guard-by-forcing-its-failure. Reads 0 against 28 dcp_plan_as_at rows: no portal date is attached across a plan-identity mismatch today."
     },
     "DQ-39": {
       "declared": "fixed",
@@ -155,8 +176,15 @@
     },
     "DQ-31": {
       "declared": "partial",
-      "check": null,
-      "why_no_check": "Over-eligibility closed 2026-08-01; the consolidation onto the Python service is open. A check needs a definition of 'consolidated' that does not exist yet."
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-31"
+      ],
+      "passes_when": "exit 0 - exactly ONE file applies the Housing SEPP LMR gate to produce an eligibility verdict. Reachable only by the frontend route delegating to services/housing_sepp_eligibility.py, never by deleting the service, which would satisfy the count while removing the source of truth.",
+      "red_when": "the same regulated decision is implemented in more than one place, so the two can answer differently for the same property and nothing says which is right.",
+      "note": "CHECK WRITTEN 2026-09-23. The old reason -- 'a check needs a definition of consolidated that does not exist yet' -- was answered by not needing one: count the independent implementations and compare to one. Reads 1 (a copy beyond the first): frontend-nextjs/app/api/housing-sepp/eligibility/route.ts and services/housing_sepp_eligibility.py, which is exactly the pair the service's own docstring names when it says it PORTS 'the only prior implementation' and that 'the LEP/SEPP tab migrates onto it (P3)' is outstanding. Two earlier versions of the detector were wrong and both are recorded in its docstring: one counted MENTIONS (reporting a comment and a prop declaration), and one read TypeScript's optional-property marker `isLMRArea?:` as a ternary. Applying-not-naming is the distinction, and each wrong version is pinned as a test."
     },
     "DQ-30": {
       "declared": "fixed",
@@ -450,8 +478,15 @@
     },
     "DQ-58": {
       "declared": "open",
-      "check": null,
-      "why_no_check": "Needs a network probe over ~30 registry page URLs. Writing it as a live fetch would make CI depend on nine council websites, three of which are behind Cloudflare and 403 automated clients - a check that is red for reasons unrelated to the defect gets deleted. The right shape is a stored url_page_last_status column written by the existing monitor, then a probe that counts non-200s. That column does not exist yet."
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-58"
+      ],
+      "passes_when": "exit 0 - every active registry page URL has a recorded reachability status and that status is 200. Reachable only by the monitor writing url_page_last_status, never by deleting the URLs.",
+      "red_when": "a citation link's reachability is recorded nowhere, or is recorded as dead. Either way nobody finds out until a user clicks it, and that council can never earn an 'observed current' date.",
+      "note": "CHECK WRITTEN 2026-09-23, following this row's own prescription exactly: a stored url_page_last_status written by the monitor, then a probe over the column. The column does not exist, so the default asks for the INSTRUMENT and reads 25 -- the distinct active page URLs whose status is recorded nowhere. It can only go green by building the recording, and `--live` does the real fetch on demand. Writing it as a live fetch by default would put nine council websites into CI's dependency graph, three of them behind Cloudflare, and a check that goes red for reasons unrelated to the defect gets deleted."
     },
     "DQ-59": {
       "declared": "fixed",
@@ -1065,7 +1100,7 @@
       "blocks_outreach": true,
       "passes_when": "exit 0 - the three-state and fabricated-verdict tests pass, DQ-50 is clean, and the lead-verdict integrity test passes",
       "red_when": "the declared state and the check disagree in either direction",
-      "verified": "2026-09-14: check passed on the gate's first full run against production"
+      "verified": "2026-09-24: HOLDS. Re-verified after it had been reported NOT VERIFIED HERE for want of frontend-nextjs/node_modules in the worktree -- three sub-checks passed and the fourth was a jest test one junction away from running. The checker now returns that exact command with the UNKNOWN, because an UNKNOWN is not a failure and is therefore easy to accept and move past."
     },
     "OC-10": {
       "kind": "outreach_claim",
@@ -1083,7 +1118,7 @@
     },
     "OC-11": {
       "kind": "outreach_claim",
-      "claim": "Permitted uses by zone for 26 councils.",
+      "claim": "Permitted uses by zone for 28 councils.",
       "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
       "declared": "true",
       "check": [
@@ -1092,9 +1127,9 @@
         "OC-11"
       ],
       "blocks_outreach": true,
-      "passes_when": "exit 0 - 26 councils have every LEP zone marked complete",
+      "passes_when": "exit 0 - 28 councils have every LEP zone marked complete",
       "red_when": "the declared state and the check disagree in either direction",
-      "verified": "2026-09-14: check passed on the gate's first full run against production"
+      "verified": "2026-09-14: check passed on the gate's first full run against production | 2026-09-24: 26 -> 28 by user decision after the repaired zone scraper completed Wollongong and Newcastle; check read 28 against production."
     },
     "OC-12": {
       "kind": "outreach_claim",
@@ -1207,6 +1242,102 @@
       "passes_when": "exit 0 - no served row is left reading ALL on a key its config entry declined to decide while its own text carries evidence for a narrower answer. Both columns are asked independently. Reachable either by the tagger consulting the text for a config_silent key, or by those entries gaining a real decision.",
       "red_when": "`tag_with_provenance` discards a row's own text evidence because SOME OTHER key of the same config entry was decided.",
       "note": "Found 2026-09-23. `tag_with_provenance` guards text extraction with `if text and not config` - so a matched entry suppresses the regex for BOTH keys, including one the entry deliberately omitted. `config_silent` means 'an entry matched and nobody decided this key' (ApplicabilityTagger._resolve), so suppressing evidence on its account is a non-decision overruling data that exists. The row ends up ALL, so nothing is hidden from anyone; it is served to properties its own text does not reach, on no authority, which is the same unauditable ALL that DQ-33 was opened for. Not described as 'safe': an inapplicable control shown to a property is still a wrong answer, and calling the direction safe is how a row like this gets deprioritised forever. WIDENED THE SAME DAY, before it had ever run green: the first version counted DEV TYPES only, and the suppression is per-ENTRY not per-key, so an entry that names dev types and omits zones discards the row's zone evidence identically and was not counted - the check could have read zero with the defect fully present on the other column, which is exactly `feedback-a-check-can-watch-the-field-the-fix-abandoned`. Counting both keys took the measurement 500 -> 744 across 22 -> 27 documents, concentrated in waverley (257), campbelltown part 3 (111) and the city_of_sydney sections. Caught by the Sol cross-review at the push gate. The probe runs the TAGGER over the served corpus rather than reading the stored column, deliberately: the defect is in the tagger, not in any one stored row. NOT fixed in the same change as the Campbelltown and Canterbury-Bankstown configs: the guard is shared by all six config-driven councils, so lifting it re-tags waverley, woollahra, city_of_sydney and ku_ring_gai at the same time and every resulting narrowing needs adjudicating against its own chapter first."
+    },
+    "DQ-104": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-104"
+      ],
+      "passes_when": "exit 0 - no served provision carries two or more distinct words spelled backwards. Reachable by re-reading the affected chapters with a reader that handles the page's text direction; NOT reachable by deleting the rows, which would remove real controls along with the mirrored figure labels.",
+      "red_when": "a served provision shows a planner mirrored words where a control should be, so the text they read is not the text the council published.",
+      "note": "Found 2026-09-23 from a screenshot of the live review queue: a reviewer was being asked whether 0.41 was correct in a row whose own text read `kcabtes m0.2` -- setback, backwards -- beside `nimm0.4 xamm0.41` and `OOMBATHROOM`. There is no judgement to make about that, and the question should never have been put to a person. A PDF laid out right-to-left in places, usually inside a figure or a table, returns whole words mirrored. NOTHING DETECTED IT: _AUTO_REJECT_REASONS held garbled_glyphs, junk_ref and emptied_by_strip, none of which names this, so the row became `pending` rather than being rejected for a re-read -- against the pipeline's own rule that a row which cannot be proven is rejected and the chapter retries, and only genuine ambiguity reaches a person. Now detected at enqueue AND counted here, because the enqueue gate cannot reach what is already live. Reads 27 served rows across city_of_sydney, canterbury_bankstown and ku_ring_gai. THE DETECTOR IS EVIDENCE-BASED, not a substring probe: the obvious version, looking for 'kcabtes'/'nimm'/'xamm' as substrings, matched 40 served rows of which 35 were false positives because those letter runs occur inside ordinary words -- shipping that as an auto-REJECT would have thrown real controls away. A token counts only when its own reversal is a word this domain uses and the token itself is not, and only when two distinct such tokens appear in one provision. The vocabulary is imported from dcp_extract_changed so the probe and the gate cannot drift apart. DISTINCT FROM DQ-78, which counts runs of single letters: neither sees the other, and on 2026-09-23 DQ-78 read 34 while this read 27."
+    },
+    "DQ-105": {
+      "declared": "fixed",
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-105"
+      ],
+      "passes_when": "exit 0 - no council serves rules that fall through to every development type for want of a config. Reachable ONLY by writing the configs from each council's own Application sections; deleting a council's rows would also take this to zero and is not the fix. A council with no config but ZERO rows falling through is printed as WATCHED and not counted - computed from the rows, never a named allowlist, so it is counted again the moment one row falls through.",
+      "red_when": "a council serves rules with no config behind them AND at least one of them falls through, so its rules apply to every development type by fallthrough rather than by decision - and DQ-33's global floor is too coarse to notice, having had 234 rows of headroom on 2026-09-23.",
+      "note": "Opened 2026-09-23 while answering 'does today's work cover future LGAs?'. The answer is mostly yes and the exception is this row. Everything that judges TEXT is universal: `classify_row_fidelity` takes no council argument, so reversed text (DQ-104), garbled glyphs, junk refs and emptied provisions are caught for any council from its first extraction, and the fidelity gate grades every row against its own source page regardless of who published it. The applicability config is the one onboarding step nothing can derive - a hand-written file recording which zones and development types each chapter binds, read from that chapter's own Application section. WHY DQ-33 DOES NOT COVER IT: DQ-33 is a single global count against a floor of 1,158 that may only fall. Measured 2026-09-23 it read 924, i.e. 234 rows of HEADROOM - so a newly onboarded council could publish 234 rules applying to every development type and nothing would go red. A total hides a per-council regression (feedback-counting-is-not-comparing), and what it hides here is precisely the non-automatic step. COUNTS COUNCILS, NOT ROWS, deliberately: the defect is that a council has no config, while how many of its rows currently fall through depends on whether the text regex happened to find a zone or a type in each one, which is noise that moves on every re-extraction. Reads 7 of 14 serving councils: parramatta (616 served, 341 falling through), blacktown (125/56), northern_beaches (99/63), penrith (81/55), hornsby (58/24), georges_river (33/19), cumberland (29/0). THE PROBE GOT ITS OWN QUESTION WRONG TWICE, both times by asking something ADJACENT to what the tagger asks, and both are pinned as tests. (1) It first compared each `source_council` string to COUNCIL_CONFIGS. The tagger keys on DOCUMENT_ID, so `inner_west` was reported as unconfigured on the strength of 11 rows - 10 from 'Marrickville_DCP_2011__...' and 1 from 'Ashfield_DCP_2007__...' - which the tagger resolves perfectly well, 10 of the 11 already tagged. Inner West is the most deeply configured council in the product; those rows simply carry the parent slug in source_council while naming a predecessor plan in their document_id, and only the latter is consulted. (2) It then resolved each document_id with an EMPTY provision text. Waverley and Woollahra key on a section code that _extract_section_code reads OUT OF THE TEXT, so both resolved to nothing and waverley was reported as unconfigured while serving 392 rows with ZERO fallthrough - which was itself the proof its config works. Now resolved per ROW with that row's own text. A council is unconfigured only when NOT ONE of its served rows reaches a config; a council where some chapters resolve and others do not is DQ-102's population.",
+      "fixed_by": "2026-09-24 - configs written for campbelltown, blacktown, penrith, hornsby, georges_river, northern_beaches and parramatta. cumberland is WATCHED, not configured: its DCP Part B is five sub-parts sharing one document_id with colliding section codes (every one has a 1.1 and a 2.4), so neither key the tagger uses can separate them and any single entry would mis-scope four of the five. Its 29 rows are scoped correctly from their own prose and 0 fall through. The real defect is the document registration, not the missing config."
+    },
+    "DQ-106": {
+      "declared": "fixed",
+      "check": [
+        "python",
+        "-m",
+        "pytest",
+        "tests/test_every_zone_writer_consults_ground_truth.py",
+        "-q"
+      ],
+      "passes_when": "exit 0 - every live script that ASSIGNS v2_applicable_zones also consults an LGA land-use table (passes valid_zones=, or imports load_ground_truth from scripts/validate_zone_code_validity.py) before it writes",
+      "red_when": "a script UPDATEs v2_applicable_zones with no ground-truth consultation, so a plan published before the 2022 employment-zone reform can put a retired B or IN code into the served set. v2_applicable_zones is a HARD filter (for-property/route.ts:1012), so a retired code DELETES that provision from every answer for the successor zone, silently and with no error",
+      "note": "DQ-30 already forbade retired codes IN THE TABLE and has been green for months. It runs after the write, in the post-commit completeness report. This is the per-WRITER half: on 2026-09-23 retag_applicability_slug_docids.py was one keystroke from narrowing 34 served Warringah rows onto B1/B2/B5/B6/B7 and was caught by a person reading a dry run, not by any gate; grepping for other writers the next day found sync_v2_to_supabase.py UPDATEing the column across ~48.8k rows behind nothing but an input() prompt. Fixing callers one at a time leaves the hole open for the next one, so this asserts the property over the whole tree. Forced failures: removing valid_zones= from the retag makes its own gate report 68 rows and exit 2; adding a new blind writer turns this check red.",
+      "fixed_by": "2026-09-24 - pre-write gate in retag_applicability_slug_docids.py (retired_zone_codes) + zone gate and dry-run default in sync_v2_to_supabase.py + this per-writer check"
+    },
+    "DQ-107": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-107"
+      ],
+      "passes_when": "exit 0 - no section code carries two scope statements naming development types that cannot both be true. ⚠ THE OBVIOUS FIX DOES NOT WORK: adding one dcp_chapter_registry row per sub-part, all pointing at the same PDF, would make EACH of them extract the WHOLE document. Verified 2026-09-24 - dcp_extract_changed.py's registry query selects r2_current_path and never page_start/page_end, so it downloads and extracts the entire file per row. Five rows over cumberland's 54-page Part B would produce five duplicate sets of every provision. A real split needs EITHER page-range support in the extractor, OR the PDF physically split in R2 (which moves every page number and breaks the page links, the thing the northern_beaches and parramatta configs were deliberately designed to avoid). Deleting the rows would take this to zero too and is not the fix.",
+      "red_when": "a registered document is really several plans concatenated, so the same section code appears under each with a different scope. An applicability config is keyed on a document_id or a section code and both assume the code identifies ONE thing, so no entry can be written that is true of all of them - whatever is declared mis-scopes the rest.",
+      "note": "THE GATE AN LGA MUST PASS BEFORE A CONFIG CAN BE WRITTEN FOR IT AT ALL, which is why it is general rather than a cumberland special case. Opened 2026-09-24 when DQ-105 reached 0 with cumberland WATCHED rather than configured: its DCP Part B is five sub-parts sharing one document_id, each with its own '1.1 Land to which this Part applies' naming a different development type, and every one of them also has a 2.4. Without this check that finding rested in a comment. Precision was measured rather than assumed: same code with any differing heading text = 1,180 pairs (provision splitting, noise); differing scope SENTENCES = 35; scopes naming DISJOINT development types = 1. The 35 are mostly complementary statements about one plan - woollahra pairs 'all land within the Woollahra municipality' with 'development that requires development consent', both true at once - or the same sentence read twice with HTML table debris. Verified reachable: excluding cumberland's rows takes the count to 0."
+    },
+    "DQ-108": {
+      "declared": "fixed",
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-108"
+      ],
+      "passes_when": "exit 0 - every numeric rule in v2_extracted_rules carries a raw_match phrase that occurs in its own provision_text. Reachable by re-deriving the offending rows from their current text; deleting the rules would also take it to zero and is not the fix.",
+      "red_when": "a structured numeric rule quotes a phrase its provision does not contain, so the number shown to a planner came from nowhere. The formulate stage is FILL-BLANKS-ONLY -- it never revisits a provision that already has a verdict -- so a rule outlives the text it was derived from: re-read a chapter, replace the text, and the rule stays, describing a page that no longer says it.",
+      "note": "Opened 2026-09-24 while verifying the formulate stage before running it on 13,909 provisions. The NEW extractions were clean - 3,506 numeric rules, 0 ungrounded - but the 7,854 rows already carrying rules held 3 that were not, all on provision 40278: its text is '(e), (f) (Repealed) (g) the minimum internal area, if any, specified in the Apartment Design Guide for the type of residential development,' and it carries rules for 4, 5 and 1 parking spaces at extraction_confidence 'high'. 'parking space' does not occur in it once, and the row is current and actionable. TWO TRAPS the detector had to avoid, both measured: comparing an unflattened raw_match against flattened text accuses 44 healthy rules whose phrase spans a line break; demanding the stored VALUE appear literally fails 18 correct unit conversions (600mm stored as 0.6 m). It checks the PHRASE, normalised on both sides.",
+      "fixed_by": "2026-09-24 - fixed at the mechanism, not the row. enrichment/rule_extraction_pipeline.py now sweeps STALE rules as well as blank ones: a rule whose quoted phrase is no longer in its own provision is re-derived from the CURRENT text, which is what takes it back out of the set. Provision 40278's three invented parking rules were replaced by a single merit_assessment rule matching its actual text, and the count went 3 -> 0. btrim is load-bearing: normalising runs of whitespace without trimming the ends made the SQL match 6 rows where the Python probe finds 1, five of them healthy rows the sweep could never clear."
+    },
+    "DQ-109": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_unchecked_rows.py",
+        "--id",
+        "DQ-109"
+      ],
+      "passes_when": "exit 0 - no PDF is covered by two or more active registry rows that both decline to say which pages are theirs. Reachable by declaring the page ranges (which needs the extractor to honour them) or by deactivating rows that should never have been registered separately. Deleting the rows would reach zero too and is not the fix.",
+      "red_when": "several active registry rows point at one PDF with no page range between them. The extractor takes whatever PDF a row points at and extracts ALL of it -- its query selects r2_current_path and never page_start/page_end -- so running them yields one complete copy of the document PER ROW, live and served.",
+      "note": "Opened 2026-09-24 while investigating whether cumberland's split should be solved at the pipeline level. It should: this is not a cumberland oddity. 4 PDFs, 11 rows, across bayside, burwood, fairfield and camden, NONE yet extracted -- which is the only reason no duplicate exists. The chapter names show what happened: burwood registers part-4-residential, s4-landscaping and s4-table-4-parking all at part-4-residential.pdf, and fairfield registers chapter-5-dwelling-houses, landscaping-controls and parking-controls at one file. That is the onboarding default in docs/DCP_SCOPE_CONFIG_REFERENCE.md -- roughly six topic chapters, not the whole DCP -- recorded by someone who expected slicing to exist. ⚠ THE FIX IS NOT TO MAKE THE EXTRACTOR HONOUR page_start/page_end AS THEY STAND: those columns already carry three meanings, and 135 rows use them for something else -- 121 as a page COUNT (starts at 1) and 14 as 'content begins after front matter' (ashfield chapter-e1-heritage p3-392 with 348 provisions, waverley-dcp-2022 p12-473 with 602). Slicing on them blindly changes extraction for 2,717 live provisions. Slice only when a PDF is SHARED by more than one active row, which is derivable from data already held and needs no migration. Northern Beaches is the near-miss: 4 active rows on one PDF, one extracted at 1,772 provisions, three dormant."
+    },
+    "DQ-110": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/validate_zone_code_validity.py"
+      ],
+      "passes_when": "exit 0 - every stored zone code exists in its own LGA's land-use table. Reachable by correcting the tag or by loading the missing ground truth; deleting the row would reach zero too and is not the fix.",
+      "red_when": "a provision is keyed to a zone that exists in NSW but NOT in that council. The row can never match a lookup for the property it claims to govern, so it is silently unreachable rather than visibly wrong.",
+      "note": "REGISTERS A CHECK THAT ALREADY EXISTED AND ALREADY FAILED. validate_zone_code_validity.py has run in the post-commit completeness report for months; nothing in the ledger asked it, so its verdict reached no gate. Same shape as DQ-106, found the same way. ⚠ IT IS NOT A DUPLICATE OF DQ-30, which asks a narrower question: DQ-30 names the codes NSW RETIRED in 2022 (B1..B8) and passes on anything outside that list. This asks whether a code exists in THIS council. Measured 2026-09-24 they disagree on exactly one row: id 122333, canterbury_bankstown, zone R5 -- a current NSW zone that Canterbury-Bankstown's LEP does not contain. DQ-30 passes it correctly; this fails it correctly. The same row was refused by sync_v2_to_supabase.py's new pre-write gate the same day, which is how it first surfaced."
+    },
+    "DQ-111": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_section_code_not_in_source.py"
+      ],
+      "passes_when": "exit 0 - every served council row whose ref carries a discriminating code has its citation PROVEN by scripts/citation_proof.py, the same proof the fidelity gate uses: the section code printed at the start of a line, the nearest heading of its family above the rule, parents printed (a running header counts for a parent only), the item label printed between. Rows proven 'imprecise' (true, but a finer printed heading exists) are reported apart and do not fail it. Reachable by re-reading with the fixed reader; deleting rows would also reach zero and is not the fix.",
+      "red_when": "a served provision cites a section code the council never printed. The provision TEXT is genuine and passes the fidelity gate; only the citation is invented, so it looks checkable and is not. dcp_fidelity_gate.py::ground_row strips the row's own code numbers (code_nums) before checking, so nothing else can see this.",
+      "note": "Opened 2026-09-24 from the Wollongong onboarding (ce-citation-integrity-PROMPT-2026-09-24.md). The plan's 5.6% was a 20-chapter sample that skipped the ten largest PDFs; this probe reads all 231 source PDFs behind the 14,509 served council rows, cold in 749s (budget 900s - downloads are the cost, fetched 8 at a time). First corpus run 2026-09-24: 1,302 of 14,083 judged rows (9.25%) cite a code not printed in their source. By kind: 969 invented numbering (e.g. Warringah G3.4 where Part G3 has no numbered sub-sections; Ashfield C5.0 where the council prints only 'Section 5'), 317 a letter prefix added to a printed number (leichhardt tree manual S2.10 where the page says 2.10 - the same leak the Wollongong B1 run showed with a spurious C), 16 the extraction prompt's own example string C4.9 (woollahra E2 x4, leichhardt appendix-b x12). 1,288 of the 1,302 are extraction_method ai-reviewed. By council: ashfield 858, leichhardt 258, northern_beaches 168, city_of_sydney 7, penrith 6, woollahra 4, parramatta 1; the other ten councils 0. NOT JUDGED, declared rather than dropped: 426 (307 bare-integer sections, 119 refs with no clause number). THE PROBE GOT ITS OWN QUESTION WRONG TWICE, both pinned in tests/test_dq111_section_code_not_in_source.py. (1) It first read 2,110 (15.0%): Waverley showed 90% absent because its refs JOIN the headings above a rule, and every piece is printed. (2) The first path rule then rescued Woollahra's C4.9 as 'Part C4 > 9', because C4 is cross-referenced once in that chapter - the confusable positive went green. A single bare number now counts only when the source prints it followed by the row's own heading words. Absence is checked in PyMuPDF AND pdfplumber text; a code counts as absent only if both miss it. Item markers (O1, C17) are reported beside the headline, not in it: 1,133 of 9,380 absent, unexamined. | 2026-09-24 LATER: THE BAR WAS TOO LOW. 'Printed anywhere in the document' passed Leichhardt rows citing G10.5.2 under a printed G6.12 and City of Sydney's page number 6.2-20 served as a clause, and failed Warringah G6.8 R3, which is printed. The probe now runs the gate's own proof (scripts/citation_proof.py, 18 planted mutations all caught). Re-measured over all 14,083 judged rows: 4,741 not proven (33.7%): section wrong or unprinted 2,517 (cross_ref_only 1,270, not_nearest 745, absent 502), item label not the council's 2,145 (item_missing 1,416, item_format 729 = 'C7' where the page says '7.' or 'g)'), wording not in source 78; plus 248 imprecise. Hand-labelling ~70 rejects across rounds: section-class rejects in ashfield/leichhardt/marrickville/sydney/parramatta were real errors; warringah's are mostly the right place spelled our way (G9.1.5.1.9 for printed 5.1.9). Known residual checker gaps: generic wording repeated across sections (warringah E9 O2); a path through a bare heading number (G1 > '11 Landscaping') is refused, never guessed. Re-run the probe; do not quote these. | 2026-09-24 cross-review closed two false-pass holes (a heading BELOW the rule, and one shared phrase deciding where a rule sits); the proof is now stricter and reads 5,167 of 14,222 (36.3%) not proven, 216 of them wording-not-located. Strict on purpose: a wrongly refused citation is only re-read, a wrongly passed one is served. Known limitation pinned as a strict xfail: a half-matching stored text can tie two places."
     }
   }
 }

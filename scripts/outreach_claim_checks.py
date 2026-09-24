@@ -90,11 +90,89 @@ def pytest_files(*paths: str, k: str | None = None) -> Result:
     return verdict, f"pytest {' '.join(paths)}{' -k ' + k if k else ''}: {_last(out)}"
 
 
+def _borrowable_node_modules():
+    """The main checkout's node_modules, when this one has none.
+
+    Used only to TELL THE OPERATOR how to make the check runnable. Borrowing
+    the runner itself does not work and was tried: JavaScript module resolution
+    walks directories, so pointing a borrowed jest at this checkout with
+    --rootDir makes it fail in jest.setup.js on the first import, and widening
+    --moduleDirectories makes it swallow the file argument and run all 104
+    suites. The tree genuinely needs its own node_modules, or a junction to one.
+    """
+    # env=git_env() is NOT optional here, and DQ-54's ratchet caught it missing.
+    # This runs inside git hooks, which export GIT_DIR. With it set, `git
+    # rev-parse --git-common-dir` answers for the hook's repository rather than
+    # this one -- so the function would confidently return some other
+    # checkout's node_modules and the message would send an operator to link
+    # the wrong dependencies.
+    try:
+        from qa_report_path import git_env
+
+        done = subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            cwd=str(ROOT), env=git_env(), capture_output=True, text=True,
+            timeout=30)
+    except (OSError, subprocess.SubprocessError, ImportError):
+        return None
+    if done.returncode != 0 or not done.stdout.strip():
+        return None
+    main_root = Path(done.stdout.strip())
+    if main_root.name == ".git":
+        main_root = main_root.parent
+    if main_root.resolve() == ROOT.resolve():
+        return None
+    candidate = main_root / "frontend-nextjs" / "node_modules"
+    return candidate if candidate.is_dir() else None
+
+
+def _lockfiles_agree(main_modules) -> bool:
+    """Do this checkout and the one we would borrow from pin the same packages?
+
+    RAISED BY THE PRE-PUSH REVIEW, and it is right: if this worktree changes
+    package-lock.json and the main checkout has not, borrowing its node_modules
+    runs the test against the OLD dependencies. It would pass, and a clean
+    `npm ci` here might not. That is the same shape as everything else this
+    file is about -- a check that answers a question adjacent to the one asked.
+
+    So the junction is only offered when the two lockfiles match, and when they
+    do not the operator is told to install rather than borrow.
+    """
+    here = ROOT / "frontend-nextjs" / "package-lock.json"
+    there = main_modules.parent / "package-lock.json"
+    try:
+        if not (here.is_file() and there.is_file()):
+            return False
+        return here.read_bytes() == there.read_bytes()
+    except OSError:
+        return False
+
+
 def jest_file(test_path: str) -> Result:
+    """Run a frontend test, or say EXACTLY how to make it runnable.
+
+    WHY THE MESSAGE MATTERS. "could not run here" is not a failure, which makes
+    it easy to accept and move past. It was: OC-9 sat NOT VERIFIED while three
+    of its four sub-checks passed and the fourth was one command away from
+    running. The same blind spot cost five Vercel deployments the same day,
+    where "Type check skipped: node_modules absent" read as a pass for two
+    days. An unrunnable check has to hand back the fix, not just the excuse.
+    """
     name = "jest.cmd" if sys.platform == "win32" else "jest"
     jest = ROOT / "frontend-nextjs" / "node_modules" / ".bin" / name
     if not jest.exists():
-        return UNKNOWN, f"jest {test_path}: frontend-nextjs/node_modules is absent, so it could not run here"
+        borrow = _borrowable_node_modules()
+        if borrow and _lockfiles_agree(borrow):
+            how = (f"link the main checkout's: cd frontend-nextjs && "
+                   f'cmd //c mklink //J node_modules "{borrow}"')
+        elif borrow:
+            how = ("install them: cd frontend-nextjs && npm ci  "
+                   "(NOT the main checkout's — this worktree's package-lock.json "
+                   "differs from it, so borrowing would test the wrong packages)")
+        else:
+            how = "install them: cd frontend-nextjs && npm ci"
+        return UNKNOWN, (f"jest {test_path}: frontend-nextjs/node_modules is absent, "
+                         f"so it could not run here. This is NOT a pass -- {how}")
     rc, out = _run([str(jest), test_path], cwd=ROOT / "frontend-nextjs")
     return (PASS if rc == 0 else FAIL), f"jest {test_path}: {_last(out)}"
 
@@ -473,8 +551,9 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
     "OC-11": [
         lambda: sql_count("councils whose LEP zones are all complete",
                           "SELECT count(*) FROM (SELECT lga FROM lep_zone_coverage GROUP BY lga "
-                          "HAVING bool_and(COALESCE(is_complete, FALSE))) t", expect=26),
-    ],
+                          "HAVING bool_and(COALESCE(is_complete, FALSE))) t", expect=28),
+    ],  # 26 -> 28 on 2026-09-24 (user decision): the repaired zone scraper added
+        # Wollongong and Newcastle. Exact on purpose, so the claim moves with the data.
     # Reworded 2026-09-14: "No council data is stored" was contradicted by the council PDFs kept so each rule
     # can link to its page. The claim is now what is true, and the retired wording must stay gone.
     "OC-12": [

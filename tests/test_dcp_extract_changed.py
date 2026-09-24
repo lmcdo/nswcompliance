@@ -86,7 +86,11 @@ def test_a_139mb_pdf_is_no_longer_skipped_on_size(monkeypatch):
 
     reached = {}
 
-    def _fake_isolated(pdf_path, document_id, council, ranges, subpats, ai_on):
+    # **kwargs so this double survives a new argument being threaded through.
+    # It gained `chapter_pages` on 2026-09-24 (the shared-PDF page slice); this
+    # test is about the SIZE guard and has no opinion on the signature.
+    def _fake_isolated(pdf_path, document_id, council, ranges, subpats, ai_on,
+                       **_kw):
         reached["size"] = Path(pdf_path).stat().st_size
         return None, "stopped here on purpose"
 

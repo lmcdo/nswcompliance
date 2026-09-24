@@ -146,3 +146,102 @@ class TestTheBackupCannotBeSilentlyStale:
         assert "CREATE TABLE IF NOT EXISTS" not in src, (
             "the backup must fail on an existing table, not silently reuse it")
         assert "to_regclass" in src, "nothing checks whether the table already exists"
+
+
+class TestARetiredZoneCodeCannotReachTheWrite:
+    """DQ-30's rule, applied BEFORE the UPDATE instead of after it.
+
+    On 2026-09-23 this retag was one keystroke from tagging 34 served Warringah
+    rows with B1/B2/B5/B6/B7 -- business zones abolished by the 2022  # noqa: zone-codes (the retired codes the incident was about, named in prose)
+    employment-zone reform. Warringah DCP 2011 predates the reform and still
+    names them throughout, so the tagger read them straight out of the plan
+    text. `validate_zone_code_validity.py` would have caught it, and did, but
+    only in the post-commit completeness report: after the rows were live.
+
+    What actually caught it was me reading the dry run's narrowing shapes.
+    That is not a check. Forcing the regression on 2026-09-23 -- removing the
+    `valid_zones` argument -- makes `retired_zone_codes` report 68 rows and
+    `--apply` exit 2 with nothing written, so this one is known to fail rather
+    than merely believed to.
+
+    MUTATION NOTE. Every case has its confusable negative:
+      a retired code     vs a current code in the same table
+      a code not in ANY  vs 'ALL', which is not a zone code at all
+      unknown council    vs known council       (skip, never a silent pass)
+    A function that returns every zone fails the clean cases; one that returns
+    [] always fails the retired ones; one that forgets to special-case 'ALL'
+    fails on every universal row in the table.
+    """
+
+    #: Shaped like the real ones: `load_ground_truth` keys by LGA name and
+    #: `load_slug_resolution` maps a council slug onto that key.
+    TRUTH = {"northern beaches": {"R2", "R3", "E4", "MU1", "C4"}}  # noqa: zone-codes (a FIXTURE land-use table, deliberately fixed so the test does not move when the real taxonomy does)
+    SLUGS = {"northern_beaches": "northern beaches"}
+
+    def _bad(self, zones, council="northern_beaches"):
+        from scripts.retag_applicability_slug_docids import retired_zone_codes
+
+        return retired_zone_codes(zones, council, self.TRUTH, self.SLUGS)
+
+    def test_a_retired_business_zone_is_reported(self):
+        """The exact 2026-09-23 near-miss."""
+        assert self._bad(["B1", "B2", "B5"]) == ["B1", "B2", "B5"]  # noqa: zone-codes (retired codes, fixed on purpose: the taxonomy no longer lists them, so importing them is impossible by construction)
+
+    def test_a_current_zone_in_the_same_table_is_not(self):
+        """The confusable negative. R2 and B2 are the same shape; only one of  # noqa: zone-codes (one retired, one current, same shape -- the confusable negative)
+        them still exists in this council's land-use table."""
+        assert self._bad(["R2", "R3", "E4"]) == []  # noqa: zone-codes (current codes, fixed to match the fixture table above)
+
+    def test_a_mixed_row_reports_only_the_retired_codes(self):
+        """A row narrowing onto R2 *and* B2 is still a bug, and naming R2 in the  # noqa: zone-codes (one retired, one current, same shape -- the confusable negative)
+        error would send whoever reads it looking at the wrong half."""
+        assert self._bad(["R2", "B2", "R3"]) == ["B2"]  # noqa: zone-codes (lowercase input for the case-normalisation case)
+
+    def test_all_is_not_treated_as_a_zone_code(self):
+        """`'ALL'` is the universal marker the serving query tests with
+        `'ALL' = ANY(col)`. Testing it against a land-use table would abort the
+        retag on every universal row -- which is most of them."""
+        assert self._bad(["ALL"]) == []
+        assert self._bad(["ALL", "B2"]) == ["B2"]
+
+    def test_an_unresolvable_council_is_skipped_not_passed_or_failed(self):
+        """Three-state, matching the checker this borrows ground truth from. A
+        statewide instrument has no LGA land-use table; treating that as a
+        violation would abort every run, and this gate is not the check that
+        covers it."""
+        assert self._bad(["B2"], council="camden") == []
+        assert self._bad(["B2"], council=None) == []
+
+    def test_case_is_normalised_before_comparison(self):
+        """The tagger has emitted lowercase codes from plan text before. A
+        case-sensitive comparison would call every one of them retired."""
+        assert self._bad(["r2"]) == []
+        assert self._bad(["b2"]) == ["B2"]
+
+    def test_the_gate_is_wired_into_the_apply_path_not_just_the_dry_run(self):
+        """A check that only prints is a note. `main()` must abort on it, and
+        must do so BEFORE the backup table is created -- a run that aborts after
+        creating one leaves a half-built artefact the next run's existence check
+        then trips over.
+        """
+        lines = (ROOT / "scripts" / "retag_applicability_slug_docids.py").read_text(
+            encoding="utf-8").splitlines()
+        aborts = [i for i, ln in enumerate(lines)
+                  if ln.strip() == "if invalid:"
+                  and "ERROR" in "\n".join(lines[i + 1:i + 4])]
+        assert aborts, "nothing aborts on invalid zones -- the gate only prints"
+        abort = aborts[-1]
+        backup = next(i for i, ln in enumerate(lines) if "to_regclass" in ln)
+        assert abort < backup, (
+            "the invalid-zone abort must come before the backup table is built")
+        assert any(ln.strip() == "return 2" for ln in lines[abort:abort + 12]), (
+            "the abort prints an error and carries on")
+
+    def test_the_ground_truth_is_the_checkers_own_not_a_second_copy(self):
+        """Two implementations of "is this zone real" would drift, and the drift
+        would be invisible: the pre-write gate would pass rows the post-write
+        report then flags, with no way to tell which one was wrong."""
+        src = (ROOT / "scripts" / "retag_applicability_slug_docids.py").read_text(
+            encoding="utf-8")
+        assert "from validate_zone_code_validity import" in src
+        assert "load_ground_truth" in src and "load_slug_resolution" in src

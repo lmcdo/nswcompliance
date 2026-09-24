@@ -23,6 +23,12 @@ from .city_of_sydney_config import CITY_OF_SYDNEY_CONFIG
 from .ku_ring_gai_config import KU_RING_GAI_CONFIG
 from .canterbury_bankstown_config import CANTERBURY_BANKSTOWN_CONFIG
 from .campbelltown_config import CAMPBELLTOWN_CONFIG
+from .blacktown_config import BLACKTOWN_CONFIG
+from .penrith_config import PENRITH_CONFIG
+from .hornsby_config import HORNSBY_CONFIG
+from .georges_river_config import GEORGES_RIVER_CONFIG
+from .northern_beaches_config import NORTHERN_BEACHES_CONFIG
+from .parramatta_config import PARRAMATTA_CONFIG
 
 # Registry for config-driven LayerTopicTagger dispatch.
 # Keys are substrings matched against document_id.lower().
@@ -41,6 +47,22 @@ COUNCIL_CONFIGS: dict[str, dict] = {
     # document_id is "Campbelltown_(Sustainable_City)_DCP_2015__campbelltown_dcp_part3_low_medium".
     # No hyphenated spelling exists for this council, so only one key is registered.
     "campbelltown": CAMPBELLTOWN_CONFIG,
+    # Added 2026-09-23 (DQ-105). document_ids are "Blacktown_DCP_2015__...",
+    # "Penrith_DCP_2014__...", "Hornsby_DCP_2024__...",
+    # "Georges_River_DCP_2021__..." -- all underscored, no hyphenated spelling
+    # exists for any of the four, checked against the served document_ids.
+    "blacktown": BLACKTOWN_CONFIG,
+    "penrith": PENRITH_CONFIG,
+    "hornsby": HORNSBY_CONFIG,
+    "georges_river": GEORGES_RIVER_CONFIG,
+    # Whole-DCP document: keys on the PART code in each rule's own section
+    # reference via the `parts` path, not on document_id. See its docstring.
+    "warringah": NORTHERN_BEACHES_CONFIG,
+    "northern_beaches": NORTHERN_BEACHES_CONFIG,
+    # Also a whole-DCP document, also the `parts` path, but keyed on NUMBERED
+    # parts (1-17) rather than letters. See its docstring for why nothing in
+    # it narrows: bare-number misreads resolve to a Part directly.
+    "parramatta": PARRAMATTA_CONFIG,
 }
 
 __all__ = [
@@ -49,6 +71,12 @@ __all__ = [
     'MARRICKVILLE_CONFIG',
     'CANTERBURY_BANKSTOWN_CONFIG',
     'CAMPBELLTOWN_CONFIG',
+    'PARRAMATTA_CONFIG',
+    'BLACKTOWN_CONFIG',
+    'PENRITH_CONFIG',
+    'HORNSBY_CONFIG',
+    'GEORGES_RIVER_CONFIG',
+    'NORTHERN_BEACHES_CONFIG',
     'WAVERLEY_CONFIG',
     'WOOLLAHRA_CONFIG',
     'CITY_OF_SYDNEY_CONFIG',

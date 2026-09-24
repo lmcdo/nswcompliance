@@ -1783,10 +1783,30 @@ class DCPExtractor:
         title = match.group(2) or match.group(4) or ""
         return code.strip(), title.strip()
 
-    def __init__(self, pdf_path: Path, document_id: str, council: str | None = None):
+    def __init__(self, pdf_path: Path, document_id: str, council: str | None = None,
+                 page_range: tuple[int, int] | None = None):
         self.pdf_path = pdf_path
         self.document_id = document_id
         self.council = council
+        #: The pages of this PDF that belong to THIS chapter, 1-indexed and
+        #: inclusive, or None for the whole document.
+        #:
+        #: WHY THIS EXISTS. Councils publish several plans in one file. Four
+        #: registry rows already point at a shared PDF with no way to say which
+        #: pages are theirs, so running them would extract the whole document
+        #: once per row -- DQ-109. Cumberland is the other half: one row over a
+        #: file holding five sub-plans whose section codes collide, so no
+        #: applicability config can be written for it (DQ-107).
+        #:
+        #: PAGE NUMBERS ARE NOT REBASED, and that is the point. Cutting the PDF
+        #: into a new file would renumber pages 8-25 to 1-18, and every citation
+        #: link behind those provisions points into the ORIGINAL document. So
+        #: the range filters which pages are read while `page_num` keeps meaning
+        #: what it means everywhere else: the page in the file the reader will
+        #: open. It is also why this is not implemented by slicing bytes.
+        #:
+        #: None is the default and leaves every existing chapter untouched.
+        self.page_range = page_range
         self.page_count: int = 0
         # Set when the text layer proved garbled and OCR page texts were
         # fetched — _page_text then serves these instead of pdfplumber's.
@@ -1797,6 +1817,27 @@ class DCPExtractor:
         # is meaningless for the LLM reader, whose entire purpose is reading a
         # two-column body (ce-ai-extraction-decision-2026-07).
         self.reader_used: str | None = None
+
+    def _owned_pages(self, pdf: Any):
+        """(page_num, page) for the pages this chapter owns, original numbering.
+
+        One place decides what "this chapter's pages" means, because the class
+        opens the PDF in four separate loops and a range honoured by three of
+        them would read as a clean extraction that had quietly dropped a
+        quarter of the document.
+
+        An out-of-range end is CLAMPED rather than refused: a registry row
+        saying 8-25 of a file that turned out to be 20 pages long is a stale
+        range, and the completeness guard downstream already compares what was
+        extracted against what is live. Refusing here would stall the chapter
+        on a number instead of on its content.
+        """
+        total = len(pdf.pages)
+        lo, hi = self.page_range or (1, total)
+        lo, hi = max(1, lo), min(hi, total)
+        for i, p in enumerate(pdf.pages, start=1):
+            if lo <= i <= hi:
+                yield i, p
 
     def _page_text(self, page: Any, page_num: int) -> str:
         if self.ocr_pages and 0 < page_num <= len(self.ocr_pages):
@@ -1880,10 +1921,12 @@ class DCPExtractor:
         those page ranges."""
         with pdfplumber.open(self.pdf_path) as pdf:
             total = len(pdf.pages)
-            page_texts = []
-            for i, p in enumerate(pdf.pages):
-                page_texts.append(
-                    _clean_page_text(self._page_text(p, i + 1), self.council))
+            # Indexed by ORIGINAL page number, so a sliced chapter's entries
+            # sit where the rest of this method expects to find them.
+            page_texts = [""] * total
+            for i, p in self._owned_pages(pdf):
+                page_texts[i - 1] = _clean_page_text(
+                    self._page_text(p, i), self.council)
                 _release_page(p)
         entries = parse_toc_entries(page_texts)
         seq_codes = [(s.get("section_number") or "") for s in sequential]
@@ -1919,7 +1962,7 @@ class DCPExtractor:
         with pdfplumber.open(self.pdf_path) as pdf:
             total = len(pdf.pages)
             self.page_count = total
-            for page_num, page in enumerate(pdf.pages, start=1):
+            for page_num, page in self._owned_pages(pdf):
                 print(f"    page {page_num}/{total}", end="\r")
 
                 text = self._page_text(page, page_num)
@@ -2124,7 +2167,10 @@ class DCPExtractor:
             return
         with pdfplumber.open(self.pdf_path) as _pdf:
             _raw = []
-            for _p in _pdf.pages:
+            # Only this chapter's pages: judging a slice's text layer on the
+            # whole document would route it to OCR for a neighbour's scan, or
+            # clear it on a neighbour's clean text.
+            for _i, _p in self._owned_pages(_pdf):
                 _raw.append(_extract_page_text(_p, self.council) or "")
                 _release_page(_p)
         # Empty text layers are as unreadable as garbled ones: scanned pages
@@ -2167,8 +2213,15 @@ class DCPExtractor:
                 content = ""
                 tables: list[dict] = []
                 pages_included: list[int] = []
-                clipped_end = min(page_end, self.page_count)
-                for page_num in range(page_start, clipped_end + 1):
+                # Clamped to this chapter's own pages as well as to the file's.
+                # The TOC locator can only have found codes on owned pages --
+                # `_owned_pages` gates the text it reads -- but a range that
+                # ran past the end of a slice would silently pull a NEIGHBOUR
+                # plan's pages into this chapter, which is the exact confusion
+                # slicing exists to end.
+                own_lo, own_hi = self.page_range or (1, self.page_count)
+                clipped_end = min(page_end, self.page_count, own_hi)
+                for page_num in range(max(page_start, own_lo), clipped_end + 1):
                     page = pdf.pages[page_num - 1]
                     text = self._page_text(page, page_num)
                     text = _clean_page_text(text, self.council)
@@ -3449,7 +3502,61 @@ def _wholly_doubled(line: str) -> bool:
 # human click -- see the comment at its call site. Deliberately excludes
 # section_collapsed and oversize_new_provision: those are SIZE heuristics that
 # can legitimately fire on a genuine amendment, not certain-garbage detectors.
-_AUTO_REJECT_REASONS = {"garbled_glyphs", "junk_ref", "emptied_by_strip"}
+_AUTO_REJECT_REASONS = {"garbled_glyphs", "junk_ref", "emptied_by_strip", "reversed_text"}
+
+#: Words that appear in every DCP. Used ONLY in reverse: a token that is not one
+#: of these, whose reversal IS one of these, was emitted backwards by the reader.
+#: Deliberately small and domain-specific -- a general dictionary would sweep in
+#: ordinary reversible pairs (drawer/reward, straw/warts, desserts/stressed) and
+#: the whole value of this check is that it cannot fire on real prose.
+_PLANNING_WORDS = frozenset({
+    "setback", "setbacks", "minimum", "maximum", "building", "buildings",
+    "bedroom", "bathroom", "kitchen", "dining", "living", "storey", "storeys",
+    "height", "width", "depth", "garden", "boundary", "street", "frontage",
+    "parking", "landscape", "landscaped", "private", "habitable", "separation",
+    "courtyard", "balcony", "dwelling", "development", "residential",
+    "commercial", "ground", "floor", "front", "rear", "window", "windows",
+    "driveway", "garage", "storage", "metres", "footpath", "paved",
+    # 4 letters, and the most common word on a site-plan figure. Its reversal
+    # `etis` is not an English word, so it carries no false-positive cost --
+    # unlike `area`, whose reversal `aera` is a plausible typo of area itself
+    # and is deliberately NOT here. Omitting `site` was caught by the test
+    # asserting against a REAL served row (city_of_sydney id=95623), which is
+    # why that test quotes production text rather than an invented string.
+    "site",
+})
+_REVERSED_PLANNING_WORDS = frozenset(w[::-1] for w in _PLANNING_WORDS)
+_WORD_TOKEN = re.compile(r"[A-Za-z]{3,}")
+
+
+def reversed_text_tokens(text: str | None) -> list[str]:
+    """Tokens the reader emitted BACKWARDS, evidenced by their own reversal.
+
+    A PDF whose text is laid out right-to-left in places -- most often a figure
+    or a table -- comes back with whole words mirrored: `kcabtes` for setback,
+    `etis yradnuob htaptoof` for "site boundary footpath". Measured 2026-09-23,
+    five SERVED city_of_sydney provisions carry exactly this, all of them figure
+    labels flattened into the text of a control.
+
+    Nothing detected it. `_AUTO_REJECT_REASONS` held three reasons and none of
+    them names this, so a row of mirrored word salad reached the review queue
+    and a person was asked to confirm a number inside it -- an unanswerable
+    question, because there is no judgement to make about "kcabtes m0.2".
+    §5.2's rule is that a row which cannot be proven is REJECTED and the chapter
+    retries; only genuine ambiguity reaches a person.
+
+    Evidence-based on purpose: a token counts only when its own reversal is a
+    word this domain uses and the token itself is not. A LIKE-style substring
+    probe for the same thing matched 40 served rows of which 35 were false
+    positives (`nimm`, `xamm` inside ordinary words), which is why that shape
+    must not ship as a gate.
+    """
+    out = []
+    for tok in _WORD_TOKEN.findall(text or ""):
+        low = tok.lower()
+        if low in _REVERSED_PLANNING_WORDS and low not in _PLANNING_WORDS:
+            out.append(tok)
+    return out
 
 
 def classify_row_fidelity(ref: str | None, old_text: str | None,
@@ -3495,6 +3602,16 @@ def classify_row_fidelity(ref: str | None, old_text: str | None,
         reasons.append("section_collapsed")
     if not old_text and new_text and len(new_text) > 20000:
         reasons.append("oversize_new_provision")
+    # TWO distinct reversed words, not one. A single hit can be a genuine token
+    # (a surname, a product name, an acronym that happens to mirror a planning
+    # word); two independent ones in the same provision is a reading direction,
+    # not a coincidence. All five served instances measured 2026-09-23 carry
+    # three or more. A removal is exempt for the same reason junk_ref is: the
+    # row that DELETES a mirrored provision carries its text, and auto-rejecting
+    # the clean-up freezes the chapter it is cleaning.
+    if change_type != "removed" and len(set(
+            t.lower() for t in reversed_text_tokens(new_text))) >= 2:
+        reasons.append("reversed_text")
     if reasons:
         return "failed", "+".join(reasons)
     return "ok", None
@@ -4006,7 +4123,8 @@ OVERSIZED_PDF_SKIP_BYTES = 30 * 1024 * 1024
 
 
 def _pdf_work_child(queue, pdf_path, document_id, council, page_ranges,
-                    subsection_patterns, ai_on, mem_limit_bytes):
+                    subsection_patterns, ai_on, mem_limit_bytes,
+                    chapter_pages=None):
     """Everything that touches the PDF, run in a CHILD process.
 
     Pure with respect to the database: it opens no connection and writes no
@@ -4022,7 +4140,11 @@ def _pdf_work_child(queue, pdf_path, document_id, council, page_ranges,
             except Exception:  # noqa: BLE001 - no rlimit is not a failure
                 pass
         preflight = preflight_layout(pdf_path, council)
-        extractor = DCPExtractor(Path(pdf_path), document_id, council=council)
+        # chapter_pages is THIS chapter's slice of a shared PDF; page_ranges
+        # above is the section map WITHIN a chapter. Different things, and
+        # naming them apart is why they can both be passed safely.
+        extractor = DCPExtractor(Path(pdf_path), document_id, council=council,
+                                 page_range=chapter_pages)
         if page_ranges and not ai_on:
             sections = extractor.extract_by_page_ranges(page_ranges, subsection_patterns)
             ranged = True
@@ -4124,7 +4246,7 @@ def revive(conn):
 
 
 def extract_pdf_isolated(pdf_path, document_id, council, page_ranges,
-                         subsection_patterns, ai_on):
+                         subsection_patterns, ai_on, chapter_pages=None):
     """Run the PDF work in its own process so a kill cannot take the batch.
 
     WHY. The nightly batch was SIGKILLed (exit -9) and every chapter queued
@@ -4154,7 +4276,8 @@ def extract_pdf_isolated(pdf_path, document_id, council, page_ranges,
     proc = ctx.Process(
         target=_pdf_work_child,
         args=(queue, str(pdf_path), document_id, council, page_ranges,
-              subsection_patterns, ai_on, PDF_WORK_MEM_LIMIT_BYTES),
+              subsection_patterns, ai_on, PDF_WORK_MEM_LIMIT_BYTES,
+              chapter_pages),
         daemon=True,
     )
     proc.start()
@@ -4228,6 +4351,95 @@ def interpret_isolated_result(result, exitcode, timed_out=False, budget=None):
     return result, None
 
 
+def chapter_page_slice(cur, chapter: dict) -> tuple[tuple[int, int] | None, str | None]:
+    """This chapter's pages when it SHARES its PDF. Returns (range, refusal).
+
+    Councils publish several plans in one file, and the registry already has
+    four PDFs covered by more than one active row with no way to say which
+    pages belong to which (DQ-109: bayside, burwood, fairfield, camden, 11 rows
+    between them). The extractor reads whatever PDF a row points at and
+    extracts ALL of it, so running those rows would produce one complete copy
+    of the document per row, live and served. cumberland is the same gap from
+    the other side: one row over a file holding five sub-plans whose section
+    codes collide, so no applicability config can be written (DQ-107).
+
+    WHY "SHARED" IS THE TRIGGER, and not simply "a page range is set".
+    `page_start`/`page_end` already carry three meanings and 229 active rows
+    use them. Measured 2026-09-24: 121 rows use them as a page COUNT (start at
+    1), 14 mean "content begins after the front matter" -- ashfield
+    `chapter-e1-heritage` is p3-392 with 348 live provisions, `waverley-dcp-2022`
+    is p12-473 with 602 -- and exactly 0 mean a slice. Honouring the columns
+    wherever they appear would change extraction for 2,717 live provisions in
+    one step. Sharing a PDF is the condition that actually needs slicing, it is
+    derivable from data already held, and it needs no migration.
+
+    THE REFUSAL IS THE POINT. If a PDF is shared and this row declares no
+    range, there is no honest way to extract it: taking the whole file
+    duplicates a neighbour, and guessing a range invents a boundary. So it
+    refuses and names the rows it collides with, rather than silently
+    producing a second copy of a council.
+    """
+    r2_path = chapter.get("r2_current_path")
+    if not r2_path:
+        return None, None
+    cur.execute(
+        """SELECT chapter_key, page_start, page_end
+             FROM dcp_chapter_registry
+            WHERE is_active AND r2_current_path = %s""",
+        (r2_path,),
+    )
+    rows = cur.fetchall()
+    if len(rows) < 2:
+        return None, None            # owns its PDF: nothing changes for it
+
+    key = chapter["chapter_key"]
+    mine = next((r for r in rows if r[0] == key), None)
+    if mine and mine[1] is not None and mine[2] is not None:
+        lo, hi = int(mine[1]), int(mine[2])
+        # A DECLARED RANGE ITS OWN PROVISIONS CONTRADICT IS NOT A SLICE.
+        #
+        # Raised by the pre-push review, and it is the sharp edge of this
+        # design. page_start/page_end mean a page COUNT on 121 rows and a
+        # front-matter offset on 14, and once a row shares a PDF there is
+        # nothing in the columns themselves to tell a slice from either. A row
+        # carrying an old page-count of 1-100 against a 400-page shared file
+        # would be read as a slice and pages 101-400 would vanish, silently.
+        #
+        # No row is in that state today -- measured 2026-09-24, zero shared-PDF
+        # rows declare a range -- but the fix for DQ-107 and DQ-109 IS to add
+        # ranges to shared-PDF rows, so the intended repair is what creates the
+        # hazard. Guarding it now is cheaper than remembering to later.
+        #
+        # The chapter's own live provisions are the evidence, and they are
+        # evidence of what was actually READ out of this document rather than
+        # of what someone typed into a column. A chapter with no provisions yet
+        # returns NULL here and is not judged: there is nothing to contradict,
+        # and nothing to lose.
+        cur.execute(
+            """SELECT min(pdf_page)::int, max(pdf_page)::int
+                 FROM regulatory_provisions
+                WHERE source_council = %s AND source_chapter_key = %s
+                  AND is_current AND pdf_page IS NOT NULL""",
+            (chapter["council"], key),
+        )
+        seen = cur.fetchone()
+        if seen and seen[0] is not None and (seen[0] < lo or seen[1] > hi):
+            return None, (
+                f"{key} declares pages {lo}-{hi}, but its live provisions run "
+                f"{seen[0]}-{seen[1]}. The range contradicts what was read from "
+                f"this document, so it is a page COUNT or a stale range rather "
+                f"than a slice, and extracting on it would drop served "
+                f"controls. Correct page_start/page_end before re-running.")
+        return (lo, hi), None
+
+    others = ", ".join(sorted(r[0] for r in rows if r[0] != key))
+    return None, (
+        f"{len(rows)} active registry rows share this PDF and {key} declares no "
+        f"page_start/page_end. Extracting it would read the whole file and "
+        f"duplicate: {others}. Set the page range on each row, or deactivate "
+        f"the rows that should not have been registered separately.")
+
+
 def extract_chapter(
     chapter: dict,
     s3,
@@ -4278,6 +4490,23 @@ def extract_chapter(
         chapter.get("council_url"), chapter.get("r2_current_path"))
     if narrow:
         print(f"    [preflight] repealed check ran NARROW: {narrow}")
+
+    # Shared-PDF gate, BEFORE the download for the same reason the repealed
+    # check is: the evidence is in the registry, and there is nothing to learn
+    # by fetching a file we have no honest way to divide.
+    _slice_cur = conn.cursor()
+    try:
+        chapter_pages, slice_refusal = chapter_page_slice(_slice_cur, chapter)
+    finally:
+        _slice_cur.close()
+    if slice_refusal:
+        print(f"    [preflight] SHARED PDF, NO PAGE RANGE: {slice_refusal}")
+        print("    [preflight] chapter REJECTED - extracting it would duplicate "
+              "a council, which nothing downstream would flag")
+        return False, None
+    if chapter_pages:
+        print(f"    [preflight] shares its PDF; extracting pages "
+              f"{chapter_pages[0]}-{chapter_pages[1]} only")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         pdf_path = Path(tmpdir) / f"{chapter_key}.pdf"
@@ -4361,7 +4590,8 @@ def extract_chapter(
         # The PDF work runs in its own process. Everything below this point is
         # cheap post-processing on plain dicts.
         result, err = extract_pdf_isolated(
-            pdf_path, document_id, council, page_ranges, subsection_patterns, ai_on)
+            pdf_path, document_id, council, page_ranges, subsection_patterns, ai_on,
+            chapter_pages=chapter_pages)
         if result is None:
             print(f"    [ERROR] {err}")
             cur.close()

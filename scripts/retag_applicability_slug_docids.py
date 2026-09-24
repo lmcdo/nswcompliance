@@ -151,23 +151,106 @@ def classify(old, new) -> str:
 NARROWING = ("narrowed", "narrowed_from_all", "swapped")
 
 
+def retired_zone_codes(zones, council, truth, slug_key):
+    """Zones this plan would write that are NOT in the council's land-use table.
+
+    THE PRE-WRITE HALF OF DQ-30. `validate_zone_code_validity.py` already
+    enforces this rule and DID fire on 2026-09-23 -- but it runs inside the
+    post-commit completeness report, i.e. AFTER the rows are written. This
+    retag never consulted it, which is how 34 served Warringah rows came within
+    one keystroke of being tagged B1/B2/B5/B6/B7: Warringah DCP 2011 predates  # noqa: zone-codes (the retired codes this gate exists to refuse, named in prose)
+    the 2022 employment-zone reform and still names those codes throughout, so
+    the tagger read them straight out of the text. Checking the PLAN closes the
+    window between "wrong" and "already live".
+
+    It is a BACKSTOP, not the fix. The fix is passing `valid_zones` to
+    `tag_with_provenance`, which drops the codes at source; this catches the
+    day somebody removes that argument again. Forcing that exact removal on
+    2026-09-23 produced 68 rows here, so it is known to be able to fail.
+
+    Three-state, matching the checker it borrows its ground truth from:
+
+      * council resolves and every zone is in its table -> `[]`, clean
+      * council resolves and a zone is not              -> the offending codes
+      * council does NOT resolve to an LGA              -> `[]`, UNVERIFIABLE
+
+    The third is the uncomfortable one and it is deliberate. Treating "we hold
+    no land-use table for this council" as a violation would abort the retag
+    for every statewide instrument; treating it as a pass is equally wrong but
+    is the failure the OTHER check already covers, by name, after the write.
+    `'ALL'` is not a zone code and is never tested.
+    """
+    key = slug_key.get(council)
+    if not key:
+        return []
+    allowed = truth.get(key, set())
+    bad = {z.upper() for z in zones if z != "ALL" and z.upper() not in allowed}
+    return sorted(bad)
+
+
 def build_plan(cur, councils):
     """Rows whose tag VALUES change, plus the provenance for every row in scope."""
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from enrichment.extractors.applicability_tagger import ApplicabilityTagger
 
+    # The LGA zone lists FIRST: a second execute() on this cursor would discard
+    # the row result set, and the rows are what the loop below consumes.
+    cur.execute(
+        """SELECT lower(lga), array_agg(DISTINCT zone) FROM lep_zone_coverage
+            WHERE zone IS NOT NULL GROUP BY 1"""
+    )
+    by_lga = {lga: set(z) for lga, z in cur.fetchall()}
+
     cur.execute(
         f"""SELECT is_current AND v2_is_actionable AS served,
                    id, document_id, provision_text,
-                   v2_applicable_zones, v2_applicable_dev_types
+                   v2_applicable_zones, v2_applicable_dev_types,
+                   source_council
             FROM {TABLE} WHERE source_council = ANY(%s)""",
         (list(councils),),
     )
+    rows = cur.fetchall()
     tagger = ApplicabilityTagger()
-    plan, prov_only, narrowings = [], [], []
+
+    # DQ-30's zone-validity filter, which this script BYPASSED until 2026-09-23.
+    # `tag_with_provenance` drops any zone not in the LGA's own land-use table
+    # when it is given one, and the whole point of that filter is a plan naming
+    # a code that no longer exists. Warringah DCP 2011 predates the 2022
+    # employment-zone reform and still names B1, B2, B5, B6 and B7 throughout;
+    # without this the retag NARROWED 34 served rows onto those retired codes,
+    # which is both wrong and an immediate OC-17 failure ("served rows that
+    # apply to a retired zone code but not to its successor"). Caught by reading
+    # the dry run's narrowing shapes before applying.
+    # GROUND TRUTH, reused rather than reimplemented. These two functions are
+    # scripts/validate_zone_code_validity.py's own, so the rule this gate applies
+    # before a write is byte-identical to the rule the post-commit report applies
+    # after one -- two copies would drift, and the drift would be invisible.
+    from validate_zone_code_validity import load_ground_truth, load_slug_resolution
+
+    truth = load_ground_truth(cur)
+    slug_key = load_slug_resolution(cur, truth)
+
+    def _valid_zones_for(council: str):
+        """The LGA's real zone list, or None when we have no ground truth.
+
+        None means "do not filter", which is deliberate: silently dropping every
+        zone for a council we have no coverage for would look exactly like a
+        successful narrowing.
+        """
+        key = (council or "").replace("_", " ").lower()
+        for lga, zones in by_lga.items():
+            if key and (key in lga or lga in key):
+                return zones
+        return None
+
+    plan, prov_only, narrowings, invalid = [], [], [], []
     stats = Counter()
-    for served, pid, doc, txt, old_z, old_d in cur.fetchall():
-        zones, devs, prov = tagger.tag_with_provenance(txt or "", doc)
+    for served, pid, doc, txt, old_z, old_d, council in rows:
+        zones, devs, prov = tagger.tag_with_provenance(
+            txt or "", doc, valid_zones=_valid_zones_for(council))
+        bad = retired_zone_codes(zones, council, truth, slug_key)
+        if bad:
+            invalid.append((pid, council, bad))
         # NULL is kept as None through classify(), because NULL and an empty
         # array are opposite states in the serving query. The coerced copies
         # below are what the plan carries: the UPDATE guard compares with
@@ -200,7 +283,7 @@ def build_plan(cur, councils):
                     narrowings.append((pid, doc, "dev_types", old_d, devs, dk))
         else:
             prov_only.append(row)
-    return plan, prov_only, stats, narrowings
+    return plan, prov_only, stats, narrowings, invalid
 
 
 def main() -> int:
@@ -224,7 +307,8 @@ def main() -> int:
 
     conn, cur = _connect()
     try:
-        plan, prov_only, stats, narrowings = build_plan(cur, args.councils)
+        plan, prov_only, stats, narrowings, invalid = build_plan(
+            cur, args.councils)
         print(f"\n=== DQ-33 re-tag plan ===")
         print(f"  councils                 : {', '.join(args.councils)}")
         print(f"  rows in scope            : {len(plan) + len(prov_only):,}")
@@ -267,9 +351,37 @@ def main() -> int:
         for pid, z, d, zs, _ds, oz, od in plan[:args.limit_print]:
             print(f"    id={pid:<7} zones {oz} -> {z}   src={zs}")
 
+        if invalid:
+            print(f"\n  ZONE CODES NOT IN THEIR LGA'S LAND-USE TABLE : {len(invalid):,}")
+            shapes: dict = {}
+            for pid, council, bad in invalid:
+                shapes.setdefault((council, tuple(bad)), []).append(pid)
+            for (council, bad), ids in sorted(shapes.items(), key=lambda kv: -len(kv[1])):
+                print(f"    {len(ids):>5,} row(s)  {council}: {list(bad)}   e.g. id={ids[0]}")
+
         if not args.apply:
             print("\nDRY RUN — nothing written. Re-run with --apply to execute.")
             return 0
+
+        # REFUSED, not filtered, and BEFORE the backup table is created so a
+        # refused run leaves no trace. `tag_with_provenance` already drops a
+        # code an LGA does not have when given valid_zones, so reaching here
+        # means one survived that: a new code path, a council that later gained
+        # ground truth, or the filter being removed.
+        #
+        # The rule is `validate_zone_code_validity.py`'s, imported rather than
+        # restated. That checker DOES run today and DID fire on 2026-09-23 --
+        # but in the post-commit completeness report, i.e. AFTER the write. The
+        # retag never consulted it, which is how 34 Warringah rows came within
+        # one keystroke of being tagged with business zones the 2022
+        # employment-zone reform retired. Writing one is an immediate OC-17
+        # failure on its own retired-zone sub-check.
+        if invalid:
+            print(f"ERROR: {len(invalid):,} planned row(s) carry a zone code that is "
+                  f"not in their LGA's land-use table, listed above. Nothing was "
+                  f"written. A plan published before the 2022 employment-zone reform "
+                  f"still names the retired B and IN series.", file=sys.stderr)
+            return 2
 
         if narrowings and args.expect_narrowings != len(narrowings):
             print(f"ERROR: the plan narrows {len(narrowings):,} served row(s) and "

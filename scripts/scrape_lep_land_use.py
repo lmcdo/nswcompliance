@@ -36,23 +36,64 @@ def fetch_lep_html(epi_id: str, local_file: str = None) -> str:
         print(f"  {len(text):,} chars")
         return text
 
-    # Use curl subprocess — requests gets 403 but curl with browser UA works
-    import subprocess, tempfile
+    # prior-art-checked: reuses scripts/legislation_monitor.py's own
+    # _get_playwright_browser() rather than starting a second browser. Its
+    # _fetch_nsw_legislation_version_playwright cannot be reused directly --
+    # it returns a VERSION STRING extracted from the page, and this needs the
+    # whole HTML to parse land use tables out of. Browser lifecycle stays in
+    # one place; only the "what do I want off the page" part differs.
     url = f"https://legislation.nsw.gov.au/view/whole/html/inforce/current/{epi_id}"
-    print(f"Fetching {url} via curl ...")
-    tmp = tempfile.NamedTemporaryFile(suffix='.html', delete=False, mode='w')
-    tmp.close()
-    result = subprocess.run(
-        ['curl', '-sL', '-o', tmp.name, '-H',
-         'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', url],
-        capture_output=True, timeout=60
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"curl failed: {result.stderr}")
-    with open(tmp.name, 'r', encoding='utf-8', errors='replace') as f:
-        text = f.read()
-    os.unlink(tmp.name)
+
+    # WHY NOT curl. legislation.nsw.gov.au sits behind a Cloudflare browser
+    # challenge -- "Just a moment..." -- and curl, requests and every
+    # datacenter IP receive it. Documented in the monitor above: "NSW
+    # Legislation HTML scraping removed from auto chain (Jun 2026) - Cloudflare
+    # blocks all datacenter IPs (Railway, GitHub Actions)". This script never
+    # moved, and nothing told anyone.
+    #
+    # IT FAILED SILENTLY, WHICH IS WHY IT SAT BROKEN. The challenge page is a
+    # valid 200, so curl succeeded, the parser found no tables, and the run
+    # printed "TOTAL: 0 zones, 0 use entries" -- indistinguishable from an LEP
+    # that genuinely has none. Measured 2026-09-24 against Bayside
+    # (epi-2021-0498), which already HAS 20 zones loaded: identical 5,697-char
+    # response, identical 0 zones. Every council would have read the same.
+    #
+    # A real browser clears it, and does NOT need the whitelisted Fly IP:
+    # measured the same day from a laptop, epi-2010-0076 returned 1,477,488
+    # chars containing the Land Use Table, challenge cleared on the first poll.
+    from legislation_monitor import _get_playwright_browser
+
+    print(f"Fetching {url} via Playwright ...")
+    ctx = _get_playwright_browser().new_context(user_agent=(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"))
+    try:
+        page = ctx.new_page()
+        resp = page.goto(url, timeout=60000, wait_until="domcontentloaded")
+        if resp is not None and resp.status == 404:
+            raise RuntimeError(f"HTTP 404 - EPI id may be wrong: {epi_id}")
+        # Polled rather than slept: it cleared on the first poll when measured,
+        # and a fixed sleep is either wasted time or too short on a slow day.
+        for _ in range(8):
+            text = page.content()
+            if "Just a moment" not in text:
+                break
+            page.wait_for_timeout(5000)
+        else:
+            raise RuntimeError(
+                "Cloudflare challenge did not clear after ~40s. This is NOT an "
+                "LEP with no zones -- do not read a 0-zone result as one.")
+    finally:
+        ctx.close()
+
     print(f"  {len(text):,} chars")
+    # The whole point: a challenge page parses to zero zones without erroring,
+    # which is the failure that kept this quiet. Refuse rather than return it.
+    if len(text) < 50_000:
+        raise RuntimeError(
+            f"only {len(text):,} chars returned for {epi_id} - far too small for "
+            f"a whole LEP, so this is a challenge or error page, not the land "
+            f"use tables. Refusing instead of reporting 0 zones.")
     return text
 
 
