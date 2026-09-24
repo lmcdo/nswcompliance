@@ -107,6 +107,7 @@ _TOC_LINE = re.compile(r"(\.{3,}|\s)\d{1,4}\s*$")
 #: A page number in the top/bottom margin. Harmless as text, but "1" at the
 #: foot of a page starts with a code and was taken as the heading "1".
 _PAGE_NUMBER = re.compile(r"^(?:page\s+)?\d{1,4}$|^\d+(?:\.\d+)*\s*[-–]\s*\d+$")
+_KEYWORD_HEAD = re.compile(r"^(?:section|part|chapter)\s+(\d{1,3})(?![\d.])")
 _WORD = re.compile(r"[a-z0-9]+")
 
 
@@ -122,6 +123,10 @@ class ChapterLines:
     #: code -> ascending line indices where that code STARTS a line. Built once;
     #: without it Warringah (1,600 rules) rescans every line per rule per reading.
     heads_at: dict = field(default_factory=dict)
+    #: bare numbers printed after a heading word: "section 11 - corner hotels".
+    #: A lone "11" is on every page; "Section 11" at a line start is a heading
+    #: (Leichhardt Appendix B numbers its typologies this way and nothing else).
+    keyword_heads: dict = field(default_factory=dict)
     full_text: str = ""
     #: Codes named by running headers ("e6 | sustainability"). Never a heading
     #: for a rule, but evidence that a PARENT piece is the council's own:
@@ -176,6 +181,12 @@ class ChapterLines:
             if m:
                 heads[m.group(1)].append(i)
         out.heads_at = dict(heads)
+        kw = collections.defaultdict(list)
+        for i, ln in enumerate(kept):
+            m = _KEYWORD_HEAD.match(ln.text)
+            if m:
+                kw[m.group(1)].append(i)
+        out.keyword_heads = dict(kw)
         out.full_text = "\n".join(ln.text for ln in kept)
         for i, ln in enumerate(kept):
             for w in _WORD.findall(ln.text):
@@ -321,7 +332,8 @@ def _readings(group) -> list[tuple[list[str], str | None]]:
     return out[:12]
 
 
-def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None) -> str:
+def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None,
+                 bare: bool = False) -> str:
     L, toc = ch.lines, ch.toc_pages
     best = "absent"
 
@@ -333,7 +345,7 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
     item_family = re.match(r"[a-z]*", item or "").group(0)
     for pieces, numbered in _readings(group):
         leaf = pieces[-1]
-        at = ch.heads_at.get(leaf, [])
+        at = (ch.keyword_heads if bare else ch.heads_at).get(leaf, [])
         heads = [i for i in at if i <= end and L[i].page not in toc]
         # A heading set in a side column can sort just after the rule's first line.
         heads += [i for i in at if end < i < end + 12 and L[i].page == L[end].page]
@@ -348,6 +360,12 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
         above = [i for i in heads if i <= end]
         h = max(above) if above else min(heads)   # below only for a side-column heading
         lo = min(h, start)
+        if bare:
+            closing = [L[i].text for i in range(lo + 1, end + 1)
+                       if (m := _KEYWORD_HEAD.match(L[i].text)) and m.group(1) != leaf]
+            if closing:
+                keep("not_nearest:" + closing[-1][:30])
+                continue
         between = [L[i].text for i in range(lo + 1, end + 1)
                    if L[i].page not in toc and _heading_like(L[i], ch.page_width)
                    and (m := CODE_AT_START.match(L[i].text)) and _ends_scope(m.group(1), leaf, item_family)]
@@ -451,7 +469,16 @@ def prove_citation(ref_number: str | None, text: str | None, ch: ChapterLines,
     specific printed heading sits between -- true, too coarse to find the rule.
     """
     sections, item, why = split_ref(ref_number)
-    if why:
+    bare = False
+    if why == "bare integer section (not discriminating)":
+        # Judged only against "Section N" / "Part N" / "Chapter N" headings.
+        groups = code_groups(ref_number)
+        if len(groups) > 1 and groups[-1][0]:
+            item, groups = groups[-1], groups[:-1]
+        sections, bare = [g for g in groups if len(g[1]) == 1][:1], True
+        if not any(render(g).lower() in ch.keyword_heads for g in sections):
+            return {"status": "unjudged", "detail": why}
+    elif why:
         return {"status": "unjudged", "detail": why}
     names = [render(g).lower() for g in sections]
     # "G6 G6.15": the first token only names the parent of the second.
@@ -463,7 +490,7 @@ def prove_citation(ref_number: str | None, text: str | None, ch: ChapterLines,
     item_code = render(item).lower() if item else None
     worst = coarse = None
     for end, start in anchors:
-        verdicts = [_prove_group(ch, end, start, g, item_code) for g in sections]
+        verdicts = [_prove_group(ch, end, start, g, item_code, bare) for g in sections]
         if all(v == "proven" for v in verdicts):
             return {"status": "proven", "detail": None}
         if coarse is None and all(v == "proven" or v.startswith("imprecise") for v in verdicts):

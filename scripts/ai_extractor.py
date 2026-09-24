@@ -36,28 +36,48 @@ _EMPTY_PARSE_MAX_RETRIES = 2  # a non-trivial response parsing to 0 provisions i
                                # very likely a truncated/malformed body, not a
                                # genuine empty chunk -- see ai_extract_chapter.
 
+# DQ-111. The previous prompt ORDERED a section-qualified code ("MUST be fully
+# section-qualified ... e.g. "C4.9 O1"") and gave a concrete example. Where the
+# council prints no section number the model had to produce one anyway, and it
+# produced the example: Woollahra E2 and Leichhardt Appendix B served "C4.9",
+# and Wollongong B1 came back with a "C" on every one of its 61 section codes.
+# So: no concrete code anywhere in this prompt, copy only what is printed, and
+# when no number is printed give the printed heading words -- never an empty
+# code, because an empty code is DROPPED (provisions_to_sections). The fidelity
+# gate proves every code against the page (scripts/citation_proof.py); this
+# prompt is the first line of defence, not the guarantee.
 PROMPT = (
-    "This is part of a NSW council Development Control Plan. Extract every numbered "
-    "provision (objectives, controls, clauses). Return a JSON object "
-    '{"provisions": [{"code","title","text"}]}. Split each individual objective '
-    "(O1, O2...) and control (C1, C2...) into its own provision where they are "
-    "separately numbered. Each provision's \"code\" MUST be fully section-qualified: "
-    "the section number followed by the objective/control label, e.g. \"C4.9 O1\", "
-    "\"C4.9 C2\" — NEVER a bare \"O1\" or \"C1\" without its section number. IGNORE "
-    "running page headers, footers, page numbers, and any faint rotated watermark/date "
-    "characters in the margins. Do not invent provisions. Output ONLY the JSON object."
+    "This is part of a NSW council Development Control Plan. Extract every provision "
+    "(objectives, controls, clauses, requirements, performance criteria, design "
+    "solutions). Return a JSON object "
+    '{"provisions": [{"code","title","text"}]}. Split each separately labelled '
+    "objective or control into its own provision. "
+    "The \"code\" is the provision's citation and must be COPIED from the page, never "
+    "composed: the section number printed in the heading above the provision, then a "
+    "space, then the provision's own label exactly as the page prints it. Copy every "
+    "character as printed -- keep the council's own letters, numbers, full stops and "
+    "brackets, never add a letter or number the page does not show, never renumber, "
+    "and never convert a label into a different style. If no section number is "
+    "printed above the provision, use the nearest section number printed above it on "
+    "these pages; if the page prints no section number at all, use the words of the "
+    "heading printed above the provision instead, followed by its label. If the "
+    "provision has no printed label of its own, give the section number or heading "
+    "words alone. The code is never empty and never contains anything you cannot see "
+    "printed. IGNORE running page headers, footers, page numbers, and any faint "
+    "rotated watermark/date characters in the margins. Do not invent provisions. "
+    "Output ONLY the JSON object."
 )
 
 
 def _build_prompt(current_section: str | None = None) -> str:
     """PROMPT plus, when a page range continues a section whose heading fell in an
-    earlier chunk, the section number so the model still qualifies those codes."""
+    earlier chunk, that section's printed number -- real data from the previous
+    chunk, never an example."""
     if current_section:
         return PROMPT + (
-            f" These pages may continue section {current_section} from the previous page: "
-            f"any objective/control appearing before the next section heading belongs to "
-            f"{current_section}, so qualify it as \"{current_section} O1\", "
-            f"\"{current_section} C1\", etc."
+            f" These pages may continue section {current_section} from earlier pages: a "
+            f"provision that appears before the next printed section heading belongs to "
+            f"it, so its code starts with {current_section}."
         )
     return PROMPT
 
@@ -109,13 +129,21 @@ def parse_provisions(text: str) -> list[dict]:
 
 
 def dedupe_provisions(provs: list[dict]) -> list[dict]:
-    """Drop provisions with no/blank code; keep the first per code. Pure."""
-    seen: set[str] = set()
+    """Drop provisions with no/blank code, and exact repeats (same code AND text). Pure.
+
+    Keyed on code alone this dropped every later rule that shared a code with an
+    earlier one, silently. Councils repeat labels per section ("C1" under every
+    heading) and a faithful reader copies them, so two different rules can share
+    a code; the extractor downstream already suffixes a repeated number whose
+    text differs (``_2``), so keeping both loses nothing.
+    """
+    seen: set[tuple[str, str]] = set()
     out: list[dict] = []
     for p in provs:
         code = str(p.get("code", "")).strip()
-        if code and code not in seen:
-            seen.add(code)
+        key = (code, " ".join(str(p.get("text", "")).split()))
+        if code and key not in seen:
+            seen.add(key)
             out.append(p)
     return out
 

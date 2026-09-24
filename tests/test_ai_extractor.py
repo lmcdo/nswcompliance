@@ -53,11 +53,18 @@ class TestParseProvisions:
 
 
 class TestDedupe:
-    def test_dedupes_by_code_keeps_first(self):
-        out = dedupe_provisions([{"code": "1.1", "title": "first"},
-                                 {"code": "1.1", "title": "dup"},
-                                 {"code": "1.2"}])
-        assert out == [{"code": "1.1", "title": "first"}, {"code": "1.2"}]
+    def test_exact_repeat_is_dropped(self):
+        out = dedupe_provisions([{"code": "1.1", "text": "same rule"},
+                                 {"code": "1.1", "text": "same  rule"},
+                                 {"code": "1.2", "text": "x"}])
+        assert out == [{"code": "1.1", "text": "same rule"}, {"code": "1.2", "text": "x"}]
+
+    def test_different_rules_sharing_a_code_are_both_kept(self):
+        # Keyed on code alone, the second rule vanished without trace. The
+        # extractor suffixes a repeated number downstream, so both survive.
+        out = dedupe_provisions([{"code": "C1", "text": "first rule"},
+                                 {"code": "C1", "text": "a different rule"}])
+        assert len(out) == 2
 
     def test_drops_blank_codes(self):
         assert dedupe_provisions([{"code": ""}, {"title": "no code"}, {"code": "  "}]) == []
@@ -160,11 +167,20 @@ class TestSectionThreading:
         for bad in ("C1", "O1", "C44", "C7", ""):
             assert not _SECTION_RE.match(bad), bad
 
-    def test_prompt_requires_section_qualified_codes(self):
+    def test_prompt_carries_no_concrete_code_for_the_model_to_copy(self):
+        """DQ-111: the example "C4.9 O1" in this prompt was served as a citation."""
+        import re
         from ai_extractor import PROMPT
-        # regression: the prompt must explicitly forbid bare codes
-        assert "section-qualified" in PROMPT.lower()
-        assert "never a bare" in PROMPT.lower()
+        assert not re.search(r"\b[A-Z]{1,3}\d+(?:\.\d+)+\b", PROMPT), "a section-shaped example"
+        assert not re.search(r"\b[A-Z]{1,2}\d\b", PROMPT), "a label-shaped example"
+
+    def test_prompt_demands_the_printed_code_and_forbids_composing_one(self):
+        from ai_extractor import PROMPT
+        low = PROMPT.lower()
+        assert "copied from the page" in low and "never composed" in low
+        assert "never add a letter or number the page does not show" in low
+        # never empty: an empty code is dropped by provisions_to_sections
+        assert "never empty" in low and "heading printed above" in low
 
 
 class TestTruncationRate:

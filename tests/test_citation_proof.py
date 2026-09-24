@@ -299,3 +299,22 @@ def test_collapsed_parent_without_an_item_label_is_imprecise_too():
     ch = doc(["2.25 stormwater", "2.25.3 detention", "2.25.3.4 osd sizing", BODY])
     assert prove("2_25", ch)["status"] == "imprecise"
     assert prove("2_25_3_4", ch)["status"] == "proven"
+
+
+def test_bare_number_is_judged_only_after_a_heading_word():
+    # Leichhardt Appendix B: "Section 11 - Corner Hotels". The old reader filed
+    # these rules under the prompt's example "C4.9"; the new one reads "11 C1".
+    ch = doc(["section 11 – corner hotels", "c1 " + BODY])
+    assert prove("11 C1", ch)["status"] == "proven"
+    ch2 = doc(["section 11 – corner hotels", "section 12 – warehouses", "c1 " + BODY])
+    assert prove("11 C1", ch2)["status"] == "not_proven"
+    ch3 = doc(["11 corner hotels", "c1 " + BODY])        # no heading word: not judged
+    assert prove("11 C1", ch3)["status"] == "unjudged"
+
+
+def test_a_numbered_list_item_is_not_section_n():
+    # "11." is item eleven of a list inside Section 12, not Section 11.
+    ch = doc(["section 11 – corner hotels", "c1 other words"],
+             ["section 12 – warehouses", "11. an eleventh list item", "c1 " + BODY])
+    assert prove("11 C1", ch)["status"] == "not_proven"
+    assert prove("12 C1", ch)["status"] == "proven"
