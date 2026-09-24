@@ -938,3 +938,19 @@ class TestEmptyParseRetry:
         provs = _call_and_parse_with_empty_retry("sonnet", b"%PDF", "prompt")
         assert provs == []
         assert calls["n"] == 1 + _ai_extractor_mod._EMPTY_PARSE_MAX_RETRIES
+
+
+def test_a_named_model_without_its_key_is_not_a_reader(monkeypatch):
+    """Cross-review 2026-09-24: AI_MODEL=sol with no OPENAI_API_KEY would bypass a
+    council's page map for a reader that cannot run."""
+    import importlib
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    dx = importlib.import_module("scripts.dcp_extract_changed")
+    monkeypatch.delenv("AI_EXTRACTION", raising=False)
+    monkeypatch.setenv("AI_MODEL", "sol")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    assert dx.llm_reader_available() is False
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    assert dx.llm_reader_available() is True
+    monkeypatch.setenv("AI_EXTRACTION", "0")
+    assert dx.llm_reader_available() is False

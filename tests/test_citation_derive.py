@@ -117,3 +117,23 @@ def test_a_label_is_never_added_to_a_citation_that_had_none():
     # Woollahra C1.3.9: the stored text opens with C1.3.8's last control, C22.
     rd = readings(["c1.3.8 earlier section", "c22 " + BODY])
     assert derive("C1_3_9", rd)["status"] == "not_derivable"
+
+
+class TestRepairRefusesUnsafeRuns:
+    """Cross-review 2026-09-24: the unsafe invocations are refused before any connection."""
+
+    @staticmethod
+    def main_with(monkeypatch, *argv):
+        import pytest
+        import dcp_restore_citations as r
+        monkeypatch.setattr(sys, "argv", ["dcp_restore_citations.py", *argv])
+        with pytest.raises(SystemExit) as e:
+            r.main()
+        return e.value.code
+
+    def test_apply_needs_a_council(self, monkeypatch):
+        assert self.main_with(monkeypatch, "--apply") == 2
+
+    def test_audit_share_is_bounded(self, monkeypatch):
+        assert self.main_with(monkeypatch, "--audit-share", "2") == 2
+        assert self.main_with(monkeypatch, "--audit-share", "0") == 2

@@ -3747,8 +3747,15 @@ def llm_reader_available() -> bool:
     """
     if not ai_extraction_enabled():
         return False
-    from scripts.ai_extractor import configured_model
-    return bool((os.getenv("AI_MODEL") or "").strip() or configured_model())
+    from scripts.ai_extractor import _MODEL_PREFERENCE, configured_model
+    named = (os.getenv("AI_MODEL") or "").strip().lower()
+    if named:
+        # A named model counts only with ITS key. AI_MODEL=sol without
+        # OPENAI_API_KEY would otherwise bypass the page map for a reader that
+        # cannot run (cross-review, 2026-09-24).
+        key = dict(_MODEL_PREFERENCE).get(named)
+        return bool(key and os.getenv(key))
+    return bool(configured_model())
 
 
 def fidelity_gate_enabled() -> bool:

@@ -130,7 +130,8 @@ def plan_council(conn, s3, bucket, cache_dir: Path, council: str | None):
             plans.append({"id": rid, "council": cncl, "chapter": chapter, "document_id": doc_id,
                           "old_ref": ref, "new_ref": new_ref, "old_header": header,
                           "new_header": new_header, "new_text": new_text, "r2_path": r2_path,
-                          "page": hint})
+                          "page": hint,
+                          "old_text_md5": hashlib.md5((text or "").encode()).hexdigest()})
             tally["planned"] += 1
     return plans, tally
 
@@ -163,6 +164,13 @@ def main() -> int:
     ap.add_argument("--audit-share", type=float, default=0.05)
     ap.add_argument("--cache-dir", default=str(Path(tempfile.gettempdir()) / "dq111_lines"))
     args = ap.parse_args()
+    if not 0 < args.audit_share <= 1:
+        ap.error("--audit-share must be above 0 and at most 1")
+    if args.apply and not args.council:
+        # The all-council dry run of 2026-09-24 planned wrong fixes for warringah,
+        # ashfield and marrickville layouts. A write is one council at a time,
+        # after its dry run has been read against the page.
+        ap.error("--apply needs --council: dry-run and read each council before writing it")
 
     import boto3
     import psycopg2
@@ -204,14 +212,22 @@ def main() -> int:
             conn.rollback()
             print("FATAL: backup count does not match the planned rows; nothing written.")
             return 2
-        written = 0
+        # Pinned to the old citation AND the old text: a row re-read or recommitted
+        # since the dry run keeps its newer content, and is reported, not overwritten.
+        applied = []
         for p in plans:
             cur.execute("UPDATE regulatory_provisions SET ref_number = %s, section_header = %s, "
-                        "provision_text = %s WHERE id = %s AND is_current AND ref_number = %s",
-                        (p["new_ref"], p["new_header"], p["new_text"], p["id"], p["old_ref"]))
-            written += cur.rowcount
+                        "provision_text = %s WHERE id = %s AND is_current AND ref_number = %s "
+                        "AND md5(provision_text) = %s",
+                        (p["new_ref"], p["new_header"], p["new_text"], p["id"], p["old_ref"],
+                         p["old_text_md5"]))
+            if cur.rowcount == 1:
+                applied.append(p)
         conn.commit()
-        print(f"\nWROTE {written} of {len(plans)} rows.  backup: {backup}")
+        print(f"\nWROTE {len(applied)} of {len(plans)} rows.  backup: {backup}")
+        if len(applied) < len(plans):
+            print(f"  {len(plans) - len(applied)} row(s) changed since the dry run and were left alone.")
+        plans = applied
         print(f"UNDO:  UPDATE regulatory_provisions p SET ref_number = b.ref_number, "
               f"section_header = b.section_header, provision_text = b.provision_text "
               f"FROM {backup} b WHERE p.id = b.id;")
@@ -230,7 +246,10 @@ def main() -> int:
         print(f"re-proven after write: {len(plans) - still} of {len(plans)}"
               + ("" if not still else f"  -- {still} NOT proven, investigate before continuing"))
 
-        sample = random.Random(stamp).sample(plans, max(1, round(len(plans) * args.audit_share)))
+        if not plans:
+            return 1
+        share = max(1, min(len(plans), round(len(plans) * args.audit_share)))
+        sample = random.Random(stamp).sample(plans, share)
         out = ROOT / "data" / f"citation_fix_audit_{stamp}.csv"
         out.parent.mkdir(exist_ok=True)
         with open(out, "w", newline="", encoding="utf-8") as fh:
