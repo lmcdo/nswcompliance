@@ -172,7 +172,13 @@ def test_side_column_heading_sorted_just_after_the_rule_line():
 # -- item labels -------------------------------------------------------------------------
 
 def test_item_in_our_format_not_the_councils_is_its_own_verdict():
+    # The council's "7." printed right where the rule starts IS its C7 (2026-09-25,
+    # Warringah): the number beside the words is exact. A "7." further up the
+    # section is not the rule's own and stays item_format.
     ch = doc(["e7 development on land adjoining public open space", "7. " + BODY])
+    assert prove("E7 C7", ch)["status"] == "proven"
+    ch = doc(["e7 development on land adjoining public open space", "7. other rule words here",
+              "and more of them", "then more", "still more", "and the last", BODY])
     r = prove("E7 C7", ch)
     assert r["status"] == "not_proven" and "item_format" in r["detail"]
 
@@ -379,3 +385,14 @@ def test_a_bare_label_is_not_proven_as_a_section():
     raw = [C.Line(1, 100.0 + 20 * n, 70.0, t) for n, t in enumerate(["b6 waste", body])]
     rd = C.both_orders(raw, 595.0)
     assert C.prove_citation_any("D__B6", "# B6 x\n\n" + body, rd)["status"] == "proven"
+
+
+def test_a_council_number_label_beside_the_rule_proves_our_letter_label():
+    # Warringah prints "14." where we store "G2 C14". Only the number beside the rule counts.
+    body = "the quick council wording of this particular rule sits right here on the page"
+    lines = ["g2 building setbacks", "requirements", "13. all buildings are set back eight metres",
+             "14. " + body]
+    rd = C.both_orders([C.Line(1, 100.0 + 20 * n, 70.0, t) for n, t in enumerate(lines)], 595.0)
+    assert C.prove_citation_any("D__G2 C14", "# G2 C14 x\n\n" + body, rd)["status"] == "proven"
+    assert C.prove_citation_any("D__G2 C13", "# G2 C13 x\n\n" + body, rd)["status"] != "proven"
+    assert C.prove_citation_any("D__G2 C15", "# G2 C15 x\n\n" + body, rd)["status"] != "proven"

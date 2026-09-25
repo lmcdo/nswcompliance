@@ -259,6 +259,19 @@ _RANK = {"absent": 0, "cross_ref_only": 1, "label_as_section": 1, "not_nearest":
          "item_missing": 4, "item_format": 5, "imprecise": 6}
 
 
+_NUM_LABEL = re.compile(r"^\(?(\d{1,3})[.)](?:\s|$)")
+
+
+def _numeric_label_beside(L: list, start: int, lo: int) -> str | None:
+    """The nearest number label ("14.", "(14)") at or up to three lines above the
+    rule's first line, not above `lo` (its heading); None if there is none."""
+    for i in range(start, max(lo, start - 3) - 1, -1):
+        m = _NUM_LABEL.match(L[i].text)
+        if m:
+            return m.group(1)
+    return None
+
+
 _OBLIGATION = re.compile(r"(?:is|are) to|(?:must|shall|should|will|may)")
 
 
@@ -474,6 +487,15 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
                     continue
                 return "proven"
             digits = re.sub(r"^[a-z]+", "", item)
+            # Warringah prints its controls "14." and we store "C14": the same
+            # number, when it is the NEAREST number label printed where the rule's
+            # words start (not merely somewhere in the section -- that let shifted
+            # labels through). Letters ("c)" for 3) are not accepted this way.
+            if digits.isdigit() and _numeric_label_beside(L, start, lo) == digits:
+                if finer:
+                    keep("imprecise:" + finer[-1][:30])
+                    continue
+                return "proven"
             # The council's own label for the same position: "7." (Warringah) or
             # "g)" (Campbelltown letters its controls; we store "C7" for both).
             printed = [re.escape(digits)]
