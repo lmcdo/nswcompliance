@@ -117,13 +117,26 @@ def printed_section(ref_number: str | None, readings) -> str | None:
     return None
 
 
-def stored_label_beside(ref_number: str | None, text: str, readings, hint) -> str | None:
-    """The stored item label (lower case) if it is printed within three lines above
-    where the rule's wording starts, in either reading; else None."""
-    item = cp.split_ref(ref_number)[1]
-    if not item:
+def bare_label(ref_number: str | None, families: set[str]) -> str | None:
+    """The stored citation's only code (lower case) when it is an item label of
+    this chapter's label families and carries no section; else None."""
+    sections, item, _ = cp.split_ref(ref_number)
+    if item or len(sections) != 1:
         return None
-    want = cp.render(item).lower()
+    code = cp.render(sections[0]).lower()
+    fam = re.match(r"[a-z]*", code).group(0)
+    return code if fam and "." not in code and fam in families else None
+
+
+def stored_label_beside(ref_number: str | None, text: str, readings, hint,
+                        label: str | None = None) -> str | None:
+    """The stored item label (lower case) if it is printed within three lines above
+    where the rule's wording starts, in either reading; else None. `label` stands
+    in for a stored citation that is a bare label."""
+    item = cp.split_ref(ref_number)[1]
+    if not item and not label:
+        return None
+    want = label or cp.render(item).lower()
     for ch in readings:
         for _end, start in cp._anchors(ch, text, hint):
             for i in range(start, max(-1, start - 4), -1):
@@ -196,7 +209,6 @@ def derive_citation(ref_number: str | None, text: str | None, readings, page_hin
     `readings` are both line orders (citation_proof.both_orders). "deferred" is a
     citation the page supports but the proof cannot yet verify (a "7." label).
     """
-    had_item = cp.split_ref(ref_number)[1] is not None
     # Wording printed in two places (a rule and its summary-table copy, Warringah
     # p119/p164) can only be placed by a person or a re-read: the copy with a
     # label is not the rule's own place just because the other copy has none.
@@ -207,6 +219,10 @@ def derive_citation(ref_number: str | None, text: str | None, readings, page_hin
     if families is None:                      # once per chapter, not per rule
         families = label_families(readings[0])
         readings[0]._label_families = families
+    # A stored "C38" (or "preamble_controls_O4") is a label with its section lost,
+    # not a section: Marrickville, 328 rows (2026-09-25). It needs a section added.
+    bare = bare_label(ref_number, families)
+    had_item = bare is not None or cp.split_ref(ref_number)[1] is not None
     found = {}
     deferred = False
     for ch in readings:
@@ -229,14 +245,14 @@ def derive_citation(ref_number: str | None, text: str | None, readings, page_hin
     # Every wrong section the whole-fixer test found (2026-09-25) replaced a
     # printed stored section with a zone name ("B2 - Local Centre"), a
     # cross-reference ("section 3.3 for ...") or a sibling table code ("A2").
-    kept = printed_section(ref_number, readings)
+    kept = None if bare else printed_section(ref_number, readings)
     if kept:
         found = {code: v for code, v in found.items()
                  if v[0] == kept or v[0].startswith(kept + ".")}
     # The stored label, when it is printed beside the rule, stands too: a column
     # printed alongside puts a second label next to the words (Canterbury-
     # Bankstown 2.2.5 "p4." beside "p1.", 2026-09-25).
-    own = stored_label_beside(ref_number, text or "", readings, page_hint)
+    own = stored_label_beside(ref_number, text or "", readings, page_hint, bare)
     if own:
         found = {code: v for code, v in found.items() if (v[1] or "").lower() == own}
     proven = {code: v for code, v in found.items()

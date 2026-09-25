@@ -85,6 +85,14 @@ def rewrite_heading(text: str, old_tail: str, new_code: str) -> str | None:
     for idx in range(1, len(heading) + 1):
         if _norm(heading[:idx]) == want and (idx == len(heading) or heading[idx] == " "):
             return f"# {new_code}{heading[idx:]}{sep}{rest}"
+    # "# preamble Document Information — O3 To Ensure ..." is a heading this pipeline
+    # invented when it lost the section (Marrickville, 110 rows). Everything before
+    # the stored label is ours; the words after it are the rule's own title.
+    label = re.split(r"[\s_]+", old_tail.strip())[-1]
+    if heading.lower().startswith("preamble") and label:
+        m = list(re.finditer(r"(?:^|\s)" + re.escape(label) + r"(?=\s|$)", heading, flags=re.I))
+        if m:
+            return f"# {new_code}{heading[m[-1].end():]}{sep}{rest}"
     return None
 
 

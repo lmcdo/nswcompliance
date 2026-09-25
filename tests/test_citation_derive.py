@@ -189,3 +189,17 @@ def test_a_bare_item_label_is_not_a_citation():
     rd = readings(["e2.4 flood planning"] + labels + ["c6", BODY])
     assert cd.page_agrees("Doc__E2_4 C6", "# x\n\n" + BODY, rd)
     assert not cd.page_agrees("Doc__C6", "# x\n\n" + BODY, rd)
+
+
+def test_a_bare_stored_label_gets_its_section_added():
+    # Marrickville stored "C38": the section was lost, the label was right.
+    labels = [f"c{n} buildings are to be articulated" for n in range(1, 6)]
+    rd = readings(["e2.4 flood planning"] + labels + ["c6", BODY])
+    assert derive("C6", rd)["code"] == "E2.4 C6"
+
+
+def test_an_invented_preamble_heading_is_replaced_whole():
+    import dcp_restore_citations as R
+    t = "# preamble Document Information — Objectives — O17 To Ensure\n\nbody"
+    assert R.rewrite_heading(t, "preamble_objectives_O17", "2.3 O17") == "# 2.3 O17 To Ensure\n\nbody"
+    assert R.rewrite_heading("# preamble Document Information — C4 x\n\nb", "preamble_O3", "2.3 O3") is None

@@ -43,6 +43,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import dcp_page_reread as R  # noqa: E402
 
 CHEAP, STRONG = "gpt-5.4-mini", "gpt-5.6-sol"
+MAX_BATCH_BYTES = 150_000_000
 
 
 def live_signature(live) -> str:
@@ -113,7 +114,7 @@ def _page_requests(ctx, read_pages, label_rows, key, rnd, model_id, only=None) -
     return out
 
 
-def prepare(d: Path, chapters: list[str], max_pages: int) -> None:
+def prepare(d: Path, chapters: list[str], max_pages: int, first_model: str = CHEAP) -> None:
     st = _load_state(d)
     conn, s3 = _connect()
     try:
@@ -133,7 +134,7 @@ def prepare(d: Path, chapters: list[str], max_pages: int) -> None:
                         st["chapters"][key] = {"status": "skipped",
                                                "why": plan if isinstance(plan, str) else "nothing to re-read"}
                     else:
-                        for line in _page_requests(ctx, plan["read"], plan["label"], key, 1, CHEAP):
+                        for line in _page_requests(ctx, plan["read"], plan["label"], key, 1, first_model):
                             st["pending"][line["custom_id"]] = line
                         st["chapters"][key] = {
                             "status": "planned", "sig": live_signature(ctx["live"]),
@@ -154,17 +155,31 @@ def submit(d: Path) -> None:
     if not st["pending"]:
         print("nothing pending")
         return
-    f = d / f"requests_{len(st['batches']) + 1}.jsonl"
-    f.write_text("\n".join(json.dumps(x) for x in st["pending"].values()), encoding="utf-8")
     client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    with f.open("rb") as fh:
-        up = client.files.create(file=fh, purpose="batch")
-    b = client.batches.create(input_file_id=up.id, endpoint="/v1/chat/completions",
-                              completion_window="24h")
-    st["batches"].append({"id": b.id, "ids": list(st["pending"]), "collected": False})
-    st["pending"] = {}
-    _save_state(d, st)
-    print(f"submitted batch {b.id} with {len(st['batches'][-1]['ids'])} requests")
+    # OpenAI takes at most 200 MB and 50,000 requests per batch file; a page's PDF
+    # rides in each request, so a full run is several files.
+    chunks, cur, size = [], [], 0
+    for key, x in st["pending"].items():
+        line = json.dumps(x)
+        if cur and (size + len(line) > MAX_BATCH_BYTES or len(cur) >= 50_000):
+            chunks.append(cur)
+            cur, size = [], 0
+        cur.append((key, line))
+        size += len(line) + 1
+    if cur:
+        chunks.append(cur)
+    for chunk in chunks:
+        f = d / f"requests_{len(st['batches']) + 1}.jsonl"
+        f.write_text(chr(10).join(line for _k, line in chunk), encoding="utf-8")
+        with f.open("rb") as fh:
+            up = client.files.create(file=fh, purpose="batch")
+        b = client.batches.create(input_file_id=up.id, endpoint="/v1/chat/completions",
+                                  completion_window="24h")
+        st["batches"].append({"id": b.id, "ids": [k for k, _l in chunk], "collected": False})
+        for k, _l in chunk:
+            st["pending"].pop(k)
+        _save_state(d, st)
+        print(f"submitted batch {b.id} with {len(chunk)} requests")
 
 
 def judge(ctx, key: str, entry: dict, answers: dict):
@@ -273,12 +288,15 @@ def main() -> int:
     ap.add_argument("--chapters-file")
     ap.add_argument("--max-pages", type=int, default=150)
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--first-model", default=CHEAP,
+                    help="Model for round 1. The cheap one gave a usable citation for 15%% of "
+                         "known-right rows, the strong one 83%% (2026-09-25).")
     a = ap.parse_args()
     d = Path(a.dir)
     d.mkdir(parents=True, exist_ok=True)
     if a.stage == "prepare":
         chapters = [x.strip() for x in Path(a.chapters_file).read_text().splitlines() if x.strip()]
-        prepare(d, chapters, a.max_pages)
+        prepare(d, chapters, a.max_pages, a.first_model)
     elif a.stage == "submit":
         submit(d)
     else:
