@@ -220,7 +220,8 @@ def read_raw_lines(pdf_path: str) -> tuple[list[Line], float | None]:
     dependency) -- geometry the flattened page strings the gate grades words
     against do not keep."""
     import fitz
-    raw = []
+    import pdf_picture_labels as ppl
+    raw, pictures, masks = [], [], {}
     width = None
     with fitz.open(pdf_path) as doc:
         for pno, page in enumerate(doc, 1):
@@ -230,7 +231,9 @@ def read_raw_lines(pdf_path: str) -> tuple[list[Line], float | None]:
                     t = " ".join(s["text"] for s in ln["spans"]).strip().lower()
                     if t:
                         raw.append(Line(pno, ln["bbox"][1], ln["bbox"][0], t))
-    return raw, width
+            pictures += [(pno, y, x, m, h) for y, x, m, h in ppl.page_label_pictures(doc, page, masks)]
+    pictures = [p[:4] for p in ppl.label_sized(pictures)]
+    return ppl.merge_labels(raw, pictures, Line), width
 
 
 def load_lines(pdf_path: str) -> ChapterLines:
@@ -251,9 +254,46 @@ _RANK = {"absent": 0, "cross_ref_only": 1, "not_nearest": 2, "ancestor_missing":
          "item_missing": 4, "item_format": 5, "imprecise": 6}
 
 
-def _starts(text: str, code: str) -> bool:
-    m = CODE_AT_START.match(text)
-    return bool(m) and m.group(1) == code
+def _own_label(L: list, lo: int, start: int, end: int, hi: int, item: str) -> str | None:
+    """The label printed for the rule matched on lines `start`..`end`: of the
+    labels of the item's shape (same letters, same depth), the one whose block
+    holds MOST of those lines, a tie going to the later block. None if no such
+    label is printed at or above the rule.
+
+    No "first label just after the rule" fallback: it proved an introduction as
+    O1 and a note as C1 (cross-review; 5 rows corpus-wide depended on it, and
+    of the 3 read, 2 were wrong -- 2026-09-25). A label set beside its rule
+    already sorts onto the rule's row.
+
+    Blocks, not "last label above the first line": stored text that opens with
+    its sub-heading matches one line ABOVE its own label (C1.3 C8 read as C7).
+    Not "nearest label": Marrickville stores a rule's first line in its heading,
+    so the match starts on line two and the NEXT label is nearer (C15 as C16).
+    """
+    fam, depth = _shape(item)
+
+    def label(i):
+        m = CODE_AT_START.match(L[i].text)
+        return m.group(1) if m and _shape(m.group(1)) == (fam, depth) else None
+
+    owner, lines = None, collections.Counter()
+    order = {}
+    for i in range(lo, end + 1):
+        if (c := label(i)):
+            owner = c
+            order.setdefault(c, i)
+        if i >= start and owner:
+            lines[owner] += 1
+            order[owner] = max(order[owner], i)
+    if lines:
+        return max(lines, key=lambda c: (lines[c], order[c]))
+    # A label beside the rule's first line, a point lower on the page, sorts
+    # just after it top-to-bottom. Only that geometry counts: same page, same
+    # row, left of the rule.
+    first = L[start]
+    return next((c for i in range(start + 1, hi)
+                 if L[i].page == first.page and abs(L[i].y - first.y) <= 3.0
+                 and L[i].x < first.x and (c := label(i))), None)
 
 
 def _shape(code: str) -> tuple[str, int]:
@@ -333,7 +373,10 @@ def _readings(group) -> list[tuple[list[str], str | None]]:
 
 
 def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None,
-                 bare: bool = False) -> str:
+                 bare: bool = False, item_end: int | None = None) -> str:
+    """`item_end`: the last line of the WHOLE matched rule from `start`. The
+    label is judged over that span, never over a six-word opening -- which, for
+    text that opens with a sub-heading, sits in the previous rule's block."""
     L, toc = ch.lines, ch.toc_pages
     best = "absent"
 
@@ -392,8 +435,11 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
             keep("item_missing")
             continue
         if item:
-            if any(_starts(L[i].text, item) or re.match("^" + re.escape(item) + r"[.)]", L[i].text)
-                   for i in range(lo, hi)):
+            # The rule's OWN label (see _own_label). "Anywhere between heading
+            # and rule" proved C10 as C9, because C9 is printed above C10 -- 474
+            # of 517 shifted labels passed (2026-09-25).
+            own = _own_label(L, lo, start, end if item_end is None else item_end, hi, item)
+            if own == item:
                 if finer:
                     keep("imprecise:" + finer[-1][:30])
                     continue
@@ -477,7 +523,10 @@ def _anchors(ch: ChapterLines, text: str, page_hint) -> list[tuple[int, int]]:
             occ = [k for k in ch.index.get(tuple(words[st:st + 6]), [])
                    if first <= k and at_offset(first, st, k)]
             if occ:
-                out.append((ch.token_line[min(occ[0] + 5, last)], ch.token_line[first]))
+                # The copy at the expected place, not the first one in range:
+                # closing words can recur in the next rule (Ashfield E2 C53/C54).
+                k = min(occ, key=lambda k: abs(k - (first + st)))
+                out.append((ch.token_line[min(k + 5, last)], ch.token_line[first]))
                 break
     return out
 
@@ -510,8 +559,12 @@ def prove_citation(ref_number: str | None, text: str | None, ch: ChapterLines,
         return {"status": "text_not_found", "detail": "the rule's wording is not in its source"}
     item_code = render(item).lower() if item else None
     worst = coarse = None
+    whole = {}
     for end, start in anchors:
-        verdicts = [_prove_group(ch, end, start, g, item_code, bare) for g in sections]
+        whole[start] = max(whole.get(start, end), end)
+    for end, start in anchors:
+        verdicts = [_prove_group(ch, end, start, g, item_code, bare, whole[start])
+                    for g in sections]
         if all(v == "proven" for v in verdicts):
             return {"status": "proven", "detail": None}
         if coarse is None and all(v == "proven" or v.startswith("imprecise") for v in verdicts):
