@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "The AI reader skipped pages inside batches that returned something, so nothing noticed: the Warringah re-read left out 21 of 226 pages and would have deleted 172 printed rules; Canterbury-Bankstown chapters are live without pages of rules. The reader now counts left-out pages by code and re-reads them, refusing the chapter if a page of rules is still missing. Critical: this is what stops printed rules silently disappearing.",
-  "commit_hash": "b0f922d4",
+  "commit_hash": "c01505bb",
   "files": [
     "scripts/page_coverage.py",
     "scripts/ai_extractor.py",
