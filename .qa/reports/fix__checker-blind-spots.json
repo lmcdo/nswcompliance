@@ -1,12 +1,14 @@
 {
   "tier": "critical",
-  "justification": "The citation proof could not see control labels Ashfield prints as pictures numbered per part (PC4., DS5.1), so it could not prove or refuse them. This adds a local OCR read of those pictures, kept only when confident and label-shaped.",
-  "commit_hash": "e8100cfd",
+  "justification": "The citation proof could not see control labels Ashfield prints as pictures numbered per part (PC4., DS5.1), so it could not prove or refuse them. This adds a local OCR read of those pictures, kept only when confident and label-shaped. Adds dcp_page_reread: re-reads only the pages behind unproven citations or missing rules, one page per call (5-page trial 94% proven vs 12-page batches), and queues a targeted change. Marrickville part 3: 48 unproven to 0, no page left missing.",
+  "commit_hash": "b0a90690",
   "files": [
-    "scripts/pdf_picture_labels.py",
     "scripts/citation_proof.py",
+    "scripts/dcp_page_reread.py",
     "scripts/dq_probe_section_code_not_in_source.py",
+    "scripts/pdf_picture_labels.py",
     "scripts/requirements-monitor.txt",
+    "tests/test_dcp_page_reread.py",
     "tests/test_pdf_picture_labels.py"
   ],
   "pre_impl": {
@@ -30,6 +32,13 @@
       "input": "An open PyMuPDF document, one page, a cache keyed by picture mask, and a RapidOCR reader or None.",
       "output": "(y, x, label) for each small picture read confidently as a label such as pc4. or ds5.1.",
       "if_none": "With no reader, or a page whose images cannot be paired with their draws, returns an empty list."
+    },
+    {
+      "name": "dcp_page_reread.close_over_refs",
+      "file_line": "scripts/dcp_page_reread.py",
+      "input": "The target pages and (ref_number, pages) for every live rule of the chapter.",
+      "output": "Target pages plus every page holding a rule that shares a number with one on a target page, and refs spread too wide to touch.",
+      "if_none": "No targets returns an empty set, and the chapter is reported as nothing to re-read."
     }
   ],
   "values": [
@@ -78,6 +87,20 @@
       "mitigated": true,
       "how": "OCR names are used only for positions counting did not name.",
       "repro": "python -m pytest tests/test_pdf_picture_labels_real_pdf.py -q"
+    },
+    {
+      "scenario": "A re-read page holds rule D18 and another D18 sits on a page not re-read",
+      "what_happens": "Publishing replaces by number and would wipe the D18 that was never re-read.",
+      "mitigated": true,
+      "how": "close_over_refs pulls every page sharing that number into the re-read.",
+      "repro": "python -m pytest tests/test_dcp_page_reread.py -k shares -q"
+    },
+    {
+      "scenario": "An old row carries text from a page that was not re-read, and is removed",
+      "what_happens": "That page's rules would disappear from what is served.",
+      "mitigated": true,
+      "how": "The tool refuses any change set after which a page holding rule words is newly missing.",
+      "repro": "python scripts/dcp_page_reread.py --council marrickville --chapter part3-subdivision"
     }
   ],
   "post_merge": {
