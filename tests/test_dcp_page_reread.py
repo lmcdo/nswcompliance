@@ -62,3 +62,74 @@ def test_a_new_dotted_code_clashing_with_a_stored_ref_tail_is_suffixed():
     # The model returns "4.1 C2"; the rule not re-read is stored as "..__4_1 C2".
     got = R.unique_codes([{"code": "4.1 C2", "text": "new"}], taken={"4_1 C2"})
     assert got[0]["code"] == "4.1 C2_2"
+
+
+def test_a_page_whose_rules_came_back_is_not_missing():
+    lines = [f"development on site {i} must keep the landscaped setback clear" for i in range(6)]
+    assert R.page_missing(lines, [{"code": "C1", "text": " ".join(lines)}]) is False
+
+
+def test_a_page_of_rules_that_came_back_empty_is_missing():
+    lines = [f"development on site {i} must keep the maximum landscaped setback clear" for i in range(6)]
+    assert R.page_missing(lines, [{"code": "C1", "text": "something else entirely here"}]) is True
+
+
+def test_a_page_with_citations_the_page_does_not_print_scores_low():
+    raw = [C.Line(1, 10, 70, "header"), C.Line(1, 100, 70, "3.3 strata subdivision"),
+           C.Line(1, 120, 70, "c13"), C.Line(1, 140, 100, "the strata boundary must relate to the occupancies here")]
+    rd = C.both_orders(raw, 595.0)
+    good = [{"code": "3.3 C13", "text": "the strata boundary must relate to the occupancies here"}]
+    bad = [{"code": "3.2 C14", "text": "the strata boundary must relate to the occupancies here"}]
+    assert R.proven_share(good, rd, "Doc__x", 1) == 1.0
+    assert R.proven_share(bad, rd, "Doc__x", 1) == 0.0
+    assert R.proven_share([], rd, "Doc__x", 1) == 1.0
+
+
+def test_a_rule_running_over_several_pages_is_placed_on_all_of_them():
+    body = ["development must keep the landscaped setback clear of all structures always",
+            "and the maximum building height is measured from existing ground level here",
+            "while car parking must not dominate the street frontage of the site at all"]
+    raw = [C.Line(1, 10, 70, "header")] + [C.Line(p, 100, 70, body[p - 1]) for p in (1, 2, 3)]
+    ch = C.ChapterLines.build(raw, page_width=595.0)
+    assert R.located_pages(ch, "# 3.1 title\n\n" + " ".join(body)) == {1, 2, 3}
+
+
+# -- the small question: only the printed number for known wording -------------------
+
+RULE = "the strata subdivision boundary must relate appropriately to the separate occupancies"
+
+
+def _ctx(ref="Doc__x__3_2 C14"):
+    raw = [C.Line(1, 10, 70, "header"), C.Line(1, 100, 70, "3.3 strata subdivision"),
+           C.Line(1, 120, 70, "c13"), C.Line(1, 140, 100, RULE)]
+    rd = C.both_orders(raw, 595.0)
+    text = f"# 3.2 C14 torrens\n\n{RULE}"
+    return {"council": "c", "chapter": "x", "document_id": "Doc__x", "readings": rd,
+            "live": [(ref, text, "Doc__x")], "placed": [(ref, text, {1})],
+            "page_lines": {1: ["header", "3.3 strata subdivision", "c13", RULE]}}
+
+
+def test_parse_labels_reads_numbered_answers_and_survives_junk():
+    got = R.parse_labels('{"labels": [{"i": 1, "code": "3.3 C13", "title": "Strata"}, {"i": "x"}]}')
+    assert got == {1: {"code": "3.3 C13", "title": "Strata"}}
+    assert R.parse_labels("not json") == {} and R.parse_labels("[]") == {}
+
+
+def test_body_of_drops_only_our_heading_line():
+    assert R.body_of("# 3.2 C14 torrens\n\nthe words") == "the words"
+    assert R.body_of("plain words") == "plain words"
+
+
+def test_a_page_whose_rules_sit_on_it_alone_gets_the_small_question():
+    plan = R.plan_pages(_ctx(), 10)
+    assert plan["read"] == set() and list(plan["label"]) == [1]
+
+
+def test_a_corrected_number_is_used_only_when_it_proves():
+    ctx = _ctx()
+    plan = {"read": set(), "gaps": set(), "label": {1: [("Doc__x__3_2 C14", "")]}}
+    ok = R.build_change(ctx, plan, [], {"Doc__x__3_2 C14": {"code": "3.3 C13", "title": "strata"}})
+    assert [x["ref_number"] for x in ok["added"]] == ["Doc__x__3_3 C13"]
+    assert [x["ref_number"] for x in ok["removed"]] == ["Doc__x__3_2 C14"]
+    wrong = R.build_change(ctx, plan, [], {"Doc__x__3_2 C14": {"code": "3.4 C99", "title": ""}})
+    assert wrong["added"] == [] and wrong["removed"] == []

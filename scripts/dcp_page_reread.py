@@ -43,6 +43,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import tempfile
 from collections import Counter, defaultdict
@@ -62,11 +63,17 @@ MAX_CLOSURE_PAGES = 8
 
 
 def located_pages(ch, text: str) -> set[int]:
-    """Pages a rule's words sit on, from the first place they are found. Pure."""
+    """Every page a rule's words run over, from the first place they are found. Pure.
+
+    The whole span, not the page of its first words: an old rule can be a block
+    running across many pages (Campbelltown part 4, pages 12-26), and placing it
+    on its first page let a one-page re-read replace -- and so drop -- the whole
+    block. The chapter guard caught all 36 such cases on 2026-09-25."""
     anchors = cp._anchors(ch, text or "", None)
     if not anchors:
         return set()
-    end, start = anchors[0]
+    start = anchors[0][1]
+    end = max(e for e, s in anchors if s == start)
     return set(range(ch.lines[start].page, ch.lines[end].page + 1))
 
 
@@ -156,6 +163,49 @@ def unique_codes(provs: list[dict], taken: set[str]) -> list[dict]:
     return out
 
 
+#: A page whose citations prove below this share is read again with the fallback
+#: model. gpt-5.4-mini proved 131 of 298 on Ashfield F where gpt-5.6-sol had
+#: proved 442 of 495 (2026-09-25): cheap is only good enough where it proves.
+MIN_PROVEN_SHARE = 0.8
+
+
+def proven_share(provs: list[dict], readings, document_id: str, page: int) -> float:
+    """Share of a page's returned citations proven on the council's page. 1.0 when
+    nothing was judged (nothing to hold against the read)."""
+    judged = proven = 0
+    for p in provs:
+        code = str(p.get("code", "")).strip()
+        if not code:
+            continue
+        ref = f"{document_id}__{_norm(code)}"
+        st = cp.prove_citation_any(ref, f"# {code} {p.get('title', '')}" + chr(10) * 2 + str(p.get('text', '')),
+                                   readings, page)["status"]
+        if st in ("proven", "not_proven", "imprecise"):
+            judged += 1
+            proven += st == "proven"
+    return proven / judged if judged else 1.0
+
+
+def page_missing(lines: list[str], provs: list[dict]) -> bool:
+    """Does what the model returned leave out this page's rules? Pure."""
+    texts = [f"{p.get('code', '')} {p.get('title', '')} {p.get('text', '')}" for p in provs]
+    return bool(pc.skipped_pages({1: lines}, texts)) and pc.holds_rules(lines)
+
+
+def _read(ai, model: str, model_id: str | None, pdf_bytes: bytes, prompt: str) -> list[dict]:
+    """One page through the extractor's own call, with the model id chosen per call."""
+    old = os.environ.get("AI_MODEL_ID")
+    try:
+        if model_id:
+            os.environ["AI_MODEL_ID"] = model_id
+        return ai._call_and_parse_with_empty_retry(model, pdf_bytes, prompt)
+    finally:
+        if old is None:
+            os.environ.pop("AI_MODEL_ID", None)
+        else:
+            os.environ["AI_MODEL_ID"] = old
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--council", required=True)
@@ -163,6 +213,9 @@ def main() -> int:
     ap.add_argument("--max-pages", type=int, default=20, help="Refuse to read more pages than this.")
     ap.add_argument("--apply", action="store_true", help="Queue the change set. Without it nothing is written.")
     ap.add_argument("--out", help="Write the proposed change set here as JSON.")
+    ap.add_argument("--model-id", help="Model id for the first read (e.g. a cheaper one).")
+    ap.add_argument("--fallback-model-id", default="gpt-5.6-sol",
+                    help="Model id for a page whose rules the first read left out.")
     args = ap.parse_args()
 
     import boto3
@@ -180,79 +233,118 @@ def main() -> int:
         conn.close()
 
 
-def _run(args, conn, s3, ai) -> int:
-    cur = conn.cursor()
-    cur.execute("SET statement_timeout = '30000'")
+LABEL_PROMPT = (
+    "This is one page of a NSW council Development Control Plan, and a numbered list of "
+    "provisions whose words are printed on it. For each, give its citation as the page prints "
+    "it: the section number printed in the nearest numbered heading above it, a space, then "
+    "the provision's own label exactly as printed beside it. Copy every character -- never add "
+    "a letter or number the page does not show, never renumber, never convert a label into a "
+    "different style. If the page prints no label for it, give the section number alone. Also "
+    "give the words of that heading. Return ONLY a JSON object "
+    '{"labels": [{"i", "code", "title"}]} with one entry per numbered provision.')
+
+NL = chr(10)
+
+
+def label_prompt(section: str | None, texts: list[str]) -> str:
+    """The small question: which printed number labels each of these wordings. Pure."""
+    head = (f" These pages may continue section {section} from earlier pages." if section else "")
+    items = NL.join(f"{i + 1}. {t[:300]}" for i, t in enumerate(texts))
+    return LABEL_PROMPT + head + NL + NL + "Provisions:" + NL + items
+
+
+def parse_labels(raw: str) -> dict[int, dict]:
+    """{item number: {"code", "title"}} from the model's JSON; bad input gives {}. Pure."""
+    try:
+        d = json.loads(re.sub(r"^```(json)?|```$", "", (raw or "").strip(), flags=re.M).strip())
+    except ValueError:
+        return {}
+    out = {}
+    for e in (d.get("labels") if isinstance(d, dict) else None) or []:
+        try:
+            out[int(e.get("i"))] = {"code": str(e.get("code") or "").strip(),
+                                    "title": str(e.get("title") or "").strip()}
+        except (TypeError, ValueError, AttributeError):
+            continue
+    return out
+
+
+def body_of(text: str) -> str:
+    """A stored provision's words without its '# code title' first line. Pure."""
+    first, _, rest = (text or "").partition(NL)
+    return rest.lstrip(NL) if first.startswith("#") and rest.strip() else (text or "")
+
+
+def load_chapter(cur, s3, council: str, chapter: str, tmp: str):
+    """Everything a re-read needs about one chapter, or an error string."""
     cur.execute("SELECT r2_current_path, content_hash FROM dcp_chapter_registry WHERE council=%s "
-                "AND chapter_key=%s AND is_active", (args.council, args.chapter))
+                "AND chapter_key=%s AND is_active", (council, chapter))
     row = cur.fetchone()
     if not row or not row[0] or not row[1]:
-        # The commit only takes rows whose hash matches the registry's: a row queued
-        # without it could never be committed.
-        print("ERROR: no active registry PDF (or no content hash) for this chapter")
-        return 2
-    r2, content_hash = row
-    cur.execute("SELECT count(*) FROM dcp_review_queue WHERE council=%s AND chapter_key=%s AND status='pending'",
-                (args.council, args.chapter))
+        # The commit only takes rows whose hash matches the registry's.
+        return "ERROR: no active registry PDF (or no content hash) for this chapter"
+    cur.execute("SELECT count(*) FROM dcp_review_queue WHERE council=%s AND chapter_key=%s "
+                "AND status='pending'", (council, chapter))
     if cur.fetchone()[0]:
-        print("SKIP: this chapter already has pending review rows; queueing would clear them.")
-        return 2
+        return "SKIP: this chapter already has pending review rows; queueing would clear them."
     cur.execute("SELECT ref_number, provision_text, document_id FROM regulatory_provisions "
-                "WHERE is_current AND source_council=%s AND source_chapter_key=%s",
-                (args.council, args.chapter))
+                "WHERE is_current AND source_council=%s AND source_chapter_key=%s", (council, chapter))
     live = cur.fetchall()
     if not live:
-        print("ERROR: no live rules for this chapter")
-        return 2
-    document_id = Counter(d for _r, _t, d in live).most_common(1)[0][0]
+        return "ERROR: no live rules for this chapter"
+    pdf = os.path.join(tmp, "src.pdf")
+    s3.download_file(os.environ["R2_BUCKET_NAME"], row[0], pdf)
+    readings = cp.load_readings(pdf)
+    return {"council": council, "chapter": chapter, "r2": row[0], "content_hash": row[1],
+            "live": live, "document_id": Counter(d for _r, _t, d in live).most_common(1)[0][0],
+            "pdf": pdf, "readings": readings, "page_lines": pc.pdf_page_lines(pdf),
+            "placed": [(r, t, located_pages(readings[1], t)) for r, t, _d in live]}
 
-    with tempfile.TemporaryDirectory() as tmp:
-        pdf = os.path.join(tmp, "src.pdf")
-        s3.download_file(os.environ["R2_BUCKET_NAME"], r2, pdf)
-        readings = cp.load_readings(pdf)
-        ch = readings[1]
-        page_lines = pc.pdf_page_lines(pdf)
 
-        # 1. which pages
-        placed = [(ref, text, located_pages(ch, text)) for ref, text, _d in live]
-        bad = {p for ref, text, ps in placed if ps
-               and cp.prove_citation_any(ref, text, readings, None)["status"] == "not_proven"
-               for p in ps}
-        gaps = {p for p in pc.skipped_pages(page_lines, [t for _r, t, _d in live])
-                if pc.holds_rules(page_lines[p])}
-        pages, spread = close_over_refs(bad | gaps, [(r, ps) for r, _t, ps in placed if ps])
-        print(f"pages: {len(bad)} with unproven citations, {len(gaps)} left out -> "
-              f"{len(pages)} after closing over shared numbers")
-        if spread:
-            print(f"REFUSED: {len(spread)} rule number(s) span more than {MAX_CLOSURE_PAGES} pages: {spread[:5]}")
-            return 2
-        if len(pages) > args.max_pages:
-            print(f"REFUSED: {len(pages)} pages exceeds --max-pages {args.max_pages}")
-            return 2
-        if not pages:
-            print("nothing to re-read")
-            return 0
+def plan_pages(ctx: dict, max_pages: int):
+    """Which pages need a full read and which only the small label question, or an
+    error string. A page gets the label question only when every rule on it sits on
+    that page alone, its words are found, and the page is not missing rules."""
+    rd, placed = ctx["readings"], ctx["placed"]
+    unproven = {r for r, t, ps in placed if ps
+                and cp.prove_citation_any(r, t, rd, None)["status"] == "not_proven"}
+    bad = {p for r, _t, ps in placed if r in unproven for p in ps}
+    gaps = {p for p in pc.skipped_pages(ctx["page_lines"], [t for _r, t, _d in ctx["live"]])
+            if pc.holds_rules(ctx["page_lines"][p])}
+    pages, spread = close_over_refs(bad | gaps, [(r, ps) for r, _t, ps in placed if ps])
+    if spread:
+        return f"REFUSED: {len(spread)} rule number(s) span more than {MAX_CLOSURE_PAGES} pages: {spread[:5]}"
+    if len(pages) > max_pages:
+        return f"REFUSED: {len(pages)} pages exceeds --max-pages {max_pages}"
+    on = defaultdict(list)
+    for r, t, ps in placed:
+        for p in ps:
+            on[p].append((r, t, ps))
+    label, read = {}, set()
+    for p in sorted(pages):
+        if p not in gaps and on[p] and all(ps == {p} for _r, _t, ps in on[p]):
+            rows = [(r, t) for r, t, _ps in on[p] if r in unproven]
+            if rows:
+                label[p] = rows
+        else:
+            read.add(p)
+    return {"pages": pages, "gaps": gaps, "read": read, "label": label}
 
-        # 2. read each page alone, with the section in force given by code
-        from pypdf import PdfReader
-        reader = PdfReader(pdf)
-        model = (os.getenv("AI_MODEL") or ai.configured_model() or "").strip().lower()
-        print(f"  model: {model}")
-        got = []
-        for p in sorted(pages):
-            prompt = ai._build_prompt(section_in_force(ch, p))
-            got.append((p, ai._call_and_parse_with_empty_retry(model, ai._subset_bytes(reader, p - 1, p), prompt)))
-            print(f"  read page {p}: {len(got[-1][1])} provisions")
 
-    # 3. the change set
-    replaced = [(ref, text) for ref, text, ps in placed if ps and ps <= pages]
-    kept_codes = {ref.rpartition("__")[2] for ref, _t, ps in placed if not (ps and ps <= pages)}
-    new = unique_codes(join_page_breaks(got), taken={c for c in kept_codes})
+def build_change(ctx: dict, plan: dict, got: list, labels: dict):
+    """The targeted change set, or an error string. `got` is [(page, provisions)] for
+    fully read pages; `labels` is {ref: {"code","title"}} for label-question rows."""
+    import ai_extractor as ai
     import dcp_extract_changed as dx
-    added, changed, removed = [], [], []
+    read = plan["read"]
+    placed, live, doc = ctx["placed"], ctx["live"], ctx["document_id"]
+    replaced = [(r, t) for r, t, ps in placed if ps and ps <= read]
+    kept = {r.rpartition("__")[2] for r, _t, ps in placed if not (ps and ps <= read)}
+    new = unique_codes(join_page_breaks(got), taken=kept)
+    added, changed = [], []
     old_by_ref = dict(replaced)
     for sec in ai.provisions_to_sections(new):
-        ref = dx.build_ref_number(document_id, sec["section_number"])
+        ref = dx.build_ref_number(doc, sec["section_number"])
         text = dx.build_provision_text(sec)
         if ref in old_by_ref:
             changed.append({"ref_number": ref, "old_text": old_by_ref.pop(ref), "new_text": text,
@@ -260,37 +352,116 @@ def _run(args, conn, s3, ai) -> int:
         else:
             added.append({"ref_number": ref, "new_text": text, "new_page": sec["page_start"]})
     removed = [{"ref_number": r, "old_text": t} for r, t in old_by_ref.items()]
-    proven = Counter(cp.prove_citation_any(x["ref_number"], x["new_text"], readings, x.get("new_page"))["status"]
-                     for x in added + changed)
-    print(f"change set: {len(removed)} removed, {len(changed)} changed, {len(added)} added; "
-          f"new citations {dict(proven)}")
-    # No page may end up missing rules that it was not missing before: an old row
-    # can carry text from a page that was not re-read (Marrickville part 3 C17 held
-    # a Building Code note from another page), and removing it would drop that text.
+    # The small question: same words, corrected number -- used only when the new
+    # number proves on the page and clashes with no other rule.
+    taken = ({_norm(r.rpartition("__")[2]) for r, _t, _p in placed}
+             | {_norm(x["ref_number"].rpartition("__")[2]) for x in added})
+    text_of = {r: t for r, t, _d in live}
+    page_of = {r: min(ps) for r, _t, ps in placed if ps}
+    for ref, lab in labels.items():
+        code = lab.get("code", "")
+        if not code or ref not in text_of:
+            continue
+        new_ref = dx.build_ref_number(doc, code)
+        if new_ref == ref or _norm(code) in taken:
+            continue
+        new_text = f"# {code} {lab.get('title', '')}".rstrip() + NL + NL + body_of(text_of[ref])
+        if cp.prove_citation_any(new_ref, new_text, ctx["readings"], page_of.get(ref))["status"] != "proven":
+            continue
+        taken.add(_norm(code))
+        removed.append({"ref_number": ref, "old_text": text_of[ref]})
+        added.append({"ref_number": new_ref, "new_text": new_text, "new_page": page_of.get(ref)})
     gone = {x["ref_number"] for x in removed} | {x["ref_number"] for x in changed}
     after = [t for r, t, _d in live if r not in gone] + [x["new_text"] for x in added + changed]
-    newly = sorted({p for p in pc.skipped_pages(page_lines, after) if pc.holds_rules(page_lines[p])}
-                   - gaps)
+    newly = sorted({p for p in pc.skipped_pages(ctx["page_lines"], after)
+                    if pc.holds_rules(ctx["page_lines"][p])} - plan["gaps"])
     if newly:
-        print(f"REFUSED: the change would leave page(s) {newly} missing rules they hold now.")
-        return 2
-    if args.out:
-        Path(args.out).write_text(json.dumps({"removed": removed, "changed": changed, "added": added},
-                                             indent=1, ensure_ascii=False), encoding="utf-8")
-    if not args.apply:
-        print("DRY RUN -- nothing queued. Re-run with --apply.")
-        return 0
+        return f"REFUSED: the change would leave page(s) {newly} missing rules they hold now."
+    return {"removed": removed, "changed": changed, "added": added}
 
-    diff = {"status": "amendment", "total_old": len(live), "changed": changed,
-            "added": added, "removed": removed}
-    n = dx.enqueue_review_changes(conn, [{"council": args.council, "chapter_key": args.chapter,
-                                          "document_id": document_id, "diff": diff,
-                                          "content_hash": content_hash}])
-    conn.commit()
+
+def queue_change(conn, s3, ctx: dict, change: dict) -> str:
+    """Queue a targeted change set and grade it with the fidelity gate."""
+    import dcp_extract_changed as dx
     import dcp_fidelity_gate as gate
-    g, f, s = gate.gate_chapter(cur, s3, args.council, args.chapter, r2)
+    diff = {"status": "amendment", "total_old": len(ctx["live"]), **change}
+    n = dx.enqueue_review_changes(conn, [{"council": ctx["council"], "chapter_key": ctx["chapter"],
+                                          "document_id": ctx["document_id"], "diff": diff,
+                                          "content_hash": ctx["content_hash"]}])
     conn.commit()
-    print(f"QUEUED {n} rows (targeted); fidelity gate: {g} grounded, {f} flagged, {s} not actionable")
+    cur = conn.cursor()
+    g, f, s = gate.gate_chapter(cur, s3, ctx["council"], ctx["chapter"], ctx["r2"])
+    conn.commit()
+    return f"QUEUED {n} rows (targeted); fidelity gate: {g} grounded, {f} flagged, {s} not actionable"
+
+
+def _ask(model: str, model_id: str | None, pdf_bytes: bytes, prompt: str) -> str:
+    """One raw model call through the extractor's provider, model id chosen per call."""
+    import ai_extractor as ai
+    old = os.environ.get("AI_MODEL_ID")
+    try:
+        if model_id:
+            os.environ["AI_MODEL_ID"] = model_id
+        return ai._call_with_retry(model, pdf_bytes, prompt)
+    finally:
+        if old is None:
+            os.environ.pop("AI_MODEL_ID", None)
+        else:
+            os.environ["AI_MODEL_ID"] = old
+
+
+def _run(args, conn, s3, ai) -> int:
+    cur = conn.cursor()
+    cur.execute("SET statement_timeout = '30000'")
+    with tempfile.TemporaryDirectory() as tmp:
+        ctx = load_chapter(cur, s3, args.council, args.chapter, tmp)
+        if isinstance(ctx, str):
+            print(ctx)
+            return 2
+        plan = plan_pages(ctx, args.max_pages)
+        if isinstance(plan, str):
+            print(plan)
+            return 2
+        print(f"pages: {len(plan['pages'])} ({len(plan['read'])} full read, {len(plan['label'])} label "
+              f"question), {len(plan['gaps'])} left out")
+        if not plan["pages"]:
+            print("nothing to re-read")
+            return 0
+        from pypdf import PdfReader
+        reader = PdfReader(ctx["pdf"])
+        rd, lines = ctx["readings"], ctx["page_lines"]
+        model = (os.getenv("AI_MODEL") or ai.configured_model() or "").strip().lower()
+        got, labels, fell_back = [], {}, 0
+        for p in sorted(plan["read"]):
+            prompt = ai._build_prompt(section_in_force(rd[1], p))
+            pdf_bytes = ai._subset_bytes(reader, p - 1, p)
+            provs = _read(ai, model, args.model_id, pdf_bytes, prompt)
+            # The cheap reader can leave a page's rules out or mis-number them; such a
+            # page is read again with the stronger model (Ashfield F p46, 2026-09-25).
+            if args.fallback_model_id and (page_missing(lines.get(p, []), provs) or proven_share(
+                    provs, rd, ctx["document_id"], p) < MIN_PROVEN_SHARE):
+                provs = _read(ai, model, args.fallback_model_id, pdf_bytes, prompt)
+                fell_back += 1
+            got.append((p, provs))
+        for p, rows in sorted(plan["label"].items()):
+            prompt = label_prompt(section_in_force(rd[1], p), [body_of(t) for _r, t in rows])
+            labs = parse_labels(_ask(model, args.model_id, ai._subset_bytes(reader, p - 1, p), prompt))
+            labels.update({r: labs[i + 1] for i, (r, _t) in enumerate(rows) if i + 1 in labs})
+        print(f"  pages read again with the fallback model: {fell_back} of {len(plan['read'])}")
+        change = build_change(ctx, plan, got, labels)
+        if isinstance(change, str):
+            print(change)
+            return 2
+        proven = Counter(cp.prove_citation_any(x["ref_number"], x["new_text"], rd, x.get("new_page"))["status"]
+                         for x in change["added"] + change["changed"])
+        print(f"change set: {len(change['removed'])} removed, {len(change['changed'])} changed, "
+              f"{len(change['added'])} added; new citations {dict(proven)}")
+        if args.out:
+            Path(args.out).write_text(json.dumps(change, indent=1, ensure_ascii=False), encoding="utf-8")
+        if not args.apply:
+            print("DRY RUN -- nothing queued. Re-run with --apply.")
+            return 0
+        print(queue_change(conn, s3, ctx, change))
     return 0
 
 

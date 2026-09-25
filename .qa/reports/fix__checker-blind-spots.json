@@ -1,13 +1,15 @@
 {
   "tier": "critical",
   "justification": "The citation proof could not see control labels Ashfield prints as pictures numbered per part (PC4., DS5.1), so it could not prove or refuse them. This adds a local OCR read of those pictures, kept only when confident and label-shaped. Adds dcp_page_reread: re-reads only the pages behind unproven citations or missing rules, one page per call (5-page trial 94% proven vs 12-page batches), and queues a targeted change. Marrickville part 3: 48 unproven to 0, no page left missing.",
-  "commit_hash": "6319e7ac",
+  "commit_hash": "01e9bd5f",
   "files": [
     "scripts/citation_proof.py",
+    "scripts/dcp_page_batch.py",
     "scripts/dcp_page_reread.py",
     "scripts/dq_probe_section_code_not_in_source.py",
     "scripts/pdf_picture_labels.py",
     "scripts/requirements-monitor.txt",
+    "tests/test_dcp_page_batch.py",
     "tests/test_dcp_page_reread.py",
     "tests/test_dcp_page_reread_real_db.py",
     "tests/test_pdf_picture_labels.py"
@@ -40,6 +42,13 @@
       "input": "The target pages and (ref_number, pages) for every live rule of the chapter.",
       "output": "Target pages plus every page holding a rule that shares a number with one on a target page, and refs spread too wide to touch.",
       "if_none": "No targets returns an empty set, and the chapter is reported as nothing to re-read."
+    },
+    {
+      "name": "dcp_page_batch.judge",
+      "file_line": "scripts/dcp_page_batch.py",
+      "input": "A chapter's context, its plan entry, and every batch answer collected so far keyed by request id.",
+      "output": "Pages settled from answers plus the set of pages to re-ask with the strong model when a first answer leaves rules out or does not prove.",
+      "if_none": "A missing answer parses as empty, which marks a read page for the strong model rather than accepting nothing."
     }
   ],
   "values": [
@@ -109,6 +118,27 @@
       "mitigated": true,
       "how": "Codes are compared in stored form (dots to underscores) and a clash gets a _2 suffix.",
       "repro": "python -m pytest tests/test_dcp_page_reread.py -k dotted -q"
+    },
+    {
+      "scenario": "The cheap model's answer for a page leaves rules out or gives numbers that do not prove",
+      "what_happens": "Accepting it would queue a worse page than the one it replaces.",
+      "mitigated": true,
+      "how": "judge sends that page to the strong model in a second batch; only a round-two answer is final.",
+      "repro": "python -m pytest tests/test_dcp_page_batch.py -q"
+    },
+    {
+      "scenario": "Live rules of a chapter change while its batch is out for hours",
+      "what_happens": "Answers would be applied to rules that no longer match what was planned.",
+      "mitigated": true,
+      "how": "A fingerprint of the live rules is stored at prepare and checked at collect; a changed chapter is marked stale.",
+      "repro": "python -m pytest tests/test_dcp_page_batch.py -k signature -q"
+    },
+    {
+      "scenario": "A label question answer names a number that is not printed",
+      "what_happens": "The rule would be renamed to an invented number.",
+      "mitigated": true,
+      "how": "build_change uses a relabel only when the new number proves on the page and clashes with nothing.",
+      "repro": "python -m pytest tests/test_dcp_page_reread.py -k proves -q"
     }
   ],
   "post_merge": {
