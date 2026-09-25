@@ -58,7 +58,7 @@ SERVED_COUNT_SQL = ("SELECT count(*) FROM regulatory_provisions WHERE is_current
 
 
 def _cache_file(cache_dir: Path, r2_path: str) -> Path:
-    return cache_dir / f"{hashlib.sha1(r2_path.encode()).hexdigest()[:16]}.lines-v2.json"   # v2: label pictures (pdf_picture_labels)
+    return cache_dir / f"{hashlib.sha1(r2_path.encode()).hexdigest()[:16]}.lines-v3.json"   # v3: + OCR-read label pictures
 
 
 def chapter_lines(s3, bucket, r2_path: str, cache_dir: Path):

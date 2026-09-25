@@ -1,0 +1,89 @@
+{
+  "tier": "critical",
+  "justification": "The citation proof could not see control labels Ashfield prints as pictures numbered per part (PC4., DS5.1), so it could not prove or refuse them. This adds a local OCR read of those pictures, kept only when confident and label-shaped.",
+  "commit_hash": "bad95859",
+  "files": [
+    "scripts/pdf_picture_labels.py",
+    "scripts/citation_proof.py",
+    "scripts/dq_probe_section_code_not_in_source.py",
+    "scripts/requirements-monitor.txt",
+    "tests/test_pdf_picture_labels.py"
+  ],
+  "pre_impl": {
+    "existing_data": "No database writes. OCR probe on Ashfield chapter F pages 8-14: 24 of 24 labels read exactly. Corpus before: 4,511 of 16,291 unproven; wrong-label test 9 of 418 passing.",
+    "assumption_mismatch": "Expected OCR to clear most of Ashfield's unproven rows; it cleared 51 of 1,043, because most live Ashfield citations are composites the old reader invented, not unread labels.",
+    "new_vs_existing": "Extends pdf_picture_labels, which already names pictures by counting; OCR only names what counting cannot.",
+    "external_source_error": "Without the OCR engine installed the reader returns nothing and the proof behaves exactly as before.",
+    "frontend_type": "No frontend change; the proof runs in the fidelity gate and the DQ-111 probe.",
+    "user_failure_mode": "A misread label could prove a wrong citation. Mitigated: score at least 0.9, label-shaped text only, one reading per distinct picture; the wrong-label test stayed at 9 of 425."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_pdf_picture_labels.py -q",
+    "fails_when": "a low-confidence or non-label reading is kept, one picture is read twice, or a missing OCR engine changes the reading",
+    "observed_red": "Live: Ashfield unproven 1,043 to 994 (51 newly proven, 2 newly failing); wrong-label test 9 of 425 passing, same as before.",
+    "manual_probe": "python scripts/dq_probe_section_code_not_in_source.py --council ashfield"
+  },
+  "functions": [
+    {
+      "name": "pdf_picture_labels.ocr_label_pictures",
+      "file_line": "scripts/pdf_picture_labels.py",
+      "input": "An open PyMuPDF document, one page, a cache keyed by picture mask, and a RapidOCR reader or None.",
+      "output": "(y, x, label) for each small picture read confidently as a label such as pc4. or ds5.1.",
+      "if_none": "With no reader, or a page whose images cannot be paired with their draws, returns an empty list."
+    }
+  ],
+  "values": [
+    {
+      "name": "OCR confidence",
+      "value": "0.9",
+      "why": "The 24 probed labels scored above it; low scores are misreads the proof must not trust.",
+      "source": "probe 2026-09-25",
+      "read_at": "pdf_picture_labels.OCR_MIN_SCORE",
+      "if_missing": "n/a - constant"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "OCR misreads a label, e.g. DS11.1 as DS1.1, with low confidence",
+      "what_happens": "A wrong label could prove a citation that names the wrong control.",
+      "mitigated": true,
+      "how": "Readings under 0.9 confidence are dropped; the test pins it.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py -k confident -q"
+    },
+    {
+      "scenario": "A small picture that is not a label, like an icon or the word Figure, is read",
+      "what_happens": "Junk text would be inserted into the reading as if it were a label line.",
+      "mitigated": true,
+      "how": "Only text shaped like a label (letters then numbers) is kept.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py -k confident -q"
+    },
+    {
+      "scenario": "The OCR engine is missing on a machine or in the Railway image",
+      "what_happens": "The proof would crash, or silently behave differently from other environments.",
+      "mitigated": true,
+      "how": "The engine is optional and the reader returns nothing without it; it is now installed in the monitors image.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py -k engine -q"
+    },
+    {
+      "scenario": "The same label picture appears on many pages and OCR is slow",
+      "what_happens": "Reading every placement would make each chapter take minutes and could read one picture two ways.",
+      "mitigated": true,
+      "how": "Each distinct picture (by mask pixels) is read once and cached for the document.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py -k once -q"
+    },
+    {
+      "scenario": "A label picture is already named by counting under a Controls heading (Leichhardt)",
+      "what_happens": "An OCR name and a counted name could disagree and insert two labels for one rule.",
+      "mitigated": true,
+      "how": "OCR names are used only for positions counting did not name.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels_real_pdf.py -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Railway rebuilds the monitors image with rapidocr-onnxruntime; the fidelity gate then reads Ashfield label pictures."
+  }
+}

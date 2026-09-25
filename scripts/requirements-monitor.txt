@@ -17,3 +17,6 @@ fastapi>=0.141.1
 openai>=1.0
 httpx>=0.27
 pymupdf>=1.24
+# The citation proof reads control labels printed as pictures (Ashfield "PC4.",
+# "DS5.1") with this local OCR engine; without it those labels stay unread.
+rapidocr-onnxruntime>=1.3

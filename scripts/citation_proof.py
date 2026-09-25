@@ -221,8 +221,9 @@ def read_raw_lines(pdf_path: str) -> tuple[list[Line], float | None]:
     against do not keep."""
     import fitz
     import pdf_picture_labels as ppl
-    raw, pictures, masks = [], [], {}
+    raw, pictures, masks, read, ocr_cache = [], [], {}, [], {}
     width = None
+    reader = ppl.ocr_reader()
     with fitz.open(pdf_path) as doc:
         for pno, page in enumerate(doc, 1):
             width = width or page.rect.width
@@ -232,8 +233,9 @@ def read_raw_lines(pdf_path: str) -> tuple[list[Line], float | None]:
                     if t:
                         raw.append(Line(pno, ln["bbox"][1], ln["bbox"][0], t))
             pictures += [(pno, y, x, m, h) for y, x, m, h in ppl.page_label_pictures(doc, page, masks)]
+            read += [(pno, y, x, t) for y, x, t in ppl.ocr_label_pictures(doc, page, ocr_cache, reader)]
     pictures = [p[:4] for p in ppl.label_sized(pictures)]
-    return ppl.merge_labels(raw, pictures, Line), width
+    return ppl.merge_labels(raw, pictures, Line, read), width
 
 
 def load_lines(pdf_path: str) -> ChapterLines:
