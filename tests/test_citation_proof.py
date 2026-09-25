@@ -359,3 +359,11 @@ def test_closing_words_repeated_after_the_next_heading_do_not_move_the_rule():
     stored = body + " " + tail
     assert prove("2_2 C1", ch, text=stored)["status"] != "proven"
     assert prove("2_1 C1", ch, text=stored)["status"] == "proven"
+
+
+def test_a_year_or_standard_number_is_not_a_heading():
+    # "1924.2-81 (playground equipment ..." proved "1924.2 C10" in leichhardt C1.
+    for text in ("1924.2-81 (playground equipment for parks", "1997 amendments", "4.1-2 storeys"):
+        assert C.CODE_AT_START.match(text) is None, text
+    for text, code in (("4.1 c2 setbacks", "4.1"), ("c10 fences", "c10"), ("8.2.3 heights", "8.2.3")):
+        assert C.CODE_AT_START.match(text).group(1) == code

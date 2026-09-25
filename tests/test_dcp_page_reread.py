@@ -38,14 +38,23 @@ def test_the_same_code_on_non_adjacent_pages_is_not_joined():
     assert len(got) == 2
 
 
-def test_a_code_held_by_a_rule_not_reread_gets_a_suffix_not_a_clash():
-    got = R.unique_codes([{"code": "4_1 C2", "text": "new"}], taken={"4_1 C2"})
-    assert got[0]["code"] == "4_1 C2_2"
+def test_paragraphs_sharing_a_number_are_joined_never_suffixed():
+    # City of Sydney 3.15: unnumbered paragraphs under one heading. "3.15_2" is
+    # printed nowhere; the rule is one rule under 3.15.
+    got, ext = R.merge_codes([{"code": "3.15", "text": "first paragraph"},
+                              {"code": "3.15", "text": "second paragraph"}], taken=set())
+    assert [(p["code"], p["text"]) for p in got] == [("3.15", "first paragraph" + chr(10) * 2 + "second paragraph")]
+    assert ext == {}
+
+
+def test_a_code_held_by_a_rule_not_reread_extends_that_rule():
+    got, ext = R.merge_codes([{"code": "4.1 C2", "text": "new words"}], taken={"4_1 C2"})
+    assert got == [] and ext == {"4_1 C2": "new words"}
 
 
 def test_an_exact_repeat_is_dropped_and_blank_codes_skipped():
-    got = R.unique_codes([{"code": "A", "text": "t"}, {"code": "A", "text": "t"},
-                          {"code": "", "text": "u"}], taken=set())
+    got, _ = R.merge_codes([{"code": "A", "text": "t"}, {"code": "A", "text": "t"},
+                            {"code": "", "text": "u"}], taken=set())
     assert [p["code"] for p in got] == ["A"]
 
 
@@ -58,10 +67,9 @@ def test_section_in_force_is_the_last_numbered_heading_before_the_page():
     assert R.section_in_force(ch, 1) is None
 
 
-def test_a_new_dotted_code_clashing_with_a_stored_ref_tail_is_suffixed():
-    # The model returns "4.1 C2"; the rule not re-read is stored as "..__4_1 C2".
-    got = R.unique_codes([{"code": "4.1 C2", "text": "new"}], taken={"4_1 C2"})
-    assert got[0]["code"] == "4.1 C2_2"
+def test_a_new_dotted_code_matching_a_stored_ref_tail_is_recognised():
+    _got, ext = R.merge_codes([{"code": "4.1 C2", "text": "new"}], taken={"4_1 C2"})
+    assert "4_1 C2" in ext
 
 
 def test_a_page_whose_rules_came_back_is_not_missing():
@@ -133,3 +141,13 @@ def test_a_corrected_number_is_used_only_when_it_proves():
     assert [x["ref_number"] for x in ok["removed"]] == ["Doc__x__3_2 C14"]
     wrong = R.build_change(ctx, plan, [], {"Doc__x__3_2 C14": {"code": "3.4 C99", "title": ""}})
     assert wrong["added"] == [] and wrong["removed"] == []
+
+
+def test_a_paragraph_joining_a_kept_rule_changes_that_rule_not_adds_a_second():
+    ctx = _ctx(ref="Doc__x__3_3 C13")
+    ctx["placed"] = [("Doc__x__3_3 C13", ctx["live"][0][1], {2})]   # kept: page 2 not re-read
+    plan = {"read": {1}, "gaps": set(), "label": {}}
+    change = R.build_change(ctx, plan, [(1, [{"code": "3.3 C13", "text": "more words for it"}])], {})
+    assert change["added"] == []
+    assert [c["ref_number"] for c in change["changed"]] == ["Doc__x__3_3 C13"]
+    assert change["changed"][0]["new_text"].endswith("more words for it")

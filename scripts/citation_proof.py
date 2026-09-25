@@ -100,8 +100,11 @@ class Line:
 
 #: A code at the start of a line, optionally after "part"/"section"/"chapter".
 #: The lookahead refuses a longer number, so "8.2.3" does not start "8.2.31".
+#: A bare year ("1997 ...") and a standard's number ("1924.2-81 (playground ...)")
+#: are not headings: counted as one, a year proved "1924.2 C10" (leichhardt C1).
 CODE_AT_START = re.compile(
-    r"^(?:(?:part|section|chapter)\s+)?((?:[a-z]{1,3})?\d+[a-z]?(?:\.\d+[a-z]?)*)(?![\d.]*\d)")
+    r"^(?:(?:part|section|chapter)\s+)?(?!(?:1[89]|20)\d\d(?!\d))"
+    r"((?:[a-z]{1,3})?\d+[a-z]?(?:\.\d+[a-z]?)*)(?![\d.]*\d)(?![-–/]\d)")
 #: A contents-page line: title, leaders or space, page number.
 _TOC_LINE = re.compile(r"(\.{3,}|\s)\d{1,4}\s*$")
 #: A page number in the top/bottom margin. Harmless as text, but "1" at the

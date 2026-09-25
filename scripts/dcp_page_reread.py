@@ -134,33 +134,41 @@ def _norm(code: str) -> str:
     return code.replace(".", "_")
 
 
-def unique_codes(provs: list[dict], taken: set[str]) -> list[dict]:
-    """A repeated code with different text gets _2, _3 from numbers nobody holds,
-    the same rule dcp_extract_changed applies; an exact repeat is dropped. Pure.
+def merge_codes(provs: list[dict], taken: set[str]) -> tuple[list[dict], dict[str, str]]:
+    """Provisions sharing a code are ONE rule under that code: their words are joined,
+    never given an invented _2 / _3 suffix. Pure.
+
+    Several unnumbered paragraphs under one heading come back with the heading's
+    number (City of Sydney 3.15). The old rule suffixed them "3.15_2", "3.15_3" --
+    clause numbers printed nowhere, which the citation check rightly refused, so
+    they sat held (2026-09-25). An exact repeat is dropped.
 
     `taken` holds the ref tails of rules NOT being re-read, in stored form
-    ("4_1 C2"). New codes come from the model with dots ("4.1 C2"), so both are
-    compared normalised -- compared raw, a clash was never seen, two rules got one
-    ref, and the targeted publish would have wiped the one that was not re-read."""
-    seen: dict[str, list[str]] = {}
+    ("4_1 C2"); codes are compared normalised (dots to underscores). A new
+    provision whose code a kept rule already holds is returned in the second
+    value, {normalised code: text}, to be added to that kept rule -- never as a
+    second rule under the same number, which the targeted publish would collapse."""
     taken = {_norm(t) for t in taken}
-    out = []
+    out: list[dict] = []
+    at: dict[str, int] = {}
+    extend: dict[str, str] = {}
     for p in provs:
         code, text = str(p.get("code") or "").strip(), str(p.get("text") or "").strip()
         if not code or not text:
             continue
-        texts = seen.setdefault(code, [])
-        if text in texts:
+        key = _norm(code)
+        if key in taken:
+            if text not in extend.get(key, ""):
+                extend[key] = (extend[key] + NL + NL + text) if key in extend else text
             continue
-        texts.append(text)
-        if len(texts) > 1 or _norm(code) in taken:
-            n = max(2, len(texts))
-            while _norm(f"{code}_{n}") in taken:
-                n += 1
-            code = f"{code}_{n}"
-        taken.add(_norm(code))
-        out.append({**p, "code": code})
-    return out
+        if key in at:
+            prev = out[at[key]]
+            if text not in prev["text"]:
+                out[at[key]] = {**prev, "text": prev["text"] + NL + NL + text}
+            continue
+        at[key] = len(out)
+        out.append({**p, "code": code, "text": text})
+    return out, extend
 
 
 #: A page whose citations prove below this share is read again with the fallback
@@ -340,7 +348,7 @@ def build_change(ctx: dict, plan: dict, got: list, labels: dict):
     placed, live, doc = ctx["placed"], ctx["live"], ctx["document_id"]
     replaced = [(r, t) for r, t, ps in placed if ps and ps <= read]
     kept = {r.rpartition("__")[2] for r, _t, ps in placed if not (ps and ps <= read)}
-    new = unique_codes(join_page_breaks(got), taken=kept)
+    new, extend = merge_codes(join_page_breaks(got), taken=kept)
     added, changed = [], []
     old_by_ref = dict(replaced)
     for sec in ai.provisions_to_sections(new):
@@ -352,6 +360,16 @@ def build_change(ctx: dict, plan: dict, got: list, labels: dict):
         else:
             added.append({"ref_number": ref, "new_text": text, "new_page": sec["page_start"]})
     removed = [{"ref_number": r, "old_text": t} for r, t in old_by_ref.items()]
+    # A re-read paragraph under a number a kept rule holds joins that rule.
+    text_by_tail = {_norm(r.rpartition("__")[2]): (r, t) for r, t, ps in placed if not (ps and ps <= read)}
+    for key, more in extend.items():
+        if key not in text_by_tail:
+            continue
+        r, t = text_by_tail[key]
+        if more in (t or ""):
+            continue
+        changed.append({"ref_number": r, "old_text": t, "new_text": (t or "").rstrip() + NL + NL + more,
+                        "new_page": None, "has_numeric_change": True})
     # The small question: same words, corrected number -- used only when the new
     # number proves on the page and clashes with no other rule.
     taken = ({_norm(r.rpartition("__")[2]) for r, _t, _p in placed}

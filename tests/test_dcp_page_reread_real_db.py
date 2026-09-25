@@ -38,12 +38,12 @@ def test_every_served_chapter_has_a_content_hash_to_queue_under(cur):
 
 
 @pytest.mark.database
-def test_stored_ref_tails_are_what_unique_codes_compares(cur):
+def test_stored_ref_tails_are_what_merge_codes_compares(cur):
     import dcp_page_reread as R
     cur.execute("SELECT ref_number FROM regulatory_provisions WHERE is_current "
                 "AND source_council='marrickville' AND source_chapter_key='part3-subdivision' LIMIT 5")
     tails = {r[0].rpartition("__")[2] for r in cur.fetchall()}
     assert tails and all("." not in t for t in tails)
     t = next(iter(tails))
-    got = R.unique_codes([{"code": t.replace("_", "."), "text": "x"}], taken=tails)
-    assert got[0]["code"] != t.replace("_", ".")
+    got, ext = R.merge_codes([{"code": t.replace("_", "."), "text": "x"}], taken=tails)
+    assert got == [] and t in ext
