@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "The citation proof could not see control labels Ashfield prints as pictures numbered per part (PC4., DS5.1), so it could not prove or refuse them. This adds a local OCR read of those pictures, kept only when confident and label-shaped. Adds dcp_page_reread: re-reads only the pages behind unproven citations or missing rules, one page per call (5-page trial 94% proven vs 12-page batches), and queues a targeted change. Marrickville part 3: 48 unproven to 0, no page left missing.",
-  "commit_hash": "1fa16b1a",
+  "commit_hash": "6f94731b",
   "files": [
     "scripts/citation_proof.py",
     "scripts/dcp_page_reread.py",
@@ -9,6 +9,7 @@
     "scripts/pdf_picture_labels.py",
     "scripts/requirements-monitor.txt",
     "tests/test_dcp_page_reread.py",
+    "tests/test_dcp_page_reread_real_db.py",
     "tests/test_pdf_picture_labels.py"
   ],
   "pre_impl": {
@@ -101,6 +102,13 @@
       "mitigated": true,
       "how": "The tool refuses any change set after which a page holding rule words is newly missing.",
       "repro": "python scripts/dcp_page_reread.py --council marrickville --chapter part3-subdivision"
+    },
+    {
+      "scenario": "The model returns 4.1 C2 while a rule not re-read is stored as ..__4_1 C2",
+      "what_happens": "Compared raw, the clash is missed; two rules share one ref and the targeted publish wipes the untouched one.",
+      "mitigated": true,
+      "how": "Codes are compared in stored form (dots to underscores) and a clash gets a _2 suffix.",
+      "repro": "python -m pytest tests/test_dcp_page_reread.py -k dotted -q"
     }
   ],
   "post_merge": {

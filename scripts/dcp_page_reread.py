@@ -122,11 +122,21 @@ def join_page_breaks(pages: list[tuple[int, list[dict]]]) -> list[dict]:
     return out
 
 
+def _norm(code: str) -> str:
+    """A code as it appears in a stored ref: dots become underscores."""
+    return code.replace(".", "_")
+
+
 def unique_codes(provs: list[dict], taken: set[str]) -> list[dict]:
     """A repeated code with different text gets _2, _3 from numbers nobody holds,
-    the same rule dcp_extract_changed applies; an exact repeat is dropped. Pure."""
+    the same rule dcp_extract_changed applies; an exact repeat is dropped. Pure.
+
+    `taken` holds the ref tails of rules NOT being re-read, in stored form
+    ("4_1 C2"). New codes come from the model with dots ("4.1 C2"), so both are
+    compared normalised -- compared raw, a clash was never seen, two rules got one
+    ref, and the targeted publish would have wiped the one that was not re-read."""
     seen: dict[str, list[str]] = {}
-    taken = set(taken)
+    taken = {_norm(t) for t in taken}
     out = []
     for p in provs:
         code, text = str(p.get("code", "")).strip(), str(p.get("text", "")).strip()
@@ -136,12 +146,12 @@ def unique_codes(provs: list[dict], taken: set[str]) -> list[dict]:
         if text in texts:
             continue
         texts.append(text)
-        if len(texts) > 1 or code in taken:
+        if len(texts) > 1 or _norm(code) in taken:
             n = max(2, len(texts))
-            while f"{code}_{n}" in taken:
+            while _norm(f"{code}_{n}") in taken:
                 n += 1
             code = f"{code}_{n}"
-        taken.add(code)
+        taken.add(_norm(code))
         out.append({**p, "code": code})
     return out
 
@@ -164,6 +174,13 @@ def main() -> int:
                       aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
                       aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"], region_name="auto")
     conn = psycopg2.connect(os.environ["DATABASE_URL"], connect_timeout=30)
+    try:
+        return _run(args, conn, s3, ai)
+    finally:
+        conn.close()
+
+
+def _run(args, conn, s3, ai) -> int:
     cur = conn.cursor()
     cur.execute("SET statement_timeout = '30000'")
     cur.execute("SELECT r2_current_path, content_hash FROM dcp_chapter_registry WHERE council=%s "
@@ -229,7 +246,7 @@ def main() -> int:
 
     # 3. the change set
     replaced = [(ref, text) for ref, text, ps in placed if ps and ps <= pages]
-    kept_codes = {ref.split("__", 2)[-1] for ref, _t, ps in placed if not (ps and ps <= pages)}
+    kept_codes = {ref.rpartition("__")[2] for ref, _t, ps in placed if not (ps and ps <= pages)}
     new = unique_codes(join_page_breaks(got), taken={c for c in kept_codes})
     import dcp_extract_changed as dx
     added, changed, removed = [], [], []

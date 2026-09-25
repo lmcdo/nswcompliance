@@ -56,3 +56,9 @@ def test_section_in_force_is_the_last_numbered_heading_before_the_page():
     ch = C.ChapterLines.build(raw, page_width=595.0)
     assert R.section_in_force(ch, 3) == "3.3"
     assert R.section_in_force(ch, 1) is None
+
+
+def test_a_new_dotted_code_clashing_with_a_stored_ref_tail_is_suffixed():
+    # The model returns "4.1 C2"; the rule not re-read is stored as "..__4_1 C2".
+    got = R.unique_codes([{"code": "4.1 C2", "text": "new"}], taken={"4_1 C2"})
+    assert got[0]["code"] == "4.1 C2_2"
