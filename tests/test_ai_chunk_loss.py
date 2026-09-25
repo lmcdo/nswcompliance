@@ -25,7 +25,8 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
 from ai_extractor import (  # noqa: E402
-    CHUNK_LOSS_MIN_TEXT_CHARS, ChunkLoss, _chunk_text_chars,
+    CHUNK_LOSS_MIN_TEXT_CHARS, RULE_PAGE_MIN_CHARS, ChunkLoss, _is_contents_page,
+    _rule_bearing_pages,
 )
 
 
@@ -45,24 +46,42 @@ class _Reader:
 
 
 class TestChunkTextMeasurement:
-    def test_counts_the_characters_in_the_range_only(self):
-        r = _Reader(["a" * 100, "b" * 200, "c" * 400])
-        assert _chunk_text_chars(r, 0, 2) == 300
-        assert _chunk_text_chars(r, 2, 3) == 400
+    RULE = "development must comply with the controls. "
 
-    def test_a_blank_chunk_measures_zero(self):
-        r = _Reader(["", "", ""])
-        assert _chunk_text_chars(r, 0, 3) == 0
+    def test_rule_bearing_pages_are_measured_per_page(self):
+        r = _Reader([self.RULE * 2, "", self.RULE * 8])
+        assert _rule_bearing_pages(r, 0, 3) == [(1, len(self.RULE) * 2), (3, len(self.RULE) * 8)]
 
-    def test_a_page_that_cannot_be_read_counts_as_text_bearing(self):
+    def test_a_blank_chunk_has_no_rule_bearing_page(self):
+        assert _rule_bearing_pages(_Reader(["", "", ""]), 0, 3) == []
+
+    def test_a_page_that_cannot_be_read_counts_as_rule_bearing(self):
         # Erring the other way would let an unreadable page masquerade as blank
         # and silence the guard -- the failure direction this repair exists for.
-        r = _Reader([None])
-        assert _chunk_text_chars(r, 0, 1) >= CHUNK_LOSS_MIN_TEXT_CHARS
+        assert _rule_bearing_pages(_Reader([None]), 0, 1) == [(1, CHUNK_LOSS_MIN_TEXT_CHARS)]
 
     def test_range_past_the_end_does_not_raise(self):
-        r = _Reader(["x" * 50])
-        assert _chunk_text_chars(r, 0, 99) == 50
+        assert _rule_bearing_pages(_Reader([self.RULE]), 0, 99) == [(1, len(self.RULE))]
+
+    def test_contents_and_history_pages_hold_no_rule(self):
+        # Leichhardt part-c-s2 pages 1-12, refused twice on 2026-09-24.
+        contents = "\n".join(f"c2.1.{i} objectives and controls ............. {100 + i}"
+                              for i in range(12))
+        history = ("The first phase of settlement followed the subdivision of the "
+                   "estate into small lots for workers' cottages near the wharves. ") * 20
+        assert _rule_bearing_pages(_Reader([contents] * 5 + [history] * 7), 0, 12) == []
+
+    def test_an_unworded_control_still_counts_by_its_label(self):
+        # Cross-review: "Retain existing trees" carries none of the rule words.
+        page = "C1 Existing trees along the northern boundary are kept.\nC2 Bicycle racks near the entry."
+        assert _rule_bearing_pages(_Reader([page]), 0, 1) != []
+
+    def test_a_table_of_numeric_standards_is_not_a_contents_page(self):
+        # Cross-review: every line ends in a digit, but no dot leaders.
+        table = "\n".join(f"Maximum building height zone {i}   8.{i}" for i in range(10))
+        assert _is_contents_page(table) is False
+        contents = "\n".join(f"4.{i} Heading ..................... {10 + i}" for i in range(10))
+        assert _is_contents_page(contents) is True
 
 
 class TestGuardFires:
@@ -186,3 +205,28 @@ class TestAttributionGuard:
         toc = {"3." + str(i) for i in range(1, 21)}
         assert self._g({"3 C1"}, toc)[0] is True
         assert self._g({"3." + str(i) for i in range(1, 21)}, toc)[0] is False
+
+
+def test_a_chunk_of_contents_and_history_does_not_raise(monkeypatch):
+    """Leichhardt part-c-s2: the model rightly returned nothing for contents
+    pages and suburb histories; the guard refused the whole chapter twice."""
+    contents = "\n".join(f"c2.1.{i} objectives and controls ............. {100 + i}"
+                         for i in range(12))
+    history = ("The first phase of settlement followed the subdivision of the estate "
+               "into small lots for workers' cottages near the wharves. ") * 20
+    rules = "development must comply with the controls. " * 60
+    pages = [contents] * 5 + [history] * 7 + [rules] * 12
+    out = TestGuardFires()._run(monkeypatch, pages, 12,
+                                [[], [{"code": "C2.2.1", "title": "T", "text": "x"}]])
+    assert len(out) == 1
+
+
+def test_one_short_page_of_controls_among_history_still_raises(monkeypatch):
+    """Cross-review: measured as a batch total against 1,500 characters, one
+    page of controls inside eleven pages of history could fall under the bar."""
+    history = ("The first phase of settlement followed the subdivision of the estate "
+               "into small lots for workers' cottages near the wharves. ") * 20
+    controls = "C1 Buildings must be set back 6m from the street. " * 8   # ~400 chars
+    pages = [history] * 11 + [controls]
+    with pytest.raises(ChunkLoss):
+        TestGuardFires()._run(monkeypatch, pages, 12, [[]])

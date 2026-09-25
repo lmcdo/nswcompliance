@@ -1,0 +1,108 @@
+{
+  "tier": "critical",
+  "justification": "The AI reader's chunk-loss guard refused whole chapters when a 12-page batch held only contents pages and narrative history: Leichhardt part-c-s2 twice (31,028 characters, not one control). It now weighs only pages that can hold a rule. Critical because this guard is what stops a chapter losing pages silently (marrickville, 94 pages).",
+  "commit_hash": "4fb84eb7",
+  "files": [
+    "scripts/ai_extractor.py",
+    "tests/test_ai_chunk_loss.py"
+  ],
+  "pre_impl": {
+    "existing_data": "No database. Measured the refused pages from the PDF: pages 1-5 contents (38-46 of ~40 lines end in a page number), 6-12 suburb profiles with no rule language.",
+    "assumption_mismatch": "Assumed an empty answer for a text-heavy batch meant loss. For contents and narrative it is the correct answer; the guard could not tell the two apart.",
+    "new_vs_existing": "Replaces _chunk_text_chars (now unused, removed) with _chunk_rule_chars in the same guard; unreadable pages still count in full.",
+    "external_source_error": "A page pypdf cannot read counts as rule-bearing, so the guard still errs toward reporting loss.",
+    "frontend_type": "No frontend change: this only decides whether an extraction batch is refused before anything is queued.",
+    "user_failure_mode": "If rule language were missed on a real controls page, a lost batch could pass. Mitigated: broad rule vocabulary; the marrickville-shape test still raises; a mutation removing the filter fails two tests."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_ai_chunk_loss.py -q",
+    "fails_when": "a batch of rule-bearing pages that returns nothing does not raise ChunkLoss, or a batch of contents/history pages does",
+    "observed_red": "Before: leichhardt part-c-s2 refused twice at pages 1-12. Removing the new filter fails 2 tests.",
+    "manual_probe": "python scripts/dcp_extract_changed.py --review --council leichhardt --chapter part-c-s2-urban-character"
+  },
+  "functions": [
+    {
+      "name": "ai_extractor._rule_bearing_pages",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "The pypdf reader for the chapter and a page range [a, b) of one batch sent to the model.",
+      "output": "(page, characters) for pages that are not contents and carry rule words or labelled items; any one of 300+ chars returning nothing is loss.",
+      "if_none": "A page pypdf cannot read counts as rule-bearing at CHUNK_LOSS_MIN_TEXT_CHARS, so unreadable pages still trip the guard."
+    },
+    {
+      "name": "ai_extractor._is_contents_page",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "The extracted text of one PDF page, split into its non-empty lines for the page-number check.",
+      "output": "True when at least eight lines exist and half or more end in dot leaders then a page number, as contents lines do.",
+      "if_none": "Empty or short text returns False, so the page falls through to the rule-language check instead."
+    }
+  ],
+  "values": [
+    {
+      "name": "rule page minimum",
+      "value": "300 characters on one page",
+      "why": "Measured per page so one page of controls in a batch of history still counts (cross-review finding 3).",
+      "source": "cross-review 2026-09-25",
+      "read_at": "RULE_PAGE_MIN_CHARS",
+      "if_missing": "n/a - constant"
+    },
+    {
+      "name": "contents line",
+      "value": "dot leaders then a page number",
+      "why": "A table of numeric standards ends in digits too but has no leaders (cross-review finding 2).",
+      "source": "cross-review 2026-09-25",
+      "read_at": "_CONTENTS_LINE",
+      "if_missing": "n/a - constant"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A batch of real control pages returns nothing from the model because of a provider fault",
+      "what_happens": "The chapter would be committed missing those pages, the marrickville failure.",
+      "mitigated": true,
+      "how": "Control pages carry rule language, so they are weighed; the marrickville-shape test still raises ChunkLoss.",
+      "repro": "python -m pytest tests/test_ai_chunk_loss.py -k marrickville -q"
+    },
+    {
+      "scenario": "A batch holds only the chapter's contents pages and returns nothing, correctly",
+      "what_happens": "The whole chapter was refused and never updated, as Leichhardt part-c-s2 was twice.",
+      "mitigated": true,
+      "how": "Contents pages are excluded from the weight before the threshold is applied.",
+      "repro": "python -m pytest tests/test_ai_chunk_loss.py -k contents -q"
+    },
+    {
+      "scenario": "A batch holds narrative history with no controls and returns nothing, correctly",
+      "what_happens": "Same refusal: text-heavy pages with no rule looked like loss.",
+      "mitigated": true,
+      "how": "Pages without rule language are excluded from the weight.",
+      "repro": "python -m pytest tests/test_ai_chunk_loss.py -k history -q"
+    },
+    {
+      "scenario": "A page pypdf cannot read sits in an empty batch among other pages",
+      "what_happens": "If treated as blank it would hide real loss behind an unreadable page.",
+      "mitigated": true,
+      "how": "An unreadable page counts in full toward the threshold, as before.",
+      "repro": "python -m pytest tests/test_ai_chunk_loss.py -k cannot_be_read -q"
+    },
+    {
+      "scenario": "A chunk mixes contents pages with real controls and returns nothing at all",
+      "what_happens": "The contents exclusion must not hide the controls it sits beside.",
+      "mitigated": true,
+      "how": "Only contents and rule-free pages are excluded; the controls' characters still count and exceed the threshold.",
+      "repro": "python -m pytest tests/test_ai_chunk_loss.py -q"
+    },
+    {
+      "scenario": "Controls written as bare imperatives with none of the rule words, and the model returns nothing",
+      "what_happens": "Pages like 'Retain existing trees' would not count and the lost controls would pass (cross-review finding 1).",
+      "mitigated": true,
+      "how": "A labelled item at a line start (C1, O2, a), 1., ii), a bullet) makes the page rule-bearing on its own.",
+      "repro": "python -m pytest tests/test_ai_chunk_loss.py -k unworded -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Known and accepted: leichhardt part-c-s2 is still refused at pages 1-12 because page 6's introduction carries 'should' and 'objectives'. Its live rows are unchanged."
+  }
+}
