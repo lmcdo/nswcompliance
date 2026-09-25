@@ -52,6 +52,17 @@ COPY scripts/ai_extractor.py ./scripts/ai_extractor.py
 COPY scripts/dcp_page_map_gate.py ./scripts/dcp_page_map_gate.py
 # The contents parser used by ai_extractor.toc_codes_from_pdf (the coverage guard).
 COPY scripts/dcp_toc_parse.py ./scripts/dcp_toc_parse.py
+# The fidelity gate grades every row dcp-extract queues, and with it the citation
+# proof and the check for pages the reader left out. dcp_extract_changed imports
+# the gate lazily inside a try, so without these COPYs the grading was skipped
+# with a one-line warning and Railway-queued rows arrived ungraded.
+COPY scripts/dcp_fidelity_gate.py ./scripts/dcp_fidelity_gate.py
+COPY scripts/verify_extraction_fidelity.py ./scripts/verify_extraction_fidelity.py
+COPY scripts/citation_proof.py ./scripts/citation_proof.py
+COPY scripts/pdf_picture_labels.py ./scripts/pdf_picture_labels.py
+COPY scripts/page_coverage.py ./scripts/page_coverage.py
+# verify_extraction_fidelity (the gate's grader) imports this at module level.
+COPY services/extracted_data_integrity.py ./services/extracted_data_integrity.py
 # dcp_commit_approved falls back to this to recover a section code from
 # ref_number. Without it in the image the fallback quietly stops working and the
 # codes start disappearing again on every commit -- the defect it exists to stop.

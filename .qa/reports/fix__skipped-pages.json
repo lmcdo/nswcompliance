@@ -1,0 +1,124 @@
+{
+  "tier": "critical",
+  "justification": "The AI reader skipped pages inside batches that returned something, so nothing noticed: the Warringah re-read left out 21 of 226 pages and would have deleted 172 printed rules; Canterbury-Bankstown chapters are live without pages of rules. The reader now counts left-out pages by code and re-reads them, refusing the chapter if a page of rules is still missing. Critical: this is what stops printed rules silently disappearing. Also: the Railway dcp-extract job failed every chapter on 2026-09-25 03:01 UTC (no httpx), and its fidelity gate had never been in the image; the image test now follows every import.",
+  "commit_hash": "36efbdaf",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "Dockerfile.monitors",
+    "scripts/ai_extractor.py",
+    "scripts/dq_probe_pages_left_out.py",
+    "scripts/page_coverage.py",
+    "scripts/requirements-monitor.txt",
+    "tests/test_ai_chunk_loss.py",
+    "tests/test_dockerfile_monitors_imports.py",
+    "tests/test_dq_probe_pages_left_out_real_db.py",
+    "tests/test_page_coverage.py"
+  ],
+  "pre_impl": {
+    "existing_data": "No database writes. Measured with PyMuPDF sentence lines against extracted text: Warringah re-read 21 of 226 pages left out; Canterbury-Bankstown 6-2 (live) 33 of 195 pages flagged; Campbelltown part 3 (read well) 2 of 72; Woollahra B1 0 of 27.",
+    "assumption_mismatch": "Assumed the chunk-loss guard covered skipped pages. It only fires when a whole batch returns nothing; the model skipped pages inside batches that returned rules.",
+    "new_vs_existing": "_rule_bearing_pages only asks whether a page could hold a rule. page_coverage compares each page's own lines with what the reader returned; nothing did that before.",
+    "external_source_error": "If PyMuPDF cannot open the PDF the reader raises before returning, so a chapter is never accepted unchecked.",
+    "frontend_type": "No frontend change: this runs inside the extraction pipeline before anything is queued for review.",
+    "user_failure_mode": "A page of rules the model keeps skipping after its re-read now refuses the chapter by name. Pages without rule words (history, definitions, amendment tables) are reported and allowed."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_page_coverage.py tests/test_ai_chunk_loss.py -q",
+    "fails_when": "a page of rules left out by the reader is not re-read, or is still missing and the chapter is not refused",
+    "observed_red": "Live trial on the Warringah DCP, no DB writes: 21 pages left out, 17 recovered by the re-read (108 rules), 4 left with 0-1 rule words each. 11 mutations of the new logic all caught.",
+    "manual_probe": "python scripts/dq_probe_pages_left_out.py --council canterbury_bankstown"
+  },
+  "functions": [
+    {
+      "name": "page_coverage.skipped_pages",
+      "file_line": "scripts/page_coverage.py",
+      "input": "Every page's text lines from PyMuPDF, and every text the reader returned for the document.",
+      "output": "Page numbers with five or more sentence lines of which fewer than 30% appear in the output.",
+      "if_none": "An empty output marks every judged page as left out; pages under five sentence lines are not judged."
+    },
+    {
+      "name": "page_coverage.sentence_lines",
+      "file_line": "scripts/page_coverage.py",
+      "input": "The text lines of one page, as PyMuPDF returns them, possibly drawn twice.",
+      "output": "Lines of six or more words, identical lines once, letter-spaced map labels dropped.",
+      "if_none": "No qualifying lines returns an empty list, and the page is then not judged."
+    },
+    {
+      "name": "ai_extractor._reread_skipped_pages",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "The chapter PDF path, its pypdf reader, the model name and the provisions collected so far.",
+      "output": "Adds provisions from re-reading left-out pages; raises PageLoss if a page with rule words is still missing.",
+      "if_none": "No left-out pages means no model call at all, and the provisions are returned unchanged."
+    }
+  ],
+  "values": [
+    {
+      "name": "page left out",
+      "value": "under 30% of sentence lines read",
+      "why": "Warringah skipped pages sat near 0%; Campbelltown pages read well sat far above.",
+      "source": "measured 2026-09-25",
+      "read_at": "page_coverage.PAGE_HIT",
+      "if_missing": "n/a - constant"
+    },
+    {
+      "name": "rule words to refuse",
+      "value": "2 or more",
+      "why": "The 4 pages the model rightly skipped held 0, 0, 1, 0; recovered rule pages up to 6.",
+      "source": "measured 2026-09-25",
+      "read_at": "page_coverage.RULE_WORDS_MIN",
+      "if_missing": "n/a - constant"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The model returns rules for a batch but skips a page inside it",
+      "what_happens": "Before this change the page's rules were lost and nothing reported it.",
+      "mitigated": true,
+      "how": "The page is counted as left out and read again on its own.",
+      "repro": "python -m pytest tests/test_ai_chunk_loss.py -k read_again -q"
+    },
+    {
+      "scenario": "A page of rules is still skipped after its re-read",
+      "what_happens": "Approving the chapter would delete the rules printed on that page from what we serve.",
+      "mitigated": true,
+      "how": "PageLoss refuses the chapter, naming the pages.",
+      "repro": "python -m pytest tests/test_ai_chunk_loss.py -k refuses -q"
+    },
+    {
+      "scenario": "The council's PDF draws every line twice, one copy on top of the other (Campbelltown)",
+      "what_happens": "Every page looked half-read and would be re-read or refused wrongly.",
+      "mitigated": true,
+      "how": "Identical lines on a page count once.",
+      "repro": "python -m pytest tests/test_page_coverage.py -k twice -q"
+    },
+    {
+      "scenario": "A map page of letter-spaced street labels (Canterbury-Bankstown)",
+      "what_happens": "Street labels looked like unread sentences, so map pages would be flagged as left out.",
+      "mitigated": true,
+      "how": "A line mostly of single letters is not a sentence.",
+      "repro": "python -m pytest tests/test_page_coverage.py -k letter -q"
+    },
+    {
+      "scenario": "Suburb history, definitions or an amendment table the model rightly passes over",
+      "what_happens": "A strict check would refuse good chapters because of pages that hold no rules.",
+      "mitigated": true,
+      "how": "Only a still-missing page with two or more rule words refuses.",
+      "repro": "python -m pytest tests/test_ai_chunk_loss.py -k without_rule_words -q"
+    },
+    {
+      "scenario": "A worker imports a library or sibling module inside a function, or by bare name",
+      "what_happens": "The Railway image lacks it; dcp-extract failed all 22 chapters and the fidelity gate was silently skipped.",
+      "mitigated": true,
+      "how": "The image test follows every import from each worker, transitively, and fails on any module not copied or package not installed.",
+      "repro": "python -m pytest tests/test_dockerfile_monitors_imports.py -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Re-read the chapters dq_probe_pages_left_out.py lists (Canterbury-Bankstown 6-2, 7-5, 11-11 first) and Warringah with the merged reader."
+  }
+}
