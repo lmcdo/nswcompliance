@@ -25,6 +25,7 @@ def cur():
     c.close()
 
 
+@pytest.mark.database
 def test_every_served_chapter_has_a_content_hash_to_queue_under(cur):
     # The tool refuses a chapter without one; the commit only takes rows whose
     # hash matches the registry. A missing hash would make that chapter unfixable.
@@ -36,6 +37,7 @@ def test_every_served_chapter_has_a_content_hash_to_queue_under(cur):
     assert cur.fetchone()[0] == 0
 
 
+@pytest.mark.database
 def test_stored_ref_tails_are_what_unique_codes_compares(cur):
     import dcp_page_reread as R
     cur.execute("SELECT ref_number FROM regulatory_provisions WHERE is_current "
