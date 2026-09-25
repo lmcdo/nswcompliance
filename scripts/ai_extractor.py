@@ -555,6 +555,13 @@ class ChunkLoss(Exception):
     """A chunk containing substantial text returned no provisions."""
 
 
+class PageLoss(ChunkLoss):
+    """Pages whose sentences the reader left out, still missing after a re-read.
+    A ChunkLoss, so every caller already refuses the chapter on it."""
+
+
+
+
 #: Signs a page can hold a rule: rule words, OR any labelled item at a line
 #: start -- C1, O2, PC1, "a)", "1.", "ii)", a bullet. DCP controls are nearly
 #: always labelled, so an imperative with none of the words ("Retain existing
@@ -606,6 +613,39 @@ def _rule_bearing_pages(reader, a: int, b: int) -> list[tuple[int, int]]:
     return out
 
 
+def _reread_skipped_pages(pdf_path, reader, model: str, collected: list[dict]) -> None:
+    """Count, by code, the pages the reading left out; read them again on their
+    own; refuse the chapter if a page that holds rules is still missing. A page
+    still missing without rule words (history, definitions, an amendment table)
+    is reported, not refused -- the model is right to pass over it.
+
+    The chunk-loss guard only sees a batch that returned NOTHING. The Warringah
+    re-read returned something for every batch and skipped 21 pages inside them
+    (2026-09-25), which would have deleted 172 printed rules. Adds to `collected`.
+    """
+    import page_coverage as pc
+    lines = pc.pdf_page_lines(pdf_path)
+    texts = lambda: [str(p.get("text", "")) + " " + str(p.get("title", "")) for p in collected]
+    skipped = pc.skipped_pages(lines, texts())
+    if not skipped:
+        return
+    print(f"    [page-coverage] {len(skipped)} page(s) left out, reading again: {skipped}")
+    for first, last in pc.runs(skipped, AI_CHUNK_PAGES):
+        found = _call_and_parse_with_empty_retry(
+            model, _subset_bytes(reader, first - 1, last), _build_prompt(None))
+        for p in found:
+            p.setdefault("page", first)
+            collected.append(p)
+    still = pc.skipped_pages({p: lines[p] for p in skipped}, texts())
+    ruled = [p for p in still if pc.holds_rules(lines[p])]
+    if ruled:
+        raise PageLoss(
+            f"{len(ruled)} page(s) holding rules still left out after being read again: {ruled}. "
+            "Refusing a partial chapter: approving it would delete the rules printed there.")
+    if still:
+        print(f"    [page-coverage] still left out, no rule words on them: {still}")
+
+
 # ── entrypoint ───────────────────────────────────────────────────────────────
 def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None = None) -> list[dict]:
     """Extract a chapter's provisions via an LLM. Returns section dicts matching
@@ -640,6 +680,8 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
             if _SECTION_RE.match(token):
                 current_section = token
                 break
+    if not lost:
+        _reread_skipped_pages(pdf_path, reader, model, collected)
     if lost:
         pages = ", ".join(str(x["pages"][0]) + "-" + str(x["pages"][1]) for x in lost)
         chars = sum(x["text_chars"] for x in lost)

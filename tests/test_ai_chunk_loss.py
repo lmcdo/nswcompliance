@@ -87,9 +87,12 @@ class TestChunkTextMeasurement:
 class TestGuardFires:
     """The guard must raise on the real shape, and stay quiet on the benign one."""
 
-    def _run(self, monkeypatch, page_texts, chunk_pages, responses):
-        """Drive ai_extract_chapter with a fake reader and fake model calls."""
+    def _run(self, monkeypatch, page_texts, chunk_pages, responses, page_lines=None):
+        """Drive ai_extract_chapter with a fake reader and fake model calls.
+        `page_lines` is what the page-coverage check sees ({} = nothing to check)."""
         import ai_extractor as ai
+        import page_coverage as pc
+        monkeypatch.setattr(pc, "pdf_page_lines", lambda _p: page_lines or {})
 
         monkeypatch.setattr(ai, "chunk_ranges",
                             lambda total, chunk=chunk_pages: [
@@ -230,3 +233,44 @@ def test_one_short_page_of_controls_among_history_still_raises(monkeypatch):
     pages = [history] * 11 + [controls]
     with pytest.raises(ChunkLoss):
         TestGuardFires()._run(monkeypatch, pages, 12, [[]])
+
+
+# -- pages left out inside a batch that returned something ------------------------
+
+_VOCAB = ("awning basement canopy driveway eave fence garage hedge kerb lane "
+          "masonry parapet porch roof sill terrace verandah window").split()
+
+
+def _sent(i):
+    """A sentence whose every four-word run is its own: no two share one."""
+    w = [_VOCAB[(i * 7 + k * 3) % len(_VOCAB)] + str(i) for k in range(7)]
+    return " ".join(w)
+
+
+def test_a_page_left_out_is_read_again_and_its_rules_kept(monkeypatch):
+    """Warringah: every batch returned rules, and 21 pages inside them were
+    skipped. The skipped page is now counted by code and read again."""
+    lines = {1: [_sent(i) for i in range(6)], 2: [_sent(i) for i in range(10, 16)]}
+    first = [{"code": "1.1", "title": "A", "text": " ".join(lines[1])}]
+    again = [{"code": "1.2", "title": "B", "text": " ".join(lines[2])}]
+    out = TestGuardFires()._run(monkeypatch, ["x"] * 2, 12, [first, again], page_lines=lines)
+    assert len(out) == 2
+
+
+def test_a_rule_page_still_left_out_after_the_reread_refuses_the_chapter(monkeypatch):
+    from ai_extractor import PageLoss
+    lines = {1: [_sent(i) for i in range(6)],
+             2: [_sent(200 + i) + " must" for i in range(6)]}
+    first = [{"code": "1.1", "title": "A", "text": " ".join(lines[1])}]
+    with pytest.raises(PageLoss) as exc:
+        TestGuardFires()._run(monkeypatch, ["x"] * 2, 12, [first, []], page_lines=lines)
+    assert "[2]" in str(exc.value)
+
+
+def test_a_page_without_rule_words_still_left_out_is_allowed(monkeypatch):
+    # Warringah pages 2, 13, 14, 139: amendment table, definitions, history.
+    lines = {1: [_sent(i) for i in range(6)]}
+    lines.update({p: [_sent(p * 100 + i) for i in range(6)] for p in range(2, 7)})
+    first = [{"code": "1.1", "title": "A", "text": " ".join(lines[1])}]
+    out = TestGuardFires()._run(monkeypatch, ["x"] * 6, 12, [first, []], page_lines=lines)
+    assert len(out) == 1
