@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Tagging after every commit had been stuck since 2026-09-24: 45 config entries have no 'layer', the tagger raised on their rows, and the loop refetched the same failing rows forever, so every chapter committed since went live untagged (3,108 rows). Separately, Leichhardt part G's site keys were hand-set once with no rule, so today's commit wiped 1,142 of them (57% -> 29%).",
-  "commit_hash": "9fe365d1",
+  "commit_hash": "ab56f6d2",
   "files": [
     "enrichment/extractors/layer_topic_tagger.py",
     "enrichment/pipeline.py",
