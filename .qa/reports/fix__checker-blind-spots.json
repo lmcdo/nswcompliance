@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "The citation proof could not see control labels Ashfield prints as pictures numbered per part (PC4., DS5.1), so it could not prove or refuse them. This adds a local OCR read of those pictures, kept only when confident and label-shaped. Adds dcp_page_reread: re-reads only the pages behind unproven citations or missing rules, one page per call (5-page trial 94% proven vs 12-page batches), and queues a targeted change. Marrickville part 3: 48 unproven to 0, no page left missing.",
-  "commit_hash": "940a4ed4",
+  "commit_hash": "13591558",
   "files": [
     "scripts/citation_proof.py",
     "scripts/dcp_page_batch.py",
