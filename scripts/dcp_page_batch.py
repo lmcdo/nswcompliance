@@ -224,12 +224,17 @@ def collect(d: Path, apply: bool) -> None:
         print(f"batch {b['id']}: {info.status} {info.request_counts}")
         if info.status not in ("completed", "expired", "cancelled", "failed"):
             continue
-        for fid in (info.output_file_id, info.error_file_id):
+        # Only answers that came back 200. A failed request ("no credits remaining",
+        # 2026-09-26) stored as "" reads as a page with no rules, and the change set
+        # would remove them; its chapter waits until it is resent instead.
+        for fid in (info.output_file_id,):
             if not fid:
                 continue
             for line in client.files.content(fid).text.splitlines():
                 if line.strip():
                     x = json.loads(line)
+                    if (x.get("response") or {}).get("status_code") != 200:
+                        continue
                     body = (x.get("response") or {}).get("body") or {}
                     choice = (body.get("choices") or [{}])[0]
                     st["answers"][x["custom_id"]] = (choice.get("message") or {}).get("content") or ""
@@ -237,6 +242,7 @@ def collect(d: Path, apply: bool) -> None:
     _save_state(d, st)
     waiting = {chapter_of(c) for b in st["batches"] if not b["collected"] for c in b["ids"]}
     waiting |= {chapter_of(c) for c in st["pending"]}
+    waiting |= {chapter_of(c) for b in st["batches"] for c in b["ids"] if c not in st["answers"]}
     conn, s3 = _connect()
     try:
         cur = conn.cursor()
