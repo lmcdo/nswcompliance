@@ -1,0 +1,93 @@
+{
+  "tier": "critical",
+  "justification": "Tagging after every commit had been stuck since 2026-09-24: 45 config entries have no 'layer', the tagger raised on their rows, and the loop refetched the same failing rows forever, so every chapter committed since went live untagged (3,108 rows). Separately, Leichhardt part G's site keys were hand-set once with no rule, so today's commit wiped 1,142 of them (57% -> 29%).",
+  "commit_hash": "9fe365d1",
+  "files": [
+    "enrichment/extractors/layer_topic_tagger.py",
+    "enrichment/pipeline.py",
+    "scripts/derive_precinct_keys.py",
+    "tests/test_enrichment_tagging_does_not_stall.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Commit log 2026-09-25: 3,500 'layer' errors over 500 Canterbury-Bankstown 6-2 rows; 3,108 live actionable rows had v2_dcp_layer NULL; Leichhardt part G 875 live rows, 0 with v2_precinct_id.",
+    "assumption_mismatch": "Assumed every config entry declares 'layer'. 45 do not, and the loop assumed a failed row leaves the fetch set.",
+    "new_vs_existing": "Uses the existing layer vocabulary and derive_precinct_keys' existing ref_regex strategy; no new tagging logic.",
+    "external_source_error": "A row that still raises is now tried once per run and reported; the others are tagged.",
+    "frontend_type": "No frontend change; v2_dcp_layer, v2_topic and v2_precinct_id are existing columns the served route already reads.",
+    "user_failure_mode": "Untagged rows and missing site keys hide or misplace site-specific rules. After this: 0 untagged live rows, 845 Leichhardt G keys restored."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_enrichment_tagging_does_not_stall.py -q",
+    "fails_when": "a failing row stops later rows being tagged, a config entry without a layer raises, or a part G ref does not yield its G-number site",
+    "observed_red": "The loop test fails with the old pipeline.py (rows 3-5 never tagged). Live: 3,108 rows tagged 0 errors; 845 site keys derived, 30 left unkeyed (no G-number).",
+    "manual_probe": "python enrichment/pipeline.py --phase status"
+  },
+  "functions": [
+    {
+      "name": "LayerTopicTagger._entry_layer",
+      "file_line": "enrichment/extractors/layer_topic_tagger.py",
+      "input": "One chapter_topics or parts entry from a council config dictionary.",
+      "output": "The stated layer, else precinct for a precinct-scoped entry, condition for a site-condition entry, otherwise generic.",
+      "if_none": "An entry with no keys at all returns generic rather than raising a KeyError."
+    },
+    {
+      "name": "run_layer_tagging (and 4 sibling loops)",
+      "file_line": "enrichment/pipeline.py",
+      "input": "Untagged provisions fetched in id order, batch by batch, from regulatory_provisions.",
+      "output": "Tags every row that can be tagged; a row that raises is excluded from later fetches and counted as an error.",
+      "if_none": "No untagged rows ends the loop immediately with zero processed and nothing written."
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "sql": "SELECT id, document_id, provision_text FROM regulatory_provisions WHERE v2_dcp_layer IS NULL AND provision_text IS NOT NULL AND NOT (id = ANY(%s)) ORDER BY id LIMIT %s",
+      "purpose": "Fetch the next batch of untagged provisions, skipping any row that already raised in this run so the loop reaches the rest.",
+      "file_line": "enrichment/pipeline.py run_layer_tagging (same form in the four sibling loops)",
+      "where_clause": "v2_dcp_layer IS NULL AND provision_text non-empty AND id not in this run's failed ids (plus the existing actionable filter)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council config entry has no 'layer' key, like every Canterbury-Bankstown precinct chapter",
+      "what_happens": "The tagger raised on each of its rows and nothing after them was tagged.",
+      "mitigated": true,
+      "how": "The layer is derived from the entry's other keys; a test resolves every config entry.",
+      "repro": "python -m pytest tests/test_enrichment_tagging_does_not_stall.py -k layer -q"
+    },
+    {
+      "scenario": "A batch of rows raises for any other reason during tagging",
+      "what_happens": "The same rows were refetched each batch, so the run ended having tagged none of the rest.",
+      "mitigated": true,
+      "how": "Failed ids are excluded from later fetches in all five enrichment loops.",
+      "repro": "python -m pytest tests/test_enrichment_tagging_does_not_stall.py -k failing_batch -q"
+    },
+    {
+      "scenario": "A commit supersedes Leichhardt part G rows whose site keys were set by hand",
+      "what_happens": "The new rows go live with no site key, so site-specific rules are not tied to their site.",
+      "mitigated": true,
+      "how": "A derive rule rebuilds G-number site keys on every commit; refs without a G-number stay unkeyed.",
+      "repro": "python -m pytest tests/test_enrichment_tagging_does_not_stall.py -k site_key -q"
+    },
+    {
+      "scenario": "Every row in a batch raises, so a batch produces no updates at all",
+      "what_happens": "Before, the loop spun on that batch until its processed counter passed the total, then stopped.",
+      "mitigated": true,
+      "how": "All of the batch's ids join the failed list, so the next fetch returns fresh rows.",
+      "repro": "python -m pytest tests/test_enrichment_tagging_does_not_stall.py -k failing_batch -q"
+    },
+    {
+      "scenario": "A config entry states a layer AND is precinct-scoped",
+      "what_happens": "A derivation could override the author's stated layer with a guessed one.",
+      "mitigated": true,
+      "how": "A stated layer always wins; derivation only fills a missing one.",
+      "repro": "python -m pytest tests/test_enrichment_tagging_does_not_stall.py -k derived -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Already applied live 2026-09-25: layer phase tagged 3,108 rows, 0 errors; derive_precinct_keys --council leichhardt applied 845 keys."
+  }
+}

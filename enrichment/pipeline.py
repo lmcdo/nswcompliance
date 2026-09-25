@@ -224,6 +224,7 @@ def run_actionability_classification(
     # advance by last-seen ID so every batch is a genuinely new window.
     last_id = 0
 
+    failed_ids: list[int] = []  # a row that raised is tried once (see run_layer_tagging)
     while processed < total:
         if force_reprocess:
             fetch_sql = """
@@ -249,7 +250,8 @@ def run_actionability_classification(
                 ORDER BY id
                 LIMIT %s
             """
-            cur.execute(fetch_sql, (batch_size,))
+            cur.execute(fetch_sql.replace("ORDER BY id", "AND NOT (id = ANY(%s)) ORDER BY id", 1),
+                    (failed_ids, batch_size))
         provisions = cur.fetchall()
 
         if not provisions:
@@ -275,6 +277,7 @@ def run_actionability_classification(
 
             except Exception as e:
                 print(f"Error processing provision {prov['id']}: {e}")
+                failed_ids.append(prov['id'])
                 stats['errors'] += 1
                 processed += 1
 
@@ -353,6 +356,7 @@ def run_site_condition_tagging(
 
     processed = 0
 
+    failed_ids: list[int] = []  # a row that raised is tried once (see run_layer_tagging)
     while processed < total:
         fetch_sql = f"""
             SELECT id, provision_text
@@ -364,7 +368,8 @@ def run_site_condition_tagging(
             ORDER BY id
             LIMIT %s
         """
-        cur.execute(fetch_sql, (batch_size,))
+        cur.execute(fetch_sql.replace("ORDER BY id", "AND NOT (id = ANY(%s)) ORDER BY id", 1),
+                    (failed_ids, batch_size))
         provisions = cur.fetchall()
 
         if not provisions:
@@ -396,6 +401,7 @@ def run_site_condition_tagging(
 
             except Exception as e:
                 print(f"Error processing provision {prov['id']}: {e}")
+                failed_ids.append(prov['id'])
                 stats['errors'] += 1
                 processed += 1
 
@@ -470,6 +476,7 @@ def run_type_classification(
 
     processed = 0
 
+    failed_ids: list[int] = []  # a row that raised is tried once (see run_layer_tagging)
     while processed < total:
         fetch_sql = f"""
             SELECT id, provision_text
@@ -481,7 +488,8 @@ def run_type_classification(
             ORDER BY id
             LIMIT %s
         """
-        cur.execute(fetch_sql, (batch_size,))
+        cur.execute(fetch_sql.replace("ORDER BY id", "AND NOT (id = ANY(%s)) ORDER BY id", 1),
+                    (failed_ids, batch_size))
         provisions = cur.fetchall()
 
         if not provisions:
@@ -500,6 +508,7 @@ def run_type_classification(
 
             except Exception as e:
                 print(f"Error processing provision {prov['id']}: {e}")
+                failed_ids.append(prov['id'])
                 stats['errors'] += 1
                 processed += 1
 
@@ -660,6 +669,7 @@ def run_applicability_tagging(
 
     processed = 0
 
+    failed_ids: list[int] = []  # a row that raised is tried once (see run_layer_tagging)
     while processed < total:
         fetch_sql = f"""
             SELECT id, provision_text, document_id, source_council
@@ -671,7 +681,8 @@ def run_applicability_tagging(
             ORDER BY id
             LIMIT %s
         """
-        cur.execute(fetch_sql, (batch_size,))
+        cur.execute(fetch_sql.replace("ORDER BY id", "AND NOT (id = ANY(%s)) ORDER BY id", 1),
+                    (failed_ids, batch_size))
         provisions = cur.fetchall()
 
         if not provisions:
@@ -726,6 +737,7 @@ def run_applicability_tagging(
 
             except Exception as e:
                 print(f"Error processing provision {prov['id']}: {e}")
+                failed_ids.append(prov['id'])
                 stats['errors'] += 1
                 processed += 1
 
@@ -977,6 +989,10 @@ def run_layer_tagging(
 
     # Do NOT use OFFSET — rows are updated out of the WHERE clause each batch,
     # so OFFSET would skip ahead into a shrinking result. Always fetch from OFFSET 0.
+    # Rows that raised stay NULL, so without this the next batch fetches the SAME
+    # rows again: 500 failing Canterbury-Bankstown rows were retried seven times
+    # and no other row was tagged (2026-09-25). A failed row is tried once.
+    failed_ids: list[int] = []
     while processed < total:
         fetch_sql = f"""
             SELECT id, document_id, provision_text
@@ -984,11 +1000,12 @@ def run_layer_tagging(
             WHERE v2_dcp_layer IS NULL
               AND provision_text IS NOT NULL
               AND provision_text != ''
+              AND NOT (id = ANY(%s))
               {actionable_filter}
             ORDER BY id
             LIMIT %s
         """
-        cur.execute(fetch_sql, (batch_size,))
+        cur.execute(fetch_sql, (failed_ids, batch_size))
         provisions = cur.fetchall()
 
         if not provisions:
@@ -1012,6 +1029,7 @@ def run_layer_tagging(
             except Exception as e:
                 print(f"Error processing provision {prov['id']}: {e}")
                 stats['errors'] += 1
+                failed_ids.append(prov['id'])
                 processed += 1
 
         if updates and not dry_run:
