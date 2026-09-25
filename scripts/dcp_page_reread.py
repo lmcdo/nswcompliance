@@ -339,6 +339,20 @@ def plan_pages(ctx: dict, max_pages: int):
     return {"pages": pages, "gaps": gaps, "read": read, "label": label}
 
 
+_GRAM_WORD = re.compile(r"[a-z]+|\d+(?:\.\d+)?")
+
+
+def _grams(text: str) -> set[str]:
+    """Five-word runs of a text, lower case. Pure."""
+    w = _GRAM_WORD.findall((text or "").lower())
+    return {" ".join(w[i:i + 5]) for i in range(max(0, len(w) - 4))}
+
+
+def _is_copy(g: set[str], others: list[set[str]], share: float = 0.8) -> bool:
+    """Are at least `share` of g's five-word runs inside one of `others`? Pure."""
+    return bool(g) and any(len(g & o) >= share * len(g) for o in others)
+
+
 def build_change(ctx: dict, plan: dict, got: list, labels: dict):
     """The targeted change set, or an error string. `got` is [(page, provisions)] for
     fully read pages; `labels` is {ref: {"code","title"}} for label-question rows."""
@@ -390,6 +404,10 @@ def build_change(ctx: dict, plan: dict, got: list, labels: dict):
         removed.append({"ref_number": ref, "old_text": text_of[ref]})
         added.append({"ref_number": new_ref, "new_text": new_text, "new_page": page_of.get(ref)})
     gone = {x["ref_number"] for x in removed} | {x["ref_number"] for x in changed}
+    # A re-read page can hand back a rule that is still live on a page NOT re-read
+    # (Warringah, 41 of 613, 2026-09-26): adding it would serve the rule twice.
+    staying = [_grams(body_of(t)) for r, t, _d in live if r not in gone]
+    added = [x for x in added if not _is_copy(_grams(body_of(x["new_text"])), staying)]
     after = [t for r, t, _d in live if r not in gone] + [x["new_text"] for x in added + changed]
     newly = sorted({p for p in pc.skipped_pages(ctx["page_lines"], after)
                     if pc.holds_rules(ctx["page_lines"][p])} - plan["gaps"])

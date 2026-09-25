@@ -151,3 +151,11 @@ def test_a_paragraph_joining_a_kept_rule_changes_that_rule_not_adds_a_second():
     assert change["added"] == []
     assert [c["ref_number"] for c in change["changed"]] == ["Doc__x__3_3 C13"]
     assert change["changed"][0]["new_text"].endswith("more words for it")
+
+
+def test_a_rule_still_live_elsewhere_is_not_added_twice():
+    import dcp_page_reread as R
+    live = R._grams("side boundary setback areas are to be landscaped and free of any above ground structures")
+    assert R._is_copy(R._grams("Side boundary setback areas are to be landscaped and free of any above ground structures."), [live])
+    assert not R._is_copy(R._grams("front setback areas are to be paved with permeable materials only near the kerb"), [live])
+    assert not R._is_copy(set(), [live])
