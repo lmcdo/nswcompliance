@@ -135,7 +135,7 @@ def test_a_rule_whose_first_line_sits_in_its_heading_keeps_its_label():
     "A phantom second match starts mid-C53 (its closing words recur in C54) and "
     "its span runs into C54's block. Three de-duplication rules were measured "
     "over the corpus 2026-09-25; each fixed this row and broke 8-15 others. "
-    "The row is REFUSED, the safe direction."))
+    "The row is REFUSED rather than proven wrongly."))
 def test_closing_words_repeated_in_the_next_rule_do_not_move_the_label():
     # Ashfield E2 2.2.13: C53 ends "at the side of the house"; C54 repeats it.
     ch = _doc(["2.2.13 garages and carports", "controls",

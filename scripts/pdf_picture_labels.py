@@ -14,7 +14,7 @@ How a picture gets its name, deterministically:
 * Every mask must get ONE name across the whole document. If the same picture
   would be C3 in one place and C5 in another, the counting is wrong somewhere
   and the document gets no picture labels at all -- the proof then refuses as
-  it did before, which is the safe direction.
+  it did before: a refusal, never a guessed label.
 * A picture outside a counted run is named from what its mask was called
   inside one; a mask never seen in a run stays unnamed.
 

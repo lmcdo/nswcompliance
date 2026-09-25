@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "The citation proof decides whether a served clause number is the council's. Leichhardt prints its control labels (C1, C2 ...) as pictures, so 146 correct citations in one chapter were refused; and the label check accepted any label printed between the section heading and the rule, so 474 of 517 deliberately shifted labels (C10 stored as C9) passed. Critical: this proof gates approval, and a loose proof serves wrong clause numbers green.",
-  "commit_hash": "06b413b4",
+  "commit_hash": "18e48d89",
   "files": [
     "scripts/pdf_picture_labels.py",
     "scripts/citation_proof.py",
@@ -106,7 +106,7 @@
       "scenario": "A rule's closing words recur in the next rule (Ashfield E2 C53/C54)",
       "what_happens": "A phantom match stretches the span into the next block and the correct C53 is refused.",
       "mitigated": false,
-      "how": "Known and pinned as a strict xfail: three de-duplication rules each fixed this row and broke 8-15 others on the corpus. The row is refused, the safe direction.",
+      "how": "Known and pinned as a strict xfail: three de-duplication rules each fixed this row and broke 8-15 others on the corpus. The row is refused rather than proven wrongly.",
       "repro": "python -m pytest tests/test_pdf_picture_labels.py -k closing_words -q"
     },
     {
