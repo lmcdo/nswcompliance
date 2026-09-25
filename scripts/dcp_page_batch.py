@@ -238,8 +238,11 @@ def collect(d: Path, apply: bool) -> None:
                     got, labels, retry = judge(ctx, key, entry, st["answers"])
                     if retry:
                         text_of = {r: t for r, t, _d in ctx["live"]}
-                        label_rows = {int(p): [(r, text_of[r]) for r in refs if r in text_of]
-                                      for p, refs in entry["label"].items() if str(p or "").isdigit()}
+                        label_rows = {}
+                        for ps, refs in entry["label"].items():
+                            if ps is None or not str(ps).isdigit():
+                                continue
+                            label_rows[int(ps)] = [(r, text_of[r]) for r in refs if r in text_of]
                         for line in _page_requests(ctx, set(entry["read"]), label_rows, key, 2, STRONG,
                                                    only=retry):
                             st["pending"][line["custom_id"]] = line
