@@ -29,6 +29,7 @@ hits are UI form labels and pip's vendored IDNA/encoding label tables.
 """
 from __future__ import annotations
 
+import collections
 import hashlib
 import re
 
@@ -40,6 +41,26 @@ _SECTION_HEADING = re.compile(r"^[a-z]{0,3}\d+(?:\.\d+)+(?:\s|$)")
 MAX_LABEL_HEIGHT = 16.0
 MARGIN_SHARE = 0.2
 _DRAW = re.compile(rb"/([A-Za-z0-9_.\-]+)\s+Do(?![A-Za-z])")
+
+
+#: Label pictures of one document are set at one size; within this of it.
+SIZE_TOLERANCE = 0.5
+
+
+def label_sized(pictures: list[tuple]) -> list[tuple]:
+    """Keep only pictures at the document's most common label height.
+
+    A small icon set in the margin at the start of every run (cross-review,
+    2026-09-25) would be counted as C1 and shift every real label up by one --
+    consistently, so the one-name-per-mask check cannot see it. Labels are set
+    at one size (Leichhardt: all 8.04pt); an icon of another size is dropped
+    before counting. `pictures` are tuples whose LAST element is the height.
+    """
+    if not pictures:
+        return []
+    sizes = collections.Counter(round(p[-1] * 2) / 2 for p in pictures)
+    common = sizes.most_common(1)[0][0]
+    return [p for p in pictures if abs(p[-1] - common) <= SIZE_TOLERANCE]
 
 
 def name_labels(events: list[tuple[int, float, str, str]]) -> list[tuple[int, float, str]]:
@@ -69,8 +90,8 @@ def name_labels(events: list[tuple[int, float, str, str]]) -> list[tuple[int, fl
             if kind == "p" and value in known]
 
 
-def page_label_pictures(doc, page, mask_cache: dict) -> list[tuple[float, float, str]]:
-    """(y, x, mask fingerprint) for each label picture drawn on `page`."""
+def page_label_pictures(doc, page, mask_cache: dict) -> list[tuple[float, float, str, float]]:
+    """(y, x, mask fingerprint, height) for each label picture drawn on `page`."""
     masks = {im[7]: im[1] for im in page.get_images(full=True)}
     try:
         drawn = [n.decode() for n in _DRAW.findall(page.read_contents())]
@@ -91,7 +112,7 @@ def page_label_pictures(doc, page, mask_cache: dict) -> list[tuple[float, float,
         if smask not in mask_cache:
             import fitz
             mask_cache[smask] = hashlib.md5(fitz.Pixmap(doc, smask).samples).hexdigest()
-        out.append((y0, x0, mask_cache[smask]))
+        out.append((y0, x0, mask_cache[smask], y1 - y0))
     return out
 
 

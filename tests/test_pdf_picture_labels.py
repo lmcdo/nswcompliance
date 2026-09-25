@@ -59,6 +59,12 @@ def test_a_mask_with_two_names_voids_the_whole_document():
     assert P.name_labels(ev) == []
 
 
+def test_pictures_of_another_size_are_dropped_before_counting():
+    pics = [(1, 20, 72, "icon", 5.0), (1, 30, 72, "m1", 8.04), (1, 40, 72, "m2", 8.0)]
+    assert [p[3] for p in P.label_sized(pics)] == ["m1", "m2"]
+    assert P.label_sized([]) == []
+
+
 def test_no_run_heading_names_nothing():
     assert P.name_labels([p(1, 20, "m1"), t(1, 30, BODY)]) == []
 
@@ -154,3 +160,30 @@ def test_a_nested_sub_item_is_not_a_section_heading():
     ch = _doc(["c1.14 trees", "c6 the following works do not require consent",
                "c6.1 canopy lifting to 2.5 metres", "c11", BODY])
     assert _prove("C1_14 C11", ch)["status"] == "proven"
+
+
+def test_a_label_printed_after_an_unlabelled_paragraph_is_not_its_label():
+    # Cross-review: a note or introduction followed a few lines later by C10
+    # was proven as C10 by the "first label after" fallback (Leichhardt B3.2.7
+    # note as C1; G9.3 introduction as O1).
+    ch = _doc(["b3.2.7 general", "controls", BODY, "c1", "the first real control wording"])
+    r = _prove("B3_2_7 C1", ch)
+    assert r["status"] == "not_proven"
+
+
+def _raw_doc(lines):
+    """lines: (y, x, text) on page 1."""
+    raw = [C.Line(1, 10.0, 70.0, "header")] + [C.Line(1, y, x, t) for y, x, t in lines]
+    return C.ChapterLines.build(raw, page_width=595.0)
+
+
+def test_a_label_left_of_the_rule_but_on_a_lower_row_is_not_its_label():
+    ch = _raw_doc([(90.0, 71.0, "g9.6.4 basements"), (100.0, 107.0, BODY),
+                   (120.0, 71.0, "c5")])
+    assert _prove("G9_6_4 C5", ch)["status"] == "not_proven"
+
+
+def test_a_label_on_the_rules_row_but_to_its_right_is_not_its_label():
+    ch = _raw_doc([(90.0, 71.0, "g9.6.4 basements"), (100.0, 107.0, BODY),
+                   (101.0, 500.0, "c5")])
+    assert _prove("G9_6_4 C5", ch)["status"] == "not_proven"

@@ -33,10 +33,12 @@ def _label_image(seed: int):
     return pix
 
 
-def _pdf(tmp_path, labels_per_row):
+def _pdf(tmp_path, labels_per_row, icon=False):
     doc = fitz.open()
     page = doc.new_page(width=595, height=842)
     page.insert_text((72, 80), "Controls", fontsize=10)
+    if icon:     # a smaller margin icon between the heading and the first label
+        page.insert_image(fitz.Rect(72, 88, 78, 93), pixmap=_label_image(9))
     y = 110
     rows = []
     for text, seed in labels_per_row:
@@ -67,3 +69,16 @@ def test_the_same_picture_twice_under_one_run_names_nothing(tmp_path):
                               ("Third rule words here", 1)])
     raw, _width = C.read_raw_lines(path)
     assert not any(ln.text in {"c1", "c2", "c3"} for ln in raw)
+
+
+def test_a_margin_icon_of_another_size_does_not_shift_the_labels(tmp_path):
+    # Cross-review: an icon after "Controls" in every run would be counted as
+    # C1, consistently, and every real label would read one too high.
+    path, rows = _pdf(tmp_path, [("First rule words here", 1),
+                                 ("Second rule words here", 2),
+                                 ("Third rule words here", 3)], icon=True)
+    raw, _width = C.read_raw_lines(path)
+    texts = [ln.text for ln in raw]
+    for label, row in zip(["c1", "c2", "c3"], rows):
+        assert texts.index(label) == texts.index(row) - 1, texts
+    assert "c4" not in texts

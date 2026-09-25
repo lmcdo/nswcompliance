@@ -1,14 +1,14 @@
 {
   "tier": "critical",
   "justification": "The citation proof decides whether a served clause number is the council's. Leichhardt prints its control labels (C1, C2 ...) as pictures, so 146 correct citations in one chapter were refused; and the label check accepted any label printed between the section heading and the rule, so 474 of 517 deliberately shifted labels (C10 stored as C9) passed. Critical: this proof gates approval, and a loose proof serves wrong clause numbers green.",
-  "commit_hash": "18e48d89",
+  "commit_hash": "30000347",
   "files": [
-    "scripts/pdf_picture_labels.py",
+    ".claude/DATA_QUALITY_TRACKER.md",
     "scripts/citation_proof.py",
     "scripts/dq_probe_section_code_not_in_source.py",
+    "scripts/pdf_picture_labels.py",
     "tests/test_pdf_picture_labels.py",
-    "tests/test_pdf_picture_labels_real_pdf.py",
-    ".claude/DATA_QUALITY_TRACKER.md"
+    "tests/test_pdf_picture_labels_real_pdf.py"
   ],
   "pre_impl": {
     "existing_data": "No database writes. Read the Leichhardt part-c-s1 PDF: each label is a 52x34 image whose glyph is in its soft mask; the base image is one black box for every label. Page 20 prints C5..C11; the text layer holds a tab there.",
@@ -52,6 +52,13 @@
       "input": "Reading lines, the section heading index, and the start and end lines of the whole matched rule.",
       "output": "The label whose block holds most of the rule's lines (tie to the later block), else the first label just after the rule.",
       "if_none": "No label of the item's shape printed: None, and the row is item_missing or item_format."
+    },
+    {
+      "name": "pdf_picture_labels.label_sized",
+      "file_line": "scripts/pdf_picture_labels.py",
+      "input": "Every candidate label picture in the document, each tuple ending in its height in points.",
+      "output": "Only the pictures within 0.5pt of the most common height, so icons of another size are not counted.",
+      "if_none": "An empty list in gives an empty list out, and no labels are merged."
     }
   ],
   "values": [
@@ -115,6 +122,20 @@
       "mitigated": true,
       "how": "Each label's position is found per page against its own row.",
       "repro": "python -m pytest tests/test_pdf_picture_labels.py -k row -q"
+    },
+    {
+      "scenario": "A note or introduction with no label of its own is followed a few lines later by C1",
+      "what_happens": "The old 'first label after the rule' fallback proved the note as C1 (Leichhardt B3.2.7) and an introduction as O1 (G9.3).",
+      "mitigated": true,
+      "how": "Fallback removed; only a label on the rule's own row, to its left, may follow it. 5 rows corpus-wide depended on it; 2 of 3 read were wrong.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py -k 'unlabelled or lower_row or to_its_right' -q"
+    },
+    {
+      "scenario": "A smaller margin icon sits after 'Controls' at the start of every run",
+      "what_happens": "It would be counted as C1, consistently, shifting every real label up by one with no mask conflict.",
+      "mitigated": true,
+      "how": "Pictures are kept only at the document's most common label height before counting.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels_real_pdf.py -k icon -q"
     }
   ],
   "post_merge": {

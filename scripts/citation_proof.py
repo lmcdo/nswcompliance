@@ -231,7 +231,8 @@ def read_raw_lines(pdf_path: str) -> tuple[list[Line], float | None]:
                     t = " ".join(s["text"] for s in ln["spans"]).strip().lower()
                     if t:
                         raw.append(Line(pno, ln["bbox"][1], ln["bbox"][0], t))
-            pictures += [(pno, y, x, m) for y, x, m in ppl.page_label_pictures(doc, page, masks)]
+            pictures += [(pno, y, x, m, h) for y, x, m, h in ppl.page_label_pictures(doc, page, masks)]
+    pictures = [p[:4] for p in ppl.label_sized(pictures)]
     return ppl.merge_labels(raw, pictures, Line), width
 
 
@@ -256,9 +257,13 @@ _RANK = {"absent": 0, "cross_ref_only": 1, "not_nearest": 2, "ancestor_missing":
 def _own_label(L: list, lo: int, start: int, end: int, hi: int, item: str) -> str | None:
     """The label printed for the rule matched on lines `start`..`end`: of the
     labels of the item's shape (same letters, same depth), the one whose block
-    holds MOST of those lines, a tie going to the later block. With no such
-    label at or above the rule, the first one just after it before `hi` (a
-    label set beside its rule). None if none is printed.
+    holds MOST of those lines, a tie going to the later block. None if no such
+    label is printed at or above the rule.
+
+    No "first label just after the rule" fallback: it proved an introduction as
+    O1 and a note as C1 (cross-review; 5 rows corpus-wide depended on it, and
+    of the 3 read, 2 were wrong -- 2026-09-25). A label set beside its rule
+    already sorts onto the rule's row.
 
     Blocks, not "last label above the first line": stored text that opens with
     its sub-heading matches one line ABOVE its own label (C1.3 C8 read as C7).
@@ -282,7 +287,13 @@ def _own_label(L: list, lo: int, start: int, end: int, hi: int, item: str) -> st
             order[owner] = max(order[owner], i)
     if lines:
         return max(lines, key=lambda c: (lines[c], order[c]))
-    return next((c for i in range(end + 1, hi) if (c := label(i))), None)
+    # A label beside the rule's first line, a point lower on the page, sorts
+    # just after it top-to-bottom. Only that geometry counts: same page, same
+    # row, left of the rule.
+    first = L[start]
+    return next((c for i in range(start + 1, hi)
+                 if L[i].page == first.page and abs(L[i].y - first.y) <= 3.0
+                 and L[i].x < first.x and (c := label(i))), None)
 
 
 def _shape(code: str) -> tuple[str, int]:
