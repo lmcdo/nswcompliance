@@ -36,6 +36,7 @@ from enrichment.config.blacktown_config import BLACKTOWN_CONFIG  # noqa: E402
 from enrichment.config.georges_river_config import GEORGES_RIVER_CONFIG  # noqa: E402
 from enrichment.config.hornsby_config import HORNSBY_CONFIG  # noqa: E402
 from enrichment.config.penrith_config import PENRITH_CONFIG  # noqa: E402
+from enrichment.config.wollongong_config import WOLLONGONG_CONFIG  # noqa: E402
 from enrichment.extractors.applicability_tagger import ApplicabilityTagger  # noqa: E402
 
 #: The production document_ids, exactly as regulatory_provisions stores them.
@@ -48,10 +49,17 @@ DOCS = {
     "hornsby_residential": "Hornsby_DCP_2024__hornsby_dcp_2024_part3_residential",
     "gr_general": "Georges_River_DCP_2021__part_3_general_planning_considerations",
     "gr_low_density": "Georges_River_DCP_2021__grdcp_part_6_1_low_density",
+    "wg_intro": "Wollongong_DCP_2009__chapter_a1_introduction",
+    "wg_residential": "Wollongong_DCP_2009__chapter_b1_residential",
+    "wg_parking": "Wollongong_DCP_2009__chapter_e3_car_parking",
+    "wg_landscaping": "Wollongong_DCP_2009__chapter_e6_landscaping",
+    "wg_heritage": "Wollongong_DCP_2009__chapter_e11_heritage_conservation",
+    "wg_trees": "Wollongong_DCP_2009__chapter_e17_trees_and_vegetation",
 }
 
 CONFIGS = {"blacktown": BLACKTOWN_CONFIG, "penrith": PENRITH_CONFIG,
-           "hornsby": HORNSBY_CONFIG, "georges_river": GEORGES_RIVER_CONFIG}
+           "hornsby": HORNSBY_CONFIG, "georges_river": GEORGES_RIVER_CONFIG,
+           "wollongong": WOLLONGONG_CONFIG}
 
 
 @pytest.fixture(scope="module")
@@ -146,6 +154,27 @@ class TestScopesAreQuotedNotGuessed:
             "dwelling_house", "dual_occupancy", "secondary_dwelling"}
         assert got["zone_source"] == "config_silent", (
             "the Part names development forms, not zones")
+
+
+class TestWollongong:
+    def test_residential_is_the_residential_zones_and_c4_not_e4(self, tagger):
+        # "E4 Environmental Living" in the 2009 text is C4 since 2023; E4 is
+        # now General Industrial and must not receive dwelling controls.
+        zones = WOLLONGONG_CONFIG["chapter_topics"]["chapter_b1_residential"]["applicable_zones"]
+        assert set(zones) == {"R1", "R2", "R3", "R4", "R5", "C4"}  # noqa: zone-codes
+        assert "E4" not in zones  # noqa: zone-codes
+
+    def test_heritage_is_a_site_condition(self, tagger):
+        e = WOLLONGONG_CONFIG["chapter_topics"]["chapter_e11_heritage_conservation"]
+        assert e["layer"] == "condition" and e["site_conditions"] == ["heritage"]
+
+    def test_landscaping_decides_neither_key(self):
+        e = WOLLONGONG_CONFIG["chapter_topics"]["chapter_e6_landscaping"]
+        assert e and "applicable_zones" not in e and "applicable_dev_types" not in e
+
+    def test_every_active_wollongong_chapter_has_an_entry(self):
+        keys = {d.split("__", 1)[1] for k, d in DOCS.items() if k.startswith("wg_")}
+        assert keys == set(WOLLONGONG_CONFIG["chapter_topics"])
 
 
 class TestItRefusesTheEasyWaysToGoGreen:

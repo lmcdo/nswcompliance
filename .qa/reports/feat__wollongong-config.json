@@ -1,0 +1,73 @@
+{
+  "tier": "standard",
+  "justification": "Wollongong's DCP chapters were read but could not serve: with no applicability config every row would apply to every development type (no_config, DQ-105). This adds the config, each scope quoted from the chapter's own PDF.",
+  "commit_hash": "252b8b70",
+  "files": [
+    "enrichment/config/wollongong_config.py",
+    "enrichment/config/__init__.py",
+    "tests/test_four_council_applicability_configs.py"
+  ],
+  "pre_impl": {
+    "existing_data": "No database writes. Read the scope section of all 6 active Wollongong chapter PDFs; Wollongong zones from lep_zone_coverage: R1-R5, C1-C4, E1-E5 and others.",
+    "assumption_mismatch": "The 2009 DCP says 'E4 Environmental Living'. Since the 2023 NSW zone reform that zone is C4, and E4 is General Industrial.",
+    "new_vs_existing": "Same shape and matching as the Hornsby and Campbelltown configs; registered in COUNCIL_CONFIGS like them.",
+    "external_source_error": "A chapter key that does not match its document_id resolves to nothing; a test checks every active Wollongong chapter has an entry.",
+    "frontend_type": "No frontend change; the served route already filters on v2_applicable_zones and v2_applicable_dev_types.",
+    "user_failure_mode": "A wrong zone code would hide or misapply dwelling controls; E4 would have bound them to industrial land. The test pins C4 and rejects E4."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_four_council_applicability_configs.py -q",
+    "fails_when": "a Wollongong chapter has no entry, an entry is empty, or residential scope names E4 or omits a residential zone",
+    "observed_red": "Before the config the Wollongong document_ids resolved to None (no_config).",
+    "manual_probe": "python -c \"from enrichment.config import COUNCIL_CONFIGS; print(COUNCIL_CONFIGS['wollongong'])\""
+  },
+  "functions": [
+    {
+      "name": "WOLLONGONG_CONFIG",
+      "file_line": "enrichment/config/wollongong_config.py",
+      "input": "Looked up by the applicability tagger from each row's document_id chapter part.",
+      "output": "Zones, development types and layer for each of the six active Wollongong chapters, quoted from their scope sections.",
+      "if_none": "A chapter missing from the map resolves to None and its rows fall back to no_config."
+    }
+  ],
+  "values": [
+    {
+      "name": "B1 residential zones",
+      "value": "R1 R2 R3 R4 R5 C4",
+      "why": "Chapter B1 applies to all residential zoned land including (old) E4 Environmental Living, now C4.",
+      "source": "Wollongong DCP chapter B1 s1, read 2026-09-25",
+      "read_at": "WOLLONGONG_CONFIG['chapter_topics']['chapter_b1_residential']",
+      "if_missing": "n/a - constant"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The config copies the DCP's own zone code E4 for Environmental Living",
+      "what_happens": "Dwelling controls would apply to General Industrial land and vanish from C4 land.",
+      "mitigated": true,
+      "how": "C4 is declared, and a test asserts E4 is absent from the residential scope.",
+      "repro": "python -m pytest tests/test_four_council_applicability_configs.py -k c4 -q"
+    },
+    {
+      "scenario": "A chapter states no scope at all, like E6 Landscaping",
+      "what_happens": "An empty entry would collapse back to no_config while looking configured.",
+      "mitigated": true,
+      "how": "E6 keeps its layer key so the entry is truthy and resolves to config_silent.",
+      "repro": "python -m pytest tests/test_four_council_applicability_configs.py -k neither -q"
+    },
+    {
+      "scenario": "A chapter key in the config does not match the stored document_id suffix",
+      "what_happens": "The entry is never reached and every row of that chapter stays no_config while the file looks correct.",
+      "mitigated": true,
+      "how": "Tests resolve each real Wollongong document_id through the tagger and check every active chapter has an entry.",
+      "repro": "python -m pytest tests/test_four_council_applicability_configs.py -k resolves -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "After the Wollongong chapters are approved and committed, the commit's enrichment tags them with this config; check no Wollongong row is no_config."
+  }
+}
