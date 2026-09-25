@@ -367,3 +367,15 @@ def test_a_year_or_standard_number_is_not_a_heading():
         assert C.CODE_AT_START.match(text) is None, text
     for text, code in (("4.1 c2 setbacks", "4.1"), ("c10 fences", "c10"), ("8.2.3 heights", "8.2.3")):
         assert C.CODE_AT_START.match(text).group(1) == code
+
+
+def test_a_bare_label_is_not_proven_as_a_section():
+    # Marrickville/Leichhardt rows cited only "C12": the label line proved itself.
+    body = "the quick council wording of this particular rule sits right here on the page"
+    raw = [C.Line(1, 100.0 + 20 * n, 70.0, t) for n, t in enumerate(
+        ["2.9.1 controls", "c11 something else entirely here", "c12", body])]
+    rd = C.both_orders(raw, 595.0)
+    assert C.prove_citation_any("D__C12", "# C12 x\n\n" + body, rd)["status"] != "proven"
+    raw = [C.Line(1, 100.0 + 20 * n, 70.0, t) for n, t in enumerate(["b6 waste", body])]
+    rd = C.both_orders(raw, 595.0)
+    assert C.prove_citation_any("D__B6", "# B6 x\n\n" + body, rd)["status"] == "proven"

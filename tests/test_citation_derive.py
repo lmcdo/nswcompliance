@@ -181,3 +181,11 @@ def test_the_second_reading_agrees_only_with_the_nearest_heading_and_the_label_b
     assert not cd.page_agrees("Doc__E2_3 C5", text, rd)      # a heading further up
     assert not cd.page_agrees("Doc__E2_4 C6", text, rd)      # label not the one printed
     assert not cd.page_agrees("Doc__C5", text, rd)           # no section at all
+
+
+def test_a_bare_item_label_is_not_a_citation():
+    # The cheap reader returned "C12" for "C2.2.2.3 C12"; the label's own line made it pass.
+    labels = [f"c{n} buildings are to be articulated" for n in range(1, 6)]
+    rd = readings(["e2.4 flood planning"] + labels + ["c6", BODY])
+    assert cd.page_agrees("Doc__E2_4 C6", "# x\n\n" + BODY, rd)
+    assert not cd.page_agrees("Doc__C6", "# x\n\n" + BODY, rd)

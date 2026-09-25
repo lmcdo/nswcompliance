@@ -255,8 +255,22 @@ def load_readings(pdf_path: str) -> tuple[ChapterLines, ChapterLines]:
 
 # -- proof -------------------------------------------------------------------------
 
-_RANK = {"absent": 0, "cross_ref_only": 1, "not_nearest": 2, "ancestor_missing": 3,
+_RANK = {"absent": 0, "cross_ref_only": 1, "label_as_section": 1, "not_nearest": 2, "ancestor_missing": 3,
          "item_missing": 4, "item_format": 5, "imprecise": 6}
+
+
+_OBLIGATION = re.compile(r"(?:is|are) to|(?:must|shall|should|will|may)")
+
+
+def _titled(L: list, h: int, code: str) -> bool:
+    """Is the code on line h followed by a short title (a heading), rather than a
+    rule's sentence (a label)? The title is the rest of line h, else line h+1."""
+    rest = L[h].text[len(code):].strip(" .:-–	")
+    if not rest and h + 1 < len(L):
+        rest = L[h + 1].text.strip()
+    words = rest.split()
+    return (0 < len(words) <= 8 and not rest.endswith(".")
+            and not _OBLIGATION.search(rest))
 
 
 def _own_label(L: list, lo: int, start: int, end: int, hi: int, item: str) -> str | None:
@@ -415,6 +429,13 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
         above = [i for i in heads if i <= end]
         h = max(above) if above else min(heads)   # below only for a side-column heading
         lo = min(h, start)
+        # "C12" with no section is the rule's own LABEL, not a heading: what follows
+        # it is the rule's sentence. A lettered section is followed by a title, on
+        # its line or the next ("b6" / "accessibility and adaptability", Waverley). The cheap reader drops the section
+        # this way, and ~230 served rows were cited by a bare label (2026-09-25).
+        if not item and not bare and re.fullmatch(r"[a-z]{1,3}\d+[a-z]?", leaf)                 and not _titled(L, h, leaf):
+            keep("label_as_section")
+            continue
         if bare:
             closing = [L[i].text for i in range(lo + 1, end + 1)
                        if (m := _KEYWORD_HEAD.match(L[i].text)) and m.group(1) != leaf]

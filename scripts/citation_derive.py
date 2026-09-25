@@ -143,6 +143,11 @@ def page_agrees(ref_number: str, text: str, readings, hint=None) -> bool:
         return False
     want = cp.render(sections[-1]).lower()
     lab = cp.render(item).lower() if item else None
+    # A bare item label ("C12") is not a citation: its own line opens with it, so
+    # it is its own "nearest heading" (the cheap reader drops the section this way).
+    families = label_families(readings[0])
+    if "." not in want and re.match(r"[a-z]*", want).group(0) in families:
+        return False
     for ch in readings:
         for _end, s in cp._anchors(ch, text, hint):
             if lab and not any((m := _LABEL.match(ch.lines[i].text)) and (m.group(1) or m.group(2)) == lab
