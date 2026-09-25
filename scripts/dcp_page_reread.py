@@ -121,7 +121,7 @@ def join_page_breaks(pages: list[tuple[int, list[dict]]]) -> list[dict]:
         for i, p in enumerate(provs):
             p = {**p, "page": page}
             if (i == 0 and out and prev_page == page - 1
-                    and str(out[-1].get("code", "")).strip() == str(p.get("code", "")).strip()):
+                    and str(out[-1].get("code") or "").strip() == str(p.get("code") or "").strip()):
                 out[-1] = {**out[-1], "text": f"{out[-1].get('text', '')} {p.get('text', '')}".strip()}
                 continue
             out.append(p)
@@ -146,7 +146,7 @@ def unique_codes(provs: list[dict], taken: set[str]) -> list[dict]:
     taken = {_norm(t) for t in taken}
     out = []
     for p in provs:
-        code, text = str(p.get("code", "")).strip(), str(p.get("text", "")).strip()
+        code, text = str(p.get("code") or "").strip(), str(p.get("text") or "").strip()
         if not code or not text:
             continue
         texts = seen.setdefault(code, [])
@@ -174,7 +174,7 @@ def proven_share(provs: list[dict], readings, document_id: str, page: int) -> fl
     nothing was judged (nothing to hold against the read)."""
     judged = proven = 0
     for p in provs:
-        code = str(p.get("code", "")).strip()
+        code = str(p.get("code") or "").strip()
         if not code:
             continue
         ref = f"{document_id}__{_norm(code)}"

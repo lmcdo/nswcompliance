@@ -181,6 +181,8 @@ def judge(ctx, key: str, entry: dict, answers: dict):
             retry.add((p, "read"))
         got.append((p, provs))
     for ps, refs in entry["label"].items():
+        if not str(ps or "").isdigit():
+            continue
         p = int(ps)
         a2, a1 = answers.get(cid(key, p, "label", 2)), answers.get(cid(key, p, "label", 1))
         labs = R.parse_labels(a2 if a2 is not None else (a1 or ""))
@@ -237,7 +239,7 @@ def collect(d: Path, apply: bool) -> None:
                     if retry:
                         text_of = {r: t for r, t, _d in ctx["live"]}
                         label_rows = {int(p): [(r, text_of[r]) for r in refs if r in text_of]
-                                      for p, refs in entry["label"].items()}
+                                      for p, refs in entry["label"].items() if str(p or "").isdigit()}
                         for line in _page_requests(ctx, set(entry["read"]), label_rows, key, 2, STRONG,
                                                    only=retry):
                             st["pending"][line["custom_id"]] = line
