@@ -369,6 +369,26 @@ class LayerTopicTagger:
         match = re.match(r'^#\s+([A-Z]?\d+(?:\.\d+)*)', (provision_text or '').strip())
         return match.group(1) if match else None
 
+    @staticmethod
+    def _entry_layer(entry: dict) -> str:
+        """An entry's layer, or the one its other keys imply.
+
+        45 config entries carry no "layer" -- every Canterbury-Bankstown precinct
+        chapter among them -- and `entry["layer"]` raised on each of their rows.
+        The enrichment loop then refetched the same failing rows forever and
+        tagged nothing else (2026-09-25: 500 rows retried seven times, every chapter
+        committed since went live untagged). Derived from what the entry states,
+        never guessed: a precinct-scoped entry is `precinct`, one gated on a site
+        condition is `condition`, anything else `generic`.
+        """
+        if entry.get("layer"):
+            return entry["layer"]
+        if entry.get("is_precinct_specific"):
+            return "precinct"
+        if entry.get("site_conditions"):
+            return "condition"
+        return "generic"
+
     def _tag_from_config(
         self, config: dict, document_id: str, provision_text: str
     ) -> Tuple[str, str, Optional[str]]:
@@ -391,7 +411,7 @@ class LayerTopicTagger:
             doc_lower = document_id.lower()
             for chapter_key, entry in chapter_topics.items():
                 if chapter_key in doc_lower:
-                    layer = entry["layer"]
+                    layer = self._entry_layer(entry)
                     topic = entry.get("topic") or self._extract_topic_from_text(provision_text)
                     return (layer, chapter_key, topic)
             # No chapter key matched — fall through to keyword fallback
@@ -423,7 +443,7 @@ class LayerTopicTagger:
                 entry = parts.get(section_code[0])
 
             if entry:
-                layer = entry["layer"]
+                layer = self._entry_layer(entry)
                 # Prefer explicit topic; fall back to part_b_topics lookup; then keyword
                 topic = entry.get("topic")
                 if not topic:

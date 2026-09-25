@@ -106,6 +106,18 @@ RULES: list[dict] = [
         "validate": True,
     },
     {
+        # Part G: one site per G-number ("G10.5.2 O3" -> "G10"). These keys were
+        # set by hand once and had no rule, so the 2026-09-25 re-read's commit
+        # superseded 1,142 keyed rows and re-derived none (57% -> 29%). Checked
+        # against those rows: 1,065 agree, 77 are old refs without a G-number
+        # (e.g. "C3_1 C5") which this leaves unkeyed rather than guess.
+        "name": "leichhardt_g_site_specific",
+        "council": "leichhardt",
+        "where": "document_id = 'Leichhardt_DCP_2013__part_g_s1_site_specific'",
+        "strategy": {"type": "ref_regex", "pattern": r"__G([0-9]+)(?=[_ ]|$)", "template": "G{0}"},
+        "validate": True,
+    },
+    {
         "name": "ashfield_e2_haberfield",
         "council": "ashfield",
         "where": "document_id = 'Inner_West_Ashfield_DCP_2016__chapter_e2_haberfield'",
@@ -204,7 +216,7 @@ def _derive(strategy: dict, row: dict) -> str | None:
         if not m:
             return None
         dotted = "." + ".".join(m.group(1).strip("_").split("_"))
-        return strategy["template"].format(dotted=dotted)
+        return strategy["template"].format(*m.groups(), dotted=dotted)
     if t == "page_range":
         p = row["pdf_page"]
         if p is None:
