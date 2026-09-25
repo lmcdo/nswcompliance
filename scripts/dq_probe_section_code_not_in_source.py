@@ -58,7 +58,7 @@ SERVED_COUNT_SQL = ("SELECT count(*) FROM regulatory_provisions WHERE is_current
 
 
 def _cache_file(cache_dir: Path, r2_path: str) -> Path:
-    return cache_dir / f"{hashlib.sha1(r2_path.encode()).hexdigest()[:16]}.lines.json"
+    return cache_dir / f"{hashlib.sha1(r2_path.encode()).hexdigest()[:16]}.lines-v2.json"   # v2: label pictures (pdf_picture_labels)
 
 
 def chapter_lines(s3, bucket, r2_path: str, cache_dir: Path):
@@ -66,19 +66,11 @@ def chapter_lines(s3, bucket, r2_path: str, cache_dir: Path):
     cache cannot go stale; a cold run downloads everything."""
     cf = _cache_file(cache_dir, r2_path)
     if not cf.exists():
-        import fitz
         with tempfile.TemporaryDirectory() as tmp:
             local = Path(tmp) / "src.pdf"
             s3.download_file(bucket, r2_path, str(local))
-            raw, width = [], None
-            with fitz.open(str(local)) as doc:
-                for pno, page in enumerate(doc, 1):
-                    width = width or page.rect.width
-                    for block in page.get_text("dict")["blocks"]:
-                        for ln in block.get("lines") or []:
-                            t = " ".join(s["text"] for s in ln["spans"]).strip().lower()
-                            if t:
-                                raw.append([pno, ln["bbox"][1], ln["bbox"][0], t])
+            lines, width = cp.read_raw_lines(str(local))
+            raw = [[ln.page, ln.y, ln.x, ln.text] for ln in lines]
         cf.write_text(json.dumps({"width": width, "lines": raw}), encoding="utf-8")
     data = json.loads(cf.read_text(encoding="utf-8"))
     return cp.both_orders([cp.Line(*x) for x in data["lines"]], data["width"])

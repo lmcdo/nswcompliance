@@ -1,0 +1,126 @@
+{
+  "tier": "critical",
+  "justification": "The citation proof decides whether a served clause number is the council's. Leichhardt prints its control labels (C1, C2 ...) as pictures, so 146 correct citations in one chapter were refused; and the label check accepted any label printed between the section heading and the rule, so 474 of 517 deliberately shifted labels (C10 stored as C9) passed. Critical: this proof gates approval, and a loose proof serves wrong clause numbers green.",
+  "commit_hash": "8cd85a34",
+  "files": [
+    "scripts/pdf_picture_labels.py",
+    "scripts/citation_proof.py",
+    "scripts/dq_probe_section_code_not_in_source.py",
+    "tests/test_pdf_picture_labels.py",
+    "tests/test_pdf_picture_labels_real_pdf.py",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "pre_impl": {
+    "existing_data": "No database writes. Read the Leichhardt part-c-s1 PDF: each label is a 52x34 image whose glyph is in its soft mask; the base image is one black box for every label. Page 20 prints C5..C11; the text layer holds a tab there.",
+    "assumption_mismatch": "Assumed PyMuPDF get_image_rects/get_image_info identify each placed image. They match by base pixels, so every label on a page reported the same image; placements are paired with their image by content-stream draw order instead.",
+    "new_vs_existing": "Nothing in scripts/ services/ src/ enrichment/ reads PDF image masks (grep get_images|smask). The probe's private copy of the PDF reader is replaced by citation_proof.read_raw_lines so probe and gate read identically; its line cache key is bumped to v2.",
+    "external_source_error": "A page whose images are drawn inside form objects gives a draw-order count mismatch and contributes no labels; any mask that would get two names voids picture labels for the whole document. Both fall back to the previous behaviour: the row is refused.",
+    "frontend_type": "No frontend change. The proof runs in the fidelity gate and the DQ-111 probe only.",
+    "user_failure_mode": "A picture named wrongly would prove a wrong citation. Mitigated: names come only from Objectives/Controls runs and must be consistent for every use of the same mask across the document (0 conflicts on 312 Leichhardt placements; 289 named)."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_pdf_picture_labels.py tests/test_pdf_picture_labels_real_pdf.py tests/test_citation_proof.py -q",
+    "fails_when": "a label printed only as a picture is not read, a mask with two names still names pictures, or a label printed above an EARLIER rule proves this rule",
+    "observed_red": "Corpus probe on the same data: merged checker 4,841 of 15,137 unproven; this branch 4,686. Shift test on Leichhardt part-c-s1: shifted labels proven 474/517 before, 3/517 after (two near-duplicate laneway rules). 32 mutations of the new and changed logic all caught.",
+    "manual_probe": "python scripts/dq_probe_section_code_not_in_source.py --council leichhardt"
+  },
+  "functions": [
+    {
+      "name": "pdf_picture_labels.name_labels",
+      "file_line": "scripts/pdf_picture_labels.py",
+      "input": "Text lines and label pictures (mask fingerprints) for a whole document, in top-to-bottom page order.",
+      "output": "(page, y, label) for every picture that can be named from Objectives/Controls runs; [] when any mask would get two names.",
+      "if_none": "No run heading or no pictures: returns [], so the reading is unchanged and the proof refuses as before."
+    },
+    {
+      "name": "pdf_picture_labels.page_label_pictures",
+      "file_line": "scripts/pdf_picture_labels.py",
+      "input": "An open PyMuPDF document and one page, plus a mask-fingerprint cache shared across pages.",
+      "output": "(y, x, mask md5) for each image in the left fifth of the page no taller than a text line.",
+      "if_none": "Unreadable contents or a draw-order count mismatch returns [] for that page."
+    },
+    {
+      "name": "pdf_picture_labels.merge_labels",
+      "file_line": "scripts/pdf_picture_labels.py",
+      "input": "The page's text lines in the PDF's own order and the named pictures.",
+      "output": "The same lines with each label inserted just before the line on its row (taking that row's y), else before the first line below it.",
+      "if_none": "No pictures at all: the input list is returned unchanged, same object."
+    },
+    {
+      "name": "citation_proof._own_label",
+      "file_line": "scripts/citation_proof.py",
+      "input": "Reading lines, the section heading index, and the start and end lines of the whole matched rule.",
+      "output": "The label whose block holds most of the rule's lines (tie to the later block), else the first label just after the rule.",
+      "if_none": "No label of the item's shape printed: None, and the row is item_missing or item_format."
+    }
+  ],
+  "values": [
+    {
+      "name": "row tolerance",
+      "value": "6.0 points",
+      "why": "A label picture's top sits up to 3.2pt below its text line's top; the next line is about 13.8pt down.",
+      "source": "Measured on Leichhardt part-c-s1 page 20, 2026-09-25",
+      "read_at": "pdf_picture_labels.ROW_TOLERANCE",
+      "if_missing": "n/a - constant"
+    },
+    {
+      "name": "label picture bounds",
+      "value": "right edge within 20% of page width, height at most 16pt",
+      "why": "Leichhardt labels sit at x 72-90 on a 595pt page and are 8pt high; figures are larger or further in.",
+      "source": "Measured on Leichhardt part-c-s1, 2026-09-25",
+      "read_at": "pdf_picture_labels.MARGIN_SHARE, MAX_LABEL_HEIGHT",
+      "if_missing": "n/a - constant"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The same label picture is counted as C1 in one section and C3 in another because a Controls heading was missed",
+      "what_happens": "Pictures would be given wrong numbers and wrong citations would prove.",
+      "mitigated": true,
+      "how": "Any mask with two names voids picture labels for the whole document.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py tests/test_pdf_picture_labels_real_pdf.py -k 'two_names or same_picture' -q"
+    },
+    {
+      "scenario": "A citation names the label printed above the PREVIOUS rule (C9 for the C10 rule)",
+      "what_happens": "Before this branch it proved: any label between heading and rule counted.",
+      "mitigated": true,
+      "how": "Only the label whose block holds the rule counts.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py -k earlier_rule -q"
+    },
+    {
+      "scenario": "Stored text opens with the rule's sub-heading, printed one line above its label",
+      "what_happens": "A last-label-above rule named the previous rule's label.",
+      "mitigated": true,
+      "how": "The label is judged over the whole matched rule, by majority block.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py -k sub_heading -q"
+    },
+    {
+      "scenario": "Marrickville stores a rule's first line inside its heading, so only line two matches and the next label is nearer",
+      "what_happens": "A nearest-label rule named the next rule's label (C15 as C16).",
+      "mitigated": true,
+      "how": "Majority block over the whole match, not distance.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py -k first_line_sits -q"
+    },
+    {
+      "scenario": "A rule's closing words recur in the next rule (Ashfield E2 C53/C54)",
+      "what_happens": "A phantom match stretches the span into the next block and the correct C53 is refused.",
+      "mitigated": false,
+      "how": "Known and pinned as a strict xfail: three de-duplication rules each fixed this row and broke 8-15 others on the corpus. The row is refused, the safe direction.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py -k closing_words -q"
+    },
+    {
+      "scenario": "Leichhardt draws each page's footer first in its content stream",
+      "what_happens": "Labels merged by a running y would all land before the footer at the top of the page.",
+      "mitigated": true,
+      "how": "Each label's position is found per page against its own row.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py -k row -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Re-grade the pending Leichhardt review rows so their citation findings reflect the picture labels (dcp_fidelity_gate.py per chapter). 83 served rows newly refused are mostly wrong labels the loose check passed (sampled: stored C13 where C14 is printed; C1 where C13 is printed)."
+  }
+}
