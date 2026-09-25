@@ -314,7 +314,10 @@ def _heading_like(line: Line, page_width: float | None) -> bool:
     """Can this line close a section? Not a long sentence, not a measurement, and
     not a navigation tab in the outer margin (Marrickville prints "8.5 HCA style
     sheets" at x=551 on every page of 8.4)."""
+    # A ")" with no "(" is the tail of a sentence's cross-reference: "...(see
+    # C1.11.7 Recognised shopping streets)" proved C1.11.7 for leichhardt C1 rules.
     return (len(line.text) < 90 and not _MEASURE.match(line.text)
+            and line.text.count(")") <= line.text.count("(")
             and (page_width is None or line.x < 0.75 * page_width))
 
 

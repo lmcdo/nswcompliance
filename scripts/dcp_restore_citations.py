@@ -126,6 +126,9 @@ def plan_council(conn, s3, bucket, cache_dir: Path, council: str | None):
                 tally["left: first line does not start with the stored code"] += 1
                 continue
             new_ref = f"{doc_id}__{d['code'].replace('.', '_')}"
+            if not cd.page_agrees(new_ref, text, readings, hint):
+                tally["left: the second reading of the page disagrees"] += 1
+                continue
             new_header = section_header_for(new_text, new_ref, doc_id)
             plans.append({"id": rid, "council": cncl, "chapter": chapter, "document_id": doc_id,
                           "old_ref": ref, "new_ref": new_ref, "old_header": header,

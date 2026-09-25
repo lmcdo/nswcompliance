@@ -93,6 +93,73 @@ def _candidates(ch: cp.ChapterLines, text: str, hint, families: set[str]):
     return out
 
 
+def places(ch: cp.ChapterLines, text: str, hint) -> list[int]:
+    """The lines where the rule's wording starts, starts within a few lines merged
+    (a line the PDF draws twice, or a start the reader shifted, is one place)."""
+    out: list[int] = []
+    for s in sorted({start for _end, start in cp._anchors(ch, text, hint)}):
+        if not out or s - out[-1] > 8 or ch.lines[s].page != ch.lines[out[-1]].page:
+            out.append(s)
+    return out
+
+
+def printed_section(ref_number: str | None, readings) -> str | None:
+    """The stored citation's own section (lower case), if a line of the chapter
+    outside its contents pages opens with it; else None."""
+    sections = cp.split_ref(ref_number)[0]
+    if not sections:
+        return None
+    leaf = cp.render(sections[-1]).lower()
+    for ch in readings:
+        for i in ch.heads_at.get(leaf, []) + ch.keyword_heads.get(leaf, []):
+            if ch.lines[i].page not in ch.toc_pages:
+                return leaf
+    return None
+
+
+def stored_label_beside(ref_number: str | None, text: str, readings, hint) -> str | None:
+    """The stored item label (lower case) if it is printed within three lines above
+    where the rule's wording starts, in either reading; else None."""
+    item = cp.split_ref(ref_number)[1]
+    if not item:
+        return None
+    want = cp.render(item).lower()
+    for ch in readings:
+        for _end, start in cp._anchors(ch, text, hint):
+            for i in range(start, max(-1, start - 4), -1):
+                m = _LABEL.match(ch.lines[i].text)
+                if m and (m.group(1) or m.group(2)) == want:
+                    return want
+    return None
+
+
+def page_agrees(ref_number: str, text: str, readings, hint=None) -> bool:
+    """A second, simpler reading of the page, independent of the proof: the label
+    is printed within three lines above where the rule's words start, and the
+    section is the nearest numbered heading above them. A fix is written only
+    when this AND the proof agree (whole-fixer test, 2026-09-25)."""
+    sections, item, _ = cp.split_ref(ref_number)
+    if not sections:
+        return False
+    want = cp.render(sections[-1]).lower()
+    lab = cp.render(item).lower() if item else None
+    for ch in readings:
+        for _end, s in cp._anchors(ch, text, hint):
+            if lab and not any((m := _LABEL.match(ch.lines[i].text)) and (m.group(1) or m.group(2)) == lab
+                               for i in range(s, max(-1, s - 4), -1)):
+                continue
+            for i in range(s - 1, max(-1, s - 600), -1):
+                ln = ch.lines[i]
+                if ln.page in ch.toc_pages or not cp._heading_like(ln, ch.page_width):
+                    continue
+                m = cp.CODE_AT_START.match(ln.text) or cp._KEYWORD_HEAD.match(ln.text)
+                if m and ("." in m.group(1) or m.group(1) == want):
+                    if m.group(1) == want:
+                        return True
+                    break
+    return False
+
+
 def leading(code: str | None) -> str:
     """The part of a code that names its chapter: "B3" of "B3.7.2", "9" of "9.2.5.1"."""
     m = re.match(r"([a-z]*\d+)", (code or "").lower())
@@ -125,6 +192,12 @@ def derive_citation(ref_number: str | None, text: str | None, readings, page_hin
     citation the page supports but the proof cannot yet verify (a "7." label).
     """
     had_item = cp.split_ref(ref_number)[1] is not None
+    # Wording printed in two places (a rule and its summary-table copy, Warringah
+    # p119/p164) can only be placed by a person or a re-read: the copy with a
+    # label is not the rule's own place just because the other copy has none.
+    if any(len(places(ch, text or "", page_hint)) > 1 for ch in readings):
+        return {"status": "ambiguous", "code": None,
+                "why": "the wording is printed in more than one place"}
     families = getattr(readings[0], "_label_families", None)
     if families is None:                      # once per chapter, not per rule
         families = label_families(readings[0])
@@ -146,6 +219,21 @@ def derive_citation(ref_number: str | None, text: str | None, readings, page_hin
             if chapter_lead and leading(section) != chapter_lead:
                 continue                      # a fix never leaves the rule's own chapter (B3.7 -> E1)  # noqa: zone-codes -- DCP section keys, not zones
             found.setdefault(printed_code(section, lab), (section, lab))
+    # The stored section, when the council prints it as a heading, stands: the fix
+    # may change the label or move to a sub-section, never to another section.
+    # Every wrong section the whole-fixer test found (2026-09-25) replaced a
+    # printed stored section with a zone name ("B2 - Local Centre"), a
+    # cross-reference ("section 3.3 for ...") or a sibling table code ("A2").
+    kept = printed_section(ref_number, readings)
+    if kept:
+        found = {code: v for code, v in found.items()
+                 if v[0] == kept or v[0].startswith(kept + ".")}
+    # The stored label, when it is printed beside the rule, stands too: a column
+    # printed alongside puts a second label next to the words (Canterbury-
+    # Bankstown 2.2.5 "p4." beside "p1.", 2026-09-25).
+    own = stored_label_beside(ref_number, text or "", readings, page_hint)
+    if own:
+        found = {code: v for code, v in found.items() if (v[1] or "").lower() == own}
     proven = {code: v for code, v in found.items()
               if cp.prove_citation_any(f"x__{code.replace('.', '_')}", text, readings,
                                        page_hint)["status"] == "proven"}
