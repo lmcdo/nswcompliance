@@ -1,16 +1,19 @@
 {
   "tier": "critical",
-  "justification": "The AI reader skipped pages inside batches that returned something, so nothing noticed: the Warringah re-read left out 21 of 226 pages and would have deleted 172 printed rules; Canterbury-Bankstown chapters are live without pages of rules. The reader now counts left-out pages by code and re-reads them, refusing the chapter if a page of rules is still missing. Critical: this is what stops printed rules silently disappearing.",
-  "commit_hash": "c01505bb",
+  "justification": "The AI reader skipped pages inside batches that returned something, so nothing noticed: the Warringah re-read left out 21 of 226 pages and would have deleted 172 printed rules; Canterbury-Bankstown chapters are live without pages of rules. The reader now counts left-out pages by code and re-reads them, refusing the chapter if a page of rules is still missing. Critical: this is what stops printed rules silently disappearing. Also: the Railway dcp-extract job failed every chapter on 2026-09-25 03:01 UTC (no httpx), and its fidelity gate had never been in the image; the image test now follows every import.",
+  "commit_hash": "3a27557e",
   "files": [
-    "scripts/page_coverage.py",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "Dockerfile.monitors",
     "scripts/ai_extractor.py",
     "scripts/dq_probe_pages_left_out.py",
-    "tests/test_page_coverage.py",
+    "scripts/page_coverage.py",
+    "scripts/requirements-monitor.txt",
     "tests/test_ai_chunk_loss.py",
+    "tests/test_dockerfile_monitors_imports.py",
     "tests/test_dq_probe_pages_left_out_real_db.py",
-    ".claude/dq_checks.json",
-    ".claude/DATA_QUALITY_TRACKER.md"
+    "tests/test_page_coverage.py"
   ],
   "pre_impl": {
     "existing_data": "No database writes. Measured with PyMuPDF sentence lines against extracted text: Warringah re-read 21 of 226 pages left out; Canterbury-Bankstown 6-2 (live) 33 of 195 pages flagged; Campbelltown part 3 (read well) 2 of 72; Woollahra B1 0 of 27.",
@@ -103,6 +106,13 @@
       "mitigated": true,
       "how": "Only a still-missing page with two or more rule words refuses.",
       "repro": "python -m pytest tests/test_ai_chunk_loss.py -k without_rule_words -q"
+    },
+    {
+      "scenario": "A worker imports a library or sibling module inside a function, or by bare name",
+      "what_happens": "The Railway image lacks it; dcp-extract failed all 22 chapters and the fidelity gate was silently skipped.",
+      "mitigated": true,
+      "how": "The image test follows every import from each worker, transitively, and fails on any module not copied or package not installed.",
+      "repro": "python -m pytest tests/test_dockerfile_monitors_imports.py -q"
     }
   ],
   "post_merge": {

@@ -115,3 +115,90 @@ def test_the_known_fly_dep_is_present():
     docker = (FLY_DIR / "Dockerfile").read_text(encoding="utf-8")
     assert "COPY refresh_runbook.py" in docker
     assert (FLY_DIR / "refresh_runbook.py").exists()
+
+
+# ── Same bug class, third form: bare and function-level imports ───────────────
+# 2026-09-25 03:01 UTC the dcp-extract cron failed all 22 chapters with
+# "No module named 'httpx'": ai_extractor imports httpx/openai INSIDE a function
+# and its siblings as bare names (`import page_coverage`), and the test above only
+# reads `from scripts.X import`. Every import is now followed, transitively, from
+# each worker; a local one must be COPYd, an outside one must be installed.
+
+import sys  # noqa: E402
+
+# Import name -> the distribution that provides it, where they differ.
+_DIST = {"fitz": "pymupdf", "dotenv": "python-dotenv", "psycopg2": "psycopg2-binary",
+         "bs4": "beautifulsoup4", "yaml": "pyyaml", "PIL": "pillow"}
+# Local modules imported only on a path the container never takes, each wrapped:
+# check_council_completeness reads qa_report_path only without DATABASE_URL;
+# dcp_toc_parse imports tests.fixtures only under its __main__ self-check.
+_DEV_ONLY = {"qa_report_path", "tests"}
+# Top-level packages the image COPYs whole from the repo root.
+_ROOT_PACKAGES = {"enrichment", "services", "scripts", "__future__"}
+# Provided by another installed package (pydantic arrives with anthropic/fastapi).
+_TRANSITIVE = {"pydantic", "starlette", "typing_extensions", "anyio", "botocore",
+               "urllib3", "certifi", "charset_normalizer", "idna"}
+_ANY_IMPORT = re.compile(r"(?m)^\s*(?:from\s+([\w.]+)\s+import|import\s+([\w.]+(?:\s*,\s*[\w.]+)*))")
+
+
+def _imports(src: str) -> set[str]:
+    out = set()
+    for frm, imp in _ANY_IMPORT.findall(src):
+        for name in ([frm] if frm else [n.strip() for n in imp.split(",")]):
+            if name.startswith("scripts."):
+                name = name.split(".", 1)[1]
+            out.add(name.split(".")[0])
+    return out
+
+
+def _closure():
+    """(local script modules, outside top-level modules) reachable from WORKERS."""
+    local, outside, todo = set(), set(), [Path(w).stem for w in WORKERS]
+    while todo:
+        mod = todo.pop()
+        path = REPO / "scripts" / f"{mod}.py"
+        if mod in local or not path.exists():
+            continue
+        local.add(mod)
+        for name in _imports(path.read_text(encoding="utf-8")):
+            if name in _DEV_ONLY or name in _ROOT_PACKAGES:
+                continue
+            if (REPO / "scripts" / f"{name}.py").exists():
+                todo.append(name)
+            elif (REPO / "scripts" / name).is_dir():
+                local.add(name + "/")
+            elif name not in sys.stdlib_module_names:
+                outside.add(name)
+    return local, outside
+
+
+def test_every_local_module_a_worker_reaches_is_copied():
+    docker = (REPO / "Dockerfile.monitors").read_text(encoding="utf-8")
+    local, _ = _closure()
+    missing = sorted(m for m in local if (f"COPY scripts/{m} " if m.endswith("/") else f"COPY scripts/{m}.py") not in docker)
+    assert not missing, "Dockerfile.monitors does not COPY: " + ", ".join(missing)
+
+
+def test_every_services_module_a_worker_reaches_is_copied():
+    """verify_extraction_fidelity (behind the fidelity gate) imports
+    services.extracted_data_integrity; the scan above skips services/."""
+    docker = (REPO / "Dockerfile.monitors").read_text(encoding="utf-8")
+    local, _ = _closure()
+    missing = set()
+    for mod in local:
+        path = REPO / "scripts" / f"{mod}.py"
+        if path.exists():
+            for svc in re.findall(r"(?m)^\s*from\s+services\.(\w+)\s+import", path.read_text(encoding="utf-8")):
+                if f"COPY services/{svc}.py" not in docker:
+                    missing.add(svc)
+    assert not missing, "Dockerfile.monitors does not COPY services/: " + ", ".join(sorted(missing))
+
+
+def test_every_outside_package_a_worker_reaches_is_installed():
+    reqs = (REPO / "scripts" / "requirements-monitor.txt").read_text(encoding="utf-8").lower()
+    installed = set(re.findall(r"(?m)^([a-z0-9_.\-]+)", reqs))
+    _, outside = _closure()
+    missing = sorted(m for m in outside - _TRANSITIVE
+                     if _DIST.get(m, m).lower().replace("_", "-") not in
+                     {i.replace("_", "-") for i in installed})
+    assert not missing, "scripts/requirements-monitor.txt does not install: " + ", ".join(missing)
