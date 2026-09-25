@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Wollongong's DCP chapters were read but could not serve: with no applicability config every row would apply to every development type (no_config, DQ-105). This adds the config, each scope quoted from the chapter's own PDF.",
-  "commit_hash": "869fe8c7",
+  "commit_hash": "252b8b70",
   "files": [
     "enrichment/config/wollongong_config.py",
     "enrichment/config/__init__.py",
