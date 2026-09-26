@@ -62,6 +62,22 @@ from validate_controls_against_source_pdf import (  # noqa: E402
     required_values,
 )
 
+# Served controls that carry a number but NO page at all (2026-09-26: 18 council rows). With
+# its clause withheld as unproven, such a number would be cited by nothing but a link.
+MISSING_PAGE_SQL = """
+    SELECT c.id, c.lga, c.control_type, c.source_text, c.pdf_page, g.r2_current_path,
+           c.value_min, c.value_max, c.unit
+    FROM dcp_setback_controls c
+    JOIN dcp_chapter_registry g
+      ON g.council = c.lga AND g.chapter_key = c.source_chapter_key AND g.is_active
+    WHERE c.pdf_page IS NULL
+      AND c.is_current = TRUE
+      AND (c.needs_review IS NULL OR c.needs_review = FALSE)
+      AND (c.value_min IS NOT NULL OR c.value_max IS NOT NULL)
+      AND g.r2_current_path IS NOT NULL AND g.r2_current_path <> ''
+    ORDER BY c.lga, g.r2_current_path, c.id
+"""
+
 # A correction must clear a higher bar than a report: the same value+terms test, but the
 # only page in the document that passes it.
 STRONG_COVERAGE = 0.80
@@ -71,6 +87,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Propose pdf_page corrections (no writes)")
     ap.add_argument("--cache", default=None)
     ap.add_argument("--out", default="data/control_page_corrections_proposal.json")
+    ap.add_argument("--missing-page-only", action="store_true",
+                    help="only served numbers with NO page: search the whole document for it")
     args = ap.parse_args()
 
     import tempfile
@@ -80,7 +98,7 @@ def main() -> int:
     conn = connect()
     cur = conn.cursor()
     cur.execute("SET statement_timeout = '60s'")
-    cur.execute(ROWS_SQL)
+    cur.execute(MISSING_PAGE_SQL if args.missing_page_only else ROWS_SQL)
     rows = cur.fetchall()
     cur.close()
     conn.close()
@@ -106,17 +124,18 @@ def main() -> int:
         basename = (r2_path or "").rstrip("/").rsplit("/", 1)[-1] or "(unnamed document)"
         print(f"[{n}/{len(by_doc)}] {basename} ({count}pp, {len(doc_rows)} controls)")
 
-        for cid, lga, ct, quote, cited, _p, vmin, vmax in doc_rows:
-            if not quote or cited is None:
+        # ROWS_SQL gained `unit` after this was written; *_ keeps the unpack from breaking.
+        for cid, lga, ct, quote, cited, _p, vmin, vmax, *_ in doc_rows:
+            if not quote or (cited is None and not args.missing_page_only):
                 states["not_testable"] += 1
                 continue
             if not required_values(vmin, vmax) and not numeric_tokens(quote):
                 states["not_testable"] += 1
                 continue
 
-            window = [p for p in range(cited - PAGE_TOLERANCE, cited + PAGE_TOLERANCE + 1)
-                      if p >= 1]
-            if any(page_supports(quote, pages.get(p, ""), vmin, vmax)[0] for p in window):
+            window = [] if cited is None else [
+                p for p in range(cited - PAGE_TOLERANCE, cited + PAGE_TOLERANCE + 1) if p >= 1]
+            if window and any(page_supports(quote, pages.get(p, ""), vmin, vmax)[0] for p in window):
                 states["already_correct"] += 1
                 continue
 
@@ -132,7 +151,8 @@ def main() -> int:
             if len(hits) == 1:
                 p, cov = hits[0]
                 states["single_candidate"] += 1
-                proposals.append({**base, "proposed_page": p, "offset": p - cited,
+                proposals.append({**base, "proposed_page": p,
+                                  "offset": None if cited is None else p - cited,
                                   "term_coverage": round(cov, 3)})
             elif len(hits) > 1:
                 states["ambiguous"] += 1
@@ -149,7 +169,8 @@ def main() -> int:
     print(f"\n{'=' * 78}\nPROPOSED CORRECTIONS ({len(proposals)}) — one candidate page each\n{'=' * 78}")
     for p in sorted(proposals, key=lambda x: (x["lga"], x["id"])):
         print(f"  id={p['id']:<6} {p['lga']:<16} {p['control_type']:<24} "
-              f"page {p['cited_page']} -> {p['proposed_page']}  ({p['offset']:+d}, "
+              f"page {p['cited_page']} -> {p['proposed_page']}  "
+              f"({'new' if p['offset'] is None else format(p['offset'], '+d')}, "
               f"cov {p['term_coverage']:.0%})")
 
     amb = [r for r in reported if r["state"] == "ambiguous"]

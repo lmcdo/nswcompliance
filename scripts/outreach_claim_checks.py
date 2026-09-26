@@ -270,7 +270,7 @@ def every_served_number_is_cited() -> Result:
                 or not is_source_link(url, allowed)):
             missing.append(f"{lga}/{e.get('semantic_type')}")
     return ((PASS if not missing else FAIL),
-            f"served numbers missing a clause, the council's sentence or a link to its source document: "
+            f"served numbers missing where they are printed (proven clause or page), the council's sentence or a link to its source document: "
             f"{len(missing)} of {numbers} {missing[:4]}")
 
 

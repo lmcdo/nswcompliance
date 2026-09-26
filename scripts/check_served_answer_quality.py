@@ -50,7 +50,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from check_dcp_as_at_coverage import _ratchet  # noqa: E402
-from conveyancing_db import fetch_dcp_setbacks  # noqa: E402
+from conveyancing_db import clause_or_page, fetch_dcp_setbacks  # noqa: E402
 
 BASELINE = ".claude/served_answer_quality_baseline.json"
 
@@ -159,6 +159,10 @@ def main() -> int:  # pragma: no cover - CLI entry point
             # part-c-residential. 75 of 968, and none of those 75 has a page
             # number either.
             clause = (e.get("clause") or "").strip()
+            # A clause withheld as unproven (migration 077) is cited by its page instead:
+            # the served citation is then "p. N", which is a locator.
+            if e.get("clause_shown") is False:
+                clause = clause_or_page("", e.get("pdf_page"))
             if not clause or not any(ch.isdigit() for ch in clause):
                 no_locator[slug] = no_locator.get(slug, 0) + 1
             if e.get("pdf_page") is None:

@@ -50,6 +50,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 from validate_controls_against_source_pdf import connect  # noqa: E402
 
 PROPOSAL = REPO_ROOT / "data" / "control_page_corrections_proposal.json"
+# (--proposal overrides it, e.g. the --missing-page-only measurement's own file.)
 BACKUP_DIR = REPO_ROOT / "data" / "db_rollback_backups"
 
 
@@ -57,7 +58,11 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Repair pdf_page from the measured proposal")
     ap.add_argument("--apply", action="store_true", help="perform the write (default: dry run)")
     ap.add_argument("--stamp", required=True, help="ISO date for the backup filename")
+    ap.add_argument("--proposal", default=None, help="proposal file (default: the measured one)")
     args = ap.parse_args()
+    global PROPOSAL
+    if args.proposal:
+        PROPOSAL = Path(args.proposal) if Path(args.proposal).is_absolute() else REPO_ROOT / args.proposal
 
     if not PROPOSAL.exists():
         sys.exit(f"FATAL: no proposal at {PROPOSAL}. Run measure_control_page_corrections.py first.")
@@ -125,7 +130,8 @@ def main() -> int:
 
     for p in sorted(proposals, key=lambda x: (x["lga"], x["id"])):
         print(f"  id={p['id']:<6} {p['lga']:<16} {p['control_type']:<22} "
-              f"{p['cited_page']} -> {p['proposed_page']}  ({p['offset']:+d})")
+              f"{p['cited_page']} -> {p['proposed_page']}  "
+              f"({'new' if p['offset'] is None else format(p['offset'], '+d')})")
 
     if not args.apply:
         print("\nDRY RUN — nothing written. Re-run with --apply to perform the update.")
@@ -148,7 +154,9 @@ def main() -> int:
         for p in proposals:
             wcur.execute(
                 "UPDATE dcp_setback_controls SET pdf_page = %s "
-                "WHERE id = %s AND pdf_page = %s",
+                # IS NOT DISTINCT FROM: a row with no page yet (NULL) must match its NULL
+                # pre-state; `= NULL` never matches, so those rows were always skipped.
+                "WHERE id = %s AND pdf_page IS NOT DISTINCT FROM %s",
                 (p["proposed_page"], p["id"], p["cited_page"]))
             if wcur.rowcount == 1:
                 applied += 1
