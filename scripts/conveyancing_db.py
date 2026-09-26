@@ -676,7 +676,9 @@ def fetch_dcp_setbacks(
                    condition, source_text, section_ref, applicability,
                    needs_review, source_chapter_key, pdf_page, dcp_version,
                    zones_include, zones_exclude, plain_summary,
-                   to_jsonb(dcp_setback_controls) ->> 'citation_status'
+                   to_jsonb(dcp_setback_controls) ->> 'citation_status',
+                   jsonb_build_object('id', id, 'source',
+                       to_jsonb(dcp_setback_controls) ->> 'citation_source_path')
             FROM dcp_setback_controls
             WHERE lga = %s AND is_current = TRUE
               AND (needs_review IS NULL OR needs_review = FALSE)
@@ -850,10 +852,14 @@ def fetch_dcp_setbacks(
     # Zone advisory: strip prefix digit from zone code (e.g. "R2" from "R2 Low Density")
     zone_prefix = (zone_code.strip().split()[0].upper() if zone_code and zone_code.strip() else "")
 
-    for (dev_type, ctrl_type, vmin, vmax, unit, condition, source_text,
+    for row in rows:
+        (dev_type, ctrl_type, vmin, vmax, unit, condition, source_text,
          section_ref, applicability, needs_review, source_chapter_key,
          pdf_page, dcp_version, zones_include, zones_exclude, plain_summary,
-         citation_status) in rows:
+         citation_status) = row[:17]
+        # The row's id and the PDF its verdict was judged on (migration 078), for the
+        # report's audit record. Optional so a shorter row (older fixture) still reads.
+        evidence = (row[17] if len(row) > 17 else None) or {}
         # Fail-closed on currency (mirrors the web route /api/dcp/structured-controls):
         # a control flagged for human review after a DCP amendment must never render
         # as an authoritative number in the PDF. The SQL WHERE already excludes
@@ -904,6 +910,9 @@ def fetch_dcp_setbacks(
                                          {**sibling, "page": pdf_page} if sibling else None)
                              if shown else ""),
             "clause_shown": shown,
+            "control_id": evidence.get("id"),
+            "citation_status": citation_status,
+            "citation_source_path": evidence.get("source"),
             # Every other plan this clause is published in (migration 074), each
             # at its own clause, page and link; [] when it is in one plan only.
             "also_cited":   [{"plan": plan, "clause": clause, "pdf_page": page, "url": url}

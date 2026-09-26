@@ -247,6 +247,7 @@ def every_served_number_is_cited() -> Result:
     """Claim 8 is about NUMBERS, so only entries carrying a value are counted. A served "no set number" note
     (e.g. "No maximum site coverage specified in the DCP") has no number to cite; whether council material
     traces to a published document is claim 12's check."""
+    import conveyancing_db as cdb
     entries, why = served_entries()
     if entries is None:
         return UNKNOWN, f"served citations: {why}"
@@ -265,7 +266,7 @@ def every_served_number_is_cited() -> Result:
         # A clause withheld because its page does not prove it is cited by that page (migration 077);
         # withheld with no page is no citation at all (a blank citation is not evidence).
         cited = bool((e.get("clause") or "").strip()) or (
-            e.get("clause_shown") is False and e.get("pdf_page") is not None)
+            e.get("clause_shown") is False and bool(cdb.clause_or_page("", e.get("pdf_page"))))
         if (not cited or not (e.get("source_text") or "").strip()
                 or not is_source_link(url, allowed)):
             missing.append(f"{lga}/{e.get('semantic_type')}")

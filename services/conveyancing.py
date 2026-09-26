@@ -539,6 +539,15 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
     import re
     import tempfile
     from generate_conveyancing_report import generate_pdf
+    try:
+        from report_evidence import is_report_id
+    except ImportError:
+        from services.report_evidence import is_report_id
+
+    # The report's audit row is required (below) and keyed by a UUID; refuse a malformed id
+    # BEFORE doing the work rather than failing after the PDF is built.
+    if not is_report_id(req.report_id):
+        raise HTTPException(status_code=400, detail="report_id must be a UUID")
 
     cached = _load_pipeline_cache(req.report_id)
 
@@ -902,9 +911,15 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         coastal=coastal_result,
     )
 
+    # The audit record is written BEFORE the report leaves: what was shown, each clause's
+    # verdict and the PDF it was checked against, and the delivered file's fingerprint.
+    # No record, no report (migration 078).
+    _write_conveyancing_audit(req, address, lat, lng, pdf_path, dcp_setbacks_db, lep_clauses)
+
     # Upload to R2
     pdf_url = _upload_to_r2(pdf_path, req.report_id)
     if not pdf_url:
+        _record_delivery_failure(req)
         raise HTTPException(status_code=503, detail="PDF upload failed")
 
     return {
@@ -912,6 +927,47 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         "pdf_url": pdf_url,
         "address": address,
     }
+
+
+def _write_conveyancing_audit(req, address, lat, lng, pdf_path, dcp_setbacks_db, lep_clauses) -> None:
+    """Write the paid report's audit row, or refuse delivery (HTTP 503)."""
+    try:
+        from audit_trail import AuditTrailError, get_current_disclaimer_version, log_audit_trail
+        from report_evidence import conveyancing_evidence, file_sha256
+    except ImportError:
+        from services.audit_trail import AuditTrailError, get_current_disclaimer_version, log_audit_trail
+        from services.report_evidence import conveyancing_evidence, file_sha256
+    intermediate, summary = conveyancing_evidence(
+        dcp_setbacks_db, lep_clauses, file_sha256(pdf_path), f"conveyancing/{req.report_id}.pdf")
+    try:
+        log_audit_trail(
+            report_id=req.report_id,
+            pipeline_name="conveyancing",
+            input_params={"address": address, "lat": lat, "lng": lng, "prop_id": req.prop_id},
+            data_sources=[],
+            output_summary=summary,
+            disclaimer_version=get_current_disclaimer_version("conveyancing"),
+            intermediate_calculations=intermediate,
+            required=True,
+        )
+    except AuditTrailError as exc:
+        logger.error("conveyancing report %s not delivered: %s", req.report_id, exc)
+        raise HTTPException(status_code=503,
+                            detail="Report not delivered: its audit record could not be written")
+
+
+def _record_delivery_failure(req) -> None:
+    """The generated-report row is permanent; say, in a second row, that it never reached the
+    customer. Best effort: the customer already gets an error either way."""
+    try:
+        from audit_trail import get_current_disclaimer_version, log_audit_trail
+    except ImportError:
+        from services.audit_trail import get_current_disclaimer_version, log_audit_trail
+    log_audit_trail(
+        report_id=req.report_id, pipeline_name="conveyancing",
+        input_params={"prop_id": req.prop_id}, data_sources=[],
+        output_summary={"recorded_at": "delivery_failed", "r2_key": f"conveyancing/{req.report_id}.pdf"},
+        disclaimer_version=get_current_disclaimer_version("conveyancing"))
 
 
 def _upload_to_r2(pdf_path: str, report_id: str) -> Optional[str]:

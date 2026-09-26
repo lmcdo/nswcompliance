@@ -47,6 +47,15 @@ def plan_updates(verdicts: dict[int, str], current: dict[int, str | None]) -> li
     return sorted((i, v) for i, v in verdicts.items() if current.get(i) != v)
 
 
+def plan_writes(verdicts: dict[int, str], sources: dict[int, str | None],
+                current: dict[int, tuple]) -> list[tuple[int, str, str | None]]:
+    """(id, status, source path) for every row whose verdict OR judged source changed. Pure.
+    The source is the chapter PDF the verdict was judged on (migration 078)."""
+    plan_updates(verdicts, {})                      # refuses an unknown verdict
+    return [(i, v, sources.get(i)) for i, v in sorted(verdicts.items())
+            if tuple(current.get(i) or (None, None)) != (v, sources.get(i))]
+
+
 def _judge_chapter(args) -> dict[int, str]:
     """Verdicts for one PDF's rows. Runs in a worker process."""
     r2_path, rows, cache_dir = args
@@ -95,23 +104,36 @@ def main() -> int:
         with ProcessPoolExecutor(max_workers=max(1, args.workers)) as ex:
             for got in ex.map(_judge_chapter, jobs):
                 verdicts.update(got)
-        cur.execute("SELECT id, citation_status FROM regulatory_provisions "
+        sources = {rid: r2_path for rid, _co, _chk, _ref, r2_path, _t, _p in rows}
+        cur.execute("SELECT 1 FROM information_schema.columns WHERE table_name = "
+                    "'regulatory_provisions' AND column_name = 'citation_source_path'")
+        if not cur.fetchone():
+            print("citation_source_path column missing -- run migrations/078 first. Nothing written.")
+            return 1 if args.apply else 0
+        cur.execute("SELECT id, citation_status, citation_source_path FROM regulatory_provisions "
                     "WHERE id = ANY(%s) AND is_current", (list(verdicts),))
-        current = dict(cur.fetchall())
-        todo = plan_updates(verdicts, current)
+        current = {i: (s, p) for i, s, p in cur.fetchall()}
+        todo = plan_writes(verdicts, sources, current)
         print(f"scope: {args.council or 'all councils'}  rules: {len(verdicts)}")
         for k, n in Counter(verdicts.values()).most_common():
             print(f"  {n:6}  {k}")
-        print(f"  {len(todo):6}  to write (verdict changed)")
+        print(f"  {len(todo):6}  to write (verdict or judged source changed)")
         if not args.apply:
             print("DRY RUN -- nothing written. Re-run with --apply.")
             return 0
         for i in range(0, len(todo), BATCH):
             chunk = todo[i:i + BATCH]
             cur.execute(
-                "UPDATE regulatory_provisions p SET citation_status = v.s, citation_checked_at = now() "
-                "FROM unnest(%s::bigint[], %s::text[]) AS v(id, s) WHERE p.id = v.id AND p.is_current",
-                ([t[0] for t in chunk], [t[1] for t in chunk]))
+                "UPDATE regulatory_provisions p SET citation_status = v.s, citation_source_path = v.src, "
+                "citation_checked_at = now() "
+                "FROM unnest(%s::bigint[], %s::text[], %s::text[]) AS v(id, s, src) "
+                "WHERE p.id = v.id AND p.is_current "
+                # Only onto the PDF still in force: a chapter republished while this ran had its
+                # verdicts voided by the 078 trigger, and must not get the old verdict back.
+                "AND EXISTS (SELECT 1 FROM dcp_chapter_registry reg WHERE reg.is_active "
+                "AND reg.council = p.source_council AND reg.chapter_key = p.source_chapter_key "
+                "AND reg.r2_current_path IS NOT DISTINCT FROM v.src)",
+                ([t[0] for t in chunk], [t[1] for t in chunk], [t[2] for t in chunk]))
             conn.commit()
         print(f"WROTE {len(todo)} verdicts.")
         return 0

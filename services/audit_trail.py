@@ -113,6 +113,10 @@ class DataSourceQuery:
 # Main audit trail writer
 # ---------------------------------------------------------------------------
 
+class AuditTrailError(RuntimeError):
+    """A required audit record could not be written; the report must not be delivered."""
+
+
 def log_audit_trail(
     report_id: str,
     pipeline_name: str,
@@ -121,15 +125,16 @@ def log_audit_trail(
     output_summary: dict,
     disclaimer_version: str,
     intermediate_calculations: Optional[dict] = None,
+    required: bool = False,
 ) -> None:
     """
     Write an immutable audit record for a generated report.
 
-    This MUST be called after every successful report write.  It is
-    non-blocking on failure — if the audit write fails, we log the error
-    but do not prevent the report from being returned to the user.
-    The alternative (blocking) would mean audit infrastructure issues
-    break the product, which is worse for users.
+    This MUST be called after every successful report write. By default it is
+    non-blocking on failure: the error is logged and the report is still returned.
+    With required=True (the paid conveyancing report) a failed write raises
+    AuditTrailError, so a report is never delivered without its record.
+    The row is hash-chained and append-only in the database (migration 078).
 
     Args:
         report_id: UUID of the report in property_reports / pre_da_history_reports
@@ -167,8 +172,9 @@ def log_audit_trail(
         conn.commit()
         logger.info(f"Audit trail logged for {pipeline_name} report {report_id}")
     except Exception as exc:
-        # Non-blocking: log error but don't prevent report delivery
         logger.error(f"Audit trail write failed for {pipeline_name} report {report_id}: {exc}")
+        if required:
+            raise AuditTrailError(f"audit record not written for {pipeline_name} report {report_id}") from exc
     finally:
         if conn:
             conn.close()

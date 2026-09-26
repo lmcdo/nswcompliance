@@ -1,0 +1,158 @@
+{
+  "tier": "critical",
+  "justification": "Adds triggers on report_audit_trail and dcp_chapter_registry and makes the paid conveyancing report refuse delivery when its audit record cannot be written. Critical: a wrong trigger could block every paid report or void citations wholesale.",
+  "commit_hash": "c95c6cd9",
+  "files": [
+    "migrations/078_evidence_trail.sql",
+    "scripts/verify_audit_chain.py",
+    "services/report_evidence.py",
+    "services/audit_trail.py",
+    "services/conveyancing.py",
+    "scripts/conveyancing_db.py",
+    "scripts/dcp_citation_status.py",
+    "scripts/dcp_setback_citation_status.py",
+    ".github/workflows/data-watch.yml",
+    "tests/test_report_evidence.py",
+    "tests/test_verify_audit_chain_real_db.py",
+    "tests/test_setback_citation_gate.py",
+    "Dockerfile.monitors",
+    "frontend-nextjs/__tests__/components/dcp-structured-controls.test.tsx",
+    "frontend-nextjs/__tests__/lib/citation-display.test.ts",
+    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+    "migrations/077_citation_status_partial_and_setbacks.sql",
+    "scripts/build_lot_search_index.py",
+    "scripts/citation_proof.py",
+    "scripts/dcp_commit_approved.py",
+    "scripts/generate_conveyancing_report.py",
+    "scripts/outreach_claim_checks.py",
+    "scripts/run_migration.py",
+    "services/constraint_arithmetic.py",
+    "services/granny_flat.py",
+    "services/intelligence_brief.py",
+    "tests/test_citation_proof.py",
+    "tests/test_conveyancing_clause_citation.py",
+    "tests/test_conveyancing_db.py",
+    "tests/test_conveyancing_dcp_needs_review.py",
+    "tests/test_dcp_as_at.py",
+    "tests/test_dcp_setback_citation_status_real_db.py",
+    "tests/test_dcp_setbacks_cite_each_town_plan.py",
+    "tests/test_granny_flat_citation_gate_real_db.py",
+    "tests/test_granny_flat_mutation.py",
+    "tests/test_sql_percent_placeholders.py"
+  ],
+  "pre_impl": {
+    "existing_data": "report_audit_trail: 10 columns, 887 rows, unique created_at, id default gen_random_uuid(), no triggers, 0 conveyancing rows. dcp_chapter_registry has only trg_dcr_updated_at; 559 active r2 paths. PG 17.6 with sha256(). conveyancing_cache report_ids: 15 of 15 are UUIDs.",
+    "assumption_mismatch": "Assumed the paid report already wrote an audit row; it never called log_audit_trail. Assumed the audit trail was append-only in the database; it was append-only by docstring only.",
+    "new_vs_existing": "Additive columns and triggers; the 887 existing audit rows are chained once in created_at order. No existing writer updates or deletes audit rows (grep: 0).",
+    "external_source_error": "If the audit insert fails, the paid report returns HTTP 503 and nothing is uploaded; satellite pipelines keep the old non-blocking behaviour.",
+    "frontend_type": "No frontend type changes; the Next.js route already maps a non-OK response to a 502 PDF generation failed.",
+    "user_failure_mode": "A database outage now stops paid reports visibly (503) instead of delivering them unrecorded. A chapter PDF change hides that chapter's clauses until the next verdict run, never shows them unchecked."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_report_evidence.py -q ; python scripts/verify_audit_chain.py",
+    "fails_when": "a paid report can be delivered without its audit record, the record omits a setback's verdict or source PDF, a writer ignores a changed source PDF, or any audit row was edited, deleted or inserted out of order",
+    "observed_red": "5 mutants (required raise off, audit call removed, id check off, source dropped, path ignored) each fail 1 test."
+  },
+  "functions": [
+    {
+      "name": "conveyancing_evidence",
+      "file_line": "services/report_evidence.py",
+      "input": "the report's fetch_dcp_setbacks dict, its LEP clauses, the PDF sha256 and the R2 key",
+      "output": "intermediate_calculations listing each setback shown with clause, verdict and checked-against PDF, plus a summary with the file fingerprint",
+      "if_none": "no setbacks or LEP clauses gives empty lists and zero counts, never an exception"
+    },
+    {
+      "name": "_write_conveyancing_audit",
+      "file_line": "services/conveyancing.py",
+      "input": "the PDF request, resolved address and coordinates, the built PDF path and the shown setbacks",
+      "output": "one required report_audit_trail row written before the PDF is uploaded to storage",
+      "if_none": "an AuditTrailError becomes HTTP 503 and the report is not delivered to the customer"
+    },
+    {
+      "name": "plan_writes",
+      "file_line": "scripts/dcp_citation_status.py",
+      "input": "new verdicts, the chapter PDF each was judged on, and the stored (status, source) pairs",
+      "output": "(id, status, source) for every row whose verdict or judged PDF changed since the last run",
+      "if_none": "an unknown verdict raises ValueError before any write reaches the database"
+    },
+    {
+      "name": "main",
+      "file_line": "scripts/verify_audit_chain.py",
+      "input": "the live report_audit_trail rows ordered by chain_seq and the database digest function",
+      "output": "exit 0 when every link and digest holds, 1 naming broken rows, 2 when it cannot check",
+      "if_none": "an empty table verifies as intact with zero rows and exits 0"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "void verdicts when a chapter PDF changes",
+      "file_line": "migrations/078_evidence_trail.sql dcp_chapter_registry_void_citations",
+      "where_clause": "council and chapter_key match NEW, is_current, citation_status IS NOT NULL (setbacks: not external)"
+    },
+    {
+      "purpose": "verify chain",
+      "file_line": "scripts/verify_audit_chain.py CHECK_SQL",
+      "where_clause": "whole table ordered by chain_seq (the chain is global by design)"
+    },
+    {
+      "purpose": "setback evidence",
+      "file_line": "scripts/conveyancing_db.py fetch_dcp_setbacks",
+      "where_clause": "lga = %s AND is_current AND needs_review not true (unchanged); adds id and citation_source_path"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Two paid reports finish at the same moment and insert audit rows concurrently",
+      "what_happens": "both could read the same previous row and fork the hash chain",
+      "mitigated": true,
+      "how": "the insert trigger takes pg_advisory_xact_lock before reading the last row_hash; chain_seq is unique",
+      "repro": "tests/test_report_evidence.py::test_migration_078_chains_and_locks_the_audit_trail"
+    },
+    {
+      "scenario": "The database is down at the moment a customer buys a conveyancing report",
+      "what_happens": "previously the report was delivered with no audit record at all",
+      "mitigated": true,
+      "how": "log_audit_trail(required=True) raises; the endpoint returns 503 before uploading",
+      "repro": "tests/test_report_evidence.py::test_the_paid_report_is_refused_when_its_audit_record_fails"
+    },
+    {
+      "scenario": "A council publishes a new PDF and the post-publish verdict re-check then fails",
+      "what_happens": "old proven verdicts would keep showing clauses judged on the superseded plan",
+      "mitigated": true,
+      "how": "the registry trigger nulls that chapter's verdicts in the same transaction as the path change",
+      "repro": "migrations/078_evidence_trail.sql dcp_chapter_registry_void_citations: change r2_current_path, then citation_status for its rows reads NULL"
+    },
+    {
+      "scenario": "Someone edits or deletes an audit row directly in the database to hide what a report showed",
+      "what_happens": "the change would be invisible to anyone reading the audit trail later",
+      "mitigated": true,
+      "how": "UPDATE, DELETE and TRUNCATE triggers refuse it; if they are dropped, verify_audit_chain fails nightly",
+      "repro": "python scripts/verify_audit_chain.py"
+    },
+    {
+      "scenario": "A caller sends a report id that is not a UUID to the paid conveyancing endpoint",
+      "what_happens": "the required audit insert would fail only after the whole PDF was built",
+      "mitigated": true,
+      "how": "is_report_id is checked before any work and returns 400",
+      "repro": "tests/test_report_evidence.py::test_the_pdf_endpoint_checks_the_id_first_and_audits_before_upload"
+    },
+    {
+      "scenario": "The setback evidence read runs before migration 078 adds citation_source_path",
+      "what_happens": "a direct column reference would raise and drop every setback from every report",
+      "mitigated": true,
+      "how": "fetch_dcp_setbacks reads it through to_jsonb(row)->>'citation_source_path', NULL when absent; the evidence then records no source rather than failing",
+      "repro": "tests/test_setback_citation_gate.py::test_select_reads_the_verdict_without_requiring_the_column"
+    }
+  ],
+  "real_layer_exempt": {
+    "services/conveyancing.py": "the only DB write added goes through audit_trail.log_audit_trail; a real-layer test would create a permanent, undeletable audit row in production. The live chain is checked by tests/test_verify_audit_chain_real_db.py.",
+    "services/audit_trail.py": "every real insert is permanent by design (append-only triggers); the chain itself is verified live by tests/test_verify_audit_chain_real_db.py."
+  },
+  "post_merge": {
+    "db_reset": "Apply migrations/078 BEFORE merge, then re-run both verdict writers with --apply (they now record the judged PDF)",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Generate one paid conveyancing report, then run python scripts/verify_audit_chain.py and read its audit row (pipeline_name conveyancing)."
+  }
+}
