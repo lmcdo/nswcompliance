@@ -11,13 +11,16 @@
  * extractor and never checked (DQ-111); an unproven one must not be served as the
  * council's. The page is still shown, so the citation stays true: "page 91" instead of a
  * guessed "C4.9". 'imprecise' is true but coarse (every piece printed above the rule) and
- * is shown. NULL = not checked (LEP/SEPP rows, or not yet run) and is served as before.
+ * is shown. A council DCP row that has not been checked yet (NULL, e.g. just published and
+ * the re-check failed) is NOT shown: unchecked fails closed. Rows with no source_council
+ * (LEP/SEPP) are outside this check and are served as before.
  */
 
 const SHOWN = new Set(['proven', 'imprecise']);
 
-export function citationIsShown(status?: string | null): boolean {
-  return status == null || SHOWN.has(status);
+export function citationIsShown(status?: string | null, sourceCouncil?: string | null): boolean {
+  if (status == null) return !sourceCouncil;
+  return SHOWN.has(status);
 }
 
 const norm = (s: string) => s.toLowerCase().replace(/[\s._]+/g, '');
@@ -36,8 +39,10 @@ export function stripStoredCode(text: string | null | undefined, refNumber: stri
   const rest = nl === -1 ? '' : text.slice(nl);
   const heading = first.replace(/^#+/, '').trim();
   for (let i = 1; i <= heading.length; i++) {
-    if (norm(heading.slice(0, i)) === want && (i === heading.length || heading[i] === ' ')) {
-      const title = heading.slice(i).trim();
+    // The code ends at the heading's end or at any non-alphanumeric character:
+    // "# C4.9 Fences", "# C4.9: Fences", "# C4.9 – Fences" (cross-review, 2026-09-26).
+    if (norm(heading.slice(0, i)) === want && (i === heading.length || !/[A-Za-z0-9]/.test(heading[i]))) {
+      const title = heading.slice(i).replace(/^[\s:;,.\-–—]+/, '').trim();
       return title ? `# ${title}${rest}` : rest.replace(/^\n+/, '');
     }
   }
@@ -47,10 +52,11 @@ export function stripStoredCode(text: string | null | undefined, refNumber: stri
 /** The provision as served: clause label and code shown only when the page proves them. */
 export function withServedCitation<T extends {
   citation_status?: string | null;
+  source_council?: string | null;
   ref_number?: string | null;
   provision_text?: string | null;
 }>(p: T, clauseLabel: string | null): T & { clause_label: string | null; citation_shown: boolean } {
-  const shown = citationIsShown(p.citation_status);
+  const shown = citationIsShown(p.citation_status, p.source_council);
   return {
     ...p,
     provision_text: shown ? p.provision_text : stripStoredCode(p.provision_text, p.ref_number),
