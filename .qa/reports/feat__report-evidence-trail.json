@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds triggers on report_audit_trail and dcp_chapter_registry and makes the paid conveyancing report refuse delivery when its audit record cannot be written. Critical: a wrong trigger could block every paid report or void citations wholesale. Stacked on PR #1173: the files after tests/test_setback_citation_gate.py in this list are #1173's own, reviewed under .qa/reports/feat__report-citations-and-setback-check.json.",
-  "commit_hash": "039d6487",
+  "commit_hash": "6778df33",
   "files": [
     "migrations/078_evidence_trail.sql",
     "scripts/verify_audit_chain.py",
