@@ -66,6 +66,9 @@ COPY scripts/dcp_citation_status.py ./scripts/dcp_citation_status.py
 # ...and the setback controls' clause labels, which every report prints (migration 077).
 COPY scripts/dcp_setback_citation_status.py ./scripts/dcp_setback_citation_status.py
 COPY scripts/dq_probe_section_code_not_in_source.py ./scripts/dq_probe_section_code_not_in_source.py
+# ...and every served rule's page link (migration 079). ai_extractor imports the locator too.
+COPY scripts/dcp_page_repair.py ./scripts/dcp_page_repair.py
+COPY scripts/rule_page_locator.py ./scripts/rule_page_locator.py
 # verify_extraction_fidelity (the gate's grader) imports this at module level.
 COPY services/extracted_data_integrity.py ./services/extracted_data_integrity.py
 # dcp_commit_approved falls back to this to recover a section code from

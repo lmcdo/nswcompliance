@@ -70,3 +70,11 @@ def test_the_health_check_counts_a_rule_with_no_verdict_even_without_a_pdf_path(
     """Cross-review 2026-09-26: NULL source path IS NOT DISTINCT FROM a NULL registry path."""
     src = (ROOT / "scripts" / "dcp_page_repair.py").read_text(encoding="utf-8")
     assert "rp.page_check IS NULL" in src
+
+
+def test_the_extraction_image_carries_the_page_repair_it_runs_after_every_publish():
+    """dcp_commit_approved runs dcp_page_repair.py as a subprocess, which the import guard
+    (test_dockerfile_monitors_imports) cannot see."""
+    docker = (ROOT / "Dockerfile.monitors").read_text(encoding="utf-8")
+    for f in ("dcp_page_repair.py", "rule_page_locator.py"):
+        assert f"COPY scripts/{f} ./scripts/{f}" in docker, f
