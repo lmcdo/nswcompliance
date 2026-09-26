@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes what every served DCP citation links to and prints, writes 17,489 production rows through a new script, adds a migration with triggers on regulatory_provisions, and changes the AI reader that writes every future rule page. Wrong output here sends readers to the wrong page of a planning control.",
-  "commit_hash": "f2207bea",
+  "commit_hash": "a9eb4a54",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
