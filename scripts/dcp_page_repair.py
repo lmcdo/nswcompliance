@@ -187,7 +187,8 @@ def check(conn) -> int:
     cur = conn.cursor()
     cur.execute("""
         SELECT coalesce(rp.page_check, 'UNCHECKED'), count(*),
-               count(*) FILTER (WHERE rp.page_source_path IS DISTINCT FROM reg.r2_current_path)
+               count(*) FILTER (WHERE rp.page_check IS NULL
+                                  OR rp.page_source_path IS DISTINCT FROM reg.r2_current_path)
         FROM regulatory_provisions rp
         JOIN dcp_chapter_registry reg
           ON reg.council = rp.source_council AND reg.chapter_key = rp.source_chapter_key AND reg.is_active
@@ -197,7 +198,7 @@ def check(conn) -> int:
     stale = sum(s for _k, _n, s in rows)
     for k, n, _s in rows:
         print(f"  {n:6}  {k}")
-    print(f"  {stale:6}  judged on a PDF that is no longer the chapter's current one")
+    print(f"  {stale:6}  never checked, or judged on a PDF that is no longer the chapter's current one")
     if stale:
         print("FAIL: served rules whose page link was never checked against their current PDF. "
               "Run `python scripts/dcp_page_repair.py --apply`.")

@@ -63,3 +63,9 @@ def test_the_migration_forgets_a_verdict_when_the_text_or_page_changes():
     assert "NEW.provision_text IS DISTINCT FROM OLD.provision_text" in sql
     assert "NEW.pdf_page IS DISTINCT FROM OLD.pdf_page" in sql
     assert "AFTER UPDATE OF r2_current_path, is_active ON dcp_chapter_registry" in sql
+
+
+def test_the_health_check_counts_a_rule_with_no_verdict_even_without_a_pdf_path():
+    """Cross-review 2026-09-26: NULL source path IS NOT DISTINCT FROM a NULL registry path."""
+    src = (ROOT / "scripts" / "dcp_page_repair.py").read_text(encoding="utf-8")
+    assert "rp.page_check IS NULL" in src
