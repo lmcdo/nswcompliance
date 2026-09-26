@@ -1,0 +1,67 @@
+{
+  "tier": "standard",
+  "justification": "Stops test runs writing to the production database; no served output changes, one guard in the commit worker.",
+  "commit_hash": "254309f8",
+  "files": [
+    "scripts/dcp_commit_approved.py",
+    "tests/test_dcp_page_repair.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions citation_status and page_check verdicts, written by the post-publish re-check scripts.",
+    "assumption_mismatch": "If PYTEST_CURRENT_TEST is set outside pytest, the re-checks are skipped and the health checks (DQ-113, citation) report the unchecked rows.",
+    "new_vs_existing": "Only changes behaviour inside pytest; production publishes run the re-checks exactly as before."
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/dcp_commit_approved.py:390",
+      "input": "command line flags and the approved review queue rows from the database",
+      "output": "committed provisions, then per-council post-publish re-check subprocesses",
+      "if_none": "with no committed councils nothing is re-checked, as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "under_test",
+      "read_at": "scripts/dcp_commit_approved.py:675",
+      "nullable": "no",
+      "guard_at": "scripts/dcp_commit_approved.py:675",
+      "if_missing": "unset outside pytest, so production runs the re-checks"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A test drives main() with a fake connection and commits a council",
+      "what_happens": "the re-check scripts start as subprocesses with the real .env and write verdicts to production",
+      "mitigated": true,
+      "how": "scripts/dcp_commit_approved.py:675 skips them when PYTEST_CURRENT_TEST is set",
+      "repro": "run the three commit-worker test files and count backup files: unchanged"
+    },
+    {
+      "scenario": "The guard also fires in a production publish",
+      "what_happens": "verdicts would go stale after a publish",
+      "mitigated": true,
+      "how": "PYTEST_CURRENT_TEST is set only by pytest; the migration 079 and 078 triggers void stale verdicts and the health checks fail on unchecked rows",
+      "repro": "python scripts/dcp_page_repair.py --check after a publish"
+    },
+    {
+      "scenario": "A new post-publish script is added outside the guarded loop",
+      "what_happens": "tests reach production again through the new subprocess",
+      "mitigated": true,
+      "how": "tests/test_dcp_page_repair.py pins the guard on the loop that holds every re-check",
+      "repro": "pytest tests/test_dcp_page_repair.py -k production"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "pytest tests/test_dcp_commit_approved_records_hash.py tests/test_dcp_commit_rederives_precinct_keys.py tests/test_dcp_commit_refuses_section_loss.py, then count data/db_rollback_backups/*pre_page_repair*",
+    "fails_when": "a new backup file appears, meaning a subprocess wrote to production",
+    "observed_red": "2026-09-27: before the guard, a pre-push test run left ten backup files 0354-0403, one recording a 1,290-row write; after it, the same three files ran with the count unchanged (14 before, 14 after) and in 4.5s instead of 24s."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
