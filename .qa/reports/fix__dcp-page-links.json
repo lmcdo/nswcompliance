@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes what every served DCP citation links to and prints, writes 17,489 production rows through a new script, adds a migration with triggers on regulatory_provisions, and changes the AI reader that writes every future rule page. Wrong output here sends readers to the wrong page of a planning control.",
-  "commit_hash": "72c24b9c",
+  "commit_hash": "17f8fd9e",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
@@ -35,14 +35,14 @@
   "functions": [
     {
       "name": "locate",
-      "file_line": "scripts/rule_page_locator.py:150",
+      "file_line": "scripts/rule_page_locator.py:161",
       "input": "rule text, Pages of one PDF, stored page, optional chunk window, anchor pages from citation_proof",
       "output": "(page or None, verdict) to plan_row and _place_on_pages",
       "if_none": "empty or short text returns (None, too_short); no candidate returns not_found; several returns unresolved"
     },
     {
       "name": "printed_labels",
-      "file_line": "scripts/rule_page_locator.py:279",
+      "file_line": "scripts/rule_page_locator.py:296",
       "input": "a dict mapping each page number to the header and footer lines printed on it",
       "output": "page to printed page label, used by plan_row",
       "if_none": "empty margins give an empty dict; documents labelled on under half their pages give an empty dict"

@@ -297,3 +297,23 @@ def test_a_new_sections_unreadable_first_page_does_not_take_the_old_sections_cou
     m.update({p: [f"2.6-{p - 84}"] for p in range(86, 90)})
     got = L.printed_labels(m)
     assert 85 not in got and got[84] == "2.5-18" and got[86] == "2.6-2"
+
+
+def test_a_stored_page_with_only_the_rules_opening_is_left_for_the_whole_rule():
+    """Cross-review: the opening 40% on stored page 3, the whole rule only on page 8."""
+    long_body = (BODY + " Garages and carports are to be located behind the building line and"
+                 " must not dominate the street frontage of the dwelling or the lot.")
+    rule = "# C3 Front setbacks\n" + long_body
+    t = L.tokens(long_body)
+    opening = " ".join(t[: len(t) * 2 // 5])
+    assert L.locate(rule, [_doc(p3=opening, p8=long_body)], stored=3) == (8, "moved")
+
+
+def test_a_table_page_printing_every_word_out_of_order_keeps_its_link():
+    long_body = (BODY + " Garages and carports are to be located behind the building line and"
+                 " must not dominate the street frontage of the dwelling or the lot.")
+    rule = "# C3 Front setbacks\n" + long_body
+    t = L.tokens(long_body)
+    k = len(t) * 2 // 5
+    table = " ".join(t[:k]) + " | " + " ".join(reversed(t[k:]))   # cells read out of order
+    assert L.locate(rule, [_doc(p3=table, p8=long_body)], stored=3) == (3, "on_page")

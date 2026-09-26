@@ -37,6 +37,7 @@ STEP = 3             # a piece starts every STEP words of the rule
 HOLD = 0.5           # share of the rule's pieces an occurrence needs
 WEAK_HOLD = 0.3      # ...or this much, when it is the only place anything like the rule is printed
 TIE = 0.8            # a second occurrence within this share of the best is a real repeat
+TABLE_SHARE = 0.9    # ...kept on its stored page only when that page prints this share of its words
 MIN_TOKENS = 5       # a shorter rule ("See above.") cannot be located honestly
 HEAD_WINDOW = 200    # words above an occurrence searched for the rule's own heading words
 
@@ -55,6 +56,10 @@ def rule_body(text: str | None) -> str:
         if rest.strip():
             return rest
     return t
+
+
+def content(rule_tokens: list[str]) -> list[str]:
+    return [w for w in rule_tokens if len(w) > 3]
 
 
 def heading_words(text: str | None) -> set[str]:
@@ -79,9 +84,15 @@ class Doc:
         self.index = defaultdict(list)
         for k in range(len(self.tok) - PIECE + 1):
             self.index[tuple(self.tok[k:k + PIECE])].append(k)
+        self.words = defaultdict(set)               # page -> its words, for the table case
+        for w, p in zip(self.tok, self.page):
+            self.words[p].add(w)
         self.at = defaultdict(list)                 # word -> positions, for short rules
         for k, w in enumerate(self.tok):
             self.at[w].append(k)
+
+    def share(self, words: list[str], page: int) -> float:
+        return sum(w in self.words.get(page, ()) for w in words) / len(words) if words else 0.0
 
     def above(self, k: int) -> set[str]:
         return set(self.tok[max(0, k - HEAD_WINDOW):k])
@@ -173,10 +184,16 @@ def locate(text: str | None, docs: list[Doc], stored: int | None = None,
     # A stored page that holds the rule is never moved off: a best match (a rule running over
     # a page break is on both pages), or any strong one -- Woollahra B1.11.1 "Vaucluse East" was
     # on its stored page 41 and scored a little lower than the near-identical "Vaucluse West"
-    # text on page 38. A table prints a rule's cells out of order, so a third in order is enough
-    # to keep the stored page (27 moves left a page printing every word of the rule).
-    keep = [occ for occ in found if occ[0] >= min(WEAK_HOLD, TIE * best)]
+    keep = [occ for occ in found if occ[0] >= min(HOLD, TIE * best)]
     if stored is not None and any(stored in occ[2] for occ in keep):
+        return stored, "on_page"
+    # A table prints a rule's cells out of order, so its stored page can hold only a third of
+    # it in order yet every word of it (27 moves left such a page). A page holding just the
+    # rule's OPENING also has a third in order -- but not its words (cross-review). Only the
+    # stored page, only with part of it in order, and only with nearly all its words, is kept.
+    partial = [occ for occ in found if occ[0] >= WEAK_HOLD]
+    if stored is not None and any(stored in occ[2] for occ in partial) and any(
+            d.share(content(rt), stored) >= TABLE_SHARE for d in docs):
         return stored, "on_page"
     if len({occ[1] for occ in top}) > 1:
         top = _by_heading(text, top, docs)
