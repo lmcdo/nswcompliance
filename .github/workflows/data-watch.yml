@@ -105,13 +105,6 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/validate_schema_contract.py
 
-      - name: Report audit trail hash chain is intact
-        id: audit_chain
-        if: always()
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python scripts/verify_audit_chain.py
-
       - name: Served controls carry their provenance
         id: provenance
         if: always()
@@ -188,6 +181,13 @@ jobs:
       # 12 — because those images carry neither `gh` nor `jq`. The alarm that
       # would have told us CI was broken was itself broken by the environment.
       # Do not reintroduce a shell step here.
+      - name: Report audit trail hash chain is intact
+        id: audit_chain
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/verify_audit_chain.py
+
       - name: Raise or clear the alarm
         if: always()
         uses: actions/github-script@v9
