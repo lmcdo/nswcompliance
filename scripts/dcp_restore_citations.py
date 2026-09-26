@@ -85,12 +85,52 @@ def rewrite_heading(text: str, old_tail: str, new_code: str) -> str | None:
     for idx in range(1, len(heading) + 1):
         if _norm(heading[:idx]) == want and (idx == len(heading) or heading[idx] == " "):
             return f"# {new_code}{heading[idx:]}{sep}{rest}"
+    # "# preamble Document Information — O3 To Ensure ..." is a heading this pipeline
+    # invented when it lost the section (Marrickville, 110 rows). Everything before
+    # the stored label is ours; the words after it are the rule's own title.
+    label = re.split(r"[\s_]+", old_tail.strip())[-1]
+    if heading.lower().startswith("preamble") and label:
+        m = list(re.finditer(r"(?:^|\s)" + re.escape(label) + r"(?=\s|$)", heading, flags=re.I))
+        if m:
+            return f"# {new_code}{heading[m[-1].end():]}{sep}{rest}"
     return None
 
 
 def section_header_for(new_text: str, new_ref: str, document_id: str) -> str | None:
     from scripts.dcp_commit_approved import _section_header_from_text
     return _section_header_from_text(new_text, new_ref, document_id)
+
+
+def plans_from_file(conn, path: str, council: str) -> tuple[list, Counter]:
+    """Plans computed elsewhere ([{"id", "new"}], e.g. Ashfield's Part + label pass,
+    2026-09-25), built into the same shape plan_council gives, so the write keeps
+    its backup, pinning, collision check and re-proof. Every new citation must
+    still PROVE here, against the page, or the row is left alone."""
+    import json
+    cur = conn.cursor()
+    tally, plans = Counter(), []
+    wanted = {int(x["id"]): x["new"] for x in json.loads(Path(path).read_text(encoding="utf-8"))}
+    cur.execute("SELECT rp.id, rp.document_id, rp.section_header, rp.ref_number, rp.provision_text, "
+                "rp.page_number, rp.source_chapter_key, reg.r2_current_path FROM regulatory_provisions rp "
+                "JOIN dcp_chapter_registry reg ON reg.council = rp.source_council "
+                "AND reg.chapter_key = rp.source_chapter_key AND reg.is_active "
+                "WHERE rp.id = ANY(%s) AND rp.is_current AND rp.source_council = %s",
+                (list(wanted), council))
+    for rid, doc_id, header, ref, text, page, chapter, r2_path in cur.fetchall():
+        code = wanted[rid]
+        new_text = rewrite_heading(text, (ref or "").split("__")[-1], code)
+        if new_text is None or not (ref or "").startswith(f"{doc_id}__"):
+            tally["left: first line does not start with the stored code"] += 1
+            continue
+        new_ref = f"{doc_id}__{code.replace('.', '_')}"
+        plans.append({"id": rid, "council": council, "chapter": chapter, "document_id": doc_id,
+                      "old_ref": ref, "new_ref": new_ref, "old_header": header,
+                      "new_header": section_header_for(new_text, new_ref, doc_id),
+                      "new_text": new_text, "r2_path": r2_path, "page": page,
+                      "old_text_md5": hashlib.md5((text or "").encode()).hexdigest()})
+        tally["planned"] += 1
+    tally["left: not current or not this council"] += len(wanted) - sum(tally.values())
+    return plans, tally
 
 
 def plan_council(conn, s3, bucket, cache_dir: Path, council: str | None):
@@ -126,6 +166,9 @@ def plan_council(conn, s3, bucket, cache_dir: Path, council: str | None):
                 tally["left: first line does not start with the stored code"] += 1
                 continue
             new_ref = f"{doc_id}__{d['code'].replace('.', '_')}"
+            if not cd.page_agrees(new_ref, text, readings, hint):
+                tally["left: the second reading of the page disagrees"] += 1
+                continue
             new_header = section_header_for(new_text, new_ref, doc_id)
             plans.append({"id": rid, "council": cncl, "chapter": chapter, "document_id": doc_id,
                           "old_ref": ref, "new_ref": new_ref, "old_header": header,
@@ -163,6 +206,8 @@ def main() -> int:
     ap.add_argument("--apply", action="store_true", help="Write. Without it nothing changes.")
     ap.add_argument("--audit-share", type=float, default=0.05)
     ap.add_argument("--cache-dir", default=str(Path(tempfile.gettempdir()) / "dq111_lines"))
+    ap.add_argument("--plans-file", help="JSON [{id, new}] computed by a council-specific pass; "
+                                         "each is proven again here before it is written.")
     args = ap.parse_args()
     if not 0 < args.audit_share <= 1:
         ap.error("--audit-share must be above 0 and at most 1")
@@ -186,7 +231,20 @@ def main() -> int:
             aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"], region_name="auto")
         cache_dir = Path(args.cache_dir)
         cache_dir.mkdir(parents=True, exist_ok=True)
-        plans, tally = plan_council(conn, s3, os.environ["R2_BUCKET_NAME"], cache_dir, args.council)
+        if args.plans_file:
+            if not args.council:
+                ap.error("--plans-file needs --council")
+            plans, tally = plans_from_file(conn, args.plans_file, args.council)
+            unproven = []
+            for p in plans:
+                rd = probe.chapter_lines(s3, os.environ["R2_BUCKET_NAME"], p["r2_path"], cache_dir)
+                if cp.prove_citation_any(p["new_ref"], p["new_text"], rd, p["page"])["status"] != "proven":
+                    unproven.append(p)
+            plans = [p for p in plans if p not in unproven]
+            tally["left: does not prove as rewritten"] += len(unproven)
+            tally["planned"] = len(plans)
+        else:
+            plans, tally = plan_council(conn, s3, os.environ["R2_BUCKET_NAME"], cache_dir, args.council)
         plans, clashes = drop_collisions(conn, plans)
         print(f"scope: {args.council or 'all councils'}")
         for k, n in tally.most_common():

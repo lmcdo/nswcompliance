@@ -100,8 +100,11 @@ class Line:
 
 #: A code at the start of a line, optionally after "part"/"section"/"chapter".
 #: The lookahead refuses a longer number, so "8.2.3" does not start "8.2.31".
+#: A bare year ("1997 ...") and a standard's number ("1924.2-81 (playground ...)")
+#: are not headings: counted as one, a year proved "1924.2 C10" (leichhardt C1).
 CODE_AT_START = re.compile(
-    r"^(?:(?:part|section|chapter)\s+)?((?:[a-z]{1,3})?\d+[a-z]?(?:\.\d+[a-z]?)*)(?![\d.]*\d)")
+    r"^(?:(?:part|section|chapter)\s+)?(?!(?:1[89]|20)\d\d(?!\d))"
+    r"((?:[a-z]{1,3})?\d+[a-z]?(?:\.\d+[a-z]?)*)(?![\d.]*\d)(?![-–/]\d)")
 #: A contents-page line: title, leaders or space, page number.
 _TOC_LINE = re.compile(r"(\.{3,}|\s)\d{1,4}\s*$")
 #: A page number in the top/bottom margin. Harmless as text, but "1" at the
@@ -221,8 +224,9 @@ def read_raw_lines(pdf_path: str) -> tuple[list[Line], float | None]:
     against do not keep."""
     import fitz
     import pdf_picture_labels as ppl
-    raw, pictures, masks = [], [], {}
+    raw, pictures, masks, read, ocr_cache = [], [], {}, [], {}
     width = None
+    reader = ppl.ocr_reader()
     with fitz.open(pdf_path) as doc:
         for pno, page in enumerate(doc, 1):
             width = width or page.rect.width
@@ -232,8 +236,9 @@ def read_raw_lines(pdf_path: str) -> tuple[list[Line], float | None]:
                     if t:
                         raw.append(Line(pno, ln["bbox"][1], ln["bbox"][0], t))
             pictures += [(pno, y, x, m, h) for y, x, m, h in ppl.page_label_pictures(doc, page, masks)]
+            read += [(pno, y, x, t) for y, x, t in ppl.ocr_label_pictures(doc, page, ocr_cache, reader)]
     pictures = [p[:4] for p in ppl.label_sized(pictures)]
-    return ppl.merge_labels(raw, pictures, Line), width
+    return ppl.merge_labels(raw, pictures, Line, read), width
 
 
 def load_lines(pdf_path: str) -> ChapterLines:
@@ -250,8 +255,35 @@ def load_readings(pdf_path: str) -> tuple[ChapterLines, ChapterLines]:
 
 # -- proof -------------------------------------------------------------------------
 
-_RANK = {"absent": 0, "cross_ref_only": 1, "not_nearest": 2, "ancestor_missing": 3,
+_RANK = {"absent": 0, "cross_ref_only": 1, "label_as_section": 1, "not_nearest": 2, "ancestor_missing": 3,
          "item_missing": 4, "item_format": 5, "imprecise": 6}
+
+
+_NUM_LABEL = re.compile(r"^\(?(\d{1,3})[.)](?:\s|$)")
+
+
+def _numeric_label_beside(L: list, start: int, lo: int) -> str | None:
+    """The nearest number label ("14.", "(14)") at or up to three lines above the
+    rule's first line, not above `lo` (its heading); None if there is none."""
+    for i in range(start, max(lo, start - 3) - 1, -1):
+        m = _NUM_LABEL.match(L[i].text)
+        if m:
+            return m.group(1)
+    return None
+
+
+_OBLIGATION = re.compile(r"(?:is|are) to|(?:must|shall|should|will|may)")
+
+
+def _titled(L: list, h: int, code: str) -> bool:
+    """Is the code on line h followed by a short title (a heading), rather than a
+    rule's sentence (a label)? The title is the rest of line h, else line h+1."""
+    rest = L[h].text[len(code):].strip(" .:-–	")
+    if not rest and h + 1 < len(L):
+        rest = L[h + 1].text.strip()
+    words = rest.split()
+    return (0 < len(words) <= 8 and not rest.endswith(".")
+            and not _OBLIGATION.search(rest))
 
 
 def _own_label(L: list, lo: int, start: int, end: int, hi: int, item: str) -> str | None:
@@ -309,7 +341,10 @@ def _heading_like(line: Line, page_width: float | None) -> bool:
     """Can this line close a section? Not a long sentence, not a measurement, and
     not a navigation tab in the outer margin (Marrickville prints "8.5 HCA style
     sheets" at x=551 on every page of 8.4)."""
+    # A ")" with no "(" is the tail of a sentence's cross-reference: "...(see
+    # C1.11.7 Recognised shopping streets)" proved C1.11.7 for leichhardt C1 rules.
     return (len(line.text) < 90 and not _MEASURE.match(line.text)
+            and line.text.count(")") <= line.text.count("(")
             and (page_width is None or line.x < 0.75 * page_width))
 
 
@@ -407,6 +442,13 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
         above = [i for i in heads if i <= end]
         h = max(above) if above else min(heads)   # below only for a side-column heading
         lo = min(h, start)
+        # "C12" with no section is the rule's own LABEL, not a heading: what follows
+        # it is the rule's sentence. A lettered section is followed by a title, on
+        # its line or the next ("b6" / "accessibility and adaptability", Waverley). The cheap reader drops the section
+        # this way, and ~230 served rows were cited by a bare label (2026-09-25).
+        if not item and not bare and re.fullmatch(r"[a-z]{1,3}\d+[a-z]?", leaf)                 and not _titled(L, h, leaf):
+            keep("label_as_section")
+            continue
         if bare:
             closing = [L[i].text for i in range(lo + 1, end + 1)
                        if (m := _KEYWORD_HEAD.match(L[i].text)) and m.group(1) != leaf]
@@ -445,6 +487,15 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
                     continue
                 return "proven"
             digits = re.sub(r"^[a-z]+", "", item)
+            # Warringah prints its controls "14." and we store "C14": the same
+            # number, when it is the NEAREST number label printed where the rule's
+            # words start (not merely somewhere in the section -- that let shifted
+            # labels through). Letters ("c)" for 3) are not accepted this way.
+            if digits.isdigit() and _numeric_label_beside(L, start, lo) == digits:
+                if finer:
+                    keep("imprecise:" + finer[-1][:30])
+                    continue
+                return "proven"
             # The council's own label for the same position: "7." (Warringah) or
             # "g)" (Campbelltown letters its controls; we store "C7" for both).
             printed = [re.escape(digits)]

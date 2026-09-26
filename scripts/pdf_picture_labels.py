@@ -116,25 +116,88 @@ def page_label_pictures(doc, page, mask_cache: dict) -> list[tuple[float, float,
     return out
 
 
+#: A label picture read by OCR: small, anywhere on the page (Ashfield prints its
+#: design-solution labels mid-page, beside the rule, not in the margin).
+OCR_MAX_HEIGHT = 12.0
+OCR_MAX_WIDTH = 45.0
+#: Kept only when the reading is confident AND shaped like a label.
+OCR_MIN_SCORE = 0.9
+_LABEL_TEXT = re.compile(r"^[a-z]{1,3}[0-9]+(?:\.[0-9]+)*\.?$")
+
+
+def ocr_label_pictures(doc, page, cache: dict, reader=None) -> list[tuple[float, float, str]]:
+    """(y, x, label) for small pictures on `page` that OCR reads as a label.
+
+    Ashfield DCP 2016 prints "PC4.", "DS5.1" ... as images, numbered per part, so
+    counting them (name_labels) cannot work; reading them can. Probed
+    2026-09-25: 24 of 24 labels on chapter F pages 8-14 read exactly.
+
+    Each distinct picture (by mask) is read once, so one picture can never get
+    two names. A reading below OCR_MIN_SCORE, or not shaped like a label, is
+    dropped: the proof then refuses as it did before. `reader` is a RapidOCR
+    instance; with none available this returns [] and nothing changes.
+    """
+    if reader is None:
+        return []
+    import fitz
+    masks = {im[7]: im[1] for im in page.get_images(full=True)}
+    try:
+        drawn = [n.decode() for n in _DRAW.findall(page.read_contents())]
+    except Exception:
+        return []
+    info = page.get_image_info()
+    if len(drawn) != len(info):
+        return []
+    out = []
+    for name, placed in zip(drawn, info):
+        x0, y0, x1, y1 = placed["bbox"]
+        smask = masks.get(name)
+        if not smask or (y1 - y0) > OCR_MAX_HEIGHT or (x1 - x0) > OCR_MAX_WIDTH:
+            continue
+        key = hashlib.md5(fitz.Pixmap(doc, smask).samples).hexdigest()
+        if key not in cache:
+            png = page.get_pixmap(dpi=600, clip=fitz.Rect(x0 - 2, y0 - 2, x1 + 2, y1 + 2)).tobytes("png")
+            res, _ = reader(png, use_det=False, use_cls=False)
+            text, score = (res[0][0], float(res[0][1])) if res else ("", 0.0)
+            text = text.strip().lower().replace(" ", "")
+            cache[key] = text if score >= OCR_MIN_SCORE and _LABEL_TEXT.match(text) else None
+        if cache[key]:
+            out.append((y0, x0, cache[key]))
+    return out
+
+
+def ocr_reader():
+    """A RapidOCR reader, or None when the engine is not installed."""
+    try:
+        from rapidocr_onnxruntime import RapidOCR
+    except ImportError:
+        return None
+    return RapidOCR()
+
+
 #: A label picture's top sits up to ~3.2pt below its text line's (Leichhardt:
 #: text 90.8, picture 94.0); the next line is ~13.8pt down. Half a label high.
 ROW_TOLERANCE = 6.0
 
 
-def merge_labels(raw: list, pictures: list[tuple], make_line) -> list:
+def merge_labels(raw: list, pictures: list[tuple], make_line, read: list[tuple] = ()) -> list:
     """Put each named label picture into the reading as a line of its own,
     just before the text it sits beside (the line on its row, else the first
     line below it). Native order is not top-to-bottom -- Leichhardt draws the
     footer first -- so the position is found per page, not by a running y.
-    `make_line(page, y, x, text)` builds a line of the caller's type."""
-    if not pictures:
+    `make_line(page, y, x, text)` builds a line of the caller's type.
+    `read` holds (page, y, x, label) already named by OCR; they are placed the same way."""
+    if not pictures and not read:
         return raw
     events = sorted([(ln.page, ln.y, "t", ln.text) for ln in raw]
                     + [(p, y, "p", m) for p, y, _x, m in pictures], key=lambda e: (e[0], e[1]))
     x_of = {(p, y): x for p, y, x, _m in pictures}
+    x_of.update({(p, y): x for p, y, x, _t in read})
     before: dict[int, list] = {}      # raw index -> labels to put ahead of it
     after: dict[int, list] = {}       # ... or after it, below a page's last line
-    for p, y, label in name_labels(events):
+    counted = name_labels(events) if pictures else []
+    taken = {(p, y) for p, y, _l in counted}
+    for p, y, label in counted + [(p, y, t) for p, y, _x, t in read if (p, y) not in taken]:
         on_page = [i for i, ln in enumerate(raw) if ln.page == p]
         row = [i for i in on_page if abs(raw[i].y - y) <= ROW_TOLERANCE]
         below = [i for i in on_page if raw[i].y > y]

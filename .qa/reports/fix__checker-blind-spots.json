@@ -1,0 +1,151 @@
+{
+  "tier": "critical",
+  "justification": "The citation proof could not see control labels Ashfield prints as pictures numbered per part (PC4., DS5.1), so it could not prove or refuse them. This adds a local OCR read of those pictures, kept only when confident and label-shaped. Adds dcp_page_reread: re-reads only the pages behind unproven citations or missing rules, one page per call (5-page trial 94% proven vs 12-page batches), and queues a targeted change. Marrickville part 3: 48 unproven to 0, no page left missing.",
+  "commit_hash": "722a43ec",
+  "files": [
+    "scripts/citation_proof.py",
+    "scripts/dcp_page_batch.py",
+    "scripts/dcp_page_reread.py",
+    "scripts/dq_probe_section_code_not_in_source.py",
+    "scripts/pdf_picture_labels.py",
+    "scripts/requirements-monitor.txt",
+    "tests/test_dcp_page_batch.py",
+    "tests/test_dcp_page_batch_real_db.py",
+    "tests/test_dcp_page_reread.py",
+    "tests/test_dcp_page_reread_real_db.py",
+    "tests/test_pdf_picture_labels.py"
+  ],
+  "pre_impl": {
+    "existing_data": "No database writes. OCR probe on Ashfield chapter F pages 8-14: 24 of 24 labels read exactly. Corpus before: 4,511 of 16,291 unproven; wrong-label test 9 of 418 passing.",
+    "assumption_mismatch": "Expected OCR to clear most of Ashfield's unproven rows; it cleared 51 of 1,043, because most live Ashfield citations are composites the old reader invented, not unread labels.",
+    "new_vs_existing": "Extends pdf_picture_labels, which already names pictures by counting; OCR only names what counting cannot.",
+    "external_source_error": "Without the OCR engine installed the reader returns nothing and the proof behaves exactly as before.",
+    "frontend_type": "No frontend change; the proof runs in the fidelity gate and the DQ-111 probe.",
+    "user_failure_mode": "A misread label could prove a wrong citation. Mitigated: score at least 0.9, label-shaped text only, one reading per distinct picture; the wrong-label test stayed at 9 of 425."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_pdf_picture_labels.py -q",
+    "fails_when": "a low-confidence or non-label reading is kept, one picture is read twice, or a missing OCR engine changes the reading",
+    "observed_red": "Live: Ashfield unproven 1,043 to 994 (51 newly proven, 2 newly failing); wrong-label test 9 of 425 passing, same as before.",
+    "manual_probe": "python scripts/dq_probe_section_code_not_in_source.py --council ashfield"
+  },
+  "functions": [
+    {
+      "name": "pdf_picture_labels.ocr_label_pictures",
+      "file_line": "scripts/pdf_picture_labels.py",
+      "input": "An open PyMuPDF document, one page, a cache keyed by picture mask, and a RapidOCR reader or None.",
+      "output": "(y, x, label) for each small picture read confidently as a label such as pc4. or ds5.1.",
+      "if_none": "With no reader, or a page whose images cannot be paired with their draws, returns an empty list."
+    },
+    {
+      "name": "dcp_page_reread.close_over_refs",
+      "file_line": "scripts/dcp_page_reread.py",
+      "input": "The target pages and (ref_number, pages) for every live rule of the chapter.",
+      "output": "Target pages plus every page holding a rule that shares a number with one on a target page, and refs spread too wide to touch.",
+      "if_none": "No targets returns an empty set, and the chapter is reported as nothing to re-read."
+    },
+    {
+      "name": "dcp_page_batch.judge",
+      "file_line": "scripts/dcp_page_batch.py",
+      "input": "A chapter's context, its plan entry, and every batch answer collected so far keyed by request id.",
+      "output": "Pages settled from answers plus the set of pages to re-ask with the strong model when a first answer leaves rules out or does not prove.",
+      "if_none": "A missing answer parses as empty, which marks a read page for the strong model rather than accepting nothing."
+    }
+  ],
+  "values": [
+    {
+      "name": "OCR confidence",
+      "value": "0.9",
+      "why": "The 24 probed labels scored above it; low scores are misreads the proof must not trust.",
+      "source": "probe 2026-09-25",
+      "read_at": "pdf_picture_labels.OCR_MIN_SCORE",
+      "if_missing": "n/a - constant"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "OCR misreads a label, e.g. DS11.1 as DS1.1, with low confidence",
+      "what_happens": "A wrong label could prove a citation that names the wrong control.",
+      "mitigated": true,
+      "how": "Readings under 0.9 confidence are dropped; the test pins it.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py -k confident -q"
+    },
+    {
+      "scenario": "A small picture that is not a label, like an icon or the word Figure, is read",
+      "what_happens": "Junk text would be inserted into the reading as if it were a label line.",
+      "mitigated": true,
+      "how": "Only text shaped like a label (letters then numbers) is kept.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py -k confident -q"
+    },
+    {
+      "scenario": "The OCR engine is missing on a machine or in the Railway image",
+      "what_happens": "The proof would crash, or silently behave differently from other environments.",
+      "mitigated": true,
+      "how": "The engine is optional and the reader returns nothing without it; it is now installed in the monitors image.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py -k engine -q"
+    },
+    {
+      "scenario": "The same label picture appears on many pages and OCR is slow",
+      "what_happens": "Reading every placement would make each chapter take minutes and could read one picture two ways.",
+      "mitigated": true,
+      "how": "Each distinct picture (by mask pixels) is read once and cached for the document.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels.py -k once -q"
+    },
+    {
+      "scenario": "A label picture is already named by counting under a Controls heading (Leichhardt)",
+      "what_happens": "An OCR name and a counted name could disagree and insert two labels for one rule.",
+      "mitigated": true,
+      "how": "OCR names are used only for positions counting did not name.",
+      "repro": "python -m pytest tests/test_pdf_picture_labels_real_pdf.py -q"
+    },
+    {
+      "scenario": "A re-read page holds rule D18 and another D18 sits on a page not re-read",
+      "what_happens": "Publishing replaces by number and would wipe the D18 that was never re-read.",
+      "mitigated": true,
+      "how": "close_over_refs pulls every page sharing that number into the re-read.",
+      "repro": "python -m pytest tests/test_dcp_page_reread.py -k shares -q"
+    },
+    {
+      "scenario": "An old row carries text from a page that was not re-read, and is removed",
+      "what_happens": "That page's rules would disappear from what is served.",
+      "mitigated": true,
+      "how": "The tool refuses any change set after which a page holding rule words is newly missing.",
+      "repro": "python scripts/dcp_page_reread.py --council marrickville --chapter part3-subdivision"
+    },
+    {
+      "scenario": "The model returns 4.1 C2 while a rule not re-read is stored as ..__4_1 C2",
+      "what_happens": "Compared raw, the clash is missed; two rules share one ref and the targeted publish wipes the untouched one.",
+      "mitigated": true,
+      "how": "Codes are compared in stored form (dots to underscores) and a clash gets a _2 suffix.",
+      "repro": "python -m pytest tests/test_dcp_page_reread.py -k dotted -q"
+    },
+    {
+      "scenario": "The cheap model's answer for a page leaves rules out or gives numbers that do not prove",
+      "what_happens": "Accepting it would queue a worse page than the one it replaces.",
+      "mitigated": true,
+      "how": "judge sends that page to the strong model in a second batch; only a round-two answer is final.",
+      "repro": "python -m pytest tests/test_dcp_page_batch.py -q"
+    },
+    {
+      "scenario": "Live rules of a chapter change while its batch is out for hours",
+      "what_happens": "Answers would be applied to rules that no longer match what was planned.",
+      "mitigated": true,
+      "how": "A fingerprint of the live rules is stored at prepare and checked at collect; a changed chapter is marked stale.",
+      "repro": "python -m pytest tests/test_dcp_page_batch.py -k signature -q"
+    },
+    {
+      "scenario": "A label question answer names a number that is not printed",
+      "what_happens": "The rule would be renamed to an invented number.",
+      "mitigated": true,
+      "how": "build_change uses a relabel only when the new number proves on the page and clashes with nothing.",
+      "repro": "python -m pytest tests/test_dcp_page_reread.py -k proves -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Railway rebuilds the monitors image with rapidocr-onnxruntime; the fidelity gate then reads Ashfield label pictures."
+  }
+}

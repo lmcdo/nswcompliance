@@ -187,3 +187,62 @@ def test_a_label_on_the_rules_row_but_to_its_right_is_not_its_label():
     ch = _raw_doc([(90.0, 71.0, "g9.6.4 basements"), (100.0, 107.0, BODY),
                    (101.0, 500.0, "c5")])
     assert _prove("G9_6_4 C5", ch)["status"] == "not_proven"
+
+
+# -- labels read by OCR (Ashfield numbers them per part, so counting cannot) --------
+
+class _FakePage:
+    """A page with small images, each a (bbox, mask xref) pair."""
+    def __init__(self, placed):
+        self.placed = placed
+
+    def get_images(self, full=True):
+        return [(0, m, 0, 0, 0, "", "", f"Im{i}", "") for i, (_b, m) in enumerate(self.placed)]
+
+    def read_contents(self):
+        return b" ".join(f"/Im{i} Do".encode() for i in range(len(self.placed)))
+
+    def get_image_info(self):
+        return [{"bbox": b} for b, _m in self.placed]
+
+    def get_pixmap(self, dpi, clip):
+        class _P:
+            def tobytes(self, _fmt):
+                return repr(clip).encode()
+        return _P()
+
+
+def test_ocr_keeps_only_confident_label_shaped_readings(monkeypatch):
+    import fitz
+    monkeypatch.setattr(fitz, "Pixmap", lambda _doc, m: type("M", (), {"samples": bytes([m])})())
+    page = _FakePage([((49, 127, 66, 133), 1), ((276, 453, 296, 459), 2),
+                      ((49, 200, 66, 206), 3), ((49, 300, 66, 306), 4)])
+    answers = {1: ("PC4.", 0.99), 2: ("DS5.1", 0.97), 3: ("PC9.", 0.5), 4: ("Figure", 0.99)}
+    calls = []
+
+    def reader(png, use_det, use_cls):
+        y = float(png.decode().split(",")[1])
+        m = {125.0: 1, 451.0: 2, 198.0: 3, 298.0: 4}[y]
+        calls.append(m)
+        return [[answers[m][0], answers[m][1], 0]], None
+
+    got = P.ocr_label_pictures(None, page, {}, reader)
+    assert [t for _y, _x, t in got] == ["pc4.", "ds5.1"]   # low score and non-label dropped
+
+
+def test_the_same_picture_is_read_once(monkeypatch):
+    import fitz
+    monkeypatch.setattr(fitz, "Pixmap", lambda _doc, m: type("M", (), {"samples": b"same"})())
+    page = _FakePage([((49, 127, 66, 133), 1), ((49, 300, 66, 306), 1)])
+    n = []
+
+    def reader(png, use_det, use_cls):
+        n.append(1)
+        return [["PC4.", 0.99, 0]], None
+
+    got = P.ocr_label_pictures(None, page, {}, reader)
+    assert len(n) == 1 and [t for *_r, t in got] == ["pc4.", "pc4."]
+
+
+def test_no_ocr_engine_changes_nothing():
+    assert P.ocr_label_pictures(None, _FakePage([((49, 127, 66, 133), 1)]), {}, None) == []

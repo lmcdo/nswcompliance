@@ -137,3 +137,69 @@ class TestRepairRefusesUnsafeRuns:
     def test_audit_share_is_bounded(self, monkeypatch):
         assert self.main_with(monkeypatch, "--audit-share", "2") == 2
         assert self.main_with(monkeypatch, "--audit-share", "0") == 2
+
+
+# --- Exceptions met in the whole-fixer test of 2026-09-25 (broken labels on
+# proven rules, plus the real dry run). Each pairs with the case that must still fix.
+
+def test_a_labelled_copy_elsewhere_does_not_place_an_unlabelled_rule():
+    # Warringah: the rule on p119 has bullets; a summary table on p164 repeats it beside "O15".
+    rd = readings(["b9 rear building setback", "objectives", "• " + BODY],
+                  ["filler"] * 3, ["r14.2 buildings are oriented", "o15 " + BODY])
+    assert derive("G3_9 O1", rd)["status"] != "derived"
+
+
+def test_a_printed_stored_section_is_not_swapped_for_another_section():
+    # Marrickville 9.40.4.2 -> "B2" (a zone name), Canterbury-Bankstown 11.12 ->
+    # "section 3.3 for ..." (a cross-reference): the stored section was printed and right.
+    rd = readings(["e2.3 other matters", "c1 some other words"], ["e2.4 flood planning", "c5 " + BODY])
+    assert derive("E2_3 C5", rd)["status"] != "derived"
+    assert derive("E2_4_1 C5", rd)["code"] == "E2.4 C5"      # stored section not printed: fixed
+
+
+def test_a_printed_stored_label_beside_the_rule_is_kept(monkeypatch):
+    # Canterbury-Bankstown 2.2.5: two columns put "p1." beside "p4.", and P1 proved.
+    rd = readings(["e2.4 flood planning", "c4", "c1 " + BODY])
+    assert cd.stored_label_beside("Doc__E2_4 C4", BODY, rd, None) == "c4"
+    assert cd.stored_label_beside("Doc__E2_4 C9", BODY, rd, None) is None
+    rd = readings(["e2.4 flood planning", "c5 " + BODY])
+    assert derive("E2_4 C7", rd)["code"] == "E2.4 C5"         # stored label not printed: fixed
+    monkeypatch.setattr(cd, "stored_label_beside", lambda *a: "c7")
+    assert derive("E2_4 C7", rd)["status"] != "derived"       # printed beside: kept
+
+
+def test_a_cross_reference_ending_in_a_bracket_is_not_a_heading():
+    # Leichhardt: "...(see C1.11.7 Recognised shopping streets)" proved C1.11.7.
+    assert not cp._heading_like(cp.Line(1, 100.0, 70.0, "c1.11.7 recognised shopping streets)"), 595.0)
+    assert cp._heading_like(cp.Line(1, 100.0, 70.0, "c1.11.7 recognised shopping streets"), 595.0)
+
+
+def test_the_second_reading_agrees_only_with_the_nearest_heading_and_the_label_beside():
+    rd = readings(["e2.3 other matters", "c1 some other words", "e2.4 flood planning", "c5 " + BODY])
+    text = "# x\n\n" + BODY
+    assert cd.page_agrees("Doc__E2_4 C5", text, rd)
+    assert not cd.page_agrees("Doc__E2_3 C5", text, rd)      # a heading further up
+    assert not cd.page_agrees("Doc__E2_4 C6", text, rd)      # label not the one printed
+    assert not cd.page_agrees("Doc__C5", text, rd)           # no section at all
+
+
+def test_a_bare_item_label_is_not_a_citation():
+    # The cheap reader returned "C12" for "C2.2.2.3 C12"; the label's own line made it pass.
+    labels = [f"c{n} buildings are to be articulated" for n in range(1, 6)]
+    rd = readings(["e2.4 flood planning"] + labels + ["c6", BODY])
+    assert cd.page_agrees("Doc__E2_4 C6", "# x\n\n" + BODY, rd)
+    assert not cd.page_agrees("Doc__C6", "# x\n\n" + BODY, rd)
+
+
+def test_a_bare_stored_label_gets_its_section_added():
+    # Marrickville stored "C38": the section was lost, the label was right.
+    labels = [f"c{n} buildings are to be articulated" for n in range(1, 6)]
+    rd = readings(["e2.4 flood planning"] + labels + ["c6", BODY])
+    assert derive("C6", rd)["code"] == "E2.4 C6"
+
+
+def test_an_invented_preamble_heading_is_replaced_whole():
+    import dcp_restore_citations as R
+    t = "# preamble Document Information — Objectives — O17 To Ensure\n\nbody"
+    assert R.rewrite_heading(t, "preamble_objectives_O17", "2.3 O17") == "# 2.3 O17 To Ensure\n\nbody"
+    assert R.rewrite_heading("# preamble Document Information — C4 x\n\nb", "preamble_O3", "2.3 O3") is None
