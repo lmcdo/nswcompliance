@@ -4,6 +4,7 @@ import { Text, View, Link } from '@react-pdf/renderer';
 import { ProvisionGroup } from '@/lib/pdf/types';
 import { formatCitation, parseParagraphsWithHighlights, sanitizeForPdf } from '@/lib/pdf/formatProvisions';
 import { styles } from './styles';
+import { pageAnchor } from '@/lib/page-citation';
 
 interface ProvisionTableProps {
   group: ProvisionGroup;
@@ -20,7 +21,7 @@ export function ProvisionTable({ group, sectionNumber, isFirst = false, councilP
   const renderCitation = (provision: ProvisionGroup['provisions'][0]) => {
     const citation = formatCitation(provision);
     if (!citation) return null;
-    const pdfPage = provision.pdf_page || provision.pdf_printed_page;
+    const pdfPage = pageAnchor(provision);
     if (councilPdfUrl && pdfPage) {
       return (
         <Link src={`${councilPdfUrl}#page=${pdfPage}`} style={{ fontSize: 7, color: '#0c4a6e', marginTop: 3, textDecoration: 'underline' }}>

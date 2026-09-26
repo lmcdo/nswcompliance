@@ -662,6 +662,9 @@ const PROVISION_BASE_SELECT = `
   rp.pdf_printed_page,
   rp.pdf_source_file,
   rp.pdf_page_image_url,
+  -- migration 079: whether pdf_page holds the rule, and the page number the council prints there
+  rp.printed_page_label,
+  rp.page_check,
   rp.v2_heritage_type,
   rp.v2_heritage_element,
   rp.v2_heritage_hca,
