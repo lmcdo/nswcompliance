@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes the clause citations printed in the paid conveyancing PDF, the Brief, the granny flat report, the DCP controls card and the parking API, and changes a CHECK constraint plus a trigger on production tables. Critical: a wrong gate would silently remove or mis-attribute citations in customer reports.",
-  "commit_hash": "a43e2190",
+  "commit_hash": "5f77d964",
   "files": [
     "scripts/citation_proof.py",
     "scripts/dcp_citation_status.py",
@@ -19,7 +19,14 @@
     "tests/test_setback_citation_gate.py",
     "frontend-nextjs/__tests__/lib/citation-display.test.ts",
     "tests/test_dcp_setback_citation_status_real_db.py",
-    "tests/test_granny_flat_citation_gate_real_db.py"
+    "tests/test_granny_flat_citation_gate_real_db.py",
+    "scripts/check_served_answer_quality.py",
+    "scripts/hold_unlocatable_controls.py",
+    "scripts/measure_control_page_corrections.py",
+    "scripts/repair_control_pdf_pages.py",
+    ".claude/dq_checks.json",
+    ".claude/served_answer_quality_baseline.json",
+    "scripts/run_migration.py"
   ],
   "pre_impl": {
     "existing_data": "dcp_setback_controls has no citation column (information_schema 2026-09-26); 843 served rows, 954 current rows with NULL provision_id. regulatory_provisions.citation_status from 076, constraint regulatory_provisions_citation_status_check.",
@@ -138,5 +145,11 @@
     "secrets": "No",
     "other_repo": "No",
     "manual_verify": "Generate a conveyancing report for a Georges River address: setback rows show 'Page N of the plan' in the Clause column where 6.1.2.3 Control N is not proven."
+  },
+  "real_layer_exempt": {
+    "scripts/check_served_answer_quality.py": "read-only check; run live against production 2026-09-26 (--baseline: OK, 168 across 31 keys) and runs nightly in data-watch against production, which is its real-layer test",
+    "scripts/hold_unlocatable_controls.py": "one-shot production write, run live 2026-09-26: dry run selected exactly the 13 OC-8 failures, --apply held 13 of 13 with a backup, and OC-8 then passed 0 of 724; a repeatable real-DB test would re-hold production rows",
+    "scripts/measure_control_page_corrections.py": "read-only measurement, run live 2026-09-26 with --missing-page-only: 18 rows, 5 single-candidate pages, 9 ambiguous, 4 not in document",
+    "scripts/repair_control_pdf_pages.py": "guarded production write, run live 2026-09-26: applied 5, skipped 0, prediction matched 5/5, row counts unchanged; a repeatable real-DB test would rewrite production pages"
   }
 }
