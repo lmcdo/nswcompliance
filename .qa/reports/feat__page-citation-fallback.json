@@ -1,0 +1,86 @@
+{
+  "tier": "standard",
+  "justification": "Changes what the property provisions API serves (clause label and first-line code hidden unless proven) and adds a schema column plus a post-publish writer. Not Critical: additive column, the serving change only removes an unproven number and keeps the page; unchecked rows (NULL) are served exactly as before. Not Minor: it changes served regulatory citations.",
+  "commit_hash": "709384ab",
+  "files": [
+    "migrations/076_regulatory_provisions_citation_status.sql",
+    "scripts/dcp_citation_status.py",
+    "tests/test_dcp_citation_status.py",
+    "frontend-nextjs/lib/citation-display.ts",
+    "frontend-nextjs/__tests__/lib/citation-display.test.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "scripts/dcp_commit_approved.py",
+    "Dockerfile.monitors"
+  ],
+  "pre_impl": {
+    "existing_data": "No citation column existed on regulatory_provisions (information_schema, 2026-09-26). The verdict is the existing scripts/citation_proof.prove_citation_any; served rows and cached page lines are the DQ-111 probe's own SERVED_SQL and chapter_lines.",
+    "assumption_mismatch": "Assumed every served label came from parseRefNumber in for-property; confirmed by grep: clause_label is built only at route.ts enrichWithTocSections (two return paths), both now go through withServedCitation.",
+    "new_vs_existing": "Additive: two nullable columns and an index. Writer updates only rows whose verdict changed (17,489 written on the first run).",
+    "external_source_error": "A chapter PDF that cannot be downloaded is recorded as no_source (hidden), never as proven.",
+    "frontend_type": "citation_status is text|null from the DB; withServedCitation returns clause_label string|null and citation_shown boolean; PageGroupedProvisions already renders clause_label only when truthy.",
+    "user_failure_mode": "If the writer never runs, citation_status stays NULL and numbers are served as before (visible as no change, not as wrong data). If it wrongly marks a true number unproven, the page is still shown, so the citation stays true."
+  },
+  "falsifiable_check": {
+    "command": "npx jest __tests__/lib/citation-display.test.ts ; python -m pytest tests/test_dcp_citation_status.py -q",
+    "fails_when": "an unproven status still yields a clause_label or the stored code on the first line, or an unknown verdict is written",
+    "observed_red": "Tests pass (3 jest, 3 pytest). Live: citation_status written for all 17,489 served DCP rows -- 13,701 proven, 2,696 not_proven, 627 unjudged, 249 imprecise, 216 text_not_found."
+  },
+  "functions": [
+    {
+      "name": "withServedCitation",
+      "file_line": "frontend-nextjs/lib/citation-display.ts",
+      "input": "a provision row with citation_status/ref_number/provision_text and the parsed clause label",
+      "output": "the row with clause_label null and the stored code stripped from the first line unless proven or imprecise",
+      "if_none": "citation_status NULL means not checked: served unchanged"
+    },
+    {
+      "name": "plan_updates",
+      "file_line": "scripts/dcp_citation_status.py",
+      "input": "{id: verdict}, {id: stored verdict}",
+      "output": "[(id, verdict)] for changed rows only",
+      "if_none": "an unknown verdict raises ValueError instead of being stored"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "Served DCP rules to judge",
+      "file_line": "scripts/dq_probe_section_code_not_in_source.py SERVED_SQL (reused)",
+      "where_clause": "rp.is_current AND rp.v2_is_actionable AND rp.source_council IS NOT NULL, joined to the active registry row"
+    },
+    {
+      "purpose": "Write verdicts",
+      "file_line": "scripts/dcp_citation_status.py",
+      "where_clause": "UPDATE ... WHERE p.id = v.id AND p.is_current, 500 ids per statement"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A dry-run publish triggers the verdict writer with --apply",
+      "what_happens": "a dry run would write verdicts to the production database",
+      "mitigated": true,
+      "how": "the post-step loops over committed_councils only when not dry_run",
+      "repro": "python scripts/dcp_commit_approved.py (no --commit): committed_councils stays empty and the post-step loop is guarded by `not dry_run`"
+    },
+    {
+      "scenario": "A first line that carries a different code than the stored one",
+      "what_happens": "the council title text after a longer code would be cut off wrongly",
+      "mitigated": true,
+      "how": "only the exact stored code (normalised) is removed; test asserts C4.10 is kept when the stored code is C4.1",
+      "repro": "npx jest __tests__/lib/citation-display.test.ts -- asserts stripStoredCode('# C4.10 Fences', 'Doc__chap__C4_1') is unchanged"
+    },
+    {
+      "scenario": "Served DCP rules query misses a chapter (no active registry row), so its rules are never judged",
+      "what_happens": "those rules keep citation_status NULL and are served as before, unverified",
+      "mitigated": true,
+      "how": "NULL is the explicit 'not checked' state and never shown as proven; the count of NULL served rows is visible by query",
+      "repro": "SELECT count(*) FROM regulatory_provisions WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL AND citation_status IS NULL  -- 0 after the 2026-09-26 run"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No -- migration 076 already applied (additive)",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Open a property report for a council with unproven citations (e.g. Warringah) and confirm unproven rules show no clause label but keep their page."
+  }
+}
