@@ -1,0 +1,71 @@
+{
+  "tier": "standard",
+  "justification": "Adds one allowed verdict and makes the repair keep it; served links for three rows change from page 1 to their read page.",
+  "commit_hash": "9860d21f",
+  "files": [
+    "migrations/080_page_read_by_person.sql",
+    "scripts/dcp_page_repair.py",
+    "scripts/rule_page_locator.py",
+    "frontend-nextjs/lib/page-citation.ts",
+    "frontend-nextjs/__tests__/lib/page-citation.test.ts",
+    "tests/test_dcp_page_repair.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions.page_check with the 079 CHECK constraint and the 079 triggers that clear verdicts on text, page or PDF change.",
+    "assumption_mismatch": "If a person marks the wrong page, the mark stands until the text, page or PDF changes; the mark is set only by a reviewed script.",
+    "new_vs_existing": "No existing row carries the value; three reviewed rows are marked after merge by a script the user runs."
+  },
+  "functions": [
+    {
+      "name": "judge_pdf",
+      "file_line": "scripts/dcp_page_repair.py:119",
+      "input": "one chapter PDF path and its served rows including page_check and page_source_path",
+      "output": "planned verdict rows written back by write()",
+      "if_none": "rows without the mark are judged by the locator as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "page_check",
+      "read_at": "scripts/dcp_page_repair.py:156",
+      "nullable": "yes",
+      "guard_at": "scripts/dcp_page_repair.py:156",
+      "if_missing": "NULL is judged by the locator as before"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A person's mark outlives a changed rule text",
+      "what_happens": "the link points at a page that no longer holds the new text",
+      "mitigated": true,
+      "how": "migrations/079_rule_page_check.sql trigger clears page_check when text, page or chapter changes",
+      "repro": "scratch Postgres: update provision_text, page_check becomes NULL"
+    },
+    {
+      "scenario": "A person's mark outlives a new council PDF",
+      "what_happens": "the link points at a page of a superseded PDF",
+      "mitigated": true,
+      "how": "scripts/dcp_page_repair.py:156 keeps the mark only while page_source_path equals the current PDF; the 079 registry trigger also clears it",
+      "repro": "change r2_current_path, rerun dcp_page_repair"
+    },
+    {
+      "scenario": "The repair re-judges a marked row and downgrades it to unresolved",
+      "what_happens": "a read page link reverts to page 1",
+      "mitigated": true,
+      "how": "scripts/dcp_page_repair.py:156 returns the mark before calling the locator",
+      "repro": "pytest tests/test_dcp_page_repair.py -k person"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "pytest tests/test_dcp_page_repair.py -k person; npx jest __tests__/lib/page-citation.test.ts",
+    "fails_when": "the repair stops keeping read_by_person, or the site stops linking it",
+    "observed_red": "2026-09-27: before this change the three rows were written with page_check unresolved and the site opened their PDF at page 1; scratch Postgres refused a bogus value and cleared the mark on a text edit."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: run migrations/080 then mark the three rows (script in ~/.claude/plans/ce-dcp-reread-2026-09-27/mark_read_by_person.py)."
+  }
+}
