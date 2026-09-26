@@ -681,6 +681,19 @@ def main() -> int:
                       f"--council {council} --apply`; until then new numbers keep their old verdict.")
         except Exception as exc:  # noqa: BLE001 -- never fail a committed provision
             print(f"  [warn] citation re-check could not run for {council}: {exc}")
+        # The same for the council's setback controls, which the reports print (migration 077).
+        try:
+            r = subprocess.run([sys.executable, str(ROOT / "scripts" / "dcp_setback_citation_status.py"),
+                                "--council", council, "--apply"],
+                               cwd=str(ROOT), capture_output=True, text=True, timeout=1800)
+            print(f"  setback clause verdicts for {council}: "
+                  f"{(r.stdout.strip().splitlines() or ['no output'])[-1]}")
+            if r.returncode:
+                print(f"  [warn] setback clause re-check failed for {council} (exit {r.returncode}): "
+                      f"{r.stderr.strip()[-300:]}. Run `python scripts/dcp_setback_citation_status.py "
+                      f"--council {council} --apply`; until then changed labels stay hidden.")
+        except Exception as exc:  # noqa: BLE001 -- never fail a committed provision
+            print(f"  [warn] setback clause re-check could not run for {council}: {exc}")
 
     # Completeness: did anything a council carries go BACKWARDS?
     #

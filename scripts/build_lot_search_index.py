@@ -47,7 +47,7 @@ for p in [_project_root, _scripts_dir]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from conveyancing_db import fetch_dcp_setbacks, fetch_sepp_housing_standards
+from conveyancing_db import fetch_dcp_setbacks, fetch_sepp_housing_standards, served_source_ref
 from services.constraint_arithmetic import compute_constraint_arithmetic
 from services.constraint_models import (
     DCPControl,
@@ -625,7 +625,7 @@ def _build_dcp_controls_from_raw(dcp_raw: Optional[dict]) -> list[DCPControl]:
             value_max=vmax,
             unit=s.get("unit", "m"),
             condition=s.get("notes") or s.get("condition"),
-            source_ref=s.get("clause") or dcp_raw.get("clause_ref"),
+            source_ref=served_source_ref(s, dcp_raw.get("clause_ref")),
         ))
     return controls
 

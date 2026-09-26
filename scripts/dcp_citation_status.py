@@ -12,8 +12,9 @@ writes regulatory_provisions.citation_status (migration 076), which the serving 
 
 WHAT IT DOES
 ------------
-For every served DCP rule: proven | imprecise | not_proven | unjudged | text_not_found, or
-no_source when the chapter's PDF cannot be read. Only rows whose verdict CHANGED are written.
+For every served DCP rule: proven | imprecise | partial | not_proven | unjudged | text_not_found,
+or no_source when the chapter's PDF cannot be read. partial = some pieces of the label
+are proven but others were never checked (citation_proof.unjudged_pieces); not shown. Only rows whose verdict CHANGED are written.
 Dry run by default; --apply writes. Runs after every publish and nightly.
 
 USAGE
@@ -34,7 +35,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-STATUSES = ("proven", "imprecise", "not_proven", "unjudged", "text_not_found", "no_source")
+STATUSES = ("proven", "imprecise", "partial", "not_proven", "unjudged", "text_not_found", "no_source")
 BATCH = 500
 
 
@@ -63,7 +64,7 @@ def _judge_chapter(args) -> dict[int, str]:
     except Exception as e:  # noqa: BLE001 -- a missing PDF is a verdict, not a crash
         print(f"  no source for {r2_path}: {str(e)[:80]}", flush=True)
         return {rid: "no_source" for rid, _ref, _text, _pages in rows}
-    return {rid: cp.prove_citation_any(ref, text, readings, (pages or [None])[0])["status"]
+    return {rid: cp.prove_label(ref, text, readings, (pages or [None])[0])["status"]
             for rid, ref, text, pages in rows}
 
 

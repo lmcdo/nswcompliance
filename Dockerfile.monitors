@@ -63,6 +63,8 @@ COPY scripts/pdf_picture_labels.py ./scripts/pdf_picture_labels.py
 COPY scripts/page_coverage.py ./scripts/page_coverage.py
 # dcp_commit_approved re-checks served citations after every publish (migration 076).
 COPY scripts/dcp_citation_status.py ./scripts/dcp_citation_status.py
+# ...and the setback controls' clause labels, which every report prints (migration 077).
+COPY scripts/dcp_setback_citation_status.py ./scripts/dcp_setback_citation_status.py
 COPY scripts/dq_probe_section_code_not_in_source.py ./scripts/dq_probe_section_code_not_in_source.py
 # verify_extraction_fidelity (the gate's grader) imports this at module level.
 COPY services/extracted_data_integrity.py ./services/extracted_data_integrity.py

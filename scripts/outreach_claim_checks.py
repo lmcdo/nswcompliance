@@ -247,6 +247,7 @@ def every_served_number_is_cited() -> Result:
     """Claim 8 is about NUMBERS, so only entries carrying a value are counted. A served "no set number" note
     (e.g. "No maximum site coverage specified in the DCP") has no number to cite; whether council material
     traces to a published document is claim 12's check."""
+    import conveyancing_db as cdb
     entries, why = served_entries()
     if entries is None:
         return UNKNOWN, f"served citations: {why}"
@@ -262,7 +263,8 @@ def every_served_number_is_cited() -> Result:
         numbers += 1
         url = urls.get(e.get("source_chapter_key") or "") or ""
         allowed = instruments.get(lga, frozenset()) | statewide
-        if (not (e.get("clause") or "").strip() or not (e.get("source_text") or "").strip()
+        # A clause withheld because its page does not prove it is cited by that page (migration 077).
+        if (not (cdb.served_source_ref(e) or "").strip() or not (e.get("source_text") or "").strip()
                 or not is_source_link(url, allowed)):
             missing.append(f"{lga}/{e.get('semantic_type')}")
     return ((PASS if not missing else FAIL),

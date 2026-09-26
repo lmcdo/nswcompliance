@@ -8,7 +8,7 @@ describe('a DCP clause number is served only when its page proves it', () => {
     expect(citationIsShown('imprecise')).toBe(true);
     expect(citationIsShown(null)).toBe(true); // LEP/SEPP: not a DCP row
     expect(citationIsShown(null, 'warringah')).toBe(false); // unchecked DCP row
-    for (const s of ['not_proven', 'unjudged', 'text_not_found', 'no_source']) {
+    for (const s of ['partial', 'not_proven', 'unjudged', 'text_not_found', 'no_source']) {
       expect(citationIsShown(s, 'warringah')).toBe(false);
     }
   });

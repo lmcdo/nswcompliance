@@ -489,7 +489,7 @@ class TestFetchSdSetbacks:
         cur = FakeCursor()
         rows = [
             ("secondary_dwelling", "front_setback", 6.0, None, "m",
-             None, "6m minimum", "4.2.1", "secondary_dwelling_specific"),
+             None, "6m minimum", "4.2.1", "secondary_dwelling_specific", 12, "proven"),
         ]
         reg_row = ("https://council.nsw.gov.au/dcp",)
 
@@ -535,7 +535,7 @@ class TestFetchSdSetbacks:
         cur = FakeCursor()
         rows = [
             ("secondary_dwelling", "side_setback", 0.9, 3.0, "m",
-             None, None, "4.2.2", "secondary_dwelling_specific"),
+             None, None, "4.2.2", "secondary_dwelling_specific", 12, "proven"),
         ]
         cur.fetchall = lambda: rows
         cur.fetchone = lambda: None
@@ -551,7 +551,7 @@ class TestFetchSdSetbacks:
         cur = FakeCursor()
         rows = [
             ("secondary_dwelling", "rear_setback", 3.0, 3.0, "m",
-             None, None, "4.2.3", "secondary_dwelling_specific"),
+             None, None, "4.2.3", "secondary_dwelling_specific", 12, "proven"),
         ]
         cur.fetchall = lambda: rows
         cur.fetchone = lambda: None
@@ -568,7 +568,7 @@ class TestFetchSdSetbacks:
         cur = FakeCursor()
         rows = [
             ("secondary_dwelling", "max_height", None, None, "m",
-             None, "Merit-based", "4.2.4", "secondary_dwelling_specific"),
+             None, "Merit-based", "4.2.4", "secondary_dwelling_specific", 12, "proven"),
         ]
         cur.fetchall = lambda: rows
         cur.fetchone = lambda: None
@@ -583,7 +583,7 @@ class TestFetchSdSetbacks:
         cur = FakeCursor()
         rows = [
             ("secondary_dwelling", "max_height", None, None, "m",
-             None, None, "4.2.4", "secondary_dwelling_specific"),
+             None, None, "4.2.4", "secondary_dwelling_specific", 12, "proven"),
         ]
         cur.fetchall = lambda: rows
         cur.fetchone = lambda: None
@@ -598,7 +598,7 @@ class TestFetchSdSetbacks:
         """lga_slug is converted to title case with underscores → spaces."""
         cur = FakeCursor()
         cur.fetchall = lambda: [
-            ("sd", "front_setback", 6.0, None, "m", None, None, "s1", "secondary_dwelling_specific"),
+            ("sd", "front_setback", 6.0, None, "m", None, None, "s1", "secondary_dwelling_specific", 12, "proven"),
         ]
         cur.fetchone = lambda: None
         conn = FakeConn(cursor=cur)
@@ -618,7 +618,7 @@ class TestFetchSdSetbacks:
         """Unknown control_type gets a title-case label from the type string."""
         cur = FakeCursor()
         cur.fetchall = lambda: [
-            ("sd", "min_floor_area", 30.0, None, "m2", None, None, "s", "secondary_dwelling_specific"),
+            ("sd", "min_floor_area", 30.0, None, "m2", None, None, "s", "secondary_dwelling_specific", 12, "proven"),
         ]
         cur.fetchone = lambda: None
         conn = FakeConn(cursor=cur)
@@ -630,7 +630,7 @@ class TestFetchSdSetbacks:
         """condition → notes, section_ref → clause."""
         cur = FakeCursor()
         cur.fetchall = lambda: [
-            ("sd", "front_setback", 6.0, None, "m", "Corner lots only", None, "4.2.1(a)", "secondary_dwelling_specific"),
+            ("sd", "front_setback", 6.0, None, "m", "Corner lots only", None, "4.2.1(a)", "secondary_dwelling_specific", 12, "proven"),
         ]
         cur.fetchone = lambda: None
         conn = FakeConn(cursor=cur)

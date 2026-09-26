@@ -34,7 +34,7 @@ def row(section_ref, *, needs_review=False, condition="", applicability="general
         control_type="front_setback", dev_type="dwelling_house", vmin=4.5):
     return (dev_type, control_type, vmin, None, "m", condition,
             "Provide a front setback.", section_ref, applicability, needs_review,
-            "part_3", 12, "v2022-current", None, None, None)  # + zones_include, zones_exclude, plain_summary
+            "part_3", 12, "v2022-current", None, None, None, "proven")  # + zones_include, zones_exclude, plain_summary, citation_status
 
 
 def _conn(rows):

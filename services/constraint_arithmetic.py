@@ -315,6 +315,7 @@ def _dcp_controls_from_setback_rows(
     Returns:
         One ``DCPControl`` per input row, preserving order.
     """
+    from conveyancing_db import served_source_ref
     controls: list[DCPControl] = []
     for s in rows:
         raw_min = s.get("value_min")
@@ -331,7 +332,7 @@ def _dcp_controls_from_setback_rows(
             value_max=_parse_numeric(s.get("value_max")),
             unit=s.get("unit", "m"),
             condition=condition,
-            source_ref=s.get("clause") or clause_ref,
+            source_ref=served_source_ref(s, clause_ref),
         ))
     return controls
 

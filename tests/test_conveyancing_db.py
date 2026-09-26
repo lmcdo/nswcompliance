@@ -191,6 +191,8 @@ def _make_row(
     zones_include=None,
     zones_exclude=None,
     plain_summary=None,
+    # Added 2026-09-26 with migration 077: the clause is shown only when proven.
+    citation_status="proven",
 ):
     # needs_review defaults to False deliberately. fetch_dcp_setbacks applies a
     # fail-closed per-row guard that drops flagged controls, so defaulting to
@@ -198,7 +200,8 @@ def _make_row(
     # asserting on nothing.
     return (dev_type, ctrl_type, vmin, vmax, unit, condition, source_text,
             section_ref, applicability, needs_review, source_chapter_key,
-            pdf_page, dcp_version, zones_include, zones_exclude, plain_summary)
+            pdf_page, dcp_version, zones_include, zones_exclude, plain_summary,
+            citation_status)
 
 
 class TestZoneFilter:

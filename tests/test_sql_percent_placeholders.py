@@ -110,7 +110,8 @@ def test_fetch_dcp_setbacks_link_map_survives_real_parameter_formatting() -> Non
     cur.execute.side_effect = psycopg2_like_execute
     cur.fetchall.side_effect = [
         [("dwelling_house", "front_setback", 4.5, None, "m", "", "Provide a front setback.",
-          "A-1.1", "general", False, "part-3-residential", 12, "v2022-current", None, None, None)],
+          "A-1.1", "general", False, "part-3-residential", 12, "v2022-current", None, None, None,
+          "proven")],
         [("part-3-residential", "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/x.pdf")],
     ]
     cur.fetchone.return_value = ("https://example.gov.au/dcp",)
@@ -143,7 +144,8 @@ def test_no_registered_instrument_means_no_invented_lep_link() -> None:
     cur.execute.side_effect = psycopg2_like_execute
     cur.fetchall.side_effect = [
         [("dwelling_house", "front_setback", 4.5, None, "m", "", "Provide a front setback.",
-          "A-1.1", "general", False, "part-3-residential", 12, "v2022-current", None, None, None)],
+          "A-1.1", "general", False, "part-3-residential", 12, "v2022-current", None, None, None,
+          "proven")],
         [("part-3-residential", "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/x.pdf")],
     ]
     cur.fetchone.return_value = None          # nothing registered for this council

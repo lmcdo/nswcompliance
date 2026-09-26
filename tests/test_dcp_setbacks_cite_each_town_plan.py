@@ -25,7 +25,7 @@ def _row(section_ref=REF, chapter=BOWRAL):
     # Column order of the SELECT in fetch_dcp_setbacks.
     return ("dwelling_house", "landscaping_min", 35, None, "%", None,
             "Table C2.2: Lot size less than 2,000m2 — minimum Private Landscaped Open Space 35% of the site area",
-            section_ref, "development_specific", False, chapter, 200, "v1.0", None, None, None)
+            section_ref, "development_specific", False, chapter, 200, "v1.0", None, None, None, "proven")
 
 
 class _Cursor:
