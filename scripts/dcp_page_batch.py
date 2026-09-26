@@ -248,7 +248,9 @@ def collect(d: Path, apply: bool) -> None:
         cur = conn.cursor()
         cur.execute("SET statement_timeout = '30000'")
         for key, entry in st["chapters"].items():
-            if entry["status"] != "planned" or key in waiting:
+            # "ready" is a dry run's verdict; --apply must still queue it (41 chapters
+            # were silently left out this way, 2026-09-26).
+            if entry["status"] not in ("planned", "ready") or key in waiting:
                 continue
             council, chapter = key.split("/", 1)
             with tempfile.TemporaryDirectory() as tmp:
