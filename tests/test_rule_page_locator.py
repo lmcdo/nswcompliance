@@ -186,3 +186,10 @@ def test_scattered_counting_headings_in_a_document_without_page_numbers_give_no_
     m = {p: ["Warringah Development Control Plan"] for p in range(1, 21)}
     m[7], m[8] = ["10.4"], ["10.5"]
     assert L.printed_labels(m) == {}
+
+
+def test_a_stored_page_with_the_same_words_in_another_order_does_not_hold_the_rule():
+    """Cross-review 2026-09-26: 80% of the rule's words on the chunk-start page, but not the rule."""
+    scrambled = " ".join(reversed(L.tokens(L.rule_body(RULE))))
+    assert L.locate(RULE, _pages(p1=scrambled), stored=1) == (None, "unresolved")
+    assert L.locate(RULE, _pages(p1=scrambled, p5=L.rule_body(RULE)), stored=1) == (5, "moved")

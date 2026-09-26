@@ -200,7 +200,7 @@ export interface Provision {
 interface PageGroup {
   pageNumber: number | null;      // Raw pdf_page from database
   displayPageNumber: number | null; // Actual DCP page after applying offset
-  pageLabel?: string | null;      // Direct-PDF groups: "page B5" / "PDF page 18" / "page not confirmed"
+  pageLabel?: string | null;      // Direct-PDF groups: "page B5" / "PDF page 18" / "page not located"
   pageUrl: string | null;
   provisions: Provision[];
   dcpPart: string | null;         // For offset calculation
@@ -421,7 +421,7 @@ function groupProvisionsByPage(provisions: Provision[], chapterPdfUrls?: Record<
       // stored page does not hold them open the document and group apart.
       const chapterUrl = chapterPdfUrls[prov.source_chapter_key];
       const anchor = pageAnchor(prov);
-      const key = `direct-${prov.source_chapter_key}-${anchor ?? 'unconfirmed'}-${pageLabel(prov)}`;
+      const key = `direct-${prov.source_chapter_key}-${anchor ?? 'unlocated'}-${pageLabel(prov)}`;
       if (!pageMap.has(key)) {
         pageMap.set(key, {
           pageNumber: anchor,

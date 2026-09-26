@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes what every served DCP citation links to and prints, writes 17,489 production rows through a new script, adds a migration with triggers on regulatory_provisions, and changes the AI reader that writes every future rule page. Wrong output here sends readers to the wrong page of a planning control.",
-  "commit_hash": "fb3f8930",
+  "commit_hash": "71bb1c05",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
@@ -30,7 +30,7 @@
     "new_vs_existing": "Existing rows: dcp_page_repair.py --apply corrects them once. New rows: ai_extractor places each rule on its own page, and dcp_commit_approved runs the repair per council after every publish; migration 079 triggers void a verdict when text, page or chapter PDF changes.",
     "external_source_error": "An R2 download or PDF parse failure is caught per PDF in judge_pdf and returns no_source for that PDF's rows, which --check then reports; the run continues for the other PDFs.",
     "frontend_type": "Yes: Provision in PageGroupedProvisions and ProvisionForPDF gain optional printed_page_label and page_check (string or null); the for-property select adds both columns.",
-    "user_failure_mode": "If page_check is missing the UI behaves as before (PDF page N link). If unresolved or not_found the link opens the chapter without a page anchor and says page not confirmed, instead of opening a wrong page."
+    "user_failure_mode": "Council DCP rows not shown to hold the rule (unresolved, not_found, too_short, no_source, or never checked) open the chapter with no page anchor and say page not located, instead of opening a wrong page; LEP/SEPP rows are unchanged."
   },
   "functions": [
     {
@@ -82,7 +82,7 @@
       "read_at": "frontend-nextjs/lib/page-citation.ts:31",
       "nullable": "yes",
       "guard_at": "frontend-nextjs/lib/page-citation.ts:31",
-      "if_missing": "NULL is treated as unchecked: link and PDF page N as before"
+      "if_missing": "NULL on a council DCP row fails closed: no page anchor and 'page not located'; rows outside the check (no source_council) behave as before"
     },
     {
       "value": "printed_page_label",
@@ -169,7 +169,7 @@
       "scenario": "The UI shows a link for a rule whose stored page is known not to hold it",
       "what_happens": "the reader is sent to the wrong page",
       "mitigated": true,
-      "how": "frontend-nextjs/lib/page-citation.ts:31 - unresolved and not_found get no anchor and say page not confirmed",
+      "how": "frontend-nextjs/lib/page-citation.ts - every verdict other than on_page/moved, and an unchecked council DCP row, gets no anchor and says page not located",
       "repro": "npx jest __tests__/lib/page-citation.test.ts"
     },
     {
@@ -178,6 +178,13 @@
       "mitigated": true,
       "how": "scripts/dcp_page_repair.py:194 - check() counts rows whose page_source_path differs from the current registry path, including NULL, and exits 1",
       "repro": "python scripts/dcp_page_repair.py --check before --apply exits 1"
+    },
+    {
+      "scenario": "The chunk-start page holds the same common words as the rule in a different order",
+      "what_happens": "the wrong page would be marked on_page and linked as checked",
+      "mitigated": true,
+      "how": "scripts/rule_page_locator.py locate - the stored page and every candidate must print the rule in order (8-word run or citation_proof anchors); found by cross-review 2026-09-26",
+      "repro": "pytest tests/test_rule_page_locator.py -k another_order"
     }
   ],
   "falsifiable_check": {

@@ -257,6 +257,7 @@ export async function preparePdfProvisions(
         pdf_printed_page: pdfPrintedPage,
         printed_page_label: typeof p.printed_page_label === 'string' ? p.printed_page_label : null,
         page_check: typeof p.page_check === 'string' ? p.page_check : null,
+        source_council: typeof p.source_council === 'string' ? p.source_council : null,
         v2_is_actionable: p.v2_is_actionable,
         zone_applicability: p.zone_applicability,
         ref_number: p.ref_number,

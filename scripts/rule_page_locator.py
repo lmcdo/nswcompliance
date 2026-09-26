@@ -10,11 +10,9 @@ chapter PDFs: 45% of 17,489 served rules linked to a page that does not hold the
 One definition, used by the reader when it writes a page and by
 scripts/dcp_page_repair.py when it checks and corrects the stored ones:
 
-  * a page HOLDS a rule when 80% of the rule's content words are on it (or on it and
-    the next page, for a rule running over a page break), or an 8-word run of the rule
-    is printed there in order;
-  * a page is only ever MOVED TO when an 8-word run of the rule is printed there in
-    order -- a bag of common words is not enough to send a reader somewhere;
+  * a page HOLDS a rule only when the rule's words are printed there IN ORDER: an 8-word
+    run of it (running onto the next page is allowed), or citation_proof's 6-word anchors.
+    80% of the same common words is used to FIND candidate pages, never to accept one;
   * several equally good pages and no way to choose = no answer, never a guess.
 """
 from __future__ import annotations
@@ -73,9 +71,6 @@ class Pages:
         one = self.share(words, [page])
         return one >= HOLD_SHARE or (one >= 0.3 and self.share(words, [page, page + 1]) >= HOLD_SHARE)
 
-    def holds(self, words: list[str], rule_tokens: list[str], page: int) -> bool:
-        return self._starts_here(words, page) or self.phrase_on(rule_tokens, page)
-
     def candidates(self, words: list[str]) -> list[int]:
         """Pages where the rule starts, by word share (whole page, or over a page break)."""
         full = [p for p in sorted(self.sets) if self.share(words, [p]) >= HOLD_SHARE]
@@ -95,15 +90,20 @@ def locate(text: str | None, pages: Pages, stored: int | None = None,
     if len(words) < MIN_WORDS:
         return None, "too_short"
     anchors = set(anchor_pages)
-    if stored and (stored in anchors or pages.holds(words, rt, stored)):
+    # The stored page must show the rule's words IN ORDER (an 8-word run here, or citation_proof's
+    # 6-word anchors): 80% of the same common words can sit on a page that does not hold the rule.
+    if stored and (stored in anchors or pages.phrase_on(rt, stored)):
         return stored, "on_page"
-    by_words = set(pages.candidates(words))
+    found = pages.candidates(words)
+    # A candidate must print the rule in order too: a page holding only the same common words
+    # would otherwise make the real page look ambiguous.
+    by_words = {p for p in found if pages.phrase_on(rt, p)}
     if window is not None:
         anchors = {p for p in anchors if p in window}
         by_words = {p for p in by_words if p in window}
     pool = anchors | by_words
     if not pool:
-        return None, "unresolved" if (anchor_pages or pages.candidates(words)) else "not_found"
+        return None, "unresolved" if (anchor_pages or found) else "not_found"
     pick = None
     if len(anchors) == 1 and (not by_words or anchors <= by_words):
         pick = next(iter(anchors))                 # both methods agree, or the anchor alone

@@ -121,6 +121,7 @@ export interface ProvisionForPDF {
   pdf_printed_page: number;       // Human-readable page number
   printed_page_label?: string | null; // Page number as the council prints it ("B5", "14-117"); migration 079
   page_check?: string | null;     // Whether pdf_page holds the rule (lib/page-citation.ts)
+  source_council?: string | null;  // Council DCP row: its page is only cited when page_check located it
   v2_is_actionable?: boolean;
   zone_applicability?: string;
   ref_number?: string;
