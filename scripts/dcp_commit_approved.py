@@ -663,6 +663,25 @@ def main() -> int:
                       f"`python scripts/derive_precinct_keys.py --council {council} --apply` "
                       f"and read its output.")
 
+    # Citation verdicts: a publish changes clause numbers, and the site shows a number
+    # only where regulatory_provisions.citation_status says the page proves it
+    # (migration 076). Re-check the councils just committed so a fixed number shows
+    # and a new unproven one does not. A failure never undoes a committed provision.
+    for council in sorted(committed_councils if not dry_run else ()):   # a dry run writes nothing
+        import subprocess
+        try:
+            r = subprocess.run([sys.executable, str(ROOT / "scripts" / "dcp_citation_status.py"),
+                                "--council", council, "--apply", "--workers", "2"],
+                               cwd=str(ROOT), capture_output=True, text=True, timeout=1800)
+            print(f"  citation verdicts for {council}: "
+                  f"{(r.stdout.strip().splitlines() or ['no output'])[-1]}")
+            if r.returncode:
+                print(f"  [warn] citation re-check failed for {council} (exit {r.returncode}): "
+                      f"{r.stderr.strip()[-300:]}. Run `python scripts/dcp_citation_status.py "
+                      f"--council {council} --apply`; until then new numbers keep their old verdict.")
+        except Exception as exc:  # noqa: BLE001 -- never fail a committed provision
+            print(f"  [warn] citation re-check could not run for {council}: {exc}")
+
     # Completeness: did anything a council carries go BACKWARDS?
     #
     # The three fixes of 2026-09-10 (#1079 repealed source, #1080 precinct keys,

@@ -33,6 +33,7 @@ import { inferSectionNumberFromHeader } from '@/lib/see/sectionKey';
 import { parseRefNumber } from '@/lib/see/refNumber';
 import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
 import { captureServerException } from '@/lib/posthog-server';
+import { withServedCitation } from '@/lib/citation-display';
 
 
 export const dynamic = 'force-dynamic';
@@ -668,7 +669,8 @@ const PROVISION_BASE_SELECT = `
   rp.source_chapter_key,
   rp.section_header,
   rp.ref_number,
-  rp.source_council
+  rp.source_council,
+  rp.citation_status
 `;
 
 /**
@@ -791,12 +793,11 @@ async function enrichWithTocSections(
 
   if (docPages.length === 0) {
     // No pdf_page data — still apply section_header inference so buildSectionKey works on the frontend
-    return provisions.map(p => ({
+    return provisions.map(p => withServedCitation({
       ...p,
       toc_section_number: inferSectionNumberFromHeader(p.section_header) || null,
       toc_section_title: null,
-      clause_label: parseRefNumber(p.ref_number, p.source_council),
-    }));
+    }, parseRefNumber(p.ref_number, p.source_council)));
   }
 
   // Batch query TOC sections for all provisions
@@ -858,12 +859,11 @@ async function enrichWithTocSections(
   return provisions.map(p => {
     const key = `${p.document_id}|${p.pdf_page}`;
     const tocInfo = tocMap.get(key);
-    return {
+    return withServedCitation({
       ...p,
       toc_section_number: tocInfo?.section_number || inferSectionNumberFromHeader(p.section_header) || null,
       toc_section_title: tocInfo?.section_title || null,
-      clause_label: parseRefNumber(p.ref_number, p.source_council)
-    };
+    }, parseRefNumber(p.ref_number, p.source_council));
   });
 }
 
