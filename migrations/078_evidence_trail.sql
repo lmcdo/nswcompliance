@@ -10,6 +10,22 @@
 ALTER TABLE regulatory_provisions  ADD COLUMN IF NOT EXISTS citation_source_path text;
 ALTER TABLE dcp_setback_controls   ADD COLUMN IF NOT EXISTS citation_source_path text;
 
+-- 1b. An edited setback control (077 trigger) also forgets which PDF its old verdict was judged on.
+CREATE OR REPLACE FUNCTION dcp_setback_controls_clear_citation_status() RETURNS trigger AS $$
+BEGIN
+    IF NEW.lga IS DISTINCT FROM OLD.lga
+       OR NEW.section_ref IS DISTINCT FROM OLD.section_ref
+       OR NEW.source_text IS DISTINCT FROM OLD.source_text
+       OR NEW.pdf_page IS DISTINCT FROM OLD.pdf_page
+       OR NEW.source_chapter_key IS DISTINCT FROM OLD.source_chapter_key THEN
+        NEW.citation_status := NULL;
+        NEW.citation_checked_at := NULL;
+        NEW.citation_source_path := NULL;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- 2. A new PDF for a chapter voids every verdict judged on the old one, at once and in the database,
 --    so a failed or skipped re-check leaves the clause HIDDEN rather than proven against a
 --    superseded plan (cross-review finding on #1173). The writers re-judge on the next run.
