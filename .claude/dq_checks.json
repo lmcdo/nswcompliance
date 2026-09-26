@@ -1352,7 +1352,7 @@
       "note": "Found 2026-09-25 when the Warringah re-read skipped 21 of 226 pages and the commit's section-loss guard refused it (172 printed rules would have been deleted). The reader now counts left-out pages and re-reads them (Warringah trial: 17 of 21 recovered, 108 rules; the 4 left are an amendment table, two definition pages and suburb history, 0-1 rule words each). Canterbury-Bankstown alone: 8 live chapters, 50 pages. Two PDF quirks handled so it does not cry wolf: lines drawn twice (Campbelltown) and letter-spaced map labels (Canterbury-Bankstown)."
     },
     "DQ-113": {
-      "declared": "open",
+      "declared": "fixed",
       "check": [
         "python",
         "scripts/dcp_page_repair.py",
@@ -1360,7 +1360,7 @@
       ],
       "passes_when": "exit 0 - every served council DCP rule has a page verdict (migration 079 page_check) judged against its chapter's CURRENT PDF: on_page, moved (link corrected, confirmed by an 8-word run printed in order on that page), or unresolved/not_found/too_short/no_source (link not trusted; the site opens the document without a page anchor). Reachable by `python scripts/dcp_page_repair.py --apply`; a publish runs it per council.",
       "red_when": "a served rule's page link was never checked against the PDF it links to, or was checked against a PDF the chapter no longer uses. The AI reader stored the first page of its 12-page chunk for every rule (scripts/ai_extractor.py `a + 1`), so an unchecked link opens the wrong page about half the time.",
-      "note": "Measured 2026-09-26 by a read-only probe over all 237 served chapter PDFs (17,489 rules): 38% on their page, 45% movable with two independent locators agreeing (ordered-phrase spot check 58/60), 5% one candidate inside the reader's chunk (55/60), 9.5% unresolved, 2% not locatable. Chunk size differs by path: 12 (most), 30 (Northern Beaches), 6. The citation proof (DQ-111) finds a rule's wording anywhere in the chapter and uses the stored page only as a search hint, so 'proven' said nothing about the link."
+      "note": "Measured 2026-09-26 by a read-only probe over all 237 served chapter PDFs (17,489 rules): 38% on their page, 45% movable with two independent locators agreeing (ordered-phrase spot check 58/60), 5% one candidate inside the reader's chunk (55/60), 9.5% unresolved, 2% not locatable. Chunk size differs by path: 12 (most), 30 (Northern Beaches), 6. The citation proof (DQ-111) finds a rule's wording anywhere in the chapter and uses the stored page only as a search hint, so 'proven' said nothing about the link. APPLIED 2026-09-27: migration 079 + dcp_page_repair --apply wrote 17,489 rows (10,515 moved, 5,939 on page, 715 unresolved, 217 too short, 103 not found); --check exit 0. Backup data/db_rollback_backups/regulatory_provisions_pre_page_repair_2026-09-27_0338.csv."
     }
   }
 }
