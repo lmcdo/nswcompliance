@@ -107,16 +107,17 @@ def write_verdicts(conn, todo: list[tuple[int, str]], rows) -> int:
     for i in range(0, len(todo), BATCH):
         chunk = [(rid, st, judged[rid]) for rid, st in todo[i:i + BATCH]]
         cur.execute(
-            "UPDATE dcp_setback_controls s SET citation_status = v.s, citation_checked_at = now() "
+            "UPDATE dcp_setback_controls s SET citation_status = v.s, citation_source_path = v.src, "
+            "citation_checked_at = now() "
             "FROM unnest(%s::bigint[], %s::text[], %s::text[], %s::text[], %s::text[], %s::text[], "
-            "%s::int[]) AS v(id, s, lga, chk, ref, txt, pg) "
+            "%s::int[], %s::text[]) AS v(id, s, lga, chk, ref, txt, pg, src) "
             "WHERE s.id = v.id AND s.is_current AND s.lga IS NOT DISTINCT FROM v.lga "
             "AND s.source_chapter_key IS NOT DISTINCT FROM v.chk "
             "AND s.section_ref IS NOT DISTINCT FROM v.ref "
             "AND s.source_text IS NOT DISTINCT FROM v.txt AND s.pdf_page IS NOT DISTINCT FROM v.pg",
             ([c[0] for c in chunk], [c[1] for c in chunk], [c[2][1] for c in chunk],
              [c[2][2] for c in chunk], [c[2][3] for c in chunk], [c[2][5] for c in chunk],
-             [c[2][6] for c in chunk]))
+             [c[2][6] for c in chunk], [c[2][4] for c in chunk]))
         written += cur.rowcount
         conn.commit()
     return written
@@ -158,16 +159,18 @@ def main() -> int:
         for k, n in Counter(verdicts.values()).most_common():
             print(f"  {n:6}  {k}")
         # A catalogue lookup, not a row read: no is_current filter applies here.
-        cur.execute("SELECT column_name FROM information_schema.columns WHERE "
-                    "table_name = 'dcp_setback_controls' AND column_name = 'citation_status'")
-        if not cur.fetchone():
-            print("citation_status column missing -- run migrations/077 first. Nothing written.")
+        cur.execute("SELECT count(*) FROM information_schema.columns WHERE table_name = "
+                    "'dcp_setback_controls' AND column_name IN ('citation_status', 'citation_source_path')")
+        if cur.fetchone()[0] < 2:
+            print("verdict columns missing -- run migrations/077 and 078 first. Nothing written.")
             return 0 if not args.apply else 1
-        cur.execute("SELECT id, citation_status FROM dcp_setback_controls "
-                    "WHERE id = ANY(%s) AND is_current", (list(verdicts),))
-        current = dict(cur.fetchall())
-        todo = plan_updates(verdicts, current)
-        print(f"  {len(todo):6}  to write (verdict changed)")
+        cur.execute("SELECT id, citation_status, to_jsonb(dcp_setback_controls) ->> 'citation_source_path' "
+                    "FROM dcp_setback_controls WHERE id = ANY(%s) AND is_current", (list(verdicts),))
+        stored = {i: (s, p) for i, s, p in cur.fetchall()}
+        sources = {r[0]: r[4] for r in rows}
+        plan_updates(verdicts, {})                   # refuses an unknown verdict
+        todo = [(i, v) for i, v in sorted(verdicts.items()) if stored.get(i) != (v, sources.get(i))]
+        print(f"  {len(todo):6}  to write (verdict or judged source changed)")
         if not args.apply:
             print("DRY RUN -- nothing written. Re-run with --apply.")
             return 0

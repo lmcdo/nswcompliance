@@ -105,6 +105,13 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/validate_schema_contract.py
 
+      - name: Report audit trail hash chain is intact
+        id: audit_chain
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/verify_audit_chain.py
+
       - name: Served controls carry their provenance
         id: provenance
         if: always()
@@ -186,7 +193,7 @@ jobs:
         uses: actions/github-script@v9
         env:
           FAILED: >-
-            ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.lga_flags.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }},${{ steps.answer_quality.outcome }},${{ steps.page_maps.outcome }},${{ steps.controls_vs_pdf.outcome }}
+            ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.lga_flags.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }},${{ steps.answer_quality.outcome }},${{ steps.page_maps.outcome }},${{ steps.controls_vs_pdf.outcome }},${{ steps.audit_chain.outcome }}
         with:
           script: |
             const { owner, repo } = context.repo;
@@ -197,7 +204,8 @@ jobs:
                            'schema contract', 'controls provenance',
                            'control source values', 'served-answer quality',
                            'DCP page maps vs their PDFs',
-                           'control values vs the council PDF'];
+                           'control values vs the council PDF',
+                           'report audit chain'];
             const outcomes = (process.env.FAILED || '').split(',');
             const failed = names.filter((_, i) => outcomes[i] === 'failure');
             const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;

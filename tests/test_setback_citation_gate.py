@@ -180,7 +180,9 @@ def test_a_verdict_is_written_only_onto_the_row_it_was_judged_on():
     sql, params = cur.execute.call_args[0]
     for col in ("lga", "source_chapter_key", "section_ref", "source_text", "pdf_page"):
         assert f"s.{col} IS NOT DISTINCT FROM" in sql
-    assert params == ([7], ["proven"], ["woollahra"], ["part-3"], ["C2.1"], ["the words"], [12])
+    # ... and records the PDF it was judged on (migration 078).
+    assert params == ([7], ["proven"], ["woollahra"], ["part-3"], ["C2.1"], ["the words"], [12], ["ok.pdf"])
+    assert "citation_source_path = v.src" in sql
 
 
 def test_the_outreach_check_does_not_count_see_the_plan_as_a_citation(monkeypatch):
