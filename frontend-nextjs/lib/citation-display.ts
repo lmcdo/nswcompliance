@@ -27,7 +27,8 @@ const norm = (s: string) => s.toLowerCase().replace(/[\s._]+/g, '');
  * Only the exact stored code is removed; any other first line is left as it is.
  */
 export function stripStoredCode(text: string | null | undefined, refNumber: string | null | undefined): string {
-  if (!text || !refNumber || !text.startsWith('#')) return text ?? '';
+  if (typeof text !== 'string' || typeof refNumber !== 'string') return typeof text === 'string' ? text : '';
+  if (!text.startsWith('#')) return text;
   const want = norm(refNumber.split('__').pop() ?? '');
   if (!want) return text;
   const nl = text.indexOf('\n');

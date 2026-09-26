@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes what the property provisions API serves (clause label and first-line code hidden unless proven) and adds a schema column plus a post-publish writer. Not Critical: additive column, the serving change only removes an unproven number and keeps the page; unchecked rows (NULL) are served exactly as before. Not Minor: it changes served regulatory citations.",
-  "commit_hash": "2b17c44d",
+  "commit_hash": "90f23db4",
   "files": [
     "migrations/076_regulatory_provisions_citation_status.sql",
     "scripts/dcp_citation_status.py",
@@ -10,7 +10,8 @@
     "frontend-nextjs/__tests__/lib/citation-display.test.ts",
     "frontend-nextjs/app/api/provisions/for-property/route.ts",
     "scripts/dcp_commit_approved.py",
-    "Dockerfile.monitors"
+    "Dockerfile.monitors",
+    "tests/test_dcp_citation_status_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "No citation column existed on regulatory_provisions (information_schema, 2026-09-26). The verdict is the existing scripts/citation_proof.prove_citation_any; served rows and cached page lines are the DQ-111 probe's own SERVED_SQL and chapter_lines.",

@@ -94,8 +94,8 @@ def main() -> int:
         with ProcessPoolExecutor(max_workers=max(1, args.workers)) as ex:
             for got in ex.map(_judge_chapter, jobs):
                 verdicts.update(got)
-        cur.execute("SELECT id, citation_status FROM regulatory_provisions WHERE id = ANY(%s)",
-                    (list(verdicts),))
+        cur.execute("SELECT id, citation_status FROM regulatory_provisions "
+                    "WHERE id = ANY(%s) AND is_current", (list(verdicts),))
         current = dict(cur.fetchall())
         todo = plan_updates(verdicts, current)
         print(f"scope: {args.council or 'all councils'}  rules: {len(verdicts)}")
