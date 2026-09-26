@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { withServedCitation } from '@/lib/citation-display';
 
 
 export const dynamic = 'force-dynamic';
@@ -59,7 +60,9 @@ export async function GET(request: NextRequest) {
         xr.is_mandatory,
         xr.context_snippet,
         rp_target.ref_number as target_reference,
-        rp_target.provision_text as target_text
+        rp_target.provision_text as target_text,
+        rp_target.citation_status as target_citation_status,
+        rp_target.source_council as target_source_council
       FROM cross_reference_index xr
       LEFT JOIN regulatory_provisions rp_target
         ON xr.target_provision_id = rp_target.id
@@ -81,19 +84,28 @@ export async function GET(request: NextRequest) {
 
     const result = await pool.query(query, params);
 
-    const crossReferences: CrossReference[] = result.rows.map(row => ({
+    // An unproven target clause number is not served (lib/citation-display).
+    const crossReferences: CrossReference[] = result.rows.map(row => {
+      const target = withServedCitation({
+        citation_status: row.target_citation_status,
+        source_council: row.target_source_council,
+        ref_number: row.target_reference,
+        provision_text: row.target_text,
+      }, row.target_reference);
+      return {
       id: row.id,
       referenceType: row.reference_type,
       referenceNumber: row.reference_number,
       referenceText: row.reference_text,
       targetProvisionId: row.target_provision_id,
-      targetReference: row.target_reference,
-      targetText: row.target_text ? row.target_text.substring(0, 200) : null,
+      targetReference: target.clause_label,
+      targetText: target.provision_text ? target.provision_text.substring(0, 200) : null,
       resolutionStatus: row.resolution_status,
       resolutionConfidence: row.resolution_confidence,
       isMandatory: row.is_mandatory,
       contextSnippet: row.context_snippet
-    }));
+      };
+    });
 
     const responseTime = Date.now() - startTime;
 
