@@ -136,6 +136,16 @@ function hasNumericValue(control: StructuredControl): boolean {
   return control.value_min !== null || control.value_max !== null;
 }
 
+/**
+ * The short citation on the row's link: always the page, plus the clause when the council's
+ * page proves it ("5.2.1, p. 200" or "p. 200"). The clause alone left the link with no text
+ * once unproven clauses were withheld (migration 077).
+ */
+export function shortCitation(control: Pick<StructuredControl, 'section_ref' | 'pdf_page'>): string {
+  const page = control.pdf_page ? `p. ${control.pdf_page}` : '';
+  return [control.section_ref, page].filter(Boolean).join(', ') || 'Source';
+}
+
 /** Build a formal citation string: "Bayside DCP 2022, s 5.2.1, p 200" */
 function formatCitation(control: StructuredControl): string {
   const parts: string[] = [];
@@ -318,12 +328,12 @@ export function DcpStructuredControls({
                                 className="text-xs text-teal-600 hover:text-teal-800 font-mono flex items-center gap-0.5"
                                 title={`View in PDF${control.pdf_page ? ` (page ${control.pdf_page})` : ''}`}
                               >
-                                {control.section_ref}
+                                {shortCitation(control)}
                                 <ExternalLink className="w-2.5 h-2.5" />
                               </a>
                             ) : (
                               <span className="text-xs text-gray-400 font-mono">
-                                {control.section_ref}
+                                {shortCitation(control)}
                               </span>
                             )}
                             {control.source_text && (

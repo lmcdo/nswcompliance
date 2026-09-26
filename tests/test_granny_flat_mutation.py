@@ -637,7 +637,7 @@ class TestFetchSdSetbacks:
         result = _fetch_sd_setbacks(conn, "test")
         sb = result["sd_setbacks"][0]
         assert sb["notes"] == "Corner lots only"
-        assert sb["clause"] == "4.2.1(a)"
+        assert sb["clause"] == "4.2.1(a), p. 12"  # page always, clause when proven
 
 
 # ---------------------------------------------------------------------------

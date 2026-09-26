@@ -107,24 +107,27 @@ def test_clause_ref_never_names_a_withheld_clause():
 
 def test_served_source_ref_gives_the_page_not_another_rows_clause():
     hidden = {"clause": "", "clause_shown": False, "pdf_page": 7}
-    assert cdb.served_source_ref(hidden, "C2.1") == "Page 7 of the plan"
-    assert cdb.served_source_ref({**hidden, "pdf_page": None}, "C2.1") == "See the plan"
-    assert cdb.served_source_ref({"clause": "C3", "clause_shown": True}, "C2.1") == "C3"  # noqa: zone-codes (DCP clause labels, not zones)
+    assert cdb.served_source_ref(hidden, "C2.1") == "p. 7"
+    assert cdb.served_source_ref({**hidden, "pdf_page": None}, "C2.1") is None
+    assert cdb.served_source_ref({"clause": "C3", "clause_shown": True, "pdf_page": 7}, "C2.1") == "C3, p. 7"  # noqa: zone-codes (DCP clause labels, not zones)
     # An entry from before 077 (no clause_shown key) keeps the old fallback.
     assert cdb.served_source_ref({"clause": ""}, "C2.1") == "C2.1"
 
 
 def test_pdf_cell_prints_the_page_when_the_clause_is_withheld():
-    assert cdb.clause_or_page("", 30) == "Page 30 of the plan"
-    assert cdb.clause_or_page("C2.1", 30) == "C2.1"
+    assert cdb.clause_or_page("", 30) == "p. 30"
+    assert cdb.clause_or_page("C2.1", 30) == "C2.1, p. 30"          # page always, clause when shown
+    assert cdb.clause_or_page("C2.1", None) == "C2.1"
+    assert cdb.clause_or_page("", None) == ""
+    # A sibling-plan citation already names its own page: not added twice.
+    assert cdb.clause_or_page("C2.1 — Bowral, p.12. The same clause is in: X", 12).count("p.") == 1
 
 
 def test_granny_flat_applies_the_same_gate():
     from services.granny_flat import _fetch_sd_setbacks
     row = ("secondary_dwelling", "front_setback", 6.0, None, "m", None, None, "4.2.1",
            "secondary_dwelling_specific", 12)
-    for status, want in (("proven", "4.2.1"), ("not_proven", "Page 12 of the plan"),
-                         (None, "Page 12 of the plan")):
+    for status, want in (("proven", "4.2.1, p. 12"), ("not_proven", "p. 12"), (None, "p. 12")):
         cur = MagicMock()
         cur.fetchall.return_value = [row + (status,)]
         cur.fetchone.return_value = None

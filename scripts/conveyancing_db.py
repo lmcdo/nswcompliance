@@ -91,20 +91,23 @@ def clause_is_shown(citation_status: str | None) -> bool:
 
 
 def clause_or_page(clause: str | None, pdf_page) -> str:
-    """The citation a report prints: the clause when shown, else the plan page."""
-    if clause:
+    """The citation a report prints: always the page, plus the clause when it is shown.
+
+    "C2.1, p. 12" when proven, "p. 12" when withheld, "" when neither is known. A clause that
+    already names its own page (a sibling-plan citation, see cite_clause) is left as it is."""
+    clause = (clause or "").strip()
+    page = f"p. {pdf_page}" if isinstance(pdf_page, int) and pdf_page > 0 else ""
+    if not page or re.search(r"\bp\.\s?\d", clause):
         return clause
-    return f"Page {pdf_page} of the plan" if pdf_page else "See the plan"
+    return f"{clause}, {page}" if clause else page
 
 
 def served_source_ref(entry: dict, fallback: str | None = None) -> str | None:
-    """The citation for one fetch_dcp_setbacks entry. A hidden clause gives the page, never
+    """The citation for one fetch_dcp_setbacks entry (clause_or_page). A hidden clause gives the page, never
     `fallback`: the dict-level clause_ref is ANOTHER row's clause, and borrowing it for a
     row whose own label was withheld would cite the wrong control."""
-    if entry.get("clause"):
-        return entry["clause"]
-    if entry.get("clause_shown") is False:
-        return clause_or_page(None, entry.get("pdf_page"))
+    if entry.get("clause") or entry.get("clause_shown") is False:
+        return clause_or_page(entry.get("clause"), entry.get("pdf_page")) or None
     return fallback
 
 

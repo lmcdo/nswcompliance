@@ -4851,7 +4851,7 @@ def generate_pdf(
                     tbl_rows.append([
                         Paragraph(sb["type"], ss["body"]),
                         Paragraph(sb["requirement"], ss["ok"]),
-                        Paragraph(clause_or_page(sb["clause"], sb.get("pdf_page")), ss["note"]),
+                        Paragraph(clause_or_page(sb["clause"], sb.get("pdf_page")) or "—", ss["note"]),
                         Paragraph(sb["notes"], ss["note"]),
                     ])
                 story.append(table(tbl_rows, [c1b, c2b, c3b, c4b]))
@@ -4868,7 +4868,7 @@ def generate_pdf(
                     tbl_rows2.append([
                         Paragraph(sb["type"], ss["body"]),
                         Paragraph(sb["requirement"], ss["warn"]),
-                        Paragraph(clause_or_page(sb["clause"], sb.get("pdf_page")), ss["note"]),
+                        Paragraph(clause_or_page(sb["clause"], sb.get("pdf_page")) or "—", ss["note"]),
                         Paragraph(sb["notes"], ss["note"]),
                     ])
                 story.append(table(tbl_rows2, [c1b, c2b, c3b, c4b]))

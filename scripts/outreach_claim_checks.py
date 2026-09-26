@@ -263,7 +263,7 @@ def every_served_number_is_cited() -> Result:
         url = urls.get(e.get("source_chapter_key") or "") or ""
         allowed = instruments.get(lga, frozenset()) | statewide
         # A clause withheld because its page does not prove it is cited by that page (migration 077);
-        # withheld with no page is no citation at all ("See the plan" is not evidence).
+        # withheld with no page is no citation at all (a blank citation is not evidence).
         cited = bool((e.get("clause") or "").strip()) or (
             e.get("clause_shown") is False and e.get("pdf_page") is not None)
         if (not cited or not (e.get("source_text") or "").strip()

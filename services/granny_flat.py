@@ -269,7 +269,7 @@ def _fetch_sd_setbacks(conn, lga_slug: Optional[str]) -> Optional[dict]:
             return False
 
         def clause_or_page(clause, pdf_page):
-            return clause or (f"Page {pdf_page} of the plan" if pdf_page else "See the plan")
+            return f"p. {pdf_page}" if pdf_page else ""
 
     sd_setbacks = []
     for (dev_type, ctrl_type, vmin, vmax, unit, condition, source_text, section_ref, applicability,
