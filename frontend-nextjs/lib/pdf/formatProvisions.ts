@@ -1,6 +1,7 @@
 // Group and format provisions for PDF export
 
 import { ProvisionForPDF, ProvisionGroup, ProvisionSubgroup } from './types';
+import { pageLabel } from '@/lib/page-citation';
 
 const TOPIC_ORDER = [
   'built_form',
@@ -149,9 +150,10 @@ export function generateReportId(
 
 export function formatCitation(provision: ProvisionForPDF): string {
   const part = provision.v2_dcp_part || '';
-  const page = provision.pdf_printed_page || provision.pdf_page || '?';
+  // The page is the rule's only when page_check says so (lib/page-citation.ts, migration 079).
+  const page = pageLabel(provision) ?? 'page ?';
 
-  return `${part}, PDF p.${page}`;
+  return `${part}, ${page}`;
 }
 
 /**

@@ -30,6 +30,7 @@ import type { DaResponse, SectionResponse } from '@/hooks/useDASession';
 import { buildSectionKey, parseSectionKey } from '@/lib/see/sectionKey';
 import { resolveCitationUrl } from '@/lib/citation-instrument-urls';
 import type { NumericCheckValues } from './NumericChecker';
+import { pageAnchor, pageHref, pageLabel } from '@/lib/page-citation';
 
 
 /**
@@ -171,6 +172,8 @@ export interface Provision {
   v2_has_numeric_value?: boolean;
   pdf_page?: number;
   pdf_printed_page?: number;  // Human-readable page number from PDF document
+  printed_page_label?: string | null; // Page number as the council prints it (migration 079)
+  page_check?: string | null;         // Whether pdf_page holds the rule (lib/page-citation.ts)
   pdf_page_image_url?: string;
   layer?: string;
   v2_heritage_type?: 'control' | 'guidance' | 'character' | 'descriptive';
@@ -197,6 +200,7 @@ export interface Provision {
 interface PageGroup {
   pageNumber: number | null;      // Raw pdf_page from database
   displayPageNumber: number | null; // Actual DCP page after applying offset
+  pageLabel?: string | null;      // Direct-PDF groups: "page B5" / "PDF page 18" / "page not located"
   pageUrl: string | null;
   provisions: Provision[];
   dcpPart: string | null;         // For offset calculation
@@ -412,14 +416,18 @@ function groupProvisionsByPage(provisions: Provision[], chapterPdfUrls?: Record<
       }
       pageMap.get(key)!.provisions.push(prov);
     } else if (prov.pdf_page && chapterPdfUrls && prov.source_chapter_key && chapterPdfUrls[prov.source_chapter_key]) {
-      // No page image but we have a chapter-specific PDF URL — group by chapter+page
+      // No page image but we have a chapter-specific PDF URL — group by chapter+page.
+      // The anchor is only a page that holds the rule (page_check, migration 079): rules whose
+      // stored page does not hold them open the document and group apart.
       const chapterUrl = chapterPdfUrls[prov.source_chapter_key];
-      const key = `direct-${prov.source_chapter_key}-${prov.pdf_page}`;
+      const anchor = pageAnchor(prov);
+      const key = `direct-${prov.source_chapter_key}-${anchor ?? 'unlocated'}-${pageLabel(prov)}`;
       if (!pageMap.has(key)) {
         pageMap.set(key, {
-          pageNumber: prov.pdf_page,
-          displayPageNumber: null,  // Direct-PDF: no reliable printed page number, omit label
-          pageUrl: `${chapterUrl}#page=${prov.pdf_page}`,
+          pageNumber: anchor,
+          displayPageNumber: null,  // Direct-PDF: the label below is the page reference
+          pageLabel: pageLabel(prov),
+          pageUrl: pageHref(chapterUrl, prov),
           provisions: [],
           dcpPart: prov.v2_dcp_part || null,
           tocSectionNumber: prov.toc_section_number || null,
@@ -902,15 +910,13 @@ export function PageGroupedProvisions({
                                 // resolveCitationUrl no longer requires pdf_page to return a
                                 // chapter match (2026-09-01 fix) — the anchor is added here,
                                 // only when a page number actually exists.
-                                const hasPage = Boolean(provision.pdf_page);
-                                const chapterHref = hasPage
-                                  ? `${resolved.url}#page=${provision.pdf_page}`
-                                  : resolved.url;
+                                // Only a page that holds the rule gets the anchor (page_check, migration 079).
+                                const chapterHref = pageHref(resolved.url, provision);
                                 return (
                                   <button
-                                    onClick={() => onViewPdf(chapterHref, provision.pdf_page || 0)}
+                                    onClick={() => onViewPdf(chapterHref, pageAnchor(provision) || 0)}
                                     className="p-0.5 rounded hover:bg-teal-100 shrink-0"
-                                    title={hasPage ? `PDF page ${provision.pdf_page}` : 'View chapter PDF'}
+                                    title={pageLabel(provision) ?? 'View chapter PDF'}
                                   >
                                     <FileText className="w-3.5 h-3.5 text-teal-500 hover:text-teal-700" />
                                   </button>
@@ -1107,7 +1113,9 @@ export function PageGroupedProvisions({
                     <span className="font-medium text-gray-700">{group.dcpPart}</span>
                   )}
                   {/* Page number — only for screenshot-based provisions with a reliable printed page */}
-                  {group.displayPageNumber ? (
+                  {group.pageLabel ? (
+                    <span className="text-gray-500"> · {group.pageLabel}</span>
+                  ) : group.displayPageNumber ? (
                     <span className="text-gray-500"> · PDF page {group.displayPageNumber}</span>
                   ) : !group.pageUrl?.includes('#page=') && (
                     <span className="text-gray-400"> · No page reference</span>
@@ -1123,10 +1131,10 @@ export function PageGroupedProvisions({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onViewPdf(group.pageUrl!, group.displayPageNumber || 0);
+                    onViewPdf(group.pageUrl!, group.displayPageNumber || group.pageNumber || 0);
                   }}
                   className="p-1.5 rounded hover:bg-teal-100 transition-colors flex-shrink-0"
-                  title={`${group.dcpPart && group.dcpPart !== 'unknown' ? group.dcpPart + ' - ' : ''}PDF page ${group.displayPageNumber || 1}`}
+                  title={`${group.dcpPart && group.dcpPart !== 'unknown' ? group.dcpPart + ' - ' : ''}${group.pageLabel ?? `PDF page ${group.displayPageNumber || 1}`}`}
                 >
                   <FileText className="w-4 h-4 text-teal-600 hover:text-teal-800" />
                 </button>

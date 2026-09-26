@@ -694,6 +694,21 @@ def main() -> int:
                       f"--council {council} --apply`; until then changed labels stay hidden.")
         except Exception as exc:  # noqa: BLE001 -- never fail a committed provision
             print(f"  [warn] setback clause re-check could not run for {council}: {exc}")
+        # Page links: a publish writes each rule's page, and the reader's page was the first page
+        # of its chunk for 45% of rules (2026-09-26). Check every committed rule's page against its
+        # PDF and correct it (migration 079). A rule left unchecked fails dcp_page_repair --check.
+        try:
+            r = subprocess.run([sys.executable, str(ROOT / "scripts" / "dcp_page_repair.py"),
+                                "--council", council, "--apply", "--workers", "2"],
+                               cwd=str(ROOT), capture_output=True, text=True, timeout=1800)
+            print(f"  page links for {council}: "
+                  f"{(r.stdout.strip().splitlines() or ['no output'])[-1]}")
+            if r.returncode:
+                print(f"  [warn] page-link check failed for {council} (exit {r.returncode}): "
+                      f"{r.stderr.strip()[-300:]}. Run `python scripts/dcp_page_repair.py "
+                      f"--council {council} --apply`; until then its links stay unchecked.")
+        except Exception as exc:  # noqa: BLE001 -- never fail a committed provision
+            print(f"  [warn] page-link check could not run for {council}: {exc}")
 
     # Completeness: did anything a council carries go BACKWARDS?
     #

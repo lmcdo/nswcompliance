@@ -633,9 +633,8 @@ def _reread_skipped_pages(pdf_path, reader, model: str, collected: list[dict]) -
     for first, last in pc.runs(skipped, AI_CHUNK_PAGES):
         found = _call_and_parse_with_empty_retry(
             model, _subset_bytes(reader, first - 1, last), _build_prompt(None))
-        for p in found:
-            p.setdefault("page", first)
-            collected.append(p)
+        _place_on_pages(found, reader, first, last)
+        collected.extend(found)
     still = pc.skipped_pages({p: lines[p] for p in skipped}, texts())
     ruled = [p for p in still if pc.holds_rules(lines[p])]
     if ruled:
@@ -645,6 +644,33 @@ def _reread_skipped_pages(pdf_path, reader, model: str, collected: list[dict]) -
     if still:
         print(f"    [page-coverage] still left out, no rule words on them: {still}")
 
+
+
+def _place_on_pages(provs: list[dict], reader, first: int, last: int) -> None:
+    """Set each provision's page to the page its words are on, within the 1-based pages
+    [first, last] it was read from (scripts/rule_page_locator.py -- the same rule
+    dcp_page_repair.py checks served rows with).
+
+    Every rule used to get `first`, the chunk's first page: measured 2026-09-26, 45% of
+    17,489 served rules linked to a page that does not hold them. The model's own "page" is
+    not used -- it counts from the start of the chunk it was sent, not of the document.
+    A rule that cannot be placed on exactly one page keeps `first`; dcp_page_repair.py
+    then records it as unresolved rather than as checked.
+    """
+    try:
+        import rule_page_locator as rpl
+    except ImportError:          # imported as scripts.ai_extractor
+        from scripts import rule_page_locator as rpl
+    texts = {}
+    for n in range(first, last + 1):
+        try:
+            texts[n] = reader.pages[n - 1].extract_text() or ""
+        except Exception:  # noqa: BLE001 -- an unreadable page cannot hold a located rule
+            texts[n] = ""
+    doc = rpl.Doc(texts)          # only the pages it was read from: a copy elsewhere is never chosen
+    for p in provs:
+        page, _verdict = rpl.locate(str(p.get("text", "")), [doc], None, range(first, last + 1))
+        p["page"] = page or first
 
 # ── entrypoint ───────────────────────────────────────────────────────────────
 def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None = None) -> list[dict]:
@@ -670,9 +696,8 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
             bearing = _rule_bearing_pages(reader, a, b)
             if any(n >= RULE_PAGE_MIN_CHARS for _p, n in bearing):
                 lost.append({"pages": (a + 1, b), "text_chars": sum(n for _p, n in bearing)})
-        for p in chunk_provs:
-            p.setdefault("page", a + 1)  # approximate: first page of the chunk
-            collected.append(p)
+        _place_on_pages(chunk_provs, reader, a + 1, b)
+        collected.extend(chunk_provs)
         # carry the last real section seen into the next chunk, so a chunk that opens
         # mid-section (its heading fell in this chunk) still qualifies its codes.
         for p in reversed(chunk_provs):

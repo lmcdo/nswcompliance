@@ -1,0 +1,215 @@
+{
+  "tier": "critical",
+  "justification": "Changes what every served DCP citation links to and prints, writes 17,489 production rows through a new script, adds a migration with triggers on regulatory_provisions, and changes the AI reader that writes every future rule page. Wrong output here sends readers to the wrong page of a planning control.",
+  "commit_hash": "67016734",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    ".qa/reports/fix__dcp-page-links.json",
+    "frontend-nextjs/__tests__/lib/page-citation.test.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/components/compliance/PageGroupedProvisions.tsx",
+    "frontend-nextjs/components/pdf/ProvisionTable.tsx",
+    "frontend-nextjs/lib/page-citation.ts",
+    "frontend-nextjs/lib/pdf/formatProvisions.ts",
+    "frontend-nextjs/lib/pdf/types.ts",
+    "frontend-nextjs/lib/see/propertyContext.ts",
+    "migrations/079_rule_page_check.sql",
+    "scripts/ai_extractor.py",
+    "scripts/dcp_commit_approved.py",
+    "scripts/dcp_page_repair.py",
+    "scripts/rule_page_locator.py",
+    "tests/test_ai_reader_rule_page.py",
+    "tests/test_dcp_page_repair.py",
+    "tests/test_dcp_page_repair_real_db.py",
+    "tests/test_rule_page_locator.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions pdf_page (int), page_range (int[]), pdf_printed_page (int, NULL on every served council DCP row), provision_text; dcp_chapter_registry r2_current_path and r2_public_pdf_url; the 237 chapter PDFs in R2 and the dq111_lines page-line cache.",
+    "assumption_mismatch": "If a stored page is right but the locator cannot confirm it, the row is kept as on_page only when it holds the rule; otherwise it is left unmoved as unresolved, never guessed. If a PDF cannot be read the rows get no_source and are not moved.",
+    "new_vs_existing": "Existing rows: dcp_page_repair.py --apply corrects them once. New rows: ai_extractor places each rule on its own page, and dcp_commit_approved runs the repair per council after every publish; migration 079 triggers void a verdict when text, page or chapter PDF changes.",
+    "external_source_error": "An R2 download or PDF parse failure is caught per PDF in judge_pdf and returns no_source for that PDF's rows, which --check then reports; the run continues for the other PDFs.",
+    "frontend_type": "Yes: Provision in PageGroupedProvisions and ProvisionForPDF gain optional printed_page_label and page_check (string or null); the for-property select adds both columns.",
+    "user_failure_mode": "Council DCP rows not shown to hold the rule (unresolved, not_found, too_short, no_source, or never checked) open the chapter with no page anchor and say page not located, instead of opening a wrong page; LEP/SEPP rows are unchanged."
+  },
+  "functions": [
+    {
+      "name": "locate",
+      "file_line": "scripts/rule_page_locator.py:161",
+      "input": "rule text, Pages of one PDF, stored page, optional chunk window, anchor pages from citation_proof",
+      "output": "(page or None, verdict) to plan_row and _place_on_pages",
+      "if_none": "empty or short text returns (None, too_short); no candidate returns not_found; several returns unresolved"
+    },
+    {
+      "name": "printed_labels",
+      "file_line": "scripts/rule_page_locator.py:296",
+      "input": "a dict mapping each page number to the header and footer lines printed on it",
+      "output": "page to printed page label, used by plan_row",
+      "if_none": "empty margins give an empty dict; documents labelled on under half their pages give an empty dict"
+    },
+    {
+      "name": "plan_row",
+      "file_line": "scripts/dcp_page_repair.py:73",
+      "input": "one served row dict from the database, the located page, its verdict and the document labels",
+      "output": "values to write for pdf_page, page_range, printed_page_label, page_check, page_source_path",
+      "if_none": "page None keeps the stored page; a label only for on_page or moved"
+    },
+    {
+      "name": "write",
+      "file_line": "scripts/dcp_page_repair.py:223",
+      "input": "the list of planned row values produced by plan_row for rows that changed",
+      "output": "an UPDATE of regulatory_provisions per 500-row batch, committed after each batch",
+      "if_none": "an empty list writes nothing and returns 0"
+    },
+    {
+      "name": "_place_on_pages",
+      "file_line": "scripts/ai_extractor.py:649",
+      "input": "provisions from one chunk, pypdf reader, first and last page",
+      "output": "sets each provision page to its located page",
+      "if_none": "an unlocatable rule keeps the chunk first page and is later marked unresolved by the repair"
+    },
+    {
+      "name": "pageAnchor and pageLabel",
+      "file_line": "frontend-nextjs/lib/page-citation.ts:30",
+      "input": "pdf_page, printed_page_label and page_check fields as returned by the for-property API",
+      "output": "the page anchor and page text for UI and report",
+      "if_none": "no page gives a null anchor and null label; unchecked rows behave as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "page_check",
+      "read_at": "frontend-nextjs/lib/page-citation.ts:31",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/lib/page-citation.ts:31",
+      "if_missing": "NULL on a council DCP row fails closed: no page anchor and 'page not located'; rows outside the check (no source_council) behave as before"
+    },
+    {
+      "value": "printed_page_label",
+      "read_at": "frontend-nextjs/lib/page-citation.ts:38",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/lib/page-citation.ts:38",
+      "if_missing": "label falls back to PDF page N"
+    },
+    {
+      "value": "r2_current_path",
+      "read_at": "scripts/dcp_page_repair.py:119",
+      "nullable": "yes",
+      "guard_at": "scripts/dcp_page_repair.py:140",
+      "if_missing": "rows are planned as no_source and never moved"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "served council DCP rules with their chapter PDF",
+      "file_line": "scripts/dcp_page_repair.py:59",
+      "where_clause": "rp.is_current AND rp.v2_is_actionable AND rp.source_council IS NOT NULL, joined to an active registry row",
+      "if_zero": "prints zero rules and writes nothing",
+      "if_wrong": "the write only lands where the registry path still equals the judged path"
+    },
+    {
+      "purpose": "write verdicts and corrected pages",
+      "file_line": "scripts/dcp_page_repair.py:240",
+      "where_clause": "p.id = v.id AND p.is_current AND the active registry r2_current_path IS NOT DISTINCT FROM the judged path",
+      "if_zero": "reports 0 rows written",
+      "if_wrong": "a chapter republished mid-run keeps no stale verdict (tested on local Postgres)"
+    },
+    {
+      "purpose": "health check: every served rule checked against its current PDF",
+      "file_line": "scripts/dcp_page_repair.py:194",
+      "where_clause": "rp.is_current AND rp.v2_is_actionable AND rp.source_council IS NOT NULL",
+      "if_zero": "passes trivially with nothing served",
+      "if_wrong": "a stale source path counts as unchecked and fails"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The same rule wording is printed on several pages (per-site controls) and the locator picks the wrong copy",
+      "what_happens": "the link opens a page with the same words under a different site",
+      "mitigated": true,
+      "how": "scripts/rule_page_locator.py - several candidates give unresolved; a stored page that holds a copy stays",
+      "repro": "pytest tests/test_rule_page_locator.py -k repeat"
+    },
+    {
+      "scenario": "A bag of common words matches a page that does not hold the rule",
+      "what_happens": "the link is moved to a wrong page",
+      "mitigated": true,
+      "how": "scripts/rule_page_locator.py - a move needs an ordered 8-word run on the new page",
+      "repro": "pytest tests/test_rule_page_locator.py -k scrambled"
+    },
+    {
+      "scenario": "A year, date or numbered requirement in a margin counts up and is read as a page number",
+      "what_happens": "the label shows a number the council never printed as a page number",
+      "mitigated": true,
+      "how": "scripts/rule_page_locator.py - furniture lines only, the token must change page to page, labels on at least half the pages",
+      "repro": "pytest tests/test_rule_page_locator.py -k requirement"
+    },
+    {
+      "scenario": "Another writer changes a rule's text or page after it was checked",
+      "what_happens": "a stale on_page verdict is shown for a changed rule",
+      "mitigated": true,
+      "how": "migrations/079_rule_page_check.sql trigger clears the verdict unless page_checked_at is set in the same update",
+      "repro": "local Postgres scratch DB: update provision_text, then page_check is NULL"
+    },
+    {
+      "scenario": "The council publishes a new PDF for a chapter",
+      "what_happens": "pages checked against the old PDF are presented as checked",
+      "mitigated": true,
+      "how": "migrations/079_rule_page_check.sql registry trigger voids page verdicts; dcp_page_repair --check fails on stale source paths",
+      "repro": "local Postgres scratch DB: change r2_current_path, then page_check is NULL"
+    },
+    {
+      "scenario": "The AI model returns a chunk-relative page number",
+      "what_happens": "a rule is stored on page 3 of the document instead of page 15",
+      "mitigated": true,
+      "how": "scripts/ai_extractor.py:673 - the model page is ignored and the rule is located by its words",
+      "repro": "pytest tests/test_ai_reader_rule_page.py -k trusted"
+    },
+    {
+      "scenario": "The UI shows a link for a rule whose stored page is known not to hold it",
+      "what_happens": "the reader is sent to the wrong page",
+      "mitigated": true,
+      "how": "frontend-nextjs/lib/page-citation.ts - every verdict other than on_page/moved, and an unchecked council DCP row, gets no anchor and says page not located",
+      "repro": "npx jest __tests__/lib/page-citation.test.ts"
+    },
+    {
+      "scenario": "The health check is run before the repair or after a failed post-publish repair",
+      "what_happens": "served rules have no page verdict, so their links may open the chunk start page",
+      "mitigated": true,
+      "how": "scripts/dcp_page_repair.py:194 - check() counts rows whose page_source_path differs from the current registry path, including NULL, and exits 1",
+      "repro": "python scripts/dcp_page_repair.py --check before --apply exits 1"
+    },
+    {
+      "scenario": "The chunk-start page holds the same common words as the rule in a different order",
+      "what_happens": "the wrong page would be marked on_page and linked as checked",
+      "mitigated": true,
+      "how": "scripts/rule_page_locator.py locate - the stored page and every candidate must print the rule in order (8-word run or citation_proof anchors); found by cross-review 2026-09-26",
+      "repro": "pytest tests/test_rule_page_locator.py -k another_order"
+    },
+    {
+      "scenario": "A document's numbering restarts per section and the first page of a section has an unreadable footer",
+      "what_happens": "that page would be labelled with the previous section's count (2.5-19 instead of 2.6-1)",
+      "mitigated": true,
+      "how": "scripts/rule_page_locator.py page_numbering - numbers are filled only between readable pages of one run; leave-one-out over 3,589 readable pages: 1 wrong",
+      "repro": "pytest tests/test_rule_page_locator.py -k new_sections"
+    },
+    {
+      "scenario": "One printed rule is split into several partial matches because the stored text orders its parts differently from the page, or is a whole multi-page section",
+      "what_happens": "a correct stored page is reported unresolved and the link is removed",
+      "mitigated": true,
+      "how": "scripts/rule_page_locator.py occurrences - a place is scored over a rule-length stretch; overlapping stretches are one place",
+      "repro": "pytest tests/test_rule_page_locator.py -k better_reading"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dcp_page_repair.py --check; pytest tests/test_rule_page_locator.py tests/test_ai_reader_rule_page.py",
+    "fails_when": "--check exits 1 while any served rule has no page verdict for its current PDF (it does today: DQ-113 open); the pytest files fail when the phrase gate, the window filter, the neighbour count or the chunk-start fallback is removed (14 mutants tried, all killed).",
+    "observed_red": "2026-09-26: `python scripts/dcp_page_repair.py --check` against production exited 1 (page_check column missing -- no served rule has a verdict). Reverting ai_extractor._place_on_pages to the chunk start page: tests/test_ai_reader_rule_page.py 2 failed. Locator mutations (phrase gate removed, window filter removed, neighbour count loosened, len(ok)==1 loosened, stored-page hold check removed, anchor/word agreement removed): each made tests/test_rule_page_locator.py fail."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: apply migrations/079_rule_page_check.sql BEFORE merging (the for-property select reads the new columns), then python scripts/dcp_page_repair.py --apply, then --check must exit 0 and DQ-113 is flipped to fixed."
+  }
+}
