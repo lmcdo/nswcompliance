@@ -24,10 +24,12 @@ ALTER TABLE dcp_setback_controls
 -- A verdict belongs to the label, text and page it was judged on. Every path that edits a setback
 -- control (the setback-review fix route, repair scripts, re-extraction) would otherwise leave an old
 -- 'proven' on a new label. Any change to those fields clears the verdict, so the clause is hidden
--- until scripts/dcp_setback_citation_status.py judges it again (fail closed).
+-- until scripts/dcp_setback_citation_status.py judges it again (fail closed). lga is included:
+-- it decides 'external' and which council's PDF is the proof.
 CREATE OR REPLACE FUNCTION dcp_setback_controls_clear_citation_status() RETURNS trigger AS $$
 BEGIN
-    IF NEW.section_ref IS DISTINCT FROM OLD.section_ref
+    IF NEW.lga IS DISTINCT FROM OLD.lga
+       OR NEW.section_ref IS DISTINCT FROM OLD.section_ref
        OR NEW.source_text IS DISTINCT FROM OLD.source_text
        OR NEW.pdf_page IS DISTINCT FROM OLD.pdf_page
        OR NEW.source_chapter_key IS DISTINCT FROM OLD.source_chapter_key THEN
@@ -40,5 +42,5 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS dcp_setback_controls_clear_citation_status ON dcp_setback_controls;
 CREATE TRIGGER dcp_setback_controls_clear_citation_status
-    BEFORE UPDATE OF section_ref, source_text, pdf_page, source_chapter_key ON dcp_setback_controls
+    BEFORE UPDATE OF lga, section_ref, source_text, pdf_page, source_chapter_key ON dcp_setback_controls
     FOR EACH ROW EXECUTE FUNCTION dcp_setback_controls_clear_citation_status();

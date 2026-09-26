@@ -164,3 +164,30 @@ def test_writer_refuses_an_unknown_verdict():
 def test_the_shown_set_is_the_same_in_the_writer_and_the_reader():
     assert cdb.CLAUSE_SHOWN_STATUSES <= set(S.STATUSES)
     assert "partial" in S.STATUSES
+
+
+def test_a_verdict_is_written_only_onto_the_row_it_was_judged_on():
+    """A row edited while the writer ran must not receive the old row's verdict (cross-review)."""
+    cur = MagicMock()
+    cur.rowcount = 1
+    conn = MagicMock()
+    conn.cursor.return_value = cur
+    rows = [(7, "woollahra", "part-3", "C2.1", "ok.pdf", "the words", 12)]
+    assert S.write_verdicts(conn, [(7, "proven")], rows) == 1
+    sql, params = cur.execute.call_args[0]
+    for col in ("lga", "source_chapter_key", "section_ref", "source_text", "pdf_page"):
+        assert f"s.{col} IS NOT DISTINCT FROM" in sql
+    assert params == ([7], ["proven"], ["woollahra"], ["part-3"], ["C2.1"], ["the words"], [12])
+
+
+def test_the_outreach_check_does_not_count_see_the_plan_as_a_citation(monkeypatch):
+    import outreach_claim_checks as O
+    url = "https://example.org/x.pdf"
+    base = {"value_min": 6.0, "source_text": "t", "source_chapter_key": "k", "semantic_type": "front_setback"}
+    monkeypatch.setattr(O, "registered_instruments", lambda: {None: frozenset()})
+    monkeypatch.setattr(O, "is_source_link", lambda u, allowed: True)
+    for entry, ok in (({**base, "clause": "C2.1", "clause_shown": True}, True),
+                      ({**base, "clause": "", "clause_shown": False, "pdf_page": 12}, True),
+                      ({**base, "clause": "", "clause_shown": False, "pdf_page": None}, False)):
+        monkeypatch.setattr(O, "served_entries", lambda e=entry: ([("woollahra", e, {"k": url})], ""))
+        assert (O.every_served_number_is_cited()[0] == O.PASS) is ok, entry

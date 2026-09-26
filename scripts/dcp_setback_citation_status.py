@@ -95,6 +95,33 @@ def judge_rows(rows, readings_for) -> dict[int, str]:
     return verdicts
 
 
+def write_verdicts(conn, todo: list[tuple[int, str]], rows) -> int:
+    """Write each verdict onto the row it was judged on, and only that row.
+
+    A row edited while this ran (the 077 trigger cleared its verdict) no longer matches the
+    lga, chapter, label, text and page that were judged, so it keeps NULL and stays hidden
+    until the next run. Returns the number of rows written."""
+    cur = conn.cursor()
+    judged = {r[0]: r for r in rows}
+    written = 0
+    for i in range(0, len(todo), BATCH):
+        chunk = [(rid, st, judged[rid]) for rid, st in todo[i:i + BATCH]]
+        cur.execute(
+            "UPDATE dcp_setback_controls s SET citation_status = v.s, citation_checked_at = now() "
+            "FROM unnest(%s::bigint[], %s::text[], %s::text[], %s::text[], %s::text[], %s::text[], "
+            "%s::int[]) AS v(id, s, lga, chk, ref, txt, pg) "
+            "WHERE s.id = v.id AND s.is_current AND s.lga IS NOT DISTINCT FROM v.lga "
+            "AND s.source_chapter_key IS NOT DISTINCT FROM v.chk "
+            "AND s.section_ref IS NOT DISTINCT FROM v.ref "
+            "AND s.source_text IS NOT DISTINCT FROM v.txt AND s.pdf_page IS NOT DISTINCT FROM v.pg",
+            ([c[0] for c in chunk], [c[1] for c in chunk], [c[2][1] for c in chunk],
+             [c[2][2] for c in chunk], [c[2][3] for c in chunk], [c[2][5] for c in chunk],
+             [c[2][6] for c in chunk]))
+        written += cur.rowcount
+        conn.commit()
+    return written
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").strip().splitlines()[0])
     ap.add_argument("--council", help="Only this council (its lga slug).")
@@ -144,14 +171,8 @@ def main() -> int:
         if not args.apply:
             print("DRY RUN -- nothing written. Re-run with --apply.")
             return 0
-        for i in range(0, len(todo), BATCH):
-            chunk = todo[i:i + BATCH]
-            cur.execute(
-                "UPDATE dcp_setback_controls s SET citation_status = v.s, citation_checked_at = now() "
-                "FROM unnest(%s::bigint[], %s::text[]) AS v(id, s) WHERE s.id = v.id AND s.is_current",
-                ([t[0] for t in chunk], [t[1] for t in chunk]))
-            conn.commit()
-        print(f"WROTE {len(todo)} verdicts.")
+        written = write_verdicts(conn, todo, rows)
+        print(f"WROTE {written} verdicts ({len(todo) - written} rows changed while judging; left unchecked).")
         return 0
     finally:
         conn.close()
