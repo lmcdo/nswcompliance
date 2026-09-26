@@ -1,10 +1,11 @@
 {
   "tier": "critical",
   "justification": "Changes what every served DCP citation links to and prints, writes 17,489 production rows through a new script, adds a migration with triggers on regulatory_provisions, and changes the AI reader that writes every future rule page. Wrong output here sends readers to the wrong page of a planning control.",
-  "commit_hash": "9690744f",
+  "commit_hash": "f92be641",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
+    ".qa/reports/fix__dcp-page-links.json",
     "frontend-nextjs/__tests__/lib/page-citation.test.ts",
     "frontend-nextjs/app/api/provisions/for-property/route.ts",
     "frontend-nextjs/components/compliance/PageGroupedProvisions.tsx",
@@ -20,6 +21,7 @@
     "scripts/rule_page_locator.py",
     "tests/test_ai_reader_rule_page.py",
     "tests/test_dcp_page_repair.py",
+    "tests/test_dcp_page_repair_real_db.py",
     "tests/test_rule_page_locator.py"
   ],
   "pre_impl": {
