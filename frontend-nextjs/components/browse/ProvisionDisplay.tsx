@@ -13,7 +13,7 @@ import { FormattedProvisionText } from '@/components/compliance/FormattedProvisi
 interface Provision {
   id: number;
   documentId: string;
-  refNumber: string;
+  refNumber: string | null;
   sectionHeader: string | null;
   provisionText: string;
   provisionType: string | null;
@@ -226,9 +226,11 @@ export function ProvisionDisplay({ documentId, sectionNumber, sectionTitle }: Pr
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-4 mb-2">
                     <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <span className="font-mono bg-gray-100 px-2 py-1 rounded">
-                        {provision.refNumber}
-                      </span>
+                      {provision.refNumber && (
+                        <span className="font-mono bg-gray-100 px-2 py-1 rounded">
+                          {provision.refNumber}
+                        </span>
+                      )}
                       {provision.pdfPage && (
                         <span>Page {provision.pdfPage}</span>
                       )}

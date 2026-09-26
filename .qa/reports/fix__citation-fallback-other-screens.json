@@ -1,0 +1,81 @@
+{
+  "tier": "standard",
+  "justification": "Changes the clause numbers three live APIs serve (browse/section, clause/[id], cross-references). Not Critical: it only removes an unproven number and keeps the page and wording. Not Minor: it changes served regulatory citations.",
+  "commit_hash": "68936deb",
+  "files": [
+    "frontend-nextjs/app/api/browse/section/route.ts",
+    "frontend-nextjs/app/api/clause/[id]/route.ts",
+    "frontend-nextjs/app/api/provisions/cross-references/route.ts",
+    "frontend-nextjs/components/browse/ProvisionDisplay.tsx",
+    "frontend-nextjs/__tests__/api/citation-fallback-routes.test.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "citation_status (migration 076) already written for all served DCP rows; withServedCitation already exists (#1170). Reused, no new helper.",
+    "assumption_mismatch": "The resume plan listed dcp-complete, dcp/*, provisions/[id]/*; grep of page imports showed those feed only ComplianceDashboard/V2, which no page imports. The live screens are /dcp-browse, quick search and the cross-reference link, so those routes were changed.",
+    "new_vs_existing": "Read-only: two columns added to three SELECTs.",
+    "external_source_error": "clause/[id] reads the canonical view, which lacks citation_status; LEFT JOIN on regulatory_provisions by id. A missing join row gives NULL status and no council, served as before (LEP/SEPP behaviour).",
+    "frontend_type": "refNumber and targetReference become string|null; ProvisionDisplay renders the label only when present; LegalTextPanel already guarded targetReference; clause_reference falls back to 'Provision <id>'.",
+    "user_failure_mode": "A true number wrongly judged unproven is hidden, the page still shown: the citation stays true. 1,864 current non-actionable council rows are unchecked (NULL) and now show no number on /dcp-browse (fail closed, as #1170)."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/citation-fallback-routes.test.ts",
+    "fails_when": "any of the three routes serves the stored number of a not_proven council row",
+    "observed_red": "Mutation: replacing withServedCitation with a pass-through in each route in turn fails 1 test each (3/3 killed)."
+  },
+  "functions": [
+    {
+      "name": "GET/POST handlers (browse/section, clause/[id], cross-references)",
+      "file_line": "frontend-nextjs/app/api/browse/section/route.ts, app/api/clause/[id]/route.ts, app/api/provisions/cross-references/route.ts",
+      "input": "DB rows with ref_number, provision_text, citation_status, source_council",
+      "output": "the served label (refNumber / clause_reference / targetReference) null or 'Provision <id>' and the stored code stripped from the first line unless proven or imprecise",
+      "if_none": "no rows: unchanged empty/404 responses"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "browse section rows",
+      "file_line": "app/api/browse/section/route.ts",
+      "where_clause": "document_id = $1 AND is_current AND pdf_page in section range (unchanged)"
+    },
+    {
+      "purpose": "clause by id",
+      "file_line": "app/api/clause/[id]/route.ts",
+      "where_clause": "rp.id = $1 (unchanged), LEFT JOIN regulatory_provisions live ON live.id = rp.id"
+    },
+    {
+      "purpose": "cross references",
+      "file_line": "app/api/provisions/cross-references/route.ts",
+      "where_clause": "xr.source_provision_id = $1 (unchanged)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Browse section rows include current but non-actionable council rows, which the status writer never judges (NULL)",
+      "what_happens": "their stored numbers would be served unchecked",
+      "mitigated": true,
+      "how": "NULL status with a source_council fails closed in citationIsShown; 1,864 such rows now show no number, page kept",
+      "repro": "SELECT count(*) FROM regulatory_provisions WHERE is_current AND source_council IS NOT NULL AND citation_status IS NULL  -- 1864 on 2026-09-26"
+    },
+    {
+      "scenario": "Target provision of a cross reference is missing (LEFT JOIN null)",
+      "what_happens": "the joined status and council columns are both NULL",
+      "mitigated": true,
+      "how": "treated as non-DCP: targetReference null anyway, targetText null",
+      "repro": "withServedCitation with all-null fields returns clause_label null"
+    },
+    {
+      "scenario": "LEP/SEPP clause via quick search",
+      "what_happens": "a statewide clause must keep its printed number",
+      "mitigated": true,
+      "how": "NULL status with no source_council is shown",
+      "repro": "jest: 'serves an LEP/SEPP row (no council) as before'"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Open /dcp-browse on a Woollahra chapter and confirm not_proven rules show a page but no clause code."
+  }
+}

@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { withServedCitation } from '@/lib/citation-display';
 import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
 
 
@@ -15,7 +16,8 @@ export const dynamic = 'force-dynamic';
 interface Provision {
   id: number;
   documentId: string;
-  refNumber: string;
+  /** null when the council's page does not prove the stored clause number. */
+  refNumber: string | null;
   sectionHeader: string | null;
   provisionText: string;
   provisionType: string | null;
@@ -101,7 +103,9 @@ export async function POST(request: NextRequest) {
           p.provision_type,
           p.pdf_page,
           p.zone,
-          p.development_type
+          p.development_type,
+          p.citation_status,
+          p.source_council
         FROM regulatory_provisions p
         WHERE p.document_id = $1
           AND p.is_current = TRUE
@@ -120,7 +124,9 @@ export async function POST(request: NextRequest) {
           p.provision_type,
           p.pdf_page,
           p.zone,
-          p.development_type
+          p.development_type,
+          p.citation_status,
+          p.source_council
         FROM regulatory_provisions p
         WHERE p.document_id = $1
           AND p.is_current = TRUE
@@ -134,17 +140,21 @@ export async function POST(request: NextRequest) {
     const provisionsResult = await query(provisionQuery, provisionParams);
 
     // Transform provisions
-    const provisions: Provision[] = provisionsResult.rows.map((row) => ({
+    // An unproven clause number is not served; the page still is (lib/citation-display).
+    const provisions: Provision[] = provisionsResult.rows.map((raw) => {
+      const row = withServedCitation(raw, raw.ref_number);
+      return {
       id: row.id,
       documentId: row.document_id,
-      refNumber: row.ref_number,
+      refNumber: row.clause_label,
       sectionHeader: row.section_header,
-      provisionText: row.provision_text,
+      provisionText: row.provision_text ?? '',
       provisionType: row.provision_type,
       pdfPage: row.pdf_page,
       zone: row.zone,
       developmentType: row.development_type
-    }));
+      };
+    });
 
     const sectionInfo: SectionInfo = {
       sectionNumber: section.section_number,

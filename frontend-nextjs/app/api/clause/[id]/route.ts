@@ -1,6 +1,7 @@
 // app/api/clause/[id]/route.ts - Clause Text Lookup Endpoint
 import { NextRequest, NextResponse } from 'next/server';
 import { DatabaseClient } from '@/lib/database/client';
+import { withServedCitation } from '@/lib/citation-display';
 
 export async function GET(
  request: NextRequest,
@@ -30,8 +31,11 @@ export async function GET(
  rp.page_number,
  rp.domain_classification,
  rp.document_id,
- rp.created_at
+ rp.created_at,
+ live.citation_status,
+ live.source_council
  FROM regulatory_provisions_canonical rp
+ LEFT JOIN regulatory_provisions live ON live.id = rp.id
  WHERE rp.id = $1
  LIMIT 1
  `;
@@ -45,7 +49,13 @@ export async function GET(
  }, { status: 404 });
  }
  
- const clause = result[0];
+ // An unproven DCP clause number is not served (lib/citation-display).
+ const raw = result[0];
+ const served = withServedCitation(
+ { ...raw, ref_number: raw.clause_reference, provision_text: raw.full_text },
+ raw.clause_reference,
+ );
+ const clause = { ...raw, clause_reference: served.clause_label, full_text: served.provision_text };
  
  // Determine document hierarchy level from document_id
  const getAuthorityLevel = (docId: string): string => {
