@@ -29,7 +29,7 @@ const norm = (s: string) => s.toLowerCase().replace(/[\s._]+/g, '');
 export function stripStoredCode(text: string | null | undefined, refNumber: string | null | undefined): string {
   if (typeof text !== 'string' || typeof refNumber !== 'string') return typeof text === 'string' ? text : '';
   if (!text.startsWith('#')) return text;
-  const want = norm(refNumber.split('__').pop() ?? '');
+  const want = norm(refNumber?.split('__').pop() ?? '');
   if (!want) return text;
   const nl = text.indexOf('\n');
   const first = nl === -1 ? text : text.slice(0, nl);

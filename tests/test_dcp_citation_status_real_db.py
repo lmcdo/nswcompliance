@@ -17,6 +17,7 @@ pytestmark = [pytest.mark.database, pytest.mark.skipif(
     reason="real-DB test: set PYTEST_REAL_DB=1 and DATABASE_URL")]
 
 
+@pytest.mark.database
 def test_every_served_rule_has_a_known_citation_verdict():
     import psycopg2
     import dcp_citation_status as S
