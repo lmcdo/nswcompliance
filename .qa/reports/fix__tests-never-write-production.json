@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Stops test runs writing to the production database; no served output changes, one guard in the commit worker.",
-  "commit_hash": "bc2c4bab",
+  "commit_hash": "02b8a0ac",
   "files": [
     "scripts/dcp_commit_approved.py",
     "tests/test_dcp_page_repair.py"
