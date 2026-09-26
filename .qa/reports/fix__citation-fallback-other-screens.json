@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes the clause numbers three live APIs serve (browse/section, clause/[id], cross-references). Not Critical: it only removes an unproven number and keeps the page and wording. Not Minor: it changes served regulatory citations.",
-  "commit_hash": "3d2b99d9",
+  "commit_hash": "68936deb",
   "files": [
     "frontend-nextjs/app/api/browse/section/route.ts",
     "frontend-nextjs/app/api/clause/[id]/route.ts",
