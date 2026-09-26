@@ -90,6 +90,19 @@ END $$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS report_audit_trail_chain_seq_idx ON report_audit_trail (chain_seq);
 
+-- The chain's tail, kept outside the rows: deleting the NEWEST row breaks no later link, so the
+-- verifier compares the last row with this checkpoint. The insert trigger moves it in the same
+-- transaction as the row, so a rolled-back insert moves nothing.
+CREATE TABLE IF NOT EXISTS report_audit_trail_tail (
+    one_row boolean PRIMARY KEY DEFAULT true CHECK (one_row),
+    chain_seq bigint NOT NULL,
+    row_hash text NOT NULL);
+-- Seed it once; the guard (created below) is dropped first so a re-run can pass this point.
+DROP TRIGGER IF EXISTS report_audit_trail_tail_guard ON report_audit_trail_tail;
+INSERT INTO report_audit_trail_tail (chain_seq, row_hash)
+    SELECT chain_seq, row_hash FROM report_audit_trail ORDER BY chain_seq DESC LIMIT 1
+ON CONFLICT (one_row) DO NOTHING;
+
 -- New rows are chained on insert. The advisory lock serialises concurrent inserts so two
 -- reports can never both link to the same previous row.
 CREATE OR REPLACE FUNCTION report_audit_trail_chain() RETURNS trigger AS $$
@@ -98,6 +111,8 @@ BEGIN
     NEW.chain_seq := nextval('report_audit_trail_chain_seq');
     SELECT row_hash INTO NEW.prev_hash FROM report_audit_trail ORDER BY chain_seq DESC LIMIT 1;
     NEW.row_hash := report_audit_trail_digest(NEW, NEW.prev_hash);
+    INSERT INTO report_audit_trail_tail (chain_seq, row_hash) VALUES (NEW.chain_seq, NEW.row_hash)
+    ON CONFLICT (one_row) DO UPDATE SET chain_seq = EXCLUDED.chain_seq, row_hash = EXCLUDED.row_hash;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -105,6 +120,20 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS report_audit_trail_chain ON report_audit_trail;
 CREATE TRIGGER report_audit_trail_chain BEFORE INSERT ON report_audit_trail
     FOR EACH ROW EXECUTE FUNCTION report_audit_trail_chain();
+
+-- The checkpoint moves only from inside the chain trigger (trigger depth 2); never directly.
+CREATE OR REPLACE FUNCTION report_audit_trail_tail_guard() RETURNS trigger AS $$
+BEGIN
+    IF TG_OP = 'DELETE' OR pg_trigger_depth() < 2 THEN
+        RAISE EXCEPTION 'report_audit_trail_tail moves only when an audit row is inserted (% refused)', TG_OP;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS report_audit_trail_tail_guard ON report_audit_trail_tail;
+CREATE TRIGGER report_audit_trail_tail_guard BEFORE INSERT OR UPDATE OR DELETE ON report_audit_trail_tail
+    FOR EACH ROW EXECUTE FUNCTION report_audit_trail_tail_guard();
 
 -- Append-only, enforced rather than documented.
 CREATE OR REPLACE FUNCTION report_audit_trail_append_only() RETURNS trigger AS $$

@@ -114,7 +114,11 @@ def write_verdicts(conn, todo: list[tuple[int, str]], rows) -> int:
             "WHERE s.id = v.id AND s.is_current AND s.lga IS NOT DISTINCT FROM v.lga "
             "AND s.source_chapter_key IS NOT DISTINCT FROM v.chk "
             "AND s.section_ref IS NOT DISTINCT FROM v.ref "
-            "AND s.source_text IS NOT DISTINCT FROM v.txt AND s.pdf_page IS NOT DISTINCT FROM v.pg",
+            "AND s.source_text IS NOT DISTINCT FROM v.txt AND s.pdf_page IS NOT DISTINCT FROM v.pg "
+            # ... and onto the PDF still in force (a state instrument has none to match).
+            "AND (v.s = 'external' OR EXISTS (SELECT 1 FROM dcp_chapter_registry reg "
+            "WHERE reg.is_active AND reg.council = v.lga AND reg.chapter_key = v.chk "
+            "AND reg.r2_current_path IS NOT DISTINCT FROM v.src))",
             ([c[0] for c in chunk], [c[1] for c in chunk], [c[2][1] for c in chunk],
              [c[2][2] for c in chunk], [c[2][3] for c in chunk], [c[2][5] for c in chunk],
              [c[2][6] for c in chunk], [c[2][4] for c in chunk]))

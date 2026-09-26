@@ -127,7 +127,12 @@ def main() -> int:
                 "UPDATE regulatory_provisions p SET citation_status = v.s, citation_source_path = v.src, "
                 "citation_checked_at = now() "
                 "FROM unnest(%s::bigint[], %s::text[], %s::text[]) AS v(id, s, src) "
-                "WHERE p.id = v.id AND p.is_current",
+                "WHERE p.id = v.id AND p.is_current "
+                # Only onto the PDF still in force: a chapter republished while this ran had its
+                # verdicts voided by the 078 trigger, and must not get the old verdict back.
+                "AND EXISTS (SELECT 1 FROM dcp_chapter_registry reg WHERE reg.is_active "
+                "AND reg.council = p.source_council AND reg.chapter_key = p.source_chapter_key "
+                "AND reg.r2_current_path IS NOT DISTINCT FROM v.src)",
                 ([t[0] for t in chunk], [t[1] for t in chunk], [t[2] for t in chunk]))
             conn.commit()
         print(f"WROTE {len(todo)} verdicts.")

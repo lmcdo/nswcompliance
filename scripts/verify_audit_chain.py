@@ -36,6 +36,24 @@ WHERE chain_seq IS NULL
 ORDER BY chain_seq NULLS FIRST
 """
 
+#: Deleting the newest row breaks no later link; the tail checkpoint (migration 078) catches it.
+TAIL_SQL = """
+SELECT t.chain_seq, t.row_hash, last.chain_seq, last.row_hash
+FROM report_audit_trail_tail t
+LEFT JOIN LATERAL (SELECT chain_seq, row_hash FROM report_audit_trail
+                   ORDER BY chain_seq DESC LIMIT 1) last ON true
+"""
+
+
+def tail_problem(row) -> str | None:
+    """None when the newest row is the one the checkpoint names. Pure."""
+    if row is None:
+        return "no tail checkpoint"
+    t_seq, t_hash, last_seq, last_hash = row
+    if (t_seq, t_hash) != (last_seq, last_hash):
+        return f"newest row is chain_seq={last_seq}, checkpoint says {t_seq}: rows removed from the end"
+    return None
+
 
 def main() -> int:
     try:
@@ -54,13 +72,15 @@ def main() -> int:
         total = cur.fetchone()[0]
         cur.execute(CHECK_SQL)
         bad = cur.fetchall()
+        cur.execute(TAIL_SQL)
+        tail = tail_problem(cur.fetchone()) if total else None
     except Exception as exc:  # noqa: BLE001 -- e.g. migration 078 not applied: cannot check
         print(f"COULD NOT CHECK: {exc}")
         return 2
     finally:
         conn.close()
-    if bad:
-        print(f"BROKEN: {len(bad)} of {total} audit rows fail the chain")
+    if bad or tail:
+        print(f"BROKEN: {len(bad)} of {total} audit rows fail the chain" + (f"; {tail}" if tail else ""))
         for rid, seq, why in bad[:20]:
             print(f"  chain_seq={seq} id={rid}: {why}")
         return 1

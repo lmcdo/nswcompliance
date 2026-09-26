@@ -52,7 +52,8 @@ def test_the_record_names_every_setback_shown_with_its_verdict_and_source():
     assert cites[0] == {**cites[0], "clause_shown": "C2.1, p. 12", "citation_status": "proven",
                         "checked_against": "dcp/woollahra/c2-v3.pdf"}
     assert cites[1]["clause_shown"] is None and cites[1]["citation_status"] == "not_proven"
-    assert summary == {"pdf_sha256": "ab" * 32, "r2_key": "k", "setbacks_shown": 2, "clauses_shown": 1}
+    assert summary == {"recorded_at": "generated_before_upload", "pdf_sha256": "ab" * 32, "r2_key": "k",
+                       "setbacks_shown": 2, "clauses_shown": 1}
     assert inter["lep_clauses"] == [{"number": "6.9", "source": "LEP"}]
 
 
@@ -148,3 +149,26 @@ def test_the_pdf_endpoint_checks_the_id_first_and_audits_before_upload():
                                      "_write_conveyancing_audit(", "_upload_to_r2(")}
     assert idx["is_report_id(req.report_id)"] < idx["_load_pipeline_cache("]
     assert idx["_write_conveyancing_audit("] < idx["_upload_to_r2("]
+
+
+def test_the_newest_row_cannot_be_removed_unnoticed():
+    import verify_audit_chain as V
+    assert V.tail_problem((5, "h5", 5, "h5")) is None
+    assert "removed from the end" in V.tail_problem((6, "h6", 5, "h5"))
+    assert V.tail_problem(None) == "no tail checkpoint"
+
+
+def test_a_failed_upload_is_recorded_as_undelivered(monkeypatch):
+    import conveyancing as C
+    got = {}
+    monkeypatch.setattr(audit_trail, "log_audit_trail", lambda **kw: got.update(kw))
+    monkeypatch.setattr(audit_trail, "get_current_disclaimer_version", lambda p: "v1")
+    C._record_delivery_failure(MagicMock(report_id="793604ba-6713-4a29-b80b-4e17476ba8a3", prop_id=None))
+    assert got["output_summary"]["recorded_at"] == "delivery_failed"
+    assert not got.get("required")
+
+
+def test_writers_only_write_onto_the_pdf_still_in_force():
+    for p in ("dcp_citation_status.py", "dcp_setback_citation_status.py"):
+        src = (ROOT / "scripts" / p).read_text(encoding="utf-8")
+        assert "reg.r2_current_path IS NOT DISTINCT FROM v.src" in src, p

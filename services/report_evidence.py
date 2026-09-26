@@ -69,6 +69,9 @@ def conveyancing_evidence(dcp_setbacks: dict | None, lep_clauses: list | None,
                         for c in (lep_clauses or []) if isinstance(c, dict)],
     }
     summary = {
+        # Written when the file is built, BEFORE upload: this row proves what was generated. A
+        # failed upload adds a second 'delivery_failed' row; a delivered report has none.
+        "recorded_at": "generated_before_upload",
         "pdf_sha256": pdf_sha256,
         "r2_key": r2_key,
         "setbacks_shown": len(citations),

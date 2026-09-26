@@ -919,6 +919,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
     # Upload to R2
     pdf_url = _upload_to_r2(pdf_path, req.report_id)
     if not pdf_url:
+        _record_delivery_failure(req)
         raise HTTPException(status_code=503, detail="PDF upload failed")
 
     return {
@@ -953,6 +954,20 @@ def _write_conveyancing_audit(req, address, lat, lng, pdf_path, dcp_setbacks_db,
         logger.error("conveyancing report %s not delivered: %s", req.report_id, exc)
         raise HTTPException(status_code=503,
                             detail="Report not delivered: its audit record could not be written")
+
+
+def _record_delivery_failure(req) -> None:
+    """The generated-report row is permanent; say, in a second row, that it never reached the
+    customer. Best effort: the customer already gets an error either way."""
+    try:
+        from audit_trail import get_current_disclaimer_version, log_audit_trail
+    except ImportError:
+        from services.audit_trail import get_current_disclaimer_version, log_audit_trail
+    log_audit_trail(
+        report_id=req.report_id, pipeline_name="conveyancing",
+        input_params={"prop_id": req.prop_id}, data_sources=[],
+        output_summary={"recorded_at": "delivery_failed", "r2_key": f"conveyancing/{req.report_id}.pdf"},
+        disclaimer_version=get_current_disclaimer_version("conveyancing"))
 
 
 def _upload_to_r2(pdf_path: str, report_id: str) -> Optional[str]:
