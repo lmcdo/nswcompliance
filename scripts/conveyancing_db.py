@@ -79,6 +79,38 @@ _SHARED_TOWN_PLANS = {
 }
 
 
+#: dcp_setback_controls.citation_status values whose clause label may be shown (migration 077).
+#: 'external' = a state instrument, outside the council-page check, as LEP/SEPP rows are in 076.
+#: NULL (not checked, or the column not yet migrated) is NOT shown: unchecked fails closed.
+CLAUSE_SHOWN_STATUSES = frozenset({"proven", "imprecise", "external"})
+
+
+def clause_is_shown(citation_status: str | None) -> bool:
+    """Whether a setback control's clause label may be printed."""
+    return citation_status in CLAUSE_SHOWN_STATUSES
+
+
+def clause_or_page(clause: str | None, pdf_page) -> str:
+    """The citation a report prints: always the page, plus the clause when it is shown.
+
+    "C2.1, p. 12" when proven, "p. 12" when withheld, "" when neither is known. A clause that
+    already names its own page (a sibling-plan citation, see cite_clause) is left as it is."""
+    clause = (clause or "").strip()
+    page = f"p. {pdf_page}" if isinstance(pdf_page, int) and pdf_page > 0 else ""
+    if not page or re.search(r"\bp\.\s?\d", clause):
+        return clause
+    return f"{clause}, {page}" if clause else page
+
+
+def served_source_ref(entry: dict, fallback: str | None = None) -> str | None:
+    """The citation for one fetch_dcp_setbacks entry (clause_or_page). A hidden clause gives the page, never
+    `fallback`: the dict-level clause_ref is ANOTHER row's clause, and borrowing it for a
+    row whose own label was withheld would cite the wrong control."""
+    if entry.get("clause") or entry.get("clause_shown") is False:
+        return clause_or_page(entry.get("clause"), entry.get("pdf_page")) or None
+    return fallback
+
+
 def cite_clause(
     section_ref: str | None,
     lga: str | None = None,
@@ -643,7 +675,8 @@ def fetch_dcp_setbacks(
             SELECT dev_type, control_type, value_min, value_max, unit,
                    condition, source_text, section_ref, applicability,
                    needs_review, source_chapter_key, pdf_page, dcp_version,
-                   zones_include, zones_exclude, plain_summary
+                   zones_include, zones_exclude, plain_summary,
+                   to_jsonb(dcp_setback_controls) ->> 'citation_status'
             FROM dcp_setback_controls
             WHERE lga = %s AND is_current = TRUE
               AND (needs_review IS NULL OR needs_review = FALSE)
@@ -819,7 +852,8 @@ def fetch_dcp_setbacks(
 
     for (dev_type, ctrl_type, vmin, vmax, unit, condition, source_text,
          section_ref, applicability, needs_review, source_chapter_key,
-         pdf_page, dcp_version, zones_include, zones_exclude, plain_summary) in rows:
+         pdf_page, dcp_version, zones_include, zones_exclude, plain_summary,
+         citation_status) in rows:
         # Fail-closed on currency (mirrors the web route /api/dcp/structured-controls):
         # a control flagged for human review after a DCP amendment must never render
         # as an authoritative number in the PDF. The SQL WHERE already excludes
@@ -849,7 +883,10 @@ def fetch_dcp_setbacks(
             control_kind = "site_derived"
             requirement = source_text or plain_summary or "No set number — see the plan"
 
-        sibling = sibling_citations.get((source_chapter_key, section_ref))
+        # The clause label is shown only when the council's page proves every piece of it
+        # (scripts/dcp_setback_citation_status.py); otherwise "" and the page stands in.
+        shown = clause_is_shown(citation_status)
+        sibling = sibling_citations.get((source_chapter_key, section_ref)) if shown else None
         entry = {
             "type":         base_label,
             # The real development form — WITHOUT this, the capacity engine's
@@ -863,8 +900,10 @@ def fetch_dcp_setbacks(
             "value_min":    float(vmin) if vmin is not None else None,
             "value_max":    float(vmax) if vmax is not None else None,
             "unit":         unit or "m",
-            "clause":       cite_clause(section_ref, lga_slug, source_chapter_key,
-                                        {**sibling, "page": pdf_page} if sibling else None),
+            "clause":       (cite_clause(section_ref, lga_slug, source_chapter_key,
+                                         {**sibling, "page": pdf_page} if sibling else None)
+                             if shown else ""),
+            "clause_shown": shown,
             # Every other plan this clause is published in (migration 074), each
             # at its own clause, page and link; [] when it is in one plan only.
             "also_cited":   [{"plan": plan, "clause": clause, "pdf_page": page, "url": url}

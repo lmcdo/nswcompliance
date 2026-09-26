@@ -205,7 +205,8 @@ def _fetch_sd_setbacks(conn, lga_slug: Optional[str]) -> Optional[dict]:
         cur.execute(
             """
             SELECT dev_type, control_type, value_min, value_max, unit,
-                   condition, source_text, section_ref, applicability
+                   condition, source_text, section_ref, applicability, pdf_page,
+                   to_jsonb(dcp_setback_controls) ->> 'citation_status'
             FROM dcp_setback_controls
             WHERE lga = %s AND is_current = TRUE
               -- A control held for review is not served anywhere else (the same guard
@@ -259,8 +260,21 @@ def _fetch_sd_setbacks(conn, lga_slug: Optional[str]) -> Optional[dict]:
         "min_landscaped_area": "Min landscaped area",
     }
 
+    try:
+        # The same gate as fetch_dcp_setbacks: a clause label is shown only when the council's
+        # page proves it (migration 077); otherwise the page stands in.
+        from conveyancing_db import clause_is_shown, clause_or_page
+    except ImportError:  # scripts/ not on the path: fail closed, show the page
+        def clause_is_shown(_status):
+            return False
+
+        def clause_or_page(clause, pdf_page):
+            page = f"p. {pdf_page}" if pdf_page else ""
+            return ", ".join(x for x in ((clause or "").strip(), page) if x)
+
     sd_setbacks = []
-    for dev_type, ctrl_type, vmin, vmax, unit, condition, source_text, section_ref, applicability in rows:
+    for (dev_type, ctrl_type, vmin, vmax, unit, condition, source_text, section_ref, applicability,
+         pdf_page, citation_status) in rows:
         label = _CONTROL_LABELS.get(ctrl_type, ctrl_type.replace("_", " ").title())
         if vmin is not None or vmax is not None:
             parts = []
@@ -276,7 +290,7 @@ def _fetch_sd_setbacks(conn, lga_slug: Optional[str]) -> Optional[dict]:
         sd_setbacks.append({
             "type": label,
             "requirement": requirement,
-            "clause": section_ref or "",
+            "clause": clause_or_page(section_ref if clause_is_shown(citation_status) else None, pdf_page),
             "notes": condition or "",
         })
 

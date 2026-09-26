@@ -272,7 +272,11 @@ def _numeric_label_beside(L: list, start: int, lo: int) -> str | None:
     return None
 
 
-_OBLIGATION = re.compile(r"(?:is|are) to|(?:must|shall|should|will|may)")
+#: A rule's sentence, not a heading's title: "Fences must be ...", "Buildings are to ...".
+#: Until 2026-09-26 the file held literal backspace characters where the \b word
+#: boundaries belong (an editing tool wrote \b unescaped), so this never matched and a
+#: short rule sentence counted as a heading title.
+_OBLIGATION = re.compile(r"\b(?:is|are) to\b|\b(?:must|shall|should|will|may)\b")
 
 
 def _titled(L: list, h: int, code: str) -> bool:
@@ -641,3 +645,49 @@ def prove_citation_any(ref_number, text, readings, page_hint=None) -> dict:
     if best["status"] in _BEST:
         return best
     return verdicts[0]
+
+
+# -- a label is proven only when EVERY piece of it was judged ---------------------
+
+_SUB_ITEM = re.compile(r"\(\s*([A-Za-z0-9]{1,4})\s*\)")
+_SUB_ITEM_OPEN = re.compile(r"(?:^|[\s_])([A-Za-z]{1,4})\)")
+
+
+def unjudged_pieces(ref_number: str | None) -> list[str]:
+    """The pieces of a label that prove_citation never checks. [] = every piece is judged.
+
+    split_ref keeps the section codes and one item label and drops the rest: a bare
+    number after a section ("B7 5. Table 1": "5" and "1"), a table or control number
+    ("6.1.2.3 Control 4"), and every bracketed sub-item ("4.1.2(1)", "3_5_3_2 f)").
+    The verdict then covers "B7" while the reader sees all of it: on 843 served setback
+    rows a label shifted by one ("Table 1" -> "Table 2", "Control 4" -> "Control 5")
+    still proved 60 times in 115 (2026-09-26). A label is only as proven as its
+    least-checked piece.
+    """
+    tail = (ref_number or "").split("#")[-1].split("__")[-1]
+    tail = re.sub(r"\.pdf$", "", tail, flags=re.I)
+    subs = _SUB_ITEM.findall(tail) + _SUB_ITEM_OPEN.findall(tail)
+    groups = code_groups(tail)
+    sections, item, why = split_ref(tail)
+    if why == "bare integer section (not discriminating)":
+        # prove_citation judges the first bare number against "Section N" headings.
+        gs = groups[:-1] if (len(groups) > 1 and groups[-1][0]) else groups
+        sections, why = [g for g in gs if len(g[1]) == 1][:1], None
+    judged = [] if why else sections + ([item] if item else [])
+    names = [render(g).lower() for g in judged]
+    # A piece naming only the parent of a judged one ("16" of "16.1") adds nothing unchecked.
+    left = [render(g) for g in groups if g not in judged
+            and not any(n.startswith(render(g).lower() + ".") for n in names)]
+    return left + subs
+
+
+def prove_label(ref_number, text, readings, page_hint=None) -> dict:
+    """prove_citation_any, with a verdict of 'partial' when the page proves some pieces
+    of the label but the label also carries pieces nothing checked. 'partial' is not
+    shown: a reader cannot tell the checked pieces from the unchecked ones."""
+    verdict = prove_citation_any(ref_number, text, readings, page_hint)
+    if verdict["status"] in _BEST:
+        left = unjudged_pieces(ref_number)
+        if left:
+            return {"status": "partial", "detail": f"not checked: {' '.join(left)}"}
+    return verdict

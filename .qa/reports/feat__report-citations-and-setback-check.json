@@ -1,0 +1,155 @@
+{
+  "tier": "critical",
+  "justification": "Changes the clause citations printed in the paid conveyancing PDF, the Brief, the granny flat report, the DCP controls card and the parking API, and changes a CHECK constraint plus a trigger on production tables. Critical: a wrong gate would silently remove or mis-attribute citations in customer reports.",
+  "commit_hash": "8455d115",
+  "files": [
+    "scripts/citation_proof.py",
+    "scripts/dcp_citation_status.py",
+    "scripts/dcp_setback_citation_status.py",
+    "migrations/077_citation_status_partial_and_setbacks.sql",
+    "scripts/conveyancing_db.py",
+    "scripts/generate_conveyancing_report.py",
+    "services/granny_flat.py",
+    "services/intelligence_brief.py",
+    "services/constraint_arithmetic.py",
+    "scripts/build_lot_search_index.py",
+    "scripts/outreach_claim_checks.py",
+    "scripts/dcp_commit_approved.py",
+    "Dockerfile.monitors",
+    "tests/test_setback_citation_gate.py",
+    "frontend-nextjs/__tests__/lib/citation-display.test.ts",
+    "tests/test_dcp_setback_citation_status_real_db.py",
+    "tests/test_granny_flat_citation_gate_real_db.py",
+    "scripts/check_served_answer_quality.py",
+    "scripts/hold_unlocatable_controls.py",
+    "scripts/measure_control_page_corrections.py",
+    "scripts/repair_control_pdf_pages.py",
+    ".claude/dq_checks.json",
+    ".claude/served_answer_quality_baseline.json",
+    "scripts/run_migration.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls has no citation column (information_schema 2026-09-26); 843 served rows, 954 current rows with NULL provision_id. regulatory_provisions.citation_status from 076, constraint regulatory_provisions_citation_status_check.",
+    "assumption_mismatch": "Assumed the page check judged a whole label. It judges only split_ref's sections + one item: on setback rows a label shifted by one still proved 60/115 (Table 1->2, Control 4->5, (1)->(2)). Also assumed setback source_text is verbatim: many rows are paraphrases, so 299 give text_not_found.",
+    "new_vs_existing": "Additive column + trigger on dcp_setback_controls; constraint widened on regulatory_provisions. Reads unchanged except one added projected column via to_jsonb so code works before and after the migration.",
+    "external_source_error": "A chapter PDF that cannot be read is no_source (hidden). State instruments (nsw_statewide, _external_*) are 'external' and shown as before, like LEP/SEPP rows in 076.",
+    "frontend_type": "clause stays a string (\"\" when withheld); TS consumers map r.clause || null, so section_ref becomes null and the card shows the page. clause_shown is a new boolean.",
+    "user_failure_mode": "If the writer never runs, citation_status is NULL and clauses are hidden with the page shown (visible as fewer clause numbers, never a wrong one). A consumer that borrowed the dict-level clause_ref for a row without a clause would cite ANOTHER control; served_source_ref prevents that."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_setback_citation_gate.py -q",
+    "fails_when": "an unproven or unchecked setback clause is served, a withheld row borrows another row's clause, the granny flat report skips the gate, or a label with an unchecked piece is 'proven'",
+    "observed_red": "7 mutants (gate off in fetch_dcp_setbacks, borrow fallback, page fallback, granny gate, partial downgrade, external rule, label_of) each fail 1-7 tests. Known-wrong run on 843 live rows: shifted labels passed 60/115 before, 1/42 after."
+  },
+  "functions": [
+    {
+      "name": "unjudged_pieces",
+      "file_line": "scripts/citation_proof.py",
+      "input": "a clause label as stored, e.g. 'B7 5. Table 1' or 'Doc__chap__C4_9(a)'",
+      "output": "the pieces split_ref never judges (bare numbers, table/control numbers, bracketed sub-items)",
+      "if_none": "empty label -> the whole label is unjudged via split_ref's reason"
+    },
+    {
+      "name": "prove_label",
+      "file_line": "scripts/citation_proof.py",
+      "input": "the clause label, the rule's own text, the chapter's page readings and the stored page",
+      "output": "prove_citation_any verdict, downgraded to 'partial' when a proven label carries unjudged pieces",
+      "if_none": "a failed verdict (not_proven, text_not_found, unjudged) is returned with its own reason unchanged"
+    },
+    {
+      "name": "judge_rows",
+      "file_line": "scripts/dcp_setback_citation_status.py",
+      "input": "served setback rows (id, lga, chapter key, label, R2 path, text, page) and a loader for page readings",
+      "output": "a dict mapping each setback control id to exactly one verdict from STATUSES",
+      "if_none": "external -> 'external'; no PDF or unreadable -> 'no_source'"
+    },
+    {
+      "name": "served_source_ref",
+      "file_line": "scripts/conveyancing_db.py",
+      "input": "one entry dict from fetch_dcp_setbacks plus the dict-level clause_ref fallback string",
+      "output": "its clause, or its page when withheld, never the fallback for a withheld row",
+      "if_none": "when the withheld row has no stored page it returns 'See the plan', never the fallback"
+    },
+    {
+      "name": "write_verdicts",
+      "file_line": "scripts/dcp_setback_citation_status.py",
+      "input": "a DB connection, the (id, verdict) pairs to write, and the rows exactly as they were judged",
+      "output": "the number of rows written; each UPDATE matches id plus lga, chapter, label, text and page as judged",
+      "if_none": "a row edited during the run matches nothing, keeps NULL and stays hidden until the next run"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "served setback rows to judge",
+      "file_line": "scripts/dcp_setback_citation_status.py SERVED_SQL",
+      "where_clause": "s.is_current AND needs_review not true; LEFT JOIN registry on council+chapter_key AND is_active (0 rows join >1 active registry row, measured)"
+    },
+    {
+      "purpose": "write verdicts",
+      "file_line": "scripts/dcp_setback_citation_status.py",
+      "where_clause": "UPDATE ... WHERE s.id = v.id AND s.is_current, 500 ids per statement, only changed verdicts"
+    },
+    {
+      "purpose": "served read",
+      "file_line": "scripts/conveyancing_db.py fetch_dcp_setbacks",
+      "where_clause": "lga = %s AND is_current AND needs_review not true (unchanged); adds to_jsonb(...)->>'citation_status'"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The new report code deploys to Railway before migration 077 is applied to the database",
+      "what_happens": "a direct citation_status column reference would raise and fetch_dcp_setbacks returns None, dropping every setback from every report",
+      "mitigated": true,
+      "how": "the read uses to_jsonb(row)->>'citation_status', NULL when the column is absent; NULL fails closed to the page",
+      "repro": "tests/test_setback_citation_gate.py::test_select_reads_the_verdict_without_requiring_the_column and the None case of test_fetch_dcp_setbacks_shows_a_clause_only_when_proven"
+    },
+    {
+      "scenario": "A setback label is edited after it was proven (setback-review fix route, repair script)",
+      "what_happens": "the old proven verdict would keep showing the new unchecked label",
+      "mitigated": true,
+      "how": "migration 077 trigger clears citation_status when section_ref, source_text, pdf_page or source_chapter_key change",
+      "repro": "UPDATE dcp_setback_controls SET section_ref = section_ref || ' x' WHERE id = <id>; then SELECT citation_status -> NULL"
+    },
+    {
+      "scenario": "The Brief or capacity maths reads a row whose clause was withheld",
+      "what_happens": "source_ref fell back to dict-level clause_ref, the first OTHER row's clause",
+      "mitigated": true,
+      "how": "served_source_ref returns the row's page for a withheld clause",
+      "repro": "tests/test_setback_citation_gate.py::test_served_source_ref_gives_the_page_not_another_rows_clause"
+    },
+    {
+      "scenario": "A label like 'B7 5. Table 1' is proven on B7 alone",
+      "what_happens": "the reader sees Table 1 cited as the council's while Table 2 would pass too",
+      "mitigated": true,
+      "how": "prove_label returns partial when unjudged_pieces is non-empty; partial is not in either shown set",
+      "repro": "tests/test_setback_citation_gate.py::test_a_proven_label_with_an_unchecked_piece_is_partial"
+    },
+    {
+      "scenario": "The verdict writer is run with a new status value the database constraint does not allow",
+      "what_happens": "the UPDATE would fail mid-batch after earlier chunks committed, leaving a mix of old and new verdicts",
+      "mitigated": true,
+      "how": "plan_updates raises ValueError on any verdict outside STATUSES before the first write; STATUSES mirrors the 077 CHECK list and a test pins the shown set as a subset",
+      "repro": "tests/test_setback_citation_gate.py::test_writer_refuses_an_unknown_verdict"
+    },
+    {
+      "scenario": "A reviewer edits a setback label while the verdict writer is still judging the same council",
+      "what_happens": "an id-only UPDATE would store the old label's 'proven' on the new unchecked label",
+      "mitigated": true,
+      "how": "write_verdicts matches every judged field with IS NOT DISTINCT FROM; the 077 trigger also clears on lga changes",
+      "repro": "tests/test_setback_citation_gate.py::test_a_verdict_is_written_only_onto_the_row_it_was_judged_on"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Apply migrations/077 BEFORE merge, then run both status writers with --apply",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Generate a conveyancing report for a Georges River address: setback rows show 'Page N of the plan' in the Clause column where 6.1.2.3 Control N is not proven."
+  },
+  "real_layer_exempt": {
+    "scripts/check_served_answer_quality.py": "read-only check; run live against production 2026-09-26 (--baseline: OK, 168 across 31 keys) and runs nightly in data-watch against production, which is its real-layer test",
+    "scripts/hold_unlocatable_controls.py": "one-shot production write, run live 2026-09-26: dry run selected exactly the 13 OC-8 failures, --apply held 13 of 13 with a backup, and OC-8 then passed 0 of 724; a repeatable real-DB test would re-hold production rows",
+    "scripts/measure_control_page_corrections.py": "read-only measurement, run live 2026-09-26 with --missing-page-only: 18 rows, 5 single-candidate pages, 9 ambiguous, 4 not in document",
+    "scripts/repair_control_pdf_pages.py": "guarded production write, run live 2026-09-26: applied 5, skipped 0, prediction matched 5/5, row counts unchanged; a repeatable real-DB test would rewrite production pages"
+  }
+}

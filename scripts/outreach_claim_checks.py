@@ -262,11 +262,15 @@ def every_served_number_is_cited() -> Result:
         numbers += 1
         url = urls.get(e.get("source_chapter_key") or "") or ""
         allowed = instruments.get(lga, frozenset()) | statewide
-        if (not (e.get("clause") or "").strip() or not (e.get("source_text") or "").strip()
+        # A clause withheld because its page does not prove it is cited by that page (migration 077);
+        # withheld with no page is no citation at all (a blank citation is not evidence).
+        cited = bool((e.get("clause") or "").strip()) or (
+            e.get("clause_shown") is False and e.get("pdf_page") is not None)
+        if (not cited or not (e.get("source_text") or "").strip()
                 or not is_source_link(url, allowed)):
             missing.append(f"{lga}/{e.get('semantic_type')}")
     return ((PASS if not missing else FAIL),
-            f"served numbers missing a clause, the council's sentence or a link to its source document: "
+            f"served numbers missing where they are printed (proven clause or page), the council's sentence or a link to its source document: "
             f"{len(missing)} of {numbers} {missing[:4]}")
 
 

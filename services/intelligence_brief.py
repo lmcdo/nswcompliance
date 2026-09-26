@@ -1282,6 +1282,7 @@ from conveyancing_db import (  # noqa: E402
     fetch_heritage_postgis,
     fetch_nearby_das as db_fetch_nearby_das,
     fetch_sepp_housing_standards,
+    served_source_ref,
 )
 from lga_lookup import lookup_lga  # noqa: E402
 from compound_constraints import (  # noqa: E402
@@ -2792,7 +2793,7 @@ def _build_dcp_controls(
             value_max=_parse_numeric(s.get("value_max")),
             unit=s.get("unit", "m"),
             condition=condition,
-            source_ref=s.get("clause") or dcp_data.get("clause_ref"),
+            source_ref=served_source_ref(s, dcp_data.get("clause_ref")),
         ))
 
     # Data currency, not query date: as_at previously stamped date.today() on

@@ -75,9 +75,11 @@ def run_migration(migration_file: str):
         conn.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        migration_file = sys.argv[1]
-    else:
-        migration_file = "scripts/migrations/create_version_schema.sql"
+    # No default file: a bare `python scripts/run_migration.py` (e.g. a pasted command split
+    # across two lines) used to run create_version_schema.sql against production (2026-09-26).
+    if len(sys.argv) != 2:
+        print("usage: python scripts/run_migration.py <migration.sql>")
+        sys.exit(2)
+    migration_file = sys.argv[1]
 
     run_migration(migration_file)

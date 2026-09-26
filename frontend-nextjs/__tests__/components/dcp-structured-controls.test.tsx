@@ -114,3 +114,13 @@ describe('structured-controls API source — classification is complete', () => 
     }
   });
 });
+
+describe('shortCitation: the link always has text (migration 077)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { shortCitation } = require('@/components/compliance/DcpStructuredControls');
+  it('shows the page always and the clause only when served', () => {
+    expect(shortCitation({ section_ref: '5.2.1', pdf_page: 200 })).toBe('5.2.1, p. 200');
+    expect(shortCitation({ section_ref: null, pdf_page: 200 })).toBe('p. 200');
+    expect(shortCitation({ section_ref: null, pdf_page: null })).toBe('Source');
+  });
+});

@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 # DB helpers — pre-fetched before generate_pdf (no DB connection inside renderer)
 sys.path.insert(0, str(Path(__file__).parent))
-from conveyancing_db import fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp, load_regulatory_configs, _validate_sepp_sd_config  # noqa: E402
+from conveyancing_db import clause_or_page, fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp, load_regulatory_configs, _validate_sepp_sd_config  # noqa: E402
 from services.address_identity import parcel_identity_match  # noqa: E402  GATE-0
 
 # ---------------------------------------------------------------------------
@@ -4851,7 +4851,7 @@ def generate_pdf(
                     tbl_rows.append([
                         Paragraph(sb["type"], ss["body"]),
                         Paragraph(sb["requirement"], ss["ok"]),
-                        Paragraph(sb["clause"], ss["note"]),
+                        Paragraph(clause_or_page(sb["clause"], sb.get("pdf_page")) or "—", ss["note"]),
                         Paragraph(sb["notes"], ss["note"]),
                     ])
                 story.append(table(tbl_rows, [c1b, c2b, c3b, c4b]))
@@ -4868,7 +4868,7 @@ def generate_pdf(
                     tbl_rows2.append([
                         Paragraph(sb["type"], ss["body"]),
                         Paragraph(sb["requirement"], ss["warn"]),
-                        Paragraph(sb["clause"], ss["note"]),
+                        Paragraph(clause_or_page(sb["clause"], sb.get("pdf_page")) or "—", ss["note"]),
                         Paragraph(sb["notes"], ss["note"]),
                     ])
                 story.append(table(tbl_rows2, [c1b, c2b, c3b, c4b]))

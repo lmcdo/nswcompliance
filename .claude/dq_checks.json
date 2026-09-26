@@ -1076,17 +1076,17 @@
     },
     "OC-8": {
       "kind": "outreach_claim",
-      "claim": "Every served DCP number carries its clause, the council's own sentence and a link to its source document (the council PDF, or the official NSW legislation page for an LEP clause).",
+      "claim": "Every served DCP number quotes the council's own words and shows exactly where they are printed: the page of the council's plan, or the clause of the state law, with a link to the document.",
       "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
       "declared": "true",
-      "verified": "2026-09-15: check passed against production, 0 of 738 served numbers missing a clause, sentence or source link. The last 3 (Sutherland LEP 2015 Sch 3 Div 2 cl 7(1)(a)-(c): 3m secondary frontage, 6m rear, 1.5m side) link to the official legislation page, accepted as their source document by user decision; their wording and values were checked against today's in-force text on legislation.nsw.gov.au.",
+      "verified": "2026-09-26: reworded by user decision (a clause number is shown only where the council's page proves it, migration 077, so the claim promises where a number is printed). Check passed against production: 0 of 724 served numbers missing. Of the 18 that had no page and no proven clause, 5 got their page (only one page carries the value and wording) and 13 were held for review (summaries, several filed under the wrong document; hold_unlocatable_controls.py). Before: 2026-09-15: check passed against production, 0 of 738 served numbers missing a clause, sentence or source link. The last 3 (Sutherland LEP 2015 Sch 3 Div 2 cl 7(1)(a)-(c): 3m secondary frontage, 6m rear, 1.5m side) link to the official legislation page, accepted as their source document by user decision; their wording and values were checked against today's in-force text on legislation.nsw.gov.au.",
       "check": [
         "python",
         "scripts/outreach_claim_checks.py",
         "OC-8"
       ],
       "blocks_outreach": true,
-      "passes_when": "exit 0 - every served number read through fetch_dcp_setbacks has all three (a link counts when it is a PDF, or a https://legislation.nsw.gov.au/view/... page of one instrument registered in instrument_registry for that council or statewide; user decision 2026-09-15 for LEP clauses; UNKNOWN if the registry cannot be read), no served number fails its own quote (DQ-39), and no active chapter's public PDF link names a different copy from the one its rules were read from (r2_public_pdf_url ends with r2_current_path)",
+      "passes_when": "exit 0 - every served number read through fetch_dcp_setbacks has all three: the council's sentence, where it is printed (its proven clause, or its page when the clause is withheld; a state-law row its clause) and a link (a link counts when it is a PDF, or a https://legislation.nsw.gov.au/view/... page of one instrument registered in instrument_registry for that council or statewide; user decision 2026-09-15 for LEP clauses; UNKNOWN if the registry cannot be read), no served number fails its own quote (DQ-39), and no active chapter's public PDF link names a different copy from the one its rules were read from (r2_public_pdf_url ends with r2_current_path)",
       "red_when": "the declared state and the check disagree in either direction"
     },
     "OC-9": {

@@ -56,7 +56,7 @@ def _row(dev_type, ctrl_type, vmin, needs_review, section_ref="3.2"):
     #  source_chapter_key, pdf_page, dcp_version,
     #  zones_include, zones_exclude, plain_summary)
     return (dev_type, ctrl_type, vmin, None, "m", None, None, section_ref,
-            "all", needs_review, "part_3", 12, "v2022-current", None, None, None)
+            "all", needs_review, "part_3", 12, "v2022-current", None, None, None, "proven")
 
 
 def _semantic_types(result):
