@@ -667,9 +667,9 @@ def _place_on_pages(provs: list[dict], reader, first: int, last: int) -> None:
             texts[n] = reader.pages[n - 1].extract_text() or ""
         except Exception:  # noqa: BLE001 -- an unreadable page cannot hold a located rule
             texts[n] = ""
-    pages = rpl.Pages(texts)
+    doc = rpl.Doc(texts)          # only the pages it was read from: a copy elsewhere is never chosen
     for p in provs:
-        page, _verdict = rpl.locate(str(p.get("text", "")), pages, None, range(first, last + 1))
+        page, _verdict = rpl.locate(str(p.get("text", "")), [doc], None, range(first, last + 1))
         p["page"] = page or first
 
 # ── entrypoint ───────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes what every served DCP citation links to and prints, writes 17,489 production rows through a new script, adds a migration with triggers on regulatory_provisions, and changes the AI reader that writes every future rule page. Wrong output here sends readers to the wrong page of a planning control.",
-  "commit_hash": "4a3b9681",
+  "commit_hash": "edda6305",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
@@ -35,14 +35,14 @@
   "functions": [
     {
       "name": "locate",
-      "file_line": "scripts/rule_page_locator.py:85",
+      "file_line": "scripts/rule_page_locator.py:150",
       "input": "rule text, Pages of one PDF, stored page, optional chunk window, anchor pages from citation_proof",
       "output": "(page or None, verdict) to plan_row and _place_on_pages",
       "if_none": "empty or short text returns (None, too_short); no candidate returns not_found; several returns unresolved"
     },
     {
       "name": "printed_labels",
-      "file_line": "scripts/rule_page_locator.py:149",
+      "file_line": "scripts/rule_page_locator.py:279",
       "input": "a dict mapping each page number to the header and footer lines printed on it",
       "output": "page to printed page label, used by plan_row",
       "if_none": "empty margins give an empty dict; documents labelled on under half their pages give an empty dict"
@@ -127,21 +127,21 @@
       "scenario": "The same rule wording is printed on several pages (per-site controls) and the locator picks the wrong copy",
       "what_happens": "the link opens a page with the same words under a different site",
       "mitigated": true,
-      "how": "scripts/rule_page_locator.py:112 - several candidates give unresolved; a stored page that holds a copy stays",
+      "how": "scripts/rule_page_locator.py - several candidates give unresolved; a stored page that holds a copy stays",
       "repro": "pytest tests/test_rule_page_locator.py -k repeat"
     },
     {
       "scenario": "A bag of common words matches a page that does not hold the rule",
       "what_happens": "the link is moved to a wrong page",
       "mitigated": true,
-      "how": "scripts/rule_page_locator.py:112 - a move needs an ordered 8-word run on the new page",
+      "how": "scripts/rule_page_locator.py - a move needs an ordered 8-word run on the new page",
       "repro": "pytest tests/test_rule_page_locator.py -k scrambled"
     },
     {
       "scenario": "A year, date or numbered requirement in a margin counts up and is read as a page number",
       "what_happens": "the label shows a number the council never printed as a page number",
       "mitigated": true,
-      "how": "scripts/rule_page_locator.py:171 and 177 - furniture lines only, the token must change page to page, labels on at least half the pages",
+      "how": "scripts/rule_page_locator.py - furniture lines only, the token must change page to page, labels on at least half the pages",
       "repro": "pytest tests/test_rule_page_locator.py -k requirement"
     },
     {
@@ -185,6 +185,20 @@
       "mitigated": true,
       "how": "scripts/rule_page_locator.py locate - the stored page and every candidate must print the rule in order (8-word run or citation_proof anchors); found by cross-review 2026-09-26",
       "repro": "pytest tests/test_rule_page_locator.py -k another_order"
+    },
+    {
+      "scenario": "A document's numbering restarts per section and the first page of a section has an unreadable footer",
+      "what_happens": "that page would be labelled with the previous section's count (2.5-19 instead of 2.6-1)",
+      "mitigated": true,
+      "how": "scripts/rule_page_locator.py page_numbering - numbers are filled only between readable pages of one run; leave-one-out over 3,589 readable pages: 1 wrong",
+      "repro": "pytest tests/test_rule_page_locator.py -k new_sections"
+    },
+    {
+      "scenario": "One printed rule is split into several partial matches because the stored text orders its parts differently from the page, or is a whole multi-page section",
+      "what_happens": "a correct stored page is reported unresolved and the link is removed",
+      "mitigated": true,
+      "how": "scripts/rule_page_locator.py occurrences - a place is scored over a rule-length stretch; overlapping stretches are one place",
+      "repro": "pytest tests/test_rule_page_locator.py -k better_reading"
     }
   ],
   "falsifiable_check": {

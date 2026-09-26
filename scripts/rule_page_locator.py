@@ -10,21 +10,35 @@ chapter PDFs: 45% of 17,489 served rules linked to a page that does not hold the
 One definition, used by the reader when it writes a page and by
 scripts/dcp_page_repair.py when it checks and corrects the stored ones:
 
-  * a page HOLDS a rule only when the rule's words are printed there IN ORDER: an 8-word
-    run of it (running onto the next page is allowed), or citation_proof's 6-word anchors.
-    80% of the same common words is used to FIND candidate pages, never to accept one;
-  * several equally good pages and no way to choose = no answer, never a guess.
+  * the rule is found in the document's own word stream: every 6-word piece of it is looked
+    up, and pieces printed close together form one occurrence. An occurrence counts only when
+    at least half the rule's pieces are there (each piece is 6 words in order, so the same
+    words scrambled never match). Its page is where its earliest found words are printed.
+  * one occurrence clearly best = that page. Two equally good = the rule really is printed
+    twice (a control restated per site): the copy printed under the rule's own heading words
+    ("C4 Goodwin Avenue") wins, else the reader's chunk decides if only one lies in it,
+    otherwise no answer -- never a guess.
+  * both of a PDF's reading orders are searched (a two-column page read top-to-bottom
+    interleaves its columns).
+
+Measured on the first version, which tested page by page: a rule on page 21 also
+"matched" pages 20 and 22 (a test that allowed a rule to run onto the next page), and
+testing only the opening words matched generic openings everywhere -- 1,262 rules were
+wrongly called repeated. Locating the START in the word stream removes both.
 """
 from __future__ import annotations
 
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 
 _WORD = re.compile(r"[a-z0-9]+")
-HOLD_SHARE = 0.8
-PHRASE = 8           # words in an ordered run
-PHRASE_TRIES = 6     # runs tried, from the start of the rule, every 4 words
-MIN_WORDS = 4        # fewer content words than this cannot be located honestly
+PIECE = 6            # words per piece looked up
+STEP = 3             # a piece starts every STEP words of the rule
+HOLD = 0.5           # share of the rule's pieces an occurrence needs
+WEAK_HOLD = 0.3      # ...or this much, when it is the only place anything like the rule is printed
+TIE = 0.8            # a second occurrence within this share of the best is a real repeat
+MIN_TOKENS = 5       # a shorter rule ("See above.") cannot be located honestly
+HEAD_WINDOW = 200    # words above an occurrence searched for the rule's own heading words
 
 VERDICTS = ("on_page", "moved", "unresolved", "not_found", "too_short", "no_source")
 
@@ -43,75 +57,135 @@ def rule_body(text: str | None) -> str:
     return t
 
 
-def content_words(text: str | None) -> list[str]:
-    return [w for w in tokens(rule_body(text)) if len(w) > 3]
+def heading_words(text: str | None) -> set[str]:
+    """Words of the rule's '# code title' line that name it: 'Goodwin', 'Avenue' -- not codes."""
+    t = (text or "").lstrip()
+    if not t.startswith("#") or "\n" not in t:
+        return set()
+    head = t.partition("\n")[0]
+    return {w for w in tokens(head) if len(w) > 3 and not any(ch.isdigit() for ch in w)}
 
 
-class Pages:
-    """A document's page texts, indexed once. `pages` maps 1-based page -> text."""
+class Doc:
+    """One reading of a document as a word stream, each word knowing its page."""
 
     def __init__(self, pages: dict[int, str]):
-        toks = {p: tokens(t) for p, t in pages.items()}
-        self.sets = {p: set(ws) for p, ws in toks.items()}
-        self.joined = {p: " ".join(ws) for p, ws in toks.items()}
+        self.tok: list[str] = []
+        self.page: list[int] = []
+        for p in sorted(pages):
+            for w in tokens(pages[p]):
+                self.tok.append(w)
+                self.page.append(p)
+        self.index = defaultdict(list)
+        for k in range(len(self.tok) - PIECE + 1):
+            self.index[tuple(self.tok[k:k + PIECE])].append(k)
+        self.at = defaultdict(list)                 # word -> positions, for short rules
+        for k, w in enumerate(self.tok):
+            self.at[w].append(k)
 
-    def share(self, words: list[str], pages: list[int]) -> float:
-        s = set().union(*(self.sets.get(p, set()) for p in pages))
-        return sum(w in s for w in words) / len(words) if words else 0.0
-
-    def phrase_on(self, rule_tokens: list[str], page: int) -> bool:
-        """An ordered 8-word run of the rule printed on this page (or running onto the next)."""
-        text = " ".join(x for x in (self.joined.get(page, ""), self.joined.get(page + 1, "")) if x)
-        if not text or len(rule_tokens) < PHRASE:
-            return False
-        starts = list(range(0, len(rule_tokens) - PHRASE + 1, 4))[:PHRASE_TRIES]
-        return any(" ".join(rule_tokens[o:o + PHRASE]) in text for o in starts)
-
-    def _starts_here(self, words: list[str], page: int) -> bool:
-        one = self.share(words, [page])
-        return one >= HOLD_SHARE or (one >= 0.3 and self.share(words, [page, page + 1]) >= HOLD_SHARE)
-
-    def candidates(self, words: list[str]) -> list[int]:
-        """Pages where the rule starts, by word share (whole page, or over a page break)."""
-        full = [p for p in sorted(self.sets) if self.share(words, [p]) >= HOLD_SHARE]
-        return full or [p for p in sorted(self.sets) if self._starts_here(words, p)]
+    def above(self, k: int) -> set[str]:
+        return set(self.tok[max(0, k - HEAD_WINDOW):k])
 
 
-def locate(text: str | None, pages: Pages, stored: int | None = None,
-           window: range | None = None, anchor_pages=frozenset()) -> tuple[int | None, str]:
+def occurrences(rule_tokens: list[str], doc: Doc) -> list[tuple[float, int, set, int]]:
+    """Each place the rule is printed: (share of its pieces found there, the page its earliest
+    found words are on, every page its found pieces are on, position of those earliest words).
+
+    Pieces are 6 words in order, so the same words scrambled never match. A rule shorter than
+    a piece is looked up whole. A place is scored over a stretch of the document as long as
+    the rule itself, from where its pieces begin: every distinct piece in that stretch counts,
+    in whatever order the page prints them. Two earlier designs failed on real rows --
+    grouping by the START each piece implies split a rule whose stored text orders its parts
+    differently from the page (Ku-ring-gai 4.1C.6: 0.44 + 0.22 + 0.17, all on page 21), and
+    splitting on a repeated piece chopped whole sections stored as one rule (743 to 4,351
+    words) into fragments none of which reached the bar. Stretches that overlap are one place.
+    """
+    n = len(rule_tokens)
+    if n < MIN_TOKENS or not doc.tok:
+        return []
+    if n < PIECE:
+        return [(1.0, doc.page[k], {doc.page[k]}, k) for k in doc.at.get(rule_tokens[0], ())
+                if doc.tok[k:k + n] == rule_tokens]
+    pieces = [(o, tuple(rule_tokens[o:o + PIECE])) for o in range(0, n - PIECE + 1, STEP)]
+    hits = sorted((k, o) for o, g in pieces for k in doc.index.get(g, ()))
+    if not hits:
+        return []
+    span = int(n * 1.3) + 40                       # the rule's length, plus words the page adds
+    # Candidate starts: a hit with no hit in the `gap` words before it opens a stretch.
+    gap = 40 + n // 4
+    starts, last = [], None
+    for k, _o in hits:
+        if last is None or k - last > gap:
+            starts.append(k)
+        last = k
+    places = []
+    for k0 in starts:
+        inside = [(k, o) for k, o in hits if k0 <= k <= k0 + span]
+        o_min, k_min = min((o, k) for k, o in inside)
+        places.append((len({o for _k, o in inside}) / len(pieces), doc.page[k_min],
+                       {doc.page[k] for k, _o in inside}, k_min, k0))
+    places.sort(key=lambda x: -x[0])
+    kept: list[tuple] = []
+    for pl in places:                              # overlapping stretches are one place
+        if all(abs(pl[4] - q[4]) > span for q in kept):
+            kept.append(pl)
+    return [pl[:4] for pl in kept]
+
+
+def _by_heading(text: str | None, top: list, docs: list[Doc]) -> list:
+    """Of several real copies, the ones printed under the rule's own heading words. Only words
+    that tell the copies apart count; every copy equally named = no choice."""
+    # A heading word the rule's own text also uses ("front" in "set back from the front
+    # boundary") is printed in the copy above this one too, and tells nothing apart.
+    head = heading_words(text) - set(tokens(rule_body(text)))
+    if not head:
+        return top
+    seen = [head & docs[i].above(k) for (_c, _p, _ps, k, i) in top]
+    shared = set.intersection(*seen) if seen else set()
+    score = [len(s - shared) for s in seen]
+    best = max(score)
+    return [occ for occ, s in zip(top, score) if s == best] if best else top
+
+
+def locate(text: str | None, docs: list[Doc], stored: int | None = None,
+           window: range | None = None) -> tuple[int | None, str]:
     """-> (page, verdict). verdict: on_page | moved | unresolved | not_found | too_short.
 
-    stored: the page currently recorded. window: pages the rule must lie in when known
-    (the reader's chunk). anchor_pages: start pages found independently (citation_proof).
-    `page` is the page to link to, or None when the stored one must be left alone.
+    docs: the document's readings. stored: the page currently recorded. window: pages the
+    rule must lie in when known (the reader's chunk). `page` is None when the stored one
+    must be left alone.
     """
-    words = content_words(text)
     rt = tokens(rule_body(text))
-    if len(words) < MIN_WORDS:
+    if len(rt) < MIN_TOKENS:
         return None, "too_short"
-    anchors = set(anchor_pages)
-    # The stored page must show the rule's words IN ORDER (an 8-word run here, or citation_proof's
-    # 6-word anchors): 80% of the same common words can sit on a page that does not hold the rule.
-    if stored and (stored in anchors or pages.phrase_on(rt, stored)):
+    found = [occ + (i,) for i, d in enumerate(docs) for occ in occurrences(rt, d)]
+    if not found:
+        return None, "not_found"
+    best = max(occ[0] for occ in found)
+    rivals = [occ for occ in found if occ[0] >= TIE * best]
+    if best < HOLD:
+        # Only part of the stored text is the council's (map labels, figure text mixed in):
+        # accepted only where one place clearly holds the most of it.
+        if best < WEAK_HOLD or len({occ[1] for occ in rivals}) > 1 or any(
+                occ[0] >= 0.5 * best and occ[1] != rivals[0][1] for occ in found):
+            return None, "unresolved"
+    top = rivals
+    # A stored page that holds the rule is never moved off: a best match (a rule running over
+    # a page break is on both pages), or any strong one -- Woollahra B1.11.1 "Vaucluse East" was
+    # on its stored page 41 and scored a little lower than the near-identical "Vaucluse West"
+    # text on page 38. A table prints a rule's cells out of order, so a third in order is enough
+    # to keep the stored page (27 moves left a page printing every word of the rule).
+    keep = [occ for occ in found if occ[0] >= min(WEAK_HOLD, TIE * best)]
+    if stored is not None and any(stored in occ[2] for occ in keep):
         return stored, "on_page"
-    found = pages.candidates(words)
-    # A candidate must print the rule in order too: a page holding only the same common words
-    # would otherwise make the real page look ambiguous.
-    by_words = {p for p in found if pages.phrase_on(rt, p)}
-    if window is not None:
-        anchors = {p for p in anchors if p in window}
-        by_words = {p for p in by_words if p in window}
-    pool = anchors | by_words
-    if not pool:
-        return None, "unresolved" if (anchor_pages or found) else "not_found"
-    pick = None
-    if len(anchors) == 1 and (not by_words or anchors <= by_words):
-        pick = next(iter(anchors))                 # both methods agree, or the anchor alone
-    elif len(pool) == 1:
-        pick = next(iter(pool))
-    if pick is None or not pages.phrase_on(rt, pick):
+    if len({occ[1] for occ in top}) > 1:
+        top = _by_heading(text, top, docs)
+    starts = sorted({occ[1] for occ in top})
+    if len(starts) > 1 and window is not None:
+        starts = [p for p in starts if p in window]
+    if len(starts) != 1:
         return None, "unresolved"
-    return pick, ("moved" if pick != stored else "on_page")
+    return starts[0], "moved"
 
 
 def batch_size(stored_pages, sizes=(30, 12, 6), share: float = 0.9) -> int | None:
@@ -135,6 +209,7 @@ _TAIL = re.compile(r"(\d+)$")
 _DIGITS = re.compile(r"\d+")
 SHORT_LINE = 25
 MIN_COVERAGE = 0.5
+RUN_MIN = 3           # readable pages that must agree on a numbering offset
 
 
 def _norm(token: str) -> str:
@@ -146,14 +221,13 @@ def _split(token: str) -> tuple[str, int] | None:
     return (token[:m.start()].lower().replace("–", "-"), int(m.group(1))) if m else None
 
 
-def printed_labels(margins: dict[int, list[str]]) -> dict[int, str]:
-    """page -> the page number printed in its header/footer, as printed.
+def _read_labels(margins: dict[int, list[str]]) -> dict[int, str]:
+    """page -> the page number its own header/footer prints, where it can be read.
 
-    `margins` maps page -> the text lines in its top and bottom margins. A token is
-    taken only when a neighbouring page (1 or 2 away) prints a token with the same
-    prefix counting by exactly the page distance, and does not print this token itself:
-    a year, a date, a chapter code or a lot number is the same on every page and never
-    counts. Two such tokens = no label. Spacing is dropped ("D2 - 10" -> "D2-10").
+    A token is taken only when a neighbouring page (1 or 2 away) prints a token with the same
+    prefix counting by exactly the page distance, and does not print this token itself: a
+    year, a date, a chapter code or a lot number is the same on every page and never counts.
+    Two such tokens = no label. Spacing is dropped ("D2 - 10" -> "D2-10").
     """
     # Page furniture only: a short line, or one whose wording (numbers aside) repeats on 3+ pages.
     # A numbered requirement at the foot of a page counts up too, and is body text.
@@ -172,6 +246,44 @@ def printed_labels(margins: dict[int, list[str]]) -> dict[int, str]:
                      for d in (-2, -1, 1, 2) for pre2, n2 in split.get(p + d, {}).values())}
         if len(ok) == 1:
             out[p] = ok.pop()
+    return out
+
+
+def page_numbering(margins: dict[int, list[str]]) -> list[dict]:
+    """A document's page numbering as runs: printed number = prefix + (PDF page + offset).
+
+    Found once per document from the pages whose footer can be read, then applied to every
+    page of the run -- including pages whose footer could not be read (Leichhardt Part C s1:
+    38 of 109 read). A run needs RUN_MIN readable pages agreeing on prefix and offset; a new
+    run starts where the numbering restarts (City of Sydney "4.1-1", "4.2-1"). Headings or
+    list numbers that happen to count never agree for three pages at one offset.
+    """
+    read = _read_labels(margins)
+    runs: list[dict] = []
+    for p in sorted(read):
+        tok = read[p]
+        m = _TAIL.search(tok)
+        prefix, offset = tok[:m.start()], int(m.group(1)) - p
+        r = runs[-1] if runs else None
+        if r and r["prefix"].lower() == prefix.lower() and r["offset"] == offset:
+            r["last"], r["seen"] = p, r["seen"] + 1
+        else:
+            runs.append({"prefix": prefix, "offset": offset, "first": p, "last": p, "seen": 1})
+    # Filled only BETWEEN readable pages of a run, never carried past the last one: measured
+    # 2026-09-26 by hiding each readable footer and predicting it (3,589 pages, 237 PDFs),
+    # carrying 3 pages on gave 16 wrong numbers -- all the first page of a new section taking
+    # the previous section's count -- and filling between gave 1.
+    return [r for r in runs if r["seen"] >= RUN_MIN]
+
+
+def printed_labels(margins: dict[int, list[str]]) -> dict[int, str]:
+    """page -> the page number printed on it, from the document's numbering runs."""
+    out = {}
+    for r in page_numbering(margins):
+        for p in range(r["first"], r["last"] + 1):
+            n = p + r["offset"]
+            if n > 0:
+                out[p] = f"{r['prefix']}{n}"
     # A page-number footer is on most pages. A few counting tokens in a document that has none
     # are headings or list numbers that happen to count (Northern Beaches' web-page render).
     return out if len(out) >= MIN_COVERAGE * len(margins) else {}

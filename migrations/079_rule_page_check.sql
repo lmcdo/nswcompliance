@@ -19,6 +19,13 @@ ALTER TABLE regulatory_provisions
     ADD COLUMN IF NOT EXISTS page_checked_at timestamptz,
     ADD COLUMN IF NOT EXISTS page_source_path text;
 
+-- Each chapter PDF's own page numbering, found once from the pages whose footer can be read and
+-- applied to all its pages: [{"prefix": "B", "offset": -2, "first": 3, "last": 54, "seen": 50}].
+-- printed number = prefix || (PDF page + offset). NULL = not measured for the current PDF.
+ALTER TABLE dcp_chapter_registry
+    ADD COLUMN IF NOT EXISTS page_numbering jsonb,
+    ADD COLUMN IF NOT EXISTS page_numbering_path text;
+
 CREATE INDEX IF NOT EXISTS regulatory_provisions_page_check_idx
     ON regulatory_provisions (page_check) WHERE is_current;
 
@@ -53,6 +60,8 @@ BEGIN
            SET page_check = NULL, printed_page_label = NULL, page_checked_at = NULL, page_source_path = NULL
          WHERE source_council = NEW.council AND source_chapter_key = NEW.chapter_key
            AND is_current AND page_check IS NOT NULL;
+        NEW.page_numbering := NULL;          -- measured on the old PDF
+        NEW.page_numbering_path := NULL;
     END IF;
     RETURN NEW;
 END;
@@ -60,5 +69,5 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS dcp_chapter_registry_void_page_checks ON dcp_chapter_registry;
 CREATE TRIGGER dcp_chapter_registry_void_page_checks
-    AFTER UPDATE OF r2_current_path, is_active ON dcp_chapter_registry
+    BEFORE UPDATE OF r2_current_path, is_active ON dcp_chapter_registry
     FOR EACH ROW EXECUTE FUNCTION dcp_chapter_registry_void_page_checks();

@@ -23,61 +23,103 @@ def _pages(**by_page):
     base.update({int(k[1:]): v for k, v in by_page.items()})
     return L.Pages(base)
 
-
 # -- locating ------------------------------------------------------------------------
 
+def _doc(**by_page):
+    base = {p: FILLER for p in range(1, 13)}
+    base.update({int(k[1:]): v for k, v in by_page.items()})
+    return L.Doc(base)
+
+
+BODY = L.rule_body(RULE)
+
+
 def test_a_rule_on_its_stored_page_stays():
-    body = L.rule_body(RULE)
-    assert L.locate(RULE, _pages(p1=body), stored=1) == (1, "on_page")
+    assert L.locate(RULE, [_doc(p1=BODY)], stored=1) == (1, "on_page")
 
 
 def test_a_rule_stored_at_the_chunk_start_moves_to_its_own_page():
-    body = L.rule_body(RULE)
-    assert L.locate(RULE, _pages(p5=body), stored=1, window=range(1, 13)) == (5, "moved")
+    assert L.locate(RULE, [_doc(p5=BODY)], stored=1, window=range(1, 13)) == (5, "moved")
 
 
-def test_the_same_wording_on_two_pages_is_not_guessed():
-    body = L.rule_body(RULE)
-    assert L.locate(RULE, _pages(p4=body, p9=body), stored=1) == (None, "unresolved")
+def test_a_rule_is_not_also_on_the_pages_either_side_of_it():
+    """The first version tested each page joined to the next, so a rule on page 21 also
+    'matched' pages 20 and 22 and looked printed three times: 1,262 rules wrongly unresolved."""
+    assert L.locate(RULE, [_doc(p6=BODY)], stored=1) == (6, "moved")
 
 
-def test_a_window_settles_a_repeat_when_only_one_copy_is_in_the_chunk():
-    body = L.rule_body(RULE)
-    pages = L.Pages({**{p: FILLER for p in range(1, 30)}, 4: body, 20: body})
-    assert L.locate(RULE, pages, stored=1, window=range(1, 13)) == (4, "moved")
+def test_a_rule_really_printed_twice_is_not_guessed():
+    assert L.locate(RULE, [_doc(p4=BODY, p9=BODY)], stored=1) == (None, "unresolved")
 
 
-def test_the_same_words_scrambled_are_not_enough_to_move_a_link():
-    """80% of the words but no 8-word run in order: a bag of common words."""
-    scrambled = " ".join(reversed(L.tokens(L.rule_body(RULE))))
-    assert L.locate(RULE, _pages(p6=scrambled), stored=1) == (None, "unresolved")
+def test_the_chunk_settles_a_real_repeat_when_only_one_copy_is_in_it():
+    doc = L.Doc({**{p: FILLER for p in range(1, 30)}, 4: BODY, 20: BODY})
+    assert L.locate(RULE, [doc], stored=1, window=range(1, 13)) == (4, "moved")
 
 
-def test_the_two_methods_disagreeing_is_not_a_move():
-    body = L.rule_body(RULE)
-    assert L.locate(RULE, _pages(p5=body), stored=1, anchor_pages={8}) == (None, "unresolved")
+def test_a_repeated_rule_already_on_one_of_its_copies_stays():
+    assert L.locate(RULE, [_doc(p4=BODY, p9=BODY)], stored=9) == (9, "on_page")
 
 
-def test_a_rule_running_over_a_page_break_is_on_its_first_page():
-    t = L.tokens(L.rule_body(RULE))
+def test_a_generic_opening_printed_elsewhere_does_not_make_a_rule_repeated():
+    """Only the opening words on page 3; the whole rule on page 8: page 8, not a tie."""
+    opening = " ".join(L.tokens(BODY)[:9])
+    assert L.locate(RULE, [_doc(p3=opening, p8=BODY)], stored=1) == (8, "moved")
+
+
+def test_the_same_words_scrambled_are_not_the_rule():
+    scrambled = " ".join(reversed(L.tokens(BODY)))
+    assert L.locate(RULE, [_doc(p1=scrambled)], stored=1) == (None, "not_found")
+    assert L.locate(RULE, [_doc(p1=scrambled, p5=BODY)], stored=1) == (5, "moved")
+
+
+def test_a_rule_running_over_a_page_break_is_on_the_page_it_starts():
+    t = L.tokens(BODY)
     half = len(t) // 2
-    pages = _pages(p7=" ".join(t[:half]), p8=" ".join(t[half:]))
-    assert L.locate(RULE, pages, stored=7) == (7, "on_page")
-    assert L.locate(RULE, pages, stored=1) == (7, "moved")
+    doc = _doc(p7=FILLER + " " + " ".join(t[:half]), p8=" ".join(t[half:]) + " " + FILLER)
+    assert L.locate(RULE, [doc], stored=7) == (7, "on_page")
+    assert L.locate(RULE, [doc], stored=1) == (7, "moved")
+
+
+def test_a_two_column_page_is_found_in_the_reading_order_that_keeps_it_whole():
+    """Top-to-bottom interleaves two columns; the PDF's own order keeps the rule intact."""
+    t = L.tokens(BODY)
+    interleaved = " ".join(w for pair in zip(t, ["col"] * len(t)) for w in pair)
+    top_down, own_order = _doc(p5=interleaved), _doc(p5=BODY)
+    assert L.locate(RULE, [top_down], stored=1) == (None, "not_found")
+    assert L.locate(RULE, [top_down, own_order], stored=1) == (5, "moved")
+
+
+def test_a_rule_with_words_dropped_by_the_reader_is_still_found():
+    t = L.tokens(BODY)
+    damaged = " ".join(w for i, w in enumerate(t) if i != 10)
+    assert L.locate(RULE, [_doc(p6=damaged)], stored=1) == (6, "moved")
+
+
+def test_part_of_the_rule_is_accepted_only_where_nothing_else_comes_close():
+    """Stored text with map labels mixed in (City of Sydney): a third of it printed in one
+    place, and nowhere else, is still that place. A fifth is not; two such places is a tie."""
+    long_body = (BODY + " Garages and carports are to be located behind the building line and"
+                 " must not dominate the street frontage of the dwelling or the lot.")
+    rule = "# C3 Front setbacks\n" + long_body
+    t = L.tokens(long_body)
+    part = " ".join(t[: len(t) * 2 // 5])        # about two fifths of it, in order
+    assert L.locate(rule, [_doc(p6=part)], stored=1) == (6, "moved")
+    assert L.locate(rule, [_doc(p6=" ".join(t[:7]))], stored=1) == (None, "unresolved")
+    assert L.locate(rule, [_doc(p2=part, p11=part)], stored=1) == (None, "unresolved")
 
 
 def test_wording_nowhere_in_the_document_is_not_found():
-    assert L.locate(RULE, _pages(), stored=1) == (None, "not_found")
+    assert L.locate(RULE, [_doc()], stored=1) == (None, "not_found")
 
 
 def test_a_two_word_rule_is_too_short_to_locate():
-    assert L.locate("# C1 Objectives\nSee above.", _pages(), stored=1) == (None, "too_short")
+    assert L.locate("# C1 Objectives\nSee above.", [_doc()], stored=1) == (None, "too_short")
 
 
 def test_our_own_heading_line_is_not_the_councils_text():
-    """The '# code title' line is ours; matching it would locate our words, not theirs."""
     only_heading = "c3 front setbacks " + FILLER
-    assert L.locate(RULE, _pages(p3=only_heading), stored=1) == (None, "not_found")
+    assert L.locate(RULE, [_doc(p3=only_heading)], stored=1) == (None, "not_found")
 
 
 # -- batch size ----------------------------------------------------------------------
@@ -90,6 +132,12 @@ def test_chunk_size_is_read_from_the_stored_pages():
 def test_pages_that_are_not_chunk_starts_give_no_window():
     assert L.batch_size([3, 8, 14, 22, 5, 41]) is None
     assert L.batch_size([]) is None
+
+
+# -- printed page numbers ------------------------------------------------------------
+
+def _footers(fmt, first, n, extra=()):
+    return {p: [fmt.format(first + i), *extra] for i, p in enumerate(range(5, 5 + n))}
 
 
 # -- printed page numbers ------------------------------------------------------------
@@ -122,32 +170,36 @@ def test_two_counting_tokens_on_one_page_give_no_label():
     assert L.printed_labels(m) == {}
 
 
-def test_a_blank_page_between_does_not_break_the_count():
-    m = {5: ["21"], 6: [], 7: ["23"]}
-    assert L.printed_labels(m) == {5: "21", 7: "23"}
+def test_a_page_whose_footer_cannot_be_read_takes_its_number_from_the_run():
+    """The offset is found once per document and applied to every page of the run: a blank
+    page, or one whose footer is a picture, still gets its printed number."""
+    m = {5: ["21"], 6: [], 7: ["23"], 8: ["24"], 9: ["25"]}
+    assert L.printed_labels(m) == {5: "21", 6: "22", 7: "23", 8: "24", 9: "25"}
 
 
-def test_an_anchor_outside_the_chunk_does_not_block_the_page_inside_it():
-    body = L.rule_body(RULE)
-    pages = L.Pages({**{p: FILLER for p in range(1, 30)}, 5: body})
-    assert L.locate(RULE, pages, stored=1, window=range(1, 13), anchor_pages={20}) == (5, "moved")
+def test_most_pages_unreadable_still_get_the_documents_numbering():
+    """Leichhardt Part C s1: page numbers read on 38 of 109 pages."""
+    m = {p: [] for p in range(1, 41)}
+    for p in range(3, 41):
+        if p % 4 in (0, 1):                      # readable in pairs, a third of the pages
+            m[p] = [f"PART C - {p + 60}"]
+    got = L.printed_labels(m)
+    assert got[4] == "64" and got[22] == "82" and got[37] == "97" and 40 not in got
 
 
-def test_a_repeated_rule_already_on_its_stored_copy_stays():
-    body = L.rule_body(RULE)
-    assert L.locate(RULE, _pages(p4=body, p9=body), stored=9) == (9, "on_page")
+def test_numbering_that_restarts_is_separate_runs_and_covers_are_left_alone():
+    """City of Sydney restarts at each section ('4.1-1' ... '4.2-1'); pages 1-2 are covers."""
+    m = {1: ["Sydney DCP 2012"], 2: ["Contents"]}
+    m.update({p: [f"4.1-{p - 2}"] for p in range(3, 8)})
+    m.update({p: [f"4.2-{p - 7}"] for p in range(8, 12)})
+    got = L.printed_labels(m)
+    assert 1 not in got and 2 not in got
+    assert got[3] == "4.1-1" and got[7] == "4.1-5" and got[8] == "4.2-1" and got[11] == "4.2-4"
 
 
-def test_disagreement_is_unresolved_even_when_the_anchor_page_shows_the_opening():
-    t = L.tokens(L.rule_body(RULE))
-    opening = " ".join(t[:9])                   # the first words only: not most of the rule
-    pages = _pages(p5=L.rule_body(RULE), p8=opening)
-    assert L.locate(RULE, pages, stored=1, anchor_pages={8}) == (None, "unresolved")
-
-
-def test_the_heading_line_is_dropped_but_a_heading_only_rule_is_kept():
-    assert L.rule_body("# C3 Front setbacks\nBuildings are set back.") == "Buildings are set back."
-    assert L.rule_body("# C3 Front setbacks") == "# C3 Front setbacks"
+def test_the_numbering_runs_are_reported_for_the_chapter_record():
+    runs = L.page_numbering({p: [f"Page B{p - 2} of B54"] for p in range(3, 9)})
+    assert runs == [{"prefix": "B", "offset": -2, "first": 3, "last": 8, "seen": 6}]
 
 
 def test_a_header_printing_two_years_is_not_a_page_count():
@@ -188,8 +240,60 @@ def test_scattered_counting_headings_in_a_document_without_page_numbers_give_no_
     assert L.printed_labels(m) == {}
 
 
-def test_a_stored_page_with_the_same_words_in_another_order_does_not_hold_the_rule():
-    """Cross-review 2026-09-26: 80% of the rule's words on the chunk-start page, but not the rule."""
-    scrambled = " ".join(reversed(L.tokens(L.rule_body(RULE))))
-    assert L.locate(RULE, _pages(p1=scrambled), stored=1) == (None, "unresolved")
-    assert L.locate(RULE, _pages(p1=scrambled, p5=L.rule_body(RULE)), stored=1) == (5, "moved")
+def test_the_heading_line_is_dropped_but_a_heading_only_rule_is_kept():
+    assert L.rule_body("# C3 Front setbacks\nBuildings are set back.") == "Buildings are set back."
+    assert L.rule_body("# C3 Front setbacks") == "# C3 Front setbacks"
+
+
+def test_the_better_reading_of_a_page_wins_whichever_order_they_come_in():
+    t = L.tokens(BODY)
+    half_read = " ".join(t[: len(t) // 3])            # this reading keeps only a third intact
+    for docs in ([_doc(p5=BODY), _doc(p5=half_read)], [_doc(p5=half_read), _doc(p5=BODY)]):
+        assert L.locate(RULE, docs, stored=1) == (5, "moved")
+
+
+def test_a_link_to_the_second_page_of_a_rule_running_over_a_page_break_is_kept():
+    """Both pages show the rule; moving the link by one page is churn (1,040 rows on a draft)."""
+    t = L.tokens(BODY)
+    half = len(t) // 2
+    doc = _doc(p7=FILLER + " " + " ".join(t[:half]), p8=" ".join(t[half:]) + " " + FILLER)
+    assert L.locate(RULE, [doc], stored=8) == (8, "on_page")
+
+
+def test_a_rule_printed_under_several_headings_takes_the_copy_under_its_own():
+    """Ashfield E1: the same objectives restated for each conservation area."""
+    rule = "# E1 Heritage Objectives C4 Goodwin Avenue\n" + BODY  # noqa: zone-codes -- DCP clause labels, not zones
+    doc = _doc(p3="C3 Service Avenue conservation area " + BODY, p7="C4 Goodwin Avenue conservation area " + BODY)  # noqa: zone-codes -- DCP clause labels, not zones
+    assert L.locate(rule, [doc], stored=1) == (7, "moved")
+
+
+def test_copies_under_equally_named_headings_are_not_guessed():
+    rule = "# E1 Heritage Objectives C4 Goodwin Avenue\n" + BODY  # noqa: zone-codes -- DCP clause labels, not zones
+    doc = _doc(p3="Goodwin Avenue " + BODY, p7="Goodwin Avenue " + BODY)
+    assert L.locate(rule, [doc], stored=1) == (None, "unresolved")
+
+
+def test_a_short_rule_printed_once_is_found_whole():
+    """'To ensure the roof can be maintained.' -- shorter than a 6-word piece."""
+    rule = "# C1.21.1 O8 Maintenance Accessibility\nTo ensure roofs are maintained."
+    assert L.locate(rule, [_doc(p9="objectives o8 to ensure roofs are maintained o9")], stored=1) == (9, "moved")
+    assert L.locate(rule, [_doc(p4="to ensure roofs are maintained", p9="to ensure roofs are maintained")],
+                    stored=1) == (None, "unresolved")
+    assert L.locate("# C1 O2\nSee above.", [_doc()], stored=1) == (None, "too_short")
+
+
+def test_a_stored_page_holding_the_rule_is_not_left_for_a_near_identical_text_elsewhere():
+    """Woollahra B1.11.1 'Vaucluse East' (page 41) and B1.10.1 'Vaucluse West' (page 38) share
+    most of their wording; the West copy scored a little higher and the link was moved."""
+    t = L.tokens(BODY)
+    near = " ".join(t[:-7])                   # two thirds of it: strong, but below a tie
+    assert L.locate(RULE, [_doc(p3=BODY, p8=near)], stored=8) == (8, "on_page")
+
+
+def test_a_new_sections_unreadable_first_page_does_not_take_the_old_sections_count():
+    """City of Sydney: page 85 prints '2.6-1'; carried on, '2.5' gave it '2.5-19'."""
+    m = {p: [f"2.5-{p - 66}"] for p in range(80, 85)}
+    m[85] = []                                   # first page of 2.6, footer unreadable
+    m.update({p: [f"2.6-{p - 84}"] for p in range(86, 90)})
+    got = L.printed_labels(m)
+    assert 85 not in got and got[84] == "2.5-18" and got[86] == "2.6-2"

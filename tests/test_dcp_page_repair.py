@@ -62,7 +62,8 @@ def test_the_migration_forgets_a_verdict_when_the_text_or_page_changes():
     sql = (ROOT / "migrations" / "079_rule_page_check.sql").read_text(encoding="utf-8")
     assert "NEW.provision_text IS DISTINCT FROM OLD.provision_text" in sql
     assert "NEW.pdf_page IS DISTINCT FROM OLD.pdf_page" in sql
-    assert "AFTER UPDATE OF r2_current_path, is_active ON dcp_chapter_registry" in sql
+    assert "BEFORE UPDATE OF r2_current_path, is_active ON dcp_chapter_registry" in sql
+    assert "NEW.page_numbering := NULL" in sql
 
 
 def test_the_health_check_counts_a_rule_with_no_verdict_even_without_a_pdf_path():

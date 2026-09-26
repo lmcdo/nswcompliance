@@ -140,21 +140,24 @@ def judge_pdf(args) -> tuple[list[dict], dict]:
     except Exception as e:  # noqa: BLE001 -- an unreadable PDF is a verdict, not a crash
         print(f"  no source for {r2_path}: {str(e)[:100]}", flush=True)
         return [plan_row(r, None, "no_source", {}) for r in rows], {"pages": 0, "labelled": 0}
-    texts = defaultdict(list)
-    for p, _y, _x, t in data["lines"]:
-        texts[p].append(t)
-    pages = rpl.Pages({p: "\n".join(ts) for p, ts in texts.items()})
+    docs = []
+    # Both reading orders; running headers/footers already dropped. Contents pages are kept:
+    # rows extracted FROM a contents page are printed only there.
+    for ch in readings:
+        by_page = defaultdict(list)
+        for ln in ch.lines:
+            by_page[ln.page].append(ln.text)
+        docs.append(rpl.Doc({p: "\n".join(ts) for p, ts in by_page.items()}))
     labels = rpl.printed_labels(margins)
     k = rpl.batch_size([r["pdf_page"] for r in rows])
     plans = []
     for r in rows:
         stored = r["pdf_page"]
-        anchors = {ch.lines[start].page for ch in readings
-                   for _end, start in cp._anchors(ch, r["provision_text"], stored)}
         window = range(stored, stored + k) if (k and stored) else None
-        page, verdict = rpl.locate(r["provision_text"], pages, stored, window, anchors)
+        page, verdict = rpl.locate(r["provision_text"], docs, stored, window)
         plans.append(plan_row(r, page, verdict, labels))
-    return plans, {"pages": len(margins), "labelled": len(labels), "batch": k}
+    return plans, {"pages": len(margins), "labelled": len(labels), "batch": k,
+                   "numbering": rpl.page_numbering(margins) if labels else []}
 
 
 # -- database ------------------------------------------------------------------------
@@ -248,6 +251,20 @@ def write(conn, todo: list[dict]) -> int:
     return n
 
 
+def write_numbering(conn, stats: dict) -> int:
+    """Each chapter PDF's page numbering onto its registry row (migration 079), for the PDF
+    that is still the chapter's current one."""
+    cur = conn.cursor()
+    n = 0
+    for path, st in stats.items():
+        cur.execute("UPDATE dcp_chapter_registry SET page_numbering = %s::jsonb, page_numbering_path = %s "
+                    "WHERE is_active AND r2_current_path = %s",
+                    (json.dumps(st.get("numbering") or []), path, path))
+        n += cur.rowcount
+    conn.commit()
+    return n
+
+
 def report(rows: list[dict], plans: list[dict], stats: dict, sample_path: Path) -> list[dict]:
     by_id = {r["id"]: r for r in rows}
     per = defaultdict(Counter)
@@ -259,6 +276,9 @@ def report(rows: list[dict], plans: list[dict], stats: dict, sample_path: Path) 
         print(f"  {n:6}  {k}")
     labelled = sum(1 for p in plans if p["printed_page_label"])
     print(f"  {labelled:6}  with a printed page number")
+    numbered = [st for st in stats.values() if st.get("numbering")]
+    print(f"  {len(numbered):6}  of {len(stats)} chapter PDFs have page numbering "
+          f"({sum(st['labelled'] for st in numbered)} of {sum(st['pages'] for st in stats.values())} pages labelled)")
     print("\nper council: on_page / moved / unresolved / not_found / too_short / no_source / printed label")
     for co, c in sorted(per.items()):
         lab = sum(1 for p in plans if p["printed_page_label"] and by_id[p["id"]]["source_council"] == co)
@@ -316,6 +336,7 @@ def main() -> int:
         saved = backup(rows, {t["id"] for t in todo})
         print(f"backup: {saved}")
         print(f"WROTE {write(conn, todo)} rows.")
+        print(f"numbering recorded for {write_numbering(conn, stats)} chapter PDFs.")
         return 0
     finally:
         conn.close()
