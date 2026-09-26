@@ -13,7 +13,7 @@
   "pre_impl": {
     "existing_data": "regulatory_provisions.page_check with the 079 CHECK constraint and the 079 triggers that clear verdicts on text, page or PDF change.",
     "assumption_mismatch": "If a person marks the wrong page, the mark stands until the text, page or PDF changes; the mark is set only by a reviewed script.",
-    "new_vs_existing": "No existing row carries the value; three reviewed rows are marked after merge by a script the user runs."
+    "new_vs_existing": "Migration 080 marks the three reviewed rows itself, only while each is still on the page that was read."
   },
   "functions": [
     {
@@ -66,6 +66,6 @@
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes: run migrations/080 then mark the three rows (script in ~/.claude/plans/ce-dcp-reread-2026-09-27/mark_read_by_person.py)."
+    "manual_verify": "Yes: apply migrations/080_page_read_by_person.sql. It adds the value AND marks the three read rows in the same migration (guarded on their page), so nothing outside the repository is needed."
   }
 }
