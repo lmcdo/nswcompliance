@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes the clause citations printed in the paid conveyancing PDF, the Brief, the granny flat report, the DCP controls card and the parking API, and changes a CHECK constraint plus a trigger on production tables. Critical: a wrong gate would silently remove or mis-attribute citations in customer reports.",
-  "commit_hash": "5a3751b5",
+  "commit_hash": "532770c3",
   "files": [
     "scripts/citation_proof.py",
     "scripts/dcp_citation_status.py",
