@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes what the property provisions API serves (clause label and first-line code hidden unless proven) and adds a schema column plus a post-publish writer. Not Critical: additive column, the serving change only removes an unproven number and keeps the page; unchecked rows (NULL) are served exactly as before. Not Minor: it changes served regulatory citations.",
-  "commit_hash": "40c14c2e",
+  "commit_hash": "e8a23d20",
   "files": [
     "migrations/076_regulatory_provisions_citation_status.sql",
     "scripts/dcp_citation_status.py",
