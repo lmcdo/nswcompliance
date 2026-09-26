@@ -1078,8 +1078,8 @@
       "kind": "outreach_claim",
       "claim": "Every served DCP number quotes the council's own words and shows exactly where they are printed: the page of the council's plan, or the clause of the state law, with a link to the document.",
       "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
-      "declared": "false",
-      "verified": "2026-09-26: reworded by user decision. A clause number is shown only where the council's page proves it (migration 077), so the claim now promises the page, not the clause. NOT YET: 18 served council numbers have neither a proven clause nor a page; declare true once they have their page (measure_control_page_corrections.py --missing-page-only). Before: 2026-09-15: check passed against production, 0 of 738 served numbers missing a clause, sentence or source link. The last 3 (Sutherland LEP 2015 Sch 3 Div 2 cl 7(1)(a)-(c): 3m secondary frontage, 6m rear, 1.5m side) link to the official legislation page, accepted as their source document by user decision; their wording and values were checked against today's in-force text on legislation.nsw.gov.au.",
+      "declared": "true",
+      "verified": "2026-09-26: reworded by user decision (a clause number is shown only where the council's page proves it, migration 077, so the claim promises where a number is printed). Check passed against production: 0 of 724 served numbers missing. Of the 18 that had no page and no proven clause, 5 got their page (only one page carries the value and wording) and 13 were held for review (summaries, several filed under the wrong document; hold_unlocatable_controls.py). Before: 2026-09-15: check passed against production, 0 of 738 served numbers missing a clause, sentence or source link. The last 3 (Sutherland LEP 2015 Sch 3 Div 2 cl 7(1)(a)-(c): 3m secondary frontage, 6m rear, 1.5m side) link to the official legislation page, accepted as their source document by user decision; their wording and values were checked against today's in-force text on legislation.nsw.gov.au.",
       "check": [
         "python",
         "scripts/outreach_claim_checks.py",
