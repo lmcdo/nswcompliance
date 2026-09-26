@@ -97,7 +97,7 @@ def judge_rows(rows, readings_for) -> dict[int, str]:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").strip().splitlines()[0])
-    ap.add_argument("--council", help="Only this council (dcp_setback_controls.lga).")
+    ap.add_argument("--council", help="Only this council (its lga slug).")
     ap.add_argument("--apply", action="store_true", help="Write. Without it nothing changes.")
     ap.add_argument("--cache-dir", default=str(Path(tempfile.gettempdir()) / "dq111_lines"))
     args = ap.parse_args()
@@ -130,6 +130,7 @@ def main() -> int:
         print(f"scope: {args.council or 'all councils'}  setback controls: {len(verdicts)}")
         for k, n in Counter(verdicts.values()).most_common():
             print(f"  {n:6}  {k}")
+        # A catalogue lookup, not a row read: no is_current filter applies here.
         cur.execute("SELECT column_name FROM information_schema.columns WHERE "
                     "table_name = 'dcp_setback_controls' AND column_name = 'citation_status'")
         if not cur.fetchone():
