@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds triggers on report_audit_trail and dcp_chapter_registry and makes the paid conveyancing report refuse delivery when its audit record cannot be written. Critical: a wrong trigger could block every paid report or void citations wholesale.",
-  "commit_hash": "9f075cf9",
+  "commit_hash": "ec03e8da",
   "files": [
     "migrations/078_evidence_trail.sql",
     "scripts/verify_audit_chain.py",
