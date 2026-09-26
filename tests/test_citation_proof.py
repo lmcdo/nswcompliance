@@ -396,3 +396,15 @@ def test_a_council_number_label_beside_the_rule_proves_our_letter_label():
     assert C.prove_citation_any("D__G2 C14", "# G2 C14 x\n\n" + body, rd)["status"] == "proven"
     assert C.prove_citation_any("D__G2 C13", "# G2 C13 x\n\n" + body, rd)["status"] != "proven"
     assert C.prove_citation_any("D__G2 C15", "# G2 C15 x\n\n" + body, rd)["status"] != "proven"
+
+
+def test_a_rule_sentence_after_a_code_is_not_a_heading_title():
+    """_OBLIGATION held literal backspace characters where \b belongs, so it never matched and
+    "C80 Development must improve ..." counted as a heading "C80" with a title (2026-09-26)."""
+    L = [C.Line(page=1, y=0.0, x=0.0, text="c80 development must improve amenity"),
+         C.Line(page=1, y=0.0, x=0.0, text="c3 fences and walls"),
+         C.Line(page=1, y=0.0, x=0.0, text="c4 mayfield precinct")]   # "may" inside a word
+    assert not C._titled(L, 0, "c80")
+    assert C._titled(L, 1, "c3")
+    assert C._titled(L, 2, "c4")
+    assert "\x08" not in C._OBLIGATION.pattern

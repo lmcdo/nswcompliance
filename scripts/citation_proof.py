@@ -272,7 +272,11 @@ def _numeric_label_beside(L: list, start: int, lo: int) -> str | None:
     return None
 
 
-_OBLIGATION = re.compile(r"(?:is|are) to|(?:must|shall|should|will|may)")
+#: A rule's sentence, not a heading's title: "Fences must be ...", "Buildings are to ...".
+#: Until 2026-09-26 the file held literal backspace characters where the \b word
+#: boundaries belong (an editing tool wrote \b unescaped), so this never matched and a
+#: short rule sentence counted as a heading title.
+_OBLIGATION = re.compile(r"\b(?:is|are) to\b|\b(?:must|shall|should|will|may)\b")
 
 
 def _titled(L: list, h: int, code: str) -> bool:
