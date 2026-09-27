@@ -27,7 +27,7 @@ export interface PageFields {
   source_council?: string | null;
 }
 
-const LOCATED = new Set(['on_page', 'moved']);
+const LOCATED = new Set(['on_page', 'moved', 'read_by_person']);  // read_by_person: migration 080
 export const PAGE_NOT_LOCATED = 'page not located';
 
 /** A council DCP row whose page was not shown to hold the rule. */

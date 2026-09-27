@@ -16,6 +16,12 @@ describe("a DCP rule's page link opens only a page shown to hold it (migration 0
     expect(pageLabel({ ...DCP, pdf_page: 5, printed_page_label: '14-117', page_check: 'on_page' })).toBe('page 14-117');
   });
 
+  it('links a page a person read, as it links a page the checker proved (migration 080)', () => {
+    const p = { ...DCP, pdf_page: 5, printed_page_label: '3', page_check: 'read_by_person' };
+    expect(pageHref(URL, p)).toBe(`${URL}#page=5`);
+    expect(pageLabel(p)).toBe('page 3');
+  });
+
   it('falls back to the PDF page when the council prints no number', () => {
     expect(pageLabel({ ...DCP, pdf_page: 83, printed_page_label: null, page_check: 'moved' })).toBe('PDF page 83');
   });
