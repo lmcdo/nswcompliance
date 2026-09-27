@@ -53,6 +53,10 @@ HORNSBY_CONFIG: dict = {
         # controls follow the Housing Strategy — a split by density, not a list
         # of types this vocabulary can express.
         "hornsby_dcp_2024_part3_residential": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Introduction, verbatim: 'This Part of the DCP applies to residential development within the Residential zones of the Hornsby Local Government Area.' R2/R3/R4 are the residential zones that EXIST for this LGA in lep_zone_coverage — Hornsby has no R1 and no R5, so neither is declared. applicable_dev_types is OMITTED: the Part binds residential development as a whole, and the same page records that its low-density controls follow the NSW Housing Code while its medium and high density controls follow the Housing Strategy — a split by density, not a list of types this vocabulary can express.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table. The zone names are the council's own words; rewriting them to import from the taxonomy would falsify the quote.
+            },
             "applicable_zones": ["R2", "R3", "R4"],  # noqa: zone-codes (the LGA's residential zones, per lep_zone_coverage)
             "layer": "generic",
         },

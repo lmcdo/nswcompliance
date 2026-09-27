@@ -66,6 +66,10 @@ CAMPBELLTOWN_CONFIG: dict = {
         # DA and section 3.8 from a `subdivision` DA — all four selectable in the
         # DA scope input (frontend-nextjs/lib/see/ancillaryWorks.ts).
         "campbelltown_dcp_part3_low_medium": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Part 3 — Low and Medium Density Residential Development and Ancillary Residential Structures. Section 3.1 Application, verbatim, sets out: 'General Requirements for all Types of Residential Development in areas zoned R2, R3, R4 and R5'; development controls for fencing, outbuildings and swimming pools/spas 'in areas zoned R2, R3, R4 and R5 where they are associated with low and medium density residential development'; dwelling houses (R2, R3), secondary dwellings (R2, R3, R4, R5), dual occupancies, semi-detached dwellings, attached dwellings, multi dwelling housing (R3); and section 3.8 residential subdivision. ZONES are therefore stated by the chapter itself and uniform across every one of those lists: R2, R3, R4, R5. All four are current codes in `lep_zone_coverage` for this LGA. applicable_dev_types is OMITTED -> config_silent. The chapter's own scope is 'all Types of Residential Development' PLUS its ancillary structures PLUS subdivision, and no enumeration of that survives the hard filter intact: semi-detached and attached dwellings have no term in the tagger vocabulary at all, and a list of the residential terms alone would hide section 3.3 fencing from a `fence` DA, section 3.5 outbuildings from an `outbuilding` DA, the pool controls from a `pool` DA and section 3.8 from a `subdivision` DA — all four selectable in the DA scope input (frontend-nextjs/lib/see/ancillaryWorks.ts).",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table. The zone names are the council's own words; rewriting them to import from the taxonomy would falsify the quote.
+            },
             "applicable_zones": ["R2", "R3", "R4", "R5"],  # noqa: zone-codes (the four zones section 3.1 Application names, on every one of its sub-lists)
             "layer": "generic",
         },

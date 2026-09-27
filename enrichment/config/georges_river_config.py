@@ -55,6 +55,10 @@ GEORGES_RIVER_CONFIG: dict = {
         # zones, and Georges River's R2/R3/R4 would be an inference rather than a
         # quotation.
         "grdcp_part_6_1_low_density": {
+            "scope_evidence": {
+                "applicable_dev_types":
+                    "Section 6.1.1 Introduction, verbatim: 'This part applies to dwelling houses, dual occupancy development, secondary dwellings and narrow lot housing.' Three of the four have a term in the vocabulary. 'Narrow lot housing' does not — and, checked 2026-09-23, neither does the SERVING taxonomy in frontend-nextjs/lib/see/devTypeHierarchy.ts, so no query can ask for it and naming the other three hides nothing. That check is the whole test: a missing term matters only when somebody can select it. applicable_zones is OMITTED — the Part names development forms, not zones, and Georges River's R2/R3/R4 would be an inference rather than a quotation.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table. The zone names are the council's own words; rewriting them to import from the taxonomy would falsify the quote.
+            },
             "applicable_dev_types": ["dwelling_house", "dual_occupancy",
                                      "secondary_dwelling"],
         },

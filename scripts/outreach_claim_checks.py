@@ -604,6 +604,25 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
         no_site_loses_a_rule_to_a_retired_zone_code,
         lambda: probe("DQ-88"),
         lambda: probe("DQ-33"),
+        # Added 2026-09-27. OC-17 is the claim "the rules and numbers shown APPLY TO
+        # THIS PROPERTY", and until today nothing in this list asked whether anyone
+        # had decided who a rule applies to. It passed on 2026-09-27 while DQ-114
+        # read 4,374 undecided scope keys, DQ-115 read 193 declarations with no
+        # readable authority, and DQ-116 read 2 repealed sections being served. A
+        # claim that green-lights itself by not asking is the shape
+        # feedback-a-check-can-watch-the-field-the-fix-abandoned describes.
+        #
+        # DQ-33 was already here and does NOT cover them: it counts `no_config`
+        # only, while DQ-114 owns config_silent / filtered_to_all / untagged.
+        #
+        # The repealed-plan entry above is a URL STRING match
+        # (r2_current_path ILIKE '%repealed%'). It cannot see a repealed SECTION
+        # inside a live chapter -- woollahra B3.3 sits in
+        # v1.4-2026-09-15/chapter-b3-general-development.pdf, a path with no such
+        # word. DQ-116 is what reads the council's own wording instead.
+        lambda: probe("DQ-114"),
+        lambda: probe("DQ-115"),
+        lambda: probe("DQ-116"),
     ],
 }
 
