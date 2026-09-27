@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live read-only measurements for the two applicability-config gaps.
+"""Live read-only measurements for the applicability-config gaps.
 
 prior-art-checked: reuse not viable because `scripts/dq_probe_live.py` is
 SQL-only by construction -- its PROBES map is `id -> (headline, sql, params,
@@ -11,6 +11,12 @@ produced.
 
     DQ-102  a chapter onboarded without a config entry
     DQ-103  config_silent throws away the row's own text evidence
+    DQ-115  a declared scope whose authority no machine can read
+
+DQ-115 reads the CONFIG FILES and needs no database, so `needs_db` is carried
+per probe rather than the runner assuming a connection: opening one anyway
+would turn an unreachable database into exit 2 on a question the database was
+never asked, and exit 2 means UNKNOWN.
 
 Both are about `ApplicabilityTagger`, both are counted on the SERVED set
 (is_current AND v2_is_actionable), and neither can be answered by looking at the
@@ -128,8 +134,80 @@ def probe_103(rows, tagger):
     return sum(hits.values()), hits
 
 
+def probe_115(_rows, _tagger):
+    """Declared scope keys whose authority is not machine-readable.
+
+    Every entry in these configs is written from the chapter's own scope section
+    and the verbatim sentence is recorded beside it -- as a PYTHON COMMENT. A
+    comment is exactly as trustworthy as whoever typed it and nothing can READ
+    it: not the checks, not the review page, not the property page that has to
+    tell someone why a rule is on their list.
+
+    Why this row exists at all. DQ-114 counts keys nobody decided, and on its own
+    it is clearable by typing ["ALL"] across 193 keys -- which would take the
+    count to zero while making every served answer worse. That is the precise
+    shape of "the config file was written, so it was called done". This asks the
+    other half: for each key a config DECLARES, is the council's own wording
+    recorded where a machine can check it and a page can quote it? Neither can go
+    green unless each decision exists AND carries its source.
+
+    `scope_evidence` is keyed by the field it justifies, so a key declared
+    without its sentence is countable rather than merely absent::
+
+        "chapter_e3_car_parking": {
+            "applicable_zones": ["ALL"],
+            "applicable_dev_types": ["ALL"],
+            "scope_evidence": {
+                "applicable_zones": "E3 s1.1.2: 'This DCP Chapter applies to any "
+                    "development requiring development consent under Part 4 or "
+                    "approval under Part 5 ... in the Wollongong LGA.'",
+                "applicable_dev_types": "E3 s1.1.2: same sentence -- the scope is "
+                    "stated once and binds both keys.",
+            },
+            "layer": "generic",
+        },
+
+    DECLARED keys only. An omitted key is DQ-114's population, and demanding
+    evidence for a decision nobody made would count one defect under two ids.
+
+    Aliases are de-duplicated by IDENTITY, not by name: several keys point at the
+    same config dict ("ku_ring_gai"/"ku-ring-gai", "city_of_sydney"/"sydney_dcp",
+    "canterbury_bankstown"/"canterbury-bankstown"), so counting by name would
+    multiply one missing sentence into two and the number would move when an
+    alias was added. Measured 2026-09-27: 193 declared keys across 13 distinct
+    configs, 0 with evidence.
+    """
+    hits: dict = {}
+    seen: set = set()
+    for name, cfg in COUNCIL_CONFIGS.items():
+        if id(cfg) in seen:
+            continue
+        seen.add(id(cfg))
+        # `sections` is not a bucket any config uses yet. It is read here because
+        # a chapter like Wollongong B1 states no scope of its own while its
+        # sections 4/5/6 each cover a different development type, so the decision
+        # for those 584 served rows belongs one level DOWN from the chapter.
+        # Reading the bucket now means the check covers such entries from the
+        # first one written, rather than after someone remembers to add it.
+        for bucket in ("chapter_topics", "parts", "sections"):
+            for ckey, entry in (cfg.get(bucket) or {}).items():
+                if not isinstance(entry, dict):
+                    continue
+                ev = entry.get("scope_evidence")
+                n = 0
+                for field in ("applicable_dev_types", "applicable_zones"):
+                    if field not in entry:
+                        continue
+                    if not (isinstance(ev, dict) and str(ev.get(field) or "").strip()):
+                        n += 1
+                if n:
+                    hits[(name, bucket + "/" + ckey)] = n
+    return sum(hits.values()), hits
+
+
 PROBES = {
     "DQ-102": (
+        True,
         probe_102,
         "Served rows in a council WITH a config whose chapter matches no entry",
         "Each row belongs to a chapter that was registered and extracted but "
@@ -138,7 +216,21 @@ PROBES = {
         "DQ-33 counts only `no_config`, which these rows do not reach whenever "
         "their text happens to contain a zone or development-type word.",
     ),
+    "DQ-115": (
+        False,
+        probe_115,
+        "Declared scope keys carrying no machine-readable evidence",
+        "Each count is one applicable_zones or applicable_dev_types list a "
+        "config DECLARES with no `scope_evidence` behind it. The council's "
+        "sentence may well sit in a comment above the line, and a comment "
+        "cannot be read by the checks, by the review page, or by the "
+        "property page that has to say why a rule is on someone's list. "
+        "Until the authority is data, DQ-114 can be cleared by typing ALL "
+        "across 193 keys -- both counts would fall and every served answer "
+        "would be worse.",
+    ),
     "DQ-103": (
+        True,
         probe_103,
         "Discarded text evidence on a key a config entry left undecided (both columns)",
         "`tag_with_provenance` skips text extraction whenever any config entry "
@@ -159,26 +251,32 @@ def main() -> int:
     ap.add_argument("--limit-print", type=int, default=12)
     args = ap.parse_args()
 
-    fn, headline, means = PROBES[args.id]
-    try:
-        conn = dq_db.connect()
-    except Exception as exc:  # noqa: BLE001
-        print(f"{args.id}: UNKNOWN -- database unreachable ({exc}). Nothing was "
-              f"checked, which is not a pass.", file=sys.stderr)
-        return 2
+    needs_db, fn, headline, means = PROBES[args.id]
 
-    try:
-        cur = conn.cursor()
-        tagger = ApplicabilityTagger()
-        count, by_doc = fn(_rows(cur), tagger)
-    finally:
-        conn.close()
+    if needs_db:
+        try:
+            conn = dq_db.connect()
+        except Exception as exc:  # noqa: BLE001
+            print(f"{args.id}: UNKNOWN -- database unreachable ({exc}). Nothing was "
+                  f"checked, which is not a pass.", file=sys.stderr)
+            return 2
+        try:
+            cur = conn.cursor()
+            tagger = ApplicabilityTagger()
+            count, by_doc = fn(_rows(cur), tagger)
+        finally:
+            conn.close()
+    else:
+        count, by_doc = fn(None, None)
 
     print(f"{args.id}: {headline}")
     print(f"  count   : {count:,}")
-    # is_current AND v2_is_actionable -- the served set, as _rows selects it.
-    print(f"  scope   : regulatory_provisions WHERE {SERVED}")
-    print(f"  councils: {', '.join(_CONFIG_DRIVEN)}")
+    if needs_db:
+        # is_current AND v2_is_actionable -- the served set, as _rows selects it.
+        print(f"  scope   : regulatory_provisions WHERE {SERVED}")
+        print(f"  councils: {', '.join(_CONFIG_DRIVEN)}")
+    else:
+        print("  scope   : enrichment/config COUNCIL_CONFIGS, aliases de-duplicated")
     print(f"  means   : {means}")
     if by_doc:
         print(f"  documents ({len(by_doc)}):")

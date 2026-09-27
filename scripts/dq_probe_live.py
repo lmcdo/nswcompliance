@@ -797,6 +797,88 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "and were never tagged at all, so the question cannot be asked of them; "
         "that gap is not counted here and needs its own row.",
     ),
+    "DQ-114": (
+        "Served scope keys left ALL by a NON-decision (the schema's own undetermined list, less no_config)",
+        # THE ROW DQ-33 ASKED FOR. DQ-33's own note ends "SEPARATE AND LARGER:
+        # ... that gap is not counted here and needs its own row." This is it,
+        # widened: DQ-33 and DQ-105 both own `no_config`, and between them they
+        # leave every OTHER way a key ends up ALL without anybody deciding it
+        # uncounted. Together the rows partition the non-decisions.
+        #
+        # THE LIST IS THE SCHEMA'S OWN, NOT THIS PROBE'S OPINION. Migration 062
+        # documents the vocabulary on the column itself: "Trustworthy assertions:
+        # config_specific, config_all, text_regex. Undetermined: config_silent,
+        # no_config, no_document_id, filtered_to_all." plus "NULL = tagged before
+        # provenance existed (origin unknown, NOT a pass)". So:
+        #
+        #   no_config        no entry matched at all      -> DQ-33 (rows), DQ-105 (councils)
+        #   config_silent    an entry matched, key omitted -> HERE
+        #   filtered_to_all  the text named zones this council does not have,
+        #                    so the tagger fell back to ALL             -> HERE
+        #   no_document_id   nothing to match an entry against          -> HERE
+        #   NULL             never tagged                               -> HERE
+        #
+        # `filtered_to_all` was missed on the first write of this row and added
+        # before it was ever committed. It is 43 served zone keys, counted by
+        # NOTHING else - DQ-33 reads `no_config` only - so the check could have
+        # gone green with them still undetermined. That is
+        # feedback-a-check-can-watch-the-field-the-fix-abandoned, and the guard
+        # against it is taking the list from the migration's COMMENT rather than
+        # from whoever writes the query.
+        #
+        # `config_silent` is the one that reads as finished. An entry exists, the
+        # council is "configured", the council's words sit in the config file as
+        # a comment -- and the key nobody decided resolves to ALL, so the rule is
+        # served to every development type on the strength of an omission.
+        # ApplicabilityTagger._resolve is where the meaning is fixed: silent
+        # means "an entry matched and nobody decided this key".
+        #
+        # COUNTED PER KEY, not per row, and that is deliberate. The suppression
+        # in tag_with_provenance is per-ENTRY, so an entry that names dev types
+        # and omits zones is silent on zones alone; counting rows would let a
+        # column go fully undecided without the number moving, which is
+        # feedback-a-check-can-watch-the-field-the-fix-abandoned.
+        #
+        # IT CAN REACH ZERO, which is what makes it worth enforcing rather than
+        # ratcheting. A chapter that states no scope of its OWN is not stuck
+        # silent: it inherits the plan's own stated scope, which is itself a
+        # quotable decision (Wollongong A1 s5, verbatim, "This plan applies to
+        # all lands within the Wollongong LGA"), recorded as config_all with
+        # that sentence as its evidence. Silent is never the honest answer --
+        # only "not read yet".
+        #
+        # NOT the same population as DQ-103, and the difference is who can fix
+        # it. DQ-103 is the SUBSET whose own text carries discarded evidence, so
+        # code can resolve it by stopping the discard. What is left here needs a
+        # person to read the chapter. Measured 2026-09-27: 4,374 key-decisions
+        # (dev types 2,859 silent + 36 untagged; zones 1,400 silent + 43
+        # filtered_to_all + 36 untagged), of which DQ-103 accounts for 1,021.
+        # Council rows only, for DQ-33's reason: a statewide SEPP or LEP has no
+        # council config that could ever resolve it.
+        "SELECT count(*) FROM ("
+        "  SELECT 1 FROM regulatory_provisions"
+        "   WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL"
+        "     AND (v2_dev_type_source IN ('config_silent','filtered_to_all',"
+        "                                 'no_document_id')"
+        "          OR v2_dev_type_source IS NULL)"
+        "  UNION ALL"
+        "  SELECT 1 FROM regulatory_provisions"
+        "   WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL"
+        "     AND (v2_zone_source IN ('config_silent','filtered_to_all',"
+        "                             'no_document_id')"
+        "          OR v2_zone_source IS NULL)"
+        ") t",
+        (),
+        "Each count is one key -- a development-type list or a zone list -- on "
+        "one served rule, left reading ALL because nobody decided it. The rule "
+        "is served to properties and projects its own chapter may not reach, on "
+        "the authority of an omission. Reachable only by reading each chapter's "
+        "own scope section and recording what it says, including the case where "
+        "the chapter states nothing and inherits the plan's stated scope. "
+        "Deleting a council's rows, or typing ALL to clear the count, would "
+        "also take this to zero -- DQ-115 is the half that refuses that, by "
+        "requiring every declared key to carry the council's own words.",
+    ),
     "DQ-73": (
         "Dated setback controls falling on the 1st of a month",
         # CANDIDATES, not confirmed defects -- the same framing as DQ-29, and
