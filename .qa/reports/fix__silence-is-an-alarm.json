@@ -1,0 +1,158 @@
+{
+  "tier": "critical",
+  "justification": "Critical because it changes what every scheduled Railway job reports about its own health, and because the row it registers (DQ-117) reclassifies the trustworthiness of an existing green check (DQ-70). Getting the classifier wrong in the permissive direction leaves the fleet exactly as blind as it was measured to be on 2026-09-28; getting it wrong in the strict direction makes ten services exit non-zero forever and trains the operator to ignore the dashboard, which is the failure this work exists to undo. No production write, no schema change, no user-facing text.",
+  "commit_hash": "c9477c86",
+  "files": [
+    "scripts/run_monitors.py",
+    "scripts/dq_probe_live.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dcp_pipeline_manifest.json",
+    "tests/test_silence_is_an_alarm.py",
+    "tests/test_a_broke_model_stops_the_chapter.py",
+    "tests/test_the_pipeline_cannot_lose_a_stage.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Measured before writing anything, on production and on the live Railway fleet rather than from the prompt. (1) url_last_checked across dcp_chapter_registry via scripts/dq_db.py read-only session: max = 2026-09-24, median = 2026-09-15, 514 monitorable rows, 5 never checked. (2) HC_PING_URL and AI_MODEL/provider keys read per service with `railway variables --service <name> --kv` across all 10 services in project refreshing-hope. (3) url_last_checked write sites confirmed in scripts/r2_monitor.py (lines 900, 937, 971, 1038, 1106, 1126, 1143, 1259) so the column is a true liveness signal.",
+    "assumption_mismatch": "TWO of the prompt's own premises were wrong and were corrected against measurement. (a) Its drafted DQ-117 measured max(url_last_checked) and asserted 'it reads 1 the moment you install it'. It reads 0: six wollongong chapters were first checked on 2026-09-24 during onboarding, moving the fleet maximum to 4 days ago while 499 of 514 chapters sat at 2026-09-15. Replaced with the median, which reads 1 at 12d 20h behind. (b) Its item 2a assumed 'one shared URL'. The measured value is the literal placeholder https://hc-ping.com/placeholder-satellite on six services and ABSENT on four more, so there is no dead-man's switch anywhere in the fleet rather than one over-shared switch. The guard was widened to cover all four states as a result.",
+    "new_vs_existing": "Extends existing surfaces rather than adding new ones. deadman_switch_problem and the bool return on ping_healthcheck go into the existing scripts/run_monitors.py; DQ-117 goes into the existing three-part ledger (markdown row, dq_checks.json, dq_probe_live.py PROBES) modelled on DQ-69 at dq_probe_live.py:216; the guard ratchet extends the existing tests/test_the_pipeline_cannot_lose_a_stage.py and .claude/dcp_pipeline_manifest.json. No new tracker, no new monitoring page, no new script.",
+    "external_source_error": "healthchecks.io is now treated as able to REFUSE a ping: a 4xx/5xx answer is reported and the run exits non-zero, where previously any HTTP response at all counted as a heartbeat. A transport exception is likewise a failed ping rather than a stderr line. Neither path retries, deliberately: a heartbeat that had to be retried into existence is not evidence the stage is alive.",
+    "frontend_type": "N/A -- not one line of TypeScript, TSX or frontend code is touched by this branch. The whole change is the Railway monitor runner, the DQ ledger's three files and three pytest files, so no DB-to-API or API-to-component type boundary is crossed.",
+    "user_failure_mode": "Before: the weekly DCP source sweep stopped on 2026-09-15 and nothing said so. No stage had a working dead-man's switch, so silence produced no alert; DQ-70 could not go red because content_hash has exactly one writer -- that same sweep -- so both sides of its comparison froze together. A planner was served controls described as 'unchanged since extraction' when the statement only held as of the last sweep date. After: a stage with no switch names itself in an alert and exits 3, and DQ-117 reads 1 until a real sweep completes, with DQ-70's own note now saying it is only meaningful while DQ-117 is green."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_silence_is_an_alarm.py tests/test_a_broke_model_stops_the_chapter.py tests/test_the_pipeline_cannot_lose_a_stage.py -q ; python scripts/dq_probe_live.py --id DQ-117 ; python scripts/dq_check.py --coverage",
+    "fails_when": "Any of the four dead-man's-switch states stops producing a named alert and a non-zero exit; a provider error stops propagating out of DCPExtractor.extract(); a manifest guard is deleted or its function renamed; DQ-117's markdown row and json row disagree.",
+    "observed_red": "Every gate was forced red on purpose and then restored green, not merely observed passing. SIX mutants, all killed: (1) deadman_switch_problem returning None unconditionally -- 13 of 28 failed; (2) ping_healthcheck ignoring resp.status_code again -- 3 failed; (3) the EXIT_NO_DEADMAN_SWITCH branch removed -- 8 failed, including the subprocess test that proves the code survives outside the process; (4) substring containment instead of longest-stage-name match -- 4 failed; (5) DCPExtractor.extract() catching the provider error and falling through to the regex reader -- 5 failed; (6) _call_with_retry returning \"[]\" instead of raising after retries -- 2 failed, one naming the returned value. Two manifest mutants also killed: renaming deadman_switch_problem, and emptying guards with guards_floor lowered to 0. DQ-117 read 1 on production 2026-09-28 (median 12d 20h behind a 10-day window) while the prompt's drafted max() form read 0 on the same data. Full suite: 7,479 passed, 2 skipped, 3 xfailed, 0 failed.",
+    "not_proven": "The external half of the dead-man's switch. No healthchecks.io check exists for any stage, so the alert-delivery canary that docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md §5.3 requires -- deliberately stop a stage, confirm the alarm fires, restore it -- cannot be run yet and was NOT run. Until it has been, layer 0 is loud on the client side only."
+  },
+  "functions": [
+    {
+      "name": "deadman_switch_problem",
+      "file_line": "scripts/run_monitors.py:154",
+      "input": "(monitor_name, HC_PING_URL). Exercised against the real measured value and 11 synthetic variants.",
+      "output": "None when the stage has a working switch, else a sentence naming which of the four failure states it is in.",
+      "if_none": "None means 'configured'. The three-state trap is deliberately avoided: an absent URL returns a PROBLEM, never None, so 'unset' can never be read as 'fine'. The one case that returns None without proof is healthchecks.io's opaque UUID ping form, which carries no stage name; the docstring states that limit rather than pretending to decide it."
+    },
+    {
+      "name": "ping_healthcheck",
+      "file_line": "scripts/run_monitors.py:237",
+      "input": "(url, failed). Called only when deadman_switch_problem returned None.",
+      "output": "bool -- True only when the ping is KNOWN to have landed (HTTP < 400). Previously returned None on every path, so no caller could tell.",
+      "if_none": "A transport exception or a >=400 response both return False, and the caller turns that into an alert plus EXIT_NO_DEADMAN_SWITCH. A misconfigured URL is not pinged at all, because pinging another stage's check holds that stage's alarm green -- a bad value is worse than no value."
+    },
+    {
+      "name": "main",
+      "file_line": "scripts/run_monitors.py:263",
+      "input": "MONITOR_NAME and HC_PING_URL read from the process environment, plus the child monitor's own exit code. Nothing is passed as an argument, which is why the subprocess test runs it as a real process rather than only calling it.",
+      "output": "0 healthy, 1 the monitor crashed, 2 mapped to 0 (ran and found something), 3 ran fine but is not being watched.",
+      "if_none": "A crash outranks a broken switch: exit 1 is never relabelled 3, because the more urgent fact must win. The monitor is always RUN even when the switch is broken -- refusing to work would trade a data outage for a monitoring outage."
+    }
+  ],
+  "values": [
+    {
+      "name": "EXIT_NO_DEADMAN_SWITCH",
+      "value": "3",
+      "why": "Distinct from 1 (crash) and 2 (ran and found something) so the three are separable on the Railway dashboard and in logs. Chosen rather than reusing 1 because docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md §5.2 already assigns meaning to 0/1/2, and conflating a monitoring gap with a crash is how the dashboard trains you to ignore it.",
+      "read_at": "scripts/run_monitors.py:121, a module constant read by main() at the end of the run and asserted by name in tests/test_silence_is_an_alarm.py.",
+      "if_missing": "It cannot be missing -- it is a literal in this module, not configuration. If it were changed to 1 the dashboard could no longer separate a crash from an unwatched stage, and the manifest guard's test would still pass, which is why the exit code is asserted through rm.EXIT_NO_DEADMAN_SWITCH in every test rather than as a bare 3."
+    },
+    {
+      "name": "DQ-117 window",
+      "value": "10 days",
+      "why": "The Railway cron is weekly, Monday 02:00 UTC. 10 days is one missed run plus slack, so a single late start is not an alarm and a skipped week is. Copied from DQ-69's 14 days = 2x its 7-day loop.",
+      "read_at": "Inline in the probe SQL at scripts/dq_probe_live.py PROBES['DQ-117'] (INTERVAL '10 days'), and restated in the passes_when of .claude/dq_checks.json so the two cannot drift silently.",
+      "if_missing": "Not configurable, deliberately. An env-tunable window is a window somebody widens to clear a red row; the cron cadence it is derived from (Railway weekly, Mon 02:00 UTC) lives in the Railway dashboard, so if that cadence changes this constant is wrong and must be edited with its reason."
+    },
+    {
+      "name": "DQ-117 statistic",
+      "value": "percentile_disc(0.5) -- the median, not max()",
+      "why": "A sweep touches all 514 monitorable chapters, so a real run moves the median and onboarding a handful cannot. Measured both on production the same day: max() = 0 (defeated by 6 wollongong rows), median = 1. A half-completed sweep also leaves the median old, which is correct -- a half sweep is a broken sweep.",
+      "read_at": "scripts/dq_probe_live.py PROBES['DQ-117'], the percentile_disc(0.5) expression. Measured against the max() alternative on production 2026-09-28 before either was installed.",
+      "if_missing": "percentile_disc over zero rows returns NULL, and run() treats a falsy count as CLEAN -- so the expression is wrapped in COALESCE to '-infinity', making an empty registry read 1. A NULL here would have been a silent pass, which is the exact defect the row exists to remove."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "DQ-117: has the DCP source sweep run fleet-wide in the last 10 days?",
+      "file_line": "scripts/dq_probe_live.py PROBES['DQ-117']",
+      "where_clause": "WHERE is_active AND NOT COALESCE(is_inert, false) AND council_url IS NOT NULL AND btrim(council_url) <> '' -- monitorable active chapters only. NULL url_last_checked is COALESCEd to '-infinity' rather than dropped, so a never-checked chapter counts as maximally stale instead of leaving the population; and the whole CASE is COALESCEd so an EMPTY registry reads 1, because percentile_disc over zero rows returns NULL and run() treats a NULL count as CLEAN. Scope is narrower than the sweep by 24 is_inert rows, which r2_monitor does check (median also 2026-09-15) -- stated in the note; including them changes today's verdict neither way."
+    },
+    {
+      "purpose": "Establish the fleet's real sweep distribution before writing the row, so the check's statistic is chosen from measurement rather than from the prompt's assumption -- the failure mode being that a fleet maximum moved by six onboarding rows reports a 13-day outage as four days old.",
+      "file_line": "ad hoc read-only verification via scripts/dq_db.py session()",
+      "where_clause": "SELECT council, count(*), max(url_last_checked)::date FROM dcp_chapter_registry WHERE is_active AND NOT COALESCE(is_inert,false) AND council_url IS NOT NULL AND btrim(council_url)<>'' GROUP BY 1 -- 499 chapters at 2026-09-15, 6 wollongong at 2026-09-24, 1 northern_beaches at 2026-09-18, waverley 2026-06-29, liverpool 2026-05-04, randwick + strathfield NULL"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The drafted check goes green while the sweep is dead -- the exact silent pass the row exists to remove.",
+      "what_happens": "max(url_last_checked) moves whenever ANY single chapter is touched, so onboarding one council clears a fleet-wide outage from the ledger.",
+      "mitigated": true,
+      "how": "Found by measuring both forms on production before installing either. Replaced with the median and recorded the defeat in the probe comment, the json note and the markdown row, so the next reader cannot re-introduce max() without reading why it was rejected.",
+      "repro": "SELECT max(url_last_checked), percentile_disc(0.5) WITHIN GROUP (ORDER BY COALESCE(url_last_checked,'-infinity'::timestamptz)) FROM dcp_chapter_registry WHERE is_active AND NOT COALESCE(is_inert,false) AND council_url IS NOT NULL AND btrim(council_url)<>'' -- 2026-09-24 vs 2026-09-15 on 2026-09-28"
+    },
+    {
+      "scenario": "The measurement the row is opened on is itself read from the wrong database or the wrong branch's code.",
+      "what_happens": "A row is registered against numbers from a stale working tree, which is how ce-verifyops-gap-audit-2026-09-27 got four claims wrong and had to retract its own §0.",
+      "mitigated": true,
+      "how": "git fetch origin was run first and origin/main confirmed at 2785c38b (2026-09-27); the branch was cut from origin/main in a fresh worktree rather than from the 18-day-old checkout the session started on. Every number came from scripts/dq_db.py, which resolves the main checkout's .env via git rather than falling through to localhost, and current_database() was printed as the first statement of the session's first query.",
+      "repro": "python -c \"import sys; sys.path.insert(0,'scripts'); import dq_db; conn=dq_db.connect(); cur=conn.cursor(); cur.execute('SELECT current_database()'); print(cur.fetchone())\" -- must not print a local db"
+    },
+    {
+      "scenario": "One stage's HC_PING_URL points at another stage's check, so the guard passes and the alarm is still suppressed.",
+      "what_happens": "Plain substring containment accepts dcp-extract pointed at the slug dcp-extract-all, because one stage name is a prefix of the other.",
+      "mitigated": true,
+      "how": "Found by forcing the classifier to fail over every stage-name pair, not by reasoning about it. The slug now resolves to the LONGEST known stage name it contains and that must be this stage. tests/test_silence_is_an_alarm.py::TestEveryStageCanBeConfigured::test_no_two_stages_accept_each_others_slug asserts this across the full MONITORS cross-product, so a new stage whose name collides with an existing one fails at the gate.",
+      "repro": "deadman_switch_problem('dcp-extract', 'https://hc-ping.com/KEY/dcp-extract-all') must return a problem naming dcp-extract-all"
+    },
+    {
+      "scenario": "Somebody sets a real-looking URL that points at nothing, and the run reports a heartbeat anyway.",
+      "what_happens": "requests.get does not raise on 404, and the response was discarded, so a deleted, renamed or mistyped check was indistinguishable from a live one. This is how the six services pinging /placeholder-satellite reported success.",
+      "mitigated": true,
+      "how": "ping_healthcheck now returns False on any status >= 400 and on any transport exception, and the caller alerts and exits 3. Forced red by mutating `if resp.status_code >= 400` to `if False`.",
+      "repro": "Set HC_PING_URL to a well-formed slug URL for a check that does not exist; the run must exit 3 and alert, not exit 0."
+    },
+    {
+      "scenario": "The guard refuses to let the stage run at all, so a monitoring gap becomes a data outage.",
+      "what_happens": "Every DCP stage stops working until healthchecks.io is configured -- strictly worse than the state being fixed.",
+      "mitigated": true,
+      "how": "The monitor is always executed; the switch verdict only changes the exit code and sends an alert. Asserted by TestAMissingSwitchIsLoud::test_the_monitor_still_runs and ::test_it_alerts_before_running_the_monitor, which also pins the ORDER -- a stage that dies mid-run may never reach the end of main().",
+      "repro": "Unset HC_PING_URL; the child command must still be invoked exactly once."
+    },
+    {
+      "scenario": "A provider 429 is swallowed and the chapter is silently read by the regex/geometry reader instead.",
+      "what_happens": "Far worse than the loud failure it replaces: provisions commit as a normal re-extraction, from a reader that needs per-council config and cannot read a two-column council, with no error anywhere. This is the quiet twin of the 2026-09-27 credit_balance_exhausted outage.",
+      "mitigated": true,
+      "how": "tests/test_a_broke_model_stops_the_chapter.py asserts the error propagates, _extract_sequential is never entered, reader_used is not relabelled 'regex', and the PDF is never opened (the path does not exist, so any fallback would surface as FileNotFoundError instead). Forced red by wrapping the ai_extract_chapter call in try/except: 5 failures.",
+      "repro": "With ANTHROPIC_API_KEY set, patch scripts.ai_extractor.ai_extract_chapter to raise a 429; DCPExtractor.extract() must raise and must not call _extract_sequential."
+    },
+    {
+      "scenario": "The tests patch the wrong module and pass without exercising anything.",
+      "what_happens": "`import ai_extractor` and `import scripts.ai_extractor` are two separate module objects. Two tests initially passed on a FileNotFoundError rather than on the behaviour they claimed to check.",
+      "mitigated": true,
+      "how": "Caught while running them, before commit. The test file now imports scripts.ai_extractor -- the spelling dcp_extract_changed reads -- and the reason is recorded at the import so it is not undone. The mutation runs above re-confirm the tests fail for the right reason.",
+      "repro": "Revert the import to `import ai_extractor as ai`; the provider-refusal tests pass on FileNotFoundError while the guard is absent."
+    },
+    {
+      "scenario": "A future change deletes the guard to make itself pass, exactly as #506 deleted a stage.",
+      "what_happens": "ping_healthcheck goes back to a silent early return and nothing notices.",
+      "mitigated": true,
+      "how": ".claude/dcp_pipeline_manifest.json now carries a `guards` array with guards_floor, and tests/test_the_pipeline_cannot_lose_a_stage.py parses the named file with ast to assert the named function is still defined and its test still exists. Each guard must also state its residual, so it cannot be read as complete. Forced red both ways: renaming the function, and emptying guards with the floor lowered.",
+      "repro": "Rename deadman_switch_problem, or set guards_floor to 0; the manifest test fails."
+    },
+    {
+      "scenario": "Merging this lights up the dashboard and the operator learns to ignore it.",
+      "what_happens": "Ten Railway services genuinely have no working switch today, so all ten will exit 3 and alert on their next run.",
+      "mitigated": false,
+      "how": "NOT mitigated in code, and deliberately so -- the alerts are true. It is mitigated only by the operator doing the two actions in post_merge BEFORE or immediately after merge. This is the one real cost of the change and it is stated rather than softened.",
+      "repro": "Merge without creating the healthchecks.io checks; every DCP stage exits 3 on its next scheduled run."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No -- no key or ping URL is printed in full by any committed code path except the operator-facing alert, which quotes HC_PING_URL only when it is already a placeholder or the wrong stage's slug. No secret was written to any file in this branch.",
+    "other_repo": "No",
+    "manual_verify": "YES -- two operator actions, both outside this repo, and layer 0 is NOT complete until they are done. (1) Create one healthchecks.io check per stage and set a DISTINCT HC_PING_URL on each Railway service: dcp-monitor, dcp-extract, dcp-extract-all, dcp-commit, monitor-watchdog, monitor-satellite, maintenance-mutation, maintenance-security, property-alerts, brief-drift-check. Six currently share the literal https://hc-ping.com/placeholder-satellite and four have none. Until then those services exit 3 and alert every run, which is correct. (2) Fund the extraction reader: dcp-extract carries AI_MODEL=sol with OPENAI_API_KEY and returned 429 credit_balance_exhausted on 2026-09-27; dcp-extract-all carries NO AI_MODEL and NO OPENAI_API_KEY, so it resolves to sonnet against an Anthropic account with no credits and cannot reach sol at all. Then run the alert-delivery canary from §5.3: stop one stage deliberately, confirm the alarm fires, restore it. NOT VERIFIED HERE: whether project hospitable-essence holds any of these services -- the CLI cannot enumerate a second project without re-linking, so no claim is made about it."
+  }
+}
