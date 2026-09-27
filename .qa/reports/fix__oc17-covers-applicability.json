@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Four related changes, all in service of one claim being honest: OC-17 now runs the applicability checks it was silently passing without; a production repair took two repealed sections out of the served set; 17 scope decisions moved from Python comments into readable data; and the brief-overlay endpoint gained a rate limit before its production flag is turned on. Not Minor: one production write already ran, OC-17 now FAILS where it passed, and the rate limit sits in front of a paid model. Not Critical: the production write touched 2 explicitly-named rows with a CSV backup and is fully reversible, the rate limit is additive, and no serve-path logic changed.",
-  "commit_hash": "bc7172e5",
+  "commit_hash": "9ad13e3f",
   "files": [
     ".claude/dq_checks.json",
     ".claude/DATA_QUALITY_TRACKER.md",
@@ -14,7 +14,8 @@
     "enrichment/config/canterbury_bankstown_config.py",
     "enrichment/config/georges_river_config.py",
     "enrichment/config/hornsby_config.py",
-    "enrichment/config/wollongong_config.py"
+    "enrichment/config/wollongong_config.py",
+    "tests/test_repair_dq116_repealed_sections_served_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "OC-17's passes_when was parsed for DQ references and shown to name DQ-32c/33/61/66/70/88/99 and none of DQ-114/115/116, while those three read 4,374 / 193 / 2 against production. For the rate limit: `grep -rln 'slowapi|RateLimit|rate_limit|Limiter' services/` returns NOTHING, so no limiter exists to reuse; the Next proxy at app/api/brief-overlay/route.ts adds no auth or limit either. For the evidence migration: the structure was taken from COUNCIL_CONFIGS, the dict DQ-115 counts, and reconciled against it (193 = 193) before anything was edited.",
@@ -25,9 +26,9 @@
     "user_failure_mode": "Prevented: (a) OC-17 telling the user their core claim is supported when the three checks that measure it are red; (b) a repealed control being read as live in a property report; (c) an unauthenticated paid endpoint being exposed to production traffic with no ceiling. Could be CAUSED: a too-tight rate limit would break a real reading session, so the per-client limit is 12/min against a UI that taps a few chips per brief, and the flag is checked first so a disabled feature never answers 429."
   },
   "falsifiable_check": {
-    "command": "python scripts/outreach_claim_checks.py OC-17 ; python scripts/dq_check.py --coverage ; python scripts/dq_probe_unchecked_rows.py --id DQ-116 ; python scripts/dq_probe_applicability_config.py --id DQ-115 ; python -m pytest tests/test_brief_overlay_rate_limit.py -q",
+    "command": "python scripts/outreach_claim_checks.py OC-17 ; python scripts/dq_check.py --coverage ; python scripts/dq_probe_unchecked_rows.py --id DQ-116 ; python scripts/dq_probe_applicability_config.py --id DQ-115 ; python -m pytest tests/test_brief_overlay_rate_limit.py -q ; PYTEST_REAL_DB=1 pytest -m database tests/test_repair_dq116_repealed_sections_served_real_db.py -o addopts=",
     "fails_when": "OC-17 exits non-zero while any of DQ-114/115/116 is non-zero — which is now the truthful state. dq_check.py goes red if a declared status and its live result disagree in either direction.",
-    "observed_red": "OC-17 ran against production and FAILED: 11 checks PASS, DQ-114/115/116 FAIL — it passed before this change. DQ-116 reads 0 after the repair (was 2) and its ledger row moved open -> fixed so the ratchet agrees. DQ-115 reads 176 (was 193). Coverage OK at 119 rows. Rate limit: 12 tests pass and 6 of 6 mutants killed — limiter never refuses; global cap removed; per-client cap removed; client map unbounded; forwarded-for ignored; handler stops calling the limiter."
+    "observed_red": "OC-17 ran against production and FAILED: 11 checks PASS, DQ-114/115/116 FAIL — it passed before this change. DQ-116 reads 0 after the repair (was 2) and its ledger row moved open -> fixed so the ratchet agrees. DQ-115 reads 176 (was 193). Coverage OK at 119 rows. Rate limit: 12 tests pass and 6 of 6 mutants killed — limiter never refuses; global cap removed; per-client cap removed; client map unbounded; forwarded-for ignored; handler stops calling the limiter. Real-layer: 5 tests against the live database, all passing, deselected by default (PYTEST_REAL_DB=1 opt-in per this repo's convention). The gate asked for this and was right to - the script writes to production."
   },
   "functions": [
     {
@@ -130,6 +131,13 @@
       "mitigated": true,
       "how": "The UPDATE is doubly guarded: an EXPLICIT id list built from the rows just printed, AND a repeat of the serve-set condition (is_current AND v2_is_actionable), so a row that stopped being served in between is not touched. rowcount is compared against the expected count and printed, then a verification SELECT asserts 0 of those ids are still served; the script exits non-zero if either disagrees. A CSV backup of every affected row is written BEFORE the UPDATE.",
       "repro": "Observed live: 'updated 2 row(s) (expected 2)' then 'still served after the write: 0 (must be 0)'. Backup at data/db_rollback_backups/regulatory_provisions_pre_dq116_repeal_2026-09-27_1328.csv"
+    },
+    {
+      "scenario": "The repair's SQL pre-filter and DQ-116's probe drift apart, so the check reports a population the repair would not touch (or vice versa).",
+      "what_happens": "Silent in both directions. A narrower filter means a repealed section is never shown to the rule and DQ-116 reads clean over it; a wider one means the repair touches rows nobody reviewed. Neither errors.",
+      "mitigated": true,
+      "how": "A real-database test asserts the two select the SAME rows and the SAME evidence strings - not that each works alone, which is what every pure test of detect_repealed_section already covers. It runs against the live driver because a mocked cursor would prove nothing about a SQL filter.",
+      "repro": "PYTEST_REAL_DB=1 pytest -m database tests/test_repair_dq116_repealed_sections_served_real_db.py -o addopts= — narrow find_rows' pre-filter to '%was repealed%' and test_the_repair_and_the_probe_select_the_same_rows fails."
     }
   ],
   "post_merge": {
