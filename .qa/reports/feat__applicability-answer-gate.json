@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds two ledger rows with working probes, a SessionStart hook, and 26 real addresses to an existing fixture. No production write, no regulatory content changed, no serve-path code touched. Not Minor: it edits .claude/settings.json, so it runs in every session in this repo from now on, and it registers two rows the nightly dq_check.py will execute — a broken probe there reads as a data-quality regression. Not Critical: everything added is read-only, the probes exit 2 rather than 0 when they cannot measure, and the hook cannot fail a session.",
-  "commit_hash": "b8b49369",
+  "commit_hash": "d157d4ef",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
