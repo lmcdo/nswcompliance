@@ -1,0 +1,134 @@
+{
+  "tier": "standard",
+  "justification": "Adds one pure function to scripts/dcp_extract_changed.py, one probe to scripts/dq_probe_unchecked_rows.py, and one ledger row. No production write, no serve-path change, nothing deleted. Not Minor: it registers a row the nightly dq_check.py executes, and it touches dcp_extract_changed.py, the file that decides what gets extracted at all — a mistake there is not confined to a report. Not Critical: the added function is pure and read-only, the probe only counts, and the existing document-level hard reject is untouched and covered by a test on this branch.",
+  "commit_hash": "46f1b410",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "scripts/dq_probe_unchecked_rows.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "tests/test_dq116_repealed_section_served.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Four sweeps 2026-09-27 on origin/main 331a14a1, and the first one changed the plan. (1) Python: `grep -iE 'repealed|superseded|rescinded|revoked'` found that the repeal check ALREADY EXISTS — dcp_extract_changed.detect_repealed_stamp, a line-anchored front-matter rule over the first 4 pages, wired as a HARD REJECT in extract_chapter. The memory note saying 'nothing in the repo reads a repeal stamp' was written 2026-09-26 and is stale; I was one step from building a duplicate. (2) DB: `provision_text ILIKE '%(repealed)%'` over the served set returns 68 rows, so the SECTION-level population is real and nothing measures it. (3) Frontend: grep over frontend-nextjs/{app,components,lib} for repeal/superseded returns nothing that reads or renders it. (4) Plans + memory: ce-dspy-jev-hyperagent-evaluation-2026-09-26 holds the measured rule-A/B/C comparison on 75 real PDFs and names the document-level rule only; DQ-97 already tracks a related but different defect (woollahra's stamp extracting in reversed x-order).",
+    "assumption_mismatch": "Two hypotheses carried in, both WRONG, both killed by measuring rather than by argument. (1) 'Nothing reads a repeal stamp' — it does, and it works. (2) Given DQ-97's reversed-glyph finding, I predicted the shipped guard would be blind on the very corpus it was built for, because a reversed line cannot match `^repealed by`. Tested: zero reversed stamps in served text (`provision_text ILIKE '%delaepeR%'` = 0 rows) and zero hits of any pattern across all 15 live woollahra PDFs in the repo. The reversed-stamp problem has been cleaned up and the guard does not false-positive on live documents. What was left after both were disproved is the real gap: the guard is DOCUMENT-level and repeal also happens at SECTION level.",
+    "new_vs_existing": "Extended in place, twice, rather than adding a file. detect_repealed_section sits directly beneath detect_repealed_stamp in dcp_extract_changed.py, so the two repeal rules live together. The probe went into scripts/dq_probe_unchecked_rows.py, whose docstring is literally 'Ledger checks that need Python, not SQL' and which already hosts probe_104 through probe_109 with the same (headline, means, fn, needs_db) shape — dq_probe_live.py could not host it because that file executes a SQL string and this needs the detector to run per row. The probe IMPORTS detect_repealed_section rather than restating the pattern: two copies of a rule is how two thresholds start disagreeing, the same reason check_served_answer_quality imports _ratchet instead of copying it.",
+    "external_source_error": "No external source is called. The probe's only dependency is dq_db, which raises on a missing DATABASE_URL and on a blind connection (canary table reading zero rows under RLS), both surfacing through the runner as exit 2 — UNKNOWN, explicitly not a pass. The detector itself cannot fail on input: every degenerate shape (None, empty, whitespace, a bare '#') is covered by a parametrised test.",
+    "frontend_type": "N/A — no frontend file changed, and nothing in frontend-nextjs reads these columns. The probe does not write, so no boundary types move.",
+    "user_failure_mode": "The failure this prevents: a planner reads a control, checks the page number, sees the council's exact words — and the council repealed that section on 21 August 2026. Every signal they would use to verify us agrees with us, which is the most convincing way to be wrong. The failure this could CAUSE is the opposite and is why the position rule matters: flagging the 67 inline `(a) (Repealed)` rows would push someone toward deleting a paragraph the council deliberately left in place, which would renumber the council's own clause and silently shift every lettered reference after it."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_check.py --id DQ-116 ; python scripts/dq_check.py --coverage ; python -m pytest tests/test_dq116_repealed_section_served.py -q ; python -m pytest -q",
+    "fails_when": "dq_check.py goes RED if the declared status and the live result disagree in either direction — including if DQ-116 ever PASSES while still declared open, so a silent fix cannot sit unnoticed. The probe exits 2 rather than 0 when the database is unreachable.",
+    "observed_red": "`python scripts/dq_probe_unchecked_rows.py --id DQ-116` runs against production, read-only, and reads 2 with the council's own sentence printed for each: woollahra B3.3 Floorplate ('This section was repealed by Woollahra Development Control Plan 2015 (Amendment 36) on 21 August 2026') and nsw_statewide 3.29 ('This section is repealed at the end of 30 June 2023'). 31 tests pass. MUTATION-CHECKED, 6 of 6 killed — each mutant applied to the real file, the suite run, the file restored, and the probe re-run to confirm it still reads 2."
+  },
+  "functions": [
+    {
+      "name": "detect_repealed_section",
+      "file_line": "scripts/dcp_extract_changed.py, directly beneath detect_repealed_stamp",
+      "input": "(section_header, provision_text) — pure, no database, no file access. Mirrors its document-level sibling's signature style.",
+      "output": "The matched evidence STRING — the council's own sentence including instrument and date, or 'section title: <title>' — capped at 200 chars. Never a bare bool: a flag with no quote cannot be checked against the plan, and an unquotable flag is what this repo keeps removing.",
+      "if_none": "None means no repeal signal, which is the answer for 67 of the 68 rows carrying repeal wording. Degenerate input (None, '', whitespace, a lone '#') returns None rather than raising — a row mid-extraction must not turn a measurement into a traceback."
+    },
+    {
+      "name": "probe_116",
+      "file_line": "scripts/dq_probe_unchecked_rows.py",
+      "input": "A cursor. Pre-filters in SQL on four ILIKE patterns to keep the scan small, then asks detect_repealed_section for the verdict on each candidate.",
+      "output": "(count, sorted [(council + ref, evidence)]) — the evidence travels with the row so the adjudication starts from the council's words, not from a row id.",
+      "if_none": "Zero means no served rule says it has been repealed. Reachable only by re-reading the chapter from the council's current PDF; deleting the row by hand would also reach zero and the next extraction would put it back."
+    }
+  ],
+  "values": [
+    {
+      "value": "68 served rows carry repeal wording; 67 are correct to serve; DQ-116 reads 2.",
+      "read_at": "Production, read-only, 2026-09-27. The 68 came from `SELECT ... WHERE is_current AND v2_is_actionable AND (provision_text ILIKE '%(repealed)%' OR ... OR section_header ILIKE '%(repealed)%')`. The split was then computed by running the detector over all 68 and printing each bucket, and every row in the larger bucket was eyeballed.",
+      "if_missing": "Without the 67/1 split this would have shipped as a 68-row defect. It is not: `(a) (Repealed) (b) not have an area more than 25 m2` is NSW drafting convention — the repealed paragraph stays, marked, so the surviving paragraphs keep their lettering. Reporting those as defects would have pushed toward deleting text the council deliberately kept, and renumbering a statutory clause is a worse outcome than the defect being fixed."
+    },
+    {
+      "value": "2 flagged, and they are NOT the same kind of finding.",
+      "read_at": "python scripts/dq_probe_unchecked_rows.py --id DQ-116, 2026-09-27.",
+      "if_missing": "woollahra B3.3 is unambiguous — the title says (Repealed) and the body names the amendment and the date. nsw_statewide 3.29 (SEPP Industry and Employment 2021, signage) carries 'This section is repealed at the end of 30 June 2023', which is a sunset clause; whether it governs the section it sits in or was bundled in from a neighbouring provision by the extractor cannot be decided without reading the instrument. Treating them identically would mean either interpreting a regulation automatically — which this repo refuses to do — or dismissing a real three-year-expired provision. The probe reports both with their quotes and deletes neither."
+    },
+    {
+      "value": "Zero reversed-glyph repeal stamps in served text.",
+      "read_at": "`provision_text ILIKE '%delaepeR%'` and `'%delaeper%'` over the served set, plus all 15 live woollahra PDFs re-read through the guard's own reader (pdfplumber, first 4 pages), 2026-09-27.",
+      "if_missing": "DQ-97 records that woollahra's stamp extracts in reversed x-order, which would make `^repealed by` unmatchable. Had that still been true, the shipped guard would be blind on the corpus that motivated it and this branch would have been about fixing the guard, not extending it. It is not true any more, and saying so is the difference between extending a working guard and rewriting one that already works."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "The probe's candidate pre-filter. Deliberately WIDER than the detector: SQL narrows the scan, the pure function decides, so the decision lives in one testable place rather than half in a LIKE pattern.",
+      "file_line": "scripts/dq_probe_unchecked_rows.py, probe_116",
+      "where_clause": "is_current AND v2_is_actionable AND (provision_text ILIKE '%(repealed)%' OR provision_text ILIKE '%(deleted)%' OR provision_text ILIKE '%repealed%' OR section_header ILIKE '%(repealed)%')"
+    },
+    {
+      "purpose": "Establishing the 67/1 split before writing any rule — the measurement the design rests on.",
+      "file_line": "ad hoc, read-only, not committed code",
+      "where_clause": "same served filter; results bucketed by whether the mark sits in the section's own title line, in an explicit sentence, or inline in the body"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The rule flags the 67 inline `(a) (Repealed)` rows, and someone acts on it by deleting those paragraphs.",
+      "what_happens": "A statutory clause is renumbered. Every lettered cross-reference after the deleted paragraph silently shifts, and the damage is invisible because the remaining text reads correctly.",
+      "mitigated": true,
+      "how": "The rule tests WHERE the mark sits, not that it exists: the section's own title line, or an explicit sentence. An inline sub-paragraph mark never reaches the title position. Verified against all 68 real rows (67 correctly not flagged) and pinned by five tests, including one asserting that a row with no heading line does not have its first body line read as a title.",
+      "repro": "python scripts/dq_probe_unchecked_rows.py --id DQ-116 — the detail list names 2 rows, neither an inline sub-paragraph. Mutating the rule to `_REPEAL_MARK.search(text)` makes the test suite fail immediately."
+    },
+    {
+      "scenario": "The rule is vocabulary-based and flags prose that merely uses the words, like the document-level rule's first version did.",
+      "what_happens": "A heritage chapter's history section — 'This was later replaced by a number of lighthouses including the existing Hornby Light' — is passive voice with a named agent and perfect grammar. No word list separates it from a repeal stamp.",
+      "mitigated": true,
+      "how": "That exact sentence is a test case and must return None. The sentence pattern requires a legal subject ('this section/clause/control/part/chapter'), so prose about a lighthouse cannot satisfy it; 'replaced' is not in the vocabulary at all.",
+      "repro": "The test test_the_lighthouse in tests/test_dq116_repealed_section_served.py."
+    },
+    {
+      "scenario": "The evidence string is unusable, so the flag cannot be adjudicated.",
+      "what_happens": "Someone gets a row id and has to go find the sentence themselves, which is how a flagged row sits unresolved for months.",
+      "mitigated": true,
+      "how": "FOUND AND FIXED IN THIS SESSION. The first version scanned backward to the previous full stop to find the sentence start — and the nearest '.' is the one inside the section number, so the evidence came out as '3 Floorplate This section was repealed by...', beginning mid-number. It now scans forward from the match, keeping the instrument and the date. Pinned by a named regression test.",
+      "repro": "test_evidence_does_not_begin_mid_section_number; mutating the code back to rfind makes it fail."
+    },
+    {
+      "scenario": "This change breaks the document-level hard reject it sits next to — the guard that keeps archive editions out in the first place.",
+      "what_happens": "Silently worse than the defect being fixed: repealed whole documents start being extracted again, which is how 20 of 23 woollahra chapters shipped as repealed content before the 2026-07-29 re-source.",
+      "mitigated": true,
+      "how": "detect_repealed_stamp is not touched — the new function is appended beneath it with its own regexes, and nothing shared is edited. A test on this branch asserts the old guard still fires on a real stamp line and still returns None on the lighthouse sentence.",
+      "repro": "test_the_document_level_guard_is_untouched."
+    },
+    {
+      "scenario": "The probe reports clean because it cannot see, rather than because there is nothing to see.",
+      "what_happens": "UNKNOWN read as a pass — the silent-pass shape the whole ledger exists to remove.",
+      "mitigated": true,
+      "how": "dq_db.connect() raises on a missing DATABASE_URL and on a blind connection (a canary table reading zero rows under row-level security); the runner turns both into exit 2, which dq_check.py treats as unrunnable rather than passing.",
+      "repro": "Point DATABASE_URL at a closed port and run the probe: it exits 2 and prints 'UNKNOWN -- database unreachable ... which is not a pass'."
+    },
+    {
+      "scenario": "The statewide sunset clause is auto-resolved as a defect and the row is suppressed.",
+      "what_happens": "A regulation is interpreted by a script. If the sentence was bundled in from a neighbouring provision, a live signage control silently disappears from every report.",
+      "mitigated": true,
+      "how": "The probe counts and reports with the quote. It has no write path, no delete, and no suppression list. The ledger note says explicitly that nsw_statewide 3.29 needs a person to read the instrument.",
+      "repro": "The probe's only side effect is stdout; `grep -n 'UPDATE\\|DELETE\\|INSERT' scripts/dq_probe_unchecked_rows.py` returns nothing in probe_116."
+    },
+    {
+      "scenario": "The 67/1 split that this whole design rests on was measured by a SCRATCH script, not by the rule that shipped. If the two disagree, the rule was designed against a population that does not exist.",
+      "what_happens": "A rule tuned to a phantom split: it would look justified by a measurement nothing reproduces, which is the shape of a number quoted without its query.",
+      "mitigated": true,
+      "how": "They DID disagree at first, and the disagreement was informative rather than hidden. The scratch discriminator used a narrower SQL pre-filter ('%was repealed%') and reported 1; the shipped probe widened it to '%repealed%' and reports 2, the extra row being the nsw_statewide 3.29 sunset clause. The wider filter is the correct one and the narrower one would have MISSED a real row. The verdict logic itself agrees on every row both saw. The shipped probe now re-derives the whole split live on every run, so the scratch script is not load-bearing for anything: its only lasting output is the 67 rows eyeballed by hand, which is recorded as an eyeball, not as a computed figure.",
+      "repro": "python scripts/dq_probe_unchecked_rows.py --id DQ-116 re-derives it: the candidate scan is the SQL in probe_116 and the verdict is detect_repealed_section, so any drift between filter and rule shows up as a changed count rather than as a stale note."
+    },
+    {
+      "scenario": "The probe's candidate pre-filter is NARROWER than the rule it feeds, so a repealed section never reaches detect_repealed_section and the count reads clean. The SQL becomes a second, invisible rule.",
+      "what_happens": "A silent miss that looks exactly like a pass. Nothing in the output distinguishes 'no repealed sections' from 'the pre-filter never showed the rule any'.",
+      "mitigated": true,
+      "how": "THIS ALREADY HAPPENED ONCE on this branch: the first pre-filter used '%was repealed%' and missed nsw_statewide 3.29, whose text reads 'is repealed at the end of'. The shipped pre-filter is deliberately WIDER than the rule on every axis — bare '%repealed%' plus '%(repealed)%', '%(deleted)%' and the section_header column — so SQL only narrows the scan and every decision is made by the one testable function. The detector's own vocabulary (repealed/deleted/revoked) is a strict subset of what the filter admits.",
+      "repro": "Narrow the pre-filter in probe_116 to '%was repealed%' and the count drops 2 -> 1 with no other change; widening it back restores the row. Any future vocabulary added to the detector must be checked against the filter the same way."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No — read-only throughout. dq_db sets the session read-only with a 30s statement timeout.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "YES, and it is the point of the branch. Two rows need a human: (1) woollahra chapter b3 general development should be re-read from the council's current PDF so B3.3 Floorplate stops being served — unambiguous, the council's own text names Amendment 36 and 21 August 2026. (2) nsw_statewide 3.29 in SEPP (Industry and Employment) 2021 needs someone to read the instrument and decide whether 'This section is repealed at the end of 30 June 2023' governs that section or was bundled in from a neighbour. Neither is fixed here: a production write needs the user's go, and interpreting a regulation is not something this repo automates."
+  }
+}

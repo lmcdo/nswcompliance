@@ -2977,6 +2977,82 @@ def detect_repealed_stamp(front_page_texts: list[str]) -> str | None:
     return None
 
 
+# prior-art-checked: the DOCUMENT-level sibling above (detect_repealed_stamp,
+# front matter, hard reject) is the only repeal reader in the repo -- four
+# sweeps 2026-09-27 on origin/main 331a14a1: (1) DB, `provision_text ILIKE
+# '%(repealed)%'` returns 68 served rows, so the population is real and
+# unmeasured; (2) frontend, grep over frontend-nextjs/{app,components,lib} for
+# repeal/superseded finds nothing that reads or renders it; (3) python, the
+# words appear in dcp_fidelity_gate.py and dq_probe_live.py only inside prose
+# about DQ-97's reversed-glyph stamp, never as a test; (4) plans + memory name
+# the document-level rule only. This extends that toolkit in place rather than
+# starting a parallel one.
+#: A repealed sub-paragraph left in place, marked, so the surviving paragraphs
+#: keep their lettering -- "(a) (Repealed) (b) not have an area more than" --
+#: is how NSW legislation is drafted. The clause is LIVE and serving it is
+#: right; deleting it would renumber the council's own provision.
+_REPEAL_MARK = re.compile(r"\((?:repealed|deleted|revoked)\)", re.IGNORECASE)
+#: The council saying it outright, in the section's own body.
+_REPEAL_SENTENCE = re.compile(
+    r"\bth(?:is|e)\s+(?:section|clause|control|part|chapter)\s+"
+    r"(?:was|has been|is)\s+(?:repealed|deleted|revoked)\b",
+    re.IGNORECASE,
+)
+
+
+def _section_title(provision_text: str) -> str:
+    """The section's own heading -- the leading '# ...' line the extractor
+    writes. Empty when the row starts straight into body text, which is what
+    a statute sub-paragraph does."""
+    for raw in (provision_text or "").splitlines():
+        line = raw.strip()
+        if line.startswith("#"):
+            return line.lstrip("# ").strip()
+        if line:
+            return ""
+    return ""
+
+
+def detect_repealed_section(section_header: str, provision_text: str) -> str | None:
+    """Return why this row is a REPEALED SECTION, or None. Pure.
+
+    A chapter can be in force while a section inside it is repealed and marked
+    in place, so the document-level stamp above cannot see this shape. Measured
+    2026-09-27 over 24,694 served rows: 68 carry repeal wording, 67 of them the
+    inline drafting convention and exactly ONE a wholly repealed section --
+    woollahra B3.3 Floorplate, "This section was repealed by Woollahra
+    Development Control Plan 2015 (Amendment 36) on 21 August 2026", served as
+    a live control.
+
+    POSITION, NOT VOCABULARY, is what separates them, and that is the same
+    lesson the document-level rule learned from a false positive about a
+    lighthouse ("This was later replaced by a number of lighthouses"). The mark
+    means "repealed" in both shapes; where it sits says whose repeal it is:
+
+        title carries it   -> the SECTION is gone      -> defect
+        body carries it    -> a sub-paragraph is gone  -> correct, serve it
+
+    Returns the matched evidence string so a caller can record WHY, never a
+    bare bool: a flag with no quote is the shape this repo keeps removing.
+    """
+    text = provision_text or ""
+    m = _REPEAL_SENTENCE.search(text)
+    if m:
+        # Run FORWARD from the match, never backward to the previous full stop:
+        # the pattern already starts at "This section was repealed...", and
+        # scanning back for a "." lands inside the section number itself
+        # ("B3.3"), so the evidence would begin mid-number. Forward to the end
+        # of the sentence keeps the instrument and the date, which are the part
+        # a person can check against the plan.
+        end = text.find(".", m.end())
+        sentence = text[m.start():(end + 1) if end != -1 else len(text)]
+        return " ".join(sentence.split())[:200]
+    title = _section_title(text) or (section_header or "")
+    if _REPEAL_MARK.search(title):
+        return "section title: " + " ".join(title.split())[:180]
+    return None
+
+
 def preflight_layout(pdf_path, council: str) -> dict:
     """Measure layout hazards before parsing. Returns counts + flag booleans.
     Never raises — a preflight failure must not block extraction (the post
