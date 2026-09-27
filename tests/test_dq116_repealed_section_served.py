@@ -137,13 +137,25 @@ class TestRegisteredCorrectly:
         assert headline and means
 
     def test_the_ledger_row_points_at_this_probe(self):
+        """Pins the WIRING, not the status.
+
+        The first version also asserted `declared == "open"`. That broke in CI
+        the moment the defect was actually fixed and the row moved to "fixed" —
+        a test that fails BECAUSE the problem was solved. Worse, it duplicated
+        dq_check.py, whose entire job is to police declared-vs-live in both
+        directions; two copies of that rule can only ever disagree, and the one
+        that loses is the test somebody edits to go green.
+
+        So: the row must exist, and it must point at this probe. Whether it
+        currently reads open or fixed is the ledger's business.
+        """
         import io
         import json
         d = json.load(io.open(ROOT / ".claude" / "dq_checks.json", encoding="utf-8"))
         row = d["checks"]["DQ-116"]
         assert row["check"] == ["python", "scripts/dq_probe_unchecked_rows.py",
                                 "--id", "DQ-116"]
-        assert row["declared"] == "open"
+        assert row["declared"] in {"open", "fixed"}
 
     def test_the_document_level_guard_is_untouched(self):
         """This branch adds a sibling; it must not have altered the hard reject
