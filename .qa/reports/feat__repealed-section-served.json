@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds one pure function to scripts/dcp_extract_changed.py, one probe to scripts/dq_probe_unchecked_rows.py, and one ledger row. No production write, no serve-path change, nothing deleted. Not Minor: it registers a row the nightly dq_check.py executes, and it touches dcp_extract_changed.py, the file that decides what gets extracted at all — a mistake there is not confined to a report. Not Critical: the added function is pure and read-only, the probe only counts, and the existing document-level hard reject is untouched and covered by a test on this branch.",
-  "commit_hash": "6292578c",
+  "commit_hash": "85c416b8",
   "files": [
     "scripts/dcp_extract_changed.py",
     "scripts/dq_probe_unchecked_rows.py",
