@@ -44,6 +44,10 @@ BLACKTOWN_CONFIG: dict = {
         # ALL development in those zones, not a list of types, and naming types
         # would delete it from every type left out.
         "blacktown_dcp_2015_part_c": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Section 1.1 'Land to which this Part applies', verbatim: 'This Part of the DCP applies to all land within the Blacktown Local Government Area zoned for residential purposes under Blacktown LEP 2015.' The R-series is what 'zoned for residential purposes' names, and the four below are the ones that EXIST for this LGA in lep_zone_coverage — taken from the data rather than assumed, so a zone Blacktown does not have is never declared. applicable_dev_types is OMITTED: the Part binds ALL development in those zones, not a list of types, and naming types would delete it from every type left out.",
+            },
             "applicable_zones": ["R1", "R2", "R3", "R4"],  # noqa: zone-codes (the LGA's residential zones, per lep_zone_coverage)
             "layer": "generic",
         },
@@ -56,6 +60,12 @@ BLACKTOWN_CONFIG: dict = {
         # parking Part binds any development that generates a parking demand,
         # and the chapter says so itself.
         "part_a_car_parking": {
+            "scope_evidence": {
+                "applicable_dev_types":
+                    "Section 1.1 'Land to which this DCP applies', verbatim: 'Blacktown DCP 2015 applies to all land within the Blacktown Local Government Area that is zoned under Blacktown Local Environmental Plan (LEP) 2015.' ALL on both keys is a real assertion here, not a fallthrough: a car parking Part binds any development that generates a parking demand, and the chapter says so itself.",
+                "applicable_zones":
+                    "Section 1.1 'Land to which this DCP applies', verbatim: 'Blacktown DCP 2015 applies to all land within the Blacktown Local Government Area that is zoned under Blacktown Local Environmental Plan (LEP) 2015.' ALL on both keys is a real assertion here, not a fallthrough: a car parking Part binds any development that generates a parking demand, and the chapter says so itself.",
+            },
             "applicable_zones": ["ALL"],
             "applicable_dev_types": ["ALL"],
             "layer": "generic",

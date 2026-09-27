@@ -129,6 +129,10 @@ CANTERBURY_BANKSTOWN_CONFIG: dict = {
         # frontend-nextjs/app/api/provisions/for-property/route.ts, not a ranking
         # hint, so that narrowing removes the row from the answer entirely.
         "chapter_9_1_general_requirements": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "--- 9.x industrial precincts: scoped by ZONE, not by development type --- Chapter 9.1 section 1 Introduction, verbatim: the DCP 'supports the LEP by providing additional objectives and development controls to enhance the function, design and amenity of the industrial precincts within Zone E4 General Industrial'. E4 is the only zone the chapter names as its own scope (checked against the whole PDF, not the introduction alone: the sole other zone reference is a control about adjoining land). applicable_dev_types is OMITTED on purpose -> config_silent. The same page says 'Non-industrial development will be limited to land uses that are compatible with the primary employment role of the precinct', and the chapter's own controls bear that out: 3.16 governs vehicle body repair workshops and 5.10 food premises. The first draft of this entry declared ['industrial_development', 'light_industry', 'warehouse'], which would have hidden 5.10 from a food_and_drink_premises DA inside E4 -- v2_applicable_dev_types is a HARD filter in frontend-nextjs/app/api/provisions/for-property/route.ts, not a ranking hint, so that narrowing removes the row from the answer entirely.",
+            },
             "applicable_zones": ["E4"],  # noqa: zone-codes (the zone chapter 9.1 section 1 names as its own scope)
         },
 
@@ -153,6 +157,10 @@ CANTERBURY_BANKSTOWN_CONFIG: dict = {
         # so that list did not merely lose precision -- it hid the chapter from
         # exactly the two development types sections 3 and 4 are written for.
         "chapter_10_4_non_residential_land_uses": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 10.4 section 1 Introduction, verbatim: controls 'to manage the design and operation of non-residential land uses within Zone R2 Low Density Residential, Zone R3 Medium Density Residential and Zone R4 High Density Residential'. Its sections are Health consulting rooms (2), Neighbourhood shops (3), Serviced apartments (4), Other non-residential development (5) and Site facilities (6). applicable_dev_types is OMITTED -> config_silent. The first draft named commercial/retail/office/food-and-drink/industrial/warehouse, which was wrong in both directions: industrial and warehouse development does not occur in R2/R3/R4, and three of the chapter's own five subject sections were missing. `neighbourhood_shop` and `serviced_apartment` both exist in the serving taxonomy (frontend-nextjs/lib/see/devTypeHierarchy.ts), so that list did not merely lose precision -- it hid the chapter from exactly the two development types sections 3 and 4 are written for.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table. The zone names are the council's own words; rewriting them to import from the taxonomy would falsify the quote.
+            },
             "applicable_zones": ["R2", "R3", "R4"],  # noqa: zone-codes (the three zones chapter 10.4 section 1 names as its own scope)
         },
         "chapter_10_7_sex_services_premises": {

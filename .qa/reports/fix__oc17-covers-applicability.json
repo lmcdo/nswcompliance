@@ -1,0 +1,141 @@
+{
+  "tier": "standard",
+  "justification": "Four related changes, all in service of one claim being honest: OC-17 now runs the applicability checks it was silently passing without; a production repair took two repealed sections out of the served set; 17 scope decisions moved from Python comments into readable data; and the brief-overlay endpoint gained a rate limit before its production flag is turned on. Not Minor: one production write already ran, OC-17 now FAILS where it passed, and the rate limit sits in front of a paid model. Not Critical: the production write touched 2 explicitly-named rows with a CSV backup and is fully reversible, the rate limit is additive, and no serve-path logic changed.",
+  "commit_hash": "3257c3c7",
+  "files": [
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "scripts/outreach_claim_checks.py",
+    "scripts/repair_dq116_repealed_sections_served.py",
+    "services/brief_overlay_api.py",
+    "tests/test_brief_overlay_rate_limit.py",
+    "enrichment/config/blacktown_config.py",
+    "enrichment/config/campbelltown_config.py",
+    "enrichment/config/canterbury_bankstown_config.py",
+    "enrichment/config/georges_river_config.py",
+    "enrichment/config/hornsby_config.py",
+    "enrichment/config/wollongong_config.py"
+  ],
+  "pre_impl": {
+    "existing_data": "OC-17's passes_when was parsed for DQ references and shown to name DQ-32c/33/61/66/70/88/99 and none of DQ-114/115/116, while those three read 4,374 / 193 / 2 against production. For the rate limit: `grep -rln 'slowapi|RateLimit|rate_limit|Limiter' services/` returns NOTHING, so no limiter exists to reuse; the Next proxy at app/api/brief-overlay/route.ts adds no auth or limit either. For the evidence migration: the structure was taken from COUNCIL_CONFIGS, the dict DQ-115 counts, and reconciled against it (193 = 193) before anything was edited.",
+    "assumption_mismatch": "Three, all corrected by measuring. (1) A first audit derived the config structure by parsing the files and disagreed with the tagger (197 vs 193; canterbury_bankstown 9 vs 85) — a config's shape on disk is not its shape after import, so the structure now comes from COUNCIL_CONFIGS and the files are read only for comments. (2) A first migration used a regex for `\"key\": {` and matched the BUCKET key `\"parts\": {`, writing evidence at bucket level, and edited leichhardt_config.py which is not in COUNCIL_CONFIGS; both reverted and replaced with an explicit 12-entry allowlist. (3) DQ-116's own passes_when said a by-hand fix would be wrong; that was written before the source PDF was read, and the source shows the row is faithful and the defect is that it is SERVED — so the remedy changed and the wording was corrected rather than worked around.",
+    "new_vs_existing": "OC-17 gained three `lambda: probe(...)` entries using the same helper as its other ten. The rate limit went into brief_overlay_api.py rather than a shared module because it is the only endpoint that needs one today. The evidence migration edited 6 existing config files and added no new format beyond the `scope_evidence` key DQ-115 already looks for. ONE new script (the repair, following scripts/repair_*.py house shape) and ONE new test file.",
+    "external_source_error": "The rate limit reads X-Forwarded-For, which is client-controlled; it is used only to separate ordinary callers and is explicitly NOT the security boundary, which is why a global cap exists that does not depend on it. The repair script uses dq_db for the read (read-only, 30s timeout) and its own psycopg2 connection for the write, failing with an actionable message when DATABASE_URL is absent.",
+    "frontend_type": "N/A — no frontend file changed. The rate limit answers 429 with Retry-After, which the existing proxy passes through unchanged.",
+    "user_failure_mode": "Prevented: (a) OC-17 telling the user their core claim is supported when the three checks that measure it are red; (b) a repealed control being read as live in a property report; (c) an unauthenticated paid endpoint being exposed to production traffic with no ceiling. Could be CAUSED: a too-tight rate limit would break a real reading session, so the per-client limit is 12/min against a UI that taps a few chips per brief, and the flag is checked first so a disabled feature never answers 429."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/outreach_claim_checks.py OC-17 ; python scripts/dq_check.py --coverage ; python scripts/dq_probe_unchecked_rows.py --id DQ-116 ; python scripts/dq_probe_applicability_config.py --id DQ-115 ; python -m pytest tests/test_brief_overlay_rate_limit.py -q",
+    "fails_when": "OC-17 exits non-zero while any of DQ-114/115/116 is non-zero — which is now the truthful state. dq_check.py goes red if a declared status and its live result disagree in either direction.",
+    "observed_red": "OC-17 ran against production and FAILED: 11 checks PASS, DQ-114/115/116 FAIL — it passed before this change. DQ-116 reads 0 after the repair (was 2) and its ledger row moved open -> fixed so the ratchet agrees. DQ-115 reads 176 (was 193). Coverage OK at 119 rows. Rate limit: 12 tests pass and 6 of 6 mutants killed — limiter never refuses; global cap removed; per-client cap removed; client map unbounded; forwarded-for ignored; handler stops calling the limiter."
+  },
+  "functions": [
+    {
+      "name": "_rate_limit_check",
+      "file_line": "services/brief_overlay_api.py",
+      "input": "The FastAPI Request. Keys on the first X-Forwarded-For hop, else request.client.host, else 'unknown'.",
+      "output": "None when the call may proceed, else the Retry-After seconds. Uses time.monotonic, because a wall-clock step backwards would hand out free quota and NTP steps are not hypothetical on a cloud host.",
+      "if_none": "None means proceed. Both caps are independent: the per-client one stops a single caller monopolising the endpoint, the global one caps spend regardless of how many addresses appear."
+    },
+    {
+      "name": "find_rows",
+      "file_line": "scripts/repair_dq116_repealed_sections_served.py",
+      "input": "A cursor. Asks detect_repealed_section for the verdict rather than restating its pattern.",
+      "output": "The rows DQ-116 flags, each carrying the council's own sentence as evidence.",
+      "if_none": "An empty list prints 'Nothing to do' and writes nothing. The repair and the check can never disagree about what the defect is, because they ask the same function."
+    }
+  ],
+  "values": [
+    {
+      "value": "OC-17 flipped PASS -> FAIL, and `declared` moved true -> false in the same change.",
+      "read_at": "python scripts/outreach_claim_checks.py OC-17 against production, 2026-09-27, before and after wiring the three probes.",
+      "if_missing": "Leaving `declared: true` while the check fails would make the ledger lie in the direction nobody checks — the exact failure DQ-54 is the receipt for. The claim is now demonstrably unsupported and the row says so."
+    },
+    {
+      "value": "DQ-115 193 -> 176: 17 scope keys across 12 entries moved from comment to data.",
+      "read_at": "python scripts/dq_probe_applicability_config.py --id DQ-115, before and after.",
+      "if_missing": "Two candidates were REJECTED by eye — waverley `parts/C` and warringah `parts/C` both matched on a comment about DQ-30 zone-code history, which is not a statement of who a chapter applies to. Copying those would have put a quotable sentence behind a decision it does not support, and a wrong quote is worse than no quote."
+    },
+    {
+      "value": "DQ-116 2 -> 0, by marking two rows not-actionable.",
+      "read_at": "The repair's own dry run, then --apply, then the probe. Backup: data/db_rollback_backups/regulatory_provisions_pre_dq116_repeal_2026-09-27_1328.csv",
+      "if_missing": "v2_is_actionable rather than is_current: 'superseded' would be a false statement about version history, since there is no newer version of either section and row 121802 already holds that relationship for woollahra B3.3 correctly."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "The repair's row selection — the same ILIKE pre-filter DQ-116's probe uses, deliberately wider than the rule, with the pure detector making every decision.",
+      "file_line": "scripts/repair_dq116_repealed_sections_served.py, find_rows",
+      "where_clause": "is_current AND v2_is_actionable AND (provision_text ILIKE '%(repealed)%' OR '%(deleted)%' OR '%repealed%' OR section_header ILIKE '%(repealed)%')"
+    },
+    {
+      "purpose": "The guarded UPDATE: an explicit id list AND a repeat of the serve-set condition, so a row that stopped being served between the read and the write is not touched.",
+      "file_line": "scripts/repair_dq116_repealed_sections_served.py",
+      "where_clause": "WHERE id = ANY(%s) AND is_current AND v2_is_actionable"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The rate limit is in place but never actually refuses anything, so the endpoint is exposed with a decorative guard.",
+      "what_happens": "A billing incident that looks protected. The worst kind, because nobody re-checks a guard they believe exists.",
+      "mitigated": true,
+      "how": "The tests FORCE refusal rather than asserting the code exists, and six mutants were applied to the real file and all killed: limiter never refuses; global cap removed; per-client cap removed; client map unbounded; forwarded-for ignored; handler stops calling the limiter.",
+      "repro": "Set `_PER_CLIENT_MAX` unreachable or replace either cap's condition with `if False:` — the suite fails immediately."
+    },
+    {
+      "scenario": "A per-IP limit is treated as protection against an abusive caller.",
+      "what_happens": "None at all — an abusive caller has many addresses, which is the shape that defeats per-IP limiting entirely. X-Forwarded-For is client-controlled, so the key can simply be varied.",
+      "mitigated": true,
+      "how": "A GLOBAL cap exists that does not depend on the client key, and a test spreads calls across _GLOBAL_MAX + 50 distinct addresses and asserts exactly _GLOBAL_MAX get through. The docstring states outright that the forwarded header is a courtesy key and not a security boundary.",
+      "repro": "test_many_clients_still_hit_a_ceiling."
+    },
+    {
+      "scenario": "A test passes because something ELSE stopped it reaching the behaviour it claims to check.",
+      "what_happens": "THIS HAPPENED HERE and was caught by mutation, not by reading. The memory-bound test looped over _MAX_TRACKED_CLIENTS + 200 addresses and passed with the eviction DELETED, because the global cap refuses after _GLOBAL_MAX calls so no further entries were ever created. The assertion was true for a reason unrelated to its claim.",
+      "mitigated": true,
+      "how": "The test now clears the global counter each iteration so it measures the map's own bound, and the reason is written into the test so it is not re-simplified later. The mutant is killed.",
+      "repro": "Remove the `del api._global_hits[:]` line and delete the eviction branch: the test goes green with the protection gone."
+    },
+    {
+      "scenario": "The rate limit is mistaken for access control.",
+      "what_happens": "The endpoint stays credential-free indefinitely because it 'has protection'.",
+      "mitigated": false,
+      "how": "NOT mitigated, and stated in the code rather than implied: the limiter is IN-PROCESS, so with N Railway instances the true ceiling is _GLOBAL_MAX x N. It is a cost guardrail. The comment says a long-lived public endpoint wants a real credential and a shared store.",
+      "repro": "Scale the service to two instances and the effective ceiling doubles."
+    },
+    {
+      "scenario": "The evidence migration copies a comment that is not a scope statement.",
+      "what_happens": "A quotable sentence sits behind a decision it does not support — worse than an empty field, because it invites trust.",
+      "mitigated": true,
+      "how": "Every candidate was read by eye and two were rejected (waverley and warringah `parts/C`, both DQ-30 zone-code history). The migration uses an explicit 12-entry allowlist rather than a pattern, after a pattern-based first attempt wrote evidence at bucket level and into a config the tagger does not use.",
+      "repro": "The rejected entries still read 'DQ-30: \"C\" and \"D\" previously had a single entry each...' — no scope statement in it."
+    },
+    {
+      "scenario": "The repair clears DQ-116 by hand and the next extraction puts the row straight back.",
+      "what_happens": "A green check over a live defect, on the next chapter re-read.",
+      "mitigated": false,
+      "how": "NOT mitigated and recorded on the row: detect_repealed_section is not yet wired into the write path, only into the probe. DQ-116 reads the LIVE served set, so a new one surfaces the moment it is served — containment with a watch, not a durable fix. The durable change is to gate at write time.",
+      "repro": "Re-extract any chapter containing a section marked (Repealed) at title level and the probe goes non-zero again."
+    },
+    {
+      "scenario": "The repair's ILIKE pre-filter is NARROWER than the detector it feeds, so a repealed section never reaches the rule and the repair silently skips it.",
+      "what_happens": "The row stays served and DQ-116 reads 0, because the probe uses the same pre-filter — the check and the repair would be blind in exactly the same place, which is the worst possible correlation between them.",
+      "mitigated": true,
+      "how": "THIS ALREADY HAPPENED during DQ-116's own development: a first pre-filter used '%was repealed%' and missed nsw_statewide 3.29, whose text reads 'is repealed at the end of'. The shipped filter is deliberately WIDER than the rule on every axis — bare '%repealed%' plus '%(repealed)%', '%(deleted)%' and the section_header column — so SQL only narrows the scan and every decision is made by detect_repealed_section. The repair imports that same function rather than restating it.",
+      "repro": "Narrow find_rows' pre-filter to '%was repealed%' and the dry run drops from 2 rows to 1 with no other change."
+    },
+    {
+      "scenario": "The guarded UPDATE's explicit id list goes stale between the read and the write, so it touches rows the dry run never showed, or misses ones it did.",
+      "what_happens": "An unreviewed row silently leaves the served set. On regulatory content that is a control disappearing from a report with nobody having looked at it.",
+      "mitigated": true,
+      "how": "The UPDATE is doubly guarded: an EXPLICIT id list built from the rows just printed, AND a repeat of the serve-set condition (is_current AND v2_is_actionable), so a row that stopped being served in between is not touched. rowcount is compared against the expected count and printed, then a verification SELECT asserts 0 of those ids are still served; the script exits non-zero if either disagrees. A CSV backup of every affected row is written BEFORE the UPDATE.",
+      "repro": "Observed live: 'updated 2 row(s) (expected 2)' then 'still served after the write: 0 (must be 0)'. Backup at data/db_rollback_backups/regulatory_provisions_pre_dq116_repeal_2026-09-27_1328.csv"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. One production write already ran (2 rows, v2_is_actionable = FALSE) with a CSV backup at data/db_rollback_backups/regulatory_provisions_pre_dq116_repeal_2026-09-27_1328.csv. Reversible by setting those two ids back to TRUE.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "YES. (1) After merge, set NEXT_PUBLIC_BRIEF_LLM_OVERLAY_ENABLED=true on Vercel Production and REDEPLOY — NEXT_PUBLIC_* is inlined at build time, so the variable alone changes nothing. It is stored as a Secret, so its current value cannot be read from the CLI and setting it is a remove-then-add. The rate limit must be deployed to Railway BEFORE that flag is flipped. (2) The brief-overlay endpoint still takes no credential; the limiter caps spend, it does not control access. (3) OC-17 now fails and will keep failing until the applicability work is done — that is intended, not a regression. (4) extreme_rainfall remains unavailable: verified live 2026-09-27 that fetch_arr_ifd returns empty lists and None for two real coordinates, so no BurstIL value is served under a BOM IFD label. Showing a real figure needs the BOM 2016 design-rainfall grids ingested as a PostGIS layer."
+  }
+}
