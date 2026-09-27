@@ -667,7 +667,15 @@ def main() -> int:
     # only where regulatory_provisions.citation_status says the page proves it
     # (migration 076). Re-check the councils just committed so a fixed number shows
     # and a new unproven one does not. A failure never undoes a committed provision.
-    for council in sorted(committed_councils if not dry_run else ()):   # a dry run writes nothing
+    # These re-checks run as SEPARATE programs that load the real .env, so a test that drives
+    # main() with a fake connection would have them write to PRODUCTION (found 2026-09-27: ten
+    # page-repair runs from a pre-push test run). Under pytest they are skipped; the scripts
+    # themselves are tested directly.
+    import os
+    under_test = bool(os.environ.get("PYTEST_CURRENT_TEST"))
+    if under_test and committed_councils and not dry_run:
+        print("  [test] post-publish re-checks skipped: they would write to the real database")
+    for council in sorted(committed_councils if not (dry_run or under_test) else ()):
         import subprocess
         try:
             r = subprocess.run([sys.executable, str(ROOT / "scripts" / "dcp_citation_status.py"),

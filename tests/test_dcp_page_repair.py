@@ -94,3 +94,10 @@ def test_migration_080_allows_the_value_and_keeps_every_079_value():
     sql = (ROOT / "migrations" / "080_page_read_by_person.sql").read_text(encoding="utf-8")
     for v in ("on_page", "moved", "read_by_person", "unresolved", "not_found", "too_short", "no_source"):
         assert f"'{v}'" in sql
+
+def test_a_test_run_of_the_commit_worker_never_starts_the_production_rechecks(monkeypatch):
+    """The post-publish re-checks are separate programs that load the real .env; three test
+    files drive main() with a fake connection, and ran them against production (2026-09-27)."""
+    src = (ROOT / "scripts" / "dcp_commit_approved.py").read_text(encoding="utf-8")
+    assert 'os.environ.get("PYTEST_CURRENT_TEST")' in src
+    assert "committed_councils if not (dry_run or under_test)" in src
