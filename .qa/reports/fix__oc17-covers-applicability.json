@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Four related changes, all in service of one claim being honest: OC-17 now runs the applicability checks it was silently passing without; a production repair took two repealed sections out of the served set; 17 scope decisions moved from Python comments into readable data; and the brief-overlay endpoint gained a rate limit before its production flag is turned on. Not Minor: one production write already ran, OC-17 now FAILS where it passed, and the rate limit sits in front of a paid model. Not Critical: the production write touched 2 explicitly-named rows with a CSV backup and is fully reversible, the rate limit is additive, and no serve-path logic changed.",
-  "commit_hash": "9f9a68b9",
+  "commit_hash": "04072b71",
   "files": [
     ".claude/dq_checks.json",
     ".claude/DATA_QUALITY_TRACKER.md",
