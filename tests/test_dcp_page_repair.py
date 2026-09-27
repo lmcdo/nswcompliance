@@ -78,3 +78,11 @@ def test_the_extraction_image_carries_the_page_repair_it_runs_after_every_publis
     docker = (ROOT / "Dockerfile.monitors").read_text(encoding="utf-8")
     for f in ("dcp_page_repair.py", "rule_page_locator.py"):
         assert f"COPY scripts/{f} ./scripts/{f}" in docker, f
+
+
+def test_a_test_run_of_the_commit_worker_never_starts_the_production_rechecks(monkeypatch):
+    """The post-publish re-checks are separate programs that load the real .env; three test
+    files drive main() with a fake connection, and ran them against production (2026-09-27)."""
+    src = (ROOT / "scripts" / "dcp_commit_approved.py").read_text(encoding="utf-8")
+    assert 'os.environ.get("PYTEST_CURRENT_TEST")' in src
+    assert "committed_councils if not (dry_run or under_test)" in src
