@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds one allowed verdict and makes the repair keep it; served links for three rows change from page 1 to their read page.",
-  "commit_hash": "9860d21f",
+  "commit_hash": "585e61b8",
   "files": [
     "migrations/080_page_read_by_person.sql",
     "scripts/dcp_page_repair.py",
