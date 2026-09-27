@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds one pure function to scripts/dcp_extract_changed.py, one probe to scripts/dq_probe_unchecked_rows.py, and one ledger row. No production write, no serve-path change, nothing deleted. Not Minor: it registers a row the nightly dq_check.py executes, and it touches dcp_extract_changed.py, the file that decides what gets extracted at all — a mistake there is not confined to a report. Not Critical: the added function is pure and read-only, the probe only counts, and the existing document-level hard reject is untouched and covered by a test on this branch.",
-  "commit_hash": "0486a308",
+  "commit_hash": "2c088147",
   "files": [
     "scripts/dcp_extract_changed.py",
     "scripts/dq_probe_unchecked_rows.py",
@@ -58,6 +58,11 @@
       "value": "The woollahra row's diagnosis was WRONG in direction and was corrected the same day: B3.3 Floorplate is ALIVE in the council's current chapter, and we hide it.",
       "read_at": "source-pdfs/dcps/woollahra/v1.4-2026-09-15/chapter-b3-general-development.pdf, downloaded by the review-mode run and read with pdfplumber, 2026-09-27: page 21 carries the live control (buildable area x 1.65) and 'repeal' appears on 0 of 105 pages. Row dates from regulatory_provisions: id 121802 (live text) last_modified 2026-09-15, is_current FALSE; id 127014 ('(Repealed)') last_modified 2026-09-18, is_current TRUE.",
       "if_missing": "The first diagnosis read provision_text and reported the DATABASE as if it were the law. That inverted the harm: not 'a dead control is served' but 'a live binding control is hidden behind text that is absent from the source document'. The check still found the right row for the right reason - its signal is the council's own wording - but the remedy and the severity both changed once the PDF was opened. For anything about what a regulation SAYS, the PDF and the page are the authority and provision_text is not."
+    },
+    {
+      "value": "The same-day 'correction' of the woollahra row was itself wrong and is withdrawn. The original finding stands, now verified against the real source.",
+      "read_at": "The R2 object named by dcp_chapter_registry.r2_current_path, downloaded with boto3 on 2026-09-27: 2,973,719 bytes, 101 pages. Page 21 carries 'B3.3 Floorplate (Repealed)' and the repeal sentence naming Amendment 36 and 21 August 2026; the contents page lists it as repealed.",
+      "if_missing": "The 'correction' read woollahra/chapter-b3-general-development.pdf - a file TRACKED IN THIS REPOSITORY, 3,477,944 bytes, 105 pages, predating Amendment 36. Same filename, different law. 542 PDFs are tracked here and any can be stale the same way, so 'I read the PDF' is not enough: only the R2 object named by r2_current_path is the source. Acting on the withdrawn correction would have restored a control the council has repealed - putting a dead 1.65 floorplate factor back into service."
     }
   ],
   "queries": [
@@ -142,12 +147,19 @@
       "mitigated": false,
       "how": "NOT mitigated, and recorded rather than hidden - it is outside this branch. For woollahra chapter-b3-general-development, provisions_extracted_from_hash EQUALS content_hash (114475891aa8740d) while a served row's text is absent from that PDF. So the equality is an assertion made at write time, not a derivation from the text. DQ-116 catches this particular row through its wording; a row with stale text and no repeal vocabulary would still pass everything. Needs its own row: 'served text absent from the PDF its registry row says it came from'.",
       "repro": "SELECT content_hash, provisions_extracted_from_hash FROM dcp_chapter_registry WHERE council='woollahra' AND chapter_key='chapter-b3-general-development' -- equal; then grep the PDF for the served row's distinctive phrase (Amendment 36) -- absent."
+    },
+    {
+      "scenario": "A finding is checked against a PDF with the right filename that is not the source the pipeline uses.",
+      "what_happens": "A confident, specific, fully-evidenced conclusion that is about a different version of the law. Here it inverted the finding twice in one session and would have led to restoring a repealed control.",
+      "mitigated": true,
+      "how": "Caught by comparing byte counts: the run log said 'Downloaded 2,973,719 bytes' and the file being read was 3,477,944. The rule that follows is recorded in memory/feedback-name-the-source-before-the-claim.md: for what a regulation SAYS the authority is the R2 object named by dcp_chapter_registry.r2_current_path - not provision_text, and not a repo copy with a matching name.",
+      "repro": "ls -la woollahra/chapter-b3-general-development.pdf (3,477,944 bytes, 105 pages, no repeal text) against the R2 object at r2_current_path (2,973,719 bytes, 101 pages, repeal text on page 21 and in the contents)."
     }
   ],
   "post_merge": {
     "db_reset": "No — read-only throughout. dq_db sets the session read-only with a 30s statement timeout.",
     "secrets": "No.",
     "other_repo": "No.",
-    "manual_verify": "YES. (1) woollahra B3.3: RESTORE the live control. id 121802 carries the current text and is is_current=FALSE; id 127014 carries text absent from the source and is is_current=TRUE. Confirm against Amendment 36 first - it is dated 21 August 2026 and the PDF showing B3.3 alive is dated 15 September 2026, i.e. AFTER it, which is the evidence the live text is current. A re-read of the chapter is the clean fix and is currently BLOCKED: the extractor's providers all fail - OpenAI 429 'no credits remaining', Anthropic 400 'API key is not scoped to a workspace', Mistral 429 rate limited. The Anthropic one is a key-scope setting, not a payment. (2) nsw_statewide 3.29 in SEPP (Industry and Employment) 2021: its own subsection (2) reads 'This section is repealed at the end of 30 June 2023' and it is still served. (3) SEPARATE BUG FOUND, not fixed here: tests/test_doc_claims.py:744 defines _VICTIM as the real tracked docs/QA-DATA-PROVENANCE.md and mutates it, relying on a finally-block restore; it left that file dirty repeatedly during this session. Same family as #1176."
+    "manual_verify": "YES. (1) woollahra B3.3 is genuinely REPEALED - verified against the R2 object r2_current_path names, page 21 and the contents page. Row 127014 is faithful and row 121802 is correctly superseded; nothing needs restoring. The decision for a person is whether a repeal NOTICE should be served as an actionable rule at all: it carries no control, only the statement that the control is gone. (2) nsw_statewide 3.29 in SEPP (Industry and Employment) 2021: its own subsection (2) reads 'This section is repealed at the end of 30 June 2023' and it is still served. (3) SEPARATE HAZARD, not fixed here: 542 PDFs are tracked in this repository and at least one - woollahra/chapter-b3-general-development.pdf - is a stale edition of a chapter that is still live, four pages longer and predating Amendment 36. Only scripts/populate_woollahra_registry.py reads that directory, so nothing is served from it today, but the filename collision already caused one wrong finding in this session. (4) tests/test_doc_claims.py:744 names the real tracked docs/QA-DATA-PROVENANCE.md as _VICTIM and mutates it."
   }
 }
