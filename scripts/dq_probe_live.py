@@ -218,6 +218,74 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "SELF-DISCLOSING -- each names its locality in its own condition text -- "
         "so they are not this defect and are not registered chapters anyway.",
     ),
+    "DQ-117": (
+        "The DCP source sweep has not run fleet-wide in 10 days",
+        # LIVENESS, not data quality -- DQ-69's missing sibling for the OTHER
+        # monitor. r2_monitor writes url_last_checked on all four of its paths
+        # (900, 1106, 1126, 1143), so only a real sweep moves it; a code edit
+        # cannot satisfy this. Railway cron is weekly Mon 02:00 UTC, so 10 days
+        # is one missed run plus slack.
+        #
+        # WHY: measured 2026-09-27, the sweep had been dead for 12 days --
+        # 499 of 514 monitorable chapters last checked 2026-09-15, one missed
+        # Monday, zero heartbeats, zero alerts. DQ-70 stayed GREEN the whole
+        # time, because content_hash has exactly one writer -- this sweep -- so
+        # both sides of its comparison froze together. url_last_checked appeared
+        # in ZERO of the 136 ledger rows.
+        #
+        # ⚠ THE FIRST DRAFT OF THIS PROBE WAS DEFEATED BEFORE IT WAS INSTALLED,
+        # and the correction is the whole point of the row. It read
+        # `max(url_last_checked)` fleet-wide. That returns 0 today: six
+        # wollongong chapters were checked for the FIRST time on 2026-09-24
+        # during onboarding, which moved the fleet maximum to four days ago
+        # while 499 chapters sat 13 days stale. A fleet-wide max() goes green as
+        # soon as ANY single council is touched -- a check that cannot go red
+        # while the defect stands, which is the silent-pass shape this ledger
+        # exists to remove, and the same shape as the DQ-69 premise its own gate
+        # caught in 2026-08. Both measured on production 2026-09-28: max() = 0,
+        # median = 1 at 12 days 20 h behind.
+        #
+        # THE MEDIAN, therefore. A sweep touches every monitorable chapter, so a
+        # real run moves it; onboarding a handful cannot. A HALF-completed sweep
+        # leaves it old, which is correct -- a half sweep is a broken sweep.
+        #
+        # Deliberately BINARY on the fleet, not a per-row count. A per-row count
+        # sits at a permanent floor (liverpool 146d, waverley 90d are real but
+        # SEPARATE defects -- DQ-118), and a floor is precisely what made the
+        # 12-day gap unreadable.
+        #
+        # Two silent-pass holes closed in the SQL itself:
+        #  - NULL url_last_checked is coalesced to -infinity rather than dropped,
+        #    so a never-checked chapter counts as maximally stale instead of
+        #    vanishing from the population being measured.
+        #  - The whole expression is coalesced, so an EMPTY registry reads 1.
+        #    percentile_disc over zero rows returns NULL, and a NULL count is
+        #    falsy in run(), i.e. it would have printed CLEAN.
+        #
+        # SCOPE, stated because it is narrower than the sweep: is_inert chapters
+        # are excluded, and r2_monitor does sweep them (24 rows, median also
+        # 2026-09-15). This measures the chapters whose freshness anyone depends
+        # on; including them changes today's verdict either way not at all.
+        #
+        # ⚠ NOT A DISCOVERY CHECK. Whether a council PUBLISHED something new is
+        # a different question that hashing known URLs structurally cannot
+        # answer -- Randwick DCP 2025 commenced 27 July 2026 and was found by
+        # hand seven weeks later because the council left the old file
+        # byte-identical. That is DQ-118's question, not this one's.
+        "SELECT CASE WHEN COALESCE(percentile_disc(0.5) WITHIN GROUP ("
+        "                 ORDER BY COALESCE(url_last_checked, '-infinity'::timestamptz)), "
+        "               '-infinity'::timestamptz) < NOW() - INTERVAL '10 days' "
+        "            THEN 1 ELSE 0 END "
+        "FROM dcp_chapter_registry "
+        "WHERE is_active AND NOT COALESCE(is_inert, false) "
+        "  AND council_url IS NOT NULL AND btrim(council_url) <> ''",
+        (),
+        "1 means no sweep completed in 10 days, so every 'unchanged since "
+        "extraction' verdict in this ledger -- DQ-70 above all -- describes the "
+        "last sweep date, not today. Silence from VerifyOpsBot is NOT evidence "
+        "of no change while this reads 1. Reads 0 only after a real sweep, which "
+        "no code change can produce.",
+    ),
     "DQ-69": (
         "Active NSW instruments the legislation monitor has not checked in 14 days",
         # LIVENESS, not data quality. The monitor is a 7-day sleep loop on Fly

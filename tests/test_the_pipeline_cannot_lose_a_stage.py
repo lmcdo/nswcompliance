@@ -142,3 +142,70 @@ class TestTheUnbuiltBacklogStaysVisibleAndOnlyShrinks:
             assert "status" not in item and "done" not in item, (
                 f"{item['id']} carries a status flag; a 'done' entry left in the list "
                 f"inflates the count and hides the real backlog")
+
+
+class TestAGuardCannotBeDeletedSilently:
+    """A guard deleted is the same failure as a stage deleted, and reads the same.
+
+    #506 removed a stage and nothing noticed because nothing asserted the stage was
+    there. The same is true of the guards inside the stages: `ping_healthcheck` opened
+    with `if not url: return` for months, so every service without an `HC_PING_URL`
+    silently had no dead-man's switch. Measured on the live Railway fleet 2026-09-28,
+    SIX services shared the literal placeholder `https://hc-ping.com/placeholder-satellite`
+    and four more carried nothing — and all ten looked exactly like watched services.
+
+    Offline by construction, like the rest of this file: the guard's file is parsed
+    with `ast`, never imported.
+    """
+
+    def test_the_manifest_declares_guards(self, manifest):
+        assert manifest.get("guards"), (
+            "the manifest lists no guards, so a guard can be removed without this "
+            "test noticing — the #506 shape one level down")
+
+    def test_the_floor_never_falls(self, manifest):
+        assert manifest["guards_floor"] >= 1, (
+            "guards_floor was lowered below its 2026-09-28 value of 1. It may only "
+            "rise: lowering it is how a deleted guard is made to look legitimate.")
+
+    def test_there_are_at_least_as_many_guards_as_the_floor(self, manifest):
+        n, floor = len(manifest["guards"]), manifest["guards_floor"]
+        assert n >= floor, (
+            f"{n} guards against a floor of {floor} — a guard was removed. Restore it, "
+            f"or say in the manifest why the requirement no longer holds.")
+
+    def test_each_guard_names_its_plan_section(self, manifest):
+        for g in manifest["guards"]:
+            assert g.get("doc"), f"{g['id']} cites no section of the plan"
+            assert g.get("purpose"), f"{g['id']} does not say what it enforces"
+            assert g.get("if_deleted"), (
+                f"{g['id']} does not say what breaks without it, so nobody reviewing "
+                f"its removal can weigh the cost")
+
+    def test_each_guard_still_exists_where_it_says(self, manifest):
+        for g in manifest["guards"]:
+            path = ROOT / g["file"]
+            assert path.exists(), f"{g['id']}: {g['file']} is gone"
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            names = {n.name for n in ast.walk(tree)
+                     if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+            assert g["function"] in names, (
+                f"{g['id']}: {g['function']} is no longer defined in {g['file']}, so "
+                f"the guard the manifest promises is not there")
+
+    def test_each_guard_still_has_its_test(self, manifest):
+        """A guard with no test is an assertion about the code, not a gate on it."""
+        for g in manifest["guards"]:
+            path = ROOT / g["test"]
+            assert path.exists(), f"{g['id']}: its test {g['test']} is gone"
+            assert path.read_text(encoding="utf-8").count("def test_") >= 1, (
+                f"{g['id']}: {g['test']} contains no tests")
+
+    def test_a_guard_states_what_it_does_not_cover(self, manifest):
+        """The dead-man's-switch guard makes the client side loud and cannot create the
+        external checks. A guard that does not name its residual gets read as complete,
+        which is how 'the alarm is wired' became true on paper and false in production."""
+        for g in manifest["guards"]:
+            assert g.get("residual"), (
+                f"{g['id']} records no residual. If it genuinely covers everything, say "
+                f"so in that field rather than leaving it out")
