@@ -80,6 +80,21 @@ def test_the_extraction_image_carries_the_page_repair_it_runs_after_every_publis
         assert f"COPY scripts/{f} ./scripts/{f}" in docker, f
 
 
+def test_a_page_a_person_read_is_kept_and_keeps_its_label():
+    """Migration 080: Wollongong E6 table rows stored with their column headings cannot be
+    proven by the locator, but a person read page 5; the repair must not undo that."""
+    row = dict(ROW, pdf_page=5, page_range=[5], page_check="read_by_person", page_source_path="c/v1/ch.pdf")
+    p = R.plan_row(row, 5, "read_by_person", {5: "3"})
+    assert (p["pdf_page"], p["page_check"], p["printed_page_label"]) == (5, "read_by_person", "3")
+    src = (ROOT / "scripts" / "dcp_page_repair.py").read_text(encoding="utf-8")
+    assert 'r.get("page_check") == "read_by_person" and r.get("page_source_path") == r2_path' in src
+
+
+def test_migration_080_allows_the_value_and_keeps_every_079_value():
+    sql = (ROOT / "migrations" / "080_page_read_by_person.sql").read_text(encoding="utf-8")
+    for v in ("on_page", "moved", "read_by_person", "unresolved", "not_found", "too_short", "no_source"):
+        assert f"'{v}'" in sql
+
 def test_a_test_run_of_the_commit_worker_never_starts_the_production_rechecks(monkeypatch):
     """The post-publish re-checks are separate programs that load the real .env; three test
     files drive main() with a fake connection, and ran them against production (2026-09-27)."""

@@ -41,7 +41,7 @@ TABLE_SHARE = 0.9    # ...kept on its stored page only when that page prints thi
 MIN_TOKENS = 5       # a shorter rule ("See above.") cannot be located honestly
 HEAD_WINDOW = 200    # words above an occurrence searched for the rule's own heading words
 
-VERDICTS = ("on_page", "moved", "unresolved", "not_found", "too_short", "no_source")
+VERDICTS = ("on_page", "moved", "read_by_person", "unresolved", "not_found", "too_short", "no_source")
 
 
 def tokens(text: str | None) -> list[str]:

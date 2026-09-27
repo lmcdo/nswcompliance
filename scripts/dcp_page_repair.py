@@ -76,7 +76,7 @@ def plan_row(row: dict, page: int | None, verdict: str, labels: dict[int, str]) 
     new_page = page if verdict == "moved" else stored
     new_range = (shift_range(row["page_range"], stored, page) if verdict == "moved"
                  else row["page_range"])
-    shown = page if verdict in ("on_page", "moved") else None
+    shown = page if verdict in ("on_page", "moved", "read_by_person") else None
     return {"id": row["id"], "pdf_page": new_page, "page_range": new_range,
             "printed_page_label": labels.get(shown) if shown else None,
             "page_check": verdict, "page_source_path": row["r2_current_path"]}
@@ -153,6 +153,11 @@ def judge_pdf(args) -> tuple[list[dict], dict]:
     plans = []
     for r in rows:
         stored = r["pdf_page"]
+        if r.get("page_check") == "read_by_person" and r.get("page_source_path") == r2_path:
+            # A person read this page (migration 080). The 079 triggers clear it when the text,
+            # page or chapter PDF changes, so while it stands it is kept, not re-judged.
+            plans.append(plan_row(r, stored, "read_by_person", labels))
+            continue
         window = range(stored, stored + k) if (k and stored) else None
         page, verdict = rpl.locate(r["provision_text"], docs, stored, window)
         plans.append(plan_row(r, page, verdict, labels))
