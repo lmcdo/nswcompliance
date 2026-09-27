@@ -1,0 +1,130 @@
+{
+  "tier": "standard",
+  "justification": "Adds two ledger rows with working probes, a SessionStart hook, and 26 real addresses to an existing fixture. No production write, no regulatory content changed, no serve-path code touched. Not Minor: it edits .claude/settings.json, so it runs in every session in this repo from now on, and it registers two rows the nightly dq_check.py will execute — a broken probe there reads as a data-quality regression. Not Critical: everything added is read-only, the probes exit 2 rather than 0 when they cannot measure, and the hook cannot fail a session.",
+  "commit_hash": "d157d4ef",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    ".claude/settings.json",
+    ".claude/hooks/session-applicability-status.py",
+    "scripts/dq_probe_live.py",
+    "scripts/dq_probe_applicability_config.py",
+    "tests/fixtures/test_addresses.json",
+    "tests/test_dq115_scope_evidence.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Four sweeps before writing anything. (1) DB: measured v2_dev_type_source / v2_zone_source over the served set rather than trusting the '90% read ALL' figure in memory — the split (config_all 12,011 / config_silent 2,859 / no_config 806 / null 6) is what made the new row necessary and showed the memory note's framing was wrong. (2) Frontend: /api/provisions/for-property uses dev_type only to SORT (dev_type_approach: inclusive_with_relevance_scoring); /internal/dcp-review is the existing approval surface and was NOT duplicated. (3) Python: scripts/check_served_answer_quality.py already scores the served answer on provenance/currency/applicability — but through fetch_dcp_setbacks (968 setback rows), and its applicability dimension is place-scoping, not development type, so it does not cover the 17,440-row provisions path; tests/fixtures/test_addresses.json and tests/generate_test_addresses.py already existed and were EXTENDED rather than replaced. (4) Plans/memory: ce-served-answer-completion-2026-08.md is the served-answer tracker and was not duplicated (memory: 'do NOT add a 5th tracker'); ce-dcp-condition-structuring-2026-08.md is the rejected per-rule-condition design and is explicitly deferred.",
+    "assumption_mismatch": "Three assumptions carried into this branch were WRONG and were corrected by measuring. (1) 'The configs left dev types blank sloppily' — Wollongong's chapter_b1_residential omits them deliberately, with the reason recorded: sections 4-6 each cover a different type. (2) 'The undecided population is 15,682' — it is 3,671; 12,011 rows carry an explicit config_all that needs auditing, not deciding. (3) 'DQ-102/DQ-103 do not exist' — they exist on origin/main; the working tree this session started in was behind main and its .claude/dq_checks.json topped out at DQ-98. That is why this branch was cut from origin/main, not from the session's branch.",
+    "new_vs_existing": "Extended, not added, wherever a home existed. DQ-114 is SQL, so it went into scripts/dq_probe_live.py's PROBES beside DQ-33 — whose own note ends 'that gap is not counted here and needs its own row', which is literally this row. DQ-115 reads the config files, so it went into scripts/dq_probe_applicability_config.py, which already imports COUNCIL_CONFIGS for DQ-102/DQ-103; that file gained a per-probe needs_db flag rather than a second runner. The address set extended tests/fixtures/test_addresses.json (24 -> 50) instead of creating a parallel fixture. ONE new file: .claude/hooks/session-applicability-status.py, with its four sweeps in the header — session-capability-index.py is the only other SessionStart hook and it walks the codebase with no DB and no exit code that can be wrong; putting live probes inside it would make the index every session depends on fail whenever Supabase is slow.",
+    "external_source_error": "dq_db.connect() raises on a missing DATABASE_URL and _assert_not_blind raises when a canary table reads 0 rows (RLS without BYPASSRLS), both surfacing as exit 2. Forced and observed: DATABASE_URL pointed at a loopback address on a closed port, the hook printed 'DQ-114 UNKNOWN (database unreachable - not the same as zero)', DQ-115 still answered 193 because it needs no DB, and the hook exited 0 so a session still starts. No external HTTP source is touched.",
+    "frontend_type": "N/A — no frontend file changed. tests/fixtures/test_addresses.json is read by tests/conftest.py::_load_test_addresses, which returns json['addresses'] and tolerates unknown keys; the 24 pre-existing entries are byte-identical and the new keys are additive. Verified the collection count moved 168 -> 350 and all cases remain DESELECTED (integration marker), so no test now needs localhost:3007 that did not before.",
+    "user_failure_mode": "The failure this branch exists to prevent: a future session reads a note saying applicability is done, believes it, and builds on a wrong answer. The SessionStart hook makes that impossible to do silently — it prints the live undecided count before the first prompt. The failure this branch could CAUSE: someone clears DQ-114 by typing ALL across the 193 declared keys, dropping both counts while every served answer gets worse. DQ-115 is in the same commit precisely so that path also has to produce the council's own sentence for each key."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_check.py --id DQ-114 ; python scripts/dq_check.py --id DQ-115 ; python scripts/dq_check.py --coverage ; python -m pytest tests/test_dq115_scope_evidence.py -q ; python -m pytest -q",
+    "fails_when": "dq_check.py goes RED if either row's declared status and its live result disagree — including the direction that matters here: if DQ-114 or DQ-115 ever PASSES while still declared 'open', the ledger is red until someone updates the status, so a silent fix cannot sit unnoticed (the DQ-54 failure mode). --coverage fails if a DATA_QUALITY_TRACKER.md row has no dq_checks.json entry.",
+    "observed_red": "Both probes RUN and both exit non-zero against production, read-only: DQ-114 reads 4,374 (dev types 2,859 config_silent + 36 untagged; zones 1,400 config_silent + 43 filtered_to_all + 36 untagged), DQ-115 reads 193 of 193 declared keys across 13 distinct configs. dq_check.py --id agrees with 'open' for both. dq_check.py --coverage: 'all 118 ledger rows are accounted for'. Regression-checked the two probes whose tuple shape changed: DQ-102 still 568, DQ-103 still 1,021, identical to their pre-change output. Tests: tests/test_dq115_scope_evidence.py, 18 passing, needs no database. MUTATION-CHECKED, 6 of 6 killed: `return 0, {}`; ignoring scope_evidence so declarations are counted instead of gaps; counting OMITTED keys (which would steal DQ-114's population so one fix moved both rows); de-duplicating aliases by name instead of identity; dropping the `sections` bucket; and accepting a present-but-blank evidence string as proof. Each mutant was applied to the real file, the suite run, and the file restored - the probe reads 193 again afterwards."
+  },
+  "functions": [
+    {
+      "name": "probe_115",
+      "file_line": "scripts/dq_probe_applicability_config.py",
+      "input": "(None, None) — the first probe in that file needing no database; the runner passes no rows and no tagger. Walks COUNCIL_CONFIGS' chapter_topics, parts and sections buckets.",
+      "output": "(count, {(config_name, 'bucket/key'): n}) — one count per DECLARED applicable_dev_types / applicable_zones with no scope_evidence for that field. Reads 193.",
+      "if_none": "A config with no buckets, or entries that are not dicts, contribute nothing and are skipped rather than raising — a config file mid-edit must not turn the count into a crash. Zero would mean every declared key carries its sentence."
+    },
+    {
+      "name": "main (runner)",
+      "file_line": "scripts/dq_probe_applicability_config.py",
+      "input": "--id, now resolving a 4-tuple (needs_db, fn, headline, means) instead of a 3-tuple.",
+      "output": "exit 0 only when the count is 0; 1 with the count printed; 2 when a DB-needing probe cannot connect.",
+      "if_none": "For needs_db=False it never opens a connection, so an unreachable database cannot turn DQ-115 into exit 2 — UNKNOWN would be reported for a question the database was never asked."
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ-114 = 4,374 key-decisions: 2,895 dev-type keys (2,859 config_silent + 36 NULL) + 1,479 zone keys (1,400 config_silent + 43 filtered_to_all + 36 NULL). Per KEY, not per row.",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-114 against production, read-only, 2026-09-27; re-derived independently by GROUP BY on each source column and the two totals agreed at 4,374.",
+      "if_missing": "Per-row counting would let a whole column go undecided without the number moving, because tag_with_provenance suppresses per-ENTRY: an entry naming dev types while omitting zones is silent on zones alone. And omitting filtered_to_all - as the first version did - left 43 zone keys that nothing else counts, so the check could have gone green with them still undecided."
+    },
+    {
+      "value": "DQ-115 = 193 of 193 declared scope keys carry no machine-readable evidence, across 13 distinct configs. Largest: canterbury-bankstown 85, woollahra 50, warringah 14, parramatta 12.",
+      "read_at": "python scripts/dq_probe_applicability_config.py --id DQ-115, 2026-09-27. Needs no database - it reads enrichment/config.",
+      "if_missing": "Counting by config NAME instead of identity would report one missing sentence twice, because ku_ring_gai/ku-ring-gai, city_of_sydney/sydney_dcp and canterbury_bankstown/canterbury-bankstown are aliases onto one dict - the number would then move when an alias was added rather than when the data changed."
+    },
+    {
+      "value": "tests/fixtures/test_addresses.json 24 -> 50 entries; 26 added, covering 16 of the 18 councils that serve DCP rules. inner_west (11 rules) has no usable house lot and is recorded as a gap.",
+      "read_at": "property_reports JOIN lot_search_index ON ST_Contains(geom, ST_SetSRID(ST_MakePoint(lng, lat), 4326)), read 2026-09-27; the query is stored verbatim in the fixture's own metadata.",
+      "if_missing": "property_reports.address holds whatever a user typed, so without the street-number-and-postcode filter the set picked up real LOTS behind unusable TEXT - 'Ku-ring-gai biodiversity proximity', 'Domain home price guide 78A Valley Road, Padstow', 'mount tamborine'. A benchmark whose inputs cannot be re-entered is not reproducible. The same pass caught waverley and woollahra being given one lot twice, as 'standard' and 'heritage', which would have inflated the set's size."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "DQ-114's count. Council rows only, for DQ-33's stated reason: a statewide SEPP or LEP has no council config that could ever resolve it, so including them would make the ratchet unable to reach zero.",
+      "file_line": "scripts/dq_probe_live.py, PROBES['DQ-114']",
+      "where_clause": "is_current AND v2_is_actionable AND source_council IS NOT NULL AND (v2_dev_type_source = 'config_silent' OR v2_dev_type_source IS NULL), UNION ALL the same for v2_zone_source"
+    },
+    {
+      "purpose": "The address set. Point-in-polygon so a lot's zone comes from the cadastre rather than from the typed string; strata excluded.",
+      "file_line": "recorded verbatim in tests/fixtures/test_addresses.json metadata.applicability_benchmark.query",
+      "where_clause": "ST_Contains(li.geom, ST_SetSRID(ST_MakePoint(pr.lng, pr.lat), 4326)) AND li.zone_code IS NOT NULL AND li.lga_name IS NOT NULL AND li.lotidstring NOT LIKE '%SP%'"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "DQ-114 is cleared by typing [\"ALL\"] across the 193 declared keys instead of reading the chapters. Both counts fall to zero and every served rule is then shown to every development type on no authority.",
+      "what_happens": "The ledger goes green while the answer is at its worst — exactly 'the config file was written, so it was called done'.",
+      "mitigated": true,
+      "how": "DQ-115 lands in the same commit and counts DECLARED keys with no scope_evidence. Typing ALL creates a declaration, so it RAISES DQ-115 by one for every key it clears in DQ-114. The pair cannot both be green unless each decision exists AND carries the council's own sentence.",
+      "repro": "Add \"applicable_dev_types\": [\"ALL\"] to any entry without scope_evidence: DQ-114 falls, DQ-115 rises."
+    },
+    {
+      "scenario": "DQ-114 double-counts DQ-33's population, so one defect is reported twice and 'fixing' DQ-33 moves DQ-114 for free.",
+      "what_happens": "An inflated count, and two rows that cannot both reach zero honestly.",
+      "mitigated": true,
+      "how": "Disjoint by construction: DQ-33 and DQ-105 own no_config; DQ-114's predicate is config_silent OR NULL and excludes no_config. Verified against the measured breakdown — 2,859 + 806 + 6 partition the 3,671 non-decided dev-type keys with no overlap, and DQ-33's own note asks for precisely this row.",
+      "repro": "SELECT v2_dev_type_source, count(*) ... GROUP BY 1 — the three populations are mutually exclusive values of one column."
+    },
+    {
+      "scenario": "DQ-114's predicate omits a source the schema calls undetermined, so the check goes green while those rows are still undecided.",
+      "what_happens": "A check that watches part of its own population - the rows it omits are invisible to it and to everything else.",
+      "mitigated": true,
+      "how": "THIS HAPPENED, in this session, and was caught before the first commit. The first predicate was (config_silent OR NULL) and read 4,331. Migration 062's COMMENT on v2_zone_source lists the undetermined sources explicitly - config_silent, no_config, no_document_id, filtered_to_all - and filtered_to_all is 43 served zone keys (the text named zones this council does not have, so the tagger fell back to ALL) that DQ-33 does not count either, because DQ-33 reads no_config only. The predicate now takes the schema's list rather than restating it, and the count is 4,374.",
+      "repro": "SELECT v2_zone_source, count(*) FROM regulatory_provisions WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL GROUP BY 1 -- filtered_to_all reads 43; compare against migration 062's column comment for which values are trustworthy."
+    },
+    {
+      "scenario": "DQ-115 watches a field the real fix abandons: a future config format records evidence somewhere else (a sibling file, a docstring), the probe keeps reading scope_evidence, and it counts 193 forever while the work is done.",
+      "what_happens": "A check that can never go green stops being read, the shape of feedback-a-check-can-watch-the-field-the-fix-abandoned.",
+      "mitigated": false,
+      "how": "NOT mitigated, and recorded rather than hidden. The probe fixes the field name, so adopting a different one has to update the probe in the same change. The mitigation available is that the format is declared in the probe's own docstring with a worked example, so the next session writing evidence has one place to look. Flagged for the migration step (plan §3 step 1).",
+      "repro": "python scripts/dq_probe_applicability_config.py --id DQ-115 prints one line per entry with a gap; add a scope_evidence entry for a field it names and the count falls by one, which is the only way it moves."
+    },
+    {
+      "scenario": "The 26 new fixture entries are mistaken for a passing benchmark — someone reports '26 addresses covered' as progress.",
+      "what_happens": "The exact failure being fixed: counting inputs as if they were verified answers.",
+      "mitigated": true,
+      "how": "Every new entry carries expected_rule_refs: null with status 'not_determined' and a why field stating that null can neither pass nor fail, so the benchmark cannot be reported green by adding rows. The fixture's metadata.applicability_benchmark.status reads 'INPUTS ONLY'.",
+      "repro": "grep '\"status\": \"not_determined\"' tests/fixtures/test_addresses.json — 26 hits, and no consumer asserts on them."
+    },
+    {
+      "scenario": "The SessionStart hook is slow or throws, and every session in the repo pays for it or fails to start.",
+      "what_happens": "A hook that is turned off measures nothing; a hook that raises blocks work.",
+      "mitigated": true,
+      "how": "Only sub-second probes run (measured 0.4s and 0.1s; the whole hook 0.55s). DQ-102/DQ-103 run the tagger over all 17,440 rows and are printed as COMMANDS, not executed. Every probe call is wrapped with a 25s timeout, main() is wrapped in a bare except, and the hook returns 0 on every path. Forced the failure: with an unreachable DATABASE_URL it printed UNKNOWN and exited 0.",
+      "repro": "Point DATABASE_URL at an unreachable host for one run (export it to a loopback address on a closed port, no credentials needed) and run .claude/hooks/session-applicability-status.py: it prints 'DQ-114 UNKNOWN (database unreachable - not the same as zero)', DQ-115 still answers 193, and echo $? is 0."
+    },
+    {
+      "scenario": "The address set is unreproducible because property_reports.address holds whatever a user typed, not an address.",
+      "what_happens": "A benchmark whose inputs cannot be re-entered — 'Ku-ring-gai biodiversity proximity', 'Domain home price guide 78A Valley Road, Padstow', 'mount tamborine' all came back as candidates on the first pass.",
+      "mitigated": true,
+      "how": "Found in this session's own first output and fixed before committing: an entry is accepted only if it starts with a street number and contains a NSW postcode. The same pass also fixed waverley and woollahra being given the SAME lot twice as 'standard' and 'heritage' — a benchmark inflating its own size.",
+      "repro": "Re-run the join without the ADDRESS_OK/POSTCODE filter; the junk strings reappear."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No — everything added is read-only. dq_db sets session readonly and a 30s statement timeout.",
+    "secrets": "No. A .env was briefly copied into the worktree and deleted once it was confirmed dq_db resolves the main checkout's .env itself; it was never staged (git status clean of it).",
+    "other_repo": "No.",
+    "manual_verify": "No — verified in-session: both new probes run against production and exit non-zero with the counts above; dq_check.py agrees with both declared statuses; --coverage passes at 118 rows; DQ-102 and DQ-103 unchanged at 568 and 1,021 after the runner change; the hook's UNKNOWN path forced and observed; fixture validated (50 entries, 0 duplicates, 24 legacy entries untouched). PRE-EXISTING FAILURE FOUND, NOT CAUSED HERE AND NOT FIXED HERE: tests/test_dq_probe_applicability_config_real_db.py::test_the_two_probes_measure_different_populations fails under PYTEST_REAL_DB=1. Verified identical on a pristine origin/main (b8b49369) worktree before concluding that - not assumed. It asserts DQ-102's and DQ-103's DOCUMENT sets are disjoint, but `_get_config_driven(document_id, text)` takes the row's TEXT as well as its document, so different rows in one document legitimately get different answers; the probes partition at ROW level and the test asserts a document-level invariant the code never promised. It is deselected without PYTEST_REAL_DB=1, so CI never runs it - a gate that silently stopped enforcing. Left for its own change rather than widened into this one; the diagnosis is recorded here and reported to the user."
+  }
+}
