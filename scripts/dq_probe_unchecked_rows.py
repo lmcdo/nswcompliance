@@ -720,7 +720,76 @@ def probe_109(cur):
     return len(hits), hits
 
 
+
+def probe_116(cur):
+    """SERVED rules the council's own text says have been repealed.
+
+    The DOCUMENT-level guard already exists and works:
+    `dcp_extract_changed.detect_repealed_stamp` hard-rejects a PDF whose front
+    matter carries an archive stamp, which is what shipped 20 of 23 Woollahra
+    chapters as repealed content before the 2026-07-29 re-source. It cannot see
+    the other shape, because there is nothing wrong with the document: the
+    CHAPTER is in force and a SECTION inside it has since been repealed and
+    marked in place.
+
+    WHY THIS IS NOT A SECOND COPY OF THAT RULE. It reuses the same module's
+    detector, `detect_repealed_section`, rather than restating a pattern here.
+    Two copies of a rule is how two thresholds start disagreeing about what
+    counts, which is the reason check_served_answer_quality imports _ratchet
+    instead of copying it.
+
+    POSITION, NOT VOCABULARY. Measured 2026-09-27 over 24,694 served rows: 68
+    carry repeal wording and 67 of them are correct to serve. `(a) (Repealed)
+    (b) not have an area more than 25 m2` is how NSW legislation is drafted --
+    the repealed paragraph stays, marked, so the surviving paragraphs keep
+    their lettering, and deleting it would renumber the council's own clause.
+    The mark means "repealed" in both shapes; where it sits says whose repeal
+    it is. The same lesson defeated the document-level rule's first version,
+    which flagged a heritage chapter's sentence about a LIGHTHOUSE ("This was
+    later replaced by a number of lighthouses").
+
+    Reads 1 on 2026-09-27: woollahra B3.3 Floorplate, whose own text says "This
+    section was repealed by Woollahra Development Control Plan 2015 (Amendment
+    36) on 21 August 2026", served as a live control.
+
+    It CAN reach zero, and only one way: the chapter is re-read from the
+    council's current PDF so the repealed section stops being current. Deleting
+    the row by hand would also reach zero and is not the fix -- the next
+    extraction would put it back.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from dcp_extract_changed import detect_repealed_section  # noqa: E402
+
+    cur.execute(
+        """SELECT id, source_council, ref_number, section_header, provision_text
+             FROM regulatory_provisions
+            WHERE is_current AND v2_is_actionable
+              AND (provision_text ILIKE %s OR provision_text ILIKE %s
+                   OR provision_text ILIKE %s OR section_header ILIKE %s)""",
+        ("%(repealed)%", "%(deleted)%", "%repealed%", "%(repealed)%"),
+    )
+    detail = []
+    for rid, council, ref, header, text in cur.fetchall():
+        why = detect_repealed_section(header or "", text or "")
+        if why:
+            detail.append(("%s  %s" % (council or "nsw_statewide",
+                                       (ref or "id=%s" % rid)[:78]), why))
+    return len(detail), sorted(detail)
+
+
 PROBES = {
+    "DQ-116": (
+        "SERVED rules the council's own text says are repealed",
+        "A chapter can be in force while a section inside it has been repealed "
+        "and marked in place, so the document-level front-matter guard cannot see "
+        "it -- there is nothing wrong with the document. The control is gone and "
+        "we serve it as live, with a page number and a quote, which is the most "
+        "convincing way to be wrong. Counted by POSITION: the section's own title "
+        "carrying the mark, or the council writing the sentence outright. An "
+        "inline `(a) (Repealed)` is the NSW drafting convention on a LIVE clause "
+        "and is deliberately not counted -- 67 of the 68 rows carrying repeal "
+        "wording are that shape.",
+        probe_116, True),
     "DQ-109": (
         "One PDF, several live registry rows, none saying which pages are theirs",
         "The extractor takes whatever PDF a row points at and extracts all of it -- "
