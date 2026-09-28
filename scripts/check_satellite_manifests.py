@@ -41,11 +41,40 @@ def main() -> int:  # pragma: no cover - CLI entry point
     cur.execute("SET statement_timeout = '30000'")
 
     cur.execute(
+        # `run_date >= created_at::date` EXCLUDES CACHED COPIES, and without it this
+        # ratchet guarantees its own failure.
+        #
+        # A cache hit writes a NEW row for the new report id and carries the ORIGINAL
+        # row's inputs and run_date across verbatim -- deliberately, because
+        # re-deriving a manifest "would claim inputs the cached numbers never came
+        # from" (services/flood_truth.py, the cache branch). So a copy of a report
+        # that predates the manifest has no manifest either, for ever, and cannot be
+        # given one without fabricating it. Every future view of such an address
+        # therefore raised this count by one, permanently, in a check whose own rule
+        # is that the count may only FALL.
+        #
+        # That is what happened on 2026-09-28: a flood report for 38 Park Rd Bowral,
+        # created 01:52 UTC, run_date 2026-07-24 -- a copy of a 24 July computation --
+        # took flood from 143 to 144 and failed the gate on every open PR. Nothing in
+        # the report path was wrong; the row is honest about being old, and its
+        # run_date says so.
+        #
+        # A row's missing manifest is only ITS OWN when the row is its own
+        # computation. Measured across all four products the same day: 810 rows carry
+        # no manifest and exactly ONE of them is a copy, so this excuses precisely the
+        # rows it is meant to and no others.
+        #
+        # KNOWN IMPRECISION, stated rather than hidden: a fresh run that starts before
+        # midnight UTC and writes after it would have run_date = yesterday and be read
+        # as a copy. It is bounded to that window, and a fresh run reaches
+        # _write_report with a manifest anyway, so the rows this could wrongly excuse
+        # are rows that would not be counted regardless.
         """SELECT product,
                   COUNT(*) AS total,
                   COUNT(*) FILTER (WHERE inputs ? 'execution_manifest') AS with_manifest
              FROM property_reports
             WHERE product IN ('flood', 'shadow', 'solar-yield', 'bushfire')
+              AND run_date >= created_at::date
             GROUP BY product ORDER BY product""")
     rows = cur.fetchall()
 

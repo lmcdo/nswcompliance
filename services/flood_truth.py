@@ -1913,6 +1913,43 @@ def _first_valid_cached_row(rows):
     return None
 
 
+def _cached_inputs_with_provenance(cached: dict, req) -> dict:
+    """The inputs to store on a cache-hit copy, marked as a copy. Pure.
+
+    A cache hit writes a new row carrying the ORIGINAL inputs and run_date, because a
+    re-derived manifest would claim inputs the cached numbers never came from. That is
+    right, and it means the copy has no manifest whenever the original had none.
+
+    What was missing is that the ROW never said so. The old code only added an
+    `inputs_provenance` note when the cached inputs were entirely EMPTY; a pre-manifest
+    row that recorded `{"lat":..., "lng":...}` and no manifest was copied verbatim, so
+    the copy was indistinguishable from a fresh computation that had failed to record
+    one. Measured 2026-09-28: the 38 Park Rd Bowral row is exactly that shape, and
+    scripts/check_satellite_manifests.py had to infer the copy from
+    `run_date < created_at` instead of reading it.
+
+    Nothing is invented here. It adds one statement of fact -- this row is a copy of a
+    computation that recorded no manifest, and when it ran -- and never a manifest.
+    """
+    inputs = dict(cached.get("inputs") or {})
+    if not inputs:
+        # No inputs at all. Say so rather than presenting the new request's
+        # coordinates as the original computation's record (the cache SELECT bounds
+        # them to ~50m, so they are close but not the same point).
+        return {
+            "lat": req.lat, "lng": req.lng,
+            "inputs_provenance": "original inputs not recorded (pre-manifest report)",
+        }
+    if MANIFEST_KEY not in inputs:
+        run_date = cached.get("run_date")
+        inputs["inputs_provenance"] = (
+            "copied from a report computed "
+            + (str(run_date) if run_date else "on an unrecorded date")
+            + " that recorded no execution manifest"
+        )
+    return inputs
+
+
 def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_outputs,
                   run_date=None):
     """run_date: the date the analysis was actually COMPUTED. Defaults to today
@@ -2146,15 +2183,7 @@ def run_flood(req: FloodRequest):
             write_report(
                 req.report_id, req.address, req.lat, req.lng,
                 req.prop_id,
-                cached.get("inputs") or {
-                    "lat": req.lat, "lng": req.lng,
-                    # A pre-manifest row recorded no inputs — say so rather
-                    # than presenting the new request's coordinates as the
-                    # original computation's record (they are proximity-
-                    # bounded to ~50m by the cache SELECT).
-                    "inputs_provenance": "original inputs not recorded "
-                                         "(pre-manifest report)",
-                },
+                _cached_inputs_with_provenance(cached, req),
                 cached["outputs"] or {},
                 run_date=cached.get("run_date"),
             )
