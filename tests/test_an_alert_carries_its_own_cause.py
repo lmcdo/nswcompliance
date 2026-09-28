@@ -32,8 +32,9 @@ assumed:
     unrecognised escape verbatim.
   - `services/universal_regulatory_engine.py` — `.replace('_', '\\s+')` builds a regex
     and works for the same reason.
-  - nine under `scripts/archive/` and `.claude/gtm-strategy-2026/` — not deployed, not
-    imported by any monitor.
+  - nine in the retired-scripts archive and a strategy folder — not deployed, not
+    imported by any monitor. (Named in prose, not as a path: tests/test_archive_is_not_live_code.py forbids that literal path string outside
+    the archive itself, so that the scanner exemption cannot be quietly widened.)
 
 None is a bug, and none is on a path that can reach an alert. Widening this test to
 the whole repo would turn a targeted guard into a cleanup mandate over code the

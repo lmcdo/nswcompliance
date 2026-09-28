@@ -335,6 +335,29 @@ class TestTheSilentReturnIsGone:
         )
 
 
+def _requests_installed_for_a_subprocess() -> bool:
+    """Can a FRESH interpreter import requests?
+
+    Not the same question as whether this process can. tests/conftest_mocks.py puts a
+    MagicMock in sys.modules, so the suite always "has" requests while the environment
+    may not: requirements-test.txt does not install it, and CI runs on exactly that.
+    A child process gets the real import path and fails with ModuleNotFoundError.
+
+    This is the assumption the subprocess test below got wrong -- it passed locally,
+    where requests happens to be installed, and failed in CI with
+    `ModuleNotFoundError: No module named 'requests'` at run_monitors.py:23. Asked
+    directly, in a child, rather than inferred from this process.
+    """
+    return subprocess.run([sys.executable, "-c", "import requests"],
+                          capture_output=True).returncode == 0
+
+
+@pytest.mark.skipif(
+    not _requests_installed_for_a_subprocess(),
+    reason="requests is not installed in this environment (the suite's copy is a "
+           "MagicMock from conftest_mocks), so a child process cannot import "
+           "run_monitors. The in-process tests above still cover the exit code; this "
+           "one additionally proves it survives as a real process.")
 class TestItRunsAsAScript:
     """The tests above import the module. Railway runs it as a process, and an
     exit code that only exists in-process is not an exit code."""
