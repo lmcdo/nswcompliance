@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical because it changes what alerts a human, and it steps back an exit code merged hours earlier in #1182. Getting the step-back wrong in one direction leaves seven jobs alerting nightly about configuration until an operator stops reading the channel; in the other it removes the failure with nothing carrying it, which is the silent-no-alarm state this whole line of work exists to remove. It also corrects a merged ledger row whose window was red on a healthy schedule. No production write, no schema change, no user-facing text.",
-  "commit_hash": "d57b3c0f",
+  "commit_hash": "5ec9b3a5",
   "files": [
     "scripts/dq_probe_live.py",
     "scripts/run_monitors.py",
