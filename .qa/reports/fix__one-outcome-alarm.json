@@ -1,0 +1,155 @@
+{
+  "tier": "critical",
+  "justification": "Critical because it changes what alerts a human, and it steps back an exit code merged hours earlier in #1182. Getting the step-back wrong in one direction leaves seven jobs alerting nightly about configuration until an operator stops reading the channel; in the other it removes the failure with nothing carrying it, which is the silent-no-alarm state this whole line of work exists to remove. It also corrects a merged ledger row whose window was red on a healthy schedule. No production write, no schema change, no user-facing text.",
+  "commit_hash": "d57b3c0f",
+  "files": [
+    "scripts/dq_probe_live.py",
+    "scripts/run_monitors.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dcp_pipeline_manifest.json",
+    ".github/workflows/freshness-alarm.yml",
+    "tests/test_one_outcome_alarm.py",
+    "tests/test_silence_is_an_alarm.py"
+  ],
+  "pre_impl": {
+    "existing_data": "The fact that overturned the previous work came from this repo, not from a database: railway.dcp-monitor.toml declares `cronSchedule = \"0 2 1,15 * *\"` — fortnightly, the 1st and 15th at 02:00 UTC. Cross-checked against the live registry: the sweep's last run was 2026-09-15, so on 2026-09-28 it was 12 days into a 14-day cycle with the next run due 2026-10-01. Also read live: every declared schedule in railway.*.toml (dcp-extract daily 03:00 UTC, dcp-commit daily 09:00, dcp-extract-all quarterly), and HC_PING_URL on all nine run_monitors services — 2 now carry a real check, 4 still carry the placeholder, 3 carry nothing.",
+    "assumption_mismatch": "THE PREVIOUS WORK'S CENTRAL PREMISE WAS WRONG AND THIS BRANCH IS THE CORRECTION. The opening prompt asserted the sweep's cron was 'weekly Mon 02:00 UTC' and that it had been dead for 12 days. Neither was checked against the repo's own schedule files. The cron is FORTNIGHTLY and the sweep was mid-cycle — there was no outage. DQ-117 shipped in #1182 with a 10-day window derived from that wrong premise, which on a 14-to-17-day cycle reads RED ON A HEALTHY SCHEDULE every cycle for ever. A row that is red while nothing is wrong destroys the only thing a ledger row is for. Corrected to 17 days. Separately: the per-stage exit code shipped in the same PR assumed stages would be configured; measured the same day, seven of nine are not, so it produced seven red jobs per cycle about configuration rather than data.",
+    "new_vs_existing": "The alarm reuses what exists rather than adding anything: scripts/dq_check.py is already the executable ledger, DQ-117 and DQ-70 are already the freshness rows, GitHub Actions already runs gates.yml and main-red-alarm.yml and already holds DATABASE_URL. The workflow adds no vendor, no new secret store and no new tracker. EXIT_NO_DEADMAN_SWITCH is kept as a named constant rather than deleted, because the state it names is still detected and still reported.",
+    "external_source_error": "The workflow treats healthchecks.io as able to answer 200 while recording nothing: measured 2026-09-28, a ping to a URL naming no check returns `200 OK (not found)`. So it reads the response BODY, not just the status, and fails the step when the body says not found. A missing HC_PING_FRESHNESS secret also fails the step rather than skipping — a workflow that quietly skips its own ping is the silent-no-switch defect one layer out.",
+    "frontend_type": "N/A — no TypeScript, TSX or frontend file is touched. The change is one probe's SQL window, one monitor script's exit path, three ledger/contract files, one GitHub workflow and two pytest files, so no DB-to-API or API-to-component boundary is crossed.",
+    "user_failure_mode": "Before this branch, two things were true at once: DQ-117 would report the sweep dead on a healthy fortnightly schedule, and seven Railway jobs would fail nightly because they lack their own healthchecks.io URL. Both train a reader to ignore the ledger and the alert channel — the same end state as no monitoring, reached faster. After: DQ-117 reads 0 while the sweep is on schedule and red within about a fortnight of a genuinely missed run; the seven jobs report their configuration gap as a warning; and one external check alerts when what we serve goes stale OR when the thing checking that dies."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_one_outcome_alarm.py tests/test_silence_is_an_alarm.py tests/test_the_pipeline_cannot_lose_a_stage.py -q ; python scripts/dq_check.py --id DQ-117 ; python scripts/dq_check.py --coverage",
+    "fails_when": "The window returns to 10 days; the median reverts to max(); a missing stage heartbeat fails a run again; the switch detection is removed; a misconfigured URL gets pinged; the outcome workflow is deleted, pings regardless of result, skips quietly without its secret, or stops reading the ping response body; or the manifest still claims stages refuse to look healthy.",
+    "observed_red": "TEN mutants forced red and all killed, then restored: (A) window back to 10 days; (B) median back to max(); (C) exit code restored so a stage gap fails the run; (D) switch detection removed entirely; (E) a misconfigured URL gets pinged; (F) the workflow file deleted; (G) the alarm pings on always() instead of success(); (H) the alarm skips quietly when HC_PING_FRESHNESS is absent; (I) the alarm stops matching the 'not found' body; (J) the manifest keeps promising an exit code. DQ-117 reads 0 against production with the corrected window, dq_check.py --coverage reports all 120 rows agreeing. Full suite 7,537 passed, 2 skipped, 3 xfailed, 0 failed.",
+    "not_proven": "That the LIVE cron matches the declared one. scripts/check_railway_cron_drift.py exists because on 2026-09-10 six of eight services ran a schedule different from their file and four had no cron at all, and confirming live needs a Railway API token which is not in .env. A test pins the window to the DECLARED schedule so a change to the file fails loudly, but a silent drift in the Railway dashboard would make the 17 days wrong again. Also not proven: that the workflow runs green in Actions — it cannot until HC_PING_FRESHNESS exists, and it is designed to fail rather than skip until then."
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/run_monitors.py:284",
+      "input": "MONITOR_NAME and HC_PING_URL from the environment, plus the child monitor's exit code. Exercised through 30 in-process cases and one real subprocess.",
+      "output": "0 healthy or unwatched-but-working, 1 the monitor crashed, 2 mapped to 0 (ran and found something). EXIT_NO_DEADMAN_SWITCH is no longer returned.",
+      "if_none": "A missing or broken switch no longer changes the exit code; it prints a named WARNING naming the stage and the reason, and still sends the startup Telegram alert. A crash still returns 1 — the step back must not swallow genuine failures, asserted by test_a_real_crash_still_fails. A misconfigured URL is still never pinged, because pinging another stage's check holds that stage's alarm green."
+    },
+    {
+      "name": "deadman_switch_problem",
+      "file_line": "scripts/run_monitors.py:156",
+      "input": "(monitor_name, HC_PING_URL) read from the environment. Unchanged by this branch: the detection logic and all four of its states are exactly as merged in #1182.",
+      "output": "None when the stage has a working switch, else the reason. Four states still detected: unset, placeholder, another stage's slug, and a ping that did not land.",
+      "if_none": "Unchanged: None means configured, and an absent URL returns a problem rather than None so 'unset' can never read as 'fine'. Only the CONSEQUENCE of a non-None result changed. Asserted by test_the_detection_is_untouched, so the diagnostic cannot be removed along with the failure."
+    }
+  ],
+  "values": [
+    {
+      "name": "DQ-117 window",
+      "value": "17 days (was 10)",
+      "read_at": "scripts/dq_probe_live.py, the DQ-117 probe SQL; restated in .claude/dq_checks.json passes_when and in the DATA_QUALITY_TRACKER row so all three agree (dq_check.py fails if they do not).",
+      "if_missing": "Not configurable, deliberately — an env-tunable freshness window is a window somebody widens to clear a red row. It is DERIVED from railway.dcp-monitor.toml's `0 2 1,15 * *`: the widest gap a 1st-and-15th cron produces is 15 Jan to 1 Feb = 17 days, computed over four years in test_seventeen_covers_the_longest_healthy_gap rather than asserted. A test also pins the declared cron, so changing the schedule fails loudly instead of silently invalidating the window."
+    },
+    {
+      "name": "EXIT_NO_DEADMAN_SWITCH",
+      "value": "3 — defined, detected, reported, NO LONGER RETURNED",
+      "read_at": "scripts/run_monitors.py module constant; its docstring states it is not returned and why.",
+      "if_missing": "Kept rather than deleted so the state it names stays named, and so a future change can re-tighten to failing once every stage is configured. A constant that looks live but is not is how someone re-adds seven nightly alerts by accident, so test_the_constant_says_it_is_no_longer_returned asserts the docstring says so."
+    },
+    {
+      "name": "freshness-alarm schedule",
+      "value": "30 19 * * * (19:30 UTC daily)",
+      "read_at": ".github/workflows/freshness-alarm.yml cron.",
+      "if_missing": "Chosen to sit AFTER the 03:00 UTC extract and the 09:00 UTC commit so a red row reflects the day's runs rather than pre-empting them. Daily is roughly 70x more often than the corpus changes (~5 amendments a year across 28 councils), which is deliberate: the cost is zero and it bounds how long a stale state can hide. The healthchecks.io side should be period 2 days, grace 12 hours, so one missed run does not page."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "DQ-117: has the DCP source sweep run fleet-wide within the longest healthy gap of its fortnightly cron?",
+      "file_line": "scripts/dq_probe_live.py PROBES['DQ-117']",
+      "where_clause": "WHERE is_active AND NOT COALESCE(is_inert, false) AND council_url IS NOT NULL AND btrim(council_url) <> '' — unchanged. Only INTERVAL '10 days' became INTERVAL '17 days'. The statistic is still percentile_disc(0.5) with NULLs coalesced to '-infinity' and the whole expression coalesced so an empty registry reads 1."
+    },
+    {
+      "purpose": "Confirm the corrected window reads clean on a healthy schedule rather than merely reading differently.",
+      "file_line": "ad hoc, via scripts/dq_probe_live.py --id DQ-117 against production",
+      "where_clause": "Same query. Result: count 0, CLEAN — the sweep last ran 2026-09-15, 13 days before, inside the 17-day window. With the old 10-day window the identical data read 1."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A ledger row is red while nothing is wrong, for ever.",
+      "what_happens": "DQ-117's 10-day window against a 14-to-17-day cron means every healthy cycle reports the sweep dead. A permanently red row is read once, disbelieved, and then ignored — and it takes the credibility of every other row with it.",
+      "mitigated": true,
+      "how": "Window derived from the declared cron rather than from the prompt's claim, and set to the widest real gap. test_seventeen_covers_the_longest_healthy_gap COMPUTES that gap over four years of 1st/15th pairs instead of trusting 17. test_the_declared_cron_is_fortnightly pins the schedule file, so changing the cron fails the suite rather than silently invalidating the window.",
+      "repro": "Set INTERVAL back to '10 days'; three tests fail and the probe reads 1 against a healthy sweep."
+    },
+    {
+      "scenario": "The window is quietly changed back because nobody recorded why 10 was wrong.",
+      "what_happens": "A future reader sees 17, thinks it arbitrary, and 'tidies' it.",
+      "mitigated": true,
+      "how": "The probe comment, the dq_checks note, the markdown row and this report all state the wrong premise explicitly. test_the_wrong_premise_is_recorded_not_quietly_fixed asserts the comment still names BOTH 'fortnightly' and 'weekly', so the mistake cannot be edited out of the record.",
+      "repro": "Delete the word 'weekly' from the probe comment; that test fails."
+    },
+    {
+      "scenario": "Removing the per-stage failure also removes the alarm, leaving nothing at all carrying it.",
+      "what_happens": "Seven jobs stop alerting, and nothing replaces the failure — the exact silent state the previous PR was written to remove, reintroduced by the fix to it.",
+      "mitigated": true,
+      "how": "The outcome alarm lands in the SAME change, so there is never a commit where the failure is gone and nothing carries it. Nine tests assert the workflow exists, runs on a schedule, asks the freshness rows, pings only on success, fails loudly without its secret or its DATABASE_URL, reads the ping body, and runs outside Railway. Forced red by deleting the file: 9 tests fail.",
+      "repro": "rm .github/workflows/freshness-alarm.yml; nine tests fail."
+    },
+    {
+      "scenario": "The new outcome alarm degenerates into a heartbeat that reports the workflow ran rather than that the data is current.",
+      "what_happens": "Pinging regardless of the ledger result makes it report 'the workflow ran', which is the per-stage liveness defect moved to a new home — green while the served data is stale.",
+      "mitigated": true,
+      "how": "The ping step carries `if: success()` and the ledger step exits non-zero on a red row, so a stale ledger means no ping. Forced red by changing success() to always(): 1 test fails.",
+      "repro": "Change `if: success()` to `if: always()` on the ping step."
+    },
+    {
+      "scenario": "The alarm skips its own ping when unconfigured.",
+      "what_happens": "No secret, no ping, no error — so healthchecks.io alerts once and everyone assumes the workflow is simply not set up yet. Silent, and indistinguishable from working.",
+      "mitigated": true,
+      "how": "A missing HC_PING_FRESHNESS fails the step with a message naming what to create. A missing DATABASE_URL does the same. Forced red on both by softening the message: 1 test fails each.",
+      "repro": "Replace 'HC_PING_FRESHNESS is not set' with a skip message."
+    },
+    {
+      "scenario": "A 200 from healthchecks.io is taken as proof the ping landed.",
+      "what_happens": "Measured 2026-09-28: a ping to a URL naming no check answers `200 OK (not found)`. A status-only check records a heartbeat that was never stored — the same hole found and fixed in run_monitors the same day, reappearing in the workflow.",
+      "mitigated": true,
+      "how": "The step matches the response body against 'not found' and fails. ⚠ The first version of THIS TEST matched the words anywhere in the file, and the workflow explains the behaviour in a comment — so the mutation survived. The test now strips comment lines and asserts the shell case PATTERN, and the mutant is killed.",
+      "repro": "Change the case pattern to anything else; test_it_reads_the_ping_response_body fails."
+    },
+    {
+      "scenario": "The step back also removes the detection, not just the failure.",
+      "what_happens": "If deadman_switch_problem stops being called, the four broken states go undetected and the warning is empty — losing the diagnostic that says WHICH stage is unwatched.",
+      "mitigated": true,
+      "how": "test_the_detection_is_untouched asserts the call site, test_it_still_warns_by_name asserts the stage is named, and test_a_misconfigured_url_is_still_never_pinged asserts the no-ping rule. Forced red by nulling the detection: 9 tests fail.",
+      "repro": "Set switch_problem = None unconditionally."
+    },
+    {
+      "scenario": "The manifest keeps promising behaviour the code no longer has.",
+      "what_happens": "Its guard entry said stages 'refuse to look healthy'. They now report instead. A contract that describes the old behaviour is how a reader concludes the guard was silently weakened.",
+      "mitigated": true,
+      "how": "The guard's purpose now says REPORTS and names where the failure went. Asserted by test_the_guard_entry_no_longer_promises_an_exit_code; forced red by restoring the old wording.",
+      "repro": "Restore 'refuses to look healthy' in the manifest guard purpose."
+    },
+    {
+      "scenario": "The tests from the merged PR are deleted because they now fail.",
+      "what_happens": "Ten tests in test_silence_is_an_alarm.py asserted the exit code. Deleting them would remove the assertions that the four states are still detected and still alert.",
+      "mitigated": true,
+      "how": "Re-pointed, not deleted: each now asserts exit 0 AND that the alert still fires, and the docstring records that the exit code was stepped back and why. The subprocess test additionally asserts the process prints the gap, so exiting 0 cannot become genuinely silent.",
+      "repro": "python -m pytest tests/test_silence_is_an_alarm.py -q — 30 tests pass on the new contract."
+    },
+    {
+      "scenario": "A mutation run crashes partway and leaves a source file mutated, so the next green suite is green over mutated code.",
+      "what_happens": "One inline re-mutation crashed before restoring and left `*\"never-matches\"*` in the workflow. A subsequent green suite would have been green over a mutated file.",
+      "mitigated": true,
+      "how": "Caught because the tightened test failed on the real file. The file was restored and the full ten-mutant run re-executed from clean, all killed, with the final state verified by grep and a 7,537-test suite. The lesson is recorded here rather than left as a one-off: a mutation harness must restore on every path.",
+      "repro": "grep -c 'not found\"\\*' .github/workflows/freshness-alarm.yml — must be 1."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No secret is read, written or printed by this branch. It REQUIRES one to be created: HC_PING_FRESHNESS as a GitHub Actions repository secret, holding one healthchecks.io ping URL. That URL permits sending pings only — it cannot read or change anything.",
+    "other_repo": "No",
+    "manual_verify": "YES — one action, and the alarm does not exist until it is done. Create a single healthchecks.io check (suggested name plotdetect-freshness, period 2 days, grace 12 hours) and add its ping URL as the repository secret HC_PING_FRESHNESS. Until then the workflow FAILS rather than skipping, which is deliberate: a workflow that quietly skips its own ping is the defect this replaces. After that, the other seven per-stage healthchecks.io checks are no longer needed — 2 of 9 are wired and that is now sufficient, since the remaining stages report their gap as a warning rather than failing. NOT VERIFIED and worth knowing: whether the LIVE Railway cron matches the declared one. check_railway_cron_drift.py exists because six of eight drifted once before, and confirming needs a Railway API token that is not in .env; a test pins the window to the declared schedule so a file change fails loudly, but a dashboard-side drift would make 17 days wrong again."
+  }
+}
