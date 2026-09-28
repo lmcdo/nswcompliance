@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical because it changes what every scheduled Railway job reports about its own health, and because the row it registers (DQ-117) reclassifies the trustworthiness of an existing green check (DQ-70). Getting the classifier wrong in the permissive direction leaves the fleet exactly as blind as it was measured to be on 2026-09-28; getting it wrong in the strict direction makes ten services exit non-zero forever and trains the operator to ignore the dashboard, which is the failure this work exists to undo. No production write, no schema change, no user-facing text.",
-  "commit_hash": "b575b027",
+  "commit_hash": "c0c41c66",
   "files": [
     "scripts/run_monitors.py",
     "scripts/dq_probe_live.py",
