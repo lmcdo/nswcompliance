@@ -303,5 +303,20 @@ class TestFloodCacheCarriesManifest:
                               lat=SYD_LAT, lng=SYD_LNG, report_id="r1")
         out = flood_truth.run_flood(req)
         assert out["cache_hit"] is True
-        assert written["inputs"] is orig_inputs
+        # EQUAL, not identical. This asserted `is orig_inputs` until 2026-09-28, as
+        # shorthand for "the original inputs ride along rather than being re-derived".
+        # The cache branch now passes them through _cached_inputs_with_provenance,
+        # which returns a COPY so it cannot write a provenance note into the cached
+        # row's own dict -- so identity no longer holds while the meaning is unchanged.
+        # The two assertions below are what the test was actually about, and the third
+        # is stronger than what identity gave: identity guaranteed the object was the
+        # same, it did not guarantee nobody had mutated it.
+        assert written["inputs"] == orig_inputs
         assert written["inputs"][MANIFEST_KEY]["product"] == "flood"
+        assert "inputs_provenance" not in written["inputs"], (
+            "a row whose cached inputs already carry a manifest needs no provenance "
+            "note -- its provenance IS that manifest")
+        assert orig_inputs == {"lat": SYD_LAT, "lng": SYD_LNG,
+                              MANIFEST_KEY: {"schema": 1, "product": "flood"}}, (
+            "the cached row's own inputs dict was mutated, so a note written for one "
+            "copy would leak into whatever else holds that row")
