@@ -51,6 +51,7 @@ channel working.
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -348,7 +349,10 @@ def _requests_installed_for_a_subprocess() -> bool:
     `ModuleNotFoundError: No module named 'requests'` at run_monitors.py:23. Asked
     directly, in a child, rather than inferred from this process.
     """
+    # Same environment the test below uses -- inherited. When these two disagreed,
+    # the guard passed and the test failed.
     return subprocess.run([sys.executable, "-c", "import requests"],
+                          env=dict(os.environ),
                           capture_output=True).returncode == 0
 
 
@@ -363,14 +367,23 @@ class TestItRunsAsAScript:
     exit code that only exists in-process is not an exit code."""
 
     def test_a_missing_switch_exits_nonzero_from_the_shell(self, tmp_path):
-        env = {
-            "MONITOR_NAME": "dcp-monitor",
-            "PATH": __import__("os").environ.get("PATH", ""),
-            "SYSTEMROOT": __import__("os").environ.get("SYSTEMROOT", ""),
-            # A command that succeeds everywhere, so the only non-zero source is
-            # the missing switch.
-            "PYTHONIOENCODING": "utf-8",
-        }
+        # INHERIT the environment and override only what this test is about.
+        #
+        # This built a minimal env from scratch -- PATH, SYSTEMROOT,
+        # PYTHONIOENCODING -- and that is what failed in CI. The skipif above probes a
+        # child with the INHERITED environment, so on a runner where requests is
+        # importable only via PYTHONPATH or an active virtualenv the guard said
+        # "available" while this test's stripped child could not import it. The guard
+        # and the test were asking about two different environments, which turns a
+        # clean skip into a confusing ModuleNotFoundError.
+        #
+        # What the test is actually about is the exit CODE of a real process. A
+        # pristine environment was never part of that.
+        env = dict(os.environ)
+        env["MONITOR_NAME"] = "dcp-monitor"
+        env["PYTHONIOENCODING"] = "utf-8"
+        # The switch must be ABSENT, not inherited from a developer's shell.
+        env.pop("HC_PING_URL", None)
         script = ROOT / "scripts" / "run_monitors.py"
         patched = tmp_path / "probe.py"
         patched.write_text(
@@ -385,4 +398,15 @@ class TestItRunsAsAScript:
         assert script.exists()
         proc = subprocess.run([sys.executable, str(patched)], env=env,
                               capture_output=True, text=True, timeout=120)
+        # The verdict comes from THIS run, not from the guard's prediction about it.
+        # Twice in CI the guard said requests was importable and the child disagreed;
+        # a prediction about a subprocess is not a fact about that subprocess. If the
+        # child could not import it, this environment cannot host the test -- say so
+        # and skip, rather than reporting a missing dependency as a broken exit code.
+        if "No module named 'requests'" in (proc.stderr or ""):
+            pytest.skip(
+                "run_monitors imports requests at module scope and this environment "
+                "does not provide it to a child process (requirements-test.txt does "
+                "not install it). The in-process tests above still cover the exit "
+                "code; only the real-process proof is skipped. NOT a pass.")
         assert proc.returncode == rm.EXIT_NO_DEADMAN_SWITCH, proc.stderr[-2000:]
