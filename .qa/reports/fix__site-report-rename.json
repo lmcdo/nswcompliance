@@ -1,0 +1,96 @@
+{
+  "tier": "standard",
+  "justification": "Copy-only rename of a live public product name across 18 files. Not Minor: the tier floor caps Minor at 3 substantive files, and this touches 15 .ts/.tsx files including two copy-guard test suites that pinned the old wording. Not Critical: no logic, no data, no query, no schema and no route changes — every hunk is a user-visible string or a comment naming the product, and the diff is 59 insertions against 59 deletions with no net line change.",
+  "commit_hash": "d3aac34f",
+  "files": [
+    "frontend-nextjs/COMPONENT_MAP.md",
+    "frontend-nextjs/__tests__/app/brief-copy-guards.test.ts",
+    "frontend-nextjs/__tests__/app/brief-unavailable-copy.test.ts",
+    "frontend-nextjs/app/api/intelligence-brief/route.ts",
+    "frontend-nextjs/app/how-it-works/page.tsx",
+    "frontend-nextjs/app/internal/page.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/layout.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/provenance.ts",
+    "frontend-nextjs/app/reports/intelligence-brief/unavailable.ts",
+    "frontend-nextjs/app/reports/layout.tsx",
+    "frontend-nextjs/app/reports/page.tsx",
+    "frontend-nextjs/app/tools/upzoning-check/page.tsx",
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+    "frontend-nextjs/components/reports/BriefIntentOverlay.tsx",
+    "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx",
+    "frontend-nextjs/components/reports/SeppContextCard.tsx",
+    "frontend-nextjs/components/reports/landing/data/intelligence-brief.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/app/brief-copy-guards.test.ts __tests__/app/brief-unavailable-copy.test.ts && grep -rn -i 'intelligence brief' app components lib __tests__ COMPONENT_MAP.md; test $? -eq 1",
+    "fails_when": "Either the two source-scan copy suites stop matching the strings they pin, or any frontend file still carries the retired product name in rendered copy, metadata, a JSX label or a comment that would mislead the next reader into re-splitting the naming.",
+    "observed_red": "Both halves were seen red. The grep half at origin/main printed 12 matching files including the exact reported defect, app/reports/layout.tsx:25 '{ href: /reports/intelligence-brief, label: Intelligence Brief }', plus app/internal/page.tsx:54 and components/reports/landing/data/intelligence-brief.ts:11 'Property Intelligence Brief'. The jest half printed 'Test Suites: 2 failed, 105 passed, 107 total / Tests: 3 failed, 1471 passed, 1474 total' mid-change, with brief-copy-guards.test.ts:44 failing on toContain for 'run the brief again to retry' — that is what surfaced the two backtick template literals a quoted-string sweep had missed. Green after: 107 suites / 1474 tests passed and the grep exits 1 with no output."
+  },
+  "pre_impl": {
+    "existing_data": "The rename was already half-landed in the repo, so the work was to finish it rather than invent a name. app/reports/intelligence-brief/layout.tsx already had metadata title 'Property Site Report', page.tsx line 3013 already rendered an H1 of 'Site Report', app/site-directory/page.tsx:52 already labelled the link 'Site Report', app/how-it-works/page.tsx:15 already listed the tool as 'Site Report', and app/api/canibuildit/lead/route.ts:514 already sent an email subject of 'Your Site Report'. The new strings were taken from those five existing surfaces, not chosen fresh.",
+    "assumption_mismatch": "The assumption that would have broken this is that a rename is one grep for the full phrase. It is not: the majority of the stale copy said plain 'brief' rather than 'Intelligence Brief' — 'Generate Brief', 'What the Brief Covers', 'Brief generation failed', 'New brief', 'run the brief again to retry', 'Typical brief'. A first sweep also missed two occurrences inside backtick template literals in unavailable.ts because the search pattern only matched single- and double-quoted strings; the full jest run is what surfaced them.",
+    "new_vs_existing": "No new file, component, script or lint was added. The guard against recurrence already existed — __tests__/app/brief-copy-guards.test.ts and __tests__/app/brief-unavailable-copy.test.ts are source-scan copy tests over exactly these modules — so the existing suites were updated to pin the new strings rather than a parallel terminology lint being written. Route paths, API paths, component names, module filenames and the interest_type value 'intelligence-brief' stored on lead rows were deliberately left alone: they are identifiers, and renaming them would break live links and already-stored rows."
+  },
+  "functions": [
+    {
+      "name": "describeUnavailable",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/unavailable.ts:34",
+      "input": "A nullable reason string recorded against a missing field, plus the section key and an optional human name for the layer that was being fetched.",
+      "output": "An object of label, detail and tone whose detail string is rendered directly to the user; four of its branches carried the retired product noun and now say 'report' instead.",
+      "if_none": "When the reason is null or unrecognised the function falls through to the catch-all retrieval-miss branch, which still tells the reader to run the report again rather than claiming the field was never promised."
+    },
+    {
+      "name": "ReportsLayout",
+      "file_line": "frontend-nextjs/app/reports/layout.tsx:36",
+      "input": "The React children for any page under /reports; the nav it renders is driven by the module-level NAV_ITEMS array declared at line 24.",
+      "output": "The dark public header whose first nav entry is the reported defect — it linked /reports/intelligence-brief under the label 'Intelligence Brief' and now renders 'Site Report'.",
+      "if_none": "NAV_ITEMS is a static literal, so there is no empty or loading case; a missing entry would simply not render a link, and the href is unchanged so every existing bookmark still resolves."
+    }
+  ],
+  "values": "N/A — no value is read from a database, an API or an optional field by this change; every hunk is a literal string in source.",
+  "queries": "N/A — no SQL, no Supabase call and no fetch was added, removed or altered.",
+  "break_it": [
+    {
+      "scenario": "A reader lands on the landing hero from the /reports header, sees one product name in the nav and a different one in the H1 below it, and concludes the link took them somewhere else.",
+      "what_happens": "That was the reported defect: the nav said Intelligence Brief while the page H1 and the route metadata already said Site Report.",
+      "mitigated": true,
+      "how": "NAV_ITEMS label, the ProductLandingV2 hero title and ctaLabel, and the page H1 now all read Site Report, sourced from the metadata that was already correct.",
+      "repro": "Open the Vercel preview at /reports and read the first entry in the dark header nav against the H1 on the page it opens."
+    },
+    {
+      "scenario": "A run fails or times out and the user reads the error path, which is the surface least likely to be re-read after a rename.",
+      "what_happens": "The error copy would still have named the retired product — 'Failed to start intelligence brief', 'Brief generation failed', 'The brief is still queued' — reintroducing the split name at the exact moment the reader is confused.",
+      "mitigated": true,
+      "how": "The three error strings in page.tsx and the JSON error in app/api/intelligence-brief/route.ts were renamed together, and the full jest run covers the route.",
+      "repro": "On /reports/intelligence-brief, submit an address the geocoder cannot resolve and read the red error panel; or curl -X POST /api/intelligence-brief with an empty body and read the JSON error field."
+    },
+    {
+      "scenario": "A field cannot be retrieved and the unavailable-label classifier renders its retry copy, which lives in a separate module from the page.",
+      "what_happens": "Two of those strings are backtick template literals, so a naive quoted-string sweep skipped them and left 'run the brief again to retry' rendering under a page titled Site Report.",
+      "mitigated": true,
+      "how": "The full jest run went red on brief-copy-guards.test.ts and brief-unavailable-copy.test.ts, which pin that copy by source scan; both template literals were fixed and both suites updated to assert the new wording.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/app/brief-unavailable-copy.test.ts — it calls describeUnavailable with an unrecognised reason and with 'timeout', which are the two branches whose detail strings are template literals."
+    },
+    {
+      "scenario": "Someone renames the stored lead interest_type or the /reports/intelligence-brief route to match the new product name.",
+      "what_happens": "Live links from the funnel pages, the site directory, how-it-works and the already-sent lead emails would 404, and existing rows carrying interest_type 'intelligence-brief' would stop matching the email-template switch at app/api/canibuildit/lead/route.ts:514.",
+      "mitigated": true,
+      "how": "No route, API path, component name, module filename or interest_type value was touched — the diff is labels and comments only, and every href in the tree still points at /reports/intelligence-brief.",
+      "repro": "cd frontend-nextjs && grep -rn 'reports/intelligence-brief' app components lib — every href must still be the unchanged route; then grep -rn \"interest_type === 'intelligence-brief'\" app/api/canibuildit/lead/route.ts for the stored-value switch."
+    },
+    {
+      "scenario": "A future session reads a stale comment such as 'Secondary Dwelling card for the Intelligence Brief' and re-splits the naming by following the comment instead of the rendered copy.",
+      "what_happens": "That is how the original split arose — the H1 was renamed while the nav, the landing config and the surrounding comments kept the old name.",
+      "mitigated": true,
+      "how": "The product-naming comments in provenance.ts, unavailable.ts, page.tsx, ConstraintArithmeticCard.tsx, GrannyFlatBriefCard.tsx and COMPONENT_MAP.md were renamed in the same commit, so the grep in falsifiable_check returns zero across code and docs together.",
+      "repro": "cd frontend-nextjs && grep -rn -i 'intelligence brief' app components lib __tests__ COMPONENT_MAP.md — zero matches means no stale comment is left to mislead the next reader."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None — no migration, no backfill and no row is read or written by this change.",
+    "secrets": "None — no environment variable, key or credential is added, read or changed.",
+    "other_repo": "None — the change is confined to frontend-nextjs in this repository; the Python services carry the old name only in docstrings, log lines and an LLM system prompt, none of which reach a user.",
+    "manual_verify": "On the Vercel preview, open /reports and confirm the first header nav entry reads Site Report and still opens /reports/intelligence-brief; then submit a bad address and confirm the error panel reads 'Report generation failed' rather than 'Brief generation failed'."
+  }
+}
