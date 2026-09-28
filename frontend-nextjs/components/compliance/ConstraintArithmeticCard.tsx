@@ -168,7 +168,7 @@ interface ConstraintArithmeticCardProps {
   maxFsr?: number | null;
   frontage?: number | null;
   depth?: number | null;
-  /** Pre-computed result from intelligence brief — skips independent fetch when provided. */
+  /** Pre-computed result from site report — skips independent fetch when provided. */
   briefData?: ConstraintArithmeticResult | null;
   /** Inputs ledger (value + source per input) — composed by the brief page from
    * the sections' provenance; absent in the assessment UI. */

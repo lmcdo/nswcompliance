@@ -1,4 +1,4 @@
-// "Data sources" footer provenance for the Intelligence Brief — pure helpers
+// "Data sources" footer provenance for the Site Report — pure helpers
 // extracted from page.tsx so the per-run derivation is unit-testable.
 //
 // The footer must describe THIS run, not a static union (issue #753): a source
@@ -9,7 +9,7 @@
 // internal slugs naming the same real-world source render once, keeping the
 // latest as-at stamp seen for that source.
 
-// Internal source slugs -> the real-world data source, so the brief can list
+// Internal source slugs -> the real-world data source, so the report can list
 // "every figure traced to its source" honestly at the bottom.
 const SOURCE_LABELS: Record<string, string> = {
   postgis_overlays: 'NSW planning overlays (PostGIS)',
@@ -56,7 +56,7 @@ function defaultLinkLabel(key: string): string {
 }
 
 // Walk the streamed sections and collect the data sources this run actually
-// used, plus any legislation/source URL, so the brief footer lists per-run
+// used, plus any legislation/source URL, so the report footer lists per-run
 // provenance rather than every source the pipeline knows about.
 export function collectSources(
   sections: { data: { data: unknown } }[],

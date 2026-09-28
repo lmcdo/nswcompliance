@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   },
 };
 
-// NOTE: Intelligence Brief and Conveyancing live on their own pro subdomains
+// NOTE: Site Report and Conveyancing live on their own pro subdomains
 // (brief./conveyance.plotdetect.com.au) under the Option B domain split, so they
 // are intentionally NOT tiles in this consumer (canibuildit) grid. The pages still
 // exist at /reports/intelligence-brief and /reports/conveyancing.

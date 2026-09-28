@@ -412,7 +412,7 @@ export default function UpzoningCheckPage() {
                 <div>
                   <p className="text-white font-semibold text-sm">What would it actually yield?</p>
                   <p className="text-slate-400 text-xs mt-1">
-                    The free property brief adds development capacity arithmetic, constraints,
+                    The free site report adds development capacity arithmetic, constraints,
                     nearby DA outcomes and land value context for this address.
                   </p>
                 </div>
@@ -420,7 +420,7 @@ export default function UpzoningCheckPage() {
                   href={`/reports/intelligence-brief?address=${encodeURIComponent(result.address)}`}
                   className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
                 >
-                  Full property brief <ArrowRight className="w-4 h-4" />
+                  Full site report <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
             </>
@@ -482,7 +482,7 @@ export default function UpzoningCheckPage() {
                 href="/reports/intelligence-brief"
                 className="text-sm text-teal-600 hover:text-teal-500 font-medium flex items-center gap-1"
               >
-                Full property brief <ArrowRight className="w-3.5 h-3.5" />
+                Full site report <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>

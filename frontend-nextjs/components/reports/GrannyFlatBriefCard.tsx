@@ -7,7 +7,7 @@
 // card; the confirm request shape below mirrors that page's runConfirm against the
 // SAME /api/satellite/granny-flat route rather than re-implementing the API.
 
-// Secondary Dwelling card for the Intelligence Brief — extracted from
+// Secondary Dwelling card for the Site Report — extracted from
 // app/reports/intelligence-brief/page.tsx (#752) so the confirm/calculate step
 // is independently testable. The detect flow is unchanged: the brief fires the
 // same gated /api/satellite/granny-flat route the standalone tool uses (which
@@ -205,7 +205,7 @@ export function GrannyFlatBriefCard({ address, active, lotAreaM2 }: { address?: 
           if (d.status === 'error') { setState({ kind: 'error', message: d.message || d.error || 'Detection failed — try again.' }); return; }
         } catch { /* transient — keep polling */ }
       }
-      if (!cancelled) setState({ kind: 'error', message: 'The building scan timed out — try running the brief again.' });
+      if (!cancelled) setState({ kind: 'error', message: 'The building scan timed out — try running the report again.' });
     };
 
     fetch('/api/satellite/granny-flat', {

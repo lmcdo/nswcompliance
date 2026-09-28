@@ -8,14 +8,14 @@ import type { ProductLandingConfig } from "../types"
 export const intelligenceBriefConfig: ProductLandingConfig = {
   badge: "Live government data + satellite + computed analysis",
   badgeIcon: FileText,
-  title: "Property Intelligence Brief",
+  title: "Property Site Report",
   subtitle:
     "One address — planning controls, hazards, valuation, nearby applications and computed development capacity, with every figure traced to its source.",
-  ctaLabel: "Generate Brief",
+  ctaLabel: "Generate Site Report",
   heroImage: undefined,
   heroStats: [
     { value: "15+", label: "Data layers" },
-    { value: "~40 sec", label: "Typical brief" },
+    { value: "~40 sec", label: "Typical report" },
     { value: "Live", label: "NSW Planning Portal" },
   ],
 
@@ -28,7 +28,7 @@ export const intelligenceBriefConfig: ProductLandingConfig = {
     { icon: Shield, name: "Satellite imagery", description: "Structures & land cover" },
   ],
 
-  featuresTitle: "What the Brief Covers",
+  featuresTitle: "What the Report Covers",
   featuresSubtitle:
     "The full picture for a single property — streamed section by section from authoritative sources while you watch.",
   features: [
@@ -72,7 +72,7 @@ export const intelligenceBriefConfig: ProductLandingConfig = {
       icon: Layers,
       title: "Strata & Cadastre",
       description:
-        "Lot type and ownership structure — whether the address is a Torrens lot, community title, or part of a strata scheme, and what that means for the brief.",
+        "Lot type and ownership structure — whether the address is a Torrens lot, community title, or part of a strata scheme, and what that means for the report.",
     },
     {
       icon: Building2,
@@ -91,5 +91,5 @@ export const intelligenceBriefConfig: ProductLandingConfig = {
   // The brief is free while in open testing — no pricing table; the methodology
   // block below renders in its place.
   methodology:
-    "The brief runs as a background job and streams each section as it completes — a typical run takes about 40 seconds. Data is queried in real time from the NSW Planning Portal layerintersect API, the NSW Valuation Service, spatial overlays sourced from ePlanning ArcGIS MapServer services, the NSW ePlanning DA API and NSW Strata Hub, with optional satellite analysis. Every figure carries a confidence level (authoritative, derived, estimated) and traces to its source. Results are indicative only and do not constitute planning or legal advice.",
+    "The report runs as a background job and streams each section as it completes — a typical run takes about 40 seconds. Data is queried in real time from the NSW Planning Portal layerintersect API, the NSW Valuation Service, spatial overlays sourced from ePlanning ArcGIS MapServer services, the NSW ePlanning DA API and NSW Strata Hub, with optional satellite analysis. Every figure carries a confidence level (authoritative, derived, estimated) and traces to its source. Results are indicative only and do not constitute planning or legal advice.",
 }

@@ -51,7 +51,7 @@ const GROUPS: Group[] = [
   {
     heading: 'Reports (reachable from /reports)',
     items: [
-      { path: '/reports/intelligence-brief', title: 'Property Intelligence Brief', note: 'now linked in hub; 3 B2C services (da_outcome/vg_comparables/strata_lookup) not yet wired', status: 'live' },
+      { path: '/reports/intelligence-brief', title: 'Property Site Report', note: 'now linked in hub; 3 B2C services (da_outcome/vg_comparables/strata_lookup) not yet wired', status: 'live' },
       { path: '/reports/intelligence-brief', title: 'Brief LLM overlay (intent chips + plan card)', note: 'DARK: needs NEXT_PUBLIC_BRIEF_LLM_OVERLAY_ENABLED (Vercel) + BRIEF_LLM_OVERLAY_ENABLED (Railway) both true; engine #738/#742, UI this PR', status: 'built-unlinked' },
       { path: '/reports/conveyancing', title: 'Conveyancing report', status: 'live' },
       { path: '/reports/flood', title: 'Flood risk', status: 'live' },

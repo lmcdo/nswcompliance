@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'NSW Property Site Report — PlotDetect',
     description:
-      'One address, one brief: planning controls, hazards, valuation, nearby applications and computed development capacity.',
+      'One address, one report: planning controls, hazards, valuation, nearby applications and computed development capacity.',
   },
 };
 
