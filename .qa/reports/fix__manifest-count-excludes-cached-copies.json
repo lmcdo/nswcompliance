@@ -1,0 +1,123 @@
+{
+  "tier": "standard",
+  "justification": "Standard: it changes which rows a CI ratchet counts, which decides whether every PR in the repo can merge, so it is not Minor. Not Critical: no production write, no schema change, no served data or user-facing text is touched, and the one behaviour change in a service (flood_truth's cache branch) adds a statement of fact to a JSON column and can never remove or invent a value. The wrong fix here — raising the baseline — WAS available and is asserted against, which is the main risk this report exists to document.",
+  "commit_hash": "02687e40",
+  "files": [
+    "scripts/check_satellite_manifests.py",
+    "services/flood_truth.py",
+    "tests/test_manifest_count_excludes_cached_copies.py",
+    "tests/test_execution_manifests.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Measured on production before changing anything. The gate failure was `Satellite manifests: FAILED - a count rose` with `flood: 143 -> 144`. The 144th row was found by created_at, not run_date: id 6ce9d686, created 2026-09-28 01:52 UTC, run_date 2026-07-24, address 38 Park Rd Bowral, inputs {\"lat\": -34.48808008362178, \"lng\": 150.43000267992306} and no execution_manifest. The 24 July original is still present with the same coordinates and the same empty manifest. Cross-product count the same day: 810 rows carry no manifest across flood/shadow/solar-yield/bushfire, of which EXACTLY ONE has run_date < created_at::date — this row. So the exclusion moves flood 144 -> 143 and moves nothing else at all.",
+    "assumption_mismatch": "The failure looked like a satellite-pipeline regression and was not one. Two wrong diagnoses were considered and discarded by reading the code: (1) that the scheduled satellite cron had produced a manifest-less report — it had not, the row came from the live brief site; (2) that the report path had a bug worth fixing — it does not. services/flood_truth.py's cache branch deliberately carries the original inputs and run_date across, and its own comment says why: a re-derived manifest \"would claim inputs the cached numbers never came from\". That is correct and is this repo's don't-fabricate rule working. The defect is in the COUNTER, which counts a number that rises by design while enforcing that it may only fall — so it was guaranteed to fail eventually and then stay failed. The check already prints `\"NOT enforced — observation mode until false-positive behaviour is known\"` about itself; this is that false-positive behaviour, now known.",
+    "new_vs_existing": "One predicate added to an existing query, and one existing inline dict extracted into a named helper in the module that already owned it. No new script, no new tracker, no new table, no new config. The helper keeps the pre-existing empty-inputs branch verbatim and only adds the case that was missing.",
+    "external_source_error": "N/A — nothing here calls an external service. The check reads the database; flood_truth's cache branch reads a row it already fetched.",
+    "frontend_type": "N/A — no TypeScript, TSX or frontend file is touched. The change is one CI check script, one Python service function and two pytest files, so no DB-to-API or API-to-component type boundary is crossed.",
+    "user_failure_mode": "No user-visible change, and that is the point: the report served for 38 Park Rd Bowral was already correct and already honest — it carried the 24 July run_date rather than claiming to be fresh. What was broken was that viewing it blocked every merge in the repository. After this change the same view still records that it is a copy of a computation with no manifest, and the ratchet still counts every report that genuinely failed to record one."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_manifest_count_excludes_cached_copies.py tests/test_execution_manifests.py -q ; DATABASE_URL=... python scripts/check_satellite_manifests.py --baseline",
+    "fails_when": "The run_date exclusion is removed; the manifest key stops being asked about; a product drops out of the count; the cache branch stops marking a copy; the provenance note is limited back to empty-inputs only; the helper writes a manifest; or the flood baseline is raised off 143.",
+    "observed_red": "SEVEN mutants forced red on purpose and all killed, then restored: (A) exclusion removed, copies counted again — 1 failed; (B) manifest key no longer asked about — 1; (C) a product dropped from the count — 1; (D) cache branch stops calling the helper — 1; (E) provenance limited to empty inputs only — 3; (F) helper fabricates a manifest — 4; (G) baseline raised to 144 instead of fixing the count — 1. The live check goes from `FAILED - a count rose. flood: 143 -> 144` to `OK - 896, none increased`. Full suite 7,450 passed, 2 skipped, 3 xfailed, 0 failed.",
+    "not_proven": "That no OTHER product has cache-copy rows waiting to trip this again. Measured today there is exactly one across all four, but shadow (538 manifest-less rows) and solar-yield (63) have the largest pre-manifest populations, so the first cache hit on any of those addresses produces another copy. The exclusion covers them by rule rather than by row, so this is an expectation the fix already handles, not an unmeasured risk — but the claim being made is about the rule, not about having enumerated future rows."
+  },
+  "functions": [
+    {
+      "name": "_cached_inputs_with_provenance",
+      "file_line": "services/flood_truth.py:1916",
+      "input": "The cached row dict and the request. Exercised on four shapes: empty inputs; inputs with coordinates and no manifest (the 38 Park Rd Bowral shape); inputs that already carry a manifest; and a row with run_date None.",
+      "output": "The inputs to store on the copy. Unchanged when the original carried a manifest; otherwise the original's values plus one `inputs_provenance` sentence naming the date the original ran.",
+      "if_none": "It never returns None. Three states are distinguished rather than two: no inputs at all returns the request coordinates WITH a 'not recorded' note, because the cache SELECT bounds them to ~50m and presenting them as the original computation's record would be a small lie; inputs without a manifest get a note naming the original run date, or 'an unrecorded date' when run_date is NULL rather than guessing one; inputs with a manifest are returned untouched, since their provenance IS that manifest. It never writes a manifest — asserted by two tests, one of which greps the function for build_manifest."
+    }
+  ],
+  "values": [
+    {
+      "name": "the counted-row predicate",
+      "value": "run_date >= created_at::date",
+      "read_at": "scripts/check_satellite_manifests.py, the property_reports SELECT; asserted present by test_the_query_filters_on_run_date_against_created_at, which extracts and normalises the query rather than grepping the whole file.",
+      "if_missing": "Without it a cached copy of any pre-manifest report raises a count that may only fall, so the ratchet fails and then stays failed for ever — which is exactly the state found on 2026-09-28. Measured effect of its absence: flood 144 against a baseline of 143, failing `gates` on every open PR."
+    },
+    {
+      "name": "the flood baseline",
+      "value": "143 — deliberately NOT raised to 144",
+      "read_at": ".claude/manifest_coverage_baseline.json; asserted by test_the_committed_baseline_still_says_143_for_flood.",
+      "if_missing": "Raising it to 144 would have cleared the gate in one character and destroyed the ratchet's only guarantee — the next genuine regression would land inside the new headroom unnoticed. That is why the wrong fix is mutation-tested (mutant G) rather than merely avoided."
+    },
+    {
+      "name": "products counted",
+      "value": "flood, shadow, solar-yield, bushfire",
+      "read_at": "scripts/check_satellite_manifests.py, the same SELECT; asserted by test_it_still_counts_the_four_products.",
+      "if_missing": "Dropping a product lowers the total for a reason that is not an improvement, and the ratchet reads any fall as progress. granny_flat_reports is counted by a separate query with no run_date/created_at pair, and a test asserts the exclusion was NOT applied there."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Count reports whose own computation recorded no execution manifest, excluding rows that are copies of an earlier computation.",
+      "file_line": "scripts/check_satellite_manifests.py, the property_reports SELECT",
+      "where_clause": "WHERE product IN ('flood','shadow','solar-yield','bushfire') AND run_date >= created_at::date — the second clause is the change. A cache hit writes a new row carrying the ORIGINAL run_date, so run_date < created_at::date identifies a copy, whose missing manifest belongs to the original and cannot be supplied without fabricating it. Known imprecision, stated in the code: a run straddling midnight UTC would read as a copy; it is bounded to that window and a fresh run carries a manifest anyway, so the rows it could wrongly excuse are rows that would not be counted."
+    },
+    {
+      "purpose": "Establish that the exclusion excuses exactly one row and not a class of real defects, before relying on it.",
+      "file_line": "ad hoc read-only verification via scripts/dq_db.py session()",
+      "where_clause": "SELECT product, count(*) FILTER (WHERE NOT (inputs ? 'execution_manifest')) , count(*) FILTER (WHERE NOT (inputs ? 'execution_manifest') AND run_date < created_at::date) FROM property_reports WHERE product IN (...) GROUP BY 1 — result: flood 144/1, shadow 538/0, solar-yield 63/0, bushfire 65/0. One copy in 810."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Clear the gate by raising the baseline to 144.",
+      "what_happens": "One character, gate green, and the ratchet is dead: the next genuine regression lands inside the new headroom and reads as normal. The check's own rule is that the count may only fall.",
+      "mitigated": true,
+      "how": "The baseline is untouched at 143 and a test asserts it, so raising it now fails the suite. Forced red as mutant G. The fix works by narrowing WHICH ROWS are counted — with a stated, measured reason — not by widening what is tolerated.",
+      "repro": "Set \"flood\": 144 in .claude/manifest_coverage_baseline.json; test_the_committed_baseline_still_says_143_for_flood fails."
+    },
+    {
+      "scenario": "Clear the gate by making the check non-blocking.",
+      "what_happens": "The check prints that it is 'NOT enforced — observation mode', so making it exit 0 looks like honouring its own note. But it would stop catching a genuinely new manifest-less report, which is the thing worth catching, and 810 existing rows would never be revisited.",
+      "mitigated": true,
+      "how": "Not done. The exit behaviour is unchanged; only the population is corrected. A real regression — a NEW report on its own run date with no manifest — still fails the gate, because run_date >= created_at::date keeps exactly those rows in the count.",
+      "repro": "Insert a row with run_date = created_at::date and no manifest; the count rises and the check fails."
+    },
+    {
+      "scenario": "The exclusion quietly excuses a real defect.",
+      "what_happens": "If many manifest-less rows had run_date < created_at, the predicate would hide genuine failures behind a rule that looks principled.",
+      "mitigated": true,
+      "how": "Measured before relying on it: exactly 1 of 810 manifest-less rows across all four products is a copy. The other 143 flood rows, all 538 shadow, all 63 solar-yield and all 65 bushfire rows stay counted. The predicate was chosen because it separates those two populations on this data, not because it sounded right.",
+      "repro": "The cross-product query in section 6 — the copy column must stay near zero; if it grows, the rule is excusing more than it should and needs re-examining."
+    },
+    {
+      "scenario": "The cache branch is 'fixed' by re-deriving a manifest so the count falls.",
+      "what_happens": "The worst option. A manifest built today would name today's deploy, today's data versions and today's settings for numbers computed on 24 July — a provenance record that is precisely wrong, and wrong in the direction of looking authoritative.",
+      "mitigated": true,
+      "how": "The helper is asserted never to call build_manifest and never to assign MANIFEST_KEY. Forced red as mutant F, which failed 4 tests. The row records the fact that the original had no manifest, and the date the original ran, and nothing more.",
+      "repro": "Add inputs[MANIFEST_KEY] = build_manifest() to the helper; test_it_never_writes_a_manifest fails."
+    },
+    {
+      "scenario": "The provenance note is written into the cached row's own dict.",
+      "what_happens": "Mutating the fetched row would leak a note meant for one copy into anything else holding that row, and on a cache read that serves several report ids it would compound.",
+      "mitigated": true,
+      "how": "The helper opens with dict(cached.get(\"inputs\") or {}) — a copy — asserted both by source inspection and by a behavioural test that calls it and checks the input dict afterwards. The same non-mutation assertion was ADDED to the pre-existing tests/test_execution_manifests.py, which previously could not detect mutation at all.",
+      "repro": "Change the helper to mutate `cached[\"inputs\"]` in place; test_the_cached_dict_is_not_mutated fails."
+    },
+    {
+      "scenario": "An existing test is weakened to make this change pass.",
+      "what_happens": "tests/test_execution_manifests.py::test_cache_copy_passes_original_inputs asserted `written[\"inputs\"] is orig_inputs` — object identity — which a returned copy cannot satisfy. Deleting or loosening it to nothing would remove the guarantee that the cache path passes the ORIGINAL inputs rather than re-deriving them.",
+      "mitigated": true,
+      "how": "Narrowed, not weakened, and the reasoning is recorded at the assertion. Identity was shorthand for 'the original inputs ride along'; that meaning is now asserted as equality, the manifest-contents assertion is unchanged, and TWO assertions were added that identity never gave: that no provenance note is added when a manifest already exists, and that the cached row's own dict is unmutated. Identity proved the object was the same; it did not prove nobody had modified it.",
+      "repro": "python -m pytest tests/test_execution_manifests.py -q — 252 tests pass across the flood suite."
+    },
+    {
+      "scenario": "The next cache hit on a shadow or solar-yield address trips this again.",
+      "what_happens": "Those products hold 538 and 63 manifest-less rows, so a cache hit on any of those addresses creates another copy and would have raised their counts the same way.",
+      "mitigated": true,
+      "how": "The exclusion is a rule over rows, not a fix to one row, so it covers every product in the same query. flood_truth's cache branch is the one that carries inputs across; the other products' write paths were checked for the same shape and the exclusion protects them regardless of which path produces the copy.",
+      "repro": "Run a report twice on any address whose first report predates the manifest; the second row has run_date < created_at and is not counted."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No — verified in-session against production: scripts/check_satellite_manifests.py --baseline goes from exit 1 (`FAILED - a count rose. flood: 143 -> 144`) to exit 0 (`OK - 896, none increased`), with the baseline untouched at 143. This unblocks the `gates` workflow for every open PR, which was failing on this check regardless of branch content. ONE THING TO WATCH, not an action: the flood_truth change only marks copies written from now on, so the 38 Park Rd Bowral row keeps its bare coordinates and is excused by the run_date rule rather than by its own note. No backfill is proposed — writing a provenance note onto an existing row would be a production write asserting something about a run nobody observed."
+  }
+}
