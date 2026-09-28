@@ -1,0 +1,118 @@
+# ONE alarm, on the outcome, from outside the thing it watches.
+#
+# WHY THIS AND NOT NINE HEARTBEATS
+# --------------------------------
+# run_monitors.py can give every Railway stage its own healthchecks.io URL. Measured on
+# the live fleet 2026-09-28, that arrangement was misconfigured NINE TIMES OUT OF NINE:
+# six services shared the literal string `https://hc-ping.com/placeholder-satellite`,
+# which is not a check, and three had no URL at all. Nine config points, one operator.
+#
+# And a per-stage heartbeat answers the wrong question. It says a process started. It
+# cannot say the process did anything: `dcp-monitor` can sweep, be refused by every
+# council's WAF, skip all of them and exit 0 — ping sent, check green, nothing checked.
+#
+# This asks the only question that matters to a reader of a property report: IS WHAT WE
+# SERVE STILL CURRENT? That is already executable — `scripts/dq_check.py` is the ledger
+# (memory/project-dq-ledger-executable-2026-08.md) and DQ-117/DQ-70 are exactly this
+# question. One check, pinged only when the ledger is green, covers both failures at
+# once:
+#
+#   the data goes stale        -> ledger red -> no ping -> healthchecks.io alerts
+#   this workflow stops        -> no ping            -> healthchecks.io alerts
+#
+# It cannot read green while the served data is stale, because what it reports on IS the
+# served data. That is the property nine liveness pings never had.
+#
+# WHY GITHUB ACTIONS
+# ------------------
+# §5.2 invariant 8 and §7 of docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md both require the
+# watchdog to be EXTERNAL: "an alarm that lives inside the thing it watches cannot report
+# that thing's silence." Railway runs the pipeline, so the alarm must not. Actions is
+# already used here (gates.yml, main-red-alarm.yml) and already holds DATABASE_URL, so
+# this adds no vendor and no new secret store.
+#
+# GitHub disables scheduled workflows in a repository with no commits for 60 days. That
+# is precisely what the healthchecks.io side catches: no workflow, no ping, alarm.
+name: freshness-alarm
+
+on:
+  schedule:
+    # 19:30 UTC daily = 05:30-06:30 Sydney. After the 03:00 UTC extract and the 09:00
+    # UTC commit, so a red row reflects the day's runs rather than pre-empting them.
+    - cron: "30 19 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: freshness-alarm
+  cancel-in-progress: false
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the little this needs
+        run: pip install --quiet psycopg2-binary python-dotenv requests
+
+      - name: Is the served data still current?
+        id: ledger
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -o pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::error::DATABASE_URL secret is not set, so this alarm cannot read"
+            echo "anything. An alarm that cannot run must fail loudly, never skip."
+            exit 1
+          fi
+          # The freshness rows specifically. DQ-117 = did the source sweep run.
+          # DQ-70 = does what we serve still match its source. Both are DB-backed and
+          # neither can be satisfied by editing code.
+          rc=0
+          for id in DQ-117 DQ-70; do
+            echo "--- $id"
+            python scripts/dq_check.py --id "$id" || rc=1
+          done
+          exit $rc
+
+      # Ping ONLY on success. A ping sent regardless of the result is a heartbeat, and a
+      # heartbeat is the thing this workflow exists to replace.
+      - name: Tell the watchdog we are current
+        if: success()
+        env:
+          HC: ${{ secrets.HC_PING_FRESHNESS }}
+        run: |
+          if [ -z "${HC:-}" ]; then
+            echo "::error::HC_PING_FRESHNESS is not set. Create one healthchecks.io"
+            echo "check (period 2 days, grace 12 hours) and add its ping URL as that"
+            echo "repository secret. Until then nothing watches this workflow, and"
+            echo "this step fails rather than passing quietly — a silent skip here is"
+            echo "exactly the defect this file was written to remove."
+            exit 1
+          fi
+          # healthchecks.io answers 200 with the body "OK (not found)" for a URL that
+          # names no check — measured 2026-09-28. So a 2xx is NOT proof the ping landed
+          # and the body has to be read. Same lesson as scripts/run_monitors.py.
+          body=$(curl -sS --max-time 20 --retry 2 --retry-delay 5 "$HC") || {
+            echo "::error::could not reach healthchecks.io"; exit 1; }
+          echo "healthchecks.io said: $body"
+          case "$body" in
+            *"not found"*)
+              echo "::error::that ping URL names no check, so no heartbeat was recorded"
+              exit 1 ;;
+          esac
+
+      - name: Say what is stale, in the run itself
+        if: failure()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "::warning::A freshness row is red, so NO heartbeat was sent and"
+          echo "healthchecks.io will alert. Full ledger below for context."
+          python scripts/dq_check.py 2>&1 | tail -40 || true
