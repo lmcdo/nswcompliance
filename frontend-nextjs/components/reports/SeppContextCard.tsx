@@ -52,7 +52,7 @@ export function SeppContextCard({ ctx }: { ctx: SeppContextPlanningContext }) {
               ? <a href={ctx.legislationUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 underline [overflow-wrap:anywhere]">{instrument}</a>
               : instrument}. It&apos;s a residential zone, but the Low &amp; Mid-Rise Housing standards
             (terraces, townhouses, manor houses and residential flats) couldn&apos;t be loaded for
-            it — re-run the brief, or check the standards directly in the instrument above.
+            it — re-run the report, or check the standards directly in the instrument above.
           </p>
         ) : (
           <>

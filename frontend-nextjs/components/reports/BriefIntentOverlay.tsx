@@ -90,7 +90,7 @@ export function BriefIntentBar({
       <p className="text-xs text-slate-500 mt-0.5">
         {briefReady
           ? 'Pick one to pull the facts that matter for it to the top.'
-          : 'Pick one while the brief builds — the matching facts will surface when it finishes.'}
+          : 'Pick one while the report builds — the matching facts will surface when it finishes.'}
       </p>
       <div className="flex flex-wrap gap-2 mt-3">
         {INTENT_CHIPS.map((chip) => (

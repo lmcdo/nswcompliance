@@ -879,7 +879,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           return (
             <div key={key} className="flex flex-col">
               <FieldLabel fieldKey={key} />
-              <dd className="text-sm mt-0.5 text-amber-700">Couldn’t retrieve — run the brief again to retry.</dd>
+              <dd className="text-sm mt-0.5 text-amber-700">Couldn’t retrieve — run the report again to retry.</dd>
             </div>
           );
         }
@@ -1037,7 +1037,7 @@ const FIELD_HINTS: Record<string, string> = {
     'Guidance ranges for bushfire consultants where the pathway calls for them — not quotes.',
   bal_assessment_likely_required:
     'Whether the RFS mapping category typically triggers a formal BAL assessment at application stage.',
-  data_currency: 'Date the RFS mapping was queried for this brief.',
+  data_currency: 'Date the RFS mapping was queried for this report.',
 };
 
 // Field label + an optional one-line description underneath.
@@ -1466,7 +1466,7 @@ function MarketContextCard({ data, satelliteRan }: { data: Record<string, unknow
               <SalesTable sales={sales} />
             )
           ) : (
-            <p className="text-sm text-amber-700">Couldn&apos;t retrieve recent sales{salesReason ? '' : ''} — run the brief again to retry.</p>
+            <p className="text-sm text-amber-700">Couldn&apos;t retrieve recent sales{salesReason ? '' : ''} — run the report again to retry.</p>
           )}
         </div>
       </div>
@@ -2349,7 +2349,7 @@ function SectionJumpBar({ sections }: { sections: string[] }) {
   const ordered = sections.filter((s) => (seen.has(s) ? false : (seen.add(s), true)));
   if (ordered.length < 2) return null;
   return (
-    <nav aria-label="Brief sections" className="sticky top-2 z-20">
+    <nav aria-label="Report sections" className="sticky top-2 z-20">
       <div className="flex gap-1 overflow-x-auto rounded-full border border-slate-200 bg-white/85 backdrop-blur-md px-2 py-1.5 shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {ordered.map((s) => (
           <a
@@ -2432,7 +2432,7 @@ function LiveStatusPanel({
             <div className="h-2 w-2 rounded-full bg-teal-500 animate-pulse" />
           )}
           <span className="text-sm font-medium text-slate-900">
-            {state === 'triggering' ? 'Starting...' : state === 'complete' ? 'Complete' : 'Generating brief'}
+            {state === 'triggering' ? 'Starting...' : state === 'complete' ? 'Complete' : 'Generating report'}
           </span>
         </div>
         <div className="flex items-baseline gap-4">
@@ -2870,7 +2870,7 @@ function IntelligenceBriefInner() {
             retries++;
             if (retries >= maxRetries) {
               setState('error');
-              setErrorMsg('The brief is still queued — no worker picked it up in time. Please try again in a moment.');
+              setErrorMsg('The report is still queued — no worker picked it up in time. Please try again in a moment.');
               return;
             }
             await new Promise(r => setTimeout(r, 2000));
@@ -2934,7 +2934,7 @@ function IntelligenceBriefInner() {
       setRunId(data.runId);
     } catch (err) {
       setState('error');
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to start intelligence brief');
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to start site report');
     }
   }, [includeSatellite]);
 
@@ -3060,7 +3060,7 @@ function IntelligenceBriefInner() {
       {/* Error state */}
       {state === 'error' && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-5 space-y-3 max-w-2xl">
-          <p className="text-sm text-red-800 font-medium">Brief generation failed</p>
+          <p className="text-sm text-red-800 font-medium">Report generation failed</p>
           <p className="text-sm text-red-700">{errorMsg}</p>
           <button
             onClick={handleReset}
@@ -3082,7 +3082,7 @@ function IntelligenceBriefInner() {
               </p>
               {briefType && (
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {briefType === 'renovation' ? 'Renovation Brief (apartment/strata)' : 'Development Brief (house/land)'}
+                  {briefType === 'renovation' ? 'Renovation Report (apartment/strata)' : 'Development Report (house/land)'}
                 </p>
               )}
             </div>
@@ -3091,7 +3091,7 @@ function IntelligenceBriefInner() {
                 onClick={handleReset}
                 className="text-sm text-teal-600 hover:text-teal-800"
               >
-                New brief
+                New report
               </button>
             )}
           </div>
@@ -3117,7 +3117,7 @@ function IntelligenceBriefInner() {
             <PostResultEmailStrip
               address={metadataEvent?.data.address ?? selectedAddress ?? ''}
               product="intelligence-brief"
-              copy="Want this brief emailed to you? Drop your address and we'll send it over."
+              copy="Want this report emailed to you? Drop your address and we'll send it over."
             />
           )}
 

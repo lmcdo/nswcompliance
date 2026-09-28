@@ -23,7 +23,7 @@ const TOOLS = [
       { name: 'NSW ePlanning Portal (OnlineDA + tracking data)', use: 'Nearby applications, determination outcomes and council-wide refusal rates' },
       { name: 'Satellite and imagery layers', use: 'Aerial structure detection, solar yield (Google Solar), flood screening (JRC/WOfS/BoM), bushfire status (RFS), terrain (5 m DEM) and NARCliM 2.0 climate projections' },
     ],
-    cadence: 'Government APIs are queried live when the brief runs (typically 1–2 minutes end to end). Satellite layers use each source’s own imagery cadence. DCP controls and land-use tables are updated as councils are onboarded and re-checked by weekly source monitoring.',
+    cadence: 'Government APIs are queried live when the report runs (typically 1–2 minutes end to end). Satellite layers use each source’s own imagery cadence. DCP controls and land-use tables are updated as councils are onboarded and re-checked by weekly source monitoring.',
     limitations: 'The development capacity figure is a computed ceiling from mapped controls — not an approval outcome, and merit assessment can produce a different result. Eligibility outcomes are subject to a development application. Layers with no data for a property say so — absence of data is not clearance. Every figure carries its source and as-at date.',
   },
   {

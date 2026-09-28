@@ -1,4 +1,4 @@
-// "Why is this empty" copy for the Intelligence Brief — pure helpers extracted
+// "Why is this empty" copy for the Site Report — pure helpers extracted
 // from page.tsx so the wording is unit-testable, the same way provenance.ts was.
 //
 // Every branch returns BOTH a short label and a plain-English detail. Callers
@@ -54,7 +54,7 @@ export function describeUnavailable(
       const why = reason && !r.includes('not requested') ? ` (${String(reason).slice(0, 180)})` : '';
       return {
         label: 'Couldn’t complete',
-        detail: `We couldn’t complete ${what ? `the ${what} analysis` : 'this analysis'} for this property${why}. Try running the brief again.`,
+        detail: `We couldn’t complete ${what ? `the ${what} analysis` : 'this analysis'} for this property${why}. Try running the report again.`,
         tone: 'pending',
       };
     }
@@ -71,7 +71,7 @@ export function describeUnavailable(
     if (r.includes('not requested')) {
       return {
         label: 'Not run',
-        detail: 'Tick “Include site history (slower)” above and run the brief again to add this.',
+        detail: 'Tick “Include site history (slower)” above and run the report again to add this.',
         tone: 'optional',
       };
     }
@@ -79,7 +79,7 @@ export function describeUnavailable(
     if (r.includes('timeout') || r.includes("didn't finish") || r.includes('did not finish')) {
       return {
         label: 'Couldn’t complete',
-        detail: 'The site-history analysis didn’t finish in time for this property — please run the brief again.',
+        detail: 'The site-history analysis didn’t finish in time for this property — please run the report again.',
         tone: 'pending',
       };
     }
@@ -92,13 +92,13 @@ export function describeUnavailable(
       tone: 'pending',
     };
   }
-  // No reason recorded on a field this brief's sections DO promise (e.g. the VG
+  // No reason recorded on a field this report's sections DO promise (e.g. the VG
   // land value when the valuation lookup returned nothing) — that's a retrieval
   // miss, not an out-of-scope field. Say so, and route to a retry.
   if (!r) {
     return {
       label: 'Unavailable',
-      detail: 'This field could not be retrieved on this run — run the brief again to retry.',
+      detail: 'This field could not be retrieved on this run — run the report again to retry.',
       tone: 'error',
     };
   }
@@ -127,23 +127,23 @@ export function describeUnavailable(
       tone: 'clear',
     };
   }
-  // The ONLY branch that may say "not part of this brief": the layer was
+  // The ONLY branch that may say "not part of this report": the layer was
   // genuinely not requested (an opt-in that wasn't ticked).
   if (r.includes('not requested')) {
-    return { label: 'Not included', detail: 'An optional add-on, not part of this brief.', tone: 'neutral' };
+    return { label: 'Not included', detail: 'An optional add-on, not part of this report.', tone: 'neutral' };
   }
   if (r.includes('fail') || r.includes('unavailable') || r.includes('error') || r.includes('timeout') || r.includes('timed out')) {
     return {
       label: 'Unavailable',
-      detail: `The source for ${what || 'this layer'} did not respond — run the brief again to retry.`,
+      detail: `The source for ${what || 'this layer'} did not respond — run the report again to retry.`,
       tone: 'error',
     };
   }
   // Unrecognised reason on a promised field — a retrieval miss, never "not part
-  // of this brief" (the section header promised it).
+  // of this report" (the section header promised it).
   return {
     label: 'Unavailable',
-    detail: 'This field could not be retrieved on this run — run the brief again to retry.',
+    detail: 'This field could not be retrieved on this run — run the report again to retry.',
     tone: 'error',
   };
 }

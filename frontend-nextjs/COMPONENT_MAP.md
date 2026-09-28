@@ -293,9 +293,9 @@ never conditioned on partner presence (neutrality rule).
 
 ---
 
-## Reports - Intelligence Brief
+## Reports - Site Report
 
-### `/reports/intelligence-brief` - Intelligence Brief Page
+### `/reports/intelligence-brief` - Site Report Page
 
 **Page Component:** `app/reports/intelligence-brief/page.tsx`
 

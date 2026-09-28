@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     const text = await triggerResp.text();
     console.error('[intelligence-brief] Trigger.dev error:', text);
     return NextResponse.json(
-      { error: 'Failed to start intelligence brief' },
+      { error: 'Failed to start site report' },
       { status: 502 },
     );
   }

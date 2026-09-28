@@ -30,19 +30,19 @@ const UNAVAILABLE_SRC = fs.readFileSync(
 const CLASSIFIER_SRC = `${PAGE_SRC}\n${UNAVAILABLE_SRC}`;
 
 describe('intelligence-brief page — unavailable-label classifier copy', () => {
-  it('the catch-all no longer claims a promised field is "Not part of this brief"', () => {
+  it('the catch-all no longer claims a promised field is "Not part of this report"', () => {
     // The phrase may survive ONLY in the not-requested (optional add-on) branch —
     // count code lines, not comments.
     const codeLines = CLASSIFIER_SRC.split('\n').filter((l) => !l.trim().startsWith('//'));
-    const occurrences = codeLines.filter((l) => /not part of this brief/i.test(l));
+    const occurrences = codeLines.filter((l) => /not part of this report/i.test(l));
     expect(occurrences.length).toBeLessThanOrEqual(1);
     expect(occurrences.join('\n')).toContain('An optional add-on');
-    expect(CLASSIFIER_SRC).not.toContain("detail: 'Not part of this brief.'");
+    expect(CLASSIFIER_SRC).not.toContain("detail: 'Not part of this report.'");
   });
 
   it('retrieval misses route to a retry, not a shrug', () => {
     expect(CLASSIFIER_SRC).toContain(
-      'This field could not be retrieved on this run — run the brief again to retry.',
+      'This field could not be retrieved on this run — run the report again to retry.',
     );
   });
 
@@ -69,7 +69,7 @@ describe('intelligence-brief page — unavailable-label classifier copy', () => 
   });
 
   it('the Data Gaps verify link is separated from the sentence by a space', () => {
-    // The rendered text previously concatenated "…brief.Verify".
+    // The rendered text previously concatenated "…report.Verify".
     expect(PAGE_SRC).toContain("{g.verify_url && ' '}");
   });
 });

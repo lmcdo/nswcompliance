@@ -1,5 +1,5 @@
 /**
- * The "why is this empty" copy for the Intelligence Brief.
+ * The "why is this empty" copy for the Site Report.
  *
  * The rule this file protects: a reader must never be left with a bare label
  * that cannot distinguish "we checked and there is nothing here" from "we did
@@ -98,7 +98,7 @@ describe('describeUnavailable — absence is distinguished from failure', () => 
     const u = describeUnavailable(null, 'satellite.flood', false, 'flood screening');
     expect(u.tone).toBe('optional');
     expect(u.detail).toMatch(/tick/i);
-    expect(u.detail).toMatch(/re-run|run the brief/i);
+    expect(u.detail).toMatch(/re-run|run the report/i);
   });
 
   it('a satellite layer that RAN but produced nothing does not blame the tickbox', () => {
@@ -110,18 +110,18 @@ describe('describeUnavailable — absence is distinguished from failure', () => 
   it('a genuine retrieval failure reads as a failure, never as a clear result', () => {
     const u = describeUnavailable('overlay query did not complete', 'planning.overlays', false, 'planning overlays');
     expect(u.tone).toBe('error');
-    expect(u.detail).toMatch(/retry|run the brief again|did not respond/i);
+    expect(u.detail).toMatch(/retry|run the report again|did not respond/i);
   });
 
-  it('an unrecognised reason is a retrieval miss, never "not part of this brief"', () => {
+  it('an unrecognised reason is a retrieval miss, never "not part of this report"', () => {
     const u = describeUnavailable('something nobody has seen before', 'planning.overlays', false, 'planning overlays');
     expect(u.tone).toBe('error');
-    expect(u.detail.toLowerCase()).not.toContain('not part of this brief');
+    expect(u.detail.toLowerCase()).not.toContain('not part of this report');
   });
 
-  it('only an explicit "not requested" may say the layer is not part of the brief', () => {
+  it('only an explicit "not requested" may say the layer is not part of the report', () => {
     const u = describeUnavailable('not requested', 'planning.overlays', false, 'planning overlays');
     expect(u.tone).toBe('neutral');
-    expect(u.detail.toLowerCase()).toContain('not part of this brief');
+    expect(u.detail.toLowerCase()).toContain('not part of this report');
   });
 });
