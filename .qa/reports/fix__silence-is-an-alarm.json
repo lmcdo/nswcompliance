@@ -12,13 +12,15 @@
     "tests/test_a_broke_model_stops_the_chapter.py",
     "tests/test_the_pipeline_cannot_lose_a_stage.py",
     "enrichment/config/parramatta_config.py",
-    "tests/test_an_alert_carries_its_own_cause.py"
+    "tests/test_an_alert_carries_its_own_cause.py",
+    "tests/test_run_monitors_deadman_switch_real.py",
+    "tests/conftest_mocks.py"
   ],
   "pre_impl": {
     "existing_data": "Measured before writing anything, on production and on the live Railway fleet rather than from the prompt. (1) url_last_checked across dcp_chapter_registry via scripts/dq_db.py read-only session: max = 2026-09-24, median = 2026-09-15, 514 monitorable rows, 5 never checked. (2) HC_PING_URL and AI_MODEL/provider keys read per service with `railway variables --service <name> --kv` across all 10 services in project refreshing-hope. (3) url_last_checked write sites confirmed in scripts/r2_monitor.py (lines 900, 937, 971, 1038, 1106, 1126, 1143, 1259) so the column is a true liveness signal.",
     "assumption_mismatch": "TWO of the prompt's own premises were wrong and were corrected against measurement. (a) Its drafted DQ-117 measured max(url_last_checked) and asserted 'it reads 1 the moment you install it'. It reads 0: six wollongong chapters were first checked on 2026-09-24 during onboarding, moving the fleet maximum to 4 days ago while 499 of 514 chapters sat at 2026-09-15. Replaced with the median, which reads 1 at 12d 20h behind. (b) Its item 2a assumed 'one shared URL'. The measured value is the literal placeholder https://hc-ping.com/placeholder-satellite on six services and ABSENT on four more, so there is no dead-man's switch anywhere in the fleet rather than one over-shared switch. The guard was widened to cover all four states as a result.",
     "new_vs_existing": "Extends existing surfaces rather than adding new ones. deadman_switch_problem and the bool return on ping_healthcheck go into the existing scripts/run_monitors.py; DQ-117 goes into the existing three-part ledger (markdown row, dq_checks.json, dq_probe_live.py PROBES) modelled on DQ-69 at dq_probe_live.py:216; the guard ratchet extends the existing tests/test_the_pipeline_cannot_lose_a_stage.py and .claude/dcp_pipeline_manifest.json. No new tracker, no new monitoring page, no new script.",
-    "external_source_error": "healthchecks.io is now treated as able to REFUSE a ping: a 4xx/5xx answer is reported and the run exits non-zero, where previously any HTTP response at all counted as a heartbeat. A transport exception is likewise a failed ping rather than a stderr line. Neither path retries, deliberately: a heartbeat that had to be retried into existence is not evidence the stage is alive.",
+    "external_source_error": "healthchecks.io is now treated as able to REFUSE a ping, and WHAT refusal looks like had to be measured rather than assumed. Measured against the live service 2026-09-28: GET https://hc-ping.com/<uuid-that-is-not-a-check> answers **200 with the body 'OK (not found)'**, the /fail variant answers the same, and a bare slug with no ping key answers 400 'invalid url format'. So a status-code check ALONE is insufficient -- the first version of this fix had exactly that hole and would have recorded a deleted, renamed or mistyped check as a live heartbeat. The earlier claim in this branch that 'pinging it 404s' was WRONG and is withdrawn; it was never measured. ping_healthcheck now fails on status >= 400 AND on a body containing 'not found'. Neither path retries: a heartbeat retried into existence is not evidence the stage is alive.",
     "frontend_type": "N/A -- not one line of TypeScript, TSX or frontend code is touched by this branch. The whole change is the Railway monitor runner, the DQ ledger's three files and three pytest files, so no DB-to-API or API-to-component type boundary is crossed.",
     "user_failure_mode": "Before: the weekly DCP source sweep stopped on 2026-09-15 and nothing said so. No stage had a working dead-man's switch, so silence produced no alert; DQ-70 could not go red because content_hash has exactly one writer -- that same sweep -- so both sides of its comparison froze together. A planner was served controls described as 'unchanged since extraction' when the statement only held as of the last sweep date. After: a stage with no switch names itself in an alert and exits 3, and DQ-117 reads 1 until a real sweep completes, with DQ-70's own note now saying it is only meaningful while DQ-117 is green."
   },
@@ -38,14 +40,14 @@
     },
     {
       "name": "ping_healthcheck",
-      "file_line": "scripts/run_monitors.py:237",
+      "file_line": "scripts/run_monitors.py:238",
       "input": "(url, failed). Called only when deadman_switch_problem returned None.",
-      "output": "bool -- True only when the ping is KNOWN to have landed (HTTP < 400). Previously returned None on every path, so no caller could tell.",
-      "if_none": "A transport exception or a >=400 response both return False, and the caller turns that into an alert plus EXIT_NO_DEADMAN_SWITCH. A misconfigured URL is not pinged at all, because pinging another stage's check holds that stage's alarm green -- a bad value is worse than no value."
+      "output": "bool -- True only when the ping is KNOWN to have landed: status < 400 AND the body does not say 'not found'. Previously returned None on every path, so no caller could tell; then briefly checked only the status, which a 200 'OK (not found)' passes.",
+      "if_none": "A transport exception, a >=400 response, or a 2xx whose body says 'not found' all return False, and the caller turns that into an alert plus EXIT_NO_DEADMAN_SWITCH. A misconfigured URL is not pinged at all, because pinging another stage's check holds that stage's alarm green -- a bad value is worse than no value."
     },
     {
       "name": "main",
-      "file_line": "scripts/run_monitors.py:263",
+      "file_line": "scripts/run_monitors.py:282",
       "input": "MONITOR_NAME and HC_PING_URL read from the process environment, plus the child monitor's own exit code. Nothing is passed as an argument, which is why the subprocess test runs it as a real process rather than only calling it.",
       "output": "0 healthy, 1 the monitor crashed, 2 mapped to 0 (ran and found something), 3 ran fine but is not being watched.",
       "if_none": "A crash outranks a broken switch: exit 1 is never relabelled 3, because the more urgent fact must win. The monitor is always RUN even when the switch is broken -- refusing to work would trade a data outage for a monitoring outage."
@@ -163,6 +165,20 @@
       "mitigated": true,
       "how": "warnings.simplefilter() REPLACES the whole filter list rather than appending, so a second simplefilter('error', SyntaxWarning) discarded the DeprecationWarning rule set the line before — and on Python 3.11 an invalid escape IS a DeprecationWarning, so nothing was escalated. The test now uses record=True with one simplefilter('always'), and two tests assert the detector fires on a known-bad string and stays quiet on the same text made raw.",
       "repro": "TestTheDetectorItselfWorks::test_the_detector_catches_a_known_bad_string"
+    },
+    {
+      "scenario": "healthchecks.io answers 200 for a check that does not exist, so the status-code check reads a dead switch as a live heartbeat.",
+      "what_happens": "A deleted, renamed or mistyped UUID is recorded as a successful heartbeat. The stage looks watched and is not -- the same state this branch exists to remove, one layer deeper, and every mocked test still passes because they were handed a 404 that the real service never sends.",
+      "mitigated": true,
+      "how": "FOUND BY THE REAL-LAYER TEST FALSIFYING THIS BRANCH'S OWN CLAIM, not by reasoning. tests/test_run_monitors_deadman_switch_real.py pings a random UUID against the live service; it returned 200 'OK (not found)'. ping_healthcheck now also fails on a body containing 'not found'. The test pings a random UUID and never a real check, deliberately: a test that pinged a real check would register a heartbeat and satisfy a production dead-man's switch from CI, which is worse than having no test.",
+      "repro": "PYTEST_REAL_HTTP=1 pytest -m integration tests/test_run_monitors_deadman_switch_real.py -- then mutate `if \"not found\" in ...` to `if False`: 2 real-layer and 1 mocked test fail."
+    },
+    {
+      "scenario": "The real-layer test silently asserts against a MagicMock and reports success.",
+      "what_happens": "tests/conftest_mocks.py stubs `requests` by default, and a MagicMock answers every call happily -- so a naive reachability probe returns True and the test 'passes' having touched nothing. scripts/qa_gate.py REQUIRES a real-layer test for HTTP-touching code, and the harness made an honest one impossible, so the only way to satisfy it was an exemption.",
+      "mitigated": true,
+      "how": "Added PYTEST_REAL_HTTP=1 to conftest_mocks.py, mirroring the existing PYTEST_REAL_DB opt-in and its stated reasoning verbatim. The test distinguishes THREE states -- real+reachable runs, real+offline skips, STUBBED skips naming the opt-in -- rather than two. Also fixed a bare sys.modules['requests'] index in that file which raised KeyError and took the whole conftest down when the stub was skipped: the same hard-index shape as os.environ['PGHOST'].",
+      "repro": "pytest -m integration tests/test_run_monitors_deadman_switch_real.py without the env var -- must SKIP with a reason, never pass."
     }
   ],
   "post_merge": {

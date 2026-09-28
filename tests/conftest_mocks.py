@@ -53,9 +53,30 @@ _MOCK_MODULES = [
 _REAL_DB = os.environ.get("PYTEST_REAL_DB") == "1"
 _DB_MODULES = {"psycopg2", "psycopg2.extras"}
 
+# ── The same opt-out for tests that need REAL http ───────────────────────────
+# Added 2026-09-28, and it closes a contradiction rather than adding a feature.
+# scripts/qa_gate.py REQUIRES a real-layer test whenever a changed function touches
+# `requests`/`httpx` -- and until now the stub above made one impossible: every
+# `requests.get` in the suite returned a MagicMock, so a real-layer HTTP test failed
+# with "'>=' not supported between instances of 'MagicMock' and 'int'". Exactly the
+# symptom this file already records for psycopg2 and test_lga_coverage.py, one module
+# over. A gate that demands a test the harness forbids is a gate nobody can satisfy
+# honestly, so it gets satisfied with an exemption instead.
+#
+# Opt-in for the same reason as _REAL_DB: flipping it automatically whenever requests
+# happens to be installed would let ~4,100 tests start making real network calls on
+# any dev machine, and the ones that rely on the stub would begin reaching the
+# internet. Blast radius is exactly the runs that ask:
+#
+#     PYTEST_REAL_HTTP=1 pytest -m integration tests/test_run_monitors_deadman_switch_real.py
+_REAL_HTTP = os.environ.get("PYTEST_REAL_HTTP") == "1"
+_HTTP_MODULES = {"requests"}
+
 for mod_name in _MOCK_MODULES:
     if _REAL_DB and mod_name in _DB_MODULES:
         continue  # let the genuine library be imported normally
+    if _REAL_HTTP and mod_name in _HTTP_MODULES:
+        continue
     if mod_name not in sys.modules:
         sys.modules[mod_name] = MagicMock()
 
@@ -63,7 +84,11 @@ for mod_name in _MOCK_MODULES:
 # dem_service.py catches `requests.RequestException`. MagicMock attributes are
 # not real exception classes, so `except MockObj:` crashes with TypeError.
 # Provide real exception classes so catch clauses work.
-requests_mock = sys.modules["requests"]
+# .get, not ["requests"]: with PYTEST_REAL_HTTP=1 the stub is skipped above and the
+# real library has not been imported yet, so a bare index raises KeyError and takes
+# the whole conftest down before a single test collects. Same hard-index-into-a-dict
+# shape as os.environ["PGHOST"] and os.environ["MISTRAL_API_KEY"].
+requests_mock = sys.modules.get("requests")
 if isinstance(requests_mock, MagicMock):
 
     class _RequestException(IOError):

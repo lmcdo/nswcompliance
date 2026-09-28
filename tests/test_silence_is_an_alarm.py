@@ -24,10 +24,14 @@ Not "one shared URL" -- no switch anywhere, in three different ways at once:
     property-alerts                         ABSENT
     brief-drift-check                       ABSENT
 
-`placeholder-satellite` is not a check. Pinging it answers 404, and `requests.get`
-does not raise on 404, so the ping was swallowed. Six services reported a
-heartbeat to nothing and four reported nothing at all -- and all ten looked
-exactly like services that were being watched.
+`placeholder-satellite` is not a check. Measured against the live service
+2026-09-28: a bare slug with no ping key answers `400 invalid url format`, and --
+the part that had to be measured rather than assumed -- a well-formed ping to a
+UUID that is not a check answers **200 with the body `OK (not found)`**. So a
+status-code check alone is NOT sufficient, and the first version of this guard had
+that hole. `requests.get` raises on neither. Six services reported a heartbeat to
+nothing and four reported nothing at all, and all ten looked exactly like services
+that were being watched.
 
 WHY EACH ASSERTION BELOW IS THE ONE THAT MATTERS
 ------------------------------------------------
@@ -73,8 +77,10 @@ class _Result:
 
 
 class _Response:
-    def __init__(self, status_code=200):
+    def __init__(self, status_code=200, text="OK"):
         self.status_code = status_code
+        #: healthchecks.io signals an unknown check in the BODY, not the status.
+        self.text = text
 
 
 @pytest.fixture
@@ -86,7 +92,8 @@ def harness(monkeypatch):
     """
     sent: list[str] = []
     pinged: list[str] = []
-    state = {"child_exit": 0, "ping_status": 200, "sent": sent, "pinged": pinged}
+    state = {"child_exit": 0, "ping_status": 200, "ping_body": "OK",
+             "sent": sent, "pinged": pinged}
 
     monkeypatch.setenv("MONITOR_NAME", "dcp-monitor")
     monkeypatch.delenv("HC_PING_URL", raising=False)
@@ -97,7 +104,8 @@ def harness(monkeypatch):
     )
     monkeypatch.setattr(
         rm.requests, "get",
-        lambda url, **k: pinged.append(url) or _Response(state["ping_status"]),
+        lambda url, **k: pinged.append(url) or _Response(state["ping_status"],
+                                                        state["ping_body"]),
     )
     state["env"] = monkeypatch
     return state
@@ -199,6 +207,22 @@ class TestAPingThatDoesNotLandIsNotAPing:
     response entirely. A deleted, renamed or mistyped check answers 404 and the run
     reported success -- so the heartbeat and its absence read identically.
     """
+
+    def test_a_200_that_says_not_found_is_not_a_heartbeat(self, harness):
+        """The hole the real-layer test found. healthchecks.io answers 200 with the
+        body `OK (not found)` for a UUID that is not a check, so a deleted, renamed or
+        mistyped check would have been recorded as a live heartbeat by a status-code
+        check alone. See tests/test_run_monitors_deadman_switch_real.py."""
+        harness["env"].setenv("HC_PING_URL", GOOD)
+        harness["ping_body"] = "OK (not found)"
+        assert rm.main() == rm.EXIT_NO_DEADMAN_SWITCH
+
+    def test_a_plain_ok_body_is_a_heartbeat(self, harness):
+        """The other side of it: a real ping answers `OK` and must be accepted, or the
+        guard fires on every healthy run and gets switched off."""
+        harness["env"].setenv("HC_PING_URL", GOOD)
+        harness["ping_body"] = "OK"
+        assert rm.main() == 0
 
     def test_a_404_ping_exits_nonzero(self, harness):
         harness["env"].setenv("HC_PING_URL", GOOD)

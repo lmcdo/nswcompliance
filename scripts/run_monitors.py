@@ -168,8 +168,9 @@ def deadman_switch_problem(monitor_name: str, url: str) -> str | None:
     1. NOT SET.        `ping_healthcheck` returned early and said nothing.
     2. NOT A CHECK.    A value that does not point at healthchecks.io at all.
     3. A PLACEHOLDER.  `https://hc-ping.com/placeholder-satellite` -- a string
-       typed to fill the variable in. Pinging it 404s, and `requests.get` does
-       not raise on 404, so the ping was swallowed twice over.
+       typed to fill the variable in. Measured 2026-09-28: a bare slug with no
+       ping key answers `400 invalid url format`, and `requests.get` does not
+       raise on 400, so the ping was swallowed twice over.
     4. ANOTHER STAGE'S CHECK. One URL shared across stages means any single
        surviving stage holds the check green while the others are dead. This is
        also why a misconfigured service must NOT ping: pinging another stage's
@@ -254,8 +255,26 @@ def ping_healthcheck(url: str, failed: bool = False) -> bool:
         return False
     if resp.status_code >= 400:
         print(f"Healthcheck ping REJECTED: HTTP {resp.status_code} from "
-              f"healthchecks.io. The check this URL names does not exist, so "
-              f"nothing is watching this stage.", file=sys.stderr)
+              f"healthchecks.io -- this URL is not a usable check, so nothing is "
+              f"watching this stage.", file=sys.stderr)
+        return False
+    # A 2xx IS NOT ENOUGH, and assuming it was is the hole this function had when
+    # first written. MEASURED against the live service 2026-09-28:
+    #
+    #   GET https://hc-ping.com/<a-uuid-that-is-not-a-check>   -> 200  "OK (not found)"
+    #   GET https://hc-ping.com/<the-same>/fail                -> 200  "OK (not found)"
+    #   GET https://hc-ping.com/not-a-real-slug                -> 400  "invalid url format"
+    #
+    # So healthchecks.io answers 200 for a well-formed ping to a check that does not
+    # exist, and says so only in the BODY. A deleted, renamed or mistyped UUID would
+    # therefore have passed the status check and been recorded as a live heartbeat --
+    # the same "looks watched, isn't" state this whole guard exists to remove, just
+    # one layer deeper. Found by the real-layer test, not by reading the docs.
+    if "not found" in (resp.text or "").lower():
+        print(f"Healthcheck ping NOT RECORDED: healthchecks.io answered "
+              f"{resp.status_code} {resp.text.strip()[:60]!r}. The check this URL "
+              f"names does not exist, so this run left no heartbeat and this "
+              f"stage's silence is unreadable.", file=sys.stderr)
         return False
     return True
 
