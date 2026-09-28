@@ -6,7 +6,8 @@
     "scripts/check_satellite_manifests.py",
     "services/flood_truth.py",
     "tests/test_manifest_count_excludes_cached_copies.py",
-    "tests/test_execution_manifests.py"
+    "tests/test_execution_manifests.py",
+    "tests/test_check_satellite_manifests_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "Measured on production before changing anything. The gate failure was `Satellite manifests: FAILED - a count rose` with `flood: 143 -> 144`. The 144th row was found by created_at, not run_date: id 6ce9d686, created 2026-09-28 01:52 UTC, run_date 2026-07-24, address 38 Park Rd Bowral, inputs {\"lat\": -34.48808008362178, \"lng\": 150.43000267992306} and no execution_manifest. The 24 July original is still present with the same coordinates and the same empty manifest. Cross-product count the same day: 810 rows carry no manifest across flood/shadow/solar-yield/bushfire, of which EXACTLY ONE has run_date < created_at::date — this row. So the exclusion moves flood 144 -> 143 and moves nothing else at all.",
@@ -112,6 +113,13 @@
       "mitigated": true,
       "how": "The exclusion is a rule over rows, not a fix to one row, so it covers every product in the same query. flood_truth's cache branch is the one that carries inputs across; the other products' write paths were checked for the same shape and the exclusion protects them regardless of which path produces the copy.",
       "repro": "Run a report twice on any address whose first report predates the manifest; the second row has run_date < created_at and is not counted."
+    },
+    {
+      "scenario": "The SQL does not do what its prose says, and only prose was checked.",
+      "what_happens": "run_date is a date and created_at a timestamptz. Whether run_date >= created_at::date excludes the intended row is a Postgres question, and the other tests read the query as text or re-implement it as a Python predicate -- neither runs it. Dropping the ::date cast would wrongly excuse every row created later in the day than its run_date.",
+      "mitigated": true,
+      "how": "tests/test_check_satellite_manifests_real_db.py runs the SCRIPT'S OWN query, lifted from the file so it cannot drift, against the real database read-only. Seven assertions: no cached copy survives the filter; at least one cached copy EXISTS so the first is not vacuous (skips loudly if it ever reaches zero rather than passing); the 809 rows that are their own computation are still counted; the script's totals match an independently written query; the ::date cast is shown load-bearing by a row created later the same day; and flood reads exactly 143, its baseline. Opt-in via PYTEST_REAL_DB=1 and marked database, so it is deselected by default and skips with a reason rather than asserting against the conftest MagicMock.",
+      "repro": "PYTEST_REAL_DB=1 DATABASE_URL=... pytest -m database tests/test_check_satellite_manifests_real_db.py -- 7 passed against production."
     }
   ],
   "post_merge": {
