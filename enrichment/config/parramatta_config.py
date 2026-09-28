@@ -1,4 +1,4 @@
-"""Parramatta DCP 2023 (Amendment 4) — applicability config.
+r"""Parramatta DCP 2023 (Amendment 4) — applicability config.
 
 SHAPE: the `parts` path, not `chapter_topics`. The whole DCP is stored as ONE
 1,563-page document (`Parramatta_DCP_2023_(Amendment_4)__parramatta_dcp_2023`),

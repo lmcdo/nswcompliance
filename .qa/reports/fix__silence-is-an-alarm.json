@@ -10,7 +10,9 @@
     ".claude/dcp_pipeline_manifest.json",
     "tests/test_silence_is_an_alarm.py",
     "tests/test_a_broke_model_stops_the_chapter.py",
-    "tests/test_the_pipeline_cannot_lose_a_stage.py"
+    "tests/test_the_pipeline_cannot_lose_a_stage.py",
+    "enrichment/config/parramatta_config.py",
+    "tests/test_an_alert_carries_its_own_cause.py"
   ],
   "pre_impl": {
     "existing_data": "Measured before writing anything, on production and on the live Railway fleet rather than from the prompt. (1) url_last_checked across dcp_chapter_registry via scripts/dq_db.py read-only session: max = 2026-09-24, median = 2026-09-15, 514 monitorable rows, 5 never checked. (2) HC_PING_URL and AI_MODEL/provider keys read per service with `railway variables --service <name> --kv` across all 10 services in project refreshing-hope. (3) url_last_checked write sites confirmed in scripts/r2_monitor.py (lines 900, 937, 971, 1038, 1106, 1126, 1143, 1259) so the column is a true liveness signal.",
@@ -147,6 +149,20 @@
       "mitigated": false,
       "how": "NOT mitigated in code, and deliberately so -- the alerts are true. It is mitigated only by the operator doing the two actions in post_merge BEFORE or immediately after merge. This is the one real cost of the change and it is stated rather than softened.",
       "repro": "Merge without creating the healthchecks.io checks; every DCP stage exits 3 on its next scheduled run."
+    },
+    {
+      "scenario": "The alert names the wrong cause, so it gets read once and then ignored.",
+      "what_happens": "run_monitors ships the last 2,000 bytes of stderr. A plain docstring in enrichment/config/parramatta_config.py containing re.sub(r'\\.?\\d+$') made Python print an invalid-escape warning on every import, which filled the alert body. FIVE production alerts carried that one character and nothing else; the real cause (429 credit_balance_exhausted on all 11 chapters) was only findable by reading the Railway logs by hand.",
+      "mitigated": true,
+      "how": "Docstring prefixed with r — one character, no prose changed, asserted by a test that the sentence is still there so the warning cannot be 'fixed' by deleting the explanation. tests/test_an_alert_carries_its_own_cause.py compiles every enrichment/config/*.py and fails on any invalid escape. Scoped to that directory on purpose: 11 other files carry invalid escapes, all checked individually and none on an alert path (\\m/\\M are PostgreSQL word-boundary operators in SQL strings; the rest are archive or not deployed). Forced red by reverting the one character: 3 of 6 tests failed.",
+      "repro": "Remove the r prefix from enrichment/config/parramatta_config.py's docstring; pytest tests/test_an_alert_carries_its_own_cause.py fails."
+    },
+    {
+      "scenario": "The sweep that looks for this class of noise reports zero while the defect is live.",
+      "what_happens": "The first version of the sweep returned 'files with invalid escape sequences: 0' for a file that was provably warning in production, which would have closed the investigation on a false negative.",
+      "mitigated": true,
+      "how": "warnings.simplefilter() REPLACES the whole filter list rather than appending, so a second simplefilter('error', SyntaxWarning) discarded the DeprecationWarning rule set the line before — and on Python 3.11 an invalid escape IS a DeprecationWarning, so nothing was escalated. The test now uses record=True with one simplefilter('always'), and two tests assert the detector fires on a known-bad string and stays quiet on the same text made raw.",
+      "repro": "TestTheDetectorItselfWorks::test_the_detector_catches_a_known_bad_string"
     }
   ],
   "post_merge": {
