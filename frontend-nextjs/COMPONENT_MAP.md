@@ -65,6 +65,11 @@
 - `StateLevelControls.tsx`
 - APIs: `/api/adg/requirements`, `/api/sepp/structured-requirements`,
   `/api/tod/transport-autocomplete`, plus the same `/api/property` props.
+- Clause citations: `SeppCitationLink.tsx` → live in-force legislation.nsw.gov.au anchors
+  from `lib/citation-instrument-urls.ts` (`REGISTRY_INSTRUMENT_URLS`), not static page PNGs.
+  LEP tab `HeritageProvisionsCard` / `LocalProvisionsCard` link the Portal's own
+  `legislationUrl#sec.<clause>`; `/api/lep/provisions` (Inner West LEP 2022 text only) is
+  called only when that URL is `epi-2022-0457`.
 
 ---
 

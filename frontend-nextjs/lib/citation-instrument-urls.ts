@@ -147,3 +147,54 @@ export function resolveCitationUrl(
   }
   return null;
 }
+
+/**
+ * instrument_registry.legislation_url by instrument_key, for LEP/SEPP tab surfaces that
+ * cite an instrument without a document_id to resolve. Only keys seeded in
+ * migrations/010_instrument_registry.sql belong here — the same values the document_id
+ * map above already carries. Sustainable Buildings SEPP 2022 has no registry row (see
+ * the unmatched set in the test), so it is deliberately absent.
+ *
+ * prior-art-checked: extends this module rather than adding a parallel one. The other
+ * legislation URLs in the tree (app/api/compliance/parking SEPP_HOUSING_URL, the
+ * GrannyFlatTool / CDCScreener literals) are per-file constants, not a shared resolver;
+ * nsw-planning-portal.ts only passes through the Portal's own legislationUrl.
+ */
+export const REGISTRY_INSTRUMENT_URLS = {
+  sepp_housing_2021: 'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714',
+  // prior-art-checked: value copied verbatim from the migration 010 seed row; the
+  // ExemptComplyingProvisions literal it replaces had a malformed id (epi-2008-572).
+  sepp_exempt_complying_2008: 'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-0572',
+  inner_west_lep_2022: 'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0457',
+} as const;
+
+/**
+ * Deep-link a legislation.nsw.gov.au in-force view to one provision, e.g. `sec.5.10`
+ * or `sch.11`. Any fragment already on the base URL is replaced.
+ * Returns null without a base URL — callers must not render a dead link.
+ */
+export function legislationAnchorUrl(
+  baseUrl: string | null | undefined,
+  anchor?: string | null
+): string | null {
+  if (!baseUrl) return null;
+  const base = baseUrl.split('#')[0];
+  return anchor ? `${base}#${anchor}` : base;
+}
+
+/** The EPI identifier (e.g. "epi-2022-0457") in a legislation.nsw.gov.au URL, or null. */
+export function epiIdFromUrl(url: string | null | undefined): string | null {
+  const match = url?.match(/\b(epi-\d{4}-\d{4})\b/i);
+  return match ? match[1].toLowerCase() : null;
+}
+
+/**
+ * True only when a Planning Portal legislationUrl names Inner West LEP 2022 — the one
+ * LEP whose clause text /api/lep/provisions serves. Any other council's LEP must not be
+ * sent there: the route matches on clause number alone, so it would return Inner West's
+ * clause of the same number as if it were the property's own LEP.
+ */
+export function isInnerWestLep2022Url(url: string | null | undefined): boolean {
+  const epi = epiIdFromUrl(url);
+  return epi !== null && epi === epiIdFromUrl(REGISTRY_INSTRUMENT_URLS.inner_west_lep_2022);
+}
