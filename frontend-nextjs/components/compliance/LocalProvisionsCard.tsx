@@ -7,7 +7,7 @@ import { ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LocalProvision } from '@/lib/nsw-planning-portal';
 import { SemanticColors } from '@/lib/design-tokens';
-import { isInnerWestLep2022Url, legislationAnchorUrl } from '@/lib/citation-instrument-urls';
+import { legislationAnchorUrl, storedLepTextEpi } from '@/lib/citation-instrument-urls';
 
 interface LocalProvisionsCardProps {
   localProvisions: LocalProvision[];
@@ -57,13 +57,15 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
       newExpanded.add(provisionKey);
       setExpandedProvisions(newExpanded);
 
-      // /api/lep/provisions only holds Inner West LEP 2022 text and matches on clause
-      // number alone — never ask it on behalf of another council's LEP.
-      if (!provisionDetails[provisionKey] && isInnerWestLep2022Url(legislationUrl)) {
+      // Stored clause text exists only for some LEPs; for the rest the live link is shown.
+      const epi = storedLepTextEpi(legislationUrl);
+      if (!provisionDetails[provisionKey] && epi) {
         setLoading({ ...loading, [provisionKey]: true });
 
         try {
-          const response = await fetch(`/api/lep/provisions?clause=${encodeURIComponent(clauseNumber)}`);
+          const response = await fetch(
+            `/api/lep/provisions?clause=${encodeURIComponent(clauseNumber)}&epi=${encodeURIComponent(epi)}`
+          );
           console.log(`[LocalProvisionsCard] Fetching clause ${clauseNumber}, status: ${response.status}`);
           if (response.ok) {
             const data = await response.json();

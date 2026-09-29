@@ -65,7 +65,7 @@ describe('HeritageProvisionsCard — clause 5.10', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: /expand provision/i }));
     await waitFor(() =>
-      expect(global.fetch).toHaveBeenCalledWith('/api/lep/provisions?clause=5.10')
+      expect(global.fetch).toHaveBeenCalledWith('/api/lep/provisions?clause=5.10&epi=epi-2022-0457')
     );
   });
 

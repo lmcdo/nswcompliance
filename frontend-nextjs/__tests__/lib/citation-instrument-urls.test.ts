@@ -11,7 +11,7 @@ import {
   INSTRUMENT_CITATION_URLS,
   REGISTRY_INSTRUMENT_URLS,
   epiIdFromUrl,
-  isInnerWestLep2022Url,
+  storedLepTextEpi,
   legislationAnchorUrl,
   resolveCitationUrl,
 } from '@/lib/citation-instrument-urls';
@@ -191,20 +191,20 @@ describe('legislationAnchorUrl', () => {
   });
 });
 
-describe('isInnerWestLep2022Url — gate for the Inner-West-only /api/lep/provisions', () => {
+describe('storedLepTextEpi — which LEPs /api/lep/provisions may be asked about', () => {
   it('accepts the Inner West LEP 2022 URL in any view form', () => {
-    expect(isInnerWestLep2022Url('https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0457')).toBe(true);
-    expect(isInnerWestLep2022Url('https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457#sec.5.10')).toBe(true);
+    expect(storedLepTextEpi('https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0457')).toBe('epi-2022-0457');
+    expect(storedLepTextEpi('https://legislation.nsw.gov.au/view/whole/html/inforce/current/EPI-2022-0457#sec.5.10')).toBe('epi-2022-0457');
   });
 
   it("rejects another council's LEP", () => {
     // Waverley LEP 2012 (epi-2012-0540, per lib/lep-local-provisions-mapping.ts)
-    expect(isInnerWestLep2022Url('https://legislation.nsw.gov.au/view/html/inforce/current/epi-2012-0540')).toBe(false);
+    expect(storedLepTextEpi('https://legislation.nsw.gov.au/view/html/inforce/current/epi-2012-0540')).toBeNull();
   });
 
   it('rejects a missing or unparseable URL (fails closed)', () => {
-    expect(isInnerWestLep2022Url(undefined)).toBe(false);
-    expect(isInnerWestLep2022Url('https://legislation.nsw.gov.au/')).toBe(false);
+    expect(storedLepTextEpi(undefined)).toBeNull();
+    expect(storedLepTextEpi('https://legislation.nsw.gov.au/')).toBeNull();
   });
 
   it('does not match a longer EPI number that merely contains the id', () => {

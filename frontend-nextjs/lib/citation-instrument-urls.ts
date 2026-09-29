@@ -189,12 +189,24 @@ export function epiIdFromUrl(url: string | null | undefined): string | null {
 }
 
 /**
- * True only when a Planning Portal legislationUrl names Inner West LEP 2022 — the one
- * LEP whose clause text /api/lep/provisions serves. Any other council's LEP must not be
- * sent there: the route matches on clause number alone, so it would return Inner West's
- * clause of the same number as if it were the property's own LEP.
+ * LEPs whose clause text is stored in regulatory_provisions, keyed by EPI id, valued by
+ * the document_id prefix their rows carry. /api/lep/provisions answers ONLY for an EPI
+ * listed here and only from that instrument's rows: clause numbers repeat across every
+ * Standard Instrument LEP (5.10, 6.x), so a lookup by clause number alone would hand one
+ * council's text to another. Add an entry only once that LEP's text is ingested.
+ *
+ * prior-art-checked: previously the route hardcoded the Inner West prefix and matched on
+ * clause number alone; this moves that one fact here so the route and its callers share it.
  */
-export function isInnerWestLep2022Url(url: string | null | undefined): boolean {
+export const LEP_TEXT_DOCUMENT_PREFIXES: Record<string, string> = {
+  [epiIdFromUrl(REGISTRY_INSTRUMENT_URLS.inner_west_lep_2022)!]: 'Inner_West_Local_Environmental_Plan_2022',
+};
+
+/**
+ * The EPI id of a Planning Portal legislationUrl when its LEP's clause text is stored,
+ * else null. Callers skip /api/lep/provisions on null and show the live clause link.
+ */
+export function storedLepTextEpi(url: string | null | undefined): string | null {
   const epi = epiIdFromUrl(url);
-  return epi !== null && epi === epiIdFromUrl(REGISTRY_INSTRUMENT_URLS.inner_west_lep_2022);
+  return epi && LEP_TEXT_DOCUMENT_PREFIXES[epi] ? epi : null;
 }

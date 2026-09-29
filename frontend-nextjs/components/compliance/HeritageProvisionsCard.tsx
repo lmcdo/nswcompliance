@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Shield, ExternalLink, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SemanticColors } from '@/lib/design-tokens';
-import { isInnerWestLep2022Url, legislationAnchorUrl } from '@/lib/citation-instrument-urls';
+import { legislationAnchorUrl, storedLepTextEpi } from '@/lib/citation-instrument-urls';
 
 interface HeritageProvisionsCardProps {
   heritage: boolean;
@@ -76,13 +76,15 @@ export function HeritageProvisionsCard({
     } else {
       setIsExpanded(true);
 
-      // /api/lep/provisions only holds Inner West LEP 2022 text and matches on clause
-      // number alone — never ask it on behalf of another council's LEP.
-      if (!provisionDetail && clauseNumber && isInnerWestLep2022Url(heritageLegislationUrl)) {
+      // Stored clause text exists only for some LEPs; for the rest the live link is shown.
+      const epi = storedLepTextEpi(heritageLegislationUrl);
+      if (!provisionDetail && clauseNumber && epi) {
         setLoading(true);
 
         try {
-          const response = await fetch('/api/lep/provisions?clause=' + encodeURIComponent(clauseNumber));
+          const response = await fetch(
+            `/api/lep/provisions?clause=${encodeURIComponent(clauseNumber)}&epi=${encodeURIComponent(epi)}`
+          );
           if (response.ok) {
             const data = await response.json();
             setProvisionDetail(data);
