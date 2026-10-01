@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Minor: documentation only. CLAUDE.md gains one section; no code, query, schema, migration or user-facing string is touched. The gate and ledger row it names (dcp_page_repair.py --check, DQ-113) already exist and are unchanged. Standard was considered and rejected because nothing executable changes, so there is no failure mode to test.",
-  "commit_hash": "958b3911",
+  "commit_hash": "6efff30b",
   "files": [
     "CLAUDE.md"
   ],
@@ -25,10 +25,10 @@
   "break_it": [
     {
       "scenario": "A future session reads 'most extraction defects are NOT blockers' as licence to ship a row with the wrong words or the wrong page.",
-      "what_happens": "A served control could be coarse-but-true under the rule, or wrong-and-shipped under a misreading of it, and the two look similar from a distance.",
+      "what_happens": "A served control could be coarse-but-true under the rule, or wrong-and-shipped under a misreading of it, and from a distance the two look alike.",
       "mitigated": true,
-      "how": "The section names the boundary explicitly rather than leaving it to judgement: a defect blocks when it makes a served row WRONG rather than merely coarse — wrong words, wrong page, wrong property, or a number presented as the council's that the council did not print. Those four are exactly what dcp_page_repair.py --check and citation_status already test per row, so the permissive half of the rule is bounded by machinery that was already failing the build, not by the reader's restraint.",
-      "repro": "Run `python scripts/dcp_page_repair.py --check` on a chapter whose PDF has changed: it reports the rules as UNCHECKED and fails, regardless of what CLAUDE.md says."
+      "how": "The section names the boundary rather than leaving it to judgement: a defect blocks when it makes a served row WRONG rather than merely coarse -- wrong words, wrong page, wrong property, or a number presented as the council's that the council did not print. Those are what dcp_page_repair.py --check and citation_status already test per row, so the permissive half of the rule is bounded by machinery already failing the build, not by the reader's restraint.",
+      "repro": "Run `python scripts/dcp_page_repair.py --check` on a chapter whose PDF changed: it reports UNCHECKED and fails whatever CLAUDE.md says."
     }
   ],
   "post_merge": {
