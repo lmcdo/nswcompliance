@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical, not Standard: this changes which provisions exist on the new side of every DCP extraction diff, for every council, on the path that feeds dcp_review_queue and therefore what a human can approve into regulatory_provisions. Before the fix a provision could cease to exist with every count agreeing; after it, provisions that previously vanished now appear as review rows. A mistake here either invents a provision the document does not contain (if identical duplicates were suffixed) or keeps losing real clauses (if the suffixing is wrong), and both reach served law. Standard was considered and rejected because the blast radius is every chapter of every council, not one council's alerting.",
-  "commit_hash": "7fb44d58",
+  "commit_hash": "0ee00fc7",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_duplicate_ref_is_not_dropped.py",
