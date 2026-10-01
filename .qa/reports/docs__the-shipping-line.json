@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Minor: documentation only. CLAUDE.md gains one section; no code, query, schema, migration or user-facing string is touched. The gate and ledger row it names (dcp_page_repair.py --check, DQ-113) already exist and are unchanged. Standard was considered and rejected because nothing executable changes, so there is no failure mode to test.",
-  "commit_hash": "9de825a9",
+  "commit_hash": "958b3911",
   "files": [
     "CLAUDE.md"
   ],
