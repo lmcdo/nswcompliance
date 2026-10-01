@@ -1,7 +1,7 @@
 {
   "tier": "standard",
-  "justification": "Standard, not Critical: no production write, no schema change, no new query, no user-facing text, and nothing here can commit a provision or alter served data. It does change which hub findings raise an alert, so a mistake would hide a genuinely removed document rather than serve a wrong control — not Minor either. Critical was considered and rejected on that basis: the worst outcome is a missed alert for at most one extra sweep, because the per-chapter fetch path and its check_failures counter are untouched and still escalate independently.",
-  "commit_hash": "ec63aa2f",
+  "justification": "Standard, not Critical: no production write, no schema change, no new query, no user-facing text, and nothing here can commit a provision or alter served data. It does change which hub findings raise an alert, so a mistake would hide a genuinely removed document rather than serve a wrong control — not Minor either. Critical was considered and rejected on that basis: the worst outcome is that the hub's delisting line for a newly-dead document is delayed to the fourth sweep, while the per-chapter fetch path — untouched — still raises that document as a real failure on the FIRST sweep and pages via exit 1. The fast detector is unchanged; only the secondary claim is slowed.",
+  "commit_hash": "fa89f3b6",
   "files": [
     "scripts/r2_monitor.py",
     "tests/test_r2_monitor_alerting.py",
