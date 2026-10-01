@@ -120,11 +120,13 @@ def send_telegram(msg: str) -> None:
         pass
 
 
-#: Exit code for "the monitor ran fine, and this service has no working
-#: dead-man's switch". Distinct from 1 (the monitor crashed) and from 2 (the
-#: monitor ran and found something) so the dashboard can tell the three apart.
-#: The work still happens -- refusing to run the monitor would trade a data
-#: outage for a monitoring outage -- but the run reports itself unmonitored.
+#: Reserved for "ran fine, no working dead-man's switch". NO LONGER RETURNED --
+#: see the end of main(). It shipped as a real exit code on 2026-09-28 and was
+#: stepped back the same day: seven of nine live stages have no usable HC_PING_URL,
+#: so it produced seven red jobs per cycle for a configuration gap. Kept as a named
+#: constant rather than deleted, because the state it names is still detected and
+#: still reported, and a future change may want to fail on it once every stage is
+#: configured.
 EXIT_NO_DEADMAN_SWITCH = 3
 
 #: The only hosts that issue a healthchecks.io ping URL. A value that is not on
@@ -362,9 +364,32 @@ def main() -> int:
     # exit code is the carrier that does not depend on the alert channel working.
     resolved = 0 if exit_code == 2 else exit_code
     if resolved == 0 and switch_problem:
-        print(f"[run_monitors] exiting {EXIT_NO_DEADMAN_SWITCH}: {monitor_name} ran "
-              f"fine but is not being watched", file=sys.stderr)
-        return EXIT_NO_DEADMAN_SWITCH
+        # ⚠ REPORTED, NOT FAILED -- and that is a deliberate step back from what
+        # this returned when it first shipped.
+        #
+        # It returned EXIT_NO_DEADMAN_SWITCH here, which made every stage without
+        # its own healthchecks.io URL fail every run. Measured on the live fleet
+        # 2026-09-28: SEVEN of nine stages have no usable URL, so that meant seven
+        # red jobs and seven alerts per cycle, for a monitoring gap rather than a
+        # data problem. An operator who is paged seven times a night about
+        # configuration learns to ignore the channel -- which is the same end
+        # state as no alarm at all, reached faster, and this file exists to
+        # prevent exactly that.
+        #
+        # THE ALARM MOVED, IT DID NOT GO AWAY. .github/workflows/freshness-alarm.yml
+        # runs the DQ ledger daily from outside Railway and pings ONE
+        # healthchecks.io check. That check fires when the data goes stale OR when
+        # the runner dies, so it covers every stage's OUTCOME rather than each
+        # stage's liveness -- one URL to configure instead of nine, and it cannot
+        # read green while what we serve is stale.
+        #
+        # Per-stage switches remain worth having as DIAGNOSTICS: they say WHICH
+        # stage stopped, once the outcome alarm has told you that something did.
+        # A diagnostic must not fail the job it diagnoses.
+        print(f"[run_monitors] WARNING: {monitor_name} ran fine but is not being "
+              f"watched by its own dead-man's switch -- {switch_problem}. The "
+              f"freshness alarm covers the outcome; this is a diagnostic gap.",
+              file=sys.stderr)
     return resolved
 
 

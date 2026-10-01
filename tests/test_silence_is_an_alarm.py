@@ -43,11 +43,23 @@ alert and a non-zero exit -- and the healthy state is asserted to produce
 neither, because a check that fires on everything is the same as one that fires
 on nothing.
 
-The exit code carries it, not Telegram. Telegram is in-band: same container,
-same env, same network as the job it reports on, and `send_telegram` swallows its
-own failures twice over, so a dead job and a dead alert channel are
-indistinguishable from outside. The exit code does not depend on the alert
-channel working.
+⚠ THE EXIT CODE WAS STEPPED BACK, SAME DAY, AND THESE TESTS FOLLOWED IT.
+As first merged, a stage with no working switch returned EXIT_NO_DEADMAN_SWITCH and
+so FAILED its run. Seven of the nine live stages have no usable HC_PING_URL, so that
+meant seven red jobs and seven alerts per cycle about configuration rather than
+about data -- and an operator paged seven times a night learns to ignore the
+channel, which is the same end state as no alarm, reached faster.
+
+The failure moved rather than vanished: .github/workflows/freshness-alarm.yml runs
+the DQ ledger daily from OUTSIDE Railway and pings one healthchecks.io check only
+when the ledger is green, so stale data or a dead runner both raise an alarm. That
+check cannot read green while what we serve is stale, which is the property nine
+per-stage liveness pings never had.
+
+So what these tests now assert is that all four broken states are still DETECTED,
+still ALERT by name, and that a misconfigured URL is still never pinged -- because
+pinging another stage's check holds that stage's alarm green. Only the exit code
+changed.
 """
 from __future__ import annotations
 
@@ -116,11 +128,12 @@ def _alerts_about_the_switch(sent: list[str]) -> list[str]:
     return [m for m in sent if "dead-man" in m or "did not land" in m]
 
 
-class TestAMissingSwitchIsLoud:
+class TestAMissingSwitchIsLoudButNotFatal:
     """The state `ping_healthcheck` used to return silently on."""
 
-    def test_no_url_exits_nonzero(self, harness):
-        assert rm.main() == rm.EXIT_NO_DEADMAN_SWITCH
+    def test_no_url_does_not_fail_the_run(self, harness):
+        """The step back. A configuration gap must not fail a job that worked."""
+        assert rm.main() == 0
 
     def test_no_url_alerts(self, harness):
         rm.main()
@@ -158,8 +171,10 @@ class TestAMissingSwitchIsLoud:
 
 class TestThePlaceholderThatWasLiveOnSixServices:
     def test_the_measured_value_is_rejected(self, harness):
+        """Rejected means: alerted and not pinged. It no longer means failed."""
         harness["env"].setenv("HC_PING_URL", LIVE_PLACEHOLDER)
-        assert rm.main() == rm.EXIT_NO_DEADMAN_SWITCH
+        assert rm.main() == 0
+        assert _alerts_about_the_switch(harness["sent"])
 
     def test_it_is_not_pinged(self, harness):
         """Pinging another stage's check holds THAT stage's alarm green, so a wrong
@@ -181,7 +196,10 @@ class TestAnotherStagesCheckIsRejected:
     def test_a_different_stages_slug_is_rejected(self, harness):
         harness["env"].setenv("HC_PING_URL",
                               "https://hc-ping.com/pingkey/satellite-freshness")
-        assert rm.main() == rm.EXIT_NO_DEADMAN_SWITCH
+        assert rm.main() == 0
+        assert _alerts_about_the_switch(harness["sent"])
+        assert harness["pinged"] == [], (
+            "another stage's check was pinged, which holds THAT stage's alarm green")
 
     def test_a_prefix_of_this_stages_name_is_rejected(self):
         """`dcp-extract` is a prefix of `dcp-extract-all`, so plain substring
@@ -216,7 +234,10 @@ class TestAPingThatDoesNotLandIsNotAPing:
         check alone. See tests/test_run_monitors_deadman_switch_real.py."""
         harness["env"].setenv("HC_PING_URL", GOOD)
         harness["ping_body"] = "OK (not found)"
-        assert rm.main() == rm.EXIT_NO_DEADMAN_SWITCH
+        assert rm.main() == 0
+        assert _alerts_about_the_switch(harness["sent"]), (
+            "a ping that did not land raised no alert, so the run left no heartbeat "
+            "and said nothing about it")
 
     def test_a_plain_ok_body_is_a_heartbeat(self, harness):
         """The other side of it: a real ping answers `OK` and must be accepted, or the
@@ -225,10 +246,11 @@ class TestAPingThatDoesNotLandIsNotAPing:
         harness["ping_body"] = "OK"
         assert rm.main() == 0
 
-    def test_a_404_ping_exits_nonzero(self, harness):
+    def test_a_404_ping_alerts_without_failing(self, harness):
         harness["env"].setenv("HC_PING_URL", GOOD)
         harness["ping_status"] = 404
-        assert rm.main() == rm.EXIT_NO_DEADMAN_SWITCH
+        assert rm.main() == 0
+        assert _alerts_about_the_switch(harness["sent"])
 
     def test_a_404_ping_alerts(self, harness):
         harness["env"].setenv("HC_PING_URL", GOOD)
@@ -243,12 +265,14 @@ class TestAPingThatDoesNotLandIsNotAPing:
             raise OSError("connection reset")
 
         monkeypatch.setattr(rm.requests, "get", _boom)
-        assert rm.main() == rm.EXIT_NO_DEADMAN_SWITCH
+        assert rm.main() == 0
+        assert _alerts_about_the_switch(harness["sent"])
 
     def test_a_500_from_healthchecks_is_not_a_heartbeat(self, harness):
         harness["env"].setenv("HC_PING_URL", GOOD)
         harness["ping_status"] = 503
-        assert rm.main() == rm.EXIT_NO_DEADMAN_SWITCH
+        assert rm.main() == 0
+        assert _alerts_about_the_switch(harness["sent"])
 
 
 class TestAWorkingSwitchIsSilent:
@@ -293,8 +317,11 @@ class TestTheMonitorsOwnVerdictStillWins:
         assert rm.main() == 0
 
     def test_a_findings_run_with_no_switch_reports_the_switch(self, harness):
+        """Exit 2 means "ran and found something" and still maps to 0. The switch gap
+        is reported through the alert, not through the exit code."""
         harness["child_exit"] = 2
-        assert rm.main() == rm.EXIT_NO_DEADMAN_SWITCH
+        assert rm.main() == 0
+        assert _alerts_about_the_switch(harness["sent"])
 
     def test_a_failing_run_pings_the_fail_endpoint(self, harness):
         harness["env"].setenv("HC_PING_URL", GOOD)
@@ -409,4 +436,10 @@ class TestItRunsAsAScript:
                 "does not provide it to a child process (requirements-test.txt does "
                 "not install it). The in-process tests above still cover the exit "
                 "code; only the real-process proof is skipped. NOT a pass.")
-        assert proc.returncode == rm.EXIT_NO_DEADMAN_SWITCH, proc.stderr[-2000:]
+        # 0, not EXIT_NO_DEADMAN_SWITCH: a missing per-stage switch no longer fails
+        # the run. What this still proves is that main() completes as a REAL process
+        # and reports the gap, rather than only returning in-process.
+        assert proc.returncode == 0, proc.stderr[-2000:]
+        assert "not being" in (proc.stderr or ""), (
+            "the process exited 0 without saying it is unwatched, so the gap is now "
+            "genuinely silent")
