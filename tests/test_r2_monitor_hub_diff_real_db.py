@@ -49,9 +49,21 @@ if _REAL_DB_REQUESTED:
 
 pytestmark = pytest.mark.database
 
-# r2_monitor reads R2 config at import time and never uses it here.
-for _var in ("R2_ACCOUNT_ID", "R2_BUCKET_NAME", "R2_ACCESS_KEY_ID",
-             "R2_SECRET_ACCESS_KEY", "DATABASE_URL"):
+# r2_monitor reads its R2 and DB config at import time with a bare index, so the
+# module cannot be imported at all without them — and a worktree carries no .env.
+# These tests never make an R2 call, so placeholders are fine there.
+#
+# DATABASE_URL is deliberately NOT placeholdered in real-DB mode. r2_monitor reads
+# `DATABASE_URL or SUPABASE_DB_URL`, and so does this file; setting a placeholder
+# unconditionally would satisfy the first and silently prevent the SUPABASE_DB_URL
+# fallback from ever being reached, so a run configured only with SUPABASE_DB_URL
+# would try to connect to the literal string "test-database_url" instead of
+# skipping or working. Caught by the pre-push cross-review, 2026-10-01.
+_PLACEHOLDERS = ["R2_ACCOUNT_ID", "R2_BUCKET_NAME", "R2_ACCESS_KEY_ID",
+                 "R2_SECRET_ACCESS_KEY"]
+if not _REAL_DB_REQUESTED:
+    _PLACEHOLDERS.append("DATABASE_URL")
+for _var in _PLACEHOLDERS:
     os.environ.setdefault(_var, f"test-{_var.lower()}")
 
 from r2_monitor import diff_urls, UNLISTED_CONFIRM_FAILURES  # noqa: E402
