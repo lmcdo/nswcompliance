@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard, not Critical: no production write, no schema change, no new query, no user-facing text, and nothing here can commit a provision or alter served data. It does change which hub findings raise an alert, so a mistake would hide a genuinely removed document rather than serve a wrong control — not Minor either. Critical was considered and rejected on that basis: the worst outcome is a missed alert for at most one extra sweep, because the per-chapter fetch path and its check_failures counter are untouched and still escalate independently.",
-  "commit_hash": "b15663f8",
+  "commit_hash": "ec63aa2f",
   "files": [
     "scripts/r2_monitor.py",
     "tests/test_r2_monitor_alerting.py",
@@ -42,10 +42,10 @@
   "break_it": [
     {
       "scenario": "A document dies and is delisted from the hub in the same sweep.",
-      "what_happens": "check_failures is read from the row before this run's fetch, so it is still 0 and the chapter reports `unlisted` for one cycle instead of alerting.",
+      "what_happens": "diff_urls reads check_failures as it stood BEFORE this run's fetch, and the per-chapter loop is what increments it. So the counter reads 0, then 1, then 2 on the next three sweeps and only reaches the threshold on the FOURTH — roughly eight weeks on a fortnightly cron, not one extra sweep. An earlier draft of this report and of the code comment claimed a two-cycle confirmation; that was wrong and was caught by the pre-push advisory review, then verified against the increment site at scripts/r2_monitor.py:1187.",
       "mitigated": true,
-      "how": "Deliberate two-cycle confirmation, stated in the code comment rather than left to be rediscovered. The per-chapter fetch path is untouched and increments the counter in that same run, so the next sweep alerts. The chapter is also independently surfaced by the existing check_failures >= 3 line in the run summary, which does not depend on the hub at all.",
-      "repro": "Set a chapter's check_failures to 0, remove it from the hub scrape result and break its council_url; first run reports unlisted, second reports removed."
+      "how": "Acceptable only because this branch is not the detector for a dead document. A URL that stops fetching raises a real failure in the per-chapter loop on the very FIRST sweep — results['failed'] feeds n_real_failed, which produces exit 1 and a Telegram alert — regardless of what the hub page says. The hub line decides the narrower question of whether to also claim the council delisted it, and claiming that early is exactly what produced 54 false lines per sweep. The chapter is additionally surfaced by the existing check_failures >= 3 line in the run summary. Slow is the correct bias for the secondary signal; the fast path already exists and is untouched.",
+      "repro": "Set a chapter's check_failures to 0, remove it from the hub scrape result and break its council_url. Sweep 1 reports unlisted AND a real failure (exit 1). Sweeps 2 and 3 report unlisted and a real failure. Sweep 4 reports removed."
     },
     {
       "scenario": "A council's hub page silently starts returning a partial list, so real documents become unlisted.",

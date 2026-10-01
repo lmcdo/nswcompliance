@@ -410,10 +410,22 @@ def diff_urls(
             # that same run with check_failures = 0. Three were genuinely gone (a
             # decommissioned cbcity-webdocs.azurewebsites.net host, check_failures=5).
             #
-            # So the evidence of removal is the document's OWN url failing. Note the
-            # counter is read before this run's fetch, so a chapter that dies and
-            # delists in the same cycle reports `unlisted` once, then `removed` once
-            # its counter passes the threshold — a deliberate two-cycle confirmation.
+            # So the evidence of removal is the document's OWN url failing.
+            #
+            # LATENCY, STATED EXACTLY, because it is easy to get wrong: this reads
+            # check_failures as it stood BEFORE this run's fetch, and the per-chapter
+            # loop below is what increments it. A chapter that dies and delists in the
+            # same cycle therefore reads 0, 1, 2 on the next three sweeps and only
+            # reaches the threshold on the FOURTH — about eight weeks on a fortnightly
+            # cron, not one extra sweep.
+            #
+            # That is acceptable only because this line is not the detector. A URL that
+            # stops fetching raises a real failure in the per-chapter loop on the very
+            # first sweep (results["failed"] -> n_real_failed -> exit 1 -> Telegram),
+            # whatever the hub says. What this branch decides is the narrower question
+            # of whether to ALSO claim the council delisted it, and claiming that early
+            # is what produced 54 false lines a sweep. Slow is the right bias here;
+            # the fast path already exists and is untouched.
             if (stored_ch.get("check_failures") or 0) >= UNLISTED_CONFIRM_FAILURES:
                 result.removed.append(key)
             else:
