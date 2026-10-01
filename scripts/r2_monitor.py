@@ -80,11 +80,18 @@ def run_exit_code(n_changed: int, n_real_failed: int) -> int:
     return 0
 
 
+#: How many consecutive own-URL fetch failures turn "absent from the hub page"
+#: into "gone". Matches the `check_failures >= 3` threshold this file already uses
+#: for a persistently failing chapter (TransientFetchError, and the run summary).
+UNLISTED_CONFIRM_FAILURES = 3
+
+
 @dataclass
 class DiffResult:
     url_same:     list[str] = field(default_factory=list)   # chapter_keys: URL unchanged
     url_migrated: list[tuple] = field(default_factory=list) # (key, old_url, new_url)
-    removed:      list[str] = field(default_factory=list)   # keys in registry, not on hub
+    removed:      list[str] = field(default_factory=list)   # not on hub AND own URL failing
+    unlisted:     list[str] = field(default_factory=list)   # not on hub, own URL still fetches
     added:        list[dict] = field(default_factory=list)  # {url, label} on hub, no key match
     count_ok:     bool = True
 
@@ -390,7 +397,39 @@ def diff_urls(
 
     for key, stored_ch in stored_by_key.items():
         if key not in discovered_by_key:
-            result.removed.append(key)
+            # Absence from the hub page is NOT evidence the document was removed.
+            # The hub page and the document URL are independent facts, and a council
+            # whose chapters are not enumerated on the page we scrape makes every
+            # chapter look removed, every sweep, for ever.
+            #
+            # Measured 2026-10-01 on canterbury_bankstown: the hub returns 14 links
+            # (6 of them the same waste document) — all ancillary guides, none of the
+            # DCP chapters, which are served from a SharePoint/Azure api/publish
+            # endpoint the page never lists. That produced "Removed from hub" for all
+            # 54 non-inert chapters on every run, while 51 of them hashed cleanly in
+            # that same run with check_failures = 0. Three were genuinely gone (a
+            # decommissioned cbcity-webdocs.azurewebsites.net host, check_failures=5).
+            #
+            # So the evidence of removal is the document's OWN url failing.
+            #
+            # LATENCY, STATED EXACTLY, because it is easy to get wrong: this reads
+            # check_failures as it stood BEFORE this run's fetch, and the per-chapter
+            # loop below is what increments it. A chapter that dies and delists in the
+            # same cycle therefore reads 0, 1, 2 on the next three sweeps and only
+            # reaches the threshold on the FOURTH — about eight weeks on a fortnightly
+            # cron, not one extra sweep.
+            #
+            # That is acceptable only because this line is not the detector. A URL that
+            # stops fetching raises a real failure in the per-chapter loop on the very
+            # first sweep (results["failed"] -> n_real_failed -> exit 1 -> Telegram),
+            # whatever the hub says. What this branch decides is the narrower question
+            # of whether to ALSO claim the council delisted it, and claiming that early
+            # is what produced 54 false lines a sweep. Slow is the right bias here;
+            # the fast path already exists and is untouched.
+            if (stored_ch.get("check_failures") or 0) >= UNLISTED_CONFIRM_FAILURES:
+                result.removed.append(key)
+            else:
+                result.unlisted.append(key)
         elif discovered_by_key[key]["url"] != stored_ch["council_url"]:
             result.url_migrated.append((key, stored_ch["council_url"], discovered_by_key[key]["url"]))
         else:
@@ -761,6 +800,16 @@ def run_monitor(
                     council_hub_alerts.append(f"URL migrated: {key}")
                     results["hub_alerts"].append(f"URL migration: {council}/{key}")
 
+                # Not listed on the hub, but the document itself still fetches.
+                # Logged so the run is readable, never alerted: this is routinely
+                # the normal state for a council whose hub page is a landing page
+                # rather than an index of its chapters.
+                if diff.unlisted:
+                    print(f"  [UNLISTED] {len(diff.unlisted)} chapter(s) not on the hub page "
+                          f"but still fetching from their own URL — not an alert: "
+                          f"{', '.join(sorted(diff.unlisted)[:5])}"
+                          f"{'...' if len(diff.unlisted) > 5 else ''}")
+
                 # Removed chapters
                 for key in diff.removed:
                     chapter_is_inert = next(
@@ -770,8 +819,17 @@ def run_monitor(
                     if chapter_is_inert:
                         print(f"  [INERT-REMOVED] {key} — not matched on hub, inert chapter, no alert")
                         continue
-                    print(f"  [REMOVED] {key}")
-                    council_hub_alerts.append(f"Removed from hub: {key}")
+                    # Name the evidence, not just the symptom: this fires on the
+                    # document's own URL failing, which is what makes it actionable.
+                    failures = next(
+                        (ch.get("check_failures") or 0 for ch in council_chapters
+                         if ch["chapter_key"] == key),
+                        0,
+                    )
+                    print(f"  [REMOVED] {key} — off the hub and its own URL has failed "
+                          f"{failures} run(s) in a row")
+                    council_hub_alerts.append(
+                        f"Gone: {key} (off the hub, own URL failing {failures} runs)")
                     results["hub_alerts"].append(f"removed: {council}/{key}")
 
                 # New/unmatched chapters — classify and auto-handle where possible.
