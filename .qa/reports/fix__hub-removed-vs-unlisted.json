@@ -1,0 +1,77 @@
+{
+  "tier": "standard",
+  "justification": "Standard, not Critical: no production write, no schema change, no new query, no user-facing text, and nothing here can commit a provision or alter served data. It does change which hub findings raise an alert, so a mistake would hide a genuinely removed document rather than serve a wrong control — not Minor either. Critical was considered and rejected on that basis: the worst outcome is a missed alert for at most one extra sweep, because the per-chapter fetch path and its check_failures counter are untouched and still escalate independently.",
+  "commit_hash": "95c19b1b",
+  "files": [
+    "scripts/r2_monitor.py",
+    "tests/test_r2_monitor_alerting.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Every number measured on production read-only before the change, not inferred. (1) dcp_chapter_registry for canterbury_bankstown: 69 rows, 68 active, 14 is_inert, 54 non-inert — and 54 is exactly the alert count reported every sweep. (2) check_failures distribution across all 538 active chapters with a council_url: 531 at 0, 4 at 1, 3 at 5; zero NULLs, column is integer with default 0. (3) The three at 5 are all on cbcity-webdocs.azurewebsites.net; the other 51 CB chapters are on webdocs.bankstown.nsw.gov.au. (4) url_last_checked for all 54 is 2026-10-01 02:00 UTC, so the 51 were fetched and hashed successfully in the same run that called them removed. (5) The live hub scrape returns 14 links, six of which are the same Waste Design document.",
+    "assumption_mismatch": "The session handoff framed this as an open question — 'decide whether that is a real coverage gap or scraper noise'. It is neither wholly: 51 of 54 are noise and 3 are a real gap, and the two were indistinguishable because one bucket held both. The handoff also stated the registry holds 68 while the hub shows 14; the alerting figure is 54, because is_inert already suppresses 14. A second assumption did not survive: the existing test file appeared to prove r2_monitor's pure helpers import without secrets, but it only passed because load_dotenv finds a .env in the main checkout and CI supplies the real R2 secrets. In a worktree it raised KeyError at import. Fixed here rather than worked around, so the import no longer depends on secrets being present.",
+    "new_vs_existing": "No query is added, changed or removed by this branch — the active-chapter query at scripts/r2_monitor.py:662 already selected check_failures and the new logic reads a column that was being fetched and discarded, which is why the queries section is empty. Reuses existing concepts rather than adding any. The threshold is 3, the value this file already documents for a persistently failing chapter in the TransientFetchError docstring ('surfaces via its check_failures>=3 counter') and in the run summary ('Chapters with check_failures >= 3 should be investigated'), named once as UNLISTED_CONFIRM_FAILURES rather than written as a literal. check_failures was already selected by the active-chapter query, so there is no new query and no new column. The unlisted bucket sits beside the existing INERT-REMOVED suppression, which is the same idea applied to a different reason.",
+    "external_source_error": "This is specifically about a council's page being an unreliable index of that council's own documents. Canterbury-Bankstown's landing page lists ancillary guides while its DCP chapters are served from a SharePoint/Azure api/publish endpoint it never enumerates. Before, that shape made every chapter look removed forever. After, the council's page is treated as evidence about the page only, and the document's own URL is the evidence about the document. A hub page that disappears entirely is unaffected: the count_ok anomaly gate still aborts the council before diff_urls is reached.",
+    "frontend_type": "N/A — no TypeScript, TSX or frontend file is touched. The change is confined to the Railway monitor script and one pytest file, so no DB-to-API or API-to-component boundary is crossed.",
+    "user_failure_mode": "Before: every sweep produced 54 'Removed from hub' lines for Canterbury-Bankstown, of which 51 were false. An alert stream that is 94% false for a council is an alert stream nobody reads, so the 3 real dead documents were invisible inside it — and those 3 include chapter-1-1-introduction-and-administration, which is where a DCP's amendment table lives. After: 3 alerts, each naming how many consecutive runs the document's own URL has failed, so a reader can act without opening the database."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_r2_monitor_alerting.py -q",
+    "fails_when": "The threshold is dropped or set to 0 so every unlisted chapter alerts again; the unlisted bucket stops being populated, silently discarding the live chapters; NULL check_failures stops being read as 0; or a chapter matched on the hub starts landing in either bucket.",
+    "observed_red": "Two mutations forced red on purpose and both killed, then restored green. (A) `>= UNLISTED_CONFIRM_FAILURES` changed to `>= 0`, reproducing the old behaviour — 4 failed. (B) `result.unlisted.append(key)` replaced with `pass` — 4 failed. Restored: 13 passed. Full suite on this branch: 7,543 passed, 2 skipped, 3 xfailed, 625 deselected, 0 failed. Then run against LIVE production data with the real hub scraper and the real registry rows: 54 non-inert chapters, 14 hub links, alerts 54 -> 3, and the 3 are exactly chapter-1-1-introduction-and-administration, chapter-11-15-marco-avenue and chapter-7-3-city-east — the three on the decommissioned host.",
+    "not_proven": "That 3 is the right threshold for every council rather than for the one measured. It is inherited from this file's existing convention, not derived from a fleet-wide study, and the only council currently exercising it is canterbury_bankstown. Also not proven: that the 51 unlisted chapters are the CURRENT editions of those documents — this change asserts only that their URLs still serve bytes, which is a different question from whether Canterbury-Bankstown has published newer ones. That question belongs to supersession detection (ce-dcp-new-source-discovery-gap-2026-09-27 section 5 item 5) and is untouched here."
+  },
+  "functions": [
+    {
+      "name": "diff_urls",
+      "file_line": "scripts/r2_monitor.py:371",
+      "input": "discovered (hub scrape results, chapter_key may be None), stored (registry rows, each carrying check_failures), hub_expected_count. Exercised on: empty hub with a live chapter, empty hub with a dead chapter, exactly at the threshold, one below it, NULL check_failures, the real 51-live/3-dead shape, and a chapter matched on the hub.",
+      "output": "DiffResult. The previously single `removed` list is now split: `removed` for keys absent from the hub whose own URL has failed >= UNLISTED_CONFIRM_FAILURES consecutive runs, `unlisted` for keys absent from the hub whose own URL still fetches. url_same, url_migrated, added and count_ok are unchanged.",
+      "if_none": "A stored row with no check_failures key, or a NULL one, is read as 0 via `(stored_ch.get('check_failures') or 0)` and therefore lands in unlisted, not removed. That direction is deliberate: an unknown counter must not manufacture an alert. The opposite default would make every council with an incomplete row alert on every sweep, which is the defect being fixed."
+    }
+  ],
+  "values": [
+    {
+      "name": "UNLISTED_CONFIRM_FAILURES",
+      "value": "3",
+      "read_at": "scripts/r2_monitor.py, module constant, read once in diff_urls and imported by the test so the threshold cannot drift apart from its assertions.",
+      "if_missing": "Not configurable and deliberately so — it is a correctness threshold, not a tuning knob, and an env var would let a bad value silence real removals in production with no code change. 3 matches the value this file already documents in two other places for a persistently failing chapter. Against the measured distribution (531 at 0, 4 at 1, 3 at 5) any value from 2 to 5 selects exactly the same three chapters, so the result is not sensitive to the precise choice."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A document dies and is delisted from the hub in the same sweep.",
+      "what_happens": "check_failures is read from the row before this run's fetch, so it is still 0 and the chapter reports `unlisted` for one cycle instead of alerting.",
+      "mitigated": true,
+      "how": "Deliberate two-cycle confirmation, stated in the code comment rather than left to be rediscovered. The per-chapter fetch path is untouched and increments the counter in that same run, so the next sweep alerts. The chapter is also independently surfaced by the existing check_failures >= 3 line in the run summary, which does not depend on the hub at all.",
+      "repro": "Set a chapter's check_failures to 0, remove it from the hub scrape result and break its council_url; first run reports unlisted, second reports removed."
+    },
+    {
+      "scenario": "A council's hub page silently starts returning a partial list, so real documents become unlisted.",
+      "what_happens": "Those chapters move to the unlisted bucket and stop alerting, which is the intended behaviour — but it means a genuine delisting is no longer visible from the hub signal alone.",
+      "mitigated": true,
+      "how": "Delisting was never the actionable signal; the document failing to fetch is, and that path is untouched. The count_ok anomaly gate still aborts a council whose scrape returns under 80% of hub_expected_count, and hub_last_pdf_count still records the delta. What this change removes is an alert that could not distinguish the two cases, not the detection.",
+      "repro": "Return half the hub links for a council with hub_expected_count set; count_ok aborts before diff_urls."
+    },
+    {
+      "scenario": "check_failures is reset to 0 by a successful fetch while the document is still off the hub.",
+      "what_happens": "A previously-removed chapter moves back to unlisted and stops alerting.",
+      "mitigated": true,
+      "how": "Correct: a URL that fetches again is not a removed document. The reset only happens on a successful fetch, in the same code path that records the new content_hash, so the chapter is being monitored normally again.",
+      "repro": "Restore the dead host for one chapter; its counter resets to 0 on the next successful fetch and it reclassifies."
+    },
+    {
+      "scenario": "The test file is run somewhere with no .env and no R2 secrets.",
+      "what_happens": "Before this branch it raised KeyError on import and the whole file failed to collect. After, it imports.",
+      "mitigated": true,
+      "how": "os.environ.setdefault for the five import-time vars, placed before the import and using setdefault rather than assignment so a real value is never overwritten and python-dotenv's non-overriding load is unaffected.",
+      "repro": "Run the file from a git worktree, which has no .env of its own."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. No migration, no backfill, no write of any kind.",
+    "secrets": "None added or changed by this branch.",
+    "other_repo": "None.",
+    "manual_verify": "Railway auto-deploys from main, so the next dcp-monitor run picks this up — the cron is fortnightly (0 2 1,15 * *), so the next scheduled sweep is 15 October 02:00 UTC. At that run, Canterbury-Bankstown's Telegram digest should carry 3 'Gone:' lines naming their failure counts, and no 'Removed from hub' lines; the 51 live chapters should appear only as a single [UNLISTED] log line. If 54 alerts still arrive, the deploy did not take."
+  }
+}
