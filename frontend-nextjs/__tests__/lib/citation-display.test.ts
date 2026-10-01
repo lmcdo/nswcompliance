@@ -1,4 +1,4 @@
-import { citationIsShown, stripStoredCode, withServedCitation } from '@/lib/citation-display';
+import { citationIsShown, stripStoredCode, withServedCitation, stripOccurrenceSuffix } from '@/lib/citation-display';
 
 const NL = '\n';
 
@@ -41,5 +41,50 @@ describe('a DCP clause number is served only when its page proves it', () => {
     const ok = withServedCitation({ ...row, citation_status: 'proven' }, 'G2 C14');
     expect(ok.clause_label).toBe('G2 C14');
     expect(ok.provision_text).toBe(row.provision_text);
+  });
+});
+
+describe('the internal occurrence suffix never reaches a reader', () => {
+  // dcp_extract_changed suffixes a repeated ref (`..._7_4 (a)_2`) so two clauses
+  // the council prints under the same letter stop overwriting each other —
+  // schedules 7.4 restarts (a)(b)(c) under a "Pedestrians" sub-heading. The suffix
+  // is ours. The council's document has no clause "7.4 (a)_2", and
+  // browse/section/route.ts passes ref_number straight through as the label while
+  // citation_proof.split_ref ignores the suffix, so a proven row would render the
+  // invented reference. Caught by the pre-push cross-review, 2026-10-02.
+  const proven = { citation_status: 'proven', source_council: 'city_of_sydney' };
+
+  it('strips the suffix from a shown label', () => {
+    const r = withServedCitation(proven, 'Sydney_DCP_2012__schedules__7_4 (a)~2');
+    expect(r.clause_label).toBe('Sydney_DCP_2012__schedules__7_4 (a)');
+    expect(r.clause_label).not.toMatch(/_\d+$/);
+  });
+
+  it('leaves a label with no suffix untouched', () => {
+    const r = withServedCitation(proven, 'Sydney_DCP_2012__schedules__7_4 (a)');
+    expect(r.clause_label).toBe('Sydney_DCP_2012__schedules__7_4 (a)');
+  });
+
+  it('strips a double-digit occurrence', () => {
+    expect(stripOccurrenceSuffix('x__7_4 (a)~12')).toBe('x__7_4 (a)');
+  });
+
+  it('does NOT touch a section number that genuinely ends in _N', () => {
+    // Section 3.16 is stored as `3_16`. An underscore marker would be eaten here
+    // and render the clause as `3`, which is why the marker is a tilde.
+    expect(stripOccurrenceSuffix('x__3_16')).toBe('x__3_16');
+    expect(stripOccurrenceSuffix('x__7_4_2')).toBe('x__7_4_2');
+  });
+
+  it('returns null for a non-string label', () => {
+    expect(stripOccurrenceSuffix(null)).toBeNull();
+    expect(stripOccurrenceSuffix(undefined)).toBeNull();
+  });
+
+  it('an unproven row still shows no label at all', () => {
+    const r = withServedCitation(
+      { citation_status: 'not_proven', source_council: 'city_of_sydney' },
+      'Sydney_DCP_2012__schedules__7_4 (a)~2');
+    expect(r.clause_label).toBeNull();
   });
 });

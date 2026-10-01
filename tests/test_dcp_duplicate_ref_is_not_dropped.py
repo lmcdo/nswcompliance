@@ -94,7 +94,7 @@ class TestARepeatedRefKeepsBothProvisions:
     def test_the_second_is_suffixed_not_overwritten(self):
         res = _diff([_section("7.4 (a)", "first clause text here", page=39),
                      _section("7.4 (a)", "a different second clause", page=41)])
-        assert _refs(res) == {f"{DOC}__7_4 (a)", f"{DOC}__7_4 (a)_2"}
+        assert _refs(res) == {f"{DOC}__7_4 (a)", f"{DOC}__7_4 (a)~2"}
 
     def test_three_provisions_on_one_ref(self):
         res = _diff([_section("7.4 (a)", "alpha text one", page=1),
@@ -102,8 +102,8 @@ class TestARepeatedRefKeepsBothProvisions:
                      _section("7.4 (a)", "gamma text three", page=3)])
         assert res["total_new"] == 3
         assert _refs(res) == {f"{DOC}__7_4 (a)",
-                              f"{DOC}__7_4 (a)_2",
-                              f"{DOC}__7_4 (a)_3"}
+                              f"{DOC}__7_4 (a)~2",
+                              f"{DOC}__7_4 (a)~3"}
 
     def test_identical_text_is_still_collapsed(self):
         """The same clause read twice is a duplicate, not two provisions.
@@ -222,7 +222,7 @@ class TestTheEmittedVsKeptGuardRefuses:
                          _section("1.3", "gamma text three")])
             assert res["total_new"] == 3, "a colliding ref dropped a provision"
             assert _refs(res) == {f"{DOC}__same",
-                                  f"{DOC}__same_2",
-                                  f"{DOC}__same_3"}
+                                  f"{DOC}__same~2",
+                                  f"{DOC}__same~3"}
         finally:
             mod.build_ref_number = real_build

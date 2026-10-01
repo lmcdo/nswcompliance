@@ -49,6 +49,31 @@ export function stripStoredCode(text: string | null | undefined, refNumber: stri
   return text;
 }
 
+/**
+ * Drop the internal occurrence suffix from a label that is about to be shown.
+ *
+ * `dcp_extract_changed.diff_provisions` suffixes a repeated ref (`..._7_4 (a)~2`)
+ * so two clauses the council prints under the same letter — section 7.4 restarts
+ * (a)(b)(c) under a "Pedestrians" sub-heading — stop overwriting each other. That
+ * suffix is OURS, for uniqueness; the council's document contains no clause
+ * "7.4 (a)~2". `browse/section/route.ts` passes `ref_number` straight through as
+ * the displayed label, and `citation_proof.split_ref` ignores the suffix entirely
+ * (it reads `7_4 (a)~2` as section 7.4), so the row can be judged `proven` and the
+ * invented reference rendered. That is the DQ-111 fabricated-clause-number class.
+ *
+ * The marker is a TILDE, not an underscore: section 3.16 is stored as `3_16`, so an
+ * underscore suffix is indistinguishable from a real clause number and stripping it
+ * would render section 3.16 as `3`. A tilde cannot occur in a section number.
+ *
+ * Stripping it shows both as the council's own `7.4 (a)`, which is imprecise where
+ * a sub-heading restarts its list but is never untrue. Caught by the pre-push
+ * cross-review, 2026-10-02.
+ */
+export function stripOccurrenceSuffix(label: string | null | undefined): string | null {
+  if (typeof label !== 'string') return null;
+  return label.replace(/~\d+$/, '');
+}
+
 /** The provision as served: clause label and code shown only when the page proves them. */
 export function withServedCitation<T extends {
   citation_status?: string | null;
@@ -60,7 +85,7 @@ export function withServedCitation<T extends {
   return {
     ...p,
     provision_text: shown ? p.provision_text : stripStoredCode(p.provision_text, p.ref_number),
-    clause_label: shown ? clauseLabel : null,
+    clause_label: shown ? stripOccurrenceSuffix(clauseLabel) : null,
     citation_shown: shown,
   };
 }

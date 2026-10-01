@@ -4012,10 +4012,15 @@ def diff_provisions(
             if _normalize_for_diff(new_provisions[ref]["text"]) == _normalize_for_diff(text):
                 collapsed_duplicates += 1     # the same clause twice: keep one
                 continue
+            # "~2", not "_2". A section number legitimately ends in _<digits> --
+            # section 3.16 is stored as `3_16` -- so an underscore suffix is
+            # indistinguishable from a real clause number, and anything stripping
+            # it for display would turn 3.16 into 3. A tilde cannot occur in a
+            # section number, so the occurrence marker stays unambiguous both ways.
             suffix = 2
-            while f"{ref}_{suffix}" in new_provisions:
+            while f"{ref}~{suffix}" in new_provisions:
                 suffix += 1
-            ref = f"{ref}_{suffix}"
+            ref = f"{ref}~{suffix}"
         new_provisions[ref] = {"text": text, "page": section["page_start"]}
 
     # EVERY EMITTED SECTION MUST BE EITHER KEPT OR DELIBERATELY COLLAPSED.
