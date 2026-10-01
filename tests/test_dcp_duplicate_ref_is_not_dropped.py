@@ -122,6 +122,36 @@ class TestARepeatedRefKeepsBothProvisions:
                      _section("7.4 (a)", "one clause text", page=1)])
         assert res["total_new"] == 1
 
+    def test_a_duplicate_of_a_SUFFIXED_occurrence_is_also_collapsed(self):
+        """[A, B, B] must store A and B, never A, B, B-again.
+
+        The first version of this fix compared the incoming text only against the
+        BASE ref, so the third section matched neither `ref` (A) nor anything else
+        it looked at, and became `ref~3` — inventing a provision. Raised by the
+        pre-push cross-review at 0.99; it was right.
+        """
+        res = _diff([_section("7.4 (a)", "clause A text here", page=1),
+                     _section("7.4 (a)", "clause B text here", page=2),
+                     _section("7.4 (a)", "clause B text here", page=3)])
+        assert res["total_new"] == 2, "a duplicate of the ~2 occurrence was invented"
+        assert _refs(res) == {f"{DOC}__7_4 (a)", f"{DOC}__7_4 (a)~2"}
+
+    def test_a_duplicate_of_a_suffixed_occurrence_ignores_whitespace(self):
+        res = _diff([_section("7.4 (a)", "clause A text", page=1),
+                     _section("7.4 (a)", "clause B text", page=2),
+                     _section("7.4 (a)", "clause   B    text", page=3)])
+        assert res["total_new"] == 2
+
+    def test_a_third_genuinely_different_clause_still_gets_its_own_ref(self):
+        """The collapse must not swallow a real third clause."""
+        res = _diff([_section("7.4 (a)", "clause A text", page=1),
+                     _section("7.4 (a)", "clause B text", page=2),
+                     _section("7.4 (a)", "clause C text", page=3)])
+        assert res["total_new"] == 3
+        assert _refs(res) == {f"{DOC}__7_4 (a)",
+                              f"{DOC}__7_4 (a)~2",
+                              f"{DOC}__7_4 (a)~3"}
+
     def test_distinct_refs_are_untouched(self):
         res = _diff([_section("7.4 (a)", "first", page=1),
                      _section("7.4 (b)", "second", page=1)])

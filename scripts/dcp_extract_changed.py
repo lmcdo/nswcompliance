@@ -4009,8 +4009,17 @@ def diff_provisions(
         ref = build_ref_number(document_id, section["section_number"])
         text = build_provision_text(section)
         if ref in new_provisions:
-            if _normalize_for_diff(new_provisions[ref]["text"]) == _normalize_for_diff(text):
-                collapsed_duplicates += 1     # the same clause twice: keep one
+            # Compare against EVERY occurrence already stored under this base ref,
+            # not only the base one. Checking the base alone meant texts
+            # [A, B, B] stored A, then B as ~2, then B AGAIN as ~3 -- inventing a
+            # duplicate provision, which is the opposite of this fix's purpose and
+            # just as wrong. Raised by the pre-push cross-review, 2026-10-02.
+            norm_text = _normalize_for_diff(text)
+            occurrences = [ref] + [k for k in new_provisions
+                                   if k.startswith(f"{ref}~")]
+            if any(_normalize_for_diff(new_provisions[k]["text"]) == norm_text
+                   for k in occurrences):
+                collapsed_duplicates += 1     # the same clause again: keep one
                 continue
             # "~2", not "_2". A section number legitimately ends in _<digits> --
             # section 3.16 is stored as `3_16` -- so an underscore suffix is
