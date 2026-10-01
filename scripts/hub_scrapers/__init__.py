@@ -64,6 +64,14 @@ HUB_SCRAPERS: dict = {
     "strathfield":           scrape_strathfield,
     "the_hills":             scrape_the_hills,
     "the_hills_shire":       scrape_the_hills,
+    # ⚠ The REGISTRY slug is `sutherland_shire`; this module was written as
+    # `sutherland`. Without this alias scrape_sutherland is unreachable, so the
+    # council never gets a hub scrape and never discovers a new document -- the
+    # same miss `the_hills_shire` above was added for, overlooked here.
+    # Measured 2026-09-27: sutherland_shire had url_last_checked NULL on every row.
+    # Fixing the alias alone changes nothing visible; it surfaces the hub's 403,
+    # which is why it lands together with the fall-through fix in r2_monitor.
+    "sutherland_shire":      scrape_sutherland,
 }
 
 __all__ = ["HUB_SCRAPERS", "HubScrapeError"]

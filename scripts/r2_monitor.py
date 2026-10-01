@@ -57,6 +57,43 @@ class WAFBlockError(Exception):
     pass
 
 
+def pick_hub_row(rows: list[dict]) -> dict:
+    """The row a council's hub URL is read from: the FIRST ONE THAT HAS ONE. Pure.
+
+    Not `rows[0]`. That is simply the lowest `sort_order`, and cumberland records its
+    hub URL on the row with no `council_url` while its per-chapter URL sits on a
+    different row -- so the old index-zero pick found NULL and skipped the whole
+    council while a usable hub URL sat on a sibling row. `sort_order` is NULL on both
+    of those rows, so which one lands at index 0 is not even deterministic.
+
+    Falls back to `rows[0]` when NO row has a hub URL, so the caller's
+    `if scraper and hub_url` still makes the decision rather than this raising on a
+    council that simply has no hub page.
+
+    A FUNCTION, not an inline expression, so the test imports the rule instead of
+    restating it. The restated version let a mutation that reverted the caller to
+    `rows[0]` pass every test -- two definitions of a rule is how they start
+    disagreeing.
+    """
+    return next((ch for ch in rows if (ch.get("council_page_url") or "").strip()),
+                rows[0])
+
+
+def is_waf_denial(exc: Exception) -> bool:
+    """Is this hub failure an access denial rather than a content problem? Pure.
+
+    HubScrapeError carries its cause only in its message -- the scrapers raise
+    HubScrapeError(f"Hub page returned HTTP {status}") -- so the status has to be
+    read back out of the text. Matched on whole tokens rather than a bare "403"
+    anywhere in the string: a 403 can appear in a URL or a document name, and
+    misreading a real content failure as infrastructure would hide it from the exit
+    code, which is the one direction this must not fail in.
+    """
+    text = str(exc).lower()
+    return any(tok in text for tok in ("http 403", "403 forbidden", "status 403",
+                                       "code 403", "forbidden"))
+
+
 class TransientFetchError(Exception):
     """Raised when a fetch fails for a transient reason (timeout, 429 after retries,
     network blip). Like WAFBlockError this is INFRASTRUCTURE, not a data problem, so
@@ -703,8 +740,22 @@ def run_monitor(
                COALESCE(is_inert, FALSE) AS is_inert
         FROM dcp_chapter_registry
         WHERE is_active = TRUE
-          AND council_url IS NOT NULL
+          AND (council_url IS NOT NULL OR council_page_url IS NOT NULL)
     """
+    # DISCOVERY WAS GATED BEHIND CHANGE DETECTION IT DOES NOT DEPEND ON. A hub
+    # scrape needs only the hub URL, but a council whose chapters carry no
+    # `council_url` never entered `by_council` at all, so its hub page was never
+    # read and a newly published document could not be found.
+    #
+    # Measured 2026-09-27: bayside, burwood, camden, canada_bay, fairfield, ryde,
+    # the_hills and the_hills_shire each have a registered scraper and a
+    # `council_page_url` on EVERY active chapter, and `council_url` on NONE --
+    # eight councils, all returning url_last_checked = NULL on every row, one
+    # predicate away from working.
+    #
+    # Chapters that arrive with no `council_url` are skipped by the per-chapter loop
+    # (`skipped_no_url`, which this change finally makes reachable) -- they are here
+    # for their council's HUB scrape, not for a hash check they cannot have.
     params = []
     if council_filter:
         query += " AND council = %s"
@@ -745,9 +796,19 @@ def run_monitor(
     for _ci, (council, council_chapters) in enumerate(_councils):
         if _ci > 0:
             time.sleep(INTER_COUNCIL_DELAY * random.uniform(JITTER_LOW, JITTER_HIGH))
-        hub_url = council_chapters[0].get("council_page_url")
-        hub_expected = council_chapters[0].get("hub_expected_count")
-        hub_last_count = council_chapters[0].get("hub_last_pdf_count")
+        # The hub URL comes from the FIRST ROW THAT HAS ONE, not from row zero.
+        # `council_chapters[0]` is simply the lowest sort_order, and cumberland
+        # records its hub URL on a row that has no `council_url` -- so under the old
+        # query that row was filtered out, row zero's `council_page_url` was NULL,
+        # and the whole council was skipped while a usable hub URL sat on a sibling
+        # row. Widening the query above alone would not have fixed that.
+        #
+        # All three hub values are read from the SAME row, so a stored count can
+        # never be compared against a different row's URL.
+        hub_row = pick_hub_row(council_chapters)
+        hub_url = (hub_row.get("council_page_url") or "").strip() or None
+        hub_expected = hub_row.get("hub_expected_count")
+        hub_last_count = hub_row.get("hub_last_pdf_count")
         scraper = HUB_SCRAPERS.get(council)
 
         # ── Hub scrape (if scraper registered and hub URL available) ───────────
@@ -877,12 +938,42 @@ def run_monitor(
                     print(f"  [reseed] Updated {updated} council_url values for {council}")
 
             except HubScrapeError as exc:
+                # NO `continue`. A hub page failing says NOTHING about whether the
+                # chapters behind it changed, and the old `continue` skipped their
+                # hash checks too -- so one 403 on a council's document-list page
+                # cost that council its change detection entirely.
+                #
+                # Measured 2026-09-27: randwick, strathfield and sutherland_shire all
+                # returned `HubScrapeError: Hub page returned HTTP 403`, and randwick
+                # has url_last_checked NULL on BOTH chapters -- it had never once been
+                # swept. Randwick DCP 2025 commenced 27 July 2026 and was found by
+                # hand seven weeks later.
                 msg = f"DCP Monitor: hub scrape failed [{council}]: {exc}"
-                print(f"  HUB ERROR: {exc}")
+                print(f"  HUB ERROR: {exc} -- falling through to per-chapter checks")
                 send_telegram(msg)
                 results["hub_alerts"].append(msg)
-                results["failed"] += len(council_chapters)
-                continue
+                # A 403 is WAF/access denial: INFRASTRUCTURE, not data. The concept
+                # already exists in this file -- WAFBlockError, "should not increment
+                # check_failures, it's an infrastructure problem, not data" -- and the
+                # per-chapter path has honoured it all along while the hub path turned
+                # the same 403 into a whole-council skip. Bucketed the same way here,
+                # so it is excluded from n_real_failed and retried next cycle instead
+                # of paging a human every run about a WAF.
+                if is_waf_denial(exc):
+                    print("  [WAF] hub 403 -- infrastructure, not a real failure")
+                    results["waf_blocked"].append({
+                        "council": council,
+                        "chapter_key": None,   # the hub page, not a chapter
+                        "label": "hub page",
+                        "url": hub_url,
+                    })
+                else:
+                    # ONE real failure -- the hub -- not one per chapter. The old
+                    # `+= len(council_chapters)` charged every chapter for a hub
+                    # error and then the loop below never ran to say otherwise. The
+                    # loop DOES run now and reports each chapter's real outcome, so
+                    # counting them here as well would double-count every one.
+                    results["failed"] += 1
 
         # ── Per-chapter hash check ─────────────────────────────────────────────
         council_changed = 0
@@ -903,6 +994,17 @@ def run_monitor(
             is_inert    = chapter.get("is_inert", False)
 
             print(f"\n  {ch_council}/{key}")
+
+            # Reachable for the first time as of this change: the query above now
+            # admits chapters that have only a hub URL, and those cannot be hash-
+            # checked. head_request(None) would raise and be reported as a CONTENT
+            # failure -- a lie about a chapter that was never monitorable. The
+            # counter has existed, and necessarily read 0, since it was written.
+            if not (url or "").strip():
+                print("    [no council_url] hub-only chapter -- no hash check "
+                      "possible; discovery for this council runs off its hub page")
+                results["skipped_no_url"] += 1
+                continue
 
             try:
                 # Step 1: Quick HEAD check on Content-Length

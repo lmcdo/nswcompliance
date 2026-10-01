@@ -1,0 +1,130 @@
+{
+  "tier": "standard",
+  "justification": "Standard, not Critical: no production write, no schema change, no user-facing text, and the exit-code contract is asserted unchanged. It does change which councils the weekly monitor visits (9 -> 19 of 32) and therefore what it reports, so it is not Minor either. Critical was considered and rejected because nothing here can commit a provision or alter served data — the worst outcome is a noisier monitor run.",
+  "commit_hash": "d1a64531",
+  "files": [
+    "scripts/r2_monitor.py",
+    "scripts/hub_scrapers/__init__.py",
+    "tests/test_hub_discovery_is_not_gated_on_change_detection.py",
+    "tests/test_r2_monitor_hub_query_real_db.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Every cause and every effect measured on production via scripts/dq_db.py read-only sessions before and after, not inferred from the plan. (1) Councils entering the chapter loop: 23 -> 31. (2) Councils actually hub-scraped, which is the number that matters: 9 -> 19 of 32 active, none lost. (3) Cumberland's two active rows read directly: part-g3-traffic-parking has a hub URL and NO council_url, cumberland-dcp-part-b-residential has a council_url and NO hub URL, and sort_order is NULL on both. (4) The eight lockout councils confirmed to each carry a registered scraper: bayside, burwood, camden, canada_bay, fairfield, ryde, the_hills, the_hills_shire.",
+    "assumption_mismatch": "The governing doc's item 1 says the eight councils are recovered 'with no new scrapers and no new data'. That is true of the WIRING and says nothing about whether their scrapers succeed, which the doc never tested. Probed all ten recovered councils against their real hub pages: 2 return HTTP 404 (camden, canada_bay — stale hub URLs, IP-independent and REAL), 6 return HTTP 403 from this residential IP (INCONCLUSIVE — the Railway IP is what production uses and council WAFs discriminate by IP, so no claim is made about them), 2 could not be judged locally at all because lxml is not installed on this machine. So recovering a council into the loop is necessary and not sufficient, and this branch does not claim otherwise.",
+    "new_vs_existing": "Reuses existing concepts rather than adding any. The 403 bucketing routes through results['waf_blocked'], the bucket WAFBlockError already documents as 'an infrastructure problem, not data' and the per-chapter path has always honoured. skipped_no_url already existed in the results dict and was unreachable — the widened query is what finally makes it reachable. The sutherland_shire alias mirrors the_hills_shire line-for-line. One new function, pick_hub_row, extracted only because a restated copy in the test let a mutation survive.",
+    "external_source_error": "A hub page answering 403 is now classified as infrastructure and excluded from the exit code, so a WAF no longer pages a human every run — and, crucially, no longer costs the council its per-chapter change detection. A 404 or a parse error is NOT excused and still counts as one real failure, because a hub URL that does not exist is a defect in our data, not theirs. is_waf_denial is tested in both directions on five denial strings and five real failures, including a 403 appearing inside a document path.",
+    "frontend_type": "N/A — no TypeScript, TSX or frontend file is touched by this branch; the whole change is the Railway monitor script, its scraper registry and one pytest file, so no DB-to-API or API-to-component boundary is crossed.",
+    "user_failure_mode": "Before: a council could publish a new DCP edition and nothing would notice. Ten of 32 councils were never discovered from — eight because the loop's query demanded a per-chapter URL that a hub scrape does not need, one because the hub URL sat on a row the filter removed, one because of a slug typo. Separately, a 403 on any council's document-list page silently cost that council ALL change detection, which is why randwick had url_last_checked NULL on both chapters and had never once been swept: Randwick DCP 2025 commenced 27 July 2026 and was found by hand seven weeks later. After: those ten councils are visited, and a hub failure no longer stops the chapters behind it being checked."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_hub_discovery_is_not_gated_on_change_detection.py tests/test_r2_monitor_alerting.py -q && PYTEST_REAL_DB=1 python -m pytest -m database tests/test_r2_monitor_hub_query_real_db.py -q -o addopts=",
+    "fails_when": "The chapter query is gated on council_url again; the hub URL is read from row zero; the caller stops using pick_hub_row; the `continue` returns to the hub error handler; a hub 403 is counted as a real failure; a non-403 hub error stops being one; the sutherland_shire alias is removed; or the no-url guard moves after the HEAD request.",
+    "observed_red": "SEVEN mutants forced red on purpose and all killed, then restored green: (A) query re-gated on council_url — 2 failed; (B1) caller ignores pick_hub_row and takes council_chapters[0] — 1 failed; (B2) pick_hub_row itself returns rows[0] — 2 failed; (C) the `continue` restored — 1 failed; (D) no-url guard removed — 2 failed; (E) is_waf_denial bypassed so a 403 pages — 1 failed; (F) sutherland_shire alias removed — 2 failed. Full suite 7,458 passed, 2 skipped, 3 xfailed, 0 failed. Production before/after measured the same day: hub-scraped councils 9 -> 19, none lost. REAL-LAYER (added after the pre-push gate required one): four tests run the widened predicate and the old one against PRODUCTION and assert the property rather than a frozen count — the new predicate admits strictly more councils and loses none, hub-scrapable councils strictly increase, a scraper council with a hub URL and no per-chapter URL is admitted only by the new predicate, and pick_hub_row returns a row carrying a hub URL for every council that records one off row zero. All 4 pass against live data and deselect cleanly without the opt-in (4 deselected, 0 selected). Mutating pick_hub_row back to `rows[0]` turns the fourth red against production, so cumberland's split shape is genuinely present in the data and the test is load-bearing.",
+    "not_proven": "Whether the six councils that return 403 from this machine also return 403 from the Railway IP. Council WAFs discriminate by IP and the repo already records Railway's single-IP problem, so the local result is not evidence about production. Also not proven: that the two councils whose scrapers could not run locally (lxml missing here) work in production — inferred only from hub scraping demonstrably working for nine other councils on the same code path. One further limit, stated rather than left to be found: the new real-DB test declares the two predicates as its own constants instead of reading them out of r2_monitor, so reverting the query in the source would NOT turn it red. That direction is covered separately and deliberately by test_the_query_admits_a_hub_url_alone and test_the_old_gate_is_gone, which assert the SQL text in the source itself. The real-DB file's job is to prove what the predicate ADMITS in production, not that it is still written down."
+  },
+  "functions": [
+    {
+      "name": "pick_hub_row",
+      "file_line": "scripts/r2_monitor.py:60",
+      "input": "The council's list of chapter row dicts, in sort_order. Exercised on: hub URL on a later row (cumberland's shape), a whitespace-only hub URL, row zero having one, and no row having one.",
+      "output": "The first row whose council_page_url is non-blank; rows[0] when none has one.",
+      "if_none": "It never returns None. Falling back to rows[0] keeps the caller's `if scraper and hub_url` as the decision point, rather than raising StopIteration on a council that simply has no hub page. A blank string is treated as absent, because that is how a row acquires the column without a value and handing '' to a scraper fails inside the request instead of being skipped."
+    },
+    {
+      "name": "is_waf_denial",
+      "file_line": "scripts/r2_monitor.py:82",
+      "input": "The HubScrapeError. Its cause exists only in the message text — the scrapers raise HubScrapeError(f'Hub page returned HTTP {status}') — so the status is read back out of the string.",
+      "output": "True for an access denial, which is bucketed as infrastructure and excluded from the exit code; False for everything else, which counts as a real failure.",
+      "if_none": "Not applicable — it returns a bool, never None. The direction that matters is the false positive: excusing a real content failure hides it from the exit code, so it matches whole tokens ('http 403', '403 forbidden', 'status 403', 'code 403', 'forbidden') rather than a bare '403' that could appear in a URL or a document name. Asserted against a path containing 'dcp-403-part-b.pdf'."
+    }
+  ],
+  "values": [
+    {
+      "name": "the widened query predicate",
+      "value": "council_url IS NOT NULL OR council_page_url IS NOT NULL",
+      "read_at": "scripts/r2_monitor.py, the active-chapter query in check_all_chapters; asserted present by test_the_query_admits_a_hub_url_alone and the bare old form asserted absent by test_the_old_gate_is_gone.",
+      "if_missing": "Not configurable and deliberately so. With the bare `AND council_url IS NOT NULL` form, eight councils never enter the council grouping at all and their hub pages are never read — the defect itself, which is why a test asserts the old form is gone rather than only that the new one is present."
+    },
+    {
+      "name": "hub failures charged to results['failed']",
+      "value": "1 (was len(council_chapters))",
+      "read_at": "scripts/r2_monitor.py, the except HubScrapeError branch; asserted by test_a_hub_failure_no_longer_charges_every_chapter and test_a_non_403_hub_error_is_still_a_real_failure.",
+      "if_missing": "The old `+= len(council_chapters)` charged one hub error as N chapter failures AND then `continue` skipped the loop that would have reported each chapter's real outcome. Now the loop runs, so keeping the old arithmetic would double-count every chapter — inflating a single hub problem into an N-failure page."
+    },
+    {
+      "name": "sutherland_shire",
+      "value": "aliased to scrape_sutherland, the same function object",
+      "read_at": "scripts/hub_scrapers/__init__.py HUB_SCRAPERS; asserted by test_the_registry_slug_resolves and test_it_is_the_same_scraper_not_a_copy.",
+      "if_missing": "HUB_SCRAPERS.get('sutherland_shire') returns None, the council is never hub-scraped, and nothing reports it — the scraper exists and is simply unreachable. Asserted to be the SAME object rather than a second entry, because two entries pointing at different functions is how two scrapers start disagreeing about one council."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Select the active chapters the monitor will visit, so a council with only a hub URL is no longer excluded from discovery.",
+      "file_line": "scripts/r2_monitor.py, check_all_chapters",
+      "where_clause": "WHERE is_active = TRUE AND (council_url IS NOT NULL OR council_page_url IS NOT NULL) — is_active kept; is_inert deliberately NOT added, because inert chapters are swept today (24 rows, median url_last_checked 2026-09-15) and excluding them would be an unrelated behaviour change smuggled in. Rows admitted with no council_url are skipped by the per-chapter loop via skipped_no_url rather than hash-checked."
+    },
+    {
+      "purpose": "Measure the change the predicate actually makes, before and after, rather than trusting the plan's figure.",
+      "file_line": "ad hoc read-only verification via scripts/dq_db.py session()",
+      "where_clause": "SELECT DISTINCT council FROM dcp_chapter_registry WHERE is_active AND council_url IS NOT NULL (=23 councils) vs ... AND (council_url IS NOT NULL OR council_page_url IS NOT NULL) (=31); then intersected with HUB_SCRAPERS and the row-selection rule to get councils actually hub-scraped: 9 -> 19 of 32, none lost."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A test proves things about a copy of the rule instead of the rule.",
+      "what_happens": "Reverting the caller to council_chapters[0] passed every test. The hub-row selection had been restated inside the test file, so mutating production changed nothing the tests could see — a green suite over a reverted fix.",
+      "mitigated": true,
+      "how": "Caught by the mutation run, not by reading. The rule was extracted into pick_hub_row in r2_monitor and the test now IMPORTS it, so there is one definition. A further test asserts the caller actually derives hub_url from the row it returns, because a perfect selector the loop ignores is still the old behaviour. Re-mutated as two separate mutants — caller and rule — and both now fail.",
+      "repro": "Change `hub_row = pick_hub_row(council_chapters)` to `hub_row = council_chapters[0]`; test_the_caller_actually_uses_it fails."
+    },
+    {
+      "scenario": "A hub-only chapter is reported as a broken council document.",
+      "what_happens": "The widened query admits chapters with no council_url. head_request(None) raises, lands in the generic except, and is logged and counted as a CONTENT failure — a false accusation against a chapter that was never monitorable, and one real failure per such chapter every run.",
+      "mitigated": true,
+      "how": "A guard before the HEAD request increments skipped_no_url and continues. A second test asserts the guard sits BEFORE head_request by comparing source offsets, since a guard after the raise is worthless. Forced red by deleting the guard: 2 tests fail.",
+      "repro": "Remove the `if not (url or '').strip()` guard; test_a_hub_only_chapter_is_skipped_not_failed and test_the_skip_happens_before_the_head_request fail."
+    },
+    {
+      "scenario": "The fall-through makes every hub error free, so a genuinely broken hub page never reaches the exit code.",
+      "what_happens": "Bucketing all HubScrapeErrors as infrastructure would mean a parse failure, an empty hub page or a 404 URL reports clean — trading a loud wrong behaviour for a silent one.",
+      "mitigated": true,
+      "how": "Only an access denial is excused. is_waf_denial is asserted False for HTTP 500, HTTP 404, a parse failure, zero PDFs found and a connection reset, and the branch still does results['failed'] += 1 for those. Forced red by bypassing the classifier so every hub error becomes a WAF: 1 test fails.",
+      "repro": "Replace `if is_waf_denial(exc):` with `if True:`; test_a_non_403_hub_error_is_still_a_real_failure fails."
+    },
+    {
+      "scenario": "A 403 in a URL or document name is mistaken for an access denial.",
+      "what_happens": "A real content failure is silently excluded from the exit code — the worse direction, since it hides a defect rather than creating noise.",
+      "mitigated": true,
+      "how": "Whole-token matching rather than a bare '403' substring, asserted against 'Could not parse https://c.example/docs/dcp-403-part-b.pdf' returning False.",
+      "repro": "is_waf_denial(Exception('... dcp-403-part-b.pdf')) must be False."
+    },
+    {
+      "scenario": "Recovering a council into the loop is mistaken for the council being monitored.",
+      "what_happens": "The wiring works, the number 9 -> 19 looks like success, and ten councils still discover nothing because their hub URL is dead or their WAF blocks us — a coverage claim that is true about code and false about the world.",
+      "mitigated": false,
+      "how": "NOT mitigated by this branch, and stated rather than softened. Probed all ten: camden and canada_bay return HTTP 404, which is a stale hub URL in our own data and IP-independent, so those two are REAL and will now count as real failures every run until their URLs are corrected. Six return 403 from this residential IP, which proves nothing about the Railway IP. Two could not be judged locally. The branch delivers the wiring; it does not claim the councils are working, and DQ-118 (per-council hub-scrape liveness, item 4 of the governing doc, NOT in this branch) is what would measure it.",
+      "repro": "python scripts/r2_monitor.py --dry-run --council camden — the hub URL returns 404."
+    },
+    {
+      "scenario": "The whole discovery layer rests on an undeclared dependency.",
+      "what_happens": "Every hub scraper hard-codes BeautifulSoup(resp.content, 'lxml'). lxml appears in NO requirements file and NO Dockerfile; beautifulsoup4 is declared only in requirements-test.txt. Hub scraping demonstrably works in production, so lxml is present there transitively. If whatever pulls it in ever drops it, every hub scrape dies with FeatureNotFound — which is not a HubScrapeError, so it lands in the generic except and is reported as a per-council content failure rather than as a missing dependency.",
+      "mitigated": false,
+      "how": "NOT mitigated here — declaring lxml changes the deployed image's dependency set, which is a deploy-affecting decision and outside these three fixes. Recorded so it is a known gap rather than a surprise. It is also why two of the ten probes above returned FeatureNotFound locally, which is this machine's missing package and not a defect in the scrapers.",
+      "repro": "grep -rinE 'lxml' requirements*.txt Dockerfile* — no match, while every scripts/hub_scrapers/*.py requests the lxml parser by name."
+    },
+    {
+      "scenario": "These fixes change what pages a human.",
+      "what_happens": "Exit 1 means a real failure and drives the alert. Quietly altering that contract while changing failure bucketing would either start paging on every WAF or stop paging on real errors.",
+      "mitigated": true,
+      "how": "run_exit_code is untouched and re-asserted in this file's own test class (0/0=0, 3/0=2, 0/1=1, 3/1=1), and tests/test_r2_monitor_alerting.py's seven existing tests pass unchanged.",
+      "repro": "python -m pytest tests/test_r2_monitor_alerting.py -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No — no credential is read, written or printed. The test sets placeholder R2 values with os.environ.setdefault because r2_monitor reads them at import with a bare index and a worktree carries no .env; setdefault leaves a real environment untouched and boto3 is a MagicMock in that path.",
+    "other_repo": "No",
+    "manual_verify": "MEASURED THIS SESSION, 2026-10-01, and it is worse than the branch assumed. camden and canada_bay still return HTTP 404 on their stored hub URLs — re-confirmed live. Neither council has a per-chapter council_url on ANY of its rows (camden 2 chapters, canada_bay 3, all NULL), so those five chapters are currently re-checked by nothing at all: no URL to hash, and a hub page that 404s. Replacements found and tested: canada_bay's page has moved to /development/plans-policies-and-controls/planning-controls-LEP-DCP, which answers 200 and from which its registered scraper returns 8 PDFs — though none of those 8 are the three DCP parts we hold, so it buys new-document discovery, not change detection, for this council. camden has no usable hub page at all: its DCP moved to dcp.camden.nsw.gov.au, which is an HTML DCP serving ZERO PDFs, so a PDF-link scraper cannot read it and it needs the northern_beaches HTML treatment instead. Until those council_page_url values are corrected the monitor reports 2 real failures per run and exits 1. Also still unverified from here: whether the six councils returning 403 to a residential IP also 403 from the Railway IP; the first real run answers that, and answers it quietly, because a 403 is deliberately bucketed as infrastructure. Item 4 of the governing doc (DQ-118, per-council hub-scrape liveness) is what turns that silence into a number, and is not in this branch."
+  }
+}
