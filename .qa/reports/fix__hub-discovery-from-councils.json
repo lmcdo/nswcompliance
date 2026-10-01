@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard, not Critical: no production write, no schema change, no user-facing text, and the exit-code contract is asserted unchanged. It does change which councils the weekly monitor visits (9 -> 19 of 32) and therefore what it reports, so it is not Minor either. Critical was considered and rejected because nothing here can commit a provision or alter served data — the worst outcome is a noisier monitor run.",
-  "commit_hash": "e7935c8a",
+  "commit_hash": "314662ae",
   "files": [
     "scripts/r2_monitor.py",
     "scripts/hub_scrapers/__init__.py",
