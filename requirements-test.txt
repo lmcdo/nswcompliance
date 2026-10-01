@@ -11,7 +11,7 @@ httpx>=0.27.0
 # boto3 at module scope. It passed locally only because a dev checkout also has
 # requirements.txt installed — this file claims to be the pytest minimum and was
 # understating it. Pure Python, installs in seconds.
-boto3>=1.43.92
+boto3>=1.43.103
 # pdfplumber: same chain — tests/test_columnar_reader.py imports it transitively.
 # Pinned range matches scripts/requirements-extract.txt.
 pdfplumber>=0.11.10
@@ -71,7 +71,7 @@ suncalc>=0.1.3
 # already listed pvlib==0.15.2 and CI never read it — a library declared in a
 # file nothing installs is exactly what turned four flood postconditions into
 # decoration for months (#880).
-pvlib>=0.15.2
+pvlib>=0.16.1
 
 # shapely: the census counted 13 skips for it, but only 12 are tests — all in
 # tests/test_solar_yield.py. The thirteenth entry is a FILE,
@@ -88,7 +88,7 @@ shapely==2.1.2
 # matplotlib: the missing third of the "numpy + matplotlib + PIL" skip group —
 # numpy and pillow are already in CI's transitive closure, matplotlib was not,
 # so the 5 hillshade render tests never ran. Pinned to match requirements.txt:76.
-matplotlib==3.11.1
+matplotlib==3.11.2
 
 # PyYAML: tests/test_data_watch_workflow.py parses .github/workflows/data-watch.yml
 # to prove the alarm names the check that actually failed — its outcome list and
@@ -131,4 +131,4 @@ beautifulsoup4>=4.12
 # first push. Without this the tests SKIP in CI, and a skip is green, so the
 # guard on an OCR path that has never once succeeded would itself be dark.
 # Pinned to match requirements.txt.
-pypdf==6.18.0
+pypdf==6.19.0

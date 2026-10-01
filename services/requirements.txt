@@ -1,17 +1,17 @@
 # Core API
 fastapi==0.141.1
-uvicorn==0.52.4
+uvicorn==0.54.0
 pydantic==2.13.5
 psycopg2-binary==2.9.13
 python-dotenv==1.2.3
 requests==2.34.2
 httpx==0.28.1
-anthropic==1.5.0
-boto3==1.43.92
+anthropic==1.8.0
+boto3==1.43.103
 supabase==2.31.0
 
 # Shadow Detector + shadow_model.py
-geopandas==1.1.4
+geopandas==1.2.0
 pybdshadow==0.3.5
 shapely==2.1.2
 # suncalc: solar position for services/solar_position.py. Already present in
