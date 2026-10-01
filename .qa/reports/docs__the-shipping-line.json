@@ -1,0 +1,40 @@
+{
+  "tier": "minor",
+  "justification": "Minor: documentation only. CLAUDE.md gains one section; no code, query, schema, migration or user-facing string is touched. The gate and ledger row it names (dcp_page_repair.py --check, DQ-113) already exist and are unchanged. Standard was considered and rejected because nothing executable changes, so there is no failure mode to test.",
+  "commit_hash": "9de825a9",
+  "files": [
+    "CLAUDE.md"
+  ],
+  "pre_impl": {
+    "existing_data": "No data read or written. The claims in the new section are measurements already recorded elsewhere this session: the two City of Sydney extraction runs that skipped pages [36, 51] and [2, 36, 65] from the same PDF on the same code, and the 379 provisions lost to ref collision (605 emitted / 451 queued, 1,464 emitted / 1,239 queued).",
+    "assumption_mismatch": "The assumption this section exists to correct is my own, stated earlier the same day: that the clause number being provable was the shipping bar. The owner pointed out that a correct PAGE is already proof to a reader, and that treating the clause number as the gate made the bar look far higher than the product's actual promise. The section is written to that correction, not to my original framing.",
+    "new_vs_existing": "Adds no mechanism. It names dcp_page_repair.py --check and DQ-113, both already in CI, precisely so no new measure gets built for this — the NO NEW LISTS rule in memory/feedback-no-new-lists-finish-against-the-benchmark.md. It also points at ce-CURRENT-AIM.md and ce-product-assurance-position-2026-08.md rather than restating their content, since ce-CURRENT-AIM.md's own header warns that every prose claim about state in its history turned out wrong.",
+    "external_source_error": "N/A — no external source is consulted by a documentation change.",
+    "frontend_type": "N/A — no TypeScript or TSX file is touched.",
+    "user_failure_mode": "Indirect but real. Four times in one session a check read green for a reason unrelated to what it claimed to measure, and twice the cause was new code of mine caught only by the pre-push cross-review. The section exists so the next session aims at the provable bar instead of extraction perfection, which is unreachable because the reader is non-deterministic. It is placed at the top of CLAUDE.md rather than only in a plan file because the two memories that should have prevented the drift were loaded all session and did not."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dcp_page_repair.py --check",
+    "fails_when": "A served DCP rule's page link was never checked against its chapter's current PDF, or was checked against a PDF the chapter no longer uses. This is the gate the new section names as the one number that matters; it is not introduced here and is unchanged by this branch.",
+    "observed_red": "Observed red on live data 2026-10-02 BEFORE this branch: the check printed `133 UNCHECKED` and `FAIL: served rules whose page link was never checked against their current PDF`, matching DQ-113 red and the same 133 rules DQ-70 counts. So the gate this section points at is known to fail when it should. Nothing in this branch changes its behaviour; no test is added because no code is added.",
+    "not_proven": "That a documentation change alters my behaviour at all. It very likely does not on its own — the honest finding of the session is that prose did not bind and hooks did. This section is a record of a decision so the next session inherits it, not a control. The controls worth adding are plan mode for anything long-running and a PreToolUse hook refusing a PR that names no OC claim; neither is in this branch."
+  },
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A future session reads 'most extraction defects are NOT blockers' as licence to ship a row with the wrong words or the wrong page.",
+      "what_happens": "A served control could be coarse-but-true under the rule, or wrong-and-shipped under a misreading of it, and the two look similar from a distance.",
+      "mitigated": true,
+      "how": "The section names the boundary explicitly rather than leaving it to judgement: a defect blocks when it makes a served row WRONG rather than merely coarse — wrong words, wrong page, wrong property, or a number presented as the council's that the council did not print. Those four are exactly what dcp_page_repair.py --check and citation_status already test per row, so the permissive half of the rule is bounded by machinery that was already failing the build, not by the reader's restraint.",
+      "repro": "Run `python scripts/dcp_page_repair.py --check` on a chapter whose PDF has changed: it reports the rules as UNCHECKED and fails, regardless of what CLAUDE.md says."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No. CLAUDE.md is read by the next session automatically; there is nothing to deploy or check."
+  }
+}
