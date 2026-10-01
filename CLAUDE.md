@@ -1,5 +1,37 @@
 # PlotDetect CLAUDE.md — Universal Rules
 
+## THE SHIPPING LINE [CRITICAL] — read before chasing any extraction defect
+
+**A correct page IS proof.** The council's words plus the page is a citation a planner can
+open and check. The clause number is a convenience on top, not the promise.
+
+The bar, easiest to hardest: **(1)** the words are the council's — findable in the
+chapter's current PDF · **(2)** the page is right — those words are on that page
+(**DQ-113**) · (3) the clause number is right — optional, and already handled:
+`citation_status` (#1170) shows it only when proven and otherwise shows nothing.
+
+**We ship on 1 and 2.** A row that cannot prove its clause number still ships, with its page.
+
+**The reader is a language model, so it is NOT deterministic.** Measured 2026-10-02, one
+City of Sydney PDF, same code, two runs: the first skipped pages [36, 51], passed because
+36 held no rule words, and produced 605 provisions; the second skipped [2, 36, 65] and was
+refused because 65 holds rules. A chapter extracting cleanly is partly luck, so extraction
+perfection is unreachable **in principle** — and aiming at it is what has generated an
+endless defect list.
+
+**Therefore most extraction defects are NOT blockers.** They are reasons a row does not
+prove, and the response is to serve the page and move on. A defect blocks only when it
+makes a served row **wrong** rather than merely coarse: wrong words, wrong page, wrong
+property, or a number presented as the council's that the council did not print.
+
+**The one number, and it can only go up:** served rows whose page is proven against the
+chapter's current PDF. `python scripts/dcp_page_repair.py --check` is the gate, DQ-113 is
+the ledger row, both already run in CI. **Do not build a new measure for this.**
+
+**"Cannot be validated with available data" is a finished answer**
+(`~/.claude/plans/ce-product-assurance-position-2026-08.md`). **"Verified" stays banned.**
+Full reasoning: `~/.claude/plans/ce-CURRENT-AIM.md` § THE SHIPPING LINE.
+
 ## Severity
 **CRITICAL** = silent production bugs or data corruption if violated.
 **ENFORCED** = checked by git hooks, will block commit/push.
