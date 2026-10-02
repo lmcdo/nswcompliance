@@ -48,6 +48,18 @@ def code_groups(ref_number: str | None) -> list[tuple[str, list[str]]]:
     """Split a ref tail into (letter_prefix, [numeric parts]) groups, in order."""
     tail = (ref_number or "").split("__")[-1]
     tail = re.sub(r"\([^)]*\)", " ", tail)          # "(a)" sub-clauses: not a code
+    # The repeated-ref marker (#1197): `..._7_4 (a)~2`. It has to be stripped, not
+    # left to be "ignored". It IS ignored when an item marker sits between it and the
+    # digits -- `7_4 (a)~2` becomes `7_4 ~2`, and `~2` is a token of its own that
+    # `_HEAD` rejects. Attached straight to the clause number it EATS the last
+    # component, because `3_15_5_2~2` splits into `3 15 5 2~2` and `2~2` fails
+    # `_CONT`: `3.15.5.2` was judged as `3.15.5`, `3_1_1~4` as `3.1`, and `3_15~6`
+    # as a bare `3` ("not discriminating"). All five such rows in the 2026-10-02
+    # City of Sydney re-read were held as "citation not proven" while their own
+    # number WAS printed on their page -- page 106 carries "3.15.5.2 Monitoring and
+    # Review" verbatim. Mirrors the frontend strip in lib/citation-display.ts, so
+    # both sides read one clause number.
+    tail = re.sub(r"~\d+\b", "", tail)
     groups: list[tuple[str, list[str]]] = []
     for token in tail.split():
         current = None

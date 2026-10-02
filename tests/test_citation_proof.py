@@ -408,3 +408,26 @@ def test_a_rule_sentence_after_a_code_is_not_a_heading_title():
     assert C._titled(L, 1, "c3")
     assert C._titled(L, 2, "c4")
     assert "\x08" not in C._OBLIGATION.pattern
+
+
+def test_the_repeated_ref_marker_does_not_eat_the_clause_number():
+    """#1197 suffixes a repeated ref `~2`. Its PR says split_ref "ignores the suffix",
+    which holds only for `7_4 (a)~2`: the item marker separates them, so `~2` becomes
+    a token of its own. Attached straight to digits it ate the last component --
+    `3_15_5_2~2` split into `3 15 5 2~2`, `2~2` failed _CONT, and `3.15.5.2` was
+    judged as `3.15.5`. Measured 2026-10-02: five City of Sydney rows were held as
+    "citation not proven" while page 106 prints "3.15.5.2 Monitoring and Review".
+    A marked ref and its unmarked twin must read the same clause number.
+    """
+    for marked, plain in (("3_15_5_2~2", "3_15_5_2"),
+                          ("3_1_1~4", "3_1_1"),
+                          ("3_15~6", "3_15"),
+                          ("7_4 (a)~2", "7_4 (a)")):
+        got = [C.render(g) for g in C.split_ref(f"Doc__chap__{marked}")[0]]
+        want = [C.render(g) for g in C.split_ref(f"Doc__chap__{plain}")[0]]
+        assert got == want, f"{marked} read as {got}, its twin {plain} as {want}"
+    # and the number itself, not just agreement with the twin
+    assert [C.render(g) for g in C.split_ref("Doc__chap__3_15_5_2~2")[0]] == ["3.15.5.2"]
+    assert C.split_ref("Doc__chap__3_15~6")[2] is None   # was "bare integer section"
+    # #1197's own guard: section 3.16 is stored 3_16 and must not be mistaken for a marker
+    assert [C.render(g) for g in C.split_ref("x__3_16")[0]] == ["3.16"]
