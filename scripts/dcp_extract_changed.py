@@ -3974,12 +3974,81 @@ def diff_provisions(
         for row in cur.fetchall()
     }
 
-    # Build new provisions map from extracted sections
+    # Build new provisions map from extracted sections.
+    #
+    # A REPEATED REF USED TO OVERWRITE THE EARLIER PROVISION, SILENTLY. This was a
+    # plain `new_provisions[ref] = ...`, so when two extracted sections resolved to
+    # the same ref the first one simply ceased to exist -- it reached neither
+    # `added`, `changed` nor `removed`, and `total_new` counted the survivors, so
+    # nothing downstream could tell.
+    #
+    # Measured 2026-10-02 on city_of_sydney, re-read from the 1 Oct PDFs:
+    # `schedules` emitted 605 provisions and 451 reached the queue; `section-3`
+    # emitted 1,464 and 1,239 reached it. 379 provisions vanished between
+    # extraction and diff, on two chapters, in one run.
+    #
+    # It happens because a clause letter is NOT unique within a section. Schedules
+    # 7.4 "Transport Impact Study requirements" prints a list (a)-(o), and inside
+    # the same section a sub-heading "Pedestrians" restarts its own (a)(b)(c). Both
+    # resolve to `..._7_4 (a)`. The Pedestrians list came later in the document, so
+    # it won, and the council's real 7.4(b) "The ability of the public transport
+    # network to service the site in the peak and off peak and weekend periods" and
+    # 7.4(c) "Mode share targets" are absent from the extraction while their keys
+    # hold another list's text.
+    #
+    # `ai_extractor.dedupe_provisions` deliberately keeps two provisions that share
+    # a code but differ in text, and its docstring says "the extractor downstream
+    # already suffixes a repeated number whose text differs (_2)". It did not. This
+    # is where that suffix belongs, so the claim is now true.
+    #
+    # Identical text under a repeated ref is a genuine duplicate (the same clause
+    # read twice) and is still collapsed -- suffixing it would invent a provision.
     new_provisions = {}
+    collapsed_duplicates = 0
     for section in new_sections:
         ref = build_ref_number(document_id, section["section_number"])
         text = build_provision_text(section)
+        if ref in new_provisions:
+            # Compare against EVERY occurrence already stored under this base ref,
+            # not only the base one. Checking the base alone meant texts
+            # [A, B, B] stored A, then B as ~2, then B AGAIN as ~3 -- inventing a
+            # duplicate provision, which is the opposite of this fix's purpose and
+            # just as wrong. Raised by the pre-push cross-review, 2026-10-02.
+            norm_text = _normalize_for_diff(text)
+            occurrences = [ref] + [k for k in new_provisions
+                                   if k.startswith(f"{ref}~")]
+            if any(_normalize_for_diff(new_provisions[k]["text"]) == norm_text
+                   for k in occurrences):
+                collapsed_duplicates += 1     # the same clause again: keep one
+                continue
+            # "~2", not "_2". A section number legitimately ends in _<digits> --
+            # section 3.16 is stored as `3_16` -- so an underscore suffix is
+            # indistinguishable from a real clause number, and anything stripping
+            # it for display would turn 3.16 into 3. A tilde cannot occur in a
+            # section number, so the occurrence marker stays unambiguous both ways.
+            suffix = 2
+            while f"{ref}~{suffix}" in new_provisions:
+                suffix += 1
+            ref = f"{ref}~{suffix}"
         new_provisions[ref] = {"text": text, "page": section["page_start"]}
+
+    # EVERY EMITTED SECTION MUST BE EITHER KEPT OR DELIBERATELY COLLAPSED.
+    #
+    # This compares against `new_sections` -- what the extractor actually emitted --
+    # and NOT against the internal accounting below, because the overwrite this fix
+    # removes was internally consistent: it deleted the provision from
+    # new_provisions before `total_new = len(new_provisions)` was taken, so every
+    # downstream count agreed with every other one while 379 provisions were gone.
+    # A guard that reconciles the result with itself could never have seen it.
+    if len(new_provisions) + collapsed_duplicates != len(new_sections):
+        raise AssertionError(
+            f"extraction accounting for {council}/{chapter_key}: the extractor "
+            f"emitted {len(new_sections)} sections, {len(new_provisions)} were kept "
+            f"and {collapsed_duplicates} were collapsed as identical duplicates, "
+            f"leaving {len(new_sections) - len(new_provisions) - collapsed_duplicates} "
+            f"unaccounted for. A section must be kept or knowingly collapsed; "
+            f"anything else has been dropped without a trace."
+        )
 
     result: dict = {
         "status": "ok",
@@ -4071,6 +4140,28 @@ def diff_provisions(
     total_changes = len(result["changed"]) + len(result["added"]) + len(result["removed"])
     result["total_old"] = total_old
     result["total_new"] = total_new
+
+    # EVERY NEW PROVISION MUST LEAVE BY ONE OF THE THREE DOORS: matched (unchanged
+    # or changed), renumbered from an old ref, or added. No fourth outcome exists,
+    # so this is an identity rather than a heuristic.
+    #
+    # ⚠ This is NOT the guard that catches the overwrite fixed above, and it never
+    # would have been -- that defect shrank `new_provisions` itself, so this
+    # equality held perfectly while 379 provisions were missing. The guard for that
+    # is the emitted-vs-kept check where the map is built. This one covers the
+    # separate risk that the matching logic below loses a provision it already has.
+    # `memory/feedback-a-check-must-call-the-machine-it-checks.md`: it counts the
+    # real result dict the caller is about to use, not a recomputation of it.
+    accounted = (result["unchanged_count"] + len(result["changed"])
+                 + len(result["renumbered"]) + len(result["added"]))
+    if accounted != total_new:
+        raise AssertionError(
+            f"provision accounting lost {total_new - accounted} of {total_new} new "
+            f"provisions for {council}/{chapter_key}: unchanged={result['unchanged_count']} "
+            f"changed={len(result['changed'])} renumbered={len(result['renumbered'])} "
+            f"added={len(result['added'])}. Every new provision must be matched, "
+            f"renumbered or added; anything else has been dropped without a trace."
+        )
 
     # Count-drop guard runs FIRST: a suspicious provision loss would otherwise be
     # misread as 'restructure', which on the commit path triggers a full-replace
