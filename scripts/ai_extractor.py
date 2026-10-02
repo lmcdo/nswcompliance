@@ -148,6 +148,47 @@ def dedupe_provisions(provs: list[dict]) -> list[dict]:
     return out
 
 
+#: A provision whose body OPENS by reporting what a drawing shows is the reader
+#: describing the artwork, not the council quoting a rule. Measured 2026-10-02 on
+#: the City of Sydney `schedules` re-read: six Schedule 6 sections (6.4.1, 6.6.1,
+#: 6.7.1, 6.8.1, 6.13, 6.14) came back as sentences like "The drawing shows WP1
+#: wall plaques on the front wall" and "Technical details for the removable
+#: placard show a 360 mm wide by 500 mm high panel mounted on a post, with an
+#: overall indicated height of 1400 mm" -- measurements read off a drawing and
+#: written up in the reader's own words. Nothing like it is live today (0 of
+#: 24,692 served rows), so approving them would have put new sentences in the
+#: council's mouth, against "never interpret regulations -- only extract exact
+#: clauses".
+#:
+#: ANCHORED to the opening, deliberately. Searching the whole body matched 9
+#: served rows, and reading all 9 showed every one is genuine council text
+#: carrying a note mid-provision -- Ashfield's "*Note: The diagrams show the
+#: principles of, and how to generally comply with, Universal Accessibility",
+#: Ku-ring-gai's "The diagram is to indicate ...", which is a requirement ON a
+#: submitted drawing. A council naming its own figure says "Figure 12.1.2"; the
+#: reader describing the artwork says "the drawing".
+_FIGURE_NARRATION = re.compile(
+    r"^\s*(?:the\s+(?:drawing|drawings|diagram|diagrams|sketch|sketches|"
+    r"illustration|illustrations|image|images)\b"
+    r"|technical\s+details?\s+(?:for|of)\b)"
+    r"[^.]{0,120}?\b(?:shows?|shown|depicts?|depicted|includes?|indicates?)\b",
+    re.IGNORECASE)
+
+
+def drop_figure_narrations(provs: list[dict]) -> tuple[list[dict], list[dict]]:
+    """-> (kept, dropped). Dropped are the reader's descriptions of a drawing. Pure.
+
+    Called AFTER the page-coverage re-read, so a page whose only output was a
+    narration still counts as read and the drop cannot make it look skipped --
+    which would refuse the chapter for the opposite reason.
+    """
+    kept, dropped = [], []
+    for p in provs:
+        text = " ".join(str(p.get("text") or "").split())
+        (dropped if _FIGURE_NARRATION.match(text) else kept).append(p)
+    return kept, dropped
+
+
 def provisions_to_sections(provs: list[dict]) -> list[dict]:
     """Map [{code,title,text,page?}] to the section-dict shape DCPExtractor.extract()
     returns, so build_provision_text / diff / enqueue work unchanged. Pure."""
@@ -566,9 +607,15 @@ class PageLoss(ChunkLoss):
 #: start -- C1, O2, PC1, "a)", "1.", "ii)", a bullet. DCP controls are nearly
 #: always labelled, so an imperative with none of the words ("Retain existing
 #: trees") still counts by its label; narrative history carries neither.
-_RULE_WORDS = re.compile(
-    r"\b(shall|must|should|required|requirements?|minimum|maximum|controls?|objectives?|"
-    r"not permitted|is to be|are to be|provide|retain|avoid|ensure)\b", re.IGNORECASE)
+#: One definition, in page_coverage, because both users need the same notion of
+#: "this line could be carrying a rule": `_rule_bearing_pages` below asks it of a
+#: whole page, and `page_coverage.skipped_pages` scores a page's lines with it.
+#: The two-step import is the pattern `_place_on_pages` already uses for
+#: rule_page_locator -- this module is imported both ways.
+try:
+    from page_coverage import RULE_WORDS as _RULE_WORDS
+except ImportError:              # imported as scripts.ai_extractor
+    from scripts.page_coverage import RULE_WORDS as _RULE_WORDS
 _ITEM_LABEL = re.compile(
     r"(?m)^\s*(?:\(?[a-z]{1,3}\d{1,3}[a-z]?[.)]?\s|\(?\d{1,2}[.)]\s|\(?[a-z][.)]\s"
     r"|\(?[ivx]{1,4}\)\s|[•■▪●–-]\s)", re.IGNORECASE)
@@ -716,4 +763,9 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
             "of rule-bearing text (pages " + pages + "). Refusing to return a partial chapter: "
             "committing it would silently drop those pages, which is how "
             "marrickville lost 94 pages of source across 4 chapters.")
+    collected, narrated = drop_figure_narrations(collected)
+    if narrated:
+        print(f"    [figure-narration] dropped {len(narrated)} provision(s) describing a "
+              f"drawing rather than quoting the council: "
+              f"{[str(p.get('code', '?')) for p in narrated]}")
     return provisions_to_sections(dedupe_provisions(collected))

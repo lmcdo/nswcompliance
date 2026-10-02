@@ -56,11 +56,53 @@ def sentence_lines(texts: list[str]) -> list[list[str]]:
     return out
 
 
+#: Words a line is written in when it could be carrying a rule. The canonical
+#: definition lives here because both users need it -- ai_extractor imports it as
+#: `_RULE_WORDS` for `_rule_bearing_pages`, and `skipped_pages` scores against it.
+RULE_WORDS = re.compile(
+    r"\b(shall|must|should|required|requirements?|minimum|maximum|controls?|objectives?|"
+    r"not permitted|is to be|are to be|provide|retain|avoid|ensure)\b", re.IGNORECASE)
+
+
+def rule_lines(lines: list[list[str]]) -> list[list[str]]:
+    """The sentence lines that could be carrying a rule, or all of them when none
+    is. Pure. The fallback keeps a page of pure narrative scored as before, so the
+    re-read trigger stays exactly as sensitive as it was on those pages.
+    """
+    ruled = [w for w in lines if RULE_WORDS.search(" ".join(w))]
+    return ruled or lines
+
+
 def skipped_pages(pages: dict[int, list[str]], output_texts: list[str]) -> list[int]:
-    """Page numbers whose sentences are mostly absent from the output. Pure.
+    """Page numbers whose RULE-BEARING sentences are mostly absent from the output.
 
     `pages` maps page number -> that page's text lines; `output_texts` is every
-    text the reader returned for the document.
+    text the reader returned for the document. Pure.
+
+    Scored against the lines that could hold a rule, not every sentence on the
+    page. Counting all of them refused a page from which NOTHING was missing:
+    City of Sydney `schedules` page 65 prints clause 11.2(10)(a)-(d) and then a
+    30-line "Resources/Notes" commentary about AS 4282-1997. 47 sentence lines, 7
+    of them rule-bearing. A correct extraction of the controls matches every one
+    of the 7 and scores 14/47 = 0.2979 against PAGE_HIT -- refused by ONE line,
+    four times across two sessions, for returning exactly what it should.
+    A provision reader is not contracted to transcribe commentary, so commentary
+    does not belong in the denominator.
+
+    Measured 2026-10-02 on that page: all lines 14/47 = 0.2979 (refused),
+    _OBLIGATION lines 7/7, RULE_WORDS lines 7/13 = 0.5385. The broader RULE_WORDS
+    set is used deliberately -- it keeps six commentary lines in the denominator
+    ("control of light spill and glare", "requirements for the lighting design of
+    pedestrian and road lighting") so the result has margin instead of sitting on
+    a cliff at 1.00.
+
+    This cannot blind the guard to the loss it was built for. A page whose rule
+    lines are all absent still scores 0 -- Warringah's 21 pages and
+    Canterbury-Bankstown 6-2's 33 would score 0 the same as before. And the
+    refusal in `ai_extractor._reread_skipped_pages` is already gated on
+    `holds_rules` (two or more obligation words), so a page carrying no rule words
+    could never refuse a chapter today: narrowing the score changes the number on
+    pages that already qualify, not which pages qualify.
     """
     out: set[str] = set()
     for t in output_texts:
@@ -70,8 +112,9 @@ def skipped_pages(pages: dict[int, list[str]], output_texts: list[str]) -> list[
         lines = sentence_lines(pages[pno])
         if len(lines) < MIN_LINES:
             continue
-        read = sum(len(_grams(w) & out) / len(_grams(w)) >= LINE_HIT for w in lines)
-        if read / len(lines) < PAGE_HIT:
+        scored = rule_lines(lines)
+        read = sum(len(_grams(w) & out) / len(_grams(w)) >= LINE_HIT for w in scored)
+        if read / len(scored) < PAGE_HIT:
             missing.append(pno)
     return missing
 
