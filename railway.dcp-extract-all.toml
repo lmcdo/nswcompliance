@@ -9,15 +9,48 @@
 # diffs it against the approved baseline (regulatory_provisions WHERE is_current = TRUE),
 # enqueueing real value changes to dcp_review_queue. NO provision commit.
 #
-# This is the primary semantic-change detector cadence (plan
-# ce-dcp-targeted-semantic-detection-2026-06): decoupled from the noisy byte-change
-# trigger so a re-exported-but-identical PDF produces zero queue items, and a silent
-# in-place amendment (no byte change) is still caught. Quarterly matches DCP amendment
-# frequency and keeps single-IP rate-limit pressure low.
+# MANUAL ONLY from 2026-10-02 (user decision). NO cronSchedule, here or on Railway --
+# the live schedule was set to null the same day and read back to confirm.
+#
+# It was quarterly, and the reason written here was: "decoupled from the noisy
+# byte-change trigger so a re-exported-but-identical PDF produces zero queue items,
+# and a silent in-place amendment (no byte change) is still caught."
+#
+# BOTH HALVES OF THAT ARE NOW DONE ELSEWHERE OR IMPOSSIBLE.
+#
+# The re-export half is handled, and better: `r2_monitor` pulls the OLD pdf back out
+# of R2 and compares normalised text (`scripts/pdf_text_hash.is_reexport`). Bytes
+# differ, text identical -> logged as a re-export, no re-extraction, no queue row, and
+# `provisions_extracted_from_hash` is advanced so DQ-70 records no false entry. So the
+# noisy trigger this was decoupled from is no longer noisy.
+#
+# The silent-amendment half cannot happen. The detector compares TEXT. A content edit
+# always changes the text, so it is always caught. An edit that does not change the
+# text is not an edit. There was nothing here for this pass to find.
+#
+# WHAT IT WAS ACTUALLY DOING, measured 2026-10-02: re-reading 253 chapters / 9,841
+# pages whether or not anything changed, with a reader that is a language model and
+# therefore NOT deterministic. Same pdf, same code, three runs of city_of_sydney
+# `schedules` gave 559 sections, 626 sections, and two refusals. The diff pairs a rule
+# to its old version by clause number, so a re-split section matches nothing and is
+# reported as a deletion plus an insertion. Result: 29,019 review-queue rows in 30
+# days across 76 chapters, every one from a pdf that had NOT changed -- 94% of them
+# `added`/`removed` pairs, which is that re-splitting. That is the OpenAI bill, the
+# Railway build and run time, and the review backlog the watchdog keeps reporting as
+# "awaiting REVIEW, flagged 13d ago".
+#
+# It also could NOT have caught the one real gap. Randwick DCP 2025 was in force for
+# seven weeks unnoticed because the council published a NEW file and left the old one
+# alone. Re-reading the old file says nothing about a file we have never seen; that is
+# hub discovery's job (`ce-dcp-new-source-discovery-gap-2026-09-27.md`, DQ-118).
+#
+# STILL THE RIGHT TOOL, BY HAND: re-reading after WE improve the reader. That is a
+# regression check on our own work, not a council change, so it is run deliberately and
+# per-chapter -- `--chapter <key>`, never `--all` unscoped:
+#     python scripts/dcp_extract_changed.py --review --council <c> --chapter <k>
 [build]
 dockerfilePath = "Dockerfile.monitors"
 
 [deploy]
 startCommand = "python scripts/run_monitors.py"
-cronSchedule = "0 4 1 1,4,7,10 *"  # quarterly: 1st of Jan/Apr/Jul/Oct, 04:00 UTC
 restartPolicyType = "NEVER"        # cron job: run to completion, do not restart

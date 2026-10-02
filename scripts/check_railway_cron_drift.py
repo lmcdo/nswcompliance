@@ -83,6 +83,18 @@ INTENTIONALLY_DISABLED = {
         "of stale alerts in one go. Held 2026-09-10 pending a "
         "run_alerts_dispatch.py --dry-run showing what would actually go out."
     ),
+    "dcp-extract-all": (
+        "Re-read EVERY chapter on a quarterly timer. Off since 2026-10-02 (user "
+        "decision), live schedule set to null and read back. Its two stated reasons "
+        "are both void: the re-export noise it was decoupled from is handled by "
+        "r2_monitor comparing the OLD pdf's normalised text (pdf_text_hash.is_reexport), "
+        "and a 'silent in-place amendment with no byte change' cannot exist because "
+        "that detector compares TEXT. What it actually did, measured: re-read 253 "
+        "chapters / 9,841 pages regardless of change, with a non-deterministic reader, "
+        "producing 29,019 review rows in 30 days from pdfs that had NOT changed. Still "
+        "the right tool by hand, per chapter, after WE change the reader -- never on a "
+        "timer. See railway.dcp-extract-all.toml."
+    ),
 }
 
 _CRON_RE = re.compile(r'^\s*cronSchedule\s*=\s*"([^"]*)"', re.MULTILINE)
@@ -141,9 +153,20 @@ def live_schedules(token: str) -> dict[str, str | None]:
 
 
 def compare(declared: dict[str, str], live: dict[str, str | None]) -> list[str]:
-    """Every disagreement, as a human-readable line. Empty means clean."""
+    """Every disagreement, as a human-readable line. Empty means clean.
+
+    Walks the declared files UNION the intentionally-disabled list, not just the
+    declared files. A service that must stay OFF is the one case where the file
+    declares nothing -- removing its `cronSchedule` line is how you turn it off --
+    and iterating `declared` alone therefore dropped it into the bare "declares no
+    cronSchedule" skip note. That is the silent drop UNCHECKABLE's own comment warns
+    about: the exception would sit in the list above agreeing with whatever happened
+    to be true, and re-enabling the job would raise nothing. Added 2026-10-02 with
+    dcp-extract-all, the first entry turned off by deleting its schedule.
+    """
     problems = []
-    for service, want in sorted(declared.items()):
+    for service in sorted(set(declared) | set(INTENTIONALLY_DISABLED)):
+        want = declared.get(service)
         if service in INTENTIONALLY_DISABLED:
             got = live.get(service)
             if got is not None:
@@ -205,7 +228,11 @@ def main() -> int:
         print("  serviceInstanceUpdate mutation) or correct the file -- but the")
         print("  file alone will not change what runs.")
         return 1
-    checked = len(declared) - len(INTENTIONALLY_DISABLED)
+    # Set difference, not a subtraction of lengths: a disabled service is only inside
+    # `declared` while its file still carries a schedule. dcp-extract-all's does not,
+    # so `len(declared) - len(INTENTIONALLY_DISABLED)` would under-report by one and
+    # the summary line would be quietly wrong.
+    checked = len(set(declared) - set(INTENTIONALLY_DISABLED))
     print()
     print(f"RAILWAY-CRON: PASSED -- {checked} service(s) match their config "
           f"file, {len(INTENTIONALLY_DISABLED)} intentionally off.")

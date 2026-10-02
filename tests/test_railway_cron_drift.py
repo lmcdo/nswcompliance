@@ -121,5 +121,61 @@ def test_the_real_files_map_to_real_service_names(service):
     service. If the derivation silently produced 'alerts', the check would
     report NO SUCH SERVICE forever and be switched off as broken.
     """
-    declared, _ = drift.declared_schedules()
+    declared, skipped = drift.declared_schedules()
+    if service in drift.INTENTIONALLY_DISABLED and service not in declared:
+        # Turned off by DELETING its cronSchedule, so it cannot appear in `declared`
+        # and the derivation cannot be proved through it. Prove it directly instead,
+        # against the same rule declared_schedules() applies, and require the file to
+        # still be accounted for in `skipped` rather than missing altogether.
+        name = f"railway.{service}.toml"
+        derived = drift.FILE_TO_SERVICE.get(name) or name[len("railway."):-len(".toml")]
+        assert derived == service, f"{name} derives {derived!r}, not {service!r}"
+        assert (ROOT / name).exists(), f"{name} is gone -- the service is unwatched"
+        assert any(name in s for s in skipped), f"{name} is not accounted for"
+        return
     assert service in declared, f"{service} is not covered by any railway toml"
+
+
+# -- a service turned off by DELETING its schedule ------------------------------
+
+def test_a_disabled_service_is_checked_even_when_its_file_declares_nothing():
+    """Turning a job off means removing `cronSchedule` from its file. So the file
+    declares nothing, and iterating `declared` alone dropped the service into the
+    bare "declares no cronSchedule" skip note -- the silent drop UNCHECKABLE's own
+    comment warns about. The exception would then sit in INTENTIONALLY_DISABLED
+    agreeing with whatever happened to be true.
+
+    dcp-extract-all, off since 2026-10-02, is the first entry in that shape.
+    """
+    # nothing declared for it anywhere, and Railway has no cron: that is the goal state
+    assert drift.compare({}, {"dcp-extract-all": None}) == []
+    # switched back on behind the exception: must FAIL and name it
+    out = drift.compare({}, {"dcp-extract-all": "0 4 1 1,4,7,10 *"})
+    assert len(out) == 1, out
+    assert "dcp-extract-all" in out[0]
+    assert "intentionally disabled" in out[0]
+    assert "0 4 1 1,4,7,10 *" in out[0]
+
+
+def test_the_quarterly_reextract_stays_off():
+    """The decision, pinned. dcp-extract-all re-read 253 chapters / 9,841 pages on a
+    timer with a non-deterministic reader, producing 29,019 review rows in 30 days
+    from PDFs that had not changed. Its file must declare no schedule and it must
+    carry a recorded reason, so nobody re-enables it without reading why.
+    """
+    assert "dcp-extract-all" in drift.INTENTIONALLY_DISABLED
+    declared, skipped = drift.declared_schedules()
+    assert "dcp-extract-all" not in declared, (
+        "railway.dcp-extract-all.toml declares a cronSchedule again")
+    assert any("dcp-extract-all" in s for s in skipped)
+
+
+def test_the_summary_count_is_a_set_difference_not_a_subtraction():
+    """A disabled service is only inside `declared` while its file still carries a
+    schedule. Counting with len(declared) - len(INTENTIONALLY_DISABLED) under-reports
+    once one of them is turned off by deleting its line.
+    """
+    declared = {"dcp-commit": "0 9 * * *", "property-alerts": "0 22 * * 0"}
+    # property-alerts is excepted and declared; dcp-extract-all is excepted and not.
+    assert len(set(declared) - set(drift.INTENTIONALLY_DISABLED)) == 1
+    assert len(declared) - len(drift.INTENTIONALLY_DISABLED) == 0   # the old, wrong way

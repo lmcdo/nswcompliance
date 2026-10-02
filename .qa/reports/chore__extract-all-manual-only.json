@@ -1,0 +1,86 @@
+{
+  "tier": "standard",
+  "justification": "The quarterly dcp-extract-all cron re-read EVERY active chapter whether or not anything had changed, with a reader that is a language model and therefore not deterministic. Measured 2026-10-02: 253 chapters, 9,841 pages per pass, and 29,019 dcp_review_queue rows in 30 days across 76 chapters whose PDF had NOT changed - 94% of them added/removed pairs, which is the diff failing to pair a rule to its old version after the reader re-split the section. That is the OpenAI spend, the Railway build and run time, and the review backlog the watchdog reports as 'awaiting REVIEW, flagged 13d ago'. Both reasons written in its own config file are void: the re-export noise it was decoupled from is already handled by r2_monitor comparing the OLD PDF's normalised text, and a 'silent in-place amendment with no byte change' cannot exist because that detector compares TEXT. Set to manual-only on the user's decision. The file's schedule is removed, the live schedule was set to null and read back, and the drift checker now enforces that it stays off.",
+  "commit_hash": "4dddf59b",
+  "files": [
+    "railway.dcp-extract-all.toml",
+    "scripts/check_railway_cron_drift.py",
+    "tests/test_railway_cron_drift.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_railway_cron_drift.py -q  (and, with a token, python scripts/check_railway_cron_drift.py)",
+    "fails_when": "Someone re-enables the quarterly schedule on Railway, or puts a cronSchedule back in railway.dcp-extract-all.toml. The first makes compare() return 'dcp-extract-all: listed as intentionally disabled, but Railway now runs ...'; the second makes test_the_quarterly_reextract_stays_off fail on 'railway.dcp-extract-all.toml declares a cronSchedule again'. Before this change neither was possible: a file with no cronSchedule fell into the bare 'declares no cronSchedule' skip note and the exception sat in INTENTIONALLY_DISABLED agreeing with whatever happened to be true.",
+    "external_authority": "The Railway API, not our own files. The live schedule was read back after the mutation and reports cronSchedule = None for dcp-extract-all while dcp-extract still reports '0 3 * * *' - so the daily path is untouched. The drift checker compares the files against that same API, and refuses to pass without a token in CI, so it cannot go green by not looking.",
+    "observed_red": "Forced, with the real declared_schedules() output, before the test was written. Clean state: compare({}, {'dcp-extract-all': None}) -> no problems. Re-enabled: compare({}, {'dcp-extract-all': '0 4 1 1,4,7,10 *'}) -> \"dcp-extract-all: listed as intentionally disabled, but Railway now runs '0 4 1 1,4,7,10 *'. Either it was switched on and the exception was left behind, or the exception was never true. Remove it from INTENTIONALLY_DISABLED.\" And the pre-existing coverage ratchet went red on its own when the schedule line was removed - test_the_real_files_map_to_real_service_names[dcp-extract-all] failed with 'dcp-extract-all is not covered by any railway toml', which is the silent-drop this change had to close."
+  },
+  "pre_impl": {
+    "existing_data": "INTENTIONALLY_DISABLED already existed with property-alerts in it, and its comment already states the principle this change extends: 'an exception list is how a ratchet rots, so this one runs BOTH ways'. UNCHECKABLE already existed for files that cannot be checked, 'recorded here, not silently dropped'. So no new concept: dcp-extract-all joins the existing exception list, and compare() is widened so that list is honoured when the file declares nothing. railway.dcp-extract-all.toml's own docstring supplied the two justifications that were then checked and found void.",
+    "assumption_mismatch": "Three, and they are the reason this took four attempts. (1) I proposed moving the maintenance crons to GitHub Actions; the architecture doc records that Actions cost $38.59/mo and that moving OFF it was the decision, so that would have reversed a recorded cost call. (2) I proposed watch paths on the monitor services; measured, 43 of 45 merges touch files they genuinely contain, so it would have saved 2 builds in 45 - the saving is on Dockerfile.python's services, which I had measured against frontend-nextjs by mistake. (3) I proposed deleting property-alerts as dead; it is deliberately held, with a recorded reason about emailing a backlog of stale alerts to real subscribers. Every one of those was a recommendation made before the measurement.",
+    "new_vs_existing": "One entry added to an existing dict, one loop widened from `declared` to `declared | INTENTIONALLY_DISABLED`, one summary count corrected from a length subtraction to a set difference, and the cronSchedule line deleted from one toml. No new file, no new check script, no new ledger row, no query, no schema change. compare() and declared_schedules() are pure."
+  },
+  "functions": [
+    {
+      "name": "compare",
+      "file_line": "scripts/check_railway_cron_drift.py:155",
+      "input": "the schedules declared in railway*.toml, and the live schedules read from the Railway API",
+      "output": "one human-readable line per disagreement, empty when clean. Now walks declared UNION INTENTIONALLY_DISABLED, so a service turned off by deleting its schedule is still compared against the live value.",
+      "if_none": "returns [] and the script exits 0. That is only reachable when every declared schedule matches live AND every intentionally-disabled service really has no cron - the second half is what this change adds."
+    },
+    {
+      "name": "declared_schedules",
+      "file_line": "scripts/check_railway_cron_drift.py:103",
+      "input": "every railway*.toml file found on disk in the repository root, read as text",
+      "output": "(declared, skipped). dcp-extract-all now lands in `skipped` as 'declares no cronSchedule' - which is correct and is why compare() can no longer rely on `declared` alone.",
+      "if_none": "an empty declared map with everything skipped would make compare() check only the disabled list; test_the_declared_map_covers_every_railway_toml already fails if any file is neither declared nor accounted for."
+    }
+  ],
+  "values": [
+    {
+      "value": "dcp-extract-all live cronSchedule: '0 4 1 1,4,7,10 *' before, None after; dcp-extract unchanged at '0 3 * * *'",
+      "read_at": "railway api serviceInstanceUpdate then a read-back query against the Railway API, 2026-10-02",
+      "if_missing": "if the read-back had still shown the quarterly schedule, the mutation silently failed and the file change would be decoration - which is the exact failure mode this whole check exists for. Reading it back is the only proof."
+    },
+    {
+      "value": "29,019 review-queue rows in 30 days across 76 chapters whose source_content_hash equals the chapter's provisions_extracted_from_hash; 94% are added/removed, not changed",
+      "read_at": "dcp_review_queue joined to dcp_chapter_registry, 2026-10-02",
+      "if_missing": "if those rows had come from chapters whose hash HAD moved, they would be real council changes and turning this job off would hide them. The hash equality is what proves the document had not changed, and the added/removed split is what identifies the cause as section re-splitting rather than amendments."
+    },
+    {
+      "value": "253 chapters and 9,841 pages selected by --all, against 12 chapters and 1,174 pages selected by the default flagged-only path",
+      "read_at": "_pending_chapters_sql(None, all_chapters=True) vs all_chapters=False, run against production, 2026-10-02",
+      "if_missing": "a small --all selection would have made this a cost rounding error rather than the dominant job. 253 of 572 active chapters is the number that makes it the dominant job."
+    }
+  ],
+  "queries": "N/A for the changed code - compare() and declared_schedules() read toml files and a dict, and issue no SQL. The three measurements above were read through the existing read-only probes (dq_db.connect sets readonly).",
+  "break_it": [
+    {
+      "scenario": "A real council amendment is now missed, because the quarterly full re-read was the only thing that would have caught it.",
+      "what_happens": "We serve a superseded control with full confidence, page number and all. The worst failure this product has.",
+      "mitigated": true,
+      "how": "Checked against the detector's code rather than assumed. r2_monitor compares the NORMALISED TEXT of the new download against the old copy still in R2 (pdf_text_hash.is_reexport), so any content edit changes the text and is flagged - the full re-read adds nothing. The case it genuinely could not catch is a council publishing a NEW file at a new URL, and re-reading an old file says nothing about a file never seen; that is hub discovery's job, measured at 6 of 29 councils but 74% of served rules, with its own plan and DQ-118.",
+      "repro": "scripts/r2_monitor.py, the content-change gate; scripts/pdf_text_hash.py docstring"
+    },
+    {
+      "scenario": "Someone re-enables the quarterly cron in the Railway dashboard, where config-as-code does not reach.",
+      "what_happens": "The churn resumes and the file still says nothing, so the repo looks correct while 29,000 rows a month come back. This is precisely how six of eight services came to run a schedule different from their files on 2026-09-10.",
+      "mitigated": true,
+      "how": "compare() now walks the disabled list regardless of what the file declares, so the live value is checked. Forced red before the test was written; the message names the service and the schedule it found.",
+      "repro": "python -m pytest tests/test_railway_cron_drift.py -q -k declares_nothing"
+    },
+    {
+      "scenario": "Someone deletes railway.dcp-extract-all.toml entirely, thinking an unscheduled file is dead weight.",
+      "what_happens": "The recorded reason goes with it, and the next person re-enables the job because nothing explains why it is off.",
+      "mitigated": true,
+      "how": "test_the_real_files_map_to_real_service_names asserts the file still exists and is accounted for in `skipped`, and test_every_disabled_service_carries_a_reason requires the INTENTIONALLY_DISABLED entry to carry more than 40 characters of reason. The reason itself is in the toml, which the entry points at.",
+      "repro": "delete the file and run the test file"
+    }
+  ],
+  "mutation_analysis": "Three mutations, all run. (1) Revert compare() to iterating `declared` alone: test_a_disabled_service_is_checked_even_when_its_file_declares_nothing fails, because compare({}, {'dcp-extract-all': '0 4 ...'}) returns [] - the re-enabled job goes unreported, which is the whole defect. (2) Revert the summary count to len(declared) - len(INTENTIONALLY_DISABLED): test_the_summary_count_is_a_set_difference fails, and the live numbers show why - 7 declared minus 2 excepted reports 5 services checked when 6 were. (3) Put the cronSchedule line back in the toml: test_the_quarterly_reextract_stays_off fails on the declared map. One mutation was involuntary and is the better evidence: removing the schedule line made the PRE-EXISTING test_the_real_files_map_to_real_service_names go red unprompted, which is the silent-drop this change closes.",
+  "residual_risk": "The drift checker needs RAILWAY_TOKEN. Locally it SKIPS and says so; in CI a missing token FAILS, which is correct. But I could not run it end to end here - the live read-back was done through the Railway CLI's own login instead, so the proof that the live value is null comes from the API directly rather than from this script. The first CI run with a token is what proves the script agrees. Separately: the daily dcp-extract path is untouched, so a chapter whose PDF genuinely changes is still re-read within a day - but a chapter whose extraction is merely POOR now stays poor until someone re-reads it deliberately. That is the trade the user accepted; DQ-70 and DQ-113 continue to measure served quality every CI run, so it degrades loudly rather than silently.",
+  "post_merge": {
+    "db_reset": "No. No schema or data change. The queue rows already created by past --all runs stay as history; nothing deletes them, and they are no longer added to.",
+    "secrets": "None written or staged. The Railway mutation used the CLI's existing login, not a token in the repo. A copy of the root .env sits in the worktree for the database probes, covered by .gitignore line 46 and never staged.",
+    "other_repo": "No. Single repository, plus the Railway project whose live value was changed and read back in this session.",
+    "manual_verify": "Yes, one thing, on the first CI run with RAILWAY_TOKEN: confirm check_railway_cron_drift.py prints 'intentionally OFF: dcp-extract-all' and exits 0. That is the only evidence the script and the live value agree, because it could not be run end to end locally. Second, after a fortnight: re-run the 29,019 query and confirm no NEW rows have appeared from an unchanged PDF."
+  }
+}
