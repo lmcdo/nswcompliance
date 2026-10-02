@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The quarterly dcp-extract-all cron re-read EVERY active chapter whether or not anything had changed, with a reader that is a language model and therefore not deterministic. Measured 2026-10-02: 253 chapters, 9,841 pages per pass, and 29,019 dcp_review_queue rows in 30 days across 76 chapters whose PDF had NOT changed - 94% of them added/removed pairs, which is the diff failing to pair a rule to its old version after the reader re-split the section. That is the OpenAI spend, the Railway build and run time, and the review backlog the watchdog reports as 'awaiting REVIEW, flagged 13d ago'. Both reasons written in its own config file are void: the re-export noise it was decoupled from is already handled by r2_monitor comparing the OLD PDF's normalised text, and a 'silent in-place amendment with no byte change' cannot exist because that detector compares TEXT. Set to manual-only on the user's decision. The file's schedule is removed, the live schedule was set to null and read back, and the drift checker now enforces that it stays off.",
-  "commit_hash": "4dddf59b",
+  "commit_hash": "1a6bdcb9",
   "files": [
     "railway.dcp-extract-all.toml",
     "scripts/check_railway_cron_drift.py",
