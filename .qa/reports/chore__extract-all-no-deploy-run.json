@@ -1,0 +1,85 @@
+{
+  "tier": "standard",
+  "justification": "Removing a cronSchedule does NOT make a Railway job manual-only. Measured 2026-10-02, an hour after PR #1200 took dcp-extract-all's schedule away: merging #1200 changed that service's own config file, Railway redeployed the service, and with no schedule it started the container immediately and ran run_monitors.py - a 253-chapter, 9,841-page re-read, unattended. The only reason anyone noticed is the Telegram dead-man's-switch warning the container emits at startup, which the user forwarded. It extracted nothing (0 queue rows, 0 url checks, 0 registry writes in the following hour) and the deployment was removed, so it cost nothing. But the next merge touching a watched file would have done it again. So the start command no longer invokes the reader: a deploy prints how to run it by hand and exits 0. The live value had to change too - the dashboard carried its own startCommand ('python scripts/run_monitors.py') while dcp-extract carries None, so the file alone would have been decoration, which is the exact drift class check_railway_cron_drift.py exists for.",
+  "commit_hash": "8b3834ef",
+  "files": [
+    "railway.dcp-extract-all.toml",
+    "tests/test_railway_cron_drift.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_railway_cron_drift.py -q",
+    "fails_when": "railway.dcp-extract-all.toml's startCommand becomes anything that can execute - it must be a single echo with no ';', '&&', '||', '|', '$(', backtick or newline that could chain a second command. Restoring 'python scripts/run_monitors.py' fails with the measurement in the message.",
+    "external_authority": "The Railway API, read back after the mutation: dcp-extract-all now reports cronSchedule = None and startCommand = \"echo 'MANUAL ONLY...'\". Not inferred from the file - the file was already correct in #1200 and the live value disagreed with it, which is the whole point. Separately, the deployment list is the authority for what happened: dcp-extract-all shows a deployment created 2026-10-02T08:18:30, the same second PR #1200 merged (08:18:28Z).",
+    "observed_red": "Forced by restoring the executable command in the file and re-running: \"AssertionError: startCommand is 'python scripts/run_monitors.py'. It must be a single echo: with no cronSchedule, Railway starts the container on every deploy, so anything executable here runs a 253-chapter re-read unattended (measured 2026-10-02 on the PR #1200 merge).\" 1 failed, 18 deselected. Restored: 19 passed. An earlier version of this test matched substrings instead and went red on the command's own help text, which names the script a person should run by hand - that failure is why the assertion is about executability rather than wording."
+  },
+  "pre_impl": {
+    "existing_data": "railway.dcp-extract-all.toml and its INTENTIONALLY_DISABLED entry already existed from PR #1200 and already carried the reasoning for the job being off; this adds the half that #1200 missed. check_railway_cron_drift.py already knows that a dashboard value overrides the file ('Railway applies config-as-code only where no dashboard value is set'), which is why the live startCommand was read before assuming the file would take effect. tests/test_railway_cron_drift.py already existed with 18 tests; one is appended.",
+    "assumption_mismatch": "Two, both caught by running things. (1) I assumed deleting the cronSchedule was sufficient for 'manual only'. It is not - Railway starts a scheduleless service on deploy, which the user's forwarded Telegram alert revealed within the hour. (2) I assumed the file change would be enough this time too; reading the live values showed dcp-extract-all has a dashboard startCommand while dcp-extract has none, so only the API mutation actually changes behaviour.",
+    "new_vs_existing": "One startCommand value changed in one toml, one test appended to an existing file, and one live Railway value set to match. No new file, no new script, no new check module, no query, no schema change."
+  },
+  "functions": [
+    {
+      "name": "test_the_manual_only_service_cannot_be_started_by_a_deploy",
+      "file_line": "tests/test_railway_cron_drift.py:184",
+      "input": "the text of railway.dcp-extract-all.toml, read from disk at test time",
+      "output": "passes only when startCommand is a single echo with no command-chaining character; otherwise asserts with the measurement that motivated it",
+      "if_none": "if the file declares no startCommand at all the test fails on 'declares no startCommand', because an absent command means Railway falls back to the image default and the guarantee is lost."
+    },
+    {
+      "name": "compare",
+      "file_line": "scripts/check_railway_cron_drift.py:155",
+      "input": "declared schedules from the toml files, plus the live schedules from the Railway API",
+      "output": "unchanged by this PR, but it is what keeps the cron half honest; this PR covers the startCommand half, which compare() does not read",
+      "if_none": "returns [] and the script exits 0. Note the gap this leaves and which the new test fills: the drift checker compares SCHEDULES only, so a changed startCommand would not have been reported by it."
+    }
+  ],
+  "values": [
+    {
+      "value": "dcp-extract-all deployment created 2026-10-02T08:18:30; PR #1200 merged 2026-10-02T08:18:28Z",
+      "read_at": "Railway API deployments(first: 2) per service, and gh pr view 1200 mergedAt, 2026-10-02",
+      "if_missing": "if the deployment had predated the merge, the merge did not trigger it and the start command would not be the cause - the alert would have needed another explanation. Two seconds apart is what identifies the merge as the trigger."
+    },
+    {
+      "value": "0 queue rows, 0 url_last_checked updates and 0 registry updates in the hour after that deployment",
+      "read_at": "dcp_review_queue and dcp_chapter_registry, 2026-10-02",
+      "if_missing": "a non-zero count would mean a full 253-chapter re-read had actually executed and its output needed unpicking, not just the deployment removing. Zero is what makes this a near miss rather than an incident."
+    },
+    {
+      "value": "live startCommand was 'python scripts/run_monitors.py' for dcp-extract-all and None for dcp-extract",
+      "read_at": "Railway API serviceInstances.startCommand, before the mutation, 2026-10-02",
+      "if_missing": "if it had been None, the toml would govern and no live change would be needed. It was set, so the file alone would have changed nothing - the difference between a fix and decoration."
+    }
+  ],
+  "queries": "N/A for the changed code - the test reads a toml file and issues no SQL. The two counts above were read through the existing read-only probe connection (dq_db.connect sets readonly).",
+  "break_it": [
+    {
+      "scenario": "Someone needs to run the full re-read and finds the start command neutered, so they put 'python scripts/run_monitors.py' back on the service to run it once and leave it there.",
+      "what_happens": "Every subsequent merge touching a watched file silently runs a 253-chapter re-read again, and the only signal is a Telegram warning about an unrelated subject.",
+      "mitigated": true,
+      "how": "The test fails on the file, naming the measurement, so the change cannot land through CI unnoticed. And the echo itself tells the reader what to do instead, in the place they will be looking - the container log. It does not stop someone editing only the dashboard, which is the residual risk below.",
+      "repro": "python -m pytest tests/test_railway_cron_drift.py -q -k manual_only"
+    },
+    {
+      "scenario": "The same deploy-on-push behaviour applies to another service whose schedule is removed later.",
+      "what_happens": "The same unattended run, for a different job, with no test covering it.",
+      "mitigated": false,
+      "how": "Not mitigated. This test names one file deliberately rather than generalising, because dcp-extract-all is the only service in this shape today (the other intentionally-disabled service, property-alerts, still declares a cronSchedule in its file). A general rule would have to decide what 'manual only' means for a service that legitimately runs on deploy, and inventing that now would be a guess. Recorded so the next removal gets the same treatment.",
+      "repro": "scripts/check_railway_cron_drift.py INTENTIONALLY_DISABLED"
+    },
+    {
+      "scenario": "The echo text drifts away from the real command, so the log tells someone to run something that no longer works.",
+      "what_happens": "A person follows the log, the command errors, and they fall back to re-enabling the service - the first scenario.",
+      "mitigated": false,
+      "how": "Not mitigated, and kept deliberately vague for that reason: the echo says 'one named chapter at a time' and points at the toml, where the exact invocation lives beside the reasoning. A literal command string in two places is the thing that drifts.",
+      "repro": "compare the echo text with the command in railway.dcp-extract-all.toml's comment block"
+    }
+  ],
+  "mutation_analysis": "Two mutations, both run on the real file rather than a fixture. (1) Restore 'python scripts/run_monitors.py': the new test fails and prints the startCommand it found plus the measurement; 18 other tests still pass, so the failure is specific rather than collateral. (2) Keep the echo but append '; python scripts/run_monitors.py': caught by the chaining check, which exists because an echo is only a no-op while nothing follows it. A third mutation shows the test's own history: the first version asserted on substrings and went red against a correct file, because the help text names the script - that is why the property is executability. The drift checker's own cron tests are untouched and still pass, confirming this did not disturb the schedule half.",
+  "residual_risk": "The test reads the FILE. Railway lets a dashboard value override the file, so someone editing the start command only in the dashboard would not be caught by CI - exactly the hole check_railway_cron_drift.py was built for on the cron field, and it does not read startCommand. The live value is correct today, verified by read-back, but nothing watches it. Extending the drift checker to compare startCommand as well as cronSchedule is the obvious follow-up and is NOT in this PR, because it needs its own forced-red verification and would widen a check that currently has one clear job. Also unchanged: the dead-man's-switch warning this incident surfaced is still true for every scheduled monitor - HC_PING_URL is a placeholder fleet-wide, so if dcp-extract or dcp-commit stops running, nothing alerts.",
+  "post_merge": {
+    "db_reset": "No. No schema or data change; the only database interaction was reading two counts to confirm nothing had been extracted.",
+    "secrets": "None written or staged. The Railway mutation used the CLI's existing login. A copy of the root .env sits in the worktree for the read-only probes, covered by .gitignore line 46 and never staged.",
+    "other_repo": "No. Single repository, plus the Railway service whose startCommand was set and read back in this session.",
+    "manual_verify": "Yes, and it is the point: on the FIRST merge after this one that touches a file dcp-extract-all watches, confirm its container log shows only the echo and that no queue rows appear. That is the only end-to-end proof, because the behaviour under test is Railway's deploy trigger, which cannot be exercised locally."
+  }
+}
