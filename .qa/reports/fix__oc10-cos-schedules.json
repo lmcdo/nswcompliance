@@ -27,7 +27,7 @@
     },
     {
       "name": "split_ref",
-      "file_line": "scripts/citation_proof.py:81",
+      "file_line": "scripts/citation_proof.py:92",
       "input": "the same ref_number; it consumes code_groups' output and peels the trailing item marker",
       "output": "(sections, item, unjudged_reason). The fix changes only which clause number arrives here; split_ref itself is untouched.",
       "if_none": "returns 'no clause number in the ref' and the citation is unjudged, so nothing is claimed about it."
@@ -48,6 +48,11 @@
       "value": "page 106 of the section-3 PDF contains the literal string '3.15.5.2 Monitoring and Review'",
       "read_at": "pdfplumber over the R2 copy whose sha256 equals the registry content_hash, 2026-10-02",
       "if_missing": "if the council had not printed that clause number on that page, the 'not proven' verdict would have been right and the row would have needed a page or number repair instead of a parser fix."
+    },
+    {
+      "value": "0 queue refs carry two markers, and 0 carry text after the marker; 0 live regulatory_provisions rows carry a marker at all",
+      "read_at": "ref_number ~ '~[0-9]+.*~[0-9]+' and ref_number LIKE '%~%' over dcp_review_queue and regulatory_provisions, 2026-10-02",
+      "if_missing": "if either shape existed today the anchoring would be a live correctness fix rather than a guard against a shape the producer could start emitting, and the 5 re-graded rows would not be the whole of the effect. The marker reaching no live row also means nothing already served needs re-judging."
     }
   ],
   "queries": "N/A - code_groups and split_ref are pure string functions and this change adds no query. The measurements above read dcp_review_queue through the existing read-only scripts (dq_db.connect sets readonly).",
@@ -72,10 +77,17 @@
       "mitigated": true,
       "how": "Checked against the source rather than against our own output: the one clause number traced to the PDF, 3.15.5.2, is printed on the page the row cites. And the count discriminates - the re-grade moved exactly the 5 rows whose refs carry the marker, by name, and left all 18 unmarked held rows held. A loosened gate would have cleared some of those 18.",
       "repro": "python scripts/dcp_approve_graded.py --council city_of_sydney (dry run) - 18 held, 0 of them marked"
+    },
+    {
+      "scenario": "A `~<digits>` sequence that is NOT the producer's trailing marker - `3_15~2.4` - is stripped anyway, and the remains parse as a clause number.",
+      "what_happens": "`3_15~2.4` reads as `3.15.4`: a clause number that looks entirely plausible, invented out of a ref shape that should have stayed unjudged. DQ-111, from the fix meant to prevent it.",
+      "mitigated": true,
+      "how": "Raised by the Sol cross-review of the first version at confidence 0.96, and real: the unanchored strip did produce ['3.15.4']. Anchored to the end of the tail. Sol's own suggested fix, a single `~\\d+$`, was not enough - dcp_extract_changed's `while f'{ref}~{suffix}' in new_provisions` can mark a ref that already carries a marker, and a single anchor leaves `X_5~2` out of `X_5~2~3`, bringing the eaten component straight back. Shipped `(?:~\\d+)+$`, which is the only one of the three correct on both.",
+      "repro": "python -m pytest tests/test_citation_proof.py -q -k anchored_and_repeatable"
     }
   ],
-  "mutation_analysis": "Two mutations, both run rather than described. (1) Delete the strip by restoring code_groups to its pre-fix body: 3 of the test's 4 marked/unmarked pairs fail, with the measured outputs ['3.15.5'] vs ['3.15.5.2'], ['3.1'] vs ['3.1.1'], and [] vs ['3.15']. The 4th pair, 7_4 (a)~2, passes either way - the test is not vacuous, and that one surviving pair is itself the finding, because it is the shape #1197 reasoned from. (2) Make the strip greedy, ~\\d* or a bare ~.*: x__3_16 and the 7_4 (a)~2 pair still pass, so this test does NOT catch greediness. Accepted, because the marker's only writer always emits ~ plus an integer (dcp_extract_changed.py:4032), so no ~-without-digits ref exists to protect against and a test for one would assert on an impossible input.",
-  "residual_risk": "Rows graded before this fix keep their stale 'not proven' verdict until dcp_fidelity_gate.py is re-run for their chapter, and the gate only re-grades PENDING rows - so a marked row already approved or rejected keeps the old verdict and its clause number stays withheld rather than wrongly shown. That is the safe direction, but it means the benefit is not retroactive across the whole queue. This change does not touch the 18 City of Sydney rows that are genuinely unproven, and it does not change what citation_status displays - only which clause number gets checked.",
+  "mutation_analysis": "Two mutations, both run rather than described. (1) Delete the strip by restoring code_groups to its pre-fix body: 3 of the test's 4 marked/unmarked pairs fail, with the measured outputs ['3.15.5'] vs ['3.15.5.2'], ['3.1'] vs ['3.1.1'], and [] vs ['3.15']. The 4th pair, 7_4 (a)~2, passes either way - the test is not vacuous, and that one surviving pair is itself the finding, because it is the shape #1197 reasoned from. (2) Make the strip greedy, ~\\d* or a bare ~.*: x__3_16 and the 7_4 (a)~2 pair still pass, so this test does NOT catch greediness. Accepted, because the marker's only writer always emits ~ plus an integer (dcp_extract_changed.py:4032), so no ~-without-digits ref exists to protect against and a test for one would assert on an impossible input. Two more after the Sol cross-review, both run on the three candidate patterns side by side: unanchored `~\\d+\b` gives 3_15~2.4 -> ['3.15.4'] (invents a clause) while X_5~2~3 is correct; single-anchored `~\\d+$` gives 3_15~2.4 -> ['3','4'] (correct, unjudged) but X_5~2~3 -> [] against X_5 -> ['5'] (wrong); shipped `(?:~\\d+)+$` is the only one correct on both. Each failure is caught by a named assertion in test_the_marker_strip_is_anchored_and_repeatable, so neither half is vacuous.",
+  "residual_risk": "Rows graded before this fix keep their stale 'not proven' verdict until dcp_fidelity_gate.py is re-run for their chapter, and the gate only re-grades PENDING rows - so a marked row already approved or rejected keeps the old verdict and its clause number stays withheld rather than wrongly shown. That is the safe direction, but it means the benefit is not retroactive across the whole queue. This change does not touch the 18 City of Sydney rows that are genuinely unproven, and it does not change what citation_status displays - only which clause number gets checked. The two shapes the anchoring protects against do not exist in the queue today, checked rather than assumed: ref_number ~ '~[0-9]+.*~[0-9]+' returns 0 doubly-marked rows, and the 16 rows an earlier query flagged as 'text after the marker' turned out to be two-digit markers (~10 .. ~22), not trailing text - that first query was wrong and is recorded here because it nearly became a claim. So the tests pin the behaviour before such a ref appears, not after.",
   "post_merge": {
     "db_reset": "No. No schema or data change. The only database effect is indirect: re-running dcp_fidelity_gate.py rewrites fidelity_status/fidelity_detail on pending queue rows, which that script already does by design and which is re-runnable.",
     "secrets": "None written or staged. A copy of the main checkout's .env was placed in the worktree so the extraction and the gate could reach R2 and the database; it is covered by .gitignore line 46 and git status never listed it.",

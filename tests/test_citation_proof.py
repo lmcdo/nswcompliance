@@ -431,3 +431,24 @@ def test_the_repeated_ref_marker_does_not_eat_the_clause_number():
     assert C.split_ref("Doc__chap__3_15~6")[2] is None   # was "bare integer section"
     # #1197's own guard: section 3.16 is stored 3_16 and must not be mistaken for a marker
     assert [C.render(g) for g in C.split_ref("x__3_16")[0]] == ["3.16"]
+
+
+def test_the_marker_strip_is_anchored_and_repeatable():
+    """Both halves from the Sol cross-review of the first version of the strip.
+
+    Unanchored, `3_15~2.4` became `3_15.4` -- a clause number the council never
+    printed, invented from a ref shape that should stay unjudged. Anchored but
+    not repeatable, `X_5~2~3` leaves `X_5~2` and the eaten component returns;
+    dcp_extract_changed's `while f"{ref}~{suffix}" in new_provisions` can mark a
+    ref that already carries a marker. Neither shape is in the queue today, so
+    this pins the behaviour before one appears rather than after.
+    """
+    # a marker that is NOT the trailing suffix is left alone, so the ref stays unjudged
+    # rather than resolving to the plausible-looking 3.15.4
+    assert [C.render(g) for g in C.split_ref("Doc__chap__3_15~2.4")[0]] != ["3.15.4"]
+    # a doubly-marked ref loses both markers, not just the last
+    assert [C.render(g) for g in C.split_ref("Doc__chap__X_5~2~3")[0]] == \
+           [C.render(g) for g in C.split_ref("Doc__chap__X_5")[0]]
+    # trailing words between the clause number and the marker are real refs: 3_16_9 Note:
+    assert [C.render(g) for g in C.split_ref("Doc__chap__3_16_9 Note:~2")[0]] == \
+           [C.render(g) for g in C.split_ref("Doc__chap__3_16_9 Note:")[0]]

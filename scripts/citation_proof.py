@@ -59,7 +59,18 @@ def code_groups(ref_number: str | None) -> list[tuple[str, list[str]]]:
     # number WAS printed on their page -- page 106 carries "3.15.5.2 Monitoring and
     # Review" verbatim. Mirrors the frontend strip in lib/citation-display.ts, so
     # both sides read one clause number.
-    tail = re.sub(r"~\d+\b", "", tail)
+    #
+    # Anchored to the END, and repeatable. Both halves came out of the Sol
+    # cross-review of the first version, which stripped `~\d+` anywhere:
+    #   * unanchored, `3_15~2.4` became `3_15.4` -- a plausible clause the council
+    #     never printed, invented out of a ref shape that should stay unjudged.
+    #     That is the DQ-111 class, which is the whole reason for the anchor.
+    #   * anchored but not repeatable (`~\d+$`, as the frontend has it) leaves
+    #     `X_5~2` out of `X_5~2~3`, and dcp_extract_changed's `while` loop can mark
+    #     a ref that already carries one -- so the eaten component comes straight
+    #     back. Neither shape is in the queue today, because the producer only
+    #     appends; one strip covering both is cheaper than finding out later.
+    tail = re.sub(r"(?:~\d+)+$", "", tail)
     groups: list[tuple[str, list[str]]] = []
     for token in tail.split():
         current = None
