@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "#1197 suffixes a repeated ref_number with ~2/~3 so neither provision is lost. Its PR body states that citation_proof.split_ref 'ignores the suffix'. It does not: it ignores it only in the shape #1197 tested, where an item marker separates the marker from the digits. Attached straight to a clause number the marker eats the last component, so a marked row's clause number is judged against its PARENT clause, never proves, and citation_status withholds a number the council did print. Measured, not reasoned: five rows in the 2026-10-02 City of Sydney re-read were held as 'citation not proven on its source page' while their own numbers are printed on their own pages. One line of regex in a pure string function, plus the regression test.",
-  "commit_hash": "78b06d25",
+  "commit_hash": "3b4dbdfb",
   "files": [
     "scripts/citation_proof.py",
     "tests/test_citation_proof.py"
