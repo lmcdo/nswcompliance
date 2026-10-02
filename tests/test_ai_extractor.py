@@ -954,3 +954,61 @@ def test_a_named_model_without_its_key_is_not_a_reader(monkeypatch):
     assert dx.llm_reader_available() is True
     monkeypatch.setenv("AI_EXTRACTION", "0")
     assert dx.llm_reader_available() is False
+
+
+# -- the reader describing a drawing is not a council rule ----------------------
+
+def test_a_provision_that_opens_by_describing_a_drawing_is_dropped():
+    """Measured on the City of Sydney `schedules` re-read, 2026-10-02: six Schedule 6
+    sections came back as the reader's own account of a technical drawing, with
+    measurements read off the artwork. Nothing like it was live (0 of 24,692 served
+    rows), so approving them would have put new sentences in the council's mouth.
+    All six real texts are here verbatim-shaped, abbreviated only in length.
+    """
+    from ai_extractor import drop_figure_narrations
+
+    narrations = [
+        {"code": "6.4.1", "text": "The drawing shows WP1 wall plaques on the front wall, "
+                                  "PS3 wall plaques or painted signs on first-floor balconies."},
+        {"code": "6.6.1", "text": "The drawings show PF1 painted side fascia signage, PF2 "
+                                  "painted front fascia signage and an SU1 suspended sign."},
+        {"code": "6.7.1", "text": "The drawings show SW2 shop-window menu with optional "
+                                  "portrait presentation, WP3 plaque to existing rendered wall."},
+        {"code": "6.8.1", "text": "The drawing shows a removable RP1 placard attached to a "
+                                  "palisade fence. It also shows temporary promotional signs."},
+        {"code": "6.13", "text": "Technical details for shingle signs are shown as TYPE 1, "
+                                 "TYPE 2 and TYPE 3 at SCALE 1:20, with fixing notes."},
+        {"code": "6.14", "text": "Technical details for the removable placard show a 360 mm "
+                                 "wide by 500 mm high panel mounted on a post."},
+    ]
+    kept, dropped = drop_figure_narrations(narrations)
+    assert [p["code"] for p in dropped] == ["6.4.1", "6.6.1", "6.7.1", "6.8.1", "6.13", "6.14"]
+    assert kept == []
+
+
+def test_the_councils_own_note_about_its_figures_is_kept():
+    """The confusable half, and the reason the rule is anchored to the body's opening.
+    Searching the whole body matched 9 live served rows and every one of the 9 was
+    genuine council text: Ashfield's mid-provision note about its own diagrams, and
+    Ku-ring-gai's "The diagram is to indicate ...", which is a requirement ON a
+    drawing an applicant submits. Both of these texts are live today.
+    """
+    from ai_extractor import drop_figure_narrations
+
+    keepers = [
+        {"code": "DS9.1", "text": "Conceptual diagrams for design example - Diagram 3: Ground "
+                                  "Level of Mixed Development. *Note: The diagrams show the "
+                                  "principles of, and how to generally comply with, Universal "
+                                  "Accessibility."},
+        {"code": "3B", "text": "Land consolidation patterns are to support a practical layout. "
+                               "The diagram is to indicate the consolidation pattern sought."},
+        # a council naming its own figure, which is how councils cite figures
+        {"code": "12.1.2", "text": "Figure 12.1.2 shows an example of the area of compensating "
+                                   "recess required by this clause."},
+        # an ordinary control that merely mentions a drawing later on
+        {"code": "C14", "text": "All buildings are to be set back eight metres from the street, "
+                                "as the drawing shows."},
+    ]
+    kept, dropped = drop_figure_narrations(keepers)
+    assert dropped == [], [p["code"] for p in dropped]
+    assert [p["code"] for p in kept] == ["DS9.1", "3B", "12.1.2", "C14"]

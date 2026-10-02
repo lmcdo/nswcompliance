@@ -63,3 +63,92 @@ def test_the_probe_counts_only_left_out_pages_that_hold_rules():
                for i in range(6)]
     assert probe.chapter_gaps({1: rules, 2: history}, ["nothing read here at all today"]) == [1]
     assert probe.chapter_gaps({1: rules}, [" ".join(rules)]) == []
+
+
+# -- the denominator is the rule-bearing lines, not every sentence -------------
+
+#: City of Sydney `schedules` page 65 in miniature: one control, then commentary.
+#: The real page prints clause 11.2(10)(a)-(d) and 30 lines of "Resources/Notes"
+#: about AS 4282-1997 -- 47 sentence lines, 7 rule-bearing.
+_CONTROL = [
+    "the calculation of illuminance luminance and threshold increment is to be determined",
+    "a maintenance factor of one is to be used for all of the calculations",
+    "calculations of threshold increment are to be a series of points in both directions",
+    "the grids are to be in the centre of the lane with maximum five metre spacing",
+]
+_COMMENTARY = [
+    "the standard covers lighting schemes for roads pedestrians and outdoor public spaces",
+    "the series provides recommendations on the illuminance of pedestrian road lighting",
+    "however the objective of road lighting is a lit environment conducive to safe movement",
+    "the standard includes recommended benchmarks for the amount of luminous flux arriving",
+    "lighting on nearby residents of dwellings such as houses hotels and hospitals",
+    "users of adjacent roads including vehicle drivers pedestrians and cyclists are affected",
+    "transport signalling systems for air marine and rail are also within its scope",
+    "on astronomical observations the night time environment is a further consideration",
+    "the brightness limitation of exterior light sources is detailed in the same series",
+    "internally illuminated signage sits outside the scope of that particular standard",
+    "in the absence of any other specific regulation the standard is applied as practice",
+    "care is taken that glare to pedestrians and motorists is reduced where practicable",
+    "the illuminance target in this series was never written for advertising signs",
+]
+#: The real page is 7 rule-bearing lines of 47, with the all-lines score landing on
+#: 14/47 = 0.2979. This fixture keeps that shape rather than its size: 4 of 17,
+#: which is 0.2353 all-lines and 4 of 5 once commentary is out of the denominator.
+#: Only one commentary line here carries a rule word ("objective"), on purpose --
+#: a fixture where none did would make the narrowing look cleaner than it is.
+
+
+def test_commentary_the_reader_rightly_skipped_does_not_count_against_the_page():
+    """Refused by ONE line, four times across two sessions, for returning exactly
+    what it should: a provision reader is not contracted to transcribe commentary.
+    Scoring every sentence line gave 14/47 = 0.2979 against PAGE_HIT 0.3 while
+    missing none of the page's 7 rule-bearing lines.
+    """
+    page = _CONTROL + _COMMENTARY
+    # the reader returned every control and none of the commentary
+    assert pc.skipped_pages({1: page}, [" ".join(_CONTROL)]) == []
+    # and the old all-lines denominator is what refused it
+    lines = pc.sentence_lines(page)
+    out = set()
+    for t in [" ".join(_CONTROL)]:
+        out |= pc._grams(pc._WORD.findall(t.lower()))
+    hit = [len(pc._grams(w) & out) / len(pc._grams(w)) >= pc.LINE_HIT for w in lines]
+    assert sum(hit) / len(lines) < pc.PAGE_HIT      # refused when commentary counts
+    assert len(pc.rule_lines(lines)) < len(lines)   # the commentary IS excluded
+
+
+def test_a_page_whose_controls_are_missing_is_still_skipped():
+    """The confusable half. Narrowing the denominator must not make a page of
+    controls pass because its commentary came back -- that is the Warringah loss,
+    21 pages and 172 printed rules, which this guard exists for.
+    """
+    page = _CONTROL + _COMMENTARY
+    # the reader returned the commentary and dropped every control
+    assert pc.skipped_pages({1: page}, [" ".join(_COMMENTARY)]) == [1]
+    # all four controls back: read
+    assert pc.skipped_pages({1: page}, [" ".join(_CONTROL)]) == []
+    # one of four: still skipped, as before
+    assert pc.skipped_pages({1: page}, [" ".join(_CONTROL[:1])]) == [1]
+
+
+def test_a_page_with_no_rule_words_falls_back_to_every_sentence():
+    """A page of pure narrative keeps the old scoring, so the re-read trigger is
+    no less sensitive there. Such a page cannot refuse a chapter anyway --
+    ai_extractor gates the refusal on holds_rules -- but it should still be
+    re-read when its text is absent.
+    """
+    history = ["the subdivision plan was prepared for the auction held in march of that year",
+               "the allotments were created from the rear portions of the deeper holdings",
+               "a property sales notice appeared in the newspaper on the twentieth of february",
+               "the arrangement is recorded in the collection held by the historical society",
+               "the original owner is named in the tenders accepted column of the journal"]
+    assert pc.rule_lines(pc.sentence_lines(history)) == pc.sentence_lines(history)
+    assert pc.skipped_pages({1: history}, ["nothing of the kind appears in this output"]) == [1]
+    assert pc.skipped_pages({1: history}, [" ".join(history)]) == []
+
+
+def test_one_rule_words_definition_serves_both_modules():
+    """ai_extractor._rule_bearing_pages and skipped_pages must agree on what a
+    rule-bearing line is; two copies would drift."""
+    import ai_extractor
+    assert ai_extractor._RULE_WORDS is pc.RULE_WORDS
