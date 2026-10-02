@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Removing a cronSchedule does NOT make a Railway job manual-only. Measured 2026-10-02, an hour after PR #1200 took dcp-extract-all's schedule away: merging #1200 changed that service's own config file, Railway redeployed the service, and with no schedule it started the container immediately and ran run_monitors.py - a 253-chapter, 9,841-page re-read, unattended. The only reason anyone noticed is the Telegram dead-man's-switch warning the container emits at startup, which the user forwarded. It extracted nothing (0 queue rows, 0 url checks, 0 registry writes in the following hour) and the deployment was removed, so it cost nothing. But the next merge touching a watched file would have done it again. So the start command no longer invokes the reader: a deploy prints how to run it by hand and exits 0. The live value had to change too - the dashboard carried its own startCommand ('python scripts/run_monitors.py') while dcp-extract carries None, so the file alone would have been decoration, which is the exact drift class check_railway_cron_drift.py exists for.",
-  "commit_hash": "8b3834ef",
+  "commit_hash": "ebf25462",
   "files": [
     "railway.dcp-extract-all.toml",
     "tests/test_railway_cron_drift.py"
