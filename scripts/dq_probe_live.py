@@ -308,6 +308,61 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "of no change while this reads 1. Reads 0 only after a real sweep, which "
         "no code change can produce.",
     ),
+    "DQ-119": (
+        "Served chapters whose own contents page says the reader missed sections",
+        # THE AGGREGATION, not a new detector. ai_extractor.coverage_gap() has
+        # scored every extraction for months and dcp_extract_changed stamps the
+        # verdict onto the queue row as a suspect_reason. Nothing ever counted
+        # them, so a chapter could record "15/15 TOC sections missing" and keep
+        # serving an older extraction with nobody told. Measured 2026-10-03: 7
+        # served chapters, of which ashfield chapter-a-miscellaneous (15/15),
+        # chapter-c-sustainability (21/21) and chapter-f-dev-category (11/11)
+        # found NONE of the sections their own contents page lists.
+        #
+        # NOT DQ-118. That number is reserved for per-council hub-scrape
+        # liveness -- whether a council PUBLISHED something new -- which DQ-117
+        # names and this row does not touch.
+        #
+        # LATEST VERDICT PER CHAPTER, deliberately. A re-extract supersedes its
+        # predecessor's rows, so counting every queue row would keep reporting a
+        # fault a later read already cleared: woollahra
+        # chapter-b3-general-development is exactly that, coverage_fail on a
+        # superseded batch and clean since. DISTINCT ON ... created_at DESC
+        # takes the newest batch only.
+        #
+        # SERVED, not merely queued. A coverage_fail in a queue nobody approved
+        # harms no reader. This counts chapters live in regulatory_provisions --
+        # the same correction DQ-97 needed on 2026-09-10, when its population
+        # turned out to be one an operator could DRAIN without repairing
+        # anything.
+        #
+        # coverage_unknown COUNTS HERE. "We could not read the contents page" is
+        # the third state, not a pass; omitting it would make this check green on
+        # exactly the documents nobody can verify. northern_beaches
+        # warringah-dcp-2011-full and canterbury_bankstown
+        # chapter-11-2-undercliffe-bridge-precinct are both in that state.
+        "SELECT count(*) FROM ("
+        "SELECT DISTINCT ON (q.council, q.chapter_key) q.suspect_reason AS sr "
+        "FROM dcp_review_queue q "
+        "JOIN dcp_chapter_registry r ON r.council = q.council "
+        "AND r.chapter_key = q.chapter_key AND r.is_active "
+        "AND NOT COALESCE(r.is_inert, false) "
+        "WHERE EXISTS (SELECT 1 FROM regulatory_provisions p "
+        "WHERE p.source_council = q.council AND p.source_chapter_key = q.chapter_key "
+        "AND p.is_current AND p.v2_is_actionable) "
+        "ORDER BY q.council, q.chapter_key, q.created_at DESC) t "
+        "WHERE t.sr LIKE %s OR t.sr LIKE %s",
+        ("%coverage_fail%", "%coverage_unknown%"),
+        "Each count is one chapter that is SERVED to readers while its most "
+        "recent extraction recorded that the reader did not find the sections "
+        "the chapter's own table of contents lists -- or could not read that "
+        "contents page at all. The finding already existed on every one of "
+        "these rows; nothing aggregated it, so no one was ever told. Clears by "
+        "re-reading the chapter until coverage_gap() is satisfied, or by "
+        "recording why the contents page cannot be parsed. It does NOT clear by "
+        "approving the queue: the count reads the latest verdict per chapter "
+        "regardless of status.",
+    ),
     "DQ-69": (
         "Active NSW instruments the legislation monitor has not checked in 14 days",
         # LIVENESS, not data quality. The monitor is a 7-day sleep loop on Fly
