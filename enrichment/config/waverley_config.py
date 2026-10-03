@@ -44,9 +44,14 @@ Registry key: waverley/waverley-dcp-2022
 # were removed with the four zone lists that used them, because they were derived
 # from Part TITLES rather than from any sentence in the plan and were hiding 114
 # served rows. Do not reintroduce a zone list for this council without quoting the
-# Part that states it. SPECIAL_ZONES and ALL_ZONES were already unused.
-SPECIAL_ZONES     = ["SP1", "SP2"]
-ALL_ZONES         = ["ALL"]
+# Part that states it.
+#
+# SPECIAL_ZONES and ALL_ZONES went with them. Both were already unused, and they
+# only surfaced as lint violations once the paragraph above stopped mentioning
+# enrichment/config/zone_taxonomy.py: lint_hardcoded_zone_codes.py exempts a file
+# whose TEXT names a shared source, so the old comment was granting the whole
+# file an exemption it had not earned. Worth knowing before trusting a clean run
+# on any other config -- a mention is not an import.
 
 # Part B section codes → topic slugs
 WAVERLEY_PART_B_TOPICS: dict[str, str] = {

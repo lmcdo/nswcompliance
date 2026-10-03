@@ -21,17 +21,36 @@ code, no new registry rows, and no change to a single provision's provenance.
 
 WHERE EACH SCOPE COMES FROM
 ---------------------------
-Section A.6 "Parts of the DCP", in the plan's own words:
+Section A.6 "Parts of the DCP" (PDF p4), in the plan's own words. RE-READ AND
+CORRECTED 2026-10-03 by scripts/dq_probe_scope_evidence_fidelity.py, which could
+not find the sentence this file previously quoted. It was a MISQUOTE, and two
+conclusions had been built on it:
 
   * "A series of built form controls, including setbacks and landscaped open
-    space, is contained in Part C, D and E" — general controls, binding any
-    development.
+    space, is contained in Part B Built Form Controls." — this file used to
+    quote it as "contained in Part C, D and E", which named the wrong Parts AND
+    produced the claim that A.6 omits Part B. A.6 names Part B explicitly, and
+    names it as THE built-form Part.
+  * "Part C, Siting Factors, includes subdivision, traffic and parking,
+    stormwater erosion and the like."
+  * "Matters relating to design form Part D."
+  * "Part E covers issues relating to the natural environment including trees on
+    private property, flooding, vegetation, and riparian land."
   * "Part F covers development and activities in certain zones and sensitive
-    areas e.g. local and neighbourhood centres" — a scope this file does NOT
-    enumerate; see the entry.
+    areas e.g. local and neighbourhood centres, Brookvale Brickworks and SP
+    Special Activities zoned land."
   * "Part G applies controls to special areas of Warringah e.g. parts of Dee
-    Why, Warringah Mall" and, decisively, "where there is inconsistency with
-    Parts C, D and E, the requirements of Part G will prevail."
+    Why, Warringah Mall, Forestway shops and Belrose Corridor. In the event of
+    any inconsistency between Part G and Parts C, D and E, the requirements of
+    Part G will prevail."
+  * ⚠ AND A STATED EXCLUSION THAT WAS MISSED ENTIRELY: "the provisions of Part B
+    Built Form Controls do not apply to those areas of land specified in Part G,
+    except for land identified in Part G10 Low and Mid-Rise Housing Areas." So
+    Part B is NOT universal — it is switched off inside every Part G area but
+    G10. This config cannot express that (the exclusion is an area, and `parts`
+    entries carry no exclusion field), so Part B's entry over-includes there.
+    That is the noise direction rather than the hiding one, and it is recorded
+    here rather than left implied. DQ backlog, not cleared by this file.
   * "Part H is a compilation of relevant appendices e.g. carparking and
     vegetation matters."
 
@@ -116,10 +135,17 @@ NORTHERN_BEACHES_CONFIG: dict = {
                     "housing to industrial land. That is the trap wollongong_config.py records "
                     "for the same pair. ALL is the non-hiding answer.",
                 "applicable_dev_types":
-                    "B1's scope sentence qualifies land and an LEP height control, not a "
-                    "development type, and no B control names one. These are built-form controls "
-                    "-- wall heights, number of storeys, setbacks -- which bind whatever is "
-                    "built.",
+                    "Section A.6 (PDF p4) verbatim: 'A series of built form controls, including "
+                    "setbacks and landscaped open space, is contained in Part B Built Form "
+                    "Controls.' Subject matter, not a development type: B1's own scope sentence "
+                    "qualifies land and an LEP height control, and no B control names a type. "
+                    "Wall heights, number of storeys and setbacks bind whatever is built. "
+                    "⚠ A.6 also says 'the provisions of Part B Built Form Controls do not apply "
+                    "to those areas of land specified in Part G, except for land identified in "
+                    "Part G10 Low and Mid-Rise Housing Areas', so this Part is switched OFF "
+                    "inside every Part G area but G10. That exclusion is an AREA and the `parts` "
+                    "path carries no exclusion field, so this entry over-includes there -- the "
+                    "noise direction, recorded rather than left implied.",
             },
         },
 
@@ -138,9 +164,10 @@ NORTHERN_BEACHES_CONFIG: dict = {
                     "is real and is DQ-120's subject for another council; it is not expressible "
                     "as a zone list.)",
                 "applicable_dev_types":
-                    "Section A.6 'Parts of the DCP' verbatim: 'A series of built form controls, "
-                    "including setbacks and landscaped open space, is contained in Part C, D and "
-                    "E.' Siting controls bind any development on the land; no type is named.",
+                    "Section A.6 'Parts of the DCP' (PDF p4) verbatim: 'Part C, Siting Factors, "
+                    "includes subdivision, traffic and parking, stormwater erosion and the "
+                    "like.' Subject matter, not development types: siting controls bind any "
+                    "development on the land and the Part names no type.",
             },
         },
         "D": {
@@ -150,9 +177,9 @@ NORTHERN_BEACHES_CONFIG: dict = {
                     "Part (PDF p40, p43, p46, p48 and on): 'This control applies to land to which "
                     "Warringah Local Environmental Plan 2011 applies.' " + _PLAN_LAND,
                 "applicable_dev_types":
-                    "Section A.6 verbatim: 'A series of built form controls, including setbacks "
-                    "and landscaped open space, is contained in Part C, D and E.' Design controls "
-                    "bind any development; no type is named anywhere in the Part.",
+                    "Section A.6 (PDF p4) verbatim: 'Matters relating to design form Part D.' "
+                    "Design controls bind any development; no type is named anywhere in the "
+                    "Part.",
             },
             "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
         },
@@ -165,9 +192,10 @@ NORTHERN_BEACHES_CONFIG: dict = {
                     "than a zone -- p75: 'This control applies to all land shown on DCP Map Land "
                     "Adjoining Public Open Space' -- which a zone list cannot express either.",
                 "applicable_dev_types":
-                    "Section A.6 verbatim: 'A series of built form controls, including setbacks "
-                    "and landscaped open space, is contained in Part C, D and E.' No development "
-                    "type is named.",
+                    "Section A.6 (PDF p4) verbatim: 'Part E covers issues relating to the "
+                    "natural environment including trees on private property, flooding, "
+                    "vegetation, and riparian land.' Subject matter again, not development "
+                    "types: no type is named.",
             },
             "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
         },
