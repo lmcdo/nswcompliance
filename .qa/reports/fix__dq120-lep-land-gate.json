@@ -1,0 +1,122 @@
+{
+  "tier": "critical",
+  "justification": "Changes which regulatory rules are served for a property. A wrong answer either shows a plan that does not bind the land (the defect) or hides one that does (the regression this could introduce).",
+  "commit_hash": "1f5259e1",
+  "files": [
+    "frontend-nextjs/lib/dcp-land-application.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/components/compliance/DcpLandApplicationNotice.tsx",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/app/api/assessment/full/route.ts",
+    "frontend-nextjs/lib/ai/router.ts",
+    "frontend-nextjs/lib/ai/classifier.ts",
+    "frontend-nextjs/__tests__/api/dcp-land-application.test.ts",
+    "frontend-nextjs/COMPONENT_MAP.md"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/dcp-land-application.test.ts",
+    "fails_when": "A City of Sydney request whose layer 8 names any instrument other than Sydney LEP 2012, or names nothing, reaches the database; or a request naming Sydney LEP 2012 'Included' does not.",
+    "external_authority": "Sydney DCP 2012 Section 1 cl 1.4 and 1.5 (page 4), Figure 1.1 (page 5), read from the council's published PDF section1-dcp2012_280223.pdf; layer-8 instrument names from live NSW Planning Portal layerintersect responses on 2026-10-03.",
+    "observed_red": "Observed red 2026-10-03: with the route gate disabled (if (false && landApplication.withhold)) the suite read 2 failed / 21 passed — 'withholds Green Square without touching the database' and 'withholds City of Sydney when the caller sends no layer-8 answer'. Restored: 23/23."
+  },
+  "break_it": [
+    {
+      "scenario": "The prompt's suggested rule: withhold when layer 8 Type is not 'Included'.",
+      "what_happens": "Green Square ('Sydney LEP (Green Square Town Centre) 2013', Included) and Harold Park ('Sydney LEP (Harold Park) 2011', Included) would still be served Sydney DCP 2012.",
+      "mitigated": true,
+      "how": "The decision keys on the instrument NAME. Tested with both measured names.",
+      "repro": "npx jest __tests__/api/dcp-land-application.test.ts -t 'withholds on'"
+    },
+    {
+      "scenario": "The Planning Portal call fails, or a caller omits the land_application parameter entirely.",
+      "what_happens": "Without care, a missing answer would read as 'no exclusion' and serve.",
+      "mitigated": true,
+      "how": "Missing/empty/malformed = 'unknown', withheld with a notice that says the portal did not answer. Barangaroo and Moore Park Showground return no layer 8 and land here.",
+      "repro": "npx jest __tests__/api/dcp-land-application.test.ts -t 'UNKNOWN'"
+    },
+    {
+      "scenario": "The page withholds the text rules but DcpStructuredControls (council-keyed, dcp_setback_controls, 27 city_of_sydney rows) still renders Sydney DCP numbers.",
+      "what_happens": "Green Square would still show Sydney DCP 2012 setbacks.",
+      "mitigated": true,
+      "how": "ProvisionsByTocStructure returns the notice BEFORE the branch that renders DcpStructuredControls. Confirmed on the live page: Green Square DCP tab shows only the notice.",
+      "repro": "Load /assessment for 355 Botany Road Zetland, open the DCP tab."
+    },
+    {
+      "scenario": "A gated council's DCP is wrongly withheld from land it covers.",
+      "what_happens": "CBD and other covered City of Sydney properties would lose all their DCP rules, shown as withheld.",
+      "mitigated": true,
+      "how": "Exact normalised name match on 'Sydney Local Environmental Plan 2012' with Type Included. Live: 456 Kent St serves 1,980 provisions. Only councils in DCP_LAND_BINDING (city_of_sydney) are gated; every other council is 'not_gated' and unchanged.",
+      "repro": "npx jest __tests__/api/dcp-land-application.test.ts -t 'goes on to query'"
+    },
+    {
+      "scenario": "A lot straddles Sydney LEP 2012 and Green Square Town Centre LEP (layer 8 returns both).",
+      "what_happens": "Withholding everything would hide rules that bind most of the lot; serving silently would hide the other plan.",
+      "mitigated": true,
+      "how": "status 'partial': served, with an amber line naming the other instrument above the DCP panel.",
+      "repro": "npx jest __tests__/api/dcp-land-application.test.ts -t 'straddling'"
+    }
+  ],
+  "mutation_analysis": "Three mutants, all killed. M1 gate disabled in the route (if (false && ...)): 2 failed. M2 decision always 'covered': 8 failed. M3 unknown treated as a pass: 2 failed. Restored: 23/23 pass.",
+  "residual_risk": "Figure 1.1 is a 2012 map; where Sydney LEP 2012 has since absorbed land the figure still excludes, the DCP is served (over-inclusion only, the accepted Parramatta deferred-strip class). Glebe (Affordable Housing), Bays Precinct/Wentworth Park and Various Sites (South Sydney) were not proven by a probe address. /api/dcp/structured-controls, canibuildit/check and tod/parking-rates remain council-keyed and are not gated on their own; the assessment page no longer reaches structured-controls on withheld land. The AI chat path withholds City of Sydney DCP unless its caller supplies landApplicationInstruments; no current UI renders the widget.",
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: on the Vercel preview, open the DCP tab for 355 Botany Road Zetland (notice, no controls) and 456 Kent Street Sydney (controls shown)."
+  },
+  "pre_impl": {
+    "existing_data": "Reads constraints.landApplicationInstruments, already built from layerintersect layer 8 by lib/nsw-planning-portal.ts:772-786. No table is read or written by the gate; when it withholds, regulatory_provisions and dcp_chapter_registry are not queried at all.",
+    "assumption_mismatch": "If the portal renames the instrument (e.g. a new amendment title), the exact-name match fails and City of Sydney is withheld as 'excluded' everywhere, visibly, with the new name on screen. That is a loud failure, not silent wrong rules; the fix is one string in DCP_LAND_BINDING.",
+    "new_vs_existing": "Applies per request, so every property from the first request after deploy. No data migration.",
+    "external_source_error": "layerintersect error/timeout leaves landApplicationInstruments undefined, so no land_application param is sent and the route answers status 'unknown' and withholds City of Sydney DCP with a notice saying the portal did not return the plan. Non-gated councils are unaffected.",
+    "frontend_type": "Yes, updated: ProvisionsByTocStructure's SWR response type gains meta.land_application (LandApplicationDecision); lib/ai/classifier.ts PropertyContext gains landApplicationInstruments.",
+    "user_failure_mode": "The DCP tab shows a card: '<DCP> controls are not shown for this property', the reason (named plan, or portal did not answer) and the clause source. Never an empty tab and never the previous behaviour of the excluded plan's rules."
+  },
+  "functions": [
+    {
+      "name": "decideLandApplication",
+      "file_line": "frontend-nextjs/lib/dcp-land-application.ts:129",
+      "input": "council slug/name (string|null) + layer-8 instruments (array|null) from the query string",
+      "output": "LandApplicationDecision {status, withhold, dcp, required_lep, other_instruments, source} to the route",
+      "if_none": "council null/ungated -> not_gated, withhold false (unchanged behaviour); instruments null/empty for a gated council -> unknown, withhold true"
+    },
+    {
+      "name": "decodeLandApplication",
+      "file_line": "frontend-nextjs/lib/dcp-land-application.ts:109",
+      "input": "the raw land_application query string value sent by the page, assessment/full or the AI router",
+      "output": "a validated array of {name, type} layer-8 instruments, or null when anything is malformed",
+      "if_none": "null/malformed JSON/non-array/item without name -> null, read downstream as unknown"
+    },
+    {
+      "name": "encodeLandApplication",
+      "file_line": "frontend-nextjs/lib/dcp-land-application.ts:98",
+      "input": "constraints.landApplicationInstruments on the property object built from the Planning Portal layer-8 answer",
+      "output": "JSON string for the land_application param, or null",
+      "if_none": "null or an empty list returns null, so the land_application param is simply not sent"
+    },
+    {
+      "name": "GET (land gate block)",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:323",
+      "input": "filters.former_council plus the land_application query param on the incoming GET request",
+      "output": "early 200 with empty layers and meta.land_application when withheld; otherwise continues to the existing queries",
+      "if_none": "a missing param follows decideLandApplication: unknown and withheld for a gated council, unchanged for every other council"
+    },
+    {
+      "name": "DcpLandApplicationNotice",
+      "file_line": "frontend-nextjs/components/compliance/DcpLandApplicationNotice.tsx:20",
+      "input": "the LandApplicationDecision object read from meta.land_application on the provisions API response",
+      "output": "a notice card when withheld, or one amber warning line when the lot straddles plans",
+      "if_none": "not withheld and not partial -> renders nothing"
+    }
+  ],
+  "values": [
+    {
+      "value": "data.meta.land_application",
+      "read_at": "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx (after the error branch)",
+      "nullable": "yes",
+      "guard_at": "optional chaining landApplication?.withhold",
+      "if_missing": "older API response without the field -> page behaves as before"
+    }
+  ],
+  "queries": []
+}
