@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Repairs a safety filter on a PRODUCTION WRITE path. scripts/retag_applicability_slug_docids.py applies DQ-30's zone-validity filter by passing valid_zones to tag_with_provenance, and for five of eighteen served councils it was passing None -- which means do not filter. The write it guards narrows v2_applicable_zones, a HARD FILTER on what a property is shown (for-property/route.ts:1012), so an unfiltered plan can bind a served rule to a zone code the LGA does not have, making it invisible. Not Critical: no wrong value ever reached the table, because the script's own refusal guard stopped the write before the backup table was created, and the change deletes a query rather than adding one. Not Minor: it is the difference between a filter that runs and one that silently does not, on the path that writes 20,922 rows.",
- "commit_hash": "1ac3b74c",
+ "commit_hash": "37bec03d",
  "files": [
   "scripts/retag_applicability_slug_docids.py",
   "tests/test_retag_zone_filter_resolves_every_council.py"
