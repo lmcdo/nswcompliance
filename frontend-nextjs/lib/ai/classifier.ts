@@ -55,6 +55,8 @@ export interface PropertyContext {
   precinctId?: string;
   maxHeight?: number;  // From Planning Portal spatial layers
   maxFsr?: number;     // From Planning Portal spatial layers
+  /** Land Application Map (layer 8) instruments — decides whether a gated DCP covers the land (DQ-120). */
+  landApplicationInstruments?: Array<{ name: string; type: string }> | null;
   constraints?: {
     heritage?: boolean;
     heritageName?: string;

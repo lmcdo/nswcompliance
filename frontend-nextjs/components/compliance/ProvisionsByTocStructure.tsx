@@ -35,6 +35,8 @@ import { autoPopulateWorksScopeFromLep, type LepPermissibilityEntry } from '@/li
 import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from '@/lib/see/seeBuilders';
 import { DCPInterestForm } from './DCPInterestForm';
 import { DcpStructuredControls } from './DcpStructuredControls';
+import { DcpLandApplicationNotice } from './DcpLandApplicationNotice';
+import { encodeLandApplication, type LandApplicationDecision } from '@/lib/dcp-land-application';
 import { DcpFilterBar } from './DcpFilterBar';
 import { DcpProvisionList } from './DcpProvisionList';
 import { NumericChecker, type NumericCheckValues } from './NumericChecker';
@@ -364,6 +366,10 @@ export function ProvisionsByTocStructure({
   if (heritage !== undefined) params.set('heritage', String(heritage));
   if (hcaName) params.set('hca', hcaName);
   if (precinctId) params.set('precinct_id', precinctId);
+  // DQ-120: the Land Application Map answer decides whether this council's DCP
+  // covers the property. Not sent = the route treats it as unknown.
+  const landApplicationParam = encodeLandApplication(propertyData?.constraints?.landApplicationInstruments);
+  if (landApplicationParam) params.set('land_application', landApplicationParam);
   // dev_types intentionally excluded from URL — provisions are property-specific, not dev-type-specific.
   // Relevance and chapter match counts are computed client-side from v2_applicable_dev_types.
 
@@ -383,6 +389,7 @@ export function ProvisionsByTocStructure({
     meta?: {
       chapter_pdf_urls?: Record<string, string> | null;
       precinct_warning?: boolean;
+      land_application?: LandApplicationDecision;
       dcp_currency?: {
         verified_at: string | null;
         amendment_pending: boolean;
@@ -1520,6 +1527,14 @@ export function ProvisionsByTocStructure({
     );
   }
 
+  // DQ-120: the route withheld this council's DCP for this property. Return
+  // before DcpStructuredControls below, which is council-keyed and would
+  // otherwise still show the withheld plan's numeric controls.
+  const landApplication = data.meta?.land_application;
+  if (landApplication?.withhold) {
+    return <DcpLandApplicationNotice decision={landApplication} />;
+  }
+
   // No DCP provision TEXT for this council. That is not the same as having no
   // DCP data: the numeric controls come from a different table and may well be
   // present. This used to render the controls AND the "not yet processed"
@@ -2122,6 +2137,10 @@ export function ProvisionsByTocStructure({
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5 mb-3">
           Precinct data is not available for this property — site-specific precinct controls may not be shown.
         </p>
+      )}
+
+      {landApplication?.status === 'partial' && (
+        <DcpLandApplicationNotice decision={landApplication} />
       )}
 
       {/* Main two-panel layout */}
