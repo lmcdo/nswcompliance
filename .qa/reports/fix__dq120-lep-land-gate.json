@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which regulatory rules are served for a property. A wrong answer either shows a plan that does not bind the land (the defect) or hides one that does (the regression this could introduce).",
-  "commit_hash": "c9a98b08",
+  "commit_hash": "2c3f7b2f",
   "files": [
     "frontend-nextjs/lib/dcp-land-application.ts",
     "frontend-nextjs/app/api/provisions/for-property/route.ts",
