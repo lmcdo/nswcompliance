@@ -75,40 +75,198 @@ _ALL = {"applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"]}
 CANTERBURY_BANKSTOWN_CONFIG: dict = {
     "chapter_topics": {
         # --- 2.x site-wide matters: bind any development on an affected site ---
-        "chapter_2_1_site_analysis": {**_ALL, "layer": "generic"},
+        "chapter_2_1_site_analysis": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "layer": "generic"
+        },
         "chapter_2_2_flood_risk_management": {**_ALL, "layer": "generic",
                                               "site_conditions": ["flood"]},
         "chapter_2_3_tree_management": {**_ALL, "layer": "generic"},
-        "chapter_2_4_pipeline_corridors": {**_ALL, "layer": "generic"},
+        "chapter_2_4_pipeline_corridors": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "layer": "generic"
+        },
 
         # --- 3.x general development standards ---
-        "chapter_3_1_development_engineering_standards": {**_ALL, "layer": "generic"},
-        "chapter_3_2_parking": {**_ALL, "layer": "generic"},
+        "chapter_3_1_development_engineering_standards": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "layer": "generic"
+        },
+        "chapter_3_2_parking": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "layer": "generic"
+        },
         "chapter_3_4_sustainable_development": {**_ALL, "layer": "generic"},
-        "chapter_3_5_subdivision": {**_ALL, "layer": "generic"},
-        "chapter_3_6_signs": {**_ALL, "layer": "generic"},
-        "chapter_3_7_landscape": {**_ALL, "layer": "generic"},
+        "chapter_3_5_subdivision": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "layer": "generic"
+        },
+        "chapter_3_6_signs": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "layer": "generic"
+        },
+        "chapter_3_7_landscape": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "layer": "generic"
+        },
 
         # --- 4.x heritage: binds any development on/near a heritage item or HCA ---
-        "chapter_4_1_introduction": {**_ALL, "layer": "heritage"},
+        "chapter_4_1_introduction": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "layer": "heritage"
+        },
         "chapter_4_2_heritage_items": {**_ALL, "layer": "heritage"},
-        "chapter_4_3_heritage_conservation_areas": {**_ALL, "layer": "heritage"},
-        "chapter_4_4_vicinity_of_places_of_heritage_significance": {**_ALL,
-                                                                    "layer": "heritage"},
+        "chapter_4_3_heritage_conservation_areas": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "layer": "heritage"
+        },
+        "chapter_4_4_vicinity_of_places_of_heritage_significance": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' The chapter states no development-type scope of its own, so it inherits the plan's. ALL is the plan's statement, not a decision about this chapter.",
+            },
+            **_ALL, "layer": "heritage"},
 
         # --- 6.x / 7.x / 8.x centres and corridors: PRECINCT scoped ---
-        "chapter_6_1_general_requirements": {**_ALL, "is_precinct_specific": True},
-        "chapter_6_2_bankstown_city_centre": {**_ALL, "is_precinct_specific": True},
-        "chapter_6_3_campsie_town_centre": {**_ALL, "is_precinct_specific": True},
-        "chapter_7_1_general_requirements": {**_ALL, "is_precinct_specific": True},
-        "chapter_7_2_city_west": {**_ALL, "is_precinct_specific": True},
-        "chapter_7_3_city_east": {**_ALL, "is_precinct_specific": True},
-        "chapter_7_4_neighbourhood_centres": {**_ALL, "is_precinct_specific": True},
+        "chapter_6_1_general_requirements": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "is_precinct_specific": True
+        },
+        "chapter_6_2_bankstown_city_centre": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "is_precinct_specific": True
+        },
+        "chapter_6_3_campsie_town_centre": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "is_precinct_specific": True
+        },
+        "chapter_7_1_general_requirements": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "is_precinct_specific": True
+        },
+        "chapter_7_2_city_west": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "is_precinct_specific": True
+        },
+        "chapter_7_3_city_east": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "is_precinct_specific": True
+        },
+        "chapter_7_4_neighbourhood_centres": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "is_precinct_specific": True
+        },
         "chapter_7_5_canterbury_local_centre": {**_ALL, "is_precinct_specific": True},
         "chapter_7_6_belmore_and_lakemba": {**_ALL, "is_precinct_specific": True},
-        "chapter_8_1_general_requirements": {**_ALL, "is_precinct_specific": True},
-        "chapter_8_2_canterbury_road": {**_ALL, "is_precinct_specific": True},
-        "chapter_8_3_hume_highway": {**_ALL, "is_precinct_specific": True},
+        "chapter_8_1_general_requirements": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "is_precinct_specific": True
+        },
+        "chapter_8_2_canterbury_road": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "is_precinct_specific": True
+        },
+        "chapter_8_3_hume_highway": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "is_precinct_specific": True
+        },
 
         # --- 9.x industrial precincts: scoped by ZONE, not by development type ---
         # Chapter 9.1 section 1 Introduction, verbatim: the DCP "supports the LEP
@@ -171,20 +329,70 @@ CANTERBURY_BANKSTOWN_CONFIG: dict = {
         # DEV_TYPE_PATTERNS has no term for a school, a place of public worship or a
         # home business, so there is nothing honest to narrow to. Saying ALL here
         # would assert that a school control binds a warehouse.
-        "chapter_10_2_schools": {"applicable_zones": ["ALL"]},
-        "chapter_10_3_home_businesses": {"applicable_zones": ["ALL"]},
-        "chapter_10_5_places_of_public_worship": {"applicable_zones": ["ALL"]},
+        "chapter_10_2_schools": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           "applicable_zones": ["ALL"]
+        },
+        "chapter_10_3_home_businesses": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           "applicable_zones": ["ALL"]
+        },
+        "chapter_10_5_places_of_public_worship": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           "applicable_zones": ["ALL"]
+        },
 
         # --- 11.x site-specific precincts: one named site each, any development ---
-        "chapter_11_1_milton_street": {**_ALL, "is_precinct_specific": True},
+        "chapter_11_1_milton_street": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "is_precinct_specific": True
+        },
         "chapter_11_3_roberts_road": {**_ALL, "is_precinct_specific": True},
         "chapter_11_4_croydon_street_precinct": {**_ALL, "is_precinct_specific": True},
         "chapter_11_5_riverlands": {**_ALL, "is_precinct_specific": True},
-        "chapter_11_8_boorea": {**_ALL, "is_precinct_specific": True},
+        "chapter_11_8_boorea": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "is_precinct_specific": True
+        },
         "chapter_11_9_revesby_hospital": {**_ALL, "is_precinct_specific": True},
         "chapter_11_10_chullora_marketplace": {**_ALL, "is_precinct_specific": True},
-        "chapter_11_11_brighton_avenue": {**_ALL, "is_precinct_specific": True},
-        "chapter_11_12_445_canterbury_road": {**_ALL, "is_precinct_specific": True},
+        "chapter_11_11_brighton_avenue": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "is_precinct_specific": True
+        },
+        "chapter_11_12_445_canterbury_road": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+                "applicable_dev_types":
+                    "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
+            },
+           **_ALL, "is_precinct_specific": True
+        },
         "chapter_11_13_former_wsu_campus_milperra": {**_ALL, "is_precinct_specific": True},
         "chapter_11_14_riverwood_estate": {**_ALL, "is_precinct_specific": True},
         "chapter_11_15_marco_avenue": {**_ALL, "is_precinct_specific": True},
