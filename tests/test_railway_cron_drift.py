@@ -179,3 +179,36 @@ def test_the_summary_count_is_a_set_difference_not_a_subtraction():
     # property-alerts is excepted and declared; dcp-extract-all is excepted and not.
     assert len(set(declared) - set(drift.INTENTIONALLY_DISABLED)) == 1
     assert len(declared) - len(drift.INTENTIONALLY_DISABLED) == 0   # the old, wrong way
+
+
+def test_the_manual_only_service_cannot_be_started_by_a_deploy():
+    """Removing a cronSchedule is NOT enough to make a job manual-only.
+
+    Measured 2026-10-02, an hour after the cron was removed: merging PR #1200 changed
+    railway.dcp-extract-all.toml, Railway redeployed the service, and with no schedule
+    it started the container immediately and ran run_monitors.py -- a 253-chapter,
+    9,841-page re-read, unattended. It extracted nothing and was removed, so it cost
+    nothing, but only because someone was watching the Telegram alert.
+
+    So the start command must not reach the reader. Asserted on the file, because the
+    file is what a merge deploys.
+
+    The property asserted is that the command cannot EXECUTE anything, not that it
+    avoids certain words. The first version of this test matched substrings and failed
+    on the command's own help text, which names the script a person should run by hand
+    -- a message mentioning the extractor is useful, and running it is the defect. So:
+    it must be a single `echo`, with nothing that could chain a second command.
+    """
+    import re as _re
+    text = (ROOT / "railway.dcp-extract-all.toml").read_text(encoding="utf-8")
+    m = _re.search(r'^\s*startCommand\s*=\s*"(.*)"\s*$', text, _re.MULTILINE)
+    assert m, "railway.dcp-extract-all.toml declares no startCommand"
+    cmd = m.group(1).strip()
+    assert cmd.startswith("echo "), (
+        f"startCommand is {cmd[:60]!r}. It must be a single echo: with no cronSchedule, "
+        f"Railway starts the container on every deploy, so anything executable here runs "
+        f"a 253-chapter re-read unattended (measured 2026-10-02 on the PR #1200 merge).")
+    for chain in (";", "&&", "||", "|", "$(", "`", "\n"):
+        assert chain not in cmd, (
+            f"startCommand contains {chain!r}, which can chain a second command after "
+            f"the echo. Keep it one echo.")

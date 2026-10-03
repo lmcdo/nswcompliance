@@ -52,5 +52,22 @@
 dockerfilePath = "Dockerfile.monitors"
 
 [deploy]
-startCommand = "python scripts/run_monitors.py"
-restartPolicyType = "NEVER"        # cron job: run to completion, do not restart
+# A NO-OP ON PURPOSE. Measured 2026-10-02, an hour after the cron was removed:
+# merging PR #1200 changed this file, Railway redeployed the service, and WITHOUT a
+# cronSchedule it started the container immediately and ran run_monitors.py. The
+# Telegram dead-man's-switch warning is how we found out. It extracted nothing -- 0
+# queue rows, 0 url checks, 0 registry writes in the following hour -- and the
+# deployment was removed, so it cost nothing. But "manual only" is NOT achieved by
+# deleting the schedule alone: any merge touching a file this service watches would
+# have started a 253-chapter, 9,841-page re-read unattended.
+#
+# So the start command no longer invokes the reader. A deploy prints how to run it and
+# exits 0. The real run is deliberate and local, with Railway's env -- which is how it
+# has to be anyway, because `railway run` executes the LOCAL checkout
+# (memory/feedback-dry-run-does-not-cover-the-review-queue.md). Nothing is lost.
+#
+# tests/test_railway_cron_drift.py asserts this is a single echo that cannot chain a
+# second command, so restoring an executable command is a test failure rather than a
+# surprise on the next merge.
+startCommand = "echo 'MANUAL ONLY. See railway.dcp-extract-all.toml. A deploy must not run a 253-chapter re-read. Run it deliberately, one named chapter at a time.'"
+restartPolicyType = "NEVER"        # run to completion, do not restart
