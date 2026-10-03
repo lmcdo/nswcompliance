@@ -308,6 +308,104 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "of no change while this reads 1. Reads 0 only after a real sweep, which "
         "no code change can produce.",
     ),
+    "DQ-119": (
+        "Served chapters whose own contents page says the reader missed sections",
+        # THE AGGREGATION, not a new detector. ai_extractor.coverage_gap() has
+        # scored every extraction for months and dcp_extract_changed stamps the
+        # verdict onto the queue row as a suspect_reason. Nothing ever counted
+        # them, so a chapter could record "15/15 TOC sections missing" and keep
+        # serving an older extraction with nobody told. Measured 2026-10-03: 7
+        # served chapters, of which ashfield chapter-a-miscellaneous (15/15),
+        # chapter-c-sustainability (21/21) and chapter-f-dev-category (11/11)
+        # found NONE of the sections their own contents page lists.
+        #
+        # NOT DQ-118. That number is reserved for per-council hub-scrape
+        # liveness -- whether a council PUBLISHED something new -- which DQ-117
+        # names and this row does not touch.
+        #
+        # LATEST VERDICT PER CHAPTER, deliberately. A re-extract supersedes its
+        # predecessor's rows, so counting every queue row would keep reporting a
+        # fault a later read already cleared: woollahra
+        # chapter-b3-general-development is exactly that, coverage_fail on a
+        # superseded batch and clean since. DISTINCT ON ... created_at DESC
+        # takes the newest batch only.
+        #
+        # SERVED, not merely queued. A coverage_fail in a queue nobody approved
+        # harms no reader. This counts chapters live in regulatory_provisions --
+        # the same correction DQ-97 needed on 2026-09-10, when its population
+        # turned out to be one an operator could DRAIN without repairing
+        # anything.
+        #
+        # coverage_unknown COUNTS HERE. "We could not read the contents page" is
+        # the third state, not a pass; omitting it would make this check green on
+        # exactly the documents nobody can verify. northern_beaches
+        # warringah-dcp-2011-full and canterbury_bankstown
+        # chapter-11-2-undercliffe-bridge-precinct are both in that state.
+        "SELECT count(*) FROM ("
+        "SELECT DISTINCT ON (q.council, q.chapter_key) q.suspect_reason AS sr "
+        "FROM dcp_review_queue q "
+        "JOIN dcp_chapter_registry r ON r.council = q.council "
+        "AND r.chapter_key = q.chapter_key AND r.is_active "
+        "AND NOT COALESCE(r.is_inert, false) "
+        "WHERE EXISTS (SELECT 1 FROM regulatory_provisions p "
+        "WHERE p.source_council = q.council AND p.source_chapter_key = q.chapter_key "
+        "AND p.is_current AND p.v2_is_actionable) "
+        "ORDER BY q.council, q.chapter_key, q.created_at DESC) t "
+        "WHERE t.sr LIKE %s OR t.sr LIKE %s",
+        ("%coverage_fail%", "%coverage_unknown%"),
+        "Each count is one chapter that is SERVED to readers while its most "
+        "recent extraction recorded that the reader did not find the sections "
+        "the chapter's own table of contents lists -- or could not read that "
+        "contents page at all. The finding already existed on every one of "
+        "these rows; nothing aggregated it, so no one was ever told. Clears by "
+        "re-reading the chapter until coverage_gap() is satisfied, or by "
+        "recording why the contents page cannot be parsed. It does NOT clear by "
+        "approving the queue: the count reads the latest verdict per chapter "
+        "regardless of status.",
+    ),
+    "DQ-120": (
+        "City of Sydney areas the DCP excludes, for which we hold no plan and no exclusion",
+        # Sydney DCP 2012 Section 1 clause 1.4, page 4, read 2026-10-03: the plan
+        # applies to "the land identified in Figure 1.1 ... where the City of
+        # Sydney is the consent authority". Figure 1.1 on page 5 EXCLUDES eight
+        # areas, each keeping its own plan: Barangaroo, Bays Precinct/Wentworth
+        # Park, Harold Park, Redfern/Waterloo, Various Sites (South Sydney),
+        # Green Square Town Centre, Moore Park Showground and Glebe (Affordable
+        # Housing).
+        #
+        # We serve City of Sydney rules by COUNCIL. Green Square is inside the
+        # City of Sydney, so a Green Square property is shown Sydney DCP 2012
+        # controls that do not bind it, and the plan that does bind it is absent.
+        #
+        # WHY THIS IS A ROW AND NOT A FIX. The exclusion is a MAPPED BOUNDARY.
+        # No column in this schema carries it: v2_applicable_zones is a zone
+        # list, v2_precinct_id holds locality-statement clause numbers like
+        # "2.1.1" rather than place extents, and inventing the boundaries would
+        # break the standing rule against guessing real-world geography. So the
+        # honest state is measured and visible rather than approximated.
+        #
+        # WHAT IT COUNTS, and why that is checkable when the boundary is not:
+        # how many of the eight have NEITHER their own plan in the registry NOR
+        # any served provision attributable to them. Measured 2026-10-03 it is
+        # 8 of 8 -- zero documents match any of the names. It falls as each area
+        # gains its own plan, and it cannot be cleared by editing City of
+        # Sydney's config, which is the point.
+        "SELECT count(*) FROM unnest(%s::text[]) AS area(name) "
+        "WHERE NOT EXISTS (SELECT 1 FROM documents d "
+        "                   WHERE lower(d.pdf_name) LIKE '%%' || area.name || '%%') "
+        "  AND NOT EXISTS (SELECT 1 FROM dcp_chapter_registry r "
+        "                   WHERE r.is_active "
+        "                     AND (lower(r.chapter_key) LIKE '%%' || replace(area.name,' ','-') || '%%' "
+        "                          OR lower(coalesce(r.chapter_label,'')) LIKE '%%' || area.name || '%%'))",
+        (["barangaroo", "wentworth park", "harold park", "redfern",
+          "green square", "moore park showground", "glebe", "south sydney"],),
+        "Each count is one area that Sydney DCP 2012 says it does NOT cover, for which we hold "
+        "no replacement plan and no way to withhold the City of Sydney controls that do not "
+        "bind it. A property there is shown the wrong plan's rules and is not shown its own. "
+        "Clears by ingesting that area's plan, or by acquiring the Figure 1.1 boundary so the "
+        "exclusion can be applied. It does NOT clear by editing city_of_sydney_config.py -- the "
+        "config has no key that can express a mapped boundary.",
+    ),
     "DQ-69": (
         "Active NSW instruments the legislation monitor has not checked in 14 days",
         # LIVENESS, not data quality. The monitor is a 7-day sleep loop on Fly
