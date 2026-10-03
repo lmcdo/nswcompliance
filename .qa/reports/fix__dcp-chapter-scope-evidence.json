@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Twelve council configs changed, and every edit lands on v2_applicable_zones / v2_applicable_dev_types, which are HARD FILTERS on what a property is shown (for-property/route.ts:1012 and :1222). Most of it is provenance only, but three changes move served answers: Waverley's four title-inferred zone lists are removed (114 served rows widen), Ku-ring-gai's fifteen Part 14s are configured so text extraction stops reading retired zone codes out of their own text (7 served narrowings on the committed config become 0), and Northern Beaches gains a Part B entry for the same reason (43 served rows leave filtered_to_all). Not Critical: no served row is narrowed by anything in this branch, the direction is widening throughout, and nothing is deleted. Not Minor: 20,922 rows are in the re-tag's scope and the keys are hard filters, so an error here hides binding controls rather than adding noise. SECOND PASS 2026-10-03: the test suite rejected the first version and was right. Declaring ['ALL'] records `config_all`, which the tagger documents as \"a real assertion of universality; trust it\", and tests/test_campbelltown_applicability.py already refused to claim it for a chapter that does not say so. Half these entries do not: they state a narrower scope the field cannot hold. migrations/081 adds a third value, `config_declined`, and 3,213 served keys now take it instead of falsely asserting universality. The served values are unchanged by that correction -- same 2,505 value changes, same 39 narrowings.",
- "commit_hash": "04a51c92",
+ "commit_hash": "0b9d1e65",
  "files": [
   "enrichment/config/georges_river_config.py",
   "enrichment/config/blacktown_config.py",
