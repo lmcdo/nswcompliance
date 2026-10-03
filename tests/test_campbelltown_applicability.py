@@ -94,8 +94,10 @@ class TestPart3IsScopedByZone:
         those selectable in frontend-nextjs/lib/see/ancillaryWorks.ts.
         """
         got = resolve(tagger, PART3)
-        assert got["dev_type_source"] == "config_silent", (
-            "Part 3 now names development types. Before doing that, check every "
+        assert got["dev_type_source"] == "config_declined", (
+            "Part 3 must stay DECLINED on development types. config_silent would "
+            "say nobody read it; config_all would claim the chapter binds every "
+            "type, which it does not say. Before NARROWING instead, check every "
             "ancillary and subdivision type in devTypeHierarchy.ts against the "
             "chapter's section list -- anything left out disappears from that "
             "type's answer")
@@ -124,11 +126,12 @@ class TestPart4DecidesNeitherKey:
         not twice.
         """
         got = resolve(tagger, PART4)
-        assert got["dev_type_source"] == "config_silent", (
-            "Part 4 now names development types. Before doing that, check every "
-            "use in its own definition against devTypeHierarchy.ts AND check "
-            "what each candidate type expands to -- a type that does not expand "
-            "through one of the names listed loses the chapter completely")
+        assert got["dev_type_source"] == "config_declined", (
+            "Part 4 must stay DECLINED on development types. Before NARROWING "
+            "instead, check every use in its own definition against "
+            "devTypeHierarchy.ts AND check what each candidate type expands to -- "
+            "a type that does not expand through one of the names listed loses the "
+            "chapter completely")
 
     def test_zones_are_left_UNDECIDED_because_the_chapter_names_retired_codes(self, tagger):
         """Four of the six zones section 5.1 names -- B1, B2, B3, B4 -- were  # noqa: zone-codes (verbatim chapter text, and the point of the test)
@@ -139,7 +142,7 @@ class TestPart4DecidesNeitherKey:
         inside a config file. Undecided is the honest state until the successor
         mapping lands with its own citation.
         """
-        assert resolve(tagger, PART4)["zone_source"] == "config_silent"
+        assert resolve(tagger, PART4)["zone_source"] == "config_declined"
 
     def test_an_entry_that_decides_NEITHER_key_does_not_collapse_to_no_config(self, tagger):
         """The trap this entry sits one keystroke away from.
@@ -154,8 +157,8 @@ class TestPart4DecidesNeitherKey:
             "the Part 4 entry is empty; an empty dict resolves to no_config, "
             "not config_silent")
         got = resolve(tagger, PART4)
-        assert got["zone_source"] == "config_silent"
-        assert got["dev_type_source"] == "config_silent"
+        assert got["zone_source"] == "config_declined"
+        assert got["dev_type_source"] == "config_declined"
 
 
 class TestItRefusesTheEasyWaysToGoGreen:
@@ -203,7 +206,7 @@ class TestTheWholeRowComesOutRight:
         assert zones == ["R2", "R3", "R4", "R5"]  # noqa: zone-codes (quoted from section 3.1 Application)
         assert devs == ["ALL"]
         assert prov == {"zone_source": "config_specific",
-                        "dev_type_source": "config_silent"}
+                        "dev_type_source": "config_declined"}
 
     def test_part4_row_is_undecided_on_both_keys_and_still_not_no_config(self, tagger):
         """`config_silent` on both is the honest answer for this chapter, and it
@@ -213,8 +216,8 @@ class TestTheWholeRowComesOutRight:
             "Building separation for a residential flat building is 12m.",
             DOC.format(PART4))
         assert zones == ["ALL"] and devs == ["ALL"]
-        assert prov == {"zone_source": "config_silent",
-                        "dev_type_source": "config_silent"}
+        assert prov == {"zone_source": "config_declined",
+                        "dev_type_source": "config_declined"}
 
     def test_neither_row_can_come_back_as_no_config(self, tagger):
         """The defect this config was written for. `no_config` means nothing

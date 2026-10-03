@@ -152,6 +152,7 @@ WAVERLEY_CONFIG = {
         # docstring: C1 and C2 both state their scope as DEVELOPMENT, in the whole
         # LGA. "C" is the fallback for a C heading with no C1/C2 sub-code.
         "C": {
+            "scope_declined": ("applicable_dev_types",),
             "description":       "Residential Development",
             "scope_evidence": {
                 "applicable_zones":
@@ -167,10 +168,10 @@ WAVERLEY_CONFIG = {
                     "no list can be attributed to it. ALL is the honest state for the fallback.",
             },
             "applicable_zones":      ["ALL"],
-            "applicable_dev_types":  ["ALL"],
             "layer":             "use_specific",
         },
         "C1": {
+            "scope_declined": ("applicable_dev_types",),
             "description":       "Low Density Residential Development",
             "scope_evidence": {
                 "applicable_zones":
@@ -193,13 +194,13 @@ WAVERLEY_CONFIG = {
                     "is all in the widening direction. ALL preserves today's answer.",
             },
             "applicable_zones":      ["ALL"],
-            "applicable_dev_types":  ["ALL"],
             "layer":             "use_specific",
         },
         # MISLABELLED until 2026-10-03: described as "Medium to High Density
         # Residential". The Part is "Other Residential Development", and that
         # mislabel is what produced the ["R3","R4"] zone list below it.
         "C2": {
+            "scope_declined": ("applicable_dev_types",),
             "description":       "Other Residential Development",
             "scope_evidence": {
                 "applicable_zones":
@@ -222,10 +223,10 @@ WAVERLEY_CONFIG = {
                     "ask for.",
             },
             "applicable_zones":      ["ALL"],
-            "applicable_dev_types":  ["ALL"],
             "layer":             "use_specific",
         },
         "D": {
+            "scope_declined": ("applicable_dev_types",),
             "description":       "Commercial Development",
             "scope_evidence": {
                 "applicable_zones":
@@ -238,10 +239,10 @@ WAVERLEY_CONFIG = {
                     "list can be attributed to it.",
             },
             "applicable_zones":      ["ALL"],
-            "applicable_dev_types":  ["ALL"],
             "layer":             "use_specific",
         },
         "D1": {
+            "scope_declined": ("applicable_dev_types",),
             "description":       "Commercial and Retail Development",
             "scope_evidence": {
                 "applicable_zones":
@@ -258,12 +259,12 @@ WAVERLEY_CONFIG = {
                     "Recorded as the strongest narrowing candidate in this council.",
             },
             "applicable_zones":      ["ALL"],
-            "applicable_dev_types":  ["ALL"],
             "layer":             "use_specific",
         },
         # MISLABELLED until 2026-10-03: described as "Mixed Use", which produced
         # the ["MU1"] zone list. Part D2 of this DCP is OUTDOOR DINING.
         "D2": {
+            "scope_declined": ("applicable_dev_types",),
             "description":       "Outdoor Dining",
             "scope_evidence": {
                 "applicable_zones":
@@ -282,10 +283,10 @@ WAVERLEY_CONFIG = {
                     "not a use at all, so a type list would drop that half. ALL.",
             },
             "applicable_zones":      ["ALL"],
-            "applicable_dev_types":  ["ALL"],
             "layer":             "use_specific",
         },
         "E": {
+            "scope_declined": ("applicable_zones",),
             "description":           "Site-Specific Provisions",
             "scope_evidence": {
                 "applicable_zones":
@@ -302,12 +303,12 @@ WAVERLEY_CONFIG = {
                     "which this Part applies is to provide active street frontages'. 'All "
                     "development' is the Part's own words.",
             },
-            "applicable_zones":      ["ALL"],
             "applicable_dev_types":  ["ALL"],
             "layer":                 "precinct",
             "is_precinct_specific":  True,
         },
         "F": {
+            "scope_declined": ("applicable_dev_types",),
             "description":     "Development-Specific Controls",
             "scope_evidence": {
                 "applicable_zones":
@@ -325,7 +326,6 @@ WAVERLEY_CONFIG = {
                     "honest value until Part F is split per sub-code.",
             },
             "applicable_zones":      ["ALL"],
-            "applicable_dev_types":  ["ALL"],
             "layer":           "use_specific",
             "site_conditions": None,
         },

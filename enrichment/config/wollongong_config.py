@@ -42,6 +42,7 @@ WOLLONGONG_CONFIG: dict = {
         # controls to industrial land. applicable_dev_types is OMITTED: sections
         # 4-6 each cover different types, and the chapter as a whole names none.
         "chapter_b1_residential": {
+            "scope_declined": ("applicable_dev_types",),
             "scope_evidence": {
                 "applicable_dev_types":
                     "B1 section 1 Introduction (PDF p3) verbatim: 'This chapter contains "
@@ -65,7 +66,6 @@ WOLLONGONG_CONFIG: dict = {
                 "applicable_zones":
                     "B1 s1, verbatim: 'This chapter of the DCP applies to all residential zoned land within the City of Wollongong Local Government Area (LGA) including E4 Environmental Living.' R1-R5 are the residential zones that exist for this LGA. The chapter's 'E4 Environmental Living' is the PRE-2023 code: the NSW employment-zone reform renamed it C4, and E4 now means General Industrial -- declaring 'E4' would bind these dwelling controls to industrial land. applicable_dev_types is OMITTED: sections 4-6 each cover different types, and the chapter as a whole names none.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table. The zone names are the council's own words; rewriting them to import from the taxonomy would falsify the quote.
             },
-            "applicable_dev_types": ["ALL"],
             "applicable_zones": ["R1", "R2", "R3", "R4", "R5", "C4"],  # noqa: zone-codes (quoted scope; E4 renamed C4 in 2023)
             "layer": "generic",
         },

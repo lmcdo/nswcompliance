@@ -102,8 +102,14 @@ class TestLandUseChaptersAreNarrowed:
         got = resolve(tagger, "chapter_9_1_general_requirements")
         assert got["applicable_zones"] == ["E4"]
         assert got["zone_source"] == "config_specific"
-        assert got["dev_type_source"] == "config_silent", (
-            "chapter 9.1 must not name development types: the chapter is scoped "
+        # Updated 2026-10-03: ALL, which the chapter earns, rather than silent.
+        # The harm this test exists for is a NARROWED list, not breadth -- it is
+        # the General Requirements chapter for the industrial precincts and binds
+        # whatever is developed there, which is why 5.10 food premises belongs to
+        # it. The narrowing is the zone key, asserted above.
+        assert got["applicable_dev_types"] == ["ALL"]
+        assert got["dev_type_source"] == "config_all", (
+            "chapter 9.1 must not NARROW development types: the chapter is scoped "
             "by zone and expressly contemplates non-industrial uses inside it")
 
     def test_non_residential_land_uses_is_scoped_by_ZONE_not_by_type(self, tagger):
@@ -129,10 +135,12 @@ class TestLandUseChaptersAreNarrowed:
         topics = CANTERBURY_BANKSTOWN_CONFIG["chapter_topics"]
         for slug in ("chapter_9_1_general_requirements",
                      "chapter_10_4_non_residential_land_uses"):
-            assert "applicable_dev_types" not in topics[slug], (
-                f"{slug} declares development types again. Read the chapter's own "
-                f"Application section first: both are scoped by ZONE, and naming "
-                f"types here removes rows from every type not listed")
+            declared = topics[slug].get("applicable_dev_types")
+            assert declared in (None, ["ALL"]), (
+                f"{slug} NARROWS development types again to {declared!r}. Read the "
+                f"chapter's own Application section first: both are scoped by ZONE, "
+                f"and naming types here removes rows from every type not listed. "
+                f"['ALL'] is permitted because it removes nothing; a list is not")
 
     @pytest.mark.parametrize("slug", [
         "chapter_10_2_schools",

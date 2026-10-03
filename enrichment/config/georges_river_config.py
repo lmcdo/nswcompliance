@@ -57,13 +57,13 @@ GEORGES_RIVER_CONFIG: dict = {
         # narrowing. Omitting it instead recorded `config_silent`, which says
         # nobody decided (DQ-114, 5 served keys here).
         "grdcp_part_6_1_low_density": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_dev_types":
                     "Section 6.1.1 Introduction, verbatim: 'This part applies to dwelling houses, dual occupancy development, secondary dwellings and narrow lot housing.' Three of the four have a term in the vocabulary. 'Narrow lot housing' does not — and, checked 2026-09-23, neither does the SERVING taxonomy in frontend-nextjs/lib/see/devTypeHierarchy.ts, so no query can ask for it and naming the other three hides nothing. That check is the whole test: a missing term matters only when somebody can select it.",
                 "applicable_zones":
                     "Section 6.1.1 Introduction (PDF p4, printed page 3) is the Part's only scope statement and it names DEVELOPMENT, not land, verbatim: 'This part applies to dwelling houses, dual occupancy development, secondary dwellings and narrow lot housing. This part of the DCP should be read in conjunction with Part 1 - Introduction, Part 3 – General Planning Considerations, Part 5 – Residential Locality Statements, Part 6.4 Ancillary Development and Part 6.5 – Foreshore Locality Controls.' Re-read 2026-10-03: no zone is stated in the chapter. Georges River's residential zones are R2, R3 and R4 in lep_zone_coverage, but inferring them from the four development forms would be interpretation, not quotation — and it would delete the Part from a dual occupancy or secondary dwelling anywhere those forms are permitted outside them. The narrowing this Part states is the dev-type list, which is declared; ALL on zones is the council's silence recorded as a decision rather than invented by `.get`.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table. The zone names are the council's own words; rewriting them to import from the taxonomy would falsify the quote.
             },
-            "applicable_zones": ["ALL"],
             "applicable_dev_types": ["dwelling_house", "dual_occupancy",
                                      "secondary_dwelling"],
         },

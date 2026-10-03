@@ -46,6 +46,19 @@ from enrichment.config import COUNCIL_CONFIGS
 #: query, so declaring a value deletes the row from every other answer.
 FILTER_KEYS = ("applicable_zones", "applicable_dev_types")
 
+
+def declared_keys(entry: dict) -> set[str]:
+    """The filter keys this entry has DECIDED, by either route.
+
+    `scope_declined` (migrations/081) is a decision too: a person read the
+    chapter, its stated scope could not be expressed in the field without hiding
+    rules, and narrowing was declined. It needs its sentence just as much as a
+    declared value does -- more so, because the reason IS the content. Without
+    this, "declined" becomes the new silent default.
+    """
+    return ({k for k in FILTER_KEYS if k in entry}
+            | {k for k in FILTER_KEYS if k in (entry.get("scope_declined") or ())})
+
 #: Buckets an entry can live in. `sections` is walked although no config uses it
 #: yet, so a section-level entry is covered from the first one written rather
 #: than after someone remembers.
@@ -151,9 +164,7 @@ def _violations() -> set[tuple[str, str, str, str]]:
     found = set()
     for council, bucket, key, entry in ENTRIES:
         evidence = entry.get("scope_evidence") or {}
-        for filter_key in FILTER_KEYS:
-            if filter_key not in entry:
-                continue  # omitted -> config_silent, which DQ-114 counts
+        for filter_key in declared_keys(entry):
             quote = evidence.get(filter_key)
             if not isinstance(quote, str) or len(quote.strip()) < MIN_EVIDENCE_CHARS:
                 found.add((council, bucket, key, filter_key))
@@ -192,12 +203,27 @@ def test_a_fixed_entry_is_released_from_the_list():
     describing anything — the failure check_test_quarantine.py's second rule
     exists to prevent.
     """
-    declared = {(c, b, k, fk) for c, b, k, e in ENTRIES for fk in FILTER_KEYS if fk in e}
+    declared = {(c, b, k, fk) for c, b, k, e in ENTRIES for fk in declared_keys(e)}
     fixed = sorted((UNEVIDENCED & declared) - _violations())
     assert not fixed, (
         f"{len(fixed)} entr(y/ies) in UNEVIDENCED now carry their sentence and "
         f"must be removed from the list:\n" + "\n".join(f"  {v}" for v in fixed)
     )
+
+
+def test_a_declined_key_is_never_also_declared():
+    """`scope_declined` and a value are two answers to one question.
+
+    _resolve checks scope_declined FIRST, so a contradicting pair would make the
+    declared list dead code while the file reads as though it applied — the
+    config-looks-right-and-does-nothing failure this directory keeps hitting.
+    """
+    both = [(c, b, k, fk) for c, b, k, e in ENTRIES for fk in FILTER_KEYS
+            if fk in e and fk in (e.get("scope_declined") or ())]
+    assert not both, (
+        "these entries both DECLARE and DECLINE the same key; _resolve honours "
+        "the decline and the declared value is never read: "
+        + "; ".join(f"{b}" for b in sorted(both)))
 
 
 def test_no_evidence_for_a_key_that_is_not_declared():
@@ -209,8 +235,9 @@ def test_no_evidence_for_a_key_that_is_not_declared():
     """
     orphans = []
     for council, bucket, key, entry in ENTRIES:
+        decided = declared_keys(entry)
         for filter_key in (entry.get("scope_evidence") or {}):
-            if filter_key in FILTER_KEYS and filter_key not in entry:
+            if filter_key in FILTER_KEYS and filter_key not in decided:
                 orphans.append((council, bucket, key, filter_key))
     assert not orphans, (
         "scope_evidence present for a key that is NOT declared, so the entry "

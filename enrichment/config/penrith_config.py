@@ -59,6 +59,7 @@ PENRITH_CONFIG: dict = {
         # served rows, counted by DQ-114. The decision was made; it was just kept
         # in a comment no consumer can read.
         "penrith_dcp_2014_part_d2": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_dev_types":
                     "The Part's own table of contents (PDF pp1-2) runs '2.1. SINGLE DWELLINGS', "
@@ -89,7 +90,6 @@ PENRITH_CONFIG: dict = {
                     "development section 2.6 covers.",
             },
             "applicable_dev_types": ["ALL"],
-            "applicable_zones": ["ALL"],
             "layer": "generic",
         },
     },

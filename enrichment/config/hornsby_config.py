@@ -54,6 +54,7 @@ HORNSBY_CONFIG: dict = {
         # can express does not exist. Declared 2026-10-03; OMITTED recorded
         # `config_silent` (DQ-114).
         "hornsby_dcp_2024_part3_residential": {
+            "scope_declined": ("applicable_dev_types",),
             "scope_evidence": {
                 "applicable_zones":
                     "Introduction, verbatim: 'This Part of the DCP applies to residential development within the Residential zones of the Hornsby Local Government Area.' R2/R3/R4 are the residential zones that EXIST for this LGA in lep_zone_coverage — Hornsby has no R1 and no R5, so neither is declared.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table. The zone names are the council's own words; rewriting them to import from the taxonomy would falsify the quote.
@@ -72,7 +73,6 @@ HORNSBY_CONFIG: dict = {
                     "2026-10-03. Previously OMITTED, "
                     "which recorded `config_silent` on 101 served rows (DQ-114).",
             },
-            "applicable_dev_types": ["ALL"],
             "applicable_zones": ["R2", "R3", "R4"],  # noqa: zone-codes (the LGA's residential zones, per lep_zone_coverage)
             "layer": "generic",
         },

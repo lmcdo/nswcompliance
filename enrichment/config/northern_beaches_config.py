@@ -63,6 +63,8 @@ NORTHERN_BEACHES_CONFIG: dict = {
         # Part E11 Flood Prone Land: a SITE CONDITION, not a development type —
         # it binds whatever is proposed on land the flood maps cover.
         "E11": {
+            "scope_declined": ("applicable_zones",),
+            "applicable_dev_types": ["ALL"],
             "scope_evidence": {
                 "applicable_zones":
                     _PLAN_LAND + "E11 is scoped by the FLOOD MAPS, not by zone, and "
@@ -73,7 +75,6 @@ NORTHERN_BEACHES_CONFIG: dict = {
                     "enumerates no development type, and naming any would drop the flood "
                     "controls from every type left out.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
             "site_conditions": ["flood"],
         },
 
@@ -95,6 +96,8 @@ NORTHERN_BEACHES_CONFIG: dict = {
         # extraction runs, and "B1"/"B2" in "# B1 C1 Wall Heights" are read as
         # NSW zone codes. See the module docstring.
         "B": {
+            "scope_declined": ("applicable_zones",),
+            "applicable_dev_types": ["ALL"],
             "scope_evidence": {
                 "applicable_zones":
                     "Part B Built Form Controls, control B1 Wall Heights 'Applies to Land' (PDF "
@@ -118,12 +121,13 @@ NORTHERN_BEACHES_CONFIG: dict = {
                     "-- wall heights, number of storeys, setbacks -- which bind whatever is "
                     "built.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
         },
 
         # Parts C, D and E — "a series of built form controls, including
         # setbacks and landscaped open space". General, so ALL is a decision.
         "C": {
+            "scope_declined": ("applicable_zones",),
+            "applicable_dev_types": ["ALL"],
             "scope_evidence": {
                 "applicable_zones":
                     "Part C Siting Factors, first control 'Applies to Land' (PDF p27) verbatim: "
@@ -138,7 +142,6 @@ NORTHERN_BEACHES_CONFIG: dict = {
                     "including setbacks and landscaped open space, is contained in Part C, D and "
                     "E.' Siting controls bind any development on the land; no type is named.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
         },
         "D": {
             "scope_evidence": {
@@ -173,6 +176,7 @@ NORTHERN_BEACHES_CONFIG: dict = {
         # plan "names 'certain zones' without listing them". F1 lists them; they
         # are retired codes. See the module docstring.
         "F": {
+            "scope_declined": ("applicable_zones", "applicable_dev_types",),
             "scope_evidence": {
                 "applicable_zones":
                     "Part F Zones and Sensitive Areas, F1 Local and Neighbourhood Centres "
@@ -195,13 +199,14 @@ NORTHERN_BEACHES_CONFIG: dict = {
                     "commercial, housing and community uses'. Community uses have no vocabulary "
                     "term, so any list would drop part of what the Part itself names.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
             "layer": "generic",
         },
 
         # Part G — special areas, and it PREVAILS over C, D and E where they
         # conflict. G1..G10 all reach this through the progressive strip.
         "G": {
+            "scope_declined": ("applicable_zones",),
+            "applicable_dev_types": ["ALL"],
             "scope_evidence": {
                 "applicable_zones":
                     "Part G Special Area Controls scopes each area by PLACE, verbatim: 'This part "
@@ -222,7 +227,6 @@ NORTHERN_BEACHES_CONFIG: dict = {
                     "geographically, so every development inside a named area is bound: a real "
                     "assertion of universality on development type.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
             "is_precinct_specific": True,
         },
 

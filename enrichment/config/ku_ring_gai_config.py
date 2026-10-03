@@ -43,6 +43,7 @@ KU_RING_GAI_CONFIG = {
 
         # ── Section A: Residential & General ───────────────────────────────
         "part_2_site_analysis": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'Development applications are to contain a site "
                     "analysis that includes: i) a sketch/diagrammatic plan with a legend' "
@@ -52,10 +53,11 @@ KU_RING_GAI_CONFIG = {
                     "requires the application to 'show how the proposed development responds to "
                     "the site analysis'.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "generic", "topic": None,
         },
         "part_3_subdivision": {
+            "scope_declined": ("applicable_zones", "applicable_dev_types",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'This part applies to the subdivision of land "
                     "identified on the \"Minimum Lot Depth Map\" (Refer to maps in 3R.1 of this "
@@ -66,7 +68,6 @@ KU_RING_GAI_CONFIG = {
                     "it would be a truthful narrowing -- recorded as a candidate and NOT made "
                     "here, because narrowing hides and this change widens nothing.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
             "layer": "generic", "topic": None,
         },
         # DQ-30 (.claude/DATA_QUALITY_TRACKER.md): these were labelled
@@ -81,6 +82,7 @@ KU_RING_GAI_CONFIG = {
         # 2026-10-03: their ZONE key was still silent, and is declared below.
         # "part_4_1" must stay ahead of "part_4" — substring matching.
         "part_4_1_secondary_dwellings": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'This Part provides guidance for development of "
                     "secondary dwellings to meet the aims and objectives within the KLEP' "
@@ -89,11 +91,11 @@ KU_RING_GAI_CONFIG = {
                     "secondary dwellings'. `secondary_dwelling` is the vocabulary's own term, so "
                     "the declaration is the Part's own words rather than an interpretation.",
             },
-            "applicable_zones": ["ALL"],
             "applicable_dev_types": ["secondary_dwelling"],
             "layer": "use_specific", "topic": "residential",
         },
         "part_4_dwelling_houses": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'This Part applies to development for a detached "
                     "dwelling house and development ancillary to a dwelling house' (PDF p2).",
@@ -104,11 +106,11 @@ KU_RING_GAI_CONFIG = {
                     "dwelling_house through frontend-nextjs/lib/see/devTypeHierarchy.ts, so the "
                     "single term does not hide the ancillary controls.",
             },
-            "applicable_zones": ["ALL"],
             "applicable_dev_types": ["dwelling_house"],
             "layer": "use_specific", "topic": "residential",
         },
         "part_5_dual_occupancy": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'This Part applies to development for dual "
                     "occupancy dwellings and associated ancillary development' (PDF p2).",
@@ -119,11 +121,11 @@ KU_RING_GAI_CONFIG = {
                     "and none in the serving taxonomy either, so nothing can ask for it and the "
                     "single term hides nothing a query can express.",
             },
-            "applicable_zones": ["ALL"],
             "applicable_dev_types": ["dual_occupancy"],
             "layer": "use_specific", "topic": "residential",
         },
         "part_6_multi_dwelling": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is titled 'MULTI DWELLING HOUSING' and "
                     "its controls bind 'all development regardless of the steepness of the site' "
@@ -132,11 +134,11 @@ KU_RING_GAI_CONFIG = {
                     "the vocabulary's own term, `multi_dwelling_housing` -- the DQ-30 wiring "
                     "recorded in the comment above, not an interpretation.",
             },
-            "applicable_zones": ["ALL"],
             "applicable_dev_types": ["multi_dwelling_housing"],
             "layer": "use_specific", "topic": "residential",
         },
         "part_7_residential_flat": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'The objectives and controls in this Part guide "
                     "development for residential flat buildings in meeting the aims and "
@@ -147,7 +149,6 @@ KU_RING_GAI_CONFIG = {
                     "buildings is covered by this Part.' `residential_flat_building` is the "
                     "vocabulary's own term.",
             },
-            "applicable_zones": ["ALL"],
             "applicable_dev_types": ["residential_flat_building"],
             "layer": "use_specific", "topic": "residential",
         },
@@ -155,6 +156,7 @@ KU_RING_GAI_CONFIG = {
         # development type: "mixed use" and "non-residential" each span several
         # types, and the Parts name uses the vocabulary cannot express.
         "part_8_mixed_use": {
+            "scope_declined": ("applicable_zones", "applicable_dev_types",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'The objectives and controls in this Part guide "
                     "development of retail, business and mixed use buildings in meeting the aims "
@@ -168,10 +170,10 @@ KU_RING_GAI_CONFIG = {
                     "p15). `retail_premises` and `commercial_premises` exist, but a two-term "
                     "list would drop the mixed-use half the Part is named for. ALL.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
             "layer": "use_specific", "topic": None,
         },
         "part_9_non_residential": {
+            "scope_declined": ("applicable_zones", "applicable_dev_types",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part 'applies to all buildings that are "
                     "soley non-residential, including office building developments' (PDF p2; the "
@@ -184,10 +186,10 @@ KU_RING_GAI_CONFIG = {
                     "has terms for only a handful of them. Naming those would delete the Part "
                     "from every other non-residential use. ALL.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
             "layer": "use_specific", "topic": None,
         },
         "part_12_signage": {
+            "scope_declined": ("applicable_zones", "applicable_dev_types",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'Part 12 relates to signage for identification "
                     "and advertising purposes' (INTRODUCTION, PDF p2).",
@@ -198,10 +200,10 @@ KU_RING_GAI_CONFIG = {
                     "primary type, so declaring it as a primary type would hide the Part from "
                     "every application that carries signage alongside another use. ALL.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
             "layer": "generic", "topic": "signage",
         },
         "part_13_trees": {
+            "scope_declined": ("applicable_zones", "applicable_dev_types",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part establishes 'a framework for the "
                     "submission of applications for tree and other vegetation works in "
@@ -213,12 +215,12 @@ KU_RING_GAI_CONFIG = {
                     "application involving tree works; `trees` is an ancillary devTypeTag, not a "
                     "primary type, so it cannot be declared here without hiding the Part.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
             "layer": "generic", "topic": "trees",
         },
 
         # ── Section B: Character Areas & Environmental ──────────────────────
         "part_15_contamination": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part covers 'applications, rezoning and "
                     "remediation works on contaminated land' (PDF p2) -- CONTAMINATED LAND is a "
@@ -228,10 +230,11 @@ KU_RING_GAI_CONFIG = {
                     "that changes to land use will not' create risk. Scoped by the land's "
                     "condition, so it binds whatever is proposed on it.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "generic", "topic": "contamination",
         },
         "part_16_bushfire": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'This Part guides development on land identified "
                     "on the Ku-ring-gai Bushfire Prone Land Map and/or to land identified on the "
@@ -242,10 +245,11 @@ KU_RING_GAI_CONFIG = {
                     "areas not identified as bush fire prone land but within 700m proximity of "
                     "the aforementioned, the controls are recommended'.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "generic", "topic": "bushfire",
         },
         "part_17_riparian": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'This Part guides development on land "
                     "identified within the Natural Resource - Riparian Lands Map in the KLEP "
@@ -257,10 +261,11 @@ KU_RING_GAI_CONFIG = {
                     "development footprint outside the riparian land' -- and no development type "
                     "is named.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "generic", "topic": "stormwater",
         },
         "part_18_biodiversity": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'The objectives and controls in this Part "
                     "applies to development activities or works that will have an impact on areas "
@@ -270,10 +275,11 @@ KU_RING_GAI_CONFIG = {
                     "or works that will have an impact on areas identified as Greenweb'. An "
                     "impact test, not a type list.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "generic", "topic": "biodiversity",
         },
         "part_19_heritage": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'Part 19 applies to any development associated "
                     "with a Heritage Item or within a Heritage Conservation Area (HCA) identified "
@@ -285,10 +291,11 @@ KU_RING_GAI_CONFIG = {
                     "there is inconsistency between the controls in Part 19 and controls in other "
                     "parts of this DCP, the controls in Part 19 prevail.'",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "generic", "topic": None,
         },
         "part_20_rail_roads": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "section 20.1 scopes it by PROXIMITY: 'All "
                     "development that is in, or immediately adjacent to, the rail corridor or a "
@@ -298,7 +305,7 @@ KU_RING_GAI_CONFIG = {
                     "immediately adjacent to, the rail corridor or a busy road' -- 'all "
                     "development' is the council's own phrase.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "generic", "topic": "acoustic",
         },
 
@@ -311,6 +318,7 @@ KU_RING_GAI_CONFIG = {
         # SEVEN served rows onto a zone no Ku-ring-gai property has. Configuring
         # them takes that to zero. Each is scoped to a named place.
         "section_b_part_14a_st_ives_local_centre": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to a NAMED CENTRE. Its own heading is "
                     "'14A St Ives Local Centre' and its opening section is '14A.1 St Ives Local Centre Context', whose page is a "
@@ -322,10 +330,11 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A local-centre Part binds what is built in the centre and names no "
                     "development type; Section B is titled 'URBAN PRECINCT AND SITES'.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
         "section_b_part_14b_turramurra_local_centre": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to a NAMED CENTRE. Its own heading is "
                     "'14B Turramurra Local Centre' and its opening section is '14B.1 Turramurra Local Centre Context', whose page is a "
@@ -337,10 +346,11 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A local-centre Part binds what is built in the centre and names no "
                     "development type; Section B is titled 'URBAN PRECINCT AND SITES'.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
         "section_b_part_14c_pymble_local_centre": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to a NAMED CENTRE. Its own heading is "
                     "'14C Pymble Local Centre' and its opening section is '14C.1 Pymble Local Centre Context', whose page is a "
@@ -352,10 +362,11 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A local-centre Part binds what is built in the centre and names no "
                     "development type; Section B is titled 'URBAN PRECINCT AND SITES'.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
         "section_b_part_14d_gordon_local_centre": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to a NAMED CENTRE. Its own heading is "
                     "'14D Gordon Local Centre' and its opening section is '14D.1 Gordon Local Centre Context', whose page is a "
@@ -367,10 +378,11 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A local-centre Part binds what is built in the centre and names no "
                     "development type; Section B is titled 'URBAN PRECINCT AND SITES'.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
         "section_b_part_14e_lindfield_local_centre": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to a NAMED CENTRE. Its own heading is "
                     "'14E Lindfield Local Centre' and its opening section is '14E.1 Lindfield Local Centre Context', whose page is a "
@@ -382,10 +394,11 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A local-centre Part binds what is built in the centre and names no "
                     "development type; Section B is titled 'URBAN PRECINCT AND SITES'.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
         "section_b_part_14f_roseville_local_centre": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to a NAMED CENTRE. Its own heading is "
                     "'14F Roseville Local Centre' and its opening section is '14F.1 Roseville Local Centre Context', whose page is a "
@@ -397,10 +410,11 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A local-centre Part binds what is built in the centre and names no "
                     "development type; Section B is titled 'URBAN PRECINCT AND SITES'.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
         "section_b_part_14g_pymble_business_park": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to ONE NAMED SITE. Its own heading is "
                     "'14G Pymble Business Park' and its opening section is '14G.1 Urban Precinct'. A site boundary is not "
@@ -409,10 +423,11 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A site-specific Part binds what is built on the named land and enumerates "
                     "no development type.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
         "section_b_part_14h_screen_australia_site": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to ONE NAMED SITE. Its own heading is "
                     "'14H Screen Australia site' and its opening section is '14H.1 Urban Precinct'. A site boundary is not "
@@ -421,10 +436,11 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A site-specific Part binds what is built on the named land and enumerates "
                     "no development type.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
         "section_b_part_14i_killara_golf_club": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to ONE NAMED SITE. Its own heading is "
                     "'14I Killara Golf Club' and its opening section is '14I.1 Urban Precinct'. A site boundary is not "
@@ -433,10 +449,11 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A site-specific Part binds what is built on the named land and enumerates "
                     "no development type.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
         "section_b_part_14j_holford_crescent_gordon": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to ONE NAMED SITE. Its own heading is "
                     "'14J Holford Crescent, Gordon' and its opening section is '14J.1 Building Setbacks'. A site boundary is not "
@@ -445,10 +462,11 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A site-specific Part binds what is built on the named land and enumerates "
                     "no development type.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
         "section_b_part_14k_45_47_tennyson_avenue_and_105_eastern_road_turramurra": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to ONE NAMED SITE. Its own heading is "
                     "'14K 45-47 Tennyson Avenue and 105 Eastern Road, Turramurra' and its opening section is '14K.1 Urban Precinct'. A site boundary is not "
@@ -457,10 +475,11 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A site-specific Part binds what is built on the named land and enumerates "
                     "no development type.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
         "section_b_part_14l_62_and_64_66_pacific_highway_roseville": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to ONE NAMED SITE. Its own heading is "
                     "'14L 62 and 64-66 Pacific Highway, Roseville' and its opening section is '14L.1 Urban Precinct'. A site boundary is not "
@@ -469,10 +488,11 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A site-specific Part binds what is built on the named land and enumerates "
                     "no development type.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
         "section_b_part_14m_47_warrane_road_roseville_chase": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to ONE NAMED SITE. Its own heading is "
                     "'14M 47 Warrane Road, Roseville Chase' and its opening section is '14M.1 Urban Precinct'. A site boundary is not "
@@ -481,10 +501,11 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A site-specific Part binds what is built on the named land and enumerates "
                     "no development type.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
         "section_b_part_14n_8a_14_16_buckingham_road_killara": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to ONE NAMED SITE. Its own heading is "
                     "'14N 8A, 14-16 Buckingham Road, Killara' and its opening section is '14N.1 Urban Precinct'. A site boundary is not "
@@ -493,10 +514,11 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A site-specific Part binds what is built on the named land and enumerates "
                     "no development type.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
         "section_b_part_14o_pymble_golf_club": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped to ONE NAMED SITE. Its own heading is "
                     "'14O Pymble Golf Club' and its opening section is '14O.1 Urban Precinct'. A site boundary is not "
@@ -505,12 +527,13 @@ KU_RING_GAI_CONFIG = {
                 "applicable_dev_types": "A site-specific Part binds what is built on the named land and enumerates "
                     "no development type.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "precinct", "topic": None,
         },
 
         # ── Section C: Design & Technical Standards ────────────────────────
         "part_21_site_design": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'This Part applies to all types of development, "
                     "and provides a consistent area wide approach to issues that all developments "
@@ -521,10 +544,11 @@ KU_RING_GAI_CONFIG = {
                     "developments are to address and provides guidance on meeting the aims and "
                     "objectives within the LEP.' ALL is the Part's own words, not a fallthrough.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "generic", "topic": None,
         },
         "part_22_parking": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'This part applies to all types of development, "
                     "and provides a consistent area wide approach to access and parking issues "
@@ -534,10 +558,11 @@ KU_RING_GAI_CONFIG = {
                     "'Applications for development, other than single dwellings, are to "
                     "demonstrate how access to and within developments meets the [standards]'.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "generic", "topic": "parking",
         },
         "part_23_building_design": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "'This Part applies to all development types "
                     "whether or not it is individually specified in Section A of this DCP' (PDF "
@@ -549,10 +574,11 @@ KU_RING_GAI_CONFIG = {
                     "development types, and some sections to all development.' ALL is explicit, "
                     "including the types the DCP does not name elsewhere.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "generic", "topic": None,
         },
         "part_24_water": {
+            "scope_declined": ("applicable_zones",),
             "scope_evidence": {
                 "applicable_zones": _NO_ZONE + "the Part is scoped by DRAINAGE PATTERN, not "
                     "zone: 'Part 24A categorises: i) development types, eg new dwellings or "
@@ -565,7 +591,7 @@ KU_RING_GAI_CONFIG = {
                     "development types itself rather than excluding any, naming 'new dwellings or "
                     "retail premises' only as examples, so every type is reached.",
             },
-            "applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
+"applicable_dev_types": ["ALL"],
             "layer": "generic", "topic": "stormwater",
         },
         "part_25_waste":                {"layer": "generic",      "topic": None},
