@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Two new ledger rows (DQ-119, DQ-120), a Stop hook that can block a turn, scope_evidence across three council configs, and ONE production write. Not Critical: the production write was a provenance-only re-tag whose own dry run reported 0 served rows narrowed and no served zone or dev-type value changed, backed by an automatic backup table with printed rollback SQL, and the served answer for every affected row is byte-identical before and after. Not Minor: it touched 3,172 live rows and it changed applicability declarations that are HARD FILTERS on what a property is shown (for-property/route.ts:1012 and :1222), including two corrections that widen what is served.",
- "commit_hash": "c87e680f",
+ "commit_hash": "7cd97e61",
  "files": [
   "scripts/dq_probe_live.py",
   ".claude/dq_checks.json",
