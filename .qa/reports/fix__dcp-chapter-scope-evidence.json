@@ -1,0 +1,212 @@
+{
+ "tier": "standard",
+ "justification": "Twelve council configs changed, and every edit lands on v2_applicable_zones / v2_applicable_dev_types, which are HARD FILTERS on what a property is shown (for-property/route.ts:1012 and :1222). Most of it is provenance only, but three changes move served answers: Waverley's four title-inferred zone lists are removed (114 served rows widen), Ku-ring-gai's fifteen Part 14s are configured so text extraction stops reading retired zone codes out of their own text (7 served narrowings on the committed config become 0), and Northern Beaches gains a Part B entry for the same reason (43 served rows leave filtered_to_all). Not Critical: no served row is narrowed by anything in this branch, the direction is widening throughout, and nothing is deleted. Not Minor: 20,922 rows are in the re-tag's scope and the keys are hard filters, so an error here hides binding controls rather than adding noise. SECOND PASS 2026-10-03: the test suite rejected the first version and was right. Declaring ['ALL'] records `config_all`, which the tagger documents as \"a real assertion of universality; trust it\", and tests/test_campbelltown_applicability.py already refused to claim it for a chapter that does not say so. Half these entries do not: they state a narrower scope the field cannot hold. migrations/081 adds a third value, `config_declined`, and 3,213 served keys now take it instead of falsely asserting universality. The served values are unchanged by that correction -- same 2,505 value changes, same 39 narrowings.",
+ "commit_hash": "5b5d317e",
+ "files": [
+  "enrichment/config/georges_river_config.py",
+  "enrichment/config/blacktown_config.py",
+  "enrichment/config/hornsby_config.py",
+  "enrichment/config/penrith_config.py",
+  "enrichment/config/canterbury_bankstown_config.py",
+  "enrichment/config/campbelltown_config.py",
+  "enrichment/config/wollongong_config.py",
+  "enrichment/config/waverley_config.py",
+  "enrichment/config/northern_beaches_config.py",
+  "enrichment/config/ku_ring_gai_config.py",
+  "tests/test_scope_evidence_declared.py",
+  "migrations/081_applicability_declined.sql",
+  "enrichment/extractors/applicability_tagger.py",
+  "tests/enrichment/test_applicability_tagger.py",
+  "tests/test_applicability_provenance.py",
+  "tests/test_campbelltown_applicability.py",
+  "tests/test_canterbury_bankstown_applicability.py",
+  "tests/test_four_council_applicability_configs.py",
+  "tests/test_northern_beaches_whole_dcp_scope.py",
+  ".claude/dq_checks.json",
+  "scripts/dq_probe_scope_evidence_fidelity.py",
+  "tests/test_dq_probe_scope_evidence_fidelity.py",
+  ".claude/DATA_QUALITY_TRACKER.md",
+  ".gitignore"
+ ],
+ "pre_impl": {
+  "existing_data": "Every scope sentence written here was read from the chapter PDF the registry already points at, fetched through dcp_chapter_registry.r2_public_pdf_url and cached under the job tmp directory. No new extraction ran, no provision text was re-read, and no registry row changed. The re-tag reuses scripts/retag_applicability_slug_docids.py rather than a new writer: dry-run default, automatic backup table, per-row optimistic-concurrency guard, printed rollback SQL, and --expect-narrowings required before any served row may narrow. DQ-114's own query and dq_probe_applicability_config.py supplied every count, so each number here can be re-run rather than trusted.",
+  "assumption_mismatch": "THREE, and each changed the answer. (1) The plan's premise was that declaring the silent key is a paperwork fix. True for nine councils, false for Waverley: reading the Parts to get the quote showed four zone lists that no Part states, so the quote contradicted the declaration it was meant to support. (2) Cumberland looked like the clearest case for a new config — 58 keys, no config file at all. Measured, a config made it WORSE: applicability_tagger.py:776 skips text extraction entirely when a config matches, and Cumberland's rows already carry good per-row text-derived types (boarding_house on the boarding-house section, residential_flat_building on the RFB section). A document-level entry would have flattened 26 of them to ALL. The draft config was deleted and Cumberland needs only a re-tag, which clears 55 of its 58 keys with zero value changes. (3) Reading ONE sub-part of Cumberland Part B gave ['R2','R3','R4'] from B1's \"land zoned Residential\"; reading all five showed B3 (residential flat buildings) and B4 (boarding houses) state no zone at all, so that list would have hidden them outside the residential zones.",
+  "new_vs_existing": "No new mechanism. The declarations use the `scope_evidence` shape the previous branch established, the ratchet in tests/test_scope_evidence_declared.py copies the two rules from scripts/check_test_quarantine.py rather than inventing a policy, and the writer is the existing re-tag script. The only genuinely new artefact is that ratchet, and it exists because dq_probe_applicability_config.py prints a number nobody is obliged to read — which is how 193 declarations sat with no authority behind them for months."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_scope_evidence_declared.py -q",
+  "fails_when": "a declared applicable_zones or applicable_dev_types anywhere in COUNCIL_CONFIGS carries no scope_evidence for that key and is not in the recorded UNEVIDENCED baseline; or an entry in that baseline gains its sentence and is left in the list; or scope_evidence names a key the entry does not declare; or the registry walk stops finding entries at all.",
+  "observed_red": "YES, all three rules forced. A brand-new georges_river entry declaring applicable_zones with no sentence failed test_no_new_declaration_without_its_sentence. Adding evidence to a baselined entry (georges_river part_3) failed test_a_fixed_entry_is_released_from_the_list. Deleting georges_river part_6_1's applicable_dev_types while leaving its evidence failed test_no_evidence_for_a_key_that_is_not_declared. A control was also run: adding a NON-filter key (site_conditions) correctly did not fail. All restored green afterwards."
+ },
+ "functions": [
+  {
+   "name": "_resolve",
+   "file_line": "enrichment/extractors/applicability_tagger.py:139",
+   "input": "a council config entry dict (or None) and one of 'applicable_zones' / 'applicable_dev_types'",
+   "output": "the value list plus its provenance: 'config_all' when the entry declares exactly ['ALL'], 'config_specific' when it names values, 'config_silent' when the key is absent or present-but-empty, 'no_config' when no entry matched at all",
+   "if_none": "entry None returns (['ALL'], 'no_config') — the weakest state, and it is recorded as such rather than read as universality. This is the function every declaration in this branch exists to move: from config_silent, where `.get(k, ['ALL'])` invented the value, to config_all, where the config asserted it."
+  },
+  {
+   "name": "_get_config_driven",
+   "file_line": "enrichment/extractors/applicability_tagger.py:589",
+   "input": "a document_id and the provision text",
+   "output": "the applicability dict for the first COUNCIL_CONFIGS key that is a substring of document_id.lower(), resolved through the chapter_topics path or the parts path (section code extracted from the text, then progressively stripped)",
+   "if_none": "returns None when no council key matches or no chapter/part entry matches, and the caller then runs text extraction. That fallthrough is why Northern Beaches Part B and Ku-ring-gai's fifteen Part 14s mattered: with no entry, the extractor read those documents' OWN chapter codes (B1, B2, B4) as NSW zone codes, which DQ-30's filter then rejected as not existing in the LGA."
+  },
+  {
+   "name": "_resolve",
+   "file_line": "enrichment/extractors/applicability_tagger.py:139",
+   "input": "a council config entry dict (or None) and one of the two filter keys",
+   "output": "config_declined when `scope_declined` names the key -- checked BEFORE the key itself, so a declared value and a declined key can never contradict each other. The returned value is still ['ALL'], so nothing is filtered differently",
+   "if_none": "entry None still returns (['ALL'], 'no_config'). The new branch cannot be reached by accident: it requires an explicit scope_declined tuple naming the key, and tests/test_scope_evidence_declared.py fails if an entry both declares and declines one"
+  }
+ ],
+ "values": [
+  {
+   "value": "DQ-114 served scope keys left ALL by a non-decision: 3,142 before this branch, across exactly 40 documents. 3,059 of those keys are addressed by the config changes here; 62 more clear on the re-tag alone (Cumberland 58, Woollahra 4); 21 are a STATED EXCEPTION and stay.",
+   "read_at": "python scripts/dq_check.py --id DQ-114, and a per-council breakdown from DQ-114's own query grouped by source_council and document_id, 2026-10-03",
+   "if_missing": "an unreachable database makes the probe print UNKNOWN and exit 2, which the ledger treats as unverifiable rather than clean, so no claim is made from a missing number"
+  },
+  {
+   "value": "DQ-115 declared keys with no machine-readable evidence: 72 at the start of this branch, 47 now. The 47 are listed in tests/test_scope_evidence_declared.py UNEVIDENCED with the reason each was not closed.",
+   "read_at": "python scripts/dq_probe_applicability_config.py --id DQ-115, before and after, 2026-10-03",
+   "if_missing": "the probe needs no database, so an UNKNOWN here would mean the config module failed to import — which the ratchet test would also fail on"
+  },
+  {
+   "value": "The combined re-tag across all twelve councils: 20,922 rows in scope, 2,505 values change, 18,417 provenance only. Served zone changes: 170 widened_to_all, 39 widened, 114 unchanged. Served dev-type changes: 142 widened_to_all, 39 swapped, 142 unchanged. SERVED ROWS NARROWED: 39, all of them one shape.",
+   "read_at": "python scripts/retag_applicability_slug_docids.py --councils <the twelve> (dry run, the default), 2026-10-03",
+   "if_missing": "the script refuses to --apply without --expect-narrowings naming the exact narrowing count, so an unmeasured plan cannot be written"
+  },
+  {
+   "value": "The 39 narrowed rows are NOT from this branch. They are Woollahra chapter_b4_housing_accessible_areas, whose dev-type list changes from [boarding_house, multi_dwelling_housing, residential_flat_building, shop_top_housing] to [dual_occupancy, multi_dwelling_housing, residential_flat_building, shop_top_housing] — a pending re-tag from the merged branch that was never applied. Verified against the source before accepting it: B4.1.3 on PDF p5 reads verbatim 'This chapter applies to dual occupancies, multi-dwelling housing, multi-dwelling housing (terraces), residential flat buildings, and shop top housing within 800m walking distance of specified town centres', and the word 'boarding' appears on no page of the chapter.",
+   "read_at": "pdfplumber over the cached woollahra chapter-b4 PDF, searching for B4.1.3 and for 'boarding', 2026-10-03",
+   "if_missing": "if the quote had not been found, the apply would have been held rather than run with --expect-narrowings 39"
+  },
+  {
+   "value": "Waverley: 114 of 392 served rows carried a zone list no Part states — C1 ['R2'] against 'in the Waverley LGA' (40 rows), C2 ['R3','R4'] against a Part that states no zone and governs shop top housing (40), D1 ['E1','E2'] against 'throughout Waverley' (12), D2 ['MU1'] against a Part that is Outdoor Dining, not Mixed Use (22).",
+   "read_at": "the four Parts read in the source PDF at pages 167, 199, 231 and 238; row counts from a GROUP BY v2_applicable_zones over waverley's served rows, 2026-10-03",
+   "if_missing": "the count came from the live table rather than from the config, so a config that disagreed with the data would have shown up as a mismatch rather than being assumed consistent"
+  },
+  {
+   "value": "Ku-ring-gai: the committed config's re-tag narrowed 7 served rows from ALL onto ['B2'] or ['B4'] for four local centres with no config entry. Both codes were retired by the employment-zone reform and neither appears in lep_zone_coverage for this LGA, so those rows would have been filtered onto a zone no property has. After configuring all fifteen Part 14s: 0 narrowings.",
+   "read_at": "two dry runs of retag_applicability_slug_docids.py --councils ku_ring_gai, one against the committed config restored with git checkout and one against this branch, 2026-10-03",
+   "if_missing": "the comparison is the whole point — a single dry run would have shown 6 narrowings and left it ambiguous whether this branch caused them"
+  },
+  {
+   "value": "After the vocabulary correction the plan predicts 3,213 served keys as config_declined (1,727 zone, 1,486 dev type) and 9,759 as config_all. The served VALUES are identical to the first version of this branch: 2,505 value changes, 170 served rows widened, 39 narrowed. Only the recorded reason moved.",
+   "read_at": "python scripts/retag_applicability_slug_docids.py --councils <the twelve> (dry run), before and after the config_declined change, 2026-10-03",
+   "if_missing": "the writer refuses --apply without --expect-narrowings, so an unmeasured plan cannot be written"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "count the served scope keys left undecided, per council and per document, so the work list is documents to read rather than one aggregate number",
+   "file_line": "scripts/dq_probe_live.py:36",
+   "where_clause": "is_current AND v2_is_actionable AND source_council IS NOT NULL anchors the count to the SERVED set, and the two halves are counted per KEY rather than per row — a dev-type list and a zone list on one rule are two decisions, and a per-row count would let a whole column go undecided without the number moving. The provenance predicate is the schema's own undetermined list less no_config (config_silent, filtered_to_all, no_document_id, NULL), because no_config belongs to DQ-33 and DQ-105."
+  },
+  {
+   "purpose": "confirm that regulatory_provisions.document_id does not join to documents, so the chapter key had to be derived from the document_id tail rather than looked up",
+   "file_line": "scripts/dq_db.py:52",
+   "where_clause": "Both columns are TEXT. A lookup of documents WHERE pdf_name ILIKE '%chapter_b1_residential%' returned zero rows while regulatory_provisions holds 584 served rows for Wollongong_DCP_2009__chapter_b1_residential, so the mapping is by string tail against dcp_chapter_registry.chapter_key, and all 40 documents matched an active registry chapter with a URL. Checked rather than assumed — the first mapping attempt silently produced 40 UNMATCHED because it read documents.pdf_name, which was empty for every row."
+  },
+  {
+   "purpose": "measure which Waverley rows carry a zone narrowing, to test the hiding claim against the live table instead of inferring it from the config",
+   "file_line": "enrichment/config/waverley_config.py:36",
+   "where_clause": "GROUP BY v2_applicable_zones over source_council='waverley' AND is_current AND v2_is_actionable returned ['ALL'] 278, ['R2'] 40, ['R3','R4'] 40, ['MU1'] 22, ['E1','E2'] 12. The 40 rows on ['R3','R4'] were then matched to their provision text and are C2 'Other Residential Development', which is the Part that governs shop top housing."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Someone clears DQ-114 the cheap way: types [\"ALL\"] across every declared key without reading a chapter",
+   "what_happens": "DQ-114 falls to zero and every served answer gets worse, because a real narrowing like Wollongong B1's residential zones or Canterbury 9.1's E4 would be replaced by universality",
+   "mitigated": true,
+   "how": "DQ-115 and now tests/test_scope_evidence_declared.py refuse a declaration with no sentence behind it, so the cheap route fails the build rather than going green. Every ALL declared in this branch carries the chapter's own breadth sentence, and no existing narrowing was widened except the four Waverley lists that no Part states.",
+   "repro": "python -m pytest tests/test_scope_evidence_declared.py -q after adding a bare \"applicable_zones\": [\"ALL\"] to any entry"
+  },
+  {
+   "scenario": "The served scope keys are counted per ROW instead of per key, or the served-set filter is dropped from the count",
+   "what_happens": "a whole column can go fully undecided without the number moving — a rule whose dev-type list is undecided but whose zone list is fine counts once, so fixing the zone key alone makes the count fall while the rule is still served on an invented dev-type value",
+   "mitigated": true,
+   "how": "DQ-114 counts PER KEY on purpose and its note says why: tag_with_provenance suppresses per ENTRY, so an entry that names dev types and omits zones is silent on zones alone. The breakdown used here reproduces that query rather than writing a new one, and it is anchored to is_current AND v2_is_actionable so the count is the SERVED set — the per-council totals it produced (3,142 across 40 documents) reconcile exactly with dq_check.py --id DQ-114 run independently.",
+   "repro": "python scripts/dq_check.py --id DQ-114 and compare its total against the sum of the per-document breakdown; they must agree at 3,142"
+  },
+  {
+   "scenario": "A reviewer reads the UNEVIDENCED list as permission and adds the next awkward entry to it instead of reading the chapter",
+   "what_happens": "the list grows, the ratchet keeps passing, and DQ-115 stops describing anything — which is exactly how the 16-file test quarantine happened",
+   "mitigated": true,
+   "how": "partially. Rule 1 stops the list growing SILENTLY — a new violation fails until someone edits the list deliberately, in a diff a reviewer sees. Nothing stops a determined edit, and the docstring says so in terms rather than implying the list is self-policing. Rule 2 at least forces an entry out once it is fixed, so the list cannot quietly become stale permission.",
+   "repro": "add a new unevidenced declaration, watch test_no_new_declaration_without_its_sentence fail, then add the tuple to UNEVIDENCED and watch it pass"
+  },
+  {
+   "scenario": "The re-tag is applied and a zone narrowing is written that hides a binding control",
+   "what_happens": "a served rule disappears from the properties it governs, with no banner and no warning — the list simply looks complete",
+   "mitigated": true,
+   "how": "the writer refuses --apply unless --expect-narrowings names the exact count, the dry run prints every narrowing shape with an example row id, and the plan for this branch reports SERVED ROWS NARROWED: 39 against one shape that was then verified word-for-word against the chapter PDF. The branch's own changes contribute 0 narrowings and take Ku-ring-gai's from 7 to 0.",
+   "repro": "python scripts/retag_applicability_slug_docids.py --councils waverley ku_ring_gai (dry run) and read the SERVED ROWS NARROWED line"
+  },
+  {
+   "scenario": "A council config is added for a council whose rows already carry good per-row types from text extraction",
+   "what_happens": "applicability_tagger.py:776 skips text extraction whenever a config matched, so every per-row type is replaced by the document-level declaration and precision is destroyed — silently, because the counts improve",
+   "mitigated": true,
+   "how": "found by measuring instead of assuming. Cumberland's draft config was deleted for exactly this: the dry run showed 26 served rows flattening from boarding_house / residential_flat_building / dwelling_house to ALL, while the no-config path cleared 55 of its 58 keys with 0 value changes. Recorded in the pre_impl notes so the next council is measured both ways before a file is written.",
+   "repro": "write a chapter_topics entry for a council with text_regex provenance, then compare the dry run's 'VALUES change' against the no-config run"
+  },
+  {
+   "scenario": "A DCP's own chapter codes look like NSW zone codes — Part B1, B2, B4, E1, E3",
+   "what_happens": "with no config entry the text extractor reads them as zones; DQ-30's filter then rejects them as not existing in the LGA and the row lands in filtered_to_all, or worse, the code DOES exist in the LGA and now means something else entirely",
+   "mitigated": true,
+   "how": "both halves are handled. Northern Beaches Part B gained an entry, which took 43 served rows out of filtered_to_all, and Ku-ring-gai's fifteen Part 14s gained entries, which took 7 narrowings to 0. For the second half, Warringah B1's own scope names 'E3 Environmental Management' and 'E4 Environmental Living' — pre-2023 names whose codes still exist for that LGA but now mean Productivity Support and General Industrial — so declaring them as written would have bound wall-height controls for bushland housing to industrial land. They are quoted and explicitly not declared, which is the trap wollongong_config.py already records for the same pair.",
+   "repro": "python scripts/retag_applicability_slug_docids.py --councils northern_beaches on origin/main and count zone_source='filtered_to_all' served rows"
+  },
+  {
+   "scenario": "A declared dev-type list names a term the DA intake cannot send",
+   "what_happens": "the rule is hidden from EVERY query rather than only the wrong ones — strictly worse than ALL, and it looks like precision",
+   "mitigated": true,
+   "how": "no such narrowing is introduced. The 21 Canterbury keys for schools, home businesses, places of public worship and non-residential land uses are left undecided as a STATED EXCEPTION, because ALL would assert a school control binds a warehouse while a term the intake cannot send hides the chapter completely. Candidate narrowings that ARE expressible (educational_establishment via the has_child_care intake field, subdivision, commercial_premises + retail_premises for Waverley D1) are recorded in scope_evidence as candidates and deliberately not taken in this branch.",
+   "repro": "grep -n educational_establishment frontend-nextjs/lib/see/worksScope.ts and frontend-nextjs/lib/see/devTypeHierarchy.ts"
+  },
+  {
+   "scenario": "A scope_evidence quote is transcribed wrongly, or invented, and nothing notices",
+   "what_happens": "DQ-115 counts the string and goes green; the declaration rests on authority that does not exist, and the property page prints it",
+   "mitigated": false,
+   "how": "NOT mitigated, and this is the branch's main open weakness. DQ-115 and the new ratchet both check only that a sentence is PRESENT. The quote that gated the production write — Woollahra B4.1.3 — was verified word-for-word against its PDF, and the Cumberland, Waverley and Northern Beaches readings were each cross-checked across several pages, but roughly seventy new quotes are only as good as the transcription. The fix is to point the fidelity gate at scope_evidence: pull the span after 'verbatim:' and confirm it appears in the chapter PDF. It is the next piece of work, not this one.",
+   "repro": "edit any scope_evidence quote to say something the PDF does not, then run python scripts/dq_probe_applicability_config.py --id DQ-115 and watch it stay clean"
+  },
+  {
+   "scenario": "The re-tag is applied BEFORE migration 081, so the tagger tries to write a value the CHECK constraint does not permit",
+   "what_happens": "every affected UPDATE is rejected by the database. Loud, not silent -- but it would be a half-finished re-tag if the script did not run in one transaction per row with a guard",
+   "mitigated": true,
+   "how": "ordering is stated in post_merge and in the migration's own header: 081 first, then the re-tag. The failure mode is a visible constraint violation rather than a wrong value, which is the right way round. tests/test_applicability_provenance.py now asserts every value in APPLICABILITY_SOURCES appears in the NEWEST migration that defines the constraint, so code and schema cannot drift apart again -- the previous version of that test pinned 062 by filename and would have passed while the tagger wrote a rejected value.",
+   "repro": "run the re-tag --apply against a database where 081 has not been applied"
+  },
+  {
+   "scenario": "`config_declined` becomes the new `config_silent` -- a default people reach for instead of reading the chapter",
+   "what_happens": "DQ-114 goes green while nothing was decided, which is precisely the defect the whole effort exists to remove, now wearing a better name",
+   "mitigated": true,
+   "how": "a declined key is held to the SAME evidence rule as a declared one: tests/test_scope_evidence_declared.py treats scope_declined as a declaration, so declining without the council's sentence fails the build. Forced red to confirm. The sentence has to say what could not be expressed, which is work that cannot be done without opening the PDF.",
+   "repro": "add \"scope_declined\": (\"applicable_zones\",) to any entry with no matching scope_evidence and run the ratchet"
+  },
+  {
+   "scenario": "The quote-checking probe reports a correct quote as MISSING, or a wrong one as fine",
+   "what_happened": "both, on its first run",
+   "what_happens": "a probe that cries wolf is switched off within a week, and one that passes a bad quote leaves a hard filter resting on words nobody wrote",
+   "mitigated": true,
+   "how": "all three first-run bugs were in the pure functions and all three are now tested. loose() stripped accents instead of folding them, so a PDF printing a word with an acute accent could never match a config spelling it without one. spans() harvested any long single-quoted run, which asserted our own prose split on an apostrophe against the PDF and demanded that section headings quoted as ABSENT be present. resolve() must return None on two candidates rather than attach a sentence to the wrong chapter. tests/test_dq_probe_scope_evidence_fidelity.py covers each, plus a database-marked test for the one live query that skips without PYTEST_REAL_DB.",
+   "repro": "python -m pytest tests/test_dq_probe_scope_evidence_fidelity.py -q"
+  },
+  {
+   "scenario": "A new check is written and nothing ever runs it",
+   "what_happened": "exactly this, to the quote probe, and CI caught it",
+   "what_happens": "the check can never earn blocking status and the defect it watches goes unmeasured while the file sits there looking like coverage",
+   "mitigated": true,
+   "how": "dq_check.py already carries a guard for it -- 'checks exist that nothing runs' -- whose origin note records campaign items shipped in #874/#876 being invoked by nothing for nine days. The probe is now DQ-121 in .claude/dq_checks.json with a matching ledger row, which is the same route dq_probe_live.py is wired by. Its `requires` is the fetched-PDF cache, so a machine that has never run the fetch reports UNKNOWN rather than red -- DQ-32's precedent, where could-not-look read as found-something and turned main red on 2026-08-12.",
+   "repro": "python -m pytest tests/test_dq_check_outreach.py -q, and python scripts/dq_check.py --id DQ-121 with .cache/scope_pdfs absent (must report UNKNOWN, not red)"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "NO WRITE HAS BEEN RUN. Two production acts are outstanding and must happen IN THIS ORDER. (1) migrations/081_applicability_declined.sql -- widens the CHECK constraint by one value; additive, re-runnable, no column altered and no row rewritten, and applying it alone changes no served answer. (2) python scripts/retag_applicability_slug_docids.py --councils georges_river blacktown hornsby penrith canterbury_bankstown campbelltown wollongong waverley northern_beaches ku_ring_gai cumberland woollahra --apply --expect-narrowings 39, which takes its own backup table and prints the rollback SQL. Run in the other order and the re-tag is rejected by the constraint. Until both run, DQ-114 still reads 3,142.",
+  "secrets": "none added.",
+  "other_repo": "none.",
+  "manual_verify": "After the apply: python scripts/dq_check.py --id DQ-114 should read 21 (the stated Canterbury exception) rather than 0, python scripts/dq_probe_applicability_config.py --id DQ-115 should read 47, and python scripts/dq_check.py --outreach must still read at least 14 of 17 with 0 contradicted. The expected 21 is the honest target for this branch and the plan's 'DQ-114 = 0' is not reached: chapters whose subject is one use class the vocabulary cannot name have no truthful value to declare, and that is argued in canterbury_bankstown_config.py rather than cleared by making answers worse. Also verify on a real address before trusting the Waverley change: a shop-top-housing site in a Waverley centre should now show the C2 controls it did not show before. Also confirm the three-way split landed: SELECT v2_zone_source, count(*) FROM regulatory_provisions WHERE is_current AND v2_is_actionable GROUP BY 1 should show config_declined at roughly 1,727 and no row should carry it without a scope_evidence sentence behind its entry."
+ }
+}

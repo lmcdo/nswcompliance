@@ -94,8 +94,11 @@ class TestScopesAreQuotedNotGuessed:
         got = resolve(tagger, "blacktown_part_c")
         assert got["applicable_zones"] == ["R1", "R2", "R3", "R4"]  # noqa: zone-codes
         assert got["zone_source"] == "config_specific"
-        assert got["dev_type_source"] == "config_silent", (
-            "the Part binds ALL development in those zones, not a list of types")
+        assert got["dev_type_source"] == "config_all", (
+            "section 1.2(a) provides guidelines for \"both residential and "
+            "non-residential development within the residential zones\", so the "
+            "Part binds ALL development in those zones. That EARNS config_all; a "
+            "list of types would delete it from the uses the council names")
 
     def test_blacktown_car_parking_is_the_whole_lga(self, tagger):
         """Section 1.1: "Blacktown DCP 2015 applies to all land within the
@@ -119,8 +122,16 @@ class TestScopesAreQuotedNotGuessed:
         Declaring the residential types would delete section 2.6 from every
         non-residential application it governs."""
         got = resolve(tagger, "penrith_d2")
-        assert got["zone_source"] == "config_silent"
-        assert got["dev_type_source"] == "config_silent"
+        # Two different states, and the Part earns them separately.
+        assert got["zone_source"] == "config_declined", (
+            "all 84 pages carry no land-application clause, and Penrith's "
+            "introductory Part is not in dcp_chapter_registry, so there is no "
+            "sentence to inherit -- read and declined, not unread")
+        assert got["dev_type_source"] == "config_all", (
+            "the contents run 2.1 Single Dwellings through 2.6 NON RESIDENTIAL "
+            "DEVELOPMENTS, whose own text is \"Any proposed non residential "
+            "development proposed in a residential zone\" -- the Part spans both, "
+            "which is an assertion of breadth rather than an absence of one")
 
     def test_hornsby_general_applies_to_all_land(self, tagger):
         got = resolve(tagger, "hornsby_general")
@@ -134,7 +145,10 @@ class TestScopesAreQuotedNotGuessed:
         neither is declared."""
         got = resolve(tagger, "hornsby_residential")
         assert got["applicable_zones"] == ["R2", "R3", "R4"]  # noqa: zone-codes
-        assert got["dev_type_source"] == "config_silent"
+        assert got["dev_type_source"] == "config_declined", (
+            "the Part binds \"residential development\" as a whole and splits its "
+            "controls by DENSITY, not by type, so there is no list to declare -- "
+            "read and declined, not unread")
 
     def test_georges_river_general_applies_to_all_forms(self, tagger):
         """Part 3, verbatim: this Part "applies to all forms of development"."""
@@ -152,8 +166,11 @@ class TestScopesAreQuotedNotGuessed:
         got = resolve(tagger, "gr_low_density")
         assert set(got["applicable_dev_types"]) == {
             "dwelling_house", "dual_occupancy", "secondary_dwelling"}
-        assert got["zone_source"] == "config_silent", (
-            "the Part names development forms, not zones")
+        assert got["zone_source"] == "config_declined", (
+            "the Part names development forms and no zone at all, and Georges "
+            "River's Part 1 Introduction is not in dcp_chapter_registry, so there "
+            "is no plan sentence to inherit. Inferring this LGA's residential "
+            "zones from the four development forms would be interpretation")
 
 
 class TestWollongong:
@@ -168,9 +185,22 @@ class TestWollongong:
         e = WOLLONGONG_CONFIG["chapter_topics"]["chapter_e11_heritage_conservation"]
         assert e["layer"] == "condition" and e["site_conditions"] == ["heritage"]
 
-    def test_landscaping_decides_neither_key(self):
+    def test_landscaping_binds_every_application_and_says_so(self):
+        """Corrected 2026-10-03. This used to assert neither key was declared,
+        which recorded `config_silent` -- nobody decided -- on 248 served keys.
+        E6 section 1 does decide it: "This chapter outlines Council's
+        requirements for the lodgement of landscaping plans and other information
+        in support of a Development Application", and the same section lists the
+        residential, subdivision, mixed-use, business AND industrial chapters it
+        is read with. That EARNS config_all; it is not a fallthrough.
+        """
         e = WOLLONGONG_CONFIG["chapter_topics"]["chapter_e6_landscaping"]
-        assert e and "applicable_zones" not in e and "applicable_dev_types" not in e
+        assert e["applicable_zones"] == ["ALL"]
+        assert e["applicable_dev_types"] == ["ALL"]
+        for key in ("applicable_zones", "applicable_dev_types"):
+            assert e["scope_evidence"][key], (
+                f"ALL on {key} must carry the sentence that earns it, or it is "
+                f"indistinguishable from a guess (DQ-115)")
 
     def test_every_active_wollongong_chapter_has_an_entry(self):
         keys = {d.split("__", 1)[1] for k, d in DOCS.items() if k.startswith("wg_")}

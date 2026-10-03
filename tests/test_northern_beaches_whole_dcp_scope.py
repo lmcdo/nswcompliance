@@ -87,8 +87,8 @@ class TestTheOtherParts:
         universality the plan itself qualifies; naming zones would invent a
         list."""
         got = tagger._get_config_driven(DOC, "# F1 C10 Local and Neighbourhood Centres")
-        assert got["zone_source"] == "config_silent"
-        assert got["dev_type_source"] == "config_silent"
+        assert got["zone_source"] == "config_declined"
+        assert got["dev_type_source"] == "config_declined"
 
 
 class TestItRefusesToGuess:

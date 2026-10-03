@@ -244,38 +244,73 @@ class TestWaverleyStructuralInheritance:
 
     DQ-30 regression: WAVERLEY_CONFIG['parts'] previously had one "C" entry
     and one "D" entry, collapsing the distinction this file's own header has
-    always documented — Low Density vs Medium-High Density Residential
-    sub-parts, and Commercial vs Mixed Use sub-parts — so a Low Density
-    provision (should be a single residential zone only) was tagged with
-    additional residential zones too, and vice versa. See
-    .claude/DATA_QUALITY_TRACKER.md.
+    always documented, so a sub-part provision reached the wrong entry. The
+    progressive strip must still resolve each sub-part heading to its OWN entry
+    rather than collapsing onto the letter. See .claude/DATA_QUALITY_TRACKER.md.
+
+    CORRECTED 2026-10-03 (DQ-115). These tests used to assert the zone LISTS as
+    well -- each sub-part was given the zone whose Standard Instrument NAME
+    matched its title -- and those lists were read off the titles, not out of the
+    Parts. Every one is contradicted by the
+    document: C1 (PDF p167) applies "to any type of low density residential
+    development ... in the Waverley LGA", C2 (p199) states no zone and governs
+    shop top housing, serviced apartments and boarding houses, and Part D2 is
+    OUTDOOR DINING, not Mixed Use. The lists filtered 114 served rows off
+    properties they govern, and these tests are the reason nobody questioned
+    them: a guess with a passing test reads as a verified fact.
+
+    So the zone assertions now check what the Parts say (no zone narrowing,
+    hence ALL) and the structural assertion moved to the PROVENANCE, which is
+    sharper than a zone list: `config_all` proves the sub-part entry matched,
+    `no_config` proves nothing did, and the old assertion could not tell the
+    difference between a resolved entry and a lucky fallthrough.
     """
 
     @pytest.fixture(autouse=True)
     def setup(self):
         self.tagger = ApplicabilityTagger()
 
-    def test_c1_low_density_is_r2_only(self):
-        zones, _ = self.tagger.tag(
-            "# C1.2 Front Setback\n\nMinimum 6m.",
-            "Waverley_DCP_2022__waverley_dcp_2022"
-        )
-        assert zones == ['R2'], f"C1 (Low Density) should be R2-only, got {zones}"  # noqa: zone-codes -- test assertion literal, not a shared constant
+    #: A sub-part heading, and the entry its progressive strip must reach.
+    SUBPART_CASES = [
+        ("# C1.2 Front Setback\n\nMinimum 6m.", "C1"),
+        ("# C2.1 Building Height\n\nMaximum 3 storeys.", "C2"),
+        ("# D1.1 Parking\n\nOne space per 40sqm.", "D1"),
+        ("# D2.3 Active Frontages\n\nActive uses at ground level.", "D2"),
+    ]
 
-    def test_c2_medium_high_density_excludes_r2(self):
-        zones, _ = self.tagger.tag(
-            "# C2.1 Building Height\n\nMaximum 3 storeys.",
-            "Waverley_DCP_2022__waverley_dcp_2022"
-        )
-        assert 'R2' not in zones, f"C2 (Medium-High Density) wrongly included R2: {zones}"  # noqa: zone-codes -- test assertion literal, not a shared constant
-        assert set(zones) == {'R3', 'R4'}  # noqa: zone-codes -- test assertion literal, not a shared constant
+    @pytest.mark.parametrize("text,part", SUBPART_CASES)
+    def test_subpart_resolves_to_its_own_entry(self, text, part):
+        """DQ-30's real content: the strip must find the sub-part, not fall through.
 
-    def test_d2_mixed_use_is_mu1_only(self):
-        zones, _ = self.tagger.tag(
-            "# D2.3 Active Frontages\n\nActive uses at ground level.",
-            "Waverley_DCP_2022__waverley_dcp_2022"
-        )
-        assert zones == ['MU1'], f"D2 (Mixed Use) should be MU1-only, got {zones}"
+        Asserted on provenance rather than on a zone list. `no_config` is the
+        failure this guards -- it means _get_config_driven matched nothing and
+        the ALL below is invented, which is indistinguishable from a correct
+        ALL if you only look at the value.
+        """
+        _, _, prov = self.tagger.tag_with_provenance(
+            text, "Waverley_DCP_2022__waverley_dcp_2022")
+        assert prov['zone_source'] != 'no_config', (
+            f"Part {part} fell through to no_config — the progressive strip did not "
+            f"reach its entry, so its ALL is invented rather than declared")
+        assert prov['zone_source'] == 'config_all', (
+            f"Part {part} zone_source is {prov['zone_source']}, expected config_all: "
+            f"no Waverley Part states a zone, so every entry declares ALL explicitly")
+
+    @pytest.mark.parametrize("text,part", SUBPART_CASES)
+    def test_subpart_declares_no_zone_narrowing(self, text, part):
+        """No Part of Waverley DCP 2022 states a zone — checked against the PDF.
+
+        This is the corrected assertion. A narrowing here would be a zone list
+        inferred from a Part title, which is what hid 114 served rows: C2's
+        shop-top-housing controls were filtered off the centre zones shop top
+        housing sits in, and D2's footpath-seating controls off every shopping
+        street not zoned for mixed use.
+        """
+        zones, _ = self.tagger.tag(text, "Waverley_DCP_2022__waverley_dcp_2022")
+        assert zones == ['ALL'], (
+            f"Part {part} narrowed to {zones}. No Waverley Part states a zone; a list "
+            f"here is inferred from the Part's title and hides the Part from every "
+            f"property outside it. See waverley_config.py scope_evidence.")
 
     def test_d1_commercial_uses_current_zones(self):
         zones, _ = self.tagger.tag(

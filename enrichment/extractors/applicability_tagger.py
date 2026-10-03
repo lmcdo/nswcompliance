@@ -35,6 +35,11 @@ _UNSET = object()
 APPLICABILITY_SOURCES = (
     'config_specific',    # a structural config named actual zones / dev types
     'config_all',         # a structural config explicitly asserted ALL
+    'config_declined',    # a person READ the chapter, its stated scope cannot be
+                          # expressed in this field without hiding rules, and
+                          # narrowing was declined. ALL, but NOT a claim of
+                          # universality — the reason is in scope_evidence.
+                          # See migrations/081_applicability_declined.sql.
     'config_silent',      # an entry matched but omitted the key — ALL was invented
     'no_config',          # nothing matched — ALL by fallthrough (weakest)
     'text_regex',         # derived from provision text (false-positive prone)
@@ -46,7 +51,11 @@ APPLICABILITY_SOURCES = (
 
 # Sources where ALL was DECIDED rather than defaulted. Anything outside this set
 # should be read as "applicability undetermined", never as "applies everywhere".
-TRUSTED_ALL_SOURCES = frozenset({'config_specific', 'config_all', 'text_regex'})
+# config_declined is in here because it IS a decision: somebody read the chapter
+# and chose not to narrow. It is NOT a claim that the rule applies everywhere, so
+# anything reporting universality must read config_all, not this set.
+TRUSTED_ALL_SOURCES = frozenset({'config_specific', 'config_all',
+                                 'config_declined', 'text_regex'})
 
 
 class ApplicabilityTagger:
@@ -139,6 +148,11 @@ class ApplicabilityTagger:
 
         The four outcomes are kept distinct because they carry different trust:
           config_specific — the config named actual zones/dev types.
+          config_declined — `scope_declined` names this key: a person read the
+                            chapter and its stated scope cannot be expressed
+                            here without hiding rules, so narrowing was
+                            declined. ALL, and a decision, but NOT a claim of
+                            universality.
           config_all      — the config explicitly said ALL. A real assertion of
                             universality; trust it.
           config_silent   — an entry matched but omitted this key, so `.get(k,
@@ -151,6 +165,11 @@ class ApplicabilityTagger:
         """
         if not entry:
             return ['ALL'], 'no_config'
+        # Checked BEFORE the key itself, and the key is absent when it is
+        # declined, so a declared list and a declined key cannot contradict
+        # each other — there is one place the answer comes from.
+        if key in (entry.get('scope_declined') or ()):
+            return ['ALL'], 'config_declined'
         if key not in entry or entry[key] is None:
             return ['ALL'], 'config_silent'
         raw = entry[key]

@@ -175,20 +175,50 @@ class TestBackwardCompatibility:
 class TestMigrationMatchesCode:
     """The CHECK constraint and the Python vocabulary must not drift."""
 
-    def test_every_source_appears_in_the_migration(self):
-        sql = (Path(__file__).resolve().parent.parent
-               / "migrations" / "062_applicability_provenance.sql").read_text(encoding="utf-8")
+    #: The constraint has been (re)defined more than once -- 062 created it and
+    #: 081 widened it for `config_declined` -- so pinning one filename would let
+    #: the code vocabulary drift past the DB the moment another value is added.
+    CONSTRAINT = "regulatory_provisions_applicability_source_check"
+
+    @classmethod
+    def _migrations_defining_the_constraint(cls):
+        """Every migration that defines the CHECK, oldest first by filename."""
+        d = Path(__file__).resolve().parent.parent / "migrations"
+        found = []
+        for p in sorted(d.glob("*.sql")):
+            text = p.read_text(encoding="utf-8")
+            if cls.CONSTRAINT in text and "CHECK" in text.upper():
+                found.append((p, text))
+        return found
+
+    def test_the_constraint_is_defined_by_a_migration_at_all(self):
+        """Guard on this test, not on the schema: if the filenames or the
+        constraint name moved, every assertion below would pass over an empty
+        list and this class would go green while checking nothing."""
+        assert self._migrations_defining_the_constraint(), (
+            f"no migration defines {self.CONSTRAINT} — did it get renamed?")
+
+    def test_every_source_appears_in_the_newest_definition(self):
+        """The LAST definition wins in the database, so that is the one that has
+        to list every value the code can write. An earlier migration listing a
+        value proves nothing once a later one has replaced the constraint."""
+        path, sql = self._migrations_defining_the_constraint()[-1]
         for source in APPLICABILITY_SOURCES:
-            assert f"'{source}'" in sql, f"{source} missing from the CHECK constraint"
+            assert f"'{source}'" in sql, (
+                f"{source} is in APPLICABILITY_SOURCES but not in {path.name}, "
+                f"the newest definition of the CHECK — the tagger would write a "
+                f"value the database rejects")
 
-    def test_migration_is_additive_only(self):
-        sql = (Path(__file__).resolve().parent.parent
-               / "migrations" / "062_applicability_provenance.sql").read_text(encoding="utf-8").upper()
-        for forbidden in ("DROP TABLE", "DROP COLUMN", "TRUNCATE", "DELETE FROM", "CASCADE"):
-            assert forbidden not in sql, f"migration contains {forbidden}"
+    def test_no_migration_of_this_constraint_is_destructive(self):
+        """Re-adding the CHECK requires dropping the CONSTRAINT, which is fine.
+        Dropping a table, a column, or any row is not."""
+        for path, sql in self._migrations_defining_the_constraint():
+            upper = sql.upper()
+            for forbidden in ("DROP TABLE", "DROP COLUMN", "TRUNCATE",
+                              "DELETE FROM", "CASCADE"):
+                assert forbidden not in upper, f"{path.name} contains {forbidden}"
 
-    def test_migration_does_not_backfill(self):
+    def test_no_migration_of_this_constraint_backfills(self):
         """Inventing a source for old rows would fabricate the very fact recorded."""
-        sql = (Path(__file__).resolve().parent.parent
-               / "migrations" / "062_applicability_provenance.sql").read_text(encoding="utf-8").upper()
-        assert "UPDATE REGULATORY_PROVISIONS" not in sql
+        for path, sql in self._migrations_defining_the_constraint():
+            assert "UPDATE REGULATORY_PROVISIONS" not in sql.upper(), path.name
