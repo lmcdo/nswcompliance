@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Two new ledger rows (DQ-119, DQ-120), a Stop hook that can block a turn, scope_evidence across three council configs, and ONE production write. Not Critical: the production write was a provenance-only re-tag whose own dry run reported 0 served rows narrowed and no served zone or dev-type value changed, backed by an automatic backup table with printed rollback SQL, and the served answer for every affected row is byte-identical before and after. Not Minor: it touched 3,172 live rows and it changed applicability declarations that are HARD FILTERS on what a property is shown (for-property/route.ts:1012 and :1222), including two corrections that widen what is served.",
- "commit_hash": "cce39d1a",
+ "commit_hash": "8db7d01b",
  "files": [
   "scripts/dq_probe_live.py",
   ".claude/dq_checks.json",
@@ -31,10 +31,17 @@
  "functions": [
   {
    "name": "main",
-   "file_line": ".claude/hooks/done-when-gate.py:97",
+   "file_line": ".claude/hooks/done-when-gate.py:122",
    "input": "the Stop hook payload on stdin, carrying transcript_path and stop_hook_active, from which the entries after the last real user message are read as this turn",
    "output": "exit 2 with a stderr message when the turn used a write tool or a mutating shell command and its final text carries no DONE WHEN line or no digit in its opening 400 characters; exit 0 in every other case including read-only turns",
    "if_none": "any failure to parse the payload or read the transcript returns 0, and stop_hook_active returns 0 immediately, so a bug here can never stop real work and a blocked turn can never loop"
+  },
+  {
+   "name": "mutates",
+   "file_line": ".claude/hooks/done-when-gate.py:84",
+   "input": "one Bash or PowerShell command string taken from a tool_use block in this turn",
+   "output": "true when the command matches a named mutating verb such as git commit, or a standalone write flag such as --apply, --no-dry-run or a shell redirection, so the turn is treated as work owing a completion criterion",
+   "if_none": "errs toward gating rather than exempting, because a false positive costs a nag on a read-only turn while a false negative lets a production write be reported with no number at all"
   },
   {
    "name": "main",
@@ -142,6 +149,13 @@
    "mitigated": false,
    "how": "NOT mitigated, and stated in the hook's own docstring rather than implied. The gate exists to stop SILENT drift, which is what actually happened, and the user's number-first correction remains the quality control for a lazy criterion",
    "repro": "printf '{\"transcript_path\":\"<a transcript whose last assistant text is \\\"done when x prints 1\\\"}' | python .claude/hooks/done-when-gate.py; echo $? -- exits 0, so the words plus any digit satisfy it. Covered by python -m pytest tests/test_done_when_gate.py"
+  },
+  {
+   "scenario": "A production write is run through a script whose name the gate does not recognise, such as retag_applicability_slug_docids.py --apply, and the turn is then reported with no number",
+   "what_happens": "the turn was NOT gated and the report passed, because --apply sat inside a group wrapped in word boundaries and a word boundary cannot occur between a space and a hyphen, making that alternative unmatchable",
+   "mitigated": true,
+   "how": "split into MUTATING for named verbs and MUTATING_FLAG for standalone tokens using lookarounds, exposed as mutates(); tests now assert the predicate directly for an unknown script name, --no-dry-run, --execute and a redirection, and assert read-only commands stay exempt",
+   "repro": "python -c \"import importlib.util; s=importlib.util.spec_from_file_location('g','.claude/hooks/done-when-gate.py'); g=importlib.util.module_from_spec(s); s.loader.exec_module(g); print(g.mutates('python anything.py --apply'))\" -- prints True now and printed False before commit"
   }
  ],
  "post_merge": {

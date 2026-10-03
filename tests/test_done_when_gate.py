@@ -33,6 +33,17 @@ GREP = {"type": "tool_use", "name": "Bash", "input": {"command": "grep -rn foo .
 COMMIT = {"type": "tool_use", "name": "Bash", "input": {"command": "git commit -m x"}}
 APPLY = {"type": "tool_use", "name": "Bash",
          "input": {"command": "python scripts/dcp_commit_approved.py --apply"}}
+# The hole the pre-push review found: --apply on a script whose NAME the gate does
+# not know. The first version wrapped --apply inside a \b...\b group, where that
+# alternative can never match, so only two hard-coded script names were gated --
+# and the real production write of 2026-10-03 was not one of them.
+APPLY_UNKNOWN = {"type": "tool_use", "name": "Bash",
+                 "input": {"command": "python scripts/retag_applicability_slug_docids.py "
+                                      "--councils city_of_sydney --apply"}}
+APPLY_ANON = {"type": "tool_use", "name": "Bash",
+              "input": {"command": "python some_writer_nobody_listed.py --apply"}}
+REDIRECT = {"type": "tool_use", "name": "Bash",
+            "input": {"command": "python report.py > out.csv"}}
 
 GOOD = "DQ-115: 141 (was 176).\nDONE WHEN: the probe prints 0."
 
@@ -64,10 +75,49 @@ def test_the_hook_file_exists_and_is_wired_into_settings():
 
 # -- it must FIRE --------------------------------------------------------------
 
-@pytest.mark.parametrize("tool,label", [(EDIT, "an Edit"), (COMMIT, "a git commit"),
-                                        (APPLY, "a --apply run")])
+@pytest.mark.parametrize("tool,label", [
+    (EDIT, "an Edit"),
+    (COMMIT, "a git commit"),
+    (APPLY, "a --apply run on a known script"),
+    (APPLY_UNKNOWN, "a --apply run on the real retag script"),
+    (APPLY_ANON, "a --apply run on a script the gate has never heard of"),
+    (REDIRECT, "a shell redirection that writes a file"),
+])
 def test_a_work_turn_without_a_criterion_is_blocked(tmp_path, tool, label):
     assert _run(tmp_path, tool, f"I made good progress with {label}.") == 2
+
+
+def test_apply_is_gated_whatever_the_script_is_called():
+    """The regression from the pre-push review of 2026-10-03, pinned.
+
+    `--apply` sat inside a group wrapped in \\b...\\b, and a word boundary cannot
+    occur between a space and a hyphen, so that alternative could never match.
+    Only `dcp_commit_approved` and `dcp_approve_graded` were ever gated by name --
+    and the production write this session actually performed,
+    `retag_applicability_slug_docids.py --apply`, was neither.
+
+    Asserted on the predicate directly as well as end to end, because an
+    end-to-end pass can be produced by any of several code paths and this names
+    the one that was broken.
+    """
+    sys.path.insert(0, str(ROOT / ".claude" / "hooks"))
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("gate", GATE)
+    gate = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gate)
+
+    for cmd in ("python scripts/retag_applicability_slug_docids.py --councils x --apply",
+                "python anything.py --apply",
+                "python x.py --no-dry-run",
+                "python x.py --execute",
+                "python report.py > out.csv"):
+        assert gate.mutates(cmd), f"not gated: {cmd}"
+    for cmd in ("grep -rn foo .",
+                "python scripts/dq_check.py --id DQ-119",
+                "python -m pytest tests/ -q",
+                "git status --porcelain",
+                "python x.py --apply-nothing-like-this"):
+        assert not gate.mutates(cmd), f"falsely gated: {cmd}"
 
 
 def test_a_criterion_without_a_number_is_still_blocked(tmp_path):

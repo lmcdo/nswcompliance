@@ -53,14 +53,44 @@ WRITE_TOOLS = {"Edit", "Write", "NotebookEdit", "MultiEdit"}
 
 # Bash/PowerShell count only when the command looks like it mutated state. A turn
 # that only grepped, read and counted is not a work turn.
+#
+# TWO PATTERNS, not one, and the split is a bug fix. The first version put
+# `--apply` inside a group wrapped in \b...\b, which made that alternative
+# UNMATCHABLE: a word boundary cannot occur between a space and a `-`. So
+# `python scripts/retag_applicability_slug_docids.py --councils x --apply`
+# — the actual production write this session performed — sailed through the gate
+# ungated, and only the two hard-coded script names were ever caught. Found by
+# the pre-push review on 2026-10-03, not by my own tests, which is why
+# test_done_when_gate.py now carries a case for an UNKNOWN script name.
 MUTATING = re.compile(
     r"\b(git\s+(commit|push|merge|revert|reset|rebase|cherry-pick)"
     r"|gh\s+pr\s+(merge|create)"
     r"|UPDATE\s|INSERT\s+INTO|DELETE\s+FROM|ALTER\s+TABLE"
     r"|pip\s+install|npm\s+(install|publish)"
-    r"|dcp_commit_approved|dcp_approve_graded|--apply)\b",
+    r"|dcp_commit_approved|dcp_approve_graded)\b",
     re.I,
 )
+
+# Flags and redirections that mean a write, whatever script carries them. These
+# cannot sit inside the \b group above, so they are matched on their own with
+# lookarounds that require the token to stand alone rather than be part of a
+# longer word.
+MUTATING_FLAG = re.compile(
+    r"(?<!\S)(--apply|--write|--commit|--force|--no-dry-run|--execute)(?!\S)"
+    r"|(?<!\S)(>|>>)(?!\S)"
+    r"|(?<!\S)tee(?!\S)",
+    re.I,
+)
+
+
+def mutates(command: str) -> bool:
+    """Does this command look like it changed something outside the process?
+
+    False positives cost a nag on a read-only turn; false negatives let a
+    production write be reported with no number at all. So this errs toward
+    gating, and the read-only exemption is carried by the tool name instead.
+    """
+    return bool(MUTATING.search(command) or MUTATING_FLAG.search(command))
 
 DONE_WHEN = re.compile(r"done\s*when", re.I)
 HAS_DIGIT = re.compile(r"\d")
@@ -124,8 +154,7 @@ def main() -> int:
                 if name in WRITE_TOOLS:
                     did_work = True
                 elif name in ("Bash", "PowerShell"):
-                    cmd = str((block.get("input") or {}).get("command") or "")
-                    if MUTATING.search(cmd):
+                    if mutates(str((block.get("input") or {}).get("command") or "")):
                         did_work = True
             elif block.get("type") == "text" and entry.get("type") == "assistant":
                 final_text = block.get("text") or ""
