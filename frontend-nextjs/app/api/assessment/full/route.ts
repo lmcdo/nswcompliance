@@ -23,6 +23,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { FullAssessmentSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 import { searchRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
 import { captureServerException } from '@/lib/posthog-server';
+import { encodeLandApplication } from '@/lib/dcp-land-application';
 
 interface AssessmentRequest {
   address: string;
@@ -146,6 +147,9 @@ export async function POST(request: NextRequest) {
     if (zone) dcpParams.set('zone', zone);
     dcpParams.set('heritage', String(heritage));
     if (precinctId) dcpParams.set('precinct_id', precinctId);
+    // DQ-120: lets the route withhold a DCP that does not cover this land.
+    const landApplicationParam = encodeLandApplication(property.constraints?.landApplicationInstruments);
+    if (landApplicationParam) dcpParams.set('land_application', landApplicationParam);
 
     const seppBody = {
       zoneCode: zone,

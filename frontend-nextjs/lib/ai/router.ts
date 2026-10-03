@@ -6,6 +6,7 @@
  */
 
 import { ClassificationResult, PropertyContext, QuestionCategory } from './classifier';
+import { encodeLandApplication } from '@/lib/dcp-land-application';
 
 // Base URL for API calls (server-side)
 // Must resolve correctly in both local dev and Vercel production
@@ -539,6 +540,9 @@ async function handleDcpProvisionLookup(
     if (context.precinctId) {
       params.set('precinct_id', context.precinctId);
     }
+    // DQ-120: without it the route withholds a DCP that is gated by land.
+    const landApplicationParam = encodeLandApplication(context.landApplicationInstruments);
+    if (landApplicationParam) params.set('land_application', landApplicationParam);
 
     const response = await fetch(`${API_BASE}/api/provisions/for-property?${params.toString()}`);
     const data = await response.json();

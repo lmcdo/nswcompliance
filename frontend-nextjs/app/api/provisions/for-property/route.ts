@@ -34,6 +34,7 @@ import { parseRefNumber } from '@/lib/see/refNumber';
 import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
 import { captureServerException } from '@/lib/posthog-server';
 import { withServedCitation } from '@/lib/citation-display';
+import { decideLandApplication, decodeLandApplication } from '@/lib/dcp-land-application';
 
 
 export const dynamic = 'force-dynamic';
@@ -316,6 +317,45 @@ export async function GET(request: NextRequest) {
 
     console.log(`[4-Layer API] Filters: ${JSON.stringify(filters)}`);
 
+    // DQ-120: a council DCP that does not cover its whole LGA is served only where
+    // the property's Land Application Map names that DCP's LEP. Withheld here,
+    // before any query, so no layer below can serve a rule the gate refused.
+    const landApplication = decideLandApplication(
+      filters.former_council,
+      decodeLandApplication(searchParams.get('land_application'))
+    );
+    if (landApplication.withhold) {
+      const emptyLayers: LayerResult[] = [
+        { layer: 'generic', layer_name: 'General Requirements', provisions: [], count: 0 },
+        { layer: 'use_specific', layer_name: 'Zone-Specific Requirements', provisions: [], count: 0 },
+        { layer: 'condition', layer_name: 'Site Condition Requirements', provisions: [], count: 0 },
+        { layer: 'precinct', layer_name: 'Precinct-Specific Requirements', provisions: [], count: 0 },
+      ];
+      const withheld = NextResponse.json({
+        success: true,
+        data: {
+          by_layer: emptyLayers,
+          by_topic: {},
+          by_toc: filters.groupBy === 'toc' ? {} : undefined,
+          complete_toc: filters.groupBy === 'toc' ? {} : undefined,
+          summary: {
+            total_provisions: 0,
+            layer_1_generic: 0,
+            layer_2_use_specific: 0,
+            layer_3_condition: 0,
+            layer_4_precinct: 0,
+          },
+        },
+        meta: {
+          filters_applied: filters,
+          response_time_ms: Date.now() - startTime,
+          land_application: landApplication,
+        },
+      });
+      withheld.headers.set('Cache-Control', 'no-store, must-revalidate');
+      return withheld;
+    }
+
     const pool = getPool();
     const client = await pool.connect();
 
@@ -587,6 +627,7 @@ export async function GET(request: NextRequest) {
           chapter_pdf_urls: chapterPdfUrls,
           precinct_warning: precinctWarning,
           dcp_currency: dcpCurrency,
+          land_application: landApplication,
         }
       });
       // Temporarily disabled cache for debugging duplicates issue
