@@ -193,14 +193,6 @@ def build_plan(cur, councils):
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from enrichment.extractors.applicability_tagger import ApplicabilityTagger
 
-    # The LGA zone lists FIRST: a second execute() on this cursor would discard
-    # the row result set, and the rows are what the loop below consumes.
-    cur.execute(
-        """SELECT lower(lga), array_agg(DISTINCT zone) FROM lep_zone_coverage
-            WHERE zone IS NOT NULL GROUP BY 1"""
-    )
-    by_lga = {lga: set(z) for lga, z in cur.fetchall()}
-
     cur.execute(
         f"""SELECT is_current AND v2_is_actionable AS served,
                    id, document_id, provision_text,
@@ -236,12 +228,33 @@ def build_plan(cur, councils):
         None means "do not filter", which is deliberate: silently dropping every
         zone for a council we have no coverage for would look exactly like a
         successful narrowing.
+
+        RESOLVED BY THE SHARED RESOLVER, fixed 2026-10-04. This used to build its
+        own name match -- `council.replace("_", " ")` substring-tested against
+        `lower(lga)` -- and that is the second copy of ground-truth resolution
+        the comment above warns about, drifted exactly as predicted. The slug
+        becomes "ku ring gai" while lep_zone_coverage says "Ku-ring-gai"; neither
+        string contains the other, the function returned None, and None means DO
+        NOT FILTER. Measured against the live table: FIVE of eighteen served
+        councils got no zone-validity filtering at all -- ashfield,
+        canterbury_bankstown, ku_ring_gai, leichhardt and marrickville -- so the
+        filter this script's own docstring describes as "the fix" was not running
+        for any of them.
+
+        It surfaced because the refusal guard below did its job: an authorised
+        write was stopped because text_regex had put a residential code that
+        Canterbury-Bankstown does not have onto one of its rows, and a retired
+        pre-2022 environmental code onto a Ku-ring-gai row, and the filter that
+        exists to drop both never ran.
+
+        `load_slug_resolution` also handles what a name match never could: a
+        former council's zones are its CURRENT amalgamated LGA's, so ashfield,
+        leichhardt and marrickville resolve through `lga_registry.parent_lga` to
+        Inner West. 17 of 18 councils resolve; city_of_sydney stays None, which
+        is the honest answer rather than an invented one.
         """
-        key = (council or "").replace("_", " ").lower()
-        for lga, zones in by_lga.items():
-            if key and (key in lga or lga in key):
-                return zones
-        return None
+        key = slug_key.get(council)
+        return truth.get(key) if key else None
 
     plan, prov_only, narrowings, invalid = [], [], [], []
     stats = Counter()
