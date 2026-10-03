@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which regulatory rules are served for a property. A wrong answer either shows a plan that does not bind the land (the defect) or hides one that does (the regression this could introduce).",
-  "commit_hash": "1f5259e1",
+  "commit_hash": "c9a98b08",
   "files": [
     "frontend-nextjs/lib/dcp-land-application.ts",
     "frontend-nextjs/app/api/provisions/for-property/route.ts",
@@ -65,7 +65,7 @@
     "manual_verify": "Yes: on the Vercel preview, open the DCP tab for 355 Botany Road Zetland (notice, no controls) and 456 Kent Street Sydney (controls shown)."
   },
   "pre_impl": {
-    "existing_data": "Reads constraints.landApplicationInstruments, already built from layerintersect layer 8 by lib/nsw-planning-portal.ts:772-786. No table is read or written by the gate; when it withholds, regulatory_provisions and dcp_chapter_registry are not queried at all.",
+    "existing_data": "Reads constraints.landApplicationInstruments, already built from layerintersect layer 8 by frontend-nextjs/lib/nsw-planning-portal.ts:772-786. No table is read or written by the gate; when it withholds, regulatory_provisions and dcp_chapter_registry are not queried at all.",
     "assumption_mismatch": "If the portal renames the instrument (e.g. a new amendment title), the exact-name match fails and City of Sydney is withheld as 'excluded' everywhere, visibly, with the new name on screen. That is a loud failure, not silent wrong rules; the fix is one string in DCP_LAND_BINDING.",
     "new_vs_existing": "Applies per request, so every property from the first request after deploy. No data migration.",
     "external_source_error": "layerintersect error/timeout leaves landApplicationInstruments undefined, so no land_application param is sent and the route answers status 'unknown' and withholds City of Sydney DCP with a notice saying the portal did not return the plan. Non-gated councils are unaffected.",
