@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Twelve council configs changed, and every edit lands on v2_applicable_zones / v2_applicable_dev_types, which are HARD FILTERS on what a property is shown (for-property/route.ts:1012 and :1222). Most of it is provenance only, but three changes move served answers: Waverley's four title-inferred zone lists are removed (114 served rows widen), Ku-ring-gai's fifteen Part 14s are configured so text extraction stops reading retired zone codes out of their own text (7 served narrowings on the committed config become 0), and Northern Beaches gains a Part B entry for the same reason (43 served rows leave filtered_to_all). Not Critical: no served row is narrowed by anything in this branch, the direction is widening throughout, and nothing is deleted. Not Minor: 20,922 rows are in the re-tag's scope and the keys are hard filters, so an error here hides binding controls rather than adding noise. SECOND PASS 2026-10-03: the test suite rejected the first version and was right. Declaring ['ALL'] records `config_all`, which the tagger documents as \"a real assertion of universality; trust it\", and tests/test_campbelltown_applicability.py already refused to claim it for a chapter that does not say so. Half these entries do not: they state a narrower scope the field cannot hold. migrations/081 adds a third value, `config_declined`, and 3,213 served keys now take it instead of falsely asserting universality. The served values are unchanged by that correction -- same 2,505 value changes, same 39 narrowings.",
- "commit_hash": "0b9d1e65",
+ "commit_hash": "959f3ea0",
  "files": [
   "enrichment/config/georges_river_config.py",
   "enrichment/config/blacktown_config.py",
@@ -22,7 +22,9 @@
   "tests/test_canterbury_bankstown_applicability.py",
   "tests/test_four_council_applicability_configs.py",
   "tests/test_northern_beaches_whole_dcp_scope.py",
-  ".claude/dq_checks.json"
+  ".claude/dq_checks.json",
+  "scripts/dq_probe_scope_evidence_fidelity.py",
+  "tests/test_dq_probe_scope_evidence_fidelity.py"
  ],
  "pre_impl": {
   "existing_data": "Every scope sentence written here was read from the chapter PDF the registry already points at, fetched through dcp_chapter_registry.r2_public_pdf_url and cached under the job tmp directory. No new extraction ran, no provision text was re-read, and no registry row changed. The re-tag reuses scripts/retag_applicability_slug_docids.py rather than a new writer: dry-run default, automatic backup table, per-row optimistic-concurrency guard, printed rollback SQL, and --expect-narrowings required before any served row may narrow. DQ-114's own query and dq_probe_applicability_config.py supplied every count, so each number here can be re-run rather than trusted.",
@@ -181,6 +183,14 @@
    "mitigated": true,
    "how": "a declined key is held to the SAME evidence rule as a declared one: tests/test_scope_evidence_declared.py treats scope_declined as a declaration, so declining without the council's sentence fails the build. Forced red to confirm. The sentence has to say what could not be expressed, which is work that cannot be done without opening the PDF.",
    "repro": "add \"scope_declined\": (\"applicable_zones\",) to any entry with no matching scope_evidence and run the ratchet"
+  },
+  {
+   "scenario": "The quote-checking probe reports a correct quote as MISSING, or a wrong one as fine",
+   "what_happened": "both, on its first run",
+   "what_happens": "a probe that cries wolf is switched off within a week, and one that passes a bad quote leaves a hard filter resting on words nobody wrote",
+   "mitigated": true,
+   "how": "all three first-run bugs were in the pure functions and all three are now tested. loose() stripped accents instead of folding them, so a PDF printing a word with an acute accent could never match a config spelling it without one. spans() harvested any long single-quoted run, which asserted our own prose split on an apostrophe against the PDF and demanded that section headings quoted as ABSENT be present. resolve() must return None on two candidates rather than attach a sentence to the wrong chapter. tests/test_dq_probe_scope_evidence_fidelity.py covers each, plus a database-marked test for the one live query that skips without PYTEST_REAL_DB.",
+   "repro": "python -m pytest tests/test_dq_probe_scope_evidence_fidelity.py -q"
   }
  ],
  "post_merge": {
