@@ -842,3 +842,8 @@ latent-scope-data/
 # Per-branch push-attempt counter for push-retry-needs-full-output.py.
 # Session state, not repo state.
 .claude/.push-attempts.json
+
+# Fetched council chapter PDFs for DQ-121 (scope_evidence fidelity). Large,
+# re-fetchable, and declared as that row's `requires` so an absent cache reports
+# UNKNOWN rather than a false red.
+.cache/

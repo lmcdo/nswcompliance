@@ -97,8 +97,15 @@ COUNCIL_SLUG_OVERRIDE = {"warringah": "northern_beaches"}
 #: Cached chapter PDFs. Re-fetching ~111 documents per run would make this
 #: unusable; the cache is keyed by council and chapter so a chapter that is
 #: re-published under the same key must be deleted from it by hand.
+#:
+#: IN-REPO AND GITIGNORED, on purpose. DQ-121 declares this path as its
+#: `requires`, so dq_check.py reports UNKNOWN -- "could not run here, and that
+#: is not evidence either way" -- instead of a red row on a machine that has
+#: never fetched the PDFs. That is DQ-32's precedent: CI's python job has no
+#: frontend-nextjs/node_modules, and reading could-not-look as found-something
+#: turned main red on 2026-08-12. Override with SCOPE_PDF_CACHE.
 CACHE = Path(os.environ.get("SCOPE_PDF_CACHE")
-             or Path.home() / ".cache" / "plotdetect" / "scope_pdfs")
+             or Path(__file__).resolve().parents[1] / ".cache" / "scope_pdfs")
 
 #: A span shorter than this is a fragment, not a quotation: it would match almost
 #: any planning document and report a false OK.
