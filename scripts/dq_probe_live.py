@@ -363,6 +363,49 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "approving the queue: the count reads the latest verdict per chapter "
         "regardless of status.",
     ),
+    "DQ-120": (
+        "City of Sydney areas the DCP excludes, for which we hold no plan and no exclusion",
+        # Sydney DCP 2012 Section 1 clause 1.4, page 4, read 2026-10-03: the plan
+        # applies to "the land identified in Figure 1.1 ... where the City of
+        # Sydney is the consent authority". Figure 1.1 on page 5 EXCLUDES eight
+        # areas, each keeping its own plan: Barangaroo, Bays Precinct/Wentworth
+        # Park, Harold Park, Redfern/Waterloo, Various Sites (South Sydney),
+        # Green Square Town Centre, Moore Park Showground and Glebe (Affordable
+        # Housing).
+        #
+        # We serve City of Sydney rules by COUNCIL. Green Square is inside the
+        # City of Sydney, so a Green Square property is shown Sydney DCP 2012
+        # controls that do not bind it, and the plan that does bind it is absent.
+        #
+        # WHY THIS IS A ROW AND NOT A FIX. The exclusion is a MAPPED BOUNDARY.
+        # No column in this schema carries it: v2_applicable_zones is a zone
+        # list, v2_precinct_id holds locality-statement clause numbers like
+        # "2.1.1" rather than place extents, and inventing the boundaries would
+        # break the standing rule against guessing real-world geography. So the
+        # honest state is measured and visible rather than approximated.
+        #
+        # WHAT IT COUNTS, and why that is checkable when the boundary is not:
+        # how many of the eight have NEITHER their own plan in the registry NOR
+        # any served provision attributable to them. Measured 2026-10-03 it is
+        # 8 of 8 -- zero documents match any of the names. It falls as each area
+        # gains its own plan, and it cannot be cleared by editing City of
+        # Sydney's config, which is the point.
+        "SELECT count(*) FROM unnest(%s::text[]) AS area(name) "
+        "WHERE NOT EXISTS (SELECT 1 FROM documents d "
+        "                   WHERE lower(d.pdf_name) LIKE '%%' || area.name || '%%') "
+        "  AND NOT EXISTS (SELECT 1 FROM dcp_chapter_registry r "
+        "                   WHERE r.is_active "
+        "                     AND (lower(r.chapter_key) LIKE '%%' || replace(area.name,' ','-') || '%%' "
+        "                          OR lower(coalesce(r.chapter_label,'')) LIKE '%%' || area.name || '%%'))",
+        (["barangaroo", "wentworth park", "harold park", "redfern",
+          "green square", "moore park showground", "glebe", "south sydney"],),
+        "Each count is one area that Sydney DCP 2012 says it does NOT cover, for which we hold "
+        "no replacement plan and no way to withhold the City of Sydney controls that do not "
+        "bind it. A property there is shown the wrong plan's rules and is not shown its own. "
+        "Clears by ingesting that area's plan, or by acquiring the Figure 1.1 boundary so the "
+        "exclusion can be applied. It does NOT clear by editing city_of_sydney_config.py -- the "
+        "config has no key that can express a mapped boundary.",
+    ),
     "DQ-69": (
         "Active NSW instruments the legislation monitor has not checked in 14 days",
         # LIVENESS, not data quality. The monitor is a 7-day sleep loop on Fly
