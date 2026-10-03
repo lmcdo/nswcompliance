@@ -1,0 +1,95 @@
+{
+ "tier": "standard",
+ "justification": "Repairs a safety filter on a PRODUCTION WRITE path. scripts/retag_applicability_slug_docids.py applies DQ-30's zone-validity filter by passing valid_zones to tag_with_provenance, and for five of eighteen served councils it was passing None -- which means do not filter. The write it guards narrows v2_applicable_zones, a HARD FILTER on what a property is shown (for-property/route.ts:1012), so an unfiltered plan can bind a served rule to a zone code the LGA does not have, making it invisible. Not Critical: no wrong value ever reached the table, because the script's own refusal guard stopped the write before the backup table was created, and the change deletes a query rather than adding one. Not Minor: it is the difference between a filter that runs and one that silently does not, on the path that writes 20,922 rows.",
+ "commit_hash": "37bec03d",
+ "files": [
+  "scripts/retag_applicability_slug_docids.py",
+  "tests/test_retag_zone_filter_resolves_every_council.py"
+ ],
+ "pre_impl": {
+  "existing_data": "No new query -- this DELETES one. The by_lga SELECT over lep_zone_coverage is removed and the function now reads `truth` and `slug_key`, two dicts the same function already builds four lines later from validate_zone_code_validity.load_ground_truth and load_slug_resolution. Those are the functions the file's own comment says are imported rather than reimplemented so that 'the rule this gate applies before a write is byte-identical to the rule the post-commit report applies after one'. The write path, the refusal guard and --expect-narrowings are untouched.",
+  "assumption_mismatch": "The script's docstring states that passing valid_zones to tag_with_provenance 'drops the codes at source; this catches the ones that survive'. Measured against the live table, it was not dropping anything for ashfield, canterbury_bankstown, ku_ring_gai, leichhardt or marrickville -- the filter described as the fix was a no-op for 5 of 18 served councils. The second assumption that broke: I expected the fix to resolve every council, and it does not. city_of_sydney has no ground truth in lep_zone_coverage and still returns None. That is correct and deliberate (the docstring says dropping every zone for an uncovered council 'would look exactly like a successful narrowing'), so the fix had to preserve None rather than make it an empty set.",
+  "new_vs_existing": "No new mechanism at all. It removes a second copy of ground-truth resolution and uses the shared one, which additionally handles what a name match never could: a former council's zones are its CURRENT amalgamated LGA's, so ashfield, leichhardt and marrickville resolve through lga_registry.parent_lga to Inner West. The only new artefact is the test file, and it exists because no existing test asserted that the filter RESOLVES -- an assertion about its output would have passed throughout."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_retag_zone_filter_resolves_every_council.py -q",
+  "fails_when": "_valid_zones_for stops consulting the shared resolver, rebuilds a hand-rolled LGA name match, or the by_lga second lookup returns to the file; or the invalid-code path stops REFUSING and starts filtering; or that refusal moves to after the backup table is created.",
+  "observed_red": "YES, forced. Restoring the exact previous body -- `council.replace(\"_\", \" \")` substring-matched against by_lga -- failed two of the six tests (test_valid_zones_for_reads_the_shared_mapping and test_it_does_NOT_rebuild_a_name_match), verified with the file's content checked on disk first. Restored green afterwards. The first forced-red attempt reported NOTHING FAILED and was itself wrong: the harness grepped for lines starting with FAILED and missed them under -q, so the full pytest tail is now printed instead of being filtered."
+ },
+ "functions": [
+  {
+   "name": "_valid_zones_for",
+   "file_line": "scripts/retag_applicability_slug_docids.py:225",
+   "input": "a source_council slug from regulatory_provisions",
+   "output": "that LGA's real zone set from lep_zone_coverage, looked up through load_slug_resolution's slug -> ground-truth-key mapping, which is case-folded and resolves a former council to its parent LGA",
+   "if_none": "None when the council has no ground truth, and None means DO NOT FILTER. Preserved deliberately: city_of_sydney does not resolve, and returning an empty set instead would drop every zone for it, which is indistinguishable from a successful narrowing. 17 of 18 served councils now resolve; before the fix, 13 did."
+  },
+  {
+   "name": "main",
+   "file_line": "scripts/retag_applicability_slug_docids.py:302",
+   "input": "--councils naming the council slugs to re-tag, --apply to write, and --expect-narrowings naming the exact count of served rows the plan narrows",
+   "output": "a printed plan, and with --apply a per-row guarded UPDATE behind a backup table",
+   "if_none": "with any planned row carrying a zone code absent from its LGA's land-use table it prints the offending shapes and exits 2 WITHOUT creating the backup table, so a refused run leaves no trace. That guard is what caught this defect: an authorised write was stopped because text_regex had put R5 on a Canterbury-Bankstown row and E4 on a Ku-ring-gai one."
+  }
+ ],
+ "values": [
+  {
+   "value": "5 of 18 served councils were getting NO zone-validity filtering: ashfield, canterbury_bankstown, ku_ring_gai, leichhardt, marrickville. After the fix 17 of 18 resolve; city_of_sydney remains None by design.",
+   "read_at": "the live lep_zone_coverage and regulatory_provisions, running the old and new resolution side by side over every DISTINCT source_council, 2026-10-04",
+   "if_missing": "the count came from the live table rather than from reading the code, because the failure is a silent no-op and reading the code is what missed it for weeks"
+  },
+  {
+   "value": "Two planned rows carried an invalid code and are the reason the write refused: canterbury_bankstown ['R5'] on chapter 1.1 (that LGA's zones are C1 C2 E1 E2 E3 E4 MU1 R1 R2 R3 R4 RE1 RE2 RU4 SP1 SP2 SP4 W1 -- no R5) and ku_ring_gai ['E4'] on a non-served row (E4 was Environmental Living before the 2022 reform; that LGA has C4 now).",
+   "read_at": "the refused --apply run's own output, then confirmed per row against lep_zone_coverage, 2026-10-04",
+   "if_missing": "both rows pre-date this branch; neither was created by it"
+  },
+  {
+   "value": "With the filter working, the plan's served narrowings go 39 -> 40. The fortieth is a CORRECTION: Canterbury chapter 1.1 loses R5, ['R1','R2','R3','R4','R5'] -> ['R1','R2','R3','R4']. No property can have matched R5, because the zone does not exist in that LGA, so nothing becomes hidden by it. The invalid-code section of the plan is now empty.",
+   "read_at": "python scripts/retag_applicability_slug_docids.py --councils <the twelve> (dry run), before and after the fix, 2026-10-04",
+   "if_missing": "the writer refuses --apply unless --expect-narrowings names the exact count, so the number has to be re-read rather than assumed; it is 40, not 39"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "resolve a council slug to its LGA's complete zone list, so the zone-validity filter has something to filter against",
+   "file_line": "scripts/retag_applicability_slug_docids.py:222",
+   "where_clause": "load_ground_truth selects from lep_zone_coverage WHERE is_complete = TRUE AND lga IS NOT NULL AND zone IS NOT NULL, keyed case-folded. is_complete is the important predicate: a partial zone list would make valid codes look invalid and the refusal guard would block every write. load_slug_resolution then reads lga_registry WHERE is_active = TRUE and tries the row's own display_name before its parent's, so a former council is assessed against its current amalgamated LGA. The removed query had neither predicate -- it took every lep_zone_coverage row regardless of is_complete and matched names by substring."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A filter is present, documented, and does nothing",
+   "what_happens": "the code reads as protection, the comment describes the right behaviour, and the absence is invisible because 'no zones to drop' and 'could not resolve this council' produce the identical result",
+   "mitigated": true,
+   "how": "this is the defect itself, and the lesson is in what caught it: not review, not the docstring, but the refusal guard at the end of the same script, which stopped the write because two planned rows carried codes their LGA does not have. The new tests assert on RESOLUTION rather than on filtered output, because an output assertion would have passed throughout the bug's life.",
+   "repro": "restore the previous _valid_zones_for body and run python -m pytest tests/test_retag_zone_filter_resolves_every_council.py -q"
+  },
+  {
+   "scenario": "Someone 'fixes' the refusal by filtering the invalid codes out instead of erroring",
+   "what_happens": "the write proceeds, the symptom disappears, and the fact that the at-source filter failed is hidden -- so the next council whose name does not resolve is never noticed",
+   "mitigated": true,
+   "how": "test_an_invalid_planned_code_refuses_rather_than_dropping asserts the ERROR path is still there, and test_it_refuses_before_creating_the_backup_table asserts the refusal still happens before the backup exists so a refused run leaves no orphan table. The script's own comment already explains why it refuses rather than filters; the test makes that enforceable.",
+   "repro": "replace the `if invalid:` error with a silent drop and run the test file"
+  },
+  {
+   "scenario": "None is read as 'no valid zones' rather than 'no ground truth'",
+   "what_happens": "every zone is dropped for that council, the plan looks like a large successful narrowing, and served rules are bound to nothing",
+   "mitigated": true,
+   "how": "the distinction is preserved in code and asserted by test_none_still_means_do_not_filter. city_of_sydney is the live case: it has no row in lep_zone_coverage with is_complete = TRUE, so it resolves to None and is deliberately left unfiltered.",
+   "repro": "change `return truth.get(key) if key else None` to `return truth.get(key, set())` and read the dry run's narrowing count"
+  },
+  {
+   "scenario": "A merged council is assessed against a defunct LGA's zone list",
+   "what_happens": "Marrickville, Ashfield and Leichhardt provisions get filtered against ground truth that does not exist, so either everything is dropped or nothing is",
+   "mitigated": true,
+   "how": "load_slug_resolution resolves widest-first through lga_registry.parent_lga, so all three reach Inner West's 16 zones. That is why the shared resolver was the right fix rather than normalising punctuation on both sides: punctuation alone would have fixed canterbury_bankstown and ku_ring_gai and left these three unresolved.",
+   "repro": "python -c with load_slug_resolution over every DISTINCT source_council and print the resolved key"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "none from this branch -- it is a script and a test. The write it unblocks is still outstanding and is now: python scripts/retag_applicability_slug_docids.py --councils georges_river blacktown hornsby penrith canterbury_bankstown campbelltown wollongong waverley northern_beaches ku_ring_gai cumberland woollahra --apply --expect-narrowings 40. NOTE the 40, not 39: the fortieth narrowing is the R5 correction the working filter now makes. migrations/081_applicability_declined.sql was applied to production on 2026-10-04 before this branch existed; its rollback is in that migration's header and the constraint it replaced was captured at apply time.",
+  "secrets": "none added.",
+  "other_repo": "none.",
+  "manual_verify": "After the write: python scripts/dq_check.py --id DQ-114 should read 21, python scripts/validate_zone_code_validity.py should report INVALID 0 for canterbury_bankstown's chapter 1.1 row (id 122333) where it reported 1 before, and the re-tag's own output must show an empty invalid-code section. Also re-run python scripts/dq_check.py --outreach and confirm it has not dropped below 14 of 17."
+ }
+}
