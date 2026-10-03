@@ -326,9 +326,22 @@ CANTERBURY_BANKSTOWN_CONFIG: dict = {
         # hint, so that narrowing removes the row from the answer entirely.
         "chapter_9_1_general_requirements": {
             "scope_evidence": {
+                "applicable_dev_types":
+                    "Chapter 9.1 section 1 Introduction (PDF p4), verbatim: 'The "
+                    "Canterbury-Bankstown Development Control Plan 2023 supports the LEP by "
+                    "providing additional objectives and development controls to enhance the "
+                    "function, design and amenity of the industrial precincts within Zone E4 "
+                    "General Industrial.' The chapter names a ZONE and no development type: it "
+                    "is the General Requirements chapter for the industrial precincts, so it "
+                    "binds whatever is developed there. The narrowing this chapter states is "
+                    "the zone key, declared above. ALL here asserts only what section 1 "
+                    "asserts, read 2026-10-03. Previously OMITTED, which recorded "
+                    "`config_silent` on 77 served rows (DQ-114) -- the largest single "
+                    "population in this council.",
                 "applicable_zones":
                     "--- 9.x industrial precincts: scoped by ZONE, not by development type --- Chapter 9.1 section 1 Introduction, verbatim: the DCP 'supports the LEP by providing additional objectives and development controls to enhance the function, design and amenity of the industrial precincts within Zone E4 General Industrial'. E4 is the only zone the chapter names as its own scope (checked against the whole PDF, not the introduction alone: the sole other zone reference is a control about adjoining land). applicable_dev_types is OMITTED on purpose -> config_silent. The same page says 'Non-industrial development will be limited to land uses that are compatible with the primary employment role of the precinct', and the chapter's own controls bear that out: 3.16 governs vehicle body repair workshops and 5.10 food premises. The first draft of this entry declared ['industrial_development', 'light_industry', 'warehouse'], which would have hidden 5.10 from a food_and_drink_premises DA inside E4 -- v2_applicable_dev_types is a HARD filter in frontend-nextjs/app/api/provisions/for-property/route.ts, not a ranking hint, so that narrowing removes the row from the answer entirely.",
             },
+            "applicable_dev_types": ["ALL"],
             "applicable_zones": ["E4"],  # noqa: zone-codes (the zone chapter 9.1 section 1 names as its own scope)
         },
 
@@ -367,6 +380,28 @@ CANTERBURY_BANKSTOWN_CONFIG: dict = {
         # DEV_TYPE_PATTERNS has no term for a school, a place of public worship or a
         # home business, so there is nothing honest to narrow to. Saying ALL here
         # would assert that a school control binds a warehouse.
+        #
+        # RE-EXAMINED 2026-10-03 against DQ-114 and the finding above STANDS. These
+        # are the only entries in this file whose SUBJECT is one use class, and the
+        # two expressible answers are both false: ALL asserts a school control binds
+        # a warehouse, and a term the serving side cannot ask for hides the chapter
+        # from every query, not just the wrong ones. So 18 served keys here (schools
+        # 7, places of public worship 9, home businesses 2) stay `config_silent` and
+        # are a STATED EXCEPTION to DQ-114 rather than a defect to clear. Chapter
+        # 10.4 (3 keys) is the same shape: its own section 5 reads "This section
+        # applies to non-residential development not including health consulting
+        # rooms, neighbourhood shops and serviced apartments", so ALL would assert it
+        # binds a dwelling house.
+        #
+        # The honest fix is a vocabulary term the DA intake can send. `school` maps
+        # to `educational_establishment`, which ALREADY exists in the serving
+        # taxonomy and is reachable through the has_child_care intake field
+        # (frontend-nextjs/lib/see/worksScope.ts:115) -- so schools alone could be
+        # narrowed truthfully. `place_of_public_worship` and `home_business` exist in
+        # neither the tagger patterns nor the serving taxonomy, so they need a term
+        # AND an intake field before anything can be declared. Both are backlog, not
+        # this change: narrowing hides rows, and a narrowing is only safe once it has
+        # been checked on a real address.
         "chapter_10_2_schools": {
             "scope_evidence": {
                 "applicable_zones":

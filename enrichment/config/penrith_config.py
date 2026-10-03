@@ -45,17 +45,51 @@ PENRITH_CONFIG: dict = {
             "layer": "generic",
         },
 
-        # BOTH KEYS OMITTED, and the reason is in the Part's own contents.
-        # "D2 Residential Development" reads like a residential-only Part and is
-        # not one: its sections are 2.1 Single Dwellings, 2.2 Dual Occupancies,
-        # 2.4 Multi Dwelling Housing, 2.5 Residential Flat Buildings — and 2.6
-        # NON RESIDENTIAL DEVELOPMENTS. Declaring the residential types would
-        # delete section 2.6 from every non-residential application it governs,
-        # which is the asymmetric failure this file is most careful to avoid.
-        # The Part states no zones either.
+        # BOTH KEYS ARE ["ALL"] -- DECISIONS, and the reason is in the Part's own
+        # contents. "D2 Residential Development" reads like a residential-only
+        # Part and is not one: its sections are 2.1 Single Dwellings, 2.2 Dual
+        # Occupancies, 2.4 Multi Dwelling Housing, 2.5 Residential Flat Buildings
+        # — and 2.6 NON RESIDENTIAL DEVELOPMENTS. Declaring the residential types
+        # would delete section 2.6 from every non-residential application it
+        # governs, which is the asymmetric failure this file is most careful to
+        # avoid. The Part states no zones either.
         #
-        # `layer` keeps the entry truthy; see the ⚠ in the docstring.
+        # Declared 2026-10-03. They were OMITTED, which is the same value by a
+        # route that records `config_silent` -- "nobody decided this key" -- on 75
+        # served rows, counted by DQ-114. The decision was made; it was just kept
+        # in a comment no consumer can read.
         "penrith_dcp_2014_part_d2": {
+            "scope_evidence": {
+                "applicable_dev_types":
+                    "The Part's own table of contents (PDF pp1-2) runs '2.1. SINGLE DWELLINGS', "
+                    "'2.2 DUAL OCCUPANCIES', '2.3. SECONDARY DWELLINGS', '2.4 MULTI DWELLING "
+                    "HOUSING', '2.5 RESIDENTIAL FLAT BUILDINGS' and then '2.6 NON RESIDENTIAL "
+                    "DEVELOPMENTS'. Section 2.6 (PDF p79, printed D2-79) states its own scope "
+                    "verbatim: 'The following developments are covered by this section: a) Any "
+                    "proposed non residential development proposed in a residential zone. This "
+                    "section provides specific controls for non residential development in "
+                    "residential zones in addition to the general controls elsewhere in this DCP.' "
+                    "So the five residential terms are NOT the Part's scope -- declaring them "
+                    "would delete section 2.6 from every non-residential application it governs. "
+                    "ALL is the Part's own breadth.",
+                "applicable_zones":
+                    "NO land-application clause exists. All 84 pages were read 2026-10-03 and the "
+                    "Part carries no 'land to which this Part applies' section; its first pages are "
+                    "table of contents straight into section 2.1. The only zone sentence in the "
+                    "Part is section 2.6's (PDF p79): 'Any proposed non residential development "
+                    "proposed in a residential zone' -- and that WIDENS what the Part reaches "
+                    "rather than bounding it, because it brings non-residential development on "
+                    "residential land into a Part whose other sections are residential types. "
+                    "Penrith DCP 2014's own introductory Part, which would carry the plan-level "
+                    "sentence, is not in dcp_chapter_registry (only part-d2 and "
+                    "c10-transport-access-parking are), so the inherited sentence cannot be quoted "
+                    "and is NOT guessed. ALL records that this Part states no zone narrowing, "
+                    "which is true and checkable; a zone list inferred from the Part's TITLE would "
+                    "be interpretation, and it would hide the Part from the non-residential "
+                    "development section 2.6 covers.",
+            },
+            "applicable_dev_types": ["ALL"],
+            "applicable_zones": ["ALL"],
             "layer": "generic",
         },
     },
