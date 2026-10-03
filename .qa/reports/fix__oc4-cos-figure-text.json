@@ -1,0 +1,153 @@
+{
+ "tier": "standard",
+ "justification": "Two new ledger rows (DQ-119, DQ-120), a Stop hook that can block a turn, scope_evidence across three council configs, and ONE production write. Not Critical: the production write was a provenance-only re-tag whose own dry run reported 0 served rows narrowed and no served zone or dev-type value changed, backed by an automatic backup table with printed rollback SQL, and the served answer for every affected row is byte-identical before and after. Not Minor: it touched 3,172 live rows and it changed applicability declarations that are HARD FILTERS on what a property is shown (for-property/route.ts:1012 and :1222), including two corrections that widen what is served.",
+ "commit_hash": "cce39d1a",
+ "files": [
+  "scripts/dq_probe_live.py",
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md",
+  "tests/test_dq119_coverage_aggregation.py",
+  "tests/test_done_when_gate.py",
+  ".claude/hooks/done-when-gate.py",
+  ".claude/hooks/done-when-template.py",
+  ".claude/settings.json",
+  "enrichment/config/woollahra_config.py",
+  "enrichment/config/canterbury_bankstown_config.py",
+  "enrichment/config/city_of_sydney_config.py"
+ ],
+ "pre_impl": {
+  "existing_data": "ai_extractor.coverage_gap() already scored every extraction and dcp_extract_changed already stamped the verdict onto each queue row as a suspect_reason. DQ-119 adds NO detector -- it aggregates a finding that existed for months and that nothing counted. Likewise the re-tag reused scripts/retag_applicability_slug_docids.py rather than writing a new writer: dry-run default, auto backup table, per-row optimistic-concurrency guard, printed rollback SQL, --expect-narrowings required when a served row narrows.",
+  "assumption_mismatch": "An EARLIER regex read of canterbury_bankstown_config.py returned [\\\"E4\\\"] for 20 unrelated chapters -- a non-greedy match bled across entries. Caught only because 20 chapters claiming industrial-only zoning was implausible. Discarded; the module is now imported and the dict read directly. A reconstruction of DQ-76's predicate also read 41 against the live probe's 57, so the probe's number was quoted and the reconstruction was not.",
+  "new_vs_existing": "DQ-118 was NOT taken: dq_probe_live.py:296 and dq_checks.json reserve that id for per-council hub-scrape liveness, named explicitly by DQ-117. The coverage aggregation is DQ-119 and the City of Sydney exclusion is DQ-120.",
+  "external_source_error": "The City of Sydney scope sentence was read from the PDF, not inferred. Section 1 clause 1.4 page 4. Its Figure 1.1 (page 5) excludes eight areas whose boundary this schema cannot express; that is recorded as a known over-reach in the config AND counted by DQ-120, rather than approximated by a zone list.",
+  "frontend_type": "v2_applicable_zones and v2_applicable_dev_types are HARD filters, not ranking hints (for-property/route.ts:1012, :1222; permissibility/check/route.ts:207). A row survives only if the column is NULL, holds 'ALL', or overlaps the query. Measured before writing: ZERO served rows carry an empty array on either column, so the 318 '[] -> [ALL]' changes in the re-tag plan are not served rows and no served row was hidden by an empty array.",
+  "user_failure_mode": "Woollahra B4 declared [\\\"R3\\\"] while B4.1.2 says the chapter \\\"only applies to land zoned R2 Low Density Residential or R3 Medium Density Residential\\\", so every R2 property in Woollahra was served NONE of that chapter. Corrected to [R2, R3]. B1/D1/D4/D5/D6 narrowed to lists their own chapters contradict and were widened. Direction of risk is therefore toward showing MORE, which is noise rather than a hidden control."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_done_when_gate.py tests/test_dq119_coverage_aggregation.py -q",
+  "fails_when": "the Stop gate stops blocking a work turn that reports no number or no DONE WHEN line; or DQ-119's query loses its latest-batch DISTINCT ON, its served-rows EXISTS clause, or coverage_unknown from its params; or DQ-119 is present in one ledger file and absent from the other.",
+  "observed_red": "YES, both forced. Replacing DQ-119's return 2 with return 0 failed 5 of 13 gate tests. Dropping coverage_unknown from the params and dropping created_at DESC from the DISTINCT ON failed 2 of 8 DQ-119 tests. DQ-120's probe was forced both ways against the live database: 8 for the eight real area names, 0 for a name that exists in documents. All restored green afterwards."
+ },
+ "functions": [
+  {
+   "name": "main",
+   "file_line": ".claude/hooks/done-when-gate.py:97",
+   "input": "the Stop hook payload on stdin, carrying transcript_path and stop_hook_active, from which the entries after the last real user message are read as this turn",
+   "output": "exit 2 with a stderr message when the turn used a write tool or a mutating shell command and its final text carries no DONE WHEN line or no digit in its opening 400 characters; exit 0 in every other case including read-only turns",
+   "if_none": "any failure to parse the payload or read the transcript returns 0, and stop_hook_active returns 0 immediately, so a bug here can never stop real work and a blocked turn can never loop"
+  },
+  {
+   "name": "main",
+   "file_line": ".claude/hooks/done-when-template.py:38",
+   "input": "nothing from the prompt itself; the hook is fired on every UserPromptSubmit and needs no state",
+   "output": "the four-line GOAL / DONE WHEN / BUDGET / IF BLOCKED template on stdout, which Claude Code appends to the model context so the format survives compaction",
+   "if_none": "wrapped so that any exception still exits 0, because a reminder must never be able to block a prompt from being submitted"
+  },
+  {
+   "name": "run",
+   "file_line": "scripts/dq_probe_live.py:2148",
+   "input": "a check id, here DQ-119 or DQ-120, looked up in PROBES as a four-tuple of headline, SQL, params and meaning, then executed against the live database",
+   "output": "the row count the SQL returns, printed with its query, params and meaning, and a non-zero exit when that count is above zero so the ledger can compare it against the declared status",
+   "if_none": "an unreachable database prints UNKNOWN and exits 2 rather than reporting clean, so missing evidence is never read as a pass"
+  }
+ ],
+ "values": [
+  {
+   "value": "DQ-114 served scope keys left undecided: 7,956 -> 3,142. Predicted 3,142 before the write and it matched exactly.",
+   "read_at": "python scripts/dq_check.py --id DQ-114, before and after the re-tag, 2026-10-03",
+   "if_missing": "an unreachable database makes the probe print UNKNOWN and exit 2, which the ledger treats as unverifiable rather than clean, so no claim is made from a missing number"
+  },
+  {
+   "value": "DQ-115 declared scope keys with no machine-readable evidence: 176 -> 72",
+   "read_at": "python scripts/dq_probe_applicability_config.py --id DQ-115, which reads the config files and needs no database, 2026-10-03",
+   "if_missing": "the probe carries needs_db false, so it cannot be silently skipped by a database outage the way a live probe can"
+  },
+  {
+   "value": "DQ-119 = 7 served chapters, of which ashfield chapter-a-miscellaneous found 0 of 15 TOC sections, chapter-c-sustainability 0 of 21 and chapter-f-dev-category 0 of 11",
+   "read_at": "python scripts/dq_probe_live.py --id DQ-119 against the live database, 2026-10-03",
+   "if_missing": "a chapter that never entered the review queue has no coverage verdict at all and is invisible to this count; that is a KNOWN gap, recorded here, and such a chapter is unknown rather than clean"
+  },
+  {
+   "value": "DQ-120 = 8 of 8 excluded City of Sydney areas have neither their own plan nor any exclusion mechanism; zero documents match any of the eight names",
+   "read_at": "python scripts/dq_probe_live.py --id DQ-120 against the live database, 2026-10-03",
+   "if_missing": "the probe matches on documents.pdf_name, so a plan ingested under another name would keep this red falsely; that weakness is stated in the row itself rather than left for a reader to discover"
+  },
+  {
+   "value": "outreach 14 of 17 with 0 contradicted, unchanged across the whole branch, which is the number that says nothing here broke a passing claim",
+   "read_at": "python scripts/dq_check.py --outreach, start and end of session, 2026-10-03",
+   "if_missing": "OC-9 reads NOT VERIFIED without R2 credentials in the shell and passes in CI, so a local run is read as unverifiable for that claim and never as a pass"
+  },
+  {
+   "value": "the re-tag wrote 3,172 rows with 0 skipped by the per-row guard and 0 served rows narrowed",
+   "read_at": "scripts/retag_applicability_slug_docids.py --councils city_of_sydney, dry run then --apply, 2026-10-03 12:00",
+   "if_missing": "the script refuses to run when its backup table already exists, and prints the rollback statement on completion, so an absent backup stops the write rather than proceeding"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "count served chapters whose most recent extraction recorded that the reader missed TOC sections, or could not read the contents page at all",
+   "file_line": "scripts/dq_probe_live.py:347",
+   "where_clause": "DISTINCT ON (q.council, q.chapter_key) ... ORDER BY q.created_at DESC takes only the newest batch, so a superseded coverage_fail cannot stay red for ever; r.is_active AND NOT COALESCE(r.is_inert, false) excludes chapters that serve nothing; EXISTS on regulatory_provisions with p.is_current AND p.v2_is_actionable anchors the count to SERVED rows rather than to a queue population an operator can drain; and the two LIKE params cover coverage_fail and coverage_unknown so the third state is not excused"
+  },
+  {
+   "purpose": "prove that no served row was hidden by an empty applicability array before approving the re-tag that changed 318 of them",
+   "file_line": "ad hoc, recorded in this report and in commit 3d996449",
+   "where_clause": "count(*) FILTER (WHERE v2_applicable_zones = '{}') and the same for v2_applicable_dev_types, both under is_current AND v2_is_actionable. Returned 0 and 0. An empty array is neither NULL nor contains ALL, so the serve filters at for-property/route.ts:1012 and :1222 would drop such a row entirely; measuring it was the difference between a safe write and 318 invisible rules"
+  },
+  {
+   "purpose": "count areas Sydney DCP 2012 excludes from itself for which no replacement plan and no exclusion exists",
+   "file_line": "scripts/dq_probe_live.py:396",
+   "where_clause": "unnest of the eight area names with NOT EXISTS against documents.pdf_name AND NOT EXISTS against an is_active dcp_chapter_registry chapter, so the count falls only when an area gains a real plan and cannot be moved by editing city_of_sydney_config.py"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "An operator approves the whole pending review queue in one night, as happened on 2026-09-09, hoping to clear the coverage count",
+   "what_happens": "DQ-119 does not move, because it reads the latest verdict per chapter whatever its status and is anchored to rows that are live in regulatory_provisions rather than to the queue",
+   "mitigated": true,
+   "how": "the query carries no status predicate at all and a test asserts that absence (test_it_counts_served_chapters_not_queued_ones), which is the exact correction DQ-97 needed when its population turned out to be one an operator could drain without repairing anything",
+   "repro": "UPDATE dcp_review_queue SET status='approved' WHERE council='ashfield'; then python scripts/dq_probe_live.py --id DQ-119 -- the count does not move. Covered without touching production by python -m pytest tests/test_dq119_coverage_aggregation.py -k served_chapters_not_queued"
+  },
+  {
+   "scenario": "Someone types ALL across every applicable_zones and applicable_dev_types key to take DQ-114 to zero",
+   "what_happens": "DQ-114 would indeed fall, and every served answer would be worse, because a rule would then assert universality nobody checked",
+   "mitigated": true,
+   "how": "DQ-115 is the half that refuses it: every declared key must carry the council's own sentence as data, so the shortcut raises DQ-115 by exactly as many keys as it lowers DQ-114",
+   "repro": "Edit any enrichment/config/*.py entry to applicable_zones=['ALL'] and applicable_dev_types=['ALL'] with no scope_evidence, then run python scripts/dq_probe_applicability_config.py --id DQ-115 -- its count rises by the number of keys just declared"
+  },
+  {
+   "scenario": "Someone adds a zone list to city_of_sydney_config.py intending to clear DQ-120 and the eight excluded areas with it",
+   "what_happens": "DQ-120 stays at 8 and the eight areas remain wrongly served, because the exclusion is a mapped boundary that no zone list can express",
+   "mitigated": true,
+   "how": "the probe reads documents and dcp_chapter_registry and never touches the config, and both the row text and the config comment say so, so the attempt fails loudly rather than appearing to work",
+   "repro": "Add a zone list to enrichment/config/city_of_sydney_config.py, then python scripts/dq_probe_live.py --id DQ-120 -- it still prints 8, because the probe reads documents and dcp_chapter_registry and never the config"
+  },
+  {
+   "scenario": "A chapter is extracted, recorded with coverage_fail, then committed through the direct-to-live path without ever entering the review queue",
+   "what_happens": "DQ-119 cannot see it, because the chapter has no queue row and therefore no latest verdict to read; it is counted as neither failing nor clean",
+   "mitigated": false,
+   "how": "NOT mitigated and deliberately recorded as such. The never-scored count should be reported beside DQ-119 as a third state. Until it is, a zero on DQ-119 means only that no SCORED chapter is failing",
+   "repro": "SELECT r.council, r.chapter_key FROM dcp_chapter_registry r WHERE r.is_active AND NOT COALESCE(r.is_inert,false) AND EXISTS (SELECT 1 FROM regulatory_provisions p WHERE p.source_council=r.council AND p.source_chapter_key=r.chapter_key AND p.is_current AND p.v2_is_actionable) AND NOT EXISTS (SELECT 1 FROM dcp_review_queue q WHERE q.council=r.council AND q.chapter_key=r.chapter_key) -- every row returned is a served chapter DQ-119 structurally cannot see"
+  },
+  {
+   "scenario": "A scope_evidence string is written that quotes a sentence the PDF does not contain, or quotes it from the wrong chapter",
+   "what_happens": "DQ-115 counts it as evidenced and goes green, because the check tests that a string EXISTS and never that it is TRUE. Roughly 90 such strings landed on this branch and none is verified by machine",
+   "mitigated": false,
+   "how": "NOT mitigated and the most important follow-up on this branch. A verifier was written and reported 22 apparent misses which were BOTH its own bugs: it compared every Canterbury chapter against chapter 1.1's text, and the Sydney PDF renders identified as identifi ed so collapsing whitespace was not enough. Pointing the existing fidelity gate at scope_evidence is the real fix and is NOT in this branch",
+   "repro": "python /c/Users/lawre/.claude/jobs/725925e0/tmp/verify_scope_quotes.py -- reports OK, MISSING and UNKNOWN per quotation claim. Any MISSING is a scope_evidence string whose sentence is not in the PDF it names, and DQ-115 counts every one of them as evidenced"
+  },
+  {
+   "scenario": "The model satisfies the new Stop gate by typing the words DONE WHEN and any digit, such as a date, without having measured anything",
+   "what_happens": "the gate passes the turn, because it checks shape and not substance",
+   "mitigated": false,
+   "how": "NOT mitigated, and stated in the hook's own docstring rather than implied. The gate exists to stop SILENT drift, which is what actually happened, and the user's number-first correction remains the quality control for a lazy criterion",
+   "repro": "printf '{\"transcript_path\":\"<a transcript whose last assistant text is \\\"done when x prints 1\\\"}' | python .claude/hooks/done-when-gate.py; echo $? -- exits 0, so the words plus any digit satisfy it. Covered by python -m pytest tests/test_done_when_gate.py"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "none. The only write was scripts/retag_applicability_slug_docids.py --councils city_of_sydney --apply. Backup table regulatory_provisions_dq33_backup_20261003_120036 (3,172 rows). Rollback: UPDATE regulatory_provisions t SET v2_applicable_zones=b.v2_applicable_zones, v2_applicable_dev_types=b.v2_applicable_dev_types, v2_zone_source=b.v2_zone_source, v2_dev_type_source=b.v2_dev_type_source FROM regulatory_provisions_dq33_backup_20261003_120036 b WHERE t.id=b.id;",
+  "secrets": "none added.",
+  "other_repo": "none.",
+  "manual_verify": "python scripts/dq_check.py --outreach must still read 14 of 17 with 0 contradicted. DQ-119 and DQ-120 are NEW rows and are expected RED (7 and 8); 'open' plus a failing check is the consistent state and dq_check.py passes on it. NOTE for whoever picks this up: city_of_sydney/section-6-specific-sites was NOT re-extracted on this branch -- it failed on an OpenAI 429 credit exhaustion, so DQ-78 stays at 34 and clears to 13, not 0, when section-5 alone is committed."
+ }
+}
