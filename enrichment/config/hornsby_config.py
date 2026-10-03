@@ -47,16 +47,32 @@ HORNSBY_CONFIG: dict = {
         #
         # R2/R3/R4 are the residential zones that EXIST for this LGA in
         # lep_zone_coverage — Hornsby has no R1 and no R5, so neither is
-        # declared. applicable_dev_types is OMITTED: the Part binds residential
-        # development as a whole, and the same page records that its low-density
-        # controls follow the NSW Housing Code while its medium and high density
-        # controls follow the Housing Strategy — a split by density, not a list
-        # of types this vocabulary can express.
+        # declared. applicable_dev_types is ["ALL"] -- a DECISION. The Part binds
+        # residential development as a whole, and the same page splits its controls
+        # by density, not by type: low density follows the NSW Housing Code, medium
+        # and high density follow the Housing Strategy. A type list this vocabulary
+        # can express does not exist. Declared 2026-10-03; OMITTED recorded
+        # `config_silent` (DQ-114).
         "hornsby_dcp_2024_part3_residential": {
             "scope_evidence": {
                 "applicable_zones":
-                    "Introduction, verbatim: 'This Part of the DCP applies to residential development within the Residential zones of the Hornsby Local Government Area.' R2/R3/R4 are the residential zones that EXIST for this LGA in lep_zone_coverage — Hornsby has no R1 and no R5, so neither is declared. applicable_dev_types is OMITTED: the Part binds residential development as a whole, and the same page records that its low-density controls follow the NSW Housing Code while its medium and high density controls follow the Housing Strategy — a split by density, not a list of types this vocabulary can express.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table. The zone names are the council's own words; rewriting them to import from the taxonomy would falsify the quote.
+                    "Introduction, verbatim: 'This Part of the DCP applies to residential development within the Residential zones of the Hornsby Local Government Area.' R2/R3/R4 are the residential zones that EXIST for this LGA in lep_zone_coverage — Hornsby has no R1 and no R5, so neither is declared.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table. The zone names are the council's own words; rewriting them to import from the taxonomy would falsify the quote.
+                "applicable_dev_types":
+                    "Introduction (PDF p3), verbatim: 'This Part of the DCP applies to "
+                    "residential development within the Residential zones of the Hornsby Local "
+                    "Government Area.' The Part binds residential development AS A WHOLE and "
+                    "enumerates no type; the same page splits its controls by DENSITY, not by "
+                    "type: 'The planning controls for the low density residential areas are "
+                    "informed by the NSW Housing Code, while the planning controls for the "
+                    "medium and high density residential areas are informed by the Hornsby "
+                    "Shire Housing Strategy (2010) and Hornsby Local Housing Strategy (2020).' "
+                    "A five-term residential list would be a NEW narrowing this Part never "
+                    "states, and would delete it from every other use permitted in the three "
+                    "residential zones declared above. ALL is the Part's own breadth, read "
+                    "2026-10-03. Previously OMITTED, "
+                    "which recorded `config_silent` on 101 served rows (DQ-114).",
             },
+            "applicable_dev_types": ["ALL"],
             "applicable_zones": ["R2", "R3", "R4"],  # noqa: zone-codes (the LGA's residential zones, per lep_zone_coverage)
             "layer": "generic",
         },
