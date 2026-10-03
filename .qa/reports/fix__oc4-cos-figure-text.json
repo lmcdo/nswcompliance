@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Two new ledger rows (DQ-119, DQ-120), a Stop hook that can block a turn, scope_evidence across three council configs, and ONE production write. Not Critical: the production write was a provenance-only re-tag whose own dry run reported 0 served rows narrowed and no served zone or dev-type value changed, backed by an automatic backup table with printed rollback SQL, and the served answer for every affected row is byte-identical before and after. Not Minor: it touched 3,172 live rows and it changed applicability declarations that are HARD FILTERS on what a property is shown (for-property/route.ts:1012 and :1222), including two corrections that widen what is served.",
- "commit_hash": "237d5135",
+ "commit_hash": "c87e680f",
  "files": [
   "scripts/dq_probe_live.py",
   ".claude/dq_checks.json",
@@ -155,7 +155,7 @@
    "what_happens": "the turn was NOT gated and the report passed, because --apply sat inside a group wrapped in word boundaries and a word boundary cannot occur between a space and a hyphen, making that alternative unmatchable",
    "mitigated": true,
    "how": "split into MUTATING for named verbs and MUTATING_FLAG for standalone tokens using lookarounds, exposed as mutates(); tests now assert the predicate directly for an unknown script name, --no-dry-run, --execute and a redirection, and assert read-only commands stay exempt",
-   "repro": "python -c \"import importlib.util; s=importlib.util.spec_from_file_location('g','.claude/hooks/done-when-gate.py'); g=importlib.util.module_from_spec(s); s.loader.exec_module(g); print(g.mutates('python anything.py --apply'))\" -- prints True now and printed False before commit"
+   "repro": "python -c \"import importlib.util; s=importlib.util.spec_from_file_location('g','.claude/hooks/done-when-gate.py'); g=importlib.util.module_from_spec(s); s.loader.exec_module(g); print(g.mutates('python scripts/retag_applicability_slug_docids.py --councils x --apply'))\" -- prints True now and printed False before this commit, which is the whole defect: that is the real production write this session performed and the gate did not see it"
   }
  ],
  "post_merge": {
