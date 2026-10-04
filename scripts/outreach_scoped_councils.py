@@ -34,7 +34,11 @@ HOW A COUNCIL IS LISTED
 THE PUBLISHED LIST is frontend-nextjs/shared/dcp-scoped-councils.json, which the site renders. The
 check passes only when that list equals the computed one, in BOTH directions: naming a council that
 fails overclaims, and leaving out one that passes makes the page lie in the direction nobody checks.
-A stated exception that no longer matches any row is stale and also fails.
+A stated exception that no longer matches any row is stale and also fails. "Any row" is an undecided
+row OR a `config_declined` one (migration 081): once a person records that a chapter was read and its
+scope cannot be expressed, the row leaves DQ-114 but the public caveat stays exactly as true -- the
+rule is still shown for every development type. Matching only undecided rows would have called the
+caveat stale on the day the decision was recorded (Canterbury-Bankstown 10.2-10.5, 2026-10-04).
 """
 from __future__ import annotations
 
@@ -64,6 +68,17 @@ SELECT source_council, source_chapter_key, 'applicable_zones', count(*) FROM reg
  WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
    AND (v2_zone_source IN {_UNDECIDED} OR v2_zone_source IS NULL)
  GROUP BY 1, 2"""
+
+#: (council, chapter, key) a person read and DECLINED to narrow -- served as ALL by decision. Used only to
+#: keep a stated exception from reading as stale once its rows move from undecided to declined.
+_DECLINED_SQL = """
+SELECT DISTINCT source_council, source_chapter_key, 'applicable_dev_types' FROM regulatory_provisions
+ WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
+   AND v2_dev_type_source = 'config_declined'
+UNION
+SELECT DISTINCT source_council, source_chapter_key, 'applicable_zones' FROM regulatory_provisions
+ WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
+   AND v2_zone_source = 'config_declined'"""
 
 #: Every council serving rule text, with its ACTIVE registry name. The is_active test sits in the join, not
 #: the WHERE: a council whose registry row is retired still serves rules, so it stays in the universe with a
@@ -122,6 +137,8 @@ def compute(conn, exceptions: list[dict]) -> tuple[dict[str, str], dict[str, str
         dq114_total = cur.fetchone()[0]
         cur.execute(_NO_CONFIG_SQL)
         no_config = {council: n for council, n in cur.fetchall() if n}
+        cur.execute(_DECLINED_SQL)
+        declined = {tuple(row) for row in cur.fetchall()}
 
     split_total = sum(row[3] for row in split)
     if split_total != dq114_total:
@@ -136,8 +153,8 @@ def compute(conn, exceptions: list[dict]) -> tuple[dict[str, str], dict[str, str
             used.add((council, chapter, field))
         else:
             undecided[council] = undecided.get(council, 0) + n
-    for key in sorted(excused - used):
-        problems.append(f"stated exception {key} matches no served row: it is stale")
+    for key in sorted(excused - used - declined):
+        problems.append(f"stated exception {key} matches no served undecided or declined row: it is stale")
 
     slugs = sorted(names)
     dq115, orphans = _dq115_by_council(slugs)
