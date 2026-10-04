@@ -11,6 +11,10 @@
       "name": "Campbelltown"
     },
     {
+      "slug": "canterbury_bankstown",
+      "name": "Canterbury-Bankstown"
+    },
+    {
       "slug": "city_of_sydney",
       "name": "City of Sydney"
     },

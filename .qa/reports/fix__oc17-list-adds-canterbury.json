@@ -1,0 +1,28 @@
+{
+  "tier": "minor",
+  "justification": "One published-list entry, added because the OC-17 check computes Canterbury-Bankstown as passing after the production retag; no code or query changes.",
+  "commit_hash": "e455af95",
+  "files": [
+    "frontend-nextjs/shared/dcp-scoped-councils.json"
+  ],
+  "pre_impl": {
+    "existing_data": "frontend-nextjs/shared/dcp-scoped-councils.json, read by /what-you-get and scripts/outreach_scoped_councils.py",
+    "assumption_mismatch": "If Canterbury regresses, the check fails as 'published but fails' and CI goes red",
+    "new_vs_existing": "Display only; the list is recomputed on every outreach run"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  },
+  "break_it": [
+    {
+      "scenario": "Canterbury-Bankstown is published while one of its rules is still unscoped or undecided",
+      "what_happens": "the outreach page names a council the claim is not true for",
+      "mitigated": true,
+      "how": "scripts/outreach_scoped_councils.py recomputes the list and fails 'published but fails' in CI",
+      "repro": "python scripts/outreach_scoped_councils.py"
+    }
+  ]
+}
