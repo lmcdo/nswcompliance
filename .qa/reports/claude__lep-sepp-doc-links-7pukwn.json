@@ -1,99 +1,99 @@
 {
-  "tier": "standard",
-  "justification": "User-facing citation links and one gated client fetch on the LEP and SEPP tabs. No DB writes, no API or schema change, no numeric value changed. Above Minor because the LEP-tab change stops a silent wrong-council result (Inner West LEP text and page images shown for other councils). Follow-up scopes /api/lep/provisions itself by EPI so the wrong-council text cannot be served even if a caller skips the client-side check.",
-  "commit_hash": "ba13244",
-  "files": [
-    "frontend-nextjs/lib/citation-instrument-urls.ts",
-    "frontend-nextjs/components/compliance/SeppCitationLink.tsx",
-    "frontend-nextjs/components/compliance/StateLevelControls.tsx",
-    "frontend-nextjs/components/compliance/HeritageProvisionsCard.tsx",
-    "frontend-nextjs/components/compliance/LocalProvisionsCard.tsx",
-    "frontend-nextjs/components/compliance/ExemptComplyingProvisions.tsx",
-    "frontend-nextjs/__tests__/lib/citation-instrument-urls.test.ts",
-    "frontend-nextjs/__tests__/components/compliance/lep-sepp-live-citations.test.tsx",
-    "frontend-nextjs/COMPONENT_MAP.md",
-    "frontend-nextjs/app/api/lep/provisions/route.ts",
-    "frontend-nextjs/__tests__/api/lep-provisions-scope.test.ts"
-  ],
-  "pre_impl": {
-    "existing_data": "Planning Portal legislationUrl (constraints.heritageLegislationUrl, LocalProvision.legislationUrl) passed as props; instrument_registry seed values from migrations/010_instrument_registry.sql mirrored as REGISTRY_INSTRUMENT_URLS; /api/lep/provisions reads regulatory_provisions WHERE document_id LIKE 'Inner_West_Local_Environmental_Plan_2022%' AND ref_number = clause.",
-    "assumption_mismatch": "If the Portal returns no legislationUrl, the cards render a plain 'did not return a legislation link' note and no link (legislationAnchorUrl returns null). If the URL has no parseable epi id, isInnerWestLep2022Url returns false and the Inner-West-only text fetch is skipped (fails closed).",
-    "new_vs_existing": "Render-time only; applies to every property view immediately. No stored data touched."
+ "tier": "standard",
+ "justification": "User-facing citation links and one gated client fetch on the LEP and SEPP tabs. No DB writes, no API or schema change, no numeric value changed. Above Minor because the LEP-tab change stops a silent wrong-council result (Inner West LEP text and page images shown for other councils). Follow-up scopes /api/lep/provisions itself by EPI so the wrong-council text cannot be served even if a caller skips the client-side check.",
+ "commit_hash": "898837de",
+ "files": [
+  "frontend-nextjs/lib/citation-instrument-urls.ts",
+  "frontend-nextjs/components/compliance/SeppCitationLink.tsx",
+  "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+  "frontend-nextjs/components/compliance/HeritageProvisionsCard.tsx",
+  "frontend-nextjs/components/compliance/LocalProvisionsCard.tsx",
+  "frontend-nextjs/components/compliance/ExemptComplyingProvisions.tsx",
+  "frontend-nextjs/__tests__/lib/citation-instrument-urls.test.ts",
+  "frontend-nextjs/__tests__/components/compliance/lep-sepp-live-citations.test.tsx",
+  "frontend-nextjs/COMPONENT_MAP.md",
+  "frontend-nextjs/app/api/lep/provisions/route.ts",
+  "frontend-nextjs/__tests__/api/lep-provisions-scope.test.ts"
+ ],
+ "pre_impl": {
+  "existing_data": "Planning Portal legislationUrl (constraints.heritageLegislationUrl, LocalProvision.legislationUrl) passed as props; instrument_registry seed values from migrations/010_instrument_registry.sql mirrored as REGISTRY_INSTRUMENT_URLS; /api/lep/provisions reads regulatory_provisions WHERE document_id LIKE 'Inner_West_Local_Environmental_Plan_2022%' AND ref_number = clause.",
+  "assumption_mismatch": "If the Portal returns no legislationUrl, the cards render a plain 'did not return a legislation link' note and no link (legislationAnchorUrl returns null). If the URL has no parseable epi id, isInnerWestLep2022Url returns false and the Inner-West-only text fetch is skipped (fails closed).",
+  "new_vs_existing": "Render-time only; applies to every property view immediately. No stored data touched."
+ },
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/components/compliance/lep-sepp-live-citations.test.tsx __tests__/lib/citation-instrument-urls.test.ts __tests__/api/lep-provisions-scope.test.ts",
+  "fails_when": "The Inner-West-only /api/lep/provisions fetch is un-gated for another council's LEP, a static Inner West URL or page image is restored in the clause 5.10 / Key Site panels, a SEPP link stops pointing at the in-force epi-2021-0714 anchor, or the E&C URL reverts to epi-2008-572.",
+  "observed_red": "Forced, each restored afterwards. Removing the isInnerWestLep2022Url gate from both cards: 2 failed, 4 passed. Restoring the hardcoded Inner West #sec.5.10 URL in HeritageProvisionsCard: 2 failed, 4 passed. Restored: 6 passed. Disabling the route's EPI prefix check: 1 failed, 2 passed (Waverley epi-2012-0540 no longer 404s).",
+  "measured": "Full frontend suite 109 suites / 1,494 tests passed; tsc --noEmit reports no errors in changed files."
+ },
+ "functions": [
+  {
+   "name": "legislationAnchorUrl",
+   "file_line": "frontend-nextjs/lib/citation-instrument-urls.ts",
+   "input": "base legislation URL (Portal prop or registry constant) + anchor like 'sec.5.10'",
+   "output": "href string for an <a>",
+   "if_none": "null base -> null; callers render no link"
   },
-  "falsifiable_check": {
-    "command": "cd frontend-nextjs && npx jest __tests__/components/compliance/lep-sepp-live-citations.test.tsx __tests__/lib/citation-instrument-urls.test.ts __tests__/api/lep-provisions-scope.test.ts",
-    "fails_when": "The Inner-West-only /api/lep/provisions fetch is un-gated for another council's LEP, a static Inner West URL or page image is restored in the clause 5.10 / Key Site panels, a SEPP link stops pointing at the in-force epi-2021-0714 anchor, or the E&C URL reverts to epi-2008-572.",
-    "observed_red": "Forced, each restored afterwards. Removing the isInnerWestLep2022Url gate from both cards: 2 failed, 4 passed. Restoring the hardcoded Inner West #sec.5.10 URL in HeritageProvisionsCard: 2 failed, 4 passed. Restored: 6 passed. Disabling the route's EPI prefix check: 1 failed, 2 passed (Waverley epi-2012-0540 no longer 404s).",
-    "measured": "Full frontend suite 109 suites / 1,494 tests passed; tsc --noEmit reports no errors in changed files."
+  {
+   "name": "storedLepTextEpi",
+   "file_line": "frontend-nextjs/lib/citation-instrument-urls.ts",
+   "input": "Planning Portal legislationUrl string for the property's LEP, possibly undefined",
+   "output": "EPI id string when LEP_TEXT_DOCUMENT_PREFIXES lists it, sent as ?epi= to /api/lep/provisions",
+   "if_none": "null -> no fetch; the live clause link is shown instead"
   },
-  "functions": [
-    {
-      "name": "legislationAnchorUrl",
-      "file_line": "frontend-nextjs/lib/citation-instrument-urls.ts",
-      "input": "base legislation URL (Portal prop or registry constant) + anchor like 'sec.5.10'",
-      "output": "href string for an <a>",
-      "if_none": "null base -> null; callers render no link"
-    },
-    {
-      "name": "storedLepTextEpi",
-      "file_line": "frontend-nextjs/lib/citation-instrument-urls.ts",
-      "input": "Planning Portal legislationUrl string for the property's LEP, possibly undefined",
-      "output": "EPI id string when LEP_TEXT_DOCUMENT_PREFIXES lists it, sent as ?epi= to /api/lep/provisions",
-      "if_none": "null -> no fetch; the live clause link is shown instead"
-    },
-    {
-      "name": "GET /api/lep/provisions",
-      "file_line": "frontend-nextjs/app/api/lep/provisions/route.ts",
-      "input": "clause and epi query parameters from the LEP tab heritage and local provisions cards",
-      "output": "one stored clause row as JSON for that instrument only",
-      "if_none": "missing clause or epi -> 400; EPI with no stored text -> 404 without a DB call; no row -> 404"
-    }
-  ],
-  "values": [
-    {
-      "value": "heritageLegislationUrl / provision.legislationUrl",
-      "read_at": "HeritageProvisionsCard.tsx, LocalProvisionsCard.tsx",
-      "nullable": "yes",
-      "guard_at": "legislationAnchorUrl null-return + conditional render",
-      "if_missing": "text note, no link"
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "Stored clause text for one LEP instrument",
-      "file_line": "frontend-nextjs/app/api/lep/provisions/route.ts",
-      "where_clause": "WHERE left(document_id, length($2)) = $2 AND ref_number = $1 AND is_current IS NOT FALSE",
-      "if_zero": "404; the card falls back to the live in-force clause link",
-      "if_wrong": "Previously matched clause number across all Inner West documents for any council; now bounded to the requested EPI's document prefix. is_current IS NOT FALSE excludes only rows explicitly marked superseded."
-    }
-  ],
-  "break_it": [
-    {
-      "scenario": "Waverley heritage lot expands clause 5.10.",
-      "what_happens": "Before: Inner West LEP 2022 page-50 PNG and Inner West URL shown as this lot's LEP. After: link to Waverley LEP #sec.5.10, no image, no Inner West text, no fetch.",
-      "mitigated": true,
-      "how": "HeritageProvisionsCard uses legislationAnchorUrl(heritageLegislationUrl) and gates the fetch on isInnerWestLep2022Url.",
-      "repro": "npx jest __tests__/components/compliance/lep-sepp-live-citations.test.tsx"
-    },
-    {
-      "scenario": "Non-Inner-West Key Site clause 6.x expanded on the LEP tab.",
-      "what_happens": "Before: /api/lep/provisions returned Inner West clause 6.x text (matched on clause number only) plus an iwlep PNG. After: no fetch, live clause link.",
-      "mitigated": true,
-      "how": "LocalProvisionsCard toggleProvision gated on isInnerWestLep2022Url; image branch removed.",
-      "repro": "npx jest __tests__/components/compliance/lep-sepp-live-citations.test.tsx -t 'Key Site'"
-    },
-    {
-      "scenario": "A SEPP tab card's hardcoded clause label is wrong.",
-      "what_happens": "The link opens a different in-force section than the card describes. The previous static image had the same exposure but was frozen to an old version and, for sepp-housing, pointed at unpublished paths.",
-      "mitigated": false,
-      "how": "Anchors reuse the clause each card already cites; flagged for review (clause 42 label, hardcoded parking rates) rather than reinterpreted.",
-      "repro": "Open SEPP tab > TOD Parking Reductions, follow each link on legislation.nsw.gov.au"
-    }
-  ],
-  "post_merge": {
-    "db_reset": "No",
-    "secrets": "No",
-    "other_repo": "No",
-    "manual_verify": "Yes -- click each SEPP tab link on the preview and confirm the anchor lands on the cited section."
+  {
+   "name": "GET /api/lep/provisions",
+   "file_line": "frontend-nextjs/app/api/lep/provisions/route.ts",
+   "input": "clause and epi query parameters from the LEP tab heritage and local provisions cards",
+   "output": "one stored clause row as JSON for that instrument only",
+   "if_none": "missing clause or epi -> 400; EPI with no stored text -> 404 without a DB call; no row -> 404"
   }
+ ],
+ "values": [
+  {
+   "value": "heritageLegislationUrl / provision.legislationUrl",
+   "read_at": "HeritageProvisionsCard.tsx, LocalProvisionsCard.tsx",
+   "nullable": "yes",
+   "guard_at": "legislationAnchorUrl null-return + conditional render",
+   "if_missing": "text note, no link"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Stored clause text for one LEP instrument",
+   "file_line": "frontend-nextjs/app/api/lep/provisions/route.ts",
+   "where_clause": "WHERE left(document_id, length($2)) = $2 AND ref_number = $1 AND is_current IS NOT FALSE",
+   "if_zero": "404; the card falls back to the live in-force clause link",
+   "if_wrong": "Previously matched clause number across all Inner West documents for any council; now bounded to the requested EPI's document prefix. is_current IS NOT FALSE excludes only rows explicitly marked superseded."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Waverley heritage lot expands clause 5.10.",
+   "what_happens": "Before: Inner West LEP 2022 page-50 PNG and Inner West URL shown as this lot's LEP. After: link to Waverley LEP #sec.5.10, no image, no Inner West text, no fetch.",
+   "mitigated": true,
+   "how": "HeritageProvisionsCard uses legislationAnchorUrl(heritageLegislationUrl) and gates the fetch on isInnerWestLep2022Url.",
+   "repro": "npx jest __tests__/components/compliance/lep-sepp-live-citations.test.tsx"
+  },
+  {
+   "scenario": "Non-Inner-West Key Site clause 6.x expanded on the LEP tab.",
+   "what_happens": "Before: /api/lep/provisions returned Inner West clause 6.x text (matched on clause number only) plus an iwlep PNG. After: no fetch, live clause link.",
+   "mitigated": true,
+   "how": "LocalProvisionsCard toggleProvision gated on isInnerWestLep2022Url; image branch removed.",
+   "repro": "npx jest __tests__/components/compliance/lep-sepp-live-citations.test.tsx -t 'Key Site'"
+  },
+  {
+   "scenario": "A SEPP tab card's hardcoded clause label is wrong.",
+   "what_happens": "The link opens a different in-force section than the card describes. The previous static image had the same exposure but was frozen to an old version and, for sepp-housing, pointed at unpublished paths.",
+   "mitigated": false,
+   "how": "Anchors reuse the clause each card already cites; flagged for review (clause 42 label, hardcoded parking rates) rather than reinterpreted.",
+   "repro": "Open SEPP tab > TOD Parking Reductions, follow each link on legislation.nsw.gov.au"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes -- click each SEPP tab link on the preview and confirm the anchor lands on the cited section."
+ }
 }
