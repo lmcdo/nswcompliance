@@ -1,27 +1,31 @@
 {
   "tier": "standard",
-  "justification": "Two new DQ ledger rows with checks (freeze rule), and a guard in a registry-writing script. No serving code, no schema, no production write in this PR.",
-  "commit_hash": "df4bdc9e",
+  "justification": "Two new DQ ledger rows with checks (freeze rule), and a guard in a registry-writing script. No serving code, no schema, no production write in this PR. Also fixes DQ-129 (wording agreed with the user): 'N council plans', and a former-council plan named by its merged council and area; OC-17's checker expects that name.",
+  "commit_hash": "6aaec8b1",
   "files": [
     ".claude/dq_checks.json",
     ".claude/DATA_QUALITY_TRACKER.md",
     "scripts/dq_probe_app_defects.py",
     "scripts/register_orphan_chapters.py",
     "tests/test_dq_probe_app_defects_real_db.py",
-    "tests/test_register_orphan_chapters_real_db.py"
+    "tests/test_register_orphan_chapters_real_db.py",
+    "frontend-nextjs/app/what-you-get/page.tsx",
+    "frontend-nextjs/shared/dcp-scoped-councils.json",
+    "scripts/outreach_scoped_councils.py",
+    "tests/test_outreach_scoped_councils_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "Reused dq_probe_app_defects.py (_sql_count, _db) and its real-DB test file; the guard reads lga_registry.parent_lga, the rollup the project rules name. DQ-105's note already describes these 11 rows, but as a false positive in its own check, not as a defect -- no existing check counts them.",
     "assumption_mismatch": "The prompt said 'find what writes inner_west'. Measured: dcp_extract_changed.py copies dcp_chapter_registry.council; the wrong value came from register_orphan_chapters.py NEW_CHAPTERS (registry ids 747-749). All three duplicate chapters already registered under the former council, and no current dcp_setback_controls row references them.",
     "new_vs_existing": "Additive: two ledger rows, two probe functions, one guard. Three NEW_CHAPTERS tuples removed so a rerun cannot re-register the duplicates.",
     "external_source_error": "N/A -- no external source; the checks read the production DB (exit 2 when unreachable) and a source file.",
-    "frontend_type": "N/A -- no frontend code touched.",
+    "frontend_type": "what-you-get/page.tsx: two strings changed and the list sorted by displayed name; types unchanged (JSON import of {slug,name}[]).",
     "user_failure_mode": "None from this PR. The defect it logs: a Marrickville or Ashfield property is served duplicate and page-footer text as rules (DQ-128), and the public page calls a former-council plan a council (DQ-129)."
   },
   "falsifiable_check": {
     "command": "python scripts/dq_probe_app_defects.py --id DQ-128 ; python scripts/dq_probe_app_defects.py --id DQ-129 ; python scripts/dq_check.py --coverage",
     "fails_when": "DQ-128 exits 1 while any served row carries a parent slug on a former council's document; DQ-129 exits 1 while the stat says 'councils' and the list names a former council.",
-    "observed_red": "Both exit 1 on production today (11 rows; 'councils' with leichhardt). dq_check --id for each PASSES because both are declared open. Unit tests force each outcome (red, clean, could-not-look)."
+    "observed_red": "Both exit 1 on production today (11 rows; 'councils' with leichhardt). dq_check --id for each PASSES because both are declared open. Unit tests force each outcome (red, clean, could-not-look). After the DQ-129 fix: DQ-129 exits 0; OC-17 PASS 12 of 18; restoring 'Leichhardt' makes OC-17 FAIL."
   },
   "functions": [
     {
@@ -67,6 +71,13 @@
       "mitigated": true,
       "how": "dq129 returns 1 when the stat no longer reads scopedCouncils.councils.length (test_dq129_red_when_the_stat_stops_reading_the_list).",
       "repro": "python -m pytest tests/test_dq_probe_app_defects_real_db.py -q -k dq129"
+    },
+    {
+      "scenario": "A later regeneration of dcp-scoped-councils.json writes the registry's bare 'Leichhardt' again.",
+      "what_happens": "The page would again present a former-council plan as a whole council.",
+      "mitigated": true,
+      "how": "OC-17's universe SQL now expects 'Inner West (former Leichhardt area only)' for any council with parent_lga; mutation (reverting the name) made outreach_scoped_councils.py FAIL; real-DB test asserts the computed name.",
+      "repro": "python scripts/outreach_scoped_councils.py"
     }
   ],
   "post_merge": {
