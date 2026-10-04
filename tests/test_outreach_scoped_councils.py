@@ -22,8 +22,8 @@ EXC = {"council": "cb", "field": "applicable_dev_types", "chapters": ["ch-school
 
 
 class _Cur:
-    def __init__(self, universe, split, total):
-        self._answers = [universe, split, [(total,)]]
+    def __init__(self, universe, split, total, no_config=()):
+        self._answers = [universe, split, [(total,)], list(no_config)]
         self._last = None
 
     def __enter__(self):
@@ -43,8 +43,8 @@ class _Cur:
 
 
 class _Conn:
-    def __init__(self, universe, split, total):
-        self.cur = _Cur(universe, split, total)
+    def __init__(self, universe, split, total, no_config=()):
+        self.cur = _Cur(universe, split, total, no_config)
 
     def cursor(self):
         return self.cur
@@ -60,12 +60,13 @@ SPLIT = [("bb", "ch-x", "applicable_zones", 2), ("cb", "ch-schools", "applicable
 
 @pytest.fixture
 def world(monkeypatch, tmp_path):
-    state = {"universe": UNIVERSE, "split": SPLIT, "total": 9, "dq115": {}, "orphans": []}
+    state = {"universe": UNIVERSE, "split": SPLIT, "total": 9, "dq115": {}, "orphans": [], "no_config": []}
     monkeypatch.setattr(osc, "_dq115_by_council",
                         lambda slugs: (state["dq115"], state["orphans"]))
     import dq_db
     monkeypatch.setattr(dq_db, "connect",
-                        lambda: _Conn(state["universe"], state["split"], state["total"]))
+                        lambda: _Conn(state["universe"], state["split"], state["total"],
+                                      state["no_config"]))
     pub = tmp_path / "pub.json"
     monkeypatch.setattr(osc, "PUBLISHED", pub)
 
@@ -125,6 +126,14 @@ def test_dq115_hit_delists_and_orphan_hit_fails(world):
     world["orphans"] = ["warringah/parts/X"]
     verdict, text = osc.check()
     assert verdict == osc.FAIL and "warringah/parts/X" in text
+
+
+def test_no_config_rows_delist_and_no_exception_reaches_them(world):
+    # DQ-33 is a fleet floor, so it passes while a council serves unscoped rows. The list must not.
+    world["no_config"] = [("aa", 3), ("cb", 0)]
+    world["publish"]([("aa", "Aa"), ("cb", "Cb")])
+    verdict, text = osc.check()
+    assert verdict == osc.FAIL and "published but fails: aa (no_config 3)" in text
 
 
 def test_wrong_display_name_fails(world):

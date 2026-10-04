@@ -3,10 +3,6 @@
   "claim": "For the councils listed, every rule shown carries the council's own sentence and the clause it came from, in the plan registered as in force. Known exceptions are stated.",
   "councils": [
     {
-      "slug": "ashfield",
-      "name": "Ashfield"
-    },
-    {
       "slug": "blacktown",
       "name": "Blacktown"
     },
@@ -19,10 +15,6 @@
       "name": "City of Sydney"
     },
     {
-      "slug": "cumberland",
-      "name": "Cumberland"
-    },
-    {
       "slug": "georges_river",
       "name": "Georges River"
     },
@@ -31,24 +23,12 @@
       "name": "Hornsby"
     },
     {
-      "slug": "inner_west",
-      "name": "Inner West"
-    },
-    {
       "slug": "ku_ring_gai",
       "name": "Ku-ring-gai"
     },
     {
       "slug": "leichhardt",
       "name": "Leichhardt"
-    },
-    {
-      "slug": "marrickville",
-      "name": "Marrickville"
-    },
-    {
-      "slug": "northern_beaches",
-      "name": "Northern Beaches"
     },
     {
       "slug": "penrith",

@@ -24,6 +24,12 @@ HOW A COUNCIL IS LISTED
   * DQ-114 per council: no served rule in it takes a zone or development-type scope from a
     non-decision, except rows a stated exception names exactly (council + chapter + key).
   * DQ-115 per council: every scope its config declares carries the council's own sentence.
+  * No served rule in it takes either scope key from `no_config` -- no entry matched and its text named
+    nothing, so it reaches every property and project by fallthrough. DQ-114 leaves this source to
+    DQ-33, and DQ-33 is a FLEET FLOOR that may only fall, not a zero: it passes while hundreds of such
+    rows sit in a council. The first version of this file listed five councils carrying them (ashfield
+    118, marrickville 273, northern_beaches 154+, inner_west 1, cumberland 3) because it read DQ-114
+    alone. Caught 2026-10-04 by DQ-105 going red on cumberland, before the list was merged.
 
 THE PUBLISHED LIST is frontend-nextjs/shared/dcp-scoped-councils.json, which the site renders. The
 check passes only when that list equals the computed one, in BOTH directions: naming a council that
@@ -62,6 +68,17 @@ SELECT source_council, source_chapter_key, 'applicable_zones', count(*) FROM reg
 #: Every council serving rule text, with its ACTIVE registry name. The is_active test sits in the join, not
 #: the WHERE: a council whose registry row is retired still serves rules, so it stays in the universe with a
 #: NULL name, and a published name for it then fails as a mismatch instead of the council vanishing.
+#: Keys a served rule takes from no_config, per council -- DQ-33's population, split, counted per key like
+#: DQ-114. No stated exception reaches these: an exception names a decision that cannot be expressed, and
+#: here nobody decided anything.
+_NO_CONFIG_SQL = """
+SELECT source_council,
+       count(*) FILTER (WHERE v2_dev_type_source = 'no_config')
+     + count(*) FILTER (WHERE v2_zone_source = 'no_config')
+  FROM regulatory_provisions
+ WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
+ GROUP BY 1"""
+
 _UNIVERSE_SQL = """
 SELECT DISTINCT p.source_council, r.display_name FROM regulatory_provisions p
   LEFT JOIN lga_registry r ON r.slug = p.source_council AND r.is_active
@@ -103,6 +120,8 @@ def compute(conn, exceptions: list[dict]) -> tuple[dict[str, str], dict[str, str
         _h, dq114_sql, params, _m = PROBES["DQ-114"]
         cur.execute(dq114_sql, params)
         dq114_total = cur.fetchone()[0]
+        cur.execute(_NO_CONFIG_SQL)
+        no_config = {council: n for council, n in cur.fetchall() if n}
 
     split_total = sum(row[3] for row in split)
     if split_total != dq114_total:
@@ -129,6 +148,8 @@ def compute(conn, exceptions: list[dict]) -> tuple[dict[str, str], dict[str, str
         why = []
         if undecided.get(slug):
             why.append(f"DQ-114 {undecided[slug]}")
+        if no_config.get(slug):
+            why.append(f"no_config {no_config[slug]}")
         if dq115.get(slug):
             why.append(f"DQ-115 {dq115[slug]}")
         reasons[slug] = ", ".join(why)
