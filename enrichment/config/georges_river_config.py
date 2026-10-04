@@ -38,6 +38,15 @@ GEORGES_RIVER_CONFIG: dict = {
         "part_3_general_planning_considerations": {
             "applicable_zones": ["ALL"],
             "applicable_dev_types": ["ALL"],
+            "scope_evidence": {
+                "applicable_zones":
+                    "Part 3, verbatim: 'applies to all forms of development' -- a "
+                    "general-planning-considerations Part binds every application, so ALL "
+                    "is a decision rather than a fallthrough.",
+                "applicable_dev_types":
+                    "Part 3, verbatim: 'applies to all forms of development' -- the scope is "
+                    "stated once and binds both keys.",
+            },
             "layer": "generic",
         },
 

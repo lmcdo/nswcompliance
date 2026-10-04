@@ -38,6 +38,15 @@ HORNSBY_CONFIG: dict = {
         "part_1_general": {
             "applicable_zones": ["ALL"],
             "applicable_dev_types": ["ALL"],
+            "scope_evidence": {
+                "applicable_zones":
+                    "Introduction, verbatim: 'This Development Control Plan (DCP) applies to "
+                    "all land' within the Hornsby Shire. A general-provisions Part binds every "
+                    "application, so ALL is a decision.",
+                "applicable_dev_types":
+                    "Introduction, verbatim: 'This Development Control Plan (DCP) applies to "
+                    "all land' -- the scope is stated once and binds both keys.",
+            },
             "layer": "generic",
         },
 
