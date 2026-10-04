@@ -498,13 +498,21 @@ export async function GET(request: NextRequest) {
       // Done before TOC grouping so buildPartNameMap can drive part titles automatically.
       const chapterPdfUrls: Record<string, string> = {};
       const chapterLabels: Record<string, string> = {};
-      let dcpCurrency: { verified_at: string | null; amendment_pending: boolean } | null = null;
+      let dcpCurrency: {
+        verified_at: string | null;
+        amendment_pending: boolean;
+        dcp_names: Array<{ name: string; provisions: number }>;
+        /** Served rules whose plan the registry does not name -- so dcp_names is not the whole list. */
+        unattributed_provisions: number;
+      } | null = null;
+      // chapter_key -> the registry's own name for the plan that chapter belongs to (DQ-123).
+      const chapterDcpNames: Record<string, string> = {};
 
       if (filters.former_council) {
         const councilSlug = filters.former_council.toLowerCase();
         const registryResult = await client.query(
           `SELECT chapter_key, r2_public_pdf_url, council_url, council_page_url,
-                  chapter_label, needs_extraction
+                  chapter_label, needs_extraction, dcp_name
            FROM dcp_chapter_registry
            WHERE council = $1 AND is_active = TRUE`,
           [councilSlug]
@@ -533,7 +541,23 @@ export async function GET(request: NextRequest) {
           if (chapterUrl) chapterPdfUrls[row.chapter_key] = chapterUrl;
           if (row.chapter_label) chapterLabels[row.chapter_key] = row.chapter_label;
           if (row.needs_extraction) amendmentPending = true;
+          if (row.dcp_name) chapterDcpNames[row.chapter_key] = row.dcp_name;
         }
+
+        // DQ-123: name the plan(s) the rules on THIS page come from, by counting the served
+        // provisions per registry dcp_name -- not a hand-typed table that was wrong for 8 councils.
+        const servedByPlan = new Map<string, number>();
+        let unattributed = 0;
+        for (const layer of adjustedResults) {
+          for (const prov of layer.provisions ?? []) {
+            const name = prov?.source_chapter_key ? chapterDcpNames[prov.source_chapter_key] : undefined;
+            if (name) servedByPlan.set(name, (servedByPlan.get(name) ?? 0) + 1);
+            else unattributed += 1;
+          }
+        }
+        const dcpNames = [...servedByPlan.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .map(([name, provisions]) => ({ name, provisions }));
 
         // Last verified date from instrument_currency (set by weekly monitor after clean run)
         const currencyResult = await client.query(
@@ -546,6 +570,8 @@ export async function GET(request: NextRequest) {
         dcpCurrency = {
           verified_at: verifiedAt ? verifiedAt.toISOString() : null,
           amendment_pending: amendmentPending,
+          dcp_names: dcpNames,
+          unattributed_provisions: unattributed,
         };
       }
       const partNameMap = buildPartNameMap(chapterLabels);

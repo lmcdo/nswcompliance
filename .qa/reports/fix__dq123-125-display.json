@@ -1,0 +1,101 @@
+{
+  "tier": "standard",
+  "justification": "Standard: three display defects on the provisions page (wrong plan name, a false 'not loaded' note, literal table markup). No value served changes; the plan name and table cells now come from data already held instead of a hand-typed table and raw markup.",
+  "commit_hash": "cd977b31",
+  "files": [
+    "frontend-nextjs/lib/provision-tables.ts",
+    "frontend-nextjs/components/compliance/FormattedProvisionText.tsx",
+    "frontend-nextjs/components/compliance/PageGroupedProvisions.tsx",
+    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/components/pdf/ProvisionTable.tsx",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/lib/lga-data/verify-lgas.ts",
+    "frontend-nextjs/__tests__/lib/provision-tables.test.ts",
+    "frontend-nextjs/__tests__/components/formatted-provision-tables.test.tsx",
+    "scripts/dq_probe_app_defects.py",
+    "tests/test_dq_probe_app_defects_real_db.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "frontend-nextjs/app/api/instrument-currency/route.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry.dcp_name already names each chapter's plan (31 councils measured); regulatory_provisions holds 1,064 served rules with 2,538 closed HTML tables, table tags only, no script/img/link/handler.",
+    "assumption_mismatch": "The page assumed a fixed council-to-plan name; the registry shows 8 councils served from a different plan or year (Waverley 2022 not 2012, Northern Beaches from Warringah DCP 2011). The text renderer assumed provision text is prose; 2,538 tables were printed as tags.",
+    "new_vs_existing": "Reused the registry query already in for-property (added dcp_name to its SELECT) instead of a new endpoint; no existing table parser existed (provision-text-formatter has no HTML handling, sanitize.ts only serves innerHTML views)."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_app_defects.py --id DQ-125   (and --id DQ-123, --id DQ-124)",
+    "fails_when": "DQ-125 exits 1 when any served renderer stops routing text through provision-tables.ts or a served rule holds an unclosed table; DQ-123 exits 1 while councilDcpNames exists with a wrong year; DQ-124 exits 1 when the note renders unconditionally.",
+    "observed_red": "Forced on the PDF renderer 2026-10-04: DQ-125 exit 1 naming components/pdf/ProvisionTable.tsx. On origin/main DQ-123 read 8 councils and DQ-124 unconditional (exit 1)."
+  },
+  "functions": [
+    {
+      "name": "splitProvisionTables",
+      "file_line": "frontend-nextjs/lib/provision-tables.ts",
+      "input": "provision_text from regulatory_provisions, possibly holding extractor HTML tables",
+      "output": "ordered prose and table segments; tables as string rows with entirely-empty columns dropped",
+      "if_none": "text without a table returns one unchanged text segment; an unclosed table is left as text and counted by DQ-125"
+    },
+    {
+      "name": "for-property GET dcp_names",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts",
+      "input": "served provisions with source_chapter_key, and dcp_chapter_registry rows for the council",
+      "output": "meta.dcp_currency.dcp_names: registry plan names with provision counts, most first",
+      "if_none": "empty list; the currency line is not rendered rather than naming a guessed plan"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "registry plan name per chapter for the requested council",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts (registry SELECT)",
+      "where_clause": "WHERE council = $1 AND is_active = TRUE",
+      "if_zero": "no dcp_names, so the currency line is hidden; nothing hardcoded is shown in its place",
+      "if_wrong": "the name shown is the registry's own dcp_name, the same source DQ-123's check compares against"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A provision row carries table markup with a script or event-handler attribute",
+      "what_happens": "Injected HTML would run in the reader's browser if rendered via innerHTML",
+      "mitigated": true,
+      "how": "cells become plain strings rendered by React; tags are stripped from cell text, nothing reaches innerHTML",
+      "repro": "measured 0 served rows with script/iframe/img/a/style/on*= tags; parser has no innerHTML path"
+    },
+    {
+      "scenario": "A table whose header and values sit in different columns (Waverley side setback)",
+      "what_happens": "Dropping columns could detach a value from its header and misstate the control",
+      "mitigated": true,
+      "how": "only columns empty in every row are dropped; all values keep their original column order",
+      "repro": "jest provision-tables: keeps every value and drops only columns empty in every row"
+    },
+    {
+      "scenario": "A served rule holds a <table> with no </table>",
+      "what_happens": "The parser leaves it as prose and the literal markup would still show on screen",
+      "mitigated": true,
+      "how": "DQ-125 counts such rows and goes red; measured 0 on 2026-10-04",
+      "repro": "python scripts/dq_probe_app_defects.py --id DQ-125"
+    },
+    {
+      "scenario": "A property served from two plans (e.g. Ku-ring-gai rows tagged 'Ku-ring-gai DCP 2024' and 'Ku-ring-gai DCP')",
+      "what_happens": "A single name would hide the second plan the rules on the page come from",
+      "mitigated": true,
+      "how": "dcp_names lists every plan with served rules, most first, joined on the currency line",
+      "repro": "registry query shows both spellings for ku_ring_gai; both would print"
+    },
+    {
+      "scenario": "A merged council (Marrickville) whose LEP is the parent's, and an LEP whose registry row names no council (inner_west_lep_2022)",
+      "what_happens": "A strict council match would hide the only LEP that applies, leaving the panel without one",
+      "mitigated": true,
+      "how": "the parent from lga_registry is included, and a NULL registry council falls back to the slug the key starts with",
+      "repro": "query run read-only for marrickville returns inner_west_lep_2022 plus its DCP and the two SEPPs"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- after deploy, open a Waverley address (60 Hall St, Bondi Beach) and confirm the currency line names Waverley DCP 2022 and the C2 table renders as a table."
+  }
+}

@@ -7,6 +7,7 @@ would turn the row green while the wrong property is served. The SQL checks run 
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -52,6 +53,87 @@ def test_sql_checks_run_against_the_real_database(check):
     rc, msg = p.CHECKS[check]()
     assert rc in (0, 1), msg  # 2 would mean it could not look; a broken query raises
     assert msg
+
+
+# --- DQ-125: red when a served renderer stops handling tables, whatever the data says. ---
+
+def test_dq125_red_when_a_renderer_is_not_routed(monkeypatch, tmp_path):
+    fe = tmp_path / "frontend-nextjs"
+    for rel, body in {
+        "components/compliance/FormattedProvisionText.tsx": "splitProvisionTables(",
+        "components/compliance/PageGroupedProvisions.tsx": "provisionTablesToPlainText(provision.provision_text",
+        "components/pdf/ProvisionTable.tsx": "sanitizeForPdf(provision.provision_text)",  # not routed
+    }.items():
+        f = fe / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(body, encoding="utf-8")
+    monkeypatch.setattr(p, "ROOT", tmp_path)
+    monkeypatch.setattr(p, "_sql_count", lambda sql, what: (0, f"0 {what}"))
+    rc, msg = p.dq125()
+    assert rc == 1 and "pdf/ProvisionTable.tsx" in msg
+
+
+def test_dq125_could_not_look_is_never_clean(monkeypatch):
+    monkeypatch.setattr(p, "_sql_count", lambda sql, what: (2, "database unreachable"))
+    assert p.dq125()[0] == 2
+
+
+# --- DQ-127: another council's LEP in a Waverley property's currency panel. ---
+
+class _Resp:
+    def __init__(self, body):
+        self._b = json.dumps(body).encode()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def read(self, *a):
+        return self._b
+
+
+def _serve(monkeypatch, rows):
+    monkeypatch.setattr(p.urllib.request, "urlopen", lambda req, timeout=60: _Resp({"currency": rows}))
+
+
+def test_dq127_red_on_a_foreign_lep(monkeypatch):
+    _serve(monkeypatch, [{"instrument_key": "waverley_lep_2012", "instrument_type": "lep"},
+                         {"instrument_key": "bayside_lep_2021", "instrument_type": "lep"}])
+    rc, msg = p.dq127()
+    assert rc == 1 and "bayside_lep_2021" in msg
+
+
+def test_dq127_clean_with_own_lep_and_statewide_sepps(monkeypatch):
+    _serve(monkeypatch, [{"instrument_key": "waverley_lep_2012", "instrument_type": "lep"},
+                         {"instrument_key": "housing_sepp", "instrument_type": "sepp"}])
+    assert p.dq127()[0] == 0
+
+
+def test_dq127_unreachable_is_could_not_look(monkeypatch):
+    def boom(req, timeout=60):
+        raise OSError("down")
+    monkeypatch.setattr(p.urllib.request, "urlopen", boom)
+    assert p.dq127()[0] == 2
+
+
+@pytest.mark.database
+def test_dq127_runs_against_the_live_site():
+    _need_db()
+    rc, msg = p.dq127()
+    assert rc in (0, 1), msg
+
+
+def test_dq127_red_when_the_own_lep_is_missing(monkeypatch):
+    _serve(monkeypatch, [{"instrument_key": "housing_sepp", "instrument_type": "sepp"}])
+    rc, msg = p.dq127()
+    assert rc == 1 and "exactly once" in msg
+
+
+def test_dq127_red_when_the_own_lep_is_doubled(monkeypatch):
+    _serve(monkeypatch, [{"instrument_key": "waverley_lep_2012", "instrument_type": "lep"}] * 2)
+    assert p.dq127()[0] == 1
 
 
 # --- DQ-122 verdict: an address the register lacks must say NOT FOUND; one it holds must come back. ---

@@ -1456,7 +1456,7 @@
    "note": "Opened 2026-10-04. `requires` points at the fetched-PDF cache so a machine that has never run the fetch reports UNKNOWN rather than red -- DQ-32's precedent, where CI's python job has no frontend-nextjs/node_modules and could-not-look read as found-something, turning main red on 2026-08-12. THREE VERDICTS, none of them a pass except OK: MISSING (the words are nowhere in that council's PDFs), ELSEWHERE (real words, but in a chapter other than the one cited -- an inherited plan sentence, or a wrong citation), UNRESOLVED (no single registry chapter with a public PDF; city_of_sydney section-1/2/5/6 carry r2_public_pdf_url NULL), UNPARSED (evidence that asserts a scope but marks no `verbatim:` and so cannot be checked at all). FIRST RUN 2026-10-03 found three real errors: Warringah section A.6 was misquoted as placing the built-form controls in Parts C, D and E when it names Part B, and a conclusion had been built on the misquote; the same re-read surfaced A.6's unrecorded exclusion that Part B does not apply inside Part G areas except G10; and two Campbelltown quotes cannot be verified contiguously because the PDF text layer interleaves an adjacent column into the sentence. It also found two bugs in itself first -- loose() stripped accents instead of folding them, and the span extractor harvested our own prose split on an apostrophe -- so its precision is what tests/test_dq_probe_scope_evidence_fidelity.py covers. After the fixes campbelltown, warringah, waverley and wollongong read 47 spans OK and 0 MISSING. NOT wired into gates.yml: the first run fetches ~111 PDFs, which belongs to a deliberate run rather than to every pull request, the same reason verify_extraction_fidelity.py is not a per-PR gate."
   },
   "DQ-122": {
-   "declared": "open",
+   "declared": "fixed",
    "check": [
     "python",
     "scripts/dq_probe_app_defects.py",
@@ -1467,37 +1467,37 @@
    "note": "Logged 2026-10-04 as backlog under the freeze rule, found by using the live app on real addresses (see the tracker row)."
   },
   "DQ-123": {
-   "declared": "open",
-   "check": [
-    "python",
-    "scripts/dq_probe_app_defects.py",
-    "--id",
-    "DQ-123"
-   ],
-   "passes_when": "exit 0 - every DCP name in ProvisionsByTocStructure.tsx councilDcpNames that carries a year carries the year of the plan the council's served rules and numbers mostly come from (dcp_chapter_registry.dcp_name), or the hardcoded table is gone.",
-   "note": "Logged 2026-10-04 as backlog under the freeze rule, found by using the live app on real addresses (see the tracker row)."
+    "declared": "fixed",
+    "check": [
+      "python",
+      "scripts/dq_probe_app_defects.py",
+      "--id",
+      "DQ-123"
+    ],
+    "passes_when": "exit 0 - every DCP name in ProvisionsByTocStructure.tsx councilDcpNames that carries a year carries the year of the plan the council's served rules and numbers mostly come from (dcp_chapter_registry.dcp_name), or the hardcoded table is gone.",
+    "note": "Logged 2026-10-04 as backlog under the freeze rule, found by using the live app on real addresses (see the tracker row)."
   },
   "DQ-124": {
-   "declared": "open",
-   "check": [
-    "python",
-    "scripts/dq_probe_app_defects.py",
-    "--id",
-    "DQ-124"
-   ],
-   "passes_when": "exit 0 - the 'full chapter text for this council is not loaded yet' note in DcpStructuredControls.tsx renders only when chapter text is absent, or is gone.",
-   "note": "Logged 2026-10-04 as backlog under the freeze rule, found by using the live app on real addresses (see the tracker row)."
+    "declared": "fixed",
+    "check": [
+      "python",
+      "scripts/dq_probe_app_defects.py",
+      "--id",
+      "DQ-124"
+    ],
+    "passes_when": "exit 0 - the 'full chapter text for this council is not loaded yet' note in DcpStructuredControls.tsx renders only when chapter text is absent, or is gone.",
+    "note": "Logged 2026-10-04 as backlog under the freeze rule, found by using the live app on real addresses (see the tracker row)."
   },
   "DQ-125": {
-   "declared": "open",
-   "check": [
-    "python",
-    "scripts/dq_probe_app_defects.py",
-    "--id",
-    "DQ-125"
-   ],
-   "passes_when": "exit 0 - no served rule's provision_text contains raw '<table' markup.",
-   "note": "Logged 2026-10-04 as backlog under the freeze rule, found by using the live app on real addresses (see the tracker row)."
+    "declared": "fixed",
+    "check": [
+      "python",
+      "scripts/dq_probe_app_defects.py",
+      "--id",
+      "DQ-125"
+    ],
+    "passes_when": "exit 0 - every served-path renderer (FormattedProvisionText, the collapsed previews in PageGroupedProvisions, the PDF ProvisionTable) routes provision text through lib/provision-tables.ts, AND no served rule holds a <table> without its </table>. Changed 2026-10-04 with the fix: the tables are rendered, so a count of '<table' in the data no longer measures the defect.",
+    "note": "Logged 2026-10-04 as backlog under the freeze rule, found by using the live app on real addresses (see the tracker row)."
   },
   "DQ-126": {
    "declared": "fixed",
@@ -1509,6 +1509,17 @@
    ],
    "passes_when": "exit 0 - no woollahra served row is on no_config while its own document_id names a Part the config has an entry for.",
    "note": "Logged 2026-10-04 as backlog under the freeze rule, found by using the live app on real addresses (see the tracker row)."
+  },
+  "DQ-127": {
+    "declared": "open",
+    "check": [
+      "python",
+      "scripts/dq_probe_app_defects.py",
+      "--id",
+      "DQ-127"
+    ],
+    "passes_when": "exit 0 - /api/instrument-currency?council=waverley lists no LEP but Waverley's own. Clears by giving each instrument_currency LEP row its council, or by the route not reading council NULL as statewide for LEPs. Exit 2 when the site cannot be reached.",
+    "note": "Logged 2026-10-04 as backlog under the freeze rule while fixing DQ-123 (the prompt's 'Waverley returns Bayside LEP rows')."
   }
  }
 }

@@ -68,6 +68,12 @@ interface DcpStructuredControlsProps {
    * that listed them, with the source plan named.
    */
   fallback?: React.ReactNode;
+  /**
+   * True when the caller has already shown this council's chapter text. The
+   * "full chapter text ... not loaded yet" note is then false and is not shown
+   * (DQ-124: it printed beneath loaded text).
+   */
+  chapterTextLoaded?: boolean;
 }
 
 const fetcher = async (url: string) => {
@@ -159,6 +165,7 @@ export function DcpStructuredControls({
   formerCouncil,
   devType = 'dwelling_house',
   fallback = null,
+  chapterTextLoaded = false,
 }: DcpStructuredControlsProps) {
   const [expanded, setExpanded] = useState(true);
   const [expandedSource, setExpandedSource] = useState<string | null>(null);
@@ -371,7 +378,7 @@ export function DcpStructuredControls({
           <p className="text-xs text-gray-400">
             Structured values extracted from the published DCP. Deterministic — same property, same result every time.
           </p>
-          {textNotLoadedNote}
+          {!chapterTextLoaded && textNotLoadedNote}
         </div>
       )}
     </div>

@@ -12,6 +12,7 @@
 import React, { useMemo } from 'react';
 import { parseProvisionText, FormattedElement, getElementClasses, ParseOptions, ProvisionTheme, hasInterleavedMapText, isMapScrambledLine } from '@/lib/provision-text-formatter';
 import { preProcessProvisionText } from '@/lib/dcp-format-configs';
+import { hasProvisionTable, splitProvisionTables, provisionTablesToPlainText, ProvisionTable } from '@/lib/provision-tables';
 
 interface FormattedProvisionTextProps {
   text: string;
@@ -84,7 +85,7 @@ function highlightText(text: string, query: string): React.ReactNode {
   );
 }
 
-export function FormattedProvisionText({
+function FormattedProvisionTextBody({
   text,
   className = '',
   compact = false,
@@ -322,7 +323,71 @@ export function FormattedProvisionText({
 /**
  * Simple inline variant for compact displays
  */
-export function FormattedProvisionTextInline({ text, theme = 'purple' }: { text: string; theme?: ProvisionTheme }) {
+/**
+ * DQ-125: a provision can carry the extractor's HTML tables. They are parsed into rows and cells and
+ * shown as a table (never injected as HTML); the prose around them renders as before.
+ */
+function ProvisionTableView({ table }: { table: ProvisionTable }) {
+  return (
+    <div className="my-3 overflow-x-auto" data-testid="provision-table">
+      <table className="min-w-full text-sm text-gray-700 border border-gray-200">
+        {table.head.length > 0 && (
+          <thead className="bg-gray-50">
+            {table.head.map((row, r) => (
+              <tr key={r}>
+                {row.map((cell, c) => (
+                  <th key={c} scope="col" className="px-2 py-1 text-left font-medium border-b border-gray-200">
+                    {cell}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+        )}
+        <tbody>
+          {table.body.map((row, r) => (
+            <tr key={r} className="border-t border-gray-100">
+              {row.map((cell, c) => (
+                <td key={c} className="px-2 py-1 align-top">
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function FormattedProvisionText(props: FormattedProvisionTextProps) {
+  const segments = useMemo(
+    () => (hasProvisionTable(props.text) ? splitProvisionTables(props.text) : null),
+    [props.text]
+  );
+  if (!segments) return <FormattedProvisionTextBody {...props} />;
+  return (
+    <div className={props.className}>
+      {segments.map((seg, idx) =>
+        seg.kind === 'table' ? (
+          <ProvisionTableView key={idx} table={seg.table} />
+        ) : (
+          <FormattedProvisionTextBody
+            key={idx}
+            {...props}
+            className=""
+            text={seg.text}
+            stripMarker={idx === 0 ? props.stripMarker : undefined}
+          />
+        )
+      )}
+    </div>
+  );
+}
+
+export function FormattedProvisionTextInline({ text: rawText, theme = 'purple' }: { text: string; theme?: ProvisionTheme }) {
+  // DQ-125: an inline preview prints text only, so any table is written as plain rows.
+  const text = useMemo(() => provisionTablesToPlainText(rawText), [rawText]);
   // Always skip headings for inline display - provision text shouldn't have bold headings
   const elements = useMemo(() => parseProvisionText(text, { skipHeadings: true }), [text]);
 

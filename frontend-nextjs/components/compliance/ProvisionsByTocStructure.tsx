@@ -393,6 +393,9 @@ export function ProvisionsByTocStructure({
       dcp_currency?: {
         verified_at: string | null;
         amendment_pending: boolean;
+        /** Plans the served rules come from, most rules first (dcp_chapter_registry.dcp_name). */
+        dcp_names?: Array<{ name: string; provisions: number }>;
+        unattributed_provisions?: number;
       } | null;
     };
   }>(apiUrl, fetcher, {
@@ -477,41 +480,14 @@ export function ProvisionsByTocStructure({
     [worksScopeAnswers, lepAutoScope]
   );
 
-  // DCP names for each council
-  const councilDcpNames: Record<string, string> = {
-    leichhardt: 'Leichhardt DCP 2013',
-    ashfield: 'Ashfield Comprehensive DCP 2016',
-    marrickville: 'Marrickville DCP 2011',
-    waverley: 'Waverley DCP 2012',
-    woollahra: 'Woollahra DCP 2015',
-    ku_ring_gai: 'Ku-ring-gai DCP',
-    city_of_sydney: 'City of Sydney DCP 2012',
-    bayside: 'Bayside DCP 2023',
-    blacktown: 'Blacktown DCP 2015',
-    campbelltown: 'Campbelltown DCP 2018',
-    canterbury_bankstown: 'Canterbury Bankstown DCP 2023',
-    cumberland: 'Cumberland DCP 2021',
-    georges_river: 'Georges River DCP 2022',
-    hornsby: 'Hornsby DCP 2013',
-    liverpool: 'Liverpool DCP 2008',
-    northern_beaches: 'Northern Beaches DCP 2022',
-    parramatta: 'Parramatta DCP 2023',
-    penrith: 'Penrith DCP 2014',
-    randwick: 'Randwick DCP 2013',
-    sutherland_shire: 'Sutherland Shire DCP 2015',
-    ryde: 'Ryde DCP 2014',
-    strathfield: 'Strathfield DCP 2005',
-    the_hills: 'The Hills DCP 2012',
-    camden: 'Camden DCP 2019',
-    canada_bay: 'Canada Bay DCP',
-    burwood: 'Burwood DCP',
-    fairfield: 'Fairfield City Wide DCP 2024',
-  };
 
   // Currency data from API (instrument_currency table, updated by weekly PDF hash monitor)
   const dcpCurrency = data?.meta?.dcp_currency ?? null;
   const verifiedAtRaw = dcpCurrency?.verified_at ?? null;
   const amendmentPending = dcpCurrency?.amendment_pending ?? false;
+  // DQ-123: the plan names come from the registry rows behind the rules actually served here.
+  const servedDcpNames = (dcpCurrency?.dcp_names ?? []).map((d) => d.name).filter(Boolean);
+  const unattributedCount = dcpCurrency?.unattributed_provisions ?? 0;
 
   // Format verified_at ISO string → human-readable "14 Apr 2026"
   const verifiedDateLabel = verifiedAtRaw
@@ -532,7 +508,6 @@ export function ProvisionsByTocStructure({
   );
 
   // Extract heritage provisions from condition layer (Layer 3)
-  const councilLower = formerCouncil?.toLowerCase() || '';
 
   // Auto-select first part on load ONLY in non-DA structure mode
   useEffect(() => {
@@ -1907,11 +1882,18 @@ export function ProvisionsByTocStructure({
   return (
     <div className="space-y-0">
       {/* DCP currency status — source document, last verified date, amendment/staleness states */}
-      {councilDcpNames[councilLower] && (
+      {(servedDcpNames.length > 0 || unattributedCount > 0) && (
         <div className="mb-4 space-y-1">
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isStale ? 'bg-amber-400' : amendmentPending ? 'bg-amber-400' : 'bg-green-500'}`} />
-            <span className="font-medium text-gray-700">{councilDcpNames[councilLower]}</span>
+            <span className="font-medium text-gray-700">
+              {servedDcpNames.length > 0 ? servedDcpNames.join(' · ') : 'Source plan not recorded'}
+            </span>
+            {unattributedCount > 0 && servedDcpNames.length > 0 && (
+              <span>
+                (and {unattributedCount} {unattributedCount === 1 ? 'rule' : 'rules'} whose source plan is not recorded)
+              </span>
+            )}
             <span>·</span>
             <span>Monitored weekly</span>
             {verifiedDateLabel && (
@@ -1944,7 +1926,7 @@ export function ProvisionsByTocStructure({
       )}
 
       {/* Structured DCP controls — extracted numeric values (setbacks, parking, landscaping etc.) */}
-      <DcpStructuredControls formerCouncil={formerCouncil} />
+      <DcpStructuredControls formerCouncil={formerCouncil} chapterTextLoaded />
 
       {/* Intake filtering via ancillary checkboxes in assessment page — no modal needed */}
 

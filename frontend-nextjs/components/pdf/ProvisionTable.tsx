@@ -5,6 +5,7 @@ import { ProvisionGroup } from '@/lib/pdf/types';
 import { formatCitation, parseParagraphsWithHighlights, sanitizeForPdf } from '@/lib/pdf/formatProvisions';
 import { styles } from './styles';
 import { pageAnchor } from '@/lib/page-citation';
+import { provisionTablesToPlainText } from '@/lib/provision-tables';
 
 interface ProvisionTableProps {
   group: ProvisionGroup;
@@ -69,7 +70,7 @@ export function ProvisionTable({ group, sectionNumber, isFirst = false, councilP
 
             {/* Subtopic Provisions */}
             {subtopic.provisions.map((provision, pIdx) => {
-              const sanitizedText = sanitizeForPdf(provision.provision_text || '');
+              const sanitizedText = sanitizeForPdf(provisionTablesToPlainText(provision.provision_text || ''));
               const paragraphs = parseParagraphsWithHighlights(sanitizedText);
 
               return (
@@ -173,7 +174,7 @@ export function ProvisionTable({ group, sectionNumber, isFirst = false, councilP
       ) : (
         // Non-heritage: Flat list
         group.provisions.map((provision, pIdx) => {
-          const sanitizedText = sanitizeForPdf(provision.provision_text || '');
+          const sanitizedText = sanitizeForPdf(provisionTablesToPlainText(provision.provision_text || ''));
           const paragraphs = parseParagraphsWithHighlights(sanitizedText);
 
           return (

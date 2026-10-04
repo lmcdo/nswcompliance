@@ -179,9 +179,30 @@ def _sql_count(sql: str, what: str) -> tuple[int, str]:
 
 
 def dq125() -> tuple[int, str]:
-    return _sql_count("SELECT count(*) FROM regulatory_provisions WHERE is_current AND v2_is_actionable "
-                      "AND provision_text LIKE '%<table%'",
-                      "served rules carry raw '<table' markup in their text")
+    """No served view may print the extractor's table markup as literal tags.
+
+    Fixed 2026-10-04 by rendering the tables (lib/provision-tables.ts), not by deleting them: the cells
+    are the council's values. So the row is red when (a) a served-path renderer stops routing text
+    through the table handling, or (b) a served rule holds table markup the parser cannot turn into
+    rows -- a <table> without its </table> -- because that one would still print literally."""
+    fe = ROOT / "frontend-nextjs"
+    renderers = {
+        "components/compliance/FormattedProvisionText.tsx": "splitProvisionTables(",
+        "components/compliance/PageGroupedProvisions.tsx": "provisionTablesToPlainText(provision.provision_text",
+        "components/pdf/ProvisionTable.tsx": "provisionTablesToPlainText(provision.provision_text",
+    }
+    unrouted = [f for f, needle in renderers.items() if needle not in (fe / f).read_text(encoding="utf-8")]
+    rc, msg = _sql_count(
+        "SELECT count(*) FROM regulatory_provisions WHERE is_current AND v2_is_actionable "
+        "AND provision_text LIKE '%<table%' "
+        "AND (length(provision_text) - length(replace(lower(provision_text), '<table', ''))) "
+        " <> (length(provision_text) - length(replace(lower(provision_text), '</table>', ''))) * 6 / 8",
+        "served rules hold a <table> without its closing tag (would still print as literal markup)")
+    if rc == 2:
+        return 2, msg
+    if unrouted:
+        return 1, f"served renderer(s) no longer handle tables: {', '.join(unrouted)}; {msg}"
+    return rc, msg
 
 
 def dq126() -> tuple[int, str]:
@@ -198,7 +219,30 @@ def dq126() -> tuple[int, str]:
         "woollahra served rows fell to no_config although their document names a configured Part")
 
 
-CHECKS = {"DQ-122": dq122, "DQ-123": dq123, "DQ-124": dq124, "DQ-125": dq125, "DQ-126": dq126}
+def dq127() -> tuple[int, str]:
+    """The 'Data currency' panel on /assessment must list only this council's LEP and the statewide SEPPs.
+    instrument_currency stores every council's LEP with council NULL, and the route reads NULL as
+    'statewide', so a Waverley property is shown 23 councils' LEPs (138 rows). Clears by a data fix
+    (give each LEP row its council) or a route fix -- either way, through the API the page calls."""
+    url = f"{APP}/api/instrument-currency?council=waverley"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (dq_probe_app_defects)"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            rows = json.load(r).get("currency") or []
+    except Exception as exc:  # noqa: BLE001 - unreachable is "could not look", not clean
+        return 2, f"could not reach {APP}: {exc}"
+    leps = [str(r.get("instrument_key") or "") for r in rows if r.get("instrument_type") == "lep"]
+    foreign = sorted({k for k in leps if not k.startswith("waverley")})
+    own = [k for k in leps if k.startswith("waverley")]
+    if foreign:
+        return 1, f"{len(foreign)} other councils' LEPs listed for a Waverley property: {', '.join(foreign[:5])} ..."
+    if len(own) != 1:
+        # An empty or doubled panel is not a fix: the property's own LEP must be there, once.
+        return 1, f"Waverley's own LEP should appear exactly once, found {len(own)}: {own or 'none'}"
+    return 0, f"only Waverley's own LEP is listed ({own[0]})"
+
+
+CHECKS = {"DQ-122": dq122, "DQ-123": dq123, "DQ-124": dq124, "DQ-125": dq125, "DQ-126": dq126, "DQ-127": dq127}
 
 
 def main() -> int:
