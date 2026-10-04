@@ -1,0 +1,60 @@
+{
+  "tier": "standard",
+  "justification": "Standard: changes which applicability entry a parts-council row takes, a hard filter on what a property is shown. Measured by dry run to move only Woollahra D5's 16 served rows; nothing is written to production by this PR.",
+  "commit_hash": "3d3b5d48",
+  "files": [
+    "enrichment/extractors/applicability_tagger.py",
+    "tests/enrichment/test_applicability_tagger.py",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "pre_impl": {
+    "existing_data": "Woollahra served rows: 13 on no_config whose document names a configured chapter (DQ-126). Parts councils in scope: woollahra, waverley, northern_beaches, parramatta, dry-run against production 2026-10-04.",
+    "assumption_mismatch": "The parts path assumed a heading's section code names the row's chapter. Woollahra D5 numbers its own sections A1.x and A2.x, so its rows looked up A2 (repealed, no entry) or took chapter A1's scope.",
+    "new_vs_existing": "Extends the existing document_id fallback in _get_config_driven instead of adding a new path; the same regex chapter_([a-z]\\d+) now also overrides a heading code from a different chapter."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_app_defects.py --id DQ-126 (after the retag) ; pytest tests/enrichment/test_applicability_tagger.py -k Woollahra",
+    "fails_when": "Reads 13 now and stays above 0 if the retag runs with the old tagger; the Woollahra tests fail when the override is removed (3 fail) or the subsection test loses its dot boundary (1 fails).",
+    "observed_red": "DQ-126 = 13 on 2026-10-04 (exit 1); mutation removing the override: 3 failed; mutation dropping the '.' boundary: 1 failed."
+  },
+  "functions": [
+    {
+      "name": "ApplicabilityTagger._get_config_driven (parts path)",
+      "file_line": "enrichment/extractors/applicability_tagger.py",
+      "input": "document_id and provision_text of a regulatory_provisions row for a parts council",
+      "output": "the config entry of the chapter the document names when the heading code belongs to another chapter",
+      "if_none": "no document chapter code: the heading code is used exactly as before; neither present: returns None (no_config)"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A heading code that only shares a prefix with the chapter, e.g. D12 inside chapter D1",
+      "what_happens": "A plain startswith check would keep D12 and read the wrong chapter's entry",
+      "mitigated": true,
+      "how": "subsection test requires the chapter code followed by a dot (D1.x), else the document wins",
+      "repro": "pytest test_a_code_that_only_shares_a_prefix_is_a_different_chapter; mutation without the dot fails it"
+    },
+    {
+      "scenario": "A council whose documents carry no chapter_ code (Parramatta numbered parts, Warringah full DCP)",
+      "what_happens": "Any change there could hide controls through the zero-default numeric parts hazard",
+      "mitigated": true,
+      "how": "the override only fires when document_id matches chapter_<letter><digit>; dry runs for those councils are byte-identical",
+      "repro": "retag dry run --councils parramatta / northern_beaches / waverley diffed against the unchanged tagger: no differences"
+    },
+    {
+      "scenario": "Rows moved onto D5's entry are narrowed from ALL zones to E1",
+      "what_happens": "A narrowing can hide a control from a property outside the centre if the scope were wrong",
+      "mitigated": true,
+      "how": "E1 is D5's own recorded scope with verbatim evidence (D5.1.1); the retag requires --expect-narrowings 16 exactly and backs up every row",
+      "repro": "dry run lists 16 narrowings, all chapter_d5_double_bay_centre, one shape ['ALL'] -> ['E1']"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- with the user's go, from a worktree at merged origin/main: python scripts/retag_applicability_slug_docids.py --councils woollahra --apply --expect-narrowings 16, then DQ-126 should read 0."
+  }
+}
