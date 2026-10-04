@@ -1533,7 +1533,7 @@
     "note": "Logged 2026-10-04 under the freeze rule (ce-next-scope-and-inner-west-PROMPT step 2a). Not an OC gate."
   },
   "DQ-129": {
-    "declared": "open",
+    "declared": "fixed",
     "check": [
       "python",
       "scripts/dq_probe_app_defects.py",
