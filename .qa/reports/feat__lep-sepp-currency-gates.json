@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds three read-only ledger probes and their ledger rows. No served code path, no DB write. Not Minor because a wrong probe would report a defect as clean, which is the failure the ledger exists to prevent; not Critical because nothing user-facing changes.",
- "commit_hash": "18f20c68",
+ "commit_hash": "a47ad24f",
  "files": [
   ".claude/dq_checks.json",
   ".claude/DATA_QUALITY_TRACKER.md",
