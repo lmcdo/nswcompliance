@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: three display defects on the provisions page (wrong plan name, a false 'not loaded' note, literal table markup). No value served changes; the plan name and table cells now come from data already held instead of a hand-typed table and raw markup.",
-  "commit_hash": "cbc3b7a1",
+  "commit_hash": "60be81f5",
   "files": [
     "frontend-nextjs/lib/provision-tables.ts",
     "frontend-nextjs/components/compliance/FormattedProvisionText.tsx",

@@ -206,7 +206,7 @@ def dq127() -> tuple[int, str]:
     except Exception as exc:  # noqa: BLE001 - unreachable is "could not look", not clean
         return 2, f"could not reach {APP}: {exc}"
     foreign = sorted({r.get("instrument_key") for r in rows
-                      if r.get("instrument_type") == "lep" and not str(r.get("instrument_key", "")).startswith("waverley")})
+                      if r.get("instrument_type") == "lep" and not str(r.get("instrument_key") or "").startswith("waverley")})
     return ((1, f"{len(foreign)} other councils' LEPs listed for a Waverley property: {', '.join(foreign[:5])} ...")
             if foreign else (0, "only Waverley's own LEP is listed"))
 
