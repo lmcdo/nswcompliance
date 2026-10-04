@@ -389,6 +389,35 @@ class TestWoollahraStructuralInheritance:
         )
         assert zones == ['MU1'], f"Expected MU1 only, got {zones}"
 
+    # DQ-126: D5 (Double Bay Centre) numbers its own sections A1.x / A2.x. A2 is a repealed
+    # chapter with no entry, so those rows fell to no_config; A1.x rows took the A1 entry --
+    # another chapter's scope. The document names the chapter; a foreign heading code does not.
+    D5_DOC = "Woollahra_DCP_2015__chapter_d5_double_bay_centre"
+
+    def test_d5_row_headed_a2_takes_d5_scope_not_no_config(self):
+        zones, devs, prov = self.tagger.tag_with_provenance(
+            "# A2.5.3 Awnings\n\nAwnings are to be provided along street frontages.", self.D5_DOC)
+        assert zones == ['E1'], zones
+        assert prov['zone_source'] != 'no_config', prov
+
+    def test_d5_row_headed_a1_does_not_take_chapter_a1s_scope(self):
+        from enrichment.config.woollahra_config import WOOLLAHRA_CONFIG
+        zones, _ = self.tagger.tag(
+            "# A1.4 Objectives\n\nTo reinforce the role of Double Bay as a centre.", self.D5_DOC)
+        assert zones == WOOLLAHRA_CONFIG['parts']['D5']['applicable_zones'], zones
+
+    def test_a_heading_inside_its_own_chapter_still_resolves_to_its_subsection_entry(self):
+        zones, _ = self.tagger.tag(
+            "# D1.2 Built form\n\nCommercial controls.",
+            "Woollahra_DCP_2015__chapter_d1_neighbourhood_centres")
+        assert zones == ['E1'], zones
+
+    def test_a_code_that_only_shares_a_prefix_is_a_different_chapter(self):
+        """'D12' is not a subsection of 'D1': the document's chapter must win."""
+        zones, _ = self.tagger.tag(
+            "# D12 Something\n\nControls.", "Woollahra_DCP_2015__chapter_d1_neighbourhood_centres")
+        assert zones == ['E1'], zones
+
     def test_no_woollahra_part_returns_retired_b_zones(self):
         """No Woollahra section code should ever produce a retired B-zone —
         the whole point of DQ-30."""

@@ -620,14 +620,21 @@ class ApplicabilityTagger:
 
         # parts path (Woollahra, Waverley) — extract section code from heading
         section_code = self._extract_section_code(text)
+        # The chapter the row's OWN document names, e.g.
+        # "Woollahra_DCP_2015__chapter_b1_residential_precincts" -> "B1".
+        doc_match = re.search(r'chapter_([a-z]\d+)', doc_lower)
+        doc_code = doc_match.group(1).upper() if doc_match else None
         if not section_code:
-            # Fallback: extract chapter code from document_id for preamble provisions
-            # e.g. "Woollahra_DCP_2015__chapter_b1_residential_precincts" → "B1"
-            doc_match = re.search(r'chapter_([a-z]\d+)', doc_lower)
-            if doc_match:
-                section_code = doc_match.group(1).upper()
-            else:
+            # Preamble provisions carry no heading code: use the document's chapter.
+            if not doc_code:
                 return None
+            section_code = doc_code
+        elif doc_code and section_code != doc_code and not section_code.startswith(doc_code + '.'):
+            # DQ-126: a chapter can number its own sections in another chapter's style --
+            # Woollahra D5 (Double Bay Centre) heads its sections A2.x, and A2 is a repealed
+            # chapter with no entry, so those rows fell to no_config. The document says which
+            # chapter the row belongs to; a heading code from a different chapter does not.
+            section_code = doc_code
 
         entry = parts.get(section_code)
 
