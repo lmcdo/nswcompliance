@@ -1882,12 +1882,14 @@ export function ProvisionsByTocStructure({
   return (
     <div className="space-y-0">
       {/* DCP currency status — source document, last verified date, amendment/staleness states */}
-      {servedDcpNames.length > 0 && (
+      {(servedDcpNames.length > 0 || unattributedCount > 0) && (
         <div className="mb-4 space-y-1">
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isStale ? 'bg-amber-400' : amendmentPending ? 'bg-amber-400' : 'bg-green-500'}`} />
-            <span className="font-medium text-gray-700">{servedDcpNames.join(' · ')}</span>
-            {unattributedCount > 0 && (
+            <span className="font-medium text-gray-700">
+              {servedDcpNames.length > 0 ? servedDcpNames.join(' · ') : 'Source plan not recorded'}
+            </span>
+            {unattributedCount > 0 && servedDcpNames.length > 0 && (
               <span>
                 (and {unattributedCount} {unattributedCount === 1 ? 'rule' : 'rules'} whose source plan is not recorded)
               </span>
