@@ -69,7 +69,7 @@ def _answers(mapping):
 def _correct():
     out = {}
     for addr, number, street, suburb, exists in p.ADDRESSES:
-        out[addr] = ("found", f"{number} {street} ROAD {suburb} 2000") if exists else ("not_found", "")
+        out[addr] = ("found", f"{number} {street} {suburb} 2000") if exists else ("not_found", "")
     return out
 
 
@@ -97,6 +97,14 @@ def test_dq122_red_when_a_real_address_is_refused(monkeypatch):
 def test_dq122_red_when_the_street_differs(monkeypatch):
     answers = _correct()
     answers["60 Hall St, Bondi Beach NSW 2026"] = ("found", "60 OCEAN STREET BONDI BEACH 2026")
+    monkeypatch.setattr(p, "_lookup", _answers(answers))
+    assert p.dq122()[0] == 1
+
+
+def test_dq122_red_when_only_the_street_type_differs(monkeypatch):
+    """Hall Avenue is not Hall Street."""
+    answers = _correct()
+    answers["60 Hall St, Bondi Beach NSW 2026"] = ("found", "60 HALL AVENUE BONDI BEACH 2026")
     monkeypatch.setattr(p, "_lookup", _answers(answers))
     assert p.dq122()[0] == 1
 

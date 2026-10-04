@@ -100,6 +100,28 @@ describe('filterToAskedProperty', () => {
   });
 });
 
+describe('filterToAskedProperty -- an address must identify ONE property', () => {
+  const portal = [c('893 NEW SOUTH HEAD ROAD ROSE BAY 2029'), c('774 NEW SOUTH HEAD ROAD ROSE BAY 2029')];
+
+  it('no house number: nothing matches (was: any candidate on the street)', () => {
+    expect(filterToAskedProperty('New South Head Rd, Rose Bay NSW 2029', portal)).toEqual([]);
+  });
+
+  it('no postcode: the suburb must match', () => {
+    const cands = [c('12 SMITH STREET ASHFIELD 2131', 1), c('12 SMITH STREET SUMMER HILL 2130', 2)];
+    expect(filterToAskedProperty('12 Smith St, Summer Hill', cands).map((r) => r.propId)).toEqual([2]);
+    expect(filterToAskedProperty('12 Smith St, Summer Hill NSW', cands).map((r) => r.propId)).toEqual([2]);
+  });
+
+  it('a postcode was asked for: a candidate without one is not accepted', () => {
+    expect(filterToAskedProperty('60 Hall St, Bondi Beach NSW 2026', [c('60 HALL STREET BONDI BEACH')])).toEqual([]);
+  });
+
+  it('neither postcode nor suburb: nothing matches', () => {
+    expect(filterToAskedProperty('60 Hall St', [c('60 HALL STREET BONDI BEACH 2026')])).toEqual([]);
+  });
+});
+
 describe('NSWPlanningPortalService.searchProperty', () => {
   const realFetch = global.fetch;
   afterEach(() => {

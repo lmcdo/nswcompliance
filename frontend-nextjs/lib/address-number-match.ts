@@ -126,22 +126,35 @@ export function streetMatches(asked: string, candidate: string): boolean {
 }
 
 /**
- * Keep only candidates that are the asked-for property: matching street number, street and,
- * when the asked address gives one, postcode. An empty result means NOT FOUND -- a caller must
- * never fall back to a neighbour.
+ * The suburb words after the street, e.g. 'SUMMER HILL' -- 'NSW', 'AUSTRALIA' and the postcode dropped.
+ * Uses the ASKED street's length to find where the street ends in either address.
+ */
+function localityOf(address: string, street: { name: string[]; type: string | null }): string {
+  const skip = street.name.length + (street.type ? 1 : 0);
+  return tokensAfterNumber(address)
+    .slice(skip)
+    .filter((t) => t !== 'NSW' && t !== 'AUSTRALIA' && !/^\d{4}$/.test(t))
+    .join(' ');
+}
+
+/**
+ * Keep only candidates that are the asked-for property: matching street number, street, and
+ * postcode -- or, when no postcode was given, suburb. An empty result means NOT FOUND; a caller
+ * must never fall back to a neighbour. An address with no house number, or with neither postcode
+ * nor suburb, cannot identify one property, so nothing matches it.
  */
 export function filterToAskedProperty<T extends { address: string }>(asked: string, candidates: T[]): T[] {
   const wanted = parseStreetNumber(asked);
+  const street = parseStreet(asked);
+  if (!wanted || !street) return [];
   const askedPostcode = postcodeOf(asked);
+  const askedLocality = askedPostcode ? '' : localityOf(asked, street);
+  if (!askedPostcode && !askedLocality) return [];
   return candidates.filter((c) => {
-    if (wanted) {
-      const got = parseStreetNumber(c.address);
-      if (got == null || !streetNumbersMatch(wanted, got)) return false;
-    }
-    if (askedPostcode) {
-      const pc = postcodeOf(c.address);
-      if (pc !== null && pc !== askedPostcode) return false;
-    }
-    return streetMatches(asked, c.address);
+    const got = parseStreetNumber(c.address);
+    if (got == null || !streetNumbersMatch(wanted, got)) return false;
+    if (!streetMatches(asked, c.address)) return false;
+    if (askedPostcode) return postcodeOf(c.address) === askedPostcode;
+    return localityOf(c.address, street) === askedLocality;
   });
 }

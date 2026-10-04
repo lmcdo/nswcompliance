@@ -37,12 +37,12 @@ APP = os.environ.get("DQ_APP_URL", "https://verify.plotdetect.com.au").rstrip("/
 #: street: the Portal's top hit is 14 ST JOHN STREET, and 14 exists only as unit 14/8-12. The rest exist
 #: and must come back as themselves, so a fix that refuses every lookup also goes red.
 ADDRESSES = [
-    ("700 New South Head Rd, Rose Bay NSW 2029", "700", "NEW SOUTH HEAD", "ROSE BAY", False),
-    ("235 New South Head Rd, Point Piper NSW 2027", "235", "NEW SOUTH HEAD", "POINT PIPER", False),
-    ("14 Hunter St, Lewisham NSW 2049", "14", "HUNTER", "LEWISHAM", False),
-    ("680 New South Head Rd, Rose Bay NSW 2029", "680", "NEW SOUTH HEAD", "ROSE BAY", True),
-    ("60 Hall St, Bondi Beach NSW 2026", "60", "HALL", "BONDI BEACH", True),
-    ("180 Ocean St, Edgecliff NSW 2027", "180", "OCEAN", "EDGECLIFF", True),
+    ("700 New South Head Rd, Rose Bay NSW 2029", "700", "NEW SOUTH HEAD ROAD", "ROSE BAY", False),
+    ("235 New South Head Rd, Point Piper NSW 2027", "235", "NEW SOUTH HEAD ROAD", "POINT PIPER", False),
+    ("14 Hunter St, Lewisham NSW 2049", "14", "HUNTER STREET", "LEWISHAM", False),
+    ("680 New South Head Rd, Rose Bay NSW 2029", "680", "NEW SOUTH HEAD ROAD", "ROSE BAY", True),
+    ("60 Hall St, Bondi Beach NSW 2026", "60", "HALL STREET", "BONDI BEACH", True),
+    ("180 Ocean St, Edgecliff NSW 2027", "180", "OCEAN STREET", "EDGECLIFF", True),
 ]
 
 

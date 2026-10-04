@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: /api/property served a different property's zone, controls and DCP rules for an address the user typed (DQ-122, P1), with nothing on screen saying so. Every downstream panel on the assessment page and the precinct lookup inherit the lot this function picks.",
-  "commit_hash": "6be7ece7",
+  "commit_hash": "f1b377e8",
   "files": [
     "frontend-nextjs/lib/address-number-match.ts",
     "frontend-nextjs/lib/nsw-planning-portal.ts",
