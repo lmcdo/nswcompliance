@@ -2142,6 +2142,86 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "pre-amalgamation Ashfield chapters should say, since 2,041 sibling rows "
         "already say 'ashfield'.",
     ),
+    "DQ-130": (
+        "SEPPs/LEPs whose text we serve that the legislation monitor does not watch",
+        # DQ-69 asks "does the monitor run over what is registered?" -- it cannot
+        # see an instrument nobody registered. The Industry and Employment SEPP's
+        # 2026 amendment went unflagged for exactly that reason (found by hand
+        # 2026-09-15), and the Sustainable Buildings SEPP's 31 Oct 2025 amendment
+        # likewise (found by hand 2026-10-05). This counts from the SERVED side.
+        #
+        # There is no documents -> instrument_registry key yet (Step 2 of
+        # ce-lep-sepp-currency-integration-PROMPT-2026-10-05 adds one), so the
+        # join is on the instrument's title. Controls run 2026-10-05: the 6
+        # counted are exactly the 6 SEPPs with no registry row, and the 4
+        # registered instruments that serve text (Housing, Codes, Industry and
+        # Employment SEPPs; Inner West LEP) are all excluded -- a title mismatch
+        # would have counted one of them.
+        "WITH served AS ("
+        "  SELECT DISTINCT split_part(d.pdf_name, ' - NSW Legislation', 1) AS instrument"
+        "  FROM documents d JOIN regulatory_provisions p ON p.document_id = d.id"
+        "  WHERE d.document_type IN ('SEPP', 'LEP') AND p.is_current AND p.v2_is_actionable"
+        ") SELECT count(*) FROM served s WHERE NOT EXISTS ("
+        "  SELECT 1 FROM instrument_registry r WHERE r.is_active"
+        "  AND r.pco_instrument_id IS NOT NULL AND lower(r.instrument_label) = lower(s.instrument))",
+        (),
+        "Each is a SEPP or LEP served to users whose amendments nothing detects. "
+        "Measured 6 on 2026-10-05: Transport and Infrastructure, Biodiversity and "
+        "Conservation, Planning Systems, Primary Production, Resilience and Hazards, "
+        "Sustainable Buildings -- 1,842 served rows between them. Clears by registering "
+        "each with the EPI id read from its own legislation page, not by un-serving it.",
+    ),
+    "DQ-131": (
+        "Active registered instruments with a missing or shared EPI id",
+        # The monitor matches PCO's amendment export by pco_instrument_id. A NULL
+        # id can never match, so the instrument is never checked (DQ-69's known
+        # floor of 1). A SHARED id is worse: both rows are reported current off
+        # one instrument's history, so the wrong one's amendments are never seen
+        # and nothing errors. Counts ROWS, so a shared pair counts 2 until the
+        # wrong one is corrected.
+        "SELECT count(*) FROM instrument_registry r WHERE r.is_active AND ("
+        "  r.pco_instrument_id IS NULL OR EXISTS ("
+        "    SELECT 1 FROM instrument_registry o WHERE o.is_active AND o.id <> r.id"
+        "    AND o.pco_instrument_id = r.pco_instrument_id))",
+        (),
+        "Measured 3 on 2026-10-05: wingecarribee_lep_2010 has no id, and "
+        "camden_lep_2010 and penrith_lep_2010 both carry epi-2010-0540, so Camden "
+        "LEP is checked against Penrith's history. Clears by taking each id from "
+        "the instrument's own legislation page -- never from memory or a handoff.",
+    ),
+    "DQ-132": (
+        "Served SEPPs/LEPs whose stored text cannot be shown to match the version in force",
+        # Counts an instrument when ANY served document of it: has no registry
+        # row; records no version date (documents.consolidated_as_of_date); or
+        # records one older than the version the monitor last saw while the
+        # instrument is NOT flagged needs_review (flagged = already visibly
+        # caveated by the fail-closed badge, so not silent).
+        #
+        # Reads 10 of 10 on 2026-10-05 because no served document records its
+        # version at all -- which is the defect: the Housing SEPP's text was
+        # refreshed on 2026-09-15 and its documents row still names Dec 2025, and
+        # the Sustainable Buildings text is the 5 Apr 2024 version of a SEPP
+        # amended 31 Oct 2025, and no check could tell either. version_date is
+        # TEXT in instrument_registry; the regex guard keeps a malformed value
+        # from erroring the probe (it then cannot excuse the row).
+        "WITH served AS ("
+        "  SELECT DISTINCT split_part(d.pdf_name, ' - NSW Legislation', 1) AS instrument,"
+        "         d.id AS doc_id, d.consolidated_as_of_date"
+        "  FROM documents d JOIN regulatory_provisions p ON p.document_id = d.id"
+        "  WHERE d.document_type IN ('SEPP', 'LEP') AND p.is_current AND p.v2_is_actionable"
+        ") SELECT count(DISTINCT s.instrument) FROM served s"
+        "  LEFT JOIN instrument_registry r"
+        "    ON r.is_active AND lower(r.instrument_label) = lower(s.instrument)"
+        "  WHERE r.id IS NULL OR s.consolidated_as_of_date IS NULL"
+        "     OR (s.consolidated_as_of_date < (CASE WHEN r.version_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
+        "                                     THEN r.version_date::date END)"
+        "         AND NOT r.needs_review)",
+        (),
+        "Each is a SEPP or LEP served as current law whose stored text is either "
+        "older than the version in force or cannot say which version it is. "
+        "Clears per instrument by recording the version the text was taken from "
+        "and refreshing text that is behind (DQ-88 method), not by stamping today's date.",
+    ),
 }
 
 
