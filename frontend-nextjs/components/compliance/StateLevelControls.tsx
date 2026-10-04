@@ -1438,7 +1438,7 @@ export function StateLevelControls({
                         <strong>Otherwise:</strong> 0.5 parking spaces per dwelling
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
-                        SEPP (Housing) 2021, in-fill affordable housing (governing section not yet confirmed)
+                        SEPP (Housing) 2021, in-fill affordable housing (section number not yet identified — opens the full SEPP)
                       </p>
                     </div>
                     {/* Not sec.19: the stored s19 text carries no parking rate. Whole-instrument
@@ -1488,7 +1488,7 @@ export function StateLevelControls({
                         <li>• 3+ bedrooms: 1 parking space per dwelling</li>
                       </ul>
                       <p className="text-xs text-gray-500 mt-2">
-                        SEPP (Housing) 2021, transport oriented development provisions (governing section not yet confirmed)
+                        SEPP (Housing) 2021, transport oriented development provisions (section number not yet identified — opens the full SEPP)
                       </p>
                     </div>
                     {/* Not sec.42 and not low and mid rise housing: these rates sit in the
