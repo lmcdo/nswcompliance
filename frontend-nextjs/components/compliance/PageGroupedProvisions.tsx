@@ -31,6 +31,7 @@ import { buildSectionKey, parseSectionKey } from '@/lib/see/sectionKey';
 import { resolveCitationUrl } from '@/lib/citation-instrument-urls';
 import type { NumericCheckValues } from './NumericChecker';
 import { pageAnchor, pageHref, pageLabel } from '@/lib/page-citation';
+import { provisionTablesToPlainText } from '@/lib/provision-tables';
 
 
 /**
@@ -956,9 +957,9 @@ export function PageGroupedProvisions({
                             ) : (
                               <p className={theme.textClampLines === 2 ? 'line-clamp-2' : 'line-clamp-3'}>
                                 {showMarkers && provision.v2_marker
-                                  ? stripSectionHeader(provision.provision_text, provision.toc_section_title)
+                                  ? stripSectionHeader(provisionTablesToPlainText(provision.provision_text), provision.toc_section_title)
                                       .replace(new RegExp(`^\\s*${provision.v2_marker}\\s+`, 'i'), '')
-                                  : stripSectionHeader(provision.provision_text, provision.toc_section_title)}
+                                  : stripSectionHeader(provisionTablesToPlainText(provision.provision_text), provision.toc_section_title)}
                               </p>
                             )}
                           </div>
@@ -1353,11 +1354,11 @@ export function PageGroupedProvisions({
                             {/* Strip marker from display if shown as badge */}
                             {showMarkers && provision.v2_marker
                               ? stripSectionHeader(
-                                  provision.provision_text,
+                                  provisionTablesToPlainText(provision.provision_text),
                                   provision.toc_section_title || group.tocSectionTitle
                                 ).replace(new RegExp(`^\\s*${provision.v2_marker}\\s+`, 'i'), '')
                               : stripSectionHeader(
-                                  provision.provision_text,
+                                  provisionTablesToPlainText(provision.provision_text),
                                   provision.toc_section_title || group.tocSectionTitle
                                 )}
                           </p>

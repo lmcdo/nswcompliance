@@ -38,7 +38,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
     hasDcpData: true,
     relatedSlugs: ['bayside', 'waverley', 'woollahra'],
     faqs: [
-      { q: 'What planning controls apply in Randwick?', a: 'Randwick properties are governed by the Randwick LEP 2012 and Randwick DCP 2013. Controls cover height, FSR, setbacks, parking, landscaping, and heritage. Enter your address above for the full set of applicable controls.' },
+      { q: 'What planning controls apply in Randwick?', a: 'Randwick properties are governed by the Randwick LEP 2012 and Randwick DCP 2025. Controls cover height, FSR, setbacks, parking, landscaping, and heritage. Enter your address above for the full set of applicable controls.' },
       { q: 'What are the height limits in Randwick?', a: 'Height limits in Randwick vary by zone and are mapped in the LEP Height of Buildings map. Common residential limits range from 8.5m to 12m. The tool pulls the specific limit for your property from the LEP.' },
       { q: 'Does Randwick have specific controls for multi-dwelling housing?', a: 'Yes. The Randwick DCP has detailed controls for multi-dwelling housing including setbacks, communal open space, private open space, solar access, and landscaping requirements.' },
     ],
@@ -49,7 +49,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
     hasDcpData: true,
     relatedSlugs: ['randwick', 'woollahra', 'bayside'],
     faqs: [
-      { q: 'What planning controls apply in Waverley?', a: 'Waverley properties are governed by the Waverley LEP 2012 and Waverley DCP 2012. Controls cover height, FSR, setbacks, parking, landscaping, heritage, and foreshore building lines. Enter your address for the specific controls.' },
+      { q: 'What planning controls apply in Waverley?', a: 'Waverley properties are governed by the Waverley LEP 2012 and Waverley DCP 2022. Controls cover height, FSR, setbacks, parking, landscaping, heritage, and foreshore building lines. Enter your address for the specific controls.' },
       { q: 'Are there special controls near Bondi Beach?', a: 'Yes. Properties near Bondi Beach and other coastal areas are subject to additional DCP controls including foreshore building lines, view sharing provisions, and coastal hazard overlays.' },
       { q: 'What heritage controls apply in Waverley?', a: 'Waverley has heritage conservation areas throughout Bondi, Bronte, and Waverley. Heritage items and HCAs are listed in the LEP. Properties within these areas face additional design and demolition controls.' },
     ],
