@@ -1,0 +1,28 @@
+{
+  "tier": "minor",
+  "justification": "Minor: ledger only. DQ-126's check reads 0 after the Woollahra retag, so the row is declared fixed; otherwise CI reports a passing check on a row declared open.",
+  "commit_hash": "fddf49b7",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json"
+  ],
+  "pre_impl": {},
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The row is flipped to fixed while the defect is still live in production data",
+      "what_happens": "The ledger would claim a fix that readers do not see",
+      "mitigated": true,
+      "how": "the check reads production after the retag and reports 0; all 54 served D5 rows read E1 config_specific",
+      "repro": "python scripts/dq_probe_app_defects.py --id DQ-126"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- verified in session against production"
+  }
+}
