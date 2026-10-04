@@ -52,6 +52,12 @@ WOOLLAHRA_CONFIG = {
             "applicable_dev_types": ["ALL"],
         },
         "A3": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "INHERITED. A1.1.3 'Land where this plan applies', verbatim: 'This plan applies to all land within the Woollahra Municipality.' Chapter A3 is the definitions chapter and states no scope of its own -- read 2026-10-04, its 14 pages are the A3.1 definitions list with no 'Land where this chapter applies' section -- so it takes the plan's.",
+                "applicable_dev_types":
+                    "INHERITED. A1.1.4 'Development to which this plan applies', verbatim: 'This plan applies to development requiring consent under the Woollahra Local Environmental Plan 2014 (Woollahra LEP 2014).' Chapter A3 states no development scope of its own (read 2026-10-04), so it takes the plan's.",
+            },
             "layer": "generic",
             "topic": "general",
             "applicable_zones": ["ALL"],
@@ -62,7 +68,7 @@ WOOLLAHRA_CONFIG = {
         "B1": {
             "scope_evidence": {
                 "applicable_zones":
-                    "B1.1.1 'Land where this chapter applies', verbatim: 'This chapter applies to the following residential precincts: Darling Point, Bellevue Hill South, Bellevue Hill North [and the remaining precincts listed].' The scope is a set of named PRECINCTS, not a zone list -- the geography is carried by v2_precinct_id on each rule. The config declared ['R2','R3']; a precinct can contain land zoned otherwise, and v2_applicable_zones is a HARD filter, so that list silently removed this chapter from any such lot inside a precinct it governs.",
+                    "B1.1.1 'Land where this chapter applies', verbatim: 'This chapter applies to the following residential precincts:' followed by a two-column list beginning Darling Point, Bellevue Hill South, Bellevue Hill North, Rose Bay, Double Bay, Vaucluse West (quote shortened 2026-10-04 to the words the PDF prints contiguously; the list's two columns interleave in the text layer). The scope is a set of named PRECINCTS, not a zone list -- the geography is carried by v2_precinct_id on each rule. The config declared ['R2','R3']; a precinct can contain land zoned otherwise, and v2_applicable_zones is a HARD filter, so that list silently removed this chapter from any such lot inside a precinct it governs.",
                 "applicable_dev_types":
                     "B1.1.2 'Development to which this chapter applies', verbatim: 'This chapter applies to development that requires development consent. Generally this will be residential development, but may include other permitted uses such as child care centres, community facilities, educational establishments, neighbourhood shops and places of public worship, and other uses permitted in Woollahra LEP 2014.' The council names five non-residential uses and then says 'and other uses permitted', so a six-item residential list hid the chapter from every one of them.",
             },
@@ -187,7 +193,7 @@ WOOLLAHRA_CONFIG = {
         "D1": {
             "scope_evidence": {
                 "applicable_zones":
-                    "D1.1.1 'Land where this chapter applies', verbatim: 'This chapter applies to the following centres, as identified on Map A: Hopetoun Avenue, Vaucluse; South Head Roundabout, Vaucluse; Vaucluse Shopping Village, Vaucluse [and the remaining centres listed].' D1.1.2 names the zone itself: 'A key objective of the E1 zone is to provide a range of small-scale retail, business and community uses that serve the needs of people who live or work in the surrounding neighbourhood.' E1 is the council's own word for these centres.",
+                    "D1.1.1 'Land where this chapter applies', verbatim: 'This chapter applies to the following centres, as identified on Map A (see next page):' then Hopetoun Avenue, Vaucluse; South Head Roundabout, Vaucluse; Vaucluse Shopping Village, Vaucluse; Plumer Road, Rose Bay; O'Sullivan Road, Rose Bay; Streatfield Road, Bellevue Hill and the rest of the list (quote corrected 2026-10-04: the PDF reads 'Map A (see next page)' and lists one centre per line). D1.1.2 names the zone itself: 'A key objective of the E1 zone is to provide a range of small-scale retail, business and community uses that serve the needs of people who live or work in the surrounding neighbourhood.' E1 is the council's own word for these centres.",
                 "applicable_dev_types":
                     "D1.1.2 'Development to which this chapter applies', verbatim: 'This chapter applies to development that requires development consent... The E1 zone permits a limited range of retail premises including shops, restaurants [and the remaining uses listed].' The council's sentence is 'development that requires development consent' and it names COMMUNITY uses alongside retail and business, so a four-item commercial list hid the chapter from community facilities in its own centres.",
             },
@@ -197,48 +203,63 @@ WOOLLAHRA_CONFIG = {
             "applicable_dev_types": ["ALL"],
         },
         "D2": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "D2.1 Introduction (PDF p5), verbatim: 'This chapter contains controls for three centres, zoned MU1 Mixed Use under Woollahra Local Environmental Plan 2014', and 'Land where this chapter applies' names the three centres (New South Head Road Corridor, Edgecliff; Rose Bay North; Rose Bay South).",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table.
+                "applicable_dev_types":
+                    "D2.1 'Development to which this chapter applies' (PDF p6), verbatim: 'This chapter applies to development that requires development consent.' CORRECTED 2026-10-04: the config declared commercial_premises, shop_top_housing and residential_flat_building, which hid this chapter from every other consent-requiring use in these centres -- the error D4, D5 and D6 were already corrected for. The chapter says the zone permits 'a wide range of retail premises, business premises, office premises, community facilities, restaurants and cafes and shop top housing'.",
+            },
             "layer": "use_specific",
             "topic": "commercial",
-            "applicable_zones": ["MU1"],
-            "applicable_dev_types": [
-                "commercial_premises", "shop_top_housing",
-                "residential_flat_building",
-            ],
+            "applicable_zones": ["MU1"],  # noqa: zone-codes (the zone D2.1 names as its own scope)
+            "applicable_dev_types": ["ALL"],
         },
         "D3": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "D3.1 Introduction (PDF p5), verbatim: 'This chapter contains controls for twelve centres, zoned either E1 Local Centre or MU1 Mixed Use under the Woollahra Local Environmental Plan 2014 (LEP).'",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table.
+                "applicable_dev_types":
+                    "INHERITED. A1.1.4 'Development to which this plan applies', verbatim: 'This plan applies to development requiring consent under the Woollahra Local Environmental Plan 2014 (Woollahra LEP 2014).' D3 has 'Land where this chapter applies' but no 'Development to which this chapter applies' section (contents, PDF p3, read 2026-10-04), so it takes the plan's.",
+            },
             "layer": "use_specific",
             "topic": "commercial",
-            "applicable_zones": ["E1", "MU1"],
+            "applicable_zones": ["E1", "MU1"],  # noqa: zone-codes (the zones D3.1 names)
             "applicable_dev_types": ["ALL"],
         },
         "D4": {
             "scope_evidence": {
                 "applicable_dev_types":
                     "D4.1.2 'Development to which this chapter applies', verbatim: 'This chapter applies to development that requires development consent. Generally this will be mixed use retail, business, office and/or residential development, but may also include permitted uses such as child care centres, community facilities, and other uses as permitted by Woollahra LEP 2014.' The declared three-item list omitted child care centres and community facilities, which the chapter names, and omitted the 'other uses as permitted' catch-all entirely.",
+                "applicable_zones":
+                    "D4.1 Introduction (PDF p5), verbatim: 'This chapter contains controls for the Edgecliff Centre, zoned E1 Local Centre'. CORRECTED 2026-10-04 from MU1: the chapter separates the centre from 'the wider Edgecliff commercial area which includes the land zoned MU1 Mixed Use along New South Head Road' (PDF p8). Checked in the app the same day: the D4.1.1 lots resolve to E1 (SHOP 24A 203-233 New South Head Road; 180 Ocean Street). The third, 235-285 New South Head Road, could not be checked -- the app resolved that address to 582 New South Head Road, Point Piper.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table.
             },
             "layer": "use_specific",
             "topic": "commercial",
-            "applicable_zones": ["MU1"],
+            "applicable_zones": ["E1"],  # noqa: zone-codes (the zone D4.1 names as its own scope)
             "applicable_dev_types": ["ALL"],
         },
         "D5": {
             "scope_evidence": {
                 "applicable_dev_types":
                     "D5.1.2 'Development to which this chapter applies', verbatim: 'This chapter applies to development that requires development consent. Generally this will be mixed use retail, business, office and/or residential development, but may also include permitted uses such as child care centres, community facilities, and other uses as permitted by Woollahra LEP 2014.' The declared list named no residential type at all, so a shop top housing or residential flat building DA in the Double Bay Centre was served none of this chapter.",
+                "applicable_zones":
+                    "D5.1.1 'Land where this chapter applies' (PDF p5), verbatim: 'This chapter applies to the Double Bay Centre, as identified in Figure 1.' The chapter states its scope as mapped LAND, not a zone, and names no zone anywhere. E1 is MEASURED, not quoted: checked in the app 2026-10-04, 20-38 Bay Street, 2-22 Knox Street and 15-15A Cross Street, Double Bay all resolve to E1. A sample, not the whole mapped area.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table.
             },
             "layer": "use_specific",
             "topic": "commercial",
-            "applicable_zones": ["E1"],
+            "applicable_zones": ["E1"],  # noqa: zone-codes (measured on the centre land, see evidence)
             "applicable_dev_types": ["ALL"],
         },
         "D6": {
             "scope_evidence": {
                 "applicable_dev_types":
                     "D6.1.2 'Development to which this chapter applies', verbatim: 'This chapter applies to development that requires development consent. Generally this will be mixed use retail, business, office and/or residential development, but may also include permitted uses such as child care centres, community facilities, and other uses as permitted by Woollahra LEP 2014.' Same correction as D4 and D5: the declared list named no residential type although the chapter does.",
+                "applicable_zones":
+                    "D6.1.1 'Land where this chapter applies' (PDF p5), verbatim: 'This chapter applies to the Rose Bay Centre, as identified in Figure 1.' The chapter states its scope as mapped LAND, not a zone, and names no zone anywhere. E1 is MEASURED, not quoted: checked in the app 2026-10-04, 674-680 New South Head Road, Rose Bay resolves to E1 (a second sample could not be checked: the app resolved 700 New South Head Road to 893). A sample, not the whole mapped area.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table.
             },
             "layer": "use_specific",
             "topic": "commercial",
-            "applicable_zones": ["E1"],
+            "applicable_zones": ["E1"],  # noqa: zone-codes (measured on the centre land, see evidence)
             "applicable_dev_types": ["ALL"],
         },
 
@@ -306,10 +327,16 @@ WOOLLAHRA_CONFIG = {
             "applicable_dev_types": ["ALL"],
         },
         "E6": {
+            "scope_declined": ("applicable_dev_types",),
+            "scope_evidence": {
+                "applicable_zones":
+                    "E6.1.2 'Land where this chapter applies' (PDF p5), verbatim: 'This chapter applies to all land within the Woollahra Municipality.'",
+                "applicable_dev_types":
+                    "E6.1.3 'Development types to which this chapter applies' (PDF p5), verbatim: 'commercial development that requires consent;' and 'non-residential development that requires consent;' plus solar energy systems outside, or forming part of other works under, the Transport and Infrastructure SEPP. DECLINED, not ALL: 'non-residential development' is a category the vocabulary has no term for, so no list can express it without hiding the chapter from some non-residential use. Served value stays ALL; the chapter is NOT residential in scope.",
+            },
             "layer": "generic",
             "topic": "sustainability",
             "applicable_zones": ["ALL"],
-            "applicable_dev_types": ["ALL"],
         },
         "E7": {
             "scope_evidence": {
@@ -324,10 +351,17 @@ WOOLLAHRA_CONFIG = {
             "applicable_dev_types": ["ALL"],
         },
         "E8": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "E8.1.1 'Land where this chapter applies' (PDF p5), verbatim: 'This chapter applies to all land within the Woollahra Municipality.'",
+                "applicable_dev_types":
+                    "E8.1.2 'Development to which this chapter applies' (PDF p5), verbatim: 'This chapter of the DCP applies to the following types of development:' dwelling houses; semi-detached dwellings; dual occupancies; attached dwellings; multi dwelling housing; multi dwelling housing (terraces); manor houses; residential flat buildings; and shop top housing. NARROWED 2026-10-04 from ALL. Semi-detached and attached dwellings have no term in the serving taxonomy (frontend-nextjs/lib/see/devTypeHierarchy.ts), so no query can ask for them and naming the rest hides nothing selectable -- the Georges River 6.1 test.",
+            },
             "layer": "generic",
             "topic": "accessibility",
             "applicable_zones": ["ALL"],
-            "applicable_dev_types": ["ALL"],
+            "applicable_dev_types": ["dwelling_house", "dual_occupancy", "multi_dwelling_housing",
+                                     "manor_house", "residential_flat_building", "shop_top_housing"],
         },
 
         # ── Part F — Land Use Specific Controls ─────────────────────────────────
@@ -343,11 +377,41 @@ WOOLLAHRA_CONFIG = {
             "applicable_zones": ["ALL"],
             "applicable_dev_types": ["child_care_centre"],
         },
+        "F2": {
+            "scope_evidence": {
+                "applicable_zones":
+                    "F2.1.2 'Land where this chapter applies' (PDF p5), verbatim: 'This chapter applies to all land within the Woollahra Municipality.'",
+                "applicable_dev_types":
+                    "F2.1.3 'Development to which this chapter applies' (PDF p5), verbatim: 'This chapter applies to development for educational establishments that require consent.' Added 2026-10-04: the chapter had no entry, so its 9 served rows fell to no_config.",
+            },
+            "layer": "use_specific",
+            "topic": "educational",
+            "applicable_zones": ["ALL"],
+            "applicable_dev_types": ["educational_establishment"],
+        },
         "F3": {
+            "scope_declined": ("applicable_dev_types",),
+            "scope_evidence": {
+                "applicable_zones":
+                    "F3.1.1 'Land and development where this chapter applies' (PDF p6), verbatim: 'This chapter applies to all land within the Woollahra Municipality.' CORRECTED 2026-10-04 from E1 and MU1: the chapter also says 'In the Woollahra Municipality there are existing licensed premises located in zones where they are no longer permitted', which are exactly the sites a centre-zone list hid it from.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table.
+                "applicable_dev_types":
+                    "F3.1.2 'Development to which this chapter applies' (PDF p6), verbatim: 'This chapter applies to all development proposals involving licensed premises.' DECLINED: licensed premises are defined by the Liquor Act, not by land use, and span pubs, hotels, clubs, small bars and licensed restaurants. The previous food_and_drink_premises hid the chapter from a pub or hotel application. No term expresses the licence, so the served value stays ALL.",
+            },
             "layer": "use_specific",
             "topic": "licensed_premises",
-            "applicable_zones": ["E1", "MU1"],
-            "applicable_dev_types": ["food_and_drink_premises"],
+            "applicable_zones": ["ALL"],
+        },
+        "F4": {
+            "scope_declined": ("applicable_dev_types",),
+            "scope_evidence": {
+                "applicable_zones":
+                    "F4.1.2 'Land where this chapter applies' (PDF p5), verbatim: 'This chapter applies to all land within the Woollahra Municipality.'",
+                "applicable_dev_types":
+                    "F4.1.3 'Development to which this chapter applies' (PDF p5), verbatim: 'This chapter applies to development for telecommunications facilities that require consent' -- DECLINED: the serving taxonomy has no telecommunications term, so no query can name the one use this chapter is for. Added 2026-10-04: the chapter had no entry, so its 8 served rows fell to no_config.",
+            },
+            "layer": "use_specific",
+            "topic": "telecommunications",
+            "applicable_zones": ["ALL"],
         },
     },
 }

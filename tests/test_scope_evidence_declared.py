@@ -75,8 +75,9 @@ MIN_EVIDENCE_CHARS = 40
 #: looked for and not found, which is a different state from nobody having
 #: looked. Do not add to this list to make a build pass.
 #:
-#:   woollahra D2-D6, E6, E8, F3, A3 — the scope sentence was not in the pages
-#:     read. A declaration backed by a guess is worse than a count that stays up.
+#:   (woollahra A3, D2-D6, E6, E8, F3 were released 2026-10-04: each chapter's own
+#:     scope section was read and quoted; dq_probe_scope_evidence_fidelity.py reads
+#:     65 spans OK and 0 MISSING for woollahra, A3/D3 marked INHERITED from A1.)
 #:   canterbury-bankstown 7.5, 7.6, 11.13, 11.14, 11.15 — the cue hits were
 #:     contents-page lines, and 7.5 came back as scrambled two-column text.
 #:   canterbury-bankstown 10.1, 10.7 — these declare a NARROWED dev type, which
@@ -88,21 +89,6 @@ MIN_EVIDENCE_CHARS = 40
 #:     2026-10-04: their comment sentences moved into scope_evidence, and every
 #:     quoted span read OK against its PDF in dq_probe_scope_evidence_fidelity.py.)
 UNEVIDENCED: frozenset[tuple[str, str, str, str]] = frozenset({
-    ("woollahra", "parts", "A3", "applicable_zones"),
-    ("woollahra", "parts", "A3", "applicable_dev_types"),
-    ("woollahra", "parts", "D2", "applicable_zones"),
-    ("woollahra", "parts", "D2", "applicable_dev_types"),
-    ("woollahra", "parts", "D3", "applicable_zones"),
-    ("woollahra", "parts", "D3", "applicable_dev_types"),
-    ("woollahra", "parts", "D4", "applicable_zones"),
-    ("woollahra", "parts", "D5", "applicable_zones"),
-    ("woollahra", "parts", "D6", "applicable_zones"),
-    ("woollahra", "parts", "E6", "applicable_zones"),
-    ("woollahra", "parts", "E6", "applicable_dev_types"),
-    ("woollahra", "parts", "E8", "applicable_zones"),
-    ("woollahra", "parts", "E8", "applicable_dev_types"),
-    ("woollahra", "parts", "F3", "applicable_zones"),
-    ("woollahra", "parts", "F3", "applicable_dev_types"),
     ("canterbury-bankstown", "chapter_topics", "chapter_7_5_canterbury_local_centre", "applicable_zones"),
     ("canterbury-bankstown", "chapter_topics", "chapter_7_5_canterbury_local_centre", "applicable_dev_types"),
     ("canterbury-bankstown", "chapter_topics", "chapter_7_6_belmore_and_lakemba", "applicable_zones"),
