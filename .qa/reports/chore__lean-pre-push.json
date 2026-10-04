@@ -1,0 +1,24 @@
+{
+  "tier": "minor",
+  "justification": "Developer-tooling change: the local pre-push hook skips checks that CI's gates workflow runs again; no product code, no data.",
+  "commit_hash": "b1a08e97",
+  "files": [
+    ".githooks/pre-push",
+    "CLAUDE.md"
+  ],
+  "break_it": [
+    {
+      "scenario": "A failing test is pushed because the local suite no longer runs.",
+      "what_happens": "CI's gates run fails on the PR and check_pr_gates.py refuses the merge, so nothing reaches main.",
+      "mitigated": true,
+      "how": "Every skipped stage also runs in .github/workflows/gates.yml, and the merge gate requires that run to pass. PREPUSH_FULL=1 restores the local run.",
+      "repro": "PREPUSH_FULL=1 git push"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Next push prints the 'left to CI' line."
+  }
+}

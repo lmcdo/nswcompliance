@@ -11,7 +11,7 @@ After context compaction, if `.claude/worktrees/` contains directories, check wh
 ```bash
 git config core.hooksPath .githooks
 ```
-Hooks in `.githooks/`: commit-msg (QA tier), pre-commit (branch guard, secrets scan, large file gate, TSC baseline, bracket lint), post-commit (hash stamp), pre-push (push-to-main guard, pytest 1794+, jest 615+, qa_gate, liability scan, mutmut opt-in). Run once per clone/worktree.
+Hooks in `.githooks/`: commit-msg (QA tier), pre-commit (branch guard, secrets scan, large file gate, TSC baseline, bracket lint), post-commit (hash stamp), pre-push (push-to-main guard, qa_gate, liability scan, Sol cross-review; pytest/jest/build/ratchets run in CI only unless `PREPUSH_FULL=1`). Run once per clone/worktree.
 
 ## Branch Guard [ENFORCED]
 Hook-enforced. If on `main`: `git checkout -b feat/<description>` before any work.
