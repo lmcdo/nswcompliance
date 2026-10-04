@@ -60,6 +60,15 @@ if [ -f scripts/pr_overlap_guard.py ]; then
   python scripts/pr_overlap_guard.py 2>/dev/null || true
 fi
 
+# ── Heavy checks: CI only, unless PREPUSH_FULL=1 ────────────────────────────
+# Stages 1-2c (pytest, mutation baselines, ratchets, schema contract, jest, build,
+# doc claims) and 6 (jscpd) all run again in .github/workflows/gates.yml, on
+# runners on this same machine, and check_pr_gates.py refuses a merge unless that
+# run passed. Running them here as well cost ~15 min per push for an earlier copy
+# of the same answer (user ruling 2026-10-04). Kept on every push: push-to-main
+# guard, QA report, liability language, and the Sol cross-review (CI has no copy).
+if [ "${PREPUSH_FULL:-0}" = "1" ]; then
+
 # ── 1. Python unit tests ─────────────────────────────────────────────────────
 
 echo "=== [1/4] Running Python unit tests ==="
@@ -371,6 +380,11 @@ else
 fi
 echo ""
 
+else
+  echo "⏭  Tests, ratchets and build left to CI (gates.yml). PREPUSH_FULL=1 runs them here."
+  echo ""
+fi  # PREPUSH_FULL (stages 1-2c)
+
 # ── 3. QA report validation ──────────────────────────────────────────────────
 
 echo "=== [3/4] Validating QA report ==="
@@ -503,6 +517,7 @@ fi
 # Runs only when source code changed; blocks only on a real threshold breach; never
 # blocks on tool/infra failure. The SHARP per-new-file guard is the prior-art injector
 # (.claude/hooks/prior-art-guard.py).
+if [ "${PREPUSH_FULL:-0}" = "1" ]; then
 echo ""
 echo "=== [6] Duplication ratchet (jscpd) ==="
 DUP_BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo "origin/main")
@@ -526,6 +541,7 @@ elif command -v node >/dev/null 2>&1; then
 else
   echo "node not available — skipping duplication ratchet."
 fi
+fi  # PREPUSH_FULL (jscpd)
 
 # ── [7] GPT-5.6 Sol cross-review — BLOCKING on HIGH for served/printed output ─
 # A different-model-family (OpenAI) second opinion on the pushed diff, scored
