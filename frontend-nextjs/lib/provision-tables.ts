@@ -23,7 +23,7 @@ export type ProvisionSegment =
 
 const TABLE_RE = /<table\b[^>]*>([\s\S]*?)<\/table>/gi;
 const ROW_RE = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
-const CELL_RE = /<(t[hd])\b[^>]*>([\s\S]*?)<\/\1>/gi;
+const CELL_RE = /<(t[hd])\b([^>]*)>([\s\S]*?)<\/\1>/gi;
 
 const ENTITIES: Record<string, string> = {
   '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'", '&nbsp;': ' ',
@@ -38,6 +38,12 @@ function cellText(raw: string): string {
     .trim();
 }
 
+function spanOf(attrs: string, name: 'rowspan' | 'colspan'): number {
+  const m = attrs.match(name === 'rowspan' ? /rowspan\s*=\s*["']?(\d+)/i : /colspan\s*=\s*["']?(\d+)/i);
+  const n = m ? parseInt(m[1], 10) : 1;
+  return Number.isFinite(n) && n >= 1 && n <= 50 ? n : 1;
+}
+
 /** True when the text carries at least one table this module can parse. */
 export function hasProvisionTable(text: string | null | undefined): boolean {
   return !!text && /<table\b[\s\S]*?<\/table>/i.test(text);
@@ -47,16 +53,39 @@ function parseTable(inner: string): ProvisionTable {
   const theadEnd = inner.search(/<\/thead>/i);
   const head: string[][] = [];
   const body: string[][] = [];
+  // A merged cell (rowspan/colspan) fills every grid slot it covers, so the values after it stay
+  // under their own headings (12 of 2,538 served tables use spans, measured 2026-10-04).
+  const carried: Array<{ text: string; rowsLeft: number } | undefined> = [];
   for (const rowMatch of inner.matchAll(ROW_RE)) {
     const cells: string[] = [];
     let allTh = true;
+    let col = 0;
+    const fillCarried = () => {
+      let slot = carried[col];
+      while (slot && slot.rowsLeft > 0) {
+        cells[col] = slot.text;
+        slot.rowsLeft -= 1;
+        col += 1;
+        slot = carried[col];
+      }
+    };
     for (const cellMatch of rowMatch[1].matchAll(CELL_RE)) {
+      fillCarried();
       if (cellMatch[1].toLowerCase() !== 'th') allTh = false;
-      cells.push(cellText(cellMatch[2]));
+      const text = cellText(cellMatch[3]);
+      const rs = spanOf(cellMatch[2], 'rowspan');
+      const cs = spanOf(cellMatch[2], 'colspan');
+      for (let k = 0; k < cs; k++) {
+        cells[col] = text;
+        carried[col] = rs > 1 ? { text, rowsLeft: rs - 1 } : undefined;
+        col += 1;
+      }
     }
+    fillCarried();
     if (cells.length === 0) continue;
+    const row = Array.from(cells, (c) => c ?? '');
     const inThead = theadEnd >= 0 && (rowMatch.index ?? 0) < theadEnd;
-    (inThead || (allTh && body.length === 0) ? head : body).push(cells);
+    (inThead || (allTh && body.length === 0) ? head : body).push(row);
   }
   return dropEmptyColumns({ head, body });
 }
@@ -82,7 +111,9 @@ export function splitProvisionTables(text: string): ProvisionSegment[] {
     const before = text.slice(last, start);
     if (before.trim()) out.push({ kind: 'text', text: before });
     const table = parseTable(m[1]);
+    // No cell could be read: keep the original text rather than lose what it says.
     if (table.head.length + table.body.length > 0) out.push({ kind: 'table', table });
+    else out.push({ kind: 'text', text: m[0] });
     last = start + m[0].length;
   }
   const rest = text.slice(last);
@@ -92,7 +123,8 @@ export function splitProvisionTables(text: string): ProvisionSegment[] {
 
 /**
  * The same text with each table written as plain rows, cells joined by ' | ', for views that print
- * text only (collapsed previews, the PDF export).
+ * text only (collapsed previews, the PDF export). Empty cells are kept so every value stays in its
+ * own column.
  */
 export function provisionTablesToPlainText(text: string | null | undefined): string {
   if (!text || !hasProvisionTable(text)) return text ?? '';
@@ -101,8 +133,8 @@ export function provisionTablesToPlainText(text: string | null | undefined): str
       seg.kind === 'text'
         ? seg.text
         : '\n' + [...seg.table.head, ...seg.table.body]
-            .map((r) => r.filter((c) => c !== '').join(' | '))
-            .filter((line) => line !== '')
+            .map((r) => r.join(' | '))
+            .filter((line) => line.replace(/[\s|]/g, '') !== '')
             .join('\n') + '\n'
     )
     .join('');

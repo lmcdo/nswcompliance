@@ -79,13 +79,42 @@ describe('provisionTablesToPlainText', () => {
   it('writes each row as cells joined by |, with no tag left', () => {
     const out = provisionTablesToPlainText(WAVERLEY);
     expect(out).not.toMatch(/<\/?(table|thead|tbody|tr|th|td)\b/i);
-    expect(out).toContain('Location of proposed works | Side setback (min.)');
-    expect(out).toContain('Ground Floor | 0.9m');
-    expect(out).toContain('Second Floor | 1.5m');
+    // Empty cells are kept so each value stays under its own heading.
+    expect(out).toContain(' | Location of proposed works |  | Side setback (min.)');
+    expect(out).toContain('Ground Floor |  | 0.9m | ');
+    expect(out).toContain('Second Floor |  | 1.5m | ');
   });
 
   it('returns text without tables unchanged, and tolerates null', () => {
     expect(provisionTablesToPlainText('C1 Height 9.5m')).toBe('C1 Height 9.5m');
     expect(provisionTablesToPlainText(null)).toBe('');
+  });
+});
+
+describe('merged cells and unreadable tables', () => {
+  it('a colspan fills each column it covers, so later values keep their headings', () => {
+    const t = (splitProvisionTables('<table><tr><th>Zone</th><th>Height</th><th>FSR</th></tr>' +
+      '<tr><td colspan="2">Area A and Area B</td><td>0.5:1</td></tr></table>')[0] as any).table;
+    expect(t.body[0]).toEqual(['Area A and Area B', 'Area A and Area B', '0.5:1']);
+  });
+
+  it('a rowspan carries down, so the next row is not shifted left', () => {
+    const t = (splitProvisionTables('<table><tr><th>Zone</th><th>Storey</th><th>Setback</th></tr>' +
+      '<tr><td rowspan="2">R2</td><td>Ground</td><td>0.9m</td></tr>' +
+      '<tr><td>Second</td><td>1.5m</td></tr></table>')[0] as any).table;
+    expect(t.body[1]).toEqual(['R2', 'Second', '1.5m']);
+  });
+
+  it('an empty cell is kept in plain text so the next value is not read as the one before', () => {
+    const out = provisionTablesToPlainText('<table><tr><th>Zone</th><th>Height</th><th>FSR</th></tr>' +
+      '<tr><td>R2</td><td></td><td>0.5:1</td></tr></table>');
+    expect(out).toContain('R2 |  | 0.5:1');
+  });
+
+  it('a table whose cells cannot be read is kept as text, never dropped', () => {
+    const src = 'Height: <table><tr><td>Maximum height 9m</tr></table>';
+    const segs = splitProvisionTables(src);
+    expect(segs.every((s) => s.kind === 'text')).toBe(true);
+    expect(segs.map((s: any) => s.text).join('')).toContain('Maximum height 9m');
   });
 });

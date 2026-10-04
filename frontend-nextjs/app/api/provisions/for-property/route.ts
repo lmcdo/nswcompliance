@@ -502,6 +502,8 @@ export async function GET(request: NextRequest) {
         verified_at: string | null;
         amendment_pending: boolean;
         dcp_names: Array<{ name: string; provisions: number }>;
+        /** Served rules whose plan the registry does not name -- so dcp_names is not the whole list. */
+        unattributed_provisions: number;
       } | null = null;
       // chapter_key -> the registry's own name for the plan that chapter belongs to (DQ-123).
       const chapterDcpNames: Record<string, string> = {};
@@ -545,10 +547,12 @@ export async function GET(request: NextRequest) {
         // DQ-123: name the plan(s) the rules on THIS page come from, by counting the served
         // provisions per registry dcp_name -- not a hand-typed table that was wrong for 8 councils.
         const servedByPlan = new Map<string, number>();
+        let unattributed = 0;
         for (const layer of adjustedResults) {
           for (const prov of layer.provisions ?? []) {
             const name = prov?.source_chapter_key ? chapterDcpNames[prov.source_chapter_key] : undefined;
             if (name) servedByPlan.set(name, (servedByPlan.get(name) ?? 0) + 1);
+            else unattributed += 1;
           }
         }
         const dcpNames = [...servedByPlan.entries()]
@@ -567,6 +571,7 @@ export async function GET(request: NextRequest) {
           verified_at: verifiedAt ? verifiedAt.toISOString() : null,
           amendment_pending: amendmentPending,
           dcp_names: dcpNames,
+          unattributed_provisions: unattributed,
         };
       }
       const partNameMap = buildPartNameMap(chapterLabels);

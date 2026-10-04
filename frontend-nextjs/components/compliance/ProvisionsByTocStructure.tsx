@@ -395,6 +395,7 @@ export function ProvisionsByTocStructure({
         amendment_pending: boolean;
         /** Plans the served rules come from, most rules first (dcp_chapter_registry.dcp_name). */
         dcp_names?: Array<{ name: string; provisions: number }>;
+        unattributed_provisions?: number;
       } | null;
     };
   }>(apiUrl, fetcher, {
@@ -486,6 +487,7 @@ export function ProvisionsByTocStructure({
   const amendmentPending = dcpCurrency?.amendment_pending ?? false;
   // DQ-123: the plan names come from the registry rows behind the rules actually served here.
   const servedDcpNames = (dcpCurrency?.dcp_names ?? []).map((d) => d.name).filter(Boolean);
+  const unattributedCount = dcpCurrency?.unattributed_provisions ?? 0;
 
   // Format verified_at ISO string → human-readable "14 Apr 2026"
   const verifiedDateLabel = verifiedAtRaw
@@ -1885,6 +1887,11 @@ export function ProvisionsByTocStructure({
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isStale ? 'bg-amber-400' : amendmentPending ? 'bg-amber-400' : 'bg-green-500'}`} />
             <span className="font-medium text-gray-700">{servedDcpNames.join(' · ')}</span>
+            {unattributedCount > 0 && (
+              <span>
+                (and {unattributedCount} {unattributedCount === 1 ? 'rule' : 'rules'} whose source plan is not recorded)
+              </span>
+            )}
             <span>·</span>
             <span>Monitored weekly</span>
             {verifiedDateLabel && (
