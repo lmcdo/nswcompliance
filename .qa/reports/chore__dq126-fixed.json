@@ -1,10 +1,11 @@
 {
   "tier": "minor",
-  "justification": "Minor: ledger only. DQ-126's check reads 0 after the Woollahra retag, so the row is declared fixed; otherwise CI reports a passing check on a row declared open.",
-  "commit_hash": "fddf49b7",
+  "justification": "Minor: ledger only. DQ-126's check reads 0 after the Woollahra retag, so the row is declared fixed; otherwise CI reports a passing check on a row declared open. Woollahra now passes OC-17 (every served rule quotes the council), so it joins the published list, 11 -> 12 of 18; the gate fails when a passing council is unpublished.",
+  "commit_hash": "cd01df9d",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
-    ".claude/dq_checks.json"
+    ".claude/dq_checks.json",
+    "frontend-nextjs/shared/dcp-scoped-councils.json"
   ],
   "pre_impl": {},
   "functions": [],
