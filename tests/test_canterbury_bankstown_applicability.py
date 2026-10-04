@@ -125,7 +125,8 @@ class TestLandUseChaptersAreNarrowed:
         """
         got = resolve(tagger, "chapter_10_4_non_residential_land_uses")
         assert got["applicable_zones"] == ["R2", "R3", "R4"]  # noqa: zone-codes (quoted from chapter 10.4 section 1)
-        assert got["dev_type_source"] == "config_silent"
+        assert got["applicable_dev_types"] == ["ALL"]
+        assert got["dev_type_source"] == "config_declined"
 
     def test_no_entry_reintroduces_a_dev_type_list_on_the_two_corrected_chapters(self):
         """The regression has a shape: a future edit that 'completes' either
@@ -145,21 +146,41 @@ class TestLandUseChaptersAreNarrowed:
     @pytest.mark.parametrize("slug", [
         "chapter_10_2_schools",
         "chapter_10_3_home_businesses",
+        "chapter_10_4_non_residential_land_uses",
         "chapter_10_5_places_of_public_worship",
     ])
-    def test_what_cannot_be_expressed_is_left_UNDECIDED_not_asserted(self, tagger, slug):
-        """DEV_TYPE_PATTERNS has no term for these uses. Omitting the key yields
-        config_silent -- "matched, nobody decided" -- which is true. Saying ALL would
-        assert that a school control binds a warehouse.
+    def test_what_cannot_be_expressed_is_DECLINED_not_asserted(self, tagger, slug):
+        """DEV_TYPE_PATTERNS has no term for these uses. Until 2026-10-04 the key
+        was omitted (config_silent, "nobody decided"); the chapters have since been
+        read, so the true state is config_declined -- "read, and cannot be expressed
+        without hiding rules". Saying ALL (config_all) would assert that a school
+        control binds a warehouse.
 
         Adding the missing vocabulary is the real fix; this records the gap honestly
         instead of papering over it.
         """
         got = resolve(tagger, slug)
-        assert got["dev_type_source"] == "config_silent", (
+        assert got["applicable_dev_types"] == ["ALL"]
+        assert got["dev_type_source"] == "config_declined", (
             f"{slug} now claims {got['dev_type_source']}. If a development type for this "
             f"use was added to the vocabulary, narrow the chapter and update this test — "
             f"do not let it become an assertion of ALL")
+
+    @pytest.mark.parametrize("slug", [
+        "chapter_10_2_schools",
+        "chapter_10_3_home_businesses",
+        "chapter_10_4_non_residential_land_uses",
+        "chapter_10_5_places_of_public_worship",
+    ])
+    def test_a_declined_use_class_quotes_its_own_chapter(self, slug):
+        """A decline without the chapter's words is the old silent default under a
+        new name. Each must quote its OWN chapter's introduction, not the plan's."""
+        ev = CANTERBURY_BANKSTOWN_CONFIG["chapter_topics"][slug]["scope_evidence"]
+        text = ev.get("applicable_dev_types") or ""
+        assert "verbatim" in text and "DECLINED" in text, text
+        assert "Chapter 1.1 Introduction and Administration" not in text, (
+            f"{slug} declines its development types on the PLAN's scope sentence; "
+            f"quote the chapter's own subject")
 
     def test_no_chapter_claims_config_all_from_the_land_use_family(self, tagger):
         """The 10.x family is 'specific land uses' by definition. If one of them ever

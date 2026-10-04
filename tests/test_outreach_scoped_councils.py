@@ -22,8 +22,8 @@ EXC = {"council": "cb", "field": "applicable_dev_types", "chapters": ["ch-school
 
 
 class _Cur:
-    def __init__(self, universe, split, total, no_config=()):
-        self._answers = [universe, split, [(total,)], list(no_config)]
+    def __init__(self, universe, split, total, no_config=(), declined=()):
+        self._answers = [universe, split, [(total,)], list(no_config), list(declined)]
         self._last = None
 
     def __enter__(self):
@@ -43,8 +43,8 @@ class _Cur:
 
 
 class _Conn:
-    def __init__(self, universe, split, total, no_config=()):
-        self.cur = _Cur(universe, split, total, no_config)
+    def __init__(self, universe, split, total, no_config=(), declined=()):
+        self.cur = _Cur(universe, split, total, no_config, declined)
 
     def cursor(self):
         return self.cur
@@ -60,13 +60,14 @@ SPLIT = [("bb", "ch-x", "applicable_zones", 2), ("cb", "ch-schools", "applicable
 
 @pytest.fixture
 def world(monkeypatch, tmp_path):
-    state = {"universe": UNIVERSE, "split": SPLIT, "total": 9, "dq115": {}, "orphans": [], "no_config": []}
+    state = {"universe": UNIVERSE, "split": SPLIT, "total": 9, "dq115": {}, "orphans": [], "no_config": [],
+             "declined": []}
     monkeypatch.setattr(osc, "_dq115_by_council",
                         lambda slugs: (state["dq115"], state["orphans"]))
     import dq_db
     monkeypatch.setattr(dq_db, "connect",
                         lambda: _Conn(state["universe"], state["split"], state["total"],
-                                      state["no_config"]))
+                                      state["no_config"], state["declined"]))
     pub = tmp_path / "pub.json"
     monkeypatch.setattr(osc, "PUBLISHED", pub)
 
@@ -105,6 +106,25 @@ def test_without_the_exception_the_council_is_delisted(world):
 def test_stale_exception_fails(world):
     world["split"] = [("bb", "ch-x", "applicable_zones", 2)]
     world["total"] = 2
+    world["publish"]([("aa", "Aa"), ("cb", "Cb")])
+    verdict, text = osc.check()
+    assert verdict == osc.FAIL and "is stale" in text
+
+
+def test_exception_whose_rows_were_DECLINED_is_not_stale(world):
+    """Recording the decision moves the rows out of DQ-114; the caveat stays true and must stay."""
+    world["split"] = [("bb", "ch-x", "applicable_zones", 2)]
+    world["total"] = 2
+    world["declined"] = [("cb", "ch-schools", "applicable_dev_types")]
+    world["publish"]([("aa", "Aa"), ("cb", "Cb")])
+    verdict, text = osc.check()
+    assert verdict == osc.PASS, text
+
+
+def test_declined_row_for_another_key_does_not_rescue_a_stale_exception(world):
+    world["split"] = [("bb", "ch-x", "applicable_zones", 2)]
+    world["total"] = 2
+    world["declined"] = [("cb", "ch-schools", "applicable_zones")]
     world["publish"]([("aa", "Aa"), ("cb", "Cb")])
     verdict, text = osc.check()
     assert verdict == osc.FAIL and "is stale" in text
