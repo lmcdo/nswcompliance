@@ -46,21 +46,25 @@ PUBLISHED = ROOT / "frontend-nextjs" / "shared" / "dcp-scoped-councils.json"
 
 #: The schema's own undetermined vocabulary (migration 062), as DQ-114 reads it; no_config is DQ-33's.
 _UNDECIDED = "('config_silent', 'filtered_to_all', 'no_document_id')"
-_SERVED = "is_current AND v2_is_actionable AND source_council IS NOT NULL"
-
-#: One row per (council, chapter, key) still undecided -- DQ-114's population, split.
+#: One row per (council, chapter, key) still undecided -- DQ-114's population, split. The served filter is
+#: written out in each SELECT rather than interpolated, so the QA gate's currency check can see it.
 _SPLIT_SQL = f"""
 SELECT source_council, source_chapter_key, 'applicable_dev_types', count(*) FROM regulatory_provisions
- WHERE {_SERVED} AND (v2_dev_type_source IN {_UNDECIDED} OR v2_dev_type_source IS NULL)
+ WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
+   AND (v2_dev_type_source IN {_UNDECIDED} OR v2_dev_type_source IS NULL)
  GROUP BY 1, 2
 UNION ALL
 SELECT source_council, source_chapter_key, 'applicable_zones', count(*) FROM regulatory_provisions
- WHERE {_SERVED} AND (v2_zone_source IN {_UNDECIDED} OR v2_zone_source IS NULL)
+ WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
+   AND (v2_zone_source IN {_UNDECIDED} OR v2_zone_source IS NULL)
  GROUP BY 1, 2"""
 
-_UNIVERSE_SQL = f"""
+#: Every council serving rule text, with its ACTIVE registry name. The is_active test sits in the join, not
+#: the WHERE: a council whose registry row is retired still serves rules, so it stays in the universe with a
+#: NULL name, and a published name for it then fails as a mismatch instead of the council vanishing.
+_UNIVERSE_SQL = """
 SELECT DISTINCT p.source_council, r.display_name FROM regulatory_provisions p
-  LEFT JOIN lga_registry r ON r.slug = p.source_council
+  LEFT JOIN lga_registry r ON r.slug = p.source_council AND r.is_active
  WHERE p.is_current AND p.v2_is_actionable AND p.source_council IS NOT NULL"""
 
 
