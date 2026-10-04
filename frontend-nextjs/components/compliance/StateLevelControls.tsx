@@ -27,6 +27,7 @@ import { PathwaySummaryCard } from './PathwaySummaryCard';
 import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone, isLMRApplicable, permitsApartmentDevelopment } from '@/lib/regulatory-constants';
 import { getAdgPdfUrl } from '@/lib/pdf-url-builder';
 import { SeppCitationLink, SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL, seppHousingProvisionUrl } from './SeppCitationLink';
+import { REGISTRY_INSTRUMENT_URLS } from '@/lib/citation-instrument-urls';
 import { tryGetLGAConfig } from '@/lib/lga-configs';
 import { battleaxeAwareLotWidth } from '@/lib/geometry/effective-lot-width';
 
@@ -1437,12 +1438,14 @@ export function StateLevelControls({
                         <strong>Otherwise:</strong> 0.5 parking spaces per dwelling
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
-                        SEPP (Housing) 2021, Clause 19 - In-fill affordable housing
+                        SEPP (Housing) 2021, in-fill affordable housing (governing section not yet confirmed)
                       </p>
                     </div>
+                    {/* Not sec.19: the stored s19 text carries no parking rate. Whole-instrument
+                        link until the section is read from the law in force. */}
                     <SeppCitationLink
-                      href={seppHousingProvisionUrl('sec.19')}
-                      label="View SEPP (Housing) 2021 clause 19 on NSW Legislation"
+                      href={REGISTRY_INSTRUMENT_URLS.sepp_housing_2021}
+                      label="View SEPP (Housing) 2021 on NSW Legislation"
                     />
                   </div>
                 </div>
@@ -1459,12 +1462,12 @@ export function StateLevelControls({
                         <strong>Other seniors housing:</strong> 0.5 parking spaces per bedroom
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
-                        SEPP (Housing) 2021, Schedule 4 Part 5 — Seniors housing parking
+                        SEPP (Housing) 2021, section 108(2)(j)–(k) — independent living units
                       </p>
                     </div>
                     <SeppCitationLink
-                      href={seppHousingProvisionUrl('sch.4')}
-                      label="View SEPP (Housing) 2021 Schedule 4 on NSW Legislation"
+                      href={seppHousingProvisionUrl('sec.108')}
+                      label="View SEPP (Housing) 2021 section 108 on NSW Legislation"
                     />
                   </div>
                 </div>
@@ -1485,12 +1488,15 @@ export function StateLevelControls({
                         <li>• 3+ bedrooms: 1 parking space per dwelling</li>
                       </ul>
                       <p className="text-xs text-gray-500 mt-2">
-                        SEPP (Housing) 2021, Clause 42 - Low and mid rise housing
+                        SEPP (Housing) 2021, transport oriented development provisions (governing section not yet confirmed)
                       </p>
                     </div>
+                    {/* Not sec.42 and not low and mid rise housing: these rates sit in the
+                        TOD chapter, after s156. Whole-instrument link until the section
+                        number is read from the law in force. */}
                     <SeppCitationLink
-                      href={seppHousingProvisionUrl('sec.42')}
-                      label="View SEPP (Housing) 2021 clause 42 on NSW Legislation"
+                      href={REGISTRY_INSTRUMENT_URLS.sepp_housing_2021}
+                      label="View SEPP (Housing) 2021 on NSW Legislation"
                     />
                   </div>
                 </div>
