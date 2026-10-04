@@ -33,10 +33,11 @@ So:
   * Land-use chapters (10.x) are narrowed where the tagger's vocabulary has a
     matching type.
   * Where it does NOT — schools, places of public worship, home businesses have
-    no term in DEV_TYPE_PATTERNS — the key is OMITTED on purpose. That yields
-    `config_silent`: "this chapter matched, and nobody has decided its
-    development types." That is exactly true, and it is not the same claim as
-    ALL. Adding those three terms to the vocabulary is the real fix; inventing a
+    no term in DEV_TYPE_PATTERNS — the key was OMITTED on purpose, yielding
+    `config_silent`. Since 2026-10-04 it is DECLINED instead (`scope_declined`,
+    migrations/081): the chapters have been read, their subject cannot be
+    expressed, and that is a decision, not an omission. Either way it is not
+    the same claim as ALL. Adding those three terms to the vocabulary is the real fix; inventing a
     scope here would hide a binding control from the properties it binds, which
     is the asymmetric failure this config is most careful to avoid.
 
@@ -377,7 +378,7 @@ CANTERBURY_BANKSTOWN_CONFIG: dict = {
         # Neighbourhood shops (3), Serviced apartments (4), Other non-residential
         # development (5) and Site facilities (6).
         #
-        # applicable_dev_types is OMITTED -> config_silent. The first draft named
+        # applicable_dev_types is DECLINED -> config_declined. The first draft named
         # commercial/retail/office/food-and-drink/industrial/warehouse, which was
         # wrong in both directions: industrial and warehouse development does not
         # occur in R2/R3/R4, and three of the chapter's own five subject sections
@@ -386,9 +387,12 @@ CANTERBURY_BANKSTOWN_CONFIG: dict = {
         # so that list did not merely lose precision -- it hid the chapter from
         # exactly the two development types sections 3 and 4 are written for.
         "chapter_10_4_non_residential_land_uses": {
+            "scope_declined": ("applicable_dev_types",),
             "scope_evidence": {
+                "applicable_dev_types":
+                    "Section 1 Introduction (PDF p4), verbatim: 'additional objectives and development controls to manage the design and operation of non-residential land uses within Zone R2 Low Density Residential, Zone R3 Medium Density Residential and Zone R4 High Density Residential'; Section 5 (PDF p12), verbatim: 'This section applies to non-residential development not including health consulting rooms, neighbourhood shops and serviced apartments.' DECLINED (read 2026-10-04): `neighbourhood_shop` and `serviced_apartment` exist in the serving taxonomy, but health consulting rooms and 'other non-residential development' do not, and 'non-residential' is a complement no list can express. Naming the two that exist would hide sections 2 and 5 from the DAs they govern; the served value stays ALL, narrowed by the zone key above.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table.
                 "applicable_zones":
-                    "Chapter 10.4 section 1 Introduction, verbatim: controls 'to manage the design and operation of non-residential land uses within Zone R2 Low Density Residential, Zone R3 Medium Density Residential and Zone R4 High Density Residential'. Its sections are Health consulting rooms (2), Neighbourhood shops (3), Serviced apartments (4), Other non-residential development (5) and Site facilities (6). applicable_dev_types is OMITTED -> config_silent. The first draft named commercial/retail/office/food-and-drink/industrial/warehouse, which was wrong in both directions: industrial and warehouse development does not occur in R2/R3/R4, and three of the chapter's own five subject sections were missing. `neighbourhood_shop` and `serviced_apartment` both exist in the serving taxonomy (frontend-nextjs/lib/see/devTypeHierarchy.ts), so that list did not merely lose precision -- it hid the chapter from exactly the two development types sections 3 and 4 are written for.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table. The zone names are the council's own words; rewriting them to import from the taxonomy would falsify the quote.
+                    "Chapter 10.4 section 1 Introduction, verbatim: controls 'to manage the design and operation of non-residential land uses within Zone R2 Low Density Residential, Zone R3 Medium Density Residential and Zone R4 High Density Residential'. Its sections are Health consulting rooms (2), Neighbourhood shops (3), Serviced apartments (4), Other non-residential development (5) and Site facilities (6). applicable_dev_types is DECLINED (see its own evidence below). The first draft named commercial/retail/office/food-and-drink/industrial/warehouse, which was wrong in both directions: industrial and warehouse development does not occur in R2/R3/R4, and three of the chapter's own five subject sections were missing. `neighbourhood_shop` and `serviced_apartment` both exist in the serving taxonomy (frontend-nextjs/lib/see/devTypeHierarchy.ts), so that list did not merely lose precision -- it hid the chapter from exactly the two development types sections 3 and 4 are written for.",  # noqa: zone-codes - VERBATIM council sentence quoted as scope_evidence, not a lookup table. The zone names are the council's own words; rewriting them to import from the taxonomy would falsify the quote.
             },
             "applicable_zones": ["R2", "R3", "R4"],  # noqa: zone-codes (the three zones chapter 10.4 section 1 names as its own scope)
         },
@@ -400,48 +404,49 @@ CANTERBURY_BANKSTOWN_CONFIG: dict = {
             "applicable_zones": ["ALL"],
             "applicable_dev_types": ["sex_services_premises"],
         },
-        # applicable_dev_types deliberately ABSENT below -> config_silent, not ALL.
-        # DEV_TYPE_PATTERNS has no term for a school, a place of public worship or a
-        # home business, so there is nothing honest to narrow to. Saying ALL here
-        # would assert that a school control binds a warehouse.
+        # applicable_dev_types DECLINED below (and on 10.4 above) -> config_declined.
+        # Each chapter's subject is one use class -- a school, a home business, a
+        # place of public worship -- or, for 10.4, "non-residential" development in
+        # three residential zones. The two expressible answers are both false: ALL
+        # (config_all) asserts a school control binds a warehouse, and a term the
+        # serving side cannot ask for hides the chapter from every query.
         #
-        # RE-EXAMINED 2026-10-03 against DQ-114 and the finding above STANDS. These
-        # are the only entries in this file whose SUBJECT is one use class, and the
-        # two expressible answers are both false: ALL asserts a school control binds
-        # a warehouse, and a term the serving side cannot ask for hides the chapter
-        # from every query, not just the wrong ones. So 18 served keys here (schools
-        # 7, places of public worship 9, home businesses 2) stay `config_silent` and
-        # are a STATED EXCEPTION to DQ-114 rather than a defect to clear. Chapter
-        # 10.4 (3 keys) is the same shape: its own section 5 reads "This section
-        # applies to non-residential development not including health consulting
-        # rooms, neighbourhood shops and serviced apartments", so ALL would assert it
-        # binds a dwelling house.
+        # Until 2026-10-04 these keys were OMITTED, i.e. config_silent ("nobody
+        # decided"), because config_declined did not exist yet (migrations/081).
+        # That state was no longer true: the chapters had been read, which is what
+        # DQ-114 counted as 21 served keys. Re-read 2026-10-04 from the council PDFs
+        # and declined, each with the chapter's own sentence.
         #
-        # The honest fix is a vocabulary term the DA intake can send. `school` maps
-        # to `educational_establishment`, which ALREADY exists in the serving
-        # taxonomy and is reachable through the has_child_care intake field
-        # (frontend-nextjs/lib/see/worksScope.ts:115) -- so schools alone could be
-        # narrowed truthfully. `place_of_public_worship` and `home_business` exist in
-        # neither the tagger patterns nor the serving taxonomy, so they need a term
-        # AND an intake field before anything can be declared. Both are backlog, not
-        # this change: narrowing hides rows, and a narrowing is only safe once it has
-        # been checked on a real address.
+        # The narrowing is still backlog, not abandoned. `school` could map to
+        # `educational_establishment`, which exists in the serving taxonomy, but a
+        # narrowing hides rows and is only safe once checked on a real address.
+        # `place_of_public_worship` and `home_business` need a term in
+        # frontend-nextjs/lib/see/devTypeHierarchy.ts AND a DA intake field first.
         "chapter_10_2_schools": {
+            "scope_declined": ("applicable_dev_types",),
             "scope_evidence": {
+                "applicable_dev_types":
+                    "Section 1 Introduction (PDF p5), verbatim: 'The Canterbury-Bankstown Development Control Plan 2023 supports the LEP by providing additional objectives and development controls to facilitate best practice in the design and function of schools.' DECLINED (read 2026-10-04): the subject is one use, a school. The tagger vocabulary has no school term; the serving taxonomy's nearest is `educational_establishment`, but narrowing to it HIDES the chapter from every other type the DA intake sends and has not been checked on a real school address. Until it is, the served value stays ALL -- an over-reach recorded here, not an assertion that a school control binds a warehouse.",
                 "applicable_zones":
                     "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
             },
            "applicable_zones": ["ALL"]
         },
         "chapter_10_3_home_businesses": {
+            "scope_declined": ("applicable_dev_types",),
             "scope_evidence": {
+                "applicable_dev_types":
+                    "Section 1 Home Businesses and Home Industries (PDF p3), verbatim: 'The Canterbury-Bankstown Development Control Plan 2023 supports the LEP by providing additional objectives and development controls to manage the operation of home businesses and home industries.' DECLINED (read 2026-10-04): neither 'home business' nor 'home industry' is a term in the tagger vocabulary or in frontend-nextjs/lib/see/devTypeHierarchy.ts, so no list can name them without hiding the chapter from every query; the served value stays ALL.",
                 "applicable_zones":
                     "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
             },
            "applicable_zones": ["ALL"]
         },
         "chapter_10_5_places_of_public_worship": {
+            "scope_declined": ("applicable_dev_types",),
             "scope_evidence": {
+                "applicable_dev_types":
+                    "Section 1 Introduction (PDF p4), verbatim: 'additional objectives and development controls to enhance the function and appearance of places of public worship (either by the erection of a new building, or extensions to and/or occupation of an existing building)' and 'This chapter does not apply to schools, except for those places within a school that are to be used for regular public worship.' DECLINED (read 2026-10-04): 'place of public worship' is a term in neither the tagger vocabulary nor frontend-nextjs/lib/see/devTypeHierarchy.ts, so no list can name it; the served value stays ALL.",
                 "applicable_zones":
                     "Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to land within the Canterbury-Bankstown Local Government Area.' THIS CHAPTER STATES NO SCOPE OF ITS OWN -- read 2026-10-03, its first 12 pages carry no 'Chapter N.N of this DCP applies to', no 'Application of this chapter' and no 'Land to which ... applies' section -- so it inherits the plan's scope, which is the whole LGA. Recorded as INHERITED rather than declared: ALL here is the plan's statement, not a decision anybody made about this chapter.",
             },
