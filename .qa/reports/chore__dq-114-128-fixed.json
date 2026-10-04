@@ -1,0 +1,21 @@
+{
+  "tier": "minor",
+  "justification": "Ledger-only change (.claude/dq_checks.json, .claude/DATA_QUALITY_TRACKER.md) recording two fixes already live and verified against production -- no code, no schema.",
+  "commit_hash": "5bb6b886",
+  "files": [".claude/dq_checks.json", ".claude/DATA_QUALITY_TRACKER.md"],
+  "break_it": [
+    {
+      "scenario": "The ledger claims fixed while production still has the defect.",
+      "what_happens": "CI's ledger ratchet would go red on the next run because the check fails while the row says fixed.",
+      "mitigated": true,
+      "how": "Both checks were run against production after the writes: DQ-114 count 0, DQ-128 0 rows; dq_check --id for each PASSED and --coverage OK.",
+      "repro": "python scripts/dq_check.py --id DQ-114 ; python scripts/dq_check.py --id DQ-128"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No -- the production writes this records already happened, with backups named in the tracker.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No -- verified against production before commit."
+  }
+}
