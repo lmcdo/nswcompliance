@@ -1,0 +1,28 @@
+{
+  "tier": "minor",
+  "justification": "Minor: ledger only. DQ-127's check exits 0 against production after #1215 deployed, so the row is declared fixed; otherwise CI reports a passing check on a row declared open.",
+  "commit_hash": "d952edbe",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json"
+  ],
+  "pre_impl": {},
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The row is flipped to fixed before the route change is live",
+      "what_happens": "The ledger would claim a fix the currency panel does not yet show",
+      "mitigated": true,
+      "how": "the check calls the production API and reports only Waverley's own LEP after the deploy",
+      "repro": "python scripts/dq_probe_app_defects.py --id DQ-127"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- verified in session against production"
+  }
+}
