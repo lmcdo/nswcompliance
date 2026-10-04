@@ -1542,6 +1542,42 @@
     ],
     "passes_when": "exit 0 - the scoped-rules stat on /what-you-get does not say 'councils' while dcp-scoped-councils.json lists a former council (lga_registry.parent_lga IS NOT NULL).",
     "note": "Logged 2026-10-04 under the freeze rule (ce-next-scope-and-inner-west-PROMPT step 2b). Wording agreed with the user 2026-10-04: 'council plans', former-council plans named by area. Not added to any OC gate."
+  },
+  "DQ-130": {
+    "declared": "open",
+    "check": [
+      "python",
+      "scripts/dq_probe_live.py",
+      "--id",
+      "DQ-130"
+    ],
+    "passes_when": "exit 0 - every SEPP/LEP whose text is served (is_current AND v2_is_actionable) has an active instrument_registry row with a pco_instrument_id, so the legislation monitor can see its amendments.",
+    "red_when": "a served instrument has no registry row: it is amended and nothing notices. Reads 6 on 2026-10-05 (Transport and Infrastructure, Biodiversity and Conservation, Planning Systems, Primary Production, Resilience and Hazards, Sustainable Buildings; 1,842 served rows).",
+    "note": "Opened 2026-10-05 (ce-lep-sepp-currency-integration-PROMPT-2026-10-05 Step 0). DQ-69 measures monitor liveness over REGISTERED instruments and is blind to unregistered ones; this measures from the served side. Proof it matters: Sustainable Buildings SEPP (epi-2022-0521) was amended 31 Oct 2025 (s2.1(2A) inserted, s2.1(5) narrowed, transitional (2) repealed, climate-zone map names) and nothing flagged it. Controls run at registration: the 4 registered serving instruments are excluded, the 6 counted are exactly the unregistered ones. Joined on title until a documents->registry key exists (Step 2)."
+  },
+  "DQ-131": {
+    "declared": "open",
+    "check": [
+      "python",
+      "scripts/dq_probe_live.py",
+      "--id",
+      "DQ-131"
+    ],
+    "passes_when": "exit 0 - no active instrument_registry row has a NULL or shared pco_instrument_id.",
+    "red_when": "an instrument is never checked (NULL id) or is checked against another instrument's history (shared id) -- both silent. Reads 3 on 2026-10-05: wingecarribee_lep_2010 (NULL); camden_lep_2010 and penrith_lep_2010 both epi-2010-0540.",
+    "note": "Opened 2026-10-05 (ce-lep-sepp-currency-integration-PROMPT-2026-10-05 Step 0). Counts rows, so the Camden/Penrith pair counts 2 until the wrong one is corrected. Fix ids from each instrument's own legislation page; the handoff note's 'epi-2022-0698' for Sustainable Buildings was wrong (it is epi-2022-0521), which is why ids are never taken from notes."
+  },
+  "DQ-132": {
+    "declared": "open",
+    "check": [
+      "python",
+      "scripts/dq_probe_live.py",
+      "--id",
+      "DQ-132"
+    ],
+    "passes_when": "exit 0 - every served SEPP/LEP document records the in-force version its text was taken from, and none is older than the version the monitor last saw unless the instrument is flagged needs_review (and so already caveated).",
+    "red_when": "served text is behind the law or cannot say which version it is. Reads 10 of 10 on 2026-10-05: no served SEPP/LEP document records its version (consolidated_as_of_date NULL throughout).",
+    "note": "Opened 2026-10-05 (ce-lep-sepp-currency-integration-PROMPT-2026-10-05 Step 0). Housing SEPP text was refreshed 2026-09-15 (DQ-88) yet its documents row still says Dec 2025; Sustainable Buildings text is the 5 Apr 2024 version of a SEPP amended 31 Oct 2025. Neither was visible to any check. Clears by recording the true source version and refreshing what is behind -- stamping today's date would game it."
   }
  }
 }
