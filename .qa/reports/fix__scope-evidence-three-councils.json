@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "Config-only scope evidence for three councils, four corrected scopes, a read-only probe for five logged defects, and a fallback reading in the fidelity probe. Nothing served changes until a production retag, which is held for the user's go. Not Critical because no row is written here.",
+  "commit_hash": "a65008f4",
+  "files": [
+    "enrichment/config/woollahra_config.py",
+    "enrichment/config/canterbury_bankstown_config.py",
+    "enrichment/config/parramatta_config.py",
+    "scripts/dq_probe_scope_evidence_fidelity.py",
+    "scripts/dq_probe_app_defects.py",
+    "tests/test_scope_evidence_declared.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "tests/test_dq_probe_app_defects_real_db.py"
+  ],
+  "pre_impl": {
+    "existing_data": "COUNCIL_CONFIGS entries for woollahra, canterbury_bankstown, parramatta; regulatory_provisions served rows tagged from them.",
+    "assumption_mismatch": "A Parramatta Part 3/4 entry would replace text-derived dev types with ALL; tests/test_parramatta_numbered_parts_scope.py caught it and the entries were removed.",
+    "new_vs_existing": "Applies to existing rows only after retag_applicability_slug_docids.py --apply; dry run: 26 served rows narrow (E8 12, F2 9, D4 5)."
+  },
+  "functions": [
+    {
+      "name": "chapter_text",
+      "file_line": "scripts/dq_probe_scope_evidence_fidelity.py",
+      "input": "a registry chapter dict with its public PDF url, fetched into the cache",
+      "output": "pdfplumber text plus PyMuPDF text",
+      "if_none": "PyMuPDF absent -> pdfplumber text alone, as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ-115 47 -> 0",
+      "read_at": "dq_probe_applicability_config.py --id DQ-115, 2026-10-04",
+      "nullable": "no",
+      "guard_at": "N/A",
+      "if_missing": "N/A"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "served rows carrying raw table markup (DQ-125)",
+      "file_line": "scripts/dq_probe_app_defects.py dq125",
+      "where_clause": "is_current AND v2_is_actionable AND provision_text LIKE '%<table%'",
+      "if_zero": "row is clean",
+      "if_wrong": "over-counts if a view renders the markup; recorded in the tracker as not yet checked"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A narrowed scope hides a rule from a development type the chapter covers",
+      "what_happens": "a planner is not shown a binding control",
+      "mitigated": true,
+      "how": "E8 narrowed only to its own nine listed types, omitting only types the serving taxonomy cannot select; F2 to the one use it names",
+      "repro": "retag dry run lists all 26 narrowings"
+    },
+    {
+      "scenario": "A config entry for a whole-DCP Part replaces text-derived dev types with ALL",
+      "what_happens": "rows lose their specific development types and show for everything",
+      "mitigated": true,
+      "how": "Parramatta Parts 3/4 entries removed after the test failed",
+      "repro": "tests/test_parramatta_numbered_parts_scope.py"
+    },
+    {
+      "scenario": "The PyMuPDF fallback marks a quote OK that is not in the document",
+      "what_happens": "a false scope sentence passes the fidelity check",
+      "mitigated": true,
+      "how": "the quote must still appear contiguously in one reading of the same PDF; the fallback only adds text from that file",
+      "repro": "dq_probe_scope_evidence_fidelity.py --council canterbury-bankstown"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Production retag for woollahra, canterbury_bankstown, parramatta needs the user's go"
+  },
+  "falsifiable_check": {
+    "command": "SCOPE_PDF_CACHE=<dir> python scripts/dq_probe_scope_evidence_fidelity.py --council woollahra",
+    "fails_when": "Before this branch Woollahra B1 and D1 read MISSING (2 spans, quotes paraphrased with bracketed ellipses) and Canterbury 7.5's sentence could not be found by pdfplumber; after: woollahra 65 OK/0 MISSING, canterbury-bankstown 34 OK/0 MISSING, parramatta 16 OK/0 MISSING.",
+    "observed_red": "First woollahra run printed 'MISSING woollahra/parts/B1/applicable_zones' and 'MISSING woollahra/parts/D1/applicable_zones'; the five new dq_probe_app_defects checks each exit 1 against production today (2 of 5 addresses wrong, 8 names, unconditional note, 1064 rows, 30 rows).",
+    "external_authority": "Each council's own PDF in dcp_chapter_registry, and the live verify.plotdetect.com.au /api/property answer for DQ-122."
+  }
+}

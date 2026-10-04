@@ -107,28 +107,47 @@ PARRAMATTA_CONFIG: dict = {
     "parts": {
         # Part 2 Design in Context — Part 4 is directed to read it, so it is
         # not a residential-only chapter.
-        "2": _GENERAL,
+        "2": {**_GENERAL, "scope_evidence": {"applicable_zones":
+                    "PART 2 - DESIGN IN CONTEXT introduction (PDF p13), verbatim: 'This Part of the DCP contains the overarching development controls, supported by a set of design objectives, that must be applied to all development types in the City.'",
+                "applicable_dev_types":
+                    "Same sentence, verbatim: 'must be applied to all development types in the City' -- ALL."}},
 
         # Part 5 Environmental Management — "throughout the City".
-        "5": _GENERAL,
+        "5": {**_GENERAL, "scope_evidence": {"applicable_zones":
+                    "PART 5 - ENVIRONMENTAL MANAGEMENT introduction (PDF p178), verbatim: 'This Part of this DCP applies to all types of development, both residential and non-residential.'",
+                "applicable_dev_types":
+                    "Same sentence, verbatim: 'applies to all types of development, both residential and non-residential' -- ALL."}},
 
         # Part 6 Traffic and Transport — "across the City".
-        "6": _GENERAL,
+        "6": {**_GENERAL, "scope_evidence": {"applicable_zones":
+                    "PART 6 - TRAFFIC AND TRANSPORT introduction (PDF p270), verbatim: 'requirements for all types of development across the City.'",
+                "applicable_dev_types":
+                    "PDF p270, verbatim: 'The controls contained within this part of this DCP apply to all development types and need to be considered as part of any development application.'"}},
 
         # Part 7 Heritage and Archaeology — a site condition. It binds whatever
         # is proposed on a heritage item, archaeological site, or a building or
         # place in a conservation area.
         "7": {"applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
-              "site_conditions": ["heritage"]},
+              "site_conditions": ["heritage"],
+              "scope_evidence": {"applicable_zones":
+                    "7.1 Introduction (PDF p290), verbatim: 'the general principles and controls that apply to development on and in the vicinity of heritage items and heritage conservation areas identified in the Parramatta LEP 2023.' A site condition, not a zone: it binds land carrying a listing wherever it is, so zones are ALL and site_conditions carries the trigger.",
+                "applicable_dev_types":
+                    "Same sentence, verbatim: 'apply to development on and in the vicinity of heritage items' -- whatever development is proposed there, so ALL."}},
 
         # Part 8 Strategic Centres and Local Centres — Epping, Melrose Park,
         # Granville, Carlingford and the rest. Scoped geographically, so every
         # development within the named centre is bound. 8.x.y.z all reach this
         # through the progressive strip.
-        "8": _AREA,
+        "8": {**_AREA, "scope_evidence": {"applicable_zones":
+                    "PART 8 introduction (PDF p397), verbatim: 'This Part of the DCP contains specific design requirements for certain centres and precincts of the City of Parramatta (the City) including strategic centres, local centres, neighbourhood precincts, special character areas, and specific sites.' A named area is not a zone: ALL on zones records that the Part names land, and is_precinct_specific carries the geography.",
+                "applicable_dev_types":
+                    "PDF p397, verbatim: 'The consent authority, in considering a development application for land described in Part 8 must have regard to the specific provisions.' -- any application on that land, so ALL."}},
 
         # Part 9 Parramatta City Centre — likewise geographic, with its
         # exceptions stated inside the Part rather than here.
-        "9": _AREA,
+        "9": {**_AREA, "scope_evidence": {"applicable_zones":
+                    "9.1.1 Application (PDF p1084), verbatim: 'The controls in this Part apply to the Parramatta City Centre the Land Application Map, below.' (the council's own wording, missing 'as shown on'). A named area is not a zone: ALL on zones records that the Part names land, and is_precinct_specific carries the geography.",
+                "applicable_dev_types":
+                    "Same clause, verbatim: 'The controls in this Part apply to the Parramatta City Centre' -- it names land and no development type, so every development within it is bound: ALL."}},
     },
 }
