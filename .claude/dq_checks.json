@@ -1463,7 +1463,7 @@
     "--id",
     "DQ-122"
    ],
-   "passes_when": "exit 0 - every address in ADDRESSES returns its own house number and suburb from /api/property. The first two failed on 2026-10-04; the others are controls so a fix that breaks ordinary lookups also fails. Exit 2 when the site cannot be reached.",
+   "passes_when": "exit 0 - every address in ADDRESSES that the NSW address register holds comes back from /api/property with its own house number, street and suburb, and every one the register lacks gets a 404 with notFound:true -- never a neighbour. The real addresses are controls, so a fix that refuses every lookup also fails. Exit 2 when the site cannot be reached. DQ_APP_URL points it at a local build.",
    "note": "Logged 2026-10-04 as backlog under the freeze rule, found by using the live app on real addresses (see the tracker row)."
   },
   "DQ-123": {
