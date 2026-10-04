@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
       `WITH me AS (
          SELECT $1::text AS slug
          UNION
-         SELECT parent_lga FROM lga_registry WHERE slug = $1 AND parent_lga IS NOT NULL
+         SELECT parent_lga FROM lga_registry
+         WHERE slug = $1 AND parent_lga IS NOT NULL AND is_active = TRUE
        ),
        latest AS (
          SELECT DISTINCT ON (ic.instrument_key)
