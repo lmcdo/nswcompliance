@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "One published-list entry, added because the OC-17 check computes Canterbury-Bankstown as passing after the production retag; no code or query changes.",
-  "commit_hash": "74c50dd7",
+  "commit_hash": "e455af95",
   "files": [
     "frontend-nextjs/shared/dcp-scoped-councils.json"
   ],
