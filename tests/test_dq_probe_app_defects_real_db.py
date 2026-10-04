@@ -47,7 +47,7 @@ def _need_db():
 
 
 @pytest.mark.database
-@pytest.mark.parametrize("check", ["DQ-125", "DQ-126", "DQ-123"])
+@pytest.mark.parametrize("check", ["DQ-125", "DQ-126", "DQ-123", "DQ-128", "DQ-129"])
 def test_sql_checks_run_against_the_real_database(check):
     _need_db()
     rc, msg = p.CHECKS[check]()
@@ -205,3 +205,74 @@ def test_dq122_runs_against_the_live_site():
     rc, msg = p.dq122()
     assert rc in (0, 1), msg
     assert msg
+
+
+# --- DQ-129: the stat's unit, judged against the registry's former councils. ---
+
+class _FakeConn:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def cursor(self):
+        rows = self.rows
+
+        class _C:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def execute(self, sql, params=None):
+                assert "is_active = TRUE" in sql and "parent_lga IS NOT NULL" in sql
+
+            def fetchall(self):
+                return rows
+        return _C()
+
+    def close(self):
+        pass
+
+
+def _dq129_world(monkeypatch, tmp_path, unit, slugs, former):
+    fe = tmp_path / "frontend-nextjs"
+    (fe / "app" / "what-you-get").mkdir(parents=True)
+    (fe / "shared").mkdir()
+    (fe / "app" / "what-you-get" / "page.tsx").write_text(
+        "    stat: `${scopedCouncils.councils.length} " + unit + "`,\n", encoding="utf-8")
+    (fe / "shared" / "dcp-scoped-councils.json").write_text(
+        json.dumps({"councils": [{"slug": s, "name": s} for s in slugs]}), encoding="utf-8")
+    monkeypatch.setattr(p, "ROOT", tmp_path)
+    monkeypatch.setattr(p, "_db", lambda: _FakeConn([(f,) for f in former]))
+
+
+def test_dq129_red_when_councils_counts_a_former_council(monkeypatch, tmp_path):
+    _dq129_world(monkeypatch, tmp_path, "councils", ["hornsby", "leichhardt"], ["leichhardt", "ashfield"])
+    rc, msg = p.dq129()
+    assert rc == 1 and "leichhardt" in msg
+
+
+def test_dq129_clean_when_the_stat_counts_plans(monkeypatch, tmp_path):
+    _dq129_world(monkeypatch, tmp_path, "council plans", ["hornsby", "leichhardt"], ["leichhardt"])
+    assert p.dq129()[0] == 0
+
+
+def test_dq129_clean_when_no_former_council_is_listed(monkeypatch, tmp_path):
+    _dq129_world(monkeypatch, tmp_path, "councils", ["hornsby"], ["leichhardt"])
+    assert p.dq129()[0] == 0
+
+
+def test_dq129_red_when_the_stat_stops_reading_the_list(monkeypatch, tmp_path):
+    _dq129_world(monkeypatch, tmp_path, "councils", ["hornsby"], [])
+    page = tmp_path / "frontend-nextjs" / "app" / "what-you-get" / "page.tsx"
+    page.write_text("    stat: '12 councils',\n", encoding="utf-8")
+    assert p.dq129()[0] == 1
+
+
+def test_dq129_unreachable_is_could_not_look(monkeypatch, tmp_path):
+    _dq129_world(monkeypatch, tmp_path, "councils", ["leichhardt"], [])
+
+    def boom():
+        raise OSError("down")
+    monkeypatch.setattr(p, "_db", boom)
+    assert p.dq129()[0] == 2

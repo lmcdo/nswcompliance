@@ -94,9 +94,17 @@ SELECT source_council,
  WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
  GROUP BY 1"""
 
+#: A FORMER council (lga_registry.parent_lga set) is published as its merged council and the area its plan
+#: covers -- "Inner West (former Leichhardt area only)" -- because it is a plan, not a council, and naming the
+#: merged council alone would claim its other former areas too (DQ-129, user ruling 2026-10-04).
 _UNIVERSE_SQL = """
-SELECT DISTINCT p.source_council, r.display_name FROM regulatory_provisions p
+SELECT DISTINCT p.source_council,
+       CASE WHEN r.parent_lga IS NOT NULL AND pr.display_name IS NOT NULL
+            THEN pr.display_name || ' (former ' || r.display_name || ' area only)'
+            ELSE r.display_name END
+  FROM regulatory_provisions p
   LEFT JOIN lga_registry r ON r.slug = p.source_council AND r.is_active
+  LEFT JOIN lga_registry pr ON pr.slug = r.parent_lga AND pr.is_active = TRUE
  WHERE p.is_current AND p.v2_is_actionable AND p.source_council IS NOT NULL"""
 
 

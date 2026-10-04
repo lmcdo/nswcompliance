@@ -35,11 +35,13 @@ const TIERS = [
     label: 'DCP rules, with the council’s words',
     scope: 'Which zones and building types each rule covers',
     detail: scopedCouncils.claim,
-    stat: `${scopedCouncils.councils.length} councils`,
+    stat: `${scopedCouncils.councils.length} council plans`,
   },
 ];
 
 const LISTED = new Set(scopedCouncils.councils.map((c) => c.slug));
+/* The file is in slug order; a former-council plan is named by its merged council, so sort by what is shown. */
+const COUNCIL_PLAN_NAMES = scopedCouncils.councils.map((c) => c.name).sort((a, b) => a.localeCompare(b));
 /* Only exceptions for a listed council are stated here: the claim is made for those councils alone. */
 const SCOPE_EXCEPTIONS = scopedCouncils.exceptions.filter((e) => LISTED.has(e.council));
 
@@ -115,10 +117,10 @@ export default function WhatYouGetPage() {
           </div>
           <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
             <div className="font-semibold text-slate-900 mb-2">
-              Councils where every rule shown carries the council’s own sentence
+              Council plans where every rule shown carries the council’s own sentence
             </div>
             <p className="text-sm text-slate-500 leading-relaxed">
-              {scopedCouncils.councils.map((c) => c.name).join(', ')}.
+              {COUNCIL_PLAN_NAMES.join(', ')}.
             </p>
             {SCOPE_EXCEPTIONS.length > 0 && (
               <ul className="mt-3 list-disc pl-5 text-sm text-slate-500 leading-relaxed">
