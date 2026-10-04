@@ -191,7 +191,15 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
       } else {
         const errorText = await response.text();
         console.error('❌ HTTP Error:', response.status, errorText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Show the server's own message (e.g. the 404 naming the address that was not found).
+        let serverMessage: string | null = null;
+        try {
+          const body = JSON.parse(errorText);
+          serverMessage = typeof body?.error === 'string' ? body.error : null;
+        } catch {
+          serverMessage = null;
+        }
+        throw new Error(serverMessage ?? `HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (err) {
       console.error('❌ Fetch error:', err);

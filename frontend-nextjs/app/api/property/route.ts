@@ -218,7 +218,21 @@ export async function GET(req: NextRequest) {
  
  } catch (error) {
  console.error('Property data fetch failed:', error);
- 
+
+ // DQ-122: no candidate carried the asked street number and street. Say so plainly (404), so a
+ // caller can tell "no such property" from "the service is down" -- never serve a neighbour.
+ const message = error instanceof Error ? error.message : '';
+ if (message.includes('Property not found')) {
+   return NextResponse.json(
+     {
+       success: false,
+       error: `No property matching "${address}" was found in the NSW Planning Portal. Check the street number and street name.`,
+       notFound: true,
+     },
+     { status: 404 }
+   );
+ }
+
  return NextResponse.json(
  { 
  error: 'Failed to retrieve property data',

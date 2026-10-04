@@ -1,0 +1,97 @@
+{
+  "tier": "critical",
+  "justification": "Critical: /api/property served a different property's zone, controls and DCP rules for an address the user typed (DQ-122, P1), with nothing on screen saying so. Every downstream panel on the assessment page and the precinct lookup inherit the lot this function picks.",
+  "commit_hash": "f1b377e8",
+  "files": [
+    "frontend-nextjs/lib/address-number-match.ts",
+    "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "frontend-nextjs/app/api/property/route.ts",
+    "frontend-nextjs/hooks/usePropertyAssessment.ts",
+    "frontend-nextjs/__tests__/lib/address-number-match.test.ts",
+    "scripts/dq_probe_app_defects.py",
+    "tests/test_dq_probe_app_defects_real_db.py",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json"
+  ],
+  "pre_impl": {
+    "existing_data": "No database table involved: the lot comes from the NSW Planning Portal address search (ePlanningApi/address), checked against the NSW address register (NSW_Geocoded_Addressing_Theme AddressPoint) with 893 New South Head Road as a positive control.",
+    "assumption_mismatch": "The code assumed the Portal's top-ranked candidate is the asked address. The Portal search is fuzzy: for 700 New South Head Rd Rose Bay it returns ten candidates, none numbered 700, and the scorer ignored every token starting with a digit so the house number was never compared.",
+    "new_vs_existing": "No house-number parser existed in frontend-nextjs (grep houseNumber, streetNumber, parseHouse, numberMatch). The new helper lib/address-number-match.ts is used by searchProperty and its valuation fallback; nothing parallel was built.",
+    "external_source_error": "A Portal 429 rate limit, timeout or non-list body previously became null and then read as Property not found. It now throws Address search unavailable, which reaches the user as a service error (500), never as a 404 not-found.",
+    "frontend_type": "API returns 404 with JSON {success:false, error:string, notFound:true}. usePropertyAssessment now reads body.error on a non-OK response, so the page prints that string instead of HTTP 404: Not Found.",
+    "user_failure_mode": "Before: a neighbouring lot's controls shown silently under the typed address. After: a red message naming the address that was not found; a real address the matcher rejects would show the same visible message, never another property."
+  },
+  "falsifiable_check": {
+    "command": "DQ_APP_URL=http://localhost:3013 python scripts/dq_probe_app_defects.py --id DQ-122",
+    "fails_when": "Against production (old code) it exits 1: 700 returns 893, 235 returns 582, 14 Hunter St returns 8-12 Hunter St. It also fails if a fix refuses the three real control addresses.",
+    "observed_red": "Production run 2026-10-04: DQ-122: 3 of 6 addresses answered wrongly (893, 582, 14 8-12 HUNTER STREET). Local fixed build: exit 0, every address returned itself or said not found."
+  },
+  "functions": [
+    {
+      "name": "filterToAskedProperty",
+      "file_line": "frontend-nextjs/lib/address-number-match.ts",
+      "input": "asked address string and the Portal candidate list",
+      "output": "only candidates with matching street number or containing range, street name and type, and postcode",
+      "if_none": "empty list, which searchProperty turns into null and the route into a 404 naming the address"
+    },
+    {
+      "name": "NSWPlanningPortalService.searchProperty",
+      "file_line": "frontend-nextjs/lib/nsw-planning-portal.ts:396",
+      "input": "the address string the user typed or chose from Google Places",
+      "output": "the matching Portal candidate, or null when none matches",
+      "if_none": "null; a failed request throws Address search unavailable instead of returning null"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Same number, different street: 14 Hunter St Lewisham where the Portal's top hit is 14 ST JOHN STREET LEWISHAM",
+      "what_happens": "Number-only matching would serve the St John Street lot under a Hunter Street address",
+      "mitigated": true,
+      "how": "streetMatches compares street name words and type",
+      "repro": "jest: same number on a different street is a different property; mutation removing the street check fails 2 tests"
+    },
+    {
+      "scenario": "Same number and street in another suburb or postcode, e.g. 12 Smith St Summer Hill vs Ashfield",
+      "what_happens": "Street and number matching alone would serve the Ashfield lot for a Summer Hill address",
+      "mitigated": true,
+      "how": "postcode must equal when both sides carry one",
+      "repro": "jest: same number and street in another postcode; mutation removing the postcode check fails 1 test"
+    },
+    {
+      "scenario": "Portal rate-limits (429) or returns a non-list body during a lookup",
+      "what_happens": "Previously read as Property not found; with the new 404 would tell the user the address does not exist",
+      "mitigated": true,
+      "how": "searchProperty throws Address search unavailable and getPropertyComplianceData rethrows it, so it surfaces as a 500 service error",
+      "repro": "jest: a rate limit is an outage; mutation returning null fails 2 tests"
+    },
+    {
+      "scenario": "Real addresses written with level or unit designators (L1 32 PHILLIP STREET) or ranges (674-680)",
+      "what_happens": "An over-strict matcher would refuse real properties and show not found wrongly",
+      "mitigated": true,
+      "how": "unit words and letter-digit designators are skipped; a number inside a range matches",
+      "repro": "Measured 101 of 101 real register addresses across 14 suburbs resolve to themselves; the one miss found (L1) was fixed and pinned by a jest case"
+    },
+    {
+      "scenario": "A fix that answers not found for every address would turn DQ-122 green",
+      "what_happens": "The check would pass while the lookup is broken",
+      "mitigated": true,
+      "how": "probe requires the three register-held controls to come back as themselves",
+      "repro": "pytest test_dq122_red_when_a_real_address_is_refused; mutation accepting not_found for real addresses fails it"
+    },
+    {
+      "scenario": "Valuation fallback walks candidates when the first has no valuation (strata)",
+      "what_happens": "The fallback would pick any neighbouring lot that happens to have valuation data",
+      "mitigated": true,
+      "how": "fallback candidates pass through the same filterToAskedProperty",
+      "repro": "nsw-planning-portal.ts getPropertyComplianceData fallback block"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- after Vercel deploys, run python scripts/dq_probe_app_defects.py --id DQ-122 against production; on exit 0 flip DQ-122 to fixed in dq_checks.json and the tracker in a follow-up."
+  }
+}
