@@ -53,3 +53,10 @@ def test_every_published_council_serves_rule_text_under_its_registry_name(conn):
     for c in published["councils"]:
         assert c["slug"] in names, f"{c['slug']} is published but serves no rule text"
         assert names[c["slug"]] == c["name"], (c, names[c["slug"]])
+
+
+def test_a_former_council_is_named_as_its_merged_council_and_area(conn):
+    """DQ-129: Leichhardt is a plan inside Inner West, not a council, and only that plan passes."""
+    _reasons, names, _problems = osc.compute(conn, osc.load_published()["exceptions"])
+    assert names.get("leichhardt") == "Inner West (former Leichhardt area only)", names.get("leichhardt")
+    assert names.get("hornsby") == "Hornsby"

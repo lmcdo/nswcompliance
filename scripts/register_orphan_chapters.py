@@ -112,16 +112,11 @@ NEW_CHAPTERS = [
     ("northern_beaches", "warringah-dcp-2011-part-b", "Warringah DCP 2011",
      "Part B — Development Controls (alias)",
      None),
-    # Inner West — three former-council DCPs
-    ("inner_west", "ashfield-chapter-a-miscellaneous", "Ashfield DCP 2007",
-     "Chapter A — Miscellaneous",
-     "https://www.innerwest.nsw.gov.au/sites/default/files/page-documents/Inner_West_Ashfield_DCP_2016_-_Preliminary_Notification_and_Advertising_-_with_IWLEP_2022_amendments.pdf"),
-    ("inner_west", "leichhardt-part-c-section-1", "Leichhardt DCP 2013",
-     "Part C Section 1 — General Residential",
-     None),
-    ("inner_west", "marrickville-part-2-10-parking", "Marrickville DCP 2011",
-     "Part 2.10 — Parking",
-     "https://www.innerwest.nsw.gov.au/sites/default/files/2026-03/Marrickville%20DCP%202011%20-%202.10%20Parking.pdf"),
+    # Inner West: the three former-council chapters once listed here (registered 2026-05-14 as
+    # council='inner_west', ids 747-749) were removed 2026-10-04 (DQ-128). Each duplicated a chapter
+    # already registered under its former council, and the registry council is copied into
+    # regulatory_provisions.source_council, so 11 served rows were filed under the wrong slug.
+    # A former council's plan is registered under the former council's own slug.
     # Bayside
     ("bayside", "bayside-dcp-2022-part3", "Bayside DCP 2022",
      "Part 3 — General Controls", None),
@@ -190,6 +185,26 @@ NEW_CHAPTERS = [
 ]
 
 
+def former_council_owner(cur, council: str, dcp_name: str):
+    """The former council whose plan `dcp_name` is, when `council` is the merged council it rolled into.
+
+    Rolls up through lga_registry.parent_lga (never `former_council`, which exists for Inner West
+    only). Returns the former council's slug, or None when the plan is the council's own.
+    """
+    if not council or not dcp_name:
+        return None
+    cur.execute("""
+        SELECT slug, display_name FROM lga_registry
+        WHERE parent_lga = %s AND is_active = TRUE
+    """, (council,))
+    name = dcp_name.strip().lower()
+    for row in cur.fetchall():
+        slug, display = (row["slug"], row["display_name"]) if isinstance(row, dict) else row
+        if display and name.startswith(display.strip().lower() + " "):
+            return slug
+    return None
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
@@ -251,6 +266,13 @@ def main():
         """, (council, key))
         if cur.fetchone():
             print(f"  SKIP (exists): {council} | {key}")
+            skipped += 1
+            continue
+
+        owner = former_council_owner(cur, council, dcp_name)
+        if owner:
+            print(f"  REFUSE: {council} | {key} -- '{dcp_name}' is {owner}'s plan; "
+                  f"register it under '{owner}' (DQ-128)")
             skipped += 1
             continue
 
