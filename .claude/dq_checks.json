@@ -1511,7 +1511,7 @@
    "note": "Logged 2026-10-04 as backlog under the freeze rule, found by using the live app on real addresses (see the tracker row)."
   },
   "DQ-127": {
-    "declared": "open",
+    "declared": "fixed",
     "check": [
       "python",
       "scripts/dq_probe_app_defects.py",
