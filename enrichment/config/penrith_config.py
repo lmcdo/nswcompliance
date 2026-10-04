@@ -42,6 +42,19 @@ PENRITH_CONFIG: dict = {
         "c10_transport_access_parking": {
             "applicable_zones": ["ALL"],
             "applicable_dev_types": ["ALL"],
+            "scope_evidence": {
+                "applicable_zones":
+                    "C10 General Objectives, verbatim: 'to minimise the impacts of traffic "
+                    "generating developments and manage road safety issues'. The Part states "
+                    "no narrowing of zone or development type anywhere in its 29 pages, and a "
+                    "transport and parking Part binds anything that generates a trip, so ALL is "
+                    "a decision -- the same reading given to canterbury_bankstown's "
+                    "chapter_3_2_parking.",
+                "applicable_dev_types":
+                    "C10 General Objectives, verbatim: 'to minimise the impacts of traffic "
+                    "generating developments and manage road safety issues' -- the same "
+                    "absence of any narrowing binds both keys.",
+            },
             "layer": "generic",
         },
 

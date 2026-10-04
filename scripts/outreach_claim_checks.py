@@ -34,6 +34,7 @@ if str(ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(ROOT / "scripts"))
 
 import outreach_flood_depth_probe as flood_probe  # noqa: E402  (path set above)
+import outreach_scoped_councils as scoped  # noqa: E402  (path set above)
 
 PASS, FAIL, UNKNOWN = "PASS", "FAIL", "UNKNOWN"
 Result = tuple[str, str]
@@ -512,14 +513,13 @@ SELECT (SELECT count(*) FROM dcp_setback_controls s
 # ── the claims ─────────────────────────────────────────────────────────────────────────────────────
 
 CLAIMS: dict[str, list[Callable[[], Result]]] = {
-    # Disposition 2026-09-14: garbled text served as rules makes "N provisions" count things that are not
-    # the council's words, so the text-damage probes block this claim alongside its counts.
+    # Reworded 2026-10-03 (user ruling, ce-outreach-narrowed-claims-PROMPT-2026-10-03.md section 5): the
+    # claim is the two counts and nothing else, so the check is the two counts and nothing else. The
+    # text-residue probes (DQ-76, DQ-78, DQ-97, DQ-29) that blocked it from 2026-09-14 stay open as repair
+    # backlog. This is NOT the move refused in DQ-97's decision_2026-10-03 -- dropping a gate while KEEPING
+    # a claim that needs it. The claim no longer says the text is clean, and no site page says so.
     "OC-4": [
         lambda: _coverage_fields("provisionsTotal", "dcpActionableProvisions"),
-        lambda: probe("DQ-76"),
-        lambda: probe("DQ-78"),
-        lambda: probe("DQ-97"),
-        lambda: probe("DQ-29"),
     ],
     # Disposition 2026-09-14: Housing SEPP standards that a known amendment should have staled (DQ-96)
     # make "45 SEPP standards" a count of rules not all in force.
@@ -620,9 +620,13 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
         # inside a live chapter -- woollahra B3.3 sits in
         # v1.4-2026-09-15/chapter-b3-general-development.pdf, a path with no such
         # word. DQ-116 is what reads the council's own wording instead.
-        lambda: probe("DQ-114"),
-        lambda: probe("DQ-115"),
         lambda: probe("DQ-116"),
+        # Reworded 2026-10-03 (user ruling): "For the councils listed, ...". DQ-114
+        # and DQ-115 moved from fleet-wide probes to a PER-COUNCIL computation: a
+        # council is listed only when neither finds anything in it (bar a stated
+        # exception), and the claim holds only when the site's published list is
+        # exactly that set. Every row above still has to pass for the whole fleet.
+        scoped.check,
     ],
 }
 

@@ -84,9 +84,9 @@ MIN_EVIDENCE_CHARS = 40
 #:   parramatta 2, 5-9 — a whole-DCP PDF of 1,563 pages where a document-wide
 #:     scan found four hits and none was a clean Part-level scope. Each Part's
 #:     own opening page is needed.
-#:   penrith c10, hornsby part_1_general, georges_river part_3 — each has its
-#:     sentence quoted in a Python COMMENT above the entry already; moving it
-#:     into scope_evidence is mechanical and is the cheapest remaining work.
+#:   (penrith c10, hornsby part_1_general and georges_river part_3 were released
+#:     2026-10-04: their comment sentences moved into scope_evidence, and every
+#:     quoted span read OK against its PDF in dq_probe_scope_evidence_fidelity.py.)
 UNEVIDENCED: frozenset[tuple[str, str, str, str]] = frozenset({
     ("woollahra", "parts", "A3", "applicable_zones"),
     ("woollahra", "parts", "A3", "applicable_dev_types"),
@@ -117,12 +117,6 @@ UNEVIDENCED: frozenset[tuple[str, str, str, str]] = frozenset({
     ("canterbury-bankstown", "chapter_topics", "chapter_11_14_riverwood_estate", "applicable_dev_types"),
     ("canterbury-bankstown", "chapter_topics", "chapter_11_15_marco_avenue", "applicable_zones"),
     ("canterbury-bankstown", "chapter_topics", "chapter_11_15_marco_avenue", "applicable_dev_types"),
-    ("penrith", "chapter_topics", "c10_transport_access_parking", "applicable_zones"),
-    ("penrith", "chapter_topics", "c10_transport_access_parking", "applicable_dev_types"),
-    ("hornsby", "chapter_topics", "part_1_general", "applicable_zones"),
-    ("hornsby", "chapter_topics", "part_1_general", "applicable_dev_types"),
-    ("georges_river", "chapter_topics", "part_3_general_planning_considerations", "applicable_zones"),
-    ("georges_river", "chapter_topics", "part_3_general_planning_considerations", "applicable_dev_types"),
     ("parramatta", "parts", "2", "applicable_zones"),
     ("parramatta", "parts", "2", "applicable_dev_types"),
     ("parramatta", "parts", "5", "applicable_zones"),

@@ -1,0 +1,114 @@
+{
+  "tier": "standard",
+  "justification": "Changes what two outreach claims assert and what gates them, plus evidence text on three config entries. No production write, no change to what any property is served: scope_evidence is data the checks read, the tagger does not. Not Critical because nothing served moves; not Minor because a wrong gate here would let outreach claim something false.",
+  "commit_hash": "d615ab80",
+  "files": [
+    ".claude/dq_checks.json",
+    "enrichment/config/georges_river_config.py",
+    "enrichment/config/hornsby_config.py",
+    "enrichment/config/penrith_config.py",
+    "frontend-nextjs/app/what-you-get/page.tsx",
+    "frontend-nextjs/shared/dcp-scoped-councils.json",
+    "scripts/outreach_claim_checks.py",
+    "scripts/outreach_scoped_councils.py",
+    "tests/test_outreach_scoped_councils.py",
+    "tests/test_scope_evidence_declared.py",
+    "tests/test_outreach_scoped_councils_real_db.py",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_outreach_scoped_councils.py -q -o addopts=",
+    "fails_when": "Measured on this branch, each mutation run against hand-built fixture worlds whose correct answer is fixed in the test, not produced by the code: M1 dropping the under-listing comparison -> 1 failed/10 passed; M2 ignoring stated exceptions -> 3 failed/8 passed; M3 disabling the check that the per-council split sums to DQ-114's own total -> 1 failed/10 passed. Clean: 11 passed.",
+    "external_authority": "The list is computed from regulatory_provisions via DQ-114's own SQL (dq_probe_live.PROBES) and dq_probe_applicability_config.probe_115; the moved scope sentences were checked against the council PDFs by dq_probe_scope_evidence_fidelity.py (all spans OK).",
+    "observed_red": "pytest printed '1 failed, 10 passed' (M1: test_underclaim_fails), '3 failed, 8 passed' (M2: test_matching_list_passes_and_exception_excuses_its_rows, test_without_the_exception..., test_stale...), '1 failed, 10 passed' (M3: test_split_drifting_from_dq114_fails); restored file printed '11 passed'. Before the fix the real gate printed 'OC-17: FAILS' with DQ-114 23 and DQ-115 47."
+  },
+  "pre_impl": {
+    "existing_data": "regulatory_provisions served set (is_current AND v2_is_actionable): 18 source_council slugs, all joined to lga_registry.display_name. DQ-114 = 23 keys in 6 (council, chapter, key) groups. COUNCIL_CONFIGS aliases share dicts, so attribution is by identity.",
+    "assumption_mismatch": "If DQ-114's query changes and the split does not, the totals disagree and the check FAILS rather than listing on a stale split. A DQ-115 hit in a config no served council uses also FAILS rather than being dropped.",
+    "new_vs_existing": "Read-only. Applies to whatever the database holds at run time; the published JSON must be re-matched whenever a council starts or stops passing."
+  },
+  "functions": [
+    {
+      "name": "outreach_scoped_councils.check",
+      "file_line": "scripts/outreach_scoped_councils.py",
+      "input": "published JSON + live DB",
+      "output": "PASS/FAIL/UNKNOWN + detail to outreach_claim_checks OC-17",
+      "if_none": "unreadable JSON -> FAIL; unreachable DB -> UNKNOWN, never PASS"
+    }
+  ],
+  "values": [
+    {
+      "value": "councils listed 10 of 18 (first run listed 15 and was wrong: no_config rows were not counted)",
+      "read_at": "python scripts/outreach_scoped_councils.py, 2026-10-04",
+      "nullable": "no",
+      "guard_at": "N/A",
+      "if_missing": "claim fails"
+    },
+    {
+      "value": "dq_check --outreach 17 of 17; DQ-115 47 -> 41; pytest 7674 passed; jest 108 suites/1503 tests",
+      "read_at": "2026-10-04 on this worktree",
+      "nullable": "no",
+      "guard_at": "N/A",
+      "if_missing": "N/A"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "undecided scope keys per council/chapter/key",
+      "file_line": "scripts/outreach_scoped_councils.py _SPLIT_SQL",
+      "where_clause": "is_current AND v2_is_actionable AND source_council IS NOT NULL AND source IN undetermined list OR NULL",
+      "if_zero": "no council delisted by DQ-114; a stated exception then reads stale and FAILS",
+      "if_wrong": "sum is compared with DQ-114's own count; disagreement FAILS"
+    },
+    {
+      "purpose": "every council serving rule text, with its active registry name",
+      "file_line": "scripts/outreach_scoped_councils.py _UNIVERSE_SQL",
+      "where_clause": "p.is_current AND p.v2_is_actionable AND p.source_council IS NOT NULL; join r.is_active",
+      "if_zero": "no council can be listed; the real-DB test asserts the universe is non-empty",
+      "if_wrong": "a published name that differs from the active registry name FAILS the check"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council is published that has an undecided key",
+      "what_happens": "the page overclaims a council that still has an undecided key",
+      "mitigated": true,
+      "how": "check(): 'published but fails'",
+      "repro": "test_overclaim_fails"
+    },
+    {
+      "scenario": "A council starts passing but is not published",
+      "what_happens": "the page silently understates which councils the claim covers",
+      "mitigated": true,
+      "how": "check(): 'passes but not published'",
+      "repro": "test_underclaim_fails"
+    },
+    {
+      "scenario": "The stated Canterbury exception stops matching rows after a retag",
+      "what_happens": "page states an exception that no longer exists",
+      "mitigated": true,
+      "how": "compute(): stale exception FAILS",
+      "repro": "test_stale_exception_fails"
+    },
+    {
+      "scenario": "Fleet-wide sub-check fails in one council",
+      "what_happens": "the claim could name a council that a fleet-wide check fails in",
+      "mitigated": true,
+      "how": "those sub-checks stay fleet-wide in OC-17; any failure fails the claim outright",
+      "repro": "outreach_claim_checks.py OC-17"
+    },
+    {
+      "scenario": "A council serves rules tagged no_config, which DQ-33 tolerates under its fleet floor",
+      "what_happens": "the page claims every rule carries the council's sentence when hundreds do not",
+      "mitigated": true,
+      "how": "scripts/outreach_scoped_councils.py _NO_CONFIG_SQL delists it",
+      "repro": "test_no_config_rows_delist_and_no_exception_reaches_them"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Look at /what-you-get coverage section on the preview: third card + council list"
+  }
+}

@@ -5,6 +5,9 @@ import { HomeNav } from '@/components/marketing/HomeNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { COVERAGE_DISPLAY } from '@/lib/coverage';
 import { CapabilityExplorer } from './CapabilityExplorer';
+// Outreach claim OC-17. The list is computed from the database and checked against this file by
+// scripts/outreach_scoped_councils.py, which fails if it names a council that does not pass or omits one that does.
+import scopedCouncils from '@/shared/dcp-scoped-councils.json';
 
 export const metadata: Metadata = {
   title: 'What You Get — Data & Capabilities | PlotDetect',
@@ -28,7 +31,17 @@ const TIERS = [
       'Council DCP controls extracted into numeric fields with clause citations. Coverage expands as each council is onboarded — everywhere else we surface the source document to check.',
     stat: `${COVERAGE_DISPLAY.dcpNumericCouncils} councils`,
   },
+  {
+    label: 'DCP rules, with the council’s words',
+    scope: 'Which zones and building types each rule covers',
+    detail: scopedCouncils.claim,
+    stat: `${scopedCouncils.councils.length} councils`,
+  },
 ];
+
+const LISTED = new Set(scopedCouncils.councils.map((c) => c.slug));
+/* Only exceptions for a listed council are stated here: the claim is made for those councils alone. */
+const SCOPE_EXCEPTIONS = scopedCouncils.exceptions.filter((e) => LISTED.has(e.council));
 
 export default function WhatYouGetPage() {
   return (
@@ -99,6 +112,21 @@ export default function WhatYouGetPage() {
                 <p className="text-sm text-slate-500 leading-relaxed">{detail}</p>
               </div>
             ))}
+          </div>
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
+            <div className="font-semibold text-slate-900 mb-2">
+              Councils where every rule shown carries the council’s own sentence
+            </div>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              {scopedCouncils.councils.map((c) => c.name).join(', ')}.
+            </p>
+            {SCOPE_EXCEPTIONS.length > 0 && (
+              <ul className="mt-3 list-disc pl-5 text-sm text-slate-500 leading-relaxed">
+                {SCOPE_EXCEPTIONS.map((e) => (
+                  <li key={`${e.council}-${e.field}`}>{e.statement}</li>
+                ))}
+              </ul>
+            )}
           </div>
           <p className="text-xs text-slate-400 mt-6">
             Every figure on this page is drawn from a single source of truth and reconciled

@@ -1,0 +1,59 @@
+{
+  "_about": "Outreach claim OC-17. Read by app/what-you-get and checked by scripts/outreach_scoped_councils.py, which computes the list from the database and fails unless this file names exactly the councils that pass. Do not edit by hand to add a council: make it pass, then run the check, which prints the list.",
+  "claim": "For the councils listed, every rule shown carries the council's own sentence and the clause it came from, in the plan registered as in force. Known exceptions are stated.",
+  "councils": [
+    {
+      "slug": "blacktown",
+      "name": "Blacktown"
+    },
+    {
+      "slug": "campbelltown",
+      "name": "Campbelltown"
+    },
+    {
+      "slug": "city_of_sydney",
+      "name": "City of Sydney"
+    },
+    {
+      "slug": "georges_river",
+      "name": "Georges River"
+    },
+    {
+      "slug": "hornsby",
+      "name": "Hornsby"
+    },
+    {
+      "slug": "ku_ring_gai",
+      "name": "Ku-ring-gai"
+    },
+    {
+      "slug": "leichhardt",
+      "name": "Leichhardt"
+    },
+    {
+      "slug": "penrith",
+      "name": "Penrith"
+    },
+    {
+      "slug": "waverley",
+      "name": "Waverley"
+    },
+    {
+      "slug": "wollongong",
+      "name": "Wollongong"
+    }
+  ],
+  "exceptions": [
+    {
+      "council": "canterbury_bankstown",
+      "field": "applicable_dev_types",
+      "chapters": [
+        "chapter-10-2-schools",
+        "chapter-10-3-home-businesses",
+        "chapter-10-4-non-residential-land-uses",
+        "chapter-10-5-places-of-public-worship"
+      ],
+      "statement": "Canterbury-Bankstown chapters 10.2 Schools, 10.3 Home businesses, 10.4 Non-residential land uses and 10.5 Places of public worship are shown for every development type, because the property search cannot yet ask for those uses."
+    }
+  ]
+}
