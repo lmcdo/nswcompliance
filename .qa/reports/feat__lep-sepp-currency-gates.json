@@ -1,0 +1,88 @@
+{
+ "tier": "standard",
+ "justification": "Adds three read-only ledger probes and their ledger rows. No served code path, no DB write. Not Minor because a wrong probe would report a defect as clean, which is the failure the ledger exists to prevent; not Critical because nothing user-facing changes.",
+ "commit_hash": "18f20c68",
+ "files": [
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md",
+  "scripts/dq_probe_live.py"
+ ],
+ "falsifiable_check": {
+  "command": "python scripts/dq_probe_live.py --id DQ-130 ; python scripts/dq_probe_live.py --id DQ-131 ; python scripts/dq_probe_live.py --id DQ-132",
+  "fails_when": "Measured 2026-10-05 against production, read-only. Clean: 6 / 3 / 10. Mutations, each run as SQL against the same DB: DQ-130 NOT EXISTS->EXISTS reads 4 (the registered serving instruments, i.e. the known-right control); DQ-131 dropping the NULL-id branch reads 2 (loses wingecarribee); DQ-132 dropping the NULL-version branch reads 6. Each mutation moves the count, so the probe is sensitive to the logic it relies on.",
+  "observed_red": "Observed red on production 2026-10-05 before any fix: DQ-130 = 6, DQ-131 = 3, DQ-132 = 10. Each is the real defect, not a seeded one: the 6 SEPPs, the Camden/Penrith/Wingecarribee rows and the 10 versionless instruments are named in the probe text."
+ },
+ "pre_impl": {
+  "existing_data": "Reads the documents table (pdf_name, document_type, consolidated_as_of_date), served rows in regulatory_provisions (is_current, v2_is_actionable), and instrument_registry (instrument_label, pco_instrument_id, version_date stored as text, needs_review). Writes nothing.",
+  "assumption_mismatch": "No documents->registry key exists; join is on title. A title drift would count a registered instrument as unregistered (over-count, fails loud, not silent). version_date is TEXT: regex-guarded cast so a malformed value cannot error the probe and cannot excuse a row.",
+  "new_vs_existing": "Read-only measurement of existing rows."
+ },
+ "queries": [
+  {
+   "purpose": "DQ-130 served SEPP/LEP titles with no active registry row carrying a pco id",
+   "file_line": "scripts/dq_probe_live.py DQ-130",
+   "where_clause": "document_type IN (SEPP,LEP) AND is_current AND v2_is_actionable; NOT EXISTS active registry row with pco id and same lower(title)",
+   "if_zero": "clean -- every served instrument monitored",
+   "if_wrong": "title mismatch over-counts (visible red), never under-counts a missing row"
+  },
+  {
+   "purpose": "DQ-131 active registry rows with NULL or shared pco id",
+   "file_line": "scripts/dq_probe_live.py DQ-131",
+   "where_clause": "is_active AND (pco id NULL OR another active row shares it)",
+   "if_zero": "clean",
+   "if_wrong": "counts rows not pairs; documented in the probe"
+  },
+  {
+   "purpose": "DQ-132 served instruments with no registry row, no recorded version, or a version older than the monitor's while not flagged",
+   "file_line": "scripts/dq_probe_live.py DQ-132",
+   "where_clause": "r.id IS NULL OR consolidated_as_of_date IS NULL OR (older than version_date AND NOT needs_review)",
+   "if_zero": "clean",
+   "if_wrong": "a flagged instrument is excused deliberately: it is already caveated by the fail-closed badge"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Stamping today's date on documents.consolidated_as_of_date would zero DQ-132 without refreshing text",
+   "what_happens": "gate goes green on stale law",
+   "mitigated": false,
+   "how": "Recorded in the probe's 'means' and the ledger note as not the fix; a true guard needs Step 2's per-document source version, out of scope for Step 0",
+   "repro": "UPDATE documents SET consolidated_as_of_date=now() ... -> DQ-132 reads 0"
+  },
+  {
+   "scenario": "The production database is unreachable when the probe runs",
+   "what_happens": "probe exits 2 UNKNOWN, never clean",
+   "mitigated": true,
+   "how": "existing run() in dq_probe_live.py",
+   "repro": "unset DATABASE_URL and run the probe"
+  },
+  {
+   "scenario": "DQ-130 title join: a registered instrument whose registry label differs from its document title (e.g. a punctuation change) would be counted as unmonitored",
+   "what_happens": "over-count -- the gate stays red when it should be green; never a silent pass",
+   "mitigated": true,
+   "how": "Known-right control run 2026-10-05: all 4 registered serving instruments are excluded; mutation NOT EXISTS->EXISTS reads exactly those 4. Replaced by a real key in Step 2",
+   "repro": "python scripts/dq_probe_live.py --id DQ-130 and compare its count with the registry list"
+  },
+  {
+   "scenario": "DQ-131 shared id: correcting the WRONG member of a shared pair (changing Penrith instead of Camden) would also clear the duplicate",
+   "what_happens": "gate reads green while Penrith is now monitored against a wrong id",
+   "mitigated": false,
+   "how": "The probe cannot know which member is right; the ledger note requires each id to come from the instrument's own legislation page. Recorded, not hidden",
+   "repro": "UPDATE instrument_registry SET pco_instrument_id='x' WHERE instrument_key='penrith_lep_2010' -> DQ-131 drops to 1"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "No"
+ },
+ "functions": [
+  {
+   "name": "run (existing, unchanged)",
+   "file_line": "scripts/dq_probe_live.py run()",
+   "input": "DQ id string from argparse, choices limited to PROBES keys",
+   "output": "exit 0 clean / 1 count>0 / 2 database unreachable; prints count, query and meaning",
+   "if_none": "argparse rejects an unknown id; an unreachable DB returns 2 UNKNOWN, never 0"
+  }
+ ]
+}
