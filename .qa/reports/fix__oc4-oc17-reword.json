@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes what two outreach claims assert and what gates them, plus evidence text on three config entries. No production write, no change to what any property is served: scope_evidence is data the checks read, the tagger does not. Not Critical because nothing served moves; not Minor because a wrong gate here would let outreach claim something false.",
-  "commit_hash": "ba1e5ff3",
+  "commit_hash": "f58473c9",
   "files": [
     ".claude/dq_checks.json",
     "enrichment/config/georges_river_config.py",
@@ -12,7 +12,8 @@
     "scripts/outreach_claim_checks.py",
     "scripts/outreach_scoped_councils.py",
     "tests/test_outreach_scoped_councils.py",
-    "tests/test_scope_evidence_declared.py"
+    "tests/test_scope_evidence_declared.py",
+    "tests/test_outreach_scoped_councils_real_db.py"
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_outreach_scoped_councils.py -q -o addopts=",
@@ -57,6 +58,13 @@
       "where_clause": "is_current AND v2_is_actionable AND source_council IS NOT NULL AND source IN undetermined list OR NULL",
       "if_zero": "no council delisted by DQ-114; a stated exception then reads stale and FAILS",
       "if_wrong": "sum is compared with DQ-114's own count; disagreement FAILS"
+    },
+    {
+      "purpose": "every council serving rule text, with its active registry name",
+      "file_line": "scripts/outreach_scoped_councils.py _UNIVERSE_SQL",
+      "where_clause": "p.is_current AND p.v2_is_actionable AND p.source_council IS NOT NULL; join r.is_active",
+      "if_zero": "no council can be listed; the real-DB test asserts the universe is non-empty",
+      "if_wrong": "a published name that differs from the active registry name FAILS the check"
     }
   ],
   "break_it": [
