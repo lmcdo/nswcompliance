@@ -1370,7 +1370,7 @@
    "note": "Measured 2026-09-26 by a read-only probe over all 237 served chapter PDFs (17,489 rules): 38% on their page, 45% movable with two independent locators agreeing (ordered-phrase spot check 58/60), 5% one candidate inside the reader's chunk (55/60), 9.5% unresolved, 2% not locatable. Chunk size differs by path: 12 (most), 30 (Northern Beaches), 6. The citation proof (DQ-111) finds a rule's wording anywhere in the chapter and uses the stored page only as a search hint, so 'proven' said nothing about the link. APPLIED 2026-09-27: migration 079 + dcp_page_repair --apply wrote 17,489 rows (10,515 moved, 5,939 on page, 715 unresolved, 217 too short, 103 not found); --check exit 0. Backup data/db_rollback_backups/regulatory_provisions_pre_page_repair_2026-09-27_0338.csv."
   },
   "DQ-114": {
-   "declared": "open",
+   "declared": "fixed",
    "check": [
     "python",
     "scripts/dq_probe_live.py",
@@ -1522,7 +1522,7 @@
     "note": "Logged 2026-10-04 as backlog under the freeze rule while fixing DQ-123 (the prompt's 'Waverley returns Bayside LEP rows')."
   },
   "DQ-128": {
-    "declared": "open",
+    "declared": "fixed",
     "check": [
       "python",
       "scripts/dq_probe_app_defects.py",
