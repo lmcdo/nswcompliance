@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Config-only scope evidence for three councils, four corrected scopes, a read-only probe for five logged defects, and a fallback reading in the fidelity probe. Nothing served changes until a production retag, which is held for the user's go. Not Critical because no row is written here.",
-  "commit_hash": "0828bb5e",
+  "commit_hash": "97e62cae",
   "files": [
     "enrichment/config/woollahra_config.py",
     "enrichment/config/canterbury_bankstown_config.py",
@@ -10,7 +10,8 @@
     "scripts/dq_probe_app_defects.py",
     "tests/test_scope_evidence_declared.py",
     ".claude/dq_checks.json",
-    ".claude/DATA_QUALITY_TRACKER.md"
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "tests/test_dq_probe_app_defects_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "COUNCIL_CONFIGS entries for woollahra, canterbury_bankstown, parramatta; regulatory_provisions served rows tagged from them.",
