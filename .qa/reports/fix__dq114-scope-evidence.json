@@ -67,7 +67,7 @@
     },
     {
       "name": "compute",
-      "file_line": "scripts/outreach_scoped_councils.py:121",
+      "file_line": "scripts/outreach_scoped_councils.py:133",
       "input": "DB connection + published exceptions list",
       "output": "(reasons per council, registry names, problems); an exception is stale only if it matches no undecided AND no declined served row",
       "if_none": "no declined rows -> empty set, behaviour identical to before; exceptions list empty -> nothing excused"
