@@ -205,10 +205,15 @@ def dq127() -> tuple[int, str]:
             rows = json.load(r).get("currency") or []
     except Exception as exc:  # noqa: BLE001 - unreachable is "could not look", not clean
         return 2, f"could not reach {APP}: {exc}"
-    foreign = sorted({r.get("instrument_key") for r in rows
-                      if r.get("instrument_type") == "lep" and not str(r.get("instrument_key") or "").startswith("waverley")})
-    return ((1, f"{len(foreign)} other councils' LEPs listed for a Waverley property: {', '.join(foreign[:5])} ...")
-            if foreign else (0, "only Waverley's own LEP is listed"))
+    leps = [str(r.get("instrument_key") or "") for r in rows if r.get("instrument_type") == "lep"]
+    foreign = sorted({k for k in leps if not k.startswith("waverley")})
+    own = [k for k in leps if k.startswith("waverley")]
+    if foreign:
+        return 1, f"{len(foreign)} other councils' LEPs listed for a Waverley property: {', '.join(foreign[:5])} ..."
+    if len(own) != 1:
+        # An empty or doubled panel is not a fix: the property's own LEP must be there, once.
+        return 1, f"Waverley's own LEP should appear exactly once, found {len(own)}: {own or 'none'}"
+    return 0, f"only Waverley's own LEP is listed ({own[0]})"
 
 
 CHECKS = {"DQ-122": dq122, "DQ-123": dq123, "DQ-124": dq124, "DQ-125": dq125, "DQ-126": dq126, "DQ-127": dq127}

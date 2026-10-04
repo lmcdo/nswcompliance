@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       // DQ-127: every council's LEP sits in instrument_currency with council NULL, so
       // "council IS NULL" listed 22 other councils' LEPs (each up to 7 times) under any
       // property, and the panel's dot took the worst date across all of them. NULL still
-      // means statewide for SEPPs; an LEP is shown only for the council it belongs to --
+      // means statewide for SEPPs only; an LEP is shown only for the council it belongs to --
       // instrument_registry.council, else the slug its key starts with -- or that
       // council's parent (marrickville -> inner_west). One row per instrument, latest check.
       `WITH me AS (
@@ -44,11 +44,12 @@ export async function GET(request: NextRequest) {
                 COALESCE(r.needs_review, FALSE) AS needs_review
          FROM instrument_currency ic
          LEFT JOIN instrument_registry r ON r.instrument_key = ic.instrument_key
-         WHERE ic.council = $1
-            OR (ic.council IS NULL AND ic.instrument_type <> 'lep')
+         WHERE (r.instrument_key IS NULL OR r.is_active = TRUE)  -- never a retired instrument
+           AND (ic.council = $1
+            OR (ic.council IS NULL AND ic.instrument_type = 'sepp')
             OR (ic.council IS NULL AND ic.instrument_type = 'lep'
                 AND COALESCE(r.council, regexp_replace(ic.instrument_key, '_lep_[0-9]+$', ''))
-                    IN (SELECT slug FROM me))
+                    IN (SELECT slug FROM me)))
          ORDER BY ic.instrument_key, ic.verified_at DESC NULLS LAST
        )
        SELECT * FROM latest

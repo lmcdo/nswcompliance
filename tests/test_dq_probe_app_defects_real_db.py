@@ -123,3 +123,14 @@ def test_dq127_runs_against_the_live_site():
     _need_db()
     rc, msg = p.dq127()
     assert rc in (0, 1), msg
+
+
+def test_dq127_red_when_the_own_lep_is_missing(monkeypatch):
+    _serve(monkeypatch, [{"instrument_key": "housing_sepp", "instrument_type": "sepp"}])
+    rc, msg = p.dq127()
+    assert rc == 1 and "exactly once" in msg
+
+
+def test_dq127_red_when_the_own_lep_is_doubled(monkeypatch):
+    _serve(monkeypatch, [{"instrument_key": "waverley_lep_2012", "instrument_type": "lep"}] * 2)
+    assert p.dq127()[0] == 1
