@@ -1,10 +1,12 @@
 {
   "tier": "standard",
-  "justification": "Config-only change to applicability provenance for four Canterbury-Bankstown chapters. The served value (v2_applicable_dev_types = ['ALL']) does not change; only v2_dev_type_source moves config_silent -> config_declined after the retag. No serving code, no schema.",
-  "commit_hash": "51d9a6a1",
+  "justification": "Config-only change to applicability provenance for four Canterbury-Bankstown chapters. The served value (v2_applicable_dev_types = ['ALL']) does not change; only v2_dev_type_source moves config_silent -> config_declined after the retag. No serving code, no schema. Also widens the OC-17 checker so a stated public exception still counts as live once its rows move from undecided to config_declined.",
+  "commit_hash": "6a3f47bf",
   "files": [
     "enrichment/config/canterbury_bankstown_config.py",
-    "tests/test_canterbury_bankstown_applicability.py"
+    "tests/test_canterbury_bankstown_applicability.py",
+    "scripts/outreach_scoped_councils.py",
+    "tests/test_outreach_scoped_councils.py"
   ],
   "break_it": [
     {
@@ -27,6 +29,13 @@
       "mitigated": true,
       "how": "_resolve returns ['ALL'] for a declined key; the test asserts applicable_dev_types == ['ALL'] for all four chapters, so no row can be hidden by this change.",
       "repro": "python -m pytest tests/test_canterbury_bankstown_applicability.py -q"
+    },
+    {
+      "scenario": "After the retag the CB 10.2-10.5 rows become config_declined and leave DQ-114's split.",
+      "what_happens": "Before this change OC-17 would report the true public caveat as stale and outreach would drop to 16 of 17.",
+      "mitigated": true,
+      "how": "compute() reads _DECLINED_SQL and subtracts it from the stale set; test_exception_whose_rows_were_DECLINED_is_not_stale; a declined row for a different key does not rescue it (second test). Mutation removing the subtraction fails 1 test.",
+      "repro": "python -m pytest tests/test_outreach_scoped_councils.py -q"
     }
   ],
   "post_merge": {
@@ -44,9 +53,9 @@
     "user_failure_mode": "None to the served answer: v2_applicable_dev_types stays ['ALL'] before and after. The change is to the audit trail: these rows stop claiming nobody read their chapter."
   },
   "falsifiable_check": {
-    "command": "python -m pytest tests/test_canterbury_bankstown_applicability.py tests/test_scope_evidence_declared.py -q ; after the retag: python scripts/dq_probe_live.py --id DQ-114",
+    "command": "python -m pytest tests/test_canterbury_bankstown_applicability.py tests/test_scope_evidence_declared.py -q ; after the retag: python scripts/dq_probe_live.py --id DQ-114 ; python scripts/outreach_scoped_councils.py",
     "fails_when": "Any of the four chapters resolves to config_silent or config_all, or declines without quoting its own chapter; DQ-114 > 0 after the retag.",
-    "observed_red": "Mutation: removing scope_declined from chapter_10_2_schools failed 2 tests (declined assertion + evidence-without-declaration). Restored: 109 applicability tests pass. DQ-114 live = 21 before the retag."
+    "observed_red": "Mutation: removing scope_declined from chapter_10_2_schools failed 2 tests (declined assertion + evidence-without-declaration). Restored: 109 applicability tests pass. DQ-114 live = 21 before the retag. OC-17 checker live: PASS, 12 of 18, before the retag."
   },
   "functions": [
     {
@@ -55,6 +64,13 @@
       "input": "existing, unmodified function -- receives the four changed config entries",
       "output": "(['ALL'], 'config_declined') for applicable_dev_types on all four chapters, asserted by test_what_cannot_be_expressed_is_DECLINED_not_asserted",
       "if_none": "entry None -> (['ALL'], 'no_config'); scope_declined None -> treated as empty tuple, falls through to the key check"
+    },
+    {
+      "name": "compute",
+      "file_line": "scripts/outreach_scoped_councils.py:121",
+      "input": "DB connection + published exceptions list",
+      "output": "(reasons per council, registry names, problems); an exception is stale only if it matches no undecided AND no declined served row",
+      "if_none": "no declined rows -> empty set, behaviour identical to before; exceptions list empty -> nothing excused"
     }
   ]
 }
