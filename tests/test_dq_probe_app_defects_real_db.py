@@ -52,3 +52,66 @@ def test_sql_checks_run_against_the_real_database(check):
     rc, msg = p.CHECKS[check]()
     assert rc in (0, 1), msg  # 2 would mean it could not look; a broken query raises
     assert msg
+
+
+# --- DQ-122 verdict: an address the register lacks must say NOT FOUND; one it holds must come back. ---
+
+def _answers(mapping):
+    """Stub _lookup: mapping[address] is ('found', addr) | ('not_found', '') | an exception to raise."""
+    def fake(addr):
+        got = mapping[addr]
+        if isinstance(got, Exception):
+            raise got
+        return got
+    return fake
+
+
+def _correct():
+    out = {}
+    for addr, number, street, suburb, exists in p.ADDRESSES:
+        out[addr] = ("found", f"{number} {street} ROAD {suburb} 2000") if exists else ("not_found", "")
+    return out
+
+
+def test_dq122_clean_when_each_address_is_itself_or_not_found(monkeypatch):
+    monkeypatch.setattr(p, "_lookup", _answers(_correct()))
+    rc, msg = p.dq122()
+    assert rc == 0, msg
+
+
+def test_dq122_red_when_a_missing_address_is_answered_with_a_neighbour(monkeypatch):
+    answers = _correct()
+    answers["700 New South Head Rd, Rose Bay NSW 2029"] = ("found", "893 NEW SOUTH HEAD ROAD ROSE BAY 2029")
+    monkeypatch.setattr(p, "_lookup", _answers(answers))
+    rc, msg = p.dq122()
+    assert rc == 1 and "893" in msg
+
+
+def test_dq122_red_when_a_real_address_is_refused(monkeypatch):
+    """A fix that says 'not found' for everything must not read as fixed."""
+    monkeypatch.setattr(p, "_lookup", _answers({a: ("not_found", "") for a, *_ in p.ADDRESSES}))
+    rc, msg = p.dq122()
+    assert rc == 1 and "exists in the address register" in msg
+
+
+def test_dq122_red_when_the_street_differs(monkeypatch):
+    answers = _correct()
+    answers["60 Hall St, Bondi Beach NSW 2026"] = ("found", "60 OCEAN STREET BONDI BEACH 2026")
+    monkeypatch.setattr(p, "_lookup", _answers(answers))
+    assert p.dq122()[0] == 1
+
+
+def test_dq122_could_not_look_is_never_clean(monkeypatch):
+    answers = _correct()
+    answers["60 Hall St, Bondi Beach NSW 2026"] = OSError("unreachable")
+    monkeypatch.setattr(p, "_lookup", _answers(answers))
+    assert p.dq122()[0] == 2
+
+
+@pytest.mark.database
+def test_dq122_runs_against_the_live_site():
+    """Real HTTP against DQ_APP_URL (default: production). Opt-in with the real-DB flag."""
+    _need_db()
+    rc, msg = p.dq122()
+    assert rc in (0, 1), msg
+    assert msg

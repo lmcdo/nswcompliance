@@ -6,6 +6,9 @@
 import { getRoadClassifications, type RoadClassification } from './road-classification-service';
 import { getClauseNumbersForMapType } from './lep-local-provisions-mapping';
 import { getKeySitesProvision } from './key-sites-map-provisions';
+import { filterToAskedProperty } from './address-number-match';
+
+export const ADDRESS_SEARCH_UNAVAILABLE = 'Address search unavailable';
 
 export interface NSWPropertyData {
  propId: number;
@@ -398,7 +401,7 @@ export class NSWPlanningPortalService {
 
  // Fetch multiple results to find best match (fixes "Ashfield St" returning "Ashfield Place Glen Alpine" bug)
  const response = await fetch(
- `${this.BASE_URL}/address?a=${encodeURIComponent(address)}&noOfRecords=5`,
+ `${this.BASE_URL}/address?a=${encodeURIComponent(address)}&noOfRecords=10`,
  {
  signal: controller.signal,
  headers: {
@@ -414,10 +417,20 @@ export class NSWPlanningPortalService {
  throw new Error(`Address search failed: ${response.status}`);
  }
 
- const results = await response.json() as any[];
+ const raw = await response.json();
+ if (!Array.isArray(raw)) {
+   throw new Error(`Address search returned no result list: ${JSON.stringify(raw).slice(0, 120)}`);
+ }
 
- if (!results || results.length === 0) {
- return null;
+ // DQ-122: the Portal's search is fuzzy -- for '700 New South Head Rd, Rose Bay' (not in the NSW
+ // address register) it returns 893, 774, 795 ... and never 700. Only a candidate with the asked
+ // street number, street and postcode is this property; none left means NOT FOUND, never a neighbour.
+ const results = filterToAskedProperty(address, raw as Array<{ propId: number; address: string; GURASID: number }>);
+ if (results.length === 0) {
+   if (raw.length > 0) {
+     console.warn(`[NSW Planning Portal] No candidate matches "${address}"; rejected: ${raw.slice(0, 5).map((r: any) => r.address).join(' | ')}`);
+   }
+   return null;
  }
 
  // Extract search components for matching
@@ -464,10 +477,12 @@ export class NSWPlanningPortalService {
  }
 
  return scored[0].result;
- 
+
  } catch (error) {
  console.error('Property search error:', error);
- return null;
+ // A failed search (429, timeout, bad body) is not "no such property": null is reserved for
+ // "searched, and nothing matched", which the API now reports as a 404 (DQ-122).
+ throw new Error(`${ADDRESS_SEARCH_UNAVAILABLE}: ${error instanceof Error ? error.message : String(error)}`);
  }
  }
 
@@ -1113,7 +1128,9 @@ export class NSWPlanningPortalService {
        { headers: { 'Accept': 'application/json', 'User-Agent': 'ComplianceEngine/1.0' } }
      );
      if (fbRes.ok) {
-       const fbResults = await fbRes.json();
+       const fbRaw = await fbRes.json();
+       // Same rule as searchProperty: a neighbour with valuation data is still a neighbour (DQ-122).
+       const fbResults = Array.isArray(fbRaw) ? filterToAskedProperty(address, fbRaw) : [];
        for (const candidate of fbResults) {
          if (candidate.propId === searchResult.propId) continue;
          const candidateData = await this.getPropertyValuation(candidate.propId);
@@ -1333,6 +1350,9 @@ export class NSWPlanningPortalService {
 
  } catch (error) {
  console.error('Property compliance data error:', error);
+ if (error instanceof Error && error.message.startsWith(ADDRESS_SEARCH_UNAVAILABLE)) {
+   throw error; // an outage must not read as "property not found"
+ }
  return null;
  }
  }

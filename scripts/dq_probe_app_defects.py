@@ -16,8 +16,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -25,17 +27,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "scripts")]
 
-APP = "https://verify.plotdetect.com.au"
+#: Override to probe a local build before it ships, e.g. DQ_APP_URL=http://localhost:3003.
+APP = os.environ.get("DQ_APP_URL", "https://verify.plotdetect.com.au").rstrip("/")
 
-#: (address the page sends, house number and suburb the answer must carry). The first two FAILED on
-#: 2026-10-04 (893 and 582 came back); the rest resolved correctly and stay as controls, so a fix that
-#: breaks ordinary lookups also goes red.
+#: (address the page sends, house number, street, suburb, in the NSW address register?).
+#: The first two FAILED on 2026-10-04 (893 and 582 came back). Neither number is in the state address
+#: register (NSW_Geocoded_Addressing_Theme AddressPoint, checked against 893 as a positive control), so
+#: the right answer is NOT FOUND -- a 404 saying so. '14 Hunter St, Lewisham' is the same defect on the
+#: street: the Portal's top hit is 14 ST JOHN STREET, and 14 exists only as unit 14/8-12. The rest exist
+#: and must come back as themselves, so a fix that refuses every lookup also goes red.
 ADDRESSES = [
-    ("700 New South Head Rd, Rose Bay NSW 2029", "700", "ROSE BAY"),
-    ("235 New South Head Rd, Point Piper NSW 2027", "235", "POINT PIPER"),
-    ("680 New South Head Rd, Rose Bay NSW 2029", "680", "ROSE BAY"),
-    ("60 Hall St, Bondi Beach NSW 2026", "60", "BONDI BEACH"),
-    ("180 Ocean St, Edgecliff NSW 2027", "180", "EDGECLIFF"),
+    ("700 New South Head Rd, Rose Bay NSW 2029", "700", "NEW SOUTH HEAD", "ROSE BAY", False),
+    ("235 New South Head Rd, Point Piper NSW 2027", "235", "NEW SOUTH HEAD", "POINT PIPER", False),
+    ("14 Hunter St, Lewisham NSW 2049", "14", "HUNTER", "LEWISHAM", False),
+    ("680 New South Head Rd, Rose Bay NSW 2029", "680", "NEW SOUTH HEAD", "ROSE BAY", True),
+    ("60 Hall St, Bondi Beach NSW 2026", "60", "HALL", "BONDI BEACH", True),
+    ("180 Ocean St, Edgecliff NSW 2027", "180", "OCEAN", "EDGECLIFF", True),
 ]
 
 
@@ -43,7 +50,7 @@ def _number_matches(asked: str, returned: str) -> bool:
     """'680' matches '674-680 ...'; '20' does NOT match '120 ...' or '893 ...'."""
     if asked is None or returned is None or not asked.isdigit():
         return False
-    wanted = int(asked) if asked is not None else -1
+    wanted = int(asked)
     head = returned.split(" ")
     for tok in head[:3]:
         for part in re.split(r"[-/]", tok):
@@ -55,24 +62,43 @@ def _number_matches(asked: str, returned: str) -> bool:
     return False
 
 
+def _lookup(addr: str) -> tuple[str, str]:
+    """('found', address) | ('not_found', '') | raises when the site cannot answer."""
+    url = f"{APP}/api/property?address={urllib.parse.quote(addr)}"
+    # The site's edge refuses Python's default User-Agent (403); a browser one gets the page's own answer.
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (dq_probe_app_defects)"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return "found", ((json.load(r).get("data") or {}).get("address") or "")
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            body = json.loads(exc.read().decode("utf-8", "replace") or "{}")
+            if body.get("notFound") is True:
+                return "not_found", ""
+        raise
+
+
 def dq122() -> tuple[int, str]:
     wrong, errors = [], []
-    for addr, number, suburb in ADDRESSES:
-        url = f"{APP}/api/property?address={urllib.parse.quote(addr)}"
+    for addr, number, street, suburb, exists in ADDRESSES:
         try:
-            # The site's edge refuses Python's default User-Agent (403); a browser one gets the page's own answer.
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (dq_probe_app_defects)"})
-            with urllib.request.urlopen(req, timeout=60) as r:
-                got = (json.load(r).get("data") or {}).get("address") or ""
+            kind, got = _lookup(addr)
         except Exception as exc:  # noqa: BLE001 - unreachable is "could not look", not clean
             errors.append(f"{addr}: {exc}")
             continue
-        if not (_number_matches(number, got.upper()) and suburb in got.upper()):
-            wrong.append(f"'{addr}' -> '{got}'")
-    if errors and not wrong:
-        return 2, f"could not reach {APP}: {errors[0]}"
-    return (1 if wrong else 0), (f"{len(wrong)} of {len(ADDRESSES)} addresses returned another property: "
-                                 + "; ".join(wrong) if wrong else "every address returned itself")
+        g = got.upper()
+        is_itself = kind == "found" and _number_matches(number, g) and street in g and suburb in g
+        if exists and not is_itself:
+            wrong.append(f"'{addr}' -> {got or 'NOT FOUND'} (exists in the address register)")
+        elif not exists and kind != "not_found":
+            wrong.append(f"'{addr}' -> '{got}' (not in the address register; must say not found)")
+    if errors:
+        # Any unanswered address means the row was not fully looked at -- never report it clean.
+        return (1 if wrong else 2), f"could not reach {APP} for {len(errors)} address(es): {errors[0]}" + (
+            f"; also {len(wrong)} wrong: " + "; ".join(wrong) if wrong else "")
+    return (1 if wrong else 0), (f"{len(wrong)} of {len(ADDRESSES)} addresses answered wrongly: "
+                                 + "; ".join(wrong) if wrong else
+                                 "every address returned itself, or said not found where the register has no such address")
 
 
 def _db():
