@@ -72,6 +72,10 @@ way on 2026-09-22 and are corrected below.
 #: is bound. Keys are matched as substrings of document_id.lower().
 _ALL = {"applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"]}
 
+#: The plan's own scope sentence, for chapters that state none of their own (read 2026-10-04).
+_PLAN = ("INHERITED. Chapter 1.1 Introduction and Administration, page 5, verbatim: 'This DCP applies to "
+         "land within the Canterbury-Bankstown Local Government Area.' ")
+
 CANTERBURY_BANKSTOWN_CONFIG: dict = {
     "chapter_topics": {
         # --- 2.x site-wide matters: bind any development on an affected site ---
@@ -276,8 +280,20 @@ CANTERBURY_BANKSTOWN_CONFIG: dict = {
             },
            **_ALL, "is_precinct_specific": True
         },
-        "chapter_7_5_canterbury_local_centre": {**_ALL, "is_precinct_specific": True},
-        "chapter_7_6_belmore_and_lakemba": {**_ALL, "is_precinct_specific": True},
+        "chapter_7_5_canterbury_local_centre": {
+            "scope_evidence": {"applicable_zones":
+                    "1.1 Application of this Chapter (PDF p6), verbatim: 'This Chapter of the CBDCP 2023 applies to all development on the land within the Canterbury Local Centre as identified in Figure 1.' A site is not a zone: ALL on zones records that the chapter names land, and is_precinct_specific carries the geography. The page's text layer is two-column; the sentence reads contiguously under PyMuPDF.",
+                "applicable_dev_types":
+                    "1.1 Application of this Chapter (PDF p6), verbatim: 'applies to all development on the land within the Canterbury Local Centre' -- all development, so ALL."},
+            **_ALL, "is_precinct_specific": True,
+        },
+        "chapter_7_6_belmore_and_lakemba": {
+            "scope_evidence": {"applicable_zones":
+                    "1.1 Application of this Chapter (PDF p6), verbatim: 'This Chapter of the CBDCP 2023 applies to all development on the land within the Precinct as identified in Figure 2.' A site is not a zone: ALL on zones records that the chapter names land, and is_precinct_specific carries the geography.",
+                "applicable_dev_types":
+                    "1.1 Application of this Chapter (PDF p6), verbatim: 'applies to all development on the land within the Precinct' -- all development, so ALL."},
+            **_ALL, "is_precinct_specific": True,
+        },
         "chapter_8_1_general_requirements": {
             "scope_evidence": {
                 "applicable_zones":
@@ -347,6 +363,10 @@ CANTERBURY_BANKSTOWN_CONFIG: dict = {
 
         # --- 10.x SPECIFIC LAND USES: narrowed where the vocabulary allows ---
         "chapter_10_1_child_care_centres": {
+            "scope_evidence": {"applicable_zones":
+                    _PLAN + "Chapter 10.1 states no land scope of its own (read 2026-10-04: Section 1 Introduction, PDF p4, has no 'applies to' sentence).",
+                "applicable_dev_types":
+                    "Section 1 Introduction (PDF p4), verbatim: 'additional objectives and development controls to enhance the function and appearance of centre-based child care facilities (child care facilities)'. The chapter's subject is one use, so child_care_centre is the council's narrowing."},
             "applicable_zones": ["ALL"],
             "applicable_dev_types": ["child_care_centre"],
         },
@@ -373,6 +393,10 @@ CANTERBURY_BANKSTOWN_CONFIG: dict = {
             "applicable_zones": ["R2", "R3", "R4"],  # noqa: zone-codes (the three zones chapter 10.4 section 1 names as its own scope)
         },
         "chapter_10_7_sex_services_premises": {
+            "scope_evidence": {"applicable_zones":
+                    _PLAN + "Chapter 10.7 states no land scope of its own (read 2026-10-04: Section 1 Introduction, PDF p4).",
+                "applicable_dev_types":
+                    "Section 1 Introduction (PDF p4), verbatim: 'additional objectives and development controls to manage the location, design and operation of sex services premises'. One use, so the council's own narrowing."},
             "applicable_zones": ["ALL"],
             "applicable_dev_types": ["sex_services_premises"],
         },
@@ -506,8 +530,56 @@ CANTERBURY_BANKSTOWN_CONFIG: dict = {
             },
            **_ALL, "is_precinct_specific": True
         },
-        "chapter_11_13_former_wsu_campus_milperra": {**_ALL, "is_precinct_specific": True},
-        "chapter_11_14_riverwood_estate": {**_ALL, "is_precinct_specific": True},
-        "chapter_11_15_marco_avenue": {**_ALL, "is_precinct_specific": True},
+        "chapter_11_13_former_wsu_campus_milperra": {
+            "scope_evidence": {"applicable_zones":
+                    "'Land to which Chapter 11.13 applies' (PDF p5), verbatim: 'This chapter of the DCP applies to the subject site being the properties at 2 and 2A Bullecourt Avenue Milperra' and 'also applies to the C2 Woodland Conservation Zone as shown in Figure 2'. A site is not a zone: ALL on zones records that the chapter names land, and is_precinct_specific carries the geography.",
+                "applicable_dev_types":
+                    "Same section, verbatim: 'This chapter of the DCP applies to the subject site' -- it states no development type, so every development on it: ALL."},
+            **_ALL, "is_precinct_specific": True,
+        },
+        "chapter_11_14_riverwood_estate": {
+            "scope_evidence": {"applicable_zones":
+                    "1.3 Land to which this DCP applies (PDF p5), verbatim: 'This section of the DCP applies to part of the land within the Riverwood Estate, as outlined in blue and illustrated in Figure 1.' A site is not a zone: ALL on zones records that the chapter names land, and is_precinct_specific carries the geography.",
+                "applicable_dev_types":
+                    "Same section, verbatim: 'This section of the DCP applies to part of the land within the Riverwood Estate' -- it names land and no development type, so every development on it: ALL."},
+            **_ALL, "is_precinct_specific": True,
+        },
+        "chapter_11_15_marco_avenue": {
+            "scope_evidence": {"applicable_zones":
+                    "1.2 Land to which this chapter applies (PDF p4), verbatim: 'The controls in this section apply to the land at 75A, 75B and 75C Marco Avenue, Revesby.' A site is not a zone: ALL on zones records that the chapter names land, and is_precinct_specific carries the geography.",
+                "applicable_dev_types":
+                    "Same section, verbatim: 'The controls in this section apply to the land at 75A, 75B and 75C Marco Avenue, Revesby.' -- it names land and no development type, so every development on it: ALL."},
+            **_ALL, "is_precinct_specific": True,
+        },
+        # --- added 2026-10-04: four chapters had served rows and no entry (no_config) ---
+        "chapter_10_6_commercial_land_uses": {
+            "scope_declined": ("applicable_dev_types",),
+            "scope_evidence": {"applicable_zones":
+                    _PLAN + "Chapter 10.6 states no land scope of its own (read 2026-10-04: Section 1 Introduction, PDF p4).",
+                "applicable_dev_types":
+                    "Section 1 Introduction (PDF p4), verbatim: 'additional objectives and development controls to manage the location, design and operation of certain commercial uses including amusement centres, massage services premises and restricted premises'. DECLINED: none of the three has a term in the serving taxonomy, so no list can name them; the served value stays ALL."},
+            "applicable_zones": ["ALL"],
+        },
+        "chapter_3_3_waste_management": {
+            "scope_evidence": {"applicable_zones":
+                    _PLAN + "Chapter 3.3 states no land scope of its own (read 2026-10-04: Section 1 Introduction, PDF p4-5).",
+                "applicable_dev_types":
+                    "Section 1 Introduction (PDF p4), verbatim: 'additional objectives and development controls to ensure the design and operation of waste management systems'; its sections cover residential (2-3), commercial (4), industrial (5) and specific uses (6), so it binds every development that generates waste -- ALL."},
+            **_ALL,
+        },
+        "chapter_11_2_undercliffe_bridge_precinct": {
+            "scope_evidence": {"applicable_zones":
+                    "Section 1 (PDF p3), verbatim: 'additional objectives and development controls to enhance the function, design and amenity of the Undercliffe Bridge Precinct.' " + "A site is not a zone: ALL on zones records that the chapter names land, and is_precinct_specific carries the geography.",
+                "applicable_dev_types":
+                    "Section 1 (PDF p3), verbatim: 'If applicable to an application, the development controls of Chapter 11.2 of this DCP will prevail' -- any application in the precinct, so ALL."},
+            **_ALL, "is_precinct_specific": True,
+        },
+        "chapter_11_6_potts_hill": {
+            "scope_evidence": {"applicable_zones":
+                    "Section 1 Introduction (PDF p4), verbatim: 'additional objectives and development controls to enhance the function, design and amenity of the former Potts Hill Reservoirs site, Potts Hill.' Figure 1 (PDF p5) is its Land Application Map. " + "A site is not a zone: ALL on zones records that the chapter names land, and is_precinct_specific carries the geography.",
+                "applicable_dev_types":
+                    "Section 1 Introduction (PDF p4), verbatim: 'If applicable to an application, the development controls of Chapter 11.6 of this DCP will prevail' -- any application on the site, so ALL."},
+            **_ALL, "is_precinct_specific": True,
+        },
     },
 }

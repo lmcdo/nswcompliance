@@ -78,43 +78,13 @@ MIN_EVIDENCE_CHARS = 40
 #:   (woollahra A3, D2-D6, E6, E8, F3 were released 2026-10-04: each chapter's own
 #:     scope section was read and quoted; dq_probe_scope_evidence_fidelity.py reads
 #:     65 spans OK and 0 MISSING for woollahra, A3/D3 marked INHERITED from A1.)
-#:   canterbury-bankstown 7.5, 7.6, 11.13, 11.14, 11.15 — the cue hits were
-#:     contents-page lines, and 7.5 came back as scrambled two-column text.
-#:   canterbury-bankstown 10.1, 10.7 — these declare a NARROWED dev type, which
-#:     the plan-level sentence cannot evidence; only the chapter's own can.
-#:   parramatta 2, 5-9 — a whole-DCP PDF of 1,563 pages where a document-wide
-#:     scan found four hits and none was a clean Part-level scope. Each Part's
-#:     own opening page is needed.
+#:   (canterbury-bankstown 7.5, 7.6, 10.1, 10.7, 11.13, 11.14, 11.15 and parramatta
+#:     2, 5-9 were released 2026-10-04: each chapter's or Part's own opening page was
+#:     read and quoted, 7.5 through PyMuPDF where pdfplumber scrambles its two columns.)
 #:   (penrith c10, hornsby part_1_general and georges_river part_3 were released
 #:     2026-10-04: their comment sentences moved into scope_evidence, and every
 #:     quoted span read OK against its PDF in dq_probe_scope_evidence_fidelity.py.)
 UNEVIDENCED: frozenset[tuple[str, str, str, str]] = frozenset({
-    ("canterbury-bankstown", "chapter_topics", "chapter_7_5_canterbury_local_centre", "applicable_zones"),
-    ("canterbury-bankstown", "chapter_topics", "chapter_7_5_canterbury_local_centre", "applicable_dev_types"),
-    ("canterbury-bankstown", "chapter_topics", "chapter_7_6_belmore_and_lakemba", "applicable_zones"),
-    ("canterbury-bankstown", "chapter_topics", "chapter_7_6_belmore_and_lakemba", "applicable_dev_types"),
-    ("canterbury-bankstown", "chapter_topics", "chapter_10_1_child_care_centres", "applicable_zones"),
-    ("canterbury-bankstown", "chapter_topics", "chapter_10_1_child_care_centres", "applicable_dev_types"),
-    ("canterbury-bankstown", "chapter_topics", "chapter_10_7_sex_services_premises", "applicable_zones"),
-    ("canterbury-bankstown", "chapter_topics", "chapter_10_7_sex_services_premises", "applicable_dev_types"),
-    ("canterbury-bankstown", "chapter_topics", "chapter_11_13_former_wsu_campus_milperra", "applicable_zones"),
-    ("canterbury-bankstown", "chapter_topics", "chapter_11_13_former_wsu_campus_milperra", "applicable_dev_types"),
-    ("canterbury-bankstown", "chapter_topics", "chapter_11_14_riverwood_estate", "applicable_zones"),
-    ("canterbury-bankstown", "chapter_topics", "chapter_11_14_riverwood_estate", "applicable_dev_types"),
-    ("canterbury-bankstown", "chapter_topics", "chapter_11_15_marco_avenue", "applicable_zones"),
-    ("canterbury-bankstown", "chapter_topics", "chapter_11_15_marco_avenue", "applicable_dev_types"),
-    ("parramatta", "parts", "2", "applicable_zones"),
-    ("parramatta", "parts", "2", "applicable_dev_types"),
-    ("parramatta", "parts", "5", "applicable_zones"),
-    ("parramatta", "parts", "5", "applicable_dev_types"),
-    ("parramatta", "parts", "6", "applicable_zones"),
-    ("parramatta", "parts", "6", "applicable_dev_types"),
-    ("parramatta", "parts", "7", "applicable_zones"),
-    ("parramatta", "parts", "7", "applicable_dev_types"),
-    ("parramatta", "parts", "8", "applicable_zones"),
-    ("parramatta", "parts", "8", "applicable_dev_types"),
-    ("parramatta", "parts", "9", "applicable_zones"),
-    ("parramatta", "parts", "9", "applicable_dev_types"),
 })
 
 

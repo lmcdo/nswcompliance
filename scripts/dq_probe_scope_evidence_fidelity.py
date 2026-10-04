@@ -255,9 +255,20 @@ def chapter_text(chapter: dict, council_slug: str) -> str | None:
     try:
         import pdfplumber
         with pdfplumber.open(str(path)) as pdf:
-            return loose(" ".join((p.extract_text() or "") for p in pdf.pages))
+            text = loose(" ".join((p.extract_text() or "") for p in pdf.pages))
     except Exception:
         return None
+    # A second reading, when PyMuPDF is installed. pdfplumber interleaves two-column pages
+    # character by character (Canterbury-Bankstown 7.5 p6 reads 'T D C P o h l b'), so a sentence
+    # the council printed reads as MISSING. PyMuPDF keeps each column's block intact. Appending it
+    # can only turn a false MISSING into OK: a quote must still appear contiguously in ONE reading.
+    try:
+        import fitz  # PyMuPDF
+        with fitz.open(str(path)) as doc:
+            text += " " + loose(" ".join(page.get_text() for page in doc))
+    except Exception:  # noqa: BLE001 - absent or unreadable: keep the pdfplumber reading alone
+        pass
+    return text
 
 
 def elsewhere(span, council_slug, cited_key, reg, text_cache):
