@@ -1239,7 +1239,7 @@
    "note": "Found 2026-09-23 while writing the Canterbury-Bankstown and Campbelltown entries. DQ-33 cannot see this: it counts `v2_dev_type_source = 'no_config'`, and a row only reaches no_config when the config missed it AND its own text yielded nothing either. A chapter whose provisions happen to contain the words 'dwelling house' or 'R2' is recorded as text_regex, which TRUSTED_ALL_SOURCES treats as a decision - so the missing chapter looks decided. Measured 138 served rows across 25 documents: woollahra (d5 double bay centre, f2 educational establishments, f4 telecommunications), ku_ring_gai (the section_b part_14x local-centre and site-specific parts), canterbury_bankstown (10_6 commercial land uses, 10_8 telecommunications, 11_2 undercliffe bridge, 11_6 potts hill, 3_3 waste management, 1_1 introduction) and city_of_sydney. Not fixed here on purpose: each entry has to be written from its chapter's own Application section, and guessing one to clear a count is the behaviour DQ-33 exists to refuse."
   },
   "DQ-103": {
-   "declared": "open",
+   "declared": "fixed",
    "check": [
     "python",
     "scripts/dq_probe_applicability_config.py",
