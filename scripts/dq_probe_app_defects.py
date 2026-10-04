@@ -41,6 +41,8 @@ ADDRESSES = [
 
 def _number_matches(asked: str, returned: str) -> bool:
     """'680' matches '674-680 ...'; '20' does NOT match '120 ...' or '893 ...'."""
+    if not asked or not asked.isdigit() or not returned:
+        return False
     head = returned.split(" ")
     for tok in head[:3]:
         for part in re.split(r"[-/]", tok):
