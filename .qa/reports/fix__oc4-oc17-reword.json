@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes what two outreach claims assert and what gates them, plus evidence text on three config entries. No production write, no change to what any property is served: scope_evidence is data the checks read, the tagger does not. Not Critical because nothing served moves; not Minor because a wrong gate here would let outreach claim something false.",
-  "commit_hash": "f58473c9",
+  "commit_hash": "d615ab80",
   "files": [
     ".claude/dq_checks.json",
     "enrichment/config/georges_river_config.py",
@@ -13,7 +13,8 @@
     "scripts/outreach_scoped_councils.py",
     "tests/test_outreach_scoped_councils.py",
     "tests/test_scope_evidence_declared.py",
-    "tests/test_outreach_scoped_councils_real_db.py"
+    "tests/test_outreach_scoped_councils_real_db.py",
+    ".claude/DATA_QUALITY_TRACKER.md"
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_outreach_scoped_councils.py -q -o addopts=",
@@ -37,7 +38,7 @@
   ],
   "values": [
     {
-      "value": "councils listed 15 of 18",
+      "value": "councils listed 10 of 18 (first run listed 15 and was wrong: no_config rows were not counted)",
       "read_at": "python scripts/outreach_scoped_councils.py, 2026-10-04",
       "nullable": "no",
       "guard_at": "N/A",
@@ -95,6 +96,13 @@
       "mitigated": true,
       "how": "those sub-checks stay fleet-wide in OC-17; any failure fails the claim outright",
       "repro": "outreach_claim_checks.py OC-17"
+    },
+    {
+      "scenario": "A council serves rules tagged no_config, which DQ-33 tolerates under its fleet floor",
+      "what_happens": "the page claims every rule carries the council's sentence when hundreds do not",
+      "mitigated": true,
+      "how": "scripts/outreach_scoped_councils.py _NO_CONFIG_SQL delists it",
+      "repro": "test_no_config_rows_delist_and_no_exception_reaches_them"
     }
   ],
   "post_merge": {
