@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Config-only scope evidence for three councils, four corrected scopes, a read-only probe for five logged defects, and a fallback reading in the fidelity probe. Nothing served changes until a production retag, which is held for the user's go. Not Critical because no row is written here.",
-  "commit_hash": "97e62cae",
+  "commit_hash": "802b58c1",
   "files": [
     "enrichment/config/woollahra_config.py",
     "enrichment/config/canterbury_bankstown_config.py",
