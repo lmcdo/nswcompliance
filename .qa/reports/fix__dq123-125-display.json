@@ -16,7 +16,8 @@
     "scripts/dq_probe_app_defects.py",
     "tests/test_dq_probe_app_defects_real_db.py",
     ".claude/dq_checks.json",
-    ".claude/DATA_QUALITY_TRACKER.md"
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "frontend-nextjs/app/api/instrument-currency/route.ts"
   ],
   "pre_impl": {
     "existing_data": "dcp_chapter_registry.dcp_name already names each chapter's plan (31 councils measured); regulatory_provisions holds 1,064 served rules with 2,538 closed HTML tables, table tags only, no script/img/link/handler.",
@@ -82,6 +83,13 @@
       "mitigated": true,
       "how": "dcp_names lists every plan with served rules, most first, joined on the currency line",
       "repro": "registry query shows both spellings for ku_ring_gai; both would print"
+    },
+    {
+      "scenario": "A merged council (Marrickville) whose LEP is the parent's, and an LEP whose registry row names no council (inner_west_lep_2022)",
+      "what_happens": "A strict council match would hide the only LEP that applies, leaving the panel without one",
+      "mitigated": true,
+      "how": "the parent from lga_registry is included, and a NULL registry council falls back to the slug the key starts with",
+      "repro": "query run read-only for marrickville returns inner_west_lep_2022 plus its DCP and the two SEPPs"
     }
   ],
   "post_merge": {
