@@ -242,7 +242,51 @@ def dq127() -> tuple[int, str]:
     return 0, f"only Waverley's own LEP is listed ({own[0]})"
 
 
-CHECKS = {"DQ-122": dq122, "DQ-123": dq123, "DQ-124": dq124, "DQ-125": dq125, "DQ-126": dq126, "DQ-127": dq127}
+def dq128() -> tuple[int, str]:
+    """Served rows filed under a merged council although their own document is a FORMER council's plan.
+
+    Rolled up through lga_registry.parent_lga, never `former_council` (Inner West only on cadastre). The
+    for-property route picks rows by document_id, so a Marrickville property is still served these rows;
+    the precinct and chapter-registry lookups key on source_council, so they miss them -- and the rows
+    duplicate chapters already served under the former council's own slug."""
+    return _sql_count(
+        "SELECT count(*) FROM regulatory_provisions p "
+        "JOIN lga_registry c ON c.parent_lga = p.source_council AND c.is_active = TRUE "
+        "WHERE p.is_current AND p.v2_is_actionable "
+        "AND lower(p.document_id) LIKE c.slug || '\_dcp%'",
+        "served rows carry the merged council's slug while their document is a former council's plan")
+
+
+def dq129() -> tuple[int, str]:
+    """The published scoped-rules stat says 'councils' while its list names a FORMER council's plan.
+
+    Leichhardt is not a council: it is one of Inner West's three former-council plans, and only that one
+    passes. Clears when the stat counts plans, or the list names no former council."""
+    page = (ROOT / "frontend-nextjs" / "app" / "what-you-get" / "page.tsx").read_text(encoding="utf-8")
+    pub = json.loads((ROOT / "frontend-nextjs" / "shared" / "dcp-scoped-councils.json")
+                     .read_text(encoding="utf-8"))
+    m = re.search(r"stat: `\$\{scopedCouncils\.councils\.length\} ([^`]+)`", page)
+    if not m:
+        return 1, "the scoped-rules stat on /what-you-get no longer reads the published list's length"
+    unit = m.group(1)
+    try:
+        conn = _db()
+    except Exception as exc:  # noqa: BLE001
+        return 2, f"database unreachable ({exc})"
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT slug FROM lga_registry WHERE is_active = TRUE AND parent_lga IS NOT NULL")
+            former = {r[0] for r in cur.fetchall()}
+    finally:
+        conn.close()
+    listed = sorted(c["slug"] for c in pub.get("councils") or [] if c.get("slug") in former)
+    if listed and unit.strip().lower() == "councils":
+        return 1, f"stat counts '{unit}' but the list names former-council plans: {', '.join(listed)}"
+    return 0, f"stat reads '{unit}'; former-council plans listed: {', '.join(listed) or 'none'}"
+
+
+CHECKS = {"DQ-122": dq122, "DQ-123": dq123, "DQ-124": dq124, "DQ-125": dq125, "DQ-126": dq126, "DQ-127": dq127,
+          "DQ-128": dq128, "DQ-129": dq129}
 
 
 def main() -> int:

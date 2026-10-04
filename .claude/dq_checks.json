@@ -1520,6 +1520,28 @@
     ],
     "passes_when": "exit 0 - /api/instrument-currency?council=waverley lists no LEP but Waverley's own. Clears by giving each instrument_currency LEP row its council, or by the route not reading council NULL as statewide for LEPs. Exit 2 when the site cannot be reached.",
     "note": "Logged 2026-10-04 as backlog under the freeze rule while fixing DQ-123 (the prompt's 'Waverley returns Bayside LEP rows')."
+  },
+  "DQ-128": {
+    "declared": "open",
+    "check": [
+      "python",
+      "scripts/dq_probe_app_defects.py",
+      "--id",
+      "DQ-128"
+    ],
+    "passes_when": "exit 0 - no served row has source_council = a merged council (lga_registry.parent_lga) while its document_id is one of that council's former-council plans ('<former slug>_DCP...').",
+    "note": "Logged 2026-10-04 under the freeze rule (ce-next-scope-and-inner-west-PROMPT step 2a). Not an OC gate."
+  },
+  "DQ-129": {
+    "declared": "open",
+    "check": [
+      "python",
+      "scripts/dq_probe_app_defects.py",
+      "--id",
+      "DQ-129"
+    ],
+    "passes_when": "exit 0 - the scoped-rules stat on /what-you-get does not say 'councils' while dcp-scoped-councils.json lists a former council (lga_registry.parent_lga IS NOT NULL).",
+    "note": "Logged 2026-10-04 under the freeze rule (ce-next-scope-and-inner-west-PROMPT step 2b). Wording agreed with the user 2026-10-04: 'council plans', former-council plans named by area. Not added to any OC gate."
   }
  }
 }
