@@ -136,7 +136,7 @@ export function filterToAskedProperty<T extends { address: string }>(asked: stri
   return candidates.filter((c) => {
     if (wanted) {
       const got = parseStreetNumber(c.address);
-      if (got === null || !streetNumbersMatch(wanted, got)) return false;
+      if (got == null || !streetNumbersMatch(wanted, got)) return false;
     }
     if (askedPostcode) {
       const pc = postcodeOf(c.address);
