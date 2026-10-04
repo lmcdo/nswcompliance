@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes what two outreach claims assert and what gates them, plus evidence text on three config entries. No production write, no change to what any property is served: scope_evidence is data the checks read, the tagger does not. Not Critical because nothing served moves; not Minor because a wrong gate here would let outreach claim something false.",
-  "commit_hash": "a8c19bda",
+  "commit_hash": "ba1e5ff3",
   "files": [
     ".claude/dq_checks.json",
     "enrichment/config/georges_river_config.py",
