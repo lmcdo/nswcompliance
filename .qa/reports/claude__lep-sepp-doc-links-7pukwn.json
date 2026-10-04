@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "User-facing citation links and one gated client fetch on the LEP and SEPP tabs. No DB writes, no API or schema change, no numeric value changed. Above Minor because the LEP-tab change stops a silent wrong-council result (Inner West LEP text and page images shown for other councils). Follow-up scopes /api/lep/provisions itself by EPI so the wrong-council text cannot be served even if a caller skips the client-side check.",
- "commit_hash": "898837de",
+ "commit_hash": "21a58671",
  "files": [
   "frontend-nextjs/lib/citation-instrument-urls.ts",
   "frontend-nextjs/components/compliance/SeppCitationLink.tsx",
