@@ -1,0 +1,104 @@
+{
+ "tier": "standard",
+ "justification": "Three read-only ledger rows, no production write and no behaviour change: DQ-133 (the SEPP parking override tier of /api/tod/parking-rates queries three columns that do not exist, so it throws on every request), DQ-134 (the schema-contract gate only checks alias-qualified columns, which is why DQ-133 reached production unseen), DQ-135 (the extractor splits a rule's figure from the obligation imposing it, and the classifier judges each fragment alone, so 2,241 statewide figures are withheld from any surface filtering on v2_is_actionable). Above Minor because DQ-134 records a hole in an existing CI gate and DQ-135 changes what the word 'served' means in DQ-130/132 -- both are claims other work will rely on. It is NOT a fix for any of the three: DQ-133 needs a regulatory decision about LMR bands, DQ-134 needs a gate change with repo-wide blast radius, DQ-135 needs the classifier to see a fragment's parent. This PR makes all three measurable and refuses the tempting wrong fixes in writing.",
+ "commit_hash": "f8dabf7c",
+ "files": [
+  "scripts/dq_probe_live.py",
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md"
+ ],
+ "pre_impl": {
+  "existing_data": "information_schema.columns for housing_sepp_standards (21 columns: development_type, verification_notes, stale_since -- NOT dwelling_type, notes, is_current) and regulatory_provisions (v2_is_actionable, v2_has_numeric_value, provision_text, source_council). The DQ ledger already held 151 rows; the three added bring it to 154.",
+  "assumption_mismatch": "The session began intending to FIX the actionable flag as a nine-row production update. That was wrong and is retracted here. Re-running enrichment/extractors/actionable_classifier.py over the nine Housing SEPP parking rows reproduced every stored value exactly -- so the rows are not stale, the classifier's standing verdict on a fragment is FALSE, and a hand-set value would be reverted by the next enrichment run with force_reprocess. The population is 2,241 statewide rows, not 9. Separately: /api/tod/parking-rates looked like a three-column rename until SEPP_DWELLING_TYPE_MAP was compared against the 8 live development_type values and only dual_occupancy matched.",
+  "new_vs_existing": "Three probes added to the existing PROBES dict in scripts/dq_probe_live.py. No new script, no new tracker -- .claude/dq_checks.json and .claude/DATA_QUALITY_TRACKER.md are the two halves of the ledger that already exists, and the coverage test requires an id to appear in both."
+ },
+ "falsifiable_check": {
+  "command": "python scripts/dq_check.py --id DQ-133 && python scripts/dq_check.py --id DQ-134 && python scripts/dq_check.py --id DQ-135",
+  "fails_when": "A probe's declared state stops matching its measurement -- in either direction. Declared 'open' while the check passes is red too, which is the direction that catches a silently-fixed row nobody would look at again.",
+  "observed_red": "All three forced red before being trusted, and forced the other way as well. DQ-133 reads 3 and returns 0 when the same probe is pointed at three columns that DO exist (development_type, numeric_value, unit). DQ-135 reads 2,241 and rises to 2,339 when its obligation-word clause is removed, which is the sub-population it claims to be a subset of. DQ-134 reads 1 and is written to return 0 the moment housing_sepp_standards gains a dwelling_type column, which is the only way DQ-133's instance can be fixed by rename. Each declared row then agrees with its check: 'declared open and the check agrees' for all three.",
+  "measured": "DQ-133: 3. DQ-134: 1. DQ-135: 2,241 of 2,339 statewide current sub-paragraph rows carrying a digit (statewide current rows: 7,253 actionable, 10,680 not). Probe runtimes 0.03s, 0.02s, 0.10s. The nine Housing SEPP parking rows classified live: 40310 F, 40570 F, 40604 F, 40605 F, 40606 T, 40722 T, 40723 F, 41014 T, 41015 F -- identical to the stored values, every F with reason 'lep_sepp_weak_indicators'. The route's tier-1 SQL run verbatim against production raises 'column \"dwelling_type\" does not exist'. python scripts/validate_schema_contract.py | grep parking-rates is empty."
+ },
+ "functions": [
+  {
+   "name": "PROBES['DQ-133']",
+   "file_line": "scripts/dq_probe_live.py",
+   "input": "no parameters; the probe reads information_schema.columns for the housing_sepp_standards table",
+   "output": "count of columns the SEPP parking tier selects that housing_sepp_standards lacks",
+   "if_none": "0 means the tier can run -- which is necessary and NOT sufficient, because the dev-type map is independently wrong. The note says so, so the row cannot be closed on a rename."
+  },
+  {
+   "name": "PROBES['DQ-134']",
+   "file_line": "scripts/dq_probe_live.py",
+   "input": "no parameters; the probe reads information_schema.columns for one known-broken column reference",
+   "output": "1 while the schema-contract gate's known blind spot still holds a live instance, else 0",
+   "if_none": "0 only once housing_sepp_standards carries the column the broken query names. Deliberately a floor rather than a census of unchecked queries -- a census needs the gate itself to count them, which is the fix."
+  },
+  {
+   "name": "PROBES['DQ-135']",
+   "file_line": "scripts/dq_probe_live.py",
+   "input": "no parameters; the probe scans every current statewide row of regulatory_provisions",
+   "output": "count of statewide current rows that are not actionable, open as a list sub-paragraph, carry a digit, and hold no obligation word of their own",
+   "if_none": "0 means no statewide figure is separated from its obligation. Reachable only by changing the classifier or the extraction, not by flipping rows."
+  }
+ ],
+ "values": [
+  {
+   "value": "v2_is_actionable",
+   "read_at": "scripts/dq_probe_live.py PROBES['DQ-135']",
+   "nullable": "yes",
+   "guard_at": "IS NOT TRUE, so NULL counts as not-actionable",
+   "if_missing": "a NULL row is counted. That is deliberate: a row never classified is as withheld from a v2_is_actionable filter as one classified FALSE, and treating NULL as 'fine' would hide new provisions."
+  },
+  {
+   "value": "provision_text",
+   "read_at": "scripts/dq_probe_live.py PROBES['DQ-135']",
+   "nullable": "yes",
+   "guard_at": "the ~ and !~* operators both yield NULL for a NULL left operand, so a text-less row fails the WHERE and is not counted",
+   "if_missing": "not counted -- a row with no text cannot have a figure split from an obligation"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Statewide figures withheld because the obligation sits in a sibling row",
+   "file_line": "scripts/dq_probe_live.py PROBES['DQ-135']",
+   "where_clause": "WHERE is_current AND source_council IS NULL AND v2_is_actionable IS NOT TRUE AND provision_text ~ '^\\s*\\(?[a-z0-9ivx]{1,4}\\)' AND provision_text ~ '[0-9]' AND provision_text !~* '\\m(must|at least|no more than|not exceed|required|minimum|maximum)\\M'",
+   "if_zero": "0 is the target and means no statewide figure is separated from its obligation. source_council IS NULL scopes to statewide instruments; council DCPs are excluded because their extraction and classification history is different and would blur the measurement. Runs in 0.10s over 17,933 rows, so no batching."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Someone clears DQ-135 by setting v2_is_actionable = TRUE on the rows it counts.",
+   "what_happens": "The probe reads 0 and the next enrichment run with force_reprocess sets them back to FALSE, because the classifier re-derives that verdict from the fragment. The row would read green while the figures are withheld again.",
+   "mitigated": true,
+   "how": "The ledger note and the tracker row both say, in bold, not to clear it that way, and name the two real fixes (give the classifier the parent paragraph, or keep a sub-paragraph joined to its lead-in at extraction). Evidence is in the report: the classifier was re-run over all nine rows and reproduced every stored value.",
+   "repro": "python -c \"from enrichment.extractors.actionable_classifier import ActionableClassifier as C; print(C().classify('(i) for development on land within an accessible area\\u20140.2 parking spaces for each boarding room,', document_id='State_Environmental_Planning_Policy_Housing_2021__NSW_Legislation', section_header=None))\""
+  },
+  {
+   "scenario": "Someone renames the three columns in /api/tod/parking-rates and closes DQ-133.",
+   "what_happens": "The probe reads 0 but only dual_occupancy resolves, so the SEPP override still never applies to residential flats, multi-dwelling housing or boarding houses -- and now it fails silently with an empty tier instead of a recorded degradation, which is worse.",
+   "mitigated": true,
+   "how": "Both the probe's meaning string and the tracker row state that 0 is necessary and not sufficient, list the exact map mismatches, and say the LMR band choice needs zone and accessible/designated-area status. Measured: with the columns corrected, 3 of the 4 mapped dev types return no rows.",
+   "repro": "python scripts/dq_probe_live.py --id DQ-133   # then read the 'means' line before closing the row"
+  },
+  {
+   "scenario": "DQ-133 is fixed and someone assumes DQ-134 is fixed with it.",
+   "what_happens": "DQ-134 would read 0, because its probe keys on the one instance it can measure from the catalog. The gate's blind spot would still be open and the next unaliased query with a bad column would still reach production.",
+   "mitigated": false,
+   "how": "NOT fully mitigated, and recorded as such. The note and tracker row both say fixing DQ-133 does not clear DQ-134 and that the blind spot is the defect, but the probe cannot enforce that from the catalog alone -- a probe that counts unchecked queries requires the gate to check them, which is the fix. This is the weakest of the three rows and is flagged rather than dressed up.",
+   "repro": "python scripts/validate_schema_contract.py | grep -c parking-rates   # 0 while the route is broken"
+  },
+  {
+   "scenario": "A reader takes DQ-130/132 as covering every served rule.",
+   "what_happens": "They would be wrong. Both define the served set as is_current AND v2_is_actionable, which excludes the boarding-house parking rate (40310) that the SEPP tab displays.",
+   "mitigated": true,
+   "how": "DQ-135's note and tracker row state the consequence explicitly and point at /api/sepp/parking-provisions, which deliberately does not filter on the flag.",
+   "repro": "python -c \"import os,psycopg2;from dotenv import load_dotenv;load_dotenv('.env');c=psycopg2.connect(os.environ['DATABASE_URL']).cursor();c.execute('SELECT id, v2_is_actionable FROM regulatory_provisions WHERE id=40310');print(c.fetchone())\""
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "No -- three read-only ledger rows, no behaviour change and no production write. All three are declared open and measured red on purpose."
+ }
+}

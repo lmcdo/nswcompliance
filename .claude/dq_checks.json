@@ -1581,6 +1581,42 @@
     "passes_when": "exit 0 - every served SEPP/LEP document records the in-force version its text was taken from, and none is older than the version the monitor last saw unless the instrument is flagged needs_review (and so already caveated).",
     "red_when": "served text is behind the law or cannot say which version it is. Reads 10 of 10 on 2026-10-05: no served SEPP/LEP document records its version (consolidated_as_of_date NULL throughout).",
     "note": "Opened 2026-10-05 (ce-lep-sepp-currency-integration-PROMPT-2026-10-05 Step 0). Housing SEPP text was refreshed 2026-09-15 (DQ-88) yet its documents row still says Dec 2025; Sustainable Buildings text is the 5 Apr 2024 version of a SEPP amended 31 Oct 2025. Neither was visible to any check. Clears by recording the true source version and refreshing what is behind -- stamping today's date would game it."
+  },
+  "DQ-133": {
+    "declared": "open",
+    "check": [
+      "python",
+      "scripts/dq_probe_live.py",
+      "--id",
+      "DQ-133"
+    ],
+    "passes_when": "exit 0 - every column the SEPP-override tier of /api/tod/parking-rates selects from housing_sepp_standards exists, so the tier can actually run.",
+    "red_when": "the tier queries a column that is not there and therefore throws on every request, and a council parking rate is served where a state standard would override it. Reads 3 on 2026-10-05: dwelling_type, notes, is_current (the table has development_type, verification_notes, and stale_since instead of a currency boolean).",
+    "note": "Found 2026-10-05 while building /api/sepp/parking-provisions (#1226). Proven by running the route's tier-1 SQL verbatim against production: it raises 'column \"dwelling_type\" does not exist'. The route degrades rather than fails, so a tier that has never run looks identical to a tier that found nothing. Reaching 0 is necessary and NOT sufficient - SEPP_DWELLING_TYPE_MAP also maps to values the table does not use, so after a rename only dual_occupancy resolves; choosing between residential_flat_r1r2 / r3r4_inner / r3r4_outer needs the zone and accessible/designated-area status, which is a regulatory decision. See DQ-134 for why no existing gate caught this."
+  },
+  "DQ-134": {
+    "declared": "open",
+    "check": [
+      "python",
+      "scripts/dq_probe_live.py",
+      "--id",
+      "DQ-134"
+    ],
+    "passes_when": "exit 0 - the schema-contract gate checks the columns of an unaliased single-table query, so DQ-133's class of defect cannot reach production unseen.",
+    "red_when": "a query written without a table alias has its column list unchecked. Reads 1 on 2026-10-05.",
+    "note": "Found 2026-10-05. validate_schema_contract.py exists because a renamed table left dcp-complete/route.ts returning a 500 for every address while every test, TSC, four lints and the QA gate stayed green. Its own rule, from its docstring: 'every alias-qualified column (alias.column, where alias was bound to a real base table in the same statement) must exist on that table.' A single-table SELECT has no qualified columns, so only its table name is checked. Measured: the gate scans frontend-nextjs/app/api, reads tod/parking-rates/route.ts, resolves housing_sepp_standards, and reports nothing - `python scripts/validate_schema_contract.py | grep parking-rates` is empty while the route is broken. Clears by checking bare columns when a statement names exactly one base table, then baselining what that surfaces (the baseline mechanism already exists and carries 6 known-bad references). Fixing DQ-133 does not clear this row."
+  },
+  "DQ-135": {
+    "declared": "open",
+    "check": [
+      "python",
+      "scripts/dq_probe_live.py",
+      "--id",
+      "DQ-135"
+    ],
+    "passes_when": "exit 0 - no statewide rule has its figure in a row classified not-actionable while the obligation imposing it sits in a sibling row.",
+    "red_when": "the number is withheld from every surface that filters on v2_is_actionable. Reads 2,241 on 2026-10-05, of 2,339 statewide current sub-paragraph rows carrying a digit.",
+    "note": "Found 2026-10-05 while building /api/sepp/parking-provisions (#1226). The extractor splits one legal sentence into a lead-in row plus its numbered sub-paragraphs; the classifier judges each row alone. Proven on the boarding-house parking rate: 40309 p11 ('...at least the following number of parking spaces-') is v2_is_actionable TRUE and 40310 p11 ('0.2 parking spaces for each boarding room, ... otherwise-0.5') is FALSE. Re-running enrichment/extractors/actionable_classifier.py over all nine Housing SEPP parking rows reproduces every stored value exactly, each FALSE with reason 'lep_sepp_weak_indicators' - so these are not stale rows. Do NOT clear by flipping rows: the classifier re-derives the same FALSE from the fragment and the next enrichment run with force_reprocess reverts hand-set values. It clears by giving the classifier its parent paragraph, or by keeping a sub-paragraph joined to its lead-in at extraction. v2_has_numeric_value is wrong on the same rows (only 1 statewide current row is actionable-FALSE + numeric-TRUE). Consequence worth knowing: DQ-130/132 measure a served set defined as is_current AND v2_is_actionable, which EXCLUDES the boarding-house parking rate the SEPP tab displays."
   }
  }
 }
