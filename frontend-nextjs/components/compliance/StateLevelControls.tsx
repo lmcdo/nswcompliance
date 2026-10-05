@@ -1435,14 +1435,14 @@ export function StateLevelControls({
                     />
                   </div>
                 {/* In-Fill Affordable Housing — s22A, read from the instrument in force for
-                    11 September 2026, page 25. The "0.2 / 0.5 per dwelling" shown here until
-                    2026-10-05 was the build-to-rent rate from s74 and belongs to no part of
-                    this division. s22A is NOT in regulatory_provisions at all (0 rows,
-                    measured 2026-10-05): our stored copy of this instrument tops out at
-                    page 120 of a 186-page Act, so the section post-dates it. These words
-                    therefore come from the PDF rather than the database, and the test beside
-                    this file pins them; they move to /api/sepp/parking-provisions once a
-                    text refresh puts s22A in the table. */}
+                  * 11 September 2026, page 25. The "0.2 / 0.5 per dwelling" shown here until
+                  * 2026-10-05 was the build-to-rent rate from s74 and belongs to no part of
+                  * this division. s22A is in NO regulatory_provisions row (0 rows, measured
+                  * 2026-10-05): our stored copy of this instrument tops out at page 120 of a
+                  * 186-page Act, so the section post-dates it. These words therefore come out
+                  * of the PDF and not the database, and the test beside this file pins them;
+                  * they move to /api/sepp/parking-provisions once a text refresh puts s22A in
+                  * the table. */}
                 <div className="bg-white border border-purple-200 rounded-lg p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
