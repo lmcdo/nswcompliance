@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Additive data path only: one new read-only API route plus a card registry and its tests. No DB writes, no schema change, no migration, and no component consumes it yet -- StateLevelControls.tsx is untouched, so nothing user-facing changes in this PR. Above Minor because what it computes is regulatory numbers on a served page, and because building it established that two of the six live cards are wrong (build-to-rent states per-bedroom tiers the instrument does not have for that type; in-fill affordable housing states the build-to-rent rate, which has no source anywhere in the instrument). Deliberately NOT fixing those cards here: the plan's order puts the version link (Step 2) and the currency badge before the component switch, so landing the component change now would trade hardcoded-and-silently-stale for database-driven-and-silently-stale.",
- "commit_hash": "8293bcc3",
+ "commit_hash": "f58f8a96",
  "files": [
   "frontend-nextjs/lib/sepp-parking-cards.ts",
   "frontend-nextjs/app/api/sepp/parking-provisions/route.ts",
