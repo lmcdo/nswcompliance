@@ -1214,7 +1214,8 @@
    "kind": "outreach_claim",
    "claim": "For the councils listed, every rule shown carries the council's own sentence and the clause it came from, in the plan registered as in force. Known exceptions are stated.",
    "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
-   "declared": "true",
+   "declared": "false",
+   "declared_false_2026-10-05": "User ruling 2026-10-05 (option 1 of 3). Sub-check DQ-88 reads 6: the six SEPPs registered under DQ-130 (Transport and Infrastructure, Biodiversity and Conservation, Planning Systems, Primary Production, Resilience and Hazards, Sustainable Buildings) start needs_review=TRUE because their stored text predates the law in force -- Sustainable Buildings is 4 substantive changes behind (amended 31 Oct 2025). The claim was already untrue for that text before registration; it was invisible. Returns to true when ce-lep-sepp-currency-integration-PROMPT Step 3 refreshes each SEPP and DQ-88 reads 0. Clearing the flags to make this green was rejected: the monitor would then stamp older text verified current.",
    "check": [
     "python",
     "scripts/outreach_claim_checks.py",
