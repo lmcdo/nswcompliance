@@ -1,0 +1,106 @@
+{
+ "tier": "critical",
+ "justification": "Changes regulatory numbers shown to users on the SEPP tab. Two of the six parking cards stated rates the instrument in force does not set: build-to-rent showed per-bedroom tiers that appear nowhere in s74, and in-fill affordable housing showed the build-to-rent rate from s74, which belongs to no part of its division. A third, affordable housing in TOD areas, had the right numbers under a condition s157 does not impose. Critical rather than Standard because a reader acting on the in-fill card would have provided roughly half the parking the law requires for a 1-bedroom affordable dwelling (0.2 shown against at least 0.4 required), and because the source of truth is the Act rather than our database: s22A is in no regulatory_provisions row, so the correction could not be derived from stored data and had to be read from the instrument.",
+ "commit_hash": "eda3daf7",
+ "files": [
+  "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+  "frontend-nextjs/__tests__/compliance/sepp-parking-cards-match-law.test.tsx"
+ ],
+ "pre_impl": {
+  "existing_data": "The whole-instrument PDF of SEPP (Housing) 2021 (epi-2021-0714), 186 pages, headed 'Current version for 11 September 2026 to date', supplied by the user on 2026-10-05 after legislation.nsw.gov.au refused scripted fetches from this machine. Every parking rate in it was located and mapped to its section and page: s22A p25 (in-fill affordable housing), s24 p27 (boarding houses), s42 p36 (residential development, relevant authorities), s68 p57 (co-living), s74 p61 (build-to-rent), s107 p76 (hostels and residential care), s108 p77 (independent living units), s157 p114 (affordable housing in TOD areas), s168/s172/s179 p120-124 (the LMR standards).",
+  "assumption_mismatch": "Three assumptions broke. (1) The in-fill card was thought to have no source at all, because no stored row carries a parking rate for its division; in fact the law has s22A 'Requirement to provide car parking', which post-dates our copy. (2) s22A was read as a set of flat requirements; it is '(a) ... or (b) the consent authority has considered the Guide to Transport Impact Assessment published by Transport for NSW on 4 November 2024', so stating only the numbers would impose a requirement the section does not. (3) s22A sets two different tiers, one for the dwellings used for affordable housing and one for the dwellings that are not; a card showing only the first would understate the parking required for the market dwellings in the same development. Also measured: our stored s74 text reads '0.2 parking spaces for each dwelling' where the law reads 'at least 0.2', and our stored copy of this instrument stops at page 120 of 186.",
+  "new_vs_existing": "Edits three existing cards in place and adds one test file. No new component, route, table or migration. Applies to every property view immediately on deploy.",
+  "external_source_error": "The external source is legislation.nsw.gov.au, and it already failed: it returns a Cloudflare challenge to scripted fetches from this machine, so the instrument had to be supplied by hand. That failure is the reason this change hardcodes text instead of refreshing the database. The first file supplied was the 1-page Status Information sheet rather than the 186-page instrument; it was caught by checking the page count before reading any clause, not by trusting the filename. At runtime nothing in this change calls an external service: the cards are static text and the two citation links are plain anchors, so a legislation.nsw.gov.au outage costs the reader the link, not the rate.",
+  "frontend_type": "No new types. The three cards are JSX literals inside StateLevelControls.tsx and cross no DB-to-API or API-to-component boundary, which is exactly why TSC, the bracket lint and every existing test stayed green while two of them stated the wrong numbers. The one type boundary nearby is the ResolvedParkingCard union behind /api/sepp/parking-provisions, which these cards do not yet consume; when they do, the discriminated union forces the unresolved cases to be handled and this file's assertions are replaced by the resolver's.",
+  "user_failure_mode": "A planner or owner reads the card and provides the parking it names. On the in-fill card that meant 0.2 spaces per dwelling where the law requires at least 0.4 for a 1-bedroom affordable dwelling and at least 0.5 for a 1-bedroom market dwelling in the same development -- under half, discovered at assessment rather than at design. On build-to-rent it meant applying a per-bedroom tier that does not exist, with no hint that the standard binds only in a designated Sydney local government area and that the council's own plan governs elsewhere. Both failed silently: the cards looked as authoritative as the four that were right, and nothing in the repo could tell them apart."
+ },
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/compliance/sepp-parking-cards-match-law.test.tsx",
+  "fails_when": "Any card's rate stops matching the words read from the instrument; the designated-Sydney-LGA condition or the council-rate fallback is dropped from build-to-rent; s22A's second tier or its 'or the TfNSW Guide' alternative is dropped; the TOD card regains the accessible-area condition s157 does not impose; a version date is typed into rendered markup; or the provenance comments naming the edition and pages are removed.",
+  "observed_red": "Six mutations forced, each restored afterwards (baseline 19 passed). M1 restore the old build-to-rent per-bedroom tier: 2 failed / 17. M2 drop the designated-Sydney-LGA condition: 1 failed / 18. M3 drop s22A's 'one of two alternatives' sentence: 1 failed / 18. M4 drop s22A's non-affordable dwelling tiers: 1 failed / 18. M5 restore the TOD accessible-area heading: 1 failed / 18. M6 type the version date into a card's citation line: 2 failed / 17. Restored: 19 passed. The suite also caught a defect in its own first draft: the currency assertion scanned raw source and failed on this change's own provenance comments, which would have forced the edition and page numbers out of the code to satisfy a test about the UI. It now scans comment-stripped source, and a paired assertion requires the provenance to still be present, so 'delete the date everywhere' cannot satisfy either.",
+  "measured": "19 tests pass in the new suite. Full frontend suite: 116 suites / 1,610 tests passed (115 / 1,591 on origin/main, so the one added suite is the whole difference). npx tsc --noEmit: 0 errors. git grep -c 'parking spaces per' on StateLevelControls.tsx: 5, down from 11 on origin/main -- a side effect of quoting the instrument's own wording ('parking spaces for each dwelling'), not a deletion of cards; all six cards remain and each is asserted by name. Liability-language scan over the added lines: 0 hits."
+ },
+ "functions": [
+  {
+   "name": "StateLevelControls — build-to-rent card",
+   "file_line": "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+   "input": "no props specific to this card; it renders the fixed text of s74(2)(d)-(e)",
+   "output": "flat per-dwelling rate, its designated-Sydney-LGA condition, the lower-number override, and the council-plan fallback that applies elsewhere",
+   "if_none": "not applicable — static text. The card is inside the TOD parking panel, which already renders NotApplicableCard when the property is not in a TOD precinct and has no qualifying transport."
+  },
+  {
+   "name": "StateLevelControls — in-fill affordable housing card",
+   "file_line": "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+   "input": "no props specific to this card; it renders the fixed text of s22A",
+   "output": "both tiers (affordable and non-affordable dwellings) and the statement that they are one of two alternatives",
+   "if_none": "not applicable — static text, deliberately so: s22A is in no regulatory_provisions row, so there is no data path to fall back to yet"
+  },
+  {
+   "name": "StateLevelControls — affordable housing in TOD areas card",
+   "file_line": "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+   "input": "no props specific to this card; it renders the fixed text of s157(2)",
+   "output": "the three per-bedroom rates, scoped to the affordable housing dwellings section 156 requires",
+   "if_none": "not applicable -- static text. If s157 is amended, the card keeps showing these three rates until someone revisits it; only the test file pins them."
+  }
+ ],
+ "values": [
+  {
+   "value": "s22A parking tiers",
+   "read_at": "frontend-nextjs/components/compliance/StateLevelControls.tsx in-fill affordable housing card",
+   "nullable": "no — static text read from the instrument, not from a query",
+   "guard_at": "__tests__/compliance/sepp-parking-cards-match-law.test.tsx, which pins every number and both tiers",
+   "if_missing": "nothing can detect it except that test. There is no database row for s22A, so no currency check, page-proof gate or resolver covers these words. That is the single largest weakness of this change and the reason the test exists."
+  },
+  {
+   "value": "the instrument's version",
+   "read_at": "not read in this change",
+   "nullable": "not applicable",
+   "guard_at": "InstrumentCurrency.tsx, which reads instrument_registry and honours needs_review",
+   "if_missing": "the cards show no date at all, which is correct: a date typed into a card would be a second, unmonitored source of truth and would read as current forever. A test asserts no version date reaches rendered markup."
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "The SEPP is amended again and these cards are not revisited.",
+   "what_happens": "NOT mitigated for the card text. The words are static, so an amendment leaves them silently stale — the same failure this change is repairing, one edition later. What does exist: DQ-132 counts instruments whose stored text cannot be shown to match the version in force and reads 10, and the weekly monitor plus instrument_registry detect a version change for the instrument as a whole.",
+   "mitigated": false,
+   "how": "Deliberately accepted as an interim. The durable fix is a text refresh that lands s22A in regulatory_provisions, after which these cards move to /api/sepp/parking-provisions and the resolver's own fail-closed behaviour applies. The comments in the component say this explicitly so the next reader does not take the static text as the intended end state.",
+   "repro": "python scripts/dq_probe_live.py --id DQ-132   # reads 10; the Housing SEPP is one of them"
+  },
+  {
+   "scenario": "Someone reads the in-fill card and provides the parking it names, without reading s22A.",
+   "what_happens": "They provide at least 0.4 spaces for a 1-bedroom affordable dwelling and at least 0.5 for a 1-bedroom market dwelling in the same development, which is what the section requires. Before this change they would have provided 0.2 for every dwelling — under half the requirement for the affordable ones.",
+   "mitigated": true,
+   "how": "Both tiers are stated, each labelled by which dwellings it covers, and the card says the numbers are one of two alternatives rather than presenting them as the only path to consent.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/compliance/sepp-parking-cards-match-law.test.tsx -t 'states the separate tiers for the non-affordable dwellings'"
+  },
+  {
+   "scenario": "Someone reads the build-to-rent card for a development outside Sydney.",
+   "what_happens": "The card tells them the 0.2/0.5 standard applies only in a designated Sydney local government area, and that elsewhere the rate is whatever the council's development control plan or local environmental plan requires for a residential flat building. Before this change it showed per-bedroom tiers with no condition at all, as though they bound everywhere.",
+   "mitigated": true,
+   "how": "Paragraph (d)'s condition and paragraph (e)'s fallback are both rendered and both asserted. Forced: dropping either fails the suite.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/compliance/sepp-parking-cards-match-law.test.tsx -t 'carries the designated-Sydney-LGA condition'"
+  },
+  {
+   "scenario": "A future edit meets the plan's gate A by deleting the cards rather than sourcing them.",
+   "what_happens": "git grep -c 'parking spaces per' would reach 0 with no cards left. This change takes it from 11 to 5 by quoting the instrument's wording, not by removing anything.",
+   "mitigated": true,
+   "how": "All six cards are asserted by name in this suite and in __tests__/lib/sepp-parking-cards.test.ts, so the registry and the markup cannot be emptied silently.",
+   "repro": "git grep -c 'parking spaces per' -- frontend-nextjs/components/compliance/StateLevelControls.tsx   # 5, was 11"
+  },
+  {
+   "scenario": "The sec.22A or sec.157 deep link does not resolve on legislation.nsw.gov.au.",
+   "what_happens": "The reader lands on the instrument rather than the section. The citation line still names the section and what it is called, so the claim remains checkable by hand.",
+   "mitigated": false,
+   "how": "NOT verified. legislation.nsw.gov.au refuses scripted requests from this machine, so neither anchor could be opened. The anchor form matches the sec.24, sec.68 and sec.108 links already in production, and the section numbers were read from the instrument itself. Worth one manual click each on the preview deployment.",
+   "repro": "open https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#sec.22A"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes -- on the preview, open the SEPP tab for a TOD property and click the section 22A and section 157 links. Those two anchors could not be opened from this machine, and they are the only part of this change not covered by a test."
+ }
+}
