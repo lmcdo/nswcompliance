@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Changes regulatory numbers shown to users on the SEPP tab. Two of the six parking cards stated rates the instrument in force does not set: build-to-rent showed per-bedroom tiers that appear nowhere in s74, and in-fill affordable housing showed the build-to-rent rate from s74, which belongs to no part of its division. A third, affordable housing in TOD areas, had the right numbers under a condition s157 does not impose. Critical rather than Standard because a reader acting on the in-fill card would have provided roughly half the parking the law requires for a 1-bedroom affordable dwelling (0.2 shown against at least 0.4 required), and because the source of truth is the Act rather than our database: s22A is in no regulatory_provisions row, so the correction could not be derived from stored data and had to be read from the instrument.",
- "commit_hash": "eda3daf7",
+ "commit_hash": "9d150695",
  "files": [
   "frontend-nextjs/components/compliance/StateLevelControls.tsx",
   "frontend-nextjs/__tests__/compliance/sepp-parking-cards-match-law.test.tsx"
