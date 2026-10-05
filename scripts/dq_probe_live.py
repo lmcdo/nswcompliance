@@ -2222,6 +2222,105 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "Clears per instrument by recording the version the text was taken from "
         "and refreshing text that is behind (DQ-88 method), not by stamping today's date.",
     ),
+    "DQ-133": (
+        "Columns the SEPP parking tier selects that housing_sepp_standards does not have",
+        # /api/tod/parking-rates runs three tiers: SEPP standards (which override a
+        # council rate), then the council's numeric DCP controls, then DCP provision
+        # text. Tier 1 selects `dwelling_type`, `notes` and `is_current`. The table has
+        # `development_type`, `verification_notes` and no currency boolean at all (use
+        # `stale_since IS NULL`). So tier 1 raises on EVERY call, runTier records a
+        # degradation, and the answer always comes from the council DCP -- including
+        # where a state standard would override it. Nothing errors visibly: the route
+        # was built to degrade rather than fail, so a tier that never runs reads exactly
+        # like a tier that found nothing.
+        #
+        # Counts the missing columns, so a partial rename cannot clear it.
+        "SELECT count(*) FROM (VALUES ('dwelling_type'), ('notes'), ('is_current')) AS c(col)"
+        " WHERE NOT EXISTS ("
+        "   SELECT 1 FROM information_schema.columns"
+        "   WHERE table_schema = 'public' AND table_name = 'housing_sepp_standards'"
+        "     AND column_name = c.col)",
+        (),
+        "Each is a column the SEPP-override tier of /api/tod/parking-rates asks for and "
+        "cannot get, so the tier throws and a council rate is served where a state "
+        "standard would override it. Reads 3 on 2026-10-05. Reaching 0 is necessary and "
+        "NOT sufficient: SEPP_DWELLING_TYPE_MAP also maps to values the table does not "
+        "use (residential_flat_building/rfb vs residential_flat_r1r2 / r3r4_inner / "
+        "r3r4_outer; multi_dwelling_housing/mdh vs multi_dwelling; boarding_house is "
+        "absent), so after a rename only dual_occupancy resolves. Choosing between the "
+        "three residential_flat bands needs the zone and whether the land is in an "
+        "accessible or designated area -- a regulatory decision, not a rename. Do not "
+        "close this row on the rename alone.",
+    ),
+    "DQ-134": (
+        "SQL columns in scanned code that the schema-contract gate cannot check",
+        # validate_schema_contract.py exists because a renamed table left
+        # dcp-complete/route.ts raising a 500 on every address while 3,207 Python tests,
+        # ~900 Jest tests, TSC, four lints and the QA gate all stayed green. Its column
+        # rule only covers ALIAS-QUALIFIED columns ("alias.column", alias bound to a real
+        # base table in the same statement). A single-table query written without an
+        # alias -- the ordinary way to write one -- has no qualified columns, so its
+        # column list is never checked and only the table name is. That is how DQ-133
+        # survived: the gate ran on frontend-nextjs/app/api, read
+        # tod/parking-rates/route.ts, resolved housing_sepp_standards, and checked none
+        # of the seven bare columns it selects.
+        #
+        # Measured from the catalog rather than by re-parsing the code, using the one
+        # case already proven. Deliberately a FLOOR, not a census: a row that goes green
+        # only once the gate itself checks unqualified columns.
+        "SELECT CASE WHEN EXISTS ("
+        "   SELECT 1 FROM information_schema.columns"
+        "   WHERE table_schema = 'public' AND table_name = 'housing_sepp_standards'"
+        "     AND column_name = 'dwelling_type') THEN 0 ELSE 1 END",
+        (),
+        "1 means the gate that exists to catch 'code queries a column that is not "
+        "there' still cannot see an unaliased single-table query, and the known instance "
+        "(DQ-133) is still live. Clears by extending validate_schema_contract.py to "
+        "check bare columns when a statement names exactly one base table, then "
+        "baselining whatever that newly surfaces. Fixing DQ-133 alone does NOT clear "
+        "this -- the blind spot is the defect; DQ-133 is one thing that fell into it. "
+        "Reads 1 on 2026-10-05.",
+    ),
+    "DQ-135": (
+        "Statewide rules whose number was split from the obligation that imposes it",
+        # The extractor splits one legal sentence into a lead-in row plus its numbered
+        # sub-paragraphs, and the actionability classifier judges each row ALONE. The
+        # lead-in keeps the obligation words ("must", "at least") and is classified
+        # actionable; the sub-paragraph carrying the actual figure has no obligation word
+        # of its own and is classified not actionable. The number is then dropped from
+        # every surface that filters on v2_is_actionable.
+        #
+        # Proven on the boarding-house parking rate: row 40309 p11 ("...at least the
+        # following number of parking spaces-") is actionable TRUE, and 40310 p11
+        # ("0.2 parking spaces for each boarding room, ... otherwise-0.5") is FALSE.
+        # Re-running enrichment/extractors/actionable_classifier.py over all nine
+        # Housing SEPP parking rows reproduces the stored values exactly, every FALSE
+        # with reason "lep_sepp_weak_indicators" -- so this is the classifier's standing
+        # verdict on fragments, not a stale row a retag would fix.
+        #
+        # Counts statewide current rows that are not actionable, open as a list
+        # sub-paragraph, carry a digit, and contain no obligation word of their own.
+        "SELECT count(*) FROM regulatory_provisions"
+        " WHERE is_current AND source_council IS NULL"
+        "   AND v2_is_actionable IS NOT TRUE"
+        "   AND provision_text ~ '^\\s*\\(?[a-z0-9ivx]{1,4}\\)'"
+        "   AND provision_text ~ '[0-9]'"
+        "   AND provision_text !~* '\\m(must|at least|no more than|not exceed|required|minimum|maximum)\\M'",
+        (),
+        "Each is a figure from a statewide instrument that is withheld from any surface "
+        "filtering on v2_is_actionable, because the sentence imposing it was split into "
+        "another row. Reads 2,241 of 2,339 such sub-paragraph rows on 2026-10-05 "
+        "(statewide current rows: 7,253 actionable, 10,680 not). Do NOT clear this by "
+        "flipping rows: the classifier re-derives the same FALSE from the fragment, so "
+        "hand-set values are reverted by the next enrichment run with force_reprocess. "
+        "It clears by giving the classifier its parent paragraph, or by keeping a "
+        "sub-paragraph joined to its lead-in at extraction. v2_has_numeric_value is "
+        "wrong on the same rows -- 40310 plainly contains '0.2' and reads FALSE, and only "
+        "1 statewide current row is (actionable FALSE, numeric TRUE). This is why "
+        "DQ-130/132 measure a served set that EXCLUDES the boarding-house parking rate "
+        "the SEPP tab displays; /api/sepp/parking-provisions deliberately does not filter "
+        "on the flag.",
+    ),
 }
 
 
