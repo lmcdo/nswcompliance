@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Three read-only ledger rows, no production write and no behaviour change: DQ-133 (the SEPP parking override tier of /api/tod/parking-rates queries three columns that do not exist, so it throws on every request), DQ-134 (the schema-contract gate only checks alias-qualified columns, which is why DQ-133 reached production unseen), DQ-135 (the extractor splits a rule's figure from the obligation imposing it, and the classifier judges each fragment alone, so 2,241 statewide figures are withheld from any surface filtering on v2_is_actionable). Above Minor because DQ-134 records a hole in an existing CI gate and DQ-135 changes what the word 'served' means in DQ-130/132 -- both are claims other work will rely on. It is NOT a fix for any of the three: DQ-133 needs a regulatory decision about LMR bands, DQ-134 needs a gate change with repo-wide blast radius, DQ-135 needs the classifier to see a fragment's parent. This PR makes all three measurable and refuses the tempting wrong fixes in writing.",
- "commit_hash": "f8dabf7c",
+ "commit_hash": "e8141b61",
  "files": [
   "scripts/dq_probe_live.py",
   ".claude/dq_checks.json",
