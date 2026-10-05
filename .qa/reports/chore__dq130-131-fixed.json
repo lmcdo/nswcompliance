@@ -1,0 +1,29 @@
+{
+ "tier": "minor",
+ "justification": "Ledger status edits only (three rows' declared status and notes) after a production write already measured by the rows' own probes. No code path changes.",
+ "commit_hash": "7ab9ab44",
+ "files": [
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md"
+ ],
+ "falsifiable_check": {
+  "command": "python scripts/dq_check.py --id DQ-130 ; python scripts/dq_check.py --id DQ-131 ; python scripts/dq_check.py --id DQ-88 ; python scripts/dq_check.py --coverage",
+  "fails_when": "Any declared status disagrees with its probe: before this commit DQ-130 and DQ-131 read 0 while declared open, and DQ-88 read 6 while declared fixed -- all three RED in dq_check. After: all three OK, coverage OK (134 rows).",
+  "observed_red": "Observed 2026-10-05 immediately after the registry write: dq_check reported RED for DQ-130 (declared OPEN but the check PASSES) and DQ-88 (declared FIXED but the check FAILS)."
+ },
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "No"
+ },
+ "break_it": [
+  {
+   "scenario": "A later monitor run clears needs_review on a newly registered SEPP before its stored text is refreshed",
+   "what_happens": "DQ-88 drops back toward 0 and the app shows older text as verified current",
+   "mitigated": true,
+   "how": "scripts/legislation_monitor.py never writes needs_review=FALSE (only TRUE on change); clearing is manual via update_instrument_provisions.py, so DQ-88 stays at 6 until a human refreshes each instrument",
+   "repro": "python scripts/dq_probe_live.py --id DQ-88 after the next weekly Fly run should still read 6"
+  }
+ ]
+}
