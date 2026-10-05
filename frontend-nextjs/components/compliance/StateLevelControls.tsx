@@ -1463,13 +1463,18 @@ export function StateLevelControls({
                         <li>• 2 bedrooms: at least 1 parking space</li>
                         <li>• 3 or more bedrooms: at least 1.5 parking spaces</li>
                       </ul>
-                      {/* s22A is (a) OR (b). A card showing only the numbers would state a
-                          requirement the section does not impose on its own. */}
+                      {/* s22A reads "Development consent must not be granted ... unless—
+                        * (a) [these numbers] ... or (b) the consent authority has considered
+                        * the Guide". That is a NECESSARY condition, not a sufficient one, and
+                        * the wording here keeps it that way: an earlier draft said consent
+                        * "may instead be granted" once the Guide was considered, which reads
+                        * as though (b) permits consent on its own. It does not — every other
+                        * requirement still applies. */}
                       <p className="text-xs text-gray-700 mt-1">
-                        These numbers are one of two alternatives: consent may instead be
-                        granted where the consent authority has considered the Guide to
-                        Transport Impact Assessment published by Transport for NSW on
-                        4 November 2024.
+                        Section 22A provides that consent must not be granted unless either
+                        these parking rates are provided or the consent authority has
+                        considered the Guide to Transport Impact Assessment published by
+                        Transport for NSW on 4 November 2024.
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
                         SEPP (Housing) 2021, section 22A — requirement to provide car parking
