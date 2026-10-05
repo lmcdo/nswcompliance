@@ -27,7 +27,6 @@ import { PathwaySummaryCard } from './PathwaySummaryCard';
 import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone, isLMRApplicable, permitsApartmentDevelopment } from '@/lib/regulatory-constants';
 import { getAdgPdfUrl } from '@/lib/pdf-url-builder';
 import { SeppCitationLink, SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL, seppHousingProvisionUrl } from './SeppCitationLink';
-import { REGISTRY_INSTRUMENT_URLS } from '@/lib/citation-instrument-urls';
 import { tryGetLGAConfig } from '@/lib/lga-configs';
 import { battleaxeAwareLotWidth } from '@/lib/geometry/effective-lot-width';
 
@@ -1404,48 +1403,86 @@ export function StateLevelControls({
                   </div>
                 </div>
 
-                {/* Build-to-Rent Housing */}
+                {/* Build-to-Rent Housing — s74(2)(d)-(e), read from the instrument in force
+                    for 11 September 2026, page 61. The per-bedroom tiers shown here until
+                    2026-10-05 appear nowhere in s74: the standard is a flat per-dwelling
+                    rate, it binds only in a designated Sydney local government area, and
+                    outside one the council's own plan sets the rate. */}
                 <div className="bg-white border border-purple-200 rounded-lg p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-900">Build-to-Rent Housing</p>
                       <p className="text-xs text-gray-700 mt-1">
-                        <strong>In accessible area:</strong>
+                        <strong>In a designated Sydney local government area:</strong>
                       </p>
                       <ul className="text-xs text-gray-700 ml-3 mt-1 space-y-0.5">
-                        <li>• 1 bedroom: 0.2 parking spaces per dwelling</li>
-                        <li>• 2 bedrooms: 0.5 parking spaces per dwelling</li>
-                        <li>• 3+ bedrooms: 1 parking space per dwelling</li>
+                        <li>• within an accessible area: at least 0.2 parking spaces for each dwelling</li>
+                        <li>• otherwise: at least 0.5 parking spaces for each dwelling</li>
+                        <li>• or, where a relevant planning instrument specifies a lower number, that lower number</li>
                       </ul>
+                      <p className="text-xs text-gray-700 mt-1">
+                        <strong>Elsewhere:</strong> at least the number of parking spaces required
+                        under the relevant development control plan or local environmental plan
+                        for a residential flat building.
+                      </p>
                       <p className="text-xs text-gray-500 mt-2">
-                        SEPP (Housing) 2021, Clause 74 - Non-discretionary development standards
+                        SEPP (Housing) 2021, section 74(2)(d)–(e) — non-discretionary development standards
                       </p>
                     </div>
                     <SeppCitationLink
                       href={seppHousingProvisionUrl('sec.74')}
-                      label="View SEPP (Housing) 2021 clause 74 on NSW Legislation"
+                      label="View SEPP (Housing) 2021 section 74 on NSW Legislation"
                     />
                   </div>
-                {/* In-Fill Affordable Housing */}
+                {/* In-Fill Affordable Housing — s22A, read from the instrument in force for
+                  * 11 September 2026, page 25. The "0.2 / 0.5 per dwelling" shown here until
+                  * 2026-10-05 was the build-to-rent rate from s74 and belongs to no part of
+                  * this division. s22A is in NO regulatory_provisions row (0 rows, measured
+                  * 2026-10-05): our stored copy of this instrument tops out at page 120 of a
+                  * 186-page Act, so the section post-dates it. These words therefore come out
+                  * of the PDF and not the database, and the test beside this file pins them;
+                  * they move to /api/sepp/parking-provisions once a text refresh puts s22A in
+                  * the table. */}
                 <div className="bg-white border border-purple-200 rounded-lg p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-900">In-Fill Affordable Housing</p>
                       <p className="text-xs text-gray-700 mt-1">
-                        <strong>In accessible area:</strong> 0.2 parking spaces per dwelling
+                        <strong>Dwellings used for affordable housing:</strong>
                       </p>
-                      <p className="text-xs text-gray-700">
-                        <strong>Otherwise:</strong> 0.5 parking spaces per dwelling
+                      <ul className="text-xs text-gray-700 ml-3 mt-1 space-y-0.5">
+                        <li>• 1 bedroom: at least 0.4 parking spaces</li>
+                        <li>• 2 bedrooms: at least 0.5 parking spaces</li>
+                        <li>• 3 or more bedrooms: at least 1 parking space</li>
+                      </ul>
+                      <p className="text-xs text-gray-700 mt-1">
+                        <strong>Dwellings not used for affordable housing:</strong>
+                      </p>
+                      <ul className="text-xs text-gray-700 ml-3 mt-1 space-y-0.5">
+                        <li>• 1 bedroom: at least 0.5 parking spaces</li>
+                        <li>• 2 bedrooms: at least 1 parking space</li>
+                        <li>• 3 or more bedrooms: at least 1.5 parking spaces</li>
+                      </ul>
+                      {/* s22A reads "Development consent must not be granted ... unless—
+                        * (a) [these numbers] ... or (b) the consent authority has considered
+                        * the Guide". That is a NECESSARY condition, not a sufficient one, and
+                        * the wording here keeps it that way: an earlier draft said consent
+                        * "may instead be granted" once the Guide was considered, which reads
+                        * as though (b) permits consent on its own. It does not — every other
+                        * requirement still applies. */}
+                      <p className="text-xs text-gray-700 mt-1">
+                        Section 22A provides that consent must not be granted unless either
+                        these parking rates are provided or the consent authority has
+                        considered the Guide to Transport Impact Assessment published by
+                        Transport for NSW on 4 November 2024.
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
-                        SEPP (Housing) 2021, in-fill affordable housing (section number not yet identified — opens the full SEPP)
+                        SEPP (Housing) 2021, section 22A — requirement to provide car parking
                       </p>
                     </div>
-                    {/* Not sec.19: the stored s19 text carries no parking rate. Whole-instrument
-                        link until the section is read from the law in force. */}
                     <SeppCitationLink
-                      href={REGISTRY_INSTRUMENT_URLS.sepp_housing_2021}
-                      label="View SEPP (Housing) 2021 on NSW Legislation"
+                      href={seppHousingProvisionUrl('sec.22A')}
+                      label="View SEPP (Housing) 2021 section 22A on NSW Legislation"
                     />
                   </div>
                 </div>
@@ -1479,24 +1516,25 @@ export function StateLevelControls({
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-900">Affordable Housing in TOD Areas</p>
+                      {/* The "In accessible area" heading shown here until 2026-10-05 is not
+                          in s157: the rates apply to the affordable housing dwellings s156
+                          requires, wherever the development is. Section number read from the
+                          instrument in force for 11 September 2026, page 114. */}
                       <p className="text-xs text-gray-700 mt-1">
-                        <strong>In accessible area:</strong>
+                        For each affordable housing dwelling required under section 156:
                       </p>
                       <ul className="text-xs text-gray-700 ml-3 mt-1 space-y-0.5">
-                        <li>• 1 bedroom: 0.4 parking spaces per dwelling</li>
-                        <li>• 2 bedrooms: 0.5 parking spaces per dwelling</li>
-                        <li>• 3+ bedrooms: 1 parking space per dwelling</li>
+                        <li>• 1 bedroom: 0.4 parking space</li>
+                        <li>• 2 bedrooms: 0.5 parking space</li>
+                        <li>• 3 or more bedrooms: 1 parking space</li>
                       </ul>
                       <p className="text-xs text-gray-500 mt-2">
-                        SEPP (Housing) 2021, transport oriented development provisions (section number not yet identified — opens the full SEPP)
+                        SEPP (Housing) 2021, section 157 — affordable housing parking spaces
                       </p>
                     </div>
-                    {/* Not sec.42 and not low and mid rise housing: these rates sit in the
-                        TOD chapter, after s156. Whole-instrument link until the section
-                        number is read from the law in force. */}
                     <SeppCitationLink
-                      href={REGISTRY_INSTRUMENT_URLS.sepp_housing_2021}
-                      label="View SEPP (Housing) 2021 on NSW Legislation"
+                      href={seppHousingProvisionUrl('sec.157')}
+                      label="View SEPP (Housing) 2021 section 157 on NSW Legislation"
                     />
                   </div>
                 </div>
