@@ -7,6 +7,7 @@ import { ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LocalProvision } from '@/lib/nsw-planning-portal';
 import { SemanticColors } from '@/lib/design-tokens';
+import { legislationAnchorUrl, storedLepTextEpi } from '@/lib/citation-instrument-urls';
 
 interface LocalProvisionsCardProps {
   localProvisions: LocalProvision[];
@@ -37,7 +38,12 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
     p.clauseNumber?.startsWith('6.')
   );
 
-  const toggleProvision = async (provisionKey: string, clauseNumber: string | undefined, fallbackPageNumber: number | undefined) => {
+  const toggleProvision = async (
+    provisionKey: string,
+    clauseNumber: string | undefined,
+    fallbackPageNumber: number | undefined,
+    legislationUrl: string | undefined
+  ) => {
     if (!clauseNumber) return;
 
     const isExpanded = expandedProvisions.has(provisionKey);
@@ -51,11 +57,15 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
       newExpanded.add(provisionKey);
       setExpandedProvisions(newExpanded);
 
-      if (!provisionDetails[provisionKey]) {
+      // Stored clause text exists only for some LEPs; for the rest the live link is shown.
+      const epi = storedLepTextEpi(legislationUrl);
+      if (!provisionDetails[provisionKey] && epi) {
         setLoading({ ...loading, [provisionKey]: true });
 
         try {
-          const response = await fetch(`/api/lep/provisions?clause=${encodeURIComponent(clauseNumber)}`);
+          const response = await fetch(
+            `/api/lep/provisions?clause=${encodeURIComponent(clauseNumber)}&epi=${encodeURIComponent(epi)}`
+          );
           console.log(`[LocalProvisionsCard] Fetching clause ${clauseNumber}, status: ${response.status}`);
           if (response.ok) {
             const data = await response.json();
@@ -91,9 +101,10 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
           const isLoading = loading[uniqueKey];
 
           // Deep-link to specific clause using #sec.{clauseNumber} anchor
-          const clauseUrl = provision.clauseNumber && provision.legislationUrl
-            ? `${provision.legislationUrl}#sec.${provision.clauseNumber}`
-            : provision.legislationUrl;
+          const clauseUrl = legislationAnchorUrl(
+            provision.legislationUrl,
+            provision.clauseNumber ? `sec.${provision.clauseNumber}` : null
+          );
 
           return (
             <div key={uniqueKey} className="border-l-4 border-amber-500 pl-4 py-2 bg-amber-50/50 rounded-r-md">
@@ -105,7 +116,7 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
                     </h4>
                     {provision.clauseNumber && (
                       <button
-                        onClick={() => toggleProvision(uniqueKey, provision.clauseNumber, provision.pageNumber)}
+                        onClick={() => toggleProvision(uniqueKey, provision.clauseNumber, provision.pageNumber, provision.legislationUrl)}
                         className="text-amber-700 hover:text-amber-900 transition-colors"
                         aria-label={isExpanded ? 'Collapse provision' : 'Expand provision'}
                       >
@@ -154,33 +165,11 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
 
                   {isExpanded && (
                     <div className="mt-3 p-3 bg-white rounded-md border border-amber-200">
+                      {/* A static Inner West LEP 2022 page image used to render here for
+                          every council's Key Site / Site-Specific clause; the live
+                          in-force clause link below replaces it. */}
                       {isLoading ? (
                         <p className="text-sm text-muted-foreground">Loading provision text...</p>
-                      ) : (provision.mapType === 'Site-Specific' || provision.mapType === 'KSM') && provision.clauseNumber && (detail?.pageNumber || provision.pageNumber) ? (
-                        <div className="space-y-2">
-                          <h5 className="font-semibold text-sm text-amber-900">
-                            {provision.title}
-                          </h5>
-                          <p className="text-sm text-gray-700 mb-2">
-                            View the full provision from Inner West LEP 2022:
-                          </p>
-                          <img
-                            src={`https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/iwlep_clause_${provision.clauseNumber.replace('.', '_')}_page_${detail?.pageNumber || provision.pageNumber}.png`}
-                            alt={`Clause ${provision.clauseNumber} - Page ${detail?.pageNumber || provision.pageNumber}`}
-                            className="w-full border border-amber-200 rounded"
-                            onError={(e) => {
-                              // If image fails to load, hide it and show fallback text
-                              e.currentTarget.style.display = 'none';
-                              const parent = e.currentTarget.parentElement;
-                              if (parent) {
-                                const fallback = document.createElement('div');
-                                fallback.className = 'text-sm text-gray-600 mt-2';
-                                fallback.innerHTML = `<p class="mb-2">PDF image not yet extracted. View the full clause in the LEP document:</p><a href="${clauseUrl}" target="_blank" rel="noopener noreferrer" class="text-amber-700 hover:text-amber-900 underline font-medium">View Clause ${provision.clauseNumber} in LEP →</a>`;
-                                parent.appendChild(fallback);
-                              }
-                            }}
-                          />
-                        </div>
                       ) : detail && detail.provisionText && detail.provisionText.length > 100 ? (
                         <div className="space-y-2">
                           {detail.clauseTitle && (
@@ -199,17 +188,23 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
                         </div>
                       ) : (
                         <div className="text-sm text-gray-600">
-                          <p className="mb-2">
-                            Provision text is being extracted. View the full clause in the LEP document:
-                          </p>
-                          <a
-                            href={clauseUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-amber-700 hover:text-amber-900 underline font-medium"
-                          >
-                            View Clause {provision.clauseNumber} in LEP →
-                          </a>
+                          {clauseUrl ? (
+                            <>
+                              <p className="mb-2">
+                                Read the current in-force clause on NSW Legislation:
+                              </p>
+                              <a
+                                href={clauseUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-amber-700 hover:text-amber-900 underline font-medium"
+                              >
+                                View Clause {provision.clauseNumber} in LEP →
+                              </a>
+                            </>
+                          ) : (
+                            <p>The NSW Planning Portal did not return a legislation link for this clause.</p>
+                          )}
                         </div>
                       )}
                     </div>

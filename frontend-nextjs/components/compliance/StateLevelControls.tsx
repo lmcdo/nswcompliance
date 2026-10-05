@@ -25,7 +25,9 @@ import { NotApplicableCard } from './NotApplicableCard';
 import { ExemptComplyingProvisions } from './ExemptComplyingProvisions';
 import { PathwaySummaryCard } from './PathwaySummaryCard';
 import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone, isLMRApplicable, permitsApartmentDevelopment } from '@/lib/regulatory-constants';
-import { getSeppPdfUrl, getAdgPdfUrl } from '@/lib/pdf-url-builder';
+import { getAdgPdfUrl } from '@/lib/pdf-url-builder';
+import { SeppCitationLink, SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL, seppHousingProvisionUrl } from './SeppCitationLink';
+import { REGISTRY_INSTRUMENT_URLS } from '@/lib/citation-instrument-urls';
 import { tryGetLGAConfig } from '@/lib/lga-configs';
 import { battleaxeAwareLotWidth } from '@/lib/geometry/effective-lot-width';
 
@@ -794,17 +796,10 @@ export function StateLevelControls({
                       <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-400 flex-1">
                         💧 Water Target: <span className="font-bold">{sustainableInfo.waterTarget}</span>
                       </div>
-                      <button
-                        onClick={() => setViewingPdfPage({
-                          pageNumber: 11,
-                          url: getSeppPdfUrl('sustainable_buildings', 11),
-                          label: 'Schedule 2: Water Fixtures (Toilets, Showers, Taps)'
-                        })}
-                        className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
-                        title="View Schedule 2 water fixture standards"
-                      >
-                        <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
-                      </button>
+                      <SeppCitationLink
+                        href={SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL}
+                        label="View SEPP (Sustainable Buildings) 2022 — water fixture standards"
+                      />
                     </div>
                     <div className="text-xs text-purple-700 ml-2">{NSW_PLANNING_CONSTANTS.BASIX.WATER_REDUCTION_PERCENT}% reduction from baseline water use via efficient fixtures</div>
                     </>
@@ -815,17 +810,10 @@ export function StateLevelControls({
                       <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-500 flex-1">
                         🌡️ Climate Zone: <span className="font-bold">{sustainableInfo.climateZone}</span>
                       </div>
-                      <button
-                        onClick={() => setViewingPdfPage({
-                          pageNumber: 9,
-                          url: getSeppPdfUrl('sustainable_buildings', 9),
-                          label: 'Table 3: Thermal Performance by Climate Zone'
-                        })}
-                        className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
-                        title="View thermal performance standards for climate zone"
-                      >
-                        <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
-                      </button>
+                      <SeppCitationLink
+                        href={SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL}
+                        label="View SEPP (Sustainable Buildings) 2022 — thermal performance by climate zone"
+                      />
                     </div>
                     <div className="text-xs text-purple-700 ml-2">Climate Zone {sustainableInfo.climateZone} — verify thermal performance targets against Table 3 of SEPP Sustainable Buildings 2022.</div>
                     </>
@@ -837,7 +825,7 @@ export function StateLevelControls({
                         🏠 BASIX: <span className="font-bold">{sustainableInfo.basixArea}</span>
                       </div>
                       <a
-                        href="https://www.planningportal.nsw.gov.au/publications/environmental-planning-instruments/state-environmental-planning-policy-sustainable-buildings-2022"
+                        href={SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
@@ -879,17 +867,10 @@ export function StateLevelControls({
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <div className="font-semibold text-purple-900">BASIX Energy & Thermal Requirements</div>
-                      <button
-                        onClick={() => setViewingPdfPage({
-                          pageNumber: 13,
-                          url: getSeppPdfUrl('sustainable_buildings', 13),
-                          label: 'Insulation Standards (Floors/Ceilings R-values)'
-                        })}
-                        className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
-                        title="View insulation R-value standards"
-                      >
-                        <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
-                      </button>
+                      <SeppCitationLink
+                        href={SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL}
+                        label="View SEPP (Sustainable Buildings) 2022 — insulation standards"
+                      />
                     </div>
                     <p className="text-sm text-purple-800 mt-1">
                       Energy efficiency and thermal comfort targets for {sustainableInfo.basixArea} require
@@ -1394,16 +1375,10 @@ export function StateLevelControls({
                         SEPP (Housing) 2021, Clause 24 - Non-discretionary development standards
                       </p>
                     </div>
-                    <button
-                      onClick={() => setViewingPdfPage({
-                        pageNumber: 11,
-                        url: getSeppPdfUrl('housing', 11),
-                        label: 'SEPP (Housing) 2021 - Boarding House Parking'
-                      })}
-                      className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
-                    >
-                      <FileImage className="h-5 w-5" />
-                    </button>
+                    <SeppCitationLink
+                      href={seppHousingProvisionUrl('sec.24')}
+                      label="View SEPP (Housing) 2021 clause 24 on NSW Legislation"
+                    />
                   </div>
                 </div>
 
@@ -1422,16 +1397,10 @@ export function StateLevelControls({
                         SEPP (Housing) 2021, Clause 68 - Non-discretionary development standards
                       </p>
                     </div>
-                    <button
-                      onClick={() => setViewingPdfPage({
-                        pageNumber: 32,
-                        url: getSeppPdfUrl('housing', 32),
-                        label: 'SEPP (Housing) 2021 - Co-Living Parking'
-                      })}
-                      className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
-                    >
-                      <FileImage className="h-5 w-5" />
-                    </button>
+                    <SeppCitationLink
+                      href={seppHousingProvisionUrl('sec.68')}
+                      label="View SEPP (Housing) 2021 clause 68 on NSW Legislation"
+                    />
                   </div>
                 </div>
 
@@ -1452,16 +1421,10 @@ export function StateLevelControls({
                         SEPP (Housing) 2021, Clause 74 - Non-discretionary development standards
                       </p>
                     </div>
-                    <button
-                      onClick={() => setViewingPdfPage({
-                        pageNumber: 35,
-                        url: getSeppPdfUrl('housing', 35),
-                        label: 'SEPP (Housing) 2021 - Build-to-Rent Parking'
-                      })}
-                      className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
-                    >
-                      <FileImage className="h-5 w-5" />
-                    </button>
+                    <SeppCitationLink
+                      href={seppHousingProvisionUrl('sec.74')}
+                      label="View SEPP (Housing) 2021 clause 74 on NSW Legislation"
+                    />
                   </div>
                 {/* In-Fill Affordable Housing */}
                 <div className="bg-white border border-purple-200 rounded-lg p-3">
@@ -1475,19 +1438,15 @@ export function StateLevelControls({
                         <strong>Otherwise:</strong> 0.5 parking spaces per dwelling
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
-                        SEPP (Housing) 2021, Clause 19 - In-fill affordable housing
+                        SEPP (Housing) 2021, in-fill affordable housing (section number not yet identified — opens the full SEPP)
                       </p>
                     </div>
-                    <button
-                      onClick={() => setViewingPdfPage({
-                        pageNumber: 35,
-                        url: getSeppPdfUrl('housing_2021', 35, 'infill_affordable'),
-                        label: 'SEPP (Housing) 2021 - In-Fill Affordable Housing Parking'
-                      })}
-                      className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
-                    >
-                      <FileImage className="h-5 w-5" />
-                    </button>
+                    {/* Not sec.19: the stored s19 text carries no parking rate. Whole-instrument
+                        link until the section is read from the law in force. */}
+                    <SeppCitationLink
+                      href={REGISTRY_INSTRUMENT_URLS.sepp_housing_2021}
+                      label="View SEPP (Housing) 2021 on NSW Legislation"
+                    />
                   </div>
                 </div>
 
@@ -1503,19 +1462,13 @@ export function StateLevelControls({
                         <strong>Other seniors housing:</strong> 0.5 parking spaces per bedroom
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
-                        SEPP (Housing) 2021, Schedule 4 Part 5 — Seniors housing parking
+                        SEPP (Housing) 2021, section 108(2)(j)–(k) — independent living units
                       </p>
                     </div>
-                    <button
-                      onClick={() => setViewingPdfPage({
-                        pageNumber: 47,
-                        url: getSeppPdfUrl('housing_2021', 47, 'seniors_independent'),
-                        label: 'SEPP (Housing) 2021 - Seniors Independent Living Parking'
-                      })}
-                      className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
-                    >
-                      <FileImage className="h-5 w-5" />
-                    </button>
+                    <SeppCitationLink
+                      href={seppHousingProvisionUrl('sec.108')}
+                      label="View SEPP (Housing) 2021 section 108 on NSW Legislation"
+                    />
                   </div>
                 </div>
 
@@ -1535,19 +1488,16 @@ export function StateLevelControls({
                         <li>• 3+ bedrooms: 1 parking space per dwelling</li>
                       </ul>
                       <p className="text-xs text-gray-500 mt-2">
-                        SEPP (Housing) 2021, Clause 42 - Low and mid rise housing
+                        SEPP (Housing) 2021, transport oriented development provisions (section number not yet identified — opens the full SEPP)
                       </p>
                     </div>
-                    <button
-                      onClick={() => setViewingPdfPage({
-                        pageNumber: 18,
-                        url: getSeppPdfUrl('housing', 18),
-                        label: 'SEPP (Housing) 2021 - Affordable Housing Parking'
-                      })}
-                      className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
-                    >
-                      <FileImage className="h-5 w-5" />
-                    </button>
+                    {/* Not sec.42 and not low and mid rise housing: these rates sit in the
+                        TOD chapter, after s156. Whole-instrument link until the section
+                        number is read from the law in force. */}
+                    <SeppCitationLink
+                      href={REGISTRY_INSTRUMENT_URLS.sepp_housing_2021}
+                      label="View SEPP (Housing) 2021 on NSW Legislation"
+                    />
                   </div>
                 </div>
 
@@ -1571,16 +1521,10 @@ export function StateLevelControls({
                         Land within <strong>800m walking distance</strong> of a public entrance to a railway, metro or light rail station (Schedule 11)
                       </p>
                     </div>
-                    <button
-                      onClick={() => setViewingPdfPage({
-                        pageNumber: 115,
-                        url: getSeppPdfUrl('housing', 115),
-                        label: 'SEPP (Housing) 2021 - Accessible Area Definition'
-                      })}
-                      className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
-                    >
-                      <FileImage className="h-5 w-5" />
-                    </button>
+                    <SeppCitationLink
+                      href={seppHousingProvisionUrl('sch.11')}
+                      label="View SEPP (Housing) 2021 Schedule 11 on NSW Legislation"
+                    />
                   </div>
                 </div>
               </div>

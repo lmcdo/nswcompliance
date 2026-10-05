@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Shield, ExternalLink, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SemanticColors } from '@/lib/design-tokens';
+import { legislationAnchorUrl, storedLepTextEpi } from '@/lib/citation-instrument-urls';
 
 interface HeritageProvisionsCardProps {
   heritage: boolean;
@@ -75,11 +76,15 @@ export function HeritageProvisionsCard({
     } else {
       setIsExpanded(true);
 
-      if (!provisionDetail && clauseNumber) {
+      // Stored clause text exists only for some LEPs; for the rest the live link is shown.
+      const epi = storedLepTextEpi(heritageLegislationUrl);
+      if (!provisionDetail && clauseNumber && epi) {
         setLoading(true);
 
         try {
-          const response = await fetch('/api/lep/provisions?clause=' + encodeURIComponent(clauseNumber));
+          const response = await fetch(
+            `/api/lep/provisions?clause=${encodeURIComponent(clauseNumber)}&epi=${encodeURIComponent(epi)}`
+          );
           if (response.ok) {
             const data = await response.json();
             setProvisionDetail(data);
@@ -95,6 +100,7 @@ export function HeritageProvisionsCard({
 
   // Link to base LEP document - NSW legislation site doesn't support reliable clause anchors
   const clauseUrl = heritageLegislationUrl;
+  const clause510Url = legislationAnchorUrl(heritageLegislationUrl, 'sec.5.10');
 
   const cardColor = isHCA ? 'border-amber-300' : isStateHeritage ? 'border-red-300' : 'border-amber-300';
   const bgColor = isHCA ? 'bg-amber-50/50' : isStateHeritage ? 'bg-red-50/50' : 'bg-amber-50/50';
@@ -173,39 +179,34 @@ export function HeritageProvisionsCard({
                   ) : clauseNumber === '5.10' ? (
                     <div className="space-y-3">
                       <h5 className="font-semibold text-sm text-amber-900">
-                        Clause 5.10 Heritage conservation — Inner West LEP 2022
+                        Clause 5.10 Heritage conservation{lga ? ` — ${lga} LEP` : ''}
                       </h5>
                       {/* Note about generic vs specific */}
                       <div className="text-xs text-gray-600 bg-gray-50 rounded px-2 py-1.5 border border-gray-200">
-                        <strong>LEP clause:</strong> Clause 5.10 applies to all heritage items and HCAs across the Inner West.
+                        <strong>LEP clause:</strong> Clause 5.10 applies to all heritage items and heritage conservation areas listed in this LEP.
                         For design controls specific to this property, see the <strong>DCP tab → Heritage</strong>.
                         {formerCouncil && COUNCIL_DCP_INFO[formerCouncil] && (
                           <span className="block mt-1">{COUNCIL_DCP_INFO[formerCouncil].hcaNote}</span>
                         )}
                       </div>
-                      {/* Full PDF page image of clause 5.10 */}
-                      <div className="border border-amber-200 rounded-lg overflow-hidden">
-                        <img
-                          src="https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/iwlep_clause_5_10_page_50.png"
-                          alt="Inner West LEP 2022 Clause 5.10 Heritage conservation - Page 50"
-                          className="w-full"
-                        />
-                      </div>
-                      <div className="flex items-center gap-4 text-sm">
+                      {/* Live in-force clause for THIS property's LEP (Planning Portal
+                          legislationUrl). Replaces a static Inner West LEP 2022 page-50
+                          image and URL that were shown for every council's heritage lots. */}
+                      {clause510Url ? (
                         <a
-                          href="https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0457#sec.5.10"
+                          href={clause510Url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 hover:underline"
+                          className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 hover:underline"
                         >
                           <ExternalLink className="h-3 w-3" />
-                          View full clause on NSW Legislation
+                          View clause 5.10 (current in-force version) on NSW Legislation
                         </a>
-                        <span className="text-gray-400">|</span>
-                        <span className="text-xs text-gray-500">
-                          Page 50 of Inner West LEP 2022
-                        </span>
-                      </div>
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          The NSW Planning Portal did not return a legislation link for this LEP.
+                        </p>
+                      )}
                     </div>
                   ) : provisionDetail && provisionDetail.provisionText && provisionDetail.provisionText.length > 100 ? (
                     <div className="space-y-2">

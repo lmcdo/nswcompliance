@@ -18,6 +18,7 @@ import { ChevronDown, ChevronRight, ChevronUp, ExternalLink, FileText, FileImage
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getPdfImageUrl } from '@/lib/pdf-image-url';
+import { REGISTRY_INSTRUMENT_URLS } from '@/lib/citation-instrument-urls';
 import { sanitizeHTML } from '@/lib/sanitize';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { CDCScreener } from './CDCScreener';
@@ -294,7 +295,7 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
                 Showing {partName} standards only. Other codes may apply — see all provisions for confirmation.
               </p>
               <a
-                href="https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-572"
+                href={REGISTRY_INSTRUMENT_URLS.sepp_exempt_complying_2008}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-purple-700 hover:underline"

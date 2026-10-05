@@ -7,7 +7,14 @@
  *      2026-08-27 duplicate-extraction siblings, and two unrelated DCP-chapter ids) are absent —
  *      proving the map wasn't padded with a guess to make coverage look better.
  */
-import { INSTRUMENT_CITATION_URLS, resolveCitationUrl } from '@/lib/citation-instrument-urls';
+import {
+  INSTRUMENT_CITATION_URLS,
+  REGISTRY_INSTRUMENT_URLS,
+  epiIdFromUrl,
+  storedLepTextEpi,
+  legislationAnchorUrl,
+  resolveCitationUrl,
+} from '@/lib/citation-instrument-urls';
 
 const MATCHED_IDS = [
   'Inner_West_Local_Environmental_Plan_2022___NSW_Legislation_1_50',
@@ -140,5 +147,67 @@ describe('resolveCitationUrl — priority order', () => {
 
   it('returns null for a document with no id at all', () => {
     expect(resolveCitationUrl({}, undefined)).toBeNull();
+  });
+});
+
+describe('REGISTRY_INSTRUMENT_URLS — no URL the document_id map does not already vouch for', () => {
+  const vouched = new Set(Object.values(INSTRUMENT_CITATION_URLS));
+
+  it('Housing SEPP and Inner West LEP match the document_id map exactly', () => {
+    expect(vouched.has(REGISTRY_INSTRUMENT_URLS.sepp_housing_2021)).toBe(true);
+    expect(vouched.has(REGISTRY_INSTRUMENT_URLS.inner_west_lep_2022)).toBe(true);
+  });
+
+  it('carries the zero-padded E&C id from the migration 010 seed, not epi-2008-572', () => {
+    expect(REGISTRY_INSTRUMENT_URLS.sepp_exempt_complying_2008).toBe(
+      'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-0572'
+    );
+  });
+
+  it('has no Sustainable Buildings entry — that SEPP has no registry row', () => {
+    expect(Object.keys(REGISTRY_INSTRUMENT_URLS).some((k) => /sustainable/i.test(k))).toBe(false);
+  });
+});
+
+describe('legislationAnchorUrl', () => {
+  const base = 'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714';
+
+  it('appends the provision anchor', () => {
+    expect(legislationAnchorUrl(base, 'sec.24')).toBe(`${base}#sec.24`);
+    expect(legislationAnchorUrl(base, 'sch.11')).toBe(`${base}#sch.11`);
+  });
+
+  it('replaces an existing fragment rather than stacking a second one', () => {
+    expect(legislationAnchorUrl(`${base}#sec.1`, 'sec.5.10')).toBe(`${base}#sec.5.10`);
+  });
+
+  it('returns the bare instrument URL when no anchor is given', () => {
+    expect(legislationAnchorUrl(`${base}#sec.1`, null)).toBe(base);
+  });
+
+  it('returns null with no base URL — never a dead "#sec.x" link', () => {
+    expect(legislationAnchorUrl(undefined, 'sec.5.10')).toBeNull();
+    expect(legislationAnchorUrl('', 'sec.5.10')).toBeNull();
+  });
+});
+
+describe('storedLepTextEpi — which LEPs /api/lep/provisions may be asked about', () => {
+  it('accepts the Inner West LEP 2022 URL in any view form', () => {
+    expect(storedLepTextEpi('https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0457')).toBe('epi-2022-0457');
+    expect(storedLepTextEpi('https://legislation.nsw.gov.au/view/whole/html/inforce/current/EPI-2022-0457#sec.5.10')).toBe('epi-2022-0457');
+  });
+
+  it("rejects another council's LEP", () => {
+    // Waverley LEP 2012 (epi-2012-0540, per lib/lep-local-provisions-mapping.ts)
+    expect(storedLepTextEpi('https://legislation.nsw.gov.au/view/html/inforce/current/epi-2012-0540')).toBeNull();
+  });
+
+  it('rejects a missing or unparseable URL (fails closed)', () => {
+    expect(storedLepTextEpi(undefined)).toBeNull();
+    expect(storedLepTextEpi('https://legislation.nsw.gov.au/')).toBeNull();
+  });
+
+  it('does not match a longer EPI number that merely contains the id', () => {
+    expect(epiIdFromUrl('https://x/epi-2022-04571')).toBeNull();
   });
 });
