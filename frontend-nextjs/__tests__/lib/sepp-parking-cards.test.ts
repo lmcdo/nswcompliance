@@ -174,15 +174,20 @@ describe('resolveParkingCards, against the live rows', () => {
     expect(texts[2]).toContain('development control plan or local environmental plan');
   });
 
-  it('states no rate for in-fill affordable housing, and says why', () => {
+  it('states no rate for in-fill affordable housing, and says only what was measured', () => {
     const card = cards.in_fill_affordable;
     expect(card.resolved).toBe(false);
     if (card.resolved) return;
     expect(card.reason).toBe('unsourced');
     expect(card.message).toBe(UNSOURCED_CARDS.in_fill_affordable);
-    expect(card.message).toMatch(/development control plan/);
     // The rate this card used to show was the build-to-rent rate from s74.
     expect(card.message).not.toMatch(/0\.[0-9]/);
+    // It must not name the source that sets the rate instead. The instrument in force
+    // could not be read, so "set by the council DCP" is a conclusion nothing here
+    // supports, and the control could sit in an LEP. Sol HIGH/liability, 2026-10-05.
+    expect(card.message).not.toMatch(/is set by/i);
+    expect(card.message).not.toMatch(/development control plan\b(?!.*apply)/i);
+    expect(card.message).toMatch(/was found in the stored instrument/);
   });
 
   it('resolves five cards and leaves one unsourced — the gate-B count', () => {
@@ -239,6 +244,54 @@ describe('fail-closed behaviour', () => {
     if (!card.resolved) return;
     expect(card.provisions.map((p) => p.provisionId)).toEqual([40722, 40723]);
     expect(card.provisions.map((p) => p.pdfPage)).not.toContain(null);
+  });
+
+  it('refuses to pick between two paragraphs with the same wording', () => {
+    // Sol HIGH/silent-failure, 2026-10-05: the resolver took the FIRST match, so an
+    // amendment adding a second paragraph containing "0.2 parking spaces for each
+    // dwelling" would have been served as the build-to-rent rate by row order alone.
+    const amendmentDuplicate = row(99001, 'provision_9001', 35,
+      '(i) for land within an accessible area—0.2 parking spaces for each dwelling, or (ii) otherwise—nil,');
+    const card = byKey([amendmentDuplicate, ...LIVE_ROWS]).build_to_rent;
+    expect(card.resolved).toBe(false);
+    if (card.resolved) return;
+    expect(card.reason).toBe('ambiguous');
+    expect(card.ambiguous).toEqual([
+      { match: '%0.2 parking spaces for each dwelling%', provisionIds: [99001, 40605] },
+    ]);
+    expect(card.message).toMatch(/match more than one paragraph/);
+  });
+
+  it('will not resolve a paragraph that carries no page', () => {
+    // Sol MEDIUM/null-guard, 2026-10-05. The page is the entire citation: no current
+    // statewide row has a populated citation_status, so a rate with no page is a rate
+    // we cannot say where we read.
+    const pageless = LIVE_ROWS.map((r) => (r.id === 40310 ? { ...r, pdf_page: null } : r));
+    const card = byKey(pageless).boarding_house;
+    expect(card.resolved).toBe(false);
+    if (card.resolved) return;
+    expect(card.reason).toBe('uncited');
+    expect(card.uncited).toEqual([
+      { match: '%parking spaces for each boarding room%', provisionId: 40310 },
+    ]);
+    expect(card.message).toMatch(/carry no page in the stored instrument/);
+  });
+
+  it('reports ambiguity ahead of a missing page, and both ahead of a missing row', () => {
+    // Most-wrong first: ambiguity is the state in which a WRONG paragraph would be
+    // served. All three diagnostics are carried either way so none masks the others.
+    const rows = LIVE_ROWS
+      .filter((r) => r.id !== 40604)                                        // -> missing
+      .map((r) => (r.id === 40606 ? { ...r, pdf_page: null } : r))          // -> uncited
+      .concat(row(99002, 'provision_9002', 35,
+        '(i) for land within an accessible area—0.2 parking spaces for each dwelling, or (ii) otherwise—nil,'));
+    const card = byKey(rows).build_to_rent;
+    expect(card.resolved).toBe(false);
+    if (card.resolved) return;
+    expect(card.reason).toBe('ambiguous');
+    expect(card.ambiguous).toHaveLength(1);
+    expect(card.uncited).toHaveLength(1);
+    expect(card.missing).toHaveLength(1);
   });
 
   it('resolves nothing at all if only the other generation is in scope', () => {

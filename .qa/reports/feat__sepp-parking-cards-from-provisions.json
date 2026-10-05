@@ -1,7 +1,7 @@
 {
  "tier": "standard",
- "justification": "Additive data path only: one new read-only API route plus a card registry and its tests. No DB writes, no schema change, no migration, and no component consumes it yet -- StateLevelControls.tsx is untouched, so nothing user-facing changes in this PR. Above Minor because what it computes is regulatory numbers on a served page, and because building it established that two of the six live cards are wrong (build-to-rent states per-bedroom tiers the instrument does not have for that type; in-fill affordable housing states the build-to-rent rate, which has no source anywhere in the instrument). Deliberately NOT fixing those cards here: the plan's order puts the version link (Step 2) and the currency badge before the component switch, so landing the component change now would trade hardcoded-and-silently-stale for database-driven-and-silently-stale.",
- "commit_hash": "f58f8a96",
+ "justification": "Additive data path only: one new read-only API route plus a card registry and its tests. No DB writes, no schema change, no migration, and no component consumes it yet -- StateLevelControls.tsx is untouched, so nothing user-facing changes in this PR. Above Minor because what it computes is regulatory numbers on a served page, and because building it established that two of the six live cards are wrong (build-to-rent states per-bedroom tiers the instrument does not have for that type; in-fill affordable housing states the build-to-rent rate, which has no source anywhere in the instrument). Deliberately NOT fixing those cards here: the plan's order puts the version link (Step 2) and the currency badge before the component switch, so landing the component change now would trade hardcoded-and-silently-stale for database-driven-and-silently-stale. Sol cross-review raised three findings on the first push and all three were REAL and are fixed in this branch: (1) HIGH liability -- the unsourced in-fill message asserted \"parking ... is set by the council development control plan\", a conclusion nothing here supports since the instrument in force could not be read and the control could sit in an LEP; (2) HIGH silent-failure -- the resolver took the FIRST pattern match, so an amendment adding a second paragraph with the same wording would have been served as the rate by row order; (3) MEDIUM null-guard -- a matched row with a null pdf_page still resolved, although the page is the only citation this instrument can prove. Sol's fix for (2) also proposed pinning each row's id to the mapping; that part is deliberately NOT taken -- regulatory_provisions.id is reassigned by re-extraction, so id equality would break every card on the next ingest even with the law unamended. The enforced property is exactly-one-match carrying a page, which survives re-extraction and still refuses to guess.",
+ "commit_hash": "a6e39b85",
  "files": [
   "frontend-nextjs/lib/sepp-parking-cards.ts",
   "frontend-nextjs/app/api/sepp/parking-provisions/route.ts",
@@ -15,17 +15,17 @@
  },
  "falsifiable_check": {
   "command": "cd frontend-nextjs && npx jest __tests__/lib/sepp-parking-cards.test.ts __tests__/api/sepp-parking-provisions.test.ts",
-  "fails_when": "A card stops tracing to its provision id or page; the document-generation scope is dropped from either the SQL or the resolver; a partially matched card renders its rate without its condition; 'the instrument has no such standard' and 'our copy lost it' collapse into one state; a failed query returns 200 with empty cards instead of 503; or a clause number is reported as database-sourced.",
-  "observed_red": "Five mutations forced, each restored afterwards (baseline 25 passed). M1 drop the document_id filter from resolveParkingCards: 2 failed / 23 passed. M2 resolver never finds a row (the 'return []' mutation): 10 failed / 15 passed. M3 collapse reason 'unsourced' into 'unmatched': 4 failed / 21 passed. M4 drop 'AND document_id = $1' from the route SQL: 1 failed / 24 passed. M5 return 200 instead of 503 on a thrown query: 1 failed / 24 passed. Restored: 25 passed.",
-  "measured": "25 tests in 2 new suites pass. Full frontend suite 115 suites / 1,587 tests passed. npx tsc --noEmit: 0 errors. Live cross-check (not fixtures): the route's PARKING_PROVISIONS_SQL run verbatim against production returns 9 rows with ids [40310, 40570, 40604, 40605, 40606, 40722, 40723, 41014, 41015], matching the fixtures exactly, and 0 of the 9 patterns resolve to anything other than exactly one row."
+  "fails_when": "A card stops tracing to its provision id or page; the document-generation scope is dropped from either the SQL or the resolver; a partially matched card renders its rate without its condition; 'the instrument has no such standard' and 'our copy lost it' collapse into one state; a failed query returns 200 with empty cards instead of 503; or a clause number is reported as database-sourced. Also: the resolver breaking a tie by row order instead of refusing an ambiguous match; a row with a null pdf_page resolving; or the in-fill message naming a source for the rate it could not find.",
+  "observed_red": "Nine mutations forced, each restored afterwards (baseline 29 passed). M1 drop the document_id filter from resolveParkingCards: 2 failed / 23 of 25. M2 resolver never finds a row (the 'return []' mutation): 10 failed / 15 of 25. M3 collapse reason 'unsourced' into 'unmatched': 4 failed / 21 of 25. M4 drop 'AND document_id = $1' from the route SQL: 1 failed / 24 of 25. M5 return 200 instead of 503 on a thrown query: 1 failed / 24 of 25. M6 revert to first-match, dropping the ambiguity guard: 2 failed / 27 of 29. M7 drop the Number.isInteger(pdf_page) guard: 3 failed / 26 of 29. M8 restore the unsupported 'is set by the council DCP' sentence: 1 failed / 28 of 29. M9 coerce a null page to 0 instead of rejecting it: 3 failed / 26 of 29. Restored: 29 passed.",
+  "measured": "29 tests in 2 new suites pass. Full frontend suite 115 suites / 1,591 tests passed. npx tsc --noEmit: 0 errors (one real error was caught here and fixed -- .filter does not narrow a discriminated union, so reading card.reason after it did not typecheck; jest had passed regardless because SWC strips types without checking them). Live cross-check (not fixtures): the route's PARKING_PROVISIONS_SQL run verbatim against production returns 9 rows with ids [40310, 40570, 40604, 40605, 40606, 40722, 40723, 41014, 41015], matching the fixtures exactly, and 0 of the 9 patterns resolve to anything other than exactly one row -- which is now the property the resolver enforces rather than assumes."
  },
  "functions": [
   {
    "name": "resolveParkingCards",
    "file_line": "frontend-nextjs/lib/sepp-parking-cards.ts",
    "input": "the rows one query returned, any document_id",
-   "output": "one ResolvedParkingCard per card, resolved with provision ids + pages or not resolved with a reason",
-   "if_none": "every card with refs -> resolved:false reason:'unmatched'; the in-fill card -> resolved:false reason:'unsourced'. No card ever falls back to a literal rate."
+   "output": "one ResolvedParkingCard per card: resolved with provision ids + pages, or unresolved with reason 'unsourced' | 'ambiguous' | 'uncited' | 'unmatched' and all three diagnostics",
+   "if_none": "every card with refs -> resolved:false. A pattern hitting 0 rows -> 'unmatched'; >1 rows -> 'ambiguous' with the candidate ids; 1 row with a null pdf_page -> 'uncited' with that id. The in-fill card -> 'unsourced'. No card ever falls back to a literal rate and none breaks a tie by row order."
   },
   {
    "name": "ilikeMatches",
@@ -38,17 +38,17 @@
    "name": "GET /api/sepp/parking-provisions",
    "file_line": "frontend-nextjs/app/api/sepp/parking-provisions/route.ts",
    "input": "no parameters; one instrument, one generation",
-   "output": "{ available, documentId, citationNote, cards, unmatchedCards }",
-   "if_none": "query throws -> 503 with available:false and no cards key; query empty -> 200 with every card unresolved and unmatchedCards naming the five that expected provisions"
+   "output": "{ available, documentId, citationNote, cards, unresolvedCards }",
+   "if_none": "query throws -> 503 with available:false and no cards key; query empty -> 200 with every card unresolved and unresolvedCards naming the five that expected provisions, each with its reason"
   }
  ],
  "values": [
   {
    "value": "pdf_page",
    "read_at": "frontend-nextjs/lib/sepp-parking-cards.ts resolveParkingCards",
-   "nullable": "yes in the split extraction generation, never in the scoped one",
-   "guard_at": "document_id scope in both the SQL and the resolver",
-   "if_missing": "the row is out of scope and is not matched; the card reports unmatched rather than citing a pageless provision"
+   "nullable": "yes -- in the split generation always, and possible in the scoped one after a re-extraction",
+   "guard_at": "document_id scope in both the SQL and the resolver, then Number.isInteger(row.pdf_page)",
+   "if_missing": "the card is unresolved with reason 'uncited' and the offending provision id, rather than resolved with pdfPage null -- an uncited rate must not be served as a cited one"
   },
   {
    "value": "citation_status",
@@ -108,6 +108,27 @@
    "mitigated": false,
    "how": "Left open deliberately: the plan specifies gate B as a jest assertion and says 'no new tracker: progress = the three DQ rows only'. A ledger row running the nine patterns against production would close it and is a one-probe follow-up, for the user to approve rather than assume.",
    "repro": "cd frontend-nextjs && npx jest __tests__/lib/sepp-parking-cards.test.ts   # passes on fixtures regardless of what the live table holds"
+  },
+  {
+   "scenario": "An amendment adds a second current paragraph containing the same wording as a predicate -- e.g. another 'for land within an accessible area-0.2 parking spaces for each dwelling'.",
+   "what_happens": "The resolver collects EVERY match and resolves only on exactly one, so the card reports reason 'ambiguous' with both candidate ids and shows no rate. Previously rows.find took whichever sorted first and served it as the build-to-rent rate with no sign a choice had been made.",
+   "mitigated": true,
+   "how": "Sol HIGH/silent-failure, verdict real, fixed. Forced: deleting the matches.length > 1 branch fails 2 of 29.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/sepp-parking-cards.test.ts -t 'refuses to pick between two paragraphs with the same wording'"
+  },
+  {
+   "scenario": "A re-extraction leaves an in-scope row's pdf_page NULL.",
+   "what_happens": "The card reports reason 'uncited' naming that provision id and shows no rate. Previously it resolved with pdfPage null, serving a rate whose place in the instrument we could not state -- and no statewide row has a citation_status to fall back on.",
+   "mitigated": true,
+   "how": "Sol MEDIUM/null-guard, verdict real, fixed with Number.isInteger(row.pdf_page). Forced twice: deleting the guard fails 3 of 29, and coercing the null to 0 ('?? 0') also fails 3 of 29.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/sepp-parking-cards.test.ts -t 'will not resolve a paragraph that carries no page'"
+  },
+  {
+   "scenario": "The in-fill card's message names a source for the rate it could not find.",
+   "what_happens": "It states only what was looked for and not found. Asserting the council DCP sets it would point a reader at the wrong instrument: the SEPP in force could not be read from this machine, so a standard the extraction missed is live, and the applicable control could be in an LEP.",
+   "mitigated": true,
+   "how": "Sol HIGH/liability, verdict real, fixed. The test rejects 'is set by' and a bare 'development control plan' in that message. Forced: restoring the old sentence fails 1 of 29.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/sepp-parking-cards.test.ts -t 'states no rate for in-fill affordable housing'"
   }
  ],
  "post_merge": {

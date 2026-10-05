@@ -47,21 +47,43 @@ describe('GET /api/sepp/parking-provisions', () => {
     expect(params[1].every((p: string) => p.startsWith('%') && p.endsWith('%'))).toBe(true);
   });
 
-  it('names the cards that found nothing, so drift is a number a check can watch', async () => {
+  it('names the cards that found nothing and why, so drift is a number a check can watch', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
     const body = await (await GET()).json();
 
     expect(body.available).toBe(true);
     // The five cards that expect provisions, not the unsourced one — an in-fill card
-    // with no rate is the answer, not a defect.
-    expect(body.unmatchedCards).toEqual([
-      'boarding_house',
-      'co_living',
-      'build_to_rent',
-      'seniors_independent_living',
-      'tod_affordable',
+    // with no rate is the answer, not drift.
+    expect(body.unresolvedCards).toEqual([
+      { key: 'boarding_house', reason: 'unmatched' },
+      { key: 'co_living', reason: 'unmatched' },
+      { key: 'build_to_rent', reason: 'unmatched' },
+      { key: 'seniors_independent_living', reason: 'unmatched' },
+      { key: 'tod_affordable', reason: 'unmatched' },
     ]);
     expect(body.citationNote).toMatch(/not\s+database-sourced/);
+  });
+
+  it('reports a pageless row as uncited, not as a resolved card', async () => {
+    // The route carries the resolver's reason through, so a consumer can tell "the
+    // instrument sets none" from "we cannot cite what we found".
+    mockQuery.mockResolvedValueOnce({
+      rows: [{
+        id: 40310,
+        ref_number: 'provision_187',
+        pdf_page: null,
+        citation_status: null,
+        provision_text:
+          '(i) for development on land within an accessible area—0.2 parking spaces for each boarding room, (ii) otherwise—0.5 parking spaces for each boarding room,',
+        document_id: HOUSING_SEPP_DOCUMENT_ID,
+      }],
+    });
+    const body = await (await GET()).json();
+
+    const boardingHouse = body.cards.find((c: any) => c.key === 'boarding_house');
+    expect(boardingHouse.resolved).toBe(false);
+    expect(boardingHouse.reason).toBe('uncited');
+    expect(body.unresolvedCards).toContainEqual({ key: 'boarding_house', reason: 'uncited' });
   });
 
   it('returns 503 on a failed query, never an empty answer', async () => {

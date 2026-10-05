@@ -67,13 +67,16 @@ export async function GET() {
       citationNote: CITATION_STATUS_NOTE,
       cards,
       /**
-       * A card that expected provisions and got none. Non-empty means our copy of the
-       * instrument has drifted from the predicates — the cards fail closed on their own,
-       * but this is the number a check can watch.
+       * Cards that expected provisions and did not get them, with why. Non-empty means
+       * our copy of the instrument has drifted from the predicates — the cards fail
+       * closed on their own, but this is the number a check can watch. The 'unsourced'
+       * card is excluded: a card with no rate because the instrument sets none is an
+       * answer, not drift.
        */
-      unmatchedCards: cards
-        .filter((card) => !card.resolved && card.reason === 'unmatched')
-        .map((card) => card.key),
+      unresolvedCards: cards.flatMap((card) =>
+        card.resolved || card.reason === 'unsourced'
+          ? []
+          : [{ key: card.key, reason: card.reason }]),
     });
   } catch (error) {
     /**

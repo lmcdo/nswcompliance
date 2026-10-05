@@ -81,15 +81,25 @@ export type SeppParkingCardKey =
  * the law.
  *
  * `match` is matched with ILIKE against `provision_text`, so `%` and `_` are wildcards.
- * Each one is a verbatim fragment of the paragraph it names and each resolves to
- * exactly ONE row within HOUSING_SEPP_DOCUMENT_ID. If the instrument is amended and the
- * wording moves, the match drops to zero rows and the card reports itself unresolved —
- * it never falls back to a literal.
+ * Each one is a verbatim fragment of the paragraph it names, and the resolver requires it
+ * to hit exactly ONE row within HOUSING_SEPP_DOCUMENT_ID. If the instrument is amended
+ * and the wording moves, the match drops to zero rows and the card reports itself
+ * unresolved; if an amendment adds a second paragraph with the same wording, the card
+ * reports itself ambiguous. It never falls back to a literal and never breaks a tie by
+ * row order.
  */
 export interface SeppParkingProvisionRef {
   role: 'rate' | 'condition' | 'fallback' | 'lead_in';
   match: string;
-  /** The row this resolved to when the predicate was written, for review diffs only. */
+  /**
+   * The row this predicate resolved to when it was written. Review metadata, NOT a
+   * guard, and deliberately so: `regulatory_provisions.id` is reassigned by
+   * re-extraction, so requiring equality here would break every card on the next
+   * ingest even with the instrument unamended — failing closed on our own pipeline
+   * rather than on a change in the law. The property actually enforced is "exactly one
+   * match, carrying a page", which survives re-extraction and still refuses to guess.
+   * These values are what a reviewer diffs when a predicate stops matching.
+   */
   verifiedProvisionId: number;
   verifiedPdfPage: number;
 }
@@ -124,12 +134,19 @@ export interface SeppParkingCard {
  * returns a Cloudflare challenge to scripted fetches and there is no local PDF
  * (`documents.pdf_path` points at `docs/sepps/...`, which is not in the repo). Until it is
  * read from the law in force, the card states no rate.
+ *
+ * The message states what was looked for and not found, and stops there. An earlier
+ * draft went on to say parking for this type "is set by the council development control
+ * plan", which is a conclusion this module is in no position to reach: the instrument in
+ * force could not be read, so a standard the extraction missed is live possibility, and
+ * the applicable control could sit in an LEP rather than a DCP. That sentence would have
+ * pointed a reader at the wrong source with more confidence than anything here supports.
  */
 export const UNSOURCED_CARDS: Readonly<Record<string, string>> = {
   in_fill_affordable:
-    'No non-discretionary parking standard for in-fill affordable housing was found in '
-    + 'the stored instrument. Parking for this development type is set by the council '
-    + 'development control plan — see the DCP Provisions tab.',
+    'No parking standard for in-fill affordable housing was found in the stored '
+    + 'instrument. Check the instrument in force and the planning controls that apply '
+    + 'to the land.',
 };
 
 export const SEPP_PARKING_CARDS: readonly SeppParkingCard[] = [
@@ -267,6 +284,18 @@ export interface ResolvedParkingProvision {
   text: string;
 }
 
+/** A pattern that matched more than one paragraph, with the rows it could not choose between. */
+export interface AmbiguousMatch {
+  match: string;
+  provisionIds: number[];
+}
+
+/** A pattern that matched one paragraph which carries no page. */
+export interface UncitedMatch {
+  match: string;
+  provisionId: number;
+}
+
 export type ResolvedParkingCard =
   | {
       key: SeppParkingCardKey;
@@ -283,16 +312,25 @@ export type ResolvedParkingCard =
       legislationAnchor: string | null;
       resolved: false;
       /**
-       * 'unsourced' — the instrument has no such standard; the explanation is settled
-       * and lives in UNSOURCED_CARDS. 'unmatched' — the card expects provisions and the
-       * query returned none, so the wording has moved or the extraction has changed.
-       * They are not the same and must not render the same: the first is an answer about
-       * the law, the second is a defect in our copy of it.
+       * Four distinct states, which must not render the same because only the first is
+       * an answer about the law — the rest are defects in our copy of it, and each needs
+       * a different repair.
+       *   'unsourced'  the instrument has no such standard. Settled; see UNSOURCED_CARDS.
+       *   'ambiguous'  a pattern now matches several paragraphs, so which one states the
+       *                rate cannot be decided here. The most serious: it is the state in
+       *                which a wrong paragraph would otherwise be served as the rate.
+       *   'uncited'    the paragraph was found but carries no page, and the page is the
+       *                only citation this instrument can prove.
+       *   'unmatched'  the wording is gone — an amendment, or a changed extraction.
        */
-      reason: 'unsourced' | 'unmatched';
+      reason: 'unsourced' | 'unmatched' | 'ambiguous' | 'uncited';
       message: string;
-      /** Patterns that found nothing, so an unmatched card is diagnosable. */
+      /** Patterns that found nothing. */
       missing: string[];
+      /** Patterns that found several rows, and which rows. */
+      ambiguous: AmbiguousMatch[];
+      /** Patterns that found one row with no page, and which row. */
+      uncited: UncitedMatch[];
     };
 
 /** ILIKE, over text already in memory. Only `%` and `_` are special. */
@@ -340,18 +378,42 @@ export function resolveParkingCards(allRows: ParkingProvisionRow[]): ResolvedPar
           UNSOURCED_CARDS[card.key]
           ?? 'This card states no rate: none was found in the stored instrument.',
         missing: [],
+        ambiguous: [],
+        uncited: [],
       };
     }
 
     const provisions: ResolvedParkingProvision[] = [];
     const missing: string[] = [];
+    const ambiguous: AmbiguousMatch[] = [];
+    const uncited: UncitedMatch[] = [];
 
     for (const ref of card.refs) {
-      const row = rows.find((candidate) => ilikeMatches(candidate.provision_text, ref.match));
-      if (!row) {
+      // EVERY match, not the first. `find` returned whichever row sorted first, so an
+      // amendment that added a second paragraph containing "0.2 parking spaces for each
+      // dwelling" would have been served as the build-to-rent rate with no sign that a
+      // choice had been made. The patterns each resolve to exactly one row today; this
+      // is what makes that a checked property rather than an assumption.
+      const matches = rows.filter((candidate) => ilikeMatches(candidate.provision_text, ref.match));
+
+      if (matches.length === 0) {
         missing.push(ref.match);
         continue;
       }
+      if (matches.length > 1) {
+        ambiguous.push({ match: ref.match, provisionIds: matches.map((row) => row.id) });
+        continue;
+      }
+
+      const row = matches[0];
+      // The page is the whole citation here — no current statewide row has a populated
+      // `citation_status`, so a provision with no page is a rate we cannot say where in
+      // the instrument we read. That is not a resolved card.
+      if (!Number.isInteger(row.pdf_page)) {
+        uncited.push({ match: ref.match, provisionId: row.id });
+        continue;
+      }
+
       provisions.push({
         role: ref.role,
         provisionId: row.id,
@@ -362,19 +424,55 @@ export function resolveParkingCards(allRows: ParkingProvisionRow[]): ResolvedPar
       });
     }
 
-    if (missing.length > 0) {
+    // Most-wrong first. Ambiguity means we may have the wrong paragraph; a missing page
+    // means we cannot cite the right one; missing means it is gone. All three leave the
+    // card unresolved, and all three diagnostics are carried either way so one does not
+    // mask the others.
+    const reason = ambiguous.length > 0
+      ? 'ambiguous'
+      : uncited.length > 0
+        ? 'uncited'
+        : missing.length > 0
+          ? 'unmatched'
+          : null;
+
+    if (reason) {
       return {
         ...head,
         resolved: false,
-        reason: 'unmatched',
-        message:
-          `${card.label}: ${missing.length} of ${card.refs.length} provisions for this `
-          + 'card are no longer in the stored instrument. The rate is not shown rather '
-          + 'than shown from a stale copy.',
+        reason,
+        message: unresolvedMessage(card.label, card.refs.length, reason, {
+          missing,
+          ambiguous,
+          uncited,
+        }),
         missing,
+        ambiguous,
+        uncited,
       };
     }
 
     return { ...head, resolved: true, provisions };
   });
+}
+
+function unresolvedMessage(
+  label: string,
+  refCount: number,
+  reason: 'unmatched' | 'ambiguous' | 'uncited',
+  found: { missing: string[]; ambiguous: AmbiguousMatch[]; uncited: UncitedMatch[] },
+): string {
+  if (reason === 'ambiguous') {
+    return `${label}: ${found.ambiguous.length} of ${refCount} provisions for this card `
+      + 'now match more than one paragraph of the instrument, so which one states the '
+      + 'rate cannot be decided here. No rate is shown.';
+  }
+  if (reason === 'uncited') {
+    return `${label}: ${found.uncited.length} of ${refCount} provisions for this card `
+      + 'carry no page in the stored instrument, so the rate cannot be shown with the '
+      + 'citation it needs. No rate is shown.';
+  }
+  return `${label}: ${found.missing.length} of ${refCount} provisions for this card are `
+    + 'no longer in the stored instrument. The rate is not shown rather than shown from '
+    + 'a stale copy.';
 }
