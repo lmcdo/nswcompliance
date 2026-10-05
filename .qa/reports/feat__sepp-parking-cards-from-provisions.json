@@ -1,0 +1,119 @@
+{
+ "tier": "standard",
+ "justification": "Additive data path only: one new read-only API route plus a card registry and its tests. No DB writes, no schema change, no migration, and no component consumes it yet -- StateLevelControls.tsx is untouched, so nothing user-facing changes in this PR. Above Minor because what it computes is regulatory numbers on a served page, and because building it established that two of the six live cards are wrong (build-to-rent states per-bedroom tiers the instrument does not have for that type; in-fill affordable housing states the build-to-rent rate, which has no source anywhere in the instrument). Deliberately NOT fixing those cards here: the plan's order puts the version link (Step 2) and the currency badge before the component switch, so landing the component change now would trade hardcoded-and-silently-stale for database-driven-and-silently-stale.",
+ "commit_hash": "8293bcc3",
+ "files": [
+  "frontend-nextjs/lib/sepp-parking-cards.ts",
+  "frontend-nextjs/app/api/sepp/parking-provisions/route.ts",
+  "frontend-nextjs/__tests__/lib/sepp-parking-cards.test.ts",
+  "frontend-nextjs/__tests__/api/sepp-parking-provisions.test.ts"
+ ],
+ "pre_impl": {
+  "existing_data": "regulatory_provisions, scoped to document_id = 'State_Environmental_Planning_Policy_Housing_2021__NSW_Legislation' (the whole-document extraction generation, the one carrying pdf_page). Nine paragraphs carry the six cards' rates: 40310 p11 boarding room, 40570 p32 private room, 40604/40605/40606 p35-36 build-to-rent condition/rate/fallback, 40722/40723 p47 seniors s108(2)(j)-(k), 41014/41015 p72 TOD affordable. Verified live 2026-10-05: the route's SQL returns exactly those 9 ids and each of the 9 ILIKE patterns matches exactly 1 row.",
+  "assumption_mismatch": "Three candidate stores were measured and rejected before building. sepp_structured_requirements (560 rows) is the complying-development exclusions + Pattern Book table: 0 rows for 5 of the 6 card topics, 1 for co-living, and sepp_id/development_type_category/section populated on 7 rows of 560. housing_sepp_standards (45 rows) holds the LMR/dual-occ/terraces/secondary-dwelling standards; its 5 parking_per_dwelling rows are dual_occupancy, multi_dwelling, residential_flat_r1r2, secondary_dwelling, terraces -- none of the six card types. cdc_eligibility_standards holds no parking rate. In-fill affordable housing has no parking rate in regulatory_provisions either: of the 38 rows in this instrument mentioning 'parking space', the only one on pages 5-11 (Chapter 2 Part 2 Division 1, where s19's non-discretionary standards sit) that states a rate is the boarding-house rate at page 11.",
+  "new_vs_existing": "New read-only route, no consumer yet. Nothing stored is touched and no existing route changes behaviour."
+ },
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/lib/sepp-parking-cards.test.ts __tests__/api/sepp-parking-provisions.test.ts",
+  "fails_when": "A card stops tracing to its provision id or page; the document-generation scope is dropped from either the SQL or the resolver; a partially matched card renders its rate without its condition; 'the instrument has no such standard' and 'our copy lost it' collapse into one state; a failed query returns 200 with empty cards instead of 503; or a clause number is reported as database-sourced.",
+  "observed_red": "Five mutations forced, each restored afterwards (baseline 25 passed). M1 drop the document_id filter from resolveParkingCards: 2 failed / 23 passed. M2 resolver never finds a row (the 'return []' mutation): 10 failed / 15 passed. M3 collapse reason 'unsourced' into 'unmatched': 4 failed / 21 passed. M4 drop 'AND document_id = $1' from the route SQL: 1 failed / 24 passed. M5 return 200 instead of 503 on a thrown query: 1 failed / 24 passed. Restored: 25 passed.",
+  "measured": "25 tests in 2 new suites pass. Full frontend suite 115 suites / 1,587 tests passed. npx tsc --noEmit: 0 errors. Live cross-check (not fixtures): the route's PARKING_PROVISIONS_SQL run verbatim against production returns 9 rows with ids [40310, 40570, 40604, 40605, 40606, 40722, 40723, 41014, 41015], matching the fixtures exactly, and 0 of the 9 patterns resolve to anything other than exactly one row."
+ },
+ "functions": [
+  {
+   "name": "resolveParkingCards",
+   "file_line": "frontend-nextjs/lib/sepp-parking-cards.ts",
+   "input": "the rows one query returned, any document_id",
+   "output": "one ResolvedParkingCard per card, resolved with provision ids + pages or not resolved with a reason",
+   "if_none": "every card with refs -> resolved:false reason:'unmatched'; the in-fill card -> resolved:false reason:'unsourced'. No card ever falls back to a literal rate."
+  },
+  {
+   "name": "ilikeMatches",
+   "file_line": "frontend-nextjs/lib/sepp-parking-cards.ts",
+   "input": "provision text and one ILIKE pattern",
+   "output": "boolean, matching Postgres ILIKE semantics over text already in memory",
+   "if_none": "false. '.' is literal (so '0.2' cannot match '052') and '%' spans newlines (provision 40605 contains them)."
+  },
+  {
+   "name": "GET /api/sepp/parking-provisions",
+   "file_line": "frontend-nextjs/app/api/sepp/parking-provisions/route.ts",
+   "input": "no parameters; one instrument, one generation",
+   "output": "{ available, documentId, citationNote, cards, unmatchedCards }",
+   "if_none": "query throws -> 503 with available:false and no cards key; query empty -> 200 with every card unresolved and unmatchedCards naming the five that expected provisions"
+  }
+ ],
+ "values": [
+  {
+   "value": "pdf_page",
+   "read_at": "frontend-nextjs/lib/sepp-parking-cards.ts resolveParkingCards",
+   "nullable": "yes in the split extraction generation, never in the scoped one",
+   "guard_at": "document_id scope in both the SQL and the resolver",
+   "if_missing": "the row is out of scope and is not matched; the card reports unmatched rather than citing a pageless provision"
+  },
+  {
+   "value": "citation_status",
+   "read_at": "frontend-nextjs/lib/sepp-parking-cards.ts resolveParkingCards",
+   "nullable": "yes -- NULL on all 17,933 current statewide rows",
+   "guard_at": "citationProven is strictly citation_status === 'verified'",
+   "if_missing": "citationProven false, so no clause number is presented as database-sourced (#1170)"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Parking rate paragraphs for the six cards, scoped to one extraction generation",
+   "file_line": "frontend-nextjs/app/api/sepp/parking-provisions/route.ts PARKING_PROVISIONS_SQL",
+   "where_clause": "WHERE is_current AND source_council IS NULL AND document_id = $1 AND provision_text ILIKE ANY ($2::text[])",
+   "if_zero": "200 with every card unresolved and unmatchedCards listing them; no rate is shown. is_current is strict, not IS NOT FALSE: a NULL cannot say the paragraph is still in force. document_id uses equality, not LIKE -- '_' is a LIKE wildcard and both generations share a prefix. v2_is_actionable is DELIBERATELY NOT a filter here and must not be added: only 3 of these 9 rows carry it (40606, 40722, 41014), so the guard would drop 5 of the 6 cards including the boarding-house rate at 40310. The flag is inverted for these paragraphs -- the DCP fallback 40606 is marked actionable with v2_topic 'parking' while the rate it falls back from (40605) is marked not actionable with v2_topic 'access'. Measured 2026-10-05; logged for the user, not fixed here."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The query's own WHERE clause stops scoping - is_current relaxed to IS NOT FALSE, or document_id matched with LIKE instead of '='.",
+   "what_happens": "Relaxing is_current admits rows that cannot say whether the paragraph is still in force. A LIKE on document_id treats '_' as a wildcard and both extraction generations share a prefix, so each predicate can match twice and the id and page a card reports become a function of row order.",
+   "mitigated": true,
+   "how": "The route test asserts the SQL text itself: 'document_id = $1' present, no 'document_id LIKE', 'WHERE is_current' with no 'IS NOT FALSE', and 'source_council IS NULL' present. Forced: dropping 'AND document_id = $1' fails 1 of 25.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/api/sepp-parking-provisions.test.ts -t 'scopes the query to one instrument and one extraction generation'"
+  },
+  {
+   "scenario": "The Housing SEPP is re-extracted and the paragraph wording shifts.",
+   "what_happens": "The affected ILIKE patterns match nothing, the card reports resolved:false reason:'unmatched', and unmatchedCards names it. No stale rate is served.",
+   "mitigated": true,
+   "how": "A card is resolved only when EVERY one of its refs found a row; a partial match is reported unmatched. Asserted by the 'reports a card unmatched rather than partially' test, which drops s74's LGA condition and keeps the rate.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/sepp-parking-cards.test.ts -t 'reports a card unmatched rather than partially'"
+  },
+  {
+   "scenario": "Both extraction generations come back in one result set and the split row sorts first.",
+   "what_happens": "The split row has no pdf_page, so a card matching it would cite a provision with no page -- the one citation these cards can prove. The document_id scope in resolveParkingCards drops it before matching.",
+   "mitigated": true,
+   "how": "Guard forced to fail: handing the resolver live row 15472 (the split-generation s108(2)(k) seniors rate) FIRST still yields ids [40722, 40723] with no null page; a result set made entirely of split rows resolves 0 of 6 cards.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/sepp-parking-cards.test.ts -t 'ignores a row from the other extraction generation'"
+  },
+  {
+   "scenario": "The database is unreachable when the SEPP tab loads.",
+   "what_happens": "503 with available:false and no cards key, so a caller cannot render six empty cards as though the SEPP sets no parking rates.",
+   "mitigated": true,
+   "how": "The catch block returns 503 and a message saying so; asserted, and the 200-instead-of-503 mutation fails the suite.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/api/sepp-parking-provisions.test.ts -t 'returns 503 on a failed query'"
+  },
+  {
+   "scenario": "Someone meets the plan's gate A by deleting the six cards instead of sourcing them.",
+   "what_happens": "git grep -c 'parking spaces per' StateLevelControls.tsx would read 0 with no cards left.",
+   "mitigated": true,
+   "how": "This is gate B and the reason it exists. __tests__/lib/sepp-parking-cards.test.ts names each card's provision ids and pages, so the registry cannot be emptied silently. Gate A is NOT met in this PR (git grep -c still reads 11) and must not be met before the version link lands.",
+   "repro": "git grep -c 'parking spaces per' frontend-nextjs/components/compliance/StateLevelControls.tsx   # reads 11 on this branch, NOT 0"
+  },
+  {
+   "scenario": "The live wording drifts and no one runs the jest suite.",
+   "what_happens": "NOT mitigated. The jest assertions pin fixtures, not the live table, so drift surfaces only as the route's unmatchedCards field at request time -- observable, not watched.",
+   "mitigated": false,
+   "how": "Left open deliberately: the plan specifies gate B as a jest assertion and says 'no new tracker: progress = the three DQ rows only'. A ledger row running the nine patterns against production would close it and is a one-probe follow-up, for the user to approve rather than assume.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/sepp-parking-cards.test.ts   # passes on fixtures regardless of what the live table holds"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "No -- nothing user-facing changes in this PR. The route has no consumer until the component switch (gate A), which is deliberately held until Step 2's version link and the currency badge are in place."
+ }
+}
