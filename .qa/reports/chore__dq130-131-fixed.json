@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Ledger status edits only (three rows' declared status and notes) after a production write already measured by the rows' own probes. No code path changes.",
- "commit_hash": "8a26714d",
+ "commit_hash": "31d24493",
  "files": [
   ".claude/dq_checks.json",
   ".claude/DATA_QUALITY_TRACKER.md"
