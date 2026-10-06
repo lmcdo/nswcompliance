@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Removes five invented real-world values from the setbacks path and replaces four separate area implementations with one scale-corrected function in lib/geometry/mercator.ts, which IS live (imported by lot-dimensions.ts and lot-shape-analysis.ts). Not Critical: measured, the entire setbacks-calculate feature is unreachable -- no route mounts AnalysisTabs, PreciseSetbackCalculator or EnhancedSetbackVerification, lib/geometry/calculator.ts has no consumer, and the endpoint's only other caller sends `zone` where the schema requires `property_zone` and therefore always 400s. No user saw these figures. Not Minor: it changes a live module's public surface (two new exports), narrows BuildableAreaAnalysis from number to number|null across the response contract, and removes code that would have shipped wrong numbers the moment anyone mounted the feature.",
-  "commit_hash": "f3288c45",
+  "commit_hash": "788e4e63",
   "files": [
     "frontend-nextjs/lib/geometry/mercator.ts",
     "frontend-nextjs/lib/geometry/calculator.ts",
