@@ -41,7 +41,15 @@ _STATE_ROOT = os.environ.get('MUTATION_STATE_DIR') or os.path.join(
 # git worktrees at once, so an interrupted run in worktree A would leave a marker
 # that the next run in worktree B obeys -- restoring A's source files over B's
 # legitimate work before the tests even start. Cross-review found it, HIGH.
-CHECKOUT = os.getcwd()
+# Derived from __file__, NOT os.getcwd(). This module is imported before its
+# caller chdirs into frontend-nextjs, so getcwd() captured whatever directory the
+# harness happened to be invoked from: running `python scripts/mutate_cite.py`
+# from the repo root and from frontend-nextjs produced two different keys for the
+# SAME checkout, and a run stranded by one was invisible to the other. That does
+# not reopen the cross-worktree hazard -- separate worktrees still differ -- but
+# it defeats the self-healing this namespacing exists for. scripts/.. is the
+# repository root and does not move.
+CHECKOUT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _CHECKOUT_KEY = hashlib.sha1(
     os.path.normcase(os.path.abspath(CHECKOUT)).encode('utf-8')
 ).hexdigest()[:12]
