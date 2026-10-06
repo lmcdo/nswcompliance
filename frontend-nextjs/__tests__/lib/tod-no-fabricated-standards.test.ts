@@ -96,3 +96,51 @@ describe('a map feature with nothing in it', () => {
     }
   });
 });
+
+/**
+ * Cross-review additions, 2026-10-06. Both were real findings against the first version
+ * of this fix, and both are the same class of error: a standard stated without the
+ * condition that limits it, and a citation pointing at the wrong provision.
+ */
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+const read = (...parts: string[]) =>
+  readFileSync(join(__dirname, '..', '..', ...parts), 'utf8').replace(/\s+/g, ' ');
+
+describe('s155(5) — the standard yields to a higher one elsewhere', () => {
+  // s155(5): "This section does not apply to the extent a provision of another chapter of
+  // this policy or another environmental planning instrument permits a greater maximum
+  // building height or floor space ratio". Stating 2.5:1 without it presents a figure the
+  // section itself defers as if it were the property's ceiling.
+  it.each([
+    ['components/compliance/StateLevelControls.tsx'],
+    ['app/assessment/page.tsx'],
+  ])('%s discloses the subsection (5) exception', (file) => {
+    const src = read(file);
+    expect(src).toMatch(/155\(5\)/);
+    expect(src).toMatch(/permits a greater (maximum )?height or floor space ratio/i);
+  });
+
+  it('does not claim section 155 "sets" the controls', () => {
+    // "sets" reads as a ceiling; "identifies ... standards" is the section's own framing
+    // and survives subsection (5).
+    const src = read('components/compliance/StateLevelControls.tsx');
+    expect(src).not.toMatch(/floor space ratio are set by section 155/i);
+    expect(src).toMatch(/Section 155 identifies/);
+  });
+});
+
+describe("the SEE parking control cites parking provisions, not the TOD chapter", () => {
+  const src = read('lib/see/seeBuilders.ts');
+
+  it('names the development-type parking sections', () => {
+    expect(src).toMatch(/sections 24, 42, 68 and 74/);
+  });
+
+  it('does not cite Chapter 5, which is height and FSR', () => {
+    // An earlier edit put 'Chapter 5' in this clause field. The requirement beside it is
+    // about parking rates, so Chapter 5 sends a reader to the wrong chapter entirely.
+    expect(src).not.toMatch(/clause: 'SEPP \(Housing\) 2021 — Transport Oriented Development, Chapter 5'/);
+  });
+});

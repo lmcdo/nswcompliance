@@ -147,9 +147,11 @@ export function buildSeppControls(
       instrument: 'SEPP (Housing) 2021',
       control: 'TOD Parking Reduction',
       requirement: `Reduced parking rates apply — ${stationName} ${stationDist}. Refer to SEPP (Housing) 2021 Clause 24/42/68/74 for applicable rate by development type.`,
-      // seppReference is the map's EPI_NAME, i.e. the instrument, not a clause. The
-      // clause for TOD height and FSR is s155; parking by development type is s24/68/74.
-      clause: 'SEPP (Housing) 2021 — Transport Oriented Development, Chapter 5',
+      // This control is about PARKING, so its citation must name the parking provisions,
+      // not the chapter. An earlier edit put 'Chapter 5' here, which is the TOD height and
+      // FSR chapter — affirmatively the wrong place for a reader chasing a parking rate.
+      // seppReference is the map's EPI_NAME (the instrument), never a clause.
+      clause: 'SEPP (Housing) 2021 — sections 24, 42, 68 and 74, by development type',
       status: 'pending',
     });
   }

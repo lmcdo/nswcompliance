@@ -1,7 +1,7 @@
 {
  "tier": "critical",
- "justification": "Removes five invented values that were shown to users as planning controls for any property inside a Transport Oriented Development area. The Transport Oriented Development Sites Map (ArcGIS MapServer/3) carries 9,562 features and its fields are exactly OBJECTID, EPI_NAME, PUBLISHED_DATE, COMMENCED_DATE, AMENDMENT, MAP_NAME, LAY_CLASS, LABEL, PRECINCT, SHAPE. The code read 'Maximum FSR'/'Max FSR'/'FSR', 'Maximum Height'/'Max Height'/'HEIGHT', 'Legislative Clause'/'Clause', 'EPI Name' and 'Precinct Name' -- none of which exist on that layer -- so the ternary and || fallbacks were not cover for an occasional gap, they were the ONLY code path and fired for every mapped area. Users saw 'Max FSR 2.5:1' and 'Max Height 24m' as this property's controls, cited to 'Clause 4.4'. Critical because 24m is wrong on the law (s155(2) caps a residential flat building at 22m) and 'Clause 4.4' is the ordinary LEP floor-space clause, nothing to do with transport oriented development, whose standard is s155.",
- "commit_hash": "33b4c6dd",
+ "justification": "Removes five invented values that were shown to users as planning controls for any property inside a Transport Oriented Development area. The Transport Oriented Development Sites Map (ArcGIS MapServer/3) carries 9,562 features and its fields are exactly OBJECTID, EPI_NAME, PUBLISHED_DATE, COMMENCED_DATE, AMENDMENT, MAP_NAME, LAY_CLASS, LABEL, PRECINCT, SHAPE. The code read 'Maximum FSR'/'Max FSR'/'FSR', 'Maximum Height'/'Max Height'/'HEIGHT', 'Legislative Clause'/'Clause', 'EPI Name' and 'Precinct Name' -- none of which exist on that layer -- so the ternary and || fallbacks were not cover for an occasional gap, they were the ONLY code path and fired for every mapped area. Users saw 'Max FSR 2.5:1' and 'Max Height 24m' as this property's controls, cited to 'Clause 4.4'. Critical because 24m is wrong on the law (s155(2) caps a residential flat building at 22m) and 'Clause 4.4' is the ordinary LEP floor-space clause, nothing to do with transport oriented development, whose standard is s155. Cross-review raised three findings on the first push and both distinct defects were REAL and are fixed. (1) HIGH: the panel stated s155's figures without s155(5), which provides the section does not apply to the extent another chapter or instrument permits a greater height or floor space ratio — so 2.5:1 read as a ceiling on a property whose LEP permits more. s155(5) was quoted in this change's own code comment and omitted from the text users read: the same error as stating a necessary condition as a sufficient one, which #1228 fixed on the in-fill card hours earlier. (2) MEDIUM: this change had repointed the SEE parking control's clause at 'Chapter 5', which is the TOD height and FSR chapter, while the requirement beside it concerns parking under s24/42/68/74 — a citation made worse, not better, by the edit. Both are now pinned by assertions and forced red.",
+ "commit_hash": "7bb49d57",
  "files": [
   "frontend-nextjs/lib/nsw-planning-portal.ts",
   "frontend-nextjs/app/assessment/page.tsx",
@@ -19,9 +19,9 @@
  },
  "falsifiable_check": {
   "command": "cd frontend-nextjs && npx jest __tests__/lib/tod-no-fabricated-standards.test.ts",
-  "fails_when": "Any of the five literals returns: the 2.5 FSR, the 24m height, the 'Clause 4.4' citation, the 'TOD Precinct' placeholder, or the 'SEPP (Housing) 2021' guess. Also fails if the reader goes back to a key the layer does not have ('Precinct Name', 'EPI Name' with a space), or if a silent layer yields anything other than undefined.",
-  "observed_red": "Five mutations forced, each restored afterwards (baseline 12 passed). Restoring the 2.5 FSR literal: 3 failed / 9. Restoring the 24m height literal: 3 failed / 9. Restoring 'Clause 4.4': 3 failed / 9. Reading 'Precinct Name' instead of PRECINCT: 1 failed / 11. Reading 'EPI Name' instead of EPI_NAME: 1 failed / 11. Restored: 12 passed. The suite's fixture is a real feature from the live layer (OBJECTID 258648, Kogarah), not an invented one, so a mismatch between the code's expectations and the layer's actual shape fails here rather than in production.",
-  "measured": "12 tests pass in the new suite. Full frontend suite 116 suites / 1,610 tests passed, unchanged from origin/main, so no consumer broke. npx tsc --noEmit: 0 errors. git grep for the five literals in the four changed files: 0 hits outside the comments that document them."
+  "fails_when": "Any of the five literals returns: the 2.5 FSR, the 24m height, the 'Clause 4.4' citation, the 'TOD Precinct' placeholder, or the 'SEPP (Housing) 2021' guess. Also fails if the reader goes back to a key the layer does not have ('Precinct Name', 'EPI Name' with a space), or if a silent layer yields anything other than undefined. Also: the s155(5) exception dropped from either render site; the text reverting to a claim that s155 'sets' the controls; or the SEE parking citation naming Chapter 5 instead of the development-type parking sections.",
+  "observed_red": "Five mutations forced, each restored afterwards (baseline 12 passed). Restoring the 2.5 FSR literal: 3 failed / 9. Restoring the 24m height literal: 3 failed / 9. Restoring 'Clause 4.4': 3 failed / 9. Reading 'Precinct Name' instead of PRECINCT: 1 failed / 11. Reading 'EPI Name' instead of EPI_NAME: 1 failed / 11. Restored: 12 passed. The suite's fixture is a real feature from the live layer (OBJECTID 258648, Kogarah), not an invented one, so a mismatch between the code's expectations and the layer's actual shape fails here rather than in production. Three further mutations after the cross-review fixes. Dropping the s155(5) caveat: 1 failed / 16 of 17. Reverting to 'are set by section 155': 1 failed / 16. Restoring 'Chapter 5' in the SEE parking citation: 2 failed / 15. Restored: 17 passed. Eight mutations across both pushes, all caught.",
+  "measured": "17 tests pass in the new suite. Full frontend suite 117 suites / 1,627 tests passed (116 / 1,610 on origin/main, so the one added suite is the whole difference). npx tsc --noEmit: 0 errors. git grep for the five literals in the four changed files: 0 hits outside the comments that document them."
  },
  "functions": [
   {
@@ -98,6 +98,20 @@
    "mitigated": false,
    "how": "Affects urgency, not correctness. The defect is deterministic for anyone who does load one, and the fix is safe regardless.",
    "repro": "curl -sS \"https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/SEPP_Housing_2021/MapServer/3/query?where=1%3D1&returnCountOnly=true&f=json\""
+  },
+  {
+   "scenario": "A mapped TOD property's own LEP permits a greater height or floor space ratio than s155's figures.",
+   "what_happens": "Both render sites now state s155(5) — that the section does not apply to the extent another chapter or instrument permits more — and point the reader at the LEP tab's controls for the same property. Before, 2.5:1 read as the ceiling.",
+   "mitigated": true,
+   "how": "Cross-review HIGH/correctness, verdict real, fixed. The wording also changed from 's155 sets' to 's155 identifies standards', which is the section's own framing and survives subsection (5). Forced: dropping the caveat fails 1 of 17; reverting the wording fails 1 of 17.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/tod-no-fabricated-standards.test.ts -t 'discloses the subsection (5) exception'"
+  },
+  {
+   "scenario": "A reader follows the SEE report's parking control citation.",
+   "what_happens": "It names sections 24, 42, 68 and 74 — the development-type parking provisions the requirement itself refers to. An intermediate version of this change said 'Chapter 5', the TOD height and FSR chapter, which says nothing about parking.",
+   "mitigated": true,
+   "how": "Cross-review MEDIUM/correctness, verdict real, fixed. Forced: restoring 'Chapter 5' fails 2 of 17.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/tod-no-fabricated-standards.test.ts -t 'does not cite Chapter 5'"
   }
  ],
  "post_merge": {

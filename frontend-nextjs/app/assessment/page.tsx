@@ -337,9 +337,11 @@ export default function AssessmentPage() {
                         )}
                       </div>
                       <p className="text-xs text-gray-700 mt-2">
-                        Height and floor space ratio for this area are set by section 155,
-                        and differ by what is proposed — a residential flat building, or
-                        seniors or shop top housing.{' '}
+                        Section 155 identifies height and floor space ratio standards for
+                        this area, which differ by what is proposed — a residential flat
+                        building, or seniors or shop top housing — and under section 155(5)
+                        do not apply where another instrument permits a greater height or
+                        floor space ratio.{' '}
                         <a
                           href="https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#sec.155"
                           target="_blank"

@@ -1265,10 +1265,22 @@ export function StateLevelControls({
                         TOD development standards
                       </p>
                       <p className="text-xs text-purple-800">
-                        Height and floor space ratio are set by section 155 and differ by
-                        what is proposed — 22m for a residential flat building, 24m for
-                        seniors or shop top housing, and a floor space ratio of 2.5:1 for
-                        those types in a relevant residential or employment zone.
+                        Section 155 identifies height and floor space ratio standards that
+                        differ by what is proposed — 22m for a residential flat building,
+                        24m for seniors or shop top housing, and a floor space ratio of
+                        2.5:1 for those types in a relevant residential or employment zone.
+                      </p>
+                      {/* s155(5): "This section does not apply to the extent a provision of
+                        * another chapter of this policy or another environmental planning
+                        * instrument permits a greater maximum building height or floor space
+                        * ratio". Omitting it would present 2.5:1 as a ceiling on a property
+                        * whose LEP permits more — stating a standard as the limit when the
+                        * section says it yields to a higher one. */}
+                      <p className="text-xs text-purple-800 mt-1">
+                        Section 155(5) provides that the section does not apply to the extent
+                        another chapter of the policy, or another environmental planning
+                        instrument, permits a greater height or floor space ratio. Compare the
+                        controls shown on the LEP tab for this property.
                       </p>
                       <SeppCitationLink
                         href={seppHousingProvisionUrl('sec.155')}
