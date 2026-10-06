@@ -87,7 +87,7 @@ def count(rev, label):
             continue
         for ln, line in enumerate(strip_comments(src).splitlines(), 1):
             for m in STR.finditer(line):
-                hits.append((f.split('/')[-1], ln, m.group(2)))
+                hits.append((os.path.basename(f), ln, m.group(2)))
     print('=== %s: %d citation fallbacks across %d files ===' % (label, len(hits), len(files)))
     for name, ln, val in hits:
         print('   %-42s L%-6s %s' % (name, ln, val))
