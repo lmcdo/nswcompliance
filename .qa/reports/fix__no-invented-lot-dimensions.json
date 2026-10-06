@@ -1,0 +1,118 @@
+{
+  "tier": "standard",
+  "justification": "Removes five invented real-world values from the setbacks path and replaces four separate area implementations with one scale-corrected function in lib/geometry/mercator.ts, which IS live (imported by lot-dimensions.ts and lot-shape-analysis.ts). Not Critical: measured, the entire setbacks-calculate feature is unreachable -- no route mounts AnalysisTabs, PreciseSetbackCalculator or EnhancedSetbackVerification, lib/geometry/calculator.ts has no consumer, and the endpoint's only other caller sends `zone` where the schema requires `property_zone` and therefore always 400s. No user saw these figures. Not Minor: it changes a live module's public surface (two new exports), narrows BuildableAreaAnalysis from number to number|null across the response contract, and removes code that would have shipped wrong numbers the moment anyone mounted the feature.",
+  "commit_hash": "788e4e63",
+  "files": [
+    "frontend-nextjs/lib/geometry/mercator.ts",
+    "frontend-nextjs/lib/geometry/calculator.ts",
+    "frontend-nextjs/types/setback.ts",
+    "frontend-nextjs/app/api/setbacks/calculate/route.ts",
+    "frontend-nextjs/components/analysis/PreciseSetbackCalculator.tsx",
+    "frontend-nextjs/components/analysis/EnhancedSetbackVerification.tsx",
+    "frontend-nextjs/__tests__/lib/lot-area-not-invented.test.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "lib/geometry/mercator.ts already existed as the stated single source of truth for EPSG:3857 rings, its correction calibrated against surveyed area on title over 577,081 single-part cadastre lots, and its own header already said to import from it rather than carry a local latitude constant. The fix adds ringAreaM2 and lotGeometryAreaM2 there instead of writing a fourth implementation, and lib/geometry/calculator.ts now delegates to it.",
+    "assumption_mismatch": "Two of my own claims this session were wrong and were corrected by measurement rather than by argument. First, I said the invented lot area fires on the automatic path and was not latent; I had read the call-site code without checking whether the call site is mounted, and nothing mounts it, so all five values are latent. Second, the nearby estimator looked like a 45 percent overstatement, but reproducing its arithmetic showed it returns exactly 100 for every lot below 99,217 square metres, which is a constant for every residential lot in NSW rather than an approximation.",
+    "new_vs_existing": "Four area implementations reduced to one. Deleted the uncorrected shoelace in EnhancedSetbackVerification, the bounding-box estimator in PreciseSetbackCalculator, and the duplicated loop in calculator.ts, which is now a delegation. Deliberately left alone: lib/setbacks/validator.ts estimateLotArea, a hardcoded zone-to-lot-area table with R2 at 500 and a fallback of 450. It is pre-existing dead code whose only reference is a doc comment inside its own index.ts, and the standing rule is not to touch pre-existing dead code, so it is flagged rather than fixed.",
+    "external_source_error": "No external source is called anywhere in this change. The Mercator correction is arithmetic on the ring's own northing, so there is no network failure mode to handle.",
+    "frontend_type": "BuildableAreaAnalysis numeric fields narrow from number to number or null, plus an optional unavailable_reason, and both render sites now print Not available for a null following the existing convention in GrannyFlatBriefCard. SetbackCalculationRequest lot_geometry and lot_area become optional to match the endpoint's zod schema, which has had them optional all along; the interface declaring them required is precisely why callers invented values to satisfy the compiler. npx tsc --noEmit exits 0.",
+    "user_failure_mode": "Had anyone mounted this feature, the setbacks tab would have shown Total Lot Area 100 square metres, Buildable Area 60 square metres and Buildable Percentage 60 for every property in NSW, with a 9.5 metre height limit and a 0.6 to 1 FSR shown whenever the real controls were absent, and R2 substituted for an unknown zone, which also selects which setback rules the endpoint returns. After this change each of those reads Not available with the reason stated."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/lot-area-not-invented.test.ts && npx tsc --noEmit && python C:/Users/lawre/.claude/jobs/725925e0/tmp/mutate.py",
+    "fails_when": "The suite goes red if any of the five invented values returns, if an unmeasurable ring yields a number instead of null, if the Mercator correction is dropped or halved, if a buildable-area response block bypasses the single helper, or if either component reintroduces a local area implementation or a latitude constant.",
+    "observed_red": "58 of 58 tests pass on clean code; npx tsc --noEmit exits 0; the full frontend suite is 117 suites and 1668 tests with 0 failures. The real evidence is the mutation harness: 17 mutations applied one at a time and reverted byte-for-byte, 17 of 17 CAUGHT, 0 holes. It found a genuine hole on its first run -- expect(src).toMatch(/lotGeometryAreaM2/) was satisfied by the IMPORT line, so replacing the real call with = 450 left the suite green. Fixed by requiring a call site's trailing paren and asserting lot_area is never assigned a numeric literal; that mutation is now caught."
+  },
+  "functions": [
+    {
+      "name": "ringAreaM2",
+      "file_line": "frontend-nextjs/lib/geometry/mercator.ts:102",
+      "input": "An unknown value expected to be an EPSG:3857 ring, validated through usableRing so every point must be a finite two-number pair before any arithmetic runs.",
+      "output": "The ground area in square metres, divided by the square of the ring's own Mercator scale factor, or null when the ring cannot be measured at all.",
+      "if_none": "Returns null rather than 0, because 0 is a legitimate area for a degenerate polygon and reads downstream as a measurement; the callers then omit the field instead of substituting a number."
+    },
+    {
+      "name": "lotGeometryAreaM2",
+      "file_line": "frontend-nextjs/lib/geometry/mercator.ts:136",
+      "input": "An unknown value expected to be a Portal lot geometry carrying a rings array, with the ring count checked before the outer ring is read.",
+      "output": "The outer ring's ground area in square metres for a single-ring geometry, delegating the arithmetic entirely to ringAreaM2 so there is one implementation.",
+      "if_none": "Returns null for any ring count other than exactly one, because an inner ring is a hole and no caller here subtracts holes, so an outer-ring area would overstate the lot."
+    },
+    {
+      "name": "buildableAreaNotDerived",
+      "file_line": "frontend-nextjs/app/api/setbacks/calculate/route.ts:47",
+      "input": "A caller-measured lot area in square metres, or null when the caller did not measure one, and nothing else at all.",
+      "output": "The single BuildableAreaAnalysis object used by every one of the five response branches, passing the lot area through untouched and leaving every boundary-dependent figure null.",
+      "if_none": "Sets unavailable_reason to say buildable area needs the lot boundary and that this request resolved setback rules for the zone only, so the absence is stated rather than filled."
+    }
+  ],
+  "values": "N/A -- no value is read from a database or an API in this change; every figure removed was a literal in source, and the one figure now computed comes from the request's own geometry.",
+  "queries": "N/A -- no database query is added or modified. The reachability finding came from grep over app/, components/ and hooks/, not from SQL.",
+  "break_it": [
+    {
+      "scenario": "A ring arrives that cannot be measured: null, undefined, an empty array, a non-array, one point, two points, a point holding NaN, a point holding Infinity, or a malformed point of length one.",
+      "what_happens": "Each of the nine shapes returns null, and the suite additionally asserts the result is never 450, 100, 500, 400 or 0, which are the four old substitutes plus the old return 0 that read as a measured lot size.",
+      "mitigated": true,
+      "how": "usableRing rejects the ring before any arithmetic, and ringAreaM2 returns null rather than a fallback; nine parameterised cases plus five never-equals assertions cover it.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/lot-area-not-invented.test.ts -t 'an unmeasurable ring yields null' -- the nine shapes are parameterised cases in that describe block; or in a node REPL, require the module and call ringAreaM2(null) and ringAreaM2([[0,0],[1,1]])."
+    },
+    {
+      "scenario": "A geometry arrives with more than one ring, where the inner rings are holes that no code here subtracts from the outer ring.",
+      "what_happens": "lotGeometryAreaM2 returns null instead of reporting the outer ring as the lot area, so a hole is never counted as buildable land; the mutation that relaxes the check to ring count zero is caught.",
+      "mitigated": true,
+      "how": "The ring count is tested for exactly one before the outer ring is read, and a mutation relaxing that comparison fails the suite.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/lot-area-not-invented.test.ts -t 'refuses a geometry it cannot measure' -- the multi-ring case passes the same ring twice as { rings: [ring, ring] } and expects null."
+    },
+    {
+      "scenario": "Someone deletes the Mercator correction, or applies one power of the scale factor instead of two, so projected area is served as ground area.",
+      "what_happens": "Both mutations are caught. The suite builds a square ring of known true area at Petersham latitude and asserts a true 450 square metre lot measures 450 and that the uncorrected shoelace measures 653, the exact ratio of 1.4514.",
+      "mitigated": true,
+      "how": "Behavioural assertions against known-area rings, plus an assertion that the ratio of the uncorrected to the corrected figure equals the square of the scale factor.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/lot-area-not-invented.test.ts -t 'measures ground area' -- then run the mutation harness, whose first two rows delete and halve the correction in lib/geometry/mercator.ts and require the suite to go red."
+    },
+    {
+      "scenario": "A sixth response branch is added to the route and writes its own literal buildable_area_analysis object instead of calling the one helper, reintroducing hardcoded figures.",
+      "what_happens": "The suite counts helper call sites, excluding the declaration, and requires that count to equal the number of buildable_area_analysis keys, so a literal block raises one count without the other and goes red.",
+      "mitigated": true,
+      "how": "A call-count assertion that excludes the function declaration, after the first version miscounted the declaration as a call and failed on correct code.",
+      "repro": "Add a sixth response branch to app/api/setbacks/calculate/route.ts with a literal buildable_area_analysis object, then cd frontend-nextjs && npx jest __tests__/lib/lot-area-not-invented.test.ts -t 'routes every buildable-area response through the one helper'. The mutation harness row 'bring back a literal buildable-area block' does exactly this."
+    },
+    {
+      "scenario": "A forbidden literal is left only in a comment, or the name of the shared function appears only in an import or a comment while the real call is replaced by a number.",
+      "what_happens": "Source is read with comments stripped, so prose cannot satisfy a positive assertion, and the positive assertion requires a call site's trailing paren rather than the bare name. This file's own header names 9.5m, 0.6:1 and R2 deliberately.",
+      "mitigated": true,
+      "how": "The comment-stripping helper reproduces the one written for the TOD fabrication suite on PR 1229's branch, which is not on this branch yet; there an unstripped scan had already been satisfied by a comment beside the code it checked. The import-satisfies hole here was found by the mutation harness and closed.",
+      "repro": "python C:/Users/lawre/.claude/jobs/725925e0/tmp/mutate.py -- the row 'call the shared function but only name it in a comment' replaces the real lotGeometryAreaM2 call with = 450 and leaves the name in a comment; it must print caught, not HOLE."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Nothing to reset. No migration, no write, no seed; this change touches TypeScript only and reads no database.",
+    "secrets": "No secret, token or key is added, read or referenced. No environment variable is introduced by this change.",
+    "other_repo": "No other repository is affected. Everything changed lives under frontend-nextjs in this repo.",
+    "manual_verify": "Nothing to verify by hand on the running app, because nothing mounts this feature -- no route references AnalysisTabs, PreciseSetbackCalculator, EnhancedSetbackVerification, useSetbackCalculation or useSetbacks. The check that matters is the mutation harness: 12 of 12 caught, 0 holes. Carried forward separately: lib/setbacks/validator.ts still holds a hardcoded zone-to-lot-area table in dead code; lib/assessment/api-client.ts line 105 posts zone where the schema requires property_zone so that call has always returned 400; the route imports PreciseSetbackCalculator from lib/geometry/calculator and never uses it; and 13 fabricated citations remain repo-wide, five of them already fixed on PR 1229 whose gates passed for 4d513876."
+  },
+  "cross_review": {
+    "tool": "gpt-5.6-sol, pre-push, 2026-10-06",
+    "findings": 4,
+    "verdicts": [
+      {
+        "finding": "MEDIUM type-boundary, lib/geometry/mercator.ts:140 -- lotGeometryAreaM2 can return 0 for a structurally valid but degenerate ring, while the endpoint's schema requires lot_area to be positive and both components submit every non-null result.",
+        "verdict": "CONFIRMED and FIXED. Measured before acting: ringAreaM2([[0,0],[10,0],[20,0],[0,0]]) returned 0, as did an all-same-point ring and a there-and-back ring. The consequence is worse than a misleading figure -- lot_area is z.number().positive(), so a 0 fails validation and returns 400 for the WHOLE request, discarding the zone setback rules that need no area. It also contradicted my own doc comment, which already claimed 'Returns null, never 0'. ringAreaM2 now requires area > 0; three degenerate shapes are asserted null, and the mutation that removes the guard is caught."
+      },
+      {
+        "finding": "MEDIUM silent-failure, lib/geometry/calculator.ts:530 -- the new delegation still coalesces an unmeasurable ring to 0 via `?? 0`, silently converting missing or malformed geometry into a plausible numeric area.",
+        "verdict": "CONFIRMED and FIXED. I had kept `?? 0` deliberately to avoid a behaviour change, but having already widened BuildableAreaAnalysis to number|null in this same change, propagating null was type-safe and strictly more honest. estimateLotAreaFromGeometry is renamed lotAreaFromGeometry and returns number|null; all three return paths of calculateBuildableArea now take total_lot_area from one guarded local, and buildable_area / buildable_percentage / setback_area_lost are null rather than 0 on the two paths whose own note says the figure could not be calculated. Three mutations cover it."
+      },
+      {
+        "finding": "MEDIUM correctness, lib/geometry/calculator.ts:542 (round 2) -- lotAreaFromGeometry delegated only rings[0] to ringAreaM2, so a multi-ring lot reports the outer-ring area instead of declining.",
+        "verdict": "CONFIRMED and FIXED. This was a defect in code written earlier in the same change: lotGeometryAreaM2 exists precisely to refuse a multi-ring geometry, and calling ringAreaM2(geometry.rings[0]) walked straight past that guard, so a 1,000 m2 outer ring with a 200 m2 hole reported 1,000 m2 -- in the function written to stop a hole counting as land. My own test covered the library function but not the calculator's use of it, which is why the harness did not catch it and the reviewer did. It now delegates the whole geometry, and three assertions plus one mutation cover the bypass."
+      },
+      {
+        "finding": "LOW correctness, app/api/setbacks/calculate/route.ts:56 (round 2) -- the unavailable reason claims the lot boundary is needed even when the caller supplied lot_geometry.",
+        "verdict": "CONFIRMED and FIXED. The wording was false for any caller that sent a boundary: the boundary was present and the route simply does not offset against it. A wrong explanation shipped inside a change about wrong numbers. Reworded to 'This request resolved setback rules for the zone. It does not offset them against a lot boundary, so buildable area was not calculated.', which holds either way; asserted both ways and covered by a mutation."
+      }
+    ],
+    "rounds": 2
+  }
+}
