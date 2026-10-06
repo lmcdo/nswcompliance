@@ -483,11 +483,23 @@ export function StateLevelControls({
   // battleaxeAwareLotWidth returns the head width for a battleaxe (the cadastral
   // "frontage" there is the access handle, which would understate width-based
   // SEPP/LMR eligibility), otherwise the frontage.
-  const lotWidth = battleaxeAwareLotWidth(propertyData?.lotDimensions)
+  // There is NO default. `DEFAULT_LOT_WIDTH_M: 15` stood at the end of this chain
+  // until 2026-10-06, and 15 is the single most permissive value that still reads
+  // as a real suburban frontage: the LMR minimums are 12m (dual occupancy), 12m
+  // (manor house) and 15m (multi dwelling), so an invented 15 cleared all three.
+  // Two consequences, both measured:
+  //   - the amber "below minimum" panel below renders only when something is
+  //     EXCLUDED, so a 15 emptied that list and the panel vanished — the reader
+  //     saw no frontage caveat at all, which reads as "frontage is fine";
+  //   - HousingSEPPEligibilityCard printed "Frontage: 15m" as this property's
+  //     frontage and ran its eligibility on it, even though that card ALREADY
+  //     handles a missing width by asking for one. The constant was defeating a
+  //     guard that was already there.
+  const lotWidth: number | null = battleaxeAwareLotWidth(propertyData?.lotDimensions)
     ?? propertyData?.geometry?.frontageWidth
     ?? propertyData?.geometry?.estimatedWidth
     ?? propertyData?.constraints?.lotWidth
-    ?? NSW_PLANNING_CONSTANTS.HOUSING_SEPP.DEFAULT_LOT_WIDTH_M; // Default estimate if not available
+    ?? null;
 
   // Lot depth - from calculated geometry
   const lotDepth = propertyData?.lotDimensions?.depth || null;
@@ -521,8 +533,12 @@ export function StateLevelControls({
     return result ? parseFloat(result['Floor Space Ratio']) : null;
   })();
 
-  // Show Housing SEPP LMR section for residential zones
-  const showHousingSEPPSection = isLMRArea && lotSize && lotWidth;
+  // Show Housing SEPP LMR section for residential zones.
+  // Deliberately NOT gated on lotWidth. It used to be, but the invented 15 made
+  // that condition always true, so gating on a real width would newly HIDE the
+  // whole section for every property whose frontage we do not hold — trading a
+  // false answer for a silent one. The card inside asks for the frontage instead.
+  const showHousingSEPPSection = isLMRArea && lotSize;
 
   // Show ADG based on SEPP Housing 2021 detection (dynamic from planning portal)
   const applicableSepps = propertyData?.constraints?.applicableSepps || [];
@@ -1012,6 +1028,18 @@ export function StateLevelControls({
           {!collapsedSections.lmr && (
             <CardContent className="pt-0 space-y-3">
               {/* X4: Frontage check against LMR minimums */}
+              {lotWidth == null && (
+                <div className="bg-gray-50 border border-gray-200 rounded p-2">
+                  <div className="flex items-start gap-1.5">
+                    <Info className="h-3.5 w-3.5 text-gray-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-xs text-gray-700">
+                      Frontage width not available for this property, so the frontage
+                      minimums for dual occupancy, manor houses and multi dwelling
+                      housing have not been checked.
+                    </span>
+                  </div>
+                </div>
+              )}
               {lotWidth && (() => {
                 const status = lmrFrontageStatus(lotWidth);
                 if (!status.excluded.length) return null;
