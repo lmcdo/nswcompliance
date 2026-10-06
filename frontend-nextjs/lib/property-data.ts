@@ -140,6 +140,33 @@ export class PropertyDataService {
  cornerLotPromise = detectCornerLot(lotGeometry.geometry);
  }
 
+ // A missing lot area leaves no trace anywhere, and that is the actual gap.
+ //
+ // Downstream, CDCPathway.tsx turns an absent area into 0, its `lotArea > 0`
+ // check then goes false, the "lot too small for CDC" blocker is never added,
+ // and the user is told their work qualifies as Complying Development. The
+ // guard is worth having, but the reason it has never been sized is that
+ // nothing records when the Portal fails to give us a lot.
+ //
+ // Measured 2026-10-07 before adding this: 0 of 120 real addresses sampled from
+ // property_reports failed to return an area, and 0 of 991 stored reports hold
+ // a null or zero coordinate. So this is currently a 0% event -- which is
+ // exactly why it needs a counter rather than a fix: the next person asking
+ // "how often?" should read a log, not spend four minutes sampling a
+ // government API. The sample was also survivorship-biased toward addresses
+ // that already worked, so 0% is a floor, not the rate.
+ if (!lotDimensions) {
+ const reason = !lotGeometry?.geometry
+ ? 'portal returned no lot geometry'
+ : 'geometry present but no usable ring (area not computable)';
+ console.warn(
+ '[PropertyData] NO LOT AREA for %s — %s. Downstream CDC checks cannot ' +
+ 'test minimum lot size for this property.',
+ address,
+ reason,
+ );
+ }
+
  // Extract source information from layers
  const fsrLayer = layers.find(l => l.layerName === 'Floor Space Ratio Map');
  const heightLayer = layers.find(l => l.layerName === 'Height of Buildings Map');
