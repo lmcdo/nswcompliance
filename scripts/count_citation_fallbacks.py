@@ -57,22 +57,49 @@ def strip_comments(src):
 
 
 def file_list(rev):
-    """Every candidate file at `rev` (or on disk when rev is None)."""
+    """Every candidate file at `rev` (or on disk when rev is None).
+
+    os.walk, not os.listdir. git ls-tree -r is RECURSIVE, so listing only the
+    immediate children on the working-tree side made the two numbers describe
+    different file sets: a fallback in a subdirectory would count on origin/main,
+    vanish from the working-tree scan, and be reported as removed when it was
+    still there. No such subdirectory exists today, which is exactly why this was
+    invisible. Cross-review found it.
+    """
     if rev is None:
         out = []
         for p in PREFIXES:
             d = os.path.join(ROOT, p)
-            if os.path.isdir(d):
-                out += [p + n for n in sorted(os.listdir(d))]
+            if not os.path.isdir(d):
+                continue
+            for dirpath, _dirnames, filenames in os.walk(d):
+                rel_dir = os.path.relpath(dirpath, ROOT).replace(os.sep, '/')
+                out += ['%s/%s' % (rel_dir, n) for n in sorted(filenames)]
         out += [f for f in EXTRA if os.path.isfile(os.path.join(ROOT, f))]
     else:
-        listing = subprocess.run(
-            ['git', 'ls-tree', '-r', '--name-only', rev],
-            cwd=ROOT, capture_output=True, text=True,
-            encoding='utf-8', errors='replace', env=git_env(),
-        ).stdout.splitlines()
+        listing = _git(['ls-tree', '-r', '--name-only', rev]).splitlines()
         out = [f for f in listing if f.startswith(PREFIXES) or f in EXTRA]
     return [f for f in out if f.endswith(('.tsx', '.ts')) and '__tests__' not in f]
+
+
+def _git(args):
+    """Run git, or stop. A failed git read must not look like an empty result.
+
+    Without the returncode check, `git ls-tree -r origin/main` in a shallow or
+    freshly initialised clone exits 128, its empty stdout is read as "no files",
+    and the script cheerfully prints `origin/main: 0` -- i.e. claims every
+    fabricated citation was removed, which is the exact class of confident wrong
+    answer this script exists to detect.
+    """
+    r = subprocess.run(
+        ['git'] + args, cwd=ROOT, capture_output=True, text=True,
+        encoding='utf-8', errors='replace', env=git_env(),
+    )
+    if r.returncode != 0:
+        sys.stderr.write('git %s failed (exit %d): %s\n'
+                         % (' '.join(args), r.returncode, r.stderr.strip()))
+        raise SystemExit(2)
+    return r.stdout
 
 
 def read(rev, f):
@@ -81,11 +108,7 @@ def read(rev, f):
             return open(os.path.join(ROOT, f), encoding='utf-8', errors='replace').read()
         except OSError:
             return ''
-    return subprocess.run(
-        ['git', 'show', '%s:%s' % (rev, f)],
-        cwd=ROOT, capture_output=True, text=True,
-        encoding='utf-8', errors='replace', env=git_env(),
-    ).stdout
+    return _git(['show', '%s:%s' % (rev, f)])
 
 
 def count(rev, label):
@@ -112,3 +135,20 @@ print('origin/main: %d   working tree: %d   removed: %d'
       % (len(before), len(after), len(before) - len(after)))
 remaining = sorted({v for _, _, v in after})
 print('remaining values: %s' % (remaining or 'none'))
+
+# A check that cannot fail is not a check. This printed its numbers and exited 0
+# whatever they were, while the QA report chained it after && as though a
+# regression would stop the command. A second fabricated citation would have
+# printed "working tree: 2" and still passed. Cross-review found it.
+#
+# ALLOWED states the absence instead of filling it, which is the distinction this
+# whole script is about, so it is named rather than counted.
+ALLOWED = {'Clause Reference Not Available'}
+unexpected = sorted({v for _, _, v in after} - ALLOWED)
+if unexpected:
+    print('')
+    print('FAILED: %d fabricated citation(s) in the working tree: %s'
+          % (len(unexpected), ', '.join(unexpected)))
+    print('  A clause or instrument substituted when the source carried none.')
+    raise SystemExit(1)
+print('OK: nothing in the working tree substitutes a citation.')

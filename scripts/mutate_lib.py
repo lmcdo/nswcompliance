@@ -17,6 +17,7 @@ Usage:
     run(tests=[...], mutations=[(label, path, find, repl, why), ...], tag='cite')
 """
 import io
+import hashlib
 import json
 import os
 import shutil
@@ -27,11 +28,24 @@ import tempfile
 # Outside the repo on purpose. The backups below are copies of working-tree
 # source, and an interrupted run leaves them on disk; under scripts/ they would
 # appear as untracked files during a mutation run, which is exactly when the
-# tree has to be readable. Stable per machine, so crash recovery still works
-# across runs. Override with MUTATION_STATE_DIR.
-STATE_DIR = os.environ.get('MUTATION_STATE_DIR') or os.path.join(
+# tree has to be readable. Override with MUTATION_STATE_DIR.
+_STATE_ROOT = os.environ.get('MUTATION_STATE_DIR') or os.path.join(
     tempfile.gettempdir(), 'plotdetect-mutation-state'
 )
+
+# The CHECKOUT this process is mutating. Everything below is namespaced by it.
+#
+# This directory used to be the repo's own scripts/_mutation_state, which was
+# per-checkout for free. Moving it to a machine-wide temp directory took that
+# away and created a far worse failure: this repo is routinely worked in several
+# git worktrees at once, so an interrupted run in worktree A would leave a marker
+# that the next run in worktree B obeys -- restoring A's source files over B's
+# legitimate work before the tests even start. Cross-review found it, HIGH.
+CHECKOUT = os.getcwd()
+_CHECKOUT_KEY = hashlib.sha1(
+    os.path.normcase(os.path.abspath(CHECKOUT)).encode('utf-8')
+).hexdigest()[:12]
+STATE_DIR = os.path.join(_STATE_ROOT, _CHECKOUT_KEY)
 
 
 def _paths_for(tag):
@@ -48,6 +62,20 @@ def _recover(tag, targets):
         info = json.load(io.open(marker, encoding='utf-8'))
     except Exception:
         info = {}
+
+    # The hashed STATE_DIR should already make this impossible. Checked anyway:
+    # restoring one checkout's source over another's working tree destroys
+    # uncommitted work, and a guard against that is worth stating twice. An
+    # older marker has no 'checkout' key and is accepted, since it predates the
+    # namespacing and cannot have come from elsewhere.
+    recorded = info.get('checkout')
+    if recorded and os.path.normcase(recorded) != os.path.normcase(os.path.abspath(CHECKOUT)):
+        print('!! REFUSING to recover: the marker was written by a different checkout.')
+        print('!!   marker: %s' % recorded)
+        print('!!   here:   %s' % os.path.abspath(CHECKOUT))
+        print('!! Restoring those backups here would overwrite this working tree.')
+        raise SystemExit(2)
+
     print('!! a previous run of this harness did not finish (marker present).')
     print('!! it was interrupted while mutating: %s' % info.get('mutating', 'unknown'))
     restored = []
@@ -66,12 +94,20 @@ def _backup(tag, targets):
     os.makedirs(base, exist_ok=True)
     for rel in targets:
         shutil.copyfile(rel, os.path.join(base, rel.replace('/', '__')))
-    io.open(marker, 'w', encoding='utf-8').write(json.dumps({'mutating': None}))
+    _write_marker(marker, None)
     return base, marker
 
 
+def _write_marker(marker, label):
+    """Record WHAT is being mutated and WHICH checkout owns the backups."""
+    io.open(marker, 'w', encoding='utf-8').write(json.dumps({
+        'mutating': label,
+        'checkout': os.path.abspath(CHECKOUT),
+    }))
+
+
 def _note(marker, label):
-    io.open(marker, 'w', encoding='utf-8').write(json.dumps({'mutating': label}))
+    _write_marker(marker, label)
 
 
 def _clear(tag, targets):
