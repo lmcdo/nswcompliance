@@ -158,6 +158,14 @@ describe('s155(5) — the standard yields to a higher one elsewhere', () => {
     const region = panel(file, from, to);
     expect(region).toMatch(/155\(5\)|subsection \(5\)/);
     expect(region).toMatch(/permits a greater height or floor space ratio/i);
+    // s155(5) has TWO limbs — "a provision of another chapter of this policy OR another
+    // environmental planning instrument" — and operates "to the extent", not absolutely.
+    // An earlier assessment-page draft named only the second limb, which would read as
+    // though a greater standard elsewhere in the Housing SEPP itself did not displace
+    // s155. Cross-review, 2026-10-06.
+    expect(region).toMatch(/another chapter of SEPP \(Housing\) 2021/);
+    expect(region).toMatch(/another environmental planning instrument/);
+    expect(region).toMatch(/to the extent/);
   });
 
   it('does not claim section 155 "sets" the controls', () => {

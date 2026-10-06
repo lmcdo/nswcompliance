@@ -1277,10 +1277,11 @@ export function StateLevelControls({
                         * whose LEP permits more — stating a standard as the limit when the
                         * section says it yields to a higher one. */}
                       <p className="text-xs text-purple-800 mt-1">
-                        Section 155(5) provides that the section does not apply to the extent
-                        another chapter of the policy, or another environmental planning
-                        instrument, permits a greater height or floor space ratio. Compare the
-                        controls shown on the LEP tab for this property.
+                        Section 155(5) provides that the section does not apply to the
+                        extent another chapter of SEPP (Housing) 2021, or another
+                        environmental planning instrument, permits a greater height or floor
+                        space ratio. Compare the controls shown on the LEP tab for this
+                        property.
                       </p>
                       <SeppCitationLink
                         href={seppHousingProvisionUrl('sec.155')}

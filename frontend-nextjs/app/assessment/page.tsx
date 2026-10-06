@@ -339,9 +339,10 @@ export default function AssessmentPage() {
                       <p className="text-xs text-gray-700 mt-2">
                         Section 155 identifies height and floor space ratio standards for
                         this area, which differ by what is proposed — a residential flat
-                        building, or seniors or shop top housing — and under section 155(5)
-                        do not apply where another instrument permits a greater height or
-                        floor space ratio.{' '}
+                        building, or seniors or shop top housing. Under section 155(5) the
+                        section does not apply to the extent another chapter of SEPP
+                        (Housing) 2021, or another environmental planning instrument,
+                        permits a greater height or floor space ratio.{' '}
                         <a
                           href="https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#sec.155"
                           target="_blank"
