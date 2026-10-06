@@ -14,7 +14,7 @@ interface Point {
  y: number;
 }
 
-import { scaleFactorForRing, usableRing } from './mercator';
+import { ringAreaM2, scaleFactorForRing, usableRing } from './mercator';
 
 // Helper functions for angle conversions.
 // toRadians() was removed with the fixed-latitude constant that was its only
@@ -524,27 +524,10 @@ export class PreciseSetbackCalculator {
  if (!geometry.rings || geometry.rings.length === 0) {
  return 0;
  }
-
- const coordinates = geometry.rings[0];
- const safeRing = usableRing(coordinates);
- if (safeRing == null) {
- return 0;
- }
- const scaleFactor = scaleFactorForRing(safeRing);
- const points = safeRing.slice(0, -1).map(coord => ({
- x: coord[0] / scaleFactor,
- y: coord[1] / scaleFactor
- }));
-
- // Use shoelace formula for polygon area
- let area = 0;
- for (let i = 0; i < points.length; i++) {
- const j = (i + 1) % points.length;
- area += points[i].x * points[j].y;
- area -= points[j].x * points[i].y;
- }
- 
- return Math.abs(area) / 2;
+ // Delegates to the shared scale-corrected shoelace. This was the third copy of
+ // that arithmetic in the repo; the other two carried no scale correction at all.
+ // `?? 0` preserves this method's existing contract of 0 for an unusable ring.
+ return ringAreaM2(geometry.rings[0]) ?? 0;
  }
 
  // Helper method for angle conversion

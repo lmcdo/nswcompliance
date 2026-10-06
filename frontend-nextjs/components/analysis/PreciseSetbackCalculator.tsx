@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Calculator, AlertTriangle, Building, Ruler, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useSetbackCalculation } from '@/hooks/useSetbackCalculation';
+import { lotGeometryAreaM2 } from '@/lib/geometry/mercator';
 import type { PropertyData, LotGeometry } from '@/types/property';
 import type { SetbackResult } from '@/types/setback';
 import { ReferencedLegislationAccordion } from '@/components/compliance/ReferencedLegislationAccordion';
@@ -48,10 +49,15 @@ export function PreciseSetbackCalculator({
  property_zone: property.zone
  };
  
- // Add geometry and lot_area only if available
+ // Add geometry and lot_area only if available. lotGeometryAreaM2 returns
+ // null when the ring cannot be measured, and the field is then OMITTED --
+ // the endpoint reports the figure as unavailable rather than filling it.
  if (lotGeometry) {
  calculationRequest.lot_geometry = lotGeometry;
- calculationRequest.lot_area = estimateLotArea(lotGeometry);
+ const measuredArea = lotGeometryAreaM2(lotGeometry);
+ if (measuredArea != null) {
+ calculationRequest.lot_area = measuredArea;
+ }
  }
  
  calculateSetbacks(calculationRequest);
@@ -86,18 +92,18 @@ export function PreciseSetbackCalculator({
  <h3 className="font-semibold">Setback Calculation Failed</h3>
  </div>
  <p className="text-sm mb-4">{errorMessage}</p>
- {property?.prop_id && lotGeometry && (
+ {property?.prop_id && lotGeometry && property.zone && (
  <Button 
  variant="outline" 
  size="sm"
  onClick={() => {
  setAttempted(false);
- const lotArea = estimateLotArea(lotGeometry);
+ const lotArea = lotGeometryAreaM2(lotGeometry);
  calculateSetbacks({
  property_id: property.prop_id!,
  lot_geometry: lotGeometry,
- property_zone: property.zone || 'R2',
- lot_area: lotArea
+ property_zone: property.zone!,
+ ...(lotArea != null ? { lot_area: lotArea } : {})
  });
  }}
  >
@@ -159,17 +165,17 @@ export function PreciseSetbackCalculator({
  </p>
  <Button 
  onClick={() => {
- if (property?.prop_id && lotGeometry) {
- const lotArea = estimateLotArea(lotGeometry);
+ if (property?.prop_id && lotGeometry && property.zone) {
+ const lotArea = lotGeometryAreaM2(lotGeometry);
  calculateSetbacks({
  property_id: property.prop_id,
  lot_geometry: lotGeometry,
- property_zone: property.zone || 'R2',
- lot_area: lotArea
+ property_zone: property.zone,
+ ...(lotArea != null ? { lot_area: lotArea } : {})
  });
  }
  }}
- disabled={!property?.prop_id}
+ disabled={!property?.prop_id || !lotGeometry || !property?.zone}
  >
  <Calculator className="mr-2 h-4 w-4" />
  Calculate Precise Setbacks
@@ -186,11 +192,11 @@ export function PreciseSetbackCalculator({
  <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-yellow-500" />
  <h3 className="text-lg font-semibold mb-2 text-gray-900">No High-Confidence Setback Data</h3>
  <p className="text-sm mb-4 text-gray-600">
- The database contains qualitative setback information for zone <strong>{property?.zone || 'R2'}</strong>, 
+ The database contains qualitative setback information for zone <strong>{property?.zone ?? 'not available'}</strong>, 
  but no quantitative measurements with sufficient confidence (≥80%) were found.
  </p>
  <div className="text-xs bg-blue-50 p-4 rounded border-l-4 border-blue-200 mb-4">
- <p><strong>Found in database:</strong> "{property?.zone || 'R2'}" zone setback requirements</p>
+ <p><strong>Found in database:</strong> {property?.zone ? `"${property.zone}" zone setback requirements` : 'zone setback requirements (zone not available for this property)'}</p>
  <p><strong>Issue:</strong> Text describes "setbacks to ground floor and upper storeys" but lacks specific measurements</p>
  </div>
  <div className="text-xs bg-yellow-50 p-4 rounded border-l-4 border-yellow-200">
@@ -226,14 +232,19 @@ export function PreciseSetbackCalculator({
  </div>
  <div>
  <p className="text-xs text-gray-600 uppercase">Height Limit</p>
+ {/* '9.5m' here and '0.6:1' below stood in for an absent control until
+ 2026-10-06. Both are plausible R2 figures, which is exactly why they
+ read as this property's own controls rather than as a missing one. */}
  <p className="font-semibold">
- {property?.height_limit ? `${property.height_limit}${property.height_units || 'm'}` : '9.5m'}
+ {property?.height_limit != null
+ ? `${property.height_limit}${property.height_units || 'm'}`
+ : 'Not available'}
  </p>
  </div>
  <div>
  <p className="text-xs text-gray-600 uppercase">FSR Limit</p>
  <p className="font-semibold">
- {property?.fsr_limit ? `${property.fsr_limit}:1` : '0.6:1'}
+ {property?.fsr_limit != null ? `${property.fsr_limit}:1` : 'Not available'}
  </p>
  </div>
  </div>
@@ -266,17 +277,26 @@ export function PreciseSetbackCalculator({
  <div className="grid grid-cols-3 gap-4">
  <div>
  <p className="text-xs text-gray-600 uppercase">Total Lot Area</p>
- <p className="font-bold text-gray-800">{buildableArea.total_lot_area}m²</p>
+ <p className="font-bold text-gray-800">
+ {buildableArea.total_lot_area != null ? `${Math.round(buildableArea.total_lot_area)}m²` : 'Not available'}
+ </p>
  </div>
  <div>
  <p className="text-xs text-gray-600 uppercase">Buildable Area</p>
- <p className="font-bold text-gray-800">{buildableArea.buildable_area}m²</p>
+ <p className="font-bold text-gray-800">
+ {buildableArea.buildable_area != null ? `${Math.round(buildableArea.buildable_area)}m²` : 'Not available'}
+ </p>
  </div>
  <div>
  <p className="text-xs text-gray-600 uppercase">Buildable Percentage</p>
- <p className="font-bold text-gray-800">{buildableArea.buildable_percentage}%</p>
+ <p className="font-bold text-gray-800">
+ {buildableArea.buildable_percentage != null ? `${buildableArea.buildable_percentage}%` : 'Not available'}
+ </p>
  </div>
  </div>
+ {buildableArea.unavailable_reason && (
+ <p className="mt-2 text-xs text-gray-600">{buildableArea.unavailable_reason}</p>
+ )}
  <p className="mt-2 text-xs text-gray-500 italic">
  Professional verification required for final design. Calculations based on NSW Planning API geometry and database intelligence.
  </p>
@@ -349,26 +369,3 @@ function SetbackCard({ result }: { result: SetbackResult }) {
  );
 }
 
-// Helper function to estimate lot area from geometry
-function estimateLotArea(geometry: LotGeometry): number {
- if (!geometry.rings || geometry.rings.length === 0) {
- return 450; // Default estimate
- }
-
- const coordinates = geometry.rings[0];
- if (coordinates.length < 4) {
- return 450; // Default estimate
- }
-
- // Simple bounding box area estimation
- const xCoords = coordinates.map(coord => coord[0]);
- const yCoords = coordinates.map(coord => coord[1]);
- 
- const width = Math.max(...xCoords) - Math.min(...xCoords);
- const height = Math.max(...yCoords) - Math.min(...yCoords);
- 
- // Convert from Web Mercator units to square meters (rough approximation)
- const areaEstimate = (width * height) / (1.2 * 1.2); // Scale factor for NSW latitude
- 
- return Math.max(100, Math.min(areaEstimate / 1000, 5000)); // Clamp to reasonable range
-}

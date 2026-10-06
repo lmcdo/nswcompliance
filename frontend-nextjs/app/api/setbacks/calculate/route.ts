@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PreciseSetbackCalculator } from '@/lib/geometry/calculator';
 import { DatabaseClient } from '@/lib/database/client';
 import { SEPPLEPProcessor } from '@/lib/compliance/sepp-lep-processor';
-import type { SetbackCalculationRequest, SetbackCalculationResponse } from '@/types/setback';
+import type { BuildableAreaAnalysis, SetbackCalculationRequest, SetbackCalculationResponse } from '@/types/setback';
 import { z } from 'zod';
 import { SetbackRequestSchema as CentralSetbackSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
@@ -24,8 +24,36 @@ const SetbackRequestSchema = z.object({
  }).optional()
  }).optional(), // Geometry is optional for PRP-K3 zone-specific calculations
  property_zone: z.string().min(1).max(10),
- lot_area: z.number().positive().optional() // Optional - can estimate from zone defaults
+ lot_area: z.number().positive().optional() // Optional - omitted when the caller has no lot boundary
 });
+
+/**
+ * The buildable-area block for a request this endpoint cannot derive one from.
+ *
+ * This route resolves setback RULES for a zone out of the database. It never
+ * offsets those rules against a lot boundary, so it has no buildable area to
+ * report. Until 2026-10-06 it reported one anyway: a lot area invented from the
+ * zone when the caller sent none (500 m2 for R2, 400 m2 for everything else),
+ * multiplied by a hardcoded 0.6, returned as `buildable_area` with
+ * `buildable_percentage: 60` and rendered on screen as "Total Lot Area" and
+ * "Buildable %". None of the four figures came from the setbacks just queried.
+ *
+ * The flat 60 also made `buildable_percentage < 50` — the component's own
+ * design-note condition — unreachable on this path.
+ *
+ * `lotArea` is passed through ONLY when the caller measured it. Everything that
+ * needs a boundary stays null.
+ */
+function buildableAreaNotDerived(lotArea: number | null): BuildableAreaAnalysis {
+ return {
+ total_lot_area: lotArea,
+ buildable_area: null,
+ buildable_percentage: null,
+ setback_area_lost: null,
+ unavailable_reason:
+ 'Buildable area needs the lot boundary. This request resolved setback rules for the zone only.'
+ };
+}
 
 export async function POST(request: NextRequest) {
  const startTime = Date.now();
@@ -43,12 +71,7 @@ export async function POST(request: NextRequest) {
  success: false,
  error: 'Invalid request data: ' + validationResult.error.issues.map(i => i.message).join(', '),
  setback_results: [],
- buildable_area_analysis: {
- total_lot_area: 0,
- buildable_area: 0,
- buildable_percentage: 0,
- setback_area_lost: 0
- },
+ buildable_area_analysis: buildableAreaNotDerived(null),
  precision_level: '',
  processing_method: '',
  processing_time_ms: Date.now() - startTime
@@ -168,8 +191,6 @@ export async function POST(request: NextRequest) {
  const transformedSetbacks = enhancedSetbacks;
  
  if (setbacksData.length > 0) {
- // Use provided lot_area or estimate based on zone defaults
- const estimatedLotArea = validatedData.lot_area || (validatedData.property_zone === 'R2' ? 500 : 400);
  
  // PRP-K6: Generate legal compliance analysis
  const hierarchyProcessor = new SEPPLEPProcessor();
@@ -228,12 +249,7 @@ export async function POST(request: NextRequest) {
  zone: validatedData.property_zone,
  development_types_found: Object.keys(finalGroupedSetbacks),
  legal_compliance: legalCompliance,
- buildable_area_analysis: {
- total_lot_area: estimatedLotArea,
- buildable_area: Math.max(0, estimatedLotArea * 0.6),
- buildable_percentage: 60,
- setback_area_lost: estimatedLotArea * 0.4
- },
+ buildable_area_analysis: buildableAreaNotDerived(validatedData.lot_area ?? null),
  precision_level: 'legislative_clause',
  processing_method: 'PRP-K7 Zone-Aware Development Type System (PostgreSQL)',
  processing_time_ms: Date.now() - startTime
@@ -241,17 +257,10 @@ export async function POST(request: NextRequest) {
  } else {
  // No rules found for this zone
  console.log(`[API] No rules found for zone ${validatedData.property_zone} in ${council}`);
- const estimatedLotArea = validatedData.lot_area || (validatedData.property_zone === 'R2' ? 500 : 400);
- 
  return NextResponse.json({
  success: true,
  setback_results: [],
- buildable_area_analysis: {
- total_lot_area: estimatedLotArea,
- buildable_area: 0,
- buildable_percentage: 0,
- setback_area_lost: 0
- },
+ buildable_area_analysis: buildableAreaNotDerived(validatedData.lot_area ?? null),
  precision_level: 'no_data',
  processing_method: 'PRP-K3 Zone-Specific Calculation Engine',
  processing_time_ms: Date.now() - startTime,
@@ -268,12 +277,7 @@ export async function POST(request: NextRequest) {
  success: false,
  error: `Database error: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`,
  setback_results: [],
- buildable_area_analysis: {
- total_lot_area: validatedData.lot_area,
- buildable_area: 0,
- buildable_percentage: 0,
- setback_area_lost: 0
- },
+ buildable_area_analysis: buildableAreaNotDerived(validatedData.lot_area ?? null),
  precision_level: 'error',
  processing_method: 'PRP-K3 Zone-Specific Calculation Engine',
  processing_time_ms: Date.now() - startTime
@@ -288,12 +292,7 @@ export async function POST(request: NextRequest) {
  success: false,
  error: error instanceof Error ? error.message : 'Calculation failed',
  setback_results: [],
- buildable_area_analysis: {
- total_lot_area: 0,
- buildable_area: 0,
- buildable_percentage: 0,
- setback_area_lost: 0
- },
+ buildable_area_analysis: buildableAreaNotDerived(null),
  precision_level: 'error',
  processing_method: 'PRP-K3 Zone-Specific Calculation Engine',
  processing_time_ms: processingTime

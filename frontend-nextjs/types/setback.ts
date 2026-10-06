@@ -40,19 +40,36 @@ export interface SetbackResult {
  provision_id?: number;
 }
 
+/**
+ * Buildable-area figures, each independently measurable or not.
+ *
+ * `null` means NOT MEASURED, and is distinct from 0, which is a measurement.
+ * Until 2026-10-06 every field was a bare `number`, so the zone-only endpoint
+ * filled them with a lot area invented from the zone (500 m2 for R2, 400 m2
+ * otherwise) multiplied by a flat 0.6 — neither derived from the setbacks it had
+ * just queried. `unavailable_reason` carries why, for display.
+ */
 export interface BuildableAreaAnalysis {
- total_lot_area: number;
- buildable_area: number;
- buildable_percentage: number;
- setback_area_lost: number;
+ total_lot_area: number | null;
+ buildable_area: number | null;
+ buildable_percentage: number | null;
+ setback_area_lost: number | null;
  note?: string; // Optional explanatory note
+ unavailable_reason?: string; // Why the null fields could not be measured
 }
 
+/**
+ * Both optional fields are optional at the endpoint too — its zod schema has
+ * always had `lot_geometry` and `lot_area` optional, while this interface
+ * declared them required. Callers therefore filled them to satisfy the compiler:
+ * `lot_area` with an uncorrected shoelace, `property_zone` with a literal 'R2'.
+ * Omit a field rather than inventing a value for it.
+ */
 export interface SetbackCalculationRequest {
  property_id: number;
- lot_geometry: import('./property').LotGeometry;
+ lot_geometry?: import('./property').LotGeometry;
  property_zone: string;
- lot_area: number;
+ lot_area?: number;
 }
 
 export interface SetbackCalculationResponse {

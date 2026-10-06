@@ -22,8 +22,12 @@ import {
  Award
 } from 'lucide-react';
 import { useSetbackCalculation } from '@/hooks/useSetbackCalculation';
+import { lotGeometryAreaM2 } from '@/lib/geometry/mercator';
 import type { PropertyData, LotGeometry } from '@/types/property';
-import type { SetbackResult } from '@/types/setback';
+import type {
+ BuildableAreaAnalysis as BuildableAreaAnalysisData,
+ SetbackResult,
+} from '@/types/setback';
 
 interface EnhancedSetbackVerificationProps {
  property: PropertyData | null;
@@ -54,17 +58,23 @@ export function EnhancedSetbackVerification({
  // Extract planning context from NSW data
  const planningContext = extractPlanningContext(nswPlanningData);
 
+ // The zone comes from the property or the Portal response. There is no default:
+ // 'R2' used to stand in for an unknown zone here, and the zone selects which
+ // setback rules the endpoint returns, so a wrong one returns the wrong rules.
+ const zone: string | undefined = property?.zone || planningContext.zone || undefined;
+
  const handleCalculate = () => {
- if (property?.prop_id && lotGeometry) {
+ if (property?.prop_id && lotGeometry && zone) {
  setAttempted(true);
- 
- const lotArea = estimateLotArea(lotGeometry);
- 
+
+ // null when the ring cannot be measured. Omitted rather than substituted.
+ const lotArea = lotGeometryAreaM2(lotGeometry);
+
  calculateSetbacks({
  property_id: property.prop_id,
  lot_geometry: lotGeometry,
- property_zone: property.zone || planningContext.zone || 'R2',
- lot_area: lotArea
+ property_zone: zone,
+ ...(lotArea != null ? { lot_area: lotArea } : {})
  });
  }
  };
@@ -155,7 +165,7 @@ export function EnhancedSetbackVerification({
  <div className="text-center py-4">
  <Button 
  onClick={handleCalculate}
- disabled={!property?.prop_id}
+ disabled={!property?.prop_id || !lotGeometry || !zone}
  size="lg"
  className="w-full md:w-auto"
  >
@@ -585,12 +595,23 @@ function ComplianceHierarchy({ results }: { results: SetbackResult[] }) {
 }
 
 // Buildable Area Analysis Component
-function BuildableAreaAnalysis({ buildableArea }: { buildableArea: any }) {
- const getStatusColor = (percentage: number) => {
+/**
+ * Every figure here is nullable, and a null renders as "Not available".
+ *
+ * Before 2026-10-06 all four were bare numbers filled by the endpoint from an
+ * invented lot area times a flat 0.6, so this card always showed four confident
+ * figures. The design note below was gated on `buildable_percentage < 50` while
+ * the endpoint hardcoded 60, which made it unreachable.
+ */
+function BuildableAreaAnalysis({ buildableArea }: { buildableArea: BuildableAreaAnalysisData }) {
+ const getStatusColor = (percentage: number | null) => {
+ if (percentage == null) return 'text-gray-400';
  if (percentage >= 60) return 'text-green-600';
  if (percentage >= 40) return 'text-yellow-600';
  return 'text-red-600';
  };
+ const area = (v: number | null) => (v != null ? `${Math.round(v)}m²` : 'Not available');
+ const pct = (v: number | null) => (v != null ? `${v}%` : 'Not available');
 
  return (
  <Card>
@@ -604,31 +625,37 @@ function BuildableAreaAnalysis({ buildableArea }: { buildableArea: any }) {
  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
  <div className="text-center">
  <div className="text-2xl font-bold text-gray-900">
- {buildableArea.total_lot_area}m²
+ {area(buildableArea.total_lot_area)}
  </div>
  <div className="text-sm text-gray-600">Total Lot Area</div>
  </div>
  <div className="text-center">
  <div className="text-2xl font-bold text-green-600">
- {buildableArea.buildable_area}m²
+ {area(buildableArea.buildable_area)}
  </div>
  <div className="text-sm text-gray-600">Buildable Area</div>
  </div>
  <div className="text-center">
  <div className={`text-2xl font-bold ${getStatusColor(buildableArea.buildable_percentage)}`}>
- {buildableArea.buildable_percentage}%
+ {pct(buildableArea.buildable_percentage)}
  </div>
  <div className="text-sm text-gray-600">Buildable %</div>
  </div>
  <div className="text-center">
  <div className="text-2xl font-bold text-red-600">
- {buildableArea.setback_area_lost}m²
+ {area(buildableArea.setback_area_lost)}
  </div>
  <div className="text-sm text-gray-600">Lost to Setbacks</div>
  </div>
  </div>
- 
- {buildableArea.buildable_percentage < 50 && (
+
+ {buildableArea.unavailable_reason && (
+ <div className="mt-4 p-3 bg-gray-50 rounded text-sm text-gray-700">
+ {buildableArea.unavailable_reason}
+ </div>
+ )}
+
+ {buildableArea.buildable_percentage != null && buildableArea.buildable_percentage < 50 && (
  <div className="mt-4 p-3 bg-yellow-50 rounded text-sm">
  <strong>Design Note:</strong> Low buildable percentage may affect development 
  viability. Consider design optimization or variation applications where permitted.
@@ -671,25 +698,6 @@ function getDomainBadgeColor(domain: string): string {
 }
 
 // Helper Functions
-function estimateLotArea(geometry: LotGeometry): number {
- if (!geometry || !geometry.rings || geometry.rings.length === 0) {
- return 0;
- }
- 
- const ring = geometry.rings[0];
- if (!ring || ring.length < 3) {
- return 0;
- }
- 
- let area = 0;
- for (let i = 0; i < ring.length - 1; i++) {
- area += ring[i][0] * ring[i + 1][1];
- area -= ring[i + 1][0] * ring[i][1];
- }
- 
- return Math.abs(area / 2);
-}
-
 function extractPlanningContext(nswData: any) {
  if (!nswData) return {};
  

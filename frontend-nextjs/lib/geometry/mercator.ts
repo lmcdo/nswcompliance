@@ -82,3 +82,60 @@ export function scaleFactorForRing(ring: number[][]): number {
   if (!Number.isFinite(cosLat) || !(cosLat > 0)) return FALLBACK_SCALE;
   return 1 / cosLat;
 }
+
+/**
+ * Ground area of an EPSG:3857 ring, in square metres — or null if not measurable.
+ *
+ * The scale correction above is the whole reason this function exists here rather
+ * than at each call site. Two components carried their own shoelace with NO
+ * correction at all (`EnhancedSetbackVerification.tsx` and
+ * `PreciseSetbackCalculator.tsx`, both until 2026-10-06), so every lot area they
+ * produced was high by 1/cos^2(latitude): a factor of 1.4514 at Petersham
+ * (-33.8945), which reports a true 450 m2 lot as 653 m2. That figure then became
+ * `lot_area` in the request body and `total_lot_area` on screen.
+ *
+ * Returns null, never 0, for a ring that cannot be measured. 0 is a legitimate
+ * area for a degenerate polygon and reads downstream as a measurement; the
+ * previous `return 0` was indistinguishable from "a lot with no size". A caller
+ * that cannot get a number must omit the field, not substitute one.
+ */
+export function ringAreaM2(ring: unknown): number | null {
+  const safe = usableRing(ring);
+  if (safe == null || safe.length < 3) return null;
+
+  // Drop a repeated closing point; the shoelace wraps on its own.
+  const first = safe[0];
+  const last = safe[safe.length - 1];
+  const pts =
+    safe.length > 3 && first[0] === last[0] && first[1] === last[1]
+      ? safe.slice(0, -1)
+      : safe;
+  if (pts.length < 3) return null;
+
+  // Taken from `pts`, not `safe`: averaging a duplicated closing point shifts the
+  // centroid, which made a closed and an unclosed ring of the same polygon differ.
+  const scale = scaleFactorForRing(pts);
+  if (!Number.isFinite(scale) || !(scale > 0)) return null;
+
+  let acc = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const j = (i + 1) % pts.length;
+    acc += pts[i][0] * pts[j][1] - pts[j][0] * pts[i][1];
+  }
+  const area = Math.abs(acc / 2) / (scale * scale);
+  return Number.isFinite(area) ? area : null;
+}
+
+/**
+ * Ground area of a Portal lot geometry, in square metres, or null.
+ *
+ * Only the outer ring is measured. A multi-ring geometry would need the inner
+ * rings subtracted, and no caller here has one, so the honest answer for a ring
+ * count above 1 is null rather than an outer-ring area presented as the lot.
+ */
+export function lotGeometryAreaM2(geometry: unknown): number | null {
+  if (geometry == null || typeof geometry !== 'object') return null;
+  const rings = (geometry as { rings?: unknown }).rings;
+  if (!Array.isArray(rings) || rings.length !== 1) return null;
+  return ringAreaM2(rings[0]);
+}
