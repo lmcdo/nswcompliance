@@ -130,13 +130,34 @@ describe('s155(5) — the standard yields to a higher one elsewhere', () => {
   // this policy or another environmental planning instrument permits a greater maximum
   // building height or floor space ratio". Stating 2.5:1 without it presents a figure the
   // section itself defers as if it were the property's ceiling.
-  it.each([
-    ['components/compliance/StateLevelControls.tsx'],
-    ['app/assessment/page.tsx'],
-  ])('%s discloses the subsection (5) exception', (file) => {
+  /**
+   * Scoped to each TOD panel's own region, not the whole file.
+   *
+   * A whole-file match was demonstrably hollow: deleting the visible caveat from the
+   * assessment page's panel and moving the same words into an unused constant left all
+   * 21 assertions green. Cross-review raised it; forcing it proved it. Each region runs
+   * from the panel's own heading to the first thing after it, so text parked anywhere
+   * else in the file — a dead branch, another component, a constant — cannot satisfy it.
+   */
+  const panel = (file: string, from: string, to: string) => {
     const src = read(file);
-    expect(src).toMatch(/155\(5\)/);
-    expect(src).toMatch(/permits a greater height or floor space ratio/i);
+    const start = src.indexOf(from);
+    const end = src.indexOf(to, start + 1);
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    const region = src.slice(start, end);
+    expect(region.length).toBeGreaterThan(150);
+    return region;
+  };
+
+  it.each([
+    ['components/compliance/StateLevelControls.tsx', 'TOD development standards',
+     'remain in force until the rezoning is gazetted'],
+    ['app/assessment/page.tsx', 'Transport Oriented Development Area', 'acceleratedTOD'],
+  ])('%s discloses the subsection (5) exception inside the TOD panel itself', (file, from, to) => {
+    const region = panel(file, from, to);
+    expect(region).toMatch(/155\(5\)|subsection \(5\)/);
+    expect(region).toMatch(/permits a greater height or floor space ratio/i);
   });
 
   it('does not claim section 155 "sets" the controls', () => {
