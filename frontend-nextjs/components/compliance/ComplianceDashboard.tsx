@@ -7,6 +7,7 @@
  */
 
 import { asTrimmedString } from '@/lib/citation-display';
+import { deduplicateConstraints } from '@/lib/compliance/constraint-dedup';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import useSWR from 'swr';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -432,8 +433,8 @@ export function ComplianceDashboard({
 
         // The Portal's own fields, or nothing. 'Clause 4.3' used to stand in for
         // an absent clause and 'Local Environmental Plan' for an absent EPI name.
-        const heightClause: string | null = result['Legislative Clause'] || null;
-        const heightEpi: string | null = result['EPI Name'] || null;
+        const heightClause = asTrimmedString(result['Legislative Clause']);
+        const heightEpi = asTrimmedString(result['EPI Name']);
 
         constraints.push({
           type: 'height',
@@ -476,8 +477,8 @@ export function ComplianceDashboard({
         // Extract version metadata from Planning API
         const versionMetadata = extractVersionFromPlanningAPI(fsrResult);
 
-        const fsrClause: string | null = fsrResult['Legislative Clause'] || null;
-        const fsrEpi: string | null = fsrResult['EPI Name'] || null;
+        const fsrClause = asTrimmedString(fsrResult['Legislative Clause']);
+        const fsrEpi = asTrimmedString(fsrResult['EPI Name']);
 
         constraints.push({
           type: 'fsr',
@@ -623,24 +624,6 @@ export function ComplianceDashboard({
           setPermissionStatus(apiResponse.data.permission_status);
           console.log('[ComplianceDashboard] Permission status:', apiResponse.data.permission_status);
         }
-
-        // Helper function to deduplicate constraints by provision_id or clause
-        const deduplicateConstraints = (constraints: ComplianceConstraint[]) => {
-          const seen = new Set<string>();
-          return constraints.filter(c => {
-            // Create unique key from provision_id or clause + document
-            const key = c.provision_id
-              ? `id-${c.provision_id}`
-              : `${c.source.clause ?? ''}-${c.source.document ?? ''}`;
-
-            if (seen.has(key)) {
-              console.log('[ComplianceDashboard] Removing duplicate:', c.type, c.source.clause);
-              return false;
-            }
-            seen.add(key);
-            return true;
-          });
-        };
 
         // Use Planning API provisions + LEP constraints + Database DCP constraints
         // Note: dcpConstraints are just placeholders, real DCP data comes from API
@@ -1273,7 +1256,10 @@ export function ComplianceDashboard({
               // a property in ANY council whose Land Application Map response carried no
               // EPI name. Found by this change's own test ratchet, not by the
               // fabricated-citation counter, which does not match a plain JSX fallback.
-              const lepName = lepLayer?.results?.[0]?.['EPI Name'] || null;
+              // asTrimmedString, not `|| null`: the Portal field is untyped, so a
+              // whitespace-only name was truthy and rendered a BLANK instrument
+              // followed by " - Zoning, Building Envelope, Heritage".
+              const lepName = asTrimmedString(lepLayer?.results?.[0]?.['EPI Name']);
               return (
                 <>
                   <span className="font-bold">

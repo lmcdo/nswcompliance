@@ -47,6 +47,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { asTrimmedString, instrumentClauseLabel } from '@/lib/citation-display';
 import { lmrCitationText } from '@/components/compliance/ConstraintArithmeticCard';
 import { LandUseZoningCard } from '@/components/compliance/LandUseZoningCard';
+import { deduplicateConstraints } from '@/lib/compliance/constraint-dedup';
+import type { ComplianceConstraint } from '@/components/compliance/ComplianceDashboard';
 
 /** Every literal removed on 2026-10-06. None may be produced from absent data. */
 const REMOVED_LITERALS = [
@@ -297,6 +299,85 @@ const TOUCHED: Array<[string, string[]]> = [
   ['LandUseZoningCard', ['components', 'compliance', 'LandUseZoningCard.tsx']],
   ['MinimumLotSizeCard', ['components', 'compliance', 'MinimumLotSizeCard.tsx']],
 ];
+
+describe('removing the invented clause must not make two controls collide', () => {
+  // Cross-review finding, 2026-10-07: the invented 'Clause 4.3' / 'Clause 4.4'
+  // were doing unintended work as the deduplication key. With both nulled, a
+  // Portal response naming an instrument but no clause gave height and FSR the
+  // same key, and FSR was silently dropped from the assessment.
+  const constraint = (
+    type: ComplianceConstraint['type'],
+    value: number,
+    unit: string,
+    clause: string | null,
+    document: string | null,
+  ): ComplianceConstraint => ({
+    type,
+    value,
+    unit,
+    source: { clause, document, authority_level: 'LEP' },
+  });
+
+  it('keeps height and FSR when the Portal named an instrument but no clause', () => {
+    const kept = deduplicateConstraints([
+      constraint('height', 8.5, 'm', null, 'Bayside LEP 2021'),
+      constraint('fsr', 0.5, ':1 sq m', null, 'Bayside LEP 2021'),
+    ]);
+    expect(kept).toHaveLength(2);
+    expect(kept.map(c => c.type)).toEqual(['height', 'fsr']);
+  });
+
+  it('keeps them when the response names neither instrument nor clause', () => {
+    const kept = deduplicateConstraints([
+      constraint('height', 8.5, 'm', null, null),
+      constraint('fsr', 0.5, ':1 sq m', null, null),
+    ]);
+    expect(kept).toHaveLength(2);
+  });
+
+  it('still drops a genuine repeat of the same control', () => {
+    // The positive control: if this passed too, the key would just be unique
+    // per row and the function would be deduplicating nothing at all.
+    const kept = deduplicateConstraints([
+      constraint('height', 8.5, 'm', null, 'Bayside LEP 2021'),
+      constraint('height', 8.5, 'm', null, 'Bayside LEP 2021'),
+    ]);
+    expect(kept).toHaveLength(1);
+  });
+
+  it('still prefers provision_id when there is one', () => {
+    const a = { ...constraint('height', 8.5, 'm', null, null), provision_id: 7 };
+    const b = { ...constraint('fsr', 0.5, ':1 sq m', null, null), provision_id: 7 };
+    expect(deduplicateConstraints([a, b])).toHaveLength(1);
+  });
+});
+
+describe('an untyped Portal value cannot reach the citation as-is', () => {
+  // Cross-review finding, 2026-10-07: these four read from `planningLayers`,
+  // which is `any`, and were assigned straight to `string | null`. A numeric
+  // clause reaches ConstraintCard's `.match()` and crashes the surface; a
+  // whitespace clause renders a blank source.
+  const src = () => readStripped('components', 'compliance', 'ComplianceDashboard.tsx');
+
+  it.each([
+    ['heightClause', 'Legislative Clause'],
+    ['heightEpi', 'EPI Name'],
+    ['fsrClause', 'Legislative Clause'],
+    ['fsrEpi', 'EPI Name'],
+  ])('%s is guarded by asTrimmedString', (name) => {
+    // Requires the CALL on that binding, not merely the identifier somewhere.
+    expect(src()).toMatch(new RegExp(`const ${name}\\s*=\\s*asTrimmedString\\(`));
+  });
+
+  it('the LEP section heading is guarded too', () => {
+    expect(src()).toMatch(/const lepName\s*=\s*asTrimmedString\(/);
+  });
+
+  it('a whitespace-only instrument is treated as absent, not rendered blank', () => {
+    expect(asTrimmedString('   ')).toBeNull();
+    expect(instrumentClauseLabel('   ', '  ')).toBeNull();
+  });
+});
 
 describe('no touched file substitutes a citation any more', () => {
   it.each(TOUCHED)('%s keeps the code its assertions depend on', (_name, parts) => {
