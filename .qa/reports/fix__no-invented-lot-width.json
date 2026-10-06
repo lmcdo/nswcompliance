@@ -107,12 +107,12 @@
     "db_reset": "Nothing to reset. No migration, no write, no seed; this change touches TypeScript only and reads no database.",
     "secrets": "No secret, token, key or environment variable is added, read or referenced by this change.",
     "other_repo": "No other repository is affected. Everything changed lives under frontend-nextjs in this repo.",
-    "manual_verify": "Worth one look on a real address whose frontage we do not hold: the SEPP and LEP tab should show the LMR section with a grey note saying the frontage minimums have not been checked, and the eligibility card should ask for lot size and frontage width rather than listing eligible housing types. Carried forward separately: lib/setbacks/validator.ts still holds a hardcoded zone-to-lot-area table in dead code; lib/assessment/api-client.ts line 105 posts zone where the schema requires property_zone so that call has always returned 400; LIGHT_RAIL_WALKABLE_M is 600 against the instrument's 800 and belongs to the transport scope, not this change; and 13 fabricated citations remain repo-wide now that PRs 1229 and 1230 have landed."
+    "manual_verify": "Worth one look on a real address whose frontage we do not hold: the SEPP and LEP tab should show the LMR section with a grey note saying the frontage minimums have not been checked, and the eligibility card should ask for lot size and frontage width rather than listing eligible housing types. CARRIED FORWARD, each measured and none fixed here: battleaxeAwareLotWidth returns the access handle for a battleaxe with no usable head width, which is pre-existing, identical on origin/main, asserted by two pre-existing tests, and rated HIGH by cross-review -- now pinned as a KNOWN DEFECT test and needing its own change because CdcComplianceCalculator shares the function; lib/setbacks/validator.ts still holds a hardcoded zone-to-lot-area table in dead code; lib/assessment/api-client.ts line 105 posts zone where the schema requires property_zone so that call has always returned 400; LIGHT_RAIL_WALKABLE_M is 600 against the instrument's 800 and belongs to the transport scope; and 13 fabricated citations remain repo-wide now that PRs 1229 and 1230 have landed."
   },
   "cross_review": {
     "tool": "gpt-5.6-sol, pre-push, 2026-10-06",
-    "rounds": 2,
-    "findings": 2,
+    "rounds": 3,
+    "findings": 3,
     "verdicts": [
       {
         "finding": "MEDIUM null-guard, StateLevelControls.tsx:1029 (round 1) -- the missing-frontage notice checks only for null while the adjacent eligibility logic treats every falsy width as missing, so a 0 or NaN sentinel is handled inconsistently and partially silently.",
@@ -121,6 +121,10 @@
       {
         "finding": "MEDIUM correctness, StateLevelControls.tsx:517 (round 2) -- normalising only after the nullish chain lets an invalid earlier candidate such as 0, NaN, Infinity or a negative prevent a later valid frontage from being used.",
         "verdict": "CONFIRMED and FIXED, and it was a defect in my own round-1 fix rather than in the original code. battleaxeAwareLotWidth could return NaN, because its final check was a typeof test and typeof NaN is number; that NaN then won the chain and my trailing normaliser turned it into null, discarding a valid 13 metre frontage sitting in the next candidate. I had traded a false number for a false unavailable, which is quieter and still wrong. Each candidate is now normalised before the comparison, the resolver lives in the geometry module where it can be unit-tested, and the behaviour is asserted directly rather than through the component's source."
+      },
+      {
+        "finding": "HIGH silent-failure, lib/geometry/effective-lot-width.ts:59 (round 3) -- for a battleaxe lot with no valid head width the function still returns the positive access-handle frontage as the effective lot width, so a 3 metre handle would exclude every LMR development type while a valid 18 metre candidate sits unconsulted in the next position.",
+        "verdict": "CONFIRMED as a real defect, but PRE-EXISTING and NOT fixed here, and this change does not alter it. Measured against origin/main rather than argued: main carries the identical fallback line, two pre-existing tests in this very suite already assert it (18.6 when the head width is null, 15 when it is zero or negative), and the caller's previous expression battleaxeAwareLotWidth(...) followed by a nullish fallback to the geometry width stopped at a non-nullish handle exactly as firstMeasuredWidth now does. Same stopping point before and after. The defect is real and contradicts the module's own header, which says the handle understates a battleaxe and can wrongly fail or pass eligibility. My one genuine fault was a new test that blessed the behaviour as intended; it is relabelled KNOWN DEFECT with the evidence above, and a second test pins the 3 metre consequence so the blast radius is on record. The fix is its own change because CdcComplianceCalculator reads the same function for CDC frontage and depth, so returning null for a battleaxe without a head width needs a decision about that surface too."
       }
     ]
   }

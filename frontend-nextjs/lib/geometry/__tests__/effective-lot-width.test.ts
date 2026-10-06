@@ -193,7 +193,24 @@ describe('a NaN or 0 frontage no longer escapes battleaxeAwareLotWidth', () => {
     ).toBeNull();
   });
 
-  it('falls back to the frontage when a battleaxe head width is NaN', () => {
+  /**
+   * ⚠ PINS A KNOWN DEFECT, and does not endorse it.
+   *
+   * For a battleaxe with no usable head width this returns the ACCESS HANDLE,
+   * which this module's own header calls out as understating the lot and able to
+   * "wrongly fail or pass eligibility". Raised as HIGH by cross-review on
+   * 2026-10-06 and NOT fixed here, because it is pre-existing and this change
+   * does not alter it: `origin/main` carries the identical fallback, two
+   * pre-existing tests above assert it (18.6 and 15), and the caller's previous
+   * `battleaxeAwareLotWidth(...) ?? geometry.frontageWidth` stopped at a
+   * non-nullish handle exactly as firstMeasuredWidth now does.
+   *
+   * It is pinned so the behaviour is visible rather than incidental. The fix is
+   * its own change: return null for a battleaxe with no head width, and decide
+   * what CdcComplianceCalculator should then do, since it reads the same function
+   * for CDC frontage and depth.
+   */
+  it('KNOWN DEFECT: a battleaxe with a NaN head width returns the access handle', () => {
     expect(
       battleaxeAwareLotWidth({
         lotType: 'battleaxe',
@@ -201,6 +218,19 @@ describe('a NaN or 0 frontage no longer escapes battleaxeAwareLotWidth', () => {
         battleaxe: { mainLotWidth: NaN },
       } as never),
     ).toBe(18.6);
+  });
+
+  it('KNOWN DEFECT: the handle can be narrow enough to exclude every LMR type', () => {
+    // The consequence cross-review named: a 3m handle against minimums of 12, 12
+    // and 15 excludes all three, and firstMeasuredWidth stops there rather than
+    // consulting a later candidate. Asserted so the blast radius is on record.
+    const handle = battleaxeAwareLotWidth({
+      lotType: 'battleaxe',
+      frontage: 3,
+      battleaxe: { mainLotWidth: NaN },
+    } as never);
+    expect(handle).toBe(3);
+    expect(firstMeasuredWidth(handle, 18)).toBe(3);
   });
 
   it.each<[string, unknown]>([
