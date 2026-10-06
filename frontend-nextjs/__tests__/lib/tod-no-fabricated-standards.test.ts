@@ -105,8 +105,25 @@ describe('a map feature with nothing in it', () => {
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
+/**
+ * Read a source file with its COMMENTS STRIPPED.
+ *
+ * The first version of these assertions scanned raw source, so the comment quoting
+ * s155(5) beside the JSX could satisfy them even after the visible paragraph was
+ * deleted. Forcing that deletion did fail the suite — but only because the comment
+ * happens to say "maximum building height" while the rendered text says "maximum
+ * height", so the regex missed it by one word. A comment worded like the paragraph
+ * would have kept the suite green while users lost the caveat. Cross-review caught
+ * this, and it is the same flaw already fixed in
+ * __tests__/compliance/sepp-parking-cards-match-law.test.tsx — written again in a new
+ * file, which is why the helper now lives here rather than in each assertion.
+ */
 const read = (...parts: string[]) =>
-  readFileSync(join(__dirname, '..', '..', ...parts), 'utf8').replace(/\s+/g, ' ');
+  readFileSync(join(__dirname, '..', '..', ...parts), 'utf8')
+    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, ' ')   // {/* JSX comment */}
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')                 // /* block */
+    .replace(/^\s*\/\/.*$/gm, ' ')                      // // line
+    .replace(/\s+/g, ' ');
 
 describe('s155(5) — the standard yields to a higher one elsewhere', () => {
   // s155(5): "This section does not apply to the extent a provision of another chapter of
@@ -119,7 +136,7 @@ describe('s155(5) — the standard yields to a higher one elsewhere', () => {
   ])('%s discloses the subsection (5) exception', (file) => {
     const src = read(file);
     expect(src).toMatch(/155\(5\)/);
-    expect(src).toMatch(/permits a greater (maximum )?height or floor space ratio/i);
+    expect(src).toMatch(/permits a greater height or floor space ratio/i);
   });
 
   it('does not claim section 155 "sets" the controls', () => {
@@ -142,5 +159,38 @@ describe("the SEE parking control cites parking provisions, not the TOD chapter"
     // An earlier edit put 'Chapter 5' in this clause field. The requirement beside it is
     // about parking rates, so Chapter 5 sends a reader to the wrong chapter entirely.
     expect(src).not.toMatch(/clause: 'SEPP \(Housing\) 2021 — Transport Oriented Development, Chapter 5'/);
+  });
+});
+
+describe('the mapped-TOD panel does not tell the reader to wait for a rezoning', () => {
+  // s155 operates for an area already on the Transport Oriented Development Sites Map.
+  // "LEP controls remain in force until rezoning is gazetted" belongs to the ACCELERATED
+  // precinct panel, which does await one; in the mapped panel it inverts the meaning and
+  // would have a reader treat a lower LEP limit as governing. Cross-review, 2026-10-06.
+  const src = read('components/compliance/StateLevelControls.tsx');
+  // The mapped panel runs from its own heading to the accelerated panel's rezoning
+  // sentence. 'Accelerated TOD Precinct' is NOT the end marker — that string appears
+  // earlier in the file too, which made this slice empty and the assertion vacuous.
+  const start = src.indexOf('TOD development standards');
+  const end = src.indexOf('remain in force until the rezoning is gazetted');
+  const mapped = src.slice(start, end);
+
+  it('slices a non-empty region, so the assertions below are not vacuous', () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    expect(mapped.length).toBeGreaterThan(200);
+  });
+
+  it('says the controls are read together, not sequenced by a rezoning', () => {
+    expect(mapped).toMatch(/Read the LEP and SEPP controls together/);
+    expect(mapped).toMatch(/including subsection \(5\)/);
+  });
+
+  it('does not claim LEP controls hold until rezoning', () => {
+    expect(mapped).not.toMatch(/remain in force until rezoning is gazetted/);
+  });
+
+  it('leaves the accelerated panel saying it, where it IS correct', () => {
+    expect(src).toMatch(/remain in force until the rezoning is gazetted/);
   });
 });

@@ -1286,8 +1286,17 @@ export function StateLevelControls({
                         href={seppHousingProvisionUrl('sec.155')}
                         label="View SEPP (Housing) 2021 section 155 on NSW Legislation"
                       />
+                      {/* "LEP controls remain in force until rezoning is gazetted" stood
+                        * here, carried over from the ACCELERATED TOD panel below, where it is
+                        * correct because those precincts await a rezoning. This panel is for
+                        * an area already on the Transport Oriented Development Sites Map, so
+                        * s155 operates now — telling the reader to wait for a rezoning
+                        * inverts it, and would have them treat a lower LEP limit as governing
+                        * when the SEPP standard may apply. */}
                       <p className="text-xs text-purple-500 mt-1.5">
-                        LEP controls remain in force until rezoning is gazetted.
+                        Read the LEP and SEPP controls together — which standard applies
+                        depends on the proposal and on the operation of section 155,
+                        including subsection (5).
                       </p>
                     </div>
                   )}
