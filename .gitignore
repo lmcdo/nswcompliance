@@ -221,6 +221,7 @@ diagnose_*.py
 !CHANGELOG.md
 !screencast-*.md
 !SETUP.md
+!SECURITY.md
 !SCREENCAST_API_CHECKLIST.md
 
 # BROAD: Ignore ALL root-level Python scripts except core
@@ -423,6 +424,12 @@ dcp_*.txt
 
 # Environment backups
 .env*.backup
+
+# Local preservation bundles created during repository audits
+.audit-preservation-*.bundle
+
+# Local public-release export; reviewed separately before publication
+/.public-release/
 
 # Root-level junk files
 version
