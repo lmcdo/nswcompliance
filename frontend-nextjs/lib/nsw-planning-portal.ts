@@ -181,13 +181,43 @@ export interface LocalProvision {
  */
 export interface TODPrecinctInfo {
  inTODArea: boolean;
- precinctName: string;
+ /** The map's own PRECINCT value, e.g. "KOGARAH". Undefined when the layer omits it. */
+ precinctName?: string;
  stationName?: string;
  stationDistance?: number;
- maxFSRBonus?: number;
- maxHeightBonus?: number;
- legislativeClause: string;
- seppReference: string;
+ /** The map's own EPI_NAME, e.g. "State Environmental Planning Policy (Housing) 2021". */
+ seppReference?: string;
+ /** The amending instrument that mapped this area, from AMENDMENT. */
+ amendment?: string;
+ /**
+  * maxFSRBonus / maxHeightBonus / legislativeClause are GONE, not optional.
+  *
+  * s155 of SEPP (Housing) 2021 sets the TOD height and floor space ratio, and both
+  * depend on WHAT IS PROPOSED, which an address cannot tell us:
+  *   s155(2) residential flat building ................. 22m
+  *   s155(3) seniors housing or shop top housing ....... 24m
+  *   s155(4) FSR for those types, in a relevant
+  *           residential or employment zone ............ 2.5:1
+  *   s155(5) does not apply where another instrument permits more
+  *
+  * So there is no single number to report for a property. Until 2026-10-06 this
+  * interface carried one anyway, populated by
+  *     maxFSRBonus:    ...FSR    ? parseFloat(...) : 2.5
+  *     maxHeightBonus: ...HEIGHT ? parseFloat(...) : 24
+  *     legislativeClause: ...Clause || 'Clause 4.4'
+  * and the TOD Sites Map (MapServer/3) has NO FSR, height or clause field at all —
+  * its fields are exactly OBJECTID, EPI_NAME, PUBLISHED_DATE, COMMENCED_DATE,
+  * AMENDMENT, MAP_NAME, LAY_CLASS, LABEL, PRECINCT, SHAPE, verified against the
+  * layer's own metadata. None of the keys that code tested for existed, so those
+  * were not fallbacks for an occasional gap: they were the only code path, firing
+  * for every one of the layer's 9,562 TOD areas. 24m is also the wrong figure for a
+  * residential flat building, which s155(2) caps at 22m, and 'Clause 4.4' is the
+  * ordinary LEP floor-space clause — nothing to do with transport oriented
+  * development, whose standard is s155.
+  *
+  * A consumer needing the standard must take the development type as an input and
+  * read s155. It cannot be read off this map.
+  */
 }
 
 /**
@@ -815,20 +845,19 @@ export class NSWPlanningPortalService {
  case 'TOD Precinct':
  case 'SEPP Housing 2021 - TOD':
  case 'SEPP (Housing) 2021':
+ // Field names are the TOD Sites Map's own, verified against MapServer/3 metadata:
+ // PRECINCT ("KOGARAH"), EPI_NAME, AMENDMENT. The spaced variants the old code read
+ // ('Precinct Name', 'EPI Name') do not exist on this layer, so every one of them
+ // fell through to a hardcoded literal. Undefined is returned where the layer is
+ // silent — a caller renders nothing rather than a placeholder.
  constraints.todPrecinct = {
  inTODArea: true,
- precinctName: result['Precinct Name'] || result['PrecinctName'] ||
- result['Station Name'] || result['StationName'] ||
- result['Name'] || 'TOD Precinct',
+ precinctName: result['PRECINCT'] || result['Precinct Name'] || result['PrecinctName'] || undefined,
  stationName: result['Station Name'] || result['StationName'] || result['STATION_NAME'],
  stationDistance: result['Distance to Station'] || result['StationDistance'] ||
  result['DISTANCE'] ? parseFloat(result['Distance to Station'] || result['StationDistance'] || result['DISTANCE']) : undefined,
- maxFSRBonus: result['Maximum FSR'] || result['Max FSR'] || result['FSR'] ?
- parseFloat(result['Maximum FSR'] || result['Max FSR'] || result['FSR']) : 2.5,
- maxHeightBonus: result['Maximum Height'] || result['Max Height'] || result['HEIGHT'] ?
- parseFloat(result['Maximum Height'] || result['Max Height'] || result['HEIGHT']) : 24,
- legislativeClause: result['Legislative Clause'] || result['Clause'] || 'Clause 4.4',
- seppReference: result['EPI Name'] || result['SEPP'] || 'SEPP (Housing) 2021'
+ seppReference: result['EPI_NAME'] || result['EPI Name'] || result['SEPP'] || undefined,
+ amendment: result['AMENDMENT'] || undefined
  };
  break;
 

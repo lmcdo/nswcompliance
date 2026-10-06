@@ -315,21 +315,18 @@ export default function AssessmentPage() {
                         </span>
                       </div>
                       <p className="text-sm text-blue-800 mb-2">
-                        {selectedProperty.constraints.todPrecinct.precinctName}
+                        {selectedProperty.constraints.todPrecinct.precinctName
+                          ?? 'Precinct not named on the Transport Oriented Development Sites Map'}
                       </p>
+                      {/* The two tiles that stood here printed "Max FSR 2.5:1" and
+                          "Max Height 24m" for every TOD property, from literals in
+                          nsw-planning-portal.ts — the map carries no FSR or height field,
+                          so those were not fallbacks but the only code path. s155 makes
+                          both depend on what is proposed (22m for a residential flat
+                          building, 24m for seniors or shop top housing, 2.5:1 FSR for
+                          those types in a relevant zone), which an address cannot tell us.
+                          The standard is named and linked instead of being guessed at. */}
                       <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="bg-white rounded p-2">
-                          <p className="text-gray-600 text-xs">Max FSR</p>
-                          <p className={`font-semibold ${StatusColors.TOD.text}`}>
-                            {selectedProperty.constraints.todPrecinct.maxFSRBonus || 2.5}:1
-                          </p>
-                        </div>
-                        <div className="bg-white rounded p-2">
-                          <p className="text-gray-600 text-xs">Max Height</p>
-                          <p className={`font-semibold ${StatusColors.TOD.text}`}>
-                            {selectedProperty.constraints.todPrecinct.maxHeightBonus || 24}m
-                          </p>
-                        </div>
                         {selectedProperty.constraints.todPrecinct.stationDistance && (
                           <div className="bg-white rounded p-2 col-span-2">
                             <p className="text-gray-600 text-xs">Distance to Station</p>
@@ -339,9 +336,27 @@ export default function AssessmentPage() {
                           </div>
                         )}
                       </div>
-                      <p className={`text-xs ${StatusColors.TOD.icon} mt-2`}>
-                        {selectedProperty.constraints.todPrecinct.seppReference || 'SEPP (Housing) 2021'}
+                      <p className="text-xs text-gray-700 mt-2">
+                        Section 155 identifies height and floor space ratio standards for
+                        this area, which differ by what is proposed — a residential flat
+                        building, or seniors or shop top housing. Under section 155(5) the
+                        section does not apply to the extent another chapter of SEPP
+                        (Housing) 2021, or another environmental planning instrument,
+                        permits a greater height or floor space ratio.{' '}
+                        <a
+                          href="https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#sec.155"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline"
+                        >
+                          Read section 155 on NSW Legislation
+                        </a>
                       </p>
+                      {selectedProperty.constraints.todPrecinct.seppReference && (
+                        <p className={`text-xs ${StatusColors.TOD.icon} mt-2`}>
+                          {selectedProperty.constraints.todPrecinct.seppReference}
+                        </p>
+                      )}
                     </div>
                   )}
 
