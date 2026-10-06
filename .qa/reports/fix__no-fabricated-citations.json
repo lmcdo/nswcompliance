@@ -1,0 +1,94 @@
+{
+  "tier": "standard",
+  "justification": "Removes every fabricated regulatory citation from the compliance components: a clause number or an instrument name substituted when the Planning Portal response, or a database row, carried none. Two of the thirteen are on a LIVE surface (LandUseZoningCard via LepControls.tsx:84 and ConstraintArithmeticCard via LepControls.tsx:196, both from app/assessment/page.tsx), so a user could see them. Not Critical: no write, no migration, no served regulatory quote changes; the figures displayed beside each control are unaffected, only the citation attached to them. Not Minor: it narrows source.clause and source.document from string to string|null across three duplicate contracts, changes when a citation badge renders at all, and removes a hardcoded Inner West LEP document id that was posted to /api/lep/full-text for every property in NSW.",
+  "commit_hash": "d52583e1",
+  "files": [
+    "frontend-nextjs/lib/citation-display.ts",
+    "frontend-nextjs/components/compliance/ComplianceDashboard.tsx",
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+    "frontend-nextjs/components/compliance/ConstraintCard.tsx",
+    "frontend-nextjs/components/compliance/HeritageDetails.tsx",
+    "frontend-nextjs/components/compliance/LandUseZoningCard.tsx",
+    "frontend-nextjs/components/compliance/LegalTextPanel.tsx",
+    "frontend-nextjs/components/compliance/MinimumLotSizeCard.tsx",
+    "frontend-nextjs/__tests__/components/compliance/no-fabricated-citations.test.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "lib/citation-display.ts already existed to decide whether a DCP clause number may be shown at all, written for DQ-111 when the AI extractor's clause numbers turned out to be unchecked. The new instrumentClauseLabel went there rather than into a fourth copy, and the heritage card's local version now delegates to it. The backend that feeds the live LMR citation states the same rule in its own docstring at services/intelligence_brief.py: no citation means no claim, the product never asserts a regulatory fact without a source. The frontend was contradicting the principle it was built on.",
+    "assumption_mismatch": "The baseline was wrong twice over, and both corrections came from measurement. The counter script reported 10 fabricated citations; running the same patterns over the same files found 12, because the script reads git show origin/main and its per-file reporting had dropped two. The real figure was 13: my own new test ratchet caught a thirteenth that no counter can see, a plain JSX fallback naming the Inner West LEP in the section header. Two shapes are invisible to the counter entirely: a DEFAULT PARAMETER, because the literal sits in the component that receives the value rather than the one that passes it, and a hardcoded instrument in JSX text, which is not a fallback expression at all.",
+    "new_vs_existing": "One new exported function in an existing module, and three deletions of duplicated logic: HeritageDetails now delegates its label to it, and the zoning and minimum-lot-size cards use it instead of their own default parameters. ComplianceConstraint is declared three times in this tree, in ComplianceDashboard, again in ConstraintCard, and a third shape as SelectedProvision in LegalTextPanel; tsc found the second and third the moment the first was made nullable, which is the only reason they were not missed. Deliberately not fixed: GeneralDCPSection.tsx:753 states that properties under 450 square metres cannot be subdivided under the Inner West LEP, whatever the council. Same class, but a control rather than a citation, so fixing it means sourcing each council's real minimum lot size."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-fabricated-citations.test.tsx && npx tsc --noEmit && python C:/Users/lawre/.claude/jobs/725925e0/tmp/mutate_cite.py && cd .. && python C:/Users/lawre/.claude/jobs/725925e0/tmp/count_compare.py",
+    "fails_when": "The suite goes red if any of the thirteen literals is produced from absent data, if a citation badge renders when it names neither instrument nor clause, if the hardcoded LEP document id returns to the full-text lookup, if the honest 'Clause Reference Not Available' message is deleted, or if comment stripping ever again removes the code an assertion depends on. count_compare.py fails the goal if the working tree holds more than the one honest fallback.",
+    "observed_red": "41 of 41 tests in this suite pass on clean code; npx tsc --noEmit exits 0; the full frontend suite is 120 suites and 1778 tests with 0 failures. count_compare.py prints 'origin/main: 12   working tree: 1', the 1 being the honest message. The evidence is the mutation harness: 12 mutations applied one at a time and reverted byte-for-byte, 12 of 12 CAUGHT, 0 holes. Its FIRST run reported 3 holes, and every one was a real gap that review had not found. Two were the same cause: the comment-stripping helper copied from the earlier suites cut ComplianceDashboard from 66,075 characters to 17,106, so reintroducing a clause literal changed nothing because the line was no longer in the searched text; its length check passed because 17,106 is still long. The third was that making the citation badge unconditional renders an EMPTY badge, which contains none of the forbidden literals, so every text assertion still passed. All three are closed: the stripper uses the minimal block-comment matcher, each file names markers that must survive stripping, and the badge is asserted by element count with a positive control."
+  },
+  "functions": [
+    {
+      "name": "instrumentClauseLabel",
+      "file_line": "frontend-nextjs/lib/citation-display.ts:21",
+      "input": "An instrument name and a clause reference, either of which may be null, undefined or whitespace, as the Planning Portal supplies them.",
+      "output": "The joined badge text when both are known, or whichever single one is known, so the badge states exactly what the source stated and nothing more.",
+      "if_none": "Returns null rather than a placeholder, which is what lets each caller drop the badge entirely instead of rendering a slot that names no instrument and cites no clause."
+    },
+    {
+      "name": "lmrCitationText",
+      "file_line": "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx:33",
+      "input": "The LMR source document, which is nullable at its origin because services/housing_sepp_eligibility.py defaults it to None, and the source clause, which the caller has already guarded as present.",
+      "output": "The document followed by the clause when the document is known, so a reader can see which instrument the higher limit rests on.",
+      "if_none": "Falls back to the bare clause reference rather than naming an instrument nobody recorded, replacing a hardcoded SEPP (Housing) 2021 that was usually right and therefore never questioned."
+    },
+    {
+      "name": "lepMetadataFrom",
+      "file_line": "frontend-nextjs/components/compliance/ComplianceDashboard.tsx:48",
+      "input": "The Portal's EPI name and legislative clause for the height or floor space ratio layer, each of which may be absent from the response.",
+      "output": "The document id and bare reference number used to look the clause text up, derived from the instrument the Portal actually named for this property.",
+      "if_none": "Returns undefined so no lookup happens at all. It previously hardcoded the Inner West LEP document id with clause 4.3 or 4.4 for every property in NSW, meaning a lot in any other council was served Inner West clause text."
+    }
+  ],
+  "values": "N/A -- no value is read from a database or an API by this change. Every figure removed was a literal in source, and the replacements read fields the Planning Portal response already carried.",
+  "queries": "N/A -- no database query is added or modified. One lookup key posted to /api/lep/full-text is now derived from the property's own instrument instead of being hardcoded, which changes what is asked for but adds no query.",
+  "break_it": [
+    {
+      "scenario": "A clause or instrument literal is reintroduced anywhere, in any of the three shapes: a fallback expression, a default parameter, or hardcoded JSX text.",
+      "what_happens": "The ratchet asserts all three shapes are absent from every touched file, and nine separate mutations reintroduce specific literals. Each is caught.",
+      "mitigated": true,
+      "how": "Three separate patterns, because one would only have found the fallback shape; the default-parameter and JSX-text shapes are what the counter script misses.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-fabricated-citations.test.tsx -t 'has no fallback to a regulatory literal' -- or run the harness rows that begin 'bring back'."
+    },
+    {
+      "scenario": "The guard is implemented by blacklisting strings, so a Portal response that genuinely says Clause 4.3 stops showing Clause 4.3.",
+      "what_happens": "A positive assertion requires a supplied value to pass through unchanged, including one of the removed literals, so the fix cannot be a denylist.",
+      "mitigated": true,
+      "how": "Asserted directly on instrumentClauseLabel with a real clause supplied, alongside the negative cases.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-fabricated-citations.test.tsx -t 'passes a supplied value through unchanged'."
+    },
+    {
+      "scenario": "A citation badge renders when it has nothing to say, so the user sees a labelled source slot that is empty.",
+      "what_happens": "The render test asserts zero badge elements when there is neither instrument nor clause, and exactly one when there is a citation. Text assertions alone did NOT catch this: the harness showed that making the badge unconditional renders an empty badge containing none of the forbidden literals, so every text check still passed.",
+      "mitigated": true,
+      "how": "An assertion on the element count rather than on the text, with a positive control so it can fail.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-fabricated-citations.test.tsx -t 'renders NO badge at all' -- or the harness row 'render the badge even when it names nothing'."
+    },
+    {
+      "scenario": "Comment stripping silently deletes the code an assertion depends on, so the ratchet passes while checking nothing.",
+      "what_happens": "This happened. The helper copied from the earlier suites led with a JSX-comment rule that spans from any brace to a later comment terminator, cutting ComplianceDashboard from 66,075 characters to 17,106 and removing both blocks under test. Two mutations reported as holes because the mutated lines were no longer in the searched text. The rule is replaced with the minimal block-comment matcher, which cannot cross a comment terminator, and each file now names markers that must survive stripping.",
+      "mitigated": true,
+      "how": "A length check was not a non-vacuity guard, because the truncated file was still 17,106 characters. Naming the specific code each file's assertions depend on is the only check that fails when the text is cut. Measured on every other file these suites read: the old rule lost no marker, so the merged suites were lucky rather than wrong.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-fabricated-citations.test.tsx -t 'keeps the code its assertions depend on' -- then re-run the harness rows 'bring back Clause 4.3 for height' and 'bring back Clause 4.4 for FSR', which were holes before the reader was fixed."
+    },
+    {
+      "scenario": "A later sweep treats the honest message as part of this class and deletes it, turning a stated absence into silence.",
+      "what_happens": "'Clause Reference Not Available' states the absence rather than filling it, so it is correct. A mutation deletes it and the suite goes red.",
+      "mitigated": true,
+      "how": "An explicit positive assertion that the message is present, plus a harness row that removes it.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-fabricated-citations.test.tsx -t 'the one honest fallback is left alone'."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Nothing to reset. No migration, no write, no seed; this change touches TypeScript only and reads no database.",
+    "secrets": "No secret, token, key or environment variable is added, read or referenced by this change.",
+    "other_repo": "No other repository is affected. Everything changed lives under frontend-nextjs in this repo.",
+    "manual_verify": "Worth one look on a real address outside the Inner West: the SEPP and LEP tab's zoning card should show that property's own LEP and clause, or no badge at all, and never the Inner West LEP. CARRIED FORWARD, measured and not fixed here: GeneralDCPSection.tsx:753 states a 450 square metre subdivision minimum under the Inner West LEP whatever the council, which is a control rather than a citation and needs each council's real minimum; battleaxeAwareLotWidth returns the access handle for a battleaxe with no head width, pre-existing and rated HIGH by cross-review on PR 1231; lib/setbacks/validator.ts holds a hardcoded zone-to-lot-area table in dead code; lib/assessment/api-client.ts line 105 posts zone where the schema requires property_zone, a permanent 400; LIGHT_RAIL_WALKABLE_M is 600 against the instrument's 800, which belongs to the transport scope; and the counter still reports 56 number-type fallbacks across these files, not yet triaged."
+  }
+}
