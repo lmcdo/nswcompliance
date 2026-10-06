@@ -1,0 +1,89 @@
+{
+  "tier": "standard",
+  "justification": "Deletes an invented default lot frontage from a LIVE surface: app/assessment/page.tsx:563 mounts StateLevelControls, which mounts HousingSEPPEligibilityCard. Unlike PR #1230, a user could see this. Not Critical: the figure fed an eligibility display, not a write, a migration or a served regulatory quote, and the fix is predominantly deletion of a constant that was defeating a guard the component already had. Not Minor: it changes which housing types a property is shown as eligible for, narrows a component prop from number to number|null, and changes when the whole LMR section renders.",
+  "commit_hash": "65f5ff0f",
+  "files": [
+    "frontend-nextjs/lib/regulatory-constants.ts",
+    "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+    "frontend-nextjs/components/compliance/HousingSEPPEligibilityCard.tsx",
+    "frontend-nextjs/__tests__/components/compliance/no-invented-lot-width.test.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "HousingSEPPEligibilityCard already handled a missing frontage correctly: its useEffect skips the eligibility fetch on a falsy lotWidth and the component renders a card asking for lot size and frontage width. It also already carries an assessmentStatus of not_assessed, added earlier for exactly this shape of problem. The default of 15 metres meant those guards never ran, so the fix is mostly deletion rather than new logic.",
+    "assumption_mismatch": "I reported to the user that the page printed Frontage 15.0m in the amber panel. Reading the code showed that was wrong: the amber panel renders only when lmrFrontageStatus returns a non-empty excluded list, and a 15 clears all three minimums, so that panel returned null and printed nothing at all. The real harm there is suppression of the caveat, not a wrong number. The wrong number was printed by the eligibility card instead, at a different line. Both are now covered, and the mutation harness separately disproved a third assumption of mine by showing one display line is unreachable.",
+    "new_vs_existing": "One constant deleted, one fallback removed, one prop widened to nullable, one explanatory note added. The LMR section gate was changed from isLMRArea && lotSize && lotWidth to isLMRArea && lotSize: keeping lotWidth in that condition would have newly hidden the entire section for every property whose frontage is unknown, because the invented 15 had made the condition always true. That would trade a false answer for a silent one, so the section stays and the card inside asks for the frontage."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-invented-lot-width.test.tsx && npx tsc --noEmit && python C:/Users/lawre/.claude/jobs/725925e0/tmp/mutate_width.py",
+    "fails_when": "The suite goes red if the constant returns to the shipped NSW_PLANNING_CONSTANTS object under its own name or a renamed one, if any width is substituted at the end of the lotWidth chain, if the LMR section is gated on lotWidth again, if the not-checked note is removed, or if the eligibility fetch runs without a frontage.",
+    "observed_red": "15 of 15 tests pass on clean code; npx tsc --noEmit exits 0; the full frontend suite is 119 suites and 1704 tests with 0 failures. The evidence is the mutation harness: 6 mutations applied one at a time and reverted byte-for-byte, 6 of 6 CAUGHT, 0 holes. A seventh candidate is UNCATCHABLE and is recorded as such in both the harness and the suite rather than being quietly dropped: reverting the frontage summary line to a bare {lotWidth}m fails no test, because a null width skips the fetch and the component early-returns before that line renders. The harness found that; I had assumed it was covered."
+  },
+  "functions": [
+    {
+      "name": "lmrFrontageStatus",
+      "file_line": "frontend-nextjs/lib/see/propertyUtils.ts:170",
+      "input": "A frontage in metres, now only ever a figure taken from cadastral geometry rather than a substituted default, because the caller guards on null before calling it.",
+      "output": "Two lists, excluded and eligible, built by comparing that frontage against the three LMR minimums of 12, 12 and 15 metres.",
+      "if_none": "Unchanged and still takes a plain number; the null case is handled by the caller, which renders an explicit not-checked note instead of calling this at all."
+    },
+    {
+      "name": "StateLevelControls lotWidth resolution",
+      "file_line": "frontend-nextjs/components/compliance/StateLevelControls.tsx:486",
+      "input": "The battleaxe-aware cadastral width, then the geometry frontage, then the estimated width, then the constraints width, each tried in order.",
+      "output": "A measured frontage in metres when any source holds one, typed explicitly as number or null so the compiler keeps the nullability.",
+      "if_none": "Null. It used to be 15, which cleared every LMR minimum; now the component states that the frontage minimums have not been checked."
+    },
+    {
+      "name": "HousingSEPPEligibilityCard",
+      "file_line": "frontend-nextjs/components/compliance/HousingSEPPEligibilityCard.tsx:84",
+      "input": "zoneCode, lotSize and lotWidth, with lotWidth now typed as number or null to match what the caller can actually supply.",
+      "output": "The eligibility list fetched from the housing-sepp route, together with a property summary line that prints the frontage it was given.",
+      "if_none": "Skips the fetch entirely and renders a card saying lot size and frontage width are needed, which is the guard the deleted constant had been defeating."
+    }
+  ],
+  "values": "N/A -- no value is read from a database or an API by this change. The figure removed was a literal constant in source, and the figures it was compared against are the LMR minimums already held in lib/see/propertyUtils.ts.",
+  "queries": "N/A -- no database query is added or modified. Reachability was established by grep over app/, components/ and hooks/, which found app/assessment/page.tsx:563 mounting the component.",
+  "break_it": [
+    {
+      "scenario": "The constant is deleted from source but something still exports a default width under a different name, so a future caller substitutes it again.",
+      "what_happens": "The suite inspects the shipped NSW_PLANNING_CONSTANTS.HOUSING_SEPP object at runtime, asserts the old key is absent, and separately asserts no remaining key matches both DEFAULT and WIDTH or FRONTAGE. Both reintroduction mutations are caught.",
+      "mitigated": true,
+      "how": "A runtime assertion on the exported object rather than a source grep, plus a key-pattern assertion that survives a rename.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-invented-lot-width.test.tsx -t 'gone from the shipped object' -- or run the harness rows 'bring the default lot width constant back' and 'rename the default instead of deleting it'."
+    },
+    {
+      "scenario": "A frontage is unknown and the component silently renders nothing about frontage, so the reader cannot tell the check was skipped.",
+      "what_happens": "An explicit note states that the frontage width is not available and that the minimums for dual occupancy, manor houses and multi dwelling housing have not been checked. Replacing that condition with false fails the suite.",
+      "mitigated": true,
+      "how": "The amber panel only fires on an exclusion, so a separate null branch was added above it; the harness row 'drop the not checked note' proves the assertion bites.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-invented-lot-width.test.tsx -t 'have not been checked' -- or the harness row 'drop the \"not checked\" note, leaving no frontage text at all'."
+    },
+    {
+      "scenario": "Removing the default hides the entire LMR section for every property whose frontage is unknown, because the section gate included lotWidth.",
+      "what_happens": "The gate is asserted to be isLMRArea && lotSize with no lotWidth term, and the old three-term form is asserted absent. Restoring the lotWidth term fails the suite.",
+      "mitigated": true,
+      "how": "The section stays visible and the card inside asks for the frontage, so a false answer is not replaced by a silent one.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-invented-lot-width.test.tsx -t 'does not hide the whole LMR section' -- or the harness row 'hide the whole LMR section when the frontage is unknown'."
+    },
+    {
+      "scenario": "The eligibility check runs anyway on a frontage the property does not have, producing a determination from an input that was never measured.",
+      "what_happens": "Rendering the card with a null frontage asserts that global.fetch was never called and that the ask-for-a-frontage text is shown. Loosening the guard to omit lotWidth fails the suite.",
+      "mitigated": true,
+      "how": "A render test with a mocked fetch asserts the negative, so the guard is proven to fire rather than assumed.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-invented-lot-width.test.tsx -t 'never runs the eligibility check' -- or the harness row 'run the eligibility check without a frontage'."
+    },
+    {
+      "scenario": "A measured frontage is mishandled, so the fix removes the false figure but also stops a real one being shown or sent.",
+      "what_happens": "Rendering with a frontage of 11.4 asserts the request body carries 11.4, asserts it is not 15, and asserts 11.4m appears on screen. A narrow 11 metre frontage is also asserted to exclude all three development types and a 13 metre one to exclude only multi dwelling housing, so the comparison itself is proven live.",
+      "mitigated": true,
+      "how": "A happy-path render test with a mocked route envelope, plus boundary cases at 11, 13 and 15 metres against the real minimums.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-invented-lot-width.test.tsx -t 'prints the measured frontage'."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Nothing to reset. No migration, no write, no seed; this change touches TypeScript only and reads no database.",
+    "secrets": "No secret, token, key or environment variable is added, read or referenced by this change.",
+    "other_repo": "No other repository is affected. Everything changed lives under frontend-nextjs in this repo.",
+    "manual_verify": "Worth one look on a real address whose frontage we do not hold: the SEPP and LEP tab should show the LMR section with a grey note saying the frontage minimums have not been checked, and the eligibility card should ask for lot size and frontage width rather than listing eligible housing types. Carried forward separately: lib/setbacks/validator.ts still holds a hardcoded zone-to-lot-area table in dead code; lib/assessment/api-client.ts line 105 posts zone where the schema requires property_zone so that call has always returned 400; LIGHT_RAIL_WALKABLE_M is 600 against the instrument's 800 and belongs to the transport scope, not this change; and 13 fabricated citations remain repo-wide now that PRs 1229 and 1230 have landed."
+  }
+}
