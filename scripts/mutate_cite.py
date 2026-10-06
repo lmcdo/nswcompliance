@@ -147,6 +147,12 @@ MUTATIONS = [
      '                {constraint.source.document',
      'a blank card title above a real value reads as sourced'),
 
+    ('name the Planning Portal in the absence message again',
+     'components/compliance/ConstraintCard.tsx',
+     "                    ?? 'Source instrument not recorded'}",
+     "                    ?? 'Instrument not named in the Planning Portal response'}",
+     'the card also renders DCP rows that no Portal response supplied'),
+
     # ── the honest one must survive ──
     ('delete the honest "not available" message',
      'components/compliance/ReferencedLegislationAccordion.tsx',

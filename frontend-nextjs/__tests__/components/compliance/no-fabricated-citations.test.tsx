@@ -398,6 +398,14 @@ describe('an untyped Portal value cannot reach the citation as-is', () => {
     expect(text).toMatch(/asTrimmedString\(constraint\.source\.document\)/);
     // And the raw nullish form must be gone, or the guard sits beside the bug.
     expect(text).not.toMatch(/\{\s*constraint\.source\.document\s*\?\?/);
+
+    // Cross-review round 8: the absence message must not name a SOURCE. Both
+    // surfaces render DCP and SEPP constraints built from database rows, which
+    // no Planning Portal response supplied, so "not named in the Planning Portal
+    // response" asserted a provenance nobody recorded -- this change's own
+    // defect class, in the sentence written to prevent it.
+    expect(text).not.toMatch(/not named in the Planning Portal response/);
+    expect(text).toContain('Source instrument not recorded');
   });
 
   it('a whitespace-only instrument is treated as absent, not rendered blank', () => {

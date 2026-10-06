@@ -831,9 +831,14 @@ export function LegalTextPanel({
                 {/* asTrimmedString, not `??`: a document of '' or '   ' is not
                     null, so the fallback never fired and the card rendered a
                     blank title above a real constraint value -- the control
-                    looking sourced while naming no instrument. */}
+                    looking sourced while naming no instrument.
+
+                    Source-NEUTRAL wording: the panel opens on DCP and SEPP
+                    provisions read from the database as well as Portal
+                    constraints, so naming the Planning Portal here asserted a
+                    provenance nobody recorded. */}
                 {asTrimmedString(constraint.source.document)
-                  ?? 'Instrument not named in the Planning Portal response'}
+                  ?? 'Source instrument not recorded'}
               </CardTitle>
               <div className="text-sm text-gray-600 mt-1">
                 {constraint.type.charAt(0).toUpperCase() + constraint.type.slice(1)}: {constraint.value}{constraint.unit}

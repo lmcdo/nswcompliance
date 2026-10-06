@@ -407,9 +407,16 @@ export function ConstraintCard({
                     styling, while `??` passes '' straight through and rendered
                     NOTHING -- an empty italic span beside the figure, which is
                     the blank this message exists to prevent. One guard, both. */}
+                {/* Source-NEUTRAL wording. This said "not named in the Planning
+                    Portal response", but the card also renders DCP and SEPP
+                    constraints built from database rows, which no Portal
+                    response supplied -- so for those the message asserted a
+                    provenance nobody recorded. That is the same defect this
+                    change exists to remove, in the sentence added to prevent
+                    it. Cross-review found it. */}
                 <span className={asTrimmedString(constraint.source.document) ? undefined : 'italic'}>
                   {asTrimmedString(constraint.source.document)
-                    ?? 'Instrument not named in the Planning Portal response'}
+                    ?? 'Source instrument not recorded'}
                 </span>
                 {/* Version badge if provision has version metadata */}
                 {constraint.provisions?.[0]?.version && (
