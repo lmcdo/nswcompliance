@@ -1,12 +1,12 @@
-boto3>=1.43.92
+boto3>=1.43.103
 psycopg2-binary>=2.9.13
 requests>=2.34.2
 python-dotenv>=1.2.3
 beautifulsoup4>=4.12
 lxml>=6.1.1
 pdfplumber>=0.11.10
-pypdf>=6.18.0
-anthropic>=1.5.0
+pypdf>=6.19.0
+anthropic>=1.8.0
 # property-alerts dispatcher reuses services/threat_radar.py, a FastAPI router
 # module — importing it needs fastapi even in the cron context (pydantic already
 # arrives transitively via anthropic).
@@ -14,7 +14,7 @@ fastapi>=0.141.1
 # The AI document reader (AI_MODEL=sol) calls OpenAI through httpx, and the
 # citation proof + page-coverage check read the PDF with PyMuPDF. Missing, every
 # dcp-extract chapter failed with "No module named 'httpx'" (2026-09-25 03:01 UTC).
-openai>=1.0
+openai>=3.20.0
 httpx>=0.27
 pymupdf>=1.24
 # The citation proof reads control labels printed as pictures (Ashfield "PC4.",
