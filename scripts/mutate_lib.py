@@ -124,7 +124,13 @@ def _run_tests(tests):
     for test in tests:
         r = subprocess.run(
             ['npx', 'jest', test, '--silent'],
-            capture_output=True, text=True, shell=True,
+            capture_output=True, text=True,
+            # shell only on Windows, where npx is npx.cmd and needs one. On
+            # POSIX, shell=True with a LIST passes only the first item as the
+            # command and turns the rest into the shell's own positional
+            # arguments, so this ran bare `npx` and never ran jest at all.
+            # The CI runners are Linux. Cross-review found it.
+            shell=(os.name == 'nt'),
             encoding='utf-8', errors='replace',
         )
         if r.returncode != 0:
