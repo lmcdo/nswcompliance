@@ -28,7 +28,17 @@ if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 ROOT = os.getcwd()
-ENV = {**os.environ, 'MSYS_NO_PATHCONV': '1'}
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from qa_report_path import git_env  # noqa: E402
+
+# git_env() is called AT each git call site below rather than hoisted into a
+# constant here. A git hook exports GIT_DIR and GIT_INDEX_FILE and they OVERRIDE
+# cwd, so without the scrub this would read the hook's repository instead of
+# ROOT -- silently, with a confident wrong count (DQ-54). The ratchet in
+# tests/test_git_env_ratchet.py requires the literal call and rejects a constant,
+# deliberately: `env=os.environ.copy()` would satisfy a looser check while
+# scrubbing nothing.
 
 PREFIXES = ('frontend-nextjs/components/compliance/', 'frontend-nextjs/components/tod/')
 EXTRA = (
@@ -59,7 +69,7 @@ def file_list(rev):
         listing = subprocess.run(
             ['git', 'ls-tree', '-r', '--name-only', rev],
             cwd=ROOT, capture_output=True, text=True,
-            encoding='utf-8', errors='replace', env=ENV,
+            encoding='utf-8', errors='replace', env=git_env(),
         ).stdout.splitlines()
         out = [f for f in listing if f.startswith(PREFIXES) or f in EXTRA]
     return [f for f in out if f.endswith(('.tsx', '.ts')) and '__tests__' not in f]
@@ -74,7 +84,7 @@ def read(rev, f):
     return subprocess.run(
         ['git', 'show', '%s:%s' % (rev, f)],
         cwd=ROOT, capture_output=True, text=True,
-        encoding='utf-8', errors='replace', env=ENV,
+        encoding='utf-8', errors='replace', env=git_env(),
     ).stdout
 
 
