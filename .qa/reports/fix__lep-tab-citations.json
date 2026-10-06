@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Removes five invented values that were shown to users as planning controls for any property inside a Transport Oriented Development area. The Transport Oriented Development Sites Map (ArcGIS MapServer/3) carries 9,562 features and its fields are exactly OBJECTID, EPI_NAME, PUBLISHED_DATE, COMMENCED_DATE, AMENDMENT, MAP_NAME, LAY_CLASS, LABEL, PRECINCT, SHAPE. The code read 'Maximum FSR'/'Max FSR'/'FSR', 'Maximum Height'/'Max Height'/'HEIGHT', 'Legislative Clause'/'Clause', 'EPI Name' and 'Precinct Name' -- none of which exist on that layer -- so the ternary and || fallbacks were not cover for an occasional gap, they were the ONLY code path and fired for every mapped area. Users saw 'Max FSR 2.5:1' and 'Max Height 24m' as this property's controls, cited to 'Clause 4.4'. Critical because 24m is wrong on the law (s155(2) caps a residential flat building at 22m) and 'Clause 4.4' is the ordinary LEP floor-space clause, nothing to do with transport oriented development, whose standard is s155.",
- "commit_hash": "ca062ac8",
+ "commit_hash": "33b4c6dd",
  "files": [
   "frontend-nextjs/lib/nsw-planning-portal.ts",
   "frontend-nextjs/app/assessment/page.tsx",
