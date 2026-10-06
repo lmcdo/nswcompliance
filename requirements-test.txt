@@ -1,6 +1,6 @@
 # Test dependencies — install with: pip install -r requirements-test.txt
 # These are the minimum deps needed to run `python -m pytest`
-pytest>=7.0
+pytest>=9.1.1
 pydantic>=2.13.5
 fastapi>=0.141.1,<1.0.0
 hypothesis>=6.0
