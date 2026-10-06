@@ -231,6 +231,15 @@ describe('the setbacks endpoint states no figure it did not derive', () => {
   it('states why a figure is absent', () => {
     expect(src).toMatch(/unavailable_reason/);
   });
+
+  it('gives a reason that is true even when the caller sent a boundary', () => {
+    // Cross-review finding, 2026-10-06: the first wording said buildable area
+    // "needs the lot boundary", which is false for a caller that supplied
+    // lot_geometry -- the boundary was there and this route does not offset
+    // against it. A wrong explanation inside a change about wrong numbers.
+    expect(src).not.toMatch(/needs the lot boundary/);
+    expect(src).toMatch(/does not offset them against a lot boundary/);
+  });
 });
 
 describe('neither setback component invents a dimension or a control', () => {
@@ -303,7 +312,11 @@ describe('no module reintroduces a local latitude constant for area', () => {
 
   it('calculator.ts has one shoelace, and it is the shared one', () => {
     const src = readStripped('lib', 'geometry', 'calculator.ts');
-    expect(src).toMatch(/ringAreaM2\(/);
+    // Via lotGeometryAreaM2, which wraps ringAreaM2 and adds the ring-count
+    // guard. Asserting `ringAreaM2(` specifically was wrong once the second
+    // cross-review finding moved this to the whole-geometry entry point.
+    expect(src).toMatch(/lotGeometryAreaM2\(/);
+    expect(src).toMatch(/from '\.\/mercator'/);
     // The duplicated loop is gone.
     expect(src).not.toMatch(/points\[i\]\.x\s*\*\s*points\[j\]\.y/);
   });
@@ -329,6 +342,18 @@ describe('the buildable-area calculator reports null, not 0, for an unmeasurable
   it('no longer coalesces an unmeasurable ring to zero', () => {
     expect(src).not.toMatch(/ringAreaM2\([^)]*\)\s*\?\?\s*0/);
     expect(src).toMatch(/lotAreaFromGeometry\(geometry: LotGeometry\): number \| null/);
+  });
+
+  it('delegates the whole geometry, so the ring-count guard is not bypassed', () => {
+    // Second cross-review finding on this file, 2026-10-06: it called
+    // ringAreaM2(geometry.rings[0]) directly, which walks straight past
+    // lotGeometryAreaM2's own multi-ring refusal. A lot with a 1,000 m2 outer
+    // ring and a 200 m2 hole reported 1,000 m2 -- in the function written to
+    // stop a hole counting as land.
+    expect(src).toMatch(/return lotGeometryAreaM2\(geometry\);/);
+    expect(src).not.toMatch(/ringAreaM2\(geometry\.rings\[0\]\)/);
+    // And it no longer reaches into rings[0] at all in this method.
+    expect(src).not.toMatch(/lotAreaFromGeometry[\s\S]{0,200}rings\[0\]/);
   });
 
   it('states no buildable figure as 0 beside a note saying it could not be calculated', () => {

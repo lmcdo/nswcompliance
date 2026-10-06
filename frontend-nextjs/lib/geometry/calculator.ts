@@ -14,7 +14,7 @@ interface Point {
  y: number;
 }
 
-import { ringAreaM2, scaleFactorForRing, usableRing } from './mercator';
+import { lotGeometryAreaM2, scaleFactorForRing, usableRing } from './mercator';
 
 // Helper functions for angle conversions.
 // toRadians() was removed with the fixed-latitude constant that was its only
@@ -534,12 +534,15 @@ export class PreciseSetbackCalculator {
   * Returns null rather than the previous 0. `?? 0` turned malformed or missing
   * geometry into a plausible numeric area that callers then rounded and reported
   * as `total_lot_area`. Cross-review finding, 2026-10-06.
+  *
+  * It delegates the WHOLE geometry, not `rings[0]`. Passing the first ring
+  * bypassed lotGeometryAreaM2's own ring-count guard, so a lot with a 1,000 m2
+  * outer ring and a 200 m2 hole reported 1,000 m2 instead of declining -- in the
+  * very function written to stop a hole being counted as land. Second
+  * cross-review finding on the same file, 2026-10-06.
   */
  private lotAreaFromGeometry(geometry: LotGeometry): number | null {
- if (!geometry.rings || geometry.rings.length === 0) {
- return null;
- }
- return ringAreaM2(geometry.rings[0]);
+ return lotGeometryAreaM2(geometry);
  }
 
  // Helper method for angle conversion

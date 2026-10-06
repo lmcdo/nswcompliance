@@ -50,8 +50,12 @@ function buildableAreaNotDerived(lotArea: number | null): BuildableAreaAnalysis 
  buildable_area: null,
  buildable_percentage: null,
  setback_area_lost: null,
+ // Worded to hold whether or not the caller sent a boundary. The first version
+ // said "Buildable area needs the lot boundary", which was untrue for a caller
+ // that supplied lot_geometry: the boundary was present, and this route simply
+ // does not offset against it. Cross-review finding, 2026-10-06.
  unavailable_reason:
- 'Buildable area needs the lot boundary. This request resolved setback rules for the zone only.'
+ 'This request resolved setback rules for the zone. It does not offset them against a lot boundary, so buildable area was not calculated.'
  };
 }
 
