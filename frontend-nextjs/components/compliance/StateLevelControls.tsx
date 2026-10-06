@@ -1249,33 +1249,33 @@ export function StateLevelControls({
                   <p className="text-xs text-purple-700 mt-1">
                     Special parking provisions may apply under SEPP (Housing) 2021
                   </p>
-                  {(propertyData?.constraints?.todPrecinct?.maxFSRBonus ||
-                    propertyData?.constraints?.todPrecinct?.maxHeightBonus) && (
+                  {/* The "TOD Development Standard Bonuses" panel that stood here printed
+                    * Max FSR 2.5:1 and Max Height 24m from literals in
+                    * nsw-planning-portal.ts, cited as 'Clause 4.4'. The Transport Oriented
+                    * Development Sites Map carries no FSR, height or clause field at all
+                    * (its fields are OBJECTID, EPI_NAME, PUBLISHED_DATE, COMMENCED_DATE,
+                    * AMENDMENT, MAP_NAME, LAY_CLASS, LABEL, PRECINCT, SHAPE), so those were
+                    * the only code path and fired for all 9,562 mapped areas. s155 sets 22m
+                    * for a residential flat building and 24m for seniors or shop top
+                    * housing, so no single figure is right for an address, and the TOD
+                    * standard is s155 rather than Clause 4.4. */}
+                  {propertyData?.constraints?.todPrecinct?.inTODArea && (
                     <div className="mt-2 pt-2 border-t border-purple-300">
                       <p className="text-xs font-semibold text-purple-900 mb-1">
-                        TOD Development Standard Bonuses
+                        TOD development standards
                       </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {propertyData?.constraints?.todPrecinct?.maxFSRBonus && (
-                          <div className="bg-white rounded border border-purple-200 px-2 py-1.5">
-                            <p className="text-xs text-purple-600">Max FSR</p>
-                            <p className="text-sm font-bold text-purple-900">
-                              {propertyData.constraints.todPrecinct.maxFSRBonus}:1
-                            </p>
-                          </div>
-                        )}
-                        {propertyData?.constraints?.todPrecinct?.maxHeightBonus && (
-                          <div className="bg-white rounded border border-purple-200 px-2 py-1.5">
-                            <p className="text-xs text-purple-600">Max Height</p>
-                            <p className="text-sm font-bold text-purple-900">
-                              {propertyData.constraints.todPrecinct.maxHeightBonus}m
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                      <p className="text-xs text-purple-800">
+                        Height and floor space ratio are set by section 155 and differ by
+                        what is proposed — 22m for a residential flat building, 24m for
+                        seniors or shop top housing, and a floor space ratio of 2.5:1 for
+                        those types in a relevant residential or employment zone.
+                      </p>
+                      <SeppCitationLink
+                        href={seppHousingProvisionUrl('sec.155')}
+                        label="View SEPP (Housing) 2021 section 155 on NSW Legislation"
+                      />
                       <p className="text-xs text-purple-500 mt-1.5">
-                        {propertyData?.constraints?.todPrecinct?.legislativeClause || 'SEPP (Housing) 2021'} —
-                        Verify against current LEP controls until rezoning is gazetted.
+                        LEP controls remain in force until rezoning is gazetted.
                       </p>
                     </div>
                   )}

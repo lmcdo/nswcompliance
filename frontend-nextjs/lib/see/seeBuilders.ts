@@ -147,7 +147,9 @@ export function buildSeppControls(
       instrument: 'SEPP (Housing) 2021',
       control: 'TOD Parking Reduction',
       requirement: `Reduced parking rates apply — ${stationName} ${stationDist}. Refer to SEPP (Housing) 2021 Clause 24/42/68/74 for applicable rate by development type.`,
-      clause: `SEPP (Housing) 2021 — ${constraints.todPrecinct.seppReference ?? 'Transport Oriented Development'}`,
+      // seppReference is the map's EPI_NAME, i.e. the instrument, not a clause. The
+      // clause for TOD height and FSR is s155; parking by development type is s24/68/74.
+      clause: 'SEPP (Housing) 2021 — Transport Oriented Development, Chapter 5',
       status: 'pending',
     });
   }

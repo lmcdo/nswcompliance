@@ -1,0 +1,109 @@
+{
+ "tier": "critical",
+ "justification": "Removes five invented values that were shown to users as planning controls for any property inside a Transport Oriented Development area. The Transport Oriented Development Sites Map (ArcGIS MapServer/3) carries 9,562 features and its fields are exactly OBJECTID, EPI_NAME, PUBLISHED_DATE, COMMENCED_DATE, AMENDMENT, MAP_NAME, LAY_CLASS, LABEL, PRECINCT, SHAPE. The code read 'Maximum FSR'/'Max FSR'/'FSR', 'Maximum Height'/'Max Height'/'HEIGHT', 'Legislative Clause'/'Clause', 'EPI Name' and 'Precinct Name' -- none of which exist on that layer -- so the ternary and || fallbacks were not cover for an occasional gap, they were the ONLY code path and fired for every mapped area. Users saw 'Max FSR 2.5:1' and 'Max Height 24m' as this property's controls, cited to 'Clause 4.4'. Critical because 24m is wrong on the law (s155(2) caps a residential flat building at 22m) and 'Clause 4.4' is the ordinary LEP floor-space clause, nothing to do with transport oriented development, whose standard is s155.",
+ "commit_hash": "ca062ac8",
+ "files": [
+  "frontend-nextjs/lib/nsw-planning-portal.ts",
+  "frontend-nextjs/app/assessment/page.tsx",
+  "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+  "frontend-nextjs/lib/see/seeBuilders.ts",
+  "frontend-nextjs/__tests__/lib/tod-no-fabricated-standards.test.ts"
+ ],
+ "pre_impl": {
+  "existing_data": "The live ArcGIS layer, read directly rather than inferred. Its metadata endpoint (MapServer/3?f=json) lists 10 fields and none is FSR, height or clause. A sample query returned real attributes: PRECINCT 'KOGARAH', EPI_NAME 'State Environmental Planning Policy (Housing) 2021', AMENDMENT 'Newcastle Local Environmental Plan (Housing) (Map Amendment No 1)'. returnCountOnly reports 9,562 features. Section 155 of SEPP (Housing) 2021 was read verbatim from the whole-instrument PDF in force for 11 September 2026.",
+  "assumption_mismatch": "Four assumptions broke, and the order they broke in is the point. (1) First claim: the page shows invented numbers 'when the Portal omits them' -- wrong, the omission is unconditional. (2) Retraction: 2.5 and 24 are the real statutory figures so nothing is invented -- also wrong. s155(2) sets 22m for a residential flat building and only s155(3) sets 24m, for seniors or shop top housing, so 24 is wrong for the commonest TOD case. (3) The defect would be observable by testing addresses -- wrong: five real addresses were tested, including three near TOD stations, and none was inside a TOD area, so sampling could never have settled it. (4) property_reports would show whether todPrecinct had ever been populated -- wrong table, it holds only satellite products (shadow 568, flood 287, bushfire 71, solar 63) and has never held a planning assessment. What settled it was reading the layer's own field list.",
+  "external_source_error": "The ArcGIS service is the external dependency and it answered: metadata 200 (38,387 bytes), count 200, sample query 200. Separately, legislation.nsw.gov.au rate-limits: after ~8 requests it returned 'Server Busy' for one instrument and a Cloudflare challenge for the next, and legislation_monitor.py already sleeps 5s between requests for this reason. At runtime getTODLayers already wraps both ArcGIS calls in an 8s AbortController and catches to an empty array, so a layer outage yields no todPrecinct rather than a partial one -- that behaviour is unchanged by this PR.",
+  "frontend_type": "maxFSRBonus, maxHeightBonus and legislativeClause are DELETED from TODPrecinctInfo rather than made optional, so TypeScript fails anyone reinstating a reader. precinctName and seppReference become optional (string | undefined) because the layer can be silent, and amendment is added. tsc --noEmit reports 0 errors across the repo after the change, which is also what proves no consumer was missed: the three that read the deleted fields are all updated.",
+  "user_failure_mode": "A planner or owner opens a property inside one of the 9,562 TOD areas and reads 'Max FSR 2.5:1' and 'Max Height 24m' under the heading 'TOD Development Standard Bonuses', cited as 'Clause 4.4'. They design to 24m where s155(2) allows 22m for a residential flat building, and go looking for the standard in Clause 4.4, which is about floor space ratio in the LEP and says nothing about TOD. Both failures are silent: the figures render identically to the Portal-sourced height and FSR beside them, which ARE real.",
+  "new_vs_existing": "No new component, route, table or migration. Four existing files change and one test file is added. The TOD branch of extractPlanningConstraints keeps its shape and loses five literals; two render sites lose the tiles that printed them and gain a sentence naming s155 with a link, reusing the SeppCitationLink component #1224 already shipped rather than a new link widget. Applies to every property view on deploy, and only changes what a TOD property shows -- a non-TOD property renders no todPrecinct at all, before or after."
+ },
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/lib/tod-no-fabricated-standards.test.ts",
+  "fails_when": "Any of the five literals returns: the 2.5 FSR, the 24m height, the 'Clause 4.4' citation, the 'TOD Precinct' placeholder, or the 'SEPP (Housing) 2021' guess. Also fails if the reader goes back to a key the layer does not have ('Precinct Name', 'EPI Name' with a space), or if a silent layer yields anything other than undefined.",
+  "observed_red": "Five mutations forced, each restored afterwards (baseline 12 passed). Restoring the 2.5 FSR literal: 3 failed / 9. Restoring the 24m height literal: 3 failed / 9. Restoring 'Clause 4.4': 3 failed / 9. Reading 'Precinct Name' instead of PRECINCT: 1 failed / 11. Reading 'EPI Name' instead of EPI_NAME: 1 failed / 11. Restored: 12 passed. The suite's fixture is a real feature from the live layer (OBJECTID 258648, Kogarah), not an invented one, so a mismatch between the code's expectations and the layer's actual shape fails here rather than in production.",
+  "measured": "12 tests pass in the new suite. Full frontend suite 116 suites / 1,610 tests passed, unchanged from origin/main, so no consumer broke. npx tsc --noEmit: 0 errors. git grep for the five literals in the four changed files: 0 hits outside the comments that document them."
+ },
+ "functions": [
+  {
+   "name": "NSWPlanningPortalService.extractPlanningConstraints — TOD branch",
+   "file_line": "frontend-nextjs/lib/nsw-planning-portal.ts",
+   "input": "a PlanningLayer whose layerName getTODLayers set to 'Transport Oriented Development Sites Map', carrying the layer's own attributes",
+   "output": "todPrecinct with inTODArea, and precinctName / seppReference / amendment only where the layer supplied them",
+   "if_none": "every field other than inTODArea is undefined, so a caller renders nothing. Previously a silent layer produced 2.5, 24, 'Clause 4.4', 'TOD Precinct' and 'SEPP (Housing) 2021'."
+  },
+  {
+   "name": "assessment page — TOD panel",
+   "file_line": "frontend-nextjs/app/assessment/page.tsx",
+   "input": "selectedProperty.constraints.todPrecinct, the object extractPlanningConstraints built for this address, carrying inTODArea plus whatever the map supplied",
+   "output": "the precinct name, the distance to the station where known, and a sentence naming s155 with a link to it",
+   "if_none": "the two tiles that printed FSR and height are gone entirely; an unnamed precinct reads 'Precinct not named on the Transport Oriented Development Sites Map' rather than a placeholder"
+  },
+  {
+   "name": "StateLevelControls — TOD standards block",
+   "file_line": "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+   "input": "propertyData.constraints.todPrecinct, passed down as a prop from the assessment page's property fetch, read only for its inTODArea flag now",
+   "output": "s155's three figures stated WITH the development types they attach to, plus a SeppCitationLink to sec.155",
+   "if_none": "the block renders only when inTODArea is true; it no longer depends on two fields that were always present because they were literals"
+  }
+ ],
+ "values": [
+  {
+   "value": "maxHeightBonus",
+   "read_at": "deleted from frontend-nextjs/lib/nsw-planning-portal.ts",
+   "nullable": "n/a — the field is gone",
+   "guard_at": "the TypeScript interface, which no longer declares it, and the test asserting it is undefined",
+   "if_missing": "correct by construction. s155 makes the height depend on the development type, which an address cannot supply, so no single value can be right. The card names both figures and the types they apply to instead."
+  },
+  {
+   "value": "PRECINCT",
+   "read_at": "frontend-nextjs/lib/nsw-planning-portal.ts TOD branch",
+   "nullable": "yes — the layer may omit it",
+   "guard_at": "precinctName?: string, and the assessment page's ?? branch",
+   "if_missing": "the panel says the precinct is not named on the map, rather than labelling every area 'TOD Precinct'"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "A property sits inside one of the 9,562 TOD areas and the user designs to the height shown.",
+   "what_happens": "They now read that s155 sets 22m for a residential flat building and 24m for seniors or shop top housing, and can open s155. Before, they read a flat 'Max Height 24m' for any proposal.",
+   "mitigated": true,
+   "how": "The literal is deleted from the interface, so it cannot be rendered. Forced: restoring it fails 3 of 12.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/tod-no-fabricated-standards.test.ts -t 'states NO floor space ratio or height'"
+  },
+  {
+   "scenario": "The ArcGIS layer changes its field names, e.g. PRECINCT becomes PRECINCT_NAME.",
+   "what_happens": "precinctName and seppReference become undefined and the panel says the precinct is not named. It does NOT fall back to a literal, which is what hid the original defect for however long it stood.",
+   "mitigated": true,
+   "how": "Every reader is `|| undefined`, and the 'map feature with nothing in it' suite asserts an empty attribute bag yields undefined on all five fields and contains none of the old literals.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/tod-no-fabricated-standards.test.ts -t 'never produces the literals the old code used'"
+  },
+  {
+   "scenario": "Someone reinstates a hardcoded standard because the card looks empty without one.",
+   "what_happens": "tsc fails — the three fields are deleted from TODPrecinctInfo, not optional — and the jest suite fails on the literal.",
+   "mitigated": true,
+   "how": "Two independent gates, type and test. Forced on all three deleted fields.",
+   "repro": "cd frontend-nextjs && npx tsc --noEmit"
+  },
+  {
+   "scenario": "The same shape of defect exists elsewhere in this file.",
+   "what_happens": "NOT addressed. extractPlanningConstraints has many other branches with || literals (e.g. treeCanopy's year: '2019' and source string), and this PR changes only the TOD branch.",
+   "mitigated": false,
+   "how": "Deliberately scoped. The TOD branch was measured against its layer's real schema; the others were not, and guessing at them would repeat the error this PR fixes. A sweep of every branch against its own layer metadata is the follow-up, and belongs with DQ-133/134 as a gate rather than a one-off read.",
+   "repro": "grep -nE \"\\|\\| '[0-9A-Za-z]\" frontend-nextjs/lib/nsw-planning-portal.ts"
+  },
+  {
+   "scenario": "Nobody has ever loaded a TOD property, so none of this reached a user.",
+   "what_happens": "Possible and unmeasured. The layer holds 9,562 features so the areas exist, but whether a session hit one cannot be read from here: property_reports holds satellite products only.",
+   "mitigated": false,
+   "how": "Affects urgency, not correctness. The defect is deterministic for anyone who does load one, and the fix is safe regardless.",
+   "repro": "curl -sS \"https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/SEPP_Housing_2021/MapServer/3/query?where=1%3D1&returnCountOnly=true&f=json\""
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes -- load a property inside a TOD area on the preview and confirm the panel names s155 and shows no FSR or height figure. I could not do this: five real addresses were tested and none was inside a TOD area, and we hold no TOD geometry to find one from."
+ }
+}
