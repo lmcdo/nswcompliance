@@ -140,6 +140,39 @@ describe('HousingSEPPEligibilityCard with no frontage', () => {
   });
 });
 
+describe('a sentinel is not a frontage', () => {
+  // The normaliser lives in StateLevelControls, but the card is the surface that
+  // would print the value, so its own guard is pinned here too.
+  beforeEach(() => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, data: {} }) }),
+    ) as unknown as jest.Mock;
+  });
+  afterEach(() => jest.resetAllMocks());
+
+  it.each<[string, number]>([
+    ['zero', 0],
+    ['NaN', NaN],
+  ])('%s is handled as a missing frontage, not a measured one', async (_label, width) => {
+    const { container } = render(
+      <HousingSEPPEligibilityCard zoneCode="R2" lotSize={620} lotWidth={width} isLMRArea />,
+    );
+    expect(await screen.findByText(/frontage width are needed/i)).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(container.textContent).not.toContain('Frontage:');
+  });
+
+  it('a negative width is never shown as a frontage', async () => {
+    const { container } = render(
+      <HousingSEPPEligibilityCard zoneCode="R2" lotSize={620} lotWidth={-5} isLMRArea />,
+    );
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    // The card itself does not reject a negative, which is exactly why the
+    // caller normalises before passing: assert the normaliser's rule here.
+    expect(container.textContent).not.toContain('Frontage: 15m');
+  });
+});
+
 describe('HousingSEPPEligibilityCard with a real frontage', () => {
   /** Shape taken from the component's own reads, so the happy path still renders. */
   const eligibilityPayload = {
@@ -213,8 +246,51 @@ describe('StateLevelControls resolves a frontage without inventing one', () => {
 
   it('ends the lotWidth chain in null, not a constant', () => {
     expect(src).toMatch(/const lotWidth: number \| null =/);
-    expect(src).toMatch(/\?\?\s*propertyData\?\.constraints\?\.lotWidth\s*\?\?\s*null;/);
     expect(src).not.toMatch(/DEFAULT_LOT_WIDTH_M/);
+  });
+
+  it('treats a 0 or a NaN as no frontage, not as a frontage', () => {
+    /**
+     * Cross-review finding, 2026-10-06. `??` only falls through on null and
+     * undefined, so an upstream 0 sentinel or a parseFloat NaN survived the
+     * chain and split the handling three ways, with the worst branch silent:
+     * `lotWidth == null` was false so the not-checked notice was hidden,
+     * `{lotWidth && ...}` was falsy so the amber panel was hidden too, and the
+     * card separately asked for a frontage -- no frontage text anywhere beside
+     * a card requesting one.
+     */
+    // The CALL SITE, not the name. Asserting /positiveFiniteOrNull\(/ alone passed
+    // even after the call was replaced with an inline passthrough, because the
+    // function's own DEFINITION still matched -- the third time in two days that a
+    // bare-name assertion was satisfied by something other than a use. Found by
+    // the mutation harness, not by review.
+    expect(src).toMatch(/const lotWidth: number \| null = positiveFiniteOrNull\(/);
+    expect(src).toMatch(/Number\.isFinite\(value\) && value > 0/);
+    // And no inline passthrough standing in for it.
+    expect(src).not.toMatch(/const lotWidth: number \| null = \(\(/);
+    expect(src).not.toMatch(/const lotWidth: number \| null = battleaxeAwareLotWidth/);
+  });
+
+  it('has no numeric fallback anywhere inside the lotWidth chain', () => {
+    /**
+     * The normaliser is not a shield. Wrapping the chain in positiveFiniteOrNull
+     * while leaving `?? 15` INSIDE it reinstates the original defect exactly --
+     * 15 is positive and finite, so it passes straight through. Every assertion
+     * above survived that mutation; the harness caught it. So the chain's own
+     * text is asserted here, sliced from its assignment to the closing paren.
+     */
+    const start = src.indexOf('const lotWidth: number | null = positiveFiniteOrNull(');
+    expect(start).toBeGreaterThan(-1);
+    const end = src.indexOf(');', start);
+    expect(end).toBeGreaterThan(start);
+    const chain = src.slice(start, end);
+    expect(chain.length).toBeGreaterThan(80);
+
+    // Every link must be a property read or the helper call -- never a literal.
+    expect(chain).not.toMatch(/\?\?\s*[\d.]/);
+    expect(chain).not.toMatch(/\|\|\s*[\d.]/);
+    expect(chain).toMatch(/battleaxeAwareLotWidth\(propertyData\?\.lotDimensions\)/);
+    expect(chain).toMatch(/propertyData\?\.constraints\?\.lotWidth,?\s*$/);
   });
 
   it('does not hide the whole LMR section when the frontage is unknown', () => {

@@ -16,7 +16,7 @@
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-invented-lot-width.test.tsx && npx tsc --noEmit && python C:/Users/lawre/.claude/jobs/725925e0/tmp/mutate_width.py",
     "fails_when": "The suite goes red if the constant returns to the shipped NSW_PLANNING_CONSTANTS object under its own name or a renamed one, if any width is substituted at the end of the lotWidth chain, if the LMR section is gated on lotWidth again, if the not-checked note is removed, or if the eligibility fetch runs without a frontage.",
-    "observed_red": "15 of 15 tests pass on clean code; npx tsc --noEmit exits 0; the full frontend suite is 119 suites and 1704 tests with 0 failures. The evidence is the mutation harness: 6 mutations applied one at a time and reverted byte-for-byte, 6 of 6 CAUGHT, 0 holes. A seventh candidate is UNCATCHABLE and is recorded as such in both the harness and the suite rather than being quietly dropped: reverting the frontage summary line to a bare {lotWidth}m fails no test, because a null width skips the fetch and the component early-returns before that line renders. The harness found that; I had assumed it was covered."
+    "observed_red": "20 of 20 tests pass on clean code; npx tsc --noEmit exits 0; the full frontend suite is 119 suites and 1709 tests with 0 failures. The evidence is the mutation harness: 8 mutations applied one at a time and reverted byte-for-byte, 8 of 8 CAUGHT, 0 holes. It found two real holes on the way, neither of which review had spotted: asserting the bare name positiveFiniteOrNull passed even after the call was replaced by an inline passthrough, because the function's own DEFINITION matched; and leaving a 15 fallback INSIDE the normaliser call reinstated the original defect exactly, since 15 is positive and finite, while every other assertion still passed. Both are closed -- the call site is now required by its assignment, and the chain is sliced and asserted to hold no numeric fallback. A ninth candidate is UNCATCHABLE and is recorded as such in both the harness and the suite rather than being quietly dropped."
   },
   "functions": [
     {
@@ -85,5 +85,15 @@
     "secrets": "No secret, token, key or environment variable is added, read or referenced by this change.",
     "other_repo": "No other repository is affected. Everything changed lives under frontend-nextjs in this repo.",
     "manual_verify": "Worth one look on a real address whose frontage we do not hold: the SEPP and LEP tab should show the LMR section with a grey note saying the frontage minimums have not been checked, and the eligibility card should ask for lot size and frontage width rather than listing eligible housing types. Carried forward separately: lib/setbacks/validator.ts still holds a hardcoded zone-to-lot-area table in dead code; lib/assessment/api-client.ts line 105 posts zone where the schema requires property_zone so that call has always returned 400; LIGHT_RAIL_WALKABLE_M is 600 against the instrument's 800 and belongs to the transport scope, not this change; and 13 fabricated citations remain repo-wide now that PRs 1229 and 1230 have landed."
+  },
+  "cross_review": {
+    "tool": "gpt-5.6-sol, pre-push, 2026-10-06",
+    "findings": 1,
+    "verdicts": [
+      {
+        "finding": "MEDIUM null-guard, StateLevelControls.tsx:1029 -- the missing-frontage notice checks only for null while the adjacent eligibility logic treats every falsy width as missing, so a 0 or NaN sentinel is handled inconsistently and partially silently.",
+        "verdict": "CONFIRMED and FIXED. Read the code to check rather than taking it on trust: the nullish operator only falls through on null and undefined, so an upstream 0 sentinel or a parseFloat NaN survived the chain, and the result was worse than inconsistent, it was silent. The null check was false so the new not-checked notice was hidden, and the truthiness check was false so the amber panel was hidden too, leaving no frontage text anywhere beside a card separately asking for a frontage. A positiveFiniteOrNull helper now normalises the chain, so anything that is not a positive finite number becomes null. Four assertions and two mutations cover it, and chasing this finding is what exposed the two test holes described in observed_red."
+      }
+    ]
   }
 }
