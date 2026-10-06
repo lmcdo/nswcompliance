@@ -34,12 +34,24 @@ const SHOWN = new Set(['proven', 'imprecise']);
  * entirely: a badge reading "Local Environmental Plan" names no instrument and
  * cites no clause, so it asserts authority it does not have.
  */
-export function instrumentClauseLabel(
-  epiName?: string | null,
-  clause?: string | null,
-): string | null {
-  const instrument = epiName?.trim() || null;
-  const reference = clause?.trim() || null;
+/**
+ * Trimmed text, or null — for a value that came from an UNTYPED source.
+ *
+ * `planningLayers` and the heritage record are `any`, so a declared
+ * `string | null` is a statement of intent, not of runtime. A numeric
+ * 'EPI Name' would make `.trim()` throw and take the whole page down, which is a
+ * worse failure than the fabricated citation this module exists to prevent. The
+ * QA gate blocked a push on exactly this, 2026-10-06, at three call sites.
+ */
+export function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
+export function instrumentClauseLabel(epiName?: unknown, clause?: unknown): string | null {
+  const instrument = asTrimmedString(epiName);
+  const reference = asTrimmedString(clause);
   if (instrument && reference) return `${instrument} — ${reference}`;
   return instrument ?? reference;
 }

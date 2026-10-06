@@ -1,6 +1,6 @@
 "use client"
 
-import { instrumentClauseLabel } from '@/lib/citation-display';
+import { asTrimmedString, instrumentClauseLabel } from '@/lib/citation-display';
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -74,10 +74,15 @@ export function legislativeControlLabel(
   return instrumentClauseLabel(epiName, clause) ?? 'Not named in the heritage record';
 }
 
-/** "under clause 5.10" when a clause is known, else a phrase that names none. */
-export function heritageControlPhrase(clause: string | null | undefined): string {
-  return clause && clause.trim()
-    ? `under ${clause}`
+/**
+ * "under clause 5.10" when a clause is known, else a phrase that names none.
+ *
+ * `unknown` because the heritage record is `any`; asTrimmedString is the guard.
+ */
+export function heritageControlPhrase(clause: unknown): string {
+  const reference = asTrimmedString(clause);
+  return reference
+    ? `under ${reference}`
     : 'under the heritage conservation area controls for this land';
 }
 

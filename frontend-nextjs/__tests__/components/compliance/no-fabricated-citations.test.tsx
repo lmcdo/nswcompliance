@@ -44,7 +44,7 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 
-import { instrumentClauseLabel } from '@/lib/citation-display';
+import { asTrimmedString, instrumentClauseLabel } from '@/lib/citation-display';
 import { lmrCitationText } from '@/components/compliance/ConstraintArithmeticCard';
 import { LandUseZoningCard } from '@/components/compliance/LandUseZoningCard';
 
@@ -101,6 +101,49 @@ describe('instrumentClauseLabel names only what the source named', () => {
     // The guard above must not be implemented by blacklisting strings: a Portal
     // response that genuinely says Clause 4.3 must still show Clause 4.3.
     expect(instrumentClauseLabel(null, 'Clause 4.3')).toBe('Clause 4.3');
+  });
+});
+
+describe('a value from an untyped Portal response cannot crash the page', () => {
+  /**
+   * The QA gate blocked a push on three unguarded calls -- epiName.trim(),
+   * clause.replace(), clause.trim() -- and it was right. `planningLayers` and the
+   * heritage record are `any`, so the declared `string | null` was a statement of
+   * intent, not of runtime: a numeric 'EPI Name' would make .trim() throw and take
+   * the whole page down. That is a worse failure than the fabricated citation this
+   * change removed, so it is covered rather than merely typed.
+   */
+  it.each<[string, unknown]>([
+    ['a number', 4.3],
+    ['a boolean', true],
+    ['an array', ['Clause 4.3']],
+    ['an object', { clause: 'Clause 4.3' }],
+    ['null', null],
+    ['undefined', undefined],
+    ['an empty string', ''],
+    ['whitespace', '   '],
+  ])('%s is not text, so it yields null rather than throwing', (_label, value) => {
+    expect(() => asTrimmedString(value)).not.toThrow();
+    expect(asTrimmedString(value)).toBeNull();
+  });
+
+  it('trims a real string and keeps it', () => {
+    expect(asTrimmedString('  Bayside Local Environmental Plan 2021  ')).toBe(
+      'Bayside Local Environmental Plan 2021',
+    );
+  });
+
+  it.each<[string, unknown, unknown]>([
+    ['numbers for both', 4.3, 2021],
+    ['an object for the instrument', { name: 'x' }, 'Clause 4.3'],
+    ['an array for the clause', 'Bayside LEP 2021', ['Clause 4.3']],
+  ])('instrumentClauseLabel survives %s', (_label, epi, clause) => {
+    expect(() => instrumentClauseLabel(epi, clause)).not.toThrow();
+  });
+
+  it('a numeric EPI name yields the clause alone, not a stringified number', () => {
+    // The specific shape the gate warned about: a Portal field that is not text.
+    expect(instrumentClauseLabel(2021, 'Clause 4.3')).toBe('Clause 4.3');
   });
 });
 

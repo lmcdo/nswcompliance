@@ -6,6 +6,7 @@
  * Follows Universal Technical Implementation Specification
  */
 
+import { asTrimmedString } from '@/lib/citation-display';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import useSWR from 'swr';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -74,13 +75,19 @@ export interface ProvisionContent {
  * the Portal named no instrument or no clause, there is no key and no fetch.
  */
 function lepMetadataFrom(
-  epiName: string | null,
-  clause: string | null,
+  epiName: unknown,
+  clause: unknown,
 ): { documentId: string; refNumber: string } | undefined {
-  if (!epiName || !clause) return undefined;
-  const documentId = `${epiName.trim().replace(/[^A-Za-z0-9]+/g, '_')}___NSW_Legislation`;
+  // `unknown`, not `string | null`: both arrive from `planningLayers`, which is
+  // `any`, so the declared type was a claim about intent. asTrimmedString is the
+  // one guard. The QA gate blocked a push on the unguarded .trim() here.
+  const epi = asTrimmedString(epiName);
+  const ref = asTrimmedString(clause);
+  if (!epi || !ref) return undefined;
+
+  const documentId = `${epi.replace(/[^A-Za-z0-9]+/g, '_')}___NSW_Legislation`;
   // 'Clause 4.3' -> '4.3'; the table stores the bare reference.
-  const refNumber = clause.replace(/^\s*(clause|cl\.?)\s*/i, '').trim();
+  const refNumber = asTrimmedString(ref.replace(/^\s*(clause|cl\.?)\s*/i, ''));
   if (!refNumber) return undefined;
   return { documentId, refNumber };
 }
