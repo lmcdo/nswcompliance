@@ -4,6 +4,8 @@
   "commit_hash": "65f5ff0f",
   "files": [
     "frontend-nextjs/lib/regulatory-constants.ts",
+    "frontend-nextjs/lib/geometry/effective-lot-width.ts",
+    "frontend-nextjs/lib/geometry/__tests__/effective-lot-width.test.ts",
     "frontend-nextjs/components/compliance/StateLevelControls.tsx",
     "frontend-nextjs/components/compliance/HousingSEPPEligibilityCard.tsx",
     "frontend-nextjs/__tests__/components/compliance/no-invented-lot-width.test.tsx"
@@ -11,12 +13,12 @@
   "pre_impl": {
     "existing_data": "HousingSEPPEligibilityCard already handled a missing frontage correctly: its useEffect skips the eligibility fetch on a falsy lotWidth and the component renders a card asking for lot size and frontage width. It also already carries an assessmentStatus of not_assessed, added earlier for exactly this shape of problem. The default of 15 metres meant those guards never ran, so the fix is mostly deletion rather than new logic.",
     "assumption_mismatch": "I reported to the user that the page printed Frontage 15.0m in the amber panel. Reading the code showed that was wrong: the amber panel renders only when lmrFrontageStatus returns a non-empty excluded list, and a 15 clears all three minimums, so that panel returned null and printed nothing at all. The real harm there is suppression of the caveat, not a wrong number. The wrong number was printed by the eligibility card instead, at a different line. Both are now covered, and the mutation harness separately disproved a third assumption of mine by showing one display line is unreachable.",
-    "new_vs_existing": "One constant deleted, one fallback removed, one prop widened to nullable, one explanatory note added. The LMR section gate was changed from isLMRArea && lotSize && lotWidth to isLMRArea && lotSize: keeping lotWidth in that condition would have newly hidden the entire section for every property whose frontage is unknown, because the invented 15 had made the condition always true. That would trade a false answer for a silent one, so the section stays and the card inside asks for the frontage."
+    "new_vs_existing": "One constant deleted, one prop widened to nullable, one explanatory note added, and the frontage resolution moved out of the 1,600-line component into lib/geometry/effective-lot-width.ts, which already owned battleaxeAwareLotWidth, so it became unit-testable rather than only source-asserted. positiveFiniteOrNull is applied inside battleaxeAwareLotWidth and battleaxeAwareLotDepth as well, so a 0 or NaN can no longer escape those functions, win a caller's chain and only then be rejected. The LMR section gate was changed from isLMRArea && lotSize && lotWidth to isLMRArea && lotSize: keeping lotWidth would have newly hidden the whole section for every property whose frontage is unknown, because the invented 15 had made that condition always true."
   },
   "falsifiable_check": {
-    "command": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-invented-lot-width.test.tsx && npx tsc --noEmit && python C:/Users/lawre/.claude/jobs/725925e0/tmp/mutate_width.py",
-    "fails_when": "The suite goes red if the constant returns to the shipped NSW_PLANNING_CONSTANTS object under its own name or a renamed one, if any width is substituted at the end of the lotWidth chain, if the LMR section is gated on lotWidth again, if the not-checked note is removed, or if the eligibility fetch runs without a frontage.",
-    "observed_red": "20 of 20 tests pass on clean code; npx tsc --noEmit exits 0; the full frontend suite is 119 suites and 1709 tests with 0 failures. The evidence is the mutation harness: 8 mutations applied one at a time and reverted byte-for-byte, 8 of 8 CAUGHT, 0 holes. It found two real holes on the way, neither of which review had spotted: asserting the bare name positiveFiniteOrNull passed even after the call was replaced by an inline passthrough, because the function's own DEFINITION matched; and leaving a 15 fallback INSIDE the normaliser call reinstated the original defect exactly, since 15 is positive and finite, while every other assertion still passed. Both are closed -- the call site is now required by its assignment, and the chain is sliced and asserted to hold no numeric fallback. A ninth candidate is UNCATCHABLE and is recorded as such in both the harness and the suite rather than being quietly dropped."
+    "command": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-invented-lot-width.test.tsx lib/geometry/__tests__/effective-lot-width.test.ts && npx tsc --noEmit && python C:/Users/lawre/.claude/jobs/725925e0/tmp/mutate_width.py",
+    "fails_when": "The suites go red if the constant returns to the shipped NSW_PLANNING_CONSTANTS object under its own name or a renamed one, if any width is substituted anywhere in the candidate list, if the LMR section is gated on lotWidth again, if the not-checked note is removed, if the eligibility fetch runs without a frontage, if a 0, NaN, Infinity or negative is accepted as a measurement, or if candidates are coalesced before being normalised rather than after.",
+    "observed_red": "20 of 20 component tests and 44 of 44 geometry tests pass on clean code; npx tsc --noEmit exits 0; the full frontend suite is 119 suites and 1736 tests with 0 failures. The evidence is the mutation harness: 10 mutations applied one at a time and reverted byte-for-byte, 10 of 10 CAUGHT, 0 holes. It found three real holes on the way, none of which review had spotted. First, asserting the bare name of the normaliser passed even after its call was replaced by an inline passthrough, because the function's own definition matched. Second, leaving a 15 fallback inside the normaliser call reinstated the original defect exactly, since 15 is positive and finite, while every other assertion still passed. Third, a candidate list is now asserted to contain no nullish operator at all, because one there cannot normalise the values it chooses between. An eleventh candidate is UNCATCHABLE and is recorded as such in both the harness and the suite rather than being dropped."
   },
   "functions": [
     {
@@ -39,6 +41,20 @@
       "input": "zoneCode, lotSize and lotWidth, with lotWidth now typed as number or null to match what the caller can actually supply.",
       "output": "The eligibility list fetched from the housing-sepp route, together with a property summary line that prints the frontage it was given.",
       "if_none": "Skips the fetch entirely and renders a card saying lot size and frontage width are needed, which is the guard the deleted constant had been defeating."
+    },
+    {
+      "name": "firstMeasuredWidth",
+      "file_line": "frontend-nextjs/lib/geometry/effective-lot-width.ts:62",
+      "input": "The frontage candidates in preference order, each of which may be a number, null or undefined, and any of which may be an upstream sentinel.",
+      "output": "The first candidate that is a positive finite number, normalised before the comparison rather than after it, so an invalid earlier candidate cannot shadow a valid later one.",
+      "if_none": "Null when no candidate is a measurement, which the caller renders as an explicit statement that the frontage minimums were not checked."
+    },
+    {
+      "name": "positiveFiniteOrNull",
+      "file_line": "frontend-nextjs/lib/geometry/effective-lot-width.ts:51",
+      "input": "An unknown value from cadastral geometry, a planning constraint or a parseFloat that may have failed.",
+      "output": "That value when it is a positive finite number, which is the only shape that counts as a measured frontage or depth.",
+      "if_none": "Null for 0, negative zero, a negative, NaN, Infinity, a numeric string, null, undefined or an object, each asserted in the geometry suite."
     }
   ],
   "values": "N/A -- no value is read from a database or an API by this change. The figure removed was a literal constant in source, and the figures it was compared against are the LMR minimums already held in lib/see/propertyUtils.ts.",
@@ -78,6 +94,13 @@
       "mitigated": true,
       "how": "A happy-path render test with a mocked route envelope, plus boundary cases at 11, 13 and 15 metres against the real minimums.",
       "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-invented-lot-width.test.tsx -t 'prints the measured frontage'."
+    },
+    {
+      "scenario": "An invalid earlier candidate such as NaN or 0 shadows a valid later frontage, so a property whose width we DO hold is reported as unavailable.",
+      "what_happens": "firstMeasuredWidth normalises each candidate before comparing, so NaN followed by 13 returns 13. Two mutations cover it: coalescing first and normalising afterwards, and putting a nullish operator back into the component's candidate list.",
+      "mitigated": true,
+      "how": "The resolution moved out of the 1,600-line component into lib/geometry/effective-lot-width.ts so it is unit-testable, and the component's candidate list is asserted to contain no nullish operator.",
+      "repro": "cd frontend-nextjs && npx jest lib/geometry/__tests__/effective-lot-width.test.ts -t 'skips an invalid earlier candidate' -- or the harness rows 'coalesce first and normalise afterwards' and 'use a nullish chain in the component instead of the resolver'."
     }
   ],
   "post_merge": {
@@ -88,11 +111,16 @@
   },
   "cross_review": {
     "tool": "gpt-5.6-sol, pre-push, 2026-10-06",
-    "findings": 1,
+    "rounds": 2,
+    "findings": 2,
     "verdicts": [
       {
-        "finding": "MEDIUM null-guard, StateLevelControls.tsx:1029 -- the missing-frontage notice checks only for null while the adjacent eligibility logic treats every falsy width as missing, so a 0 or NaN sentinel is handled inconsistently and partially silently.",
-        "verdict": "CONFIRMED and FIXED. Read the code to check rather than taking it on trust: the nullish operator only falls through on null and undefined, so an upstream 0 sentinel or a parseFloat NaN survived the chain, and the result was worse than inconsistent, it was silent. The null check was false so the new not-checked notice was hidden, and the truthiness check was false so the amber panel was hidden too, leaving no frontage text anywhere beside a card separately asking for a frontage. A positiveFiniteOrNull helper now normalises the chain, so anything that is not a positive finite number becomes null. Four assertions and two mutations cover it, and chasing this finding is what exposed the two test holes described in observed_red."
+        "finding": "MEDIUM null-guard, StateLevelControls.tsx:1029 (round 1) -- the missing-frontage notice checks only for null while the adjacent eligibility logic treats every falsy width as missing, so a 0 or NaN sentinel is handled inconsistently and partially silently.",
+        "verdict": "CONFIRMED and FIXED. The nullish operator falls through only on null and undefined, so an upstream 0 sentinel or a failed parseFloat survived the chain, and the result was worse than inconsistent, it was silent: the null check was false so the new not-checked notice was hidden, and the truthiness check was false so the amber panel was hidden too, leaving no frontage text anywhere beside a card separately asking for one."
+      },
+      {
+        "finding": "MEDIUM correctness, StateLevelControls.tsx:517 (round 2) -- normalising only after the nullish chain lets an invalid earlier candidate such as 0, NaN, Infinity or a negative prevent a later valid frontage from being used.",
+        "verdict": "CONFIRMED and FIXED, and it was a defect in my own round-1 fix rather than in the original code. battleaxeAwareLotWidth could return NaN, because its final check was a typeof test and typeof NaN is number; that NaN then won the chain and my trailing normaliser turned it into null, discarding a valid 13 metre frontage sitting in the next candidate. I had traded a false number for a false unavailable, which is quieter and still wrong. Each candidate is now normalised before the comparison, the resolver lives in the geometry module where it can be unit-tested, and the behaviour is asserted directly rather than through the component's source."
       }
     ]
   }

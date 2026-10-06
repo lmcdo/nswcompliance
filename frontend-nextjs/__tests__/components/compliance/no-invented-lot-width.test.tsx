@@ -259,16 +259,18 @@ describe('StateLevelControls resolves a frontage without inventing one', () => {
      * card separately asked for a frontage -- no frontage text anywhere beside
      * a card requesting one.
      */
-    // The CALL SITE, not the name. Asserting /positiveFiniteOrNull\(/ alone passed
-    // even after the call was replaced with an inline passthrough, because the
-    // function's own DEFINITION still matched -- the third time in two days that a
-    // bare-name assertion was satisfied by something other than a use. Found by
-    // the mutation harness, not by review.
-    expect(src).toMatch(/const lotWidth: number \| null = positiveFiniteOrNull\(/);
-    expect(src).toMatch(/Number\.isFinite\(value\) && value > 0/);
-    // And no inline passthrough standing in for it.
+    // The CALL SITE, not the name. Asserting a bare name passed even after the
+    // call was replaced with an inline passthrough, because the helper's own
+    // DEFINITION still matched -- the third time in two days a bare-name
+    // assertion was satisfied by something other than a use. Found by the
+    // mutation harness, not by review.
+    expect(src).toMatch(/const lotWidth: number \| null = firstMeasuredWidth\(/);
+    // No `??` inside the chain: it coalesces on nullish only, so a 0 or NaN in an
+    // earlier candidate would win and the later ones never be consulted. The
+    // behaviour itself is covered in lib/geometry/__tests__/effective-lot-width.test.ts.
     expect(src).not.toMatch(/const lotWidth: number \| null = \(\(/);
     expect(src).not.toMatch(/const lotWidth: number \| null = battleaxeAwareLotWidth/);
+    expect(src).not.toMatch(/const lotWidth: number \| null = positiveFiniteOrNull/);
   });
 
   it('has no numeric fallback anywhere inside the lotWidth chain', () => {
@@ -279,18 +281,30 @@ describe('StateLevelControls resolves a frontage without inventing one', () => {
      * above survived that mutation; the harness caught it. So the chain's own
      * text is asserted here, sliced from its assignment to the closing paren.
      */
-    const start = src.indexOf('const lotWidth: number | null = positiveFiniteOrNull(');
+    const start = src.indexOf('const lotWidth: number | null = firstMeasuredWidth(');
     expect(start).toBeGreaterThan(-1);
     const end = src.indexOf(');', start);
     expect(end).toBeGreaterThan(start);
     const chain = src.slice(start, end);
     expect(chain.length).toBeGreaterThan(80);
 
-    // Every link must be a property read or the helper call -- never a literal.
+    // Every link must be a property read -- never a literal, and never a `??`
+    // (which cannot normalise the candidate it is choosing between).
     expect(chain).not.toMatch(/\?\?\s*[\d.]/);
     expect(chain).not.toMatch(/\|\|\s*[\d.]/);
+    expect(chain).not.toMatch(/\?\?/);
+    expect(chain).not.toMatch(/[\s(,]1?\d(\.\d+)?[\s,)]/);
     expect(chain).toMatch(/battleaxeAwareLotWidth\(propertyData\?\.lotDimensions\)/);
     expect(chain).toMatch(/propertyData\?\.constraints\?\.lotWidth,?\s*$/);
+    // All four candidates still present, so the fix did not quietly drop a source.
+    for (const candidate of [
+      'battleaxeAwareLotWidth',
+      'geometry?.frontageWidth',
+      'geometry?.estimatedWidth',
+      'constraints?.lotWidth',
+    ]) {
+      expect(chain).toContain(candidate);
+    }
   });
 
   it('does not hide the whole LMR section when the frontage is unknown', () => {

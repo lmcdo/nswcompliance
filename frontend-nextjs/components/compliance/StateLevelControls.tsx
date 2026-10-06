@@ -28,18 +28,7 @@ import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone, isLMRAppli
 import { getAdgPdfUrl } from '@/lib/pdf-url-builder';
 import { SeppCitationLink, SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL, seppHousingProvisionUrl } from './SeppCitationLink';
 import { tryGetLGAConfig } from '@/lib/lga-configs';
-import { battleaxeAwareLotWidth } from '@/lib/geometry/effective-lot-width';
-
-/**
- * A measurement, or null. Nothing else counts as one.
- *
- * 0, NaN, Infinity and a negative all reach here from upstream sentinels and
- * parseFloat failures, and each would otherwise be treated as a frontage by one
- * check and as missing by another.
- */
-function positiveFiniteOrNull(value: number | null | undefined): number | null {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
-}
+import { battleaxeAwareLotWidth, firstMeasuredWidth } from '@/lib/geometry/effective-lot-width';
 
 interface StrataInfo {
   isStrata: boolean;
@@ -507,18 +496,17 @@ export function StateLevelControls({
   //     handles a missing width by asking for one. The constant was defeating a
   //     guard that was already there.
   //
-  // `??` only falls through on null and undefined, so a 0 or a NaN from an
-  // upstream sentinel survived the chain. That split the handling three ways and
-  // left the worst of them silent: `lotWidth == null` was false so the
-  // not-checked notice was hidden, `{lotWidth && ...}` was falsy so the amber
-  // panel was hidden too, and the card separately asked for a frontage -- no
-  // frontage text anywhere beside a card requesting one. Cross-review, 2026-10-06.
-  // Anything that is not a positive finite number is NOT a frontage.
-  const lotWidth: number | null = positiveFiniteOrNull(
-    battleaxeAwareLotWidth(propertyData?.lotDimensions)
-      ?? propertyData?.geometry?.frontageWidth
-      ?? propertyData?.geometry?.estimatedWidth
-      ?? propertyData?.constraints?.lotWidth,
+  // firstMeasuredWidth normalises EACH candidate before comparing, which `??`
+  // cannot do: `??` falls through only on null and undefined, so an upstream 0 or
+  // NaN in an earlier candidate wins and the later ones are never consulted.
+  // Normalising the finished chain instead — the first version of this fix — then
+  // turned that winner into null and discarded a valid later frontage, trading a
+  // false number for a false "unavailable". Two cross-review rounds, 2026-10-06.
+  const lotWidth: number | null = firstMeasuredWidth(
+    battleaxeAwareLotWidth(propertyData?.lotDimensions),
+    propertyData?.geometry?.frontageWidth,
+    propertyData?.geometry?.estimatedWidth,
+    propertyData?.constraints?.lotWidth,
   );
 
   // Lot depth - from calculated geometry

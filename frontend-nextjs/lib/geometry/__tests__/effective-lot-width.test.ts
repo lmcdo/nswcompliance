@@ -1,4 +1,9 @@
-import { battleaxeAwareLotWidth, battleaxeAwareLotDepth } from '../effective-lot-width';
+import {
+  battleaxeAwareLotWidth,
+  battleaxeAwareLotDepth,
+  firstMeasuredWidth,
+  positiveFiniteOrNull,
+} from '../effective-lot-width';
 
 describe('battleaxeAwareLotWidth', () => {
   describe('battleaxe lots — must use the HEAD width, not the handle frontage', () => {
@@ -119,5 +124,90 @@ describe('battleaxeAwareLotDepth', () => {
       // @ts-expect-error — bad runtime data
       expect(battleaxeAwareLotDepth({ lotType: 'rectangular', depth: '40' })).toBeNull();
     });
+  });
+});
+
+/**
+ * Added 2026-10-06 over two cross-review rounds, both about the same thing: a
+ * value that is a `number` but not a measurement.
+ */
+describe('positiveFiniteOrNull', () => {
+  it.each<[string, unknown]>([
+    ['zero', 0],
+    ['negative zero', -0],
+    ['a negative', -3],
+    ['NaN', NaN],
+    ['Infinity', Infinity],
+    ['-Infinity', -Infinity],
+    ['a numeric string', '12'],
+    ['null', null],
+    ['undefined', undefined],
+    ['an object', {}],
+  ])('%s is not a measurement', (_label, value) => {
+    expect(positiveFiniteOrNull(value)).toBeNull();
+  });
+
+  it.each([0.1, 11.4, 12, 15, 70.09])('%s is a measurement and is returned unchanged', (v) => {
+    expect(positiveFiniteOrNull(v)).toBe(v);
+  });
+});
+
+describe('firstMeasuredWidth normalises each candidate before comparing', () => {
+  it('skips an invalid earlier candidate and uses a valid later one', () => {
+    // THE BUG this function exists for. `??` falls through only on null and
+    // undefined, so a NaN or 0 first candidate won the coalesce; normalising the
+    // finished chain then turned that winner into null and threw away the 13.
+    expect(firstMeasuredWidth(NaN, 13)).toBe(13);
+    expect(firstMeasuredWidth(0, 13)).toBe(13);
+    expect(firstMeasuredWidth(-5, 13)).toBe(13);
+    expect(firstMeasuredWidth(Infinity, 13)).toBe(13);
+  });
+
+  it('prefers the earliest candidate that is a real measurement', () => {
+    expect(firstMeasuredWidth(12.5, 13, 14)).toBe(12.5);
+    expect(firstMeasuredWidth(null, undefined, 14, 15)).toBe(14);
+  });
+
+  it('is null when no candidate is a measurement', () => {
+    expect(firstMeasuredWidth()).toBeNull();
+    expect(firstMeasuredWidth(null, undefined)).toBeNull();
+    expect(firstMeasuredWidth(0, NaN, -1, Infinity)).toBeNull();
+  });
+
+  it('never returns 15 unless 15 was actually supplied', () => {
+    // The deleted DEFAULT_LOT_WIDTH_M cleared all three LMR minimums.
+    expect(firstMeasuredWidth(NaN, 0, null)).not.toBe(15);
+    expect(firstMeasuredWidth(15)).toBe(15);
+  });
+});
+
+describe('a NaN or 0 frontage no longer escapes battleaxeAwareLotWidth', () => {
+  it.each<[string, unknown]>([
+    ['NaN', NaN],
+    ['zero', 0],
+    ['a negative', -4],
+    ['Infinity', Infinity],
+  ])('%s frontage yields null, not a number', (_label, frontage) => {
+    expect(
+      battleaxeAwareLotWidth({ lotType: 'rectangular', frontage } as never),
+    ).toBeNull();
+  });
+
+  it('falls back to the frontage when a battleaxe head width is NaN', () => {
+    expect(
+      battleaxeAwareLotWidth({
+        lotType: 'battleaxe',
+        frontage: 18.6,
+        battleaxe: { mainLotWidth: NaN },
+      } as never),
+    ).toBe(18.6);
+  });
+
+  it.each<[string, unknown]>([
+    ['NaN', NaN],
+    ['zero', 0],
+    ['a negative', -4],
+  ])('%s depth yields null, not a number', (_label, depth) => {
+    expect(battleaxeAwareLotDepth({ lotType: 'rectangular', depth } as never)).toBeNull();
   });
 });

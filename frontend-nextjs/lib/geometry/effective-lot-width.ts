@@ -29,23 +29,52 @@ interface LotDimensionsLike {
   battleaxe?: BattleaxeLike | null;
 }
 
+/**
+ * A measurement, or null. Nothing else counts as one.
+ *
+ * 0, NaN, Infinity and negatives all reach the width chain from upstream
+ * sentinels and failed parseFloats, and each would otherwise be treated as a
+ * frontage by one check and as missing by another. `typeof` alone does not
+ * separate NaN from a number, and `> 0` alone does not separate Infinity.
+ */
+export function positiveFiniteOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
+}
+
 export function battleaxeAwareLotWidth(
   lotDimensions: LotDimensionsLike | null | undefined,
 ): number | null {
   if (!lotDimensions) return null;
 
   const ba = lotDimensions.battleaxe;
-  const headWidth = ba?.mainLotWidth;
-  if (
-    lotDimensions.lotType === 'battleaxe' &&
-    typeof headWidth === 'number' &&
-    headWidth > 0
-  ) {
+  if (lotDimensions.lotType === 'battleaxe') {
     // The handle frontage would understate a battleaxe — use the head width.
-    return headWidth;
+    const headWidth = positiveFiniteOrNull(ba?.mainLotWidth);
+    if (headWidth !== null) return headWidth;
   }
 
-  return typeof lotDimensions.frontage === 'number' ? lotDimensions.frontage : null;
+  // Normalised here rather than at the call site: a NaN or 0 frontage used to
+  // escape this function, win a caller's `??` chain, and only then be rejected —
+  // which discarded a valid later candidate. Cross-review, 2026-10-06.
+  return positiveFiniteOrNull(lotDimensions.frontage);
+}
+
+/**
+ * The first candidate that is an actual measurement, or null.
+ *
+ * Each candidate is normalised BEFORE the comparison, which is the whole point.
+ * `a ?? b` falls through only on null and undefined, so an upstream 0 or NaN in
+ * `a` wins and `b` is never consulted; wrapping the finished chain in a
+ * normaliser then turns that into null and loses `b` entirely.
+ */
+export function firstMeasuredWidth(
+  ...candidates: Array<number | null | undefined>
+): number | null {
+  for (const candidate of candidates) {
+    const measured = positiveFiniteOrNull(candidate);
+    if (measured !== null) return measured;
+  }
+  return null;
 }
 
 /**
@@ -66,13 +95,11 @@ export function battleaxeAwareLotDepth(
   const headWidth = ba?.mainLotWidth;
   if (
     lotDimensions.lotType === 'battleaxe' &&
-    typeof headArea === 'number' &&
-    headArea > 0 &&
-    typeof headWidth === 'number' &&
-    headWidth > 0
+    positiveFiniteOrNull(headArea) !== null &&
+    positiveFiniteOrNull(headWidth) !== null
   ) {
-    return headArea / headWidth;
+    return positiveFiniteOrNull((headArea as number) / (headWidth as number));
   }
 
-  return typeof lotDimensions.depth === 'number' ? lotDimensions.depth : null;
+  return positiveFiniteOrNull(lotDimensions.depth);
 }
