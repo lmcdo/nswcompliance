@@ -100,8 +100,10 @@ export interface ComplianceConstraint {
   unit?: string;
   description?: string;
   source: {
-    clause: string;
-    document: string;
+    // Nullable, matching ComplianceDashboard's contract: a citation the Planning
+    // Portal did not supply is null, never a guessed clause or instrument.
+    clause: string | null;
+    document: string | null;
     authority_level: 'LEP' | 'DCP' | 'SEPP';
   };
   provisions?: ProvisionContent[];
@@ -381,8 +383,9 @@ export function ConstraintCard({
                   ? constraint.type.toUpperCase()  // "HEIGHT", "FSR"
                   : constraint.type.charAt(0).toUpperCase() + constraint.type.slice(1)  // "Setback", "Special"
                 }
-                {/* Show clause only if it's not a machine-generated ID */}
-                {constraint.provisions?.[0] && !constraint.source.clause.match(/^[Pp]rovision_\d+$/) && (
+                {/* Show clause only if we HAVE one and it's not a machine-generated ID */}
+                {constraint.provisions?.[0] && constraint.source.clause
+                  && !constraint.source.clause.match(/^[Pp]rovision_\d+$/) && (
                   <> • {constraint.source.clause}</>
                 )}
               </div>
@@ -394,7 +397,12 @@ export function ConstraintCard({
                 {constraint.provisions?.[0] && getProvisionSectionName(constraint.provisions[0]) && (
                   <span>•</span>
                 )}
-                <span>{constraint.source.document}</span>
+                {/* An absent instrument is stated, not left blank: a blank line
+                    beside a height figure reads as though the figure is unsourced
+                    by oversight rather than because the Portal named no EPI. */}
+                <span className={constraint.source.document ? undefined : 'italic'}>
+                  {constraint.source.document ?? 'Instrument not named in the Planning Portal response'}
+                </span>
                 {/* Version badge if provision has version metadata */}
                 {constraint.provisions?.[0]?.version && (
                   <>

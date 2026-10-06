@@ -18,6 +18,32 @@
 
 const SHOWN = new Set(['proven', 'imprecise']);
 
+/**
+ * The "<instrument> — <clause>" badge text, or null when we hold neither.
+ *
+ * Same principle as citationIsShown below, applied to the LEP/SEPP cards: name
+ * only what the source named. Until 2026-10-06 the callers defaulted the clause
+ * in their own signatures (`legislativeClause = 'Clause 2.3'` in
+ * LandUseZoningCard, `= 'Clause 4.1'` in MinimumLotSizeCard) and the instrument
+ * in the badge (`epiName || 'Local Environmental Plan'`, and in one case
+ * `|| 'Inner West Local Environmental Plan 2022'` for a property in any council).
+ * 2.3 and 4.1 are the usual zoning and minimum-lot-size clauses in NSW LEPs,
+ * which is precisely why a wrong one would never have looked wrong.
+ *
+ * Returning null rather than a placeholder lets the caller drop the badge
+ * entirely: a badge reading "Local Environmental Plan" names no instrument and
+ * cites no clause, so it asserts authority it does not have.
+ */
+export function instrumentClauseLabel(
+  epiName?: string | null,
+  clause?: string | null,
+): string | null {
+  const instrument = epiName?.trim() || null;
+  const reference = clause?.trim() || null;
+  if (instrument && reference) return `${instrument} — ${reference}`;
+  return instrument ?? reference;
+}
+
 export function citationIsShown(status?: string | null, sourceCouncil?: string | null): boolean {
   if (status == null) return !sourceCouncil;
   return SHOWN.has(status);

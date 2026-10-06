@@ -260,8 +260,9 @@ export interface SelectedProvision {
     value: string | number;
     unit?: string;
     source: {
-      clause: string;
-      document: string;
+      // Nullable, matching ComplianceDashboard's contract.
+      clause: string | null;
+      document: string | null;
       authority_level: 'LEP' | 'DCP' | 'SEPP';
     };
     seppMetadata?: {
@@ -818,12 +819,14 @@ export function LegalTextPanel({
                 <Badge className={colors.badge}>
                   {constraint.source.authority_level}
                 </Badge>
-                <span className="text-sm text-gray-600">
-                  {constraint.source.clause}
-                </span>
+                {constraint.source.clause && (
+                  <span className="text-sm text-gray-600">
+                    {constraint.source.clause}
+                  </span>
+                )}
               </div>
               <CardTitle className="text-lg">
-                {constraint.source.document}
+                {constraint.source.document ?? 'Instrument not named in the Planning Portal response'}
               </CardTitle>
               <div className="text-sm text-gray-600 mt-1">
                 {constraint.type.charAt(0).toUpperCase() + constraint.type.slice(1)}: {constraint.value}{constraint.unit}
@@ -1180,7 +1183,7 @@ export function LegalTextPanel({
                 </Button>
               )}
             </div>
-            {constraint.source.document.includes('legislation.nsw.gov.au') && (
+            {constraint.source.document?.includes('legislation.nsw.gov.au') && (
               <Button variant="outline" size="sm" className="gap-2">
                 <ExternalLink className="h-4 w-4" />
                 View Source
