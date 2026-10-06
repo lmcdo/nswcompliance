@@ -90,6 +90,12 @@ MUTATIONS = [
      'the one my own ratchet caught and I had missed'),
 
     # ── heritage ──
+    ('bring back Clause 5.10 spelled with DOUBLE quotes',
+     'components/compliance/HeritageDetails.tsx',
+     '      legislativeClause: heritage?.heritageClause || null,',
+     '      legislativeClause: heritage?.heritageClause || "Clause 5.10",',
+     'both ratchets matched single quotes only, so this spelling walked through'),
+
     ('bring back Clause 5.10',
      'components/compliance/HeritageDetails.tsx',
      '      legislativeClause: heritage?.heritageClause || null,',

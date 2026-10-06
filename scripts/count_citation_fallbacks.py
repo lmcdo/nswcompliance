@@ -15,6 +15,10 @@ match these patterns at all, so this is a floor and not a count:
     literal sits in the component that RECEIVES the value, not the one passing
     it;
   - a hardcoded instrument in JSX text, which is not a fallback expression.
+A third is narrower but real: the scan is PER LINE, so a fallback whose literal
+sits on the line after the `||` is not matched. Quote style is handled -- single,
+double and backtick all count -- but a line break between the operator and the
+literal is not.
 Both shapes were present and both were found by the test ratchet in
 frontend-nextjs/__tests__/components/compliance/no-fabricated-citations.test.tsx,
 which asserts all three shapes. Treat that suite, not this script, as the gate.
@@ -46,7 +50,13 @@ EXTRA = (
     'frontend-nextjs/lib/nsw-planning-portal.ts',
     'frontend-nextjs/lib/see/seeBuilders.ts',
 )
-STR = re.compile(r"(\?\?|\|\|)\s*'((?:Clause|Section|SEPP|s\d|Part |Schedule)[^']*)'")
+# All three quote styles, closed by backreference so the closing quote matches
+# the opening one. Single quotes alone missed `|| "Clause 5.10"` -- the same
+# fabricated citation spelled differently -- and this tree uses double quotes in
+# places. Still per-line, which the docstring states as a blind spot.
+STR = re.compile(
+    r"(\?\?|\|\|)\s*(['\"`])((?:Clause|Section|SEPP|s\d|Part |Schedule)[^'\"`]*)\2"
+)
 
 
 def strip_comments(src):
@@ -120,7 +130,16 @@ def count(rev, label):
             continue
         for ln, line in enumerate(strip_comments(src).splitlines(), 1):
             for m in STR.finditer(line):
-                hits.append((os.path.basename(f), ln, m.group(2)))
+                value = m.group(3)
+                # A template literal that INTERPOLATES is not a hardcoded
+                # citation -- `Part ${provision.v2_part}` names whatever the data
+                # said. Adding backtick support without this turned
+                # ExemptComplyingProvisions.tsx:99 into a false positive, and a
+                # gate that fires on correct code is one somebody switches off.
+                # A backtick literal with no ${ IS hardcoded and still counts.
+                if '${' in value:
+                    continue
+                hits.append((os.path.basename(f), ln, value))
     print('=== %s: %d citation fallbacks across %d files ===' % (label, len(hits), len(files)))
     for name, ln, val in hits:
         print('   %-42s L%-6s %s' % (name, ln, val))

@@ -404,9 +404,16 @@ describe('no touched file substitutes a citation any more', () => {
   it.each(TOUCHED)('%s has no fallback to a regulatory literal', (_name, parts) => {
     const src = readStripped(...parts);
     // The `||` / `??` shape.
-    expect(src).not.toMatch(/(\|\||\?\?)\s*'(?:Clause|Schedule|SEPP|Part |Section )[^']*'/);
+    // All three quote styles, matched by backreference so the closing quote is
+    // the same as the opening one. Single quotes alone left the gate open to
+    // `|| "Clause 5.10"`, which is the same defect spelled differently, and this
+    // tree uses double quotes too -- HeritageDetails.tsx opens with "use client".
+    // `[^'"`$]` rather than `[^'"`]`: a template literal that INTERPOLATES is
+    // not a hardcoded citation -- `Part ${provision.v2_part}` names whatever the
+    // data said. A backtick literal with no ${ is hardcoded and still caught.
+    expect(src).not.toMatch(/(\|\||\?\?)\s*(['"`])(?:Clause|Schedule|SEPP|Part |Section )[^'"`$]*\2/);
     // The DEFAULT PARAMETER shape, which the counter cannot see.
-    expect(src).not.toMatch(/=\s*'(?:Clause|Schedule|SEPP|Part |Section )[^']*'\s*[},]/);
+    expect(src).not.toMatch(/=\s*(['"`])(?:Clause|Schedule|SEPP|Part |Section )[^'"`$]*\1\s*[},]/);
     // A hardcoded instrument in JSX text, which is not a fallback at all.
     expect(src).not.toMatch(/Inner West (Local Environmental Plan|LEP)/);
     expect(src).not.toMatch(/Inner_West_Local_Environmental_Plan/);
