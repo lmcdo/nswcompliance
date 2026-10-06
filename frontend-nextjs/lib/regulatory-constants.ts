@@ -177,9 +177,6 @@ export const HOUSING_SEPP_LMR = {
     'wollongong', 'shellharbour', 'shoalhaven', 'kiama',
   ] as const,
 
-  /** Default lot width assumption when cadastral data unavailable (meters) */
-  DEFAULT_LOT_WIDTH_M: 15,
-
   /** Minimum lot width for dual occupancy development (meters) */
   MIN_LOT_WIDTH_DUAL_OCC_M: 12,
 

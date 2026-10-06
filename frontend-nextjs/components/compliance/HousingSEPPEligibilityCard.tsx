@@ -84,7 +84,15 @@ interface SeppLepOverride {
 interface HousingSEPPEligibilityCardProps {
   zoneCode: string;
   lotSize: number;
-  lotWidth: number;
+  /**
+   * Null when the frontage is not held for this property.
+   *
+   * The `!lotWidth` guards below already did the right thing with a missing
+   * width — skip the eligibility fetch and ask for one. They simply never ran,
+   * because the caller substituted a default of 15 metres. Typed as nullable so
+   * the compiler keeps it that way.
+   */
+  lotWidth: number | null;
   stationDistance?: number;
   isLMRArea?: boolean;
   strataInfo?: StrataInfo;
@@ -479,7 +487,12 @@ export function HousingSEPPEligibilityCard({
           <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
             <span>Your zone: <strong className="text-gray-900">{zoneCode}</strong></span>
             <span>Lot area: <strong className="text-gray-900">{lotSize}m²</strong></span>
-            <span>Frontage: <strong className="text-gray-900">{lotWidth}m</strong></span>
+            <span>
+              Frontage:{' '}
+              <strong className="text-gray-900">
+                {lotWidth != null ? `${lotWidth}m` : 'Not available'}
+              </strong>
+            </span>
             {stationDistance && (
               <span>To station: <strong className="text-gray-900">{stationDistance}m</strong></span>
             )}
