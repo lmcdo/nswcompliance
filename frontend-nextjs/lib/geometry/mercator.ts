@@ -94,10 +94,16 @@ export function scaleFactorForRing(ring: number[][]): number {
  * (-33.8945), which reports a true 450 m2 lot as 653 m2. That figure then became
  * `lot_area` in the request body and `total_lot_area` on screen.
  *
- * Returns null, never 0, for a ring that cannot be measured. 0 is a legitimate
- * area for a degenerate polygon and reads downstream as a measurement; the
- * previous `return 0` was indistinguishable from "a lot with no size". A caller
- * that cannot get a number must omit the field, not substitute one.
+ * Returns null, never 0. A caller that cannot get a number must omit the field,
+ * not substitute one, and the previous `return 0` was indistinguishable from "a
+ * lot with no size".
+ *
+ * A collinear or self-cancelling ring is structurally valid and shoelaces to
+ * exactly 0, so it is rejected here rather than passed on: `lot_area` at the
+ * endpoint is `z.number().positive()`, and a 0 would fail validation and take
+ * the WHOLE response down with a 400 — including the zone setback rules that
+ * need no area at all. Cross-review finding, 2026-10-06; measured, not assumed:
+ * ringAreaM2([[0,0],[10,0],[20,0],[0,0]]) returned 0 before this guard.
  */
 export function ringAreaM2(ring: unknown): number | null {
   const safe = usableRing(ring);
@@ -123,7 +129,7 @@ export function ringAreaM2(ring: unknown): number | null {
     acc += pts[i][0] * pts[j][1] - pts[j][0] * pts[i][1];
   }
   const area = Math.abs(acc / 2) / (scale * scale);
-  return Number.isFinite(area) ? area : null;
+  return Number.isFinite(area) && area > 0 ? area : null;
 }
 
 /**

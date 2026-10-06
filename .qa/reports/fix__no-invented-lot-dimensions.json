@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Removes five invented real-world values from the setbacks path and replaces four separate area implementations with one scale-corrected function in lib/geometry/mercator.ts, which IS live (imported by lot-dimensions.ts and lot-shape-analysis.ts). Not Critical: measured, the entire setbacks-calculate feature is unreachable -- no route mounts AnalysisTabs, PreciseSetbackCalculator or EnhancedSetbackVerification, lib/geometry/calculator.ts has no consumer, and the endpoint's only other caller sends `zone` where the schema requires `property_zone` and therefore always 400s. No user saw these figures. Not Minor: it changes a live module's public surface (two new exports), narrows BuildableAreaAnalysis from number to number|null across the response contract, and removes code that would have shipped wrong numbers the moment anyone mounted the feature.",
-  "commit_hash": "dc7e8d80",
+  "commit_hash": "688de575",
   "files": [
     "frontend-nextjs/lib/geometry/mercator.ts",
     "frontend-nextjs/lib/geometry/calculator.ts",
@@ -22,7 +22,7 @@
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx jest __tests__/lib/lot-area-not-invented.test.ts && npx tsc --noEmit && python C:/Users/lawre/.claude/jobs/725925e0/tmp/mutate.py",
     "fails_when": "The suite goes red if any of the five invented values returns, if an unmeasurable ring yields a number instead of null, if the Mercator correction is dropped or halved, if a buildable-area response block bypasses the single helper, or if either component reintroduces a local area implementation or a latitude constant.",
-    "observed_red": "48 of 48 tests pass on clean code; npx tsc --noEmit exits 0; the full frontend suite is 117 suites and 1658 tests with 0 failures. The real evidence is the mutation harness: 12 mutations applied one at a time and reverted byte-for-byte, 12 of 12 CAUGHT, 0 holes. Its first run found a genuine hole -- expect(src).toMatch(/lotGeometryAreaM2/) was satisfied by the IMPORT line, so replacing the real call with = 450 left the suite green. Fixed by requiring a call site's trailing paren and asserting lot_area is never assigned a numeric literal; that mutation is now caught."
+    "observed_red": "56 of 56 tests pass on clean code; npx tsc --noEmit exits 0; the full frontend suite is 117 suites and 1666 tests with 0 failures. The real evidence is the mutation harness: 15 mutations applied one at a time and reverted byte-for-byte, 15 of 15 CAUGHT, 0 holes. It found a genuine hole on its first run -- expect(src).toMatch(/lotGeometryAreaM2/) was satisfied by the IMPORT line, so replacing the real call with = 450 left the suite green. Fixed by requiring a call site's trailing paren and asserting lot_area is never assigned a numeric literal; that mutation is now caught."
   },
   "functions": [
     {
@@ -91,5 +91,19 @@
     "secrets": "No secret, token or key is added, read or referenced. No environment variable is introduced by this change.",
     "other_repo": "No other repository is affected. Everything changed lives under frontend-nextjs in this repo.",
     "manual_verify": "Nothing to verify by hand on the running app, because nothing mounts this feature -- no route references AnalysisTabs, PreciseSetbackCalculator, EnhancedSetbackVerification, useSetbackCalculation or useSetbacks. The check that matters is the mutation harness: 12 of 12 caught, 0 holes. Carried forward separately: lib/setbacks/validator.ts still holds a hardcoded zone-to-lot-area table in dead code; lib/assessment/api-client.ts line 105 posts zone where the schema requires property_zone so that call has always returned 400; the route imports PreciseSetbackCalculator from lib/geometry/calculator and never uses it; and 13 fabricated citations remain repo-wide, five of them already fixed on PR 1229 whose gates passed for 4d513876."
+  },
+  "cross_review": {
+    "tool": "gpt-5.6-sol, pre-push, 2026-10-06",
+    "findings": 2,
+    "verdicts": [
+      {
+        "finding": "MEDIUM type-boundary, lib/geometry/mercator.ts:140 -- lotGeometryAreaM2 can return 0 for a structurally valid but degenerate ring, while the endpoint's schema requires lot_area to be positive and both components submit every non-null result.",
+        "verdict": "CONFIRMED and FIXED. Measured before acting: ringAreaM2([[0,0],[10,0],[20,0],[0,0]]) returned 0, as did an all-same-point ring and a there-and-back ring. The consequence is worse than a misleading figure -- lot_area is z.number().positive(), so a 0 fails validation and returns 400 for the WHOLE request, discarding the zone setback rules that need no area. It also contradicted my own doc comment, which already claimed 'Returns null, never 0'. ringAreaM2 now requires area > 0; three degenerate shapes are asserted null, and the mutation that removes the guard is caught."
+      },
+      {
+        "finding": "MEDIUM silent-failure, lib/geometry/calculator.ts:530 -- the new delegation still coalesces an unmeasurable ring to 0 via `?? 0`, silently converting missing or malformed geometry into a plausible numeric area.",
+        "verdict": "CONFIRMED and FIXED. I had kept `?? 0` deliberately to avoid a behaviour change, but having already widened BuildableAreaAnalysis to number|null in this same change, propagating null was type-safe and strictly more honest. estimateLotAreaFromGeometry is renamed lotAreaFromGeometry and returns number|null; all three return paths of calculateBuildableArea now take total_lot_area from one guarded local, and buildable_area / buildable_percentage / setback_area_lost are null rather than 0 on the two paths whose own note says the figure could not be calculated. Three mutations cover it."
+      }
+    ]
   }
 }

@@ -127,6 +127,35 @@ describe('an unmeasurable ring yields null, never a substituted number', () => {
   it.each([450, 100, 500, 400, 0])('never returns the old substitute %s', (substitute) => {
     expect(ringAreaM2(null)).not.toBe(substitute);
   });
+
+  /**
+   * A zero-area ring is structurally valid and must still be null.
+   *
+   * Cross-review finding, 2026-10-06, confirmed by measurement before it was
+   * fixed: ringAreaM2([[0,0],[10,0],[20,0],[0,0]]) returned 0. That 0 is not
+   * merely a misleading figure -- `lot_area` at the endpoint is
+   * z.number().positive(), so a 0 fails validation and returns 400 for the WHOLE
+   * request, discarding the zone setback rules that need no area at all.
+   */
+  it.each<[string, number[][]]>([
+    ['a collinear ring', [[0, 0], [10, 0], [20, 0], [0, 0]]],
+    ['a ring of one repeated point', [[5, 5], [5, 5], [5, 5], [5, 5]]],
+    ['a there-and-back ring', [[0, 0], [10, 0], [0, 0], [0, 0]]],
+  ])('%s encloses no area, so it is null and never 0', (_label, ring) => {
+    expect(ringAreaM2(ring)).toBeNull();
+    expect(lotGeometryAreaM2({ rings: [ring] })).toBeNull();
+  });
+
+  it('never returns a value the endpoint would reject as non-positive', () => {
+    // The guard that ties this module to the schema it feeds.
+    for (const ring of [
+      [[0, 0], [10, 0], [20, 0], [0, 0]],
+      squareRingOfTrueArea(450),
+    ]) {
+      const got = ringAreaM2(ring);
+      if (got !== null) expect(got).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe('lotGeometryAreaM2 refuses a geometry it cannot measure as a whole lot', () => {
@@ -277,5 +306,41 @@ describe('no module reintroduces a local latitude constant for area', () => {
     expect(src).toMatch(/ringAreaM2\(/);
     // The duplicated loop is gone.
     expect(src).not.toMatch(/points\[i\]\.x\s*\*\s*points\[j\]\.y/);
+  });
+});
+
+/**
+ * PreciseSetbackCalculator.calculateBuildableArea must not report 0 as an area.
+ *
+ * Cross-review finding, 2026-10-06. The delegation added earlier that day kept
+ * the old `?? 0`, which turned malformed or missing geometry into a plausible
+ * numeric area that the three return paths then rounded and reported as
+ * `total_lot_area`. Asserted on source because the class's constructor opens a
+ * database client, which a unit test has no business doing.
+ */
+describe('the buildable-area calculator reports null, not 0, for an unmeasurable lot', () => {
+  const src = readStripped('lib', 'geometry', 'calculator.ts');
+
+  it('is read, so the assertions below are not vacuous', () => {
+    expect(src.length).toBeGreaterThan(2000);
+    expect(src).toContain('calculateBuildableArea');
+  });
+
+  it('no longer coalesces an unmeasurable ring to zero', () => {
+    expect(src).not.toMatch(/ringAreaM2\([^)]*\)\s*\?\?\s*0/);
+    expect(src).toMatch(/lotAreaFromGeometry\(geometry: LotGeometry\): number \| null/);
+  });
+
+  it('states no buildable figure as 0 beside a note saying it could not be calculated', () => {
+    expect(src).not.toMatch(/buildable_area:\s*0/);
+    expect(src).not.toMatch(/buildable_percentage:\s*0,/);
+    expect(src).not.toMatch(/setback_area_lost:\s*0,/);
+  });
+
+  it('guards every figure derived from the lot area', () => {
+    // Three return paths, each taking total_lot_area from the one guarded local.
+    const guarded = (src.match(/total_lot_area:\s*lotArea/g) ?? []).length;
+    expect(guarded).toBe(3);
+    expect(src).toMatch(/totalArea != null \? this\.roundToCentimeter\(totalArea\) : null/);
   });
 });

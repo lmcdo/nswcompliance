@@ -119,15 +119,18 @@ export class PreciseSetbackCalculator {
  lotGeometry: LotGeometry,
  setbackResults: SetbackResult[]
  ): Promise<BuildableAreaAnalysis> {
- const totalArea = this.estimateLotAreaFromGeometry(lotGeometry);
+ const totalArea = this.lotAreaFromGeometry(lotGeometry);
+ const lotArea = totalArea != null ? this.roundToCentimeter(totalArea) : null;
 
- // If no valid setback results found, cannot calculate buildable area
+ // If no valid setback results found, cannot calculate buildable area. The three
+ // figures below are null, not 0: the note says they could not be calculated, and
+ // a 0 beside that note reads as a calculated nothing.
  if (setbackResults.length === 0) {
  return {
- total_lot_area: this.roundToCentimeter(totalArea),
- buildable_area: 0,
- buildable_percentage: 0,
- setback_area_lost: 0,
+ total_lot_area: lotArea,
+ buildable_area: null,
+ buildable_percentage: null,
+ setback_area_lost: null,
  note: "No high-confidence setback data available - cannot calculate buildable area"
  };
  }
@@ -159,20 +162,22 @@ export class PreciseSetbackCalculator {
  const buildableArea = buildableWidth * buildableDepth;
 
  return {
- total_lot_area: this.roundToCentimeter(totalArea),
+ total_lot_area: lotArea,
  buildable_area: this.roundToCentimeter(buildableArea),
- buildable_percentage: totalArea > 0 ? Math.round((buildableArea / totalArea) * 100 * 10) / 10 : 0,
- setback_area_lost: this.roundToCentimeter(totalArea - buildableArea)
+ // Both derive from the lot area, so both are unavailable without it.
+ buildable_percentage:
+ totalArea != null ? Math.round((buildableArea / totalArea) * 100 * 10) / 10 : null,
+ setback_area_lost: totalArea != null ? this.roundToCentimeter(totalArea - buildableArea) : null
  };
  }
  }
 
  // Insufficient data for precise calculation
  return {
- total_lot_area: this.roundToCentimeter(totalArea),
- buildable_area: 0,
- buildable_percentage: 0,
- setback_area_lost: 0,
+ total_lot_area: lotArea,
+ buildable_area: null,
+ buildable_percentage: null,
+ setback_area_lost: null,
  note: "Insufficient setback data for buildable area calculation"
  };
  }
@@ -520,14 +525,21 @@ export class PreciseSetbackCalculator {
  return Math.round(value * 100) / 100;
  }
 
- private estimateLotAreaFromGeometry(geometry: LotGeometry): number {
+ /**
+  * The lot's ground area, or null when the geometry cannot be measured.
+  *
+  * Delegates to the shared scale-corrected shoelace; this was the third copy of
+  * that arithmetic in the repo, and the other two carried no scale correction.
+  *
+  * Returns null rather than the previous 0. `?? 0` turned malformed or missing
+  * geometry into a plausible numeric area that callers then rounded and reported
+  * as `total_lot_area`. Cross-review finding, 2026-10-06.
+  */
+ private lotAreaFromGeometry(geometry: LotGeometry): number | null {
  if (!geometry.rings || geometry.rings.length === 0) {
- return 0;
+ return null;
  }
- // Delegates to the shared scale-corrected shoelace. This was the third copy of
- // that arithmetic in the repo; the other two carried no scale correction at all.
- // `?? 0` preserves this method's existing contract of 0 for an unusable ring.
- return ringAreaM2(geometry.rings[0]) ?? 0;
+ return ringAreaM2(geometry.rings[0]);
  }
 
  // Helper method for angle conversion
