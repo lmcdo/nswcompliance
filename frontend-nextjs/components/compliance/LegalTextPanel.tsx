@@ -1,5 +1,7 @@
 'use client';
 
+import { asTrimmedString } from '@/lib/citation-display';
+
 /**
  * Legal Text Slide-Out Panel
  *
@@ -826,7 +828,12 @@ export function LegalTextPanel({
                 )}
               </div>
               <CardTitle className="text-lg">
-                {constraint.source.document ?? 'Instrument not named in the Planning Portal response'}
+                {/* asTrimmedString, not `??`: a document of '' or '   ' is not
+                    null, so the fallback never fired and the card rendered a
+                    blank title above a real constraint value -- the control
+                    looking sourced while naming no instrument. */}
+                {asTrimmedString(constraint.source.document)
+                  ?? 'Instrument not named in the Planning Portal response'}
               </CardTitle>
               <div className="text-sm text-gray-600 mt-1">
                 {constraint.type.charAt(0).toUpperCase() + constraint.type.slice(1)}: {constraint.value}{constraint.unit}

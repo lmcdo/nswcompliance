@@ -1,5 +1,7 @@
 'use client';
 
+import { asTrimmedString } from '@/lib/citation-display';
+
 /**
  * Constraint Card Component with Proper Color Coding
  * LEP = Blue, DCP = Green, SEPP = Orange
@@ -400,8 +402,14 @@ export function ConstraintCard({
                 {/* An absent instrument is stated, not left blank: a blank line
                     beside a height figure reads as though the figure is unsourced
                     by oversight rather than because the Portal named no EPI. */}
-                <span className={constraint.source.document ? undefined : 'italic'}>
-                  {constraint.source.document ?? 'Instrument not named in the Planning Portal response'}
+                {/* asTrimmedString, not `??`: these two lines used to disagree.
+                    The class tested truthiness, so '' took the italic "absent"
+                    styling, while `??` passes '' straight through and rendered
+                    NOTHING -- an empty italic span beside the figure, which is
+                    the blank this message exists to prevent. One guard, both. */}
+                <span className={asTrimmedString(constraint.source.document) ? undefined : 'italic'}>
+                  {asTrimmedString(constraint.source.document)
+                    ?? 'Instrument not named in the Planning Portal response'}
                 </span>
                 {/* Version badge if provision has version metadata */}
                 {constraint.provisions?.[0]?.version && (

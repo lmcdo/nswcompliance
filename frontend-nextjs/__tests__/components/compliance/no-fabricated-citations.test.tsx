@@ -384,6 +384,22 @@ describe('an untyped Portal value cannot reach the citation as-is', () => {
     expect(src()).toMatch(/const lepName\s*=\s*asTrimmedString\(/);
   });
 
+  // Cross-review round 5. `source.document ?? 'Instrument not named...'` does
+  // not fire for '' or '   ', so the stated absence message was replaced by a
+  // blank -- the exact blank it exists to prevent. On the card the two lines
+  // even disagreed: the className tested truthiness and applied the italic
+  // "absent" styling, while `??` rendered nothing inside it.
+  it.each([
+    ['ConstraintCard.tsx', ['components', 'compliance', 'ConstraintCard.tsx']],
+    ['LegalTextPanel.tsx', ['components', 'compliance', 'LegalTextPanel.tsx']],
+  ])('%s treats an empty instrument as absent, not as text', (_name, parts) => {
+    const text = readStripped(...(parts as string[]));
+    // Requires the CALL wrapping that expression, not the identifier anywhere.
+    expect(text).toMatch(/asTrimmedString\(constraint\.source\.document\)/);
+    // And the raw nullish form must be gone, or the guard sits beside the bug.
+    expect(text).not.toMatch(/\{\s*constraint\.source\.document\s*\?\?/);
+  });
+
   it('a whitespace-only instrument is treated as absent, not rendered blank', () => {
     expect(asTrimmedString('   ')).toBeNull();
     expect(instrumentClauseLabel('   ', '  ')).toBeNull();

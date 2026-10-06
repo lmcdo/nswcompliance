@@ -134,6 +134,19 @@ MUTATIONS = [
      "              const lepName = lepLayer?.results?.[0]?.['EPI Name'] || null;",
      "'   ' is truthy, so the 'not named' message never shows"),
 
+    # ── an empty instrument is absent, not blank (cross-review round 5) ──
+    ('let an empty instrument render as a blank line on the constraint card',
+     'components/compliance/ConstraintCard.tsx',
+     '                  {asTrimmedString(constraint.source.document)',
+     '                  {constraint.source.document',
+     "'' is not null, so the message never fires and the span renders empty"),
+
+    ('let an empty instrument render as a blank legal-text title',
+     'components/compliance/LegalTextPanel.tsx',
+     '                {asTrimmedString(constraint.source.document)',
+     '                {constraint.source.document',
+     'a blank card title above a real value reads as sourced'),
+
     # ── the honest one must survive ──
     ('delete the honest "not available" message',
      'components/compliance/ReferencedLegislationAccordion.tsx',
