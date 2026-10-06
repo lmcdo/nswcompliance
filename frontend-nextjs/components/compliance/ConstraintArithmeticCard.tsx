@@ -127,6 +127,23 @@ function yieldInputsBadge(result: ConstraintArithmeticResult): { text: string; s
 }
 
 /** Engine dev_type slug → readable built-form label (e.g. "multi-dwelling housing"). */
+/**
+ * The LMR citation, naming the instrument ONLY when the data names one.
+ *
+ * Until 2026-10-06 both call sites read `lmr_source_document || 'SEPP (Housing) 2021'`,
+ * so a real clause from a row with no document was attributed to a guessed
+ * instrument. The guess is usually right, which is exactly what makes it
+ * dangerous: nothing fails when it is wrong. `source_document` is nullable at the
+ * source (services/housing_sepp_eligibility.py defaults it to None), and the
+ * backend's own rule is that no citation means no claim.
+ */
+export function lmrCitationText(
+  sourceDocument: string | null | undefined,
+  sourceClause: string,
+): string {
+  return sourceDocument ? `${sourceDocument} cl ${sourceClause}` : `clause ${sourceClause}`;
+}
+
 function humanizeForm(form?: string | null): string {
   if (!form) return 'dwelling';
   return form
@@ -427,10 +444,10 @@ export function ConstraintArithmeticCard({
                           rel="noopener noreferrer"
                           className="underline hover:text-teal-900"
                         >
-                          {result.lmr_source_document || 'SEPP (Housing) 2021'} cl {result.lmr_source_clause}
+                          {lmrCitationText(result.lmr_source_document, result.lmr_source_clause)}
                         </a>
                       ) : (
-                        <>{result.lmr_source_document || 'SEPP (Housing) 2021'} cl {result.lmr_source_clause}</>
+                        <>{lmrCitationText(result.lmr_source_document, result.lmr_source_clause)}</>
                       )}
                       {result.lmr_effective_date ? ` (from ${result.lmr_effective_date})` : ''}.
                     </div>

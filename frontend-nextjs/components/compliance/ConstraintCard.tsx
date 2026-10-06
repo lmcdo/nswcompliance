@@ -1,5 +1,7 @@
 'use client';
 
+import { asTrimmedString } from '@/lib/citation-display';
+
 /**
  * Constraint Card Component with Proper Color Coding
  * LEP = Blue, DCP = Green, SEPP = Orange
@@ -100,8 +102,10 @@ export interface ComplianceConstraint {
   unit?: string;
   description?: string;
   source: {
-    clause: string;
-    document: string;
+    // Nullable, matching ComplianceDashboard's contract: a citation the Planning
+    // Portal did not supply is null, never a guessed clause or instrument.
+    clause: string | null;
+    document: string | null;
     authority_level: 'LEP' | 'DCP' | 'SEPP';
   };
   provisions?: ProvisionContent[];
@@ -381,8 +385,9 @@ export function ConstraintCard({
                   ? constraint.type.toUpperCase()  // "HEIGHT", "FSR"
                   : constraint.type.charAt(0).toUpperCase() + constraint.type.slice(1)  // "Setback", "Special"
                 }
-                {/* Show clause only if it's not a machine-generated ID */}
-                {constraint.provisions?.[0] && !constraint.source.clause.match(/^[Pp]rovision_\d+$/) && (
+                {/* Show clause only if we HAVE one and it's not a machine-generated ID */}
+                {constraint.provisions?.[0] && constraint.source.clause
+                  && !constraint.source.clause.match(/^[Pp]rovision_\d+$/) && (
                   <> • {constraint.source.clause}</>
                 )}
               </div>
@@ -394,7 +399,25 @@ export function ConstraintCard({
                 {constraint.provisions?.[0] && getProvisionSectionName(constraint.provisions[0]) && (
                   <span>•</span>
                 )}
-                <span>{constraint.source.document}</span>
+                {/* An absent instrument is stated, not left blank: a blank line
+                    beside a height figure reads as though the figure is unsourced
+                    by oversight rather than because the Portal named no EPI. */}
+                {/* asTrimmedString, not `??`: these two lines used to disagree.
+                    The class tested truthiness, so '' took the italic "absent"
+                    styling, while `??` passes '' straight through and rendered
+                    NOTHING -- an empty italic span beside the figure, which is
+                    the blank this message exists to prevent. One guard, both. */}
+                {/* Source-NEUTRAL wording. This said "not named in the Planning
+                    Portal response", but the card also renders DCP and SEPP
+                    constraints built from database rows, which no Portal
+                    response supplied -- so for those the message asserted a
+                    provenance nobody recorded. That is the same defect this
+                    change exists to remove, in the sentence added to prevent
+                    it. Cross-review found it. */}
+                <span className={asTrimmedString(constraint.source.document) ? undefined : 'italic'}>
+                  {asTrimmedString(constraint.source.document)
+                    ?? 'Source instrument not recorded'}
+                </span>
                 {/* Version badge if provision has version metadata */}
                 {constraint.provisions?.[0]?.version && (
                   <>

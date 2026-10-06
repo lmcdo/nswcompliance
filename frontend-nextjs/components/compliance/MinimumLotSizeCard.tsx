@@ -1,5 +1,6 @@
 'use client';
 
+import { instrumentClauseLabel } from '@/lib/citation-display';
 import { Badge } from '@/components/ui/badge';
 
 interface MinimumLotSizeCardProps {
@@ -15,16 +16,22 @@ export function MinimumLotSizeCard({
   unit = 'm²',
   epiName,
   amendment,
-  legislativeClause = 'Clause 4.1'
+  legislativeClause
 }: MinimumLotSizeCardProps) {
+  // No default, and no fallback instrument: the badge below named the INNER WEST
+  // LEP for a property in any council whenever the Portal response had no EPI name.
+  const citation = instrumentClauseLabel(epiName, legislativeClause);
+
   return (
     <div className="border border-blue-200 bg-blue-50/50 rounded-lg p-4">
       {/* Top right: Blue and Green pills stacked */}
       <div className="flex justify-end mb-2">
         <div className="flex flex-col gap-1 items-end">
-          <Badge className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800">
-            {epiName || 'Inner West Local Environmental Plan 2022'} - {legislativeClause}
-          </Badge>
+          {citation && (
+            <Badge className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800">
+              {citation}
+            </Badge>
+          )}
           {amendment && (
             <Badge className="text-xs px-2 py-0.5 bg-green-100 text-green-800">
               {amendment}

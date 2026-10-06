@@ -1,5 +1,6 @@
 'use client';
 
+import { instrumentClauseLabel } from '@/lib/citation-display';
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,8 +35,12 @@ export function LandUseZoningCard({
   legislationUrl,
   epiName,
   amendment,
-  legislativeClause = 'Clause 2.3'
+  legislativeClause
 }: LandUseZoningCardProps) {
+  // No default. 'Clause 2.3' used to stand here, and LepControls passes
+  // `zoneResult?.['Legislative Clause']`, which is undefined whenever the Portal
+  // response carries no clause -- so the default fired on the live assessment page.
+  const citation = instrumentClauseLabel(epiName, legislativeClause);
   const zoneName = zoneDescription?.replace(`${zone}:`, '').trim() || zone;
 
   const [loading, setLoading] = useState(false);
@@ -123,9 +128,11 @@ export function LandUseZoningCard({
 
           {/* Right: Blue and Green pills stacked */}
           <div className="flex flex-col gap-1 items-end">
-            <Badge className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800">
-              {epiName || 'Local Environmental Plan'} — {legislativeClause}
-            </Badge>
+            {citation && (
+              <Badge className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800">
+                {citation}
+              </Badge>
+            )}
             {amendment && (
               <Badge className="text-xs px-2 py-0.5 bg-amber-50 text-amber-700">
                 {amendment}

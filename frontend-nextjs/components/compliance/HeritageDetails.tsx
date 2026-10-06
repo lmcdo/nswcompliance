@@ -1,5 +1,6 @@
 "use client"
 
+import { asTrimmedString, instrumentClauseLabel } from '@/lib/citation-display';
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,7 +10,12 @@ interface HCAData {
   id: string;
   name: string;
   significance: string;
-  legislativeClause: string;
+  /**
+   * Null when the heritage record names no clause. Was `|| 'Clause 5.10'`, which
+   * is the standard heritage clause in most NSW LEPs and therefore usually right
+   * -- the reason a wrong one would never have been noticed.
+   */
+  legislativeClause: string | null;
   epiName: string;
   layClass: string;
 }
@@ -48,6 +54,37 @@ const COUNCIL_HERITAGE_CONTEXT: Record<string, { dcpRef: string; hcaExplanation:
     hcaExplanation: 'Heritage controls may include both general requirements and HCA-specific controls with a Statement of Significance. Check the DCP tab for controls applicable to this area.'
   }
 };
+
+/**
+ * The "Legislative Control" line.
+ *
+ * Until 2026-10-06 both call sites rendered `{legislativeClause} Inner West LEP
+ * 2022` as literal text, so a heritage conservation area in ANY council was
+ * attributed to the Inner West LEP, beside a clause that itself defaulted to
+ * 'Clause 5.10'. Clause 5.10 is the standard heritage clause in most NSW LEPs,
+ * which is why a wrong pairing would never have looked wrong.
+ *
+ * Delegates to instrumentClauseLabel so there is ONE rule for this badge across
+ * the zoning, minimum-lot-size and heritage cards, rather than three copies.
+ */
+export function legislativeControlLabel(
+  clause: string | null | undefined,
+  epiName: string | null | undefined,
+): string {
+  return instrumentClauseLabel(epiName, clause) ?? 'Not named in the heritage record';
+}
+
+/**
+ * "under clause 5.10" when a clause is known, else a phrase that names none.
+ *
+ * `unknown` because the heritage record is `any`; asTrimmedString is the guard.
+ */
+export function heritageControlPhrase(clause: unknown): string {
+  const reference = asTrimmedString(clause);
+  return reference
+    ? `under ${reference}`
+    : 'under the heritage conservation area controls for this land';
+}
 
 export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil, onViewDCPHeritage }: HeritageDetailsProps) {
   const [hcaData, setHcaData] = useState<HCAData | null>(null);
@@ -106,7 +143,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil
       name: heritage?.heritageItemName || '',
       id: heritage?.heritageItemNumber || '',
       significance: heritage?.heritageSignificance || 'Local',
-      legislativeClause: heritage?.heritageClause || 'Clause 5.10',
+      legislativeClause: heritage?.heritageClause || null,
       layClass: heritage?.heritageType || 'Conservation Area',
       epiName: ''
     };
@@ -133,7 +170,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-white rounded-lg p-2 border border-amber-100">
               <div className="text-xs text-amber-600 mb-0.5">Legislative Control</div>
-              <div className="text-sm font-semibold text-amber-900 mb-1.5">{displayHCA.legislativeClause} Inner West LEP 2022</div>
+              <div className="text-sm font-semibold text-amber-900 mb-1.5">{legislativeControlLabel(displayHCA.legislativeClause, displayHCA.epiName)}</div>
               {heritage?.heritageLegislationUrl && (
                 <a
                   href={heritage.heritageLegislationUrl}
@@ -171,7 +208,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil
             <AlertTriangle className="h-3.5 w-3.5 text-amber-700 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-amber-900">
               Development within this Heritage Conservation Area requires assessment against
-              heritage conservation principles under {displayHCA.legislativeClause}.
+              heritage conservation principles {heritageControlPhrase(displayHCA.legislativeClause)}.
               <div className="mt-1.5 pt-1.5 border-t border-amber-200 text-amber-800">
                 {formerCouncil && COUNCIL_HERITAGE_CONTEXT[formerCouncil] ? (
                   <><strong>DCP controls:</strong> {COUNCIL_HERITAGE_CONTEXT[formerCouncil].hcaExplanation}</>
@@ -210,7 +247,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-white rounded-lg p-2 border border-amber-100">
               <div className="text-xs text-amber-600 mb-0.5">Legislative Control</div>
-              <div className="text-sm font-semibold text-amber-900 mb-1.5">{hcaData.legislativeClause} Inner West LEP 2022</div>
+              <div className="text-sm font-semibold text-amber-900 mb-1.5">{legislativeControlLabel(hcaData.legislativeClause, hcaData.epiName)}</div>
               {onViewDCPHeritage && (
                 <button
                   onClick={onViewDCPHeritage}
@@ -237,7 +274,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil
             <AlertTriangle className="h-3.5 w-3.5 text-amber-700 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-amber-900">
               Development within this Heritage Conservation Area requires assessment against
-              heritage conservation principles under {hcaData.legislativeClause}.
+              heritage conservation principles {heritageControlPhrase(hcaData.legislativeClause)}.
               <div className="mt-1.5 pt-1.5 border-t border-amber-200 text-amber-800">
                 {formerCouncil && COUNCIL_HERITAGE_CONTEXT[formerCouncil] ? (
                   <><strong>DCP controls:</strong> {COUNCIL_HERITAGE_CONTEXT[formerCouncil].hcaExplanation}</>
@@ -382,11 +419,11 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil
 
                 <div className="text-xs">
                   <span className="text-amber-700">Legislative Control:</span>
-                  <span className="ml-1 font-semibold text-amber-900">{hcaData.legislativeClause}</span>
+                  <span className="ml-1 font-semibold text-amber-900">{legislativeControlLabel(hcaData.legislativeClause, hcaData.epiName)}</span>
                 </div>
 
                 <div className="text-xs italic text-amber-800 mt-2 pt-2 border-t border-amber-200">
-                  This property is subject to additional heritage conservation area controls under {hcaData.legislativeClause}.
+                  This property is subject to additional heritage conservation area controls {heritageControlPhrase(hcaData.legislativeClause)}.
                 </div>
               </div>
             </div>

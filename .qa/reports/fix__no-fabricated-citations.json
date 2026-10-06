@@ -1,0 +1,168 @@
+{
+  "tier": "standard",
+  "justification": "Removes every fabricated regulatory citation from the compliance components: a clause number or an instrument name substituted when the Planning Portal response, or a database row, carried none. Two of the thirteen are on a LIVE surface (LandUseZoningCard via LepControls.tsx:84 and ConstraintArithmeticCard via LepControls.tsx:196, both from app/assessment/page.tsx), so a user could see them. Not Critical: no write, no migration, no served regulatory quote changes; the figures displayed beside each control are unaffected, only the citation attached to them. Not Minor: it narrows source.clause and source.document from string to string|null across three duplicate contracts, changes when a citation badge renders at all, and removes a hardcoded Inner West LEP document id that was posted to /api/lep/full-text for every property in NSW.",
+  "commit_hash": "d52583e1",
+  "files": [
+    "frontend-nextjs/lib/citation-display.ts",
+    "frontend-nextjs/lib/compliance/constraint-dedup.ts",
+    "frontend-nextjs/components/compliance/ComplianceDashboard.tsx",
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+    "frontend-nextjs/components/compliance/ConstraintCard.tsx",
+    "frontend-nextjs/components/compliance/HeritageDetails.tsx",
+    "frontend-nextjs/components/compliance/LandUseZoningCard.tsx",
+    "frontend-nextjs/components/compliance/LegalTextPanel.tsx",
+    "frontend-nextjs/components/compliance/MinimumLotSizeCard.tsx",
+    "frontend-nextjs/__tests__/components/compliance/no-fabricated-citations.test.tsx",
+    "scripts/mutate_lib.py",
+    "scripts/mutate_cite.py",
+    "scripts/count_citation_fallbacks.py"
+  ],
+  "pre_impl": {
+    "existing_data": "lib/citation-display.ts already existed to decide whether a DCP clause number may be shown at all, written for DQ-111 when the AI extractor's clause numbers turned out to be unchecked. The new instrumentClauseLabel went there rather than into a fourth copy, and the heritage card's local version now delegates to it. The backend that feeds the live LMR citation states the same rule in its own docstring at services/intelligence_brief.py: no citation means no claim, the product never asserts a regulatory fact without a source. The frontend was contradicting the principle it was built on.",
+    "assumption_mismatch": "The baseline was wrong twice over, and both corrections came from measurement. The counter script reported 10 fabricated citations; running the same patterns over the same files found 12, because the script reads git show origin/main and its per-file reporting had dropped two. The real figure was 13: my own new test ratchet caught a thirteenth that no counter can see, a plain JSX fallback naming the Inner West LEP in the section header. Two shapes are invisible to the counter entirely: a DEFAULT PARAMETER, because the literal sits in the component that receives the value rather than the one that passes it, and a hardcoded instrument in JSX text, which is not a fallback expression at all.",
+    "new_vs_existing": "One new exported function in an existing module, and three deletions of duplicated logic: HeritageDetails now delegates its label to it, and the zoning and minimum-lot-size cards use it instead of their own default parameters. ComplianceConstraint is declared three times in this tree, in ComplianceDashboard, again in ConstraintCard, and a third shape as SelectedProvision in LegalTextPanel; tsc found the second and third the moment the first was made nullable, which is the only reason they were not missed. Deliberately not fixed: GeneralDCPSection.tsx:753 states that properties under 450 square metres cannot be subdivided under the Inner West LEP, whatever the council. Same class, but a control rather than a citation, so fixing it means sourcing each council's real minimum lot size."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-fabricated-citations.test.tsx && npx tsc --noEmit && cd .. && python scripts/mutate_cite.py && python scripts/count_citation_fallbacks.py",
+    "fails_when": "The suite goes red if any of the removed literals is produced from absent data, if a citation badge renders when it names neither instrument nor clause, if the hardcoded LEP document id returns to the full-text lookup, if the honest \"Clause Reference Not Available\" message is deleted, if height and FSR collide in the deduplication key, or if comment stripping ever again removes the code an assertion depends on. scripts/count_citation_fallbacks.py fails the goal if the working tree holds more than the one honest fallback; its two known blind spots are stated in its own docstring, so the suite and not that script is the gate.",
+    "observed_red": "65 of 65 tests in this suite pass on clean code; npx tsc --noEmit exits 0; the full frontend suite is 120 suites with 0 failures. scripts/count_citation_fallbacks.py prints \"origin/main: 12   working tree: 1\" and EXITS 0; with a fabricated citation injected it exits 1, which was checked by injecting one rather than by reading the code. The evidence is the mutation harness: 18 mutations applied one at a time and reverted byte-for-byte, 18 of 18 CAUGHT, 0 holes. Every earlier run that reported holes found something real: the comment stripper cutting ComplianceDashboard from 66,075 characters to 17,106 so a reintroduced literal changed nothing while the length check still passed; an unconditional citation badge rendering EMPTY so every text assertion passed; and three anchors this change had itself rewritten, corrected rather than deleted."
+  },
+  "functions": [
+    {
+      "name": "instrumentClauseLabel",
+      "file_line": "frontend-nextjs/lib/citation-display.ts:21",
+      "input": "An instrument name and a clause reference, either of which may be null, undefined or whitespace, as the Planning Portal supplies them.",
+      "output": "The joined badge text when both are known, or whichever single one is known, so the badge states exactly what the source stated and nothing more.",
+      "if_none": "Returns null rather than a placeholder, which is what lets each caller drop the badge entirely instead of rendering a slot that names no instrument and cites no clause."
+    },
+    {
+      "name": "lmrCitationText",
+      "file_line": "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx:33",
+      "input": "The LMR source document, which is nullable at its origin because services/housing_sepp_eligibility.py defaults it to None, and the source clause, which the caller has already guarded as present.",
+      "output": "The document followed by the clause when the document is known, so a reader can see which instrument the higher limit rests on.",
+      "if_none": "Falls back to the bare clause reference rather than naming an instrument nobody recorded, replacing a hardcoded SEPP (Housing) 2021 that was usually right and therefore never questioned."
+    },
+    {
+      "name": "lepMetadataFrom",
+      "file_line": "frontend-nextjs/components/compliance/ComplianceDashboard.tsx:48",
+      "input": "The Portal's EPI name and legislative clause for the height or floor space ratio layer, each of which may be absent from the response.",
+      "output": "The document id and bare reference number used to look the clause text up, derived from the instrument the Portal actually named for this property.",
+      "if_none": "Returns undefined so no lookup happens at all. It previously hardcoded the Inner West LEP document id with clause 4.3 or 4.4 for every property in NSW, meaning a lot in any other council was served Inner West clause text."
+    }
+  ],
+  "values": "N/A -- no value is read from a database or an API by this change. Every figure removed was a literal in source, and the replacements read fields the Planning Portal response already carried.",
+  "queries": "N/A -- no database query is added or modified. One lookup key posted to /api/lep/full-text is now derived from the property's own instrument instead of being hardcoded, which changes what is asked for but adds no query.",
+  "break_it": [
+    {
+      "scenario": "A clause or instrument literal is reintroduced anywhere, in any of the three shapes: a fallback expression, a default parameter, or hardcoded JSX text.",
+      "what_happens": "The ratchet asserts all three shapes are absent from every touched file, and nine separate mutations reintroduce specific literals. Each is caught.",
+      "mitigated": true,
+      "how": "Three separate patterns, because one would only have found the fallback shape; the default-parameter and JSX-text shapes are what the counter script misses.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-fabricated-citations.test.tsx -t 'has no fallback to a regulatory literal' -- or run the harness rows that begin 'bring back'."
+    },
+    {
+      "scenario": "The guard is implemented by blacklisting strings, so a Portal response that genuinely says Clause 4.3 stops showing Clause 4.3.",
+      "what_happens": "A positive assertion requires a supplied value to pass through unchanged, including one of the removed literals, so the fix cannot be a denylist.",
+      "mitigated": true,
+      "how": "Asserted directly on instrumentClauseLabel with a real clause supplied, alongside the negative cases.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-fabricated-citations.test.tsx -t 'passes a supplied value through unchanged'."
+    },
+    {
+      "scenario": "A citation badge renders when it has nothing to say, so the user sees a labelled source slot that is empty.",
+      "what_happens": "The render test asserts zero badge elements when there is neither instrument nor clause, and exactly one when there is a citation. Text assertions alone did NOT catch this: the harness showed that making the badge unconditional renders an empty badge containing none of the forbidden literals, so every text check still passed.",
+      "mitigated": true,
+      "how": "An assertion on the element count rather than on the text, with a positive control so it can fail.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-fabricated-citations.test.tsx -t 'renders NO badge at all' -- or the harness row 'render the badge even when it names nothing'."
+    },
+    {
+      "scenario": "Comment stripping silently deletes the code an assertion depends on, so the ratchet passes while checking nothing.",
+      "what_happens": "This happened. The helper copied from the earlier suites led with a JSX-comment rule that spans from any brace to a later comment terminator, cutting ComplianceDashboard from 66,075 characters to 17,106 and removing both blocks under test. Two mutations reported as holes because the mutated lines were no longer in the searched text. The rule is replaced with the minimal block-comment matcher, which cannot cross a comment terminator, and each file now names markers that must survive stripping.",
+      "mitigated": true,
+      "how": "A length check was not a non-vacuity guard, because the truncated file was still 17,106 characters. Naming the specific code each file's assertions depend on is the only check that fails when the text is cut. Measured on every other file these suites read: the old rule lost no marker, so the merged suites were lucky rather than wrong.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-fabricated-citations.test.tsx -t 'keeps the code its assertions depend on' -- then re-run the harness rows 'bring back Clause 4.3 for height' and 'bring back Clause 4.4 for FSR', which were holes before the reader was fixed."
+    },
+    {
+      "scenario": "A later sweep treats the honest message as part of this class and deletes it, turning a stated absence into silence.",
+      "what_happens": "'Clause Reference Not Available' states the absence rather than filling it, so it is correct. A mutation deletes it and the suite goes red.",
+      "mitigated": true,
+      "how": "An explicit positive assertion that the message is present, plus a harness row that removes it.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/compliance/no-fabricated-citations.test.tsx -t 'the one honest fallback is left alone'."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Nothing to reset. No migration, no write, no seed; this change touches TypeScript only and reads no database.",
+    "secrets": "No secret, token, key or environment variable is added, read or referenced by this change.",
+    "other_repo": "No other repository is affected. Everything changed lives under frontend-nextjs in this repo.",
+    "manual_verify": "Worth one look on a real address outside the Inner West: the SEPP and LEP tab's zoning card should show that property's own LEP and clause, or no badge at all, and never the Inner West LEP. CARRIED FORWARD, measured and not fixed here: GeneralDCPSection.tsx:753 states a 450 square metre subdivision minimum under the Inner West LEP whatever the council, which is a control rather than a citation and needs each council's real minimum; battleaxeAwareLotWidth returns the access handle for a battleaxe with no head width, pre-existing and rated HIGH by cross-review on PR 1231; lib/setbacks/validator.ts holds a hardcoded zone-to-lot-area table in dead code; lib/assessment/api-client.ts line 105 posts zone where the schema requires property_zone, a permanent 400; LIGHT_RAIL_WALKABLE_M is 600 against the instrument's 800, which belongs to the transport scope; and the counter still reports 56 number-type fallbacks across these files, not yet triaged."
+  },
+  "cross_review": {
+    "tool": "gpt-5.6-sol, pre-push, 2026-10-07",
+    "findings": 3,
+    "verdicts": [
+      {
+        "finding": "HIGH silent-failure, ComplianceDashboard.tsx:634 -- the nullable citation fields are still the constraint deduplication key, so unrelated constraints with absent or identical partial citations collapse to the same key and one is silently removed.",
+        "verdict": "CONFIRMED and FIXED. This is a regression THIS change introduced, and the only one of the three that is. Verified before acting: neither the height push nor the FSR push sets provision_id, so both take the fallback branch, and deduplicateConstraints is applied to building_envelope, which is where lepConstraints land. While a missing clause was filled with Clause 4.3 for height and Clause 4.4 for FSR, those invented values were doing unintended work as the key: they kept the two apart. Nulling them makes both keys \"-<EPI name>\" whenever the Portal names an instrument but no clause, so the FSR control is dropped from the assessment with no trace. The key now carries the constraint's own identity (type, value, unit) ahead of the citation. The function moved to lib/compliance/constraint-dedup.ts because it was an inner closure no test could reach, and importing the component pulls in react-markdown, which Jest cannot load as CommonJS. Four tests: height and FSR survive with no clause, survive with neither clause nor instrument, a genuine repeat is still dropped (the positive control, without which a key unique per row would pass too), and provision_id still wins. A mutation row restores the colliding key."
+      },
+      {
+        "finding": "MEDIUM type-boundary, ComplianceDashboard.tsx:434 -- height and FSR citation fields come from an untyped Portal response but are assigned directly to string | null without the runtime validation this change introduced.",
+        "verdict": "CONFIRMED and FIXED. The same defect class this commit added asTrimmedString for, in the same file, at four sites the commit message had called three. result['Legislative Clause'] reaches a variable DECLARED string | null without tsc objecting, because planningLayers is any; ConstraintCard.tsx:388 then calls .match() on it. All four of heightClause, heightEpi, fsrClause and fsrEpi now go through asTrimmedString. Asserted per binding with a regex requiring the CALL on that name rather than the identifier appearing somewhere, and pinned by a mutation row."
+      },
+      {
+        "finding": "MEDIUM null-guard, ComplianceDashboard.tsx:1277 -- the LEP heading treats any truthy untyped EPI Name value as valid rather than validating and trimming it.",
+        "verdict": "CONFIRMED and FIXED. A whitespace-only name is truthy, so `|| null` left it in place and the `?? 'Local environmental plan not named...'` fallback never fired; the heading rendered an empty instrument followed by \" - Zoning, Building Envelope, Heritage\". Less severe than Sol rated it in one respect: the fabricated \"Inner West Local Environmental Plan 2022\" this change removed was worse than a blank. But the stated behaviour was still not the actual behaviour. Now asTrimmedString, pinned by a mutation row."
+      },
+      {
+        "finding": "MEDIUM silent-failure, lib/compliance/constraint-dedup.ts:28 (round 2, after the round 1 fixes) -- the fallback deduplication key concatenates unescaped fields with delimiters, so distinct constraints can serialise to the same key and one is silently removed.",
+        "verdict": "CONFIRMED and FIXED. Verified by construction before acting: clause \"A-B\" with document \"C\" and clause \"A\" with document \"B-C\" both yield \"height:8.5:m:A-B-C\". Narrow in practice, since it also needs identical type, value and unit, but it is the same class this whole change is about -- a value quietly becoming the wrong answer -- in the function just written to fix that class, so shipping it would have been incoherent. The key is now JSON.stringify([type, value, unit, clause, document]), which cannot be ambiguous. A test asserts the two colliding pairs stay separate and a mutation row restores the delimiter form. NOTE: round 2 ran only because the round 1 push got HTTP 429 (OpenAI credits exhausted) and the review was re-run by hand against base 83b62a6b, the commit the hook would have used. Without that retry this finding would have shipped unseen, and a 429 is reported by the hook but does not block a push."
+      },
+      {
+        "finding": "HIGH correctness, scripts/mutate_lib.py:59 (round 3) -- recovery state is shared machine-wide by tag and is not bound to a repository checkout, so recovery can overwrite one checkout with backups from another.",
+        "verdict": "CONFIRMED and FIXED, and introduced by this change a few hours earlier. The state directory was scripts/_mutation_state, which was per-checkout for free; moving it to a machine-wide temp directory to keep backups out of the repo tree removed that separation. This repo is routinely worked in several git worktrees at once, so an interrupted run in worktree A leaves a marker that the next run in worktree B obeys, restoring A's source over B's uncommitted work before the tests start. STATE_DIR is now namespaced by a sha1 of the absolute checkout path, and the marker records which checkout wrote it so _recover refuses a mismatch and exits 2 rather than restoring. Both halves, because the consequence is destroyed work."
+      },
+      {
+        "finding": "MEDIUM silent-failure, scripts/count_citation_fallbacks.py:60 (round 3) -- the working-tree scan lists only immediate directory children while the origin scan is recursive, so the two reported counts are not comparable.",
+        "verdict": "CONFIRMED and FIXED. git ls-tree -r is recursive; os.listdir is not. A fallback in a subdirectory would count on origin/main, be absent from the working-tree scan, and be reported as removed. LATENT today and measured as such: git ls-tree -r origin/main matched no path under either prefix with a further slash, and find -mindepth 1 -type d found no such directory on disk, which is exactly why it was invisible. Now os.walk, with paths normalised to the same repository-relative form git ls-tree prints."
+      },
+      {
+        "finding": "MEDIUM silent-failure, scripts/count_citation_fallbacks.py:114 (round 3) -- the script never exits nonzero when the working-tree fallback count exceeds the allowed one, despite being chained into a QA command as a failing check.",
+        "verdict": "CONFIRMED and FIXED, and the most serious of the three on this file, because the QA report named this script in falsifiable_check as though a regression would stop the command. It printed its numbers and exited 0 whatever they were, so a second fabricated citation would have printed \"working tree: 2\" and still passed: a check that cannot fail. It now exits 1 on any remaining value outside the single honest \"Clause Reference Not Available\". Verified by FORCING it rather than reading it -- injecting `|| 'Clause 5.10'` into HeritageDetails.tsx made it exit 1, and removing it again made it exit 0."
+      },
+      {
+        "finding": "MEDIUM silent-failure, scripts/count_citation_fallbacks.py:64 (round 3) -- the git ls-tree result is consumed without checking its return code, so a missing or invalid revision is reported as a valid zero-file baseline.",
+        "verdict": "CONFIRMED and FIXED. In a shallow or freshly initialised clone, git ls-tree -r origin/main exits 128 and its empty stdout was read as \"no files\", so the script would print \"origin/main: 0\" and thereby claim every fabricated citation had been removed. That is the same confident-wrong-answer class this whole change is about, in the tool that measures it. Both git calls now go through one helper that stops on a non-zero exit and prints the stderr."
+      },
+      {
+        "finding": "MEDIUM silent-failure, scripts/count_citation_fallbacks.py:48 (round 4) -- the detector only recognises single-quoted literals on the same line, so equivalent TypeScript fallbacks pass the QA command unnoticed.",
+        "verdict": "CONFIRMED and FIXED, and worse than reported: the same blind spot was in the JEST RATCHET, which is the actual gate -- the script's own docstring says to treat that suite and not the script as authoritative. Both matched a single quote only, so `|| \"Clause 5.10\"` -- the identical defect spelled with double quotes -- passed both. Not hypothetical: this tree uses double quotes, HeritageDetails.tsx opens with \"use client\". Both now accept single, double and backtick, closed by backreference so the quotes must match. Widening it introduced a FALSE POSITIVE which is the more interesting half: the counter began flagging `PART_NAMES[part] || `Part ${part}`` in ExemptComplyingProvisions.tsx, which is a label built from real data, not an invented citation. A gate that fires on correct code is one somebody switches off, so both patterns now exclude a template literal that INTERPOLATES, while a backtick literal with no ${ still counts because that one is hardcoded. The false positive was only visible because the failure was FORCED rather than assumed. Verified in both directions: with `|| \"Clause 5.10\"` injected into HeritageDetails.tsx the counter exits 1 and the suite goes red; with it removed the counter exits 0 and the suite is 65 passed. An 18th mutation row reintroduces the double-quoted spelling and is caught."
+      },
+      {
+        "finding": "MEDIUM null-guard, ConstraintCard.tsx:404 (round 5) -- the absence message uses nullish coalescing even though an empty document string is treated as absent by the adjacent class check, causing an empty source line instead of the stated fallback.",
+        "verdict": "CONFIRMED and FIXED. The two adjacent lines contradicted each other: the className tested TRUTHINESS, so '' took the italic \"absent\" styling, while the text used `??`, which passes '' straight through and rendered nothing -- an empty italic span beside a height figure, which is precisely the blank the message was added to prevent. Both now go through asTrimmedString, so one guard decides both. Asserted with a regex requiring the CALL on that exact expression, plus a negative assertion that the raw `{ constraint.source.document ??` form is gone, because a guard added beside the bug rather than over it would otherwise pass. Mutation row restores it."
+      },
+      {
+        "finding": "MEDIUM null-guard, LegalTextPanel.tsx:829 (round 5) -- the instrument fallback handles only null and undefined, so an empty or whitespace-only document produces a blank card title rather than the explicit missing-instrument message.",
+        "verdict": "CONFIRMED and FIXED, same cause and same fix. A blank card title above a real constraint value is worse than it sounds: the control still displays its figure, so it reads as sourced while naming no instrument, which is the failure this whole change exists to remove. asTrimmedString now, with the same paired assertion and a mutation row."
+      },
+      {
+        "finding": "MEDIUM silent-failure, scripts/mutate_lib.py:129 (round 6) -- passing an argument list with shell=True does not execute the full jest command on POSIX, so the mutation harness may test `npx` rather than the requested suite.",
+        "verdict": "CONFIRMED and FIXED. On POSIX, subprocess.run with shell=True and a LIST passes only the first item as the command string and turns the rest into the shell's own positional arguments, so `jest`, the test path and --silent never reached jest and the harness ran bare `npx`. It matters because this script is now tracked repo tooling and the CI runners are Linux. LESS SEVERE than \"silent\" in one respect, and the distinction is worth recording: the failure would have been loud, not quiet. Either bare npx exits non-zero and the baseline check aborts with \"does not pass on clean code\", or it exits 0 and every single mutation reports as a HOLE. Neither can be mistaken for a clean run. Fixed regardless. shell=(os.name == 'nt') keeps the Windows path, where npx is npx.cmd and a shell is required, and is correct everywhere else. Verified on Windows after the change: baseline PASSED, 20 of 20 caught, 0 holes, i.e. behaviour there is unchanged."
+      },
+      {
+        "finding": "scripts/mutate_cite.py::correctness (MEDIUM) -- recorded in the adjudication record during a push whose output was piped through `tail`, so the finding TEXT was never read. The record stores a key and a severity, not the text.",
+        "verdict": "Text unrecoverable, so closed by READING the file rather than by assertion -- and a real bug was found there, introduced by this branch's own round-3 fix. mutate_lib computed CHECKOUT = os.getcwd() at IMPORT time, but mutate_cite chdirs into frontend-nextjs afterwards, so the state directory was keyed on whichever directory the harness was invoked from. `python scripts/mutate_cite.py` from the repo root and from frontend-nextjs produced two different keys for the SAME checkout, so a run stranded by one was invisible to the other. It does NOT reopen the cross-worktree hazard, since separate worktrees still differ, but it removed the self-healing the namespacing exists for. CHECKOUT now derives from __file__; scripts/.. is the repository root and does not move. VERIFIED as a property rather than asserted: STATE_DIR resolves to the same key 83409aaab8ac from both directories, where before they differed. Harness after the change: 20 of 20 caught, 0 holes. Whether this was the original finding is unknown and is not claimed."
+      },
+      {
+        "finding": "MEDIUM correctness, ConstraintCard.tsx:409 (round 8) -- the absence message attributes every missing instrument to the Planning Portal even though this card also renders database DCP and other non-Portal constraints.",
+        "verdict": "CONFIRMED and FIXED, and the sharpest finding of the eight rounds because the defect was IN THE FIX. The message added by this change to state an absence honestly read \"Instrument not named in the Planning Portal response\". The card renders DCP and SEPP constraints built from database rows -- ComplianceDashboard.tsx:1488 sets authority_level: 'DCP' on exactly those -- and no Planning Portal response was involved in any of them, so for those rows the sentence asserted a provenance nobody recorded. That is this change's own defect class, committed by the sentence written to prevent it. Now \"Source instrument not recorded\", which claims nothing about origin. Asserted both ways: the Portal must not be named, and the neutral string must be present. Mutation row restores the Portal wording and is caught."
+      },
+      {
+        "finding": "MEDIUM correctness, LegalTextPanel.tsx:836 (round 8) -- the fallback title claims the Planning Portal omitted the instrument even for constraints originating from databases or other APIs.",
+        "verdict": "CONFIRMED and FIXED, same cause and same wording. The panel opens on DCP and SEPP provisions read from the database as well as on Portal constraints, so naming the Portal in its title made a claim about where the data came from that nothing in the row supports."
+      }
+    ],
+    "reachability": "All three sites are in ComplianceDashboard.tsx, which is NOT mounted: grep -rn '<ComplianceDashboard' app/ components/ hooks/ returns only a type import in ComplianceDashboardV2 and app/assessment/README.md stating it. ConstraintCard is rendered only by ComplianceDashboard and ComplianceDashboardV2, and neither appears under app/. So all three are LATENT, not live. Fixed anyway because the HIGH one is a regression this change caused and must not ship.",
+    "rounds": 8,
+    "process_note": "Round 3 exists because two pushes were piped through `tail`, which discarded the cross-review findings before they were read. The push itself succeeded and printed \"All pre-push checks passed\", so nothing indicated findings had been lost. They were recovered from .git/sol-review/<branch>.json, which records a key and severity per finding but not its text, so the review had to be re-run to read them. Three of the four were on scripts this change itself added, and one was a HIGH regression this change introduced. Do not pipe a push through head or tail.",
+    "convergence_note": "Five rounds, and rounds 1, 4 and 5 were all the same underlying class in different places: a value that is absent in practice but not null, or a pattern that recognises one spelling of a defect and not another. Round 5 was therefore closed by SWEEP rather than by fixing the two reported sites: grep -rn \"\\.document ??|\\.clause ??\" over components/ and lib/ returned exactly three, the third being `?? null` in the dedup key, which is correct there because '' and null producing different keys errs toward KEEPING both constraints rather than silently dropping one. Fixing only what a reviewer names is how a class survives. Round 7 returned '[OK] found no defects in the reviewed diff'. That is the sampler finding nothing in one draw, not proof that nothing remains: the bug above was found by reading, AFTER that clean round. Round 8 then produced two more, both in text this change had itself added one round earlier. Taken together with the round-7 bug found by reading, the honest summary is that the review did not converge: it was stopped, with the remaining instances of the class recorded rather than fixed here."
+  }
+}

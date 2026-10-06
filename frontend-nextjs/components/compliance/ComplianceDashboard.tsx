@@ -6,6 +6,8 @@
  * Follows Universal Technical Implementation Specification
  */
 
+import { asTrimmedString } from '@/lib/citation-display';
+import { deduplicateConstraints } from '@/lib/compliance/constraint-dedup';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import useSWR from 'swr';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -61,14 +63,50 @@ export interface ProvisionContent {
   [key: string]: any;
 }
 
+/**
+ * The LEP full-text lookup key, or undefined when we cannot build an honest one.
+ *
+ * The caller posts this to /api/lep/full-text. Both call sites used to hardcode
+ * `Inner_West_Local_Environmental_Plan_2022___NSW_Legislation` with clause 4.3 or
+ * 4.4 regardless of where the property is, so the panel would have served Inner
+ * West clause text for a property in any other council.
+ *
+ * The document id is the Portal's EPI name in the form the provisions table uses:
+ * spaces and punctuation become underscores, with the NSW Legislation suffix. If
+ * the Portal named no instrument or no clause, there is no key and no fetch.
+ */
+function lepMetadataFrom(
+  epiName: unknown,
+  clause: unknown,
+): { documentId: string; refNumber: string } | undefined {
+  // `unknown`, not `string | null`: both arrive from `planningLayers`, which is
+  // `any`, so the declared type was a claim about intent. asTrimmedString is the
+  // one guard. The QA gate blocked a push on the unguarded .trim() here.
+  const epi = asTrimmedString(epiName);
+  const ref = asTrimmedString(clause);
+  if (!epi || !ref) return undefined;
+
+  const documentId = `${epi.replace(/[^A-Za-z0-9]+/g, '_')}___NSW_Legislation`;
+  // 'Clause 4.3' -> '4.3'; the table stores the bare reference.
+  const refNumber = asTrimmedString(ref.replace(/^\s*(clause|cl\.?)\s*/i, ''));
+  if (!refNumber) return undefined;
+  return { documentId, refNumber };
+}
+
 export interface ComplianceConstraint {
   type: 'height' | 'fsr' | 'setback' | 'heritage' | 'environmental' | 'special';
   value: string | number;
   unit?: string;
   description?: string;
   source: {
-    clause: string;
-    document: string;
+    /**
+     * Null when the Planning Portal response carries no clause. It used to be a
+     * required string, which is why every call site invented one -- 'Clause 4.3'
+     * for height, 'Clause 4.4' for FSR, 'Schedule 1 & 2' for a SEPP provision.
+     */
+    clause: string | null;
+    /** Null when the response names no instrument. Was 'Local Environmental Plan'. */
+    document: string | null;
     authority_level: 'LEP' | 'DCP' | 'SEPP';
   };
   provision_id?: number;
@@ -393,28 +431,35 @@ export function ComplianceDashboard({
         // Extract version metadata from Planning API
         const versionMetadata = extractVersionFromPlanningAPI(result);
 
+        // The Portal's own fields, or nothing. 'Clause 4.3' used to stand in for
+        // an absent clause and 'Local Environmental Plan' for an absent EPI name.
+        const heightClause = asTrimmedString(result['Legislative Clause']);
+        const heightEpi = asTrimmedString(result['EPI Name']);
+
         constraints.push({
           type: 'height',
           value: parseFloat(height),
           unit: 'm',
           source: {
-            clause: result['Legislative Clause'] || 'Clause 4.3',
-            document: result['EPI Name'] || 'Local Environmental Plan',
+            clause: heightClause,
+            document: heightEpi,
             authority_level: 'LEP'
           },
-          // Add provisions array with version metadata for badge display
-          provisions: versionMetadata ? [{
+          // Add provisions array with version metadata for badge display. Only
+          // when the Portal named BOTH, since this array is what the UI cites.
+          provisions: versionMetadata && heightClause && heightEpi ? [{
             id: 0,
-            ref_number: result['Legislative Clause'] || 'Clause 4.3',
+            ref_number: heightClause,
             section_header: 'Maximum Building Height',
             provision_text: `Maximum building height: ${height}m`,
-            document_id: result['EPI Name'] || 'Local Environmental Plan',
+            document_id: heightEpi,
             version: versionMetadata
           }] : undefined,
-          lepMetadata: {
-            documentId: 'Inner_West_Local_Environmental_Plan_2022___NSW_Legislation',
-            refNumber: '4.3'
-          }
+          // lepMetadata is posted to /api/lep/full-text. It used to hardcode the
+          // INNER WEST LEP document id and clause 4.3 for every property in NSW,
+          // so a Bayside lot would have been served Inner West clause text.
+          // Omitted entirely unless the Portal named the instrument and clause.
+          lepMetadata: lepMetadataFrom(heightEpi, heightClause)
         });
       }
     }
@@ -432,28 +477,27 @@ export function ComplianceDashboard({
         // Extract version metadata from Planning API
         const versionMetadata = extractVersionFromPlanningAPI(fsrResult);
 
+        const fsrClause = asTrimmedString(fsrResult['Legislative Clause']);
+        const fsrEpi = asTrimmedString(fsrResult['EPI Name']);
+
         constraints.push({
           type: 'fsr',
           value: parseFloat(fsr),
           unit: ':1 sq m',
           source: {
-            clause: fsrResult['Legislative Clause'] || 'Clause 4.4',
-            document: fsrResult['EPI Name'] || 'Local Environmental Plan',
+            clause: fsrClause,
+            document: fsrEpi,
             authority_level: 'LEP'
           },
-          // Add provisions array with version metadata for badge display
-          provisions: versionMetadata ? [{
+          provisions: versionMetadata && fsrClause && fsrEpi ? [{
             id: 0,
-            ref_number: fsrResult['Legislative Clause'] || 'Clause 4.4',
+            ref_number: fsrClause,
             section_header: 'Floor Space Ratio',
             provision_text: `Maximum floor space ratio: ${fsr}:1`,
-            document_id: fsrResult['EPI Name'] || 'Local Environmental Plan',
+            document_id: fsrEpi,
             version: versionMetadata
           }] : undefined,
-          lepMetadata: {
-            documentId: 'Inner_West_Local_Environmental_Plan_2022___NSW_Legislation',
-            refNumber: '4.4'
-          }
+          lepMetadata: lepMetadataFrom(fsrEpi, fsrClause)
         });
       }
     }
@@ -580,24 +624,6 @@ export function ComplianceDashboard({
           setPermissionStatus(apiResponse.data.permission_status);
           console.log('[ComplianceDashboard] Permission status:', apiResponse.data.permission_status);
         }
-
-        // Helper function to deduplicate constraints by provision_id or clause
-        const deduplicateConstraints = (constraints: ComplianceConstraint[]) => {
-          const seen = new Set<string>();
-          return constraints.filter(c => {
-            // Create unique key from provision_id or clause + document
-            const key = c.provision_id
-              ? `id-${c.provision_id}`
-              : `${c.source.clause}-${c.source.document}`;
-
-            if (seen.has(key)) {
-              console.log('[ComplianceDashboard] Removing duplicate:', c.type, c.source.clause);
-              return false;
-            }
-            seen.add(key);
-            return true;
-          });
-        };
 
         // Use Planning API provisions + LEP constraints + Database DCP constraints
         // Note: dcpConstraints are just placeholders, real DCP data comes from API
@@ -1095,8 +1121,11 @@ export function ComplianceDashboard({
                               type: 'special',
                               value: 'SEPP Requirements',
                               source: {
-                                clause: data.provision.ref_number || 'Schedule 1 & 2',
-                                document: data.provision.document_id || 'SEPP (Sustainable Buildings) 2022',
+                                // The provision's own fields. 'Schedule 1 & 2' and
+                                // 'SEPP (Sustainable Buildings) 2022' used to stand in,
+                                // naming an instrument the row had not named.
+                                clause: data.provision.ref_number || null,
+                                document: data.provision.document_id || null,
                                 authority_level: 'SEPP'
                               }
                             },
@@ -1222,10 +1251,21 @@ export function ComplianceDashboard({
                 layer.layerName === 'Land Application Map' &&
                 layer.results?.[0]?.['EPI Name']
               );
-              const lepName = lepLayer?.results?.[0]?.['EPI Name'] || 'Inner West Local Environmental Plan 2022';
+              // No default. This read `|| 'Inner West Local Environmental Plan 2022'`
+              // until 2026-10-06, so the LEP section header named the Inner West LEP for
+              // a property in ANY council whose Land Application Map response carried no
+              // EPI name. Found by this change's own test ratchet, not by the
+              // fabricated-citation counter, which does not match a plain JSX fallback.
+              // asTrimmedString, not `|| null`: the Portal field is untyped, so a
+              // whitespace-only name was truthy and rendered a BLANK instrument
+              // followed by " - Zoning, Building Envelope, Heritage".
+              const lepName = asTrimmedString(lepLayer?.results?.[0]?.['EPI Name']);
               return (
                 <>
-                  <span className="font-bold">{lepName}</span> - Zoning, Building Envelope, Heritage
+                  <span className="font-bold">
+                    {lepName ?? 'Local environmental plan not named in the Planning Portal response'}
+                  </span>{' '}
+                  - Zoning, Building Envelope, Heritage
                 </>
               );
             })()}
@@ -1248,7 +1288,7 @@ export function ComplianceDashboard({
                 legislationUrl={zoneResult?.['legislationUrl']}
                 epiName={zoneResult?.['EPI Name']}
                 amendment={zoneResult?.['Amendment']}
-                legislativeClause={zoneResult?.['Legislative Clause'] || 'Clause 2.3'}
+                legislativeClause={zoneResult?.['Legislative Clause']}
               />
             );
           })()}
@@ -1310,7 +1350,7 @@ export function ComplianceDashboard({
                   unit={lotSizeResult?.['Units'] || 'm²'}
                   epiName={lotSizeResult?.['EPI Name']}
                   amendment={lotSizeResult?.['Amendment']}
-                  legislativeClause={lotSizeResult?.['Legislative Clause'] || 'Clause 4.1'}
+                  legislativeClause={lotSizeResult?.['Legislative Clause']}
                 />
               );
             }

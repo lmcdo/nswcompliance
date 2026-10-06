@@ -1,5 +1,7 @@
 'use client';
 
+import { asTrimmedString } from '@/lib/citation-display';
+
 /**
  * Legal Text Slide-Out Panel
  *
@@ -260,8 +262,9 @@ export interface SelectedProvision {
     value: string | number;
     unit?: string;
     source: {
-      clause: string;
-      document: string;
+      // Nullable, matching ComplianceDashboard's contract.
+      clause: string | null;
+      document: string | null;
       authority_level: 'LEP' | 'DCP' | 'SEPP';
     };
     seppMetadata?: {
@@ -818,12 +821,24 @@ export function LegalTextPanel({
                 <Badge className={colors.badge}>
                   {constraint.source.authority_level}
                 </Badge>
-                <span className="text-sm text-gray-600">
-                  {constraint.source.clause}
-                </span>
+                {constraint.source.clause && (
+                  <span className="text-sm text-gray-600">
+                    {constraint.source.clause}
+                  </span>
+                )}
               </div>
               <CardTitle className="text-lg">
-                {constraint.source.document}
+                {/* asTrimmedString, not `??`: a document of '' or '   ' is not
+                    null, so the fallback never fired and the card rendered a
+                    blank title above a real constraint value -- the control
+                    looking sourced while naming no instrument.
+
+                    Source-NEUTRAL wording: the panel opens on DCP and SEPP
+                    provisions read from the database as well as Portal
+                    constraints, so naming the Planning Portal here asserted a
+                    provenance nobody recorded. */}
+                {asTrimmedString(constraint.source.document)
+                  ?? 'Source instrument not recorded'}
               </CardTitle>
               <div className="text-sm text-gray-600 mt-1">
                 {constraint.type.charAt(0).toUpperCase() + constraint.type.slice(1)}: {constraint.value}{constraint.unit}
@@ -1180,7 +1195,7 @@ export function LegalTextPanel({
                 </Button>
               )}
             </div>
-            {constraint.source.document.includes('legislation.nsw.gov.au') && (
+            {constraint.source.document?.includes('legislation.nsw.gov.au') && (
               <Button variant="outline" size="sm" className="gap-2">
                 <ExternalLink className="h-4 w-4" />
                 View Source
