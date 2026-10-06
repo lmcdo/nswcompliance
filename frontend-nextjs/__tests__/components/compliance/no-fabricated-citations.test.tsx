@@ -345,6 +345,17 @@ describe('removing the invented clause must not make two controls collide', () =
     expect(kept).toHaveLength(1);
   });
 
+  it('does not let a hyphen inside a field forge a collision', () => {
+    // Cross-review round 2: the key joined fields with '-', so a separator that
+    // can also occur INSIDE a field made two distinct constraints serialise
+    // identically -- 'A-B' + 'C' and 'A' + 'B-C' both gave '...:A-B-C'.
+    const kept = deduplicateConstraints([
+      constraint('height', 8.5, 'm', 'A-B', 'C'),
+      constraint('height', 8.5, 'm', 'A', 'B-C'),
+    ]);
+    expect(kept).toHaveLength(2);
+  });
+
   it('still prefers provision_id when there is one', () => {
     const a = { ...constraint('height', 8.5, 'm', null, null), provision_id: 7 };
     const b = { ...constraint('fsr', 0.5, ':1 sq m', null, null), provision_id: 7 };

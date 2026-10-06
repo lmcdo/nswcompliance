@@ -23,9 +23,13 @@ export function deduplicateConstraints(
 ): ComplianceConstraint[] {
   const seen = new Set<string>();
   return constraints.filter(c => {
+    // JSON.stringify, not delimiter concatenation: a separator that can also
+    // occur INSIDE a field makes distinct constraints serialise identically.
+    // clause 'A-B' with document 'C', and clause 'A' with document 'B-C', both
+    // produced '...:A-B-C', so one was dropped. Cross-review, 2026-10-07.
     const key = c.provision_id
       ? `id-${c.provision_id}`
-      : `${c.type}:${c.value}:${c.unit ?? ''}:${c.source.clause ?? ''}-${c.source.document ?? ''}`;
+      : JSON.stringify([c.type, c.value, c.unit ?? null, c.source.clause ?? null, c.source.document ?? null]);
 
     if (seen.has(key)) return false;
     seen.add(key);
