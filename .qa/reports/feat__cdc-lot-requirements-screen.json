@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Critical: a new production endpoint that returns a regulatory determination (EXCLUDED / NOT_EXCLUDED_BY_CHECKED_CRITERIA) and a production data migration. The design goal is a hard authority boundary: no result unless each standard's provision IDs, exact quote, legislation.nsw.gov.au source URL and PDF page all validate.",
- "commit_hash": "7e105cbc",
+ "commit_hash": "359a8fa0",
  "files": [
   "services/cdc_lot_authority.py",
   "services/cdc_lot_inputs.py",
