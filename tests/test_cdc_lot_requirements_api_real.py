@@ -37,6 +37,8 @@ from fastapi.testclient import TestClient  # noqa: E402
 import services.cdc_lot_requirements_api as api  # noqa: E402
 
 
+@pytest.mark.database
+@pytest.mark.integration
 def test_mascot_end_to_end(monkeypatch):
     if os.environ.get("PYTEST_REAL_HTTP") != "1":
         pytest.skip("Live-HTTP test. Run with: PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1 pytest -m integration " + __file__)
