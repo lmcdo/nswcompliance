@@ -28,15 +28,19 @@ export function reviewerAllowlist(raw: string | undefined = process.env.INTERNAL
   );
 }
 
-/** The signed-in user's email, or null when there is no readable session. */
-async function sessionEmail(): Promise<string | null> {
+/**
+ * The signed-in user's email (null when there is no session), or 'unavailable' when the
+ * auth service could not be asked -- an outage is not the caller's fault, and reporting it
+ * as 401 would send a real reviewer to /login to fix something that is not theirs.
+ */
+async function sessionEmail(): Promise<string | null | 'unavailable'> {
   try {
     const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
     const email = data?.user?.email;
     return typeof email === 'string' && email.trim() ? email.trim().toLowerCase() : null;
   } catch {
-    return null;
+    return 'unavailable';
   }
 }
 
@@ -45,7 +49,7 @@ export async function currentReviewer(): Promise<string | null> {
   const allowed = reviewerAllowlist();
   if (allowed.size === 0) return null;
   const email = await sessionEmail();
-  return email && allowed.has(email) ? email : null;
+  return email && email !== 'unavailable' && allowed.has(email) ? email : null;
 }
 
 export type ReviewerCheck = { reviewer: string; denied: null } | { reviewer: null; denied: NextResponse };
@@ -63,6 +67,12 @@ export async function requireReviewer(): Promise<ReviewerCheck> {
     };
   }
   const email = await sessionEmail();
+  if (email === 'unavailable') {
+    return {
+      reviewer: null,
+      denied: NextResponse.json({ error: 'sign-in service unavailable' }, { status: 503 }),
+    };
+  }
   if (!email) {
     return { reviewer: null, denied: NextResponse.json({ error: 'unauthorised' }, { status: 401 }) };
   }

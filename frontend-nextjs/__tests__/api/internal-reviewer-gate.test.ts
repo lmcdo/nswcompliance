@@ -77,11 +77,13 @@ describe.each(CALLS)('%s', (_name, call) => {
     expect(mockConnect).not.toHaveBeenCalled();
   });
 
-  test('401 when the session cannot be read at all', async () => {
+  test('503, not 401, and no DB access when the auth service cannot be asked', async () => {
     sessionThrows = true;
     const res = await call();
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(503);
+    expect((await res.json()).error).toBe('sign-in service unavailable');
     expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockConnect).not.toHaveBeenCalled();
   });
 
   test('403 and no DB access for a signed-in user who is not on the allowlist', async () => {
