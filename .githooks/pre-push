@@ -707,8 +707,17 @@ if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$SOL_CHANGED" ] && [ -f scripts/cross_r
   else
     echo "=== [7] Sol cross-review (advisory — diff does not touch served/printed output) ==="
     # `|| true`: set -e is active, and a review outage must never stop a push.
-    python scripts/cross_review.py --base "$SOL_BASE" --max-diff-kb 512       --adjudicated "$SOL_ADJUDICATED" --record-adjudicated || true
+    #
+    # `tee` to a file as well as stdout. Findings that exist only on a console
+    # are lost the moment anything truncates it: on 2026-10-07 two pushes were
+    # piped through `tail` and discarded four findings, while the hook still
+    # printed "All pre-push checks passed" and exited 0, so nothing indicated a
+    # loss. The record carries each finding's text now too, but this keeps the
+    # full report — scenario and suggested fix included — which the record does
+    # not store.
+    python scripts/cross_review.py --base "$SOL_BASE" --max-diff-kb 512       --adjudicated "$SOL_ADJUDICATED" --record-adjudicated 2>&1 | tee "$SOL_STATE_DIR/$SOL_BRANCH.last-review.txt" || true
     echo "(advisory only — verify each finding against the code; never a merge gate)"
+    echo "    full report kept at $SOL_STATE_DIR/$SOL_BRANCH.last-review.txt"
   fi
 fi
 

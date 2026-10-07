@@ -1,0 +1,99 @@
+{
+  "tier": "standard",
+  "justification": "Three changes that make an invisible failure leave a trace. Not Minor: one of them fixes a real defect in the cross-review tool itself -- cross_review.py read a field name nothing emits, so every repeated finding printed with its text blank, and that caused three findings on newly added scripts to go unread for four rounds on 2026-10-07, one never recovered. A tool that silently drops its own output is a guard that reads as green while enforcing nothing. It also changes the on-disk shape of the per-branch adjudication record by adding a field, and alters .githooks/pre-push, which runs on every push. Not Critical: no write to any production table, no migration, no change to any served regulatory value or citation; the property-data change adds a console.warn and nothing else.",
+  "commit_hash": "0487c65c",
+  "files": [
+    "scripts/cross_review.py",
+    ".githooks/pre-push",
+    "frontend-nextjs/lib/property-data.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "The per-branch adjudication record already existed at .git/sol-review/<branch>-<hash>.json and already tracked verdict, severity, seen count, gated and awaiting_verdict per finding key. It did not store the finding text. render() in cross_review.py already printed the correct field (`issue`); only the repeats line at 649 read the wrong one. No new store, no new file format -- one field added to an existing entry shape, and _blank_entry already centralised that shape so there was one place to change.",
+    "assumption_mismatch": "I set out to add a rule against piping `git push` through `tail`, treating the lost findings as my own bad habit. Reading the code found a real bug underneath it: line 649 read f.get('summary'), and grep shows `summary` appears nowhere else in the file and is emitted by nothing. So the repeats line had ALWAYS printed blank text, for every branch, since it was written. The truncated pipe made it worse but was not the cause. A memory note would have left the actual defect in place.",
+    "new_vs_existing": "No new module and no new file. One field on an existing dict, one corrected field name, one `tee` added to an existing hook line, one console.warn added to an existing branch in property-data.ts. Deliberately NOT done: no guard added to CDCPathway.tsx:280 or to the five `lat ?? 0` report routes, because both were measured at a 0% occurrence rate and the gap is observability, not the guard. Recorded rather than fixed."
+  },
+  "falsifiable_check": {
+    "command": "python \"C:/Users/lawre/.claude/jobs/725925e0/tmp/verify_record_keeps_text.py\" && bash -n .githooks/pre-push && cd frontend-nextjs && npx tsc --noEmit && npx jest",
+    "fails_when": "The verify script asserts on a finding whose issue text is THE-TEXT-THAT-MUST-SURVIVE: it fails if the repeats line drops the text, if _blank_entry has no issue field, or if the text does not survive a save and reload of the record. It also asserts that 'summary' is absent from the finding, so the original bug is pinned as having been real. bash -n fails if the tee leaves pre-push unparseable. NOTE: the verify script lives in the session scratch directory and is NOT tracked, so only the bash -n, tsc and jest halves are reproducible by another person -- the same limitation doc_claims flagged on the previous branch, stated rather than hidden.",
+    "observed_red": "The verify script prints 'ALL CHECKS PASSED - a truncated console can no longer lose a finding', and the record written to disk contains \"issue\": \"THE-TEXT-THAT-MUST-SURVIVE\". bash -n .githooks/pre-push is silent. npx tsc --noEmit exits 0. npx jest is 120 suites / 1804 tests, 0 failures. python -m pytest -q is 7722 passed, 2 skipped, 0 failed."
+  },
+  "functions": [
+    {
+      "name": "_blank_entry",
+      "file_line": "scripts/cross_review.py:412",
+      "input": "Nothing; it returns the default entry shape for a finding not seen before.",
+      "output": "The entry dict, now carrying an empty `issue` string alongside verdict, severity and the counters, so the record is self-describing.",
+      "if_none": "There is no absent case. The point of the change is that an entry can no longer exist without a place to hold the finding's own text; a record of keys alone can say something was found but not what."
+    },
+    {
+      "name": "main",
+      "file_line": "scripts/cross_review.py:593",
+      "input": "Each finding from THIS run whose key is already in the branch record, i.e. a repeat that is reported but does not gate.",
+      "output": "Severity, key and the first 110 characters of the finding's `issue` text, so a reader can tell which defect is being repeated.",
+      "if_none": "A finding with no issue text prints an empty tail -- which is now meaningful, because it indicates a malformed finding rather than, as before, every repeat regardless of content."
+    },
+    {
+      "name": "getPropertyComplianceData (the new warn)",
+      "file_line": "frontend-nextjs/lib/property-data.ts:147",
+      "input": "The address being assessed and the lotGeometry the Planning Portal returned, which may be absent or may carry no usable ring.",
+      "output": "A console.warn naming the address and which of the two causes applied: the Portal returned no lot geometry, or geometry arrived but no area was computable.",
+      "if_none": "Nothing is logged when an area IS computed, so the log counts only the event in question. It changes no return value and no rendered output."
+    }
+  ],
+  "values": "N/A -- no value is read from a database or an API by this change. The two figures quoted in the property-data comment (0 of 120 addresses, 0 of 991 stored reports) were measured before the change and are stated there as a floor, not a rate, because the address sample came from property_reports and is survivorship-biased toward addresses that already resolved.",
+  "queries": "N/A -- no database query is added or modified. The measurements that motivated the change used read-only sessions and are not part of the shipped code.",
+  "break_it": [
+    {
+      "scenario": "The repeats line is reverted to a field name nothing emits, so findings print with blank text again and a reader cannot tell a repeat from an empty finding.",
+      "what_happens": "The verify script asserts the rendered line CONTAINS the finding's issue text, so any field name that does not resolve fails it.",
+      "mitigated": true,
+      "how": "The assertion is on the rendered output containing a known sentinel, not on the field name appearing in source -- a source assertion would pass if the identifier were merely mentioned.",
+      "repro": "python .../verify_record_keeps_text.py"
+    },
+    {
+      "scenario": "The record stops persisting the finding text, so a lost console destroys a finding again.",
+      "what_happens": "The verify script writes a record via save_record, reloads it from disk, and asserts the sentinel is in the reloaded JSON. Dropping the field fails it.",
+      "mitigated": true,
+      "how": "Asserted across a real save and reload rather than on the in-memory dict, because an entry that holds the text but does not serialise it would pass an in-memory check and still lose the finding.",
+      "repro": "python .../verify_record_keeps_text.py"
+    },
+    {
+      "scenario": "A later round overwrites the first round's finding text, so a verdict written about round 1 now sits beside round 3's wording.",
+      "what_happens": "The update only sets `issue` when the entry does not already carry one, so the first text is kept.",
+      "mitigated": true,
+      "how": "`if not entry.get('issue')`. This mirrors the existing awaiting_verdict handling, which already refuses to attach a later round's reason to an earlier round's finding on the grounds that a verdict about the wrong defect is worse than no verdict.",
+      "repro": "Inspect scripts/cross_review.py at the record-update block in main()."
+    },
+    {
+      "scenario": "The tee swallows the review's exit status, so a review outage changes push behaviour.",
+      "what_happens": "The line already ended in `|| true` because a review outage must never stop a push, and it still does, so the exit status was already discarded by design. The tee does not alter that.",
+      "mitigated": true,
+      "how": "bash -n confirms the line parses; the `|| true` that follows the pipeline is unchanged, and the hook's own comment states the intent.",
+      "repro": "bash -n .githooks/pre-push"
+    },
+    {
+      "scenario": "The property-data warn fires on every property, drowning the signal it exists to carry.",
+      "what_happens": "It is inside `if (!lotDimensions)`, so it fires only when no area was computed. Measured at 0 of 120 sampled addresses, so the expected volume is near zero -- which is the point: a non-zero count is the finding.",
+      "mitigated": true,
+      "how": "Guarded on the absence it reports, and it names which of the two causes applied so the log distinguishes a Portal outage from an unusable ring.",
+      "repro": "Call PropertyDataService.getPropertyComplianceData with an address the Portal has no lot for; the warn names the cause."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Nothing to reset. No migration, no write, no seed. The adjudication record this touches lives under .git/ and is per-branch, not in any database.",
+    "secrets": "No secret, token, key or environment variable is added, read or referenced.",
+    "other_repo": "No other repository is affected.",
+    "manual_verify": "On the next push that produces a repeated finding, the line under 'already adjudicated on this branch' should now carry the finding's text rather than ending at the dash, and $SOL_STATE_DIR/<branch>.last-review.txt should hold the full report. CARRIED FORWARD, measured and deliberately not fixed here: CDCPathway.tsx line 280 turns an absent lot area into 0 so the minimum-lot-size blocker is never added; parseMinLotArea at CDCPathway.tsx:163-183 falls back to a hardcoded 200 square metres labelled as a SEPP default, which is a hardcoded regulatory threshold carrying a source string nothing supports; and five report routes coerce a missing lat/lng to 0, which lib/pdf/pre-da-history-report.tsx:330 would print as Coordinates: 0.00000, 0.00000. All three measured at a 0% occurrence rate on 2026-10-07, which is why this change adds the counter instead."
+  },
+  "cross_review": {
+    "tool": "gpt-5.6-sol, pre-push, 2026-10-07",
+    "findings": 1,
+    "verdicts": [
+      {
+        "finding": "HIGH silent-failure, lib/property-data.ts:158 -- the new missing-area branch only writes a console warning and then continues, allowing downstream code to present a Complying Development qualification even though the minimum lot-size test could not run.",
+        "verdict": "CONFIRMED AS A REAL GAP, NOT FIXED HERE, and deliberately so. The description is accurate: a warning does nothing for the user, and CDCPathway will still coerce the absent area to 0, skip the minimum-lot-size blocker and show a qualification. But it is PRE-EXISTING, not introduced by this change: the diff is 27 insertions, every one of them additive, and no return value or rendered output is altered -- verified with `git diff origin/main -- frontend-nextjs/lib/property-data.ts`. Adding the log made nothing worse. The scope was chosen deliberately after measuring: 0 of 120 real addresses sampled from property_reports failed to return an area, and 0 of 991 stored reports hold a null or zero coordinate, so the event has a 0% observed rate. Shipping a user-facing blocker for an event never seen in production, with no instrument to tell anyone whether it ever fires, is how the codebase acquired the guards this branch has spent the day removing. The log is the instrument; the guard follows once there is a rate to size it against. SOL'S SUGGESTED SHAPE IS BETTER THAN MINE AND IS ADOPTED FOR THE FOLLOW-UP: propagate an explicit lotAreaStatus of 'unknown' rather than add a bare `area > 0` guard, and have CDCPathway refuse to state a qualification while that status holds, with a visible \"minimum lot size could not be assessed\" message. That is better because a bare guard would silently withhold the blocker, whereas a propagated status makes the unrun check visible to the reader -- the same distinction between stating an absence and hiding it that PR #1232 was about. Recorded in post_merge.manual_verify as carried forward."
+      }
+    ],
+    "scope_note": "This is the first push to exercise the tee added in this same change, and it worked: the full report was written to the per-branch review file pre-push now creates under the repository git directory, $SOL_STATE_DIR/<branch>.last-review.txt, as well as to the console. The path is written with placeholders rather than as a literal on purpose. It lives under .git/ and is per-machine, so a literal names a file no other clone can have, and doc_claims correctly failed the first run of this branch for exactly that -- a doc naming something that does not exist. The finding above is recoverable from disk even if this console is lost, which is the point of the change."
+  }
+}

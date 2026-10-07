@@ -410,8 +410,11 @@ def split_target(text: str, pending: list) -> tuple[str | None, str, str]:
 
 
 def _blank_entry() -> dict:
+    # `issue` carries the finding's own text so the record is self-describing. A
+    # record of keys alone cannot tell you WHAT was found, only that something
+    # was, which makes a lost console permanent.
     return {"verdict": VERDICT_UNREVIEWED, "reason": "", "severity": None,
-            "seen": 0, "gated": False, "awaiting_verdict": False}
+            "issue": "", "seen": 0, "gated": False, "awaiting_verdict": False}
 
 
 def load_record(path: Path | None) -> dict:
@@ -645,8 +648,14 @@ def main() -> None:
         print(f"\n{len(repeats)} finding(s) already adjudicated on this branch "
               f"(reported, not gating):")
         for f in repeats:
+            # 'issue', not 'summary'. The schema at the top of this file emits
+            # `issue`; `summary` is a field nothing has ever produced, so this
+            # line printed every repeat as "key — " with the text silently blank.
+            # A reader cannot tell that from a finding with no text, which is how
+            # three findings on newly added scripts went unread for four rounds
+            # on 2026-10-07.
             print(f"   [{str(f.get('severity','?')).upper()}] {finding_key(f)} — "
-                  f"{str(f.get('summary',''))[:110]}")
+                  f"{_field(f, 'issue')[:110]}")
         print("   If one of these is real and unfixed, it still needs fixing — "
               "being repeated is not evidence either way.")
 
@@ -678,6 +687,16 @@ def main() -> None:
             entry = record.get(key) or _blank_entry()
             entry["seen"] = int(entry.get("seen") or 0) + 1
             entry["severity"] = f.get("severity") or entry.get("severity")
+            # Keep the finding TEXT, not just its key. The record used to store a
+            # key and a severity, so a console that lost the output lost the
+            # finding itself and the only way back was re-running the review and
+            # hoping a non-deterministic sampler raised it again. Measured
+            # 2026-10-07: two pushes piped through `tail` discarded four
+            # findings, and one of them was never recovered. `issue` is kept
+            # verbatim; the later rounds' text does not overwrite the first,
+            # because the first is the one a verdict may already describe.
+            if not entry.get("issue"):
+                entry["issue"] = _field(f, "issue")
             if key in gating_keys:
                 entry["gated"] = True
                 # Only a finding that actually BLOCKED is asked for a verdict.
