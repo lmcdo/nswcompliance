@@ -78,27 +78,34 @@ def _request(url: str, timeout: int = 30) -> requests.Response:
     return resp
 
 
+def _instrument_id_from_path(path: str) -> str:
+    """'/view/html/inforce/current/epi-2021-0714' -> 'epi-2021-0714'; '' if none."""
+    candidate = (path or "").rstrip("/").split("/")[-1]
+    return candidate if candidate.startswith(("epi-", "act-", "sl-")) else ""
+
+
 def _parse_changes(data: list[dict]) -> list[PCOChange]:
-    """Parse PCO export JSON into PCOChange objects."""
+    """Parse PCO export JSON into PCOChange objects.
+
+    PCO changed its export format (seen 2026-10-08): records now carry only
+    title / view / xml / images, with no URL and no point-in-time field. The old
+    parser read only URL, so every instrument_id came back blank and nothing ever
+    matched, which the monitor then reported as "no changes" for four months.
+    The ID is now taken from whichever path field is present, and an export
+    whose records yield NO instrument IDs at all raises: an unreadable export is
+    a failure, never an empty result.
+    """
     changes = []
     for item in data:
-        # PCO JSON structure varies — extract what we can
-        title = item.get("Title", item.get("title", ""))
-        url = item.get("URL", item.get("url", ""))
-        pit = item.get("Point In Time", item.get("point_in_time", ""))
-        updated = item.get("Last Updated", item.get("last_updated", ""))
-        itype = item.get("Type", item.get("type", ""))
-
-        # Extract instrument ID from URL if present
-        # e.g. /view/html/inforce/current/epi-2021-0714 → epi-2021-0714
-        instrument_id = ""
-        if url:
-            parts = url.rstrip("/").split("/")
-            if parts:
-                candidate = parts[-1]
-                if candidate.startswith(("epi-", "act-", "sl-")):
-                    instrument_id = candidate
-
+        title = item.get("Title") or item.get("title") or ""
+        url = item.get("URL") or item.get("url") or item.get("view") or ""
+        pit = item.get("Point In Time") or item.get("point_in_time") or ""
+        updated = item.get("Last Updated") or item.get("last_updated") or ""
+        itype = item.get("Type") or item.get("type") or ""
+        instrument_id = (
+            _instrument_id_from_path(url)
+            or _instrument_id_from_path(item.get("xml") or "")
+        )
         changes.append(PCOChange(
             title=title,
             instrument_id=instrument_id,
@@ -108,6 +115,11 @@ def _parse_changes(data: list[dict]) -> list[PCOChange]:
             last_updated=updated,
             raw=item,
         ))
+    if changes and not any(c.instrument_id for c in changes):
+        raise PCOError(
+            f"PCO export format not recognised: {len(changes)} records, none with an "
+            f"instrument ID (keys seen: {sorted(data[0].keys()) if isinstance(data[0], dict) else type(data[0]).__name__})"
+        )
     return changes
 
 
@@ -127,19 +139,6 @@ def get_weekly_changes() -> list[PCOChange]:
 def get_daily_changes() -> list[PCOChange]:
     """Fetch all instruments updated today."""
     url = f"{PCO_BASE}/export/day?format=json"
-    resp = _request(url)
-    return _parse_changes(resp.json())
-
-
-def get_changes_since(since_date: str) -> list[PCOChange]:
-    """Fetch instruments modified since a specific date.
-
-    Args:
-        since_date: format YYYYMMDD000000 (e.g. '20260501000000')
-    """
-    query = f'"Point In Time">={since_date}'
-    encoded = urllib.parse.quote(query)
-    url = f"{PCO_BASE}/export/custom/{encoded}?format=json"
     resp = _request(url)
     return _parse_changes(resp.json())
 
