@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Three changes that make an invisible failure leave a trace. Not Minor: one of them fixes a real defect in the cross-review tool itself -- cross_review.py read a field name nothing emits, so every repeated finding printed with its text blank, and that caused three findings on newly added scripts to go unread for four rounds on 2026-10-07, one never recovered. A tool that silently drops its own output is a guard that reads as green while enforcing nothing. It also changes the on-disk shape of the per-branch adjudication record by adding a field, and alters .githooks/pre-push, which runs on every push. Not Critical: no write to any production table, no migration, no change to any served regulatory value or citation; the property-data change adds a console.warn and nothing else.",
-  "commit_hash": "be79add2",
+  "commit_hash": "0487c65c",
   "files": [
     "scripts/cross_review.py",
     ".githooks/pre-push",
@@ -84,5 +84,16 @@
     "secrets": "No secret, token, key or environment variable is added, read or referenced.",
     "other_repo": "No other repository is affected.",
     "manual_verify": "On the next push that produces a repeated finding, the line under 'already adjudicated on this branch' should now carry the finding's text rather than ending at the dash, and $SOL_STATE_DIR/<branch>.last-review.txt should hold the full report. CARRIED FORWARD, measured and deliberately not fixed here: CDCPathway.tsx line 280 turns an absent lot area into 0 so the minimum-lot-size blocker is never added; parseMinLotArea at CDCPathway.tsx:163-183 falls back to a hardcoded 200 square metres labelled as a SEPP default, which is a hardcoded regulatory threshold carrying a source string nothing supports; and five report routes coerce a missing lat/lng to 0, which lib/pdf/pre-da-history-report.tsx:330 would print as Coordinates: 0.00000, 0.00000. All three measured at a 0% occurrence rate on 2026-10-07, which is why this change adds the counter instead."
+  },
+  "cross_review": {
+    "tool": "gpt-5.6-sol, pre-push, 2026-10-07",
+    "findings": 1,
+    "verdicts": [
+      {
+        "finding": "HIGH silent-failure, lib/property-data.ts:158 -- the new missing-area branch only writes a console warning and then continues, allowing downstream code to present a Complying Development qualification even though the minimum lot-size test could not run.",
+        "verdict": "CONFIRMED AS A REAL GAP, NOT FIXED HERE, and deliberately so. The description is accurate: a warning does nothing for the user, and CDCPathway will still coerce the absent area to 0, skip the minimum-lot-size blocker and show a qualification. But it is PRE-EXISTING, not introduced by this change: the diff is 27 insertions, every one of them additive, and no return value or rendered output is altered -- verified with `git diff origin/main -- frontend-nextjs/lib/property-data.ts`. Adding the log made nothing worse. The scope was chosen deliberately after measuring: 0 of 120 real addresses sampled from property_reports failed to return an area, and 0 of 991 stored reports hold a null or zero coordinate, so the event has a 0% observed rate. Shipping a user-facing blocker for an event never seen in production, with no instrument to tell anyone whether it ever fires, is how the codebase acquired the guards this branch has spent the day removing. The log is the instrument; the guard follows once there is a rate to size it against. SOL'S SUGGESTED SHAPE IS BETTER THAN MINE AND IS ADOPTED FOR THE FOLLOW-UP: propagate an explicit lotAreaStatus of 'unknown' rather than add a bare `area > 0` guard, and have CDCPathway refuse to state a qualification while that status holds, with a visible \"minimum lot size could not be assessed\" message. That is better because a bare guard would silently withhold the blocker, whereas a propagated status makes the unrun check visible to the reader -- the same distinction between stating an absence and hiding it that PR #1232 was about. Recorded in post_merge.manual_verify as carried forward."
+      }
+    ],
+    "scope_note": "This is the first push to exercise the tee added in this same change, and it worked: the full report was written to .git/sol-review/chore-make-silent-gaps-observable-c2bee41296.last-review.txt as well as the console. The finding above is therefore recoverable from disk even if this console is lost, which is the whole point of the change."
   }
 }
