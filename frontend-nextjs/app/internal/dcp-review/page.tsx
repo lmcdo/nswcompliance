@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { currentReviewer } from '@/lib/internal-reviewer';
 import DcpReviewQueue from './DcpReviewQueue';
 
 export const metadata: Metadata = {
@@ -11,13 +11,9 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function DcpReviewPage() {
-  // Same auth gate as the internal directory.
-  if (process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true') {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      redirect('/login');
-    }
+  // Allowlisted reviewers only (lib/internal-reviewer.ts); the API routes check again.
+  if (!(await currentReviewer())) {
+    redirect('/login');
   }
   return <DcpReviewQueue />;
 }

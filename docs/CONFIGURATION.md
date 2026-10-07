@@ -106,6 +106,10 @@ Backup before any schema change. See `DB_SCHEMA.md` before writing queries.
 
 Most of these are migration flags from an earlier architecture. They should all be `true`/`v2` — candidates for removal once confirmed stable.
 
+| Var | Purpose |
+|---|---|
+| `INTERNAL_REVIEWER_EMAILS` | Comma-separated emails allowed to use `/internal/dcp-review`, `/internal/setback-review` and their `/api/dcp-review*` and `/api/internal/setback-review*` routes (`lib/internal-reviewer.ts`). **Unset = those routes return 503 and the pages redirect to /login** — fail closed. Independent of `NEXT_PUBLIC_AUTH_ENABLED`. The reviewer signs in with the magic link at `/login`. |
+
 ---
 
 ## Code Configs (not env vars — edit files directly)

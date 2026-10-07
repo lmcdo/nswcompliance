@@ -5,29 +5,24 @@
 // regulatory data.
 import { NextResponse } from 'next/server';
 import { getPool } from '@/lib/database/pool-manager';
-import { createClient } from '@/lib/supabase/server';
+import { requireReviewer } from '@/lib/internal-reviewer';
 import { ACTION_TO_STATUS } from '../_status';
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // A verdict here -- and an edited_text, which is marked `grounded` and later committed
+  // verbatim -- is accepted only from an allowlisted reviewer (lib/internal-reviewer.ts).
+  const { reviewer, denied } = await requireReviewer();
+  if (denied) return denied;
+
   const { id } = await params;
   const body = await req.json().catch(() => ({} as Record<string, unknown>));
   const action = typeof body?.action === 'string' ? body.action : '';
   const status = ACTION_TO_STATUS[action];
   if (!status) {
     return NextResponse.json({ error: 'invalid action' }, { status: 400 });
-  }
-
-  // Named reviewer for the audit trail.
-  let reviewer = 'unknown';
-  try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.email) reviewer = user.email;
-  } catch {
-    // auth optional in this environment — fall back to 'unknown'
   }
 
   const reason = typeof body?.reason === 'string' ? body.reason : null;

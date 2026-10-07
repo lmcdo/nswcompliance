@@ -3,34 +3,18 @@
 // (migration 051). Worst/numeric-first so the riskiest changes surface at the top.
 import { NextResponse } from 'next/server';
 import { getPool } from '@/lib/database/pool-manager';
-import { createClient } from '@/lib/supabase/server';
+import { requireReviewer } from '@/lib/internal-reviewer';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * A page gate protects a PAGE, not an endpoint. `app/internal/dcp-review/page.tsx`
- * redirects to /login; this route did not, so the whole pending queue -- council
- * chapter names, every provision's old and new text, and the fidelity gate's own
- * verdicts -- was readable by anyone who knew the path. Same shape as
- * app/api/internal/pipeline-status, fixed the same day.
- *
- * No-op unless NEXT_PUBLIC_AUTH_ENABLED is 'true', so it cannot lock anyone out of
- * an environment that does not run auth.
+ * A page gate protects a PAGE, not an endpoint: the pending queue -- every provision's
+ * old and new text and the fidelity gate's verdicts -- is checked here independently.
+ * The previous check was a no-op unless NEXT_PUBLIC_AUTH_ENABLED was 'true', which it
+ * was not in production (lib/internal-reviewer.ts).
  */
-async function denyIfUnauthenticated(): Promise<NextResponse | null> {
-  if (process.env.NEXT_PUBLIC_AUTH_ENABLED !== 'true') return null;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: 'unauthorised' }, { status: 401 });
-  }
-  return null;
-}
-
 export async function GET() {
-  const denied = await denyIfUnauthenticated();
+  const { denied } = await requireReviewer();
   if (denied) return denied;
 
   const pool = getPool();
