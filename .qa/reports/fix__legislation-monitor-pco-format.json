@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Critical: the legislation monitor is the only detector of law changes; it reported 'all current' from 2026-06-08 while 24 of 33 registered instruments changed (measured live on the Fly server 2026-10-08). Every currency claim and stale notice depends on it.",
- "commit_hash": "649b9545",
+ "commit_hash": "83d4c1a8",
  "files": [
   "scripts/legislation_monitor.py",
   "scripts/pco_client.py",
