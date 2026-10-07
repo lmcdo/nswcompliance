@@ -1,0 +1,96 @@
+{
+  "tier": "standard",
+  "justification": "Changes what a user is told about whether their work qualifies as Complying Development. Two defects, both an absence presented as a determination. An absent lot area rendered 'Lot size 0m2 - meets 200m2 minimum' with pass: true and skipped the minimum-lot-size blocker, so cdcBlockers.length === 0 routed the user to a qualification; and parseMinLotArea invented a 200m2 threshold with a clause reference for three work types the Housing Code imposes no lot area on. Not Critical: no write, no migration, and the quoted provision text is unchanged -- only the verdict derived from it. Not Minor: it alters a displayed regulatory conclusion on a LIVE surface (app/check/page.tsx), narrows two function signatures to nullable, and removes a control that was being applied to fences, carports and pools.",
+  "commit_hash": "1d3957f6",
+  "files": [
+    "frontend-nextjs/components/compliance/CDCPathway.tsx",
+    "frontend-nextjs/__tests__/components/compliance/cdc-unknown-lot-area.test.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "The SEPP provisions were already being fetched per zone and work type by app/api/sepp/exempt-complying/route.ts, which filters regulatory_provisions on document_id, v2_part (3 or 3A, derived from the zone), v2_topic and v2_is_actionable. No new query, no new endpoint, no new table. The lot area was already available from lib/geometry/lot-dimensions.ts via lib/property-data.ts. The change is entirely in how absence is represented and reported.",
+    "assumption_mismatch": "The task began as 'fix the parse', on my assumption that the regex /more than (\\d+)\\s*m\\s*2/ was failing and falling back to 200. Measured against the live database over exactly the rows the endpoint returns, the regex matched 2 of 2 and the fallback never fires for decks. Two different defects were hiding behind that assumption. First, both matching rows are topic=Deck and Fence, Carport and Pool have NO lot-area provision at all, so the fallback was gating those three on a 200m2 figure the Code does not impose on them. Second, the deck control is compound -- page 129 states 'at least 200 m2 but not more than 300 m2 and the width of the lot ... is more than 7 m, or ... more than 300 m2' -- and the parser returns the 300 from the first match, which is the STRICTER branch, so a 250m2 lot 8m wide was refused CDC that the Code permits. A better regex would have fixed neither. I also separately asserted that the LEP minimum lot size from the Portal's Lot Size Map could supply this number; it cannot, because that is the council's subdivision minimum and this is a statewide CDC eligibility threshold.",
+    "new_vs_existing": "One function extracted and exported (lotSizeRequirement) so the absent-area branch is reachable from a test; inline in the component it was not. parseMinLotArea's return type widened to nullable with a compound flag. No new file except the test. DELIBERATELY NOT DONE, and recorded rather than attempted: modelling the deck control as what it is (200m2 with width > 7m, OR 300m2). That needs the lot width, which lib/geometry/lot-dimensions.ts already computes, plus a real condition structure rather than a single number. Chosen scope was to stop the invented default and stop the stricter branch blocking, not to re-model the control."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/components/compliance/cdc-unknown-lot-area.test.tsx && npx tsc --noEmit",
+    "fails_when": "The suite goes red if an unknown lot area reports pass: true, if it prints a fabricated area, if a null minimum produces a requirement line instead of null, if a compound threshold stops warning, if the component stops calling lotSizeRequirement with all four arguments, if the absent area returns to `|| 0`, if the blocker test loses any of its three guards, if the GFA blocker interpolates a possibly-null area through Math.round, or if the 200m2 default or its clause label returns in code form.",
+    "observed_red": "22 of 22 tests in this suite pass on clean code; npx tsc --noEmit exits 0; the full frontend suite is 121 suites and 1826 tests with 0 failures. The unknown-area fix was verified by FORCING it rather than by reading: restoring `propertyData?.lotDimensions?.area || 0` made the suite exit 1 with 1 failed, and restoring the fix returned it to 22 passed. One test also caught itself -- a bare negative assertion on the string 'clause 3.1 (default)' failed against the comment documenting the removal, so the assertions now name the code syntax they forbid rather than a bare string."
+  },
+  "functions": [
+    {
+      "name": "lotSizeRequirement",
+      "file_line": "frontend-nextjs/components/compliance/CDCPathway.tsx:174",
+      "input": "The lot area (null when the Planning Portal returned no usable lot geometry), the minimum the fetched provisions state (null when they state none), that provision's source string, and whether the provision states more than one area threshold.",
+      "output": "The lot-size line for a CDC result: a pass when a known area meets a stated minimum; a pass with a warning when the threshold is compound, saying a smaller lot may still qualify; or a warning that the minimum was NOT assessed when the area is unknown, naming the threshold and its source because those are known.",
+      "if_none": "Returns null when the provisions state no minimum, so the caller omits the line entirely. It previously returned a hardcoded 200m2 pass, which applied a lot-area control to fences, carports and pools that the Housing Code does not impose on them."
+    },
+    {
+      "name": "parseMinLotArea",
+      "file_line": "frontend-nextjs/components/compliance/CDCPathway.tsx:239",
+      "input": "The SEPP provisions the endpoint returned for this zone and work type, already filtered to actionable rows of the Exempt and Complying Development Codes.",
+      "output": "The minimum lot area those provisions state, the page-level source for it, and a compound flag set when the same provision states more than one area threshold, which means the control is conditional rather than a single minimum.",
+      "if_none": "Returns minArea null and source null. It previously returned 200 with the source 'SEPP Housing Code Part 3, clause 3.1 (default)' -- a number from a literal in this file wearing a clause reference nothing supports."
+    }
+  ],
+  "values": [
+    {
+      "value": "minArea -- the minimum lot area for CDC eligibility. Read from the provision text, not from a literal. Measured live: the only rows stating one are the two topic=Deck rows, which yield 300 from page 129's stricter branch.",
+      "read_at": "frontend-nextjs/components/compliance/CDCPathway.tsx:239 (parseMinLotArea), over rows fetched by app/api/sepp/exempt-complying/route.ts from regulatory_provisions",
+      "if_missing": "Returns null, and the caller omits the lot-size requirement entirely. It previously returned a hardcoded 200, which applied a lot-area control to fences, carports and pools that the Housing Code does not impose on them."
+    },
+    {
+      "value": "The source string shown beside the figure -- the SEPP part and pdf_page the provision actually came from.",
+      "read_at": "frontend-nextjs/components/compliance/CDCPathway.tsx:239, from v2_part and pdf_page on the matching provision row",
+      "if_missing": "Returns null. The verdict's source falls back to naming the instrument only (SEPP Exempt and Complying Development Codes 2008, Housing Code) rather than citing a page or clause for a control that was never applied. It previously emitted 'SEPP Housing Code Part 3, clause 3.1 (default)' -- a clause reference for a number that came from this file."
+    },
+    {
+      "value": "lotArea -- the property's lot area in square metres, used against minArea.",
+      "read_at": "frontend-nextjs/components/compliance/CDCPathway.tsx:357, from propertyData.lotDimensions.area, computed by lib/geometry/lot-dimensions.ts from the Planning Portal lot geometry",
+      "if_missing": "null, not 0. The blocker cannot fire and the requirement reports NOT assessed with a warning. Measured 2026-10-07: 0 of 120 real addresses sampled from property_reports failed to return an area, so this is a latent path -- guarded because the consequence is wrong planning advice, not because it fires often."
+    }
+  ],
+  "queries": "N/A -- no query is added or modified. The measurement that drove the change was a read-only SELECT replicating app/api/sepp/exempt-complying/route.ts's own filter, run against production to see the real provision text rather than assume it. It is not part of the shipped code.",
+  "break_it": [
+    {
+      "scenario": "An unknown lot area is reported as a passed minimum-lot-size check, so the user is told their work qualifies as Complying Development on the strength of a measurement nobody made.",
+      "what_happens": "lotSizeRequirement(null, ...) is asserted to have pass false and warn true, to say NOT assessed, and never to print a 'Lot size <digit>' figure.",
+      "mitigated": true,
+      "how": "The absent area is null rather than 0, so it cannot be compared as a quantity. Proven by restoring the coercion and watching the suite fail, not by reading the diff.",
+      "repro": "Set `const lotArea = propertyData?.lotDimensions?.area || 0;` and run the suite."
+    },
+    {
+      "scenario": "A lot-area minimum is invented for a work type whose provisions state none, and cited to a clause.",
+      "what_happens": "lotSizeRequirement returns null for a null minimum in all three area states, and a source assertion forbids `minArea: 200` and the clause-label string in code form.",
+      "mitigated": true,
+      "how": "The requirement is filtered out of the array rather than rendered, so an absent control produces no row rather than a blank one.",
+      "repro": "cd frontend-nextjs && npx jest -t 'NO stated minimum'"
+    },
+    {
+      "scenario": "The stricter branch of a compound threshold blocks CDC for a lot the Code permits -- a 250m2 lot 8m wide refused on the 300m2 branch.",
+      "what_happens": "The blocker test requires !minAreaCompound, so a compound threshold cannot block, and the requirement warns that a smaller lot may still qualify.",
+      "mitigated": true,
+      "how": "Partially. The user is no longer wrongly refused, and is told the control is conditional, but the width condition is still not evaluated. Stated rather than implied: this is a narrowing, not a correct implementation of the control.",
+      "repro": "cd frontend-nextjs && npx jest -t 'COMPOUND threshold'"
+    },
+    {
+      "scenario": "The guard is added but the component stops calling it, so a correct function sits beside an unchanged defect.",
+      "what_happens": "A source assertion requires the literal four-argument call on the component's own variables, not merely the identifier appearing somewhere.",
+      "mitigated": true,
+      "how": "Chasing the CALL rather than the name. An import line or the function's own definition would satisfy a looser check.",
+      "repro": "cd frontend-nextjs && npx jest -t 'actually wired in'"
+    },
+    {
+      "scenario": "A null area reaches Math.round in the GFA blocker and prints '0m2 lot' as the multiplicand of a figure the user is asked to accept.",
+      "what_happens": "Math.round(null) is 0, so the interpolation is explicit about the null case and a source assertion forbids the unguarded form.",
+      "mitigated": true,
+      "how": "lotArea cannot be null in that branch, because maxGFA is only non-null when the area was known, but it is spelled out rather than assumed.",
+      "repro": "cd frontend-nextjs && npx jest -t 'rounded null'"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Nothing to reset. No migration, no write, no seed.",
+    "secrets": "No secret, token, key or environment variable is added, read or referenced.",
+    "other_repo": "No other repository is affected.",
+    "manual_verify": "Worth one look on a real address: open the CDC check for a Deck and confirm the lot-size line states the measured area and carries the compound warning, then for a Fence and confirm there is NO lot-size line at all rather than a 200m2 pass. CARRIED FORWARD, measured and deliberately not fixed here: the deck lot-area control is compound and is still reduced to its stricter number. Page 129 permits a lot of at least 200m2 where the width at the building line exceeds 7m, or more than 300m2 otherwise. Implementing that needs the lot width, which lib/geometry/lot-dimensions.ts already computes and eligibility_lot_width already exposes, plus a condition structure instead of a single number. Until then the requirement warns rather than claims. Also still open and unrelated to lot area: five report routes coerce a missing lat/lng to 0, measured at 0 of 991 stored reports."
+  }
+}
