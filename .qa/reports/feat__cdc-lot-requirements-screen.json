@@ -1,0 +1,143 @@
+{
+ "tier": "critical",
+ "justification": "Critical: a new production endpoint that returns a regulatory determination (EXCLUDED / NOT_EXCLUDED_BY_CHECKED_CRITERIA) and a production data migration. The design goal is a hard authority boundary: no result unless each standard's provision IDs, exact quote, legislation.nsw.gov.au source URL and PDF page all validate.",
+ "commit_hash": "359a8fa0",
+ "files": [
+  "services/cdc_lot_authority.py",
+  "services/cdc_lot_inputs.py",
+  "services/cdc_lot_requirements.py",
+  "services/cdc_lot_requirements_api.py",
+  "services/compliance_api_server.py",
+  "migrations/082_cdc_lot_requirements_authority.sql",
+  "tests/test_cdc_lot_requirements.py",
+  "tests/test_cdc_lot_authority_real_db.py",
+  "tests/test_cdc_lot_inputs_real_portal.py",
+  "tests/test_cdc_lot_requirements_api_real.py"
+ ],
+ "pre_impl": {
+  "existing_data": "cdc_eligibility_standards ids 1-3 (verified 2026-07-27) cite regulatory_provisions 36996/36997 (PDF p112/113) and 36184/36185 (p23). Their quotes and 3.1(3) paragraphs match the law in force fetched from legislation.nsw.gov.au 2026-10-07; the cited R2 PDF (454 pp) carries that text on those pages.",
+  "assumption_mismatch": "documents.source_url was NULL for the cited Codes SEPP document (authority incomplete); parse_controls keeps only the first zone/ASS class of a property (split zoning hidden); the lot_dimensions frontage is a documented shorter-side heuristic, not a building-line width; instrument_registry says 15 May 2026 while the live page's point-in-time is 11 September 2026.",
+  "new_vs_existing": "Reuses resolve_address (GATE-0), layerintersect, the Valuer General service, the cadastre lot and lot_dimensions scale correction. Legacy /pipeline/cdc/screen and the other CDC surfaces are untouched and not covered.",
+  "external_source_error": "Planning Portal / Valuer General / cadastre outages: _portal_get and get_valuation return None, so the affected criterion is UNKNOWN; resolve_address raising becomes UNKNOWN for all four criteria; a database error loading authority becomes UNAVAILABLE (HTTP 503).",
+  "frontend_type": "No frontend change. The endpoint returns JSON: result string, criteria[] with outcome/input/rule/comparison/authority evidence; HTTP 503 body for UNAVAILABLE.",
+  "user_failure_mode": "A caller sees UNKNOWN or UNAVAILABLE with a named reason (e.g. 'the property comprises 8 lots', 'standard 7 is not manually verified'); no failure path yields EXCLUDED or NOT_EXCLUDED_BY_CHECKED_CRITERIA."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_cdc_lot_requirements.py -q -o addopts=",
+  "fails_when": "Any fail-closed path yields a determination: verified by four mutations (UNKNOWN->NOT_EXCLUDED, source-URL check removed, quote-match removed, malformed area dropped); each produced 1-3 failing tests.",
+  "observed_red": "Observed 2026-10-07: mutating overall() so UNKNOWN reads as NOT_EXCLUDED -> 3 failed; removing the source-URL check -> 2 failed; removing the quote-match check -> 1 failed; dropping a malformed area instead of UNKNOWN -> 3 failed. Restored code: 105 passed.",
+  "real_layer_command": "PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1 python -m pytest tests/test_cdc_lot_authority_real_db.py tests/test_cdc_lot_inputs_real_portal.py tests/test_cdc_lot_requirements_api_real.py -q -o addopts= (6 passed 2026-10-07 against production read-only + live Portal)"
+ },
+ "functions": [
+  {
+   "name": "validate_authority",
+   "file_line": "services/cdc_lot_authority.py",
+   "input": "active cdc_eligibility_standards rows plus every cited regulatory_provisions row and its documents row",
+   "output": "a ValidatedAuthority holding all four standards with their evidence, or a tuple of named failures",
+   "if_none": "No standards, provisions or documents returned -> a failure per standard -> UNAVAILABLE; nothing is evaluated."
+  },
+  {
+   "name": "evaluate",
+   "file_line": "services/cdc_lot_requirements.py",
+   "input": "a ValidatedAuthority from validate_authority plus a LotInputs of three-state property facts",
+   "output": "four CriterionResults (zone, lot_area, lot_width, acid_sulfate), each PASS, FAIL or UNKNOWN with evidence",
+   "if_none": "Passing None or any non-ValidatedAuthority raises TypeError; every None fact becomes that criterion's UNKNOWN."
+  },
+  {
+   "name": "rectangle_width_range",
+   "file_line": "services/cdc_lot_inputs.py",
+   "input": "the Planning Portal cadastre lot geometry dict with one EPSG:3857 ring for a single lot",
+   "output": "(shortest, longest) side for a rectangle, else UNKNOWN",
+   "if_none": "No geometry, several rings, NaN coordinates or a non-rectangle -> (None, reason) -> lot_width UNKNOWN."
+  }
+ ],
+ "values": [
+  {
+   "value": "AREA_AGREEMENT_RATIO 1.05, WHOLE_LOT_FRACTION 0.995, SQUARE_TOLERANCE_DEG 1.0, STRAIGHT_TOLERANCE_DEG 0.5",
+   "source": "data-agreement/geometry tolerances, documented in code; not regulatory values. Every regulatory threshold comes from cdc_eligibility_standards.",
+   "read_at": "module constants in services/cdc_lot_requirements.py and services/cdc_lot_inputs.py, read at evaluation time",
+   "if_missing": "They are code constants and cannot be missing; regulatory thresholds are read from cdc_eligibility_standards and their absence is UNAVAILABLE."
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "load standards",
+   "file_line": "services/cdc_lot_authority.py load_authority",
+   "where_clause": "code_name = 'housing_code' AND is_active AND standard_type = ANY(required four)"
+  },
+  {
+   "purpose": "cited provisions / documents",
+   "file_line": "services/cdc_lot_authority.py load_authority",
+   "where_clause": "id = ANY(cited ids)"
+  },
+  {
+   "purpose": "acid sulfate cross-check + whole-lot coverage",
+   "file_line": "services/cdc_lot_inputs.py _postgis_ass",
+   "where_clause": "layer_type = 'acid_sulfate' AND ST_Intersects(lot); 15.6 ms via GIST (EXPLAIN ANALYZE)"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A caller posts zone, eligible or another fact field to force a result",
+   "what_happens": "The request model forbids extra fields so the request is rejected before any lookup",
+   "mitigated": true,
+   "how": "HTTP 422 (tested)",
+   "repro": "python -m pytest tests/test_cdc_lot_requirements.py -q -o addopts= -k extra_field"
+  },
+  {
+   "scenario": "A split-zoned lot is read as only its first listed zone",
+   "what_happens": "Every Land Zoning Map feature is read and a mix of listed and unlisted zones is UNKNOWN",
+   "mitigated": true,
+   "how": "mixed eligible/ineligible -> UNKNOWN (tested)",
+   "repro": "python -m pytest tests/test_cdc_lot_requirements.py -q -o addopts= -k zone"
+  },
+  {
+   "scenario": "Missing acid sulfate data read as Class 5",
+   "what_happens": "Absence counts only inside a complete response that carries a zoning result; stored map copy cross-checked",
+   "mitigated": true,
+   "how": "None -> UNKNOWN; conflict -> UNKNOWN (tested)",
+   "repro": "python -m pytest tests/test_cdc_lot_requirements.py -q -o addopts= -k parse_ass_blocks or combine_ass"
+  },
+  {
+   "scenario": "Class 1/2 on part of a lot reported as excluded",
+   "what_happens": "cl 1.19(6) allows development on the unaffected part",
+   "mitigated": true,
+   "how": "EXCLUDED only when >= 99.5% of the lot is Class 1/2",
+   "repro": "python -m pytest tests/test_cdc_lot_requirements.py -q -o addopts= -k acid"
+  },
+  {
+   "scenario": "The bounding-box frontage is used as the building-line width for an irregular lot",
+   "what_happens": "Width taken only from a true rectangle, as a min/max range",
+   "mitigated": true,
+   "how": "non-rectangle -> UNKNOWN; narrow rectangle -> UNKNOWN not FAIL (tested)",
+   "repro": "python -m pytest tests/test_cdc_lot_requirements.py -q -o addopts= -k rectangle or width"
+  },
+  {
+   "scenario": "The stored Codes SEPP text is older than the instrument version currently in force",
+   "what_happens": "Not enforced by this endpoint because version currency is outside the four-item authority contract",
+   "mitigated": false,
+   "how": "Reported: instrument_registry 15 May 2026 vs live 11 September 2026",
+   "repro": "SELECT current_version FROM instrument_registry WHERE instrument_key='sepp_exempt_complying_2008' -- compare with legislation_monitor._extract_latest_pit_date on the live page"
+  },
+  {
+   "scenario": "The standards query returns zero rows, duplicate active rows, or an unverified or stale row",
+   "what_happens": "validate_authority names the failing standard and the endpoint returns UNAVAILABLE with no criteria",
+   "mitigated": true,
+   "how": "one-active-per-type check, manual_verified and stale_since checks",
+   "repro": "python -m pytest tests/test_cdc_lot_requirements.py -q -o addopts= -k 'duplicate or verified or stale or absent'"
+  },
+  {
+   "scenario": "A cited provision or document row is missing, not current, has changed text, or lacks a source URL or page",
+   "what_happens": "The quote no longer matches or a required evidence field is empty, so the endpoint returns UNAVAILABLE",
+   "mitigated": true,
+   "how": "provision existence, is_current, quote containment, source_url prefix and pdf_page checks",
+   "repro": "python -m pytest tests/test_cdc_lot_requirements.py -q -o addopts= -k 'provision or source_url or pdf or quote'"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes: migration 082 applied 2026-10-07; the min_lot_width standard (id 7) must be manually verified by the founder before the endpoint returns anything but UNAVAILABLE."
+ }
+}
