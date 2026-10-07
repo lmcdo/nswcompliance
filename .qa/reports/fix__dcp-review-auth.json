@@ -1,0 +1,119 @@
+{
+  "tier": "critical",
+  "justification": "Access control on the two internal review queues. Measured 2026-10-07 against production: canibuildit.com.au/api/dcp-review and /api/internal/setback-review both returned HTTP 200 with no key and no session, and /internal/dcp-review rendered the review page. The write routes beside them accept a verdict from the same anonymous caller; dcp-review/[id] saves an edited_text as new_text and marks it fidelity_status='grounded', which dcp_commit_approved.py later publishes verbatim, and setback-review/[id] action=fix INSERTs a served dcp_setback_controls row. Every existing gate was a no-op unless NEXT_PUBLIC_AUTH_ENABLED was 'true', which it is not in production.",
+  "commit_hash": "c5e5f534",
+  "files": [
+    "frontend-nextjs/lib/internal-reviewer.ts",
+    "frontend-nextjs/app/api/dcp-review/route.ts",
+    "frontend-nextjs/app/api/dcp-review/[id]/route.ts",
+    "frontend-nextjs/app/api/dcp-review/chapter/route.ts",
+    "frontend-nextjs/app/api/internal/setback-review/route.ts",
+    "frontend-nextjs/app/api/internal/setback-review/[id]/route.ts",
+    "frontend-nextjs/app/internal/dcp-review/page.tsx",
+    "frontend-nextjs/app/internal/setback-review/page.tsx",
+    "frontend-nextjs/__tests__/api/internal-reviewer-gate.test.ts",
+    "frontend-nextjs/__tests__/api/dcp-review-chapter.test.ts",
+    "frontend-nextjs/__tests__/api/internal/setback-review.test.ts",
+    "docs/CONFIGURATION.md"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/internal-reviewer-gate.test.ts --ci",
+    "fails_when": "Any of the three gate conditions is removed. Measured on this branch by editing lib/internal-reviewer.ts and running the file: M1 allowlist comparison disabled (if (false && !allowed.has(email))) gives 5 failed / 17 passed; M2 unset-allowlist refusal disabled gives 5 failed / 17 passed; M3 no-session refusal disabled gives 10 failed / 12 passed. Restored and byte-compared with cmp: 22 passed.",
+    "observed_red": "With the allowlist comparison disabled, jest printed 'Tests: 5 failed, 17 passed, 22 total'; with the unset-allowlist refusal disabled, 'Tests: 5 failed, 17 passed, 22 total'; with the no-session refusal disabled, 'Tests: 10 failed, 12 passed, 22 total'. Restored: 'Tests: 22 passed'.",
+    "external_authority": "The route handlers themselves, called directly with a mocked Supabase session and a mocked pool; every refusal case asserts the pool's query and connect were never called, so the check is on whether the database is reachable, not on the status code alone. After deploy, the authority is production: an unauthenticated GET of https://canibuildit.com.au/api/dcp-review, which returned 200 with queue rows on 2026-10-07, must return 401 or 503."
+  },
+  "pre_impl": {
+    "existing_data": "Three internal routes already carried their own denyIfUnauthenticated copy (dcp-review list, internal/pipeline-status, internal/structure-labels); all three returned null unless NEXT_PUBLIC_AUTH_ENABLED was 'true'. The dcp-review and setback-review write routes had no gate at all, only a reviewer-name lookup that fell back to 'unknown'. No allowlist exists in the repo: grep for ALLOWED_EMAILS, REVIEWER, ALLOWLIST and INTERNAL_.*EMAIL found nothing; ADMIN_EMAIL is a single notification address used by feedback/submit.",
+    "assumption_mismatch": "I first assumed a signed-in check would be enough and planned to reuse the existing gate. Two measurements broke that. Production renders /internal/dcp-review to an anonymous request, so the auth flag is off and the existing gate is inert there. And app/login/page.tsx uses signInWithOtp with the default shouldCreateUser, so any email address can obtain a session; signed-in means nothing about being a reviewer.",
+    "new_vs_existing": "One new helper, lib/internal-reviewer.ts, replacing four inline reviewer lookups and the inline gate in dcp-review/route.ts. No new table, no middleware change. pipeline-status and structure-labels keep their existing gate: they are not review queues and neither writes served regulatory data, so they are out of this change's scope.",
+    "external_source_error": "Supabase auth.getUser can throw when no cookie store is available or the auth service is unreachable. sessionEmail catches that and returns null, so the route answers 401 rather than 500 and never reaches the database. Covered by the 'session cannot be read at all' case for all five handlers.",
+    "frontend_type": "The two pages are server components that call currentReviewer() and redirect('/login') when it returns null. DcpReviewQueue and SetbackReviewQueue fetch the same-origin API from the browser, so the session cookie travels with the request and the route performs its own check independently of the page.",
+    "user_failure_mode": "Until INTERNAL_REVIEWER_EMAILS is set in Vercel, both review pages redirect to /login and the routes return 503 for everyone, including the owner. That is deliberate: a review route that cannot name who may use it serves no one. The 503 body names the missing variable so the cause is visible rather than looking like an outage."
+  },
+  "functions": [
+    {
+      "name": "requireReviewer",
+      "file_line": "frontend-nextjs/lib/internal-reviewer.ts:51",
+      "input": "the request's Supabase session, read through createClient().auth.getUser(), and process.env.INTERNAL_REVIEWER_EMAILS",
+      "output": "{ reviewer: lowercased email } when the session email is on the allowlist; otherwise a 503, 401 or 403 NextResponse for the caller to return before any database access",
+      "if_none": "unset or empty allowlist returns 503; no session, a session without an email, or a throwing getUser returns 401; a session email not on the list returns 403"
+    },
+    {
+      "name": "currentReviewer",
+      "file_line": "frontend-nextjs/lib/internal-reviewer.ts:43",
+      "input": "the same session and allowlist, for the two server-component pages",
+      "output": "the allowlisted reviewer's trimmed lowercased email, or null when the session is not a reviewer",
+      "if_none": "returns null for an unset allowlist, no session or a non-listed email, and the page redirects to /login"
+    }
+  ],
+  "values": [
+    {
+      "value": "production before the change: GET canibuildit.com.au/api/dcp-review -> 200 with items[] rows; GET /api/internal/setback-review -> 200; GET /internal/dcp-review -> 200 rendering 'DCP review queue'",
+      "read_at": "curl from this machine, unauthenticated, 2026-10-07",
+      "if_missing": "without it the change would be defending against a hypothetical; this is the observed exposure"
+    },
+    {
+      "value": "targeted suites: 4 suites / 60 tests passed (internal-reviewer-gate 22, dcp-review-chapter, internal/setback-review, dcp-review-number-context); tsc reports no error in any changed file",
+      "read_at": "npx jest on those four files and npx tsc --noEmit -p . filtered to the changed paths, 2026-10-07",
+      "if_missing": "the two pre-existing route suites passing is what shows the allowlisted path still writes exactly what it wrote before"
+    },
+    {
+      "value": "mutations M1 5/22 failed, M2 5/22 failed, M3 10/22 failed",
+      "read_at": "sed edits of lib/internal-reviewer.ts, jest on the gate file, then cp restore and cmp, 2026-10-07",
+      "if_missing": "without them the refusal assertions are unproven; a gate that always allowed would otherwise look identical in a green run"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "INTERNAL_REVIEWER_EMAILS is never set in Vercel, as NEXT_PUBLIC_AUTH_ENABLED never was.",
+      "what_happens": "Both review pages redirect to /login and every review route returns 503. Nobody can review until it is set.",
+      "mitigated": true,
+      "how": "Fail closed is the intended outcome of this case, the opposite of the defect being fixed. The 503 names the variable, docs/CONFIGURATION.md documents it, and the PR description states it as the post-merge step.",
+      "repro": "unset the variable and GET /api/dcp-review: 503 'review routes are disabled: INTERNAL_REVIEWER_EMAILS is not set'"
+    },
+    {
+      "scenario": "An attacker signs up with the magic link using their own email and calls the write routes with that session.",
+      "what_happens": "A valid session whose email is not on the list gets 403 before the pool is touched.",
+      "mitigated": true,
+      "how": "Allowlist check, covered for all five handlers by the 403 case asserting mockQuery and mockConnect were not called.",
+      "repro": "npx jest __tests__/api/internal-reviewer-gate.test.ts -t 403"
+    },
+    {
+      "scenario": "The allowlist entry and the session email differ only in case or surrounding whitespace, e.g. 'Reviewer@Example.com ' in Vercel and 'reviewer@example.com' from Supabase.",
+      "what_happens": "Without normalisation the real reviewer would be refused.",
+      "mitigated": true,
+      "how": "Both sides are trimmed and lowercased; the test allowlist is deliberately written with mixed case and a space, the session uses a different case, and the allowed call returns 200 with reviewed_by lowercased.",
+      "repro": "npx jest __tests__/api/internal-reviewer-gate.test.ts -t 'allowlisted reviewer'"
+    },
+    {
+      "scenario": "Supabase getUser throws instead of returning no user, e.g. no cookie store in the request context or the auth service is down.",
+      "what_happens": "An unhandled throw would surface as a 500, and a gate written as try { ... } catch { allow } would let the request through, which is exactly what the old 'auth optional' fallback did.",
+      "mitigated": true,
+      "how": "sessionEmail catches and returns null, so the route returns 401. Covered for all five handlers by 'session cannot be read at all'.",
+      "repro": "npx jest __tests__/api/internal-reviewer-gate.test.ts -t 'cannot be read'"
+    },
+    {
+      "scenario": "A request reaches the route through some path other than the page, e.g. curl straight to POST /api/dcp-review/7, skipping the page redirect.",
+      "what_happens": "If only the page were gated, the API would still accept the verdict.",
+      "mitigated": true,
+      "how": "Each of the five handlers calls requireReviewer as its first statement, before parsing the body, and the tests call the handlers directly with no page involved.",
+      "repro": "grep -n requireReviewer frontend-nextjs/app/api/dcp-review frontend-nextjs/app/api/internal/setback-review -r"
+    },
+    {
+      "scenario": "A future internal route is added with the old denyIfUnauthenticated copy instead of the helper.",
+      "what_happens": "It is open in production again, because that copy is inert while NEXT_PUBLIC_AUTH_ENABLED is unset.",
+      "mitigated": false,
+      "how": "Not mitigated by this change. pipeline-status and structure-labels still carry the inert copy; neither writes served regulatory data, but structure-labels accepts writes that feed a recall figure. A lint rule or moving those two onto the helper is the follow-up.",
+      "repro": "grep -rn \"NEXT_PUBLIC_AUTH_ENABLED !== 'true'\" frontend-nextjs/app/api"
+    }
+  ],
+  "mutation_analysis": "Three mutations of lib/internal-reviewer.ts, each run. M1 disables the allowlist comparison: exactly the five 403 cases fail, one per handler, which is the correct signature. M2 disables the unset-allowlist refusal: exactly the five 503 cases fail. M3 disables the no-session refusal: ten fail, the five 'no session' and five 'cannot be read' cases, because both reach the same branch. No mutation failed every test or none, so the cases discriminate rather than sharing one broken fixture. Each refusal case also asserts the pool was never called, so a gate that returned the right status after writing would still fail.",
+  "residual_risk": "Production stays exposed until this merges, deploys and INTERNAL_REVIEWER_EMAILS is set; before that the old routes are live. internal/pipeline-status and internal/structure-labels still use the inert NEXT_PUBLIC_AUTH_ENABLED gate. The other internal pages (/internal, /internal/leads, /internal/pipeline, /internal/structure-labelling) still render publicly; leads lists customer lead rows and is the most sensitive of them. Middleware's API_KEY check is not enforced on canibuildit.com.au, which is why these routes were reachable at all; that is not changed here. Rows already decided by an anonymous caller, if any, are not detectable from this change: reviewed_by on those would read 'unknown'.",
+  "post_merge": {
+    "db_reset": "No. No schema or data change.",
+    "secrets": "INTERNAL_REVIEWER_EMAILS must be added to the Vercel production environment, with the reviewer's email, before the review pages work again. It is a list of addresses, not a secret.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "After deploy: curl -s -o /dev/null -w '%{http_code}' https://canibuildit.com.au/api/dcp-review must print 401 (or 503 if the variable is not yet set), not 200. Then sign in at /login as the allowlisted reviewer and confirm /internal/dcp-review loads. Separately, query dcp_review_queue for reviewed_by = 'unknown' to see whether any verdict was recorded without a named reviewer."
+  }
+}
