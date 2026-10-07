@@ -64,7 +64,7 @@ def parse_zone_blocks(raw: list) -> tuple[Optional[frozenset], Optional[str]]:
     """All zones on the property, or (None, reason)."""
     if not isinstance(raw, list) or not raw:
         return None, "Planning Portal returned no planning layers for this property"
-    blocks = [b for b in raw if isinstance(b, dict) and "zoning" in str(b.get("layerName", "")).lower()]
+    blocks = [b for b in raw if isinstance(b, dict) and "zoning" in str(b.get("layerName") or "").lower()]
     if not blocks:
         return None, "Planning Portal returned no Land Zoning Map result for this property"
     zones: set = set()
@@ -87,7 +87,7 @@ def parse_ass_blocks(raw: list) -> tuple[Optional[frozenset], Optional[str]]:
     zones, why = parse_zone_blocks(raw)
     if zones is None:
         return None, f"planning layers incomplete ({why})"
-    blocks = [b for b in raw if isinstance(b, dict) and "acid sulfate" in str(b.get("layerName", "")).lower()]
+    blocks = [b for b in raw if isinstance(b, dict) and "acid sulfate" in str(b.get("layerName") or "").lower()]
     classes: set = set()
     for b in blocks:
         for r in b.get("results") or []:

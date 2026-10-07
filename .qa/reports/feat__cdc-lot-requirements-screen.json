@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Critical: a new production endpoint that returns a regulatory determination (EXCLUDED / NOT_EXCLUDED_BY_CHECKED_CRITERIA) and a production data migration. The design goal is a hard authority boundary: no result unless each standard's provision IDs, exact quote, legislation.nsw.gov.au source URL and PDF page all validate.",
- "commit_hash": "38bf4d9e",
+ "commit_hash": "6eeb0425",
  "files": [
   "services/cdc_lot_authority.py",
   "services/cdc_lot_inputs.py",
@@ -9,7 +9,10 @@
   "services/cdc_lot_requirements_api.py",
   "services/compliance_api_server.py",
   "migrations/082_cdc_lot_requirements_authority.sql",
-  "tests/test_cdc_lot_requirements.py"
+  "tests/test_cdc_lot_requirements.py",
+  "tests/test_cdc_lot_authority_real_db.py",
+  "tests/test_cdc_lot_inputs_real_portal.py",
+  "tests/test_cdc_lot_requirements_api_real.py"
  ],
  "pre_impl": {
   "existing_data": "cdc_eligibility_standards ids 1-3 (verified 2026-07-27) cite regulatory_provisions 36996/36997 (PDF p112/113) and 36184/36185 (p23). Their quotes and 3.1(3) paragraphs match the law in force fetched from legislation.nsw.gov.au 2026-10-07; the cited R2 PDF (454 pp) carries that text on those pages.",
@@ -22,7 +25,8 @@
  "falsifiable_check": {
   "command": "python -m pytest tests/test_cdc_lot_requirements.py -q -o addopts=",
   "fails_when": "Any fail-closed path yields a determination: verified by four mutations (UNKNOWN->NOT_EXCLUDED, source-URL check removed, quote-match removed, malformed area dropped); each produced 1-3 failing tests.",
-  "observed_red": "Observed 2026-10-07: mutating overall() so UNKNOWN reads as NOT_EXCLUDED -> 3 failed; removing the source-URL check -> 2 failed; removing the quote-match check -> 1 failed; dropping a malformed area instead of UNKNOWN -> 3 failed. Restored code: 105 passed."
+  "observed_red": "Observed 2026-10-07: mutating overall() so UNKNOWN reads as NOT_EXCLUDED -> 3 failed; removing the source-URL check -> 2 failed; removing the quote-match check -> 1 failed; dropping a malformed area instead of UNKNOWN -> 3 failed. Restored code: 105 passed.",
+  "real_layer_command": "PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1 python -m pytest tests/test_cdc_lot_authority_real_db.py tests/test_cdc_lot_inputs_real_portal.py tests/test_cdc_lot_requirements_api_real.py -q -o addopts= (6 passed 2026-10-07 against production read-only + live Portal)"
  },
  "functions": [
   {
