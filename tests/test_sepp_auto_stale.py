@@ -94,14 +94,15 @@ def _inst(pco_id):
 
 
 class TestUncheckedIsRecorded:
-    def test_pco_silence_on_a_covered_instrument_stamps_last_checked(self):
-        """PCO lists every amended instrument, so absence IS a confirmation."""
+    def test_pco_silence_never_stamps_last_checked(self):
+        """Reversed 2026-10-08. Absence from PCO's export used to stamp "confirmed
+        unchanged"; when PCO changed its format every instrument read as absent and
+        the registry froze at 2026-06-08 while at least 7 instruments changed.
+        A miss is never a confirmation, whatever the source."""
         conn = FakeConn()
         check_instrument(_inst("epi-2021-0714"), None, "pco", False, conn)
-        sqls = [s for s, _ in conn._cur.executed]
-        assert any("last_checked" in s and "instrument_registry" in s for s in sqls), \
-            "a confirmed-unchanged instrument must record that it was checked"
-        assert conn.commits == 1
+        assert conn._cur.executed == [], "a miss must not be recorded as checked"
+        assert conn.commits == 0
 
     def test_pco_silence_on_an_UNCOVERED_instrument_stamps_nothing(self):
         """No pco_instrument_id => it can never appear in the export, so silence
@@ -116,7 +117,7 @@ class TestUncheckedIsRecorded:
     def test_other_sources_do_not_stamp_on_a_miss(self):
         """nsw_legislation/austlii fetch per instrument — a None there is a
         failed fetch, not a confirmation."""
-        for src in ("nsw_legislation", "austlii"):
+        for src in ("nsw_legislation", "austlii", "pco"):
             conn = FakeConn()
             check_instrument(_inst("epi-2021-0714"), None, src, False, conn)
             assert conn._cur.executed == [], f"{src} must not stamp on a miss"

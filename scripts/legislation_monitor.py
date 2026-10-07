@@ -4,30 +4,23 @@ Legislation Monitor
 ===================
 Monthly check of NSW planning instruments (SEPPs, LEPs) for version changes.
 
-Auto fallback chain: PCO → AustLII
-  NSW Legislation HTML scraping removed from auto chain (Jun 2026) —
-  Cloudflare blocks all datacenter IPs (Railway, GitHub Actions).
-  Still available via explicit --source nsw_legislation.
+Source of truth: each instrument's own page on legislation.nsw.gov.au
+  - Read from the PCO-whitelisted IP 149.28.176.81 (the Fly app); verified 2026-10-08
+  - The newest point-in-time date on the page is the version
+  - A page that cannot be read is a named error; nothing is stamped "unchanged"
 
-Primary source: PCO XML export (legislation.nsw.gov.au/export/week)
-  - IP 149.28.176.81 whitelisted (confirmed 2026-05-19 by PCO Website Help)
-  - Must run outside Sydney business hours (agreed condition)
-  - Returns JSON list of all instruments updated in last 7 days
+Cross-check: PCO weekly export (legislation.nsw.gov.au/export/week)
+  - Lists instruments updated this week; carries no dates since its 2026 format change
+  - An instrument PCO lists whose page date did not move is reported as an error
+  - An empty or unrecognised export is an error, never "no changes"
 
-Fallback source: AustLII consolidated copies (classic.austlii.edu.au)
-  - ~7-day lag vs legislation.nsw.gov.au
-  - Scrapes "As at DD Month YYYY" date from HTML
-
-Manual source: NSW Legislation individual pages (legislation.nsw.gov.au)
-  - Cloudflare-blocked from datacenter IPs as of Jun 2026
-  - Only usable via --source nsw_legislation from whitelisted IP
+AustLII (classic.austlii.edu.au): explicit --source austlii only, never automatic.
 
 Usage:
-    python scripts/legislation_monitor.py               # auto: PCO → AustLII
+    python scripts/legislation_monitor.py               # pages + PCO cross-check
     python scripts/legislation_monitor.py --key sepp_housing_2021
     python scripts/legislation_monitor.py --dry-run
-    python scripts/legislation_monitor.py --source pco   # force PCO only
-    python scripts/legislation_monitor.py --source austlii  # force AustLII only
+    python scripts/legislation_monitor.py --source austlii
 
 Exit codes:
     0 = no changes
@@ -240,46 +233,41 @@ def send_telegram(message: str) -> None:
 # PCO source
 # ---------------------------------------------------------------------------
 
-def check_via_pco(instruments: list[dict]) -> dict[str, str | None]:
-    """Check instruments via PCO export feed.
+def pco_listed_keys(instruments: list[dict]) -> set[str]:
+    """Instrument keys PCO's weekly export lists as updated.
 
-    Uses get_changes_since() with a 35-day window so monthly runs never
-    miss amendments.  Falls back to get_weekly_changes() if the custom
-    query fails.
-
-    Returns dict of {instrument_key: new_version_string_or_None}.
-    Raises on access denied or connection error.
+    A CROSS-CHECK only, never a version source: the export (as of 2026-10-08)
+    carries no point-in-time date, and an instrument's ABSENCE from it proves
+    nothing. Until 2026-10 absence was recorded as "confirmed unchanged", and when
+    PCO changed its format every instrument read as absent, so the monitor reported
+    "all current" from 2026-06-08 while at least 7 instruments changed.
+    Raises on access denied, a non-JSON body, or an unreadable format.
     """
-    from datetime import datetime, timedelta
-    from pco_client import PCOAccessDenied, get_changes_since, get_weekly_changes
+    from pco_client import get_weekly_changes
 
-    since = (datetime.utcnow() - timedelta(days=35)).strftime("%Y%m%d000000")
-    try:
-        changes = get_changes_since(since)
-        print(f"    PCO: {len(changes)} instruments changed in last 35 days (since {since[:8]})")
-    except Exception as exc:
-        print(f"    PCO: custom date query failed ({exc}), falling back to weekly")
-        changes = get_weekly_changes()
-        print(f"    PCO: {len(changes)} instruments changed this week (fallback)")
+    changes = get_weekly_changes()
+    if not changes:
+        # NSW amends legislation every week (47 records on 2026-10-08); an empty
+        # export is a broken feed until shown otherwise, never "nothing changed".
+        raise RuntimeError("PCO weekly export returned no records")
+    pco_to_key = {
+        inst["pco_instrument_id"]: inst["instrument_key"]
+        for inst in instruments if inst.get("pco_instrument_id")
+    }
+    listed = {pco_to_key[c.instrument_id] for c in changes if c.instrument_id in pco_to_key}
+    print(f"    PCO: {len(changes)} instruments in this week's export; {len(listed)} are ours")
+    return listed
 
-    # Build lookup: pco_instrument_id → instrument_key
-    pco_to_key = {}
-    for inst in instruments:
-        pco_id = inst.get("pco_instrument_id")
-        if pco_id:
-            pco_to_key[pco_id] = inst["instrument_key"]
 
-    results: dict[str, str | None] = {inst["instrument_key"]: None for inst in instruments}
-
-    for change in changes:
-        if change.instrument_id in pco_to_key:
-            key = pco_to_key[change.instrument_id]
-            # Use point_in_time as version string (matches AustLII "As at" concept)
-            version = change.point_in_time or change.last_updated or "updated"
-            results[key] = version
-            print(f"    PCO match: {key} → {version}")
-
-    return results
+def pco_cross_check(listed: set[str], version_map: dict, instruments: list[dict]) -> list[str]:
+    """Errors for instruments PCO lists as amended whose own page shows no change."""
+    stored = {i["instrument_key"]: i.get("current_version") for i in instruments}
+    return [
+        f"{key}: PCO lists it as amended this week but its page date "
+        f"({version_map.get(key)}) equals the stored version"
+        for key in sorted(listed)
+        if version_map.get(key) is not None and version_map.get(key) == stored.get(key)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -309,8 +297,9 @@ def check_via_nsw_legislation(
         key = inst["instrument_key"]
         url = inst.get("legislation_url")
         if not url:
-            print(f"    {key} — no legislation_url mapped, skipping")
+            print(f"    [ERROR] {key}: no legislation_url mapped")
             results[key] = None
+            fetch_errors.append(f"{key}: no legislation_url mapped, cannot be checked")
             continue
 
         try:
@@ -672,38 +661,11 @@ def check_instrument(
     legislation_url = instrument["legislation_url"]
 
     if new_version is None:
-        # Source didn't return data for this instrument. Two very different
-        # cases hide here, and conflating them is why last_checked sat frozen
-        # at 2026-06-08 while the monitor reported "Checked: 26" (2026-08-14):
-        #
-        #  a) CONFIRMED UNCHANGED — check_via_pco seeds its result with EVERY
-        #     instrument_key -> None and fills in only the ones its complete
-        #     35-day export lists as amended. Absence is therefore an
-        #     affirmative "not amended in the window", and the run HAS
-        #     confirmed this instrument. Record that.
-        #  b) NOT COVERED — an instrument with no pco_instrument_id can never
-        #     appear in that export (pco_to_key is built only from instruments
-        #     that have one), so PCO's silence about it says nothing at all.
-        #     Writing last_checked here would fabricate a confirmation.
-        #     Live case: wingecarribee_lep_2010, the one row that has never
-        #     been checked. It must STAY unchecked, not be quietly marked.
-        #
-        # Only PCO is authoritative-for-absence. The nsw_legislation and
-        # austlii paths fetch per instrument, so a None there is a miss, not a
-        # confirmation, and must not stamp either.
-        confirmed_unchanged = (
-            source == "pco" and bool(instrument.get("pco_instrument_id"))
-        )
-        if confirmed_unchanged and not dry_run:
-            cur = conn.cursor()
-            cur.execute(
-                "UPDATE instrument_registry "
-                "SET last_checked = %s, check_failures = 0 "
-                "WHERE instrument_key = %s",
-                (datetime.now(timezone.utc), key),
-            )
-            conn.commit()
-            cur.close()
+        # No reading for this instrument this run. Nothing is stamped: a miss is
+        # never a confirmation. (Until 2026-10 a PCO-export absence stamped
+        # last_checked as "confirmed unchanged"; when PCO changed its format every
+        # instrument read as absent and the registry froze at 2026-06-08 while at
+        # least 7 instruments changed.) The caller reports the miss as an error.
         return InstrumentResult(
             instrument_key=key, instrument_label=label,
             changed=False, new_version=None,
@@ -788,10 +750,10 @@ def main():
     parser.add_argument("--key", help="Check specific instrument_key only")
     parser.add_argument("--dry-run", action="store_true", help="No DB writes")
     parser.add_argument(
-        "--source", choices=["auto", "pco", "nsw_legislation", "austlii"],
+        "--source", choices=["auto", "nsw_legislation", "austlii"],
         default="auto",
-        help="Force data source (default: auto — try PCO, fall back to "
-             "AustLII. nsw_legislation only via explicit flag)",
+        help="auto (default): each instrument's own legislation.nsw.gov.au page, "
+             "cross-checked against PCO's weekly export. No automatic fallback.",
     )
     args = parser.parse_args()
 
@@ -823,33 +785,16 @@ def main():
     print(f"Checking {len(instruments)} instruments...")
     print("=" * 60)
 
-    # Determine source and fetch version data
-    # Auto chain: PCO → AustLII (nsw_legislation HTML scraping removed from
-    # auto chain — Cloudflare blocks all datacenter IPs as of Jun 2026).
-    source_used = args.source
+    # Version source: each instrument's own page on legislation.nsw.gov.au (the
+    # official NSW source; readable from the whitelisted Fly IP, verified
+    # 2026-10-08). No automatic fallback: an instrument whose page cannot be read
+    # is a named fetch error, never "unchanged". AustLII only when asked for.
+    source_used = "nsw_legislation" if args.source == "auto" else args.source
     version_map: dict[str, str | None] = {}
     source_fetch_errors: list[str] = []
 
-    if source_used in ("auto", "pco"):
-        try:
-            print("\n  Trying PCO weekly export...")
-            version_map = check_via_pco(instruments)
-            source_used = "pco"
-            print(f"  Source: PCO (legislation.nsw.gov.au)")
-        except Exception as exc:
-            if source_used == "pco":
-                # User forced PCO — don't fall back
-                print(f"\n  [ERROR] PCO failed: {exc}")
-                send_telegram(f"Legislation Monitor ERROR\nPCO access failed: {exc}")
-                conn.close()
-                sys.exit(1)
-            # Auto mode — skip nsw_legislation (Cloudflare-blocked), go to AustLII
-            print(f"  PCO unavailable ({exc}), falling back to AustLII...")
-            source_used = "austlii"
-
     if source_used == "nsw_legislation":
-        # Only reached via explicit --source nsw_legislation (not auto)
-        print(f"\n  Source: NSW Legislation (legislation.nsw.gov.au) — authoritative")
+        print(f"\n  Source: NSW Legislation (legislation.nsw.gov.au), each instrument's own page")
         try:
             version_map, source_fetch_errors = check_via_nsw_legislation(instruments)
         except Exception as exc:
@@ -857,20 +802,28 @@ def main():
             send_telegram(f"Legislation Monitor ERROR\nNSW Legislation failed: {exc}")
             conn.close()
             sys.exit(1)
-        # If every instrument failed, report clearly instead of silent zeros
         all_none = all(v is None for v in version_map.values())
         if all_none and source_fetch_errors:
-            print(f"\n  All {len(source_fetch_errors)} instruments failed — NSW Legislation fully blocked")
+            print(f"\n  All {len(source_fetch_errors)} instruments failed: NSW Legislation unreadable")
             send_telegram(
                 f"Legislation Monitor ERROR (nsw_legislation)\n"
-                f"All {len(source_fetch_errors)} instruments failed (Cloudflare?)\n"
+                f"All {len(source_fetch_errors)} instruments failed\n"
                 + "\n".join(f"  {e}" for e in source_fetch_errors[:5])
             )
             conn.close()
             sys.exit(1)
+        if args.source == "auto":
+            # Cross-check against PCO's weekly export. A failure here is reported,
+            # not swallowed, but it does not replace the page readings above.
+            try:
+                source_fetch_errors += pco_cross_check(
+                    pco_listed_keys(instruments), version_map, instruments,
+                )
+            except Exception as exc:
+                source_fetch_errors.append(f"PCO export cross-check failed: {exc}")
 
     if source_used == "austlii":
-        print(f"\n  Source: AustLII (classic.austlii.edu.au) — ~7-day lag")
+        print(f"\n  Source: AustLII (classic.austlii.edu.au), explicit --source only, ~7-day lag")
         version_map, source_fetch_errors = check_via_austlii(instruments)
 
     # Process results

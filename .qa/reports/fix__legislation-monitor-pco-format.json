@@ -1,0 +1,132 @@
+{
+ "tier": "critical",
+ "justification": "Critical: the legislation monitor is the only detector of law changes; it reported 'all current' from 2026-06-08 while 24 of 33 registered instruments changed (measured live on the Fly server 2026-10-08). Every currency claim and stale notice depends on it.",
+ "commit_hash": "83d4c1a8",
+ "files": [
+  "scripts/legislation_monitor.py",
+  "scripts/pco_client.py",
+  "deploy/flyio-legislation-monitor/legislation_monitor.py",
+  "deploy/flyio-legislation-monitor/pco_client.py",
+  "tests/test_sepp_auto_stale.py",
+  "tests/test_legislation_monitor_no_silent_pass.py"
+ ],
+ "pre_impl": {
+  "existing_data": "instrument_registry: 33 active rows; last change ever detected 2026-06-08; 7 instruments measured stale from this machine, 24 by the fixed monitor from the whitelisted Fly IP.",
+  "assumption_mismatch": "PCO's export now returns records with keys title/view/xml/images only; the parser read URL, so every instrument_id was blank, and the 'Point In Time' custom query returns [] for any window. The monitor treated a PCO absence as 'confirmed unchanged' and stamped last_checked.",
+  "new_vs_existing": "Reuses check_via_nsw_legislation and _extract_latest_pit_date (already in the file, previously only behind --source nsw_legislation). Removes get_changes_since (only caller was the removed PCO version path).",
+  "external_source_error": "A law page that cannot be read (HTTP error, download, no date, no URL) is a named fetch error; the run exits 1 and Telegram reports ERROR. All pages failing exits 1 immediately. PCO export empty/unreadable/denied is a named cross-check error.",
+  "frontend_type": "No frontend change. Output is the monitor's stdout summary, Telegram messages and instrument_registry writes.",
+  "user_failure_mode": "The operator sees 'Legislation Monitor ERROR' naming each law that could not be read; 'no changes' is sent only when every law's page was read and none moved."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_legislation_monitor_no_silent_pass.py tests/test_sepp_auto_stale.py -q -o addopts=",
+  "fails_when": "Any silent pass returns: five mutations (missing URL skipped, empty PCO export treated as no changes, unreadable PCO format accepted, PCO absence stamped as checked, PCO failure swallowed) each made 2-3 tests fail.",
+  "observed_red": "Observed 2026-10-08: each of the five mutations produced 2-3 failures out of 41; restored code 41 passed. Live: old code on Fly printed 'PCO: 0 instruments changed in last 35 days'; fixed code dry-run on Fly: Checked 33, Changed 24, Fetch errors 0."
+ },
+ "functions": [
+  {
+   "name": "pco_listed_keys",
+   "file_line": "scripts/legislation_monitor.py",
+   "input": "active instrument_registry rows with their pco_instrument_id values for the weekly export lookup",
+   "output": "the set of our instrument keys that PCO's weekly export lists as updated this week",
+   "if_none": "An empty export or unrecognised format raises; main() records it as a named cross-check error."
+  },
+  {
+   "name": "pco_cross_check",
+   "file_line": "scripts/legislation_monitor.py",
+   "input": "PCO-listed keys, the page-read version map, and the stored registry versions for each instrument",
+   "output": "one named error per instrument PCO lists as amended whose own page date did not move",
+   "if_none": "A page reading of None produces no cross-check error because that miss is already reported as a fetch error."
+  },
+  {
+   "name": "_parse_changes",
+   "file_line": "scripts/pco_client.py",
+   "input": "PCO export JSON records in either the old URL format or the new view/xml format",
+   "output": "PCOChange objects with instrument_id taken from URL, view or xml paths of each record",
+   "if_none": "Records that yield no instrument ID at all raise PCOError instead of returning blank matches."
+  }
+ ],
+ "values": [
+  {
+   "value": "No new regulatory values; versions come from each law's legislation.nsw.gov.au page at run time",
+   "source": "legislation.nsw.gov.au point-in-time links via the existing _extract_latest_pit_date",
+   "read_at": "run time, once per instrument per weekly run on the Fly server",
+   "if_missing": "A missing or unreadable date is a named fetch error and the run exits 1; nothing is stamped."
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "load active instruments",
+   "file_line": "scripts/legislation_monitor.py main()",
+   "where_clause": "WHERE is_active = TRUE (unchanged)"
+  },
+  {
+   "purpose": "record a new version",
+   "file_line": "scripts/legislation_monitor.py check_instrument",
+   "where_clause": "WHERE instrument_key = %s, only when a page reading exists (unchanged SQL)"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "PCO changes its export format again and every record parses with a blank instrument ID",
+   "what_happens": "The parser raises PCOError and main records a named cross-check failure, exiting 1 instead of reporting no changes",
+   "mitigated": true,
+   "how": "blank-ID guard in _parse_changes",
+   "repro": "python -m pytest tests/test_legislation_monitor_no_silent_pass.py tests/test_sepp_auto_stale.py -q -o addopts= -k unrecognised"
+  },
+  {
+   "scenario": "PCO's weekly export comes back as an empty list during a normal week of NSW amendments",
+   "what_happens": "pco_listed_keys raises and the run exits 1 with 'PCO export cross-check failed' rather than claiming all current",
+   "mitigated": true,
+   "how": "empty-export guard",
+   "repro": "python -m pytest tests/test_legislation_monitor_no_silent_pass.py tests/test_sepp_auto_stale.py -q -o addopts= -k empty"
+  },
+  {
+   "scenario": "A law's own page returns HTTP 403, a download, no date, or the instrument has no legislation URL",
+   "what_happens": "That law is a named fetch error, it is never stamped as checked, and the run exits 1 with an ERROR message",
+   "mitigated": true,
+   "how": "check_via_nsw_legislation errors plus no stamping on a miss",
+   "repro": "python -m pytest tests/test_legislation_monitor_no_silent_pass.py tests/test_sepp_auto_stale.py -q -o addopts= -k 'url or 403 or download or partial'"
+  },
+  {
+   "scenario": "A future edit restores the old rule that absence from PCO's export means confirmed unchanged",
+   "what_happens": "check_instrument stamps last_checked on a miss and the registry goes stale silently again",
+   "mitigated": true,
+   "how": "tests assert no SQL on a miss for every source",
+   "repro": "python -m pytest tests/test_legislation_monitor_no_silent_pass.py tests/test_sepp_auto_stale.py -q -o addopts= -k miss"
+  },
+  {
+   "scenario": "The deployed Fly copy of the monitor drifts from the repo copy again",
+   "what_happens": "The server would run old code while the repo looks fixed, as happened with a 129-line difference before this change",
+   "mitigated": true,
+   "how": "byte-equality test for the three deployed files",
+   "repro": "python -m pytest tests/test_legislation_monitor_no_silent_pass.py tests/test_sepp_auto_stale.py -q -o addopts= -k drift"
+  },
+  {
+   "scenario": "The load-active-instruments query returns rows whose page cannot be fetched at all from the Fly IP",
+   "what_happens": "Every instrument fails, the run exits 1 immediately with an ERROR telegram listing the failures",
+   "mitigated": true,
+   "how": "all-failed guard in main",
+   "repro": "python -m pytest tests/test_legislation_monitor_no_silent_pass.py tests/test_sepp_auto_stale.py -q -o addopts= -k every"
+  },
+  {
+   "scenario": "The record-a-new-version query runs for an instrument with no page reading this week",
+   "what_happens": "It cannot: check_instrument returns before any SQL when the reading is None, so no version or last_checked is written",
+   "mitigated": true,
+   "how": "early return without SQL",
+   "repro": "python -m pytest tests/test_legislation_monitor_no_silent_pass.py tests/test_sepp_auto_stale.py -q -o addopts= -k miss"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes: fly deploy of deploy/flyio-legislation-monitor after merge; then the next weekly run writes the 24 changed versions and marks dependent standards stale (production write, separate go-ahead)."
+ },
+ "real_layer_exempt": {
+  "scripts/legislation_monitor.py": "The real layer (PCO export and legislation.nsw.gov.au pages) answers only from the PCO-whitelisted IP 149.28.176.81, i.e. the Fly app; it cannot run in CI or locally. Exercised live on that machine 2026-10-08 with the fixed code in --dry-run: Checked 33, Changed 24, Fetch errors 0; old code on the same machine: 'PCO: 0 instruments changed in last 35 days'.",
+  "scripts/pco_client.py": "The real layer (PCO export and legislation.nsw.gov.au pages) answers only from the PCO-whitelisted IP 149.28.176.81, i.e. the Fly app; it cannot run in CI or locally. Exercised live on that machine 2026-10-08 with the fixed code in --dry-run: Checked 33, Changed 24, Fetch errors 0; old code on the same machine: 'PCO: 0 instruments changed in last 35 days'.",
+  "deploy/flyio-legislation-monitor/legislation_monitor.py": "The real layer (PCO export and legislation.nsw.gov.au pages) answers only from the PCO-whitelisted IP 149.28.176.81, i.e. the Fly app; it cannot run in CI or locally. Exercised live on that machine 2026-10-08 with the fixed code in --dry-run: Checked 33, Changed 24, Fetch errors 0; old code on the same machine: 'PCO: 0 instruments changed in last 35 days'.",
+  "deploy/flyio-legislation-monitor/pco_client.py": "The real layer (PCO export and legislation.nsw.gov.au pages) answers only from the PCO-whitelisted IP 149.28.176.81, i.e. the Fly app; it cannot run in CI or locally. Exercised live on that machine 2026-10-08 with the fixed code in --dry-run: Checked 33, Changed 24, Fetch errors 0; old code on the same machine: 'PCO: 0 instruments changed in last 35 days'."
+ }
+}
