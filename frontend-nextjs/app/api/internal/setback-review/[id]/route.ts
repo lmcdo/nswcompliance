@@ -14,21 +14,10 @@
 // review_reason. A structured reviewed_by column is a later enhancement.
 import { NextResponse } from 'next/server';
 import { getPool } from '@/lib/database/pool-manager';
-import { createClient } from '@/lib/supabase/server';
+import { requireReviewer } from '@/lib/internal-reviewer';
 
 type Action = 'confirm' | 'remove' | 'fix';
 const ACTIONS: readonly Action[] = ['confirm', 'remove', 'fix'];
-
-async function currentReviewer(): Promise<string> {
-  try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.email) return user.email;
-  } catch {
-    // auth optional in this environment
-  }
-  return 'unknown';
-}
 
 /** A numeric coercion that treats '', null, undefined as absent (not 0). */
 function optionalNumber(v: unknown): number | null {
@@ -41,6 +30,11 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // Every action here writes a SERVED dcp_setback_controls row (`fix` inserts one), so it
+  // is accepted only from an allowlisted reviewer (lib/internal-reviewer.ts).
+  const { reviewer, denied } = await requireReviewer();
+  if (denied) return denied;
+
   const { id } = await params;
   const numericId = Number(id);
   if (!Number.isInteger(numericId) || numericId <= 0) {
@@ -56,7 +50,6 @@ export async function POST(
     );
   }
 
-  const reviewer = await currentReviewer();
   const stamp = new Date().toISOString();
   const note = typeof body.note === 'string' && body.note.trim() ? body.note.trim() : null;
   const pool = getPool();

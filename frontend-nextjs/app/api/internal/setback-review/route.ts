@@ -8,10 +8,14 @@
 // data in the system (DCP prose-extracted numbers), surfaced value-next-to-clause.
 import { NextResponse } from 'next/server';
 import { getPool } from '@/lib/database/pool-manager';
+import { requireReviewer } from '@/lib/internal-reviewer';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const { denied } = await requireReviewer();
+  if (denied) return denied;
+
   const pool = getPool();
   try {
     const { rows } = await pool.query(`

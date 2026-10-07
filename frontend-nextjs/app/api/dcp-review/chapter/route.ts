@@ -5,10 +5,13 @@
 // review gate, it just batches it. Never mutates regulatory_provisions.
 import { NextResponse } from 'next/server';
 import { getPool } from '@/lib/database/pool-manager';
-import { createClient } from '@/lib/supabase/server';
+import { requireReviewer } from '@/lib/internal-reviewer';
 import { ACTION_TO_STATUS } from '../_status';
 
 export async function POST(req: Request) {
+  const { reviewer, denied } = await requireReviewer();
+  if (denied) return denied;
+
   const body = await req.json().catch(() => ({} as Record<string, unknown>));
   const action = typeof body?.action === 'string' ? body.action : '';
   const council = typeof body?.council === 'string' ? body.council : '';
@@ -19,16 +22,6 @@ export async function POST(req: Request) {
   }
   if (!council || !chapterKey) {
     return NextResponse.json({ error: 'council and chapter_key are required' }, { status: 400 });
-  }
-
-  // Named reviewer for the audit trail (same fallback as the per-id route).
-  let reviewer = 'unknown';
-  try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.email) reviewer = user.email;
-  } catch {
-    // auth optional in this environment — fall back to 'unknown'
   }
 
   const reason = typeof body?.reason === 'string' ? body.reason : null;

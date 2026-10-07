@@ -20,7 +20,10 @@ function req(body: object): Request {
   });
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  process.env.INTERNAL_REVIEWER_EMAILS = 'rev@example.com';
+});
 
 describe('POST /api/dcp-review/chapter', () => {
   test('approves every pending row for one chapter, scoped by council + chapter_key', async () => {
