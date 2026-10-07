@@ -206,9 +206,12 @@ export function lotSizeRequirement(
     return {
       pass: true,
       warn: true,
+      // Factual, not advisory. The liability-language check blocked the push on
+      // "A certifier should confirm", and rightly: this states what was and was
+      // not assessed, it does not recommend a course of action.
       text: `${met}. This provision states more than one lot-area threshold and a `
-        + `width condition; a smaller lot may still qualify. A certifier should `
-        + `confirm against ${source ?? 'the provision'}.`,
+        + `width condition; a smaller lot may still qualify. The width condition in `
+        + `${source ?? 'the provision'} has not been assessed here.`,
     };
   }
   return { pass: true, text: met };
