@@ -78,6 +78,31 @@ describe('lotSizeRequirement — an UNKNOWN area', () => {
   });
 });
 
+describe('lotSizeRequirement — UNDEFINED, not null', () => {
+  // The QA gate caught this in the first version of the fix. propertyData is
+  // typed `any` and this function is exported, so undefined is reachable. With
+  // `=== null` guards it fell straight through to the pass branch.
+  it('an undefined area is absent, not a measurement', () => {
+    const req = lotSizeRequirement(undefined as unknown as number | null, 200, SOURCE)!;
+    expect(req.pass).toBe(false);
+    expect(req.warn).toBe(true);
+    expect(req.text).toMatch(/NOT assessed/i);
+  });
+
+  it('never prints NaN for an undefined area', () => {
+    // Math.round(undefined) is NaN, so the old guard produced
+    // "Lot size NaNm² — meets 200m² minimum" with a tick beside it.
+    const req = lotSizeRequirement(undefined as unknown as number | null, 200, SOURCE)!;
+    expect(req.text).not.toMatch(/NaN/);
+  });
+
+  it('an undefined minimum yields no requirement line at all', () => {
+    expect(
+      lotSizeRequirement(450, undefined as unknown as number | null, SOURCE),
+    ).toBeNull();
+  });
+});
+
 describe('lotSizeRequirement — NO stated minimum', () => {
   // Measured against the live database 2026-10-07, over exactly the rows the
   // endpoint returns: 2 rows contain 'area of the lot' and BOTH are topic=Deck.
@@ -173,10 +198,21 @@ describe('the source assertion that the fix is actually wired in', () => {
     expect(src).not.toMatch(/lotArea > 0 && lotArea < minArea/);
     // All three guards must be present: an unknown area cannot block, an absent
     // minimum cannot block, and a compound threshold must not block on its
-    // stricter branch alone.
+    // stricter branch alone. `!=`, not `!==`, so undefined counts as absent.
     expect(src).toMatch(
-      /lotArea !== null && minArea !== null && !minAreaCompound && lotArea < minArea/,
+      /lotArea != null && minArea != null && !minAreaCompound && lotArea < minArea/,
     );
+  });
+
+  it('the absence guards catch undefined, not only null', () => {
+    // The QA gate blocked a push on this. With `=== null`, an undefined lotArea
+    // fell through to the pass branch and printed "Lot size NaNm² — meets 200m²
+    // minimum" with pass: true — the original defect reached by the other
+    // absent value. propertyData is `any`, and this function is exported.
+    expect(src).toMatch(/if \(minArea == null\) return null;/);
+    expect(src).toMatch(/if \(lotArea == null\) \{/);
+    expect(src).not.toMatch(/if \(minArea === null\)/);
+    expect(src).not.toMatch(/if \(lotArea === null\)/);
   });
 
   it('the GFA blocker cannot print a rounded null', () => {

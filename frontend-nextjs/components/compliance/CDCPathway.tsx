@@ -180,9 +180,16 @@ export function lotSizeRequirement(
   // No lot-area condition in the provisions. Say nothing rather than invent a
   // threshold: the Housing Code states no lot area for a fence, carport or pool,
   // and the old 200m² default gated all three on a figure from a literal.
-  if (minArea === null) return null;
+  // `== null`, not `=== null`: it catches undefined as well. propertyData is
+  // `any` and this function is exported, so a caller can hand us undefined.
+  // With `=== null` an undefined minArea fell through to the "known" branch and
+  // printed "undefinedm²", and an undefined lotArea printed
+  // "Lot size NaNm² — meets 200m² minimum" with pass: true — precisely the
+  // defect this change removes, reached by the other absent value. The QA gate
+  // blocked the push on both.
+  if (minArea == null) return null;
 
-  if (lotArea === null) {
+  if (lotArea == null) {
     return {
       pass: false,
       warn: true,
@@ -377,7 +384,7 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
           // area was known -- but it is spelled out rather than assumed, because
           // Math.round(null) is 0 and would quietly print "0m² lot" as the
           // multiplicand of a figure the user is being asked to accept.
-          `${area}m² proposed > ${Math.round(maxGFA)}m² maximum GFA (FSR ${propertyData.constraints.maxFsr}:1 × ${lotArea !== null ? `${Math.round(lotArea)}m²` : 'unknown'} lot)`,
+          `${area}m² proposed > ${Math.round(maxGFA)}m² maximum GFA (FSR ${propertyData.constraints.maxFsr}:1 × ${lotArea != null ? `${Math.round(lotArea)}m²` : 'unknown'} lot)`,
           'LEP FSR control is a hard ceiling — neither exempt nor CDC can authorise works above it',
         ],
         timeline: '3–6 months',
@@ -437,7 +444,7 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
       // Not blocked when the provision is compound either -- page 129 permits a
       // lot down to 200m² where the width exceeds 7m, so blocking on the 300m²
       // branch alone would refuse CDC to a lot the Code allows.
-      if (lotArea !== null && minArea !== null && !minAreaCompound && lotArea < minArea) {
+      if (lotArea != null && minArea != null && !minAreaCompound && lotArea < minArea) {
         cdcBlockers.push(`Lot size ${Math.round(lotArea)}m² — below ${minArea}m² CDC minimum (${lotAreaSource})`);
       }
       if (isHeritage) {
