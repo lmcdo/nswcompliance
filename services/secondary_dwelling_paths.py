@@ -59,6 +59,8 @@ class RulesOutcome:
 
 
 def _num(v) -> Optional[float]:
+    if v is None:
+        return None
     try:
         f = float(v)
     except (TypeError, ValueError):
