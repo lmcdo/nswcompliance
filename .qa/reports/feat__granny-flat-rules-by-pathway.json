@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Critical: corrects how three SEPP (Housing) 2021 granny-flat rules are stored (wrong clause and wrong meaning for lot size, lot width, parking) and adds the engine the customer-facing granny-flat tools will read. Production data migration in two steps.",
- "commit_hash": "d643867b",
+ "commit_hash": "f45e2bf6",
  "files": [
   "migrations/083_secondary_dwelling_rules_by_pathway.sql",
   "migrations/084_secondary_dwelling_rules_insert.sql",
@@ -31,7 +31,7 @@
  "falsifiable_check": {
   "command": "python -m pytest tests/test_secondary_dwelling_paths.py tests/test_provenance_check.py tests/test_legislation_monitor_no_silent_pass.py tests/test_dockerfile_monitors_imports.py -q -o addopts=",
   "fails_when": "Any fail-closed guard is removed: six mutations (stale rule accepted, value not checked against quote, band gaps accepted, unmeasured frontage = PASS, DA always MEETS, missing lot area guessed) each made 1-4 tests fail.",
-  "observed_red": "Observed 2026-10-08: 119 passed. Mutations each caught: six on the engine (1-4 failures each) and four on the cross-review fixes (frontage accepts m2: 1; path tag unchecked: 2; zone ignored: 3; excluded zone accepted: 1). Provenance: 9/9 rules traced to their own clause in the law in force, run on the Fly server from its whitelisted IP; linking the 12 m rule to the 15 m clause gave 8/9 with that rule named. 9/9 migration quotes word-for-word in the live law. Round 3 (cross-review): Decimal lot area treated as missing, missing path rules passing the weekly check, and an undelivered alert reported as sent were each fixed and each mutation-caught (1 failure each); 141 passed."
+  "observed_red": "Observed 2026-10-08: 119 passed. Mutations each caught: six on the engine (1-4 failures each) and four on the cross-review fixes (frontage accepts m2: 1; path tag unchecked: 2; zone ignored: 3; excluded zone accepted: 1). Provenance: 9/9 rules traced to their own clause in the law in force, run on the Fly server from its whitelisted IP; linking the 12 m rule to the 15 m clause gave 8/9 with that rule named. 9/9 migration quotes word-for-word in the live law. Round 3 (cross-review): Decimal lot area treated as missing, missing path rules passing the weekly check, and an undelivered alert reported as sent were each fixed and each mutation-caught (1 failure each); 141 passed. Round 4 (cross-review): a shrunken zone list, text accepted as a number, and the s 50 dwelling-house condition being skipped were each fixed and mutation-caught (1, 2, 1 failures); 146 passed."
  },
  "functions": [
   {

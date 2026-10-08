@@ -582,35 +582,35 @@ def test_cdc_is_deterministic(valid_rules):
 
 # ---------------------------------------------------------------------------
 # DA — s 53(2)(a) non-discretionary site-area standard.
-# evaluate_da(rules, zone, lot_area_m2, detached)
+# evaluate_da(rules, zone, lot_area_m2, detached, True)
 # ---------------------------------------------------------------------------
 
 
 def test_da_detached_none_is_unknown(valid_rules):
-    result = evaluate_da(valid_rules, "R2", 600, None)
+    result = evaluate_da(valid_rules, "R2", 600, None, True)
     assert result["outcome"] == "UNKNOWN"
     assert "detached" in result["reason"]
 
 
 def test_da_detached_false_is_not_applicable(valid_rules):
-    result = evaluate_da(valid_rules, "R2", 600, False)
+    result = evaluate_da(valid_rules, "R2", 600, False, True)
     assert result["outcome"] == "NOT_APPLICABLE"
     assert "s 53(2)(a)" in result["reason"]
 
 
 def test_da_lot_area_none_is_unknown(valid_rules):
-    result = evaluate_da(valid_rules, "R2", None, True)
+    result = evaluate_da(valid_rules, "R2", None, True, True)
     assert result["outcome"] == "UNKNOWN"
     assert result["reason"] == "lot area not established"
 
 
 def test_da_lot_area_450_meets(valid_rules):
-    result = evaluate_da(valid_rules, "R2", 450, True)
+    result = evaluate_da(valid_rules, "R2", 450, True, True)
     assert result["outcome"] == "MEETS"
 
 
 def test_da_lot_area_449_99_is_below_with_note(valid_rules):
-    result = evaluate_da(valid_rules, "R2", 449.99, True)
+    result = evaluate_da(valid_rules, "R2", 449.99, True, True)
     assert result["outcome"] == "BELOW"
     assert "note" in result
     assert "4.15(3)" in result["note"]["quote"]
@@ -621,7 +621,7 @@ def test_da_lot_area_449_99_is_below_with_note(valid_rules):
     [(None, 600), (False, 600), (True, None), (True, 450), (True, 449.99)],
 )
 def test_da_outcome_vocabulary_never_leaks_pass_fail_language(valid_rules, detached, lot_area):
-    result = evaluate_da(valid_rules, "R2", lot_area, detached)
+    result = evaluate_da(valid_rules, "R2", lot_area, detached, True)
     assert result["outcome"] in ("MEETS", "BELOW", "NOT_APPLICABLE", "UNKNOWN")
     forbidden = re.compile(r"\bPASS\b|\bFAIL\b|eligible|buildable", re.IGNORECASE)
     for value in _all_string_values(result):
@@ -630,13 +630,13 @@ def test_da_outcome_vocabulary_never_leaks_pass_fail_language(valid_rules, detac
 
 def test_da_always_carries_parking_evidence(valid_rules):
     for detached, lot_area in [(None, 600), (False, 600), (True, 450), (True, 449.99)]:
-        result = evaluate_da(valid_rules, "R2", lot_area, detached)
+        result = evaluate_da(valid_rules, "R2", lot_area, detached, True)
         assert result["parking"]["clause"] == "s 53(2)(b)"
 
 
 def test_da_is_deterministic(valid_rules):
-    a = evaluate_da(valid_rules, "R2", 449.99, True)
-    b = evaluate_da(valid_rules, "R2", 449.99, True)
+    a = evaluate_da(valid_rules, "R2", 449.99, True, True)
+    b = evaluate_da(valid_rules, "R2", 449.99, True, True)
     assert a == b
 
 
@@ -650,7 +650,7 @@ def test_zone_r2_evaluates_normally_for_both_paths(valid_rules):
     cdc = evaluate_cdc(valid_rules, "R2", 600, (12.0, 30.0), False)
     assert cdc["outcome"] == "PASS"
     assert "scope" not in cdc
-    da = evaluate_da(valid_rules, "R2", 450, True)
+    da = evaluate_da(valid_rules, "R2", 450, True, True)
     assert da["outcome"] == "MEETS"
 
 
@@ -658,14 +658,14 @@ def test_zone_r5_is_not_applicable_for_cdc_but_da_still_evaluates(valid_rules):
     cdc = evaluate_cdc(valid_rules, "R5", 600, (12.0, 30.0), False)
     assert cdc["outcome"] == "NOT_APPLICABLE"
     assert "R5" in cdc["reason"]
-    da = evaluate_da(valid_rules, "R5", 600, True)
+    da = evaluate_da(valid_rules, "R5", 600, True, True)
     assert da["outcome"] == "MEETS"
 
 
 def test_zone_outside_scope_standard_code_is_not_applicable_for_both(valid_rules):
     cdc = evaluate_cdc(valid_rules, "E4", 600, (12.0, 30.0), False)
     assert cdc["outcome"] == "NOT_APPLICABLE"
-    da = evaluate_da(valid_rules, "E4", 600, True)
+    da = evaluate_da(valid_rules, "E4", 600, True, True)
     assert da["outcome"] == "NOT_APPLICABLE"
 
 
@@ -673,7 +673,7 @@ def test_zone_non_standard_code_is_unknown_for_both(valid_rules):
     cdc = evaluate_cdc(valid_rules, "2(a)", 600, (12.0, 30.0), False)
     assert cdc["outcome"] == "UNKNOWN"
     assert "equivalent land use zone" in cdc["reason"]
-    da = evaluate_da(valid_rules, "2(a)", 600, True)
+    da = evaluate_da(valid_rules, "2(a)", 600, True, True)
     assert da["outcome"] == "UNKNOWN"
     assert "equivalent land use zone" in da["reason"]
 
@@ -682,7 +682,7 @@ def test_zone_none_is_unknown_for_both(valid_rules):
     cdc = evaluate_cdc(valid_rules, None, 600, (12.0, 30.0), False)
     assert cdc["outcome"] == "UNKNOWN"
     assert cdc["reason"] == "zone not established"
-    da = evaluate_da(valid_rules, None, 600, True)
+    da = evaluate_da(valid_rules, None, 600, True, True)
     assert da["outcome"] == "UNKNOWN"
     assert da["reason"] == "zone not established"
 
@@ -690,7 +690,7 @@ def test_zone_none_is_unknown_for_both(valid_rules):
 def test_zone_full_title_is_treated_as_its_code(valid_rules):
     cdc = evaluate_cdc(valid_rules, "R2 Low Density Residential", 600, (12.0, 30.0), False)
     assert cdc["outcome"] == "PASS"
-    da = evaluate_da(valid_rules, "R2 Low Density Residential", 450, True)
+    da = evaluate_da(valid_rules, "R2 Low Density Residential", 450, True, True)
     assert da["outcome"] == "MEETS"
 
 
@@ -747,6 +747,33 @@ def test_decimal_lot_area_and_frontage_are_numbers_not_unknown():
     from decimal import Decimal
     rules = validate_rules(copy.deepcopy(BASE_ROWS)).rules
     cdc = evaluate_cdc(rules, "R2", Decimal("600"), (Decimal("12"), Decimal("30")), False)
-    da = evaluate_da(rules, "R2", Decimal("600"), True)
+    da = evaluate_da(rules, "R2", Decimal("600"), True, True)
     assert cdc["outcome"] == "PASS" and da["outcome"] == "MEETS"
     assert evaluate_cdc(rules, "R2", True, (12.0, 30.0), False)["outcome"] == "UNKNOWN"  # bool is not a number
+
+
+
+def test_da_requires_dwelling_house_permissibility_s50():
+    # Round-4 cross-review: s 50 applies the Part only where a dwelling house is permissible.
+    rules = validate_rules(copy.deepcopy(BASE_ROWS)).rules
+    assert evaluate_da(rules, "R2", 600, True, None)["outcome"] == "UNKNOWN"
+    assert "s 50" in evaluate_da(rules, "R2", 600, True, None)["reason"]
+    assert evaluate_da(rules, "R2", 600, True, False)["outcome"] == "NOT_APPLICABLE"
+    assert evaluate_da(rules, "R2", 600, True, True)["outcome"] == "MEETS"
+
+
+def test_zone_scope_must_list_every_zone_its_quote_covers():
+    # Round-4 cross-review: dropping R4 while the quote still covers it must be rejected.
+    rows = copy.deepcopy(BASE_ROWS)
+    for r in rows:
+        if r["standard_type"] == "cdc_zone_scope":
+            r["applicable_zones"] = ["R1", "R2", "R3"]  # noqa: zone-codes — deliberately shrunken fixture
+    outcome = validate_rules(rows)
+    assert outcome.rules is None
+    assert any("covers zone R4 but the rule does not list it" in f for f in outcome.failures)
+
+
+@pytest.mark.parametrize("bad", [("12", "30"), (b"12", b"30"), ("x", 30.0)])
+def test_frontage_given_as_text_is_not_a_measurement(bad):
+    rules = validate_rules(copy.deepcopy(BASE_ROWS)).rules
+    assert evaluate_cdc(rules, "R2", 600.0, bad, False)["outcome"] == "UNKNOWN"

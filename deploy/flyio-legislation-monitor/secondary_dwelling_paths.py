@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import math
 import re
+from decimal import Decimal
 from dataclasses import dataclass
 from typing import Literal, Optional
 
@@ -131,11 +132,14 @@ def _check_row(r: dict) -> tuple[Optional[Rule], list[str]]:
         if not zones:
             errs.append(f"{st}: no zones listed")
         excluded = set(re.findall(r"other than Zone ([A-Z]{1,2}[0-9]{1,2}[A-Z]?)\b", quote))
+        named = set(re.findall(r"\bZone ([A-Z]{1,2}[0-9]{1,2}[A-Z]?)\b", quote))
         for z in sorted(zones):
-            if f"Zone {z} " not in quote + " ":
+            if z not in named:
                 errs.append(f"{st}: zone {z} does not appear in its quote")
             if z in excluded:
                 errs.append(f"{st}: zone {z} is listed but its quote excludes it")
+        for z in sorted(named - excluded - zones):
+            errs.append(f"{st}: its quote covers zone {z} but the rule does not list it")
     if errs:
         return None, errs
     return Rule(int(r.get("id")), st, r.get("approval_pathway"), value, r.get("unit"),
@@ -233,7 +237,7 @@ def _zone_gate(rules: Rules, scope_rule: str, zone: Optional[str]) -> Optional[d
 
 def _positive(v) -> bool:
     """A finite positive number. Accepts Decimal (PostgreSQL numeric); rejects bool."""
-    if isinstance(v, bool):
+    if isinstance(v, bool) or not isinstance(v, (int, float, Decimal)):
         return False
     f = _num(v)
     return f is not None and f > 0
@@ -263,9 +267,11 @@ def evaluate_cdc(rules: Rules, zone: Optional[str], lot_area_m2, frontage_range_
     out["evidence"] = _evidence(band)
     out["required_m"] = band.value
     rng = frontage_range_m
-    if not (isinstance(rng, tuple) and len(rng) == 2 and all(_positive(v) for v in rng) and rng[0] <= rng[1]):
+    if not (isinstance(rng, tuple) and len(rng) == 2 and all(_positive(v) for v in rng)):
         return {**out, "outcome": "UNKNOWN", "reason": "road frontage at the building line not measured"}
     lo, hi = float(rng[0]), float(rng[1])
+    if lo > hi:
+        return {**out, "outcome": "UNKNOWN", "reason": "frontage range is inverted"}
     if lo >= band.value:
         return {**out, "outcome": "PASS", "reason": f"frontage at least {lo:g} m ≥ {band.value:g} m"}
     if hi < band.value:
@@ -274,18 +280,27 @@ def evaluate_cdc(rules: Rules, zone: Optional[str], lot_area_m2, frontage_range_
             "reason": f"frontage between {lo:g} m and {hi:g} m depending on which boundary faces the road"}
 
 
-def evaluate_da(rules: Rules, zone: Optional[str], lot_area_m2, detached: Optional[bool]) -> dict:
+def evaluate_da(rules: Rules, zone: Optional[str], lot_area_m2, detached: Optional[bool],
+                dwelling_house_permissible: Optional[bool]) -> dict:
     """DA s 53(2)(a): a non-discretionary site-area standard for detached granny
     flats. Being below it is reported with the law's own note; never as a ban."""
     std = rules.by_type["da_detached_min_site_area"]  # noqa: bracket-access — validated
     out = {"path": "da", "evidence": _evidence(std),
            "parking": _evidence(rules.by_type["da_parking_rule"]),  # noqa: bracket-access — validated
-           # s 50 also requires a dwelling house to be permissible under another
-           # instrument; that is not checked here and the scope quote says so.
            "scope": _evidence(rules.by_type["da_zone_scope"])}  # noqa: bracket-access — validated
     gate = _zone_gate(rules, "da_zone_scope", zone)
     if gate:
         return {**out, **gate}
+    # s 50: the Part applies only "if development for the purposes of a dwelling
+    # house is permissible on the land under another environmental planning
+    # instrument" — a fact the caller must establish (e.g. from the LEP land use
+    # table); never assumed.
+    if dwelling_house_permissible is None:
+        return {**out, "outcome": "UNKNOWN",
+                "reason": "whether a dwelling house is permissible on the land (s 50) is not established"}
+    if not dwelling_house_permissible:
+        return {**out, "outcome": "NOT_APPLICABLE",
+                "reason": "s 50: a dwelling house is not permissible on the land, so this Part does not apply"}
     if detached is None:
         return {**out, "outcome": "UNKNOWN", "reason": "whether the granny flat is detached is not known"}
     if not detached:
