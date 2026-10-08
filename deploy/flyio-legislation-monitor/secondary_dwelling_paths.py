@@ -339,7 +339,7 @@ def assess(rules: Rules, zone: Optional[str], lot_area_m2, *, frontage_range_m=N
     """
     cdc = evaluate_cdc(rules, zone, lot_area_m2, frontage_range_m, battle_axe)
     da = evaluate_da(rules, zone, lot_area_m2, detached, dwelling_house_permissible)
-    area = float(lot_area_m2) if _positive(lot_area_m2) else None
+    area = float(lot_area_m2) if lot_area_m2 is not None and _positive(lot_area_m2) else None
     band = _band_for(rules.frontage_bands, area) if area is not None else None
     cdc_line = f"Complying development (CDC): {_CDC_LABEL[cdc['outcome']]} — {cdc['reason']}."
     if band is not None and cdc["outcome"] == "UNKNOWN" and "required_m" not in cdc:  # noqa: bracket-access — evaluate_* always sets outcome
