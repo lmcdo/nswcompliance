@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Critical: corrects how three SEPP (Housing) 2021 granny-flat rules are stored (wrong clause and wrong meaning for lot size, lot width, parking) and adds the engine the customer-facing granny-flat tools will read. Production data migration in two steps.",
- "commit_hash": "c2443071",
+ "commit_hash": "3e1eab84",
  "files": [
   "migrations/083_secondary_dwelling_rules_by_pathway.sql",
   "migrations/084_secondary_dwelling_rules_insert.sql",
