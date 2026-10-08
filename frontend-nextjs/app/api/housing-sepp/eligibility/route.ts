@@ -179,6 +179,9 @@ export async function POST(request: NextRequest) {
         pdf_page,
         r2_pdf_url
       FROM housing_sepp_standards
+      -- Path-specific granny-flat rules (migrations 083/084) are evaluated by
+      -- services/secondary_dwelling_paths.py, not by this per-form gate.
+      WHERE approval_pathway IS NULL
       ORDER BY development_type, standard_type
     `);
 

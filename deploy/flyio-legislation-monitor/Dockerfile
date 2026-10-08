@@ -17,6 +17,10 @@ COPY legislation_monitor.py .
 # tests/test_dockerfile_monitors_imports.py now fails if any local import of a
 # COPYd module is not itself COPYd — mutation-checked in both directions.
 COPY refresh_runbook.py .
+# Weekly provenance check (scripts/provenance_check.py): traces every served rule
+# with a quote to its clause in the law in force; alerts on any break.
+COPY provenance_check.py .
+COPY secondary_dwelling_paths.py .
 COPY check_ip.py .
 COPY run_loop.sh .
 

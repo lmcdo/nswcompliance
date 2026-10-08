@@ -1,0 +1,196 @@
+{
+ "tier": "critical",
+ "justification": "Critical: corrects how three SEPP (Housing) 2021 granny-flat rules are stored (wrong clause and wrong meaning for lot size, lot width, parking) and adds the engine the customer-facing granny-flat tools will read. Production data migration in two steps.",
+ "commit_hash": "3e1eab84",
+ "files": [
+  "migrations/083_secondary_dwelling_rules_by_pathway.sql",
+  "migrations/084_secondary_dwelling_rules_insert.sql",
+  "services/secondary_dwelling_paths.py",
+  "scripts/conveyancing_db.py",
+  "services/housing_sepp_eligibility.py",
+  "tests/test_secondary_dwelling_paths.py",
+  "scripts/provenance_check.py",
+  "tests/test_provenance_check.py",
+  "tests/test_secondary_dwelling_provenance_live.py",
+  "deploy/flyio-legislation-monitor/provenance_check.py",
+  "deploy/flyio-legislation-monitor/secondary_dwelling_paths.py",
+  "deploy/flyio-legislation-monitor/Dockerfile",
+  "deploy/flyio-legislation-monitor/run_loop.sh",
+  "tests/test_legislation_monitor_no_silent_pass.py",
+  "scripts/legislation_monitor.py",
+  "deploy/flyio-legislation-monitor/legislation_monitor.py",
+  "tests/test_housing_sepp_standards_readers.py",
+  "frontend-nextjs/app/planning-standards/page.tsx",
+  "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
+  "scripts/verify_coverage_stats.py",
+  "scripts/dq_probe_live.py",
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md"
+ ],
+ "pre_impl": {
+  "existing_data": "housing_sepp_standards: 45 rows, 12 secondary_dwelling. Rows 44 (min_lot_size 450 '53(1)(b)'), 34 (min_lot_width 12 'Schedule 1, Part 2'), 35 (parking 0 'Part 3, Division 2') do not match the SEPP (Housing) 2021 in force (11 September 2026), checked against legislation.nsw.gov.au 2026-10-08.",
+  "assumption_mismatch": "The 450 m2 figure is s 53(2)(a), a non-discretionary site-area standard for detached secondary dwellings on the DA path; the CDC path (Sch 1 cl 2(1)(b)) sets a road frontage of 12/15/18 m by lot-area band; no numeric parking standard exists. The conveyancing loader does float(numeric_value), so wording rows with no number would crash it; the brief lists unknown standard types as additional standards.",
+  "new_vs_existing": "Additive: new columns (083, applied) and 7 new rows (084, applied only after this code deploys). Old rows 34/35/44 stay until consumers switch in the next PR. Generic readers now skip approval_pathway rows.",
+  "external_source_error": "A database error loading the rules returns named failures (UNAVAILABLE), never an empty rule set; a missing lot fact returns UNKNOWN for that path.",
+  "frontend_type": "No frontend change in this PR. The engine returns per-path dicts: outcome, reason, clause, quote and legislation link for each rule used.",
+  "user_failure_mode": "Until consumers switch (next PR) customers see the current behaviour; after 084 the existing readers return exactly what they return today, proved in a rolled-back transaction (45 and 39 rows, identical eligibility view)."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_secondary_dwelling_paths.py tests/test_provenance_check.py tests/test_legislation_monitor_no_silent_pass.py tests/test_dockerfile_monitors_imports.py -q -o addopts=",
+  "fails_when": "Any fail-closed guard is removed: six mutations (stale rule accepted, value not checked against quote, band gaps accepted, unmeasured frontage = PASS, DA always MEETS, missing lot area guessed) each made 1-4 tests fail.",
+  "observed_red": "Observed 2026-10-08: 119 passed. Mutations each caught: six on the engine (1-4 failures each) and four on the cross-review fixes (frontage accepts m2: 1; path tag unchecked: 2; zone ignored: 3; excluded zone accepted: 1). Provenance: 9/9 rules traced to their own clause in the law in force, run on the Fly server from its whitelisted IP; linking the 12 m rule to the 15 m clause gave 8/9 with that rule named. 9/9 migration quotes word-for-word in the live law. Round 3 (cross-review): Decimal lot area treated as missing, missing path rules passing the weekly check, and an undelivered alert reported as sent were each fixed and each mutation-caught (1 failure each); 141 passed. Round 4 (cross-review): a shrunken zone list, text accepted as a number, and the s 50 dwelling-house condition being skipped were each fixed and mutation-caught (1, 2, 1 failures); 146 passed. CI round (gates on PR #1239 failed on production checks): three readers that would have served the new rows unfiltered were found (/planning-standards page, housing-sepp/eligibility route, coverage count) and filtered; a reader-inventory test now fails the build for any unfiltered query on the table (removing each of the four filters made it fail; its guard-the-guard test caught a corrupted regex that had made it scan nothing). DQ-96 corrected to judge last verification, not creation (reads 0); DQ-69 declared fixed (probe CLEAN); OC-6 HOLDS. 292 related tests pass."
+ },
+ "functions": [
+  {
+   "name": "validate_rules",
+   "file_line": "services/secondary_dwelling_paths.py",
+   "input": "housing_sepp_standards rows tagged with an approval pathway, each carrying its quote of the law",
+   "output": "validated per-path rules with ordered lot-area bands, or a tuple of named failures for UNAVAILABLE",
+   "if_none": "No rows or any missing rule yields named failures; callers report UNAVAILABLE and evaluate nothing."
+  },
+  {
+   "name": "evaluate_cdc",
+   "file_line": "services/secondary_dwelling_paths.py",
+   "input": "validated rules plus lot area, frontage range at the building line and battle-axe status",
+   "output": "CDC road-frontage outcome PASS, FAIL or UNKNOWN with the clause, quote and link used",
+   "if_none": "Any missing or invalid input returns UNKNOWN with the missing fact named."
+  },
+  {
+   "name": "evaluate_da",
+   "file_line": "services/secondary_dwelling_paths.py",
+   "input": "validated rules plus lot area and whether the granny flat is detached from the dwelling",
+   "output": "DA site-area outcome MEETS, BELOW, NOT_APPLICABLE or UNKNOWN, with the law's own note when below",
+   "if_none": "Missing detached status or lot area returns UNKNOWN with the reason."
+  }
+ ],
+ "values": [
+  {
+   "value": "No regulatory numbers in code; thresholds and band limits are database values checked against each row's own quote",
+   "source": "housing_sepp_standards rows inserted by migration 084, quoted from the SEPP (Housing) 2021 in force",
+   "read_at": "each request, via load_rules in services/secondary_dwelling_paths.py",
+   "if_missing": "Any missing, stale or self-inconsistent rule returns UNAVAILABLE with named failures."
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "load path rules",
+   "file_line": "services/secondary_dwelling_paths.py load_rules",
+   "where_clause": "development_type = 'secondary_dwelling' AND approval_pathway IS NOT NULL"
+  },
+  {
+   "purpose": "generic standards loader excludes path rules",
+   "file_line": "scripts/conveyancing_db.py fetch_sepp_housing_standards",
+   "where_clause": "... AND approval_pathway IS NULL"
+  },
+  {
+   "purpose": "eligibility engine excludes path rules",
+   "file_line": "services/housing_sepp_eligibility.py _fetch_standards_grouped",
+   "where_clause": "WHERE approval_pathway IS NULL"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A path rule is edited so its number no longer matches the quote of the law it carries",
+   "what_happens": "validate_rules names the rule and the engine returns UNAVAILABLE instead of using the edited number",
+   "mitigated": true,
+   "how": "value-in-quote check",
+   "repro": "python -m pytest tests/test_secondary_dwelling_paths.py -q -o addopts= -k quote"
+  },
+  {
+   "scenario": "The lot-area bands are edited so a lot size falls in no band or in two bands",
+   "what_happens": "validate_rules reports a gap or overlap and no CDC answer is produced for any lot",
+   "mitigated": true,
+   "how": "band tiling check",
+   "repro": "python -m pytest tests/test_secondary_dwelling_paths.py -q -o addopts= -k band"
+  },
+  {
+   "scenario": "Lot area, frontage or detached status is missing for a property being assessed",
+   "what_happens": "That path returns UNKNOWN naming the missing fact; nothing is guessed or treated as a pass",
+   "mitigated": true,
+   "how": "three-state inputs",
+   "repro": "python -m pytest tests/test_secondary_dwelling_paths.py -q -o addopts= -k unknown"
+  },
+  {
+   "scenario": "A lot under the DA site area is reported to the customer as not allowed",
+   "what_happens": "It is reported as BELOW with the law's own note that non-compliance does not prevent consent",
+   "mitigated": true,
+   "how": "DA vocabulary MEETS/BELOW/NOT_APPLICABLE/UNKNOWN only",
+   "repro": "python -m pytest tests/test_secondary_dwelling_paths.py -q -o addopts= -k da"
+  },
+  {
+   "scenario": "The load path rules query fails because the database is unreachable or errors",
+   "what_happens": "load_rules returns 'rules query failed' after a rollback and the caller reports UNAVAILABLE",
+   "mitigated": true,
+   "how": "exception mapped to a named failure",
+   "repro": "python -m pytest tests/test_secondary_dwelling_paths.py -q -o addopts= -k load"
+  },
+  {
+   "scenario": "The generic standards loader receives the new wording rows that carry no number",
+   "what_happens": "It filters approval_pathway IS NULL so the rows never reach float(); 45 and 39 rows with them present",
+   "mitigated": true,
+   "how": "reader filter deployed before migration 084",
+   "repro": "insert migration 084 inside a transaction, call fetch_sepp_housing_standards and the eligibility query, then roll back"
+  },
+  {
+   "scenario": "The eligibility engine query picks up path rules and changes which clause a form cites",
+   "what_happens": "It filters approval_pathway IS NULL; the rolled-back check showed its view identical to before",
+   "mitigated": true,
+   "how": "reader filter",
+   "repro": "insert migration 084 inside a transaction, call fetch_sepp_housing_standards and the eligibility query, then roll back"
+  },
+  {
+   "scenario": "A stored rule's link points to a clause other than the one its words come from",
+   "what_happens": "The weekly provenance check reports the rule and clause, exits 1 and sends a Telegram alert",
+   "mitigated": true,
+   "how": "quote must sit inside the anchored clause",
+   "repro": "python -m pytest tests/test_provenance_check.py -q -o addopts= -k wrong_clause"
+  },
+  {
+   "scenario": "The law is amended so a quoted clause no longer exists or no longer says the same words",
+   "what_happens": "The next weekly run names every affected rule and alerts; nothing passes silently",
+   "mitigated": true,
+   "how": "anchor existence and quote-in-clause checks against the live page",
+   "repro": "python -m pytest tests/test_provenance_check.py -q -o addopts= -k 'anchor or changed'"
+  },
+  {
+   "scenario": "The weekly provenance check cannot fetch the law or finds no rules to check at all",
+   "what_happens": "Each is a named problem, the run exits 1 and alerts; an empty check is never reported as all traced",
+   "mitigated": true,
+   "how": "fetch failure and empty result are failures",
+   "repro": "python -m pytest tests/test_provenance_check.py -q -o addopts= -k 'fetch or no_rules'"
+  },
+  {
+   "scenario": "A frontage threshold is changed to a lot-area figure that also appears in its quote, such as 900",
+   "what_happens": "Rejected: frontage values must match metres and site-area values must match square metres",
+   "mitigated": true,
+   "how": "unit-specific matching plus unit column check (cross-review finding 1)",
+   "repro": "python -m pytest tests/test_secondary_dwelling_paths.py -q -o addopts= -k 900"
+  },
+  {
+   "scenario": "A property in a zone outside a path's scope, such as R5 for CDC or E4 for both, is evaluated",
+   "what_happens": "That path returns NOT_APPLICABLE; a non-standard zone code returns UNKNOWN; a missing zone returns UNKNOWN",
+   "mitigated": true,
+   "how": "per-path zone-scope rules quoted from s 49, s 50 and s 54(1)(a)",
+   "repro": "python -m pytest tests/test_secondary_dwelling_paths.py -q -o addopts= -k zone"
+  },
+  {
+   "scenario": "A new or existing query reads housing_sepp_standards without filtering the path-specific rules",
+   "what_happens": "tests/test_housing_sepp_standards_readers.py fails the build and names the file and line",
+   "mitigated": true,
+   "how": "reader inventory test across services, scripts, deploy and the Next.js app",
+   "repro": "python -m pytest tests/test_housing_sepp_standards_readers.py -q -o addopts="
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes, in this order: (1) deploy services; (2) apply migrations/084_secondary_dwelling_rules_insert.sql; (3) PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1 pytest -m integration tests/test_secondary_dwelling_provenance_live.py -o addopts= prints 9/9; (4) fly deploy -a plotdetect-legislation-monitor from deploy/flyio-legislation-monitor (before 084 the weekly check correctly alerts 'no rules'). Cross-review findings 2 and 5 (is_active) rejected: housing_sepp_standards has no is_active column. Pre-existing unrelated failure on main: tests/test_conveyancing_db_served_scope_real_db.py."
+ },
+ "real_layer_exempt": {
+  "services/secondary_dwelling_paths.py": "Real database layer exercised 2026-10-08 by inserting migration 084 inside a transaction against production, loading rules (VALID) and evaluating four real lots, then rolling back; a committed real-DB test needs 084 applied, which happens after deploy.",
+  "scripts/conveyancing_db.py": "Same rolled-back real-database check: the loader returned 45 and 39 rows with the new rows present.",
+  "services/housing_sepp_eligibility.py": "Same rolled-back real-database check: the engine's view identical to before.",
+  "scripts/provenance_check.py": "Real layer exercised 2026-10-08 on the Fly server (the only IP legislation.nsw.gov.au accepts from Python): 9/9 traced, and a broken link gave 8/9 naming the rule; tests/test_secondary_dwelling_provenance_live.py is the committed real test, runnable once 084 is applied."
+ }
+}

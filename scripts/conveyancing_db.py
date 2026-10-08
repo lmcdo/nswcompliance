@@ -1199,7 +1199,12 @@ def fetch_sepp_housing_standards(
             conditions.append("%s = ANY(applicable_zones)")
             params.append(zone_prefix)
 
-        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        # Path-specific rules (migrations 083/084: one row per clause, tagged
+        # cdc or da, some carrying wording but no number) are read only by
+        # services/secondary_dwelling_paths.py. Here they would crash float(None)
+        # below and surface as bare "additional standards" in the brief.
+        conditions.append("approval_pathway IS NULL")
+        where = "WHERE " + " AND ".join(conditions)
 
         cur.execute(
             f"""

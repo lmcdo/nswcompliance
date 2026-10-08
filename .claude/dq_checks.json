@@ -626,7 +626,8 @@
    "note": "Opened 2026-08-14 because the ledger was narrower than the defect it described. DQ-24 tracks 523 of these - the Transport & Infrastructure SEPP slice - and scoping it that way was defensible, but it left 2,674 rows in exactly the same state with nothing watching them. Same served-set scope as DQ-24, so DQ-24 is a strict subset and the two numbers are comparable. Measured 3,197 of 19,957 served provisions (16.0%), concentrated in statewide instruments (2,530) and the Inner West former councils (marrickville 475, leichhardt 123)."
   },
   "DQ-69": {
-   "declared": "open",
+   "declared": "fixed",
+   "fixed_by": "2026-10-08 - PR #1237 (legislation monitor reads each instrument's own page; a PCO-export miss is never stamped unchanged) deployed to plotdetect-legislation-monitor (Fly v12, file sha matches main). Its first run checked 33/33 active instruments (last_checked within the hour) and recorded 24 changed versions. Probe DQ-69: CLEAN.",
    "check": [
     "python",
     "scripts/dq_probe_live.py",
