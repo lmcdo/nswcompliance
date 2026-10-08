@@ -847,3 +847,6 @@ latent-scope-data/
 # re-fetchable, and declared as that row's `requires` so an absent cache reports
 # UNKNOWN rather than a false red.
 .cache/
+
+# Per-prompt provenance readings; re-measured from the database, never source.
+.claude/.live-numbers-cache.json
