@@ -422,17 +422,17 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
               <span className={`mt-0.5 shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${
                 eligibility.sepp_eligible ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600'
               }`}>
-                {eligibility.sepp_eligible ? 'Eligible' : 'Not eligible'}
+                {eligibility.sepp_eligible ? 'No exclusion found' : 'Not eligible'}
               </span>
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-medium ${eligibility.sepp_eligible ? 'text-teal-800' : 'text-gray-800'}`}>
                   {eligibility.sepp_eligible
-                    ? `${formatLotArea(eligibility.lot_area_m2)} — eligible for a granny flat under SEPP Housing 2021`
+                    ? `${formatLotArea(eligibility.lot_area_m2)} — no SEPP Housing 2021 exclusion found in the checks below`
                     : deriveIneligibleReason(eligibility.sepp_ineligible_reason)}
                 </p>
                 {eligibility.sepp_eligible && (
                   <p className="text-xs text-gray-500 mt-1">
-                    Based on the data sources checked, this property meets the SEPP Housing 2021 spatial criteria. Get a full feasibility report to see rental yield, build ROI, and council setbacks.
+                    The lot-area tests depend on the approval path (a road frontage for complying development, a site area for a detached granny flat by DA) and are not decided by this quick check. Get a full feasibility report to see those, rental yield, build ROI, and council setbacks.
                   </p>
                 )}
                 <p className="text-xs text-gray-400 mt-1">

@@ -161,9 +161,14 @@ def _get_sepp_sd_rules(conn=None) -> tuple[Optional["Rules"], Optional[float]]:
               AND approval_pathway IS NULL
             """,
         )
-        row = cur.fetchone()
+        rows = cur.fetchall()
         cur.close()
-        max_gf = float(row[0]) if row and row[0] is not None else None
+        # Exactly one row, finite and positive -- anything else is not a figure
+        # to serve, and the endpoints fail closed (cross-review).
+        max_gf = None
+        if len(rows) == 1 and rows[0][0] is not None:
+            v = float(rows[0][0])
+            max_gf = v if math.isfinite(v) and v > 0 else None
     except Exception as e:
         logger.warning("Failed to load SEPP max floor area from DB — unavailable, callers fail closed: %s", e)
         max_gf = None
@@ -177,6 +182,13 @@ def _approval_paths(rules, zone: Optional[str], lot_area_m2: Optional[float]) ->
     except ImportError:
         from secondary_dwelling_paths import assess
     return assess(rules, zone, lot_area_m2)
+
+
+def _outside_both_paths(paths: dict) -> bool:
+    """Neither the CDC nor the DA rules apply in this zone."""
+    return all(paths[p]["outcome"] == "NOT_APPLICABLE"  # noqa: bracket-access — assess() always sets both
+               and "outside this path's zones" in (paths[p].get("reason") or "")  # noqa: bracket-access
+               for p in ("cdc", "da"))
 
 
 def _path_warning(paths: dict) -> Optional[str]:
@@ -1427,6 +1439,9 @@ def detect_structures(req: GrannyFlatDetectRequest):
     approval_paths = _approval_paths(sepp_rules, req.zone, lot_area_m2)
     sepp_eligible = True
     sepp_ineligible_reason = None
+    if _outside_both_paths(approval_paths):
+        sepp_eligible = False
+        sepp_ineligible_reason = approval_paths["summary"]  # noqa: bracket-access — assess() always sets it
 
     # Sanitize prop_id to prevent path traversal (prop_ids are numeric, but be defensive)
     safe_prop_id = "".join(c for c in req.prop_id if c.isalnum() or c in ("-", "_"))
@@ -1802,6 +1817,9 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     # Lot area is reported per approval path, never as one minimum that makes
     # the lot unbuildable -- the SEPP (Housing) 2021 sets no such minimum.
     approval_paths = _approval_paths(sepp_rules, req.zone, lot_area_m2)
+    if _outside_both_paths(approval_paths):
+        granny_flat_buildable = False
+        warnings.append(approval_paths["summary"])  # noqa: bracket-access — assess() always sets it
     if lot_area_m2 is None:
         warnings.append(
             "Lot area could not be calculated for this property — lot geometry was unavailable, "

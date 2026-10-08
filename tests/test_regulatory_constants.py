@@ -231,6 +231,16 @@ class TestCalcFeasibilityWithConfigs:
         assert "2026" in lt_item["question"]
         assert "$1,000,000" in lt_item["basis"]
 
+    @pytest.mark.parametrize("bad", [{}, "rules", {"frontage_bands": ()}, None])
+    def test_injected_sd_rules_that_are_not_validated_rules_render_not_assessed(self, bad):
+        """Cross-review: a direct caller's malformed sd_rules must not crash the report."""
+        result = calc_feasibility(
+            self._base_controls, self._base_valuation, self._base_overlays,
+            sepp_standards={"sd_rules": bad},
+        )
+        sd_item = next(r for r in result if "granny flat" in r["question"].lower())
+        assert sd_item["answer"] == "Not assessed"
+
     def test_old_shape_config_is_not_assessed_never_a_figure(self):
         """A caller still injecting the retired {sd_min_lot, sd_zones} shape gets
         'Not assessed', not a 450 m2 verdict."""

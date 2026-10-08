@@ -676,6 +676,14 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     # area alone never makes this row "too small". NO fallback (#684): absent or
     # invalid rules render "Not assessed" -- fail-visible, never a figure.
     _sd_rules = (sepp_standards or {}).get("sd_rules")
+    try:
+        from services.secondary_dwelling_paths import Rules as _SdRules
+    except ImportError:  # pragma: no cover - CLI copies run from scripts/
+        from secondary_dwelling_paths import Rules as _SdRules  # type: ignore
+    if not isinstance(_sd_rules, _SdRules):
+        # A direct caller injecting anything but validate_rules() output gets the
+        # fail-visible row, never a crash mid-report (cross-review).
+        _sd_rules = None
     if is_strata:
         results.append({
             "question": "Secondary dwelling (granny flat)",

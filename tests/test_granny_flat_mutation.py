@@ -378,7 +378,7 @@ class TestGetSeppSdRules:
     def test_valid_rules_and_floor_area_returned(self, monkeypatch):
         monkeypatch.setattr("services.secondary_dwelling_paths.load_rules",
                             lambda conn: validate_rules(copy.deepcopy(BASE_ROWS)))
-        conn = FakeConn(cursor=FakeCursor(fetchone_result=(Decimal("60.00"),)))
+        conn = FakeConn(cursor=FakeCursor(fetchall_result=[(Decimal("60.00"),)]))
         rules, max_gf = _get_sepp_sd_rules(conn)
         assert rules is not None and max_gf == 60.0 and isinstance(max_gf, float)
 
@@ -387,15 +387,22 @@ class TestGetSeppSdRules:
         broken[0]["source_quote"] = ""
         monkeypatch.setattr("services.secondary_dwelling_paths.load_rules",
                             lambda conn: validate_rules(broken))
-        conn = FakeConn(cursor=FakeCursor(fetchone_result=(Decimal("60.00"),)))
+        conn = FakeConn(cursor=FakeCursor(fetchall_result=[(Decimal("60.00"),)]))
         rules, _ = _get_sepp_sd_rules(conn)
         assert rules is None
 
     def test_missing_floor_area_is_none(self, monkeypatch):
         monkeypatch.setattr("services.secondary_dwelling_paths.load_rules",
                             lambda conn: validate_rules(copy.deepcopy(BASE_ROWS)))
-        conn = FakeConn(cursor=FakeCursor(fetchone_result=None))
+        conn = FakeConn(cursor=FakeCursor(fetchall_result=[]))
         assert _get_sepp_sd_rules(conn)[1] is None
+
+    @pytest.mark.parametrize("rows", [[(Decimal("-60"),)], [(Decimal("0"),)], [(float("nan"),)],
+                                      [(Decimal("60"),), (Decimal("75"),)]])
+    def test_floor_area_not_exactly_one_positive_finite_value_is_none(self, monkeypatch, rows):
+        monkeypatch.setattr("services.secondary_dwelling_paths.load_rules",
+                            lambda conn: validate_rules(copy.deepcopy(BASE_ROWS)))
+        assert _get_sepp_sd_rules(FakeConn(cursor=FakeCursor(fetchall_result=rows)))[1] is None
 
     def test_floor_area_db_error_is_none(self, monkeypatch):
         monkeypatch.setattr("services.secondary_dwelling_paths.load_rules",
@@ -948,6 +955,8 @@ class TestDetectStructuresEndpoint:
         resp = gf.detect_structures(self._make_req(zone="B2"))
         assert resp.approval_paths["cdc"]["outcome"] == "NOT_APPLICABLE"
         assert resp.approval_paths["da"]["outcome"] == "NOT_APPLICABLE"
+        assert resp.sepp_eligible is False
+        assert "outside this path's zones" in resp.sepp_ineligible_reason
 
     def test_structures_detected(self, monkeypatch):
         structures = [
@@ -1234,6 +1243,12 @@ class TestConfirmAndCalculate:
         assert resp.granny_flat_buildable is True
         assert not any("450" in w for w in resp.warnings)
         assert resp.approval_paths["da"]["evidence"]["clause"] == "s 53(2)(a)"
+
+    def test_zone_outside_both_paths_is_not_buildable(self, monkeypatch):
+        _stub_confirm_all(monkeypatch)
+        resp = gf.confirm_and_calculate(_make_confirm_req(zone="B2"))
+        assert resp.granny_flat_buildable is False
+        assert any("outside this path's zones" in w for w in resp.warnings)
 
     def test_cdc_frontage_band_for_the_lot_is_reported(self, monkeypatch):
         _stub_confirm_all(monkeypatch)

@@ -135,9 +135,10 @@ async function runEligibilityCheck(result: typeof ELIGIBLE_RESULT) {
   fireEvent.change(input, { target: { value: result.address } });
   const btn = screen.getByRole('button', { name: /check my property/i });
   fireEvent.click(btn);
-  // Wait for the badge text — use getAllByText since "eligible" appears in badge + description
+  // Wait for the badge text. A passing quick check reads "No exclusion found",
+  // not "Eligible": lot area is tested per approval path, not by this check.
   await waitFor(() => {
-    const matches = screen.getAllByText(/eligible|not eligible/i);
+    const matches = screen.getAllByText(/no exclusion found|not eligible/i);
     if (matches.length === 0) throw new Error('Result not yet rendered');
   });
 }
