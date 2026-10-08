@@ -1,0 +1,40 @@
+{
+  "captured": "2026-10-09",
+  "reason": "migration 088 retires id 35 (superseded by ids 56/59; no numeric parking standard exists)",
+  "restore": "INSERT INTO housing_sepp_standards SELECT * FROM json_populate_record(NULL::housing_sepp_standards, %(row)s::json);",
+  "rows": [
+    {
+      "id": 35,
+      "development_type": "secondary_dwelling",
+      "standard_type": "parking_per_dwelling",
+      "numeric_value": 0.0,
+      "unit": "spaces",
+      "applicable_zones": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "requires_lmr_area": false,
+      "source_clause": "Part 3, Division 2",
+      "source_provision_id": null,
+      "source_document": "State Environmental Planning Policy (Housing) 2021",
+      "legislation_url": "https://legislation.nsw.gov.au/view/html/inforce/current/e\r\n  pi-2021-0714#pt.3-div.2",
+      "effective_date": "2021-11-29",
+      "verified_at": null,
+      "verified_by": null,
+      "verification_notes": null,
+      "created_at": "2026-05-31T10:38:39.069702",
+      "pdf_page": null,
+      "pdf_page_image_url": null,
+      "r2_pdf_url": null,
+      "stale_since": "2026-10-07T23:44:31.994515+00:00",
+      "stale_reason": "State Environmental Planning Policy (Housing) 2021 version changed (24 April 2026 -> 11 September 2026)",
+      "approval_pathway": null,
+      "source_quote": null,
+      "lot_area_min_m2": null,
+      "lot_area_min_inclusive": null,
+      "lot_area_max_m2": null
+    }
+  ]
+}
