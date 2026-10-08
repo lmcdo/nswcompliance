@@ -232,7 +232,11 @@ def _zone_gate(rules: Rules, scope_rule: str, zone: Optional[str]) -> Optional[d
 
 
 def _positive(v) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v > 0
+    """A finite positive number. Accepts Decimal (PostgreSQL numeric); rejects bool."""
+    if isinstance(v, bool):
+        return False
+    f = _num(v)
+    return f is not None and f > 0
 
 
 def evaluate_cdc(rules: Rules, zone: Optional[str], lot_area_m2, frontage_range_m,

@@ -125,9 +125,10 @@ def run(rows: list[dict], fetch=fetch_page, pause_s: float = PAUSE_BETWEEN_PAGES
     problems: list[str] = []
     path_rows = [r for r in rows if r.get("development_type") == "secondary_dwelling"
                  and r.get("approval_pathway")]
-    if path_rows:
-        outcome = validate_rules(path_rows)
-        problems += [f"validation: {f}" for f in outcome.failures]
+    # Always validated: with no path rules at all, validate_rules names each
+    # missing rule, so deleting them cannot pass behind other rules that trace.
+    outcome = validate_rules(path_rows)
+    problems += [f"validation: {f}" for f in outcome.failures]
     pages: dict = {}
     broken: set = set()
     for r in rows:
@@ -177,8 +178,16 @@ def main() -> int:
             from legislation_monitor import send_telegram
         except ImportError:
             from scripts.legislation_monitor import send_telegram  # type: ignore
-        send_telegram("Provenance check FAILED\n"
-                      f"{traced}/{len(rows)} rules traced\n" + "\n".join(f"  {p}" for p in problems[:15]))
+        try:
+            delivered = send_telegram("Provenance check FAILED\n"
+                                      f"{traced}/{len(rows)} rules traced\n"
+                                      + "\n".join(f"  {p}" for p in problems[:15]))
+        except Exception as e:  # noqa: BLE001 — undelivered alert is its own exit status
+            print(f"  ALERT NOT DELIVERED: {e}")
+            return 2
+        if not delivered:
+            print("  ALERT NOT DELIVERED")
+            return 2
     return 1 if problems else 0
 
 

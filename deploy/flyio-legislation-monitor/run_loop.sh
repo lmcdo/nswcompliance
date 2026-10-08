@@ -9,7 +9,11 @@ while true; do
   echo "[run_loop] $(date -u '+%Y-%m-%d %H:%M:%S UTC'): running legislation monitor"
   python legislation_monitor.py || echo "[run_loop] monitor exited non-zero — will retry next cycle"
   echo "[run_loop] $(date -u '+%Y-%m-%d %H:%M:%S UTC'): running provenance check"
-  python provenance_check.py || echo "[run_loop] provenance check FAILED (alert sent) — see output above"
+  python provenance_check.py
+  rc=$?
+  if [ "$rc" = 1 ]; then echo "[run_loop] provenance check FAILED — alert sent, see output above"; fi
+  if [ "$rc" = 2 ]; then echo "[run_loop] provenance check FAILED and the ALERT WAS NOT DELIVERED — see output above"; fi
+  if [ "$rc" != 0 ] && [ "$rc" != 1 ] && [ "$rc" != 2 ]; then echo "[run_loop] provenance check crashed (exit $rc) — no alert was sent"; fi
   echo "[run_loop] sleeping 7 days"
   sleep 604800
 done

@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Critical: corrects how three SEPP (Housing) 2021 granny-flat rules are stored (wrong clause and wrong meaning for lot size, lot width, parking) and adds the engine the customer-facing granny-flat tools will read. Production data migration in two steps.",
- "commit_hash": "45af3f6e",
+ "commit_hash": "8390637b",
  "files": [
   "migrations/083_secondary_dwelling_rules_by_pathway.sql",
   "migrations/084_secondary_dwelling_rules_insert.sql",
@@ -16,7 +16,9 @@
   "deploy/flyio-legislation-monitor/secondary_dwelling_paths.py",
   "deploy/flyio-legislation-monitor/Dockerfile",
   "deploy/flyio-legislation-monitor/run_loop.sh",
-  "tests/test_legislation_monitor_no_silent_pass.py"
+  "tests/test_legislation_monitor_no_silent_pass.py",
+  "scripts/legislation_monitor.py",
+  "deploy/flyio-legislation-monitor/legislation_monitor.py"
  ],
  "pre_impl": {
   "existing_data": "housing_sepp_standards: 45 rows, 12 secondary_dwelling. Rows 44 (min_lot_size 450 '53(1)(b)'), 34 (min_lot_width 12 'Schedule 1, Part 2'), 35 (parking 0 'Part 3, Division 2') do not match the SEPP (Housing) 2021 in force (11 September 2026), checked against legislation.nsw.gov.au 2026-10-08.",
@@ -29,7 +31,7 @@
  "falsifiable_check": {
   "command": "python -m pytest tests/test_secondary_dwelling_paths.py tests/test_provenance_check.py tests/test_legislation_monitor_no_silent_pass.py tests/test_dockerfile_monitors_imports.py -q -o addopts=",
   "fails_when": "Any fail-closed guard is removed: six mutations (stale rule accepted, value not checked against quote, band gaps accepted, unmeasured frontage = PASS, DA always MEETS, missing lot area guessed) each made 1-4 tests fail.",
-  "observed_red": "Observed 2026-10-08: 119 passed. Mutations each caught: six on the engine (1-4 failures each) and four on the cross-review fixes (frontage accepts m2: 1; path tag unchecked: 2; zone ignored: 3; excluded zone accepted: 1). Provenance: 9/9 rules traced to their own clause in the law in force, run on the Fly server from its whitelisted IP; linking the 12 m rule to the 15 m clause gave 8/9 with that rule named. 9/9 migration quotes word-for-word in the live law."
+  "observed_red": "Observed 2026-10-08: 119 passed. Mutations each caught: six on the engine (1-4 failures each) and four on the cross-review fixes (frontage accepts m2: 1; path tag unchecked: 2; zone ignored: 3; excluded zone accepted: 1). Provenance: 9/9 rules traced to their own clause in the law in force, run on the Fly server from its whitelisted IP; linking the 12 m rule to the 15 m clause gave 8/9 with that rule named. 9/9 migration quotes word-for-word in the live law. Round 3 (cross-review): Decimal lot area treated as missing, missing path rules passing the weekly check, and an undelivered alert reported as sent were each fixed and each mutation-caught (1 failure each); 141 passed."
  },
  "functions": [
   {

@@ -102,22 +102,38 @@ VALUES
    'claude-session (user instructed fix 2026-10-08)', now())
 ON CONFLICT (development_type, standard_type) DO NOTHING;
 
--- Replay guard: fail loudly if the seven rows did not land exactly as written.
+-- Replay guard: every inserted row must match what this file states, field by
+-- field (value, unit, band limits, zones, clause, link, quote, path). ON CONFLICT
+-- DO NOTHING would otherwise keep a materially different pre-existing row.
 DO $$
 DECLARE n int;
 BEGIN
-  SELECT count(*) INTO n FROM housing_sepp_standards
-  WHERE development_type = 'secondary_dwelling'
-    AND (   (standard_type = 'cdc_min_road_frontage_lot_450_to_900' AND numeric_value = 12 AND lot_area_min_m2 = 450 AND lot_area_min_inclusive AND lot_area_max_m2 = 900)
-         OR (standard_type = 'cdc_min_road_frontage_lot_900_to_1500' AND numeric_value = 15 AND lot_area_min_m2 = 900 AND NOT lot_area_min_inclusive AND lot_area_max_m2 = 1500)
-         OR (standard_type = 'cdc_min_road_frontage_lot_over_1500' AND numeric_value = 18 AND lot_area_min_m2 = 1500 AND NOT lot_area_min_inclusive AND lot_area_max_m2 IS NULL)
-         OR (standard_type = 'cdc_parking_rule' AND numeric_value IS NULL AND approval_pathway = 'cdc')
-         OR (standard_type = 'da_detached_min_site_area' AND numeric_value = 450 AND approval_pathway = 'da')
-         OR (standard_type = 'da_non_discretionary_note' AND numeric_value IS NULL AND approval_pathway = 'da')
-         OR (standard_type = 'da_parking_rule' AND numeric_value IS NULL AND approval_pathway = 'da')
-         OR (standard_type = 'cdc_zone_scope' AND approval_pathway = 'cdc' AND applicable_zones = ARRAY['R1','R2','R3','R4'])
-         OR (standard_type = 'da_zone_scope' AND approval_pathway = 'da' AND applicable_zones = ARRAY['R1','R2','R3','R4','R5']));
+  SELECT count(*) INTO n
+  FROM housing_sepp_standards h
+  JOIN (VALUES
+    ('cdc_min_road_frontage_lot_450_to_900', 'cdc', 12::numeric, 'm', 450::numeric, TRUE::boolean, 900::numeric, ARRAY['R1','R2','R3','R4']::text[], 'Schedule 1, cl 2(1)(b)(i)', 'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sch.1-sec.2-ssec.1-para1.b-para2.i', '(b) for a lot other than a battle-axe lot—has a boundary with a primary road, measured at the building line, of at least the following— ... (i) if the lot has an area of at least 450m2 but not more than 900m2—12m,'),
+    ('cdc_min_road_frontage_lot_900_to_1500', 'cdc', 15::numeric, 'm', 900::numeric, FALSE::boolean, 1500::numeric, ARRAY['R1','R2','R3','R4']::text[], 'Schedule 1, cl 2(1)(b)(ii)', 'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sch.1-sec.2-ssec.1-para1.b-para2.ii', '(b) for a lot other than a battle-axe lot—has a boundary with a primary road, measured at the building line, of at least the following— ... (ii) if the lot has an area of more than 900m2 but not more than 1500m2—15m,'),
+    ('cdc_min_road_frontage_lot_over_1500', 'cdc', 18::numeric, 'm', 1500::numeric, FALSE::boolean, NULL::numeric, ARRAY['R1','R2','R3','R4']::text[], 'Schedule 1, cl 2(1)(b)(iii)', 'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sch.1-sec.2-ssec.1-para1.b-para2.iii', '(b) for a lot other than a battle-axe lot—has a boundary with a primary road, measured at the building line, of at least the following— ... (iii) if the lot has an area of more than 1500m2—18m,'),
+    ('cdc_parking_rule', 'cdc', NULL::numeric, NULL::text, NULL::numeric, NULL::boolean, NULL::numeric, ARRAY['R1','R2','R3','R4']::text[], 'Schedule 1, cl 2(3)', 'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sch.1-sec.2-ssec.3', '(3) Nothing in this Schedule requires the provision of additional parking spaces for development for the purposes of a secondary dwelling.'),
+    ('da_detached_min_site_area', 'da', 450::numeric, 'm²', NULL::numeric, NULL::boolean, NULL::numeric, ARRAY['R1','R2','R3','R4','R5']::text[], 's 53(2)(a)', 'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.53-ssec.2-para1.a', '(2) The following are non-discretionary development standards in relation to the carrying out of development to which this Part applies— ... (a) for a detached secondary dwelling—a minimum site area of 450m2,'),
+    ('da_non_discretionary_note', 'da', NULL::numeric, NULL::text, NULL::numeric, NULL::boolean, NULL::numeric, ARRAY['R1','R2','R3','R4','R5']::text[], 's 53(1), Note', 'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.53', 'See the Act, section 4.15(3), which does not prevent development consent being granted if a non-discretionary development standard is not complied with.'),
+    ('da_parking_rule', 'da', NULL::numeric, NULL::text, NULL::numeric, NULL::boolean, NULL::numeric, ARRAY['R1','R2','R3','R4','R5']::text[], 's 53(2)(b)', 'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.53-ssec.2-para1.b', '(b) the number of parking spaces provided on the site is the same as the number of parking spaces provided on the site immediately before the development is carried out.'),
+    ('cdc_zone_scope', 'cdc', NULL::numeric, NULL::text, NULL::numeric, NULL::boolean, NULL::numeric, ARRAY['R1','R2','R3','R4']::text[], 's 49 (residential zone); s 54(1)(a)', 'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.54-ssec.1-para1.a', 'residential zone means the following land use zones or an equivalent land use zone— (a) Zone R1 General Residential, (b) Zone R2 Low Density Residential, (c) Zone R3 Medium Density Residential, (d) Zone R4 High Density Residential, (e) Zone R5 Large Lot Residential. ... (a) is on land in a residential zone other than Zone R5 Large Lot Residential, and'),
+    ('da_zone_scope', 'da', NULL::numeric, NULL::text, NULL::numeric, NULL::boolean, NULL::numeric, ARRAY['R1','R2','R3','R4','R5']::text[], 's 49 (residential zone); s 50', 'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.50', 'residential zone means the following land use zones or an equivalent land use zone— (a) Zone R1 General Residential, (b) Zone R2 Low Density Residential, (c) Zone R3 Medium Density Residential, (d) Zone R4 High Density Residential, (e) Zone R5 Large Lot Residential. ... This Part applies to development for the purposes of a secondary dwelling on land in a residential zone if development for the purposes of a dwelling house is permissible on the land under another environmental planning instrument.')
+  ) AS e(standard_type, approval_pathway, numeric_value, unit, lot_area_min_m2, lot_area_min_inclusive,
+         lot_area_max_m2, applicable_zones, source_clause, legislation_url, source_quote)
+    ON h.development_type = 'secondary_dwelling' AND h.standard_type = e.standard_type
+   AND h.approval_pathway = e.approval_pathway
+   AND h.numeric_value IS NOT DISTINCT FROM e.numeric_value
+   AND h.unit IS NOT DISTINCT FROM e.unit
+   AND h.lot_area_min_m2 IS NOT DISTINCT FROM e.lot_area_min_m2
+   AND h.lot_area_min_inclusive IS NOT DISTINCT FROM e.lot_area_min_inclusive
+   AND h.lot_area_max_m2 IS NOT DISTINCT FROM e.lot_area_max_m2
+   AND h.applicable_zones = e.applicable_zones
+   AND h.source_clause = e.source_clause
+   AND h.legislation_url = e.legislation_url
+   AND h.source_quote = e.source_quote;
   IF n <> 9 THEN
-    RAISE EXCEPTION 'migration 084: expected 9 secondary_dwelling pathway rows as written, found %', n;
+    RAISE EXCEPTION 'migration 084: expected 9 secondary_dwelling pathway rows exactly as written, found % matching', n;
   END IF;
 END $$;

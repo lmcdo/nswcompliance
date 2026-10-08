@@ -740,3 +740,13 @@ def test_module_contains_no_hardcoded_regulatory_numbers():
     hits = {n: re.findall(rf"\b{n}\b", stripped) for n in forbidden}
     hits = {n: v for n, v in hits.items() if v}
     assert not hits, f"hardcoded regulatory number(s) found outside comments/docstring: {hits}"
+
+
+def test_decimal_lot_area_and_frontage_are_numbers_not_unknown():
+    # Round-3 cross-review: PostgreSQL numeric arrives as Decimal.
+    from decimal import Decimal
+    rules = validate_rules(copy.deepcopy(BASE_ROWS)).rules
+    cdc = evaluate_cdc(rules, "R2", Decimal("600"), (Decimal("12"), Decimal("30")), False)
+    da = evaluate_da(rules, "R2", Decimal("600"), True)
+    assert cdc["outcome"] == "PASS" and da["outcome"] == "MEETS"
+    assert evaluate_cdc(rules, "R2", True, (12.0, 30.0), False)["outcome"] == "UNKNOWN"  # bool is not a number
