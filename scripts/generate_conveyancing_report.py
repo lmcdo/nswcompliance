@@ -717,7 +717,7 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
         _paths = _sd_assess(_sd_rules, zone, lot_area)
         _outside = (_paths["cdc"]["outcome"] == "NOT_APPLICABLE"  # noqa: bracket-access — assess() always sets both
                     and _paths["da"]["outcome"] == "NOT_APPLICABLE"  # noqa: bracket-access
-                    and "outside this path's zones" in _paths["da"].get("reason", ""))  # noqa: bracket-access
+                    and "outside this path's zones" in (_paths["da"].get("reason") or ""))  # noqa: bracket-access
         results.append({
             "question": "Secondary dwelling (granny flat)",
             "answer": ("Outside the SEPP granny-flat zones" if _outside

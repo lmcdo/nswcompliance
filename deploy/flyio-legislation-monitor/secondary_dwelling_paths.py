@@ -339,18 +339,19 @@ def assess(rules: Rules, zone: Optional[str], lot_area_m2, *, frontage_range_m=N
     """
     cdc = evaluate_cdc(rules, zone, lot_area_m2, frontage_range_m, battle_axe)
     da = evaluate_da(rules, zone, lot_area_m2, detached, dwelling_house_permissible)
-    band = _band_for(rules.frontage_bands, float(lot_area_m2)) if _positive(lot_area_m2) else None
+    area = float(lot_area_m2) if _positive(lot_area_m2) else None
+    band = _band_for(rules.frontage_bands, area) if area is not None else None
     cdc_line = f"Complying development (CDC): {_CDC_LABEL[cdc['outcome']]} — {cdc['reason']}."
     if band is not None and cdc["outcome"] == "UNKNOWN" and "required_m" not in cdc:  # noqa: bracket-access — evaluate_* always sets outcome
-        cdc_line += (f" For a lot of {float(lot_area_m2):g} m² the road frontage required at the "
+        cdc_line += (f" For a lot of {area:g} m² the road frontage required at the "
                      f"building line is {band.value:g} m ({band.clause}).")
     da_line = f"Development application (DA): {_DA_LABEL[da['outcome']]} — {da['reason']}."
     if da["outcome"] == "BELOW":  # noqa: bracket-access — evaluate_* always sets outcome
         da_line += f" {da['note']['clause']}: \"{da['note']['quote']}\""
     site = rules.by_type["da_detached_min_site_area"]  # noqa: bracket-access — validated
-    if da["outcome"] == "UNKNOWN" and _positive(lot_area_m2) and float(lot_area_m2) < site.value:  # noqa: bracket-access — evaluate_* always sets outcome
+    if da["outcome"] == "UNKNOWN" and area is not None and area < site.value:  # noqa: bracket-access — evaluate_* always sets outcome
         note = rules.by_type["da_non_discretionary_note"]  # noqa: bracket-access — validated
-        da_line += (f" If the granny flat is detached, this lot of {float(lot_area_m2):g} m² is below the "
+        da_line += (f" If the granny flat is detached, this lot of {area:g} m² is below the "
                     f"{site.value:g} m² site area ({site.clause}); {note.clause}: \"{note.quote}\"")
     summary = ("The SEPP (Housing) 2021 sets no single minimum lot size for a granny flat; "
                "the test depends on the approval path. " + cdc_line + " " + da_line)
