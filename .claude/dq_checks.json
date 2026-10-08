@@ -1618,6 +1618,54 @@
     "passes_when": "exit 0 - no statewide rule has its figure in a row classified not-actionable while the obligation imposing it sits in a sibling row.",
     "red_when": "the number is withheld from every surface that filters on v2_is_actionable. Reads 2,241 on 2026-10-05, of 2,339 statewide current sub-paragraph rows carrying a digit.",
     "note": "Found 2026-10-05 while building /api/sepp/parking-provisions (#1226). The extractor splits one legal sentence into a lead-in row plus its numbered sub-paragraphs; the classifier judges each row alone. Proven on the boarding-house parking rate: 40309 p11 ('...at least the following number of parking spaces-') is v2_is_actionable TRUE and 40310 p11 ('0.2 parking spaces for each boarding room, ... otherwise-0.5') is FALSE. Re-running enrichment/extractors/actionable_classifier.py over all nine Housing SEPP parking rows reproduces every stored value exactly, each FALSE with reason 'lep_sepp_weak_indicators' - so these are not stale rows. Do NOT clear by flipping rows: the classifier re-derives the same FALSE from the fragment and the next enrichment run with force_reprocess reverts hand-set values. It clears by giving the classifier its parent paragraph, or by keeping a sub-paragraph joined to its lead-in at extraction. v2_has_numeric_value is wrong on the same rows (only 1 statewide current row is actionable-FALSE + numeric-TRUE). Consequence worth knowing: DQ-130/132 measure a served set defined as is_current AND v2_is_actionable, which EXCLUDES the boarding-house parking rate the SEPP tab displays."
+  },
+  "DQ-136": {
+    "declared": "open",
+    "check": [
+      "python",
+      "scripts/dq_probe_live.py",
+      "--id",
+      "DQ-136"
+    ],
+    "passes_when": "exit 0 - every housing_sepp_standards row carries an anchored legislation.nsw.gov.au URL and the clause's own words, so scripts/provenance_check.py can prove it weekly.",
+    "red_when": "a number is printed beside a clause reference that no machine can trace to that clause. Reads 45 of 54 on 2026-10-08.",
+    "note": "Found 2026-10-08 tracing the SEPP tab for 45 Graham St Greystanes. The Multiple Occupancy card prints 'Max FSR 0.65:1 S168(2)(d)', 'Min Lot Size 450m2 S168(2)(a)' and so on from source_clause - the clause STRING is stored, nothing ties the number to the clause's words. 33 rows have neither quote nor anchored URL (dual_occupancy, independent_living_unit, multi_dwelling, residential_flat_r1r2, residential_flat_r3r4_inner/outer, terraces); 12 more have the URL and no quote (secondary_dwelling, Schedule 1). The 9 that pass are ids 53-61, the #1239 secondary-dwelling CDC/DA rules, re-verified weekly. cdc_eligibility_standards is clean, 4 of 4 quoted. Do NOT clear by writing source_quote from the value or a paraphrase: provenance_check.py compares word for word against the fetched anchor, so a quote not literally in the clause fails the weekly check instead. The read-privilege gate in ce-authority-status-and-offer-2026-10-08.md cannot be switched on before this reaches 0 - it would take the table from 54 servable rows to 9."
+  },
+  "DQ-137": {
+    "declared": "open",
+    "check": [
+      "python",
+      "scripts/dq_probe_live.py",
+      "--id",
+      "DQ-137"
+    ],
+    "passes_when": "exit 0 - no numeric standard competes with a sibling under the same metric_name on scope 'all', so a determination cannot pick arbitrarily between regulatory figures.",
+    "red_when": "a determination selects one of several equally-matching rows and the choice decides the answer. Reads 199 of 236 numeric standards on 2026-10-08.",
+    "note": "Found 2026-10-08. The Pattern Book card refused 45 Graham St with 'lot size min: minimum 900.0sqm required, 573.81sqm available'. The 900 is a real sepp_structured_requirements row, but lib/pattern-book-eligibility/check-numerics.ts:52-62 selects it with metric_name='lot_size_min' AND (applies_to='Pattern_Book' OR 'all') and no zone, LGA or development-type filter - its own comment says 'we don't have zone-specific filtering yet ... queries all'. There is no Pattern_Book row at all, so the match is on 'all', 24 rows compete spanning 200 to 1500, and row order decides eligibility. This is NOT the proof problem (DQ-136) and a proof gate does not catch it: a fully quoted row can still be the wrong row. The 7 contested metrics: height_max 75 rows (3.0-32.5 m), setback_side_min 31, setback_rear_min 30, lot_size_min 24, setback_front_min 21, fsr_min 13, deep_soil_percent_min 5. All came from the Exempt and Complying Development Codes SEPP 2008, whose Part and development type IS the scope, flattened on extraction. source_clause on these rows holds a filename and page, not a clause. Clears by scoping each row - NOT by adding ORDER BY or LIMIT 1, which only makes the arbitrary pick repeatable. The rule this enforces: a query returning more than one candidate for one determination must refuse, not choose."
+  },
+  "DQ-138": {
+    "declared": "open",
+    "check": [
+      "python",
+      "scripts/dq_probe_live.py",
+      "--id",
+      "DQ-138"
+    ],
+    "passes_when": "exit 0 - no rule table grants INSERT, UPDATE, DELETE or TRUNCATE to anon or authenticated, so RLS is not the only thing standing between a public browser key and regulatory data.",
+    "red_when": "the public key shipped to every browser holds write privileges on a rule table. Reads 34 on 2026-10-08 across 17 tables x 2 roles.",
+    "note": "Found 2026-10-08 while measuring the authority surface for the read-gate design. anon is the role behind NEXT_PUBLIC_SUPABASE_ANON_KEY. Nothing is exploitable today: RLS is enabled on these tables with no policies and anon has rolbypassrls=false, so every statement is denied. That is ONE mechanism and the grant sits underneath it - a single permissive policy added for an unrelated feature, or one DISABLE ROW LEVEL SECURITY, turns a public key into a write path, and the grant would make it legal. REVOKE costs nothing functionally because no serving path uses anon or authenticated to read a rule table: the app connects as postgres, the table owner, which bypasses RLS. SCOPE LIMIT, deliberate: the table list in the probe is hardcoded. A catalogue sweep found 72 further rule-shaped tables outside it, including 17 BACKUP tables holding copies of regulatory data (11 dcp_setback_controls_*, 6 regulatory_provisions_citation_backup_*). ALL 149 public base tables are writable by anon and authenticated - 1,192 grant rows, the Supabase default - so this probe counts the rule-bearing subset rather than all 149, because legitimate anon write paths exist (dcp_interest for the register-interest form, feedback, leads). Replace the list with the derived rule-table inventory (A1 of ce-rule-provenance-lockdown-PLAN-2026-10-08.md) when it exists; until then a NEW rule table is not counted here. Verify by re-running the probe, not by checking the app still works - the app is unaffected either way, so a green app proves nothing about this row."
+  },
+  "DQ-139": {
+    "declared": "open",
+    "check": [
+      "python",
+      "scripts/dq_probe_live.py",
+      "--id",
+      "DQ-139"
+    ],
+    "passes_when": "exit 0 - no LGA has the setback arithmetic rendering while one of its required setbacks is absent, so a missing control cannot be silently treated as no restriction.",
+    "red_when": "a buildable-footprint or DCP-adjusted-GFA figure is computed with a setback missing and defaulted to zero, which inflates the answer. Reads 1 on 2026-10-08: cumberland.",
+    "note": "Found 2026-10-08 on the LEP tab for 45 Graham St Greystanes. The yield card showed 'DCP Setbacks Applied - Front: 6m, Side: 0.9m' and 'Buildable footprint 423m2 (74% of lot)'. Both setbacks are Cumberland's own current rows, page 8 of cumberland-part-b-residential.pdf, and the is_current filter correctly rejected its two stale front-setback rows (5.5 m, 4.0 m) - that part works. But Cumberland has no CURRENT rear setback; its only rear row (8.0 m, id 30) is is_current=false, needs_review=true. The formula at services/constraint_arithmetic.py:615-623 is (frontage - 2*side) * (depth - front - rear), and the displayed number is only reachable with rear=0: (18.79-1.8)*(30.9-6-0) = 16.99*24.9 = 423.05 -> '423m2', and 423/573.81 = 73.7% -> '74%'. Zero is the PERMISSIVE direction: it makes the buildable area larger. The card does print 'Calculated from 3 of 6 planning controls', but it still prints the figure - a caveat beside a number is not the same as withholding the number. Clears by extracting the missing control, or - the durable fix - by making the arithmetic refuse to publish a footprint when an input is absent, which closes the class rather than this instance. Not counted here: constraint_arithmetic.py's own STOREY_HEIGHT_M, MIN_DWELLING_GFA_M2 and PARKING_AREA_PER_SPACE_M2 are engineering assumptions, not regulatory values."
   }
  }
 }
