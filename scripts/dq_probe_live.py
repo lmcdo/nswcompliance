@@ -2425,21 +2425,38 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # register-interest form, feedback, leads). Replace this list with the derived
         # rule-table inventory (A1 of ce-rule-provenance-lockdown-PLAN-2026-10-08.md)
         # once that exists; until then a new rule table is NOT counted here.
+        # The probe's scope must be the SAME scope the migrations protect, or the
+        # check goes green on a table the fix covered. The first version inspected
+        # only 085's 17 names, so a GRANT UPDATE on lep_zone_coverage after 086 --
+        # a serving gate, re-granted -- would have left this reading 0. Caught by
+        # cross-review (gpt-5.6-sol, MEDIUM silent-failure); the repo has a memory
+        # file for exactly this shape, feedback-a-check-can-watch-the-field-the-fix-
+        # abandoned. Name patterns and the table list below are kept identical to
+        # migrations/086_revoke_public_writes_on_remaining_rule_tables.sql.
         "SELECT count(*) FROM ("
-        "  SELECT DISTINCT table_name, grantee"
-        "    FROM information_schema.role_table_grants"
-        "   WHERE table_schema = 'public'"
-        "     AND grantee IN ('anon', 'authenticated')"
-        "     AND privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')"
-        "     AND table_name IN ('housing_sepp_standards', 'cdc_eligibility_standards',"
-        "                        'regulatory_provisions', 'instrument_registry',"
-        "                        'sepp_structured_requirements', 'sepp_adg_requirements',"
-        "                        'dcp_setback_controls', 'lep_land_use_table',"
-        "                        'lep_clauses', 'lep_development_type_clauses',"
-        "                        'development_controls', 'control_codes',"
-        "                        'quantitative_standards', 'dcp_base_requirements',"
-        "                        'dcp_precinct_requirements', 'dcp_table_of_contents',"
-        "                        'provision_versions')) s",
+        "  SELECT DISTINCT g.table_name, g.grantee"
+        "    FROM information_schema.role_table_grants g"
+        "    JOIN information_schema.tables t"
+        "      ON t.table_schema = g.table_schema"
+        "     AND t.table_name = g.table_name"
+        "     AND t.table_type = 'BASE TABLE'"
+        "   WHERE g.table_schema = 'public'"
+        "     AND g.grantee IN ('anon', 'authenticated')"
+        "     AND g.privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')"
+        "     AND (g.table_name IN ('housing_sepp_standards', 'cdc_eligibility_standards',"
+        "                           'regulatory_provisions', 'instrument_registry',"
+        "                           'sepp_structured_requirements', 'sepp_adg_requirements',"
+        "                           'dcp_setback_controls', 'lep_land_use_table',"
+        "                           'lep_clauses', 'lep_development_type_clauses',"
+        "                           'development_controls', 'control_codes',"
+        "                           'quantitative_standards', 'dcp_base_requirements',"
+        "                           'dcp_precinct_requirements', 'dcp_table_of_contents',"
+        "                           'provision_versions', 'lep_zone_coverage')"
+        # NOTE the doubled %%: run() calls cur.execute(sql, params) with a tuple,
+        # so psycopg2 interpolates and a single % in a LIKE pattern is read as a
+        # placeholder (IndexError: tuple index out of range).
+        "          OR g.table_name LIKE 'dcp\\_setback\\_controls\\_%%'"
+        "          OR g.table_name LIKE 'regulatory\\_provisions\\_%%backup%%')) s",
         (),
         "Each is one (rule table, public role) pair holding write privileges. Reads 16 on "
         "2026-10-08 across the 8 tables that existed in the first version of this list -- "
@@ -2482,13 +2499,22 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # _get_dcp_value actually serves on -- it reads 14. Caught by cross-review
         # (gpt-5.6-sol, MEDIUM db-filter) on this branch; the second time in one
         # session that a filter left out of a query made a defect look smaller.
+        # USABLE VALUE, not merely a row. A current row whose value_min and
+        # value_max are both null supplies no number -- Cumberland's
+        # max_site_coverage and deep_soil_min rows are exactly that shape, which
+        # the DCP tab renders as "No set number". Counting such a row as a present
+        # control would report clean while _get_dcp_value still returns nothing and
+        # the arithmetic still cannot run. Caught by cross-review (gpt-5.6-sol,
+        # MEDIUM null-guard). The predicate matches the serving code's own test.
         "SELECT count(*) FROM ("
         "  SELECT lga, dev_type FROM dcp_setback_controls"
-        "   WHERE is_current AND control_type IN ('front_setback', 'side_setback')"
+        "   WHERE is_current AND COALESCE(value_min, value_max) IS NOT NULL"
+        "     AND control_type IN ('front_setback', 'side_setback')"
         "   GROUP BY lga, dev_type"
         "  EXCEPT"
         "  SELECT lga, dev_type FROM dcp_setback_controls"
-        "   WHERE is_current AND control_type = 'rear_setback'"
+        "   WHERE is_current AND COALESCE(value_min, value_max) IS NOT NULL"
+        "     AND control_type = 'rear_setback'"
         "   GROUP BY lga, dev_type) s",
         (),
         "Each is a (council, development type) pair whose buildable-footprint and "

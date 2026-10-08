@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Three changes that each touch what a planner is shown as a regulatory answer. (1) A production grant change on 17 rule tables (migration 085). (2) services/constraint_arithmetic.py stops publishing a buildable footprint and an after-DCP GFA computed with an unstated setback substituted as 0 m -- on 45 Graham St that was 423.1 m2 and 1,269.2 m2 against true figures of 321.1 and 963.3, overstated 32%. (3) frontend sectionKey.ts changes the label on 17,788 served DCP provisions. Not Standard: (2) and (3) alter figures and labels already live, and (1) alters production privileges. The four new DQ probes are read-only and would be Minor alone.",
-  "commit_hash": "a826ceea",
+  "commit_hash": "3bb3b8a6",
   "files": [
     "scripts/dq_probe_live.py",
     ".claude/dq_checks.json",
