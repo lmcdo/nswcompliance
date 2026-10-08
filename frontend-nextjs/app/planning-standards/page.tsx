@@ -64,6 +64,10 @@ async function fetchSeppStandards(): Promise<SeppStandard[]> {
               applicable_zones, requires_lmr_area, source_clause,
               source_document, legislation_url, effective_date
        FROM housing_sepp_standards
+       -- Path-specific granny-flat rules (migrations 083/084) carry wording and
+       -- lot-area bands this flat table cannot show; they are served through
+       -- services/secondary_dwelling_paths.py with their own clause and quote.
+       WHERE approval_pathway IS NULL
        ORDER BY development_type, standard_type`,
       []
     );

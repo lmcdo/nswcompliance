@@ -91,7 +91,9 @@ QUERIES: dict[str, tuple[str, str]] = {
         # No filter, deliberately: /planning-standards renders this table with no
         # WHERE clause either, so the page and the published figure must agree.
         # They did not -- coverage.ts said 33 while the page rendered 45.
-        "SELECT COUNT(*) FROM housing_sepp_standards",
+        # The figure the site publishes is the standards it lists on /planning-standards,
+        # which shows only rows without an approval path (migrations 083/084).
+        "SELECT COUNT(*) FROM housing_sepp_standards WHERE approval_pathway IS NULL",
     ),
     "adgCriteria": (
         "ADG design criteria",

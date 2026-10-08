@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Critical: corrects how three SEPP (Housing) 2021 granny-flat rules are stored (wrong clause and wrong meaning for lot size, lot width, parking) and adds the engine the customer-facing granny-flat tools will read. Production data migration in two steps.",
- "commit_hash": "56472849",
+ "commit_hash": "c2443071",
  "files": [
   "migrations/083_secondary_dwelling_rules_by_pathway.sql",
   "migrations/084_secondary_dwelling_rules_insert.sql",
@@ -18,7 +18,14 @@
   "deploy/flyio-legislation-monitor/run_loop.sh",
   "tests/test_legislation_monitor_no_silent_pass.py",
   "scripts/legislation_monitor.py",
-  "deploy/flyio-legislation-monitor/legislation_monitor.py"
+  "deploy/flyio-legislation-monitor/legislation_monitor.py",
+  "tests/test_housing_sepp_standards_readers.py",
+  "frontend-nextjs/app/planning-standards/page.tsx",
+  "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
+  "scripts/verify_coverage_stats.py",
+  "scripts/dq_probe_live.py",
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md"
  ],
  "pre_impl": {
   "existing_data": "housing_sepp_standards: 45 rows, 12 secondary_dwelling. Rows 44 (min_lot_size 450 '53(1)(b)'), 34 (min_lot_width 12 'Schedule 1, Part 2'), 35 (parking 0 'Part 3, Division 2') do not match the SEPP (Housing) 2021 in force (11 September 2026), checked against legislation.nsw.gov.au 2026-10-08.",
@@ -31,7 +38,7 @@
  "falsifiable_check": {
   "command": "python -m pytest tests/test_secondary_dwelling_paths.py tests/test_provenance_check.py tests/test_legislation_monitor_no_silent_pass.py tests/test_dockerfile_monitors_imports.py -q -o addopts=",
   "fails_when": "Any fail-closed guard is removed: six mutations (stale rule accepted, value not checked against quote, band gaps accepted, unmeasured frontage = PASS, DA always MEETS, missing lot area guessed) each made 1-4 tests fail.",
-  "observed_red": "Observed 2026-10-08: 119 passed. Mutations each caught: six on the engine (1-4 failures each) and four on the cross-review fixes (frontage accepts m2: 1; path tag unchecked: 2; zone ignored: 3; excluded zone accepted: 1). Provenance: 9/9 rules traced to their own clause in the law in force, run on the Fly server from its whitelisted IP; linking the 12 m rule to the 15 m clause gave 8/9 with that rule named. 9/9 migration quotes word-for-word in the live law. Round 3 (cross-review): Decimal lot area treated as missing, missing path rules passing the weekly check, and an undelivered alert reported as sent were each fixed and each mutation-caught (1 failure each); 141 passed. Round 4 (cross-review): a shrunken zone list, text accepted as a number, and the s 50 dwelling-house condition being skipped were each fixed and mutation-caught (1, 2, 1 failures); 146 passed."
+  "observed_red": "Observed 2026-10-08: 119 passed. Mutations each caught: six on the engine (1-4 failures each) and four on the cross-review fixes (frontage accepts m2: 1; path tag unchecked: 2; zone ignored: 3; excluded zone accepted: 1). Provenance: 9/9 rules traced to their own clause in the law in force, run on the Fly server from its whitelisted IP; linking the 12 m rule to the 15 m clause gave 8/9 with that rule named. 9/9 migration quotes word-for-word in the live law. Round 3 (cross-review): Decimal lot area treated as missing, missing path rules passing the weekly check, and an undelivered alert reported as sent were each fixed and each mutation-caught (1 failure each); 141 passed. Round 4 (cross-review): a shrunken zone list, text accepted as a number, and the s 50 dwelling-house condition being skipped were each fixed and mutation-caught (1, 2, 1 failures); 146 passed. CI round (gates on PR #1239 failed on production checks): three readers that would have served the new rows unfiltered were found (/planning-standards page, housing-sepp/eligibility route, coverage count) and filtered; a reader-inventory test now fails the build for any unfiltered query on the table (removing each of the four filters made it fail; its guard-the-guard test caught a corrupted regex that had made it scan nothing). DQ-96 corrected to judge last verification, not creation (reads 0); DQ-69 declared fixed (probe CLEAN); OC-6 HOLDS. 292 related tests pass."
  },
  "functions": [
   {
@@ -165,6 +172,13 @@
    "mitigated": true,
    "how": "per-path zone-scope rules quoted from s 49, s 50 and s 54(1)(a)",
    "repro": "python -m pytest tests/test_secondary_dwelling_paths.py -q -o addopts= -k zone"
+  },
+  {
+   "scenario": "A new or existing query reads housing_sepp_standards without filtering the path-specific rules",
+   "what_happens": "tests/test_housing_sepp_standards_readers.py fails the build and names the file and line",
+   "mitigated": true,
+   "how": "reader inventory test across services, scripts, deploy and the Next.js app",
+   "repro": "python -m pytest tests/test_housing_sepp_standards_readers.py -q -o addopts="
   }
  ],
  "post_merge": {

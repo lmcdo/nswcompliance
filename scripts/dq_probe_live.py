@@ -1925,19 +1925,19 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "  (SELECT count(*) FROM housing_sepp_standards h "
         "   JOIN instrument_registry ir ON ir.instrument_key = 'sepp_housing_2021' "
         "   WHERE ir.needs_review AND h.stale_since IS NULL "
-        "     AND h.created_at < ir.last_changed "
+        "     AND COALESCE(h.verified_at, h.created_at) < ir.last_changed "
         "     AND h.source_document ILIKE %s) "
         "  + "
         "  (SELECT count(*) FROM housing_sepp_standards h "
         "   JOIN instrument_registry ir ON ir.instrument_key = 'sepp_exempt_complying_2008' "
         "   WHERE ir.needs_review AND h.stale_since IS NULL "
-        "     AND h.created_at < ir.last_changed "
+        "     AND COALESCE(h.verified_at, h.created_at) < ir.last_changed "
         "     AND (h.source_document ILIKE %s OR h.source_document ILIKE %s)) "
         "  + "
         "  (SELECT count(*) FROM cdc_eligibility_standards c "
         "   JOIN instrument_registry ir ON ir.instrument_key = 'sepp_exempt_complying_2008' "
         "   WHERE ir.needs_review AND c.stale_since IS NULL "
-        "     AND c.created_at < ir.last_changed)",
+        "     AND COALESCE(c.verified_at, c.created_at) < ir.last_changed)",
         ("%housing%", "%exempt%", "%e&c%"),
         "Reads 35 today (33 housing_sepp_standards rows predating the SEPP "
         "Housing 2021 amendment detected 2026-04-24, 2 more tied to SEPP E&C "
