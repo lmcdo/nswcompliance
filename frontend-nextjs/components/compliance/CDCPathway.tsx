@@ -159,27 +159,115 @@ function parseExemptLimits(provisions: SeppProvision[]) {
   return { areaLimit, heightLimit };
 }
 
-// Parse minimum lot area for CDC from provisions
-function parseMinLotArea(provisions: SeppProvision[]): { minArea: number; source: string } {
+/**
+ * The lot-size line shown in a CDC result.
+ *
+ * Exported and pure so the absent-area branch can be tested directly; inline in
+ * the component it was unreachable from a test.
+ *
+ * A check that could not run is reported as not run. This used to render
+ * "Lot size 0m² — meets 200m² minimum" with pass: true whenever the Planning
+ * Portal returned no lot dimensions, because an absent area was coerced to 0 --
+ * an affirmative PASS on a control nobody tested, carrying a figure nobody
+ * measured.
+ */
+export function lotSizeRequirement(
+  lotArea: number | null,
+  minArea: number | null,
+  source: string | null,
+  compound = false,
+): Requirement | null {
+  // No lot-area condition in the provisions. Say nothing rather than invent a
+  // threshold: the Housing Code states no lot area for a fence, carport or pool,
+  // and the old 200m² default gated all three on a figure from a literal.
+  // `== null`, not `=== null`: it catches undefined as well. propertyData is
+  // `any` and this function is exported, so a caller can hand us undefined.
+  // With `=== null` an undefined minArea fell through to the "known" branch and
+  // printed "undefinedm²", and an undefined lotArea printed
+  // "Lot size NaNm² — meets 200m² minimum" with pass: true — precisely the
+  // defect this change removes, reached by the other absent value. The QA gate
+  // blocked the push on both.
+  if (minArea == null) return null;
+
+  if (lotArea == null) {
+    return {
+      pass: false,
+      warn: true,
+      text: `Minimum lot size NOT assessed — no lot dimensions available for this `
+        + `property, so the ${minArea}m² CDC minimum (${source ?? 'SEPP Housing Code'}) `
+        + `could not be checked. A certifier must confirm the lot area.`,
+    };
+  }
+
+  const met = `Lot size ${Math.round(lotArea)}m² — meets ${minArea}m² minimum`;
+  if (compound) {
+    // The provision states more than one area threshold, so this is the
+    // stricter branch of a conditional control rather than the only one.
+    return {
+      pass: true,
+      warn: true,
+      // Factual, not advisory. The liability-language check blocked the push on
+      // "A certifier should confirm", and rightly: this states what was and was
+      // not assessed, it does not recommend a course of action.
+      text: `${met}. This provision states more than one lot-area threshold and a `
+        + `width condition; a smaller lot may still qualify. The width condition in `
+        + `${source ?? 'the provision'} has not been assessed here.`,
+    };
+  }
+  return { pass: true, text: met };
+}
+
+/**
+ * The minimum lot area the fetched provisions state, or null when they state none.
+ *
+ * `minArea: number | null`. This used to fall back to a hardcoded 200 labelled
+ * 'SEPP Housing Code Part 3, clause 3.1 (default)' -- a regulatory threshold
+ * that came from a literal in this file, carrying a clause reference nothing
+ * supports. Measured against the live database on 2026-10-07, over exactly the
+ * rows the endpoint returns (document_id = the Exempt and Complying Codes,
+ * v2_part in 3/3A, v2_topic in Deck/Fence/Carport/Pool, v2_is_actionable):
+ *
+ *   - 2 rows contain 'area of the lot', BOTH of them topic=Deck;
+ *   - Fence, Carport and Pool have NONE.
+ *
+ * So the fallback was applying a 200 square metre lot-size gate to fences,
+ * carports and pools, which the Housing Code does not impose a lot area on at
+ * all, and citing a clause for it. Returning null lets the caller omit the
+ * check instead of inventing one.
+ *
+ * KNOWN AND NOT FIXED HERE: for a deck the real control is compound. Page 129
+ * reads "at least 200 m2 but not more than 300 m2 and the width of the lot ...
+ * is more than 7 m, or ... more than 300 m2". A single number cannot express
+ * that, and this function returns the 300 that the first matching row states,
+ * which is the STRICTER branch -- so a 250 square metre lot 8 metres wide is
+ * told a DA is required when the Code permits complying development. Narrowing
+ * that needs the lot width and a real condition structure, which is its own
+ * change; `compound` flags it so the caller can say so rather than imply a
+ * single clean threshold.
+ */
+function parseMinLotArea(
+  provisions: SeppProvision[],
+): { minArea: number | null; source: string | null; compound: boolean } {
   const lotAreaProvisions = provisions.filter(p =>
     p.provision_text.toLowerCase().includes('area of the lot')
   );
 
   if (lotAreaProvisions.length > 0) {
-    const match = lotAreaProvisions[0].provision_text.match(/more than (\d+)\s*m\s*2/);
+    const text = lotAreaProvisions[0].provision_text;
+    const match = text.match(/more than (\d+)\s*m\s*2/);
     if (match) {
       return {
         minArea: parseInt(match[1].replace(/\s/g, '')),
         source: `SEPP Housing Code Part ${provisions[0]?.v2_part}, page ${lotAreaProvisions[0].pdf_page}`,
+        // More than one area threshold in the same provision means the control
+        // is conditional, not a single minimum.
+        compound: (text.match(/\d+\s*m\s*2/g) ?? []).length > 1,
       };
     }
   }
 
-  // Fallback defaults (standard SEPP Housing Code Part 3)
-  return {
-    minArea: 200,
-    source: 'SEPP Housing Code Part 3, clause 3.1 (default)',
-  };
+  // No lot-area condition in the provisions we were given. Not 200.
+  return { minArea: null, source: null, compound: false };
 }
 
 export function CDCPathway({ propertyData }: CDCPathwayProps) {
@@ -277,7 +365,13 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
     if (config.needsArea && (!area || area <= 0)) return;
     if (config.needsHeight && (!height || height <= 0)) return;
 
-    const lotArea = propertyData?.lotDimensions?.area || 0;
+    // null, not 0. An unknown lot area used to become 0, which then (a) made the
+    // `lotArea < minArea` test below silently skip, so the "too small for CDC"
+    // blocker was never added, and (b) rendered the requirement line
+    // "Lot size 0m² — meets 200m² minimum" with pass: true -- an affirmative
+    // PASS on a check that never ran, carrying a figure nobody measured.
+    // null makes the absence impossible to confuse with a measurement.
+    const lotArea = propertyData?.lotDimensions?.area ?? null;
     const isHeritage = propertyData?.heritage?.isHeritage || false;
     const zone = propertyData?.constraints?.zone || '';
     const workLabel = workType.toLowerCase();
@@ -289,7 +383,11 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
         tier: 'DA Required',
         summary: `Proposed floor area (${area}m²) exceeds maximum GFA of ${Math.round(maxGFA)}m² for this lot.`,
         blockers: [
-          `${area}m² proposed > ${Math.round(maxGFA)}m² maximum GFA (FSR ${propertyData.constraints.maxFsr}:1 × ${Math.round(lotArea)}m² lot)`,
+          // lotArea cannot be null here -- maxGFA is only non-null when the lot
+          // area was known -- but it is spelled out rather than assumed, because
+          // Math.round(null) is 0 and would quietly print "0m² lot" as the
+          // multiplicand of a figure the user is being asked to accept.
+          `${area}m² proposed > ${Math.round(maxGFA)}m² maximum GFA (FSR ${propertyData.constraints.maxFsr}:1 × ${lotArea != null ? `${Math.round(lotArea)}m²` : 'unknown'} lot)`,
           'LEP FSR control is a hard ceiling — neither exempt nor CDC can authorise works above it',
         ],
         timeline: '3–6 months',
@@ -338,10 +436,18 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
       }
 
       // TIER 2/3: CDC or DA
-      const { minArea, source: lotAreaSource } = parseMinLotArea(seppProvisions);
+      const { minArea, source: lotAreaSource, compound: minAreaCompound } =
+        parseMinLotArea(seppProvisions);
 
       const cdcBlockers: string[] = [];
-      if (lotArea > 0 && lotArea < minArea) {
+      // Three states, not two: a known area below a stated minimum blocks; an
+      // unknown area cannot block (it is reported as unassessed instead); and no
+      // stated minimum means there is no lot-area control to block on.
+      //
+      // Not blocked when the provision is compound either -- page 129 permits a
+      // lot down to 200m² where the width exceeds 7m, so blocking on the 300m²
+      // branch alone would refuse CDC to a lot the Code allows.
+      if (lotArea != null && minArea != null && !minAreaCompound && lotArea < minArea) {
         cdcBlockers.push(`Lot size ${Math.round(lotArea)}m² — below ${minArea}m² CDC minimum (${lotAreaSource})`);
       }
       if (isHeritage) {
@@ -366,15 +472,20 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
           tier: 'Complying Development (CDC)',
           summary: `Your ${workLabel} cannot proceed as exempt — a CDC is required.`,
           blockers: exemptBlockers,
+          // filter(Boolean): lotSizeRequirement returns null when the provisions
+          // state no lot area, so the line is absent rather than invented.
           requirements: [
-            { pass: true, text: `Lot size ${Math.round(lotArea)}m² — meets ${minArea}m² minimum` },
+            lotSizeRequirement(lotArea, minArea, lotAreaSource, minAreaCompound),
             { pass: true, text: `Zone ${zone} — CDC permitted` },
             { pass: false, warn: true, text: 'Setback requirements — certifier to measure and confirm on site' },
-          ],
+          ].filter((r): r is Requirement => r !== null),
           timeline: '20 business days',
           cost: '~$2,000–$3,000 (private certifier fee)',
           nextStep: 'Contact a Private Certifier — they assess setbacks and issue the CDC',
-          source: lotAreaSource,
+          // The lot-area provision is not the source of this verdict when there
+          // is no lot-area provision. Naming it anyway cited a clause for a
+          // control that was never applied.
+          source: lotAreaSource ?? 'SEPP Exempt and Complying Development Codes 2008, Housing Code',
         });
       } else {
         // DA required
