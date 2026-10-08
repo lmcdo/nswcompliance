@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: changes the granny-flat answer on six served surfaces (two Python endpoints, the SEPP eligibility engine, the brief, the conveyancing report, two Next.js routes and the public granny-flat tool). Each currently tells an owner with a lot under 450 m2 that a granny flat is not buildable or not eligible, which the SEPP (Housing) 2021 does not say. Plus a production delete (migration 089) applied after deploy.",
-  "commit_hash": "c81a0773",
+  "commit_hash": "67a583b9",
   "files": [
     "services/secondary_dwelling_paths.py",
     "deploy/flyio-legislation-monitor/secondary_dwelling_paths.py",
