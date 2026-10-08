@@ -49,6 +49,29 @@ def _dcp(control_type, *, value_min=None, value_max=None,
     )
 
 
+def _standard_setbacks(front=6.0, rear=6.0, side=0.9, dev_type="dwelling_house"):
+    """All three setbacks the footprint formula needs.
+
+    A scenario whose SUBJECT is a downstream erosion — site coverage, landscaping,
+    parking, shadow, conflicting values — has to state all three, or the footprint
+    and the after-DCP figure are withheld and the scenario stops exercising its own
+    subject.
+
+    Before 2026-10-08 a setback the fixture omitted was substituted with 0 m, so
+    these scenarios appeared to work with only a front setback: their recorded
+    outputs were computed against an unstated rear and side of zero. Eleven of the
+    twenty goldens were in that state. Scenarios whose subject IS the absence of
+    data (lep_only_no_dcp, area_only_no_dims, missing_both_low_confidence) still
+    omit them deliberately, and now record a withheld figure rather than the whole
+    lot area.
+    """
+    return [
+        _dcp("front_setback", value_min=front, dev_type=dev_type),
+        _dcp("rear_setback", value_min=rear, dev_type=dev_type),
+        _dcp("side_setback", value_min=side, dev_type=dev_type),
+    ]
+
+
 def scenarios() -> list[dict]:
     """Return the ordered list of golden scenarios.
 
@@ -152,8 +175,7 @@ def scenarios() -> list[dict]:
         lot_area_m2=600.0, dev_type="dwelling_house",
         lep_height_str="8.5m", lep_fsr_str="0.5:1",
         lot_dimensions=LotDimensions(area_m2=600.0, frontage_m=15.0, depth_m=40.0),
-        dcp_controls=[
-            _dcp("front_setback", value_min=6.0),
+        dcp_controls=_standard_setbacks() + [
             _dcp("max_site_coverage", value_max=50.0, unit="%"),
         ],
     )
@@ -170,6 +192,7 @@ def scenarios() -> list[dict]:
             _dcp("front_setback", value_min=9.0),
             _dcp("front_setback", value_min=15.0),
             _dcp("rear_setback", value_min=6.0),
+            _dcp("side_setback", value_min=0.9),
         ],
     )
 
@@ -206,19 +229,28 @@ def scenarios() -> list[dict]:
         lot_area_m2=600.0, dev_type="dwelling_house",
         lep_height_str="8.5m", lep_fsr_str="0.5:1",
         lot_dimensions=LotDimensions(area_m2=600.0, frontage_m=15.0, depth_m=40.0),
-        dcp_controls=[
-            _dcp("front_setback", value_min=6.0),
+        dcp_controls=_standard_setbacks() + [
             _dcp("min_landscaped_area", value_min=30.0, unit="%"),
         ],
     )
 
     # 13. Shadow overlap -> storey reduction path.
+    #
+    # Setbacks added 2026-10-08. This scenario previously supplied none, so the
+    # footprint was the whole 600 m2 lot and the shadow step — which caps its loss
+    # at 50% of the footprint (constraint_arithmetic max_shadow_loss) — was allowed
+    # to remove up to 300 m2. With the setbacks stated the footprint is 369.6 m2
+    # and the cap is 184.8 m2, so dcp_adjusted_gfa_m2 rose 330.0 -> 387.6 in the
+    # golden. That is the ONE figure in the regeneration that got larger, and it is
+    # larger because both of its inputs are now honest: a smaller footprint permits
+    # a smaller shadow loss. Do not "correct" it back.
     add(
         "shadow_storey_reduction",
         "Shadow scenario overlapping the subject lot -> storey reduction path.",
         lot_area_m2=600.0, dev_type="dwelling_house",
         lep_height_str="11m", lep_fsr_str="0.8:1",
         lot_dimensions=LotDimensions(area_m2=600.0, frontage_m=15.0, depth_m=40.0),
+        dcp_controls=_standard_setbacks(),
         shadow_result=ShadowResult(
             height_m=11.0, height_source="lep",
             scenarios=[
@@ -237,9 +269,9 @@ def scenarios() -> list[dict]:
         lot_area_m2=800.0, dev_type="multi_dwelling_housing",
         lep_height_str="11m", lep_fsr_str="0.9:1",
         lot_dimensions=LotDimensions(area_m2=800.0, frontage_m=18.0, depth_m=44.0),
-        dcp_controls=[
-            _dcp("front_setback", value_min=6.0),
-            _dcp("parking_spaces", value_min=4.0, unit="spaces"),
+        dcp_controls=_standard_setbacks(dev_type="multi_dwelling_housing") + [
+            _dcp("parking_spaces", value_min=4.0, unit="spaces",
+                 dev_type="multi_dwelling_housing"),
         ],
     )
 
@@ -276,7 +308,8 @@ def scenarios() -> list[dict]:
         lot_area_m2=2000.0, dev_type="residential_flat_building",
         lep_height_str="21m", lep_fsr_str="2:1",
         lot_dimensions=LotDimensions(area_m2=2000.0, frontage_m=40.0, depth_m=50.0),
-        dcp_controls=[_dcp("front_setback", value_min=7.5)],
+        dcp_controls=_standard_setbacks(front=7.5, rear=6.0, side=3.0,
+                                        dev_type="residential_flat_building"),
     )
 
     # 18. Small tight lot.
@@ -286,10 +319,7 @@ def scenarios() -> list[dict]:
         lot_area_m2=250.0, dev_type="dwelling_house",
         lep_height_str="8.5m", lep_fsr_str="0.5:1",
         lot_dimensions=LotDimensions(area_m2=250.0, frontage_m=10.0, depth_m=25.0),
-        dcp_controls=[
-            _dcp("front_setback", value_min=4.5),
-            _dcp("rear_setback", value_min=3.0),
-        ],
+        dcp_controls=_standard_setbacks(front=4.5, rear=3.0, side=0.9),
     )
 
     # 19. Height binds instead of FSR (low height, high FSR).
