@@ -64,6 +64,27 @@ describe('deriveSectionTitleFromProvision', () => {
       expect(deriveSectionTitleFromProvision(row('2.5', '1.8 m fence height at the street')))
         .toBe('2.5 1.8 m fence height at the street');
     });
+
+    it('does not eat a section number that is a PREFIX of the heading\'s number', () => {
+      // Found by cross-review after the first version shipped a boundary-free
+      // regex: interpolating "2.1" into ^2\.1 matched inside "2.10" and rendered
+      // "2.1 0 Visual privacy" — a corrupted number, not merely an ugly one.
+      // "C1" did the same to "C1.5". The number is now compared for equality.
+      expect(deriveSectionTitleFromProvision(row('2.1', '2.10 Visual privacy')))
+        .not.toContain('2.1 0');
+      expect(deriveSectionTitleFromProvision(row('C1', 'C1.5 Something else')))
+        .not.toContain('C1 5');
+      // Nothing is stripped, because the heading's number is not this section's.
+      expect(deriveSectionTitleFromProvision(row('2.1', '2.10 Visual privacy')))
+        .toBe('2.1 2.10 Visual privacy');
+    });
+
+    it('still strips when the numbers are equal, including multi-level ones', () => {
+      expect(deriveSectionTitleFromProvision(row('2.10', '2.10 Visual privacy')))
+        .toBe('2.10 Visual privacy');
+      expect(deriveSectionTitleFromProvision(row('C1.2.3', 'C1.2.3 Deep heading')))
+        .toBe('C1.2.3 Deep heading');
+    });
   });
 
   describe('the all-caps heading path, unchanged', () => {

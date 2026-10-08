@@ -2451,7 +2451,7 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "green app proves nothing about this row.",
     ),
     "DQ-139": (
-        "LGAs whose setback arithmetic runs with a required control missing",
+        "Council/development-type pairs whose setback arithmetic lacks a required control",
         # Origin 2026-10-08, the LEP tab for 45 Graham St Greystanes. The yield card
         # showed "DCP Setbacks Applied -- Front: 6m, Side: 0.9m" and "Buildable footprint
         # 423m2 (74% of lot)". Both setbacks are Cumberland's own current rows, page 8 of
@@ -2471,25 +2471,37 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # controls", but it still prints the figure. A caveat beside a number is not the
         # same as withholding the number.
         #
-        # Counts LGAs where the arithmetic can run in that state: a current front or side
-        # setback exists, so the block renders, and no current rear setback does.
+        # SCOPE. Counts (lga, dev_type) pairs where the arithmetic can run in that
+        # state: a current front or side setback exists for that development type, so
+        # the block renders, and no current rear setback does for it.
+        #
+        # The first version of this probe grouped by lga ALONE and read 1. That was
+        # wrong in the direction that reports clean: a rear setback recorded for
+        # residential_flat_building satisfied the EXCEPT for the whole council and hid
+        # the dwelling_house gap. Scoped per development type -- the scope
+        # _get_dcp_value actually serves on -- it reads 14. Caught by cross-review
+        # (gpt-5.6-sol, MEDIUM db-filter) on this branch; the second time in one
+        # session that a filter left out of a query made a defect look smaller.
         "SELECT count(*) FROM ("
-        "  SELECT lga FROM dcp_setback_controls"
+        "  SELECT lga, dev_type FROM dcp_setback_controls"
         "   WHERE is_current AND control_type IN ('front_setback', 'side_setback')"
-        "   GROUP BY lga"
+        "   GROUP BY lga, dev_type"
         "  EXCEPT"
-        "  SELECT lga FROM dcp_setback_controls"
+        "  SELECT lga, dev_type FROM dcp_setback_controls"
         "   WHERE is_current AND control_type = 'rear_setback'"
-        "   GROUP BY lga) s",
+        "   GROUP BY lga, dev_type) s",
         (),
-        "Each is an LGA where the buildable-footprint and DCP-adjusted-GFA figures are "
-        "computed with a setback absent and therefore treated as no restriction. Reads 1 "
-        "on 2026-10-08: cumberland. Clears either by extracting the missing control, or "
-        "-- the durable fix -- by making the arithmetic refuse to publish a footprint "
-        "when an input is absent, which closes the class rather than this instance. "
-        "Separate and not counted here: services/constraint_arithmetic.py's own constants "
-        "(STOREY_HEIGHT_M, MIN_DWELLING_GFA_M2, PARKING_AREA_PER_SPACE_M2) are "
-        "engineering assumptions rather than regulatory values.",
+        "Each is a (council, development type) pair whose buildable-footprint and "
+        "DCP-adjusted-GFA figures would be computed with a setback absent. Reads 14 on "
+        "2026-10-09 scoped per development type; the same query grouped by council alone "
+        "reads 1, which is why it is not grouped that way. This row measures the DATA "
+        "gap and stays open until the controls are extracted. The CODE half -- refusing "
+        "to publish a footprint, or a computation step carrying a figure, when an input "
+        "is absent -- is closed separately and covered by tests/test_constraint_"
+        "arithmetic.py (TestThreeState), NOT by this count, so a non-zero reading here "
+        "is not evidence that the permissive default is back. Not counted: "
+        "constraint_arithmetic.py's own STOREY_HEIGHT_M, MIN_DWELLING_GFA_M2 and "
+        "PARKING_AREA_PER_SPACE_M2 are engineering assumptions, not regulatory values.",
     ),
 }
 

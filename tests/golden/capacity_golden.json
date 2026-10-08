@@ -13,7 +13,7 @@
     "effective_fsr": 0.6,
     "effective_height_m": 9.5,
     "gaps": [
-      "DCP states no side setback for this development type, so the buildable footprint and the after-DCP figure are not shown. Treating an unstated setback as 0 m would overstate both.",
+      "No current side setback value is recorded for this development type, so the buildable footprint and the after-DCP figure are not shown. Verify the applicable control against the council's DCP.",
       "Lot dimensions estimated from area (1:2.5 ratio) \u2014 actual setback erosion may differ"
     ],
     "landscaping_reduction_m2": null,
@@ -63,10 +63,10 @@
       },
       {
         "constraint": "dcp_setbacks",
-        "footprint_m2": 499.2,
+        "footprint_m2": null,
         "input_gfa_m2": null,
-        "label": "DCP setback erosion",
-        "note": "Lot 16.7m x 41.8m -> setbacks F:6.0m R:6.0m S:0.0m -> buildable 16.7m x 29.8m = 499.2m2",
+        "label": "DCP setback erosion \u2014 not computed",
+        "note": "Lot 16.7m x 41.8m. Recorded: front 6m, rear 6m. No current side setback value, so no buildable footprint was computed.",
         "output_gfa_m2": null,
         "phase": "dcp",
         "reduction_m2": null
@@ -1001,7 +1001,7 @@
     "effective_fsr": 0.6,
     "effective_height_m": 11.0,
     "gaps": [
-      "DCP states no side setback for this development type, so the buildable footprint and the after-DCP figure are not shown. Treating an unstated setback as 0 m would overstate both."
+      "No current side setback value is recorded for this development type, so the buildable footprint and the after-DCP figure are not shown. Verify the applicable control against the council's DCP."
     ],
     "landscaping_reduction_m2": null,
     "lep_envelope_gfa_m2": 417.6,
@@ -1050,10 +1050,10 @@
       },
       {
         "constraint": "dcp_setbacks",
-        "footprint_m2": 513.8,
+        "footprint_m2": null,
         "input_gfa_m2": null,
-        "label": "DCP setback erosion",
-        "note": "Lot 15.2m x 45.8m -> setbacks F:6.0m R:6.0m S:0.0m -> buildable 15.2m x 33.8m = 513.8m2",
+        "label": "DCP setback erosion \u2014 not computed",
+        "note": "Lot 15.2m x 45.8m. Recorded: front 6m, rear 6m. No current side setback value, so no buildable footprint was computed.",
         "output_gfa_m2": null,
         "phase": "dcp",
         "reduction_m2": null

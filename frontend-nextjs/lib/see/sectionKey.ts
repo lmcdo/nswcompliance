@@ -141,10 +141,25 @@ export function deriveSectionTitleFromProvision(p: ProvisionForSectionKey): stri
 /**
  * Remove a leading copy of THIS provision's own section number from its header,
  * so "2.10" + "2.10 Visual and acoustic privacy" does not render the number
- * twice. Only that exact number is matched, so nothing else at the start of the
- * heading can be dropped by accident.
+ * twice.
+ *
+ * The header's own leading number is parsed and compared for EQUALITY, rather
+ * than the section number being matched as a prefix. Prefix matching is wrong
+ * whenever one section number is a prefix of another, which is common:
+ * interpolating "2.1" into `^2\.1` ate the "2.1" out of "2.10 Visual privacy"
+ * and rendered "2.1 0 Visual privacy", and "C1" did the same to "C1.5". Caught
+ * by cross-review (gpt-5.6-sol, HIGH/MEDIUM pass on this branch) after the
+ * first version of this function shipped a boundary-free regex.
+ *
+ * When the leading number is NOT this section's own, the header is returned
+ * untouched — duplication is ugly but honest, and a mismatch there means the
+ * row's toc_section_number and its heading disagree, which is a grouping
+ * question about the data, not something to paper over here.
  */
 function stripLeadingSectionNumber(header: string, secNum: string): string {
-  const escaped = secNum.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return header.replace(new RegExp(`^${escaped}\\s*[-–—:.]?\\s*`), '').trim();
+  const leading = header.match(/^([A-Za-z]?\d+(?:\.\d+)*)\s*[-–—:.]?\s*/);
+  if (leading && leading[1] === secNum) {
+    return header.slice(leading[0].length).trim();
+  }
+  return header.trim();
 }
