@@ -1,14 +1,22 @@
 {
  "tier": "critical",
  "justification": "Critical: corrects how three SEPP (Housing) 2021 granny-flat rules are stored (wrong clause and wrong meaning for lot size, lot width, parking) and adds the engine the customer-facing granny-flat tools will read. Production data migration in two steps.",
- "commit_hash": "fadbe902",
+ "commit_hash": "e977d19e",
  "files": [
   "migrations/083_secondary_dwelling_rules_by_pathway.sql",
   "migrations/084_secondary_dwelling_rules_insert.sql",
   "services/secondary_dwelling_paths.py",
   "scripts/conveyancing_db.py",
   "services/housing_sepp_eligibility.py",
-  "tests/test_secondary_dwelling_paths.py"
+  "tests/test_secondary_dwelling_paths.py",
+  "scripts/provenance_check.py",
+  "tests/test_provenance_check.py",
+  "tests/test_secondary_dwelling_provenance_live.py",
+  "deploy/flyio-legislation-monitor/provenance_check.py",
+  "deploy/flyio-legislation-monitor/secondary_dwelling_paths.py",
+  "deploy/flyio-legislation-monitor/Dockerfile",
+  "deploy/flyio-legislation-monitor/run_loop.sh",
+  "tests/test_legislation_monitor_no_silent_pass.py"
  ],
  "pre_impl": {
   "existing_data": "housing_sepp_standards: 45 rows, 12 secondary_dwelling. Rows 44 (min_lot_size 450 '53(1)(b)'), 34 (min_lot_width 12 'Schedule 1, Part 2'), 35 (parking 0 'Part 3, Division 2') do not match the SEPP (Housing) 2021 in force (11 September 2026), checked against legislation.nsw.gov.au 2026-10-08.",
@@ -19,9 +27,9 @@
   "user_failure_mode": "Until consumers switch (next PR) customers see the current behaviour; after 084 the existing readers return exactly what they return today, proved in a rolled-back transaction (45 and 39 rows, identical eligibility view)."
  },
  "falsifiable_check": {
-  "command": "python -m pytest tests/test_secondary_dwelling_paths.py -q -o addopts=",
+  "command": "python -m pytest tests/test_secondary_dwelling_paths.py tests/test_provenance_check.py tests/test_legislation_monitor_no_silent_pass.py tests/test_dockerfile_monitors_imports.py -q -o addopts=",
   "fails_when": "Any fail-closed guard is removed: six mutations (stale rule accepted, value not checked against quote, band gaps accepted, unmeasured frontage = PASS, DA always MEETS, missing lot area guessed) each made 1-4 tests fail.",
-  "observed_red": "Observed 2026-10-08: the six mutations produced 1, 2, 2, 2, 1 and 4 failures out of 59; restored code 59 passed. The suite also caught a hardcoded number in a message, which was removed. 7/7 migration quotes word-for-word in the live law; 084 inserted then rolled back: conveyancing loader 45/39 rows and eligibility view identical to before."
+  "observed_red": "Observed 2026-10-08: 119 passed. Mutations each caught: six on the engine (1-4 failures each) and four on the cross-review fixes (frontage accepts m2: 1; path tag unchecked: 2; zone ignored: 3; excluded zone accepted: 1). Provenance: 9/9 rules traced to their own clause in the law in force, run on the Fly server from its whitelisted IP; linking the 12 m rule to the 15 m clause gave 8/9 with that rule named. 9/9 migration quotes word-for-word in the live law."
  },
  "functions": [
   {
@@ -120,17 +128,53 @@
    "mitigated": true,
    "how": "reader filter",
    "repro": "insert migration 084 inside a transaction, call fetch_sepp_housing_standards and the eligibility query, then roll back"
+  },
+  {
+   "scenario": "A stored rule's link points to a clause other than the one its words come from",
+   "what_happens": "The weekly provenance check reports the rule and clause, exits 1 and sends a Telegram alert",
+   "mitigated": true,
+   "how": "quote must sit inside the anchored clause",
+   "repro": "python -m pytest tests/test_provenance_check.py -q -o addopts= -k wrong_clause"
+  },
+  {
+   "scenario": "The law is amended so a quoted clause no longer exists or no longer says the same words",
+   "what_happens": "The next weekly run names every affected rule and alerts; nothing passes silently",
+   "mitigated": true,
+   "how": "anchor existence and quote-in-clause checks against the live page",
+   "repro": "python -m pytest tests/test_provenance_check.py -q -o addopts= -k 'anchor or changed'"
+  },
+  {
+   "scenario": "The weekly provenance check cannot fetch the law or finds no rules to check at all",
+   "what_happens": "Each is a named problem, the run exits 1 and alerts; an empty check is never reported as all traced",
+   "mitigated": true,
+   "how": "fetch failure and empty result are failures",
+   "repro": "python -m pytest tests/test_provenance_check.py -q -o addopts= -k 'fetch or no_rules'"
+  },
+  {
+   "scenario": "A frontage threshold is changed to a lot-area figure that also appears in its quote, such as 900",
+   "what_happens": "Rejected: frontage values must match metres and site-area values must match square metres",
+   "mitigated": true,
+   "how": "unit-specific matching plus unit column check (cross-review finding 1)",
+   "repro": "python -m pytest tests/test_secondary_dwelling_paths.py -q -o addopts= -k 900"
+  },
+  {
+   "scenario": "A property in a zone outside a path's scope, such as R5 for CDC or E4 for both, is evaluated",
+   "what_happens": "That path returns NOT_APPLICABLE; a non-standard zone code returns UNKNOWN; a missing zone returns UNKNOWN",
+   "mitigated": true,
+   "how": "per-path zone-scope rules quoted from s 49, s 50 and s 54(1)(a)",
+   "repro": "python -m pytest tests/test_secondary_dwelling_paths.py -q -o addopts= -k zone"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Yes: after this code is deployed, apply migrations/084_secondary_dwelling_rules_insert.sql, then confirm load_rules is VALID and fetch_sepp_housing_standards still returns 45 rows. Pre-existing unrelated failure on main: tests/test_conveyancing_db_served_scope_real_db.py."
+  "manual_verify": "Yes, in this order: (1) deploy services; (2) apply migrations/084_secondary_dwelling_rules_insert.sql; (3) PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1 pytest -m integration tests/test_secondary_dwelling_provenance_live.py -o addopts= prints 9/9; (4) fly deploy -a plotdetect-legislation-monitor from deploy/flyio-legislation-monitor (before 084 the weekly check correctly alerts 'no rules'). Cross-review findings 2 and 5 (is_active) rejected: housing_sepp_standards has no is_active column. Pre-existing unrelated failure on main: tests/test_conveyancing_db_served_scope_real_db.py."
  },
  "real_layer_exempt": {
   "services/secondary_dwelling_paths.py": "Real database layer exercised 2026-10-08 by inserting migration 084 inside a transaction against production, loading rules (VALID) and evaluating four real lots, then rolling back; a committed real-DB test needs 084 applied, which happens after deploy.",
   "scripts/conveyancing_db.py": "Same rolled-back real-database check: the loader returned 45 and 39 rows with the new rows present.",
-  "services/housing_sepp_eligibility.py": "Same rolled-back real-database check: the engine's view identical to before."
+  "services/housing_sepp_eligibility.py": "Same rolled-back real-database check: the engine's view identical to before.",
+  "scripts/provenance_check.py": "Real layer exercised 2026-10-08 on the Fly server (the only IP legislation.nsw.gov.au accepts from Python): 9/9 traced, and a broken link gave 8/9 naming the rule; tests/test_secondary_dwelling_provenance_live.py is the committed real test, runnable once 084 is applied."
  }
 }

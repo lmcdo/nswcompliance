@@ -34,7 +34,7 @@ VALUES
    'State Environmental Planning Policy (Housing) 2021',
    'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sch.1-sec.2-ssec.1-para1.b-para2.i',
    '2026-09-11',
-   '(b) for a lot other than a battle-axe lot—has a boundary with a primary road, measured at the building line, of at least the following— (i) if the lot has an area of at least 450m2 but not more than 900m2—12m,',
+   '(b) for a lot other than a battle-axe lot—has a boundary with a primary road, measured at the building line, of at least the following— ... (i) if the lot has an area of at least 450m2 but not more than 900m2—12m,',
    'claude-session (user instructed fix 2026-10-08)', now()),
   ('secondary_dwelling', 'cdc_min_road_frontage_lot_900_to_1500', 'cdc', 15, 'm',
    900, FALSE, 1500,
@@ -62,15 +62,15 @@ VALUES
    'claude-session (user instructed fix 2026-10-08)', now()),
   ('secondary_dwelling', 'da_detached_min_site_area', 'da', 450, 'm²',
    NULL, NULL, NULL,
-   ARRAY['R1','R2','R3','R4'], FALSE, 's 53(2)(a)',
+   ARRAY['R1','R2','R3','R4','R5'], FALSE, 's 53(2)(a)',
    'State Environmental Planning Policy (Housing) 2021',
    'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.53-ssec.2-para1.a',
    '2026-09-11',
-   '(2) The following are non-discretionary development standards in relation to the carrying out of development to which this Part applies— (a) for a detached secondary dwelling—a minimum site area of 450m2,',
+   '(2) The following are non-discretionary development standards in relation to the carrying out of development to which this Part applies— ... (a) for a detached secondary dwelling—a minimum site area of 450m2,',
    'claude-session (user instructed fix 2026-10-08)', now()),
   ('secondary_dwelling', 'da_non_discretionary_note', 'da', NULL, NULL,
    NULL, NULL, NULL,
-   ARRAY['R1','R2','R3','R4'], FALSE, 's 53(1), Note',
+   ARRAY['R1','R2','R3','R4','R5'], FALSE, 's 53(1), Note',
    'State Environmental Planning Policy (Housing) 2021',
    'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.53',
    '2026-09-11',
@@ -78,11 +78,27 @@ VALUES
    'claude-session (user instructed fix 2026-10-08)', now()),
   ('secondary_dwelling', 'da_parking_rule', 'da', NULL, NULL,
    NULL, NULL, NULL,
-   ARRAY['R1','R2','R3','R4'], FALSE, 's 53(2)(b)',
+   ARRAY['R1','R2','R3','R4','R5'], FALSE, 's 53(2)(b)',
    'State Environmental Planning Policy (Housing) 2021',
    'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.53-ssec.2-para1.b',
    '2026-09-11',
    '(b) the number of parking spaces provided on the site is the same as the number of parking spaces provided on the site immediately before the development is carried out.',
+   'claude-session (user instructed fix 2026-10-08)', now()),
+  ('secondary_dwelling', 'cdc_zone_scope', 'cdc', NULL, NULL,
+   NULL, NULL, NULL,
+   ARRAY['R1','R2','R3','R4'], FALSE, 's 49 (residential zone); s 54(1)(a)',
+   'State Environmental Planning Policy (Housing) 2021',
+   'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.54-ssec.1-para1.a',
+   '2026-09-11',
+   'residential zone means the following land use zones or an equivalent land use zone— (a) Zone R1 General Residential, (b) Zone R2 Low Density Residential, (c) Zone R3 Medium Density Residential, (d) Zone R4 High Density Residential, (e) Zone R5 Large Lot Residential. ... (a) is on land in a residential zone other than Zone R5 Large Lot Residential, and',
+   'claude-session (user instructed fix 2026-10-08)', now()),
+  ('secondary_dwelling', 'da_zone_scope', 'da', NULL, NULL,
+   NULL, NULL, NULL,
+   ARRAY['R1','R2','R3','R4','R5'], FALSE, 's 49 (residential zone); s 50',
+   'State Environmental Planning Policy (Housing) 2021',
+   'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.50',
+   '2026-09-11',
+   'residential zone means the following land use zones or an equivalent land use zone— (a) Zone R1 General Residential, (b) Zone R2 Low Density Residential, (c) Zone R3 Medium Density Residential, (d) Zone R4 High Density Residential, (e) Zone R5 Large Lot Residential. ... This Part applies to development for the purposes of a secondary dwelling on land in a residential zone if development for the purposes of a dwelling house is permissible on the land under another environmental planning instrument.',
    'claude-session (user instructed fix 2026-10-08)', now())
 ON CONFLICT (development_type, standard_type) DO NOTHING;
 
@@ -98,8 +114,10 @@ BEGIN
          OR (standard_type = 'cdc_parking_rule' AND numeric_value IS NULL AND approval_pathway = 'cdc')
          OR (standard_type = 'da_detached_min_site_area' AND numeric_value = 450 AND approval_pathway = 'da')
          OR (standard_type = 'da_non_discretionary_note' AND numeric_value IS NULL AND approval_pathway = 'da')
-         OR (standard_type = 'da_parking_rule' AND numeric_value IS NULL AND approval_pathway = 'da'));
-  IF n <> 7 THEN
-    RAISE EXCEPTION 'migration 083: expected 7 secondary_dwelling pathway rows as written, found %', n;
+         OR (standard_type = 'da_parking_rule' AND numeric_value IS NULL AND approval_pathway = 'da')
+         OR (standard_type = 'cdc_zone_scope' AND approval_pathway = 'cdc' AND applicable_zones = ARRAY['R1','R2','R3','R4'])
+         OR (standard_type = 'da_zone_scope' AND approval_pathway = 'da' AND applicable_zones = ARRAY['R1','R2','R3','R4','R5']));
+  IF n <> 9 THEN
+    RAISE EXCEPTION 'migration 084: expected 9 secondary_dwelling pathway rows as written, found %', n;
   END IF;
 END $$;

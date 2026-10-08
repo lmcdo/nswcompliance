@@ -8,6 +8,8 @@
 while true; do
   echo "[run_loop] $(date -u '+%Y-%m-%d %H:%M:%S UTC'): running legislation monitor"
   python legislation_monitor.py || echo "[run_loop] monitor exited non-zero — will retry next cycle"
+  echo "[run_loop] $(date -u '+%Y-%m-%d %H:%M:%S UTC'): running provenance check"
+  python provenance_check.py || echo "[run_loop] provenance check FAILED (alert sent) — see output above"
   echo "[run_loop] sleeping 7 days"
   sleep 604800
 done

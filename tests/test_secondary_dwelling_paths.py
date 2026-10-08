@@ -1,12 +1,12 @@
 """Fail-closed / falsifiability tests for services.secondary_dwelling_paths.
 
-The fixture below copies the 7 rows inserted by
+The fixture below copies the 9 rows inserted by
 migrations/084_secondary_dwelling_rules_insert.sql verbatim (same
-standard_type, pathway, numeric_value, band limits, clause, url and exact
-source_quote text). Every mutation test deep-copies this fixture before
-breaking one thing, and asserts the specific failure text validate_rules
-produces -- not just "it failed somehow". No database, no network: load_rules
-is exercised with a fake connection object only.
+standard_type, pathway, numeric_value, band limits, applicable_zones, clause,
+url and exact source_quote text). Every mutation test deep-copies this
+fixture before breaking one thing, and asserts the specific failure text
+validate_rules produces -- not just "it failed somehow". No database, no
+network: load_rules is exercised with a fake connection object only.
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ from services.secondary_dwelling_paths import (
 SERVICE_PATH = Path(__file__).resolve().parent.parent / "services" / "secondary_dwelling_paths.py"
 
 # ---------------------------------------------------------------------------
-# Fixture: the 7 real rows from migration 084, copied exactly.
+# Fixture: the 9 real rows from migration 084, copied exactly.
 # ---------------------------------------------------------------------------
 
 BASE_ROWS: list[dict] = [
@@ -42,6 +42,7 @@ BASE_ROWS: list[dict] = [
         "lot_area_min_m2": 450,
         "lot_area_min_inclusive": True,
         "lot_area_max_m2": 900,
+        "applicable_zones": ["R1", "R2", "R3", "R4"],  # noqa: zone-codes — fixture mirrors migration 084 rows
         "source_clause": "Schedule 1, cl 2(1)(b)(i)",
         "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sch.1-sec.2-ssec.1-para1.b-para2.i",
         "source_quote": "(b) for a lot other than a battle-axe lot—has a boundary with a primary road, measured at the building line, of at least the following— (i) if the lot has an area of at least 450m2 but not more than 900m2—12m,",
@@ -56,6 +57,7 @@ BASE_ROWS: list[dict] = [
         "lot_area_min_m2": 900,
         "lot_area_min_inclusive": False,
         "lot_area_max_m2": 1500,
+        "applicable_zones": ["R1", "R2", "R3", "R4"],  # noqa: zone-codes — fixture mirrors migration 084 rows
         "source_clause": "Schedule 1, cl 2(1)(b)(ii)",
         "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sch.1-sec.2-ssec.1-para1.b-para2.ii",
         "source_quote": "(b) for a lot other than a battle-axe lot—has a boundary with a primary road, measured at the building line, of at least the following— ... (ii) if the lot has an area of more than 900m2 but not more than 1500m2—15m,",
@@ -70,6 +72,7 @@ BASE_ROWS: list[dict] = [
         "lot_area_min_m2": 1500,
         "lot_area_min_inclusive": False,
         "lot_area_max_m2": None,
+        "applicable_zones": ["R1", "R2", "R3", "R4"],  # noqa: zone-codes — fixture mirrors migration 084 rows
         "source_clause": "Schedule 1, cl 2(1)(b)(iii)",
         "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sch.1-sec.2-ssec.1-para1.b-para2.iii",
         "source_quote": "(b) for a lot other than a battle-axe lot—has a boundary with a primary road, measured at the building line, of at least the following— ... (iii) if the lot has an area of more than 1500m2—18m,",
@@ -84,6 +87,7 @@ BASE_ROWS: list[dict] = [
         "lot_area_min_m2": None,
         "lot_area_min_inclusive": None,
         "lot_area_max_m2": None,
+        "applicable_zones": ["R1", "R2", "R3", "R4"],  # noqa: zone-codes — fixture mirrors migration 084 rows
         "source_clause": "Schedule 1, cl 2(3)",
         "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sch.1-sec.2-ssec.3",
         "source_quote": "(3) Nothing in this Schedule requires the provision of additional parking spaces for development for the purposes of a secondary dwelling.",
@@ -98,6 +102,7 @@ BASE_ROWS: list[dict] = [
         "lot_area_min_m2": None,
         "lot_area_min_inclusive": None,
         "lot_area_max_m2": None,
+        "applicable_zones": ["R1", "R2", "R3", "R4", "R5"],  # noqa: zone-codes — fixture mirrors migration 084 rows
         "source_clause": "s 53(2)(a)",
         "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.53-ssec.2-para1.a",
         "source_quote": "(2) The following are non-discretionary development standards in relation to the carrying out of development to which this Part applies— (a) for a detached secondary dwelling—a minimum site area of 450m2,",
@@ -112,6 +117,7 @@ BASE_ROWS: list[dict] = [
         "lot_area_min_m2": None,
         "lot_area_min_inclusive": None,
         "lot_area_max_m2": None,
+        "applicable_zones": ["R1", "R2", "R3", "R4", "R5"],  # noqa: zone-codes — fixture mirrors migration 084 rows
         "source_clause": "s 53(1), Note",
         "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.53",
         "source_quote": "See the Act, section 4.15(3), which does not prevent development consent being granted if a non-discretionary development standard is not complied with.",
@@ -126,9 +132,40 @@ BASE_ROWS: list[dict] = [
         "lot_area_min_m2": None,
         "lot_area_min_inclusive": None,
         "lot_area_max_m2": None,
+        "applicable_zones": ["R1", "R2", "R3", "R4", "R5"],  # noqa: zone-codes — fixture mirrors migration 084 rows
         "source_clause": "s 53(2)(b)",
         "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.53-ssec.2-para1.b",
         "source_quote": "(b) the number of parking spaces provided on the site is the same as the number of parking spaces provided on the site immediately before the development is carried out.",
+        "stale_since": None,
+    },
+    {
+        "id": 208,
+        "standard_type": "cdc_zone_scope",
+        "approval_pathway": "cdc",
+        "numeric_value": None,
+        "unit": None,
+        "lot_area_min_m2": None,
+        "lot_area_min_inclusive": None,
+        "lot_area_max_m2": None,
+        "applicable_zones": ["R1", "R2", "R3", "R4"],  # noqa: zone-codes — fixture mirrors migration 084 rows
+        "source_clause": "s 49 (residential zone); s 54(1)(a)",
+        "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.54-ssec.1-para1.a",
+        "source_quote": "residential zone means the following land use zones or an equivalent land use zone— (a) Zone R1 General Residential, (b) Zone R2 Low Density Residential, (c) Zone R3 Medium Density Residential, (d) Zone R4 High Density Residential, (e) Zone R5 Large Lot Residential. ... (a) is on land in a residential zone other than Zone R5 Large Lot Residential, and",  # noqa: zone-codes — fixture mirrors migration 084 rows
+        "stale_since": None,
+    },
+    {
+        "id": 209,
+        "standard_type": "da_zone_scope",
+        "approval_pathway": "da",
+        "numeric_value": None,
+        "unit": None,
+        "lot_area_min_m2": None,
+        "lot_area_min_inclusive": None,
+        "lot_area_max_m2": None,
+        "applicable_zones": ["R1", "R2", "R3", "R4", "R5"],  # noqa: zone-codes — fixture mirrors migration 084 rows
+        "source_clause": "s 49 (residential zone); s 50",
+        "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.50",
+        "source_quote": "residential zone means the following land use zones or an equivalent land use zone— (a) Zone R1 General Residential, (b) Zone R2 Low Density Residential, (c) Zone R3 Medium Density Residential, (d) Zone R4 High Density Residential, (e) Zone R5 Large Lot Residential. ... This Part applies to development for the purposes of a secondary dwelling on land in a residential zone if development for the purposes of a dwelling house is permissible on the land under another environmental planning instrument.",  # noqa: zone-codes — fixture mirrors migration 084 rows
         "stale_since": None,
     },
 ]
@@ -173,7 +210,7 @@ def test_fixture_is_valid():
 
 
 # ---------------------------------------------------------------------------
-# VALIDATION — each of the 7 rows missing.
+# VALIDATION — each of the 9 rows missing.
 # ---------------------------------------------------------------------------
 
 REMOVAL_CASES = [
@@ -184,6 +221,8 @@ REMOVAL_CASES = [
     ("da_detached_min_site_area", "da_detached_min_site_area: rule missing"),
     ("da_non_discretionary_note", "da_non_discretionary_note: rule missing"),
     ("da_parking_rule", "da_parking_rule: rule missing"),
+    ("cdc_zone_scope", "cdc_zone_scope: rule missing"),
+    ("da_zone_scope", "da_zone_scope: rule missing"),
 ]
 
 
@@ -358,31 +397,138 @@ def test_load_rules_query_error_fails_and_rolls_back():
 
 
 # ---------------------------------------------------------------------------
+# NEW VALIDATION (post cross-review):
+#   - a frontage value must not satisfy an m2 (area) notation
+#   - a site-area value must not satisfy a bare-metres notation
+#   - the row's unit must match what the rule actually measures
+#   - a row's approval_pathway must match its own name prefix
+#   - zone-scope rows: zones must be listed, each must appear in the quote,
+#     and a zone the quote itself excludes must not be listed
+# ---------------------------------------------------------------------------
+
+
+def test_frontage_value_matching_an_m2_figure_is_rejected(rows):
+    """Cross-review finding #1: a frontage (metres) value must not be satisfied
+    by the row's own m2 area figure. numeric_value=900 and the quote contains
+    "900m2" (the band's upper limit, in square metres) -- not "900m"."""
+    for row in rows:
+        if row["standard_type"] == "cdc_min_road_frontage_lot_450_to_900":
+            row["numeric_value"] = 900
+    outcome = validate_rules(rows)
+    assert outcome.rules is None
+    assert any(
+        "900" in f and "does not appear in its quote" in f for f in outcome.failures
+    ), outcome.failures
+
+
+def test_site_area_value_matching_a_metres_figure_is_rejected(rows):
+    """A site-area (m2) rule must not be satisfied by a bare-metres mention."""
+    for row in rows:
+        if row["standard_type"] == "da_detached_min_site_area":
+            row["numeric_value"] = 12
+            row["source_quote"] = row["source_quote"] + " A separate 12m boundary setback note."
+    outcome = validate_rules(rows)
+    assert outcome.rules is None
+    assert any(
+        "12" in f and "does not appear in its quote" in f for f in outcome.failures
+    ), outcome.failures
+
+
+def test_frontage_unit_m2_is_rejected(rows):
+    for row in rows:
+        if row["standard_type"] == "cdc_min_road_frontage_lot_450_to_900":
+            row["unit"] = "m²"
+    outcome = validate_rules(rows)
+    assert outcome.rules is None
+    assert any("is wrong for this rule" in f for f in outcome.failures), outcome.failures
+
+
+def test_site_area_unit_m_is_rejected(rows):
+    for row in rows:
+        if row["standard_type"] == "da_detached_min_site_area":
+            row["unit"] = "m"
+    outcome = validate_rules(rows)
+    assert outcome.rules is None
+    assert any("is wrong for this rule" in f for f in outcome.failures), outcome.failures
+
+
+def test_cdc_row_tagged_da_is_rejected(rows):
+    for row in rows:
+        if row["standard_type"] == "cdc_min_road_frontage_lot_450_to_900":
+            row["approval_pathway"] = "da"
+    outcome = validate_rules(rows)
+    assert outcome.rules is None
+    assert any("name says another path" in f for f in outcome.failures), outcome.failures
+
+
+def test_da_parking_rule_tagged_cdc_is_rejected(rows):
+    for row in rows:
+        if row["standard_type"] == "da_parking_rule":
+            row["approval_pathway"] = "cdc"
+    outcome = validate_rules(rows)
+    assert outcome.rules is None
+    assert any("name says another path" in f for f in outcome.failures), outcome.failures
+
+
+def test_cdc_zone_scope_listing_r5_is_rejected(rows):
+    """The cdc_zone_scope quote itself excludes Zone R5 ("other than Zone R5
+    Large Lot Residential"), so listing R5 as in-scope must be rejected."""
+    for row in rows:
+        if row["standard_type"] == "cdc_zone_scope":
+            row["applicable_zones"] = ["R1", "R2", "R3", "R4", "R5"]  # noqa: zone-codes — fixture mirrors migration 084 rows
+    outcome = validate_rules(rows)
+    assert outcome.rules is None
+    assert any("R5" in f and "excludes it" in f for f in outcome.failures), outcome.failures
+
+
+def test_cdc_zone_scope_listing_ru1_is_rejected(rows):
+    """RU1 is never mentioned in the cdc_zone_scope quote at all."""
+    for row in rows:
+        if row["standard_type"] == "cdc_zone_scope":
+            row["applicable_zones"] = ["R1", "R2", "R3", "R4", "RU1"]  # noqa: zone-codes — fixture mirrors migration 084 rows
+    outcome = validate_rules(rows)
+    assert outcome.rules is None
+    assert any(
+        "RU1" in f and "does not appear in its quote" in f for f in outcome.failures
+    ), outcome.failures
+
+
+def test_zone_scope_with_empty_zones_is_rejected(rows):
+    for row in rows:
+        if row["standard_type"] == "cdc_zone_scope":
+            row["applicable_zones"] = []
+    outcome = validate_rules(rows)
+    assert outcome.rules is None
+    assert any("no zones listed" in f for f in outcome.failures), outcome.failures
+
+
+# ---------------------------------------------------------------------------
 # CDC — Schedule 1 cl 2(1)(b) road frontage test.
+# evaluate_cdc(rules, zone, lot_area_m2, frontage_range_m, battle_axe)
 # ---------------------------------------------------------------------------
 
 
 def test_cdc_battle_axe_none_is_unknown(valid_rules):
-    result = evaluate_cdc(valid_rules, 600, (12.0, 30.0), None)
+    result = evaluate_cdc(valid_rules, "R2", 600, (12.0, 30.0), None)
     assert result["outcome"] == "UNKNOWN"
     assert "battle-axe lot is not known" in result["reason"]
 
 
 def test_cdc_battle_axe_true_is_unknown_and_mentions_2_1_c(valid_rules):
-    result = evaluate_cdc(valid_rules, 600, (12.0, 30.0), True)
+    result = evaluate_cdc(valid_rules, "R2", 600, (12.0, 30.0), True)
     assert result["outcome"] == "UNKNOWN"
     assert "2(1)(c)" in result["reason"]
 
 
 @pytest.mark.parametrize("lot_area", [None, math.nan, 0, -5])
 def test_cdc_invalid_lot_area_is_unknown(valid_rules, lot_area):
-    result = evaluate_cdc(valid_rules, lot_area, (12.0, 30.0), False)
+    result = evaluate_cdc(valid_rules, "R2", lot_area, (12.0, 30.0), False)
     assert result["outcome"] == "UNKNOWN"
     assert result["reason"] == "lot area not established"
 
 
 def test_cdc_lot_area_below_first_band_is_unknown(valid_rules):
-    result = evaluate_cdc(valid_rules, 449.9, None, False)
+    result = evaluate_cdc(valid_rules, "R2", 449.9, None, False)
     assert result["outcome"] == "UNKNOWN"
     assert "sets no frontage" in result["reason"]
 
@@ -398,7 +544,7 @@ def test_cdc_lot_area_below_first_band_is_unknown(valid_rules):
     ],
 )
 def test_cdc_band_thresholds_from_data(valid_rules, lot_area, expected_required_m):
-    result = evaluate_cdc(valid_rules, lot_area, None, False)
+    result = evaluate_cdc(valid_rules, "R2", lot_area, None, False)
     assert result["required_m"] == expected_required_m
 
 
@@ -413,57 +559,58 @@ def test_cdc_band_thresholds_from_data(valid_rules, lot_area, expected_required_
     ],
 )
 def test_cdc_frontage_outcomes_at_600_m2(valid_rules, frontage_range, expected_outcome):
-    result = evaluate_cdc(valid_rules, 600, frontage_range, False)
+    result = evaluate_cdc(valid_rules, "R2", 600, frontage_range, False)
     assert result["outcome"] == expected_outcome
 
 
 def test_cdc_always_carries_parking_evidence(valid_rules):
     for battle_axe in (None, True, False):
-        result = evaluate_cdc(valid_rules, 600, (12.0, 30.0), battle_axe)
+        result = evaluate_cdc(valid_rules, "R2", 600, (12.0, 30.0), battle_axe)
         assert result["parking"]["clause"] == "Schedule 1, cl 2(3)"
 
 
 def test_cdc_band_evidence_clause_matches_the_applied_band(valid_rules):
-    result = evaluate_cdc(valid_rules, 600, (12.0, 30.0), False)
+    result = evaluate_cdc(valid_rules, "R2", 600, (12.0, 30.0), False)
     assert result["evidence"]["clause"] == "Schedule 1, cl 2(1)(b)(i)"
 
 
 def test_cdc_is_deterministic(valid_rules):
-    a = evaluate_cdc(valid_rules, 600, (12.0, 30.0), False)
-    b = evaluate_cdc(valid_rules, 600, (12.0, 30.0), False)
+    a = evaluate_cdc(valid_rules, "R2", 600, (12.0, 30.0), False)
+    b = evaluate_cdc(valid_rules, "R2", 600, (12.0, 30.0), False)
     assert a == b
 
 
 # ---------------------------------------------------------------------------
 # DA — s 53(2)(a) non-discretionary site-area standard.
+# evaluate_da(rules, zone, lot_area_m2, detached)
 # ---------------------------------------------------------------------------
 
 
 def test_da_detached_none_is_unknown(valid_rules):
-    result = evaluate_da(valid_rules, 600, None)
+    result = evaluate_da(valid_rules, "R2", 600, None)
     assert result["outcome"] == "UNKNOWN"
     assert "detached" in result["reason"]
 
 
 def test_da_detached_false_is_not_applicable(valid_rules):
-    result = evaluate_da(valid_rules, 600, False)
+    result = evaluate_da(valid_rules, "R2", 600, False)
     assert result["outcome"] == "NOT_APPLICABLE"
     assert "s 53(2)(a)" in result["reason"]
 
 
 def test_da_lot_area_none_is_unknown(valid_rules):
-    result = evaluate_da(valid_rules, None, True)
+    result = evaluate_da(valid_rules, "R2", None, True)
     assert result["outcome"] == "UNKNOWN"
     assert result["reason"] == "lot area not established"
 
 
 def test_da_lot_area_450_meets(valid_rules):
-    result = evaluate_da(valid_rules, 450, True)
+    result = evaluate_da(valid_rules, "R2", 450, True)
     assert result["outcome"] == "MEETS"
 
 
 def test_da_lot_area_449_99_is_below_with_note(valid_rules):
-    result = evaluate_da(valid_rules, 449.99, True)
+    result = evaluate_da(valid_rules, "R2", 449.99, True)
     assert result["outcome"] == "BELOW"
     assert "note" in result
     assert "4.15(3)" in result["note"]["quote"]
@@ -474,7 +621,7 @@ def test_da_lot_area_449_99_is_below_with_note(valid_rules):
     [(None, 600), (False, 600), (True, None), (True, 450), (True, 449.99)],
 )
 def test_da_outcome_vocabulary_never_leaks_pass_fail_language(valid_rules, detached, lot_area):
-    result = evaluate_da(valid_rules, lot_area, detached)
+    result = evaluate_da(valid_rules, "R2", lot_area, detached)
     assert result["outcome"] in ("MEETS", "BELOW", "NOT_APPLICABLE", "UNKNOWN")
     forbidden = re.compile(r"\bPASS\b|\bFAIL\b|eligible|buildable", re.IGNORECASE)
     for value in _all_string_values(result):
@@ -483,14 +630,68 @@ def test_da_outcome_vocabulary_never_leaks_pass_fail_language(valid_rules, detac
 
 def test_da_always_carries_parking_evidence(valid_rules):
     for detached, lot_area in [(None, 600), (False, 600), (True, 450), (True, 449.99)]:
-        result = evaluate_da(valid_rules, lot_area, detached)
+        result = evaluate_da(valid_rules, "R2", lot_area, detached)
         assert result["parking"]["clause"] == "s 53(2)(b)"
 
 
 def test_da_is_deterministic(valid_rules):
-    a = evaluate_da(valid_rules, 449.99, True)
-    b = evaluate_da(valid_rules, 449.99, True)
+    a = evaluate_da(valid_rules, "R2", 449.99, True)
+    b = evaluate_da(valid_rules, "R2", 449.99, True)
     assert a == b
+
+
+# ---------------------------------------------------------------------------
+# Zone gate — s 49 residential-zone scope, read per path from cdc_zone_scope /
+# da_zone_scope. Zone is the 2nd positional argument on both evaluators.
+# ---------------------------------------------------------------------------
+
+
+def test_zone_r2_evaluates_normally_for_both_paths(valid_rules):
+    cdc = evaluate_cdc(valid_rules, "R2", 600, (12.0, 30.0), False)
+    assert cdc["outcome"] == "PASS"
+    assert "scope" not in cdc
+    da = evaluate_da(valid_rules, "R2", 450, True)
+    assert da["outcome"] == "MEETS"
+
+
+def test_zone_r5_is_not_applicable_for_cdc_but_da_still_evaluates(valid_rules):
+    cdc = evaluate_cdc(valid_rules, "R5", 600, (12.0, 30.0), False)
+    assert cdc["outcome"] == "NOT_APPLICABLE"
+    assert "R5" in cdc["reason"]
+    da = evaluate_da(valid_rules, "R5", 600, True)
+    assert da["outcome"] == "MEETS"
+
+
+def test_zone_outside_scope_standard_code_is_not_applicable_for_both(valid_rules):
+    cdc = evaluate_cdc(valid_rules, "E4", 600, (12.0, 30.0), False)
+    assert cdc["outcome"] == "NOT_APPLICABLE"
+    da = evaluate_da(valid_rules, "E4", 600, True)
+    assert da["outcome"] == "NOT_APPLICABLE"
+
+
+def test_zone_non_standard_code_is_unknown_for_both(valid_rules):
+    cdc = evaluate_cdc(valid_rules, "2(a)", 600, (12.0, 30.0), False)
+    assert cdc["outcome"] == "UNKNOWN"
+    assert "equivalent land use zone" in cdc["reason"]
+    da = evaluate_da(valid_rules, "2(a)", 600, True)
+    assert da["outcome"] == "UNKNOWN"
+    assert "equivalent land use zone" in da["reason"]
+
+
+def test_zone_none_is_unknown_for_both(valid_rules):
+    cdc = evaluate_cdc(valid_rules, None, 600, (12.0, 30.0), False)
+    assert cdc["outcome"] == "UNKNOWN"
+    assert cdc["reason"] == "zone not established"
+    da = evaluate_da(valid_rules, None, 600, True)
+    assert da["outcome"] == "UNKNOWN"
+    assert da["reason"] == "zone not established"
+
+
+def test_zone_full_title_is_treated_as_its_code(valid_rules):
+    cdc = evaluate_cdc(valid_rules, "R2 Low Density Residential", 600, (12.0, 30.0), False)
+    assert cdc["outcome"] == "PASS"
+    da = evaluate_da(valid_rules, "R2 Low Density Residential", 450, True)
+    assert da["outcome"] == "MEETS"
 
 
 # ---------------------------------------------------------------------------
@@ -504,7 +705,7 @@ def test_da_is_deterministic(valid_rules):
 def test_cdc_threshold_comes_from_the_row_not_a_constant():
     original_outcome = validate_rules(copy.deepcopy(BASE_ROWS))
     assert original_outcome.failures == ()
-    original_result = evaluate_cdc(original_outcome.rules, 600, (13, 13), False)
+    original_result = evaluate_cdc(original_outcome.rules, "R2", 600, (13, 13), False)
     assert original_result["outcome"] == "PASS"
 
     mutated = copy.deepcopy(BASE_ROWS)
@@ -515,7 +716,7 @@ def test_cdc_threshold_comes_from_the_row_not_a_constant():
 
     rebuilt_outcome = validate_rules(mutated)
     assert rebuilt_outcome.failures == (), rebuilt_outcome.failures
-    rebuilt_result = evaluate_cdc(rebuilt_outcome.rules, 600, (13, 13), False)
+    rebuilt_result = evaluate_cdc(rebuilt_outcome.rules, "R2", 600, (13, 13), False)
     assert rebuilt_result["outcome"] == "FAIL"
 
 

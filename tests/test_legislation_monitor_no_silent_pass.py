@@ -393,13 +393,15 @@ class TestArgparsePcoNotASource:
 # ---------------------------------------------------------------------------
 
 class TestDeployedCopyMatchesSource:
-    @pytest.mark.parametrize("filename", [
-        "legislation_monitor.py", "pco_client.py", "refresh_runbook.py",
+    @pytest.mark.parametrize("source", [
+        "scripts/legislation_monitor.py", "scripts/pco_client.py", "scripts/refresh_runbook.py",
+        "scripts/provenance_check.py", "services/secondary_dwelling_paths.py",
     ])
-    def test_deploy_copy_is_byte_identical(self, filename):
-        src = (ROOT / "scripts" / filename).read_bytes()
+    def test_deploy_copy_is_byte_identical(self, source):
+        filename = source.split("/")[-1]
+        src = (ROOT / source).read_bytes()
         deployed = (ROOT / "deploy" / "flyio-legislation-monitor" / filename).read_bytes()
         assert src == deployed, (
             f"deploy/flyio-legislation-monitor/{filename} has drifted from "
-            f"scripts/{filename} — redeploy or resync before shipping."
+            f"{source} — redeploy or resync before shipping."
         )
