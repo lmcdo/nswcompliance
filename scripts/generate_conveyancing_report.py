@@ -676,10 +676,8 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     # area alone never makes this row "too small". NO fallback (#684): absent or
     # invalid rules render "Not assessed" -- fail-visible, never a figure.
     _sd_rules = (sepp_standards or {}).get("sd_rules")
-    try:
-        from services.secondary_dwelling_paths import Rules as _SdRules
-    except ImportError:  # pragma: no cover - CLI copies run from scripts/
-        from secondary_dwelling_paths import Rules as _SdRules  # type: ignore
+    # services/ is always importable here: line 51 imports services.address_identity.
+    from services.secondary_dwelling_paths import Rules as _SdRules, assess as _sd_assess
     if not isinstance(_sd_rules, _SdRules):
         # A direct caller injecting anything but validate_rules() output gets the
         # fail-visible row, never a crash mid-report (cross-review).
@@ -721,7 +719,6 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
             )
         })
     else:
-        from services.secondary_dwelling_paths import assess as _sd_assess
         _paths = _sd_assess(_sd_rules, zone, lot_area)
         _outside = (_paths["cdc"]["outcome"] == "NOT_APPLICABLE"  # noqa: bracket-access — assess() always sets both
                     and _paths["da"]["outcome"] == "NOT_APPLICABLE"  # noqa: bracket-access
