@@ -111,7 +111,10 @@ def _fetch_standards_grouped() -> dict:
         cur.execute(
             "SELECT development_type, standard_type, numeric_value, applicable_zones, "
             "requires_lmr_area, source_clause, source_document, legislation_url, "
-            "effective_date, stale_since, stale_reason FROM housing_sepp_standards"
+            "effective_date, stale_since, stale_reason FROM housing_sepp_standards "
+            # Path-specific rules (migrations 083/084) belong to
+            # services/secondary_dwelling_paths.py, not to this per-form gate.
+            "WHERE approval_pathway IS NULL"
         )
         rows = cur.fetchall()
     finally:
