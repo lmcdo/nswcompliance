@@ -88,11 +88,7 @@ type PageState = 'idle' | 'detecting' | 'confirming' | 'complete' | 'error' | 'i
 // NSW_STANDARD_ZONES.RESIDENTIAL — was independently declared in 4 files.
 const ELIGIBLE_ZONE_PREFIXES = NSW_STANDARD_ZONES.RESIDENTIAL as readonly string[];
 
-function deriveWhatToChange(reason: string | null, lotArea: number | null): string {
-  if (lotArea != null && lotArea < 450) {
-    const shortfall = Math.round(450 - lotArea);
-    return `A boundary adjustment of ${shortfall} m² could unlock CDC eligibility. A DA pathway may also be available at council's discretion — a certifier or town planner can advise.`;
-  }
+function deriveWhatToChange(reason: string | null): string {
   if (reason?.toLowerCase().includes('heritage')) {
     return 'Heritage exclusions apply to the CDC pathway only. A DA pathway remains available — contact a heritage-experienced town planner.';
   }
@@ -561,7 +557,7 @@ function GrannyFlatPageInner() {
           <div className="p-6 border-t border-gray-100">
             <h3 className="font-semibold text-gray-900 mb-1">What could change this?</h3>
             <p className="text-sm text-gray-500 mb-4">
-              {deriveWhatToChange(errorMsg, null)}
+              {deriveWhatToChange(errorMsg)}
             </p>
             {!reportEmailCaptured ? (
               <form onSubmit={handleReportEmailSubmit} className="flex gap-2">
@@ -692,7 +688,6 @@ function GrannyFlatPageInner() {
             <ReportUnlockCTA
               buildable={finalResult.granny_flat_buildable}
               sepp_ineligible_reason={detectResult?.sepp_ineligible_reason ?? null}
-              lot_area_m2={detectResult?.lot_area_m2 ?? null}
               email={email}
               setEmail={setEmail}
               emailCaptured={reportEmailCaptured}
@@ -914,7 +909,7 @@ function YieldCalculator({
 const GRANNY_FLAT_FAQS = [
   {
     q: 'What is the minimum lot size for a granny flat in NSW?',
-    a: 'Under SEPP Housing 2021 (cl 53), a secondary dwelling approved as complying development requires a minimum site area of 450 m². A DA pathway may be available on smaller lots at council\'s discretion, subject to zone permissibility.',
+    a: 'SEPP (Housing) 2021 sets no single minimum lot size for a granny flat. As complying development, the lot needs a road frontage at the building line set by lot area — 12 m, 15 m or 18 m (Schedule 1 cl 2(1)(b)). Through a development application, a detached granny flat has a non-discretionary minimum site area of 450 m² (s 53(2)(a)); consent can still be granted if it is not met (Act s 4.15(3)).',
   },
   {
     q: 'What is the maximum size of a granny flat under SEPP Housing 2021?',
@@ -956,7 +951,7 @@ function GrannyFlatFAQs() {
       {/* Legislative basis — trust references matching GrannyFlatTool */}
       <div className="text-xs text-gray-400 pt-4 space-y-1.5">
         <p className="font-medium text-gray-500">Legislative basis</p>
-        <p><span className="text-gray-500">Lot area</span> — SEPP (Housing) 2021 cl 53(2)(a): detached secondary dwelling minimum site area 450 m² [complying development]; cl 52 [development consent].</p>
+        <p><span className="text-gray-500">Lot area</span> — SEPP (Housing) 2021 sets no single minimum lot size for a granny flat. Complying development: a road frontage at the building line by lot-area band (Schedule 1 cl 2(1)(b)). Development application: a non-discretionary minimum site area for a detached granny flat (s 53(2)(a)).</p>
         <p><span className="text-gray-500">Zone</span> — SEPP (Housing) 2021 cl 50, read with definition of &ldquo;residential zone&rdquo; in cl 49: R1, R2, R3, R4, R5/RU5 where dwelling houses are permissible under the applicable LEP.</p>
         <p><span className="text-gray-500">Heritage</span> — CDC pathway: SEPP (Housing) 2021 cl 54(3)(c) excludes heritage items and draft heritage items; DA pathway: applicable LEP cl 5.10 (Standard Instrument). Heritage Map sourced from NSW Planning Portal.</p>
         <p><span className="text-gray-500">Flood control lot</span> — SEPP (Housing) 2021 cl 58: complying development must not be carried out on flood storage areas, floodways, flow paths, high hazard areas, or high risk areas. Spatial data: 12 LGAs covered — shown as unknown outside coverage.</p>
@@ -1622,7 +1617,6 @@ function PaidDownloadCTA({ reportId, address }: { reportId: string; address: str
 function ReportUnlockCTA({
   buildable,
   sepp_ineligible_reason,
-  lot_area_m2,
   email,
   setEmail,
   emailCaptured,
@@ -1632,7 +1626,6 @@ function ReportUnlockCTA({
 }: {
   buildable: boolean;
   sepp_ineligible_reason: string | null;
-  lot_area_m2: number | null;
   email: string;
   setEmail: (v: string) => void;
   emailCaptured: boolean;
@@ -1704,7 +1697,7 @@ function ReportUnlockCTA({
     <div className="rounded-xl border border-gray-200 bg-white p-6">
       <h3 className="font-semibold text-gray-900 mb-1">What could change this?</h3>
       <p className="text-sm text-gray-500 mb-4">
-        {deriveWhatToChange(sepp_ineligible_reason, lot_area_m2)}
+        {deriveWhatToChange(sepp_ineligible_reason)}
       </p>
       {!emailCaptured ? (
         <form onSubmit={onEmailSubmit} className="flex gap-2">

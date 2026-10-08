@@ -8,8 +8,12 @@ DETACHED secondary dwellings on the DA path, while the CDC path (Schedule 1
 cl 2(1)(b)) sets a road frontage by lot-area band. This module reads the
 per-clause rows added by migration 083 and keeps the two paths apart.
 
-Fail closed: any missing, stale, malformed or self-inconsistent rule makes
+Fail closed: any missing, malformed or self-inconsistent rule makes
 load_rules() return no rules and named failures; callers report UNAVAILABLE.
+A rule marked stale (its instrument was amended after it was checked) is still
+served, with a notice -- the W3 (#839) contract every other SEPP surface uses --
+so an amendment does not blank every granny-flat answer; the weekly
+provenance check proves each quote is still in the law in force.
 A missing property fact makes that path UNKNOWN. Nothing defaults to a pass.
 Every number (thresholds and lot-area band limits) comes from the database row
 and must appear in that row's own quote of the law.
@@ -51,6 +55,7 @@ class Rule:
     url: str
     quote: str
     zones: frozenset = frozenset()
+    stale: Optional[str] = None  # why the rule awaits a re-check, when it does
 
 
 @dataclass(frozen=True)
@@ -90,8 +95,7 @@ def _check_row(r: dict) -> tuple[Optional[Rule], list[str]]:
     quote = _flat(r.get("source_quote") or "").strip()
     url = (r.get("legislation_url") or "").strip()
     clause = (r.get("source_clause") or "").strip()
-    if r.get("stale_since"):
-        errs.append(f"{st}: marked stale ({r.get('stale_reason') or 'source amended'})")
+    stale = (r.get("stale_reason") or "the source instrument was amended") if r.get("stale_since") else None
     if not quote:
         errs.append(f"{st}: no quote of the law")
     if not clause:
@@ -143,7 +147,7 @@ def _check_row(r: dict) -> tuple[Optional[Rule], list[str]]:
     if errs:
         return None, errs
     return Rule(int(r.get("id")), st, r.get("approval_pathway"), value, r.get("unit"),
-                a_min, r.get("lot_area_min_inclusive"), a_max, clause, url, quote, zones), []
+                a_min, r.get("lot_area_min_inclusive"), a_max, clause, url, quote, zones, stale), []
 
 
 def validate_rules(rows: list[dict]) -> RulesOutcome:
@@ -311,3 +315,50 @@ def evaluate_da(rules: Rules, zone: Optional[str], lot_area_m2, detached: Option
         return {**out, "outcome": "MEETS", "reason": f"lot {lot_area_m2:g} m² ≥ {std.value:g} m² site area"}
     return {**out, "outcome": "BELOW", "reason": f"lot {lot_area_m2:g} m² < {std.value:g} m² site area",
             "note": _evidence(rules.by_type["da_non_discretionary_note"])}  # noqa: bracket-access — validated
+
+
+# The development_type whose lot tests are owned by this module. Generic per-form
+# readers skip their own lot-size logic for it and call assess() instead.
+PATH_RULED_DEV_TYPE = "secondary_dwelling"
+
+_CDC_LABEL = {"PASS": "meets the road-frontage test", "FAIL": "does not meet the road-frontage test",
+              "UNKNOWN": "not determined", "NOT_APPLICABLE": "does not apply"}
+_DA_LABEL = {"MEETS": "meets the site-area standard", "BELOW": "below the site-area standard",
+             "UNKNOWN": "not determined", "NOT_APPLICABLE": "does not apply"}
+
+
+def assess(rules: Rules, zone: Optional[str], lot_area_m2, *, frontage_range_m=None,
+           battle_axe: Optional[bool] = None, detached: Optional[bool] = None,
+           dwelling_house_permissible: Optional[bool] = None) -> dict:
+    """Both approval paths for one lot, plus one plain-English summary.
+
+    Every surface that talks about granny flats calls this, so they say the same
+    thing. Lot area on its own never rules a granny flat out here: the SEPP sets a
+    frontage by lot-area band on the CDC path and a non-discretionary site area for
+    DETACHED granny flats on the DA path, not one minimum for every granny flat.
+    """
+    cdc = evaluate_cdc(rules, zone, lot_area_m2, frontage_range_m, battle_axe)
+    da = evaluate_da(rules, zone, lot_area_m2, detached, dwelling_house_permissible)
+    band = _band_for(rules.frontage_bands, float(lot_area_m2)) if _positive(lot_area_m2) else None
+    cdc_line = f"Complying development (CDC): {_CDC_LABEL[cdc['outcome']]} — {cdc['reason']}."
+    if band is not None and cdc["outcome"] == "UNKNOWN" and "required_m" not in cdc:  # noqa: bracket-access — evaluate_* always sets outcome
+        cdc_line += (f" For a lot of {float(lot_area_m2):g} m² the road frontage required at the "
+                     f"building line is {band.value:g} m ({band.clause}).")
+    da_line = f"Development application (DA): {_DA_LABEL[da['outcome']]} — {da['reason']}."
+    if da["outcome"] == "BELOW":  # noqa: bracket-access — evaluate_* always sets outcome
+        da_line += f" {da['note']['clause']}: \"{da['note']['quote']}\""
+    site = rules.by_type["da_detached_min_site_area"]  # noqa: bracket-access — validated
+    if da["outcome"] == "UNKNOWN" and _positive(lot_area_m2) and float(lot_area_m2) < site.value:  # noqa: bracket-access — evaluate_* always sets outcome
+        note = rules.by_type["da_non_discretionary_note"]  # noqa: bracket-access — validated
+        da_line += (f" If the granny flat is detached, this lot of {float(lot_area_m2):g} m² is below the "
+                    f"{site.value:g} m² site area ({site.clause}); {note.clause}: \"{note.quote}\"")
+    summary = ("The SEPP (Housing) 2021 sets no single minimum lot size for a granny flat; "
+               "the test depends on the approval path. " + cdc_line + " " + da_line)
+    stale = sorted({r.stale for r in (*rules.frontage_bands, *rules.by_type.values()) if r.stale})
+    if stale:
+        summary += (f" Note: {'; '.join(stale)} after these rules were last checked; "
+                    "a re-check against the amended instrument is pending.")
+    return {"cdc": cdc, "da": da,
+            "cdc_frontage_required_m": band.value if band is not None else None,
+            "cdc_frontage_rule": _evidence(band) if band is not None else None,
+            "summary": summary, "stale": stale}

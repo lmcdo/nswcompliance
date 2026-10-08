@@ -1340,39 +1340,23 @@ def fetch_tax_thresholds(
     }
 
 
-def _validate_sepp_sd_config(min_lot_row: Optional[dict]) -> Optional[dict]:
-    """Validate the min_lot_size row into calc_feasibility's sepp_standards shape.
+def _load_sd_path_rules(conn):
+    """The validated CDC/DA granny-flat rules (migrations 083/084), or None.
 
-    Returns {"sd_min_lot": float, "sd_zones": set[str]} only when the minimum
-    is a finite positive number and every zone entry is a non-empty string.
-    A zero/NaN minimum would silently pass every lot, and a null zone entry
-    would crash sorted() mid-render — corrupt rows fail closed to None, which
-    renders "Not assessed" downstream.
+    The SEPP (Housing) 2021 sets no single minimum lot size for a granny flat,
+    so the secondary-dwelling row is answered per approval path by
+    services/secondary_dwelling_paths. Invalid, stale or missing rules return
+    None, which renders "Not assessed" downstream -- never a figure.
     """
-    if not min_lot_row:
-        return None
     try:
-        min_lot = float(min_lot_row.get("numeric_value"))
-    except (TypeError, ValueError):
-        return None
-    if not math.isfinite(min_lot) or min_lot <= 0:
-        return None
-    raw_zones = min_lot_row.get("applicable_zones")
-    if not isinstance(raw_zones, (list, tuple, set)):
-        return None
-    zones = set()
-    for z in raw_zones:
-        if not isinstance(z, str) or not z.strip():
-            return None
-        zones.add(z.strip())
-    if not zones:
-        return None
-    out = {"sd_min_lot": min_lot, "sd_zones": zones}
-    # Auto-stale passthrough (W3): the caller renders a notice when present.
-    if min_lot_row.get("stale_since"):
-        out["stale_since"] = min_lot_row.get("stale_since")
-        out["stale_reason"] = min_lot_row.get("stale_reason")
-    return out
+        from services.secondary_dwelling_paths import load_rules
+    except ImportError:  # Fly / CLI copies run with scripts/ on the path only
+        from secondary_dwelling_paths import load_rules  # type: ignore
+    outcome = load_rules(conn)
+    if outcome.failures:
+        logger.warning("Regulatory configs: granny-flat path rules unavailable: %s",
+                       "; ".join(outcome.failures))
+    return outcome.rules
 
 
 # prior-art-checked: MOVED from services/conveyancing.py._load_regulatory_configs
@@ -1391,19 +1375,15 @@ def load_regulatory_configs(db_url: Optional[str]) -> tuple[Optional[dict], Opti
     try:
         conn = psycopg2.connect(db_url)
         conn.autocommit = True
-        # SEPP secondary dwelling standards — NO fallback (#684): a missing or
-        # incomplete min_lot_size row returns None, and the secondary-dwelling
-        # feasibility row renders "Not assessed" downstream. A hardcoded
-        # regulatory figure must never render silently.
-        sd_rows = fetch_sepp_housing_standards(conn, development_type="secondary_dwelling")
-        min_lot_row = None
-        if sd_rows:
-            sd_by_type = {r["standard_type"]: r for r in sd_rows}
-            min_lot_row = sd_by_type.get("min_lot_size")
-        sepp_standards = _validate_sepp_sd_config(min_lot_row)
+        # SEPP secondary dwelling rules — NO fallback (#684): invalid or missing
+        # path rules return None, and the secondary-dwelling feasibility row
+        # renders "Not assessed" downstream. A hardcoded regulatory figure must
+        # never render silently.
+        sd_rules = _load_sd_path_rules(conn)
+        sepp_standards = {"sd_rules": sd_rules} if sd_rules is not None else None
         if sepp_standards is None:
             logger.warning(
-                "Regulatory configs: no valid min_lot_size row for secondary_dwelling — "
+                "Regulatory configs: no valid granny-flat path rules — "
                 "secondary-dwelling feasibility renders 'Not assessed'"
             )
         # Tax thresholds — no fallback; None renders "Not assessed"
@@ -1534,7 +1514,15 @@ def check_regulatory_freshness(conn) -> list[str]:
     if conn is None:
         return ["CRITICAL: no DB connection — all regulatory values will use hardcoded fallbacks"]
 
-    # 1. Check housing_sepp_standards has secondary_dwelling rows
+    # 1. Check the secondary_dwelling rules: the per-path CDC/DA rules the
+    # feasibility row is answered from, and the max floor area.
+    try:
+        from services.secondary_dwelling_paths import load_rules
+    except ImportError:
+        from secondary_dwelling_paths import load_rules  # type: ignore
+    outcome = load_rules(conn)
+    for f in outcome.failures:
+        warnings.append(f"SEPP: granny-flat path rule {f} — feasibility row renders 'Not assessed'")
     try:
         cur = conn.cursor()
         cur.execute(
@@ -1542,13 +1530,12 @@ def check_regulatory_freshness(conn) -> list[str]:
             SELECT standard_type, numeric_value
             FROM housing_sepp_standards
             WHERE development_type = 'secondary_dwelling'
-              AND standard_type IN ('min_lot_size', 'max_floor_area')
+              AND standard_type = 'max_floor_area'
+              AND approval_pathway IS NULL
             """,
         )
         rows = {r[0]: float(r[1]) for r in cur.fetchall()}
         cur.close()
-        if "min_lot_size" not in rows:
-            warnings.append("SEPP: missing min_lot_size for secondary_dwelling — feasibility row renders 'Not assessed'")
         if "max_floor_area" not in rows:
             warnings.append("SEPP: missing max_floor_area for secondary_dwelling")
     except Exception as e:

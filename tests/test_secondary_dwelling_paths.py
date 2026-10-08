@@ -20,6 +20,7 @@ import pytest
 
 from services.secondary_dwelling_paths import (
     AUTHORITATIVE_URL_PREFIX,
+    assess,
     evaluate_cdc,
     evaluate_da,
     load_rules,
@@ -234,11 +235,21 @@ def test_removing_a_row_fails_closed(standard_type, expected_substring):
     assert any(expected_substring in f for f in outcome.failures), outcome.failures
 
 
-def test_stale_since_fails_marked_stale(rows):
+def test_stale_rule_is_served_with_a_notice_not_blanked(rows):
+    """W3 (#839): an amended instrument does not blank the answer; the notice
+    travels with it until the rule is re-checked."""
     rows[0]["stale_since"] = "2026-01-01"
+    rows[0]["stale_reason"] = "SEPP (Housing) 2021 version changed (a -> b)"
     outcome = validate_rules(rows)
-    assert outcome.rules is None
-    assert any("marked stale" in f for f in outcome.failures), outcome.failures
+    assert outcome.failures == () and outcome.rules is not None
+    r = assess(outcome.rules, "R2", 600)
+    assert r["stale"] == ["SEPP (Housing) 2021 version changed (a -> b)"]
+    assert "re-check against the amended instrument is pending" in r["summary"]
+
+
+def test_fresh_rules_carry_no_stale_notice(valid_rules):
+    r = assess(valid_rules, "R2", 600)
+    assert r["stale"] == [] and "re-check" not in r["summary"]
 
 
 def test_empty_quote_fails(rows):
@@ -777,3 +788,66 @@ def test_zone_scope_must_list_every_zone_its_quote_covers():
 def test_frontage_given_as_text_is_not_a_measurement(bad):
     rules = validate_rules(copy.deepcopy(BASE_ROWS)).rules
     assert evaluate_cdc(rules, "R2", 600.0, bad, False)["outcome"] == "UNKNOWN"
+
+
+# ---------------------------------------------------------------------------
+# assess(): the one answer every granny-flat surface shows.
+# ---------------------------------------------------------------------------
+
+_KNOWN = {"battle_axe": False, "detached": True, "dwelling_house_permissible": True}
+
+
+def test_assess_never_states_one_minimum_lot_size_as_a_ban(valid_rules):
+    for area in (300, 449, 450, 1200):
+        r = assess(valid_rules, "R2", area, **_KNOWN)
+        assert r["cdc"]["outcome"] != "FAIL" and r["da"]["outcome"] != "FAIL"
+        assert "sets no single minimum lot size" in r["summary"]
+
+
+def test_assess_below_site_area_quotes_the_non_discretionary_note(valid_rules):
+    r = assess(valid_rules, "R2", 400, **_KNOWN)
+    assert r["da"]["outcome"] == "BELOW"
+    assert "4.15(3)" in r["summary"] and "does not prevent development consent" in r["summary"]
+
+
+def test_assess_meets_site_area_has_no_note(valid_rules):
+    r = assess(valid_rules, "R2", 600, **_KNOWN)
+    assert r["da"]["outcome"] == "MEETS" and "4.15(3)" not in r["summary"]
+
+
+@pytest.mark.parametrize("area, band_m", [(600, 12), (1000, 15), (2000, 18)])
+def test_assess_reports_the_frontage_band_when_cdc_is_undetermined(valid_rules, area, band_m):
+    r = assess(valid_rules, "R2", area)  # battle-axe unknown -> CDC UNKNOWN
+    assert r["cdc"]["outcome"] == "UNKNOWN"
+    assert r["cdc_frontage_required_m"] == band_m
+    assert f"required at the building line is {band_m} m" in r["summary"]
+
+
+def test_assess_no_frontage_hint_when_cdc_does_not_apply(valid_rules):
+    r = assess(valid_rules, "R5", 800)
+    assert r["cdc"]["outcome"] == "NOT_APPLICABLE"
+    assert "required at the building line" not in r["summary"]
+
+
+def test_assess_frontage_measured_passes_and_fails_from_data(valid_rules):
+    ok = assess(valid_rules, "R2", 600, frontage_range_m=(13.0, 13.0), **_KNOWN)
+    bad = assess(valid_rules, "R2", 600, frontage_range_m=(10.0, 10.0), **_KNOWN)
+    assert ok["cdc"]["outcome"] == "PASS" and bad["cdc"]["outcome"] == "FAIL"
+    assert "meets the road-frontage test" in ok["summary"]
+    assert "does not meet the road-frontage test" in bad["summary"]
+
+
+def test_assess_unknown_lot_area_gives_no_band(valid_rules):
+    r = assess(valid_rules, "R2", None)
+    assert r["cdc_frontage_required_m"] is None and r["cdc_frontage_rule"] is None
+
+
+def test_assess_small_lot_with_undetermined_da_still_names_the_detached_site_area(valid_rules):
+    r = assess(valid_rules, "R2", 380)  # s 50 and detached unknown -> DA UNKNOWN
+    assert r["da"]["outcome"] == "UNKNOWN"
+    assert "If the granny flat is detached, this lot of 380 m² is below the 450 m² site area" in r["summary"]
+    assert "4.15(3)" in r["summary"]
+
+
+def test_assess_large_lot_has_no_detached_site_area_hint(valid_rules):
+    assert "If the granny flat is detached" not in assess(valid_rules, "R2", 600)["summary"]

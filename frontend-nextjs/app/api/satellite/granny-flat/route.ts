@@ -367,7 +367,8 @@ export async function POST(request: NextRequest) {
         detectResp = await fetch(`${PYTHON_API}/pipeline/granny-flat/detect`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address, lat, lng, prop_id, report_id: jobId, lot_geometry: lotGeometry, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) }),
+          // zone: the CDC and DA granny-flat tests each apply only in their own zones.
+          body: JSON.stringify({ address, lat, lng, prop_id, report_id: jobId, lot_geometry: lotGeometry, zone, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) }),
           signal: AbortSignal.timeout(180_000),
         });
       } catch (err) {
@@ -396,7 +397,7 @@ export async function POST(request: NextRequest) {
           lng,
           prop_id,
           report_id: jobId,
-          extra_body: { lot_geometry: lotGeometry, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) },
+          extra_body: { lot_geometry: lotGeometry, zone, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) },
           ...(notification_email ? { notification_email } : {}),
         },
       }),
@@ -539,6 +540,7 @@ export async function POST(request: NextRequest) {
           is_heritage,
           existing_secondary_dwelling: existing_secondary_dwelling ?? null,
           main_dwelling_area_m2: main_dwelling_area_m2 ?? null,
+          zone,
         }),
         signal: AbortSignal.timeout(30_000),
       }),

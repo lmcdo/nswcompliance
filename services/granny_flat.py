@@ -130,34 +130,61 @@ _SEPP_UNAVAILABLE_DETAIL = (
 )
 
 
-def _get_sepp_sd_standards(conn=None) -> tuple[Optional[float], Optional[float]]:
-    """Load secondary dwelling SEPP standards from DB. NO fallback (#817).
+def _get_sepp_sd_rules(conn=None) -> tuple[Optional["Rules"], Optional[float]]:
+    """Load the granny-flat rules from DB. NO fallback (#817).
 
-    Returns (min_lot_m2, max_floor_area_m2); either element is None when its
-    row is missing or the DB is unreachable — callers fail closed on None.
+    Returns (path_rules, max_floor_area_m2). path_rules are the per-clause CDC
+    and DA rules (migrations 083/084) validated by
+    services/secondary_dwelling_paths.load_rules; the SEPP has no single minimum
+    lot size for a granny flat, so none is loaded. Either element is None when
+    it cannot be established -- callers fail closed on None.
     """
     if conn is None:
         logger.warning("SEPP standards: no DB connection — standards unavailable, callers fail closed")
         return None, None
     try:
+        from services.secondary_dwelling_paths import load_rules
+    except ImportError:
+        from secondary_dwelling_paths import load_rules
+    outcome = load_rules(conn)
+    if outcome.failures:
+        logger.warning("Granny-flat path rules unavailable, callers fail closed: %s",
+                       "; ".join(outcome.failures))
+    try:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT standard_type, numeric_value
+            SELECT numeric_value
             FROM housing_sepp_standards
             WHERE development_type = 'secondary_dwelling'
-              AND standard_type IN ('min_lot_size', 'max_floor_area')
+              AND standard_type = 'max_floor_area'
+              AND approval_pathway IS NULL
             """,
         )
-        rows = {r[0]: float(r[1]) for r in cur.fetchall()}
+        row = cur.fetchone()
         cur.close()
-        return (
-            rows.get("min_lot_size"),
-            rows.get("max_floor_area"),
-        )
+        max_gf = float(row[0]) if row and row[0] is not None else None
     except Exception as e:
-        logger.warning("Failed to load SEPP standards from DB — standards unavailable, callers fail closed: %s", e)
-        return None, None
+        logger.warning("Failed to load SEPP max floor area from DB — unavailable, callers fail closed: %s", e)
+        max_gf = None
+    return outcome.rules, max_gf
+
+
+def _approval_paths(rules, zone: Optional[str], lot_area_m2: Optional[float]) -> dict:
+    """The CDC and DA answers for this lot, from the one shared engine."""
+    try:
+        from services.secondary_dwelling_paths import assess
+    except ImportError:
+        from secondary_dwelling_paths import assess
+    return assess(rules, zone, lot_area_m2)
+
+
+def _path_warning(paths: dict) -> Optional[str]:
+    """The summary, when either path reports something the reader must act on."""
+    if paths["cdc"]["outcome"] == "FAIL" or paths["da"]["outcome"] == "BELOW":  # noqa: bracket-access — assess() always sets both
+        return paths["summary"]  # noqa: bracket-access — assess() always sets it
+    return None
+
 
 # NSW Planning Portal
 NSW_API_BASE = "https://api.apps1.nsw.gov.au/planning"
@@ -319,6 +346,9 @@ class GrannyFlatDetectRequest(BaseModel):
     # shoelace below is only a fallback — mirrors GrannyFlatConfirmRequest.
     lot_area_m2: Optional[float] = None
     report_id: Optional[str] = None      # pre-allocated UUID; when set, writes detect result to DB for async polling
+    # Planning Portal zone code (e.g. "R2"). The CDC and DA tests each apply
+    # only in their own zones, so without it both paths are "not determined".
+    zone: Optional[str] = None
 
 
 class DetectedStructure(BaseModel):
@@ -338,6 +368,10 @@ class GrannyFlatDetectResponse(BaseModel):
     lot_area_m2: Optional[float]
     sepp_eligible: bool
     sepp_ineligible_reason: Optional[str]
+    # The zone the paths were assessed for (echoed so confirm can reuse it) and
+    # the CDC/DA answers from services/secondary_dwelling_paths.assess().
+    zone: Optional[str] = None
+    approval_paths: Optional[dict] = None
     detected_structures: list[DetectedStructure]
     # None = detection FAILED (three-state, #745 D4); 0 = genuinely none found.
     samgeo_structure_count: Optional[int]
@@ -418,6 +452,7 @@ class GrannyFlatConfirmRequest(BaseModel):
     is_heritage: Optional[bool] = None  # from NSW Planning Portal via Next.js
     existing_secondary_dwelling: Optional[bool] = None  # user self-report: is there already a granny flat on this lot?
     main_dwelling_area_m2: Optional[float] = None  # SAM-detected footprint of principal dwelling (is_main_dwelling=True)
+    zone: Optional[str] = None  # echoed from the detect response
 
 
     @model_validator(mode="after")
@@ -472,6 +507,7 @@ class GrannyFlatConfirmResponse(BaseModel):
     review_state_detail: str
     data_sources: list[str]
     warnings: list[str]
+    approval_paths: Optional[dict] = None
 
 
 # ---------------------------------------------------------------------------
@@ -1376,23 +1412,21 @@ def detect_structures(req: GrannyFlatDetectRequest):
     _detect_conn = None
     try:
         _detect_conn = _get_conn()
-        sepp_min_lot, _sepp_max_gf = _get_sepp_sd_standards(_detect_conn)
+        sepp_rules, _sepp_max_gf = _get_sepp_sd_rules(_detect_conn)
     except Exception:
-        sepp_min_lot, _sepp_max_gf = _get_sepp_sd_standards()
+        sepp_rules, _sepp_max_gf = _get_sepp_sd_rules()
     finally:
         if _detect_conn:
             _detect_conn.close()
-    if sepp_min_lot is None:
+    if sepp_rules is None:
         raise HTTPException(status_code=503, detail=_SEPP_UNAVAILABLE_DETAIL)
 
+    # Lot area alone never rules a granny flat out: the SEPP (Housing) 2021 sets
+    # a road frontage by lot-area band on the CDC path and a non-discretionary
+    # site area for detached granny flats on the DA path. Both are reported.
+    approval_paths = _approval_paths(sepp_rules, req.zone, lot_area_m2)
     sepp_eligible = True
     sepp_ineligible_reason = None
-    if lot_area_m2 is not None and lot_area_m2 < sepp_min_lot:
-        sepp_eligible = False
-        sepp_ineligible_reason = (
-            f"Lot area {lot_area_m2:.0f} m² is below the SEPP Housing 2021 "
-            f"minimum of {sepp_min_lot:.0f} m²"
-        )
 
     # Sanitize prop_id to prevent path traversal (prop_ids are numeric, but be defensive)
     safe_prop_id = "".join(c for c in req.prop_id if c.isalnum() or c in ("-", "_"))
@@ -1550,6 +1584,8 @@ def detect_structures(req: GrannyFlatDetectRequest):
         lot_area_m2=round(lot_area_m2, 1) if lot_area_m2 else None,
         sepp_eligible=sepp_eligible,
         sepp_ineligible_reason=sepp_ineligible_reason,
+        zone=req.zone,
+        approval_paths=approval_paths,
         detected_structures=detected_structures,
         samgeo_structure_count=None if detection_failed else len(detected_structures),
         detection_failed=detection_failed,
@@ -1671,9 +1707,9 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     try:
         _confirm_conn = _get_conn()
         try:
-            sepp_min_lot, sepp_max_gf = _get_sepp_sd_standards(_confirm_conn)
+            sepp_rules, sepp_max_gf = _get_sepp_sd_rules(_confirm_conn)
         except Exception:
-            sepp_min_lot, sepp_max_gf = _get_sepp_sd_standards()
+            sepp_rules, sepp_max_gf = _get_sepp_sd_rules()
         try:
             tile_b64, detect_manifest, detected_structures_carry = _fetch_detect_row(
                 _confirm_conn, req)
@@ -1682,7 +1718,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             logger.error(f"Detect-row read failed for detect_id={req.detect_id}: {e}")
     except Exception:
         detect_row_unavailable = True
-        sepp_min_lot, sepp_max_gf = _get_sepp_sd_standards()
+        sepp_rules, sepp_max_gf = _get_sepp_sd_rules()
     finally:
         if _confirm_conn:
             try:
@@ -1700,7 +1736,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             "the structure count could not be checked against it. The count "
             "supplied with the request was used."
         )
-    if sepp_min_lot is None or sepp_max_gf is None:
+    if sepp_rules is None or sepp_max_gf is None:
         raise HTTPException(status_code=503, detail=_SEPP_UNAVAILABLE_DETAIL)
 
     count_source, provenance_note = _resolve_count_source(
@@ -1763,18 +1799,19 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     granny_flat_buildable = True
     max_floor_area_m2 = sepp_max_gf
 
+    # Lot area is reported per approval path, never as one minimum that makes
+    # the lot unbuildable -- the SEPP (Housing) 2021 sets no such minimum.
+    approval_paths = _approval_paths(sepp_rules, req.zone, lot_area_m2)
     if lot_area_m2 is None:
         warnings.append(
-            f"Lot area could not be calculated for this property — lot geometry was unavailable. "
-            f"The {sepp_min_lot:.0f} m² minimum under SEPP Housing 2021 (cl 53) could not be verified. "
-            f"Confirm lot area on NSW Planning Portal before proceeding."
+            "Lot area could not be calculated for this property — lot geometry was unavailable, "
+            "so the lot-area tests for the CDC and DA paths were not applied. "
+            "Confirm lot area on NSW Planning Portal before proceeding."
         )
-    elif lot_area_m2 < sepp_min_lot:
-        granny_flat_buildable = False
-        warnings.append(
-            f"Lot area {lot_area_m2:.0f} m² is below the SEPP Housing 2021 minimum "
-            f"of {sepp_min_lot:.0f} m²"
-        )
+    else:
+        _pw = _path_warning(approval_paths)
+        if _pw:
+            warnings.append(_pw)
 
     # Residual area proxy check — simple heuristic pending full geometric envelope computation.
     # Rationale: a CDC granny flat needs ≥60 m² floor area (SEPP Housing 2021 cl 4.18) plus
@@ -2159,7 +2196,9 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     ds_sepp = DataSourceQuery(
         "SEPP Housing 2021 rules",
         "db:housing_sepp_standards",
-        {"min_lot_m2": sepp_min_lot, "max_gf_area_m2": sepp_max_gf},
+        {"path_rule_ids": sorted(
+            [b.id for b in sepp_rules.frontage_bands] + [r.id for r in sepp_rules.by_type.values()]),
+         "max_gf_area_m2": sepp_max_gf},
     )
     ds_sepp.record_response(
         {"eligible": granny_flat_buildable, "max_floor_area_m2": max_floor_area_m2},
@@ -2250,4 +2289,5 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         review_state_detail=review_state_detail,
         data_sources=data_sources,
         warnings=warnings,
+        approval_paths=approval_paths,
     )

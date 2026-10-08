@@ -515,10 +515,16 @@ class TestLandTaxTruth:
 #     only from injected housing_sepp_standards config, absence is fail-visible
 # ---------------------------------------------------------------------------
 
-def _sepp_standards_db() -> dict:
-    """Shape produced by conveyancing_db.load_regulatory_configs from the
-    housing_sepp_standards min_lot_size row (numeric_value cast to float)."""
-    return {"sd_min_lot": 450.0, "sd_zones": {"R1", "R2", "R3", "R4"}}
+import copy as _copy  # noqa: E402
+
+from services.secondary_dwelling_paths import validate_rules as _validate_rules  # noqa: E402
+from tests.test_secondary_dwelling_paths import BASE_ROWS as _BASE_ROWS  # noqa: E402
+
+
+def _sepp_standards_db(rows=None) -> dict:
+    """What conveyancing_db.load_regulatory_configs returns: the validated
+    per-path granny-flat rules (migrations 083/084)."""
+    return {"sd_rules": _validate_rules(_copy.deepcopy(rows or _BASE_ROWS)).rules}
 
 
 def _sd_rows(results: list[dict]) -> list[dict]:
@@ -533,20 +539,18 @@ class TestSecondaryDwellingTruth:
             is_strata=is_strata, sepp_standards=sepp_standards, tax_config=None,
         ))
 
-    def test_config_present_renders_injected_figure(self):
-        """Mutation check: the rendered minimum comes from the config, not any
-        constant — inject a non-450 figure and it must appear."""
-        rows = self._run({"sd_min_lot": 600.0, "sd_zones": {"R2"}}, lot_area=650)
+    def test_band_rendered_comes_from_the_rules_not_a_constant(self):
+        """Mutation check: the frontage band is read from the injected rules."""
+        rows = self._run(_sepp_standards_db(), lot_area=2000)
         assert len(rows) == 1
-        assert rows[0]["answer"] == "Likely permissible"
-        assert "600 m²" in rows[0]["basis"]
-        assert "450" not in rows[0]["basis"]
+        assert rows[0]["answer"] == "Depends on approval path — not ruled out by lot area"
+        assert "required at the building line is 18 m" in rows[0]["basis"]
 
-    def test_config_present_below_minimum_uses_injected_figure(self):
+    def test_small_lot_is_never_reported_as_too_small(self):
         rows = self._run(_sepp_standards_db(), lot_area=300)
-        assert rows[0]["answer"] == "Unlikely — lot too small"
-        assert "450 m²" in rows[0]["basis"]           # from the injected config
-        assert "Cl 53(1)(b)" in rows[0]["basis"]
+        assert "too small" not in rows[0]["answer"].lower()
+        assert "Cl 53(1)(b)" not in rows[0]["basis"]  # the old, wrong citation
+        assert "sets no single minimum lot size" in rows[0]["basis"]
 
     def test_config_absent_renders_not_assessed_no_figures(self):
         """Mutation check: restoring any hardcoded fallback fails this — an
@@ -561,10 +565,11 @@ class TestSecondaryDwellingTruth:
         assert "450" not in blob
         assert "unavailable" in rows[0]["basis"]
 
-    def test_partial_config_fails_visible_not_partial_figures(self):
-        """A config missing either key renders 'Not assessed' — half-loaded
-        standards must not mix with any default."""
-        for partial in ({"sd_min_lot": 450.0}, {"sd_zones": {"R1", "R2"}}, {}):
+    def test_retired_config_shape_fails_visible_not_partial_figures(self):
+        """The retired {sd_min_lot, sd_zones} shape, or an empty dict, renders
+        'Not assessed' -- never a 450 m2 verdict."""
+        for partial in ({"sd_min_lot": 450.0}, {"sd_zones": {"R1", "R2"}},  # noqa: zone-codes — fixture copy of a stored row, not a served zone list
+                        {"sd_min_lot": 450.0, "sd_zones": {"R2"}}, {}):
             rows = self._run(partial)
             assert rows[0]["answer"] == "Not assessed", partial
 
@@ -572,22 +577,17 @@ class TestSecondaryDwellingTruth:
         rows = self._run(None, is_strata=True)
         assert rows[0]["answer"] == "Not applicable — strata lot"
 
-    def test_corrupt_injected_config_fails_visible(self):
-        """Sol review of #816: calc_feasibility re-validates at its own
-        boundary — a zero/NaN minimum or a null zone entry from any caller
-        must render 'Not assessed', never pass every lot or crash sorted()."""
-        for corrupt in (
-            {"sd_min_lot": 0, "sd_zones": {"R2"}},
-            {"sd_min_lot": float("nan"), "sd_zones": {"R2"}},
-            {"sd_min_lot": 450.0, "sd_zones": {"R1", None}},
-        ):
-            rows = self._run(corrupt)
-            assert rows[0]["answer"] == "Not assessed", corrupt
+    def test_invalid_rules_fail_visible(self):
+        """Rules that fail validation load as None -- 'Not assessed', no figure."""
+        broken = _copy.deepcopy(_BASE_ROWS)
+        broken[0]["source_quote"] = ""
+        rows = self._run(_sepp_standards_db(broken))
+        assert rows[0]["answer"] == "Not assessed"
 
-    def test_lot_area_unavailable_uses_injected_figure(self):
+    def test_lot_area_unavailable_names_both_lot_area_tests(self):
         rows = self._run(_sepp_standards_db(), lot_area=None)
         assert rows[0]["answer"] == "Lot area unavailable"
-        assert "450 m²" in rows[0]["basis"]           # interpolated, not literal
+        assert "Schedule 1 cl 2(1)(b)" in rows[0]["basis"] and "s 53(2)(a)" in rows[0]["basis"]
 
     def test_db_loader_contains_no_fallback_constants(self):
         """Source guard one level up (#684): conveyancing_db must not
@@ -604,7 +604,7 @@ class TestSecondaryDwellingTruth:
         rows = [r for r in calc_feasibility(
             {"zone": "R2"}, {"lot_area_m2": 500, "land_value": 900_000}, [],
             is_strata=False,
-            sepp_standards={"sd_min_lot": 450.0, "sd_zones": {"R1", "R2"}},
+            sepp_standards=_sepp_standards_db(),
             tax_config=None,
         ) if "Complying Development" in r["question"]]
         assert len(rows) == 1

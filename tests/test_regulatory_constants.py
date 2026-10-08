@@ -4,7 +4,7 @@ Verifies:
   1. fetch_sepp_housing_standards returns correct shape and filters by zone/dev_type
   2. get_sepp_standard_value returns single float
   3. fetch_tax_thresholds returns correct shape
-  4. granny_flat._get_sepp_sd_standards has NO fallback (#817) — covered in
+  4. granny_flat._get_sepp_sd_rules has NO fallback (#817) — covered in
      tests/test_granny_flat_mutation.py (None → endpoints fail closed, 503)
   5. calc_feasibility uses injected configs correctly
 """
@@ -25,7 +25,6 @@ _spec.loader.exec_module(_mod)
 
 fetch_sepp_housing_standards = _mod.fetch_sepp_housing_standards
 get_sepp_standard_value = _mod.get_sepp_standard_value
-_validate_sepp_sd_config = _mod._validate_sepp_sd_config
 fetch_tax_thresholds = _mod.fetch_tax_thresholds
 fetch_heritage_postgis = _mod.fetch_heritage_postgis
 fetch_dcp_setbacks = _mod.fetch_dcp_setbacks
@@ -41,6 +40,15 @@ _gcr_mod = importlib.util.module_from_spec(_gcr_spec)
 _gcr_spec.loader.exec_module(_gcr_mod)
 
 calc_feasibility = _gcr_mod.calc_feasibility
+
+import copy  # noqa: E402
+
+from services.secondary_dwelling_paths import RulesOutcome, validate_rules  # noqa: E402
+from tests.test_secondary_dwelling_paths import BASE_ROWS  # noqa: E402
+
+# The real 084 granny-flat path rules, validated -- what load_rules returns.
+_RULES = validate_rules(copy.deepcopy(BASE_ROWS)).rules
+_SD = {"sd_rules": _RULES}
 
 
 # ── Helpers ──
@@ -182,27 +190,34 @@ class TestCalcFeasibilityWithConfigs:
     _base_valuation = {"lot_area_m2": 500, "land_value": 1_200_000}
     _base_overlays = []
 
-    def test_uses_injected_sepp_min_lot(self):
-        """When SEPP says 600m², a 500m² lot should fail."""
-        sepp = {"sd_min_lot": 600, "sd_zones": {"R1", "R2", "R3", "R4"}}
+    def test_injected_rules_answer_per_path_with_the_band_from_data(self):
+        """A 1,000 m2 lot falls in the 15 m frontage band -- read from the rules."""
         result = calc_feasibility(
-            self._base_controls, self._base_valuation, self._base_overlays,
-            sepp_standards=sepp,
+            self._base_controls, {**self._base_valuation, "lot_area_m2": 1000}, self._base_overlays,
+            sepp_standards=_SD,
         )
         sd_item = next(r for r in result if "granny flat" in r["question"].lower())
-        assert sd_item["flag"] == "warn"
-        assert "600" in sd_item["basis"]
+        assert sd_item["answer"] == "Depends on approval path — not ruled out by lot area"
+        assert "required at the building line is 15 m" in sd_item["basis"]
 
-    def test_uses_injected_sepp_zones(self):
-        """When SEPP zones exclude R2, secondary dwelling should show zone check required."""
-        sepp = {"sd_min_lot": 450, "sd_zones": {"R3", "R4"}}
+    def test_small_lot_is_never_reported_as_too_small(self):
+        """Mutation guard: the SEPP sets no single minimum lot size for a granny flat."""
         result = calc_feasibility(
-            self._base_controls, self._base_valuation, self._base_overlays,
-            sepp_standards=sepp,
+            self._base_controls, {**self._base_valuation, "lot_area_m2": 300}, self._base_overlays,
+            sepp_standards=_SD,
         )
         sd_item = next(r for r in result if "granny flat" in r["question"].lower())
+        assert "too small" not in sd_item["answer"].lower()
+        assert "sets no single minimum lot size" in sd_item["basis"]
+
+    def test_zone_outside_both_paths(self):
+        result = calc_feasibility(
+            {**self._base_controls, "zone": "B2 Local Centre"}, self._base_valuation, self._base_overlays,
+            sepp_standards=_SD,
+        )
+        sd_item = next(r for r in result if "granny flat" in r["question"].lower())
+        assert sd_item["answer"] == "Outside the SEPP granny-flat zones"
         assert sd_item["flag"] == "warn"
-        assert "Zone check" in sd_item["answer"]
 
     def test_uses_injected_tax_config(self):
         """When tax threshold is 1M, a 1.2M property should show tax."""
@@ -216,26 +231,15 @@ class TestCalcFeasibilityWithConfigs:
         assert "2026" in lt_item["question"]
         assert "$1,000,000" in lt_item["basis"]
 
-    def test_validator_rejects_zero_minimum(self):
-        """A 0 m² minimum would silently pass every lot — corrupt row fails closed."""
-        row = {"numeric_value": 0, "applicable_zones": ["R2"]}
-        assert _validate_sepp_sd_config(row) is None
-
-    def test_validator_rejects_negative_and_nonfinite(self):
-        for bad in (-450, float("nan"), float("inf"), None, "abc"):
-            row = {"numeric_value": bad, "applicable_zones": ["R2"]}
-            assert _validate_sepp_sd_config(row) is None, bad
-
-    def test_validator_rejects_null_or_empty_zone_entries(self):
-        """A null zone entry would crash sorted() mid-render — fail closed instead."""
-        for bad_zones in (["R1", None], ["R1", ""], ["R1", "  "], [], None, "R1"):
-            row = {"numeric_value": 450, "applicable_zones": bad_zones}
-            assert _validate_sepp_sd_config(row) is None, bad_zones
-
-    def test_validator_accepts_and_normalises_valid_row(self):
-        row = {"numeric_value": "450", "applicable_zones": [" R1 ", "R2"]}
-        cfg = _validate_sepp_sd_config(row)
-        assert cfg == {"sd_min_lot": 450.0, "sd_zones": {"R1", "R2"}}
+    def test_old_shape_config_is_not_assessed_never_a_figure(self):
+        """A caller still injecting the retired {sd_min_lot, sd_zones} shape gets
+        'Not assessed', not a 450 m2 verdict."""
+        result = calc_feasibility(
+            self._base_controls, self._base_valuation, self._base_overlays,
+            sepp_standards={"sd_min_lot": 450.0, "sd_zones": {"R2"}},
+        )
+        sd_item = next(r for r in result if "granny flat" in r["question"].lower())
+        assert sd_item["answer"] == "Not assessed" and "450" not in sd_item["basis"]
 
     def test_no_configs_renders_not_assessed(self):
         """Without injected configs there is NO fallback (#684): the
@@ -250,7 +254,7 @@ class TestCalcFeasibilityWithConfigs:
 
     def test_strata_skips_secondary_dwelling_and_tax(self):
         """Strata lots should skip granny flat and land tax regardless of configs."""
-        sepp = {"sd_min_lot": 450, "sd_zones": {"R1", "R2", "R3", "R4"}}
+        sepp = _SD
         tax = {"tax_year": 2025, "threshold_dollars": 1_000_000, "rate": 0.016, "base_amount_dollars": 100}
         result = calc_feasibility(
             self._base_controls, self._base_valuation, self._base_overlays,
@@ -269,6 +273,23 @@ class TestCalcFeasibilityWithConfigs:
 # ── check_regulatory_freshness ──
 
 class TestCheckRegulatoryFreshness:
+    @pytest.fixture(autouse=True)
+    def _valid_path_rules(self, monkeypatch):
+        monkeypatch.setattr("services.secondary_dwelling_paths.load_rules",
+                            lambda conn: RulesOutcome(_RULES, ()))
+
+    def test_warns_when_path_rules_invalid(self, monkeypatch):
+        monkeypatch.setattr("services.secondary_dwelling_paths.load_rules",
+                            lambda conn: RulesOutcome(None, ("da_detached_min_site_area: rule missing",)))
+        conn = MagicMock()
+        cur = MagicMock()
+        conn.cursor.return_value = cur
+        from datetime import date
+        cur.fetchall.return_value = [("max_floor_area", 60.0)]
+        cur.fetchone.return_value = (date.today().year,)
+        warnings = check_regulatory_freshness(conn)
+        assert any("da_detached_min_site_area: rule missing" in w for w in warnings)
+
     def test_returns_critical_for_none_conn(self):
         warnings = check_regulatory_freshness(None)
         assert len(warnings) == 1
@@ -282,10 +303,7 @@ class TestCheckRegulatoryFreshness:
         # First call: SEPP standards
         # Second call: tax thresholds
         from datetime import date
-        cur.fetchall.return_value = [
-            ("min_lot_size", 450.0),
-            ("max_floor_area", 60.0),
-        ]
+        cur.fetchall.return_value = [("max_floor_area", 60.0)]
         cur.fetchone.return_value = (date.today().year,)
         warnings = check_regulatory_freshness(conn)
         assert warnings == []
@@ -298,17 +316,13 @@ class TestCheckRegulatoryFreshness:
         cur.fetchall.return_value = []  # no SEPP rows
         cur.fetchone.return_value = (date.today().year,)
         warnings = check_regulatory_freshness(conn)
-        assert any("min_lot_size" in w for w in warnings)
         assert any("max_floor_area" in w for w in warnings)
 
     def test_warns_when_tax_year_stale(self):
         conn = MagicMock()
         cur = MagicMock()
         conn.cursor.return_value = cur
-        cur.fetchall.return_value = [
-            ("min_lot_size", 450.0),
-            ("max_floor_area", 60.0),
-        ]
+        cur.fetchall.return_value = [("max_floor_area", 60.0)]
         cur.fetchone.return_value = (2024,)  # stale year
         warnings = check_regulatory_freshness(conn)
         assert any("stale" in w for w in warnings)
@@ -317,10 +331,7 @@ class TestCheckRegulatoryFreshness:
         conn = MagicMock()
         cur = MagicMock()
         conn.cursor.return_value = cur
-        cur.fetchall.return_value = [
-            ("min_lot_size", 450.0),
-            ("max_floor_area", 60.0),
-        ]
+        cur.fetchall.return_value = [("max_floor_area", 60.0)]
         cur.fetchone.return_value = None  # no tax rows
         warnings = check_regulatory_freshness(conn)
         assert any("no tax_thresholds" in w for w in warnings)

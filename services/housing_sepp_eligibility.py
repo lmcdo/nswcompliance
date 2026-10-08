@@ -75,6 +75,9 @@ class FormEligibility:
     # cdc_eligibility_standards. Values still serve; the notice rides along.
     stale_since: Optional[str] = None
     stale_reason: Optional[str] = None
+    # Secondary dwellings only: the CDC and DA answers from
+    # services/secondary_dwelling_paths.assess(). None for every other form.
+    approval_paths: Optional[dict] = None
 
 
 def normalize_zone(zone_code: Optional[str]) -> str:
@@ -212,6 +215,58 @@ def _gate_inputs(lat: Optional[float], lng: Optional[float]) -> dict:
     }
 
 
+def _fetch_path_rules():
+    """The validated CDC/DA granny-flat rules, or None. Never raises."""
+    import psycopg2
+
+    from services.secondary_dwelling_paths import load_rules
+
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return None
+    conn = None
+    try:
+        conn = psycopg2.connect(db_url, options="-c statement_timeout=5000")
+        outcome = load_rules(conn)
+    except Exception as e:  # noqa: BLE001 — reported as rules unavailable
+        logger.warning("granny-flat path rules unavailable: %s", e)
+        return None
+    finally:
+        if conn:
+            conn.close()
+    if outcome.failures:
+        logger.warning("granny-flat path rules failed validation: %s", "; ".join(outcome.failures))
+    return outcome.rules
+
+
+def _secondary_dwelling_result(g: dict, zone: str, lot_area_m2: Optional[float]) -> "FormEligibility":
+    """Secondary dwellings are answered per approval path, not by a lot minimum.
+
+    The SEPP (Housing) 2021 sets no single minimum lot size for a granny flat
+    (migration 084), so the generic min_lot_size / min_lot_width gate below must
+    never be applied to this form -- not even while the old pathway-agnostic rows
+    (ids 34, 44) are still in the table.
+    """
+    from services.secondary_dwelling_paths import PATH_RULED_DEV_TYPE, assess
+
+    rules = _fetch_path_rules()
+    common = dict(
+        development_type=PATH_RULED_DEV_TYPE, requires_lmr_area=bool(g.get("requires_lmr_area")),
+        applicable_zones=g.get("applicable_zones") or [],
+        min_lot_size_m2=None, min_lot_width_m=None,
+        source_clause=None, source_document=None, legislation_url=None, effective_date=None,
+    )
+    if rules is None:
+        return FormEligibility(
+            eligible=False, unconfirmed=True,
+            reason="The granny-flat rules could not be loaded, so neither approval path was assessed",
+            **common)
+    paths = assess(rules, zone, lot_area_m2)
+    met = paths["cdc"]["outcome"] == "PASS" or paths["da"]["outcome"] == "MEETS"  # noqa: bracket-access — assess() always sets both
+    return FormEligibility(eligible=met, unconfirmed=not met, reason=paths["summary"],  # noqa: bracket-access — always set
+                           approval_paths=paths, **common)
+
+
 def evaluate_eligibility(
     zone_code: Optional[str],
     lot_area_m2: Optional[float],
@@ -246,8 +301,15 @@ def evaluate_eligibility(
     in_tod = bool(gates.get("in_tod"))
     dual_occ_prohibited = bool(gates.get("dual_occ_prohibited"))
 
+    from services.secondary_dwelling_paths import PATH_RULED_DEV_TYPE
+
     results: list[FormEligibility] = []
     for dev_type, g in grouped.items():
+        if dev_type == PATH_RULED_DEV_TYPE:
+            # Its zone scope belongs to each path (CDC R1-R4, DA R1-R5), not to
+            # the generic rows' applicable_zones, so it is decided by the engine.
+            results.append(_secondary_dwelling_result(g, zone, lot_area_m2))
+            continue
         zones = g.get("applicable_zones") or []
         if zone not in zones:
             continue  # form not applicable to this zone

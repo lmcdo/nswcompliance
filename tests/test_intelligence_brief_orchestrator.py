@@ -241,20 +241,22 @@ def test_safe_brief_sse_emits_error_event_on_exception(monkeypatch):
 # ---------------------------------------------------------------------------
 
 class TestBuildSEPPHousing:
+    # dual_occupancy: a form the SEPP does gate on a minimum lot size. Granny
+    # flats are tested per approval path instead (TestBuildSEPPHousingSecondaryDwelling).
     def test_eligible_lot(self):
         raw = [
-            {"development_type": "secondary_dwelling", "standard_type": "min_lot_size", "numeric_value": 450.0},
-            {"development_type": "secondary_dwelling", "standard_type": "max_floor_area", "numeric_value": 60.0},
+            {"development_type": "dual_occupancy", "standard_type": "min_lot_size", "numeric_value": 450.0},
+            {"development_type": "dual_occupancy", "standard_type": "max_floor_area", "numeric_value": 60.0},
         ]
         result = _build_sepp_housing(raw, "R2", 520.0)
         assert len(result) == 1
-        assert result[0].dev_type == "secondary_dwelling"
+        assert result[0].dev_type == "dual_occupancy"
         assert result[0].eligible is True
         assert result[0].min_lot_area_m2 == 450.0
 
     def test_ineligible_lot(self):
         raw = [
-            {"development_type": "secondary_dwelling", "standard_type": "min_lot_size", "numeric_value": 450.0},
+            {"development_type": "dual_occupancy", "standard_type": "min_lot_size", "numeric_value": 450.0},
         ]
         result = _build_sepp_housing(raw, "R2", 400.0)
         assert result[0].eligible is False
@@ -842,20 +844,25 @@ class TestBuildSEPPHousingSecondaryDwelling:
         ]
         result = _build_sepp_housing(raw, "R2", 500.0)
         sd = result[0]
-        assert sd.min_lot_width_m == 12.0
+        # The old 12 m "min lot width" row is a CDC frontage band, not a width:
+        # it is never surfaced for a granny flat (migration 084).
+        assert sd.min_lot_width_m is None
         assert sd.parking_spaces == 0.0
         assert sd.max_height_m == 3.8
         assert sd.min_private_open_space_m2 == 24.0
         assert sd.max_site_coverage_pct == 50.0  # 500m² < 900 → under band
 
-    def test_ineligible_lot(self):
+    def test_old_450_row_never_makes_a_granny_flat_ineligible(self):
+        """Mutation guard: until migration 089 deletes id 44, the 450 m2 row is
+        still read here. The SEPP sets no single minimum lot size for a granny
+        flat, so it must not gate or be shown as the minimum."""
         raw = [
             {"development_type": "secondary_dwelling", "standard_type": "min_lot_size", "numeric_value": 450},
         ]
         result = _build_sepp_housing(raw, "R2", 400.0)
-        assert result[0].eligible is False
-        assert "400" in result[0].reason_ineligible
-        assert "450" in result[0].reason_ineligible
+        assert result[0].eligible is True
+        assert result[0].reason_ineligible is None
+        assert result[0].min_lot_area_m2 is None
 
 
 # ---------------------------------------------------------------------------

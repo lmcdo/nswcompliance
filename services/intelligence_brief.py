@@ -803,6 +803,8 @@ class HousingSeppFormOutput(BaseModel):
     # already carried for its own standards table.
     stale_since: Optional[str] = None
     stale_reason: Optional[str] = None
+    # Mirrors FormEligibility.approval_paths: the CDC/DA granny-flat answers.
+    approval_paths: Optional[dict] = None
 
 
 class LepLandUseRow(BaseModel):
@@ -2875,9 +2877,15 @@ def _build_sepp_housing(
         if s.get("source_clause"):
             citations[dt][st] = (s.get("source_clause"), s.get("source_document"))
 
+    from services.secondary_dwelling_paths import PATH_RULED_DEV_TYPE
+
     results = []
     for dt, vals in by_dev_type.items():
-        min_lot = vals.get("min_lot_size")
+        # Granny flats have no single minimum lot size (migration 084): their lot
+        # tests are per approval path (services/secondary_dwelling_paths.py), so
+        # the old pathway-agnostic 450 m2 / 12 m rows are never applied here.
+        path_ruled = dt == PATH_RULED_DEV_TYPE
+        min_lot = None if path_ruled else vals.get("min_lot_size")
         eligible = True
         reason = None
         if min_lot and lot_area_m2 and lot_area_m2 < min_lot:
@@ -2921,7 +2929,7 @@ def _build_sepp_housing(
             setback_rear_m=vals.get("setback_rear"),
             setback_side_m=vals.get("setback_side"),
             reason_ineligible=reason,
-            min_lot_width_m=vals.get("min_lot_width"),
+            min_lot_width_m=None if path_ruled else vals.get("min_lot_width"),
             parking_spaces=vals.get("parking_per_dwelling"),
             min_private_open_space_m2=vals.get("min_private_open_space"),
             max_site_coverage_pct=site_coverage,

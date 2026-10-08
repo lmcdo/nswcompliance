@@ -101,7 +101,8 @@ describe('housing-sepp eligibility — a form with no lot standard in the datase
   it('still decides a form whose lot standard is in the dataset', async () => {
     const { form } = await check(R2_LOT);
     expect(form('dual_occupancy')!.isEligible).toBe(true);
-    expect(form('secondary_dwelling')!.isEligible).toBe(true);
+    // secondary_dwelling is not decided by a lot row at all -- see the
+    // "tested per approval path" block below.
     const small = (await check({ ...R2_LOT, lotSize: 300 })).form('dual_occupancy')!;
     expect(small.isEligible).toBe(false);
     expect(small.eligibilityReason).toMatch(/below minimum/);
@@ -123,5 +124,34 @@ describe('housing-sepp eligibility — SEPP-over-LEP overrides', () => {
     expect(types).not.toContain('independent_living_unit');
     // Outside a reform area the low-rise apartment form is ineligible, so its height is no override.
     expect(types).not.toContain('residential_flat_r1r2');
+  });
+});
+
+describe('housing-sepp eligibility — granny flats are tested per approval path', () => {
+  beforeEach(() => mockQuery.mockReset());
+
+  // The fixture still carries a 450 m2 secondary_dwelling min_lot_size row, as the
+  // table does until migration 089 retires ids 34/44.
+  it('a small lot is not declared below a 450 m2 minimum', async () => {
+    const { form } = await check({ zoneCode: 'R2', lotSize: 300, lotWidth: 8, isLMRArea: true });
+    const sd = form('secondary_dwelling')!;
+    expect(sd.assessmentStatus).toBe('not_assessed');
+    expect(sd.eligibilityReason).not.toMatch(/below minimum/);
+    expect(sd.eligibilityReason).toMatch(/No single minimum lot size applies to a granny flat/);
+  });
+
+  it('the old 450 m2 / 12 m rows are not shown as its standards', async () => {
+    const rows = [...ROWS, row('secondary_dwelling', 'min_lot_width', '12')];
+    const { json } = await check(R2_LOT, rows);
+    const sd = json.data.eligibleTypes.find((r: { developmentType: string }) => r.developmentType === 'secondary_dwelling');
+    const types = sd.standards.map((s: { standardType: string }) => s.standardType);
+    expect(types).not.toContain('min_lot_size');
+    expect(types).not.toContain('min_lot_width');
+    expect(types).toContain('max_floor_area');
+  });
+
+  it('other forms keep their lot-size gate', async () => {
+    const { form } = await check({ zoneCode: 'R2', lotSize: 300, lotWidth: 15, isLMRArea: true });
+    expect(form('dual_occupancy')!.assessmentStatus).toBe('ineligible');
   });
 });

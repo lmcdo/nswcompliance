@@ -551,7 +551,7 @@ class TestNarrativePolish:
         from services.brief_manifest import build_manifest as _bm
         brief2 = dict(brief)
         brief2["sepp_housing"] = df(
-            [{"dev_type": "secondary_dwelling", "eligible": True,
+            [{"dev_type": "dual_occupancy", "eligible": True,
               "min_lot_area_m2": 450.0, "min_lot_width_m": 12.0,
               "max_gfa_m2": 60.0, "max_height_m": 3.8}],
             source="housing_sepp_standards")
@@ -561,10 +561,26 @@ class TestNarrativePolish:
         plan = make_plan({"template": "T_ELIGIBILITY", "fields": [sepp_id]})
         overlay = render_plan(plan, m)
         text = overlay.lines[0].text
-        assert text.startswith("Secondary dwelling under SEPP (Housing) 2021")
+        assert "under SEPP (Housing) 2021" in text
         assert "meeting the lot standard" in text
         assert "minimum lot area 450.0 m²" in text
         assert "dev_type=" not in text  # no raw record dump
+
+    def test_sepp_record_with_no_lot_standard_claims_no_outcome(self, brief):
+        """A granny flat has no single minimum lot size (084): an eligible=True
+        record with no minimum must not read as "meeting the lot standard"."""
+        from services.brief_manifest import build_manifest as _bm
+        brief2 = dict(brief)
+        brief2["sepp_housing"] = df(
+            [{"dev_type": "secondary_dwelling", "eligible": True,
+              "min_lot_area_m2": None, "max_gfa_m2": 60.0}],
+            source="housing_sepp_standards")
+        m = _bm(brief2)
+        sepp_id = next(e.id for e in m.entries if e.path == "sepp_housing[0]")
+        text = render_plan(make_plan({"template": "T_ELIGIBILITY", "fields": [sepp_id]}), m).lines[0].text
+        assert text.startswith("Secondary dwelling under SEPP (Housing) 2021")
+        assert "meeting the lot standard" not in text
+        assert "does not state a lot-standard outcome" in text
 
     def test_estimated_confidence_stays_inline(self, brief):
         brief2 = dict(brief)
