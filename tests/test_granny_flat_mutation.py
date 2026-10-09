@@ -2385,6 +2385,22 @@ class TestModels:
 # Path facts: frontage, battle-axe, s 50 permissibility, attached/detached
 # ---------------------------------------------------------------------------
 
+class _SeqCursor:
+    """Returns one fetchall result per execute, in order."""
+    def __init__(self, results):
+        self._results = list(results)
+        self._cur = []
+
+    def execute(self, sql, params=None):
+        self._cur = self._results.pop(0) if self._results else []
+
+    def fetchall(self):
+        return self._cur
+
+    def close(self):
+        pass
+
+
 class TestApprovalPathFacts:
     _FACTS = dict(frontage_m=15.0, battle_axe=False, dwelling_house_permissible=True)
 
@@ -2421,10 +2437,11 @@ class TestApprovalPathFacts:
         for rows, expect in (([("Cumberland", "permitted")], True), ([("Cumberland", "prohibited")], False),
                              ([("Penrith", "permitted")], None), ([], None),
                              ([("Cumberland", "permitted"), ("Cumberland", "prohibited")], None)):
-            cur = FakeCursor(fetchall_result=rows, fetchone_result=("CUMBERLAND",))
+            cur = _SeqCursor([[("CUMBERLAND",)], rows])
             assert gf._dwelling_house_permissible(FakeConn(cursor=cur), "R2", SYD_LAT, SYD_LNG) is expect, rows
-        no_council = FakeCursor(fetchall_result=[("Cumberland", "permitted")], fetchone_result=None)
-        assert gf._dwelling_house_permissible(FakeConn(cursor=no_council), "R2", SYD_LAT, SYD_LNG) is None
+        for councils in ([], [("CUMBERLAND",), ("PARRAMATTA",)]):  # none, or ambiguous
+            cur = _SeqCursor([councils, [("Cumberland", "permitted")]])
+            assert gf._dwelling_house_permissible(FakeConn(cursor=cur), "R2", SYD_LAT, SYD_LNG) is None, councils
 
     def test_dwelling_house_permissible_without_zone_or_conn_is_none(self):
         assert gf._dwelling_house_permissible(None, "R2", SYD_LAT, SYD_LNG) is None

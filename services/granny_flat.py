@@ -192,12 +192,15 @@ def _dwelling_house_permissible(conn, zone: Optional[str], lat: float, lng: floa
         # The council from the statewide ZONE layer: lookup_lga reads the height
         # layer, which does not cover every council (e.g. Cumberland, measured
         # 2026-10-09: Greystanes returned no council).
+        # Every covering polygon, not LIMIT 1: if two councils' polygons cover the
+        # point the council is ambiguous and s 50 is not established (cross-review).
+        # spatial_overlays has no is_active column (checked 2026-10-09).
         cur.execute(
-            "SELECT lga_name FROM spatial_overlays WHERE layer_type = 'zone' "
-            "AND ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326)) LIMIT 1",
+            "SELECT DISTINCT lga_name FROM spatial_overlays WHERE layer_type = 'zone' "
+            "AND ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))",
             (lng, lat))
-        row = cur.fetchone()
-        target = _norm_lga(row[0] if row else None)
+        councils = {_norm_lga(r[0]) for r in cur.fetchall() if r and r[0]}
+        target = councils.pop() if len(councils) == 1 else ""
         if not target:
             cur.close()
             return None
