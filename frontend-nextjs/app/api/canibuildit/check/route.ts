@@ -395,6 +395,7 @@ export async function POST(req: NextRequest) {
   // Only numeric rules that carry their quote of the law are shown.
   let seppStandards: Array<{ standard_type: string; value: number; unit: string | null;
     clause: string; url: string | null }> = [];
+  let seppStandardsUnavailable = false;
   try {
     const res = await query(
       `SELECT standard_type, numeric_value, unit, source_clause, legislation_url
@@ -416,8 +417,12 @@ export async function POST(req: NextRequest) {
       clause: String(r.source_clause ?? '').replace(/\s+/g, ' ').trim(),
       url: (r.legislation_url as string | null) ?? null,
     }));
-  } catch {
-    seppStandards = []; // the card is hidden when empty; never a typed fallback
+  } catch (err) {
+    // Never a typed fallback, and never silent: the tool says the standards
+    // could not be loaded (cross-review).
+    console.error('[canibuildit] SEPP standards query failed:', err);
+    seppStandards = [];
+    seppStandardsUnavailable = true;
   }
   if (lgaName) {
     try {
@@ -541,6 +546,7 @@ export async function POST(req: NextRequest) {
     // "no controls found" from "the lookup did not complete".
     dcp_setbacks_unavailable: dcpSetbacksUnavailable,
     sepp_standards: seppStandards,
+    sepp_standards_unavailable: seppStandardsUnavailable,
     confirmation_required: false,
   };
 

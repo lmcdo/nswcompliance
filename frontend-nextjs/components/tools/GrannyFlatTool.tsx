@@ -49,6 +49,7 @@ interface EligibilityResult {
   sepp_eligible: boolean;
   sepp_ineligible_reason: string | null;
   sepp_standards?: { standard_type: string; value: number; unit: string | null; clause: string; url: string | null }[];
+  sepp_standards_unavailable?: boolean;
   confirmation_required: boolean;
   checks?: {
     lot_area: CheckResult;
@@ -544,7 +545,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
           {eligibility.sepp_eligible === true && (eligibility.sepp_standards?.length ?? 0) > 0 && (
             <div className="rounded-xl border border-gray-200 bg-white p-5">
               <div className="flex items-baseline justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-700">SEPP Housing 2021 — CDC standards</h3>
+                <h3 className="text-sm font-semibold text-gray-700">SEPP Housing 2021 — granny flat standards</h3>
                 <a
                   href={SEPP_LEGISLATION_URL}
                   target="_blank"
@@ -568,6 +569,12 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
               <p className="text-xs text-gray-400 mt-3">
                 State-wide standards from SEPP (Housing) 2021, each linked to its clause. Your council&apos;s DCP may impose further setback or height controls.
               </p>
+            </div>
+          )}
+
+          {eligibility.sepp_eligible === true && eligibility.sepp_standards_unavailable === true && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              The SEPP Housing 2021 granny flat standards could not be loaded just now, so they are not shown. Try again shortly.
             </div>
           )}
 
