@@ -1763,19 +1763,19 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
             className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${
               result.granny_flat_buildable === true
                 ? 'bg-green-100 text-green-800'
-                : result.granny_flat_buildable === null
+                : result.granny_flat_buildable == null
                   ? 'bg-amber-100 text-amber-800'
                   : 'bg-red-100 text-red-800'
             }`}
           >
             {result.granny_flat_buildable === true
               ? 'Eligible'
-              : result.granny_flat_buildable === null ? 'Not yet determined' : 'Not eligible'}
+              : result.granny_flat_buildable == null ? 'Not yet determined' : 'Not eligible'}
           </span>
         </div>
       </div>
 
-      {result.granny_flat_buildable === null && (
+      {result.granny_flat_buildable == null && (
         <div className="px-6 py-4 border-b border-gray-100">
           <p className="text-sm text-gray-700">
             Nothing found rules this lot out, but neither approval path could be decided from the data available.
