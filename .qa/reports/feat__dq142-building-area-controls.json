@@ -1,0 +1,105 @@
+{
+  "tier": "critical",
+  "justification": "Critical: two production data loads (migration 091, 4 rear setbacks; migration 092, 67 building-area controls, both applied) that the buildable-area arithmetic serves, plus a changed DQ probe.",
+  "commit_hash": "bce18d2d",
+  "files": [
+    "migrations/091_rear_setbacks_quoted_from_stored_dcp_text.sql",
+    "migrations/092_dq142_building_area_controls.sql",
+    "scripts/dq142_build_controls_migration.py",
+    "scripts/dq142_spec_2026_10_10.py",
+    "data/dq142_controls_2026-10-10.json",
+    "scripts/dq_probe_live.py",
+    "tests/test_dq142_build_controls_migration.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls: DQ-142 read 140 missing (council, housing type, control) combinations across 25 councils; DQ-139 read 15. 16 councils have DCP text stored in regulatory_provisions.",
+    "assumption_mismatch": "DQ-139 counted rear setbacks only where front/side existed and read 11, hiding 140 gaps; deep soil was not counted as a footprint cap although it caps the footprint the same way.",
+    "new_vs_existing": "Rows follow the existing dcp_setback_controls shape; chapter key, version and applicability are copied from each council's existing rows. Controls with no fixed figure use the existing 'NO FIGURE:' condition convention.",
+    "external_source_error": "Every quote is checked verbatim (whitespace-normalised) against its current regulatory_provisions row and every figure against its quote before SQL is written; Hornsby two-column pages were re-quoted from runs the extractor kept intact.",
+    "frontend_type": "No frontend change; the arithmetic reads the same columns.",
+    "user_failure_mode": "Without these rows the buildable-area card shows no figure for these councils and types; a figure not in its quote would serve a wrong number, which the generator refuses."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dq142_build_controls_migration.py -q -o addopts= ; python scripts/dq_probe_live.py --id DQ-142",
+    "fails_when": "A figure not present as a whole number in its quote is accepted, or the 092 rows are removed (DQ-142 returns to 136).",
+    "observed_red": "Observed 2026-10-10: the first version of the figure check accepted 5 inside '5.5m'; test_digit_inside_a_larger_number_is_refused failed, the check was tightened, and all 67 applied figures still pass. Two Hornsby quotes were refused (two-column interleave) before any write and re-quoted. DQ-142 136 -> 69 after 092."
+  },
+  "functions": [
+    {
+      "name": "value_in_quotes",
+      "file_line": "scripts/dq142_build_controls_migration.py",
+      "input": "a figure, its unit and the verbatim quote fragments of one finding",
+      "output": "True only if the figure appears as a whole number in a quote (metres also as mm)",
+      "if_none": "Returns False and the finding is refused and named."
+    }
+  ],
+  "values": [
+    {
+      "value": "67 DCP building-area controls (setbacks, site coverage, landscaped area, deep soil) for 15 councils",
+      "source": "each council's DCP text stored in regulatory_provisions, quoted per row with section and PDF page",
+      "read_at": "services/constraint_arithmetic.py buildable-area calculation",
+      "if_missing": "The arithmetic withholds the footprint (DQ-139 three-state); no figure is invented."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "quote check against stored DCP text",
+      "file_line": "scripts/dq142_build_controls_migration.py",
+      "where_clause": "id = %s AND is_current"
+    },
+    {
+      "purpose": "duplicate guard",
+      "file_line": "scripts/dq142_build_controls_migration.py",
+      "where_clause": "lga = %s AND dev_type = %s AND control_type = %s AND is_current AND NOT needs_review AND (value present OR condition LIKE 'NO FIGURE:%')"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A finding's figure is not in its own quote, or only inside a larger number (5 in 5.5m)",
+      "what_happens": "The finding is refused and named; no SQL row is written for it",
+      "mitigated": true,
+      "how": "value_in_quotes with whole-number lookarounds",
+      "repro": "python -m pytest tests/test_dq142_build_controls_migration.py -q -o addopts= -k refused"
+    },
+    {
+      "scenario": "A quote was paraphrased or comes from a jumbled two-column page",
+      "what_happens": "The finding is refused because the fragment is not in the stored provision text",
+      "mitigated": true,
+      "how": "normalised substring check against the named current provision",
+      "repro": "python scripts/dq142_build_controls_migration.py data/dq142_controls_2026-10-10.json \"$CLAUDE_JOB_DIR/tmp/check.sql\""
+    },
+    {
+      "scenario": "The generator is re-run after 092 was applied",
+      "what_happens": "Every finding is refused as a duplicate of a decided row; nothing is double-inserted",
+      "mitigated": true,
+      "how": "duplicate guard on (lga, dev_type, control_type) with a decided row",
+      "repro": "python scripts/dq142_build_controls_migration.py data/dq142_controls_2026-10-10.json \"$CLAUDE_JOB_DIR/tmp/check.sql\"  -> 0 verified, 70 refused"
+    },
+    {
+      "scenario": "A quote names a provision that is no longer current (the DCP was replaced)",
+      "what_happens": "The finding is refused: the quote is only looked up in rows where is_current is true",
+      "mitigated": true,
+      "how": "WHERE id = %s AND is_current in the quote lookup",
+      "repro": "python scripts/dq142_build_controls_migration.py data/dq142_controls_2026-10-10.json \"$CLAUDE_JOB_DIR/tmp/check.sql\""
+    },
+    {
+      "scenario": "A control has no fixed figure (match the neighbours, a formula, a map)",
+      "what_happens": "Stored with value NULL and condition 'NO FIGURE: ...' plus the DCP's own words; the arithmetic still withholds the footprint rather than using zero",
+      "mitigated": true,
+      "how": "generator refuses a NULL value without a 'NO FIGURE:' condition; DQ-139 keeps counting a pair with no numeric rear",
+      "repro": "python scripts/dq_probe_live.py --id DQ-139"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Migrations 091 and 092 are already applied (4 + 67 rows). python scripts/dq_probe_live.py --id DQ-142 reads 69; --id DQ-139 reads 13 (see tracker: two pairs gained a side figure while their DCP sets no numeric rear)."
+  },
+  "real_layer_exempt": {
+    "migrations/091_rear_setbacks_quoted_from_stored_dcp_text.sql": "Applied to production 2026-10-10 after a rolled-back dry run (4 rows).",
+    "migrations/092_dq142_building_area_controls.sql": "Applied to production 2026-10-10 after a rolled-back dry run (67 rows; DQ-142 136 -> 69); every quote re-checked against its current provision."
+  }
+}

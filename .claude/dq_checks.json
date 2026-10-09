@@ -1680,6 +1680,18 @@
     "red_when": "a rule is served from an older copy of Ashfield DCP 2016 with no council: shown twice where it duplicates the current load, or standing in for rules the current load may be missing. Reads 1,336 on 2026-10-10.",
     "note": "Found 2026-10-10 while checking the Inner West former-council split. By wording containment E1 775/887 and D 42/48 old rules are also in the current load; A 60/140, B 2/9, C 36/181, F 0/71 are not. Resolve per chapter against the council PDF. Do NOT relabel the rows 'ashfield': OC-12 would then count all 1,336 as untraced."
   },
+  "DQ-142": {
+    "declared": "open",
+    "check": [
+      "python",
+      "scripts/dq_probe_live.py",
+      "--id",
+      "DQ-142"
+    ],
+    "passes_when": "exit 0 - for every council with DCP controls, each of its covered low-rise housing types (dwelling house, granny flat, dual occupancy) has a front, side and rear setback and a footprint cap (site coverage, landscaped area or deep soil), each with a number or a quoted 'NO FIGURE:' decision.",
+    "red_when": "the buildable-area sum is missing a control for a council's housing type, so no building-area figure can be shown. Reads 140 on 2026-10-10 across 25 councils (16 with DCP text stored, 9 without).",
+    "note": "Opened 2026-10-10 because DQ-139 (rear missing where front/side exist) read 11 and hid the rest. Scope limit (a floor): only types a council already has at least one control for are counted. Cleared by extracting the control from the council's DCP or recording condition 'NO FIGURE: ...' with the DCP's own words in source_text."
+  },
   "DQ-139": {
     "declared": "open",
     "check": [

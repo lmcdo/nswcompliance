@@ -1,0 +1,1134 @@
+[
+ {
+  "lga": "parramatta",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": 6,
+  "unit": "m",
+  "condition": "and consistent with the prevailing setback along the street",
+  "quotes": [
+   [
+    105058,
+    "Buildings must be set back a minimum of 6 metres from the street boundary and be consistent with the prevailing setback along the street"
+   ]
+  ],
+  "pdf_page": 67,
+  "section_ref": "3.3.2.2 C.05"
+ },
+ {
+  "lga": "parramatta",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": 10,
+  "unit": "m",
+  "condition": "or 30% of the site length, whichever is greater; corner sites minimum 6 m",
+  "quotes": [
+   [
+    105058,
+    "A rear setback equal to 30% of the site length or 10 metres, whichever is greater"
+   ]
+  ],
+  "pdf_page": 67,
+  "section_ref": "3.3.2.2 C.14"
+ },
+ {
+  "lga": "parramatta",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": 1.5,
+  "unit": "m",
+  "condition": "buildings to occupy a maximum of 80% of the lot width",
+  "quotes": [
+   [
+    105058,
+    "Buildings must be set back a minimum of 1.5 metres from side boundaries"
+   ]
+  ],
+  "pdf_page": 67,
+  "section_ref": "3.3.2.2 C.09"
+ },
+ {
+  "lga": "parramatta",
+  "dev_type": "dwelling_house",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: formula - rear setback equal to 30% of the site length",
+  "quotes": [
+   [
+    105051,
+    "A rear setback equal to 30% of the site length"
+   ]
+  ],
+  "pdf_page": 60,
+  "section_ref": "3.3.1.2 C.10"
+ },
+ {
+  "lga": "parramatta",
+  "dev_type": "secondary_dwelling",
+  "control_type": "landscaping_min",
+  "value_min": 40,
+  "unit": "%",
+  "condition": "as for dwelling houses (3.3.3.4 C.02 a)",
+  "quotes": [
+   [
+    105066,
+    "Secondary dwellings do not reduce the deep soil or landscaped area of the lot to less than the minimum required for dwelling houses"
+   ],
+   [
+    105053,
+    "A minimum 40% of the total site area, including deep soil zone, is to be provided as landscaping"
+   ]
+  ],
+  "pdf_page": 77,
+  "section_ref": "3.3.3.4 C.02(a); 3.3.1.4 C.02"
+ },
+ {
+  "lga": "parramatta",
+  "dev_type": "secondary_dwelling",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: must not be forward of the main building frontage",
+  "quotes": [
+   [
+    105065,
+    "Secondary dwellings must not be forward of the main building frontage"
+   ]
+  ],
+  "pdf_page": 76,
+  "section_ref": "3.3.3.2 C.08"
+ },
+ {
+  "lga": "parramatta",
+  "dev_type": "secondary_dwelling",
+  "control_type": "rear_setback",
+  "value_min": 3,
+  "unit": "m",
+  "condition": "6 m for buildings up to 2 storeys",
+  "quotes": [
+   [
+    105065,
+    "Secondary dwellings must provide a minimum 3 metre rear setback for buildings up to 1 storey in height"
+   ]
+  ],
+  "pdf_page": 76,
+  "section_ref": "3.3.3.2 C.12"
+ },
+ {
+  "lga": "parramatta",
+  "dev_type": "secondary_dwelling",
+  "control_type": "side_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "2 m for buildings up to 2 storeys",
+  "quotes": [
+   [
+    105065,
+    "Secondary dwellings must be setback a minimum of 900mm from side boundaries"
+   ]
+  ],
+  "pdf_page": 76,
+  "section_ref": "3.3.3.2 C.11"
+ },
+ {
+  "lga": "penrith",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": 5.5,
+  "unit": "m",
+  "condition": "or the average of the immediate neighbours' setbacks, whichever is greater",
+  "quotes": [
+   [
+    104913,
+    "adopt a 5.5m minimum whichever is the greater dimension"
+   ]
+  ],
+  "pdf_page": 19,
+  "section_ref": "D2 2.2.5 B.3"
+ },
+ {
+  "lga": "penrith",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": 4,
+  "unit": "m",
+  "condition": "6 m for a two storey building",
+  "quotes": [
+   [
+    104913,
+    "The minimum rear setback for a single storey building (or any single storey component of a building) is 4m"
+   ]
+  ],
+  "pdf_page": 19,
+  "section_ref": "D2 2.2.5 B.1"
+ },
+ {
+  "lga": "penrith",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "greater for second storey walls, consistent with the building envelope",
+  "quotes": [
+   [
+    104915,
+    "a minimum 900 mm setback at ground level"
+   ]
+  ],
+  "pdf_page": 21,
+  "section_ref": "D2 2.2.6 B.6"
+ },
+ {
+  "lga": "penrith",
+  "dev_type": "secondary_dwelling",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: behind the front building line of the primary dwelling",
+  "quotes": [
+   [
+    104931,
+    "Secondary dwellings must be located behind the front building line of the primary dwelling"
+   ]
+  ],
+  "pdf_page": 39,
+  "section_ref": "D2 2.3.3 B.3a"
+ },
+ {
+  "lga": "waverley",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: predominant front building line (three adjacent neighbours either side)",
+  "quotes": [
+   [
+    126239,
+    "New buildings and extensions to existing buildings are to extend no further than the front and rear predominant building lines"
+   ]
+  ],
+  "pdf_page": 171,
+  "section_ref": "C1.2.1(a)"
+ },
+ {
+  "lga": "waverley",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: predominant rear building line, determined for each floor level",
+  "quotes": [
+   [
+    126239,
+    "New buildings and extensions to existing buildings are to extend no further than the front and rear predominant building lines"
+   ],
+   [
+    126239,
+    "The predominant rear building line is determined separately for each floor level"
+   ]
+  ],
+  "pdf_page": 171,
+  "section_ref": "C1.2.1(a),(b)"
+ },
+ {
+  "lga": "waverley",
+  "dev_type": "dwelling_house",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: predominant front building line (three adjacent neighbours either side)",
+  "quotes": [
+   [
+    126239,
+    "New buildings and extensions to existing buildings are to extend no further than the front and rear predominant building lines"
+   ]
+  ],
+  "pdf_page": 171,
+  "section_ref": "C1.2.1(a)"
+ },
+ {
+  "lga": "waverley",
+  "dev_type": "dwelling_house",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: predominant rear building line, determined for each floor level",
+  "quotes": [
+   [
+    126239,
+    "New buildings and extensions to existing buildings are to extend no further than the front and rear predominant building lines"
+   ],
+   [
+    126239,
+    "The predominant rear building line is determined separately for each floor level"
+   ]
+  ],
+  "pdf_page": 171,
+  "section_ref": "C1.2.1(a),(b)"
+ },
+ {
+  "lga": "waverley",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "first floor 0.9 m; second floor 1.5 m; third floor on merit",
+  "quotes": [
+   [
+    126240,
+    "Ground Floor 0.9m"
+   ]
+  ],
+  "pdf_page": 172,
+  "section_ref": "C1.2.2(a) Table 1"
+ },
+ {
+  "lga": "woollahra",
+  "dev_type": "dual_occupancy",
+  "control_type": "deep_soil_min",
+  "value_min": 35,
+  "unit": "%",
+  "condition": "30% in the Wolseley Road area",
+  "quotes": [
+   [
+    127010,
+    "35% of the site area is deep soil landscaped area"
+   ]
+  ],
+  "pdf_page": 46,
+  "section_ref": "B3.7.1 C2"
+ },
+ {
+  "lga": "woollahra",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: formula - average of the three most typical setbacks of the four closest residential buildings on the same side of the street",
+  "quotes": [
+   [
+    127006,
+    "The front setback of the building envelope is determined by averaging the three most typical setbacks of the four closest residential buildings"
+   ]
+  ],
+  "pdf_page": 12,
+  "section_ref": "B3.2.2 C1"
+ },
+ {
+  "lga": "woollahra",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: formula - 25% of the average of the two side boundary dimensions",
+  "quotes": [
+   [
+    127006,
+    "The minimum rear setback control is 25% of the average of the two side boundary dimensions"
+   ]
+  ],
+  "pdf_page": 12,
+  "section_ref": "B3.2.4 C1"
+ },
+ {
+  "lga": "woollahra",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: by site width, Figure 5A table (0.9 m below 9 m wide up to 4.5 m at 30 m+)",
+  "quotes": [
+   [
+    127006,
+    "The minimum side setback for dwelling houses, semi-detached dwellings and dual occupancies is determined by the table in Figure 5A"
+   ]
+  ],
+  "pdf_page": 12,
+  "section_ref": "B3.2.3 C1"
+ },
+ {
+  "lga": "woollahra",
+  "dev_type": "dwelling_house",
+  "control_type": "deep_soil_min",
+  "value_min": 35,
+  "unit": "%",
+  "condition": "30% in the Wolseley Road area",
+  "quotes": [
+   [
+    127010,
+    "35% of the site area is deep soil landscaped area"
+   ]
+  ],
+  "pdf_page": 46,
+  "section_ref": "B3.7.1 C2"
+ },
+ {
+  "lga": "woollahra",
+  "dev_type": "dwelling_house",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: formula - average of the three most typical setbacks of the four closest residential buildings on the same side of the street",
+  "quotes": [
+   [
+    127006,
+    "The front setback of the building envelope is determined by averaging the three most typical setbacks of the four closest residential buildings"
+   ]
+  ],
+  "pdf_page": 12,
+  "section_ref": "B3.2.2 C1"
+ },
+ {
+  "lga": "woollahra",
+  "dev_type": "dwelling_house",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: formula - 25% of the average of the two side boundary dimensions",
+  "quotes": [
+   [
+    127006,
+    "The minimum rear setback control is 25% of the average of the two side boundary dimensions"
+   ]
+  ],
+  "pdf_page": 12,
+  "section_ref": "B3.2.4 C1"
+ },
+ {
+  "lga": "woollahra",
+  "dev_type": "dwelling_house",
+  "control_type": "side_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: by site width, Figure 5A table (0.9 m below 9 m wide up to 4.5 m at 30 m+)",
+  "quotes": [
+   [
+    127006,
+    "The minimum side setback for dwelling houses, semi-detached dwellings and dual occupancies is determined by the table in Figure 5A"
+   ]
+  ],
+  "pdf_page": 12,
+  "section_ref": "B3.2.3 C1"
+ },
+ {
+  "lga": "city_of_sydney",
+  "dev_type": "dwelling_house",
+  "control_type": "deep_soil_min",
+  "value_min": 15,
+  "unit": "%",
+  "condition": "lots greater than 150 sqm",
+  "quotes": [
+   [
+    95522,
+    "For lots greater than 150sqm, the minimum amount of deep soil is to be 15% of the site area"
+   ]
+  ],
+  "pdf_page": 9,
+  "section_ref": "4.1.3.4(1)"
+ },
+ {
+  "lga": "city_of_sydney",
+  "dev_type": "dwelling_house",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: Building setbacks map, else the predominant setting in the street",
+  "quotes": [
+   [
+    95520,
+    "Front setbacks are to be consistent with the Building setbacks map"
+   ]
+  ],
+  "pdf_page": 6,
+  "section_ref": "4.1.2(1)"
+ },
+ {
+  "lga": "city_of_sydney",
+  "dev_type": "dwelling_house",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: respect the predominant rear building line",
+  "quotes": [
+   [
+    95521,
+    "must respect and be sympathetic to the predominant rear building line"
+   ]
+  ],
+  "pdf_page": 7,
+  "section_ref": "4.1.2(4)"
+ },
+ {
+  "lga": "city_of_sydney",
+  "dev_type": "dwelling_house",
+  "control_type": "side_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: heritage conservation areas relate to the established development pattern; no figure otherwise",
+  "quotes": [
+   [
+    95520,
+    "Within heritage conservation areas, new development is to relate to the established development pattern"
+   ]
+  ],
+  "pdf_page": 6,
+  "section_ref": "4.1.2(2)"
+ },
+ {
+  "lga": "city_of_sydney",
+  "dev_type": "secondary_dwelling",
+  "control_type": "deep_soil_min",
+  "value_min": 15,
+  "unit": "%",
+  "condition": "general dwelling provision, lots greater than 150 sqm",
+  "quotes": [
+   [
+    95522,
+    "For lots greater than 150sqm, the minimum amount of deep soil is to be 15% of the site area"
+   ]
+  ],
+  "pdf_page": 9,
+  "section_ref": "4.1.3.4(1)"
+ },
+ {
+  "lga": "cumberland",
+  "dev_type": "dual_occupancy",
+  "control_type": "landscaping_min",
+  "value_min": 20,
+  "unit": "%",
+  "condition": "or a minimum of 30 m2 per dwelling",
+  "quotes": [
+   [
+    104724,
+    "The total landscaped area for a low rise medium density development shall be a minimum of 20% of total site area"
+   ]
+  ],
+  "pdf_page": 35,
+  "section_ref": "B2 3.4 C1"
+ },
+ {
+  "lga": "cumberland",
+  "dev_type": "secondary_dwelling",
+  "control_type": "max_site_coverage",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: as for a single dwelling house (combined coverage)",
+  "quotes": [
+   [
+    104721,
+    "shall remain compliant with the site coverage controls for a single dwelling house"
+   ]
+  ],
+  "pdf_page": 27,
+  "section_ref": "2.21 Site coverage"
+ },
+ {
+  "lga": "cumberland",
+  "dev_type": "secondary_dwelling",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: not within the front setback area of the principal dwelling house",
+  "quotes": [
+   [
+    104721,
+    "Secondary dwellings are not permitted within the front setback area of the principal dwelling house"
+   ]
+  ],
+  "pdf_page": 26,
+  "section_ref": "2.21 Setbacks"
+ },
+ {
+  "lga": "georges_river",
+  "dev_type": "dual_occupancy",
+  "control_type": "landscaping_min",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: per Georges River LEP 2021 cl 6.12 table",
+  "quotes": [
+   [
+    127299,
+    "is to be provided in accordance with the table contained within Clause 6.12"
+   ]
+  ],
+  "pdf_page": 29,
+  "section_ref": "6.1.3.11 Control 1"
+ },
+ {
+  "lga": "georges_river",
+  "dev_type": "secondary_dwelling",
+  "control_type": "landscaping_min",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: the Georges River LEP 2021 minimum for single dwelling development",
+  "quotes": [
+   [
+    127298,
+    "The minimum landscaped area specified in the Georges River LEP 2021 for single dwelling development is to be provided on the site"
+   ]
+  ],
+  "pdf_page": 14,
+  "section_ref": "6.1.2.12 Control 9"
+ },
+ {
+  "lga": "georges_river",
+  "dev_type": "secondary_dwelling",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: behind the main building setbacks required for a single dwelling",
+  "quotes": [
+   [
+    127298,
+    "The secondary dwelling is to be located behind the main building setbacks required for a single dwelling"
+   ]
+  ],
+  "pdf_page": 14,
+  "section_ref": "6.1.2.12 Control 7"
+ },
+ {
+  "lga": "hornsby",
+  "dev_type": "dual_occupancy",
+  "control_type": "max_site_coverage",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: by lot size, Table 3.1.1-b (65% at 200 m2 down to 30% at 1500 m2+)",
+  "quotes": [
+   [
+    120154,
+    "Table 3.1.1-b: Maximum Site Coverage Lot Size Maximum site coverage (% of total lot size) 200m2 to 249m2 65%"
+   ]
+  ],
+  "pdf_page": 6,
+  "section_ref": "3.1.1(j) Table 3.1.1-b"
+ },
+ {
+  "lga": "hornsby",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": 6,
+  "unit": "m",
+  "condition": "9 m to designated roads; attached dual occupancy 7.6 m",
+  "quotes": [
+   [
+    120155,
+    "Front boundary 6m to local roads and 9m to"
+   ]
+  ],
+  "pdf_page": 9,
+  "section_ref": "3.1.2 Table 3.1.2-a"
+ },
+ {
+  "lga": "hornsby",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": 3,
+  "unit": "m",
+  "condition": "8 m for a 2 storey element",
+  "quotes": [
+   [
+    120155,
+    "Rear boundary Up to 1 storey = 3m"
+   ]
+  ],
+  "pdf_page": 9,
+  "section_ref": "3.1.2 Table 3.1.2-a"
+ },
+ {
+  "lga": "hornsby",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "1.5 m for a 2 storey element",
+  "quotes": [
+   [
+    120155,
+    "Side boundary Up to 1 storey = 0.9m"
+   ]
+  ],
+  "pdf_page": 9,
+  "section_ref": "3.1.2 Table 3.1.2-a"
+ },
+ {
+  "lga": "ashfield",
+  "dev_type": "dwelling_house",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: Chapter F states no rear setback for dwelling houses; DS3.8 only cross-refers",
+  "quotes": [
+   [
+    110840,
+    "also refer to minimum rear boundary setbacks in this DCP"
+   ]
+  ],
+  "pdf_page": 6,
+  "section_ref": "Ch F DS3.8"
+ },
+ {
+  "lga": "ashfield",
+  "dev_type": "secondary_dwelling",
+  "control_type": "landscaping_min",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: as for a dwelling house (DS8.3: 25% to 35% by lot size)",
+  "quotes": [
+   [
+    110935,
+    "Development does not reduce landscaped areas for the property to less than the minimum required for a dwelling house"
+   ]
+  ],
+  "pdf_page": 17,
+  "section_ref": "Ch F DS7.1"
+ },
+ {
+  "lga": "ashfield",
+  "dev_type": "secondary_dwelling",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: not forward of the front building line of the principal dwelling",
+  "quotes": [
+   [
+    110930,
+    "A secondary dwelling is not located forward of the front building line of the principal dwelling"
+   ]
+  ],
+  "pdf_page": 17,
+  "section_ref": "Ch F DS5.1"
+ },
+ {
+  "lga": "blacktown",
+  "dev_type": "dual_occupancy",
+  "control_type": "landscaping_min",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: landscape concept plan only; no percentage",
+  "quotes": [
+   [
+    126613,
+    "A landscaping concept plan must be submitted with any DA"
+   ]
+  ],
+  "pdf_page": 42,
+  "section_ref": "Part C 4.3.15"
+ },
+ {
+  "lga": "blacktown",
+  "dev_type": "secondary_dwelling",
+  "control_type": "landscaping_min",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: landscape concept plan only; no percentage",
+  "quotes": [
+   [
+    126613,
+    "A landscaping concept plan must be submitted with any DA"
+   ]
+  ],
+  "pdf_page": 42,
+  "section_ref": "Part C 4.3.15"
+ },
+ {
+  "lga": "blacktown",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": 6,
+  "unit": "m",
+  "condition": "5.5 m to a covered car space; Stanhope Gardens 4.5 m",
+  "quotes": [
+   [
+    126612,
+    "The building setback from the street for dual occupancy housing and secondary dwellings should be 6m and 5.5m to a covered car space"
+   ]
+  ],
+  "pdf_page": 39,
+  "section_ref": "Part C 4.3.5"
+ },
+ {
+  "lga": "blacktown",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "1.2 m for 2 storey walls / Stanhope Gardens",
+  "quotes": [
+   [
+    126642,
+    "The walls of dual occupancy and secondary dwelling buildings are generally required to stand a minimum of 900mm from the side and rear boundaries"
+   ]
+  ],
+  "pdf_page": 40,
+  "section_ref": "Part C 4.3.6"
+ },
+ {
+  "lga": "blacktown",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "1.2 m for 2 storey walls / Stanhope Gardens",
+  "quotes": [
+   [
+    126642,
+    "The walls of dual occupancy and secondary dwelling buildings are generally required to stand a minimum of 900mm from the side and rear boundaries"
+   ]
+  ],
+  "pdf_page": 40,
+  "section_ref": "Part C 4.3.6"
+ },
+ {
+  "lga": "campbelltown",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": 5.5,
+  "unit": "m",
+  "condition": "garage 6.0 m; secondary street 3 m",
+  "quotes": [
+   [
+    131099,
+    "5.5 metres from the primary street boundary for the dual occupancy"
+   ]
+  ],
+  "pdf_page": 24,
+  "section_ref": "Part 3 3.6.3.2 i)"
+ },
+ {
+  "lga": "campbelltown",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": 3,
+  "unit": "m",
+  "condition": "8 m for any part higher than 4.5 m",
+  "quotes": [
+   [
+    131104,
+    "3 metres from the rear boundary for any part of the building that is up to 4.5 metres in height"
+   ]
+  ],
+  "pdf_page": 25,
+  "section_ref": "Part 3 3.6.3.2 vi)"
+ },
+ {
+  "lga": "campbelltown",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": null,
+  "quotes": [
+   [
+    131103,
+    "0.9 metres from any side boundary"
+   ]
+  ],
+  "pdf_page": 25,
+  "section_ref": "Part 3 3.6.3.2 v)"
+ },
+ {
+  "lga": "campbelltown",
+  "dev_type": "dwelling_house",
+  "control_type": "deep_soil_min",
+  "value_min": 20,
+  "unit": "%",
+  "condition": null,
+  "quotes": [
+   [
+    131054,
+    "a minimum of 20% of the total site area shall be available for deep soil planting"
+   ]
+  ],
+  "pdf_page": 20,
+  "section_ref": "Part 3 3.6.1.2 ii)"
+ },
+ {
+  "lga": "ku_ring_gai",
+  "dev_type": "dual_occupancy",
+  "control_type": "landscaping_min",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: formula - 50% of the Parent Lot area minus 100 sqm; built-upon area 50-55% by lot size",
+  "quotes": [
+   [
+    126589,
+    "The Parent Lot is to provide a minimum landscaped area equal to 50% of the Parent Lot area minus 100sqm"
+   ]
+  ],
+  "pdf_page": 20,
+  "section_ref": "KDCP 5A.5 C1"
+ },
+ {
+  "lga": "ku_ring_gai",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: depends on the layout (side-by-side, front-back, corner, battle-axe) and Parent Lot size; KDCP 5A.3",
+  "quotes": [
+   [
+    98162,
+    "The front setback at the building line for each dual occupancy dwelling is to be a minimum of 12m"
+   ]
+  ],
+  "pdf_page": 8,
+  "section_ref": "KDCP 5A.3"
+ },
+ {
+  "lga": "ku_ring_gai",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: depends on the layout (side-by-side, front-back, corner, battle-axe) and Parent Lot size; KDCP 5A.3",
+  "quotes": [
+   [
+    98162,
+    "The rear setback for each dual occupancy dwelling is to be a minimum of 12m"
+   ]
+  ],
+  "pdf_page": 8,
+  "section_ref": "KDCP 5A.3"
+ },
+ {
+  "lga": "ku_ring_gai",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: depends on the layout (side-by-side, front-back, corner, battle-axe) and Parent Lot size; KDCP 5A.3",
+  "quotes": [
+   [
+    98162,
+    "The side setbacks of the Parent Lot are to be provided in accordance with the following table"
+   ]
+  ],
+  "pdf_page": 8,
+  "section_ref": "KDCP 5A.3"
+ },
+ {
+  "lga": "ku_ring_gai",
+  "dev_type": "dwelling_house",
+  "control_type": "max_site_coverage",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: maximum built-upon area by site area and storeys (60% to 50%); KDCP 4A.3",
+  "quotes": [
+   [
+    98132,
+    "are to have a maximum built-upon area (BUA) as follows"
+   ]
+  ],
+  "pdf_page": 12,
+  "section_ref": "KDCP 4A.3 C1"
+ },
+ {
+  "lga": "ku_ring_gai",
+  "dev_type": "dwelling_house",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: 9 m low side / 12 m high side minimum, with averages for two storey; KDCP 4A.2",
+  "quotes": [
+   [
+    98130,
+    "Minimum and average front setbacks are to be provided"
+   ]
+  ],
+  "pdf_page": 7,
+  "section_ref": "KDCP 4A.2 C3"
+ },
+ {
+  "lga": "leichhardt",
+  "dev_type": "dwelling_house",
+  "control_type": "landscaping_min",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: soft landscape area front and rear, consistent with the Building Location Zone; no percentage",
+  "quotes": [
+   [
+    108516,
+    "include soft landscape area in both the front and rear of the site where consistent with the BLZ controls"
+   ]
+  ],
+  "pdf_page": 9,
+  "section_ref": "C3.2 C9"
+ },
+ {
+  "lga": "leichhardt",
+  "dev_type": "dwelling_house",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: set by the Building Location Zone (adjacent main buildings)",
+  "quotes": [
+   [
+    108510,
+    "The BLZ is determined by having regard to only the main building on the adjacent properties"
+   ]
+  ],
+  "pdf_page": 6,
+  "section_ref": "C3.2 C3"
+ },
+ {
+  "lga": "leichhardt",
+  "dev_type": "dwelling_house",
+  "control_type": "side_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: side boundary setback graph, Figure C129 (rises with wall height)",
+  "quotes": [
+   [
+    108514,
+    "Building setbacks shall comply with the numerical requirements set out in the side boundary setback graph"
+   ]
+  ],
+  "pdf_page": 8,
+  "section_ref": "C3.2 C7"
+ },
+ {
+  "lga": "marrickville",
+  "dev_type": "dwelling_house",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: consistent with adjoining development or the dominant setback in the street",
+  "quotes": [
+   [
+    112454,
+    "Consistent with the setback of adjoining development or the dominant setback found along the street"
+   ]
+  ],
+  "pdf_page": 13,
+  "section_ref": "4.1.6.2 C10 i"
+ },
+ {
+  "lga": "marrickville",
+  "dev_type": "dwelling_house",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: maintain the predominant first storey rear building line, otherwise on merit",
+  "quotes": [
+   [
+    112454,
+    "Where a predominant first storey rear building line exists"
+   ]
+  ],
+  "pdf_page": 13,
+  "section_ref": "4.1.6.2 C10 iii"
+ },
+ {
+  "lga": "marrickville",
+  "dev_type": "secondary_dwelling",
+  "control_type": "landscaping_min",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: entire front setback, and the lesser of 4 m or the prevailing rear setback, kept pervious",
+  "quotes": [
+   [
+    124111,
+    "The lesser of 4 metres wide or prevailing rear setback must be kept as pervious landscaped area"
+   ]
+  ],
+  "pdf_page": 10,
+  "section_ref": "2.18.11.2 C13"
+ },
+ {
+  "lga": "marrickville",
+  "dev_type": "secondary_dwelling",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: behind the front building line of the principal dwelling",
+  "quotes": [
+   [
+    112455,
+    "Secondary dwellings must be located behind the front building line of the principal dwelling"
+   ]
+  ],
+  "pdf_page": 13,
+  "section_ref": "4.1.6.2 C11 ii"
+ },
+ {
+  "lga": "marrickville",
+  "dev_type": "secondary_dwelling",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: as for dwelling houses at C10iii where there is no rear lane",
+  "quotes": [
+   [
+    112455,
+    "Where there is no rear lane, the rear setback controls are the same as prescribed for attached dwellings, dwelling houses and semi-attached dwellings at C10iii"
+   ]
+  ],
+  "pdf_page": 13,
+  "section_ref": "4.1.6.2 C11 iv"
+ },
+ {
+  "lga": "marrickville",
+  "dev_type": "secondary_dwelling",
+  "control_type": "side_setback",
+  "value_min": 1.5,
+  "unit": "m",
+  "condition": "detached at the rear; attached as for dwelling houses (C10 ii)",
+  "quotes": [
+   [
+    112455,
+    "a minimum of 1.5 metres side setback from allotment"
+   ]
+  ],
+  "pdf_page": 13,
+  "section_ref": "4.1.6.2 C11 iii"
+ },
+ {
+  "lga": "northern_beaches",
+  "dev_type": "dual_occupancy",
+  "control_type": "max_site_coverage",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: set by the DCP Site Coverage map",
+  "quotes": [
+   [
+    129379,
+    "shall not exceed the maximum site coverage shown on the map"
+   ]
+  ],
+  "pdf_page": 18,
+  "section_ref": "Warringah DCP B4 C1"
+ },
+ {
+  "lga": "northern_beaches",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": 1,
+  "unit": "m",
+  "condition": "2.5 m on the other side; combined width at least 3.5 m",
+  "quotes": [
+   [
+    129983,
+    "The minimum setback for all buildings and structures to side boundaries is 1m on one side and 2.5m on the other"
+   ]
+  ],
+  "pdf_page": 252,
+  "section_ref": "Warringah DCP G10.1 R4"
+ },
+ {
+  "lga": "northern_beaches",
+  "dev_type": "dwelling_house",
+  "control_type": "side_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: set by the DCP Side Boundary Setbacks map",
+  "quotes": [
+   [
+    129384,
+    "is to maintain a minimum setback from side boundaries as shown on the map"
+   ]
+  ],
+  "pdf_page": 18,
+  "section_ref": "Warringah DCP B5 C1"
+ }
+]
