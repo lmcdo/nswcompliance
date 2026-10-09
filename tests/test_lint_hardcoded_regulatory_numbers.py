@@ -24,6 +24,10 @@ def test_every_leaked_shape_is_caught():
         assert lint.hits_in_text(line), line
 
 
+def test_plain_jsx_text_is_caught():
+    assert lint.hits_in_text("        <p>Minimum lot size is 450 m²</p>") == ["Minimum lot size is 450 m²"]
+
+
 def test_comments_and_suppressed_lines_are_not_counted():
     assert lint.hits_in_text("// minimum 450 m² lot (old rule)") == []
     assert lint.hits_in_text("x = '3 m clearance'  # noqa: regulatory-number -- engineering buffer") == []

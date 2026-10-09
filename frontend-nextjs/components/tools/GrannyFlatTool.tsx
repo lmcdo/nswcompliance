@@ -117,7 +117,11 @@ function seppStandardLabel(standardType: string): string {
   const [, base, word, a, b] = m;
   const fmt = (n: string) => Number(n).toLocaleString('en-AU');
   const band = b ? `${fmt(a)}–${fmt(b)}` : `${word ?? ''} ${fmt(a)}`.trim();
-  return `${SEPP_STANDARD_NAMES[base] ?? base} (${band} m² lot)`;
+  // Side (cl 9(2)) and rear (cl 10(1)) setbacks grow for a building taller than
+  // the height threshold in the same quoted clause: shown as a base figure so
+  // a bare number is never read as the whole rule (cross-review).
+  const grows = base === 'setback_side' || base === 'setback_rear';
+  return `${SEPP_STANDARD_NAMES[base] ?? base} (${band} m² lot)${grows ? ' — base; more for a taller building' : ''}`;
 }
 
 const SEPP_LEGISLATION_URL =

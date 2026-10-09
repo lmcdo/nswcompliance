@@ -42,6 +42,10 @@ LITERAL = re.compile(
 PLANNING = re.compile(
     r"setback|height|lot|frontage|floor|FSR|parking|site area|coverage|storey|SEPP|LEP|DCP|"
     r"cl\.|clause|minimum|maximum|open space", re.I)
+# JSX text between tags, e.g. <p>Minimum lot size is 450 m2</p> (cross-review:
+# the first version read quoted literals only).
+JSX_TEXT = re.compile(
+    r""">([^<>{}\n]*?\b\d+(?:\.\d+)?\s?(?:m²|m2|sqm|square metres|metres|m\b|%|spaces?|storeys?)[^<>{}\n]*)<""")
 SUPPRESS = "noqa: regulatory-number"
 
 
@@ -57,6 +61,7 @@ def hits_in_text(text: str) -> list[str]:
         # splits them across two strings (the typed SEPP table did exactly this).
         if PLANNING.search(line):
             out += LITERAL.findall(line)
+            out += [t.strip() for t in JSX_TEXT.findall(line)]
     return out
 
 
