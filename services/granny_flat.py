@@ -175,13 +175,69 @@ def _get_sepp_sd_rules(conn=None) -> tuple[Optional["Rules"], Optional[float]]:
     return outcome.rules, max_gf
 
 
-def _approval_paths(rules, zone: Optional[str], lot_area_m2: Optional[float]) -> dict:
-    """The CDC and DA answers for this lot, from the one shared engine."""
+def _dwelling_house_permissible(conn, zone: Optional[str], lat: float, lng: float,
+                                address: Optional[str] = None) -> Optional[bool]:
+    """s 50: is a dwelling house permissible on the land, from the LEP land use table.
+
+    True/False only when the council's own table has a dwelling_houses row for this
+    zone; None (not established) otherwise -- 28 councils are loaded, and a missing
+    row is never read as permitted.
+    """
+    z = (zone or "").strip().split(" ")[0].upper()
+    if conn is None or not z:
+        return None
     try:
-        from services.secondary_dwelling_paths import assess
+        from services.intelligence_brief import _norm_lga
+        cur = conn.cursor()
+        # The council from the statewide ZONE layer: lookup_lga reads the height
+        # layer, which does not cover every council (e.g. Cumberland, measured
+        # 2026-10-09: Greystanes returned no council).
+        # Every covering polygon, not LIMIT 1: if two councils' polygons cover the
+        # point the council is ambiguous and s 50 is not established (cross-review).
+        # spatial_overlays has no is_active column (checked 2026-10-09).
+        cur.execute(
+            "SELECT DISTINCT lga_name FROM spatial_overlays WHERE layer_type = 'zone' "
+            "AND ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))",
+            (lng, lat))
+        councils = {_norm_lga(r[0]) for r in cur.fetchall() if r and r[0]}
+        target = councils.pop() if len(councils) == 1 else ""
+        if not target:
+            cur.close()
+            return None
+        cur.execute(
+            "SELECT lga, permissibility FROM lep_land_use_table "
+            "WHERE zone = %s AND development_type = 'dwelling_houses'", (z,))
+        found = {p for (row_lga, p) in cur.fetchall() if _norm_lga(row_lga) == target}
+        cur.close()
+    except Exception as e:  # noqa: BLE001 -- unknown, never a pass
+        logger.warning("dwelling-house permissibility lookup failed: %s", e)
+        return None
+    if found == {"permitted"}:
+        return True
+    if found == {"prohibited"}:
+        return False
+    return None  # absent, exempt or contradictory rows: not established
+
+
+def _approval_paths(rules, zone: Optional[str], lot_area_m2: Optional[float], *,
+                    frontage_m: Optional[float] = None, battle_axe: Optional[bool] = None,
+                    dwelling_house_permissible: Optional[bool] = None) -> dict:
+    """The CDC and DA answers for this lot, from the one shared engine.
+
+    Whether the granny flat is attached or detached is the owner's design choice,
+    not a fact about the land, so both are answered: the main result is the
+    detached case (the only one with a DA site-area standard) and `da_attached`
+    is the DA answer for an attached granny flat.
+    """
+    try:
+        from services.secondary_dwelling_paths import assess, evaluate_da
     except ImportError:
-        from secondary_dwelling_paths import assess
-    return assess(rules, zone, lot_area_m2)
+        from secondary_dwelling_paths import assess, evaluate_da
+    frontage = (frontage_m, frontage_m) if frontage_m is not None and frontage_m > 0 else None
+    paths = assess(rules, zone, lot_area_m2, frontage_range_m=frontage, battle_axe=battle_axe,
+                   detached=True, dwelling_house_permissible=dwelling_house_permissible)
+    paths["da_attached"] = evaluate_da(rules, zone, lot_area_m2, False, dwelling_house_permissible)
+    return paths
 
 
 def _outside_both_paths(paths: dict) -> bool:
@@ -191,10 +247,20 @@ def _outside_both_paths(paths: dict) -> bool:
                for p in ("cdc", "da"))
 
 
+def _attached_da_open(paths: dict) -> bool:
+    """An attached granny flat by DA: zone in scope and a dwelling house permissible
+    (s 50), and the only SEPP lot-area standard (s 53(2)(a)) is for detached ones."""
+    att = paths.get("da_attached") or {}
+    return (att.get("outcome") == "NOT_APPLICABLE"
+            and (att.get("reason") or "").startswith("s 53(2)(a) applies to detached"))
+
+
 def _approval_status(paths: dict) -> str:
-    """'met' when either path is met, 'outside_scope' when neither applies in
-    the zone, otherwise 'not_determined'."""
-    if paths["cdc"]["outcome"] == "PASS" or paths["da"]["outcome"] == "MEETS":  # noqa: bracket-access — assess() always sets both
+    """'met' when a path is met (CDC frontage passes, a detached DA meets the site
+    area, or an attached DA faces no SEPP lot-area standard), 'outside_scope' when
+    neither path applies in the zone, otherwise 'not_determined'."""
+    if (paths["cdc"]["outcome"] == "PASS" or paths["da"]["outcome"] == "MEETS"  # noqa: bracket-access — assess() always sets both
+            or _attached_da_open(paths)):
         return "met"
     if _outside_both_paths(paths):
         return "outside_scope"
@@ -371,6 +437,10 @@ class GrannyFlatDetectRequest(BaseModel):
     # Planning Portal zone code (e.g. "R2"). The CDC and DA tests each apply
     # only in their own zones, so without it both paths are "not determined".
     zone: Optional[str] = None
+    # Measured by the verify app from the lot shape (lib/geometry). Optional:
+    # absent means that CDC fact is "not determined", never a pass.
+    frontage_m: Optional[float] = None   # street frontage of a regular-shaped lot
+    battle_axe: Optional[bool] = None
 
 
 class DetectedStructure(BaseModel):
@@ -478,6 +548,10 @@ class GrannyFlatConfirmRequest(BaseModel):
     existing_secondary_dwelling: Optional[bool] = None  # user self-report: is there already a granny flat on this lot?
     main_dwelling_area_m2: Optional[float] = None  # SAM-detected footprint of principal dwelling (is_main_dwelling=True)
     zone: Optional[str] = None  # echoed from the detect response
+    # Measured by the verify app from the lot shape (lib/geometry). Optional:
+    # absent means that CDC fact is "not determined", never a pass.
+    frontage_m: Optional[float] = None   # street frontage of a regular-shaped lot
+    battle_axe: Optional[bool] = None
 
 
     @model_validator(mode="after")
@@ -1442,8 +1516,10 @@ def detect_structures(req: GrannyFlatDetectRequest):
     try:
         _detect_conn = _get_conn()
         sepp_rules, _sepp_max_gf = _get_sepp_sd_rules(_detect_conn)
+        dh_permissible = _dwelling_house_permissible(_detect_conn, req.zone, req.lat, req.lng, req.address)
     except Exception:
         sepp_rules, _sepp_max_gf = _get_sepp_sd_rules()
+        dh_permissible = None
     finally:
         if _detect_conn:
             _detect_conn.close()
@@ -1453,7 +1529,8 @@ def detect_structures(req: GrannyFlatDetectRequest):
     # Lot area alone never rules a granny flat out: the SEPP (Housing) 2021 sets
     # a road frontage by lot-area band on the CDC path and a non-discretionary
     # site area for detached granny flats on the DA path. Both are reported.
-    approval_paths = _approval_paths(sepp_rules, req.zone, lot_area_m2)
+    approval_paths = _approval_paths(sepp_rules, req.zone, lot_area_m2, frontage_m=req.frontage_m,
+                                     battle_axe=req.battle_axe, dwelling_house_permissible=dh_permissible)
     sepp_eligible = True
     sepp_ineligible_reason = None
     if _outside_both_paths(approval_paths):
@@ -1737,12 +1814,14 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     # change removes. A failure here is recorded and surfaced instead.
     detect_row_unavailable = False
     _confirm_conn = None
+    dh_permissible = None  # s 50 fact; stays "not established" if the DB is unreachable
     try:
         _confirm_conn = _get_conn()
         try:
             sepp_rules, sepp_max_gf = _get_sepp_sd_rules(_confirm_conn)
         except Exception:
             sepp_rules, sepp_max_gf = _get_sepp_sd_rules()
+        dh_permissible = _dwelling_house_permissible(_confirm_conn, req.zone, req.lat, req.lng, req.address)
         try:
             tile_b64, detect_manifest, detected_structures_carry = _fetch_detect_row(
                 _confirm_conn, req)
@@ -1834,7 +1913,8 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
 
     # Lot area is reported per approval path, never as one minimum that makes
     # the lot unbuildable -- the SEPP (Housing) 2021 sets no such minimum.
-    approval_paths = _approval_paths(sepp_rules, req.zone, lot_area_m2)
+    approval_paths = _approval_paths(sepp_rules, req.zone, lot_area_m2, frontage_m=req.frontage_m,
+                                     battle_axe=req.battle_axe, dwelling_house_permissible=dh_permissible)
     approval_status = _approval_status(approval_paths)
     if _outside_both_paths(approval_paths):
         granny_flat_buildable = False

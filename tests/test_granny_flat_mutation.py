@@ -2379,3 +2379,70 @@ class TestModels:
             del kwargs[missing]
             with _pytest.raises(Exception):
                 GrannyFlatConfirmResponse(**kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Path facts: frontage, battle-axe, s 50 permissibility, attached/detached
+# ---------------------------------------------------------------------------
+
+class _SeqCursor:
+    """Returns one fetchall result per execute, in order."""
+    def __init__(self, results):
+        self._results = list(results)
+        self._cur = []
+
+    def execute(self, sql, params=None):
+        self._cur = self._results.pop(0) if self._results else []
+
+    def fetchall(self):
+        return self._cur
+
+    def close(self):
+        pass
+
+
+class TestApprovalPathFacts:
+    _FACTS = dict(frontage_m=15.0, battle_axe=False, dwelling_house_permissible=True)
+
+    def test_measured_frontage_meets_cdc(self):
+        p = gf._approval_paths(_RULES, "R2", 600.0, **self._FACTS)
+        assert p["cdc"]["outcome"] == "PASS" and gf._approval_status(p) == "met"
+
+    def test_narrow_frontage_fails_cdc_but_detached_da_meets(self):
+        p = gf._approval_paths(_RULES, "R2", 600.0, **{**self._FACTS, "frontage_m": 10.0})
+        assert p["cdc"]["outcome"] == "FAIL" and p["da"]["outcome"] == "MEETS"
+        assert gf._approval_status(p) == "met"
+
+    def test_small_lot_attached_da_is_open_detached_is_below(self):
+        p = gf._approval_paths(_RULES, "R2", 380.0, **self._FACTS)
+        assert p["da"]["outcome"] == "BELOW"
+        assert p["da_attached"]["outcome"] == "NOT_APPLICABLE"
+        assert gf._approval_status(p) == "met"
+
+    def test_s50_unknown_keeps_da_undetermined(self):
+        p = gf._approval_paths(_RULES, "R2", 380.0, frontage_m=None, battle_axe=None)
+        assert gf._approval_status(p) == "not_determined"
+
+    def test_s50_prohibited_closes_both_da_answers(self):
+        p = gf._approval_paths(_RULES, "R2", 380.0, frontage_m=None, battle_axe=False,
+                               dwelling_house_permissible=False)
+        assert p["da"]["outcome"] == "NOT_APPLICABLE" and not gf._attached_da_open(p)
+        assert gf._approval_status(p) == "not_determined"
+
+    def test_battle_axe_lot_is_never_passed_on_frontage(self):
+        p = gf._approval_paths(_RULES, "R2", 600.0, frontage_m=30.0, battle_axe=True)
+        assert p["cdc"]["outcome"] == "UNKNOWN"
+
+    def test_dwelling_house_permissible_reads_the_table(self):
+        for rows, expect in (([("Cumberland", "permitted")], True), ([("Cumberland", "prohibited")], False),
+                             ([("Penrith", "permitted")], None), ([], None),
+                             ([("Cumberland", "permitted"), ("Cumberland", "prohibited")], None)):
+            cur = _SeqCursor([[("CUMBERLAND",)], rows])
+            assert gf._dwelling_house_permissible(FakeConn(cursor=cur), "R2", SYD_LAT, SYD_LNG) is expect, rows
+        for councils in ([], [("CUMBERLAND",), ("PARRAMATTA",)]):  # none, or ambiguous
+            cur = _SeqCursor([councils, [("Cumberland", "permitted")]])
+            assert gf._dwelling_house_permissible(FakeConn(cursor=cur), "R2", SYD_LAT, SYD_LNG) is None, councils
+
+    def test_dwelling_house_permissible_without_zone_or_conn_is_none(self):
+        assert gf._dwelling_house_permissible(None, "R2", SYD_LAT, SYD_LNG) is None
+        assert gf._dwelling_house_permissible(FakeConn(cursor=FakeCursor()), None, SYD_LAT, SYD_LNG) is None
