@@ -5,7 +5,8 @@
   "files": [
     "services/granny_flat.py",
     "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
-    "tests/test_granny_flat_mutation.py"
+    "tests/test_granny_flat_mutation.py",
+    "frontend-nextjs/lib/coverage.ts"
   ],
   "pre_impl": {
     "existing_data": "lep_land_use_table: 19,551 rows over 28 councils, dwelling_houses rows with permissibility permitted / prohibited / exempt. spatial_overlays zone layer gives the council for a point statewide; the height layer used by lookup_lga does not (Greystanes, Cumberland, returned no council, measured 2026-10-09).",
