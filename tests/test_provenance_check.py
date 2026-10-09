@@ -79,6 +79,26 @@ def test_failed_fetch_is_named_and_every_rule_on_that_page_is_broken():
     assert traced == 0 and any("fetch failed" in p and "HTTP 403" in p for p in problems)
 
 
+def test_failed_fetch_counts_every_row_even_when_rows_share_a_standard_type():
+    # 2026-10-09: Cloudflare 403'd the one page all 53 rules link to, and the
+    # check printed "25/53 traced" -- broken was keyed by standard_type, so 53
+    # rows over 28 distinct types read as 25 traced when none had been checked.
+    def fetch_403(url):
+        raise RuntimeError("HTTP 403")
+    rows = [_row(id=1, development_type="dual_occupancy", standard_type="max_height"),
+            _row(id=2, development_type="terraces", standard_type="max_height")]
+    traced, _ = pc.run(rows, fetch=fetch_403, pause_s=0)
+    assert traced == 0
+
+
+def test_one_broken_row_does_not_break_its_same_type_sibling():
+    q = _row()["source_quote"].replace("450m2", "500m2")
+    rows = [_row(id=1, standard_type="site_area"),
+            _row(id=2, development_type="terraces", standard_type="site_area", source_quote=q)]
+    traced, problems = _trace(rows)
+    assert traced == 1 and len(problems) == 1
+
+
 def test_no_rules_is_a_failure_not_a_pass():
     assert pc.run([], fetch=_fetch_ok, pause_s=0) == (0, ["no rules with a quote were found to check"])
 

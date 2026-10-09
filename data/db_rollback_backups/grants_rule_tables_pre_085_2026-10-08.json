@@ -1,0 +1,824 @@
+{
+  "captured": "2026-10-08",
+  "database": "postgres",
+  "dq_138_before": 34,
+  "restore_sql": "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.housing_sepp_standards, public.cdc_eligibility_standards, public.regulatory_provisions, public.instrument_registry, public.sepp_structured_requirements, public.sepp_adg_requirements, public.dcp_setback_controls, public.lep_land_use_table, public.lep_clauses, public.lep_development_type_clauses, public.development_controls, public.control_codes, public.quantitative_standards, public.dcp_base_requirements, public.dcp_precinct_requirements, public.dcp_table_of_contents, public.provision_versions TO anon, authenticated;",
+  "grants": [
+    {
+      "table_name": "cdc_eligibility_standards",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "cdc_eligibility_standards",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "cdc_eligibility_standards",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "cdc_eligibility_standards",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "cdc_eligibility_standards",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "cdc_eligibility_standards",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "cdc_eligibility_standards",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "cdc_eligibility_standards",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "control_codes",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "control_codes",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "control_codes",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "control_codes",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "control_codes",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "control_codes",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "control_codes",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "control_codes",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_base_requirements",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_base_requirements",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_base_requirements",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_base_requirements",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_base_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_base_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_base_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_base_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_precinct_requirements",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_precinct_requirements",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_precinct_requirements",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_precinct_requirements",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_precinct_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_precinct_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_precinct_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_precinct_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_setback_controls",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_setback_controls",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_setback_controls",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_setback_controls",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_setback_controls",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_setback_controls",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_setback_controls",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_setback_controls",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_table_of_contents",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_table_of_contents",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_table_of_contents",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_table_of_contents",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_table_of_contents",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_table_of_contents",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_table_of_contents",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "dcp_table_of_contents",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "development_controls",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "development_controls",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "development_controls",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "development_controls",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "development_controls",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "development_controls",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "development_controls",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "development_controls",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "housing_sepp_standards",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "housing_sepp_standards",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "housing_sepp_standards",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "housing_sepp_standards",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "housing_sepp_standards",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "housing_sepp_standards",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "housing_sepp_standards",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "housing_sepp_standards",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "instrument_registry",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "instrument_registry",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "instrument_registry",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "instrument_registry",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "instrument_registry",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "instrument_registry",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "instrument_registry",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "instrument_registry",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_clauses",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_clauses",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_clauses",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_clauses",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_clauses",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_clauses",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_clauses",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_clauses",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_development_type_clauses",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_development_type_clauses",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_development_type_clauses",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_development_type_clauses",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_development_type_clauses",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_development_type_clauses",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_development_type_clauses",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_development_type_clauses",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_land_use_table",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_land_use_table",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_land_use_table",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_land_use_table",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_land_use_table",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_land_use_table",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_land_use_table",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "lep_land_use_table",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "provision_versions",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "provision_versions",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "provision_versions",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "provision_versions",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "provision_versions",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "provision_versions",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "provision_versions",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "provision_versions",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "quantitative_standards",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "quantitative_standards",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "quantitative_standards",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "quantitative_standards",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "quantitative_standards",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "quantitative_standards",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "quantitative_standards",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "quantitative_standards",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "regulatory_provisions",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "regulatory_provisions",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "regulatory_provisions",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "regulatory_provisions",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "regulatory_provisions",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "regulatory_provisions",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "regulatory_provisions",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "regulatory_provisions",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_adg_requirements",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_adg_requirements",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_adg_requirements",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_adg_requirements",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_adg_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_adg_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_adg_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_adg_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_structured_requirements",
+      "grantee": "anon",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_structured_requirements",
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_structured_requirements",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_structured_requirements",
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_structured_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_structured_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_structured_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "table_name": "sepp_structured_requirements",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    }
+  ]
+}

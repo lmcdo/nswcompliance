@@ -1043,18 +1043,28 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # filtered_to_all + 36 untagged), of which DQ-103 accounts for 1,021.
         # Council rows only, for DQ-33's reason: a statewide SEPP or LEP has no
         # council config that could ever resolve it.
+        #
+        # LEP rows are excluded BY DOCUMENT TYPE, not by source_council, and that
+        # was learned the hard way: migration 087 (2026-10-09) correctly gave the
+        # Inner West LEP 2022 rows their council, which silently pulled 120 LEP
+        # keys into this DCP count and turned it red. "Council rows" here always
+        # meant council DCP rows. The LEP's undecided scope is DQ-140's.
         "SELECT count(*) FROM ("
-        "  SELECT 1 FROM regulatory_provisions"
-        "   WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL"
-        "     AND (v2_dev_type_source IN ('config_silent','filtered_to_all',"
-        "                                 'no_document_id')"
-        "          OR v2_dev_type_source IS NULL)"
+        "  SELECT 1 FROM regulatory_provisions rp"
+        "   WHERE rp.is_current AND rp.v2_is_actionable AND rp.source_council IS NOT NULL"
+        "     AND NOT EXISTS (SELECT 1 FROM documents d"
+        "                      WHERE d.id = rp.document_id AND d.document_type = 'LEP')"
+        "     AND (rp.v2_dev_type_source IN ('config_silent','filtered_to_all',"
+        "                                    'no_document_id')"
+        "          OR rp.v2_dev_type_source IS NULL)"
         "  UNION ALL"
-        "  SELECT 1 FROM regulatory_provisions"
-        "   WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL"
-        "     AND (v2_zone_source IN ('config_silent','filtered_to_all',"
-        "                             'no_document_id')"
-        "          OR v2_zone_source IS NULL)"
+        "  SELECT 1 FROM regulatory_provisions rp"
+        "   WHERE rp.is_current AND rp.v2_is_actionable AND rp.source_council IS NOT NULL"
+        "     AND NOT EXISTS (SELECT 1 FROM documents d"
+        "                      WHERE d.id = rp.document_id AND d.document_type = 'LEP')"
+        "     AND (rp.v2_zone_source IN ('config_silent','filtered_to_all',"
+        "                                'no_document_id')"
+        "          OR rp.v2_zone_source IS NULL)"
         ") t",
         (),
         "Each count is one key -- a development-type list or a zone list -- on "
@@ -2320,6 +2330,251 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "DQ-130/132 measure a served set that EXCLUDES the boarding-house parking rate "
         "the SEPP tab displays; /api/sepp/parking-provisions deliberately does not filter "
         "on the flag.",
+    ),
+    "DQ-136": (
+        "Statewide standards a determination reads that carry no machine-renewable proof",
+        # Origin 2026-10-08, tracing the SEPP tab for 45 Graham St Greystanes. The
+        # Multiple Occupancy card prints a clause reference beside every number --
+        # "Max FSR 0.65:1  S168(2)(d)", "Min Lot Size 450m2  S168(2)(a)" -- read from
+        # housing_sepp_standards.source_clause. The clause STRING is stored; nothing
+        # ties the number to the clause's words. 33 of those rows have neither a quote
+        # nor an anchored legislation URL, and 12 more (secondary_dwelling, Schedule 1)
+        # have the URL but no quote, so no check can run on them either.
+        #
+        # PROOF here means the three things scripts/provenance_check.py needs to run
+        # weekly: an anchored legislation.nsw.gov.au URL, the clause's own words, and
+        # therefore the ability to assert the words are on the live page and the value
+        # is inside the words. 9 rows have all three (ids 53-61, the CDC and DA pathway
+        # rules for secondary dwellings, #1239) and are re-verified weekly. The other 45
+        # are claims with a clause label attached.
+        #
+        # Do NOT clear this by writing source_quote from the value or from a model's
+        # paraphrase: provenance_check.py fetches the anchor and compares word for word,
+        # so a quote not literally in the clause fails the weekly check instead.
+        "SELECT count(*) FROM housing_sepp_standards"
+        " WHERE source_quote IS NULL OR source_quote = ''"
+        "    OR legislation_url IS NULL"
+        "    OR legislation_url !~ '^https://legislation\\.nsw\\.gov\\.au/.+#.+'",
+        (),
+        "Each is a number the SEPP tab prints with a clause reference that no machine can "
+        "trace to that clause. Reads 45 of 54 on 2026-10-08 (the 9 proven are the #1239 "
+        "secondary-dwelling CDC/DA rules). Splits two ways: 33 with neither quote nor "
+        "anchored URL (dual_occupancy, independent_living_unit, multi_dwelling, "
+        "residential_flat_r1r2, residential_flat_r3r4_inner/outer, terraces) and 12 with "
+        "the URL and no quote (secondary_dwelling). cdc_eligibility_standards is clean by "
+        "this test, 4 of 4 quoted. Clears row by row: anchor the URL, store the clause's "
+        "own words, let provenance_check.py prove it. The read gate in "
+        "ce-authority-status-and-offer-2026-10-08.md cannot be switched on before this "
+        "reaches 0, because it would take the table from 54 servable rows to 9.",
+    ),
+    "DQ-137": (
+        "Numeric standards whose declared scope is 'all', so a determination picks among them",
+        # Origin 2026-10-08, same address. The Pattern Book card refused the pathway:
+        # "lot size min: minimum 900.0sqm required, 573.81sqm available". The 900 is real
+        # -- sepp_structured_requirements.metric_value -- but
+        # lib/pattern-book-eligibility/check-numerics.ts:52-62 selects it with
+        #   WHERE metric_name='lot_size_min' AND (applies_to='Pattern_Book' OR 'all')
+        # and no zone, LGA or development-type filter. Its own comment says so: "we don't
+        # have zone-specific filtering yet ... queries all". There is no Pattern_Book row
+        # at all, so the match is on 'all', 24 rows compete, values run 200 to 1500, and
+        # the card took 900. Row order decides eligibility.
+        #
+        # This is NOT the proof problem (DQ-136) and a proof gate does not catch it: a
+        # fully quoted row can still be the wrong row. 199 of 236 numeric standards
+        # declare applies_to='all', across 7 metrics with more than one competitor --
+        # height_max has 75 rows spanning 3.0 m to 32.5 m. All of them came from the
+        # Exempt and Complying Development Codes SEPP 2008, whose Part and development
+        # type IS the scope, and the scope was flattened on extraction.
+        #
+        # source_clause on these rows holds a filename and page ("...Codes) 2008 - NSW
+        # Legislation.pdf - Page 213"), not a clause, so surfacing it would not help a
+        # reader choose either.
+        "SELECT count(*) FROM sepp_structured_requirements"
+        " WHERE requirement_category = 'numeric_standard'"
+        "   AND applies_to = 'all'"
+        "   AND metric_name IN ("
+        "     SELECT metric_name FROM sepp_structured_requirements"
+        "      WHERE requirement_category = 'numeric_standard' AND applies_to = 'all'"
+        "      GROUP BY metric_name HAVING count(*) > 1)",
+        (),
+        "Each is a regulatory figure any determination can select without a filter "
+        "distinguishing it from its competitors. Reads 199 of 236 numeric standards on "
+        "2026-10-08. The 7 contested metrics: height_max 75 rows (3.0-32.5 m), "
+        "setback_side_min 31 (1.0-10.0), setback_rear_min 30 (1.0-8.0), lot_size_min 24 "
+        "(200-1500), setback_front_min 21 (1.2-15.0), fsr_min 13 (0.65-10.0), "
+        "deep_soil_percent_min 5 (5-15). Clears by scoping each row to the Part, "
+        "development type and zone its source clause actually governs -- NOT by adding an "
+        "ORDER BY or a LIMIT 1, which only makes the arbitrary pick repeatable. The "
+        "serving rule this exists to enforce: a query returning more than one candidate "
+        "for one determination must refuse, not choose.",
+    ),
+    "DQ-138": (
+        "Rule tables the public browser role can write",
+        # Origin 2026-10-08, measuring the authority surface for the read-gate design.
+        # anon is the role behind NEXT_PUBLIC_SUPABASE_ANON_KEY, which ships to every
+        # browser. It holds INSERT, UPDATE, DELETE and TRUNCATE on every rule table.
+        #
+        # Nothing is exploitable TODAY: RLS is enabled on these tables with no policies
+        # and anon has rolbypassrls = false, so every statement is denied. That is ONE
+        # mechanism, and the grant sits underneath it. A single permissive policy added
+        # for an unrelated feature, or one DISABLE ROW LEVEL SECURITY, turns a public key
+        # into a write path to regulatory data -- and the grant would make it legal.
+        #
+        # REVOKE costs nothing functionally, precisely because RLS already denies these
+        # roles and no serving path uses them to read a rule table: the app connects as
+        # postgres, the table owner, which bypasses RLS. Defence in depth that cannot
+        # regress a feature.
+        #
+        # SCOPE LIMIT, recorded deliberately: the table list below is hardcoded. A
+        # catalogue sweep on 2026-10-08 found 72 further rule-shaped tables outside it,
+        # including 17 BACKUP tables holding copies of regulatory data (11
+        # dcp_setback_controls_*, 6 regulatory_provisions_citation_backup_*). ALL 149
+        # public base tables are writable by anon and authenticated (1,192 grant rows) --
+        # the Supabase default -- so this probe counts the rule-bearing subset rather
+        # than all 149, because legitimate anon write paths exist (dcp_interest for the
+        # register-interest form, feedback, leads). Replace this list with the derived
+        # rule-table inventory (A1 of ce-rule-provenance-lockdown-PLAN-2026-10-08.md)
+        # once that exists; until then a new rule table is NOT counted here.
+        # The probe's scope must be the SAME scope the migrations protect, or the
+        # check goes green on a table the fix covered. The first version inspected
+        # only 085's 17 names, so a GRANT UPDATE on lep_zone_coverage after 086 --
+        # a serving gate, re-granted -- would have left this reading 0. Caught by
+        # cross-review (gpt-5.6-sol, MEDIUM silent-failure); the repo has a memory
+        # file for exactly this shape, feedback-a-check-can-watch-the-field-the-fix-
+        # abandoned. Name patterns and the table list below are kept identical to
+        # migrations/086_revoke_public_writes_on_remaining_rule_tables.sql.
+        "SELECT count(*) FROM ("
+        "  SELECT DISTINCT g.table_name, g.grantee"
+        "    FROM information_schema.role_table_grants g"
+        "    JOIN information_schema.tables t"
+        "      ON t.table_schema = g.table_schema"
+        "     AND t.table_name = g.table_name"
+        "     AND t.table_type = 'BASE TABLE'"
+        "   WHERE g.table_schema = 'public'"
+        "     AND g.grantee IN ('anon', 'authenticated')"
+        "     AND g.privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')"
+        "     AND (g.table_name IN ('housing_sepp_standards', 'cdc_eligibility_standards',"
+        "                           'regulatory_provisions', 'instrument_registry',"
+        "                           'sepp_structured_requirements', 'sepp_adg_requirements',"
+        "                           'dcp_setback_controls', 'lep_land_use_table',"
+        "                           'lep_clauses', 'lep_development_type_clauses',"
+        "                           'development_controls', 'control_codes',"
+        "                           'quantitative_standards', 'dcp_base_requirements',"
+        "                           'dcp_precinct_requirements', 'dcp_table_of_contents',"
+        "                           'provision_versions', 'lep_zone_coverage')"
+        # NOTE the doubled %%: run() calls cur.execute(sql, params) with a tuple,
+        # so psycopg2 interpolates and a single % in a LIKE pattern is read as a
+        # placeholder (IndexError: tuple index out of range).
+        "          OR g.table_name LIKE 'dcp\\_setback\\_controls\\_%%'"
+        "          OR g.table_name LIKE 'regulatory\\_provisions\\_%%backup%%')) s",
+        (),
+        "Each is one (rule table, public role) pair holding write privileges. Reads 16 on "
+        "2026-10-08 across the 8 tables that existed in the first version of this list -- "
+        "anon and authenticated, each with DELETE, INSERT, TRUNCATE and UPDATE. The list "
+        "is now 17 tables, so the first run after this row lands reads higher; that is "
+        "the list widening, not a regression. Clears with REVOKE ALL on those tables from "
+        "anon and authenticated. Verify by re-running this probe, NOT by checking the app "
+        "still works: the app connects as postgres and is unaffected either way, so a "
+        "green app proves nothing about this row.",
+    ),
+    "DQ-140": (
+        "Served LEP rules whose zone or development-type scope nobody decided",
+        # Split from DQ-114 on 2026-10-09 (user ruling: unblock the merge, then
+        # do the full fix as its own PR). The whole Inner West LEP 2022 was
+        # loaded with no scope: 554 served rules, every one reading ALL for both
+        # keys, 434 as no_config and 120 never tagged at all. An LEP clause
+        # states its own reach in its own words -- "This clause applies to land
+        # in Zone E3", "applies to Lot 1, DP 1070825", or nothing, in which case
+        # cl 1.4 (the land the Plan applies to) is the decision. The rows are
+        # also stored split by subclause, so a fragment like "(a) each lot will
+        # be used for a dwelling house" carries no zone text of its own: the
+        # fix is per CLAUSE, not per row. Counted per key, as DQ-114 is, and
+        # including no_config, because no council config can ever resolve an
+        # LEP (DQ-33's reasoning) -- here no_config is simply "not read yet".
+        "SELECT count(*) FROM ("
+        "  SELECT 1 FROM regulatory_provisions rp"
+        "    JOIN documents d ON d.id = rp.document_id AND d.document_type = 'LEP'"
+        "   WHERE rp.is_current AND rp.v2_is_actionable"
+        "     AND (rp.v2_dev_type_source IN ('config_silent','filtered_to_all',"
+        "                                    'no_document_id','no_config')"
+        "          OR rp.v2_dev_type_source IS NULL)"
+        "  UNION ALL"
+        "  SELECT 1 FROM regulatory_provisions rp"
+        "    JOIN documents d ON d.id = rp.document_id AND d.document_type = 'LEP'"
+        "   WHERE rp.is_current AND rp.v2_is_actionable"
+        "     AND (rp.v2_zone_source IN ('config_silent','filtered_to_all',"
+        "                                'no_document_id','no_config')"
+        "          OR rp.v2_zone_source IS NULL)"
+        ") t",
+        (),
+        "Each count is one key -- a zone list or a development-type list -- on "
+        "one served LEP rule, reading ALL because nobody read the clause. The "
+        "rule is shown to every zone and every kind of development, so an E3 "
+        "business-premises clause or a single-lot Schedule 1 clause appears on "
+        "an R2 house. Reachable only by reading each clause's own words and "
+        "recording them, per clause rather than per stored row.",
+    ),
+    "DQ-139": (
+        "Council/development-type pairs whose setback arithmetic lacks a required control",
+        # Origin 2026-10-08, the LEP tab for 45 Graham St Greystanes. The yield card
+        # showed "DCP Setbacks Applied -- Front: 6m, Side: 0.9m" and "Buildable footprint
+        # 423m2 (74% of lot)". Both setbacks are Cumberland's own current rows, page 8 of
+        # cumberland-part-b-residential.pdf, and the is_current filter correctly rejected
+        # its two stale front-setback rows (5.5 m and 4.0 m). That part works.
+        #
+        # Cumberland has no CURRENT rear setback; its only rear row (8.0 m, id 30) is
+        # is_current = false, needs_review = true. The footprint formula in
+        # services/constraint_arithmetic.py:615-623 is
+        #   (frontage - 2*side) * (depth - front - rear)
+        # and the displayed number is only reachable with rear = 0:
+        #   (18.79 - 1.8) * (30.9 - 6 - 0) = 16.99 * 24.9 = 423.05  -> "423m2"
+        #   423 / 573.81 = 73.7%                                    -> "74%"
+        #
+        # So a missing control became zero, and zero is the PERMISSIVE direction: it makes
+        # the buildable area larger. The card does print "Calculated from 3 of 6 planning
+        # controls", but it still prints the figure. A caveat beside a number is not the
+        # same as withholding the number.
+        #
+        # SCOPE. Counts (lga, dev_type) pairs where the arithmetic can run in that
+        # state: a current front or side setback exists for that development type, so
+        # the block renders, and no current rear setback does for it.
+        #
+        # The first version of this probe grouped by lga ALONE and read 1. That was
+        # wrong in the direction that reports clean: a rear setback recorded for
+        # residential_flat_building satisfied the EXCEPT for the whole council and hid
+        # the dwelling_house gap. Scoped per development type -- the scope
+        # _get_dcp_value actually serves on -- it reads 14. Caught by cross-review
+        # (gpt-5.6-sol, MEDIUM db-filter) on this branch; the second time in one
+        # session that a filter left out of a query made a defect look smaller.
+        # USABLE VALUE, not merely a row. A current row whose value_min and
+        # value_max are both null supplies no number -- Cumberland's
+        # max_site_coverage and deep_soil_min rows are exactly that shape, which
+        # the DCP tab renders as "No set number". Counting such a row as a present
+        # control would report clean while _get_dcp_value still returns nothing and
+        # the arithmetic still cannot run. Caught by cross-review (gpt-5.6-sol,
+        # MEDIUM null-guard). The predicate matches the serving code's own test.
+        "SELECT count(*) FROM ("
+        "  SELECT lga, dev_type FROM dcp_setback_controls"
+        "   WHERE is_current AND COALESCE(value_min, value_max) IS NOT NULL"
+        "     AND control_type IN ('front_setback', 'side_setback')"
+        "   GROUP BY lga, dev_type"
+        "  EXCEPT"
+        "  SELECT lga, dev_type FROM dcp_setback_controls"
+        "   WHERE is_current AND COALESCE(value_min, value_max) IS NOT NULL"
+        "     AND control_type = 'rear_setback'"
+        "   GROUP BY lga, dev_type) s",
+        (),
+        "Each is a (council, development type) pair whose buildable-footprint and "
+        "DCP-adjusted-GFA figures would be computed with a setback absent. Reads 14 on "
+        "2026-10-09 scoped per development type; the same query grouped by council alone "
+        "reads 1, which is why it is not grouped that way. This row measures the DATA "
+        "gap and stays open until the controls are extracted. The CODE half -- refusing "
+        "to publish a footprint, or a computation step carrying a figure, when an input "
+        "is absent -- is closed separately and covered by tests/test_constraint_"
+        "arithmetic.py (TestThreeState), NOT by this count, so a non-zero reading here "
+        "is not evidence that the permissive default is back. Not counted: "
+        "constraint_arithmetic.py's own STOREY_HEIGHT_M, MIN_DWELLING_GFA_M2 and "
+        "PARKING_AREA_PER_SPACE_M2 are engineering assumptions, not regulatory values.",
     ),
 }
 

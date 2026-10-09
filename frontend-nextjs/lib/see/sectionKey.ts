@@ -95,24 +95,71 @@ export function deriveSectionTitleFromProvision(p: ProvisionForSectionKey): stri
   const secNum = p.toc_section_number?.trim();
   const header = p.section_header?.trim();
   if (!secNum) return null;
+  if (!header) return secNum;
 
-  if (header) {
-    // A DCP section heading is all-uppercase (no lowercase letters) and has no trailing full stop.
-    const isHeading = /^[A-Z][A-Z\s\d\-–()\/&,]+$/.test(header);
-    if (isHeading) {
-      const titleCase = header
-        .split(' ')
-        .map((word, i) => {
-          const lower = word.toLowerCase();
-          return i === 0 || !ARTICLES.has(lower)
-            ? lower.charAt(0).toUpperCase() + lower.slice(1)
-            : lower;
-        })
-        .join(' ');
-      return `${secNum} ${titleCase}`;
-    }
+  // A heading the document prints in full caps has to be recased to read as a
+  // title. That recasing REWRITES the source, so it stays confined to this
+  // branch, where the original carries no case information to lose.
+  const isAllCapsHeading = /^[A-Z][A-Z\s\d\-–()\/&,]+$/.test(header);
+  if (isAllCapsHeading) {
+    const titleCase = header
+      .split(' ')
+      .map((word, i) => {
+        const lower = word.toLowerCase();
+        return i === 0 || !ARTICLES.has(lower)
+          ? lower.charAt(0).toUpperCase() + lower.slice(1)
+          : lower;
+      })
+      .join(' ');
+    return `${secNum} ${titleCase}`;
   }
 
-  // Header is objective/control text or absent — just use the section number as the label.
-  return secNum;
+  // Mixed-case header: the document's own heading. Shown VERBATIM — never
+  // recased, reordered or paraphrased — minus a leading section number that
+  // would otherwise print twice.
+  //
+  // WHY THIS BRANCH EXISTS. The all-caps test above matches 59 of the 19,219
+  // served DCP provisions (measured 2026-10-08). The other 17,788 with a header
+  // returned the bare section number here, and ProvisionsByTocStructure then
+  // fell through to the chapter slug — so every section in a chapter was
+  // labelled with the chapter's own name. Cumberland showed nineteen sections
+  // as "2.10 Cumberland Dcp Part B Residential", "2.11 Cumberland Dcp Part B
+  // Residential", ... while the database held "2.10 Visual and acoustic
+  // privacy", "2.11 Solar access", "2.14 Fencing", "2.19 Garages and carports".
+  // Fleet-wide: marrickville 2,966, leichhardt 2,757, city_of_sydney 2,375,
+  // ashfield 2,010, canterbury_bankstown 1,902, northern_beaches 1,598.
+  //
+  // No heading-versus-body-text classifier is applied, deliberately. Every one
+  // of the 19,219 rows carries a pdf_page, so whatever is shown here is
+  // checkable against that page, and the alternative it replaces — the chapter
+  // slug — is wrong for every section in the chapter. A header that reads like
+  // body text is still the text at that page; the chapter slug never was.
+  const body = stripLeadingSectionNumber(header, secNum);
+  return body ? `${secNum} ${body}` : secNum;
+}
+
+/**
+ * Remove a leading copy of THIS provision's own section number from its header,
+ * so "2.10" + "2.10 Visual and acoustic privacy" does not render the number
+ * twice.
+ *
+ * The header's own leading number is parsed and compared for EQUALITY, rather
+ * than the section number being matched as a prefix. Prefix matching is wrong
+ * whenever one section number is a prefix of another, which is common:
+ * interpolating "2.1" into `^2\.1` ate the "2.1" out of "2.10 Visual privacy"
+ * and rendered "2.1 0 Visual privacy", and "C1" did the same to "C1.5". Caught
+ * by cross-review (gpt-5.6-sol, HIGH/MEDIUM pass on this branch) after the
+ * first version of this function shipped a boundary-free regex.
+ *
+ * When the leading number is NOT this section's own, the header is returned
+ * untouched — duplication is ugly but honest, and a mismatch there means the
+ * row's toc_section_number and its heading disagree, which is a grouping
+ * question about the data, not something to paper over here.
+ */
+function stripLeadingSectionNumber(header: string, secNum: string): string {
+  const leading = header.match(/^([A-Za-z]?\d+(?:\.\d+)*)\s*[-–—:.]?\s*/);
+  if (leading && leading[1] === secNum) {
+    return header.slice(leading[0].length).trim();
+  }
+  return header.trim();
 }

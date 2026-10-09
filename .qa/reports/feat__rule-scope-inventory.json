@@ -1,0 +1,181 @@
+{
+  "tier": "critical",
+  "justification": "Three changes that each touch what a planner is shown as a regulatory answer. (1) A production grant change on 17 rule tables (migration 085). (2) services/constraint_arithmetic.py stops publishing a buildable footprint and an after-DCP GFA computed with an unstated setback substituted as 0 m -- on 45 Graham St that was 423.1 m2 and 1,269.2 m2 against true figures of 321.1 and 963.3, overstated 32%. (3) frontend sectionKey.ts changes the label on 17,788 served DCP provisions. Not Standard: (2) and (3) alter figures and labels already live, and (1) alters production privileges. The four new DQ probes are read-only and would be Minor alone.",
+  "commit_hash": "3a21419a",
+  "files": [
+    "scripts/dq_probe_live.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "migrations/085_revoke_public_writes_on_rule_tables.sql",
+    "data/db_rollback_backups/grants_rule_tables_pre_085_2026-10-08.json",
+    "services/constraint_arithmetic.py",
+    "tests/test_constraint_arithmetic.py",
+    "tests/golden/capacity_scenarios.py",
+    "tests/golden/capacity_golden.json",
+    "frontend-nextjs/lib/see/sectionKey.ts",
+    "frontend-nextjs/lib/see/__tests__/sectionKey-title.test.ts",
+    ".claude/hooks/live-numbers.py",
+    "deploy/flyio-legislation-monitor/provenance_check.py",
+    "frontend-nextjs/lib/coverage.ts",
+    "scripts/link_inner_west_lep_source_url.py",
+    "scripts/outreach_claim_checks.py",
+    "scripts/provenance_check.py",
+    "tests/test_dq_probe_integrity.py",
+    "tests/test_provenance_check.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Every figure was measured against production before any file was written. The four DQ probes reuse the existing ledger (scripts/dq_probe_live.py + .claude/dq_checks.json), not a new tracker -- MEMORY.md's standing rule. The setback fix reuses the existing pure-function harness in tests/test_constraint_arithmetic.py, so 45 Graham St was reproduced exactly (423.1 m2, 74%, 1,721.4) with no DB or portal call. The section-title fix reuses deriveSectionTitleFromProvision rather than adding a parallel path; COMPONENT_MAP.md confirmed /assessment DCP tab -> ProvisionsByTocStructure.tsx before the edit.",
+    "new_vs_existing": "No new module, no new table, no new endpoint. Two existing functions changed in place and four rows added to the existing DQ ledger. Prior art was swept before each: the tracker had no row covering source_quote/anchored-URL proof, applies_to scope, anon grants, or a permissive default for a missing control; no script in the repo read pg_roles or role_table_grants; five lint scripts exist and three are CI-enforced (lint_hardcoded_zone_codes, lint_extraction_defaults, lint_fabricated_verdicts), none of which covers a hardcoded numeric threshold in a serving route -- so a sixth linter was deliberately NOT added and that gap is recorded for a later widening of lint_brief_failsoft.",
+    "assumption_mismatch": "Four assumptions were wrong and were corrected by measurement, not reasoning. (a) I claimed the 900 m2 Pattern Book minimum was absent from the database; it is sepp_structured_requirements.metric_value, one of 24 competing rows -- I had searched the wrong table. (b) I claimed Cumberland had no 6 m / 0.9 m setback rows; a LIMIT 20 in my own query had hidden them, and they are real, current and page-cited. (c) I claimed the DCP tab reported Cumberland as uncovered; the register-interest form is a site-wide banner. (d) I claimed the UI ignored section_header; it reads it, but only accepted an all-caps heading. Schema mismatches found and fixed before use: housing_sepp_standards has source_clause/numeric_value (not clause/value_numeric) and no is_active; dcp_setback_controls keys on lga with value_min/value_max (not council/value_m); lep_land_use_table keys on lga (not lga_name).",
+    "external_source_error": "No external API is called by anything in this branch -- the DQ probes read the database, the arithmetic is a pure function, and the section title is a string transform. The NSW Planning Portal paths that DO fail open were measured and recorded for a later branch, not touched here: lib/nsw-planning-portal.ts getPlanningLayers returns [] after retries on timeout or 429 exhaustion rather than an error, so heritage, zone, maxHeight, maxFsr and TOD keep their initial false/null, visible at app/api/assessment/full/route.ts:120 as `property.heritage?.isHeritage || false`. Migration 085 cannot be affected by an external outage; it refuses to commit unless its own count reaches 0.",
+    "frontend_type": "sectionKey.ts returns `string | null` and that is unchanged -- both the all-caps and the new mixed-case branch return a string, and null still means no section number. No consumer sees a new type. ProvisionsByTocStructure.tsx compares the result against the bare section number to decide whether to fall back to the chapter slug, and that comparison still type-checks and still works; it is simply reached far less often. On the Python side, buildable_footprint_m2 and dcp_adjusted_gfa_m2 are already Optional[float] and already None on other paths (unreliable geometry), and ConstraintArithmeticCard.tsx:549 already guards with `result.buildable_footprint_m2 != null`, so a withheld figure renders as an absent line and not as 'null' or NaN.",
+    "user_failure_mode": "Silently, in the direction that flatters the site, which is why this is Critical. A planner reading 45 Graham St saw a buildable footprint of 423 m2 and 74% of lot, and an after-DCP GFA of 1,269 m2, with no indication that a third of each came from a rear setback nobody had recorded. Nothing on screen distinguished it from a lot whose DCP states all three setbacks. The card did print 'Calculated from 3 of 6 planning controls', but a caveat beside a number is not the same as withholding the number. The section labels failed the same way: nineteen sections all reading 'Cumberland Dcp Part B Residential' look like a naming convention, not like missing data, so a planner picks between them by number and cannot tell that Fencing and Solar access are different sections.",
+    "timeout_risk": "All four DQ probes timed against production at a 60 s statement_timeout: DQ-136 16.2 ms, DQ-137 14.4 ms, DQ-138 15.6 ms, DQ-139 13.5 ms. Migration 085 is a grant change on 17 tables, no table scan."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-138 ; cd frontend-nextjs && npx jest --testPathPatterns=sectionKey-title ; python -m pytest tests/test_constraint_arithmetic.py tests/test_capacity_golden.py -q",
+    "fails_when": "DQ-138 exits non-zero while any rule table still grants a write to anon or authenticated. The jest suite fails if a mixed-case DCP heading resolves to anything but the document's own words. The pytest suites fail if a footprint or after-DCP GFA is published while a setback is unstated.",
+    "observed_red": "Each check was watched failing before it was made to pass, not only passing afterwards. DQ-138 read 34 before migration 085 and 0 after, measured on production either side. The section-title branch was removed in place and the suite re-run: 10 of 16 tests failed, so the tests catch the regression rather than merely exercise the code. The setback guard was proved against the live shape: with Cumberland's real controls the footprint was 423.1 m2 before and withheld after, and with a 6 m rear setback added it publishes 321.1 -- so the guard fires on absence, not on setbacks generally. Three existing unit tests and 11 of 20 capacity goldens failed on the change; each was read individually, and all of them had recorded a figure computed with an implicit zero."
+  },
+  "functions": [
+    {
+      "name": "deriveSectionTitleFromProvision",
+      "file_line": "frontend-nextjs/lib/see/sectionKey.ts:94",
+      "input": "toc_section_number plus section_header from a served regulatory_provisions row",
+      "output": "The document's own heading, verbatim for mixed case and recased only for all-caps, minus a duplicated leading section number; the bare section number when no usable header exists; null without a section number. Pure function of two columns -- no inference, no model, same row same answer.",
+      "if_none": "Returns null when toc_section_number is absent, and the bare section number when the header is absent or is only that number. It never substitutes the chapter slug, which is what the caller used to do and is wrong for every section in a chapter. Covered by three tests (empty header, null header, header equal to the number) plus a test asserting null is returned rather than a title invented from the header alone."
+    },
+    {
+      "name": "stripLeadingSectionNumber",
+      "file_line": "frontend-nextjs/lib/see/sectionKey.ts:146",
+      "input": "a header and THIS provision's own section number",
+      "output": "The header with a leading copy of that exact number removed. Only the provision's own number is matched, so a heading genuinely opening with a different figure keeps it.",
+      "if_none": "If stripping leaves an empty string the caller falls back to the bare section number rather than rendering a trailing separator -- tested with '2.10' and '2.10 —'. If the header does not begin with the provision's number, nothing is removed: tested with section 2.5 whose heading is '1.8 m fence height at the street', which must keep the 1.8."
+    },
+    {
+      "name": "compute_constraint_arithmetic",
+      "file_line": "services/constraint_arithmetic.py:444",
+      "input": "lot area, dev type, LEP height/FSR strings, lot dimensions, DCP controls",
+      "output": "buildable_footprint_m2 and dcp_adjusted_gfa_m2 are withheld (None) when any setback the formula needs is unstated, with a gap naming which. realistic_gfa_m2, lep_max_storeys and the stated setbacks are unaffected -- verified by running both states on the same lot.",
+      "if_none": "A missing setback no longer becomes 0.0. The two derived figures return None and result.gaps names the specific control ('DCP states no rear setback for this development type...'); with no setbacks at all the gap says so instead. The stated setbacks still populate setback_front_m / setback_side_m so a planner sees what IS known, and the LEP envelope still publishes because it never depended on setbacks. Three tests cover the three shapes: none stated, one stated absent, all stated."
+    }
+  ],
+  "values": [
+    {
+      "value": "45 of 54",
+      "what": "housing_sepp_standards rows with no anchored legislation URL and/or no quote, so provenance_check.py cannot trace them (DQ-136)",
+      "source": "SELECT count(*) FROM housing_sepp_standards WHERE source_quote IS NULL OR source_quote='' OR legislation_url IS NULL OR legislation_url !~ '^https://legislation.nsw.gov.au/.+#.+'",
+      "read_at": "Read live from production on 2026-10-08 by the probe itself, which is the only consumer -- the figure is not cached, embedded in a doc, or passed between modules. Re-read on every `python scripts/dq_probe_live.py --id DQ-136`.",
+      "if_missing": "The probe cannot read a null count: SELECT count(*) returns 0 rows only if the table is absent, which raises and dq_check.py reports UNKNOWN rather than clean -- an unverifiable row, explicitly not evidence either way. It never degrades to 'passing'."
+    },
+    {
+      "value": "199 of 236",
+      "what": "numeric standards declaring applies_to='all' under a metric with more than one competitor, so a determination picks arbitrarily (DQ-137). height_max alone has 75 rows spanning 3.0-32.5 m",
+      "source": "sepp_structured_requirements, requirement_category='numeric_standard', grouped by metric_name HAVING count(*) > 1",
+      "read_at": "Read live from production on 2026-10-08 by the probe. The 900 m2 instance it describes is read per request by lib/pattern-book-eligibility/check-numerics.ts:52-62, which is the defect: that read has no zone, LGA or development-type filter and no deterministic order.",
+      "if_missing": "If the table or column were absent the probe raises and the row reads UNKNOWN, not clean. In the serving path the same absence is worse and is NOT fixed by this branch: check-numerics.ts would find no row and the Pattern Book card would report no numeric standard rather than refusing -- recorded in DQ-137 as the reason scope must be fixed at the row level, not with an ORDER BY."
+    },
+    {
+      "value": "34 -> 0",
+      "what": "(rule table, public role) pairs holding INSERT/UPDATE/DELETE/TRUNCATE, before and after migration 085 (DQ-138)",
+      "source": "information_schema.role_table_grants, grantee IN ('anon','authenticated'), across the 17 named rule tables",
+      "read_at": "Read from production immediately before the revoke (34), inside the migration's own transaction (which refuses to commit unless 0), and again on a fresh connection after commit (0). Re-read on every probe run.",
+      "if_missing": "A table named in the list that does not exist contributes no grant rows, so the count silently falls -- the probe would read 0 for the wrong reason. That is the recorded weakness of a hand-named list and the reason the row says to replace it with the derived rule-table inventory; it is also why a NEW rule table is not counted here."
+    },
+    {
+      "value": "17,788 of 19,219",
+      "what": "served DCP provisions whose real heading was discarded because the all-caps test rejected it; the test matched 59",
+      "source": "regulatory_provisions WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL, section_header tested against the component's own regex",
+      "read_at": "Read live from production on 2026-10-08 to size the change before making it. Not read at serving time -- the serving path reads one row's section_header per provision through the API that feeds ProvisionsByTocStructure.",
+      "if_missing": "A row with no section_header (0 of 19,219 today) renders as its bare section number, and every one of the 19,219 carries a pdf_page so the section is still locatable in the PDF. The function returns null only when the section NUMBER is absent, in which case the caller groups the provision under 'general' as it already did."
+    },
+    {
+      "value": "423.1 vs 321.1, and 1,269.2 vs 963.3",
+      "what": "buildable footprint and after-DCP GFA for 45 Graham St with the rear setback absent versus stated at 6 m -- both overstated 32%",
+      "source": "compute_constraint_arithmetic run twice on the same lot (573.81 m2, 18.79 x 30.9 m) with Cumberland's real current controls",
+      "read_at": "Computed per request from DCP controls fetched by fetch_dcp_setbacks(conn, lga, zone) and lot dimensions from the live NSW cadastre. Reproduced offline for this report because the function is pure, so no DB or portal call was needed to verify it.",
+      "if_missing": "This IS the missing-value case. The absent rear setback previously became 0.0 and inflated both figures; both are now withheld with a gap naming the control. If the lot dimensions are missing instead, the existing has_dimensions guard already suppresses dcp_adjusted_gfa_m2, and that path is unchanged and still covered by area_only_no_dims."
+    },
+    {
+      "value": "1 artifact in 19,219",
+      "what": "served DCP rows whose section_header is unusable as a label; 0 are empty and all 19,219 carry a pdf_page, so anything displayed is checkable against that page",
+      "source": "regulatory_provisions, section_header tested for empty/artifact signatures; the 1,028 initially flagged as 'very long' were real headings penalised by my own 120-character rule",
+      "read_at": "Read live from production on 2026-10-08 before deciding to display header text at all. The decision rests on this measurement, not on a judgement that headers are generally clean.",
+      "if_missing": "No heading-versus-body-text classifier is applied, deliberately, so an artifact is shown rather than hidden. That is defensible only because of the measurement above and because the row carries a page: the text is what is on that page, whereas the chapter slug it replaces was wrong for every section. The one artifact row is covered by a test that asserts it is shown."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Stale setback rows served as current would compute the figures from a superseded control, so verify exactly one current row per control type and that no current rear setback exists -- the basis of the arithmetic fix.",
+      "file_line": "ad hoc verification query, not committed code",
+      "where_clause": "SELECT control_type, value_min, pdf_page, is_current FROM dcp_setback_controls WHERE lga ILIKE '%cumberland%' AND dev_type='dwelling_house' -- result: front_setback 6.0 p.8 current, side_setback 0.9 p.8 current, rear_setback 8.0 NOT current (needs_review), plus two stale front rows (5.5, 4.0) correctly excluded by is_current"
+    },
+    {
+      "purpose": "Development-type filter leakage would show another dev type's controls as this property's, so verify the seven controls the DCP tab displays are exactly the seven current dwelling_house rows.",
+      "file_line": "ad hoc verification query, not committed code",
+      "where_clause": "dcp_setback_controls WHERE lga ILIKE '%cumberland%' AND dev_type='dwelling_house' AND is_current -- 7 rows, matching the screen value for value, page for page, including the two with no numeric value (max_site_coverage section_ref=LEP, deep_soil_min section_ref=ADG) which the tab renders as 'No set number' with 'no clause recorded'"
+    },
+    {
+      "purpose": "Scope DQ-138's hardcoded table list honestly.",
+      "file_line": "recorded in the DQ-138 probe comment and in migration 085",
+      "where_clause": "information_schema.tables for rule-shaped names outside the list -- 72 found, including 17 BACKUP tables holding copies of regulatory data (11 dcp_setback_controls_*, 6 regulatory_provisions_citation_backup_*). All 149 public base tables are writable by anon/authenticated (1,192 grant rows, the Supabase default), so the probe counts the rule-bearing subset deliberately; legitimate anon write paths exist (dcp_interest, feedback, leads)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The setback guard suppresses the figure whenever any setback is absent, so a council that states all three could lose its footprint through an unrelated regression.",
+      "what_happens": "A planner sees no buildable footprint where a correct one is available, which is a silent loss of a right answer rather than a wrong one.",
+      "mitigated": true,
+      "how": "test_all_setbacks_stated_still_publishes asserts the exact figures (321.1 and 963.3) for a lot with all three setbacks stated. Two capacity goldens with complete setbacks (full_dims_footprint and the baseline R2 scenario) were unchanged by the whole change, which is the fleet-level version of the same check.",
+      "repro": "python -m pytest \"tests/test_constraint_arithmetic.py::TestThreeState::test_all_setbacks_stated_still_publishes\" -q  -- fails if a complete control set stops publishing 321.1 / 963.3"
+    },
+    {
+      "scenario": "Regenerating 20 capacity goldens could hide an unintended engine change among the intended ones.",
+      "what_happens": "A real regression lands disguised as part of an expected diff, which is the classic way a snapshot suite stops protecting anything.",
+      "mitigated": true,
+      "how": "Every changed field was compared old-to-new by direction, not eyeballed: 28 watched fields across 20 scenarios, every one either withheld or smaller, except ONE. shadow_storey_reduction's dcp_adjusted rose 330.0 -> 387.6 because the shadow step caps its loss at 50% of the footprint (constraint_arithmetic.py:812), so a corrected smaller footprint permits a smaller loss. Traced to that line and recorded in the fixture comment with 'do not correct it back'.",
+      "repro": "git show HEAD~1:tests/golden/capacity_golden.json > /tmp/old.json then compare buildable_footprint_m2 and dcp_adjusted_gfa_m2 per scenario against the committed file -- every delta must be withheld or smaller, except shadow_storey_reduction's documented increase"
+    },
+    {
+      "scenario": "Showing section_header verbatim could surface extraction garbage as a heading.",
+      "what_happens": "A planner reads a corrupted or nonsensical string in the place where a section name belongs, and may distrust the rest of the page.",
+      "mitigated": true,
+      "how": "Measured fleet-wide before displaying any of it: 1 artifact in 19,219 served rows, 0 empty. A test covers that one row and asserts it is shown rather than replaced -- it is the text at that page, and all 19,219 rows carry a pdf_page for checking, whereas the chapter slug it replaces was wrong for every section in the chapter.",
+      "repro": "cd frontend-nextjs && npx jest --testPathPatterns=sectionKey-title -t \"a header that reads like body text\"  -- asserts the one real artifact row renders its own text, not a substitute"
+    },
+    {
+      "scenario": "REVOKE could break a serving path that reads a rule table as anon or authenticated.",
+      "what_happens": "A page stops returning regulatory data entirely, or returns an empty result that reads on screen as 'nothing applies to this property'.",
+      "mitigated": true,
+      "how": "Only writes were revoked; SELECT is untouched (34 read grants remain). Serving connects as postgres, the table owner, which bypasses RLS and keeps its privileges. service_role is deliberately untouched (68 write grants remain) because 19 frontend files use its key. The writes removed were already denied by RLS with no policies, so no statement that succeeded before now fails. Migration 085 refuses to commit unless the count reaches 0, via a DO block raising inside the same transaction.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-138 (must print 0) and then SELECT count(*) FROM information_schema.role_table_grants WHERE grantee IN ('anon','authenticated') AND privilege_type='SELECT' AND table_name='housing_sepp_standards' -- must still be non-zero, proving reads were not revoked"
+    },
+    {
+      "scenario": "A future session adds a new rule table and DQ-138 stays green because its list is hardcoded.",
+      "what_happens": "A newly created rule table silently carries public write grants and nothing in CI notices, because the probe only counts tables it was told about.",
+      "mitigated": false,
+      "how": "NOT mitigated, and recorded as such in the probe, the tracker row and migration 085: the list is 17 hand-named tables and must be replaced by the derived rule-table inventory (A1 of ce-rule-provenance-lockdown-PLAN-2026-10-08.md). The 17 regulatory backup tables are also uncovered.",
+      "repro": "CREATE TABLE public.rule_table_probe_test (id int); then python scripts/dq_probe_live.py --id DQ-138 still prints 0 despite the new table carrying the Supabase default grants -- demonstrates the gap; DROP TABLE afterwards"
+    },
+    {
+      "scenario": "A stale setback row could be served as current, so the figures would be computed from a superseded control.",
+      "what_happens": "The footprint and after-DCP GFA are computed from a setback the council has since replaced, and nothing on screen distinguishes it from the current one.",
+      "mitigated": true,
+      "how": "Verified on the live data rather than assumed: Cumberland has three front_setback rows (6.0, 5.5, 4.0) and only the 6.0 is is_current, and the one rear_setback row (8.0) is is_current=false with needs_review=true. The displayed 6 m is the current row, and the 8 m rear is correctly NOT used -- which is precisely why the figure must be withheld rather than computed from a zero. _get_dcp_value filters on is_current and, where several current rows disagree, takes the most conservative and raises a gap.",
+      "repro": "SELECT control_type, value_min, is_current, needs_review FROM dcp_setback_controls WHERE lga ILIKE '%cumberland%' AND dev_type='dwelling_house' AND control_type LIKE '%setback%' -- exactly one current row per control_type; a second current row for the same control must surface a conflict gap, covered by tests/test_setback_conflict_resolution.py"
+    },
+    {
+      "scenario": "The development-type filter could show one dev type's controls under another, so a dwelling house would be assessed against apartment controls.",
+      "what_happens": "A planner is shown setbacks and parking rates belonging to a different development type, which look entirely plausible and are simply the wrong rules.",
+      "mitigated": true,
+      "how": "Checked by counting rather than by reading the code: Cumberland holds 25 setback-control rows across six dev types, and the seven the DCP tab displays are exactly the seven current dwelling_house rows -- value for value and page for page, including the two that carry no numeric value. If the filter leaked, the count would exceed seven and the extra rows would be boarding_house or residential_flat_building parking rates.",
+      "repro": "SELECT dev_type, count(*) FROM dcp_setback_controls WHERE lga ILIKE '%cumberland%' AND is_current GROUP BY 1 -- dwelling_house must be 7; compare against the DCP tab's '7 controls extracted' for development type 'dwelling house'"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No -- but the pre-commit secrets scanner produced a false positive four times, including once on this very report. It matches the service-role key's env var NAME, with no value anywhere near it, in ordinary prose. Each time I reworded to refer to the variable indirectly rather than passing --no-verify, since bypassing a secrets hook should not happen quietly. Worth teaching the scanner that an uppercase token ending in _KEY, with no '=' and no value following it, is a name and not a secret.",
+    "other_repo": "No",
+    "manual_verify": "Partly. Verified in-session: DQ-138 0 and CLEAN on production after migration 085; 16 jest tests with a 10/16 mutation score; 319 python tests green across every suite that consumes the changed code; every golden change reviewed for direction. NOT verified: the full `python -m pytest` run was killed at the command timeout on two attempts (exit 143), so the whole-suite result is unknown and CI is the first place it will run. DQ-136 (45), DQ-137 (199) and DQ-139 (1) are declared OPEN and remain open by design -- they are measurements of work not yet done, not regressions."
+  }
+}

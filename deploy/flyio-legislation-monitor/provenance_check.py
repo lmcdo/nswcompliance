@@ -130,8 +130,10 @@ def run(rows: list[dict], fetch=fetch_page, pause_s: float = PAUSE_BETWEEN_PAGES
     outcome = validate_rules(path_rows)
     problems += [f"validation: {f}" for f in outcome.failures]
     pages: dict = {}
+    # Keyed by row, not standard_type: 53 rows share 28 types, and a type key
+    # made a page nobody could fetch read "25/53 traced" (2026-10-09).
     broken: set = set()
-    for r in rows:
+    for i, r in enumerate(rows):
         base = (r.get("legislation_url") or "").partition("#")[0]
         if base.startswith(OFFICIAL_PREFIX) and base not in pages:
             if pages:
@@ -142,11 +144,11 @@ def run(rows: list[dict], fetch=fetch_page, pause_s: float = PAUSE_BETWEEN_PAGES
                 pages[base] = None
                 problems.append(f"fetch failed for {base}: {e}")
         if base.startswith(OFFICIAL_PREFIX) and pages.get(base) is None:
-            broken.add(r.get("standard_type"))
+            broken.add(i)
             continue
         row_problems = trace_row(r, pages.get(base) or "")
         if row_problems:
-            broken.add(r.get("standard_type"))
+            broken.add(i)
             problems += row_problems
     return len(rows) - len(broken), problems
 

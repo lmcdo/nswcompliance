@@ -95,7 +95,8 @@
  *                                seppStandards was published as 33 while
  *                                housing_sepp_standards held 45 AND /planning-standards
  *                                rendered all 45 live — two pages, one fact, two
- *                                numbers. Corrected to 45 on 2026-09-11.
+ *                                numbers. Corrected to 45 on 2026-09-11; 44 on 2026-10-09 after
+ *                                migration 088 retired the 0-parking row (id 35).
  *   secondaryDwellingCouncils  councils in the Planning Portal open-data secondary-dwelling feed
  *   floodStudies               COUNCIL FLOOD STUDIES ingested (NOT an LGA count).
  *   floodDepthStudies          Of those, the ones that can answer DEPTH: the studies whose
@@ -135,7 +136,7 @@ export const COVERAGE = {
   dcpSetbackRows: 1069,
   heritageAreas: 2039,
   regulatoryDefinitions: 474,
-  seppStandards: 45,
+  seppStandards: 44,
   adgCriteria: 23,
   secondaryDwellingCouncils: 102,
   floodStudies: 4,
@@ -157,7 +158,7 @@ export const COVERAGE_DISPLAY = {
   dcpSetbackRows: '1,000+',
   heritageAreas: '2,039',
   regulatoryDefinitions: '470+',
-  seppStandards: '45',
+  seppStandards: '44',
   adgCriteria: '23',
   secondaryDwellingCouncils: '102',
   floodStudies: '4',

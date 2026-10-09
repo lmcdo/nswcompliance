@@ -612,6 +612,30 @@ def compute_constraint_arithmetic(
                 f"({max(_conflict):g}m). Verify the control that applies to this lot against the DCP."
             )
 
+    # A setback the DCP does not state is NOT zero. Substituting 0.0 erodes
+    # nothing, so the footprint and every figure derived from it come out LARGER
+    # -- the permissive direction, on a number a planner would act on.
+    #
+    # Measured on 45 Graham St Greystanes (Cumberland, 573.81 m2, 18.79 x 30.9 m)
+    # 2026-10-08. Cumberland states a 6 m front and a 0.9 m side setback (both
+    # p.8 of cumberland-part-b-residential.pdf) and no current rear setback at
+    # all -- its DCP tab correctly shows seven controls with no rear among them.
+    # The yield card on the LEP tab filled that same absence with 0 and published
+    #     buildable footprint 423.1 m2 (74% of lot), after-DCP GFA 1,269.2
+    # where a 6 m rear setback gives 321.1 m2 and 963.3 -- an overstatement of
+    # 32% on both. The LEP envelope (realistic_gfa_m2, 1,721.4) does not depend
+    # on setbacks and is unaffected either way, so it keeps publishing.
+    #
+    # The arithmetic below still runs on the stated controls, because the site
+    # coverage and landscaping steps need a footprint to cap. What changes is
+    # that the two figures the absence contaminates are withheld rather than
+    # shown -- the behaviour the DCP tab already has, applied here.
+    missing_setbacks = [
+        label for value, label in (
+            (front_setback, "front"), (rear_setback, "rear"), (side_setback, "side"),
+        ) if value is None
+    ]
+
     if front_setback is not None or rear_setback is not None or side_setback is not None:
         effective_front = front_setback or 0.0
         effective_rear = rear_setback or 0.0
@@ -620,7 +644,22 @@ def compute_constraint_arithmetic(
         buildable_width = max(0.0, frontage_m - 2 * effective_side)
         buildable_depth = max(0.0, depth_m - effective_front - effective_rear)
         buildable_footprint = buildable_width * buildable_depth
-        result.buildable_footprint_m2 = round(buildable_footprint, 1)
+        if missing_setbacks:
+            # WORDING. This says what WE hold, not what the DCP says. The code
+            # knows only that no CURRENT extracted row exists for this control
+            # and development type -- Cumberland has an 8 m rear-setback row
+            # marked not-current, so "the DCP states no rear setback" would be a
+            # claim about the council's document that nothing here can support.
+            # An earlier version of this message made exactly that claim and was
+            # caught by cross-review (gpt-5.6-sol, HIGH liability) on this branch.
+            gaps.append(
+                f"No current {' or '.join(missing_setbacks)} setback value is "
+                f"recorded for this development type, so the buildable footprint "
+                f"and the after-DCP figure are not shown. Verify the applicable "
+                f"control against the council's DCP."
+            )
+        else:
+            result.buildable_footprint_m2 = round(buildable_footprint, 1)
 
         if has_battleaxe_head:
             # Depth is DERIVED (head area / head width), not a measured
@@ -638,23 +677,55 @@ def compute_constraint_arithmetic(
                 "actual setback erosion may differ"
             )
 
-        steps.append(ConstraintStep(
-            constraint=ConstraintType.DCP_SETBACKS,
-            phase="dcp",
-            label="DCP setback erosion",
-            footprint_m2=round(buildable_footprint, 1),
-            note=(
-                f"Lot {frontage_m:.1f}m x {depth_m:.1f}m -> "
-                f"setbacks F:{effective_front}m R:{effective_rear}m S:{effective_side}m -> "
-                f"buildable {buildable_width:.1f}m x {buildable_depth:.1f}m = "
-                f"{buildable_footprint:.1f}m2"
-            ),
-        ))
+        # The step is the computation chain the UI shows under "Show computation
+        # chain", so it is served output, not a debug trace. Withholding the two
+        # headline fields while this step still carried footprint_m2=423.1 and a
+        # note reading "R:0.0m" left the unsupported number one click away --
+        # caught by cross-review (gpt-5.6-sol, HIGH silent-failure) on this
+        # branch. When a required setback is absent the step reports what is
+        # recorded and that no footprint was computed, and quotes no zero.
+        if missing_setbacks:
+            steps.append(ConstraintStep(
+                constraint=ConstraintType.DCP_SETBACKS,
+                phase="dcp",
+                label="DCP setback erosion — not computed",
+                footprint_m2=None,
+                note=(
+                    f"Lot {frontage_m:.1f}m x {depth_m:.1f}m. Recorded: "
+                    + ", ".join(
+                        f"{label} {value:g}m" for value, label in (
+                            (front_setback, "front"), (rear_setback, "rear"),
+                            (side_setback, "side"),
+                        ) if value is not None
+                    )
+                    + f". No current {' or '.join(missing_setbacks)} setback value, "
+                      f"so no buildable footprint was computed."
+                ),
+            ))
+        else:
+            steps.append(ConstraintStep(
+                constraint=ConstraintType.DCP_SETBACKS,
+                phase="dcp",
+                label="DCP setback erosion",
+                footprint_m2=round(buildable_footprint, 1),
+                note=(
+                    f"Lot {frontage_m:.1f}m x {depth_m:.1f}m -> "
+                    f"setbacks F:{effective_front}m R:{effective_rear}m S:{effective_side}m -> "
+                    f"buildable {buildable_width:.1f}m x {buildable_depth:.1f}m = "
+                    f"{buildable_footprint:.1f}m2"
+                ),
+            ))
     else:
-        # No setback data — use lot area as footprint (conservative: no erosion)
+        # No setback data at all. The lot area is still needed as the starting
+        # footprint for the site-coverage and landscaping caps below, but it is
+        # NOT a buildable footprint: it is the whole lot, which is the most
+        # permissive answer available, not -- as the previous comment here said
+        # -- a conservative one. So it is used internally and not published.
         buildable_footprint = lot_area_m2
-        result.buildable_footprint_m2 = round(buildable_footprint, 1)
-        gaps.append("No DCP setback controls available — footprint not reduced")
+        gaps.append(
+            "No DCP setback controls available for this development type, so the "
+            "buildable footprint and the after-DCP figure are not shown."
+        )
 
     # -----------------------------------------------------------------------
     # Step 5: DCP site coverage cap
@@ -940,7 +1011,18 @@ def compute_constraint_arithmetic(
     # Secondary "after-DCP" figure — only surfaced when lot geometry is reliable
     # (real frontage/depth) AND the eroded result is plausible (>0). Otherwise we
     # do not show a DCP-adjusted number rather than show a misleading/zero one.
-    if has_dimensions and current_gfa is not None and current_gfa > 0:
+    #
+    # Also withheld when a setback the erosion formula needs is simply not stated
+    # by the DCP: this figure is the footprint times the storeys, so an unstated
+    # setback treated as 0 m carries straight into it. On 45 Graham St that was
+    # 1,269.2 against 963.3 with a 6 m rear setback. The gap recorded above names
+    # which control is missing.
+    if (
+        has_dimensions
+        and current_gfa is not None
+        and current_gfa > 0
+        and result.buildable_footprint_m2 is not None
+    ):
         result.dcp_adjusted_gfa_m2 = round(current_gfa, 1)
 
     # -----------------------------------------------------------------------

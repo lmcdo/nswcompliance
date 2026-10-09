@@ -590,14 +590,73 @@ class TestBoundaryCases:
 # ===========================================================================
 
 class TestThreeState:
-    def test_none_setback_means_no_erosion(self):
+    def test_absent_setbacks_withhold_the_footprint(self):
+        """A setback the DCP does not state is not 0 m, and the whole lot is not a
+        buildable footprint.
+
+        This test previously asserted `buildable_footprint_m2 == 600.0` — the lot
+        area — under the name `test_none_setback_means_no_erosion`. That is the
+        defect this class exists to prevent, written down as an expectation: it
+        collapses None into "no restriction", which is the most permissive answer
+        available, not a conservative one. Its sibling
+        `test_zero_setback_means_build_to_boundary` is the correct half of the
+        distinction — an explicit 0 really is build-to-boundary.
+
+        Measured consequence, 45 Graham St Greystanes 2026-10-08: Cumberland
+        states a front (6 m) and side (0.9 m) setback and no rear setback, and the
+        screen published a 423.1 m2 footprint and a 1,269.2 after-DCP GFA where a
+        6 m rear gives 321.1 and 963.3 — both overstated by 32%.
+        """
         result = compute_constraint_arithmetic(
             lot_area_m2=600, dev_type="dwelling_house",
             lep_height_str="11", lep_fsr_str="0.75:1",
             dcp_controls=[],  # no setbacks
         )
-        # Without setbacks, footprint = lot area
-        assert result.buildable_footprint_m2 == 600.0
+        assert result.buildable_footprint_m2 is None
+        assert result.dcp_adjusted_gfa_m2 is None
+        # The LEP envelope does not depend on setbacks, so it must still publish.
+        assert result.realistic_gfa_m2 is not None
+        assert any("setback" in g.lower() for g in result.gaps), result.gaps
+
+    def test_one_absent_setback_withholds_the_footprint(self):
+        """The 45 Graham St shape exactly: front and side stated, rear absent.
+
+        The planted failure for this guard. Restore `rear_setback or 0.0` and this
+        reports 423.1 m2 for an 18.79 x 30.9 m lot, because a missing rear setback
+        erodes nothing.
+        """
+        result = compute_constraint_arithmetic(
+            lot_area_m2=573.81, dev_type="dwelling_house",
+            lep_height_str="9", lep_fsr_str=None,
+            lot_dimensions=LotDimensions(area_m2=573.81, frontage_m=18.79, depth_m=30.9),
+            dcp_controls=[
+                _make_dcp("front_setback", 6.0),
+                _make_dcp("side_setback", 0.9),
+            ],
+        )
+        assert result.buildable_footprint_m2 is None
+        assert result.dcp_adjusted_gfa_m2 is None
+        assert result.realistic_gfa_m2 == 1721.4
+        # The stated controls are still reported — only the derived figures go.
+        assert result.setback_front_m == 6.0
+        assert result.setback_side_m == 0.9
+        assert result.setback_rear_m is None
+        assert any("rear" in g.lower() for g in result.gaps), result.gaps
+
+    def test_all_setbacks_stated_still_publishes(self):
+        """The guard must not suppress the figure when the DCP does state them."""
+        result = compute_constraint_arithmetic(
+            lot_area_m2=573.81, dev_type="dwelling_house",
+            lep_height_str="9", lep_fsr_str=None,
+            lot_dimensions=LotDimensions(area_m2=573.81, frontage_m=18.79, depth_m=30.9),
+            dcp_controls=[
+                _make_dcp("front_setback", 6.0),
+                _make_dcp("side_setback", 0.9),
+                _make_dcp("rear_setback", 6.0),
+            ],
+        )
+        assert result.buildable_footprint_m2 == 321.1
+        assert result.dcp_adjusted_gfa_m2 == 963.3
 
     def test_zero_setback_means_build_to_boundary(self):
         result = compute_constraint_arithmetic(
@@ -670,18 +729,38 @@ class TestBindingConstraintVariation:
 
     def test_coverage_erodes_dcp_adjusted(self):
         """Low site coverage erodes the secondary dcp_adjusted figure; the headline
-        envelope binding remains the LEP control (FSR/height)."""
-        result = compute_constraint_arithmetic(
+        envelope binding remains the LEP control (FSR/height).
+
+        The fixture now states all three setbacks. It previously passed only a
+        coverage control, which meant the figure it asserted was computed with
+        every setback defaulted to 0 m — so it was exercising the permissive
+        default, not coverage. With the default removed the figure is withheld,
+        and coverage's own contribution is proved by the comparison against the
+        same lot WITHOUT the coverage control rather than by the figure merely
+        being lower than the LEP envelope.
+        """
+        shared = dict(
             lot_area_m2=600, dev_type="dwelling_house",
             lep_height_str="22", lep_fsr_str="2.0:1",
             lot_dimensions=_inner_west_lot(),
-            dcp_controls=[
-                _make_dcp("max_site_coverage", 20.0, unit="%"),
-            ],
         )
+        setbacks = [
+            _make_dcp("front_setback", 6.0),
+            _make_dcp("rear_setback", 6.0),
+            _make_dcp("side_setback", 1.5),
+        ]
+        result = compute_constraint_arithmetic(
+            **shared,
+            dcp_controls=setbacks + [_make_dcp("max_site_coverage", 20.0, unit="%")],
+        )
+        without_coverage = compute_constraint_arithmetic(**shared, dcp_controls=setbacks)
+
         assert result.binding_constraint == ConstraintType.LEP_FSR
         assert result.dcp_adjusted_gfa_m2 is not None
         assert result.dcp_adjusted_gfa_m2 < result.realistic_gfa_m2
+        # Coverage specifically, not setbacks, did the eroding.
+        assert without_coverage.dcp_adjusted_gfa_m2 is not None
+        assert result.dcp_adjusted_gfa_m2 < without_coverage.dcp_adjusted_gfa_m2
 
     def test_unreliable_geometry_keeps_lep_envelope_headline(self):
         """Regression (the Penrith=0 case): with no reliable frontage/depth and a
@@ -706,20 +785,34 @@ class TestBindingConstraintVariation:
 
 class TestParking:
     def test_at_grade_parking_reduces_gfa(self):
-        result = compute_constraint_arithmetic(
+        # Setbacks are stated so the dcp_adjusted figure publishes at all. The
+        # fixture previously passed only a parking control, so the figure it
+        # asserted was computed with all three setbacks defaulted to 0 m; with
+        # that default removed the figure is withheld. Parking's own contribution
+        # is proved against the same lot without the parking control.
+        shared = dict(
             lot_area_m2=600, dev_type="dwelling_house",
             lep_height_str="11", lep_fsr_str="0.75:1",
             lot_dimensions=_inner_west_lot(),
-            dcp_controls=[
-                _make_dcp("car_parking", 1.0),
-            ],
         )
+        setbacks = [
+            _make_dcp("front_setback", 6.0),
+            _make_dcp("rear_setback", 6.0),
+            _make_dcp("side_setback", 1.5),
+        ]
+        result = compute_constraint_arithmetic(
+            **shared, dcp_controls=setbacks + [_make_dcp("car_parking", 1.0)],
+        )
+        without_parking = compute_constraint_arithmetic(**shared, dcp_controls=setbacks)
+
         assert result.parking_spaces_required is not None
         assert result.parking_gfa_consumed_m2 is not None
         # Parking reduces the secondary dcp_adjusted figure (not the LEP-envelope
         # headline) for a non-apartment.
         assert result.dcp_adjusted_gfa_m2 is not None
         assert result.dcp_adjusted_gfa_m2 < result.realistic_gfa_m2
+        assert without_parking.dcp_adjusted_gfa_m2 is not None
+        assert result.dcp_adjusted_gfa_m2 < without_parking.dcp_adjusted_gfa_m2
 
     def test_apartment_parking_does_not_reduce_gfa(self):
         result = compute_constraint_arithmetic(

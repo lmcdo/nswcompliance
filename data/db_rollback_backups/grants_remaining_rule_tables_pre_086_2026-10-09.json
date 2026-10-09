@@ -1,0 +1,1691 @@
+{
+  "captured": "2026-10-09",
+  "database": "postgres",
+  "pairs_before": 80,
+  "tables": [
+    "dcp_setback_controls_authorized_repairs_20260803",
+    "dcp_setback_controls_backup_20260803_item3",
+    "dcp_setback_controls_camden_repair_20260803",
+    "dcp_setback_controls_cb701_repair_20260803",
+    "dcp_setback_controls_dq32b_backup_20260812",
+    "dcp_setback_controls_dq32c_backup_20260817",
+    "dcp_setback_controls_dq41_null_20260803",
+    "dcp_setback_controls_missing_primary_20260803",
+    "dcp_setback_controls_provlink_backup_20260802",
+    "dcp_setback_controls_provlink_backup_20260802b",
+    "dcp_setback_controls_quote_backup_20260802",
+    "dcp_setback_controls_refile_backup_20260803",
+    "lep_zone_coverage",
+    "regulatory_provisions_backup_actionability_20260327",
+    "regulatory_provisions_citation_backup_20260924_222332",
+    "regulatory_provisions_citation_backup_20260925_203729",
+    "regulatory_provisions_citation_backup_20260925_203737",
+    "regulatory_provisions_citation_backup_20260925_203744",
+    "regulatory_provisions_citation_backup_20260925_203754",
+    "regulatory_provisions_citation_backup_20260925_222713",
+    "regulatory_provisions_citation_backup_20260926_072754",
+    "regulatory_provisions_dq30_backup_20260812",
+    "regulatory_provisions_dq33_backup_20260801",
+    "regulatory_provisions_dq33_backup_20260921",
+    "regulatory_provisions_dq33_backup_20260922",
+    "regulatory_provisions_dq33_backup_20260922_211409",
+    "regulatory_provisions_dq33_backup_20260923_075036",
+    "regulatory_provisions_dq33_backup_20260924_092135",
+    "regulatory_provisions_dq33_backup_20261003_120036",
+    "regulatory_provisions_dq33_backup_20261004_092223",
+    "regulatory_provisions_dq33_backup_20261004_171004",
+    "regulatory_provisions_dq33_backup_20261004_195239",
+    "regulatory_provisions_dq33_backup_20261004_224022",
+    "regulatory_provisions_reread2_backup_20260927_0847",
+    "regulatory_provisions_reread_backup_20260927_0812",
+    "regulatory_provisions_section_code_backup_20260912_022449",
+    "regulatory_provisions_section_code_backup_20260921_020727",
+    "regulatory_provisions_takedown_backup_20260927_0840",
+    "regulatory_provisions_zone_backup_20260731",
+    "regulatory_provisions_zone_backup_20260801"
+  ],
+  "restore_sql": [
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"dcp_setback_controls_authorized_repairs_20260803\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"dcp_setback_controls_backup_20260803_item3\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"dcp_setback_controls_camden_repair_20260803\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"dcp_setback_controls_cb701_repair_20260803\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"dcp_setback_controls_dq32b_backup_20260812\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"dcp_setback_controls_dq32c_backup_20260817\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"dcp_setback_controls_dq41_null_20260803\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"dcp_setback_controls_missing_primary_20260803\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"dcp_setback_controls_provlink_backup_20260802\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"dcp_setback_controls_provlink_backup_20260802b\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"dcp_setback_controls_quote_backup_20260802\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"dcp_setback_controls_refile_backup_20260803\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"lep_zone_coverage\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_backup_actionability_20260327\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_citation_backup_20260924_222332\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_citation_backup_20260925_203729\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_citation_backup_20260925_203737\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_citation_backup_20260925_203744\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_citation_backup_20260925_203754\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_citation_backup_20260925_222713\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_citation_backup_20260926_072754\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_dq30_backup_20260812\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_dq33_backup_20260801\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_dq33_backup_20260921\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_dq33_backup_20260922\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_dq33_backup_20260922_211409\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_dq33_backup_20260923_075036\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_dq33_backup_20260924_092135\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_dq33_backup_20261003_120036\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_dq33_backup_20261004_092223\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_dq33_backup_20261004_171004\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_dq33_backup_20261004_195239\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_dq33_backup_20261004_224022\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_reread2_backup_20260927_0847\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_reread_backup_20260927_0812\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_section_code_backup_20260912_022449\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_section_code_backup_20260921_020727\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_takedown_backup_20260927_0840\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_zone_backup_20260731\" TO anon, authenticated;",
+    "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.\"regulatory_provisions_zone_backup_20260801\" TO anon, authenticated;"
+  ],
+  "grants": [
+    {
+      "table_name": "dcp_setback_controls_authorized_repairs_20260803",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_authorized_repairs_20260803",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_authorized_repairs_20260803",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_authorized_repairs_20260803",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_authorized_repairs_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_authorized_repairs_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_authorized_repairs_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_authorized_repairs_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_backup_20260803_item3",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_backup_20260803_item3",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_backup_20260803_item3",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_backup_20260803_item3",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_backup_20260803_item3",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_backup_20260803_item3",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_backup_20260803_item3",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_backup_20260803_item3",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_camden_repair_20260803",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_camden_repair_20260803",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_camden_repair_20260803",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_camden_repair_20260803",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_camden_repair_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_camden_repair_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_camden_repair_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_camden_repair_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_cb701_repair_20260803",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_cb701_repair_20260803",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_cb701_repair_20260803",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_cb701_repair_20260803",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_cb701_repair_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_cb701_repair_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_cb701_repair_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_cb701_repair_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32b_backup_20260812",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32b_backup_20260812",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32b_backup_20260812",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32b_backup_20260812",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32b_backup_20260812",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32b_backup_20260812",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32b_backup_20260812",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32b_backup_20260812",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32c_backup_20260817",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32c_backup_20260817",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32c_backup_20260817",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32c_backup_20260817",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32c_backup_20260817",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32c_backup_20260817",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32c_backup_20260817",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq32c_backup_20260817",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq41_null_20260803",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq41_null_20260803",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq41_null_20260803",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq41_null_20260803",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq41_null_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq41_null_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq41_null_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_dq41_null_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_missing_primary_20260803",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_missing_primary_20260803",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_missing_primary_20260803",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_missing_primary_20260803",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_missing_primary_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_missing_primary_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_missing_primary_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_missing_primary_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802b",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802b",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802b",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802b",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802b",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802b",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802b",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_provlink_backup_20260802b",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_quote_backup_20260802",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_quote_backup_20260802",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_quote_backup_20260802",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_quote_backup_20260802",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_quote_backup_20260802",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_quote_backup_20260802",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_quote_backup_20260802",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_quote_backup_20260802",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_refile_backup_20260803",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_refile_backup_20260803",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_refile_backup_20260803",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_refile_backup_20260803",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_refile_backup_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "dcp_setback_controls_refile_backup_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "dcp_setback_controls_refile_backup_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "dcp_setback_controls_refile_backup_20260803",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "lep_zone_coverage",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "lep_zone_coverage",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "lep_zone_coverage",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "lep_zone_coverage",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "lep_zone_coverage",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "lep_zone_coverage",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "lep_zone_coverage",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "lep_zone_coverage",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_backup_actionability_20260327",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_backup_actionability_20260327",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_backup_actionability_20260327",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_backup_actionability_20260327",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_backup_actionability_20260327",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_backup_actionability_20260327",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_backup_actionability_20260327",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_backup_actionability_20260327",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260924_222332",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260924_222332",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260924_222332",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260924_222332",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260924_222332",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260924_222332",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260924_222332",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260924_222332",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203729",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203729",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203729",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203729",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203729",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203729",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203729",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203729",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203737",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203737",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203737",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203737",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203737",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203737",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203737",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203737",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203744",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203744",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203744",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203744",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203744",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203744",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203744",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203744",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203754",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203754",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203754",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203754",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203754",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203754",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203754",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_203754",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_222713",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_222713",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_222713",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_222713",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_222713",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_222713",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_222713",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260925_222713",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260926_072754",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260926_072754",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260926_072754",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260926_072754",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260926_072754",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260926_072754",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260926_072754",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_citation_backup_20260926_072754",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq30_backup_20260812",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq30_backup_20260812",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq30_backup_20260812",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq30_backup_20260812",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq30_backup_20260812",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq30_backup_20260812",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq30_backup_20260812",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq30_backup_20260812",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260801",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260801",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260801",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260801",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260801",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260801",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260801",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260801",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260921",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260921",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260921",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260921",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260921",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260921",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260921",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260921",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922_211409",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922_211409",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922_211409",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922_211409",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922_211409",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922_211409",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922_211409",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260922_211409",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260923_075036",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260923_075036",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260923_075036",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260923_075036",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260923_075036",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260923_075036",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260923_075036",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260923_075036",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260924_092135",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260924_092135",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260924_092135",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260924_092135",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260924_092135",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260924_092135",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260924_092135",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20260924_092135",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261003_120036",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261003_120036",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261003_120036",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261003_120036",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261003_120036",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261003_120036",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261003_120036",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261003_120036",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_092223",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_092223",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_092223",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_092223",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_092223",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_092223",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_092223",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_092223",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_171004",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_171004",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_171004",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_171004",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_171004",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_171004",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_171004",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_171004",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_195239",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_195239",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_195239",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_195239",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_195239",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_195239",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_195239",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_195239",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_224022",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_224022",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_224022",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_224022",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_224022",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_224022",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_224022",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_dq33_backup_20261004_224022",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_reread2_backup_20260927_0847",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_reread2_backup_20260927_0847",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_reread2_backup_20260927_0847",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_reread2_backup_20260927_0847",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_reread2_backup_20260927_0847",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_reread2_backup_20260927_0847",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_reread2_backup_20260927_0847",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_reread2_backup_20260927_0847",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_reread_backup_20260927_0812",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_reread_backup_20260927_0812",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_reread_backup_20260927_0812",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_reread_backup_20260927_0812",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_reread_backup_20260927_0812",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_reread_backup_20260927_0812",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_reread_backup_20260927_0812",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_reread_backup_20260927_0812",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260912_022449",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260912_022449",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260912_022449",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260912_022449",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260912_022449",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260912_022449",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260912_022449",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260912_022449",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260921_020727",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260921_020727",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260921_020727",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260921_020727",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260921_020727",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260921_020727",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260921_020727",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_section_code_backup_20260921_020727",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_takedown_backup_20260927_0840",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_takedown_backup_20260927_0840",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_takedown_backup_20260927_0840",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_takedown_backup_20260927_0840",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_takedown_backup_20260927_0840",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_takedown_backup_20260927_0840",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_takedown_backup_20260927_0840",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_takedown_backup_20260927_0840",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260731",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260731",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260731",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260731",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260731",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260731",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260731",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260731",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260801",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260801",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260801",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260801",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260801",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260801",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260801",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "regulatory_provisions_zone_backup_20260801",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    }
+  ]
+}
