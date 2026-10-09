@@ -1,0 +1,112 @@
+{
+  "tier": "critical",
+  "justification": "Critical: changes the granny-flat verdict served by the granny-flat app. Until now every result read 'not yet determined' because the engine had no frontage, battle-axe or s 50 facts; with them, most regular lots in the 28 councils with an LEP land use table get a decided answer per approval path.",
+  "commit_hash": "4f6150b0",
+  "files": [
+    "services/granny_flat.py",
+    "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+    "tests/test_granny_flat_mutation.py"
+  ],
+  "pre_impl": {
+    "existing_data": "lep_land_use_table: 19,551 rows over 28 councils, dwelling_houses rows with permissibility permitted / prohibited / exempt. spatial_overlays zone layer gives the council for a point statewide; the height layer used by lookup_lga does not (Greystanes, Cumberland, returned no council, measured 2026-10-09).",
+    "assumption_mismatch": "lookup_lga reads the height layer and returned None for Cumberland, so the s 50 check reads the council from the zone layer instead. The SEPP measures frontage at the building line, which equals the front boundary only on a regular lot, so frontage is sent only for a rectangular lot with a confidently identified front.",
+    "new_vs_existing": "No new tables or columns. Reuses lib/geometry calculateLotDimensions (the verify app's property panel), lep_land_use_table and intelligence_brief._norm_lga. The engine (services/secondary_dwelling_paths.py) is unchanged.",
+    "external_source_error": "Any missing fact leaves that path 'not determined'. Council outside the 28, no dwelling_houses row, an 'exempt' row or contradictory rows all read s 50 as not established, never permitted.",
+    "frontend_type": "Two optional request fields (frontage_m, battle_axe) on detect and confirm; approval_paths gains da_attached. No existing field changed type.",
+    "user_failure_mode": "Without this every owner was told 'not yet determined' even for a plain 600 m2 R2 lot with a 15 m frontage. The risk the other way is a wrong pass from a mis-measured frontage, which is why frontage is sent only for confident rectangular lots."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_granny_flat_mutation.py tests/test_secondary_dwelling_paths.py -q -o addopts= ; cd frontend-nextjs && npx jest granny canibuildit GrannyFlat",
+    "fails_when": "A pass is reported without its fact: frontage passed on a battle-axe lot, s 50 read as permitted from a missing or contradictory row, or an attached DA treated as open when a dwelling house is prohibited. Each has a test.",
+    "observed_red": "Observed 2026-10-09 against live data: the test lot (R2, 600 m2, 15 m, not battle-axe) returns CDC PASS -> met; Greystanes and Marrickville resolve s 50 = permitted only after the council was read from the zone layer (lookup_lga gave None for Greystanes). 8 new tests; 421 granny-flat and engine tests and 178 Jest tests pass."
+  },
+  "functions": [
+    {
+      "name": "_dwelling_house_permissible",
+      "file_line": "services/granny_flat.py",
+      "input": "a database connection, the Planning Portal zone code and the lot's latitude and longitude",
+      "output": "True when the council's LEP land use table permits dwelling houses in the zone, False when it prohibits them",
+      "if_none": "No council, no zone, no row, an exempt row, contradictory rows or a query error all return None (not established)."
+    },
+    {
+      "name": "_approval_paths",
+      "file_line": "services/granny_flat.py",
+      "input": "validated path rules, zone, lot area and the frontage, battle-axe and s 50 facts when known",
+      "output": "the detached-case CDC and DA answers plus da_attached, the DA answer for an attached granny flat",
+      "if_none": "Each missing fact makes its path UNKNOWN with the fact named; nothing defaults to a pass."
+    },
+    {
+      "name": "_approval_status",
+      "file_line": "services/granny_flat.py",
+      "input": "the approval_paths result for one lot including the attached DA answer",
+      "output": "met when CDC passes, a detached DA meets the site area, or an attached DA faces no SEPP lot-area standard",
+      "if_none": "Anything undecided reads not_determined; outside_scope only when neither path applies in the zone."
+    }
+  ],
+  "values": [
+    {
+      "value": "No regulatory number in code; frontage bands and the site area come from the per-path rules, permissibility from lep_land_use_table",
+      "source": "housing_sepp_standards ids 53-61 and lep_land_use_table",
+      "read_at": "each detect and confirm request",
+      "if_missing": "Missing rules 503 as before; a missing land use row leaves s 50 not established."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "council for the lot",
+      "file_line": "services/granny_flat.py _dwelling_house_permissible",
+      "where_clause": "layer_type = 'zone' AND ST_Contains(geom, point)"
+    },
+    {
+      "purpose": "dwelling house permissibility",
+      "file_line": "services/granny_flat.py _dwelling_house_permissible",
+      "where_clause": "zone = %s AND development_type = 'dwelling_houses' (council matched by _norm_lga)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A battle-axe lot with a long boundary that looks like a wide frontage",
+      "what_happens": "battle_axe is sent as true and CDC stays UNKNOWN, naming the access-laneway test",
+      "mitigated": true,
+      "how": "battle-axe detection takes precedence over frontage in the proxy; the engine never passes a battle-axe lot on frontage",
+      "repro": "python -m pytest tests/test_granny_flat_mutation.py -q -o addopts= -k battle_axe"
+    },
+    {
+      "scenario": "The council is not one of the 28 in lep_land_use_table",
+      "what_happens": "s 50 is not established, so both DA answers stay UNKNOWN; CDC can still pass on frontage",
+      "mitigated": true,
+      "how": "no row returns None, never permitted",
+      "repro": "python -m pytest tests/test_granny_flat_mutation.py -q -o addopts= -k dwelling_house_permissible"
+    },
+    {
+      "scenario": "The council has both permitted and prohibited rows for dwelling houses in the zone",
+      "what_happens": "s 50 reads not established instead of picking one",
+      "mitigated": true,
+      "how": "only a single unambiguous permissibility is accepted",
+      "repro": "python -m pytest tests/test_granny_flat_mutation.py -q -o addopts= -k dwelling_house_permissible"
+    },
+    {
+      "scenario": "The lot shape is irregular, so the front boundary is not the frontage at the building line",
+      "what_happens": "no frontage is sent and CDC stays UNKNOWN",
+      "mitigated": true,
+      "how": "frontage is sent only for a rectangular lot with confidence >= 0.8",
+      "repro": "cd frontend-nextjs && npx tsc --noEmit -p ."
+    },
+    {
+      "scenario": "A dwelling house is prohibited in the zone",
+      "what_happens": "both DA answers read NOT_APPLICABLE and the attached DA is not treated as open",
+      "mitigated": true,
+      "how": "_attached_da_open requires the s 53(2)(a) detached-only reason, reached only after s 50 passes",
+      "repro": "python -m pytest tests/test_granny_flat_mutation.py -q -o addopts= -k prohibited"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: after deploy, run the granny-flat check on a regular R2 lot over 450 m2 and confirm a decided CDC answer instead of 'not yet determined'."
+  },
+  "real_layer_exempt": {
+    "services/granny_flat.py": "Real database layer exercised 2026-10-09: _dwelling_house_permissible against production for Greystanes and Marrickville returned permitted, and _approval_paths on the test lot returned CDC PASS."
+  }
+}

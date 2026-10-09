@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getResend } from '@/lib/resend-client';
 import { createClient } from '@supabase/supabase-js';
 import { NSW_STANDARD_ZONES } from '@/lib/regulatory-constants';
+import { calculateLotDimensions } from '@/lib/geometry/lot-dimensions';
 import {
   satelliteRateLimiter,
   getClientIdentifier,
@@ -317,6 +318,19 @@ export async function POST(request: NextRequest) {
   // NSW_STANDARD_ZONES.RESIDENTIAL — was independently declared in 4 files.
   const ELIGIBLE_ZONE_PREFIXES = NSW_STANDARD_ZONES.RESIDENTIAL as readonly string[];
   const zone: string | null = (propData.property as { zone?: string | null })?.zone ?? null;
+  // CDC lot facts from the lot shape (the same lib/geometry the verify app's
+  // property panel uses). The SEPP measures frontage at the building line, which
+  // equals the front boundary only on a regular lot, so a frontage is sent only
+  // for a rectangular lot with a confidently identified front. Anything unsure
+  // is left out and the engine answers "not determined", never a guessed pass.
+  const lotDims = lotGeometry?.rings?.[0] ? calculateLotDimensions(lotGeometry) : null;
+  const pathFacts: { frontage_m?: number; battle_axe?: boolean } = {};
+  if (lotDims?.battleaxe?.isBattleaxe) {
+    pathFacts.battle_axe = true;
+  } else if (lotDims?.lotType === 'rectangular' && lotDims.confidence >= 0.8 && lotDims.frontage > 0) {
+    pathFacts.battle_axe = false;
+    pathFacts.frontage_m = lotDims.frontage;
+  }
   if (zone) {
     const eligible = ELIGIBLE_ZONE_PREFIXES.some((p) => zone.startsWith(p));
     if (!eligible) {
@@ -368,7 +382,7 @@ export async function POST(request: NextRequest) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           // zone: the CDC and DA granny-flat tests each apply only in their own zones.
-          body: JSON.stringify({ address, lat, lng, prop_id, report_id: jobId, lot_geometry: lotGeometry, zone, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) }),
+          body: JSON.stringify({ address, lat, lng, prop_id, report_id: jobId, lot_geometry: lotGeometry, zone, ...pathFacts, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) }),
           signal: AbortSignal.timeout(180_000),
         });
       } catch (err) {
@@ -397,7 +411,7 @@ export async function POST(request: NextRequest) {
           lng,
           prop_id,
           report_id: jobId,
-          extra_body: { lot_geometry: lotGeometry, zone, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) },
+          extra_body: { lot_geometry: lotGeometry, zone, ...pathFacts, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) },
           ...(notification_email ? { notification_email } : {}),
         },
       }),
@@ -541,6 +555,7 @@ export async function POST(request: NextRequest) {
           existing_secondary_dwelling: existing_secondary_dwelling ?? null,
           main_dwelling_area_m2: main_dwelling_area_m2 ?? null,
           zone,
+          ...pathFacts,
         }),
         signal: AbortSignal.timeout(30_000),
       }),
