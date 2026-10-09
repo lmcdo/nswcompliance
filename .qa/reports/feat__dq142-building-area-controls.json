@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: two production data loads (migration 091, 4 rear setbacks; migration 092, 67 building-area controls, both applied) that the buildable-area arithmetic serves, plus a changed DQ probe.",
-  "commit_hash": "bce18d2d",
+  "commit_hash": "f818d180",
   "files": [
     "migrations/091_rear_setbacks_quoted_from_stored_dcp_text.sql",
     "migrations/092_dq142_building_area_controls.sql",
