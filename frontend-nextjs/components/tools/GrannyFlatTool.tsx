@@ -541,7 +541,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
           ) : null}
 
           {/* SEPP Housing 2021 — granny-flat standards, from the database */}
-          {eligibility.sepp_eligible && (eligibility.sepp_standards?.length ?? 0) > 0 && (
+          {eligibility.sepp_eligible === true && (eligibility.sepp_standards?.length ?? 0) > 0 && (
             <div className="rounded-xl border border-gray-200 bg-white p-5">
               <div className="flex items-baseline justify-between mb-3">
                 <h3 className="text-sm font-semibold text-gray-700">SEPP Housing 2021 — CDC standards</h3>
