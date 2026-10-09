@@ -1232,7 +1232,7 @@ class TestConfirmAndCalculate:
         req = _make_confirm_req()
         resp = gf.confirm_and_calculate(req)
         assert isinstance(resp, GrannyFlatConfirmResponse)
-        assert resp.granny_flat_buildable is True
+        assert resp.granny_flat_buildable is None
         assert resp.max_floor_area_m2 == 60.0
 
     def test_small_lot_is_not_made_unbuildable_by_lot_area(self, monkeypatch):
@@ -1240,9 +1240,26 @@ class TestConfirmAndCalculate:
         _stub_confirm_all(monkeypatch)
         req = _make_confirm_req(lot_area_m2=300.0, zone="R2")
         resp = gf.confirm_and_calculate(req)
-        assert resp.granny_flat_buildable is True
+        assert resp.granny_flat_buildable is None
         assert not any("450" in w for w in resp.warnings)
         assert resp.approval_paths["da"]["evidence"]["clause"] == "s 53(2)(a)"
+
+    def test_no_path_met_is_not_yet_determined_with_costs_still_shown(self, monkeypatch):
+        """User ruling 2026-10-09: neither path decided -> not yet determined
+        (None), never buildable; costs still shown because nothing rules it out."""
+        _stub_confirm_all(monkeypatch)
+        resp = gf.confirm_and_calculate(_make_confirm_req(zone="R2"))
+        assert resp.granny_flat_buildable is None
+        assert resp.assumed_build_cost_aud == 150_000
+
+    def test_approval_status_met_only_when_a_path_is_met(self):
+        mk = lambda c, d, r="": {"cdc": {"outcome": c, "reason": r}, "da": {"outcome": d, "reason": r}}
+        assert gf._approval_status(mk("PASS", "UNKNOWN")) == "met"
+        assert gf._approval_status(mk("UNKNOWN", "MEETS")) == "met"
+        assert gf._approval_status(mk("UNKNOWN", "BELOW")) == "not_determined"
+        assert gf._approval_status(mk("FAIL", "UNKNOWN")) == "not_determined"
+        assert gf._approval_status(mk("NOT_APPLICABLE", "NOT_APPLICABLE",
+                                      "zone B2 is outside this path's zones (R1)")) == "outside_scope"  # noqa: zone-codes — a reason string under test, not a zone list
 
     def test_zone_outside_both_paths_is_not_buildable(self, monkeypatch):
         _stub_confirm_all(monkeypatch)
@@ -2058,21 +2075,21 @@ class TestConfirmAndCalculate:
         _stub_confirm_all(monkeypatch)
         req = _make_confirm_req(lot_area_m2=600.0, main_dwelling_area_m2=200.0)
         resp = gf.confirm_and_calculate(req)
-        assert resp.granny_fat_buildable if hasattr(resp, 'granny_fat_buildable') else resp.granny_flat_buildable is True
+        assert resp.granny_fat_buildable if hasattr(resp, 'granny_fat_buildable') else resp.granny_flat_buildable is not False
 
     def test_residual_area_skipped_when_no_dwelling(self, monkeypatch):
         """main_dwelling_area_m2=None → skip residual check."""
         _stub_confirm_all(monkeypatch)
         req = _make_confirm_req(lot_area_m2=600.0, main_dwelling_area_m2=None)
         resp = gf.confirm_and_calculate(req)
-        assert resp.granny_flat_buildable is True
+        assert resp.granny_flat_buildable is not False
 
     def test_residual_area_skipped_when_dwelling_zero(self, monkeypatch):
         """main_dwelling_area_m2=0 → skip (guard: > 0)."""
         _stub_confirm_all(monkeypatch)
         req = _make_confirm_req(lot_area_m2=600.0, main_dwelling_area_m2=0.0)
         resp = gf.confirm_and_calculate(req)
-        assert resp.granny_flat_buildable is True
+        assert resp.granny_flat_buildable is not False
 
     def test_lot_area_fallback_from_prop_id(self, monkeypatch):
         """When lot_area_m2 is None but prop_id exists, fetch geometry."""
@@ -2159,7 +2176,7 @@ class TestConfirmAndCalculate:
         _stub_confirm_all(monkeypatch)
         req = _make_confirm_req(existing_secondary_dwelling=False)
         resp = gf.confirm_and_calculate(req)
-        assert resp.granny_flat_buildable is True
+        assert resp.granny_flat_buildable is not False
         assert not any("already exists" in w.lower() for w in resp.warnings)
 
     def test_three_structures_with_sd_false_not_blocked(self, monkeypatch):

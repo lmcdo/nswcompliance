@@ -41,7 +41,8 @@ export interface GrannyFlatReportData {
   main_dwelling_area_m2: number | null;
   confirmed_structure_count: number | null;
   // outputs
-  granny_flat_buildable: boolean;
+  // true: a path is met; false: ruled out; null: not yet determined.
+  granny_flat_buildable: boolean | null;
   max_floor_area_m2: number;
   estimated_weekly_rent_aud: number | null;
   rental_yield_annual_pct: number | null;
@@ -261,9 +262,11 @@ function yieldMatrix(maxArea: number) {
 
 function buildFindings(data: GrannyFlatReportData): Finding[] {
   const findings: Finding[] = [];
-  const pass = data.granny_flat_buildable;
+  const pass = data.granny_flat_buildable === true;
+  const undetermined = data.granny_flat_buildable === null;
+  const notRuledOut = pass || undetermined;
   const isMultiStructureBlock =
-    !pass &&
+    data.granny_flat_buildable === false &&
     (data.confirmed_structure_count ?? 0) >= 3 &&
     data.warnings?.some((w) => w.startsWith('MULTIPLE_SECONDARY_STRUCTURES'));
 
@@ -272,32 +275,35 @@ function buildFindings(data: GrannyFlatReportData): Finding[] {
     label: 'SEPP (Housing) 2021 cl 50-58 assessment',
     value: pass
       ? 'Eligible under SEPP Housing 2021 (CDC pathway)'
+      : undetermined
+      ? 'Not yet determined'
       : isMultiStructureBlock
       ? 'Eligibility unconfirmed - multiple structures detected'
       : 'Not eligible for CDC pathway',
     detail: pass
       ? 'Based on the data sources checked, this property meets the SEPP Housing 2021 spatial criteria for a secondary dwelling under the Complying Development pathway. A private certifier can verify eligibility and lodge a CDC without council consent.'
+      : undetermined
+      ? 'Neither approval path could be decided from the data available. Complying development needs a road frontage at the building line set by the lot area (SEPP (Housing) 2021 Schedule 1 cl 2(1)(b)); through a development application, a detached granny flat has a non-discretionary minimum site area (s 53(2)(a)). The notes below name what is missing. A private certifier or town planner can decide which path applies.'
       : isMultiStructureBlock
       ? 'Two or more secondary structures were detected. SEPP Housing 2021 (cl 53(1)) only permits one secondary dwelling per lot. A town planner or private certifier must verify before proceeding.'
       : 'This property does not meet one or more requirements for a secondary dwelling under the CDC pathway. A Development Application (DA) to council may still be available.',
-    severity: pass ? 'green' : isMultiStructureBlock ? 'amber' : 'red',
+    severity: pass ? 'green' : (undetermined || isMultiStructureBlock) ? 'amber' : 'red',
   });
 
   // Lot area
   if (data.lot_area_m2 != null) {
-    const lotOk = data.lot_area_m2 >= 450;
+    // No single minimum lot size: the SEPP (Housing) 2021 tests lot area per
+    // approval path, and the per-path answer is in the report's notes.
     findings.push({
       label: 'NSW Planning Portal - lot boundary data',
       value: `${fmt(data.lot_area_m2)} m\u00B2 lot area`,
-      detail: lotOk
-        ? 'Lot meets the minimum 450 m\u00B2 requirement for a secondary dwelling under SEPP Housing 2021. No subdivision required.'
-        : 'Lot is below the 450 m\u00B2 minimum required under SEPP Housing 2021 for the CDC pathway. A DA may still be possible - consult a town planner.',
-      severity: lotOk ? 'green' : 'red',
+      detail: 'SEPP (Housing) 2021 sets no single minimum lot size for a granny flat. Complying development needs a road frontage at the building line set by lot area (Schedule 1 cl 2(1)(b)); a detached granny flat by DA has a non-discretionary site area (s 53(2)(a)). See the notes for this lot.',
+      severity: 'amber',
     });
   }
 
-  // Max floor area (if eligible)
-  if (pass && data.max_floor_area_m2 > 0) {
+  // Max floor area (unless ruled out)
+  if (notRuledOut && data.max_floor_area_m2 > 0) {
     findings.push({
       label: 'SEPP Housing 2021 cl 4.18 - floor area cap',
       value: `${fmt(data.max_floor_area_m2)} m\u00B2 maximum floor area (CDC)`,
@@ -307,7 +313,7 @@ function buildFindings(data: GrannyFlatReportData): Finding[] {
   }
 
   // Rental income indicator
-  if (pass && data.estimated_weekly_rent_aud != null) {
+  if (notRuledOut && data.estimated_weekly_rent_aud != null) {
     const annualRent = data.estimated_weekly_rent_aud * 52;
     const yieldPct = data.rental_yield_annual_pct ?? 0;
     findings.push({
@@ -366,13 +372,15 @@ function buildFindings(data: GrannyFlatReportData): Finding[] {
 // ---------------------------------------------------------------------------
 
 export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData }) {
-  const pass = data.granny_flat_buildable;
+  const pass = data.granny_flat_buildable === true;
+  const undetermined = data.granny_flat_buildable === null;
+  const notRuledOut = pass || undetermined;
   const isPaid = data.is_paid === true;
   const isMultiStructureBlock =
-    !pass &&
+    data.granny_flat_buildable === false &&
     (data.confirmed_structure_count ?? 0) >= 3 &&
     data.warnings?.some((w) => w.startsWith('MULTIPLE_SECONDARY_STRUCTURES'));
-  const matrix = pass ? yieldMatrix(data.max_floor_area_m2) : null;
+  const matrix = notRuledOut ? yieldMatrix(data.max_floor_area_m2) : null;
   const hasTile = !!data.tile_b64;
   const hasDCP = isPaid && data.dcp_sd_setbacks && data.dcp_sd_setbacks.length > 0;
 
@@ -418,11 +426,13 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         {/* Verdict badge */}
         <View style={[
           s.verdictBadge,
-          { backgroundColor: pass ? TEAL : isMultiStructureBlock ? AMBER : RED },
+          { backgroundColor: pass ? TEAL : (undetermined || isMultiStructureBlock) ? AMBER : RED },
         ]}>
           <Text style={s.verdictText}>
             {pass
               ? 'Eligible under SEPP Housing 2021'
+              : undetermined
+              ? 'Not yet determined'
               : isMultiStructureBlock
               ? 'Eligibility unconfirmed'
               : 'Not eligible (CDC pathway)'}
@@ -465,7 +475,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         {isPaid ? (
           <>
             {/* --- Income potential (paid, eligible + rent data) --- */}
-            {pass && data.estimated_weekly_rent_aud != null && (
+            {notRuledOut && data.estimated_weekly_rent_aud != null && (
               <>
                 <PaidSectionHeader title="Income potential - detailed data" />
                 <View style={s.roiRow}>
@@ -494,7 +504,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
             )}
 
             {/* --- 10-Year ROI (paid, eligible + rent data) --- */}
-            {pass && data.estimated_weekly_rent_aud != null && data.assumed_build_cost_aud != null && (() => {
+            {notRuledOut && data.estimated_weekly_rent_aud != null && data.assumed_build_cost_aud != null && (() => {
               const annualRent = data.estimated_weekly_rent_aud! * 52;
               const buildCost = data.assumed_build_cost_aud!;
               const years = [1, 2, 3, 5, 7, 10];
@@ -538,7 +548,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
             })()}
 
             {/* --- Yield sensitivity (paid, eligible) --- */}
-            {pass && matrix && (
+            {notRuledOut && matrix && (
               <View style={{ marginTop: 8 }}>
                 <Text style={s.sectionTitle}>Yield sensitivity analysis</Text>
                 <Text style={s.bodyText}>
@@ -608,6 +618,13 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
                 return (
                   <WhatThisMeans>
                     Based on the data sources checked, this lot meets the SEPP Housing 2021 spatial criteria for a secondary dwelling via the CDC pathway. A private certifier can confirm eligibility (approximately $500), then a draftsperson can prepare CDC-ready drawings (approximately $2,000-$5,000).
+                  </WhatThisMeans>
+                );
+              }
+              if (undetermined) {
+                return (
+                  <WhatThisMeans>
+                    Neither approval path could be decided from the data available. Complying development needs a road frontage at the building line set by the lot area (SEPP (Housing) 2021 Schedule 1 cl 2(1)(b)); through a development application, a detached granny flat has a non-discretionary minimum site area (s 53(2)(a)). The notes below name what is missing. A private certifier or town planner can decide which path applies.
                   </WhatThisMeans>
                 );
               }
@@ -787,7 +804,23 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
 
           {/* --- Next steps --- */}
           <Text style={[s.sectionTitle, { marginTop: 16 }]}>Next steps</Text>
-          {(pass ? [
+          {(undetermined ? [
+            {
+              n: '1',
+              title: 'Measure the road frontage at the building line',
+              body: 'Complying development sets a minimum frontage by lot area (SEPP (Housing) 2021 Schedule 1 cl 2(1)(b)). A surveyor or private certifier can measure it.',
+            },
+            {
+              n: '2',
+              title: 'Decide attached or detached',
+              body: 'On the DA path, a detached granny flat has a non-discretionary minimum site area (s 53(2)(a)); an attached one does not.',
+            },
+            {
+              n: '3',
+              title: 'Ask a private certifier or town planner which path applies',
+              body: 'With the frontage and design known, they can confirm whether complying development or a development application is the path for this lot.',
+            },
+          ] : pass ? [
             {
               n: '1',
               title: 'Engage a private certifier for a CDC pre-lodgement check',
@@ -817,7 +850,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
             {
               n: '1',
               title: 'Consider the DA pathway',
-              body: 'A DA to council may still be possible, particularly if the lot is close to the 450 m\u00B2 minimum or the exclusion is borderline. A town planner can assess the options.',
+              body: 'A DA to council may still be possible, particularly if the exclusion is borderline. A town planner can assess the options.',
             },
             {
               n: '2',

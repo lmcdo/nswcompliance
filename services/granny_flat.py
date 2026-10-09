@@ -191,6 +191,16 @@ def _outside_both_paths(paths: dict) -> bool:
                for p in ("cdc", "da"))
 
 
+def _approval_status(paths: dict) -> str:
+    """'met' when either path is met, 'outside_scope' when neither applies in
+    the zone, otherwise 'not_determined'."""
+    if paths["cdc"]["outcome"] == "PASS" or paths["da"]["outcome"] == "MEETS":  # noqa: bracket-access — assess() always sets both
+        return "met"
+    if _outside_both_paths(paths):
+        return "outside_scope"
+    return "not_determined"
+
+
 def _path_warning(paths: dict) -> Optional[str]:
     """The summary, when either path reports something the reader must act on."""
     if paths["cdc"]["outcome"] == "FAIL" or paths["da"]["outcome"] == "BELOW":  # noqa: bracket-access — assess() always sets both
@@ -384,6 +394,9 @@ class GrannyFlatDetectResponse(BaseModel):
     # the CDC/DA answers from services/secondary_dwelling_paths.assess().
     zone: Optional[str] = None
     approval_paths: Optional[dict] = None
+    # 'met' | 'not_determined' | 'outside_scope'. sepp_eligible stays "not
+    # excluded" because it decides whether the confirm step runs at all.
+    approval_status: Optional[str] = None
     detected_structures: list[DetectedStructure]
     # None = detection FAILED (three-state, #745 D4); 0 = genuinely none found.
     samgeo_structure_count: Optional[int]
@@ -501,7 +514,11 @@ class GrannyFlatConfirmRequest(BaseModel):
 class GrannyFlatConfirmResponse(BaseModel):
     report_id: str
     address: str
-    granny_flat_buildable: bool
+    # True: an approval path is met. False: ruled out. None: NOT YET DETERMINED --
+    # nothing rules the lot out, but neither the CDC nor the DA lot test could be
+    # decided from the facts available (user ruling 2026-10-09: never shown as
+    # buildable).
+    granny_flat_buildable: Optional[bool]
     max_floor_area_m2: float
     estimated_weekly_rent_aud: Optional[float]
     rental_yield_annual_pct: Optional[float]
@@ -1601,6 +1618,7 @@ def detect_structures(req: GrannyFlatDetectRequest):
         sepp_ineligible_reason=sepp_ineligible_reason,
         zone=req.zone,
         approval_paths=approval_paths,
+        approval_status=_approval_status(approval_paths),
         detected_structures=detected_structures,
         samgeo_structure_count=None if detection_failed else len(detected_structures),
         detection_failed=detection_failed,
@@ -1817,6 +1835,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     # Lot area is reported per approval path, never as one minimum that makes
     # the lot unbuildable -- the SEPP (Housing) 2021 sets no such minimum.
     approval_paths = _approval_paths(sepp_rules, req.zone, lot_area_m2)
+    approval_status = _approval_status(approval_paths)
     if _outside_both_paths(approval_paths):
         granny_flat_buildable = False
         warnings.append(approval_paths["summary"])  # noqa: bracket-access — assess() always sets it
@@ -1960,8 +1979,16 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     weekly_rent = _get_weekly_rent(postcode)
     annual_rent = weekly_rent * 52 if weekly_rent else None
 
+    # Every other check has run. Not ruled out but no path met -> not yet
+    # determined, never "buildable".
+    if granny_flat_buildable is True and approval_status != "met":
+        granny_flat_buildable = None
+
     build_cost_per_m2 = 2500.0
-    assumed_build_cost = round(max_floor_area_m2 * build_cost_per_m2) if granny_flat_buildable else None
+    # Costs are shown unless the lot is ruled out: they answer "what would it
+    # cost", which does not depend on which path is used.
+    assumed_build_cost = (round(max_floor_area_m2 * build_cost_per_m2)
+                          if granny_flat_buildable is not False else None)
     if assumed_build_cost:
         data_sources.append("Build cost estimate: $2,500/m² (conservative NSW residential, 2026)")
 

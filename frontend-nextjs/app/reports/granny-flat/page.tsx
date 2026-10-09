@@ -58,7 +58,8 @@ interface EplanningHistory {
 interface ConfirmResult {
   report_id: string;
   address: string;
-  granny_flat_buildable: boolean;
+  // true: a path is met; false: ruled out; null: not yet determined.
+  granny_flat_buildable: boolean | null;
   max_floor_area_m2: number;
   estimated_weekly_rent_aud: number | null;
   rental_yield_annual_pct: number | null;
@@ -686,7 +687,7 @@ function GrannyFlatPageInner() {
             <PaidDownloadCTA reportId={finalResult.report_id} address={finalResult.address ?? inputAddress} />
           ) : (
             <ReportUnlockCTA
-              buildable={finalResult.granny_flat_buildable}
+              buildable={finalResult.granny_flat_buildable !== false}
               sepp_ineligible_reason={detectResult?.sepp_ineligible_reason ?? null}
               email={email}
               setEmail={setEmail}
@@ -704,8 +705,8 @@ function GrannyFlatPageInner() {
             onWeeklyRentChange={setCalcWeeklyRent}
           />
           <CrossSellCards
-            buildable={finalResult.granny_flat_buildable}
-            ineligibleReason={finalResult.granny_flat_buildable ? null : (detectResult?.sepp_ineligible_reason ?? null)}
+            buildable={finalResult.granny_flat_buildable !== false}
+            ineligibleReason={finalResult.granny_flat_buildable === false ? (detectResult?.sepp_ineligible_reason ?? null) : null}
             address={finalResult.address ?? inputAddress}
           />
         </div>
@@ -909,7 +910,7 @@ function YieldCalculator({
 const GRANNY_FLAT_FAQS = [
   {
     q: 'What is the minimum lot size for a granny flat in NSW?',
-    a: 'SEPP (Housing) 2021 sets no single minimum lot size for a granny flat. As complying development, the lot needs a road frontage at the building line that depends on the lot area (Schedule 1 cl 2(1)(b)). Through a development application, a detached granny flat has a non-discretionary minimum site area (s 53(2)(a)); consent can still be granted if it is not met (Act s 4.15(3)). The report shows the figures that apply to your lot, read from the law in force.',
+    a: 'SEPP (Housing) 2021 sets no single minimum lot size for a granny flat. As complying development, the lot needs a road frontage at the building line that depends on the lot area (Schedule 1 cl 2(1)(b)). Through a development application, a detached granny flat has a non-discretionary minimum site area (s 53(2)(a)); consent can still be granted if it is not met (Act s 4.15(3)). The report shows the figures that apply to your lot as last checked against the legislation, with a notice when a re-check is pending.',
   },
   {
     q: 'What is the maximum size of a granny flat under SEPP Housing 2021?',
@@ -1760,17 +1761,32 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
           </div>
           <span
             className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${
-              result.granny_flat_buildable
+              result.granny_flat_buildable === true
                 ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
+                : result.granny_flat_buildable === null
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-red-100 text-red-800'
             }`}
           >
-            {result.granny_flat_buildable ? 'Eligible' : 'Not eligible'}
+            {result.granny_flat_buildable === true
+              ? 'Eligible'
+              : result.granny_flat_buildable === null ? 'Not yet determined' : 'Not eligible'}
           </span>
         </div>
       </div>
 
-      {result.granny_flat_buildable && (
+      {result.granny_flat_buildable === null && (
+        <div className="px-6 py-4 border-b border-gray-100">
+          <p className="text-sm text-gray-700">
+            Nothing found rules this lot out, but neither approval path could be decided from the data available.
+            Complying development needs a road frontage at the building line set by the lot area (Schedule 1 cl 2(1)(b));
+            a detached granny flat by development application has a non-discretionary site area (s 53(2)(a)).
+            The notes below name what is missing.
+          </p>
+        </div>
+      )}
+
+      {result.granny_flat_buildable !== false && (
         <div className="grid grid-cols-3 divide-x divide-gray-100">
           <div className="p-5">
             <p className="text-xs text-gray-400 mb-1">Max floor area</p>

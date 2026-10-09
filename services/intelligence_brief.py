@@ -2891,6 +2891,12 @@ def _build_sepp_housing(
         if min_lot and lot_area_m2 and lot_area_m2 < min_lot:
             eligible = False
             reason = f"Lot area {lot_area_m2:.0f}m² below minimum {min_lot:.0f}m²"
+        if path_ruled:
+            # Not yet determined (user ruling 2026-10-09): the brief does not run
+            # the CDC/DA tests, so a granny flat is never listed as eligible here.
+            eligible = False
+            reason = ("Not yet determined: granny flats are tested per approval path "
+                      "(CDC road frontage, DA site area for a detached granny flat)")
 
         # max_floor_area (migration 045) maps to max_gfa_m2 (absolute m²)
         max_gfa = vals.get("max_floor_area")

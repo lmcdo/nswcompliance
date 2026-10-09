@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: changes the granny-flat answer on six served surfaces (two Python endpoints, the SEPP eligibility engine, the brief, the conveyancing report, two Next.js routes and the public granny-flat tool). Each currently tells an owner with a lot under 450 m2 that a granny flat is not buildable or not eligible, which the SEPP (Housing) 2021 does not say. Plus a production delete (migration 089) applied after deploy.",
-  "commit_hash": "6a909ef8",
+  "commit_hash": "3da66d4a",
   "files": [
     "services/secondary_dwelling_paths.py",
     "deploy/flyio-legislation-monitor/secondary_dwelling_paths.py",
@@ -52,6 +52,13 @@
       "input": "the grouped generic rows for secondary_dwelling, zone and lot area",
       "output": "a FormEligibility from assess(); eligible only when a path is met, otherwise unconfirmed",
       "if_none": "Rules unavailable gives eligible False, unconfirmed True, and a reason naming that neither path was assessed."
+    },
+    {
+      "name": "_approval_status",
+      "file_line": "services/granny_flat.py",
+      "input": "the assess() result holding the CDC and DA outcome dictionaries for one lot",
+      "output": "met when either path is met, outside_scope when neither applies in the zone, otherwise not_determined",
+      "if_none": "assess() always sets both outcomes, so there is no missing case; anything unrecognised reads not_determined."
     }
   ],
   "values": [
@@ -121,6 +128,13 @@
       "mitigated": true,
       "how": "assess() adds the detached site-area hint when DA is UNKNOWN and the lot is below the standard",
       "repro": "python -m pytest tests/test_secondary_dwelling_paths.py -q -o addopts= -k detached_site_area"
+    },
+    {
+      "scenario": "Neither approval path can be decided (frontage, detached status, s 50 unknown) and nothing rules the lot out",
+      "what_happens": "granny_flat_buildable is null and every surface (report card, email, PDF, brief) says 'Not yet determined' and names what is missing; costs and rent are still shown",
+      "mitigated": true,
+      "how": "user ruling 2026-10-09: three states; null is carried through the generate route instead of becoming false",
+      "repro": "python -m pytest tests/test_granny_flat_mutation.py -q -o addopts= -k not_yet_determined ; cd frontend-nextjs && npx jest granny-flat-generate"
     }
   ],
   "post_merge": {

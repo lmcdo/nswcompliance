@@ -359,7 +359,9 @@ def assess(rules: Rules, zone: Optional[str], lot_area_m2, *, frontage_range_m=N
     if stale:
         summary += (f" Note: {'; '.join(stale)} after these rules were last checked; "
                     "a re-check against the amended instrument is pending.")
+    # The band is a CDC requirement: exposed only where the CDC path applies.
+    cdc_band = band if cdc["outcome"] != "NOT_APPLICABLE" else None  # noqa: bracket-access — evaluate_* always sets outcome
     return {"cdc": cdc, "da": da,
-            "cdc_frontage_required_m": band.value if band is not None else None,
-            "cdc_frontage_rule": _evidence(band) if band is not None else None,
+            "cdc_frontage_required_m": cdc_band.value if cdc_band is not None else None,
+            "cdc_frontage_rule": _evidence(cdc_band) if cdc_band is not None else None,
             "summary": summary, "stale": stale}

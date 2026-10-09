@@ -816,7 +816,7 @@ class TestBuildSEPPHousingSecondaryDwelling:
         assert result[0].dev_type == "secondary_dwelling"
         assert result[0].max_gfa_m2 == 60.0
         assert result[0].max_fsr is None  # secondary_dwelling has no FSR ratio
-        assert result[0].eligible is True
+        assert result[0].eligible is False  # not yet determined (tested per approval path)
 
     def test_max_fsr_maps_for_lmr(self):
         """LMR types use 'max_fsr' standard_type — must map to max_fsr field, not max_gfa_m2."""
@@ -860,8 +860,9 @@ class TestBuildSEPPHousingSecondaryDwelling:
             {"development_type": "secondary_dwelling", "standard_type": "min_lot_size", "numeric_value": 450},
         ]
         result = _build_sepp_housing(raw, "R2", 400.0)
-        assert result[0].eligible is True
-        assert result[0].reason_ineligible is None
+        assert result[0].eligible is False  # not yet determined, never "eligible"
+        assert result[0].reason_ineligible.startswith("Not yet determined")
+        assert "450" not in result[0].reason_ineligible
         assert result[0].min_lot_area_m2 is None
 
 

@@ -827,6 +827,7 @@ def test_assess_no_frontage_hint_when_cdc_does_not_apply(valid_rules):
     r = assess(valid_rules, "R5", 800)
     assert r["cdc"]["outcome"] == "NOT_APPLICABLE"
     assert "required at the building line" not in r["summary"]
+    assert r["cdc_frontage_required_m"] is None and r["cdc_frontage_rule"] is None
 
 
 def test_assess_frontage_measured_passes_and_fails_from_data(valid_rules):

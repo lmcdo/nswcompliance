@@ -576,18 +576,23 @@ export async function POST(request: NextRequest) {
     // ready. Failure is still swallowed - the report is already computed and
     // stored, and is reachable at the URL regardless.
     if (notification_email && process.env.RESEND_API_KEY) {
-      const eligible: boolean = result.granny_flat_buildable ?? false;
+      // true: a path is met; false: ruled out; null: not yet determined.
+      const buildable: boolean | null = result.granny_flat_buildable ?? null;
+      const eligible = buildable === true;
+      const undetermined = buildable === null;
       const maxArea: number | null = result.max_floor_area_m2 ?? null;
       const rent: number | null = result.estimated_weekly_rent_aud ?? null;
       const reportAddress: string = result.address ?? address ?? '';
       const addressParam = encodeURIComponent(reportAddress);
       const reportUrl = `https://verify.plotdetect.com.au/reports/granny-flat?jobId=${detect_id}&address=${addressParam}`;
 
-      const verdictColor = eligible ? '#0f766e' : '#dc2626';
-      const verdictLabel = eligible ? 'Eligible' : 'Not eligible';
+      const verdictColor = eligible ? '#0f766e' : undetermined ? '#b45309' : '#dc2626';
+      const verdictLabel = eligible ? 'Eligible' : undetermined ? 'Not yet determined' : 'Not eligible';
       const verdictNote = eligible
         ? `Max floor area: <strong>${maxArea ?? '—'} m²</strong> (CDC pathway)`
-        : result.confidence_reason ?? 'Does not meet SEPP Housing 2021 criteria.';
+        : undetermined
+          ? 'Nothing found rules this lot out, but neither approval path could be decided from the data available. Your report names what is missing.'
+          : result.confidence_reason ?? 'Does not meet SEPP Housing 2021 criteria.';
 
       await getResend()?.emails.send({
         from: 'Can I Build It <info@plotdetect.com.au>',
