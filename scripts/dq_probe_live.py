@@ -1043,18 +1043,28 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # filtered_to_all + 36 untagged), of which DQ-103 accounts for 1,021.
         # Council rows only, for DQ-33's reason: a statewide SEPP or LEP has no
         # council config that could ever resolve it.
+        #
+        # LEP rows are excluded BY DOCUMENT TYPE, not by source_council, and that
+        # was learned the hard way: migration 087 (2026-10-09) correctly gave the
+        # Inner West LEP 2022 rows their council, which silently pulled 120 LEP
+        # keys into this DCP count and turned it red. "Council rows" here always
+        # meant council DCP rows. The LEP's undecided scope is DQ-140's.
         "SELECT count(*) FROM ("
-        "  SELECT 1 FROM regulatory_provisions"
-        "   WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL"
-        "     AND (v2_dev_type_source IN ('config_silent','filtered_to_all',"
-        "                                 'no_document_id')"
-        "          OR v2_dev_type_source IS NULL)"
+        "  SELECT 1 FROM regulatory_provisions rp"
+        "   WHERE rp.is_current AND rp.v2_is_actionable AND rp.source_council IS NOT NULL"
+        "     AND NOT EXISTS (SELECT 1 FROM documents d"
+        "                      WHERE d.id = rp.document_id AND d.document_type = 'LEP')"
+        "     AND (rp.v2_dev_type_source IN ('config_silent','filtered_to_all',"
+        "                                    'no_document_id')"
+        "          OR rp.v2_dev_type_source IS NULL)"
         "  UNION ALL"
-        "  SELECT 1 FROM regulatory_provisions"
-        "   WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL"
-        "     AND (v2_zone_source IN ('config_silent','filtered_to_all',"
-        "                             'no_document_id')"
-        "          OR v2_zone_source IS NULL)"
+        "  SELECT 1 FROM regulatory_provisions rp"
+        "   WHERE rp.is_current AND rp.v2_is_actionable AND rp.source_council IS NOT NULL"
+        "     AND NOT EXISTS (SELECT 1 FROM documents d"
+        "                      WHERE d.id = rp.document_id AND d.document_type = 'LEP')"
+        "     AND (rp.v2_zone_source IN ('config_silent','filtered_to_all',"
+        "                                'no_document_id')"
+        "          OR rp.v2_zone_source IS NULL)"
         ") t",
         (),
         "Each count is one key -- a development-type list or a zone list -- on "
@@ -2466,6 +2476,43 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "anon and authenticated. Verify by re-running this probe, NOT by checking the app "
         "still works: the app connects as postgres and is unaffected either way, so a "
         "green app proves nothing about this row.",
+    ),
+    "DQ-140": (
+        "Served LEP rules whose zone or development-type scope nobody decided",
+        # Split from DQ-114 on 2026-10-09 (user ruling: unblock the merge, then
+        # do the full fix as its own PR). The whole Inner West LEP 2022 was
+        # loaded with no scope: 554 served rules, every one reading ALL for both
+        # keys, 434 as no_config and 120 never tagged at all. An LEP clause
+        # states its own reach in its own words -- "This clause applies to land
+        # in Zone E3", "applies to Lot 1, DP 1070825", or nothing, in which case
+        # cl 1.4 (the land the Plan applies to) is the decision. The rows are
+        # also stored split by subclause, so a fragment like "(a) each lot will
+        # be used for a dwelling house" carries no zone text of its own: the
+        # fix is per CLAUSE, not per row. Counted per key, as DQ-114 is, and
+        # including no_config, because no council config can ever resolve an
+        # LEP (DQ-33's reasoning) -- here no_config is simply "not read yet".
+        "SELECT count(*) FROM ("
+        "  SELECT 1 FROM regulatory_provisions rp"
+        "    JOIN documents d ON d.id = rp.document_id AND d.document_type = 'LEP'"
+        "   WHERE rp.is_current AND rp.v2_is_actionable"
+        "     AND (rp.v2_dev_type_source IN ('config_silent','filtered_to_all',"
+        "                                    'no_document_id','no_config')"
+        "          OR rp.v2_dev_type_source IS NULL)"
+        "  UNION ALL"
+        "  SELECT 1 FROM regulatory_provisions rp"
+        "    JOIN documents d ON d.id = rp.document_id AND d.document_type = 'LEP'"
+        "   WHERE rp.is_current AND rp.v2_is_actionable"
+        "     AND (rp.v2_zone_source IN ('config_silent','filtered_to_all',"
+        "                                'no_document_id','no_config')"
+        "          OR rp.v2_zone_source IS NULL)"
+        ") t",
+        (),
+        "Each count is one key -- a zone list or a development-type list -- on "
+        "one served LEP rule, reading ALL because nobody read the clause. The "
+        "rule is shown to every zone and every kind of development, so an E3 "
+        "business-premises clause or a single-lot Schedule 1 clause appears on "
+        "an R2 house. Reachable only by reading each clause's own words and "
+        "recording them, per clause rather than per stored row.",
     ),
     "DQ-139": (
         "Council/development-type pairs whose setback arithmetic lacks a required control",
