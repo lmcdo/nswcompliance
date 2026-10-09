@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: changes the granny-flat verdict served by the granny-flat app. Until now every result read 'not yet determined' because the engine had no frontage, battle-axe or s 50 facts; with them, most regular lots in the 28 councils with an LEP land use table get a decided answer per approval path.",
-  "commit_hash": "4f6150b0",
+  "commit_hash": "d77e5eac",
   "files": [
     "services/granny_flat.py",
     "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
