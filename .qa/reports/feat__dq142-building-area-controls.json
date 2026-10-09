@@ -1,11 +1,12 @@
 {
   "tier": "critical",
   "justification": "Critical: three production data changes (migration 091, 4 rear setbacks; 092, 67 building-area controls; 093, cross-review corrections to them), all applied, that the buildable-area arithmetic serves, plus a changed DQ probe.",
-  "commit_hash": "2a42403a",
+  "commit_hash": "ac210c82",
   "files": [
     "migrations/091_rear_setbacks_quoted_from_stored_dcp_text.sql",
     "migrations/092_dq142_building_area_controls.sql",
     "migrations/093_dq142_cross_review_corrections.sql",
+    "migrations/094_dq142_second_limb_figures_withheld.sql",
     "scripts/dq142_build_controls_migration.py",
     "scripts/dq142_spec_2026_10_10.py",
     "data/dq142_controls_2026-10-10.json",
@@ -118,12 +119,13 @@
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Migrations 091, 092 and 093 are already applied. python scripts/dq_probe_live.py --id DQ-142 reads 70; --id DQ-139 reads 14 (see tracker)."
+    "manual_verify": "Migrations 091-094 are already applied. python scripts/dq_probe_live.py --id DQ-142 reads 70; --id DQ-139 reads 13 (see tracker)."
   },
   "real_layer_exempt": {
     "migrations/091_rear_setbacks_quoted_from_stored_dcp_text.sql": "Applied to production 2026-10-10 after a rolled-back dry run (4 rows).",
     "migrations/092_dq142_building_area_controls.sql": "Applied to production 2026-10-10 after a rolled-back dry run (67 rows; DQ-142 136 -> 69); every quote re-checked against its current provision.",
     "scripts/dq142_build_controls_migration.py": "One-off generator, not served code. Its real-layer run is the production read it did on 2026-10-10 (70 findings: 67 verified, 3 refused as duplicates; a re-run after apply refuses all 70), and its output was dry-run then applied against production. The pure figure check is unit-tested.",
-    "migrations/093_dq142_cross_review_corrections.sql": "Applied to production 2026-10-10 after a rolled-back dry run (30 relabelled, 5 to NO FIGURE, 1 retired; in-migration assertion checks all three)."
+    "migrations/093_dq142_cross_review_corrections.sql": "Applied to production 2026-10-10 after a rolled-back dry run (30 relabelled, 5 to NO FIGURE, 1 retired; in-migration assertion checks all three).",
+    "migrations/094_dq142_second_limb_figures_withheld.sql": "Applied to production 2026-10-10 after a rolled-back dry run (3 rows to NO FIGURE; in-migration assertion)."
   }
 }

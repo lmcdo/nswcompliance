@@ -53,7 +53,7 @@ def value_in_quotes(v: float, unit: str | None, frags: list[str]) -> bool:
     return bool(re.search(pat, joined) or (mm and re.search(mm, joined)))
 
 
-SECOND_LIMB = re.compile(r"whichever is (?:the )?greater|on the other|average of|prevailing")
+SECOND_LIMB = re.compile(r"whichever is (?:the )?greater|on the other|average of|prevailing|designated road|per dwelling|of the lot width")
 
 
 def single_figure_rule(condition: str | None, frags: list[str]) -> bool:

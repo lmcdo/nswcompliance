@@ -28,7 +28,7 @@ a("parramatta", "dual_occupancy", "front_setback", None, None, nf("minimum 6 m a
   [[105058, "Buildings must be set back a minimum of 6 metres from the street boundary and be consistent with the prevailing setback along the street"]], 67, "3.3.2.2 C.05")
 a("parramatta", "dual_occupancy", "rear_setback", None, None, nf("formula - 30% of the site length or 10 m, whichever is greater; corner sites minimum 6 m"),
   [[105058, "A rear setback equal to 30% of the site length or 10 metres, whichever is greater"]], 67, "3.3.2.2 C.14")
-a("parramatta", "dual_occupancy", "side_setback", 1.5, "m", "buildings to occupy a maximum of 80% of the lot width",
+a("parramatta", "dual_occupancy", "side_setback", None, None, nf("minimum 1.5 m, and buildings to occupy a maximum of 80% of the lot width"),
   [[105058, "Buildings must be set back a minimum of 1.5 metres from side boundaries"]], 67, "3.3.2.2 C.09")
 a("parramatta", "dwelling_house", "rear_setback", None, None, nf("formula - rear setback equal to 30% of the site length"),
   [[105051, "A rear setback equal to 30% of the site length"]], 60, "3.3.1.2 C.10")
@@ -80,7 +80,7 @@ a("city_of_sydney", "dwelling_house", "side_setback", None, None,
   [[95520, "Within heritage conservation areas, new development is to relate to the established development pattern"]], 6, "4.1.2(2)")
 a("city_of_sydney", "secondary_dwelling", "deep_soil_min", 15, "%", "general dwelling provision, lots greater than 150 sqm",
   [[95522, "For lots greater than 150sqm, the minimum amount of deep soil is to be 15% of the site area"]], 9, "4.1.3.4(1)")
-a("cumberland", "dual_occupancy", "landscaping_min", 20, "%", "or a minimum of 30 m2 per dwelling",
+a("cumberland", "dual_occupancy", "landscaping_min", None, None, nf("minimum 20% of total site area or 30 m2 per dwelling"),
   [[104724, "The total landscaped area for a low rise medium density development shall be a minimum of 20% of total site area"]], 35, "B2 3.4 C1")  # noqa: zone-codes -- DCP section number
 a("cumberland", "secondary_dwelling", "max_site_coverage", None, None, nf("as for a single dwelling house (combined coverage)"),
   [[104721, "shall remain compliant with the site coverage controls for a single dwelling house"]], 27, "2.21 Site coverage")
@@ -95,7 +95,7 @@ a("georges_river", "secondary_dwelling", "front_setback", None, None, nf("behind
 # Hornsby p6/p9 are two-column pages; each quote is a run the extractor kept intact.
 a("hornsby", "dual_occupancy", "max_site_coverage", None, None, nf("by lot size, Table 3.1.1-b (65% at 200 m2 down to 30% at 1500 m2+)"),
   [[120154, "Table 3.1.1-b: Maximum Site Coverage Lot Size Maximum site coverage (% of total lot size) 200m2 to 249m2 65%"]], 6, "3.1.1(j) Table 3.1.1-b")
-a("hornsby", "dual_occupancy", "front_setback", 6, "m", "9 m to designated roads; attached dual occupancy 7.6 m",
+a("hornsby", "dual_occupancy", "front_setback", None, None, nf("6 m to local roads and 9 m to designated roads; attached dual occupancy 7.6 m"),
   [[120155, "Front boundary 6m to local roads and 9m to"]], 9, "3.1.2 Table 3.1.2-a")
 a("hornsby", "dual_occupancy", "rear_setback", 3, "m", "8 m for a 2 storey element", [[120155, "Rear boundary Up to 1 storey = 3m"]], 9, "3.1.2 Table 3.1.2-a")
 a("hornsby", "dual_occupancy", "side_setback", 0.9, "m", "1.5 m for a 2 storey element", [[120155, "Side boundary Up to 1 storey = 0.9m"]], 9, "3.1.2 Table 3.1.2-a")
@@ -122,7 +122,7 @@ a("campbelltown", "dual_occupancy", "side_setback", 0.9, "m", None, [[131103, "0
 a("campbelltown", "dwelling_house", "deep_soil_min", 20, "%", None,
   [[131054, "a minimum of 20% of the total site area shall be available for deep soil planting"]], 20, "Part 3 3.6.1.2 ii)")
 
-# Migration 093 changed four rows below to NO FIGURE (greater-of / two-sided rules).
+# Migrations 093/094 changed seven rows in this file to NO FIGURE (greater-of / two-sided rules).
 # Ku-ring-gai / Leichhardt / Marrickville / Northern Beaches
 a("ku_ring_gai", "dual_occupancy", "landscaping_min", None, None,
   nf("formula - 50% of the Parent Lot area minus 100 sqm; built-upon area 50-55% by lot size"),

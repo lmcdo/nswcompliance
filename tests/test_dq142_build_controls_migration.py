@@ -54,3 +54,8 @@ def test_neighbour_average_in_condition_is_refused():
 
 def test_plain_minimum_passes():
     assert dq142.single_figure_rule(None, ["0.9 metres from any side boundary"])
+
+
+def test_road_type_and_width_limbs_are_refused():
+    assert not dq142.single_figure_rule("9 m to designated roads", ["6m to local roads"])
+    assert not dq142.single_figure_rule("buildings to occupy a maximum of 80% of the lot width", ["1.5 metres"])

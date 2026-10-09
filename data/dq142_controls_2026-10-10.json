@@ -35,9 +35,9 @@
   "lga": "parramatta",
   "dev_type": "dual_occupancy",
   "control_type": "side_setback",
-  "value_min": 1.5,
-  "unit": "m",
-  "condition": "buildings to occupy a maximum of 80% of the lot width",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: minimum 1.5 m, and buildings to occupy a maximum of 80% of the lot width",
   "quotes": [
    [
     105058,
@@ -495,9 +495,9 @@
   "lga": "cumberland",
   "dev_type": "dual_occupancy",
   "control_type": "landscaping_min",
-  "value_min": 20,
-  "unit": "%",
-  "condition": "or a minimum of 30 m2 per dwelling",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: minimum 20% of total site area or 30 m2 per dwelling",
   "quotes": [
    [
     104724,
@@ -607,9 +607,9 @@
   "lga": "hornsby",
   "dev_type": "dual_occupancy",
   "control_type": "front_setback",
-  "value_min": 6,
-  "unit": "m",
-  "condition": "9 m to designated roads; attached dual occupancy 7.6 m",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: 6 m to local roads and 9 m to designated roads; attached dual occupancy 7.6 m",
   "quotes": [
    [
     120155,
