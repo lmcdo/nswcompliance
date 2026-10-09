@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: two production data loads (migration 091, 4 rear setbacks; migration 092, 67 building-area controls, both applied) that the buildable-area arithmetic serves, plus a changed DQ probe.",
-  "commit_hash": "f818d180",
+  "commit_hash": "bae40d45",
   "files": [
     "migrations/091_rear_setbacks_quoted_from_stored_dcp_text.sql",
     "migrations/092_dq142_building_area_controls.sql",
@@ -68,21 +68,21 @@
       "what_happens": "The finding is refused because the fragment is not in the stored provision text",
       "mitigated": true,
       "how": "normalised substring check against the named current provision",
-      "repro": "python scripts/dq142_build_controls_migration.py data/dq142_controls_2026-10-10.json \"$CLAUDE_JOB_DIR/tmp/check.sql\""
+      "repro": "python scripts/dq142_build_controls_migration.py data/dq142_controls_2026-10-10.json migrations/092_dq142_building_area_controls.sql (writes nothing when every finding is refused)"
     },
     {
       "scenario": "The generator is re-run after 092 was applied",
       "what_happens": "Every finding is refused as a duplicate of a decided row; nothing is double-inserted",
       "mitigated": true,
       "how": "duplicate guard on (lga, dev_type, control_type) with a decided row",
-      "repro": "python scripts/dq142_build_controls_migration.py data/dq142_controls_2026-10-10.json \"$CLAUDE_JOB_DIR/tmp/check.sql\"  -> 0 verified, 70 refused"
+      "repro": "python scripts/dq142_build_controls_migration.py data/dq142_controls_2026-10-10.json migrations/092_dq142_building_area_controls.sql (writes nothing when every finding is refused)  -> 0 verified, 70 refused"
     },
     {
       "scenario": "A quote names a provision that is no longer current (the DCP was replaced)",
       "what_happens": "The finding is refused: the quote is only looked up in rows where is_current is true",
       "mitigated": true,
       "how": "WHERE id = %s AND is_current in the quote lookup",
-      "repro": "python scripts/dq142_build_controls_migration.py data/dq142_controls_2026-10-10.json \"$CLAUDE_JOB_DIR/tmp/check.sql\""
+      "repro": "python scripts/dq142_build_controls_migration.py data/dq142_controls_2026-10-10.json migrations/092_dq142_building_area_controls.sql (writes nothing when every finding is refused)"
     },
     {
       "scenario": "A control has no fixed figure (match the neighbours, a formula, a map)",
@@ -100,6 +100,7 @@
   },
   "real_layer_exempt": {
     "migrations/091_rear_setbacks_quoted_from_stored_dcp_text.sql": "Applied to production 2026-10-10 after a rolled-back dry run (4 rows).",
-    "migrations/092_dq142_building_area_controls.sql": "Applied to production 2026-10-10 after a rolled-back dry run (67 rows; DQ-142 136 -> 69); every quote re-checked against its current provision."
+    "migrations/092_dq142_building_area_controls.sql": "Applied to production 2026-10-10 after a rolled-back dry run (67 rows; DQ-142 136 -> 69); every quote re-checked against its current provision.",
+    "scripts/dq142_build_controls_migration.py": "One-off generator, not served code. Its real-layer run is the production read it did on 2026-10-10 (70 findings: 67 verified, 3 refused as duplicates; a re-run after apply refuses all 70), and its output was dry-run then applied against production. The pure figure check is unit-tested."
   }
 }
