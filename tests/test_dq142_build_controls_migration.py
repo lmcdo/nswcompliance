@@ -38,3 +38,19 @@ def test_digit_inside_a_larger_number_is_refused():
 
 def test_mm_inside_a_larger_number_is_refused():
     assert not dq142.value_in_quotes(0.9, "m", ["a 1900 mm wall"])
+
+
+def test_greater_of_rule_is_refused():
+    assert not dq142.single_figure_rule(None, ["30% of the site length or 10 metres, whichever is greater"])
+
+
+def test_different_figure_each_side_is_refused():
+    assert not dq142.single_figure_rule(None, ["1m on one side and 2.5m on the other"])
+
+
+def test_neighbour_average_in_condition_is_refused():
+    assert not dq142.single_figure_rule("or the average of the immediate neighbours", ["a 5.5m minimum"])
+
+
+def test_plain_minimum_passes():
+    assert dq142.single_figure_rule(None, ["0.9 metres from any side boundary"])

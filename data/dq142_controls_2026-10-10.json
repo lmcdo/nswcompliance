@@ -3,9 +3,9 @@
   "lga": "parramatta",
   "dev_type": "dual_occupancy",
   "control_type": "front_setback",
-  "value_min": 6,
-  "unit": "m",
-  "condition": "and consistent with the prevailing setback along the street",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: minimum 6 m and consistent with the prevailing setback along the street",
   "quotes": [
    [
     105058,
@@ -19,9 +19,9 @@
   "lga": "parramatta",
   "dev_type": "dual_occupancy",
   "control_type": "rear_setback",
-  "value_min": 10,
-  "unit": "m",
-  "condition": "or 30% of the site length, whichever is greater; corner sites minimum 6 m",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: formula - 30% of the site length or 10 m, whichever is greater; corner sites minimum 6 m",
   "quotes": [
    [
     105058,
@@ -135,9 +135,9 @@
   "lga": "penrith",
   "dev_type": "dual_occupancy",
   "control_type": "front_setback",
-  "value_min": 5.5,
-  "unit": "m",
-  "condition": "or the average of the immediate neighbours' setbacks, whichever is greater",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: 5.5 m or the average of the immediate neighbours' setbacks, whichever is greater",
   "quotes": [
    [
     104913,
@@ -653,22 +653,6 @@
  },
  {
   "lga": "ashfield",
-  "dev_type": "dwelling_house",
-  "control_type": "rear_setback",
-  "value_min": null,
-  "unit": null,
-  "condition": "NO FIGURE: Chapter F states no rear setback for dwelling houses; DS3.8 only cross-refers",
-  "quotes": [
-   [
-    110840,
-    "also refer to minimum rear boundary setbacks in this DCP"
-   ]
-  ],
-  "pdf_page": 6,
-  "section_ref": "Ch F DS3.8"
- },
- {
-  "lga": "ashfield",
   "dev_type": "secondary_dwelling",
   "control_type": "landscaping_min",
   "value_min": null,
@@ -1103,9 +1087,9 @@
   "lga": "northern_beaches",
   "dev_type": "dual_occupancy",
   "control_type": "side_setback",
-  "value_min": 1,
-  "unit": "m",
-  "condition": "2.5 m on the other side; combined width at least 3.5 m",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: two different side setbacks - 1 m on one side and 2.5 m on the other",
   "quotes": [
    [
     129983,

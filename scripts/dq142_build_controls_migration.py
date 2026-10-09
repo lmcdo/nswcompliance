@@ -53,6 +53,19 @@ def value_in_quotes(v: float, unit: str | None, frags: list[str]) -> bool:
     return bool(re.search(pat, joined) or (mm and re.search(mm, joined)))
 
 
+SECOND_LIMB = re.compile(r"whichever is (?:the )?greater|on the other|average of|prevailing")
+
+
+def single_figure_rule(condition: str | None, frags: list[str]) -> bool:
+    """False if the rule's figure is only one limb of a larger rule.
+
+    The buildable-area sum uses value_min and deducts it on both sides, so a
+    greater-of rule, a neighbour average, or a different figure for each side
+    stored as its floor overstates the footprint (cross-review, 093).
+    """
+    return not SECOND_LIMB.search(norm(" ".join([condition or ""] + frags)))
+
+
 def sq(s) -> str:
     return "NULL" if s is None else "'" + str(s).replace("'", "''") + "'"
 
@@ -64,11 +77,13 @@ def main(spec_path: str, out_path: str) -> int:
     rows, refused = [], []
     for f in spec:
         tag = f"{f['lga']}/{f['dev_type']}/{f['control_type']}"
-        texts = {}
+        texts, chapters = {}, []
         for pid, _ in f["quotes"]:
-            cur.execute("SELECT provision_text FROM regulatory_provisions WHERE id = %s AND is_current", (pid,))
+            cur.execute("SELECT provision_text, source_chapter_key FROM regulatory_provisions "
+                        "WHERE id = %s AND is_current", (pid,))
             r = cur.fetchone()
             texts[pid] = norm(r[0]) if r else None
+            chapters.append(r[1] if r else None)
         missing = [frag for pid, frag in f["quotes"] if not texts[pid] or norm(frag) not in texts[pid]]
         if missing:
             refused.append(f"{tag}: quote not in stored text: {missing[0][:80]!r}")
@@ -77,16 +92,22 @@ def main(spec_path: str, out_path: str) -> int:
         if v is None and not (f.get("condition") or "").startswith("NO FIGURE:"):
             refused.append(f"{tag}: no value and no 'NO FIGURE:' condition")
             continue
+        if v is not None and not single_figure_rule(f.get("condition"), [frag for _, frag in f["quotes"]]):
+            refused.append(f"{tag}: rule has a second limb (greater-of / per-side); store as NO FIGURE")
+            continue
         if v is not None and not value_in_quotes(v, f.get("unit"), [frag for _, frag in f["quotes"]]):
             refused.append(f"{tag}: value {shown(v)} not in its quote")
             continue
+        # The chapter is the one the quote comes from (cross-review: taking the
+        # council's most common chapter labelled Woollahra setbacks as parking).
+        chapter = chapters[0]
         cur.execute(
             "SELECT source_chapter_key, dcp_version, applicability, count(*) FROM dcp_setback_controls "
-            "WHERE lga = %s AND is_current GROUP BY 1, 2, 3 "
-            "ORDER BY (bool_or(dev_type = %s)) DESC, count(*) DESC LIMIT 1", (f["lga"], f["dev_type"]))
+            "WHERE lga = %s AND source_chapter_key = %s AND is_current GROUP BY 1, 2, 3 "
+            "ORDER BY (bool_or(dev_type = %s)) DESC, count(*) DESC LIMIT 1", (f["lga"], chapter, f["dev_type"]))
         sib = cur.fetchone()
-        if not sib:
-            refused.append(f"{tag}: council has no existing rows to take a chapter key from")
+        if not chapter or not sib:
+            refused.append(f"{tag}: no existing rows in the quoted chapter {chapter!r} to take a version from")
             continue
         cur.execute(
             "SELECT 1 FROM dcp_setback_controls WHERE lga = %s AND dev_type = %s AND control_type = %s "

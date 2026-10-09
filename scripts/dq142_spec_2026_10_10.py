@@ -24,9 +24,9 @@ def nf(s):
 
 
 # Parramatta / Penrith / Waverley / Woollahra
-a("parramatta", "dual_occupancy", "front_setback", 6, "m", "and consistent with the prevailing setback along the street",
+a("parramatta", "dual_occupancy", "front_setback", None, None, nf("minimum 6 m and consistent with the prevailing setback along the street"),
   [[105058, "Buildings must be set back a minimum of 6 metres from the street boundary and be consistent with the prevailing setback along the street"]], 67, "3.3.2.2 C.05")
-a("parramatta", "dual_occupancy", "rear_setback", 10, "m", "or 30% of the site length, whichever is greater; corner sites minimum 6 m",
+a("parramatta", "dual_occupancy", "rear_setback", None, None, nf("formula - 30% of the site length or 10 m, whichever is greater; corner sites minimum 6 m"),
   [[105058, "A rear setback equal to 30% of the site length or 10 metres, whichever is greater"]], 67, "3.3.2.2 C.14")
 a("parramatta", "dual_occupancy", "side_setback", 1.5, "m", "buildings to occupy a maximum of 80% of the lot width",
   [[105058, "Buildings must be set back a minimum of 1.5 metres from side boundaries"]], 67, "3.3.2.2 C.09")
@@ -41,7 +41,7 @@ a("parramatta", "secondary_dwelling", "rear_setback", 3, "m", "6 m for buildings
   [[105065, "Secondary dwellings must provide a minimum 3 metre rear setback for buildings up to 1 storey in height"]], 76, "3.3.3.2 C.12")
 a("parramatta", "secondary_dwelling", "side_setback", 0.9, "m", "2 m for buildings up to 2 storeys",
   [[105065, "Secondary dwellings must be setback a minimum of 900mm from side boundaries"]], 76, "3.3.3.2 C.11")
-a("penrith", "dual_occupancy", "front_setback", 5.5, "m", "or the average of the immediate neighbours' setbacks, whichever is greater",
+a("penrith", "dual_occupancy", "front_setback", None, None, nf("5.5 m or the average of the immediate neighbours' setbacks, whichever is greater"),
   [[104913, "adopt a 5.5m minimum whichever is the greater dimension"]], 19, "D2 2.2.5 B.3")
 a("penrith", "dual_occupancy", "rear_setback", 4, "m", "6 m for a two storey building",
   [[104913, "The minimum rear setback for a single storey building (or any single storey component of a building) is 4m"]], 19, "D2 2.2.5 B.1")
@@ -101,8 +101,7 @@ a("hornsby", "dual_occupancy", "rear_setback", 3, "m", "8 m for a 2 storey eleme
 a("hornsby", "dual_occupancy", "side_setback", 0.9, "m", "1.5 m for a 2 storey element", [[120155, "Side boundary Up to 1 storey = 0.9m"]], 9, "3.1.2 Table 3.1.2-a")
 
 # Ashfield / Blacktown / Campbelltown
-a("ashfield", "dwelling_house", "rear_setback", None, None, nf("Chapter F states no rear setback for dwelling houses; DS3.8 only cross-refers"),
-  [[110840, "also refer to minimum rear boundary setbacks in this DCP"]], 6, "Ch F DS3.8")
+# Ashfield dwelling-house rear: DS3.8 only points elsewhere in the DCP; no figure is stored (093 retired the row).
 a("ashfield", "secondary_dwelling", "landscaping_min", None, None, nf("as for a dwelling house (DS8.3: 25% to 35% by lot size)"),
   [[110935, "Development does not reduce landscaped areas for the property to less than the minimum required for a dwelling house"]], 17, "Ch F DS7.1")
 a("ashfield", "secondary_dwelling", "front_setback", None, None, nf("not forward of the front building line of the principal dwelling"),
@@ -123,6 +122,7 @@ a("campbelltown", "dual_occupancy", "side_setback", 0.9, "m", None, [[131103, "0
 a("campbelltown", "dwelling_house", "deep_soil_min", 20, "%", None,
   [[131054, "a minimum of 20% of the total site area shall be available for deep soil planting"]], 20, "Part 3 3.6.1.2 ii)")
 
+# Migration 093 changed four rows below to NO FIGURE (greater-of / two-sided rules).
 # Ku-ring-gai / Leichhardt / Marrickville / Northern Beaches
 a("ku_ring_gai", "dual_occupancy", "landscaping_min", None, None,
   nf("formula - 50% of the Parent Lot area minus 100 sqm; built-upon area 50-55% by lot size"),
@@ -158,7 +158,7 @@ a("marrickville", "secondary_dwelling", "side_setback", 1.5, "m", "detached at t
   [[112455, "a minimum of 1.5 metres side setback from allotment"]], 13, "4.1.6.2 C11 iii")
 a("northern_beaches", "dual_occupancy", "max_site_coverage", None, None, nf("set by the DCP Site Coverage map"),
   [[129379, "shall not exceed the maximum site coverage shown on the map"]], 18, "Warringah DCP B4 C1")  # noqa: zone-codes -- DCP section number
-a("northern_beaches", "dual_occupancy", "side_setback", 1, "m", "2.5 m on the other side; combined width at least 3.5 m",
+a("northern_beaches", "dual_occupancy", "side_setback", None, None, nf("two different side setbacks - 1 m on one side and 2.5 m on the other"),
   [[129983, "The minimum setback for all buildings and structures to side boundaries is 1m on one side and 2.5m on the other"]], 252, "Warringah DCP G10.1 R4")
 a("northern_beaches", "dwelling_house", "side_setback", None, None, nf("set by the DCP Side Boundary Setbacks map"),
   [[129384, "is to maintain a minimum setback from side boundaries as shown on the map"]], 18, "Warringah DCP B5 C1")  # noqa: zone-codes -- DCP section number

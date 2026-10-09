@@ -1,10 +1,11 @@
 {
   "tier": "critical",
-  "justification": "Critical: two production data loads (migration 091, 4 rear setbacks; migration 092, 67 building-area controls, both applied) that the buildable-area arithmetic serves, plus a changed DQ probe.",
-  "commit_hash": "9cb021c1",
+  "justification": "Critical: three production data changes (migration 091, 4 rear setbacks; 092, 67 building-area controls; 093, cross-review corrections to them), all applied, that the buildable-area arithmetic serves, plus a changed DQ probe.",
+  "commit_hash": "178be464",
   "files": [
     "migrations/091_rear_setbacks_quoted_from_stored_dcp_text.sql",
     "migrations/092_dq142_building_area_controls.sql",
+    "migrations/093_dq142_cross_review_corrections.sql",
     "scripts/dq142_build_controls_migration.py",
     "scripts/dq142_spec_2026_10_10.py",
     "data/dq142_controls_2026-10-10.json",
@@ -23,8 +24,8 @@
   },
   "falsifiable_check": {
     "command": "python -m pytest tests/test_dq142_build_controls_migration.py -q -o addopts= ; python scripts/dq_probe_live.py --id DQ-142",
-    "fails_when": "A figure not present as a whole number in its quote is accepted, or the 092 rows are removed (DQ-142 returns to 136).",
-    "observed_red": "Observed 2026-10-10: the first version of the figure check accepted 5 inside '5.5m'; test_digit_inside_a_larger_number_is_refused failed, the check was tightened, and all 67 applied figures still pass. Two Hornsby quotes were refused (two-column interleave) before any write and re-quoted. DQ-142 136 -> 69 after 092."
+    "fails_when": "A figure not present as a whole number in its quote, or the floor of a greater-of / two-sided rule, is accepted; or the 092 rows are removed (DQ-142 returns to 137).",
+    "observed_red": "Observed 2026-10-10: the first version of the figure check accepted 5 inside '5.5m'; test_digit_inside_a_larger_number_is_refused failed, the check was tightened, and all 67 applied figures still pass. Two Hornsby quotes were refused (two-column interleave) before any write and re-quoted. DQ-142 136 -> 69 after 092. Cross-review then found 30 rows labelled with the wrong chapter (council's most common, e.g. Woollahra setbacks as parking), four greater-of / two-sided rules stored as their floor, and a wrong Ashfield 'no figure'; 093 corrected all by id, the generator now takes the chapter from the quoted provision and refuses multi-limb figures (4 new tests), and a replay of the corrected findings refuses all 69 only as duplicates. DQ-142 reads 70."
   },
   "functions": [
     {
@@ -33,6 +34,13 @@
       "input": "a figure, its unit and the verbatim quote fragments of one finding",
       "output": "True only if the figure appears as a whole number in a quote (metres also as mm)",
       "if_none": "Returns False and the finding is refused and named."
+    },
+    {
+      "name": "single_figure_rule",
+      "file_line": "scripts/dq142_build_controls_migration.py",
+      "input": "one finding's condition text and the verbatim quote fragments taken from its spec entry",
+      "output": "False when the rule has a second limb (whichever is greater, neighbour average, prevailing, a different figure on the other side)",
+      "if_none": "A None condition is treated as empty; only the quotes are tested."
     }
   ],
   "values": [
@@ -90,17 +98,32 @@
       "mitigated": true,
       "how": "generator refuses a NULL value without a 'NO FIGURE:' condition; DQ-139 keeps counting a pair with no numeric rear",
       "repro": "python scripts/dq_probe_live.py --id DQ-139"
+    },
+    {
+      "scenario": "A 'whichever is greater' or two-sided rule is stored as its floor",
+      "what_happens": "The finding is refused unless recorded as NO FIGURE, so the footprint is withheld rather than overstated",
+      "mitigated": true,
+      "how": "single_figure_rule; migration 093 corrected the four already applied",
+      "repro": "python -m pytest tests/test_dq142_build_controls_migration.py -q -o addopts= -k refused"
+    },
+    {
+      "scenario": "A row is labelled with a chapter other than the one its quote comes from",
+      "what_happens": "The generator takes source_chapter_key from the quoted provision; a finding whose chapter has no existing rows is refused",
+      "mitigated": true,
+      "how": "sibling query filtered by the quoted provision's source_chapter_key; 093 relabelled 30 rows",
+      "repro": "python scripts/dq142_build_controls_migration.py data/dq142_controls_2026-10-10.json migrations/092_dq142_building_area_controls.sql (writes nothing when every finding is refused)"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Migrations 091 and 092 are already applied (4 + 67 rows). python scripts/dq_probe_live.py --id DQ-142 reads 69; --id DQ-139 reads 13 (see tracker: two pairs gained a side figure while their DCP sets no numeric rear)."
+    "manual_verify": "Migrations 091, 092 and 093 are already applied. python scripts/dq_probe_live.py --id DQ-142 reads 70; --id DQ-139 reads 14 (see tracker)."
   },
   "real_layer_exempt": {
     "migrations/091_rear_setbacks_quoted_from_stored_dcp_text.sql": "Applied to production 2026-10-10 after a rolled-back dry run (4 rows).",
     "migrations/092_dq142_building_area_controls.sql": "Applied to production 2026-10-10 after a rolled-back dry run (67 rows; DQ-142 136 -> 69); every quote re-checked against its current provision.",
-    "scripts/dq142_build_controls_migration.py": "One-off generator, not served code. Its real-layer run is the production read it did on 2026-10-10 (70 findings: 67 verified, 3 refused as duplicates; a re-run after apply refuses all 70), and its output was dry-run then applied against production. The pure figure check is unit-tested."
+    "scripts/dq142_build_controls_migration.py": "One-off generator, not served code. Its real-layer run is the production read it did on 2026-10-10 (70 findings: 67 verified, 3 refused as duplicates; a re-run after apply refuses all 70), and its output was dry-run then applied against production. The pure figure check is unit-tested.",
+    "migrations/093_dq142_cross_review_corrections.sql": "Applied to production 2026-10-10 after a rolled-back dry run (30 relabelled, 5 to NO FIGURE, 1 retired; in-migration assertion checks all three)."
   }
 }
