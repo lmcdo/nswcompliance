@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: a production data load (migration 090, 16 SEPP Schedule 1 rules, applied) that the granny-flat tool now serves, plus a new CI gate on hand-typed planning figures that fails any PR adding one.",
-  "commit_hash": "e22ad3e0",
+  "commit_hash": "ddc55c74",
   "files": [
     "scripts/lint_hardcoded_regulatory_numbers.py",
     "scripts/apply_migration_dry_run.py",
