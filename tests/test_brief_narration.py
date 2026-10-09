@@ -792,3 +792,16 @@ class TestFactRowUnderFindingTemplate:
         texts = [ln.text for ln in overlay.lines]
         assert not any(t.strip() == "True" for t in texts)
         assert any("designation is recorded" in t for t in texts)
+
+
+    def test_width_only_standard_still_reports_its_outcome(self, brief):
+        """Cross-review: a form with only a lot-width standard keeps its outcome."""
+        from services.brief_manifest import build_manifest as _bm
+        brief2 = dict(brief)
+        brief2["sepp_housing"] = df(
+            [{"dev_type": "terraces", "eligible": False, "min_lot_area_m2": None, "min_lot_width_m": 18.0}],
+            source="housing_sepp_standards")
+        m = _bm(brief2)
+        sepp_id = next(e.id for e in m.entries if e.path == "sepp_housing[0]")
+        text = render_plan(make_plan({"template": "T_ELIGIBILITY", "fields": [sepp_id]}), m).lines[0].text
+        assert "not meeting the lot standard" in text

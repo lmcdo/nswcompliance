@@ -581,7 +581,7 @@ def _eligibility_sentence(e: ManifestEntry) -> str:
     if rec.get("min_private_open_space_m2"):
         caps.append(f"{rec['min_private_open_space_m2']} m² of private open space")
     eligible = rec.get("eligible")
-    if not rec.get("min_lot_area_m2"):
+    if not rec.get("min_lot_area_m2") and not rec.get("min_lot_width_m"):
         # No lot standard to meet (e.g. a granny flat, tested per approval path):
         # "meeting the lot standard" would claim a test that never ran.
         status = "the dataset does not state a lot-standard outcome for this lot"
