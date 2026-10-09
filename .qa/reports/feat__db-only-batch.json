@@ -1,0 +1,113 @@
+{
+  "tier": "critical",
+  "justification": "Critical: a production data load (migration 090, 16 SEPP Schedule 1 rules, applied) that the granny-flat tool now serves, plus a new CI gate on hand-typed planning figures that fails any PR adding one.",
+  "commit_hash": "e22ad3e0",
+  "files": [
+    "scripts/lint_hardcoded_regulatory_numbers.py",
+    "scripts/apply_migration_dry_run.py",
+    "tests/test_lint_hardcoded_regulatory_numbers.py",
+    ".claude/regulatory_number_baseline.json",
+    ".github/workflows/gates.yml",
+    "migrations/090_sepp_housing_schedule1_granny_flat_standards.sql",
+    "frontend-nextjs/lib/coverage.ts",
+    "frontend-nextjs/app/api/canibuildit/check/route.ts",
+    "frontend-nextjs/components/tools/GrannyFlatTool.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "housing_sepp_standards: 42 pathway-null rows before 090, 58 after. Schedule 1 cl 5-11 (height, road/side/rear setbacks, balconies, public reserve) had no rows; the tool typed approximations citing cl 4.18 and Sch 3.",
+    "assumption_mismatch": "Only zone codes had a hardcoded-data check; numeric figures had none, so a typed 450 m2 minimum reached six surfaces.",
+    "new_vs_existing": "New lint copies lint_hardcoded_zone_codes.py's baseline shape. 090 rows use approval_pathway NULL like the existing Sch 1 rows (ids 36-45), so the path engine is untouched.",
+    "external_source_error": "Quotes were taken from the SEPP (Housing) 2021 version in force from 11 Sep 2026 (browser-saved, 2026-10-09) and each traced with provenance_check.trace_row() before the file was written; the weekly check re-proves them.",
+    "frontend_type": "sepp_standards gains 11 more standard types; the label is derived from standard_type, including its lot-area band.",
+    "user_failure_mode": "Without 090 the tool shows no height or setback figures at all; with a typed table it shows figures nothing proves. The lint stops a new typed figure reaching users."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lint_hardcoded_regulatory_numbers.py tests/test_provenance_check.py tests/test_housing_sepp_standards_readers.py -q -o addopts= ; python scripts/lint_hardcoded_regulatory_numbers.py --baseline ; python scripts/outreach_claim_checks.py OC-6",
+    "fails_when": "A typed planning figure is added anywhere in served code, or a 090 quote stops tracing to its clause.",
+    "observed_red": "Observed 2026-10-10: the lint's first version MISSED the old typed table (number and label in separate strings); the test failed, the check was widened, and it now finds 10 typed figures in the pre-#1245 GrannyFlatTool including 450 m2 and 8.5 m. It also caught this PR's own typed band labels (7 -> 16), which were then derived from the rule names (16 -> 1). 67 of 67 quoted SEPP rows trace; OC-6 holds at 58."
+  },
+  "functions": [
+    {
+      "name": "hits_in_text",
+      "file_line": "scripts/lint_hardcoded_regulatory_numbers.py",
+      "input": "the text of one served source file read from the working tree",
+      "output": "every string literal on a line that holds a planning number with a unit beside a planning word",
+      "if_none": "An empty list; comment lines and lines marked noqa: regulatory-number are skipped."
+    },
+    {
+      "name": "seppStandardLabel",
+      "file_line": "frontend-nextjs/components/tools/GrannyFlatTool.tsx",
+      "input": "a stored standard_type such as setback_side_lot_450_to_900 from the check route",
+      "output": "a display label with the lot-area band parsed from the stored name",
+      "if_none": "An unknown type falls back to its raw name; no figure is invented."
+    }
+  ],
+  "values": [
+    {
+      "value": "16 Schedule 1 figures (8.5 m height, 4.5/6.5/10 m road, 2/3/5 m corner, 9 m classified road, 0.9/1.5/2.5 m side, 3/5/10 m rear, 12 m2 balconies, 3 m public reserve)",
+      "source": "SEPP (Housing) 2021 Schedule 1 cl 5-11, epi-2021-0714, quoted per row",
+      "read_at": "each canibuildit check and every SEPP reader",
+      "if_missing": "The tool hides the card or shows the unavailable notice; never a typed figure."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "tool standards incl. Schedule 1",
+      "file_line": "frontend-nextjs/app/api/canibuildit/check/route.ts",
+      "where_clause": "development_type = 'secondary_dwelling' AND standard_type IN (...) AND numeric_value IS NOT NULL AND source_quote IS NOT NULL"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A typed planning figure is added to served code",
+      "what_happens": "CI fails naming the file and the rise",
+      "mitigated": true,
+      "how": "shrink-only per-file baseline",
+      "repro": "python -m pytest tests/test_lint_hardcoded_regulatory_numbers.py -q -o addopts= -k planted"
+    },
+    {
+      "scenario": "A figure is split across two strings (label in one, value in another)",
+      "what_happens": "Still caught: the planning word is matched on the whole line",
+      "mitigated": true,
+      "how": "line-level planning-word match, proven on the old typed SEPP table",
+      "repro": "python -m pytest tests/test_lint_hardcoded_regulatory_numbers.py -q -o addopts= -k leaked"
+    },
+    {
+      "scenario": "The SEPP is amended and a Schedule 1 figure changes",
+      "what_happens": "The weekly provenance check names the rule whose quote no longer matches",
+      "mitigated": true,
+      "how": "every 090 row has an anchored link and quote that trace_row checks",
+      "repro": "python -m pytest tests/test_provenance_check.py -q -o addopts="
+    },
+    {
+      "scenario": "Migration 090 is run a second time against a database that already holds these rules",
+      "what_happens": "It refuses before inserting anything, because the standard types already exist in the table",
+      "mitigated": true,
+      "how": "replay guard in the migration",
+      "repro": "python scripts/apply_migration_dry_run.py migrations/090_sepp_housing_schedule1_granny_flat_standards.sql"
+    },
+    {
+      "scenario": "The published SEPP standards count on the site drifts from the live table again",
+      "what_happens": "OC-6 fails CI and the nightly data check",
+      "mitigated": true,
+      "how": "coverage.ts set to the live 58 in the same PR",
+      "repro": "python scripts/outreach_claim_checks.py OC-6"
+    },
+    {
+      "scenario": "The tool standards query (tool standards incl. Schedule 1) fails or returns no rows",
+      "what_happens": "The tool shows the 'could not be loaded' notice or hides the card, never a typed figure",
+      "mitigated": true,
+      "how": "sepp_standards_unavailable flag from #1245",
+      "repro": "cd frontend-nextjs && npx jest canibuildit"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Migration 090 is already applied (16 rows). After deploy, the granny-flat tool should show height and setback rows linked to Schedule 1 clauses."
+  },
+  "real_layer_exempt": {
+    "migrations/090_sepp_housing_schedule1_granny_flat_standards.sql": "Applied to production 2026-10-10 after a rolled-back dry run (16 rows); all 67 quoted SEPP rows re-traced against the law in force."
+  }
+}

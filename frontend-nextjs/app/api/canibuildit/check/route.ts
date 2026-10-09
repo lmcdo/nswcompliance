@@ -406,7 +406,19 @@ export async function POST(req: NextRequest) {
                                 'max_site_coverage_lot_over_1500',
                                 'cdc_min_road_frontage_lot_450_to_900',
                                 'cdc_min_road_frontage_lot_900_to_1500',
-                                'cdc_min_road_frontage_lot_over_1500')
+                                'cdc_min_road_frontage_lot_over_1500',
+                                -- SEPP Schedule 1 cl 5-11 (migration 090)
+                                'max_height',
+                                'max_balcony_total_floor_area',
+                                'setback_primary_road_lot_450_to_900',
+                                'setback_primary_road_lot_900_to_1500',
+                                'setback_primary_road_lot_over_1500',
+                                'setback_side_lot_450_to_900',
+                                'setback_side_lot_900_to_1500',
+                                'setback_side_lot_over_1500',
+                                'setback_rear_lot_450_to_900',
+                                'setback_rear_lot_900_to_1500',
+                                'setback_rear_lot_over_1500')
           AND numeric_value IS NOT NULL AND source_quote IS NOT NULL AND source_quote <> ''
         ORDER BY id`,
     );
