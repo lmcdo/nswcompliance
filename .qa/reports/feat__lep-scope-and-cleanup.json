@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: the public granny-flat tool stops showing a typed-in SEPP table (old clause numbers, figures stored nowhere, wrong instrument link) and shows the database's quoted standards instead; plus one new read-only ledger probe. No schema, no data write.",
-  "commit_hash": "55a42012",
+  "commit_hash": "f6338d21",
   "files": [
     "frontend-nextjs/app/api/canibuildit/check/route.ts",
     "frontend-nextjs/components/tools/GrannyFlatTool.tsx",
