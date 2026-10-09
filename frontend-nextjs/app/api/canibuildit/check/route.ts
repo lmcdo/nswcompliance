@@ -388,6 +388,37 @@ export async function POST(req: NextRequest) {
     section_ref: string | null;
   }> = [];
   let dcpSetbacksUnavailable = false;
+
+  // SEPP (Housing) 2021 granny-flat standards, read from the database with the
+  // clause each comes from. Replaces a table typed into GrannyFlatTool.tsx that
+  // cited an older instrument (cl 4.18, Sch 3) and figures stored nowhere.
+  // Only numeric rules that carry their quote of the law are shown.
+  let seppStandards: Array<{ standard_type: string; value: number; unit: string | null;
+    clause: string; url: string | null }> = [];
+  try {
+    const res = await query(
+      `SELECT standard_type, numeric_value, unit, source_clause, legislation_url
+         FROM housing_sepp_standards
+        WHERE development_type = 'secondary_dwelling'
+          AND standard_type IN ('max_floor_area', 'min_private_open_space',
+                                'max_site_coverage_lot_under_900', 'max_site_coverage_lot_900_to_1500',
+                                'max_site_coverage_lot_over_1500',
+                                'cdc_min_road_frontage_lot_450_to_900',
+                                'cdc_min_road_frontage_lot_900_to_1500',
+                                'cdc_min_road_frontage_lot_over_1500')
+          AND numeric_value IS NOT NULL AND source_quote IS NOT NULL AND source_quote <> ''
+        ORDER BY id`,
+    );
+    seppStandards = (res.rows ?? []).map((r: Record<string, unknown>) => ({
+      standard_type: String(r.standard_type),
+      value: Number(r.numeric_value),
+      unit: (r.unit as string | null) ?? null,
+      clause: String(r.source_clause ?? '').replace(/\s+/g, ' ').trim(),
+      url: (r.legislation_url as string | null) ?? null,
+    }));
+  } catch {
+    seppStandards = []; // the card is hidden when empty; never a typed fallback
+  }
   if (lgaName) {
     try {
       // Item 5 consolidation: rows come from the ONE guarded implementation
@@ -509,6 +540,7 @@ export async function POST(req: NextRequest) {
     // true when the guarded source could not be reached — distinguishes
     // "no controls found" from "the lookup did not complete".
     dcp_setbacks_unavailable: dcpSetbacksUnavailable,
+    sepp_standards: seppStandards,
     confirmation_required: false,
   };
 
