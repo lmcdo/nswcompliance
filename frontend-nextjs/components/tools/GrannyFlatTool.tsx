@@ -96,17 +96,33 @@ function deriveIneligibleReason(reason: string | null): string {
 // ---------------------------------------------------------------------------
 
 // Labels for the SEPP (Housing) 2021 granny-flat standards the check route reads
-// from the database. Values and clauses come from the data, never from here.
-const SEPP_STANDARD_LABELS: Record<string, string> = {
+// from the database. Values, clauses AND lot-area bands come from the data: the
+// band is parsed from the stored standard_type ("..._lot_450_to_900"), never
+// typed here (scripts/lint_hardcoded_regulatory_numbers.py).
+const SEPP_STANDARD_NAMES: Record<string, string> = {
   max_floor_area: 'Max. floor area',
   min_private_open_space: 'Principal private open space',
-  max_site_coverage_lot_under_900: 'Site coverage (450–900 m² lot)',
-  max_site_coverage_lot_900_to_1500: 'Site coverage (900–1,500 m² lot)',
-  max_site_coverage_lot_over_1500: 'Site coverage (over 1,500 m² lot)',
-  cdc_min_road_frontage_lot_450_to_900: 'CDC frontage (450–900 m² lot)',
-  cdc_min_road_frontage_lot_900_to_1500: 'CDC frontage (900–1,500 m² lot)',
-  cdc_min_road_frontage_lot_over_1500: 'CDC frontage (over 1,500 m² lot)',
+  max_site_coverage: 'Site coverage',
+  cdc_min_road_frontage: 'CDC frontage',
+  max_height: 'Max. building height',
+  max_balcony_total_floor_area: 'Balconies/decks near a boundary (total)',
+  setback_primary_road: 'Road setback, no neighbours',
+  setback_side: 'Side setback',
+  setback_rear: 'Rear setback',
 };
+
+function seppStandardLabel(standardType: string): string {
+  const m = standardType.match(/^(.*)_lot_(under|over)?_?(\d+)(?:_to_(\d+))?$/);
+  if (!m) return SEPP_STANDARD_NAMES[standardType] ?? standardType;
+  const [, base, word, a, b] = m;
+  const fmt = (n: string) => Number(n).toLocaleString('en-AU');
+  const band = b ? `${fmt(a)}–${fmt(b)}` : `${word ?? ''} ${fmt(a)}`.trim();
+  // Side (cl 9(2)) and rear (cl 10(1)) setbacks grow for a building taller than
+  // the height threshold in the same quoted clause: shown as a base figure so
+  // a bare number is never read as the whole rule (cross-review).
+  const grows = base === 'setback_side' || base === 'setback_rear';
+  return `${SEPP_STANDARD_NAMES[base] ?? base} (${band} m² lot)${grows ? ' — base; more for a taller building' : ''}`;
+}
 
 const SEPP_LEGISLATION_URL =
   'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714';
@@ -558,7 +574,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
                 {(eligibility.sepp_standards ?? []).map((s) => (
                   <div key={s.standard_type}>
-                    <p className="text-xs text-gray-400">{SEPP_STANDARD_LABELS[s.standard_type] ?? s.standard_type}</p>
+                    <p className="text-xs text-gray-400">{seppStandardLabel(s.standard_type)}</p>
                     <p className="text-sm font-medium text-gray-900">{s.value}{s.unit === '%' ? '%' : ` ${s.unit ?? ''}`}</p>
                     {s.url
                       ? <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:underline">{s.clause}</a>

@@ -149,7 +149,12 @@ jobs:
       # and the guard would be deleted within a week. It may fall, never rise.
       - name: Hardcoded regulatory data (shrink-only ratchet)
         if: always()
-        run: python scripts/lint_hardcoded_zone_codes.py --baseline
+        run: |
+          python scripts/lint_hardcoded_zone_codes.py --baseline
+          # Hand-typed planning FIGURES (2026-10-10): zone codes were the only
+          # hardcoded data checked, so a typed '450 m2 minimum' reached six
+          # served surfaces. Shrink-only; the target is 0, served from the DB.
+          python scripts/lint_hardcoded_regulatory_numbers.py --baseline
       # Has anybody looked at the DATA lately?
       #
       # Every database check in this file runs on `pull_request` and
