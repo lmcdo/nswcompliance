@@ -45,12 +45,18 @@ BEGIN
         RAISE EXCEPTION '089: expected to retire exactly 2 rows (ids 34, 44), matched %', n;
     END IF;
 
+    -- The replacement rules BY ID, not by count: nine unrelated rows must not
+    -- satisfy this (cross-review). housing_sepp_standards has no is_active
+    -- column; stale rules are still served with a notice (W3), so present,
+    -- per-path, quoted and linked is the bar.
     SELECT count(*) INTO n FROM housing_sepp_standards
-     WHERE development_type = 'secondary_dwelling'
-       AND approval_pathway IS NOT NULL
-       AND source_quote IS NOT NULL AND source_quote <> '';
-    IF n < 9 THEN
-        RAISE EXCEPTION '089: only % quoted per-path granny-flat rules remain; expected the 9 from 084', n;
+     WHERE id BETWEEN 53 AND 61
+       AND development_type = 'secondary_dwelling'
+       AND approval_pathway IN ('cdc', 'da')
+       AND source_quote IS NOT NULL AND source_quote <> ''
+       AND legislation_url LIKE 'https://legislation.nsw.gov.au/%#%';
+    IF n <> 9 THEN
+        RAISE EXCEPTION '089: the 9 per-path rules from 084 (ids 53-61) are not all present and quoted, found %', n;
     END IF;
 END $$;
 
