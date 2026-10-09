@@ -16,7 +16,7 @@ regulatory_provisions row, and value_min must appear in one of the fragments,
 or the row is refused and named. Nothing is written to the database: the output
 is a migration file to dry-run and apply with scripts/apply_migration_dry_run.py.
 
-    python scripts/dq142_build_controls_migration.py SPEC.json OUT.sql
+    python scripts/dq142_build_controls_migration.py SPEC.json OUT.sql [--allow-refused]
 """
 from __future__ import annotations
 
@@ -127,6 +127,11 @@ def main(spec_path: str, out_path: str) -> int:
         print("REFUSED", r)
     print(f"{len(rows)} row(s) verified, {len(refused)} refused")
     if not rows:
+        return 1
+    if refused and "--allow-refused" not in sys.argv:
+        # A refused finding is a data question, not noise: writing the rest
+        # silently would ship a partial repair that looks complete (cross-review).
+        print("refusing to write a partial migration; fix the findings or pass --allow-refused")
         return 1
     values = ",\n".join(rows)
     sql = f"""-- DQ-142: building-area controls quoted from stored DCP text ({len(rows)} rows).
