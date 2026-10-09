@@ -140,7 +140,7 @@
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
-    "other_repo": "No change needed: plotdetect-agents/trigger/satellite-job-runner.ts:45 spreads ...extra_body into the detect POST body, so zone reaches /pipeline/granny-flat/detect (checked in local source, not the deployed build).",
+    "other_repo": "No change needed: in the separate plotdetect-agents repository, the Trigger.dev satellite job runner spreads extra_body into the detect POST body (line 45 of its satellite job runner), so zone reaches /pipeline/granny-flat/detect. Checked in that repo's local source, not its deployed build.",
     "manual_verify": "Yes, in this order: (1) deploy Railway (services) and Vercel; (2) apply migrations/089_retire_secondary_dwelling_lot_rows.sql, which refuses to commit unless exactly ids 34 and 44 go; (3) SELECT count(*) FROM housing_sepp_standards WHERE id IN (34,44) prints 0; (4) fly deploy -a plotdetect-legislation-monitor from deploy/flyio-legislation-monitor so the deployed engine copy matches. Pre-existing unrelated failure on main: tests/test_granny_flat_mutation.py::TestFetchSdSetbacks::test_condition_and_section_ref."
   },
   "real_layer_exempt": {
