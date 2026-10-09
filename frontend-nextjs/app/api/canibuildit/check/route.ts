@@ -417,7 +417,7 @@ export async function POST(req: NextRequest) {
       clause: String(r.source_clause ?? '').replace(/\s+/g, ' ').trim(),
       url: (r.legislation_url as string | null) ?? null,
     }));
-  } catch (err) {
+  } catch (err) { // qa-ignore: silent-failure — reported to the client as sepp_standards_unavailable, shown as a notice
     // Never a typed fallback, and never silent: the tool says the standards
     // could not be loaded (cross-review).
     console.error('[canibuildit] SEPP standards query failed:', err);
