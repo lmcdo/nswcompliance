@@ -909,7 +909,7 @@ function YieldCalculator({
 const GRANNY_FLAT_FAQS = [
   {
     q: 'What is the minimum lot size for a granny flat in NSW?',
-    a: 'SEPP (Housing) 2021 sets no single minimum lot size for a granny flat. As complying development, the lot needs a road frontage at the building line that depends on the lot's area (Schedule 1 cl 2(1)(b)). Through a development application, a detached granny flat has a non-discretionary minimum site area (s 53(2)(a)); consent can still be granted if it is not met (Act s 4.15(3)). The report shows the figures that apply to your lot, read from the law in force.',
+    a: 'SEPP (Housing) 2021 sets no single minimum lot size for a granny flat. As complying development, the lot needs a road frontage at the building line that depends on the lot area (Schedule 1 cl 2(1)(b)). Through a development application, a detached granny flat has a non-discretionary minimum site area (s 53(2)(a)); consent can still be granted if it is not met (Act s 4.15(3)). The report shows the figures that apply to your lot, read from the law in force.',
   },
   {
     q: 'What is the maximum size of a granny flat under SEPP Housing 2021?',
