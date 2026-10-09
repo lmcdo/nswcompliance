@@ -2514,6 +2514,29 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "an R2 house. Reachable only by reading each clause's own words and "
         "recording them, per clause rather than per stored row.",
     ),
+    "DQ-141": (
+        "Served rules from the second, council-less load of Ashfield DCP 2016",
+        # Found 2026-10-10. Ashfield DCP 2016 is loaded twice: the current load
+        # (Inner_West_Ashfield_DCP_2016__chapter_*, source_council 'ashfield') and
+        # an older one (document ids 'Inner West Ashfield DCP 2016 - Chapter *'
+        # plus one Chapter D id) with NO council, still served. Measured by
+        # wording containment: E1 775/887 and D 42/48 old rules also appear in
+        # the new load (served twice), while A 60/140, B 2/9, C 36/181 and F 0/71
+        # do not -- the new load may be short, or the old text outdated. Only the
+        # council's PDF can say which. Labelling the old rows 'ashfield' is NOT
+        # the fix: OC-12 would then count all of them as untraced.
+        "SELECT count(*) FROM regulatory_provisions"
+        " WHERE is_current AND v2_is_actionable AND source_council IS NULL"
+        "   AND (document_id ILIKE 'Inner West Ashfield DCP 2016 - Chapter%%'"
+        "        OR document_id ILIKE 'Inner\_West\_Ashfield\_DCP\_2016\_\_\_Chapter%%')",
+        (),
+        "Each count is one served rule from a second copy of Ashfield DCP 2016 "
+        "that carries no council. Where the copy duplicates the current load the "
+        "rule is shown twice; where it differs, either the current load is "
+        "missing it or the copy is outdated. Resolved per chapter against the "
+        "council's PDF: retire what duplicates, restore what the current load is "
+        "missing, never relabel.",
+    ),
     "DQ-139": (
         "Council/development-type pairs whose setback arithmetic lacks a required control",
         # Origin 2026-10-08, the LEP tab for 45 Graham St Greystanes. The yield card

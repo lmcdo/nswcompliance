@@ -48,6 +48,8 @@ interface EligibilityResult {
   dcp_available: boolean;
   sepp_eligible: boolean;
   sepp_ineligible_reason: string | null;
+  sepp_standards?: { standard_type: string; value: number; unit: string | null; clause: string; url: string | null }[];
+  sepp_standards_unavailable?: boolean;
   confirmation_required: boolean;
   checks?: {
     lot_area: CheckResult;
@@ -93,16 +95,21 @@ function deriveIneligibleReason(reason: string | null): string {
 // These are state-wide minimums; council DCP may impose stricter controls.
 // ---------------------------------------------------------------------------
 
-const SEPP_CDC_STANDARDS = [
-  { label: 'Max. floor area',  value: '60 m²',           clause: 'cl. 4.18' },
-  { label: 'Rear setback',     value: '3 m minimum',     clause: 'Sch. 3 Subdiv. 4' },
-  { label: 'Side setback',     value: '0.9 m – 1.5 m',  clause: 'Sch. 3 Subdiv. 4' },
-  { label: 'Max. height',      value: '8.5 m',           clause: 'Sch. 3 Subdiv. 4' },
-  { label: 'From principal dwelling', value: '3 m',      clause: 'Sch. 3 Subdiv. 4' },
-] as const;
+// Labels for the SEPP (Housing) 2021 granny-flat standards the check route reads
+// from the database. Values and clauses come from the data, never from here.
+const SEPP_STANDARD_LABELS: Record<string, string> = {
+  max_floor_area: 'Max. floor area',
+  min_private_open_space: 'Principal private open space',
+  max_site_coverage_lot_under_900: 'Site coverage (450–900 m² lot)',
+  max_site_coverage_lot_900_to_1500: 'Site coverage (900–1,500 m² lot)',
+  max_site_coverage_lot_over_1500: 'Site coverage (over 1,500 m² lot)',
+  cdc_min_road_frontage_lot_450_to_900: 'CDC frontage (450–900 m² lot)',
+  cdc_min_road_frontage_lot_900_to_1500: 'CDC frontage (900–1,500 m² lot)',
+  cdc_min_road_frontage_lot_over_1500: 'CDC frontage (over 1,500 m² lot)',
+};
 
 const SEPP_LEGISLATION_URL =
-  'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0649';
+  'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714';
 
 // ---------------------------------------------------------------------------
 // LockedPreviewCard — gates paid analysis with blur-to-reveal pattern
@@ -534,11 +541,11 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
             </>
           ) : null}
 
-          {/* SEPP Housing 2021 — CDC design standards */}
-          {eligibility.sepp_eligible && (
+          {/* SEPP Housing 2021 — granny-flat standards, from the database */}
+          {eligibility.sepp_eligible === true && (eligibility.sepp_standards?.length ?? 0) > 0 && (
             <div className="rounded-xl border border-gray-200 bg-white p-5">
               <div className="flex items-baseline justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-700">SEPP Housing 2021 — CDC standards</h3>
+                <h3 className="text-sm font-semibold text-gray-700">SEPP Housing 2021 — granny flat standards</h3>
                 <a
                   href={SEPP_LEGISLATION_URL}
                   target="_blank"
@@ -549,17 +556,25 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                 </a>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
-                {SEPP_CDC_STANDARDS.map(({ label, value, clause }) => (
-                  <div key={label}>
-                    <p className="text-xs text-gray-400">{label}</p>
-                    <p className="text-sm font-medium text-gray-900">{value}</p>
-                    <p className="text-xs text-gray-400">{clause}</p>
+                {(eligibility.sepp_standards ?? []).map((s) => (
+                  <div key={s.standard_type}>
+                    <p className="text-xs text-gray-400">{SEPP_STANDARD_LABELS[s.standard_type] ?? s.standard_type}</p>
+                    <p className="text-sm font-medium text-gray-900">{s.value}{s.unit === '%' ? '%' : ` ${s.unit ?? ''}`}</p>
+                    {s.url
+                      ? <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:underline">{s.clause}</a>
+                      : <p className="text-xs text-gray-400">{s.clause}</p>}
                   </div>
                 ))}
               </div>
               <p className="text-xs text-gray-400 mt-3">
-                State-wide CDC minimums. Your council&apos;s DCP may impose stricter setback or height controls.
+                State-wide standards from SEPP (Housing) 2021, each linked to its clause. Your council&apos;s DCP may impose further setback or height controls.
               </p>
+            </div>
+          )}
+
+          {eligibility.sepp_eligible === true && eligibility.sepp_standards_unavailable === true && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              The SEPP Housing 2021 granny flat standards could not be loaded just now, so they are not shown. Try again shortly.
             </div>
           )}
 

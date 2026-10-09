@@ -1,0 +1,77 @@
+{
+  "tier": "standard",
+  "justification": "Standard: the public granny-flat tool stops showing a typed-in SEPP table (old clause numbers, figures stored nowhere, wrong instrument link) and shows the database's quoted standards instead; plus one new read-only ledger probe. No schema, no data write.",
+  "commit_hash": "f6338d21",
+  "files": [
+    "frontend-nextjs/app/api/canibuildit/check/route.ts",
+    "frontend-nextjs/components/tools/GrannyFlatTool.tsx",
+    "scripts/dq_probe_live.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "pre_impl": {
+    "existing_data": "housing_sepp_standards holds quoted secondary_dwelling rows for max floor area, principal private open space, three site-coverage bands and three CDC frontage bands. The tool's rear setback, side setback, 8.5 m height and 3 m separation exist in no table.",
+    "assumption_mismatch": "The typed table cited cl 4.18 and 'Sch. 3 Subdiv. 4', neither in the SEPP (Housing) 2021 in force, and linked to epi-2021-0649 instead of epi-2021-0714.",
+    "new_vs_existing": "Reuses the existing check route's database access; no new endpoint. The card is hidden when no rows load, never a typed fallback.",
+    "external_source_error": "A failed query returns an empty list and the card is not shown.",
+    "frontend_type": "sepp_standards is a new optional field on the check response; existing fields unchanged."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx tsc --noEmit -p . && npx jest canibuildit GrannyFlat ; cd .. && python -m pytest tests/test_housing_sepp_standards_readers.py tests/test_dq_probe_integrity.py tests/test_dq_check.py -q -o addopts=",
+    "fails_when": "A reader of housing_sepp_standards without a fixed standard_type or approval_pathway filter fails the reader inventory; a probe outside the integrity rules fails test_dq_probe_integrity.",
+    "observed_red": "Observed 2026-10-10: tsc 0 errors, 110 Jest tests, reader inventory 3 passed, probe integrity 234 passed, ledger 43 passed. DQ-141 reads 1,336 live."
+  },
+  "functions": [
+    {
+      "name": "GET canibuildit check sepp_standards",
+      "file_line": "frontend-nextjs/app/api/canibuildit/check/route.ts",
+      "input": "the existing property check request, after the lot and zone have been resolved",
+      "output": "the quoted SEPP (Housing) 2021 granny-flat standards with clause and legislation link",
+      "if_none": "An error or no rows gives an empty list and the tool hides the card."
+    }
+  ],
+  "values": [
+    {
+      "value": "No regulatory figure in code; the typed table was removed",
+      "source": "housing_sepp_standards rows that carry a source_quote",
+      "read_at": "each canibuildit check",
+      "if_missing": "The standards card is not shown."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "granny-flat standards for the tool",
+      "file_line": "frontend-nextjs/app/api/canibuildit/check/route.ts",
+      "where_clause": "development_type = 'secondary_dwelling' AND standard_type IN (...) AND numeric_value IS NOT NULL AND source_quote IS NOT NULL"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The standards query fails or returns nothing",
+      "what_happens": "The tool hides the standards card; no typed figure appears",
+      "mitigated": true,
+      "how": "empty list on error, card rendered only when the list is non-empty",
+      "repro": "cd frontend-nextjs && npx jest canibuildit"
+    },
+    {
+      "scenario": "A standard loses its quote of the law",
+      "what_happens": "It drops out of the card instead of being shown unsourced",
+      "mitigated": true,
+      "how": "source_quote IS NOT NULL filter",
+      "repro": "python -m pytest tests/test_housing_sepp_standards_readers.py -q -o addopts="
+    },
+    {
+      "scenario": "A new standard type is added to the table",
+      "what_happens": "It is not shown until it is named in the query and given a label",
+      "mitigated": true,
+      "how": "fixed standard_type list; unknown types fall back to their raw name only if selected",
+      "repro": "cd frontend-nextjs && npx tsc --noEmit -p ."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: run the public granny-flat tool on an eligible address and confirm the SEPP card shows database figures linked to epi-2021-0714 clauses."
+  }
+}
