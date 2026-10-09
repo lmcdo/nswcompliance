@@ -507,7 +507,14 @@ SELECT (SELECT count(*) FROM dcp_setback_controls s
             ON r.council = p.source_council AND r.chapter_key = p.source_chapter_key AND r.is_active
          WHERE p.is_current AND p.v2_is_actionable
            AND p.source_council IS NOT NULL AND p.source_council <> 'state'
-           AND (r.id IS NULL OR (r.council_url IS NULL AND r.council_page_url IS NULL)))"""
+           AND (r.id IS NULL OR (r.council_url IS NULL AND r.council_page_url IS NULL))
+           -- An LEP rule is traced to the instrument itself, not to a council DCP
+           -- chapter: it counts as traced only when its document carries the
+           -- official legislation.nsw.gov.au link (migration 087 gave the Inner
+           -- West LEP rows their council, which made them visible here).
+           AND NOT EXISTS (SELECT 1 FROM documents d
+                            WHERE d.id = p.document_id AND d.document_type = 'LEP'
+                              AND d.source_url LIKE 'https://legislation.nsw.gov.au/%'))"""
 
 
 # ── the claims ─────────────────────────────────────────────────────────────────────────────────────
