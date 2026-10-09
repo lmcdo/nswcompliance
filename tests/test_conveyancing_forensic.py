@@ -75,6 +75,32 @@ class TestFSRThreshold:
         assert result["max_gfa_m2"] == 325
 
 
+
+import copy as _copy  # noqa: E402
+
+from services.secondary_dwelling_paths import validate_rules as _validate_rules  # noqa: E402
+from tests.test_secondary_dwelling_paths import BASE_ROWS as _BASE_ROWS  # noqa: E402
+
+
+def _sd_config(rows=None) -> dict:
+    """What conveyancing_db.load_regulatory_configs returns: the validated
+    per-path granny-flat rules (migrations 083/084)."""
+    return {"sd_rules": _validate_rules(_copy.deepcopy(rows or _BASE_ROWS)).rules}
+
+
+
+import copy as _copy  # noqa: E402
+
+from services.secondary_dwelling_paths import validate_rules as _validate_rules  # noqa: E402
+from tests.test_secondary_dwelling_paths import BASE_ROWS as _BASE_ROWS  # noqa: E402
+
+
+def _sd_config(rows=None) -> dict:
+    """What conveyancing_db.load_regulatory_configs returns: the validated
+    per-path granny-flat rules (migrations 083/084)."""
+    return {"sd_rules": _validate_rules(_copy.deepcopy(rows or _BASE_ROWS)).rules}
+
+
 class TestSilentOmission:
     """Regression: lot_area=None caused secondary dwelling and subdivision to silently vanish."""
 
@@ -85,7 +111,7 @@ class TestSilentOmission:
         # "Not assessed" first (#684) and the lot-area path never runs.
         results = calc_feasibility(
             controls, valuation, [], is_strata=False,
-            sepp_standards={"sd_min_lot": 450.0, "sd_zones": {"R1", "R2", "R3", "R4"}},
+            sepp_standards=_sd_config(),
         )
         sd = [r for r in results if "Secondary dwelling" in r["question"]]
         assert len(sd) == 1

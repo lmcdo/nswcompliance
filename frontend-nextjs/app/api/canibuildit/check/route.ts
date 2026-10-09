@@ -103,7 +103,6 @@ const NSW_HEADERS = {
   'Referer': 'https://www.planningportal.nsw.gov.au/',
 };
 
-const SEPP_MIN_M2 = 450;
 // SEPP (Housing) 2021 cl 49 "residential zone" definition: R1, R2, R3, R4, R5 (Large Lot Residential).
 // R5 and RU5 are the same zone under different LEP generations — include both.
 // DQ-30: this exact value is also NSW_STANDARD_ZONES.RESIDENTIAL — consolidated
@@ -338,7 +337,12 @@ export async function POST(req: NextRequest) {
     acid_sulfate: CheckResult;
     dual_occ_prohibition: CheckResult;
   } = {
-    lot_area: lotArea === null ? 'unknown' : lotArea >= SEPP_MIN_M2 ? 'pass' : 'fail', // qa-ignore: type-boundary — lotArea is number|null from geocode API
+    // Never pass/fail: the SEPP (Housing) 2021 sets no single minimum lot size for
+    // a granny flat. CDC needs a road frontage by lot-area band (Schedule 1
+    // cl 2(1)(b)); a detached granny flat on the DA path has a non-discretionary
+    // site-area standard (s 53(2)(a)). Both are assessed per path in the full
+    // report (services/secondary_dwelling_paths.py), not by this quick check.
+    lot_area: 'unknown',
     zone: zone === null ? 'unknown' : PERMITTED_ZONES.includes(zone) ? 'pass' : 'fail', // qa-ignore: type-boundary — zone is string|null from geocode API
     heritage: planningControls.length === 0 ? 'unknown' : hasHeritage ? 'fail' : 'pass',
     // flood: fail if in flood zone; pass if LGA has coverage but point is clear; unknown if no LGA data
@@ -351,9 +355,9 @@ export async function POST(req: NextRequest) {
   };
 
   // First hard fail in priority order sets the ineligible reason
-  const CHECK_ORDER: (keyof typeof checks)[] = ['lot_area', 'zone', 'heritage', 'flood', 'biodiversity', 'acid_sulfate', 'dual_occ_prohibition'];
+  const CHECK_ORDER: (keyof typeof checks)[] = ['zone', 'heritage', 'flood', 'biodiversity', 'acid_sulfate', 'dual_occ_prohibition'];
   const CHECK_LABELS: Record<keyof typeof checks, string> = {
-    lot_area: `Lot area ${lotArea ? Math.round(lotArea) + ' m²' : 'unknown'} — minimum 450 m² required under SEPP Housing 2021`,
+    lot_area: `Lot area ${lotArea ? Math.round(lotArea) + ' m²' : 'unknown'} — tested per approval path in the full report`,
     zone: `Zone ${zone ?? 'unknown'} is not permitted for secondary dwellings under SEPP Housing 2021 (permitted: R1, R2, R3, R4, R5/RU5)`,
     heritage: 'Property is a heritage item or within a heritage conservation area — secondary dwellings are excluded under SEPP Housing 2021 cl 37(1)(d)',
     flood: 'Property is within a flood control lot — secondary dwellings are excluded under SEPP Housing 2021',

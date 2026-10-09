@@ -267,6 +267,19 @@ class TestCdcEngineNotice:
         assert out["stale_reason"] == "amendment B"
 
 
+
+import copy as _copy  # noqa: E402
+
+from services.secondary_dwelling_paths import validate_rules as _validate_rules  # noqa: E402
+from tests.test_secondary_dwelling_paths import BASE_ROWS as _BASE_ROWS  # noqa: E402
+
+
+def _sd_config(rows=None) -> dict:
+    """What conveyancing_db.load_regulatory_configs returns: the validated
+    per-path granny-flat rules (migrations 083/084)."""
+    return {"sd_rules": _validate_rules(_copy.deepcopy(rows or _BASE_ROWS)).rules}
+
+
 class TestSecondaryDwellingNotice:
     def _run(self, sepp):
         spec = importlib.util.spec_from_file_location(
@@ -279,17 +292,17 @@ class TestSecondaryDwellingNotice:
         )
         return next(r for r in rows if "granny flat" in r["question"].lower())
 
-    def test_stale_config_renders_value_with_note(self):
-        sd = self._run({
-            "sd_min_lot": 450.0, "sd_zones": {"R1", "R2"},
-            "stale_since": datetime.datetime(2026, 7, 29, tzinfo=datetime.timezone.utc),
-            "stale_reason": "SEPP (Housing) 2021 version changed (a -> b)",
-        })
-        assert sd["answer"] == "Likely permissible"   # value still served
+    def test_stale_rules_render_the_answer_with_note(self):
+        """W3: a stale rule is still served, with the notice (never blanked)."""
+        rows = _copy.deepcopy(_BASE_ROWS)
+        rows[0]["stale_since"] = datetime.datetime(2026, 7, 29, tzinfo=datetime.timezone.utc)
+        rows[0]["stale_reason"] = "SEPP (Housing) 2021 version changed (a -> b)"
+        sd = self._run({"sd_rules": _validate_rules(rows).rules})
+        assert sd["answer"] == "Depends on approval path — not ruled out by lot area"
         assert "version changed" in sd["basis"] and "re-check" in sd["basis"]
 
-    def test_fresh_config_has_no_note(self):
-        sd = self._run({"sd_min_lot": 450.0, "sd_zones": {"R1", "R2"}})
+    def test_fresh_rules_have_no_note(self):
+        sd = self._run({"sd_rules": _validate_rules(_copy.deepcopy(_BASE_ROWS)).rules})
         assert "re-check" not in sd["basis"]
 
 

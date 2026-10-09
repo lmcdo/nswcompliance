@@ -351,3 +351,45 @@ def test_fetch_standards_grouped_pairs_stale_date_with_its_own_reason(monkeypatc
     out = _REAL_FETCH_STANDARDS_GROUPED()
     assert out["dwelling_houses"]["stale_since"] == d2
     assert out["dwelling_houses"]["stale_reason"] == "amendment B"
+
+
+# --- secondary dwellings: answered per approval path, never by a lot minimum ---
+
+import copy  # noqa: E402
+
+from services.secondary_dwelling_paths import validate_rules  # noqa: E402
+from tests.test_secondary_dwelling_paths import BASE_ROWS  # noqa: E402
+
+# The old pathway-agnostic rows (ids 44 = 450 m2, 34 = 12 m) as they stand until
+# migration 089 retires them: the generic gate must ignore them for this form.
+_SD_WITH_OLD_ROWS = {**GROUPED, "secondary_dwelling": {
+    "requires_lmr_area": False, "applicable_zones": ["R1", "R2", "R3", "R4"],  # noqa: zone-codes — fixture copy of a stored row, not a served zone list
+    "min_lot_size": 450.0, "min_lot_width": 12.0}}
+
+
+@pytest.fixture
+def _sd_rules(monkeypatch):
+    monkeypatch.setattr(hse, "_fetch_standards_grouped", lambda: _SD_WITH_OLD_ROWS)
+    monkeypatch.setattr(hse, "_fetch_path_rules", lambda: validate_rules(copy.deepcopy(BASE_ROWS)).rules)
+
+
+def test_secondary_dwelling_small_lot_is_not_declared_below_a_minimum(_sd_rules):
+    r = _by_type(evaluate_eligibility("R2", 300, 8, -33.8, 151.1, gate_inputs=ALL_FALSE))["secondary_dwelling"]
+    assert "below the minimum" not in r.reason
+    # 450 m2 appears only as the DA site area for a DETACHED granny flat.
+    assert "If the granny flat is detached, this lot of 300 m² is below the 450 m² site area" in r.reason
+    assert "sets no single minimum lot size" in r.reason
+    assert r.min_lot_size_m2 is None and r.min_lot_width_m is None
+    assert r.unconfirmed is True and r.approval_paths["da"]["path"] == "da"
+
+
+def test_secondary_dwelling_rules_unavailable_is_unconfirmed_never_eligible(monkeypatch):
+    monkeypatch.setattr(hse, "_fetch_standards_grouped", lambda: _SD_WITH_OLD_ROWS)
+    monkeypatch.setattr(hse, "_fetch_path_rules", lambda: None)
+    r = _by_type(evaluate_eligibility("R2", 800, 20, -33.8, 151.1, gate_inputs=ALL_FALSE))["secondary_dwelling"]
+    assert r.eligible is False and r.unconfirmed is True and r.approval_paths is None
+
+
+def test_other_forms_still_use_their_lot_minimum(_sd_rules):
+    r = _by_type(evaluate_eligibility("R2", 300, 8, -33.8, 151.1, gate_inputs=ALL_FALSE))["dual_occupancy"]
+    assert r.eligible is False and "below the minimum 450" in r.reason

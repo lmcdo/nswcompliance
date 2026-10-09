@@ -72,7 +72,9 @@ export async function POST(req: NextRequest) {
       lot_area_m2: raw.lot_area_m2 != null ? Number(raw.lot_area_m2) : null,
       main_dwelling_area_m2: raw.main_dwelling_area_m2 != null ? Number(raw.main_dwelling_area_m2) : null,
       confirmed_structure_count: raw.confirmed_structure_count != null ? Number(raw.confirmed_structure_count) : null,
-      granny_flat_buildable: Boolean(raw.granny_flat_buildable),
+      // Three states, typed at the boundary: true / false / null (not yet
+      // determined). Anything else (e.g. the string "false") is not a verdict.
+      granny_flat_buildable: typeof raw.granny_flat_buildable === 'boolean' ? raw.granny_flat_buildable : null,
       max_floor_area_m2: Number(raw.max_floor_area_m2 ?? 0),
       estimated_weekly_rent_aud: raw.estimated_weekly_rent_aud != null ? Number(raw.estimated_weekly_rent_aud) : null,
       rental_yield_annual_pct: raw.rental_yield_annual_pct != null ? Number(raw.rental_yield_annual_pct) : null,
@@ -128,7 +130,7 @@ export async function POST(req: NextRequest) {
       lot_area_m2: (inputs.lot_area_m2 as number | null) ?? null,
       main_dwelling_area_m2: (inputs.main_dwelling_area_m2 as number | null) ?? null,
       confirmed_structure_count: (inputs.confirmed_structure_count as number | null) ?? null,
-      granny_flat_buildable: outputs.granny_flat_buildable as boolean,
+      granny_flat_buildable: outputs.granny_flat_buildable as boolean | null,
       max_floor_area_m2: (outputs.max_floor_area_m2 as number) ?? 0,
       estimated_weekly_rent_aud: (outputs.estimated_weekly_rent_aud as number | null) ?? null,
       rental_yield_annual_pct: (outputs.rental_yield_annual_pct as number | null) ?? null,

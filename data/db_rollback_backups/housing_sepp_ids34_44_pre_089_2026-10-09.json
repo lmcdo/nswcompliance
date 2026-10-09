@@ -1,0 +1,73 @@
+{
+  "captured": "2026-10-09",
+  "reason": "migration 089 retires ids 34 and 44 (pathway-agnostic granny-flat lot rows; the SEPP sets no single minimum lot size -- rules are per path, ids 53-61)",
+  "restore": "INSERT INTO housing_sepp_standards SELECT * FROM json_populate_record(NULL::housing_sepp_standards, %(row)s::json);",
+  "rows": [
+    {
+      "id": 34,
+      "development_type": "secondary_dwelling",
+      "standard_type": "min_lot_width",
+      "numeric_value": 12.0,
+      "unit": "m",
+      "applicable_zones": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "requires_lmr_area": false,
+      "source_clause": "Schedule 1, Part 2",
+      "source_provision_id": null,
+      "source_document": "State Environmental Planning Policy (Housing) 2021",
+      "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sch.1-sec.2-ssec.1-para1.b-para2.i",
+      "effective_date": "2021-11-29",
+      "verified_at": "2026-10-08T22:01:43.552912",
+      "verified_by": "backfill from the instrument's own text, 2026-10-09",
+      "verification_notes": null,
+      "created_at": "2026-05-31T10:38:39.069702",
+      "pdf_page": null,
+      "pdf_page_image_url": null,
+      "r2_pdf_url": null,
+      "stale_since": "2026-10-07T23:44:31.994515+00:00",
+      "stale_reason": "State Environmental Planning Policy (Housing) 2021 version changed (24 April 2026 -> 11 September 2026)",
+      "approval_pathway": null,
+      "source_quote": "(i) if the lot has an area of at least 450m 2 but not more than 900m 2 —12m,",
+      "lot_area_min_m2": null,
+      "lot_area_min_inclusive": null,
+      "lot_area_max_m2": null
+    },
+    {
+      "id": 44,
+      "development_type": "secondary_dwelling",
+      "standard_type": "min_lot_size",
+      "numeric_value": 450.0,
+      "unit": "m²",
+      "applicable_zones": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "requires_lmr_area": false,
+      "source_clause": "53(1)(b)",
+      "source_provision_id": null,
+      "source_document": "State Environmental Planning Policy (Housing) 2021",
+      "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.53-ssec.2-para1.a",
+      "effective_date": "2021-11-29",
+      "verified_at": "2026-10-08T22:01:43.552912",
+      "verified_by": "backfill from the instrument's own text, 2026-10-09",
+      "verification_notes": null,
+      "created_at": "2026-05-31T10:39:44.122776",
+      "pdf_page": null,
+      "pdf_page_image_url": null,
+      "r2_pdf_url": null,
+      "stale_since": "2026-10-07T23:44:31.994515+00:00",
+      "stale_reason": "State Environmental Planning Policy (Housing) 2021 version changed (24 April 2026 -> 11 September 2026)",
+      "approval_pathway": null,
+      "source_quote": "(a) for a detached secondary dwelling—a minimum site area of 450m 2 ,",
+      "lot_area_min_m2": null,
+      "lot_area_min_inclusive": null,
+      "lot_area_max_m2": null
+    }
+  ]
+}

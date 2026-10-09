@@ -252,3 +252,20 @@ describe('POST /api/reports/granny-flat/generate — render failure', () => {
     expect(body.error).toMatch(/PDF generation failed/i);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Three states: null = not yet determined (user ruling 2026-10-09)
+// ---------------------------------------------------------------------------
+
+describe('POST /api/reports/granny-flat/generate — not yet determined', () => {
+  it('a null granny_flat_buildable renders the PDF with null, not false and not a 422', async () => {
+    mockSingle.mockResolvedValueOnce({
+      data: { ...COMPLETE_ROW, outputs: { ...COMPLETE_ROW.outputs, granny_flat_buildable: null } },
+      error: null,
+    });
+    const res = await POST(makeReq({ report_id: VALID_UUID }));
+    expect(res.status).toBe(200);
+    const element = mockRender.mock.calls[0][0] as unknown as { props: { data: { granny_flat_buildable: unknown } } };
+    expect(element.props.data.granny_flat_buildable).toBeNull();
+  });
+});

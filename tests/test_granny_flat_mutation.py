@@ -23,11 +23,19 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import services.granny_flat as gf
+import copy
+from decimal import Decimal
+
+from services.secondary_dwelling_paths import validate_rules
+from tests.test_secondary_dwelling_paths import BASE_ROWS
+
+# The real 084 granny-flat path rules, validated -- what load_rules returns.
+_RULES = validate_rules(copy.deepcopy(BASE_ROWS)).rules
 from services.granny_flat import (
     _compute_lot_area_m2,
     _compute_confidence,
     _get_weekly_rent,
-    _get_sepp_sd_standards,
+    _get_sepp_sd_rules,
     _fetch_sd_setbacks,
     _mercator_to_wgs84,
     _mercator_rings_to_wgs84,
@@ -359,64 +367,54 @@ class TestComputeLotAreaM2Mutation:
 
 
 # ---------------------------------------------------------------------------
-# _get_sepp_sd_standards — DB lookup, NO fallback (#817): missing rows or an
+# _get_sepp_sd_rules — DB lookup, NO fallback (#817): invalid path rules or an
 # unreachable DB return None and the endpoints fail closed (503)
 # ---------------------------------------------------------------------------
 
-class TestGetSeppSdStandards:
+class TestGetSeppSdRules:
     def test_no_conn_returns_none(self):
-        min_lot, max_gf = _get_sepp_sd_standards(conn=None)
-        assert min_lot is None
-        assert max_gf is None
+        assert _get_sepp_sd_rules(conn=None) == (None, None)
 
-    def test_db_values_returned(self):
-        cur = FakeCursor(fetchall_result=[
-            ("min_lot_size", 500.0),
-            ("max_floor_area", 75.0),
-        ])
-        conn = FakeConn(cursor=cur)
-        min_lot, max_gf = _get_sepp_sd_standards(conn)
-        assert min_lot == 500.0
-        assert max_gf == 75.0
+    def test_valid_rules_and_floor_area_returned(self, monkeypatch):
+        monkeypatch.setattr("services.secondary_dwelling_paths.load_rules",
+                            lambda conn: validate_rules(copy.deepcopy(BASE_ROWS)))
+        conn = FakeConn(cursor=FakeCursor(fetchall_result=[(Decimal("60.00"),)]))
+        rules, max_gf = _get_sepp_sd_rules(conn)
+        assert rules is not None and max_gf == 60.0 and isinstance(max_gf, float)
 
-    def test_partial_db_values_none_for_missing(self):
-        """Mutation check: a half-loaded row set must not substitute any
-        default for the missing standard."""
-        cur = FakeCursor(fetchall_result=[("min_lot_size", 400.0)])
-        conn = FakeConn(cursor=cur)
-        min_lot, max_gf = _get_sepp_sd_standards(conn)
-        assert min_lot == 400.0
-        assert max_gf is None
+    def test_invalid_path_rules_return_none_never_a_figure(self, monkeypatch):
+        broken = copy.deepcopy(BASE_ROWS)
+        broken[0]["source_quote"] = ""
+        monkeypatch.setattr("services.secondary_dwelling_paths.load_rules",
+                            lambda conn: validate_rules(broken))
+        conn = FakeConn(cursor=FakeCursor(fetchall_result=[(Decimal("60.00"),)]))
+        rules, _ = _get_sepp_sd_rules(conn)
+        assert rules is None
 
-    def test_db_error_returns_none(self):
+    def test_missing_floor_area_is_none(self, monkeypatch):
+        monkeypatch.setattr("services.secondary_dwelling_paths.load_rules",
+                            lambda conn: validate_rules(copy.deepcopy(BASE_ROWS)))
+        conn = FakeConn(cursor=FakeCursor(fetchall_result=[]))
+        assert _get_sepp_sd_rules(conn)[1] is None
+
+    @pytest.mark.parametrize("rows", [[(Decimal("-60"),)], [(Decimal("0"),)], [(float("nan"),)],
+                                      [(Decimal("60"),), (Decimal("75"),)]])
+    def test_floor_area_not_exactly_one_positive_finite_value_is_none(self, monkeypatch, rows):
+        monkeypatch.setattr("services.secondary_dwelling_paths.load_rules",
+                            lambda conn: validate_rules(copy.deepcopy(BASE_ROWS)))
+        assert _get_sepp_sd_rules(FakeConn(cursor=FakeCursor(fetchall_result=rows)))[1] is None
+
+    def test_floor_area_db_error_is_none(self, monkeypatch):
+        monkeypatch.setattr("services.secondary_dwelling_paths.load_rules",
+                            lambda conn: validate_rules(copy.deepcopy(BASE_ROWS)))
+
         class ErrorCursor:
             def execute(self, *a, **kw):
                 raise Exception("DB error")
-            def fetchall(self):
-                return []
+
             def close(self):
                 pass
-        conn = FakeConn(cursor=ErrorCursor())
-        min_lot, max_gf = _get_sepp_sd_standards(conn)
-        assert min_lot is None
-        assert max_gf is None
-
-    def test_empty_result_returns_none(self):
-        cur = FakeCursor(fetchall_result=[])
-        conn = FakeConn(cursor=cur)
-        min_lot, max_gf = _get_sepp_sd_standards(conn)
-        assert min_lot is None
-        assert max_gf is None
-
-    def test_rows_dict_conversion(self):
-        """Mutant: change float(r[1]) to r[1] — would break if DB returns Decimal."""
-        cur = FakeCursor(fetchall_result=[
-            ("min_lot_size", "450"),  # string should be converted to float
-        ])
-        conn = FakeConn(cursor=cur)
-        min_lot, _ = _get_sepp_sd_standards(conn)
-        assert isinstance(min_lot, float)
-        assert min_lot == 450.0
+        assert _get_sepp_sd_rules(FakeConn(cursor=ErrorCursor()))[1] is None
 
 
 # ---------------------------------------------------------------------------
@@ -450,7 +448,7 @@ class TestSeppStandardsUnavailableFailClosed:
         """Mutation check: confirm derives floor area and cost from the max
         standard — a half-loaded config must fail, not render a default."""
         from fastapi import HTTPException
-        _stub_confirm_all(monkeypatch, sepp_standards=(450.0, None))
+        _stub_confirm_all(monkeypatch, sepp_standards=(_RULES, None))
         req = _make_confirm_req()
         with pytest.raises(HTTPException) as exc:
             gf.confirm_and_calculate(req)
@@ -459,7 +457,7 @@ class TestSeppStandardsUnavailableFailClosed:
     def test_confirm_renders_injected_figures_not_constants(self, monkeypatch):
         """Mutation check: inject non-default standards and they must flow
         through to the response — a resurrected constant would pin 60.0."""
-        _stub_confirm_all(monkeypatch, sepp_standards=(500.0, 75.0))
+        _stub_confirm_all(monkeypatch, sepp_standards=(_RULES, 75.0))
         req = _make_confirm_req()
         resp = gf.confirm_and_calculate(req)
         assert resp.max_floor_area_m2 == 75.0
@@ -890,9 +888,9 @@ def _stub_detect_all(monkeypatch, lot_geometry=None, structures=None,
 
     # _get_sepp_sd_standards
     if sepp_standards:
-        monkeypatch.setattr(gf, "_get_sepp_sd_standards", lambda conn=None: sepp_standards)
+        monkeypatch.setattr(gf, "_get_sepp_sd_rules", lambda conn=None: sepp_standards)
     else:
-        monkeypatch.setattr(gf, "_get_sepp_sd_standards", lambda conn=None: (450.0, 60.0))
+        monkeypatch.setattr(gf, "_get_sepp_sd_rules", lambda conn=None: (_RULES, 60.0))
 
     # _detect_structures_samgeo
     raw_structures = structures or []
@@ -939,15 +937,26 @@ class TestDetectStructuresEndpoint:
         assert resp.sepp_eligible is True
         assert resp.sepp_ineligible_reason is None
 
-    def test_sepp_ineligible_small_lot(self, monkeypatch):
-        """Lot below SEPP minimum → ineligible."""
+    def test_small_lot_is_not_ruled_out_by_lot_area(self, monkeypatch):
+        """The SEPP sets no single minimum lot size for a granny flat (084): a
+        100 m2 lot is reported per approval path, never declared ineligible."""
         small_ring = _rect_ring(SYD_X, SYD_Y, 10.0, 10.0)  # ~100m²
         _stub_detect_all(monkeypatch, lot_geometry={"rings": [small_ring]})
-        req = self._make_req(lot_geometry={"rings": [small_ring]})
+        req = self._make_req(lot_geometry={"rings": [small_ring]}, zone="R2")
         resp = gf.detect_structures(req)
+        assert resp.sepp_eligible is True
+        assert resp.sepp_ineligible_reason is None
+        assert resp.zone == "R2"
+        assert "sets no single minimum lot size" in resp.approval_paths["summary"]
+        assert resp.approval_paths["cdc"]["path"] == "cdc" and resp.approval_paths["da"]["path"] == "da"
+
+    def test_detect_zone_outside_both_paths_is_not_applicable(self, monkeypatch):
+        _stub_detect_all(monkeypatch)
+        resp = gf.detect_structures(self._make_req(zone="B2"))
+        assert resp.approval_paths["cdc"]["outcome"] == "NOT_APPLICABLE"
+        assert resp.approval_paths["da"]["outcome"] == "NOT_APPLICABLE"
         assert resp.sepp_eligible is False
-        assert resp.sepp_ineligible_reason is not None
-        assert "below" in resp.sepp_ineligible_reason.lower() or "minimum" in resp.sepp_ineligible_reason.lower()
+        assert "outside this path's zones" in resp.sepp_ineligible_reason
 
     def test_structures_detected(self, monkeypatch):
         structures = [
@@ -1149,9 +1158,9 @@ def _stub_confirm_all(monkeypatch, heritage_auto=None, sepp_standards=None,
 
     # _get_sepp_sd_standards
     if sepp_standards:
-        monkeypatch.setattr(gf, "_get_sepp_sd_standards", lambda conn=None: sepp_standards)
+        monkeypatch.setattr(gf, "_get_sepp_sd_rules", lambda conn=None: sepp_standards)
     else:
-        monkeypatch.setattr(gf, "_get_sepp_sd_standards", lambda conn=None: (450.0, 60.0))
+        monkeypatch.setattr(gf, "_get_sepp_sd_rules", lambda conn=None: (_RULES, 60.0))
 
     # _check_heritage_overlay
     monkeypatch.setattr(gf, "_check_heritage_overlay", lambda lat, lng: heritage_auto)
@@ -1223,15 +1232,45 @@ class TestConfirmAndCalculate:
         req = _make_confirm_req()
         resp = gf.confirm_and_calculate(req)
         assert isinstance(resp, GrannyFlatConfirmResponse)
-        assert resp.granny_flat_buildable is True
+        assert resp.granny_flat_buildable is None
         assert resp.max_floor_area_m2 == 60.0
 
-    def test_lot_below_sepp_min_not_buildable(self, monkeypatch):
+    def test_small_lot_is_not_made_unbuildable_by_lot_area(self, monkeypatch):
+        """Mutation guard against a resurrected 450 m2 gate (ids 34/44)."""
         _stub_confirm_all(monkeypatch)
-        req = _make_confirm_req(lot_area_m2=300.0)
+        req = _make_confirm_req(lot_area_m2=300.0, zone="R2")
         resp = gf.confirm_and_calculate(req)
+        assert resp.granny_flat_buildable is None
+        assert not any("450" in w for w in resp.warnings)
+        assert resp.approval_paths["da"]["evidence"]["clause"] == "s 53(2)(a)"
+
+    def test_no_path_met_is_not_yet_determined_with_costs_still_shown(self, monkeypatch):
+        """User ruling 2026-10-09: neither path decided -> not yet determined
+        (None), never buildable; costs still shown because nothing rules it out."""
+        _stub_confirm_all(monkeypatch)
+        resp = gf.confirm_and_calculate(_make_confirm_req(zone="R2"))
+        assert resp.granny_flat_buildable is None
+        assert resp.assumed_build_cost_aud == 150_000
+
+    def test_approval_status_met_only_when_a_path_is_met(self):
+        mk = lambda c, d, r="": {"cdc": {"outcome": c, "reason": r}, "da": {"outcome": d, "reason": r}}
+        assert gf._approval_status(mk("PASS", "UNKNOWN")) == "met"
+        assert gf._approval_status(mk("UNKNOWN", "MEETS")) == "met"
+        assert gf._approval_status(mk("UNKNOWN", "BELOW")) == "not_determined"
+        assert gf._approval_status(mk("FAIL", "UNKNOWN")) == "not_determined"
+        assert gf._approval_status(mk("NOT_APPLICABLE", "NOT_APPLICABLE",
+                                      "zone B2 is outside this path's zones (R1)")) == "outside_scope"  # noqa: zone-codes — a reason string under test, not a zone list
+
+    def test_zone_outside_both_paths_is_not_buildable(self, monkeypatch):
+        _stub_confirm_all(monkeypatch)
+        resp = gf.confirm_and_calculate(_make_confirm_req(zone="B2"))
         assert resp.granny_flat_buildable is False
-        assert any("below" in w.lower() or "minimum" in w.lower() for w in resp.warnings)
+        assert any("outside this path's zones" in w for w in resp.warnings)
+
+    def test_cdc_frontage_band_for_the_lot_is_reported(self, monkeypatch):
+        _stub_confirm_all(monkeypatch)
+        resp = gf.confirm_and_calculate(_make_confirm_req(lot_area_m2=1000.0, zone="R2"))
+        assert resp.approval_paths["cdc_frontage_required_m"] == 15
 
     def test_lot_area_none_warns(self, monkeypatch):
         _stub_confirm_all(monkeypatch)
@@ -1309,8 +1348,9 @@ class TestConfirmAndCalculate:
 
     def test_no_build_cost_when_not_buildable(self, monkeypatch):
         _stub_confirm_all(monkeypatch)
-        req = _make_confirm_req(lot_area_m2=300.0)
+        req = _make_confirm_req(existing_secondary_dwelling=True)
         resp = gf.confirm_and_calculate(req)
+        assert resp.granny_flat_buildable is False
         assert resp.assumed_build_cost_aud is None
 
     def test_confidence_high_when_all_good(self, monkeypatch):
@@ -2035,21 +2075,21 @@ class TestConfirmAndCalculate:
         _stub_confirm_all(monkeypatch)
         req = _make_confirm_req(lot_area_m2=600.0, main_dwelling_area_m2=200.0)
         resp = gf.confirm_and_calculate(req)
-        assert resp.granny_fat_buildable if hasattr(resp, 'granny_fat_buildable') else resp.granny_flat_buildable is True
+        assert resp.granny_fat_buildable if hasattr(resp, 'granny_fat_buildable') else resp.granny_flat_buildable is not False
 
     def test_residual_area_skipped_when_no_dwelling(self, monkeypatch):
         """main_dwelling_area_m2=None → skip residual check."""
         _stub_confirm_all(monkeypatch)
         req = _make_confirm_req(lot_area_m2=600.0, main_dwelling_area_m2=None)
         resp = gf.confirm_and_calculate(req)
-        assert resp.granny_flat_buildable is True
+        assert resp.granny_flat_buildable is not False
 
     def test_residual_area_skipped_when_dwelling_zero(self, monkeypatch):
         """main_dwelling_area_m2=0 → skip (guard: > 0)."""
         _stub_confirm_all(monkeypatch)
         req = _make_confirm_req(lot_area_m2=600.0, main_dwelling_area_m2=0.0)
         resp = gf.confirm_and_calculate(req)
-        assert resp.granny_flat_buildable is True
+        assert resp.granny_flat_buildable is not False
 
     def test_lot_area_fallback_from_prop_id(self, monkeypatch):
         """When lot_area_m2 is None but prop_id exists, fetch geometry."""
@@ -2115,7 +2155,7 @@ class TestConfirmAndCalculate:
 
     def test_db_failure_raises_503(self, monkeypatch):
         """DB write failure → HTTPException 503."""
-        monkeypatch.setattr(gf, "_get_sepp_sd_standards", lambda conn=None: (450.0, 60.0))
+        monkeypatch.setattr(gf, "_get_sepp_sd_rules", lambda conn=None: (_RULES, 60.0))
         monkeypatch.setattr(gf, "_check_heritage_overlay", lambda lat, lng: None)
         monkeypatch.setattr(gf, "_fetch_lot_geometry", lambda pid: LOT_GEOMETRY)
         monkeypatch.setattr(gf, "_get_weekly_rent", lambda pc: 500.0)
@@ -2136,7 +2176,7 @@ class TestConfirmAndCalculate:
         _stub_confirm_all(monkeypatch)
         req = _make_confirm_req(existing_secondary_dwelling=False)
         resp = gf.confirm_and_calculate(req)
-        assert resp.granny_flat_buildable is True
+        assert resp.granny_flat_buildable is not False
         assert not any("already exists" in w.lower() for w in resp.warnings)
 
     def test_three_structures_with_sd_false_not_blocked(self, monkeypatch):
@@ -2156,21 +2196,21 @@ class TestConfirmAndCalculate:
 
     def test_sepp_max_gf_used_for_floor_area(self, monkeypatch):
         """max_floor_area_m2 comes from SEPP standards."""
-        _stub_confirm_all(monkeypatch, sepp_standards=(450.0, 75.0))
+        _stub_confirm_all(monkeypatch, sepp_standards=(_RULES, 75.0))
         req = _make_confirm_req()
         resp = gf.confirm_and_calculate(req)
         assert resp.max_floor_area_m2 == 75.0
 
     def test_build_cost_per_m2_is_2500(self, monkeypatch):
         """Build cost = max_floor_area × $2500."""
-        _stub_confirm_all(monkeypatch, sepp_standards=(450.0, 80.0))
+        _stub_confirm_all(monkeypatch, sepp_standards=(_RULES, 80.0))
         req = _make_confirm_req()
         resp = gf.confirm_and_calculate(req)
         assert resp.assumed_build_cost_aud == 80.0 * 2500
 
     def test_annual_rent_is_weekly_times_52(self, monkeypatch):
         """rental_yield = (weekly * 52) / build_cost × 100."""
-        _stub_confirm_all(monkeypatch, rental_data=400.0, sepp_standards=(450.0, 60.0))
+        _stub_confirm_all(monkeypatch, rental_data=400.0, sepp_standards=(_RULES, 60.0))
         req = _make_confirm_req()
         resp = gf.confirm_and_calculate(req)
         expected_yield = round((400.0 * 52 / (60 * 2500)) * 100, 2)

@@ -367,7 +367,8 @@ export async function POST(request: NextRequest) {
         detectResp = await fetch(`${PYTHON_API}/pipeline/granny-flat/detect`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address, lat, lng, prop_id, report_id: jobId, lot_geometry: lotGeometry, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) }),
+          // zone: the CDC and DA granny-flat tests each apply only in their own zones.
+          body: JSON.stringify({ address, lat, lng, prop_id, report_id: jobId, lot_geometry: lotGeometry, zone, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) }),
           signal: AbortSignal.timeout(180_000),
         });
       } catch (err) {
@@ -396,7 +397,7 @@ export async function POST(request: NextRequest) {
           lng,
           prop_id,
           report_id: jobId,
-          extra_body: { lot_geometry: lotGeometry, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) },
+          extra_body: { lot_geometry: lotGeometry, zone, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) },
           ...(notification_email ? { notification_email } : {}),
         },
       }),
@@ -539,6 +540,7 @@ export async function POST(request: NextRequest) {
           is_heritage,
           existing_secondary_dwelling: existing_secondary_dwelling ?? null,
           main_dwelling_area_m2: main_dwelling_area_m2 ?? null,
+          zone,
         }),
         signal: AbortSignal.timeout(30_000),
       }),
@@ -574,18 +576,23 @@ export async function POST(request: NextRequest) {
     // ready. Failure is still swallowed - the report is already computed and
     // stored, and is reachable at the URL regardless.
     if (notification_email && process.env.RESEND_API_KEY) {
-      const eligible: boolean = result.granny_flat_buildable ?? false;
+      // true: a path is met; false: ruled out; null: not yet determined.
+      const buildable: boolean | null = result.granny_flat_buildable ?? null;
+      const eligible = buildable === true;
+      const undetermined = buildable === null;
       const maxArea: number | null = result.max_floor_area_m2 ?? null;
       const rent: number | null = result.estimated_weekly_rent_aud ?? null;
       const reportAddress: string = result.address ?? address ?? '';
       const addressParam = encodeURIComponent(reportAddress);
       const reportUrl = `https://verify.plotdetect.com.au/reports/granny-flat?jobId=${detect_id}&address=${addressParam}`;
 
-      const verdictColor = eligible ? '#0f766e' : '#dc2626';
-      const verdictLabel = eligible ? 'Eligible' : 'Not eligible';
+      const verdictColor = eligible ? '#0f766e' : undetermined ? '#b45309' : '#dc2626';
+      const verdictLabel = eligible ? 'Eligible' : undetermined ? 'Not yet determined' : 'Not eligible';
       const verdictNote = eligible
         ? `Max floor area: <strong>${maxArea ?? '—'} m²</strong> (CDC pathway)`
-        : result.confidence_reason ?? 'Does not meet SEPP Housing 2021 criteria.';
+        : undetermined
+          ? 'Nothing found rules this lot out, but neither approval path could be decided from the data available. Your report names what is missing.'
+          : result.confidence_reason ?? 'Does not meet SEPP Housing 2021 criteria.';
 
       await getResend()?.emails.send({
         from: 'Can I Build It <info@plotdetect.com.au>',

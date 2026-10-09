@@ -67,11 +67,7 @@ function formatLotArea(m2: number | null): string {
   return `${Math.round(m2).toLocaleString()} m²`;
 }
 
-function deriveWhatToChange(reason: string | null, lotArea: number | null): string {
-  if (lotArea != null && lotArea < 450) {
-    const shortfall = Math.round(450 - lotArea);
-    return `A boundary adjustment of ${shortfall} m² could unlock CDC eligibility. A DA pathway may also be available at council's discretion — a certifier or town planner can advise.`;
-  }
+function deriveWhatToChange(reason: string | null): string {
   if (reason?.toLowerCase().includes('heritage')) {
     return 'Heritage exclusions apply to the CDC pathway only. A DA pathway remains available — contact a heritage-experienced town planner.';
   }
@@ -84,16 +80,11 @@ function deriveWhatToChange(reason: string | null, lotArea: number | null): stri
   return "A DA pathway may still be available at council's discretion — a town planner or certifier can advise on your options.";
 }
 
-function deriveIneligibleReason(reason: string | null, lotArea: number | null): string {
+function deriveIneligibleReason(reason: string | null): string {
   if (reason) return reason;
-  if (lotArea != null && lotArea < 450) {
-    const shortfall = Math.round(450 - lotArea);
-    return `Lot area ${Math.round(lotArea).toLocaleString()} m² — ${shortfall} m² short of the 450 m² minimum under SEPP Housing 2021`;
-  }
-  if (lotArea != null && lotArea >= 450) {
-    return `Lot area ${Math.round(lotArea).toLocaleString()} m² meets the size threshold, but the property did not pass one or more other checks — likely due to zoning, heritage, flood, or biodiversity exclusions`;
-  }
-  return 'This property does not meet SEPP Housing 2021 eligibility requirements';
+  // Lot area is never the reason: the SEPP (Housing) 2021 sets no single minimum
+  // lot size for a granny flat (it is tested per approval path in the full report).
+  return 'This property did not pass one or more of the SEPP Housing 2021 checks below';
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +94,6 @@ function deriveIneligibleReason(reason: string | null, lotArea: number | null): 
 // ---------------------------------------------------------------------------
 
 const SEPP_CDC_STANDARDS = [
-  { label: 'Min. lot area',    value: '450 m²',          clause: 'cl. 4.17' },
   { label: 'Max. floor area',  value: '60 m²',           clause: 'cl. 4.18' },
   { label: 'Rear setback',     value: '3 m minimum',     clause: 'Sch. 3 Subdiv. 4' },
   { label: 'Side setback',     value: '0.9 m – 1.5 m',  clause: 'Sch. 3 Subdiv. 4' },
@@ -432,17 +422,17 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
               <span className={`mt-0.5 shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${
                 eligibility.sepp_eligible ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600'
               }`}>
-                {eligibility.sepp_eligible ? 'Eligible' : 'Not eligible'}
+                {eligibility.sepp_eligible ? 'No exclusion found' : 'Not eligible'}
               </span>
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-medium ${eligibility.sepp_eligible ? 'text-teal-800' : 'text-gray-800'}`}>
                   {eligibility.sepp_eligible
-                    ? `${formatLotArea(eligibility.lot_area_m2)} — eligible for a granny flat under SEPP Housing 2021`
-                    : deriveIneligibleReason(eligibility.sepp_ineligible_reason, eligibility.lot_area_m2)}
+                    ? `${formatLotArea(eligibility.lot_area_m2)} — no SEPP Housing 2021 exclusion found in the checks below`
+                    : deriveIneligibleReason(eligibility.sepp_ineligible_reason)}
                 </p>
                 {eligibility.sepp_eligible && (
                   <p className="text-xs text-gray-500 mt-1">
-                    Based on the data sources checked, this property meets the SEPP Housing 2021 spatial criteria. Get a full feasibility report to see rental yield, build ROI, and council setbacks.
+                    The lot-area tests depend on the approval path (a road frontage for complying development, a site area for a detached granny flat by DA) and are not decided by this quick check. Get a full feasibility report to see those, rental yield, build ROI, and council setbacks.
                   </p>
                 )}
                 <p className="text-xs text-gray-400 mt-1">
@@ -487,7 +477,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                       key: 'lot_area',
                       label: 'Lot area',
                       detail: eligibility.lot_area_m2 != null
-                        ? `${Math.round(eligibility.lot_area_m2).toLocaleString()} m² (min. 450 m²)${eligibility.lot_width_m != null && eligibility.lot_depth_m != null ? ` · approx. ${eligibility.lot_width_m}m × ${eligibility.lot_depth_m}m` : ''}`
+                        ? `${Math.round(eligibility.lot_area_m2).toLocaleString()} m² (no single SEPP minimum — tested per approval path)${eligibility.lot_width_m != null && eligibility.lot_depth_m != null ? ` · approx. ${eligibility.lot_width_m}m × ${eligibility.lot_depth_m}m` : ''}`
                         : 'Could not determine',
                     },
                     { key: 'zone', label: 'Zoning', detail: eligibility.zone ? `Zone ${eligibility.zone}` : 'Could not determine' },
@@ -666,7 +656,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
               <div className="rounded-xl border border-gray-200 bg-white p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">What could change this?</h3>
                 <p className="text-sm text-gray-500 mb-4">
-                  {deriveWhatToChange(eligibility.sepp_ineligible_reason, eligibility.lot_area_m2)}
+                  {deriveWhatToChange(eligibility.sepp_ineligible_reason)}
                 </p>
                 {!emailSubmitted ? (
                   <form onSubmit={handleEmailSubmit} className="flex gap-2">
@@ -759,7 +749,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
 
           <div className="text-xs text-gray-400 px-2 space-y-1.5">
             <p className="font-medium text-gray-500">Legislative basis</p>
-            <p><span className="text-gray-500">Lot area</span> — SEPP (Housing) 2021 cl 53(2)(a): detached secondary dwelling minimum site area 450 m² [complying development]; cl 52 [development consent].</p>
+            <p><span className="text-gray-500">Lot area</span> — SEPP (Housing) 2021 sets no single minimum lot size for a granny flat. Complying development: a road frontage at the building line by lot-area band (Schedule 1 cl 2(1)(b)). Development application: a non-discretionary minimum site area for a detached granny flat (s 53(2)(a)).</p>
             <p><span className="text-gray-500">Zone</span> — SEPP (Housing) 2021 cl 50, read with definition of &ldquo;residential zone&rdquo; in cl 49: R1, R2, R3, R4, R5/RU5 where dwelling houses are permissible under the applicable LEP.</p>
             <p><span className="text-gray-500">Heritage</span> — CDC pathway: SEPP (Housing) 2021 cl 54(3)(c) excludes heritage items and draft heritage items; DA pathway: {eligibility.epi_name ?? 'applicable LEP'} cl 5.10 (Standard Instrument). Heritage Map sourced from NSW Planning Portal layerintersect.</p>
             <p><span className="text-gray-500">Flood control lot</span> — SEPP (Housing) 2021 cl 58: complying development must not be carried out on flood storage areas, floodways, flow paths, high hazard areas, or high risk areas as certified by council or hydraulic engineer. Spatial data: 12 LGAs — shown as unknown outside coverage.</p>
@@ -784,7 +774,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
           <p className="text-center text-sm text-gray-400 mb-6">What we check</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {[
-              { label: 'Lot area', detail: 'Min. 450 m² under SEPP Housing 2021' },
+              { label: 'Lot area', detail: 'Tested per approval path (CDC frontage band, DA site area)' },
               { label: 'Zoning', detail: 'R1, R2, R3, R4, R5/RU5 under SEPP Housing 2021 cl 49' },
               { label: 'Heritage exclusion', detail: 'Heritage items and conservation areas' },
               { label: 'Flood control lots', detail: 'Statutory flood overlay check' },

@@ -62,6 +62,10 @@ interface SeppLepOverride {
 
 // Human-readable names for development types
 // Terminology includes common names used by homeowners, developers, and professionals
+// Granny flats are tested per approval path (services/secondary_dwelling_paths.py).
+const PATH_RULED_DEV_TYPE = 'secondary_dwelling';
+const PATH_RULED_LOT_ROWS = ['min_lot_size', 'min_lot_width'];
+
 const DEVELOPMENT_TYPE_NAMES: Record<string, { name: string; description: string }> = {
   dual_occupancy: {
     name: 'Dual Occupancy (Duplex)',
@@ -196,6 +200,12 @@ export async function POST(request: NextRequest) {
 
     for (const row of result.rows) {
       const devType = row.development_type;
+      // The pathway-agnostic granny-flat lot rows (ids 44 = 450 m2, 34 = 12 m,
+      // retired by migration 089) state no rule the SEPP sets: its lot tests are
+      // per approval path. Never shown as this form's standards.
+      if (devType === PATH_RULED_DEV_TYPE && PATH_RULED_LOT_ROWS.includes(row.standard_type)) {
+        continue;
+      }
 
       if (!standardsByType[devType]) {
         standardsByType[devType] = [];
@@ -270,6 +280,29 @@ export async function POST(request: NextRequest) {
             : 'LMR reform area not assessed for this property — this is not a '
               + 'finding that the property is outside one. Confirm the LMR area '
               + 'status to complete this check.',
+          standards,
+          effectiveDate: typeInfo.effectiveDate,
+          legislationUrl: typeInfo.legislationUrl
+        });
+        continue;
+      }
+
+      // Granny flats: the SEPP (Housing) 2021 sets no single minimum lot size.
+      // Complying development needs a road frontage set by lot-area band
+      // (Schedule 1 cl 2(1)(b)); on the DA path a detached granny flat has a
+      // non-discretionary site-area standard (s 53(2)(a)). Both are answered by
+      // services/secondary_dwelling_paths.py, which this route cannot run, so
+      // this per-form gate states that rather than a lot-size verdict.
+      if (devType === PATH_RULED_DEV_TYPE) {
+        eligibilityResults.push({
+          developmentType: devType,
+          displayName: displayInfo.name,
+          description: displayInfo.description,
+          isEligible: false,
+          assessmentStatus: 'not_assessed',
+          eligibilityReason: 'No single minimum lot size applies to a granny flat. The complying '
+            + 'development road-frontage test and the DA site-area test for a detached granny flat '
+            + 'are assessed separately for each approval path in the granny flat check.',
           standards,
           effectiveDate: typeInfo.effectiveDate,
           legislationUrl: typeInfo.legislationUrl

@@ -1,0 +1,151 @@
+{
+  "tier": "critical",
+  "justification": "Critical: changes the granny-flat answer on six served surfaces (two Python endpoints, the SEPP eligibility engine, the brief, the conveyancing report, two Next.js routes and the public granny-flat tool). Each currently tells an owner with a lot under 450 m2 that a granny flat is not buildable or not eligible, which the SEPP (Housing) 2021 does not say. Plus a production delete (migration 089) applied after deploy.",
+  "commit_hash": "3d913b9f",
+  "files": [
+    "services/secondary_dwelling_paths.py",
+    "deploy/flyio-legislation-monitor/secondary_dwelling_paths.py",
+    "services/granny_flat.py",
+    "services/housing_sepp_eligibility.py",
+    "services/intelligence_brief.py",
+    "services/brief_templates.py",
+    "scripts/conveyancing_db.py",
+    "scripts/generate_conveyancing_report.py",
+    "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
+    "frontend-nextjs/app/api/canibuildit/check/route.ts",
+    "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+    "frontend-nextjs/components/tools/GrannyFlatTool.tsx",
+    "frontend-nextjs/app/reports/granny-flat/page.tsx",
+    "migrations/089_retire_secondary_dwelling_lot_rows.sql"
+  ],
+  "pre_impl": {
+    "existing_data": "housing_sepp_standards: 53 rows on 2026-10-09; secondary_dwelling ids 34 (min_lot_width 12, 'Schedule 1, Part 2') and 44 (min_lot_size 450, '53(1)(b)') are the pathway-agnostic rows #1239 flagged; ids 53-61 are the per-clause CDC/DA rules, all quoted and traced word for word against the law in force (version 11 Sep 2026).",
+    "assumption_mismatch": "Every reader treated 450 m2 as one minimum for every granny flat and 12 m as a lot width. In the law 450 m2 is s 53(2)(a), a non-discretionary DA site area for DETACHED granny flats only, and 12 m is the lowest CDC road-frontage band in Sch 1 cl 2(1)(b). canibuildit and GrannyFlatTool also hardcoded 450 in TypeScript, and the report FAQ said CDC needs 450 m2 under cl 53, which has the paths backwards.",
+    "new_vs_existing": "Wires the existing engine (#1239, services/secondary_dwelling_paths.py, previously called by nothing but the weekly provenance check) into every reader through one new function, assess(). No new tables or columns. Migration 089 deletes the two old rows only after this code is deployed.",
+    "external_source_error": "The engine needs zone, lot area, road frontage, battle-axe status, whether the flat is detached and whether a dwelling house is permissible (s 50). Most call sites know only zone and lot area, so most answers are 'not determined' with the missing fact named, never a guessed pass or fail. A missing zone yields 'zone not established'.",
+    "frontend_type": "approval_paths is an optional dict on the detect and confirm responses and on FormEligibility; no existing field changed type. The granny-flat report keeps sepp_eligible and granny_flat_buildable; lot area simply no longer sets them false.",
+    "user_failure_mode": "An owner of a 300-449 m2 lot is told a granny flat is not buildable or not eligible, and the conveyancing report tells a buyer 'Unlikely - lot too small (Cl 53(1)(b))'. For an attached granny flat, or a detached one through a DA where consent can still be granted below 450 m2, that is wrong, and it is the direction that loses the customer a real option."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_secondary_dwelling_paths.py tests/test_granny_flat_mutation.py tests/test_housing_sepp_eligibility.py tests/test_intelligence_brief_orchestrator.py tests/test_brief_narration.py tests/test_regulatory_constants.py tests/test_conveyancing_truth.py tests/test_conveyancing_forensic.py tests/test_sepp_auto_stale.py tests/test_housing_sepp_standards_readers.py -q -o addopts= ; cd frontend-nextjs && npx jest __tests__/api/housing-sepp __tests__/api/canibuildit",
+    "fails_when": "Re-introducing the 450 m2 gate in any reader. Three such mutations were applied one at a time: the eligibility special-case disabled, the brief's path_ruled forced False, and a lot_area < 450 branch put back in granny-flat confirm. Each made a test fail.",
+    "observed_red": "Observed 2026-10-09: all three mutations CAUGHT (1 failure each), files restored. Before the change the new tests fail by construction: a 300 m2 lot was not buildable, below the minimum 450, and 'Unlikely - lot too small (Cl 53(1)(b))'. Full suite: 8000 passed; the 52 failures are all real-database drift tests in files this branch does not touch (DCP names, coverage counts)."
+  },
+  "functions": [
+    {
+      "name": "assess",
+      "file_line": "services/secondary_dwelling_paths.py",
+      "input": "validated path rules, zone, lot area and any known frontage, battle-axe, detached and s 50 facts",
+      "output": "CDC and DA outcomes, the frontage band for the lot, a plain-English summary every surface shows, and any stale notice",
+      "if_none": "A missing fact makes that path UNKNOWN naming the fact; lot area alone never yields FAIL."
+    },
+    {
+      "name": "_get_sepp_sd_rules",
+      "file_line": "services/granny_flat.py",
+      "input": "an open database connection to the production housing_sepp_standards table, or None when unavailable",
+      "output": "the validated path rules and the 60 m2 max floor area, both from the database",
+      "if_none": "Either value missing returns None and both granny-flat endpoints fail closed with 503."
+    },
+    {
+      "name": "_secondary_dwelling_result",
+      "file_line": "services/housing_sepp_eligibility.py",
+      "input": "the grouped generic rows for secondary_dwelling, zone and lot area",
+      "output": "a FormEligibility from assess(); eligible only when a path is met, otherwise unconfirmed",
+      "if_none": "Rules unavailable gives eligible False, unconfirmed True, and a reason naming that neither path was assessed."
+    },
+    {
+      "name": "_approval_status",
+      "file_line": "services/granny_flat.py",
+      "input": "the assess() result holding the CDC and DA outcome dictionaries for one lot",
+      "output": "met when either path is met, outside_scope when neither applies in the zone, otherwise not_determined",
+      "if_none": "assess() always sets both outcomes, so there is no missing case; anything unrecognised reads not_determined."
+    }
+  ],
+  "values": [
+    {
+      "value": "No regulatory number added to code; the hardcoded SEPP_MIN_M2 = 450 and three 450 literals in TypeScript were removed",
+      "source": "housing_sepp_standards ids 53-61 via load_rules, each value checked against its own quote of the SEPP (Housing) 2021",
+      "read_at": "each request (granny-flat endpoints, eligibility engine, conveyancing loader, freshness monitor)",
+      "if_missing": "Invalid or missing path rules: 503 on the granny-flat endpoints, 'Not assessed' in the conveyancing report, unconfirmed in eligibility."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "granny-flat max floor area only",
+      "file_line": "services/granny_flat.py _get_sepp_sd_rules",
+      "where_clause": "development_type = 'secondary_dwelling' AND standard_type = 'max_floor_area' AND approval_pathway IS NULL"
+    },
+    {
+      "purpose": "freshness monitor max floor area",
+      "file_line": "scripts/conveyancing_db.py check_regulatory_freshness",
+      "where_clause": "development_type = 'secondary_dwelling' AND standard_type = 'max_floor_area' AND approval_pathway IS NULL"
+    },
+    {
+      "purpose": "path rules (unchanged, now called from five readers)",
+      "file_line": "services/secondary_dwelling_paths.py load_rules",
+      "where_clause": "development_type = 'secondary_dwelling' AND approval_pathway IS NOT NULL"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Migration 089 is applied before this code deploys",
+      "what_happens": "Production granny_flat.py on main still gates on id 44 and would 503 every granny-flat request (its loader returns None for min_lot_size)",
+      "mitigated": true,
+      "how": "089's header says apply after deploy, and this code ignores 34/44 so it is correct both before and after 089",
+      "repro": "python -m pytest tests/test_granny_flat_mutation.py -q -o addopts= -k small_lot"
+    },
+    {
+      "scenario": "Ids 34/44 are still in the table when this code is live (the window before 089)",
+      "what_happens": "Every reader explicitly skips them for secondary_dwelling, so no 450 m2 or 12 m verdict is produced",
+      "mitigated": true,
+      "how": "explicit path_ruled / PATH_RULED_LOT_ROWS skips, tested with the old rows present",
+      "repro": "python -m pytest tests/test_housing_sepp_eligibility.py tests/test_intelligence_brief_orchestrator.py -q -o addopts= -k secondary"
+    },
+    {
+      "scenario": "The SEPP (Housing) 2021 is amended and the monitor marks every rule stale",
+      "what_happens": "Rules are still served with a notice that a re-check is pending (W3, #839), instead of every granny-flat answer going blank or 503",
+      "mitigated": true,
+      "how": "stale is carried on the Rule and appended to the summary rather than failing validation",
+      "repro": "python -m pytest tests/test_secondary_dwelling_paths.py tests/test_sepp_auto_stale.py -q -o addopts= -k stale"
+    },
+    {
+      "scenario": "The zone does not reach the Python detect endpoint (for example the Trigger.dev task drops extra_body.zone)",
+      "what_happens": "Both paths answer 'zone not established' (not determined); no pass or fail is invented",
+      "mitigated": true,
+      "how": "the engine's zone gate returns UNKNOWN for a missing zone",
+      "repro": "python -m pytest tests/test_secondary_dwelling_paths.py -q -o addopts= -k assess"
+    },
+    {
+      "scenario": "A caller still injects the retired {sd_min_lot, sd_zones} config into calc_feasibility",
+      "what_happens": "The granny-flat row renders 'Not assessed' with no figure, never a 450 m2 verdict",
+      "mitigated": true,
+      "how": "calc_feasibility reads only sd_rules",
+      "repro": "python -m pytest tests/test_conveyancing_truth.py tests/test_regulatory_constants.py -q -o addopts= -k retired"
+    },
+    {
+      "scenario": "A lot under 450 m2 where the DA facts are unknown",
+      "what_happens": "The summary still states that a detached granny flat on this lot is below the 450 m2 DA site area, with the law's own note that consent can still be granted",
+      "mitigated": true,
+      "how": "assess() adds the detached site-area hint when DA is UNKNOWN and the lot is below the standard",
+      "repro": "python -m pytest tests/test_secondary_dwelling_paths.py -q -o addopts= -k detached_site_area"
+    },
+    {
+      "scenario": "Neither approval path can be decided (frontage, detached status, s 50 unknown) and nothing rules the lot out",
+      "what_happens": "granny_flat_buildable is null and every surface (report card, email, PDF, brief) says 'Not yet determined' and names what is missing; costs and rent are still shown",
+      "mitigated": true,
+      "how": "user ruling 2026-10-09: three states; null is carried through the generate route instead of becoming false",
+      "repro": "python -m pytest tests/test_granny_flat_mutation.py -q -o addopts= -k not_yet_determined ; cd frontend-nextjs && npx jest granny-flat-generate"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No change needed: in the separate plotdetect-agents repository, the Trigger.dev satellite job runner spreads extra_body into the detect POST body (line 45 of its satellite job runner), so zone reaches /pipeline/granny-flat/detect. Checked in that repo's local source, not its deployed build.",
+    "manual_verify": "Yes, in this order: (1) deploy Railway (services) and Vercel; (2) apply migrations/089_retire_secondary_dwelling_lot_rows.sql, which refuses to commit unless exactly ids 34 and 44 go; (3) SELECT count(*) FROM housing_sepp_standards WHERE id IN (34,44) prints 0; (4) fly deploy -a plotdetect-legislation-monitor from deploy/flyio-legislation-monitor so the deployed engine copy matches. Pre-existing unrelated failure on main: tests/test_granny_flat_mutation.py::TestFetchSdSetbacks::test_condition_and_section_ref."
+  },
+  "real_layer_exempt": {
+    "services/secondary_dwelling_paths.py": "Real database layer exercised 2026-10-09: load_rules against production returned the 9 rules with no failures, and assess() was run for R2 380/600/1000 m2, R5 and B2.",
+    "scripts/conveyancing_db.py": "Real layer exercised 2026-10-09: load_regulatory_configs against production loaded the rules, check_regulatory_freshness returned no SEPP warnings, and calc_feasibility rendered the three answers recorded in the PR.",
+    "migrations/089_retire_secondary_dwelling_lot_rows.sql": "Dry-run against production in a rolled-back transaction 2026-10-09: ids 34/44 2 -> 0, rows 53 -> 51, both assertions passed."
+  }
+}

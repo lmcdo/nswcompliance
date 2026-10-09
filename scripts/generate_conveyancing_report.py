@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 # DB helpers — pre-fetched before generate_pdf (no DB connection inside renderer)
 sys.path.insert(0, str(Path(__file__).parent))
-from conveyancing_db import clause_or_page, fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp, load_regulatory_configs, _validate_sepp_sd_config  # noqa: E402
+from conveyancing_db import clause_or_page, fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp, load_regulatory_configs  # noqa: E402
 from services.address_identity import parcel_identity_match  # noqa: E402  GATE-0
 
 # ---------------------------------------------------------------------------
@@ -670,31 +670,18 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     zone = _zone_parts[0].upper() if _zone_parts else ""
 
     # 1. Secondary dwelling (granny flat)
-    # Source: housing_sepp_standards table (migration 045). NO fallback (#684):
-    # absent config renders "Not assessed" — fail-visible, never a hardcoded
-    # regulatory figure. Re-validated at this boundary (Sol review): callers
-    # other than load_regulatory_configs may inject the dict directly, and a
-    # zero/NaN minimum or a null zone entry must degrade to "Not assessed",
-    # not pass every lot or crash rendering.
-    _sd = _validate_sepp_sd_config({
-        "numeric_value": (sepp_standards or {}).get("sd_min_lot"),
-        "applicable_zones": (sepp_standards or {}).get("sd_zones"),
-        "stale_since": (sepp_standards or {}).get("stale_since"),
-        "stale_reason": (sepp_standards or {}).get("stale_reason"),
-    }) or {}
-    _SD_MIN_LOT = _sd.get("sd_min_lot")
-    _SD_ZONES = _sd.get("sd_zones")
-    # Auto-stale notice (W3, founder-specified): a changed source instrument
-    # does NOT blank the row — the last-reviewed figure renders WITH this note.
-    _sd_stale_note = ""
-    if _sd.get("stale_since"):
-        _ss = _sd["stale_since"]
-        _sd_date = _ss.date().isoformat() if hasattr(_ss, "date") else str(_ss)
-        _sd_stale_note = (
-            f" Note: {_sd.get('stale_reason') or 'the source instrument was amended'} "
-            f"(detected {_sd_date}) after this figure was last reviewed; a re-check "
-            f"against the amended instrument is pending."
-        )
+    # Source: the per-path CDC/DA rules in housing_sepp_standards (migrations
+    # 083/084), answered by services/secondary_dwelling_paths.assess(). The SEPP
+    # (Housing) 2021 sets no single minimum lot size for a granny flat, so lot
+    # area alone never makes this row "too small". NO fallback (#684): absent or
+    # invalid rules render "Not assessed" -- fail-visible, never a figure.
+    _sd_rules = (sepp_standards or {}).get("sd_rules")
+    # services/ is always importable here: line 51 imports services.address_identity.
+    from services.secondary_dwelling_paths import Rules as _SdRules, assess as _sd_assess
+    if not isinstance(_sd_rules, _SdRules):
+        # A direct caller injecting anything but validate_rules() output gets the
+        # fail-visible row, never a crash mid-report (cross-review).
+        _sd_rules = None
     if is_strata:
         results.append({
             "question": "Secondary dwelling (granny flat)",
@@ -706,64 +693,46 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "and by-laws govern permissible alterations."
             )
         })
-    elif _SD_MIN_LOT is None or not _SD_ZONES:
-        print("  [warn] calc_feasibility: SEPP Housing standards unavailable — secondary dwelling renders 'Not assessed'")
+    elif _sd_rules is None:
+        print("  [warn] calc_feasibility: SEPP Housing granny-flat rules unavailable — secondary dwelling renders 'Not assessed'")
         results.append({
             "question": "Secondary dwelling (granny flat)",
             "answer": "Not assessed",
             "flag": "warn",
             "basis": (
-                "The SEPP Housing 2021 secondary-dwelling standards (minimum lot area and "
-                "eligible zones) were unavailable at report generation, so no eligibility "
-                "figure is stated. Obtain the current Chapter 3 standards from the SEPP "
+                "The SEPP (Housing) 2021 secondary-dwelling rules (the CDC road-frontage bands "
+                "and the DA site-area standard) were unavailable at report generation, so no "
+                "lot-area outcome is stated. Obtain the current Chapter 3 rules from the SEPP "
                 "(Housing) 2021 or council before relying on secondary-dwelling potential."
             )
         })
-    elif lot_area is not None:
-        if zone in _SD_ZONES:
-            if lot_area >= _SD_MIN_LOT:
-                results.append({
-                    "question": "Secondary dwelling (granny flat)",
-                    "answer": "Likely permissible",
-                    "flag": "ok",
-                    "basis": (
-                        f"Zone {zone} + lot area {round(lot_area):,} m² ≥ {_SD_MIN_LOT:g} m² minimum "
-                        f"(SEPP Housing 2021, Cl 53). Subject to DCP setback and height controls. "
-                        f"Some councils have excluded dual occupancy CDC — confirm DA vs CDC pathway."
-                    + _sd_stale_note
-                    )
-                })
-            else:
-                results.append({
-                    "question": "Secondary dwelling (granny flat)",
-                    "answer": "Unlikely — lot too small",
-                    "flag": "warn",
-                    "basis": (
-                        f"Lot area {round(lot_area):,} m² is below the {_SD_MIN_LOT:g} m² minimum "
-                        f"(SEPP Housing 2021, Cl 53(1)(b)). Confirm current SEPP standards."
-                    + _sd_stale_note
-                    )
-                })
-        else:
-            results.append({
-                "question": "Secondary dwelling (granny flat)",
-                "answer": "Zone check required",
-                "flag": "warn",
-                "basis": (
-                    f"Zone {zone} — secondary dwelling permissibility depends on the specific LEP "
-                    f"zone objectives and SEPP Housing 2021 zone eligibility. Confirm with council."
-                )
-            })
-    else:
+    elif lot_area is None:
         results.append({
             "question": "Secondary dwelling (granny flat)",
             "answer": "Lot area unavailable",
             "flag": "warn",
             "basis": (
-                f"Lot area data not available from NSW Valuation Service. "
-                f"Secondary dwelling eligibility requires lot area ≥ {_SD_MIN_LOT:g} m² "
-                f"(SEPP Housing 2021, Cl 53). Confirm lot dimensions with council or a surveyor."
-            + _sd_stale_note
+                "Lot area data not available from NSW Valuation Service. The CDC road-frontage "
+                "band (SEPP (Housing) 2021 Schedule 1 cl 2(1)(b)) and the DA site-area standard "
+                "for a detached granny flat (s 53(2)(a)) both depend on lot area. Confirm lot "
+                "dimensions with council or a surveyor."
+            )
+        })
+    else:
+        _paths = _sd_assess(_sd_rules, zone, lot_area)
+        _outside = (_paths["cdc"]["outcome"] == "NOT_APPLICABLE"  # noqa: bracket-access — assess() always sets both
+                    and _paths["da"]["outcome"] == "NOT_APPLICABLE"  # noqa: bracket-access
+                    and "outside this path's zones" in (_paths["da"].get("reason") or ""))  # noqa: bracket-access
+        results.append({
+            "question": "Secondary dwelling (granny flat)",
+            "answer": ("Outside the SEPP granny-flat zones" if _outside
+                       else "Depends on approval path — not ruled out by lot area"),
+            "flag": "warn",
+            "basis": (
+                _paths["summary"]  # noqa: bracket-access — assess() always sets it
+                + (" A council LEP can separately permit secondary dwellings — check the zone's "
+                   "land-use table." if _outside else
+                   " Subject to DCP setback and height controls.")
             )
         })
 
