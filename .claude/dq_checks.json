@@ -1620,7 +1620,7 @@
     "note": "Found 2026-10-05 while building /api/sepp/parking-provisions (#1226). The extractor splits one legal sentence into a lead-in row plus its numbered sub-paragraphs; the classifier judges each row alone. Proven on the boarding-house parking rate: 40309 p11 ('...at least the following number of parking spaces-') is v2_is_actionable TRUE and 40310 p11 ('0.2 parking spaces for each boarding room, ... otherwise-0.5') is FALSE. Re-running enrichment/extractors/actionable_classifier.py over all nine Housing SEPP parking rows reproduces every stored value exactly, each FALSE with reason 'lep_sepp_weak_indicators' - so these are not stale rows. Do NOT clear by flipping rows: the classifier re-derives the same FALSE from the fragment and the next enrichment run with force_reprocess reverts hand-set values. It clears by giving the classifier its parent paragraph, or by keeping a sub-paragraph joined to its lead-in at extraction. v2_has_numeric_value is wrong on the same rows (only 1 statewide current row is actionable-FALSE + numeric-TRUE). Consequence worth knowing: DQ-130/132 measure a served set defined as is_current AND v2_is_actionable, which EXCLUDES the boarding-house parking rate the SEPP tab displays."
   },
   "DQ-136": {
-    "declared": "open",
+    "declared": "fixed",
     "check": [
       "python",
       "scripts/dq_probe_live.py",
