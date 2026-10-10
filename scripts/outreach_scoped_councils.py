@@ -61,13 +61,30 @@ _UNDECIDED = "('config_silent', 'filtered_to_all', 'no_document_id')"
 _SPLIT_SQL = f"""
 SELECT source_council, source_chapter_key, 'applicable_dev_types', count(*) FROM regulatory_provisions
  WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM documents d WHERE d.id = document_id AND d.document_type = 'LEP')
    AND (v2_dev_type_source IN {_UNDECIDED} OR v2_dev_type_source IS NULL)
  GROUP BY 1, 2
 UNION ALL
 SELECT source_council, source_chapter_key, 'applicable_zones', count(*) FROM regulatory_provisions
  WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM documents d WHERE d.id = document_id AND d.document_type = 'LEP')
    AND (v2_zone_source IN {_UNDECIDED} OR v2_zone_source IS NULL)
  GROUP BY 1, 2"""
+
+#: LEP rules whose scope nobody decided -- DQ-140's population, per council. DQ-114 (and the split above)
+#: leave LEP rows to DQ-140 since 2026-10-09; without this a council whose LEP is undecided would be
+#: listed once its DCP rows were clean. Counted per key, no_config included (no council config can
+#: resolve an LEP).
+_LEP_SQL = f"""
+SELECT rp.source_council,
+       count(*) FILTER (WHERE rp.v2_dev_type_source IN {_UNDECIDED} OR rp.v2_dev_type_source = 'no_config'
+                              OR rp.v2_dev_type_source IS NULL)
+     + count(*) FILTER (WHERE rp.v2_zone_source IN {_UNDECIDED} OR rp.v2_zone_source = 'no_config'
+                              OR rp.v2_zone_source IS NULL)
+  FROM regulatory_provisions rp
+  JOIN documents d ON d.id = rp.document_id AND d.document_type = 'LEP'
+ WHERE rp.is_current AND rp.v2_is_actionable AND rp.source_council IS NOT NULL
+ GROUP BY 1"""
 
 #: (council, chapter, key) a person read and DECLINED to narrow -- served as ALL by decision. Used only to
 #: keep a stated exception from reading as stale once its rows move from undecided to declined.
@@ -147,6 +164,8 @@ def compute(conn, exceptions: list[dict]) -> tuple[dict[str, str], dict[str, str
         no_config = {council: n for council, n in cur.fetchall() if n}
         cur.execute(_DECLINED_SQL)
         declined = {tuple(row) for row in cur.fetchall()}
+        cur.execute(_LEP_SQL)
+        lep_undecided = {council: n for council, n in cur.fetchall() if n}
 
     split_total = sum(row[3] for row in split)
     if split_total != dq114_total:
@@ -173,6 +192,8 @@ def compute(conn, exceptions: list[dict]) -> tuple[dict[str, str], dict[str, str
         why = []
         if undecided.get(slug):
             why.append(f"DQ-114 {undecided[slug]}")
+        if lep_undecided.get(slug):
+            why.append(f"DQ-140 {lep_undecided[slug]}")
         if no_config.get(slug):
             why.append(f"no_config {no_config[slug]}")
         if dq115.get(slug):
