@@ -36,7 +36,8 @@ import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from 
 import { DCPInterestForm } from './DCPInterestForm';
 import { DcpStructuredControls } from './DcpStructuredControls';
 import { DcpLandApplicationNotice } from './DcpLandApplicationNotice';
-import { encodeLandApplication, type LandApplicationDecision } from '@/lib/dcp-land-application';
+import { type LandApplicationDecision } from '@/lib/dcp-land-application';
+import { buildForPropertyParams } from '@/lib/dcp-provisions-query';
 import { DcpFilterBar } from './DcpFilterBar';
 import { DcpProvisionList } from './DcpProvisionList';
 import { NumericChecker, type NumericCheckValues } from './NumericChecker';
@@ -358,20 +359,17 @@ export function ProvisionsByTocStructure({
   })();
   const TocTopLevelTermCap = tocTopLevelTerm === 'chapter' ? 'Chapter' : 'Part';
 
-  // Build API URL with groupBy=toc
-  const params = new URLSearchParams();
-  params.set('groupBy', 'toc');
-  if (formerCouncil) params.set('former_council', formerCouncil);
-  if (zone) params.set('zone', zone);
-  if (heritage !== undefined) params.set('heritage', String(heritage));
-  if (hcaName) params.set('hca', hcaName);
-  if (precinctId) params.set('precinct_id', precinctId);
-  // DQ-120: the Land Application Map answer decides whether this council's DCP
-  // covers the property. Not sent = the route treats it as unknown.
-  const landApplicationParam = encodeLandApplication(propertyData?.constraints?.landApplicationInstruments);
-  if (landApplicationParam) params.set('land_application', landApplicationParam);
-  // dev_types intentionally excluded from URL — provisions are property-specific, not dev-type-specific.
+  // Build API URL with groupBy=toc. Land application (DQ-120) and land facts (DQ-140) ride along.
   // Relevance and chapter match counts are computed client-side from v2_applicable_dev_types.
+  const params = buildForPropertyParams({
+    formerCouncil,
+    zone,
+    heritage,
+    hcaName,
+    precinctId,
+    landApplicationInstruments: propertyData?.constraints?.landApplicationInstruments,
+    landFacts: propertyData?.constraints?.landFacts,
+  });
 
   // If no formerCouncil, council DCP is not processed — skip fetch entirely
   const apiUrl = formerCouncil ? `/api/provisions/for-property?${params.toString()}` : null;
