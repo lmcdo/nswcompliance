@@ -45,8 +45,11 @@ def next_version(cur, pid: int, text_after: str | None, src: str, why: str, now:
     cur.execute("SELECT id, provision_text FROM provision_versions WHERE provision_id = %s AND version_number = %s",
                 (pid, last))
     prev_id, prev_text = cur.fetchone()
-    cur.execute("SELECT text_hash FROM regulatory_provisions WHERE id = %s FOR UPDATE", (pid,))
-    md5_set = cur.fetchone()[0]
+    cur.execute("SELECT text_hash FROM regulatory_provisions WHERE id = %s AND is_current FOR UPDATE", (pid,))
+    locked = cur.fetchone()
+    if locked is None:
+        sys.exit(f"{pid}: no longer current -- refusing")
+    md5_set = locked[0]
     cur.execute("UPDATE provision_versions SET effective_to = %s WHERE id = %s AND effective_to IS NULL",
                 (now, prev_id))
     kind = "deleted" if text_after is None else "modified"
