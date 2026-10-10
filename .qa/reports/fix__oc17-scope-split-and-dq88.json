@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: a production data load (migration 095, 43 DCP controls, applied), a prepared law-text refresh and flag clearance (dq88 script + migration 096, to be applied by the owner), and a changed outreach check (OC-17).",
-  "commit_hash": "b8f6acd2",
+  "commit_hash": "095ff166",
   "files": [
     "scripts/outreach_scoped_councils.py",
     "scripts/law_change_diff.py",
@@ -9,6 +9,9 @@
     "migrations/095_dq142_controls_from_registered_pdfs.sql",
     "migrations/096_dq88_clear_reviewed_instruments.sql",
     "migrations/097_dq142_pdf_controls_review_corrections.sql",
+    "migrations/098_fairfield_dual_occupancy_front_is_r2_specific.sql",
+    "scripts/dq_probe_live.py",
+    "tests/test_outreach_scoped_councils.py",
     "scripts/dq142_build_controls_migration.py",
     "data/dq142_controls_pdf_2026-10-10.json",
     "scripts/control_source_values_baseline.json",
@@ -113,6 +116,7 @@
     "migrations/096_dq88_clear_reviewed_instruments.sql": "Dry-run against production refused as designed until the refresh is applied; key list checked live (27 of 27 flagged, 3 left).",
     "scripts/law_change_diff.py": "Runs on the Fly monitor only (legislation.nsw.gov.au answers that IP); run there 2026-10-10 on 24 instruments.",
     "migrations/097_dq142_pdf_controls_review_corrections.sql": "Applied to production 2026-10-10 after a rolled-back dry run (1 to NO FIGURE, 4 retired, 2 quotes lengthened).",
+    "migrations/098_fairfield_dual_occupancy_front_is_r2_specific.sql": "Applied to production 2026-10-10 after a rolled-back dry run (1 row tagged zone_specific; DQ-32b 0).",
     "scripts/outreach_scoped_councils.py": "Real-DB run 2026-10-10: PASS, 12 of 18 listed."
   }
 }

@@ -22,8 +22,8 @@ EXC = {"council": "cb", "field": "applicable_dev_types", "chapters": ["ch-school
 
 
 class _Cur:
-    def __init__(self, universe, split, total, no_config=(), declined=()):
-        self._answers = [universe, split, [(total,)], list(no_config), list(declined)]
+    def __init__(self, universe, split, total, no_config=(), declined=(), lep=()):
+        self._answers = [universe, split, [(total,)], list(no_config), list(declined), list(lep)]
         self._last = None
 
     def __enter__(self):
@@ -43,8 +43,8 @@ class _Cur:
 
 
 class _Conn:
-    def __init__(self, universe, split, total, no_config=(), declined=()):
-        self.cur = _Cur(universe, split, total, no_config, declined)
+    def __init__(self, universe, split, total, no_config=(), declined=(), lep=()):
+        self.cur = _Cur(universe, split, total, no_config, declined, lep)
 
     def cursor(self):
         return self.cur
@@ -61,13 +61,13 @@ SPLIT = [("bb", "ch-x", "applicable_zones", 2), ("cb", "ch-schools", "applicable
 @pytest.fixture
 def world(monkeypatch, tmp_path):
     state = {"universe": UNIVERSE, "split": SPLIT, "total": 9, "dq115": {}, "orphans": [], "no_config": [],
-             "declined": []}
+             "declined": [], "lep": []}
     monkeypatch.setattr(osc, "_dq115_by_council",
                         lambda slugs: (state["dq115"], state["orphans"]))
     import dq_db
     monkeypatch.setattr(dq_db, "connect",
                         lambda: _Conn(state["universe"], state["split"], state["total"],
-                                      state["no_config"], state["declined"]))
+                                      state["no_config"], state["declined"], state["lep"]))
     pub = tmp_path / "pub.json"
     monkeypatch.setattr(osc, "PUBLISHED", pub)
 
@@ -186,3 +186,14 @@ def test_oc4_is_the_two_counts_only_and_oc17_runs_the_list():
     import outreach_claim_checks as occ
     assert len(occ.CLAIMS["OC-4"]) == 1
     assert osc.check in occ.CLAIMS["OC-17"]
+
+
+def test_undecided_lep_scope_delists_a_council_whose_dcp_rows_are_clean(world):
+    # DQ-114 (and the split) leave LEP rows to DQ-140; a council whose LEP scope is undecided
+    # must still not be listed (2026-10-10: the split counted 240 LEP keys DQ-114 no longer did).
+    world["lep"] = [("aa", 4)]
+    world["publish"]([("aa", "Aa"), ("cb", "Cb")])
+    verdict, text = osc.check()
+    assert verdict == "FAIL" and "aa (DQ-140 4)" in text
+    world["publish"]([("cb", "Cb")])
+    assert osc.check()[0] == "PASS"

@@ -672,8 +672,11 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "AND condition ~* '\m(R[1-6]|E[1-4]|C[1-4]|MU1|RU[1-6]|B[1-8]|IN[1-4]|SP[1-3]|W[1-4])\M' "
         "AND COALESCE(applicability, '') <> 'zone_specific' "
         "AND id <> ALL(%s)",
+        # 1508 (strathfield): "C3.1.1" is a DCP section number, not zone C3.
+        # 1515 (northern_beaches): R2/R3 named only inside an exception; the rule
+        # itself is the DCP map (2026-10-10, #1249).
         ([815, 816, 817, 818, 823, 824, 825, 826,
-          1104, 1105, 1106, 1107, 1153, 13, 71, 944, 1059],),
+          1104, 1105, 1106, 1107, 1153, 13, 71, 944, 1059, 1508, 1515],),
         "Rows that ARE zone-dependent but invisible to the zone filter. 59 of "
         "76 tagged on 2026-08-12 (backup dcp_setback_controls_dq32b_backup_"
         "20260812); the other 17 are adjudicated non-defects, excluded by id "
