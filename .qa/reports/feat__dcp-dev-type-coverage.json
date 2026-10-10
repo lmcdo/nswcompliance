@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: new rule-data table (migration 105, applied) read by the buildable-area arithmetic on two serving paths; changes the gap text users see and the DQ-142 count.",
-  "commit_hash": "10cc9ab4",
+  "commit_hash": "99baf02e",
   "files": [
     "migrations/105_dcp_dev_type_coverage.sql",
     "services/constraint_arithmetic.py",
