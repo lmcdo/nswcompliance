@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: production change to 1,336 served Ashfield DCP rules (923 retired, 408 restored under the council with traced chapters, 5 retired) via migrations 100 and 101, both applied.",
-  "commit_hash": "f4e41e86",
+  "commit_hash": "4d469d34",
   "files": [
     "migrations/100_dq141_ashfield_second_load.sql",
     "migrations/101_dq141_retire_worked_examples.sql",
