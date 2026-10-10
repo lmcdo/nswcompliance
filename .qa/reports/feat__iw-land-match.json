@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: changes which Inner West LEP 2022 rules /api/provisions/for-property serves for a property (site-specific rules withheld off their land), adds a column the route selects (migration 109, applied), and writes conditions to 292 production rows.",
-  "commit_hash": "bf324fb1",
+  "commit_hash": "b5efe677",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
