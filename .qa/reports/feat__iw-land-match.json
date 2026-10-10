@@ -5,9 +5,11 @@
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
+    ".gitignore",
     ".qa/reports/feat__iw-land-match.json",
     "data/db_rollback_backups/regulatory_provisions_pre_iw_land_condition_2026-10-11_0904.csv",
     "data/db_rollback_backups/regulatory_provisions_pre_iw_land_condition_2026-10-11_0921.csv",
+    "enrichment/config/inner_west_lep_land.py",
     "frontend-nextjs/__tests__/api/lep-land-condition.test.ts",
     "frontend-nextjs/__tests__/fixtures/iw_lep_land_conditions.json",
     "frontend-nextjs/app/api/assessment/full/route.ts",
