@@ -1,9 +1,10 @@
 {
   "tier": "critical",
   "justification": "Critical: corrects 15 served or stored SEPP rows in production to the law in force, changes which coverage findings the building-area card shows, and narrows the Inner West LEP clause-scope match.",
-  "commit_hash": "97fbb6e0",
+  "commit_hash": "bddd2d99",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
+    ".qa/reports/fix__review-followups.json",
     "data/db_rollback_backups/regulatory_provisions_pre_dq88_review_fixes_2026-10-10.csv",
     "data/db_rollback_backups/regulatory_provisions_pre_page_repair_2026-10-10_1706.csv",
     "data/db_rollback_backups/regulatory_provisions_pre_page_repair_2026-10-10_1709.csv",
