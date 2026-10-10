@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: changes who 554 served Inner West LEP rules are shown to (57 narrowed), adds a tagger path, and publishes Inner West in the outreach scoped-council list.",
-  "commit_hash": "b4eac41a",
+  "commit_hash": "866cb5d1",
   "files": [
     "enrichment/extractors/applicability_tagger.py",
     "enrichment/config/inner_west_lep_config.py",
