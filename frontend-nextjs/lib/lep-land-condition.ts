@@ -68,7 +68,7 @@ export function landFactsFromLayers(
     }
     out[layer.layerName] = values;
   }
-  return { zone: zone ? zone.split(/[\s:]/)[0] : null, layers: out };
+  return { zone: typeof zone === 'string' && zone ? zone.split(/[\s:]/)[0] : null, layers: out };
 }
 
 export function encodeLandFacts(facts: LandFacts | null | undefined): string | null {
@@ -100,7 +100,7 @@ export function decideLandCondition(cond: LandCondition, facts: LandFacts | null
   const present = facts.layers[cond.layer];
   const labelHit =
     present !== undefined &&
-    (cond.labels === null || cond.labels.some((l) => present.some((v) => norm(v) === norm(l))));
+    (cond.labels == null || cond.labels.some((l) => present.some((v) => norm(v) === norm(l))));
   if (labelHit) {
     if (cond.label_not_unique) return 'unconfirmed';
     if (!cond.zones) return 'match';
