@@ -25,6 +25,8 @@ export interface LandCondition {
   zones: string[] | null;
   verified: boolean;
   source?: string;
+  /** The label is shared with other land (cl 6.26 / APU '46'): a hit is only 'unconfirmed'. */
+  label_not_unique?: string;
 }
 
 /** What the portal says about one lot: its zone, and each layer's label values. */
@@ -100,6 +102,7 @@ export function decideLandCondition(cond: LandCondition, facts: LandFacts | null
     present !== undefined &&
     (cond.labels === null || cond.labels.some((l) => present.some((v) => norm(v) === norm(l))));
   if (labelHit) {
+    if (cond.label_not_unique) return 'unconfirmed';
     if (!cond.zones) return 'match';
     if (!facts.zone) return 'unconfirmed';
     return cond.zones.includes(facts.zone) ? 'match' : 'no_match';

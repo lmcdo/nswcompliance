@@ -52,6 +52,11 @@ def test_unseen_layers_are_never_verified():
     assert clause_condition('6.8')['layer'] is None       # ANEF is not a layerintersect layer
 
 
+def test_a_shared_label_is_flagged():
+    assert clause_condition('6.26')['label_not_unique']
+    assert 'label_not_unique' not in clause_condition('6.17')
+
+
 def test_a_map_name_outside_the_table_fails_loudly():
     with pytest.raises(ValueError):
         condition_from_quote("land identified as 'Area 1' on the Made Up Map")

@@ -50,6 +50,12 @@ describe('10 Norton Street, Leichhardt (E1, Key Sites Area 1, APU 46)', () => {
     expect(s.clauses.has('6.15')).toBe(true);
   });
 
+  it('shows 6.26 (Trafalgar St lots, APU 46) only as "could not confirm" -- the label is shared', () => {
+    const rows626 = s.kept.filter((r) => r.clause === '6.26');
+    expect(rows626.length).toBeGreaterThan(0);
+    expect(rows626.every((r) => r.land_status === 'unconfirmed')).toBe(true);
+  });
+
   it('does not show 6.17 (Area 5, 168 Norton St) or Schedule 1 item 45', () => {
     expect(s.clauses.has('6.17')).toBe(false);
     expect(s.items.has('45')).toBe(false);
@@ -73,8 +79,9 @@ describe('45 Victoria Road, Rozelle (E4, Key Sites Area 1 + Area 19, no APU)', (
     expect(s.clauses.has('6.21')).toBe(true);
   });
 
-  it('does not show Schedule 1 item 46, or 6.22 (Area 20)', () => {
+  it('does not show Schedule 1 item 46, 6.26, or 6.22 (Area 20)', () => {
     expect(s.items.has('46')).toBe(false);
+    expect(s.clauses.has('6.26')).toBe(false);
     expect(s.clauses.has('6.22')).toBe(false);
   });
 });
