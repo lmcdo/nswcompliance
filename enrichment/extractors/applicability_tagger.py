@@ -754,7 +754,8 @@ class ApplicabilityTagger:
         section_header (its verbatim clause heading). An LEP row whose clause has
         no entry returns a no_config result -- never a text-regex guess.
         """
-        if 'inner_west_local_environmental_plan' not in (document_id or '').lower():
+        # The 2022 Plan only: a later Inner West LEP must not inherit these clause scopes.
+        if 'inner_west_local_environmental_plan_2022' not in (document_id or '').lower():
             return None
         from enrichment.config.inner_west_lep_config import INNER_WEST_LEP_CLAUSES, clause_key
         return cls._from_entry(INNER_WEST_LEP_CLAUSES.get(clause_key(clause)), site_conditions=None)

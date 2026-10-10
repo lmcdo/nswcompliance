@@ -784,6 +784,14 @@ def compute_constraint_arithmetic(
     landscaping_pct = _get_dcp_value(dcp_controls, "landscaping_min", dev_type)
     deep_soil_pct = _get_dcp_value(dcp_controls, "deep_soil_min", dev_type)
 
+    # No footprint cap applies: say why when a finding records that the DCP sets
+    # none (control_type 'cap'), so a footprint without a cap is not read as an
+    # omission (cross-review of #1257).
+    if site_coverage_pct is None and landscaping_pct is None and deep_soil_pct is None:
+        for _r in _cov_rows:
+            if _r.get("control_type") == "cap":
+                gaps.append(f"{_r['statement']} Source: {_r['evidence_url']}")
+
     # Landscaping and deep soil overlap — take the larger requirement.
     # Both reduce the site area available for building.
     landscape_reduction_m2 = 0.0
