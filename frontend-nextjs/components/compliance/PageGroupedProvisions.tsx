@@ -1182,7 +1182,7 @@ export function PageGroupedProvisions({
                           </Badge>
                         )}
 
-                        {/* DQ-140: the rule names a site or map area this lot could not be confirmed to be in */}
+                        {/* DQ-140: the rule names a site or map area the portal answer does not place this lot in */}
                         {provision.land_status === 'unconfirmed' && (
                           <span
                             className="text-xs px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-300 rounded shrink-0 cursor-help"
