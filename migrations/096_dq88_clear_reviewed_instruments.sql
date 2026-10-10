@@ -42,6 +42,9 @@ UPDATE instrument_registry
    SET needs_review = FALSE,
        notes = COALESCE(notes || ' ', '') || 'Reviewed 2026-10-10 (DQ-88, migration 096): point-in-time comparison against the version our data was taken from; see the migration header for the evidence.'
  WHERE is_active AND needs_review
+   -- Only the version reviewed here: a later amendment re-flags the instrument with a newer
+   -- version_date, and that new flag must not be cleared by this review (cross-review).
+   AND version_date <= DATE '2026-10-10'
    AND instrument_key IN (
      'sepp_housing_2021', 'sepp_exempt_complying_2008', 'inner_west_lep_2022', 'parramatta_lep_2023',
      'sutherland_lep_2015', 'the_hills_lep_2019',
@@ -55,9 +58,9 @@ UPDATE instrument_registry
 DO $$
 DECLARE n integer;
 BEGIN
-    SELECT count(*) INTO n FROM instrument_registry WHERE is_active AND needs_review AND check_failures = 0;
+    SELECT count(*) INTO n FROM instrument_registry WHERE is_active AND needs_review;
     IF n <> 3 THEN
-        RAISE EXCEPTION '096: expected 3 instruments still flagged, found %', n;
+        RAISE EXCEPTION '096: expected exactly the 3 unreviewed SEPPs still flagged, found % (a listed instrument changed again or failed its check -- review it before applying)', n;
     END IF;
 END $$;
 
