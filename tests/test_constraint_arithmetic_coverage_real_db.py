@@ -35,20 +35,27 @@ def _skip_if_no_real_db():
 
 def test_a_recorded_finding_is_returned_with_its_source():
     _skip_if_no_real_db()
-    found = _fetch_dcp_coverage("liverpool", "dual_occupancy")
-    assert found is not None, "migration 105's Liverpool row is missing"
-    assert found["coverage"] == "none"
+    rows = _fetch_dcp_coverage("liverpool", "dual_occupancy")
+    assert rows, "migration 105's Liverpool row is missing"
+    found = rows[0]
+    assert found["coverage"] == "none" and found["control_type"] is None
     assert "Liverpool DCP 2008" in found["statement"]
     assert found["evidence_url"].startswith("https://www.liverpool.nsw.gov.au/")
 
 
 def test_a_partial_finding_carries_the_dcps_own_words():
     _skip_if_no_real_db()
-    found = _fetch_dcp_coverage("ryde", "dual_occupancy")
-    assert found is not None and found["coverage"] == "partial"
+    found = _fetch_dcp_coverage("ryde", "dual_occupancy")[0]
+    assert found["coverage"] == "partial"
     assert found["evidence_quote"] == "Dwelling Houses and Dual Occupancy (attached)"
 
 
 def test_no_finding_for_a_council_and_type_that_has_none():
     _skip_if_no_real_db()
     assert _fetch_dcp_coverage("liverpool", "dwelling_house") is None
+
+
+def test_a_per_control_finding_names_its_control():
+    _skip_if_no_real_db()
+    rows = _fetch_dcp_coverage("city_of_sydney", "secondary_dwelling")
+    assert {r["control_type"] for r in rows} >= {"front_setback", "side_setback", "rear_setback"}

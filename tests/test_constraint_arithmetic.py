@@ -1187,3 +1187,21 @@ class TestDcpCoverageFinding:
             dcp_controls=controls, dcp_coverage=self.COVERAGE,
         )
         assert not any("Liverpool DCP 2008" in g for g in result.gaps), result.gaps
+
+
+    def test_a_per_control_finding_is_shown_only_for_its_missing_control(self):
+        rows = [{"coverage": "none", "control_type": "rear_setback", "evidence_quote": None,
+                 "statement": "No rear setback figure is set for this type.", "evidence_url": "https://x"},
+                {"coverage": "none", "control_type": "cap", "evidence_quote": None,
+                 "statement": "No site coverage figure is set.", "evidence_url": "https://x"}]
+        result = compute_constraint_arithmetic(
+            lot_area_m2=600, dev_type="dwelling_house", lep_height_str="9", lep_fsr_str=None,
+            lot_dimensions=LotDimensions(area_m2=600, frontage_m=15, depth_m=40),
+            dcp_controls=[DCPControl(control_type=t, value_min=v, dev_type="dwelling_house")
+                          for t, v in (("front_setback", 6.0), ("side_setback", 0.9))],
+            dcp_coverage=rows,
+        )
+        assert any("No rear setback figure" in g for g in result.gaps), result.gaps
+        assert not any("No site coverage figure" in g for g in result.gaps), result.gaps
+        assert not any("Verify the applicable control" in g for g in result.gaps), result.gaps
+        assert result.buildable_footprint_m2 is None

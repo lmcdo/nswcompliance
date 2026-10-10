@@ -1,0 +1,114 @@
+{
+  "tier": "critical",
+  "justification": "Critical: fixes a live overstatement in the buildable-area arithmetic introduced by #1255, adds per-control coverage findings (migration 106) and two Bayside rules (107), and changes the DQ-142 probe.",
+  "commit_hash": "26b2c489",
+  "files": [
+    "services/constraint_arithmetic.py",
+    "tests/test_constraint_arithmetic.py",
+    "tests/test_constraint_arithmetic_coverage_real_db.py",
+    "migrations/106_dcp_coverage_per_control.sql",
+    "migrations/107_dq142_bayside_secondary_dwelling.sql",
+    "migrations/108_reenable_coverage_after_fix.sql",
+    "data/dq142_controls_bayside_2026-10-10.json",
+    "scripts/dq_probe_live.py",
+    "scripts/control_source_values_baseline.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "pre_impl": {
+    "existing_data": "DQ-142 read 14 after #1255; the last gaps were single controls a DCP does not set (footprint caps, one front setback, three City of Sydney secondary-dwelling setbacks) and Ashfield's rear setback.",
+    "assumption_mismatch": "#1255 tied the footprint to the gap text: with a coverage finding present and a setback missing, the else-branch published a footprint with the missing setback as 0. It did not fire on #1255's own data (those pairs had no setbacks at all) but would on per-control findings.",
+    "new_vs_existing": "dcp_dev_type_coverage gains a nullable control_type (NULL = whole type); the lookup returns every finding for the pair and the arithmetic shows those for missing setbacks or the whole type.",
+    "external_source_error": "Each finding was checked by two readings of the chapter; every quoted sentence was matched in the stored chapter text before the migration was written; floor-area limits were not treated as footprint caps.",
+    "frontend_type": "No frontend type change: findings arrive as gap strings the card already renders; the lookup now returns a list.",
+    "user_failure_mode": "Without the fix, a council with a recorded finding and a missing setback would show a footprint too large; five findings were switched off in production until this ships."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_constraint_arithmetic.py -q -k Coverage ; python scripts/dq_probe_live.py --id DQ-142",
+    "fails_when": "A footprint is published while any setback is missing, a finding for one control is shown for another, or a finding hides a real gap in DQ-142.",
+    "observed_red": "Observed 2026-10-10: test_a_per_control_finding_is_shown_only_for_its_missing_control failed with buildable_footprint_m2 448.8 (expected None) on the #1255 code -- the overstatement. Five production findings whose pair holds some but not all setbacks were switched off at once; after the fix the test passes (119). The first probe edit excluded a whole pair for any finding; corrected to per-control. DQ-32b flagged 'C2' (a control number) and was recorded as reviewed."
+  },
+  "functions": [
+    {
+      "name": "compute_constraint_arithmetic",
+      "file_line": "services/constraint_arithmetic.py",
+      "input": "lot and LEP inputs, the DCP controls, and the list of coverage findings for this council and housing type",
+      "output": "the arithmetic result; the footprint is set only when every setback is stated; findings for missing setbacks explain the gap",
+      "if_none": "With no findings the generic gap text is used; the footprint is withheld either way when a setback is missing."
+    },
+    {
+      "name": "_fetch_dcp_coverage",
+      "file_line": "services/constraint_arithmetic.py",
+      "input": "a former-council slug and the housing type being computed, such as fairfield and secondary_dwelling",
+      "output": "every current coverage finding for that pair, whole-type findings first, each with its control_type",
+      "if_none": "None when no finding exists or the lookup fails; the caller shows the generic gap text."
+    }
+  ],
+  "values": [
+    {
+      "value": "11 per-control coverage findings and 2 Bayside secondary-dwelling rules",
+      "source": "council DCP chapters read 2026-10-10, nearest sentence quoted where it exists",
+      "read_at": "constraint-arithmetic endpoint and the intelligence brief",
+      "if_missing": "Generic gap text; footprint withheld."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "coverage findings for one council and housing type",
+      "file_line": "services/constraint_arithmetic.py",
+      "where_clause": "council = %s AND dev_type = %s AND is_current"
+    },
+    {
+      "purpose": "DQ-142 per-control exclusion",
+      "file_line": "scripts/dq_probe_live.py",
+      "where_clause": "cv.is_current AND cv.council = n.lga AND cv.dev_type = n.dev_type AND cv.control_type = n.ctl"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A coverage finding exists and one setback is missing while the others are stated",
+      "what_happens": "The footprint is withheld; only the explanation text changes to the finding",
+      "mitigated": true,
+      "how": "footprint set only when no setback is missing",
+      "repro": "python -m pytest tests/test_constraint_arithmetic.py -q -k per_control"
+    },
+    {
+      "scenario": "A finding about the footprint cap is shown as the reason for a missing setback",
+      "what_happens": "Not shown: only findings for the missing setbacks or the whole type are listed",
+      "mitigated": true,
+      "how": "filter on control_type",
+      "repro": "python -m pytest tests/test_constraint_arithmetic.py -q -k per_control"
+    },
+    {
+      "scenario": "A finding for one control hides other genuinely missing controls of the same pair in DQ-142",
+      "what_happens": "Only the exact (council, housing type, control) recorded is excluded from the count",
+      "mitigated": true,
+      "how": "per-control NOT EXISTS in the probe",
+      "repro": "python scripts/dq_probe_live.py --id DQ-142"
+    },
+    {
+      "scenario": "The findings are switched back on before the fixed code is deployed",
+      "what_happens": "Migration 108 states it must only run after deploy; until then the five stay off and the generic text shows",
+      "mitigated": true,
+      "how": "separate migration, run by hand after deploy",
+      "repro": "python scripts/apply_migration_dry_run.py migrations/108_reenable_coverage_after_fix.sql"
+    },
+    {
+      "scenario": "A DCP control number such as 'C2' is read as a zone code and flagged",
+      "what_happens": "Recorded as reviewed in the DQ-32b exclusion list with the reason",
+      "mitigated": true,
+      "how": "explicit id exclusion with comment",
+      "repro": "python scripts/dq_probe_live.py --id DQ-32b"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "After the API deploys this fix: python scripts/apply_migration_dry_run.py migrations/108_reenable_coverage_after_fix.sql --apply ; then python scripts/dq_probe_live.py --id DQ-142 reads 1."
+  },
+  "real_layer_exempt": {
+    "migrations/106_dcp_coverage_per_control.sql": "Applied to production 2026-10-10 after a rolled-back dry run (11 findings).",
+    "migrations/107_dq142_bayside_secondary_dwelling.sql": "Applied to production 2026-10-10 after a rolled-back dry run (2 rows).",
+    "migrations/108_reenable_coverage_after_fix.sql": "Deliberately not applied: runs only after the fix is deployed."
+  }
+}
