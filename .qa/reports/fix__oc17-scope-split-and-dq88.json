@@ -1,13 +1,14 @@
 {
   "tier": "critical",
   "justification": "Critical: a production data load (migration 095, 43 DCP controls, applied), a prepared law-text refresh and flag clearance (dq88 script + migration 096, to be applied by the owner), and a changed outreach check (OC-17).",
-  "commit_hash": "1bc02a49",
+  "commit_hash": "ded45cc3",
   "files": [
     "scripts/outreach_scoped_councils.py",
     "scripts/law_change_diff.py",
     "scripts/dq88_refresh_2026_10_10.py",
     "migrations/095_dq142_controls_from_registered_pdfs.sql",
     "migrations/096_dq88_clear_reviewed_instruments.sql",
+    "migrations/097_dq142_pdf_controls_review_corrections.sql",
     "scripts/dq142_build_controls_migration.py",
     "data/dq142_controls_pdf_2026-10-10.json",
     "scripts/control_source_values_baseline.json",
@@ -24,7 +25,7 @@
   "falsifiable_check": {
     "command": "python scripts/outreach_scoped_councils.py ; python scripts/dq_probe_live.py --id DQ-142 ; python -m pytest tests/test_dq142_build_controls_migration.py -q -o addopts=",
     "fails_when": "The OC-17 split stops matching DQ-114 (LEP rows counted again), a council with undecided LEP scope is published, or 095's rows are removed (DQ-142 back to 70).",
-    "observed_red": "Observed 2026-10-10: before this change outreach_scoped_councils.py failed with 'split counts 240 keys but DQ-114 counts 0'; after it passes with inner_west unlisted for DQ-140 1108. 095: the first pass refused 7 (two second-limb rules, five unit forms the check did not read: '900 millimetres', '6.0 metres'); the check was widened and the rules re-quoted, then 43 verified. DQ-142 70 -> 29. The dq88 refresh dry run refused twice (non-breaking spaces after clause numbers; a fragment with no '2.27') before passing: retired 7, edited 5, 0 repealed passages left."
+    "observed_red": "Observed 2026-10-10: before this change outreach_scoped_councils.py failed with 'split counts 240 keys but DQ-114 counts 0'; after it passes with inner_west unlisted for DQ-140 1108. 095: the first pass refused 7 (two second-limb rules, five unit forms the check did not read: '900 millimetres', '6.0 metres'); the check was widened and the rules re-quoted, then 43 verified. DQ-142 70 -> 29; cross-review then found Canada Bay corridor 40% (second limb), Ryde attached-only rules and a Northern Beaches applicability quote missing Part B; 097 fixed all three (DQ-142 33). The dq88 refresh dry run refused twice (non-breaking spaces after clause numbers; a fragment with no '2.27') before passing: retired 7, edited 5, 0 repealed passages left."
   },
   "functions": [
     {
@@ -103,7 +104,7 @@
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Owner runs: python scripts/dq88_refresh_2026_10_10.py --apply ; python scripts/apply_migration_dry_run.py migrations/096_dq88_clear_reviewed_instruments.sql --apply ; then python scripts/dq_probe_live.py --id DQ-88 reads 3. Migration 095 is already applied (DQ-142 29)."
+    "manual_verify": "Owner runs: python scripts/dq88_refresh_2026_10_10.py --apply ; python scripts/apply_migration_dry_run.py migrations/096_dq88_clear_reviewed_instruments.sql --apply ; then python scripts/dq_probe_live.py --id DQ-88 reads 3. Migration 095 is and 097 are already applied (DQ-142 33)."
   },
   "real_layer_exempt": {
     "migrations/095_dq142_controls_from_registered_pdfs.sql": "Applied to production 2026-10-10 after a rolled-back dry run (43 rows).",
@@ -111,6 +112,7 @@
     "scripts/dq88_refresh_2026_10_10.py": "One-off data refresh, dry-run against production 2026-10-10 (retired 7, edited 5, rolled back); apply is the owner's.",
     "migrations/096_dq88_clear_reviewed_instruments.sql": "Dry-run against production refused as designed until the refresh is applied; key list checked live (27 of 27 flagged, 3 left).",
     "scripts/law_change_diff.py": "Runs on the Fly monitor only (legislation.nsw.gov.au answers that IP); run there 2026-10-10 on 24 instruments.",
+    "migrations/097_dq142_pdf_controls_review_corrections.sql": "Applied to production 2026-10-10 after a rolled-back dry run (1 to NO FIGURE, 4 retired, 2 quotes lengthened).",
     "scripts/outreach_scoped_councils.py": "Real-DB run 2026-10-10: PASS, 12 of 18 listed."
   }
 }

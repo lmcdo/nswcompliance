@@ -328,9 +328,9 @@
   "lga": "canada_bay",
   "dev_type": "secondary_dwelling",
   "control_type": "landscaping_min",
-  "value_min": 35,
-  "unit": "%",
-  "condition": "Percent of parent lot site area (40% in Biodiversity Corridor); also min 50% of front setback and 50% of rear setback landscaped.",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: 35% of the parent lot site area, or 40% in the Biodiversity Corridor; also 50% of the front and rear setbacks landscaped",
   "pdf_page": 26,
   "section_ref": "E4.6 C4, Table E-A",
   "quotes": [
@@ -548,94 +548,6 @@
   "source_chapter_key": "randwick-dcp-c1-low-density"
  },
  {
-  "lga": "ryde",
-  "dev_type": "dual_occupancy",
-  "control_type": "deep_soil_min",
-  "value_min": 35,
-  "unit": "%",
-  "condition": "Deep soil must include an 8 m x 8 m back yard area (one such area per allotment for dual occupancies) and a fully permeable front garden. Applies to dual occupancy (attached) only: section 2.3 control a) (page 11) says new dual occupancy (attached) buildings meet the controls for new dwelling houses.",
-  "pdf_page": 20,
-  "section_ref": "2.6.1 Deep Soil Areas controls a), c)",
-  "quotes": [
-   [
-    "pdf",
-    "Sites are to have a deep soil area that is at least 35% of the area of the allotment."
-   ],
-   [
-    "pdf",
-    "Allotments with dual occupancies need only have one 8 m x 8 m deep soil area for the"
-   ],
-   [
-    "pdf:11",
-    "New Dual occupancy (attached) buildings are to meet the controls for new dwelling houses set out in 2.2.1"
-   ]
-  ],
-  "source_chapter_key": "part-3-3-dwelling-houses"
- },
- {
-  "lga": "ryde",
-  "dev_type": "dual_occupancy",
-  "control_type": "front_setback",
-  "value_min": 6,
-  "unit": "m",
-  "condition": "'Generally' 6 m from the street front boundary; corner sites secondary street minimum 2 m. Applies to dual occupancy (attached) only: section 2.3 control a) (page 11) says new dual occupancy (attached) buildings meet the controls for new dwelling houses.",
-  "pdf_page": 25,
-  "section_ref": "2.9.1 Front Setbacks control a)",
-  "quotes": [
-   [
-    "pdf",
-    "Dwellings are generally to be set back 6 m from the street front boundary."
-   ],
-   [
-    "pdf:11",
-    "New Dual occupancy (attached) buildings are to meet the controls for new dwelling houses set out in 2.2.1"
-   ]
-  ],
-  "source_chapter_key": "part-3-3-dwelling-houses"
- },
- {
-  "lga": "ryde",
-  "dev_type": "dual_occupancy",
-  "control_type": "rear_setback",
-  "value_min": null,
-  "unit": null,
-  "condition": "NO FIGURE: rear of dwelling set back 25% of the length of the site or 8 m, whichever is the greater; allotments wider than long minimum 4 m. Applies to dual occupancy (attached) only: section 2.3 control a) (page 11) says new dual occupancy (attached) buildings meet the controls for new dwelling houses.",
-  "pdf_page": 28,
-  "section_ref": "2.9.3 Rear Setbacks control a)",
-  "quotes": [
-   [
-    "pdf",
-    "The rear of the dwelling is to be set back from the rear boundary a minimum distance of 25%"
-   ],
-   [
-    "pdf:11",
-    "New Dual occupancy (attached) buildings are to meet the controls for new dwelling houses set out in 2.2.1"
-   ]
-  ],
-  "source_chapter_key": "part-3-3-dwelling-houses"
- },
- {
-  "lga": "ryde",
-  "dev_type": "dual_occupancy",
-  "control_type": "side_setback",
-  "value_min": 0.9,
-  "unit": "m",
-  "condition": "One storey 0.9 m; two storey dwelling or second storey addition 1.5 m; allotments wider than long: one side setback 20% of width or 8 m whichever greater. Applies to dual occupancy (attached) only: section 2.3 control a) (page 11) says new dual occupancy (attached) buildings meet the controls for new dwelling houses.",
-  "pdf_page": 26,
-  "section_ref": "2.9.2 Side Setbacks controls a), b)",
-  "quotes": [
-   [
-    "pdf",
-    "The outside walls of a one storey dwelling are to be set back from the side boundaries not less than 900 mm"
-   ],
-   [
-    "pdf:11",
-    "New Dual occupancy (attached) buildings are to meet the controls for new dwelling houses set out in 2.2.1"
-   ]
-  ],
-  "source_chapter_key": "part-3-3-dwelling-houses"
- },
- {
   "lga": "strathfield",
   "dev_type": "dual_occupancy",
   "control_type": "front_setback",
@@ -816,7 +728,7 @@
    ],
    [
     "pdf:253",
-    "Part D Design of this DCP apply and are be considered for dual occupancy and semi-detached dwelling development"
+    "All controls such as those relating to subdivision, building setbacks, building design, landscaped open space, and amenity in Part B Built Form Controls, Part C Siting Factors, and Part D Design of this DCP apply and are be considered for dual occupancy and semi-detached dwelling development"
    ]
   ],
   "source_chapter_key": "warringah-dcp-2011-full"
@@ -837,7 +749,7 @@
    ],
    [
     "pdf:253",
-    "Part D Design of this DCP apply and are be considered for dual occupancy and semi-detached dwelling development"
+    "All controls such as those relating to subdivision, building setbacks, building design, landscaped open space, and amenity in Part B Built Form Controls, Part C Siting Factors, and Part D Design of this DCP apply and are be considered for dual occupancy and semi-detached dwelling development"
    ]
   ],
   "source_chapter_key": "warringah-dcp-2011-full"
