@@ -1,0 +1,100 @@
+{
+  "tier": "critical",
+  "justification": "Critical: production change to 1,336 served Ashfield DCP rules (923 retired, 408 restored under the council with traced chapters, 5 retired) via migrations 100 and 101, both applied.",
+  "commit_hash": "4d469d34",
+  "files": [
+    "migrations/100_dq141_ashfield_second_load.sql",
+    "migrations/101_dq141_retire_worked_examples.sql",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "pre_impl": {
+    "existing_data": "DQ-141 read 1,336: served rules from an older council-less load of Ashfield DCP 2016, matched to Ashfield properties by document name alongside the current load.",
+    "assumption_mismatch": "The tracker assumed the copy only duplicated or lagged the current load; 413 rows hold text in the current PDF that the current load is missing, so retiring them all would have dropped live rules.",
+    "new_vs_existing": "Retirement keeps rows (is_current FALSE); restoration sets source_council and source_chapter_key to a registered chapter with a council URL, the shape OC-12 traces.",
+    "external_source_error": "Each row was compared with the council's current registered chapter PDFs downloaded 2026-10-10; chapter assignment requires >= 50% of the row's 8-word runs in that PDF.",
+    "frontend_type": "No frontend change; property pages read the same provision rows, now without the duplicates.",
+    "user_failure_mode": "Without this, Ashfield properties see 894 rules twice and 29 outdated ones; with a blind retire they would lose 408 current rules."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-141 ; python scripts/dq_check.py --outreach",
+    "fails_when": "A council-less Ashfield row is still served (DQ-141 above 0), or a restored row is untraced (OC-12 fails).",
+    "observed_red": "Observed 2026-10-10: the first duplicate test (whole-row containment) called 492 rows missing from the current load; the 8-word-run test found 100 of them split differently, leaving 290 genuinely missing. DQ-141 1,336 -> 5 after 100, 5 -> 0 after 101; outreach stays 17 of 17."
+  },
+  "functions": [
+    {
+      "name": "councilToDocPattern",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts",
+      "input": "a former-council slug passed by the property page, such as ashfield",
+      "output": "a document-name pattern; every current row whose document_id matches is served, which is why both Ashfield copies were shown",
+      "if_none": "Unchanged by this PR: retired rows drop out because the query requires is_current."
+    }
+  ],
+  "values": [
+    {
+      "value": "408 Ashfield DCP rules restored with their chapter",
+      "source": "Ashfield DCP 2016 current registered chapter PDFs",
+      "read_at": "frontend-nextjs/app/api/provisions/for-property/route.ts (document-name match)",
+      "if_missing": "Retired rows are no longer served; restored rows keep their text, now traced."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "retire the second load's duplicates",
+      "file_line": "migrations/100_dq141_ashfield_second_load.sql",
+      "where_clause": "source_council IS NULL AND is_current AND id IN (listed ids)"
+    },
+    {
+      "purpose": "restore with chapter",
+      "file_line": "migrations/100_dq141_ashfield_second_load.sql",
+      "where_clause": "source_council IS NULL AND is_current AND id IN (listed ids)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A row that only this copy holds is retired by mistake and lost from the site",
+      "what_happens": "Prevented: only rows whose text is in the current load, or absent from the current PDF, are retired",
+      "mitigated": true,
+      "how": "8-word-run comparison against the current load and the current PDF",
+      "repro": "python scripts/dq_probe_live.py --id DQ-141"
+    },
+    {
+      "scenario": "A restored row is labelled with a chapter that does not contain it",
+      "what_happens": "Prevented: the chapter must hold at least half the row's 8-word runs and beat the next chapter clearly",
+      "mitigated": true,
+      "how": "per-row best-chapter score against all registered PDFs",
+      "repro": "python scripts/dq_check.py --outreach"
+    },
+    {
+      "scenario": "Restored rows become untraced in the published-document claim (OC-12)",
+      "what_happens": "Prevented: every assigned chapter is registered with a council URL; OC-12 still passes",
+      "mitigated": true,
+      "how": "registry check before apply",
+      "repro": "python scripts/dq_check.py --outreach"
+    },
+    {
+      "scenario": "Restored rows widen the undecided-scope count for Ashfield (DQ-114)",
+      "what_happens": "Prevented: all restored rows already carry config_all for both scope keys",
+      "mitigated": true,
+      "how": "scope sources checked before apply",
+      "repro": "python scripts/dq_probe_live.py --id DQ-114"
+    },
+    {
+      "scenario": "A worked example from the DCP is served on its own as if it were a rule",
+      "what_happens": "Prevented for the five found here: retired by migration 101 with their text kept",
+      "mitigated": true,
+      "how": "manual read of the residual rows",
+      "repro": "python scripts/dq_probe_live.py --id DQ-141"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Migrations 100 and 101 are already applied: python scripts/dq_probe_live.py --id DQ-141 reads 0."
+  },
+  "real_layer_exempt": {
+    "migrations/100_dq141_ashfield_second_load.sql": "Applied to production 2026-10-10 after a rolled-back dry run (923 retired, 408 restored).",
+    "migrations/101_dq141_retire_worked_examples.sql": "Applied to production 2026-10-10 after a rolled-back dry run (5 retired)."
+  }
+}
