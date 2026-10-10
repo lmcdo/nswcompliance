@@ -1,0 +1,61 @@
+{
+  "tier": "standard",
+  "justification": "Changes the query the mounted assessment page sends for its DCP rule list. A wrong query serves rules for other land, or withholds rules that apply, so it is a served-answer change; but the route logic that decides is untouched (PR #1259) and only one new parameter is added.",
+  "commit_hash": "1d83bc11",
+  "files": [
+    "frontend-nextjs/lib/dcp-provisions-query.ts",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/__tests__/lib/dcp-provisions-query.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/dcp-provisions-query.test.ts",
+    "fails_when": "The mounted component stops passing landFacts to the builder, or stops using the builder, or the builder drops or renames any parameter the page sent before. Forced: deleting the single landFacts line from ProvisionsByTocStructure.tsx turned the suite to 1 failed, 4 passed.",
+    "external_authority": "Production route measured 2026-10-11 on 8 GLADSTONE STREET LILYFIELD via /api/provisions/for-property with former_council=inner_west (the page's fallback when the portal gives no former council): without land_facts meta.land_conditions = {withheld 0, unconfirmed 286}; with the portal's own landFacts = {withheld 214, unconfirmed 42}. On the 13 sampled Inner West addresses whose former council was known, the rule list was identical with and without land_facts (25,634 rules both ways).",
+    "observed_red": "With the landFacts line deleted from ProvisionsByTocStructure.tsx the run printed 'Tests: 1 failed, 4 passed, 5 total' (the mounted-component guard). Restored: 'Tests: 5 passed, 5 total'."
+  },
+  "break_it": [
+    {
+      "scenario": "The portal returns no landFacts for a lot.",
+      "what_happens": "The builder omits land_facts; the route keeps every site-specific rule as 'unconfirmed' and the page says it could not confirm the land -- the behaviour before this change, never a silent withhold.",
+      "mitigated": true,
+      "how": "encodeLandFacts(null) returns null and the param is not set; test 'omits land_facts when the portal gave none'.",
+      "repro": "npx jest __tests__/lib/dcp-provisions-query.test.ts -t 'omits land_facts'"
+    },
+    {
+      "scenario": "The refactor silently changes a parameter the page already sent (heritage false dropped, hca renamed, land_application re-encoded).",
+      "what_happens": "Every property's DCP list would change shape with no error -- the worst kind of regression.",
+      "mitigated": true,
+      "how": "Test 'keeps every parameter the page sent before' pins groupBy, former_council, zone, heritage=false, hca, precinct_id and land_application exactly as the inline code built them; heritage keeps the !== undefined check so false is still sent.",
+      "repro": "npx jest __tests__/lib/dcp-provisions-query.test.ts -t 'keeps every parameter'"
+    },
+    {
+      "scenario": "A future change wires the param into another unmounted hook again, as #1259 did.",
+      "what_happens": "Tests pass while users see no change.",
+      "mitigated": true,
+      "how": "The guard reads the MOUNTED component's source and the assessment page's mount, not a hook; it fails if either stops holding.",
+      "repro": "grep -n buildForPropertyParams frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx"
+    }
+  ],
+  "mutation_analysis": "Forced failure, not argued: removing the landFacts line from the component made the guard fail (1 failed, 4 passed); restoring it passed 5/5. A builder that returned an empty URLSearchParams would fail all three builder tests. A builder that always sent land_facts would fail the null-facts test.",
+  "residual_risk": "The guard is a source-text regex: a rename of propertyData would fail it loudly (safe direction). The measured effect is on the inner_west fallback path only; how often real Inner West lots hit that fallback is not measured here -- 13 of 13 sampled lots had a former council. The served-answer audit (feat/served-answer-audit) measures what users see more broadly.",
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Once deployed: open /assessment for 8 Gladstone Street Lilyfield and confirm the DCP request in the network tab carries land_facts."
+  },
+  "pre_impl": {
+    "existing_data": "No table is written. The route already reads land_facts (decodeLandFacts + applyLandConditions in app/api/provisions/for-property/route.ts, PR #1259) and /api/property already returns constraints.landFacts; 292 live rows carry v2_land_condition, all source_council inner_west.",
+    "assumption_mismatch": "PR #1259 assumed the page used hooks/useFullPropertyData.ts; nothing imports it. The mounted page is app/assessment/page.tsx -> ProvisionsByTocStructure, which built its own query. Also: on the usual path (former council known) these rules never reach the list at all; only the inner_west fallback serves them.",
+    "new_vs_existing": "Reuses encodeLandFacts and encodeLandApplication unchanged; the inline query moves into one pure builder so a test can see it. No route, schema or data change."
+  },
+  "functions": [
+    {
+      "name": "buildForPropertyParams",
+      "file_line": "frontend-nextjs/lib/dcp-provisions-query.ts:24",
+      "input": "The page's former council, zone, heritage flag, conservation area name, precinct id, the portal's land application instruments and the portal's landFacts, each possibly missing.",
+      "output": "URLSearchParams for /api/provisions/for-property, identical to the previous inline query plus land_facts when the portal supplied facts.",
+      "if_none": "Missing inputs are simply not set; missing landFacts omits land_facts so the route keeps site rules as unconfirmed and says so on the page."
+    }
+  ]
+}
