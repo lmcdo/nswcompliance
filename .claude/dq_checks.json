@@ -1669,7 +1669,7 @@
     "note": "Split from DQ-114 on 2026-10-09 (user ruling: unblock the merge, then the full fix as its own PR). DQ-114 always meant council DCP rows -- its own comment says a statewide SEPP or LEP has no council config that could resolve it -- but it filtered by source_council, so migration 087 giving the Inner West LEP rows their council pulled 120 LEP keys into it and turned main red. DQ-114 now excludes LEP documents by document_type and reads 0. The LEP is stored split by subclause ('(a) each lot will be used for a dwelling house' carries no zone text of its own), so the fix is per CLAUSE: rebuild clause membership, then record each clause's stated reach with its quote. The Inner West LEP covers the three former councils (Ashfield, Leichhardt, Marrickville), whose DCPs stay separate and already carry their own source_council; that split was measured and is intact."
   },
   "DQ-141": {
-    "declared": "open",
+    "declared": "fixed",
     "check": [
       "python",
       "scripts/dq_probe_live.py",
