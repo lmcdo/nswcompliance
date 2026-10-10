@@ -56,3 +56,9 @@ def test_every_declared_scope_carries_its_quote():
             if field in e or field in e.get("scope_declined", []):
                 assert e["scope_evidence"].get(field), f"{key} {field} has no quote"
         assert not (set(e.get("scope_declined", [])) & {f for f in ("applicable_zones", "applicable_dev_types") if f in e}), key
+
+
+def test_a_later_inner_west_lep_does_not_inherit_the_2022_scopes(tagger):
+    later = "Inner_West_Local_Environmental_Plan_2025__NSW_Legislation"
+    _, _, prov = tagger.tag_with_provenance("text", later, clause="6.11 Something")
+    assert prov["zone_source"] != "config_specific"
