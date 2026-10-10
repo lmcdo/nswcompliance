@@ -1,14 +1,15 @@
 {
   "tier": "critical",
   "justification": "Critical: new rule-data table (migration 105, applied) read by the buildable-area arithmetic on two serving paths; changes the gap text users see and the DQ-142 count.",
-  "commit_hash": "254fc743",
+  "commit_hash": "10cc9ab4",
   "files": [
     "migrations/105_dcp_dev_type_coverage.sql",
     "services/constraint_arithmetic.py",
     "services/intelligence_brief.py",
     "scripts/dq_probe_live.py",
     "tests/test_constraint_arithmetic.py",
-    ".claude/DATA_QUALITY_TRACKER.md"
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "tests/test_constraint_arithmetic_coverage_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "Where a council's DCP sets no controls for a housing type (Liverpool dual occupancy, Ryde detached dual occupancy, Hornsby secondary dwellings) the card showed only 'No current ... setback value is recorded ... Verify the applicable control against the council's DCP', and DQ-142 counted each as an unknown gap.",
@@ -103,6 +104,7 @@
     "manual_verify": "Migration 105 is applied. A Liverpool dual-occupancy address shows the Liverpool finding in the building-area card's data gaps."
   },
   "real_layer_exempt": {
-    "migrations/105_dcp_dev_type_coverage.sql": "Applied to production 2026-10-10 after a rolled-back dry run (3 rows, grants revoked)."
+    "migrations/105_dcp_dev_type_coverage.sql": "Applied to production 2026-10-10 after a rolled-back dry run (3 rows, grants revoked).",
+    "services/intelligence_brief.py": "The change only passes _fetch_dcp_coverage's result into compute_constraint_arithmetic; the database call itself is in services/constraint_arithmetic.py and is covered by tests/test_constraint_arithmetic_coverage_real_db.py (3 passed against production 2026-10-10)."
   }
 }
