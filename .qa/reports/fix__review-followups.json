@@ -1,0 +1,119 @@
+{
+  "tier": "critical",
+  "justification": "Critical: corrects 15 served or stored SEPP rows in production to the law in force, changes which coverage findings the building-area card shows, and narrows the Inner West LEP clause-scope match.",
+  "commit_hash": "97fbb6e0",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "data/db_rollback_backups/regulatory_provisions_pre_dq88_review_fixes_2026-10-10.csv",
+    "data/db_rollback_backups/regulatory_provisions_pre_page_repair_2026-10-10_1706.csv",
+    "data/db_rollback_backups/regulatory_provisions_pre_page_repair_2026-10-10_1709.csv",
+    "data/dq88_review_fixes_2026-10-10.json",
+    "enrichment/extractors/applicability_tagger.py",
+    "scripts/dq88_review_fixes_2026_10_10.py",
+    "services/constraint_arithmetic.py",
+    "tests/test_constraint_arithmetic.py",
+    "tests/test_inner_west_lep_scope.py"
+  ],
+  "pre_impl": {
+    "existing_data": "After the 2026-10-10 DQ-88 refresh, a second review (Sol on #1250 plus a figure-by-figure check of 491 served SEPP figures against the in-force text) found 15 rows wrong: stale Sch 7 standards, repealed sections still current, scan errors, a dropped limb, a wrong substituted definition, and three mid-word spans.",
+    "assumption_mismatch": "The refresh compared rows only with the law's changes since the 2025 PDFs, so text already stale in those PDFs was never examined; similarity matching could also pair a row with the wrong clause, as with 42131.",
+    "new_vs_existing": "Five targets already had v1/v2 history and provision_versions is unique on (provision_id, version_number), so a next-version writer adds v3; rows without history reuse the existing version writer.",
+    "external_source_error": "Every new text is copied from the legislation.nsw.gov.au in-force dump; one review finding (35305) was checked against that text and found wrong, so the row was left unchanged.",
+    "frontend_type": "No frontend type change: corrected text arrives in the same provision_text field, and cap findings arrive as the gap strings the card already renders.",
+    "user_failure_mode": "Without this, users were served a 15 m height limit the law now sets at 22m, 90mm where the law says 900mm, and a repealed electricity excavation clause as current law."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq88_review_fixes_2026_10_10.py ; python -m pytest tests/test_constraint_arithmetic.py tests/test_inner_west_lep_scope.py -q",
+    "fails_when": "A planned row no longer holds the text the plan was built from, which makes the script refuse; or a cap finding is not shown when no cap applies; or a later Inner West LEP inherits the 2022 clause scopes.",
+    "observed_red": "Observed 2026-10-10: before the fixes the figure check listed rows 45825 (15m), 46345 and 46346 (90mm) and 43685 among unmatched served figures; after the apply none of the 15 appear. Re-running the script now refuses at the first row because its stored text changed -- the stale-text guard fires as designed."
+  },
+  "functions": [
+    {
+      "name": "next_version",
+      "file_line": "scripts/dq88_review_fixes_2026_10_10.py",
+      "input": "a cursor, the provision id, the new text or None to retire, the in-force source URL, the reason and a timestamp",
+      "output": "closes the latest version, adds the next version, logs the change, and updates the provision row text or is_current",
+      "if_none": "text_after None retires the row (is_current FALSE) and keeps its last text as the new version's body."
+    },
+    {
+      "name": "run",
+      "file_line": "scripts/dq88_review_fixes_2026_10_10.py",
+      "input": "a database connection and whether to commit, reading the plan file data/dq88_review_fixes_2026-10-10.json",
+      "output": "applies each planned row once and prints counts of retired and replaced rows, committing only with --apply",
+      "if_none": "Exits refusing if any row is missing, no longer current, or its stored text differs from the plan's old_text."
+    },
+    {
+      "name": "compute_constraint_arithmetic",
+      "file_line": "services/constraint_arithmetic.py",
+      "input": "lot and LEP inputs, the DCP controls, and the coverage findings for this council and housing type",
+      "output": "the arithmetic result; a cap finding now explains the missing cap when no site coverage, landscaping or deep soil figure applies",
+      "if_none": "With no findings the generic gap text is used, unchanged."
+    }
+  ],
+  "values": [
+    {
+      "value": "15 SEPP provision rows (8 replaced, 7 retired)",
+      "source": "legislation.nsw.gov.au in-force text of the Biodiversity, Planning Systems and Transport SEPPs, read 2026-10-10",
+      "read_at": "regulatory_provisions served to property reports",
+      "if_missing": "Script refuses; nothing is written."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "stale-text guard before each write",
+      "file_line": "scripts/dq88_review_fixes_2026_10_10.py",
+      "where_clause": "WHERE id = %s"
+    },
+    {
+      "purpose": "latest version for the next-version writer",
+      "file_line": "scripts/dq88_review_fixes_2026_10_10.py",
+      "where_clause": "WHERE provision_id = %s AND version_number = %s"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A planned row was edited by someone else between the plan and the apply, so the stale-text guard must catch it",
+      "what_happens": "The script refuses and writes nothing for the batch, because the transaction is rolled back on exit",
+      "mitigated": true,
+      "how": "exact old_text equality check (WHERE id = %s)",
+      "repro": "python scripts/dq88_review_fixes_2026_10_10.py"
+    },
+    {
+      "scenario": "A row already has v1 and v2 history from the first refresh",
+      "what_happens": "The next-version writer adds v3 instead of colliding with the unique (provision_id, version_number) key",
+      "mitigated": true,
+      "how": "max(version_number)+1 (WHERE provision_id = %s AND version_number = %s)",
+      "repro": "python scripts/dq88_review_fixes_2026_10_10.py"
+    },
+    {
+      "scenario": "A review finding is itself wrong and would replace correct law",
+      "what_happens": "Each finding was checked against the in-force text first; 35305 was wrong and was left unchanged",
+      "mitigated": true,
+      "how": "manual check against the law dump before the plan",
+      "repro": "python scripts/dq88_review_fixes_2026_10_10.py"
+    },
+    {
+      "scenario": "A cap finding hides behind setback findings and is never shown",
+      "what_happens": "Shown when no site coverage, landscaping or deep soil figure applies",
+      "mitigated": true,
+      "how": "control_type cap branch",
+      "repro": "python -m pytest tests/test_constraint_arithmetic.py -q -k cap"
+    },
+    {
+      "scenario": "A future Inner West LEP document inherits the 2022 clause scopes",
+      "what_happens": "Only document ids naming the 2022 plan match",
+      "mitigated": true,
+      "how": "match requires inner_west_local_environmental_plan_2022",
+      "repro": "python -m pytest tests/test_inner_west_lep_scope.py -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Already applied to production 2026-10-10 after a rolled-back dry run; nothing further to run. Backup: data/db_rollback_backups/regulatory_provisions_pre_dq88_review_fixes_2026-10-10.csv."
+  },
+  "real_layer_exempt": {
+    "scripts/dq88_review_fixes_2026_10_10.py": "One-off production correction applied 2026-10-10 after a rolled-back dry run (15 rows: 8 replaced, 7 retired); re-running refuses by design."
+  }
+}
