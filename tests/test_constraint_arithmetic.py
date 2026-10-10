@@ -1151,3 +1151,39 @@ class TestBattleaxeDimensions:
         assert "estimated" in note
         assert "assumed rectangular" in note
         assert "computed on" not in note  # the old overclaiming wording
+
+
+class TestDcpCoverageFinding:
+    """A recorded finding that the council's DCP does not cover the housing type
+    replaces the generic 'verify against the DCP' gap (migration 105)."""
+
+    COVERAGE = {"coverage": "none", "evidence_quote": None,
+                "statement": "No Part of Liverpool DCP 2008 reviewed on 10 October 2026 sets dual occupancy controls.",
+                "evidence_url": "https://www.liverpool.nsw.gov.au/development/x"}
+
+    def test_finding_is_shown_and_the_footprint_still_withheld(self):
+        result = compute_constraint_arithmetic(
+            lot_area_m2=600, dev_type="dual_occupancy", lep_height_str="9", lep_fsr_str=None,
+            dcp_controls=[], dcp_coverage=self.COVERAGE,
+        )
+        assert any("Liverpool DCP 2008" in g and "Source:" in g for g in result.gaps), result.gaps
+        assert not any("Verify the applicable control" in g for g in result.gaps), result.gaps
+        assert result.buildable_footprint_m2 is None
+
+    def test_without_a_finding_the_generic_gap_text_is_unchanged(self):
+        result = compute_constraint_arithmetic(
+            lot_area_m2=573.81, dev_type="dwelling_house", lep_height_str="9", lep_fsr_str=None,
+            lot_dimensions=LotDimensions(area_m2=573.81, frontage_m=18.79, depth_m=30.9),
+            dcp_controls=[DCPControl(control_type="front_setback", value_min=6.0, dev_type="dwelling_house")],
+        )
+        assert any("Verify the applicable control" in g for g in result.gaps), result.gaps
+
+    def test_finding_is_not_shown_when_every_setback_is_stated(self):
+        controls = [DCPControl(control_type=t, value_min=v, dev_type="dual_occupancy")
+                    for t, v in (("front_setback", 6.0), ("side_setback", 0.9), ("rear_setback", 6.0))]
+        result = compute_constraint_arithmetic(
+            lot_area_m2=600, dev_type="dual_occupancy", lep_height_str="9", lep_fsr_str=None,
+            lot_dimensions=LotDimensions(area_m2=600, frontage_m=15, depth_m=40),
+            dcp_controls=controls, dcp_coverage=self.COVERAGE,
+        )
+        assert not any("Liverpool DCP 2008" in g for g in result.gaps), result.gaps

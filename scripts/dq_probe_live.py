@@ -2556,7 +2556,10 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "WITH types AS ("
         "  SELECT DISTINCT lga, dev_type FROM dcp_setback_controls"
         "   WHERE is_current AND NOT needs_review AND lga <> 'nsw_statewide'"
-        "     AND dev_type IN ('dwelling_house', 'secondary_dwelling', 'dual_occupancy')),"
+        "     AND dev_type IN ('dwelling_house', 'secondary_dwelling', 'dual_occupancy')"
+        # A recorded finding that the council's DCP does not (or only partly)
+        # cover the housing type is a decision, not a gap (migration 105).
+        "     AND (lga, dev_type) NOT IN (SELECT council, dev_type FROM dcp_dev_type_coverage WHERE is_current)),"
         " needed AS ("
         "  SELECT t.lga, t.dev_type, c.ctl FROM types t"
         "  CROSS JOIN (VALUES ('front_setback'), ('side_setback'), ('rear_setback'), ('cap')) c(ctl)),"

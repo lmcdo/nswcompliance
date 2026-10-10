@@ -1,0 +1,110 @@
+{
+  "tier": "critical",
+  "justification": "Critical: new rule-data table (migration 105, applied) read by the buildable-area arithmetic on two serving paths; changes the gap text users see and the DQ-142 count.",
+  "commit_hash": "99baf02e",
+  "files": [
+    "migrations/105_dcp_dev_type_coverage.sql",
+    "services/constraint_arithmetic.py",
+    "services/intelligence_brief.py",
+    "scripts/dq_probe_live.py",
+    "tests/test_constraint_arithmetic.py",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "tests/test_constraint_arithmetic_coverage_real_db.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Where a council's DCP sets no controls for a housing type (Liverpool dual occupancy, Ryde detached dual occupancy, Hornsby secondary dwellings) the card showed only 'No current ... setback value is recorded ... Verify the applicable control against the council's DCP', and DQ-142 counted each as an unknown gap.",
+    "assumption_mismatch": "The generic wording is deliberately cautious because the code could not tell 'we have not extracted it' from 'the DCP does not set it'; nothing recorded the second case.",
+    "new_vs_existing": "Prior-art sweep (frontend, services, scripts, migrations, plans) found no per-housing-type coverage record; /api/dcp/coverage lists councils with any controls only. New table, read by one helper; the pure arithmetic takes the finding as an input.",
+    "external_source_error": "Each row is a dated reading finding naming the Parts reviewed and linking the council's DCP; Ryde's row quotes its Part's own title. Absence cannot be quoted, so the statement says what was reviewed rather than claiming more.",
+    "frontend_type": "No frontend change: ConstraintArithmeticCard already renders gaps strings; the finding arrives as one gap string.",
+    "user_failure_mode": "Without it a user sees 'verify against the DCP' for a type the DCP does not cover at all; a wrong finding would tell them a control does not exist, so each is dated and sourced and the footprint stays withheld either way."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_constraint_arithmetic.py -q -k Coverage ; python scripts/dq_probe_live.py --id DQ-142 ; python scripts/dq_probe_live.py --id DQ-138",
+    "fails_when": "A coverage finding is shown alongside (or instead of) stated setbacks, the generic text disappears where no finding exists, the table becomes writable by the public key, or the rows are removed (DQ-142 back to 26).",
+    "observed_red": "Observed 2026-10-10: Liverpool and Hornsby pages refused automated fetches and the Hornsby page names no SEPP, so their rows carry no quote and state only what was reviewed and when. DQ-142 26 -> 14 once recorded findings count as decided; DQ-138 stays 0 (grants revoked, RLS on, asserted in the migration)."
+  },
+  "functions": [
+    {
+      "name": "_fetch_dcp_coverage",
+      "file_line": "services/constraint_arithmetic.py",
+      "input": "a former-council slug and the housing type the card is computing for, such as liverpool and dual_occupancy",
+      "output": "the recorded coverage finding (coverage, statement, evidence quote and URL) for that council and type, or None",
+      "if_none": "None on no row or any lookup failure; the caller then shows the generic gap text, which stays true."
+    },
+    {
+      "name": "compute_constraint_arithmetic",
+      "file_line": "services/constraint_arithmetic.py",
+      "input": "lot and LEP inputs, the DCP controls, and the optional coverage finding for this housing type",
+      "output": "the arithmetic result whose gaps carry the finding's statement and source when setbacks are missing",
+      "if_none": "With no finding the existing generic gap text is used; the footprint is withheld in both cases."
+    }
+  ],
+  "values": [
+    {
+      "value": "3 coverage findings (Liverpool dual occupancy none, Ryde dual occupancy partial, Hornsby secondary dwelling none)",
+      "source": "reading of each council's DCP on 2026-10-10, linked per row; Ryde quotes its Part title",
+      "read_at": "constraint-arithmetic endpoint and the intelligence brief",
+      "if_missing": "Generic gap text; no figure is invented."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "coverage finding for one council and housing type",
+      "file_line": "services/constraint_arithmetic.py",
+      "where_clause": "council = %s AND dev_type = %s AND is_current"
+    },
+    {
+      "purpose": "DQ-142 excludes recorded findings",
+      "file_line": "scripts/dq_probe_live.py",
+      "where_clause": "(lga, dev_type) NOT IN (SELECT council, dev_type FROM dcp_dev_type_coverage WHERE is_current)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council's DCP does set the control but a coverage finding says it does not",
+      "what_happens": "The finding is shown only when setbacks are missing; once a control row exists the finding is not shown",
+      "mitigated": true,
+      "how": "finding appended only inside the missing-setback branch",
+      "repro": "python -m pytest tests/test_constraint_arithmetic.py -q -k every_setback"
+    },
+    {
+      "scenario": "The coverage table cannot be reached at request time",
+      "what_happens": "The lookup returns None and the generic gap text is shown, so nothing false is said",
+      "mitigated": true,
+      "how": "exception path returns None with a logged warning",
+      "repro": "python -m pytest tests/test_constraint_arithmetic.py -q -k generic"
+    },
+    {
+      "scenario": "The public browser key could write a false coverage finding into the new table",
+      "what_happens": "Prevented: grants revoked and row-level security enabled, asserted inside the migration",
+      "mitigated": true,
+      "how": "REVOKE ALL + ENABLE ROW LEVEL SECURITY + DO-block check",
+      "repro": "python scripts/dq_probe_live.py --id DQ-138"
+    },
+    {
+      "scenario": "A recorded finding makes the buildable footprint appear as if computed",
+      "what_happens": "The footprint stays withheld; the finding only changes the explanation text",
+      "mitigated": true,
+      "how": "buildable_footprint_m2 untouched by the finding",
+      "repro": "python -m pytest tests/test_constraint_arithmetic.py -q -k withheld"
+    },
+    {
+      "scenario": "DQ-142 silently drops real gaps for a council that has a finding for another housing type",
+      "what_happens": "Only the exact (council, housing type) pair recorded is excluded from the count",
+      "mitigated": true,
+      "how": "tuple NOT IN on (lga, dev_type)",
+      "repro": "python scripts/dq_probe_live.py --id DQ-142"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Migration 105 is applied. A Liverpool dual-occupancy address shows the Liverpool finding in the building-area card's data gaps."
+  },
+  "real_layer_exempt": {
+    "migrations/105_dcp_dev_type_coverage.sql": "Applied to production 2026-10-10 after a rolled-back dry run (3 rows, grants revoked).",
+    "services/intelligence_brief.py": "The change only passes _fetch_dcp_coverage's result into compute_constraint_arithmetic; the database call itself is in services/constraint_arithmetic.py and is covered by tests/test_constraint_arithmetic_coverage_real_db.py (3 passed against production 2026-10-10)."
+  }
+}
