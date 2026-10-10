@@ -2564,7 +2564,7 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "    FROM dcp_setback_controls"
         "   WHERE is_current AND NOT needs_review"
         "     AND (COALESCE(value_min, value_max) IS NOT NULL"
-        "          OR (condition LIKE 'NO FIGURE:%%' AND source_text IS NOT NULL)))"
+        "          OR (condition LIKE 'NO FIGURE:%%' AND length(trim(source_text)) >= 20)))"
         " SELECT count(*) FROM needed n"
         "  WHERE NOT EXISTS (SELECT 1 FROM have h"
         "                     WHERE h.lga = n.lga AND h.dev_type = n.dev_type AND h.ctl = n.ctl)",
