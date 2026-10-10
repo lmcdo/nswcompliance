@@ -189,6 +189,9 @@ export interface Provision {
   // Dev type relevance scoring
   relevance_level?: 'primary' | 'general' | 'secondary';
   relevance_reason?: string;
+  /** DQ-140: 'unconfirmed' = a site-specific LEP rule whose land the portal could not confirm for this lot. */
+  land_status?: 'match' | 'unconfirmed';
+  land_note?: string;
   v2_applicable_dev_types?: string[];
   source_chapter_key?: string;
   // Clause reference parsed from ref_number (e.g. "2.6 C3", "C2.2.1.1")
@@ -1177,6 +1180,16 @@ export function PageGroupedProvisions({
                           >
                             {provision.v2_marker}
                           </Badge>
+                        )}
+
+                        {/* DQ-140: the rule names a site or map area the portal answer does not place this lot in */}
+                        {provision.land_status === 'unconfirmed' && (
+                          <span
+                            className="text-xs px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-300 rounded shrink-0 cursor-help"
+                            title={provision.land_note}
+                          >
+                            Could not confirm this land
+                          </span>
                         )}
 
                         {/* Clause Label - DCP clause reference (e.g. "2.6 C3", "C2.2.1.1") */}

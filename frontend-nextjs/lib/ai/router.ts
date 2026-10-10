@@ -7,6 +7,7 @@
 
 import { ClassificationResult, PropertyContext, QuestionCategory } from './classifier';
 import { encodeLandApplication } from '@/lib/dcp-land-application';
+import { encodeLandFacts } from '@/lib/lep-land-condition';
 
 // Base URL for API calls (server-side)
 // Must resolve correctly in both local dev and Vercel production
@@ -543,6 +544,9 @@ async function handleDcpProvisionLookup(
     // DQ-120: without it the route withholds a DCP that is gated by land.
     const landApplicationParam = encodeLandApplication(context.landApplicationInstruments);
     if (landApplicationParam) params.set('land_application', landApplicationParam);
+    // DQ-140: serves a site-specific LEP rule only on the land it names.
+    const landFactsParam = encodeLandFacts(context.landFacts);
+    if (landFactsParam) params.set('land_facts', landFactsParam);
 
     const response = await fetch(`${API_BASE}/api/provisions/for-property?${params.toString()}`);
     const data = await response.json();

@@ -24,6 +24,7 @@ import { FullAssessmentSchema, validateRequest, formatValidationErrors } from '@
 import { searchRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
 import { captureServerException } from '@/lib/posthog-server';
 import { encodeLandApplication } from '@/lib/dcp-land-application';
+import { encodeLandFacts } from '@/lib/lep-land-condition';
 
 interface AssessmentRequest {
   address: string;
@@ -150,6 +151,9 @@ export async function POST(request: NextRequest) {
     // DQ-120: lets the route withhold a DCP that does not cover this land.
     const landApplicationParam = encodeLandApplication(property.constraints?.landApplicationInstruments);
     if (landApplicationParam) dcpParams.set('land_application', landApplicationParam);
+    // DQ-140: serves a site-specific LEP rule only on the land it names.
+    const landFactsParam = encodeLandFacts(property.constraints?.landFacts);
+    if (landFactsParam) dcpParams.set('land_facts', landFactsParam);
 
     const seppBody = {
       zoneCode: zone,

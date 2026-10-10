@@ -1,0 +1,5601 @@
+{
+"_note": "Measured 2026-10-11. rows = every served Inner West LEP 2022 row (is_current AND v2_is_actionable) with the condition enrichment/config/inner_west_lep_land.py gives it; lots = live layerintersect answers. Regenerate rather than hand-edit.",
+"rows": [
+{
+"id": 7648,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"32"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 32: land identified as \"32\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 7649,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"32"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 32: land identified as \"32\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 7652,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"33"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 33: land identified as \"33\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 7655,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"37"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 37: land identified as \"37\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 7656,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"38"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 38: land identified as \"38\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 7672,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 7673,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 7674,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 7675,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 7676,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 7677,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 7678,
+"clause": "Schedule 3",
+"v2_land_condition": null
+},
+{
+"id": 7687,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"51"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 51: land identified as \"51\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 7691,
+"clause": "Schedule 3",
+"v2_land_condition": null
+},
+{
+"id": 7701,
+"clause": "Schedule 3",
+"v2_land_condition": null
+},
+{
+"id": 7703,
+"clause": "Schedule 3",
+"v2_land_condition": null
+},
+{
+"id": 8013,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8015,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8053,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8069,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8072,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8091,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8093,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8098,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8104,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8111,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8142,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8444,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8445,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8447,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8448,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8449,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8454,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8455,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8456,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8457,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8470,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8472,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8475,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8493,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8501,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8536,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8538,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8539,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 8540,
+"clause": "5.21",
+"v2_land_condition": {
+"layer": null,
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "development on land the consent authority considers to be within the flood planning area -- the flood planning area is decided by the consent authority, not a map layer"
+}
+},
+{
+"id": 8541,
+"clause": "5.22",
+"v2_land_condition": {
+"layer": null,
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "land between the flood planning area and the probable maximum flood -- the flood planning area is decided by the consent authority, not a map layer"
+}
+},
+{
+"id": 8543,
+"clause": "5.22",
+"v2_land_condition": {
+"layer": null,
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "land between the flood planning area and the probable maximum flood -- the flood planning area is decided by the consent authority, not a map layer"
+}
+},
+{
+"id": 8544,
+"clause": "6.1",
+"v2_land_condition": {
+"layer": "Acid Sulfate Soils Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "on land shown on the Acid Sulfate Soils Map as being of the class specified"
+}
+},
+{
+"id": 8545,
+"clause": "6.2",
+"v2_land_condition": null
+},
+{
+"id": 8546,
+"clause": "6.3",
+"v2_land_condition": null
+},
+{
+"id": 8547,
+"clause": "6.4",
+"v2_land_condition": {
+"layer": "Terrestrial Biodiversity Map",
+"labels": [
+"Biodiversity"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Biodiversity” on the Natural Resource—Biodiversity Map."
+}
+},
+{
+"id": 8549,
+"clause": "6.6",
+"v2_land_condition": {
+"layer": "Foreshore Building Line Map",
+"labels": [
+"Foreshore Area"
+],
+"zones": null,
+"verified": false,
+"source": "development in the foreshore area (cl 6.6); land identified as 'Foreshore Area' on the Foreshore Building Line Map (cl 6.5)"
+}
+},
+{
+"id": 8552,
+"clause": "6.7",
+"v2_land_condition": null
+},
+{
+"id": 8553,
+"clause": "6.8",
+"v2_land_condition": {
+"layer": null,
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "in an ANEF contour of 20 or greater -- ANEF contours are not in the layerintersect answer"
+}
+},
+{
+"id": 8554,
+"clause": "6.9",
+"v2_land_condition": null
+},
+{
+"id": 8555,
+"clause": "6.10",
+"v2_land_condition": null
+},
+{
+"id": 8556,
+"clause": "6.11",
+"v2_land_condition": null
+},
+{
+"id": 8560,
+"clause": "6.10",
+"v2_land_condition": null
+},
+{
+"id": 8581,
+"clause": "6.21",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 19"
+],
+"zones": [
+"E3",
+"E4"
+],
+"verified": true,
+"source": "This clause applies to land in Zone E3 Productivity Support and Zone E4 General Industrial and identified as “Area 19” on the Key Sites Map."
+}
+},
+{
+"id": 8588,
+"clause": "4.4A",
+"v2_land_condition": {
+"layer": "Floor Space Ratio Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Floor Space Ratio Map."
+}
+},
+{
+"id": 8589,
+"clause": "4.4A",
+"v2_land_condition": {
+"layer": "Floor Space Ratio Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Floor Space Ratio Map."
+}
+},
+{
+"id": 8590,
+"clause": "6.24",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 2"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land at Lot 11, DP 499846, 1–5 Chester Street, Annandale, identified as “Area 2” on the Key Sites Map."
+}
+},
+{
+"id": 8593,
+"clause": "6.33",
+"v2_land_condition": {
+"layer": "Land Application Map",
+"labels": [
+"Stage 1 Bays West Precinct"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to development on land identified as “Stage 1 Bays West Precinct” on the Land Application Map"
+}
+},
+{
+"id": 8594,
+"clause": "6.33",
+"v2_land_condition": {
+"layer": "Land Application Map",
+"labels": [
+"Stage 1 Bays West Precinct"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to development on land identified as “Stage 1 Bays West Precinct” on the Land Application Map"
+}
+},
+{
+"id": 8595,
+"clause": "6.33",
+"v2_land_condition": {
+"layer": "Land Application Map",
+"labels": [
+"Stage 1 Bays West Precinct"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to development on land identified as “Stage 1 Bays West Precinct” on the Land Application Map"
+}
+},
+{
+"id": 8597,
+"clause": "6.5",
+"v2_land_condition": {
+"layer": "Foreshore Building Line Map",
+"labels": [
+"Foreshore Area"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to land identified as “Foreshore Area” on the Foreshore Building Line Map."
+}
+},
+{
+"id": 8598,
+"clause": "6.15",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Key Sites Map if"
+}
+},
+{
+"id": 8599,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 8600,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 8601,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 8602,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 8604,
+"clause": "7.4",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 8605,
+"clause": "7.4",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 8606,
+"clause": "7.4",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 8607,
+"clause": "7.4",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 8609,
+"clause": "7.5",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 8610,
+"clause": "7.5",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 8623,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"1"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 1: land identified as \"1\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 8624,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"2"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 2: land identified as \"2\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 8625,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"3"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 3: land identified as \"3\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 8626,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"4"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 4: land identified as \"4\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 8627,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"5"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 5: land identified as \"5\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 8628,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"6"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 6: land identified as \"6\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 8629,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"7"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 7: land identified as \"7\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 8630,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"8"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 8: land identified as \"8\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 8631,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"9"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 9: land identified as \"9\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 8632,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"10"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 10: land identified as \"10\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 8635,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"14"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 14: land identified as \"14\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 8636,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"15"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 15: land identified as \"15\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 8639,
+"clause": "5.21",
+"v2_land_condition": {
+"layer": null,
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "development on land the consent authority considers to be within the flood planning area -- the flood planning area is decided by the consent authority, not a map layer"
+}
+},
+{
+"id": 8641,
+"clause": "6.1",
+"v2_land_condition": {
+"layer": "Acid Sulfate Soils Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "on land shown on the Acid Sulfate Soils Map as being of the class specified"
+}
+},
+{
+"id": 8642,
+"clause": "6.2",
+"v2_land_condition": null
+},
+{
+"id": 8643,
+"clause": "6.3",
+"v2_land_condition": null
+},
+{
+"id": 8644,
+"clause": "6.4",
+"v2_land_condition": {
+"layer": "Terrestrial Biodiversity Map",
+"labels": [
+"Biodiversity"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Biodiversity” on the Natural Resource—Biodiversity Map."
+}
+},
+{
+"id": 8646,
+"clause": "6.5",
+"v2_land_condition": {
+"layer": "Foreshore Building Line Map",
+"labels": [
+"Foreshore Area"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to land identified as “Foreshore Area” on the Foreshore Building Line Map."
+}
+},
+{
+"id": 8647,
+"clause": "6.7",
+"v2_land_condition": null
+},
+{
+"id": 8650,
+"clause": "6.6",
+"v2_land_condition": {
+"layer": "Foreshore Building Line Map",
+"labels": [
+"Foreshore Area"
+],
+"zones": null,
+"verified": false,
+"source": "development in the foreshore area (cl 6.6); land identified as 'Foreshore Area' on the Foreshore Building Line Map (cl 6.5)"
+}
+},
+{
+"id": 8651,
+"clause": "6.9",
+"v2_land_condition": null
+},
+{
+"id": 8652,
+"clause": "6.10",
+"v2_land_condition": null
+},
+{
+"id": 8653,
+"clause": "6.11",
+"v2_land_condition": null
+},
+{
+"id": 8658,
+"clause": "2.8",
+"v2_land_condition": null
+},
+{
+"id": 8659,
+"clause": "6.16",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "Lot 1, DP 632522, 141 Allen Street, Leichhardt, identified as “Area 3” on the Key Sites Map,"
+}
+},
+{
+"id": 8660,
+"clause": "6.17",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 5"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to the following land at 168 Norton Street, Leichhardt, identified as “Area 5” on the Key Sites Map"
+}
+},
+{
+"id": 8662,
+"clause": "6.21",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 19"
+],
+"zones": [
+"E3",
+"E4"
+],
+"verified": true,
+"source": "This clause applies to land in Zone E3 Productivity Support and Zone E4 General Industrial and identified as “Area 19” on the Key Sites Map."
+}
+},
+{
+"id": 8663,
+"clause": "6.22",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 20"
+],
+"zones": [
+"E3"
+],
+"verified": true,
+"source": "This clause applies to land in Zone E3 Productivity Support and identified as “Area 20” on the Key Sites Map."
+}
+},
+{
+"id": 8664,
+"clause": "6.23",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 10",
+"Area 11",
+"Area 12",
+"Area 8",
+"Area 9"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 8”, “Area 9”, “Area 10”, “Area 11” and “Area 12” on the Key Sites Map."
+}
+},
+{
+"id": 8665,
+"clause": "6.24",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 2"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land at Lot 11, DP 499846, 1–5 Chester Street, Annandale, identified as “Area 2” on the Key Sites Map."
+}
+},
+{
+"id": 8667,
+"clause": "6.25",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 15"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 2, DP 1015843, 469–483 Balmain Road, Lilyfield, identified as “Area 15” on the Key Sites Map."
+}
+},
+{
+"id": 8669,
+"clause": "6.26",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"46"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 1, DP 1208130 and Lot 10, DP 1004198, 287–309 Trafalgar Street, Petersham, identified as “46” on the Additional Permitted Use Map.",
+"label_not_unique": "APU '46' is also Schedule 1 item 46's label; the clause's land is Lot 1 DP 1208130 and Lot 10 DP 1004198 (287-309 Trafalgar St, Petersham), which the portal answer does not name"
+}
+},
+{
+"id": 8673,
+"clause": "6.34",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area L"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area L” on the Key Sites Map."
+}
+},
+{
+"id": 8674,
+"clause": "8.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area M"
+],
+"zones": null,
+"verified": true,
+"source": "This part applies to the following land in Camperdown, identified as “Area M” on the Key Sites Map"
+}
+},
+{
+"id": 8681,
+"clause": "6.2",
+"v2_land_condition": null
+},
+{
+"id": 8691,
+"clause": "6.13",
+"v2_land_condition": null
+},
+{
+"id": 8692,
+"clause": "6.16",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "Lot 1, DP 632522, 141 Allen Street, Leichhardt, identified as “Area 3” on the Key Sites Map,"
+}
+},
+{
+"id": 8723,
+"clause": "6.7",
+"v2_land_condition": null
+},
+{
+"id": 8728,
+"clause": "6.33",
+"v2_land_condition": {
+"layer": "Land Application Map",
+"labels": [
+"Stage 1 Bays West Precinct"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to development on land identified as “Stage 1 Bays West Precinct” on the Land Application Map"
+}
+},
+{
+"id": 8729,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 8732,
+"clause": "6.1",
+"v2_land_condition": {
+"layer": "Acid Sulfate Soils Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "on land shown on the Acid Sulfate Soils Map as being of the class specified"
+}
+},
+{
+"id": 8733,
+"clause": "6.1",
+"v2_land_condition": {
+"layer": "Acid Sulfate Soils Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "on land shown on the Acid Sulfate Soils Map as being of the class specified"
+}
+},
+{
+"id": 8736,
+"clause": "5.1A",
+"v2_land_condition": {
+"layer": "Land Reservation Acquisition Map",
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "identified on the Land Reservation Acquisition Map"
+}
+},
+{
+"id": 8738,
+"clause": "6.5",
+"v2_land_condition": {
+"layer": "Foreshore Building Line Map",
+"labels": [
+"Foreshore Area"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to land identified as “Foreshore Area” on the Foreshore Building Line Map."
+}
+},
+{
+"id": 8739,
+"clause": "6.6",
+"v2_land_condition": {
+"layer": "Foreshore Building Line Map",
+"labels": [
+"Foreshore Area"
+],
+"zones": null,
+"verified": false,
+"source": "development in the foreshore area (cl 6.6); land identified as 'Foreshore Area' on the Foreshore Building Line Map (cl 6.5)"
+}
+},
+{
+"id": 8741,
+"clause": "6.9",
+"v2_land_condition": null
+},
+{
+"id": 8742,
+"clause": "6.10",
+"v2_land_condition": null
+},
+{
+"id": 8743,
+"clause": "6.12",
+"v2_land_condition": null
+},
+{
+"id": 8744,
+"clause": "6.12",
+"v2_land_condition": null
+},
+{
+"id": 8745,
+"clause": "6.14",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "land identified as “Area 1” on the Key Sites Map"
+}
+},
+{
+"id": 8746,
+"clause": "6.15",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Key Sites Map if"
+}
+},
+{
+"id": 8747,
+"clause": "6.16",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "Lot 1, DP 632522, 141 Allen Street, Leichhardt, identified as “Area 3” on the Key Sites Map,"
+}
+},
+{
+"id": 8749,
+"clause": "6.16",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "Lot 1, DP 632522, 141 Allen Street, Leichhardt, identified as “Area 3” on the Key Sites Map,"
+}
+},
+{
+"id": 8751,
+"clause": "6.17",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 5"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to the following land at 168 Norton Street, Leichhardt, identified as “Area 5” on the Key Sites Map"
+}
+},
+{
+"id": 8752,
+"clause": "6.17",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 5"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to the following land at 168 Norton Street, Leichhardt, identified as “Area 5” on the Key Sites Map"
+}
+},
+{
+"id": 8753,
+"clause": "6.18",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 6"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 1, DP 432612, 101–103 Lilyfield Road, Lilyfield, identified as “Area 6” on the Key Sites Map."
+}
+},
+{
+"id": 8754,
+"clause": "6.19",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 7"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lots 21, 22, 24 and 25, Section 1, DP 328 and Lots A and B, DP 377714, 17 Marion Street, Leichhardt, identified as “Area 7” on the Key Sites Map."
+}
+},
+{
+"id": 8755,
+"clause": "6.19",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 7"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lots 21, 22, 24 and 25, Section 1, DP 328 and Lots A and B, DP 377714, 17 Marion Street, Leichhardt, identified as “Area 7” on the Key Sites Map."
+}
+},
+{
+"id": 8756,
+"clause": "6.21",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 19"
+],
+"zones": [
+"E3",
+"E4"
+],
+"verified": true,
+"source": "This clause applies to land in Zone E3 Productivity Support and Zone E4 General Industrial and identified as “Area 19” on the Key Sites Map."
+}
+},
+{
+"id": 8757,
+"clause": "6.22",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 20"
+],
+"zones": [
+"E3"
+],
+"verified": true,
+"source": "This clause applies to land in Zone E3 Productivity Support and identified as “Area 20” on the Key Sites Map."
+}
+},
+{
+"id": 8758,
+"clause": "6.23",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 10",
+"Area 11",
+"Area 12",
+"Area 8",
+"Area 9"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 8”, “Area 9”, “Area 10”, “Area 11” and “Area 12” on the Key Sites Map."
+}
+},
+{
+"id": 8759,
+"clause": "6.24",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 2"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land at Lot 11, DP 499846, 1–5 Chester Street, Annandale, identified as “Area 2” on the Key Sites Map."
+}
+},
+{
+"id": 8760,
+"clause": "6.24",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 2"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land at Lot 11, DP 499846, 1–5 Chester Street, Annandale, identified as “Area 2” on the Key Sites Map."
+}
+},
+{
+"id": 8761,
+"clause": "6.24",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 2"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land at Lot 11, DP 499846, 1–5 Chester Street, Annandale, identified as “Area 2” on the Key Sites Map."
+}
+},
+{
+"id": 8762,
+"clause": "6.26",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"46"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 1, DP 1208130 and Lot 10, DP 1004198, 287–309 Trafalgar Street, Petersham, identified as “46” on the Additional Permitted Use Map.",
+"label_not_unique": "APU '46' is also Schedule 1 item 46's label; the clause's land is Lot 1 DP 1208130 and Lot 10 DP 1004198 (287-309 Trafalgar St, Petersham), which the portal answer does not name"
+}
+},
+{
+"id": 8765,
+"clause": "6.25",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 15"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 2, DP 1015843, 469–483 Balmain Road, Lilyfield, identified as “Area 15” on the Key Sites Map."
+}
+},
+{
+"id": 8767,
+"clause": "6.34",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area L"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area L” on the Key Sites Map."
+}
+},
+{
+"id": 8769,
+"clause": "7.4",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 8771,
+"clause": "7.4",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 8772,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"14"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 14: land identified as \"14\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 9093,
+"clause": "4.3A",
+"v2_land_condition": {
+"layer": "Height of Buildings Map",
+"labels": [
+"Area 1",
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to development for the following purposes on land identified as “Area 1” or “Area 3” on the Height of Buildings Map."
+}
+},
+{
+"id": 9094,
+"clause": "4.3B",
+"v2_land_condition": {
+"layer": "Height of Buildings Map",
+"labels": [
+"Area 1",
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” or “Area 3” on the Height of Buildings Map."
+}
+},
+{
+"id": 9097,
+"clause": "4.4A",
+"v2_land_condition": {
+"layer": "Floor Space Ratio Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Floor Space Ratio Map."
+}
+},
+{
+"id": 9191,
+"clause": "2.4",
+"v2_land_condition": null
+},
+{
+"id": 9192,
+"clause": "2.5",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "Development on particular land that is described or referred to in Schedule 1 (cl 2.5); Schedule 1 land is identified on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 9193,
+"clause": "2.6",
+"v2_land_condition": null
+},
+{
+"id": 9195,
+"clause": "2.8",
+"v2_land_condition": null
+},
+{
+"id": 9199,
+"clause": "2.9",
+"v2_land_condition": null
+},
+{
+"id": 9210,
+"clause": "LUT:R4",
+"v2_land_condition": null
+},
+{
+"id": 9211,
+"clause": "LUT:R1",
+"v2_land_condition": null
+},
+{
+"id": 9215,
+"clause": "LUT:E2",
+"v2_land_condition": null
+},
+{
+"id": 9216,
+"clause": "LUT:E1",
+"v2_land_condition": null
+},
+{
+"id": 9219,
+"clause": "LUT:E3",
+"v2_land_condition": null
+},
+{
+"id": 9224,
+"clause": "LUT:MU1",
+"v2_land_condition": null
+},
+{
+"id": 9225,
+"clause": "LUT:R1",
+"v2_land_condition": null
+},
+{
+"id": 9227,
+"clause": "LUT:SP1",
+"v2_land_condition": null
+},
+{
+"id": 9245,
+"clause": "3.1",
+"v2_land_condition": null
+},
+{
+"id": 9246,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 9247,
+"clause": "4.4A",
+"v2_land_condition": {
+"layer": "Floor Space Ratio Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Floor Space Ratio Map."
+}
+},
+{
+"id": 9248,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 9270,
+"clause": "1.9A",
+"v2_land_condition": null
+},
+{
+"id": 9271,
+"clause": "2.8",
+"v2_land_condition": null
+},
+{
+"id": 9272,
+"clause": "2.4",
+"v2_land_condition": null
+},
+{
+"id": 9300,
+"clause": "LUT:E3",
+"v2_land_condition": null
+},
+{
+"id": 9321,
+"clause": "3.1",
+"v2_land_condition": null
+},
+{
+"id": 9322,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 9323,
+"clause": "4.4A",
+"v2_land_condition": {
+"layer": "Floor Space Ratio Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Floor Space Ratio Map."
+}
+},
+{
+"id": 9324,
+"clause": "4.5",
+"v2_land_condition": null
+},
+{
+"id": 9327,
+"clause": "5.1A",
+"v2_land_condition": {
+"layer": "Land Reservation Acquisition Map",
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "identified on the Land Reservation Acquisition Map"
+}
+},
+{
+"id": 9328,
+"clause": "5.2",
+"v2_land_condition": null
+},
+{
+"id": 9329,
+"clause": "5.3",
+"v2_land_condition": null
+},
+{
+"id": 9332,
+"clause": "2.6",
+"v2_land_condition": null
+},
+{
+"id": 9333,
+"clause": "2.8",
+"v2_land_condition": null
+},
+{
+"id": 9334,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 9346,
+"clause": "5.2",
+"v2_land_condition": null
+},
+{
+"id": 9347,
+"clause": "2.8",
+"v2_land_condition": null
+},
+{
+"id": 9350,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 9369,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 9372,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 9380,
+"clause": "5.2",
+"v2_land_condition": null
+},
+{
+"id": 9388,
+"clause": "4.4A",
+"v2_land_condition": {
+"layer": "Floor Space Ratio Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Floor Space Ratio Map."
+}
+},
+{
+"id": 9390,
+"clause": "4.5",
+"v2_land_condition": null
+},
+{
+"id": 22657,
+"clause": "Schedule 4",
+"v2_land_condition": null
+},
+{
+"id": 22669,
+"clause": "1.7",
+"v2_land_condition": null
+},
+{
+"id": 22671,
+"clause": "1.7",
+"v2_land_condition": null
+},
+{
+"id": 22674,
+"clause": "1.8",
+"v2_land_condition": null
+},
+{
+"id": 22678,
+"clause": "1.8A",
+"v2_land_condition": null
+},
+{
+"id": 22679,
+"clause": "1.8A",
+"v2_land_condition": null
+},
+{
+"id": 22682,
+"clause": "1.9A",
+"v2_land_condition": null
+},
+{
+"id": 22684,
+"clause": "2.1",
+"v2_land_condition": null
+},
+{
+"id": 22689,
+"clause": "2.3",
+"v2_land_condition": null
+},
+{
+"id": 22690,
+"clause": "2.3",
+"v2_land_condition": null
+},
+{
+"id": 22694,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 22697,
+"clause": "2.4",
+"v2_land_condition": null
+},
+{
+"id": 22704,
+"clause": "2.6",
+"v2_land_condition": null
+},
+{
+"id": 22708,
+"clause": "2.8",
+"v2_land_condition": null
+},
+{
+"id": 22709,
+"clause": "2.8",
+"v2_land_condition": null
+},
+{
+"id": 22712,
+"clause": "2.9",
+"v2_land_condition": null
+},
+{
+"id": 22743,
+"clause": "LUT:E3",
+"v2_land_condition": null
+},
+{
+"id": 22753,
+"clause": "LUT:SP1",
+"v2_land_condition": null
+},
+{
+"id": 22755,
+"clause": "LUT:SP1",
+"v2_land_condition": null
+},
+{
+"id": 22774,
+"clause": "3.1",
+"v2_land_condition": null
+},
+{
+"id": 22776,
+"clause": "3.1",
+"v2_land_condition": null
+},
+{
+"id": 22777,
+"clause": "3.1",
+"v2_land_condition": null
+},
+{
+"id": 22778,
+"clause": "3.1",
+"v2_land_condition": null
+},
+{
+"id": 22781,
+"clause": "3.1",
+"v2_land_condition": null
+},
+{
+"id": 22786,
+"clause": "3.2",
+"v2_land_condition": null
+},
+{
+"id": 22790,
+"clause": "3.2",
+"v2_land_condition": null
+},
+{
+"id": 22791,
+"clause": "3.2",
+"v2_land_condition": null
+},
+{
+"id": 22794,
+"clause": "3.3",
+"v2_land_condition": null
+},
+{
+"id": 22796,
+"clause": "3.3",
+"v2_land_condition": null
+},
+{
+"id": 22799,
+"clause": "4.1",
+"v2_land_condition": {
+"layer": "Lot Size Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "This clause applies to a subdivision of any land shown on the Lot Size Map"
+}
+},
+{
+"id": 22803,
+"clause": "4.1A",
+"v2_land_condition": {
+"layer": "Lot Size Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "land identified as “Area 1” on the Lot Size Map"
+}
+},
+{
+"id": 22804,
+"clause": "4.1A",
+"v2_land_condition": {
+"layer": "Lot Size Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "land identified as “Area 1” on the Lot Size Map"
+}
+},
+{
+"id": 22805,
+"clause": "4.1A",
+"v2_land_condition": {
+"layer": "Lot Size Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "land identified as “Area 1” on the Lot Size Map"
+}
+},
+{
+"id": 22807,
+"clause": "4.1A",
+"v2_land_condition": {
+"layer": "Lot Size Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "land identified as “Area 1” on the Lot Size Map"
+}
+},
+{
+"id": 22808,
+"clause": "4.3",
+"v2_land_condition": null
+},
+{
+"id": 22809,
+"clause": "4.3",
+"v2_land_condition": null
+},
+{
+"id": 22810,
+"clause": "4.3",
+"v2_land_condition": null
+},
+{
+"id": 22811,
+"clause": "4.3",
+"v2_land_condition": null
+},
+{
+"id": 22812,
+"clause": "4.3A",
+"v2_land_condition": {
+"layer": "Height of Buildings Map",
+"labels": [
+"Area 1",
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to development for the following purposes on land identified as “Area 1” or “Area 3” on the Height of Buildings Map."
+}
+},
+{
+"id": 22813,
+"clause": "4.3A",
+"v2_land_condition": {
+"layer": "Height of Buildings Map",
+"labels": [
+"Area 1",
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to development for the following purposes on land identified as “Area 1” or “Area 3” on the Height of Buildings Map."
+}
+},
+{
+"id": 22814,
+"clause": "4.3A",
+"v2_land_condition": {
+"layer": "Height of Buildings Map",
+"labels": [
+"Area 1",
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to development for the following purposes on land identified as “Area 1” or “Area 3” on the Height of Buildings Map."
+}
+},
+{
+"id": 22816,
+"clause": "4.3A",
+"v2_land_condition": {
+"layer": "Height of Buildings Map",
+"labels": [
+"Area 1",
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to development for the following purposes on land identified as “Area 1” or “Area 3” on the Height of Buildings Map."
+}
+},
+{
+"id": 22817,
+"clause": "4.3A",
+"v2_land_condition": {
+"layer": "Height of Buildings Map",
+"labels": [
+"Area 1",
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to development for the following purposes on land identified as “Area 1” or “Area 3” on the Height of Buildings Map."
+}
+},
+{
+"id": 22818,
+"clause": "4.3B",
+"v2_land_condition": {
+"layer": "Height of Buildings Map",
+"labels": [
+"Area 1",
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” or “Area 3” on the Height of Buildings Map."
+}
+},
+{
+"id": 22819,
+"clause": "4.3B",
+"v2_land_condition": {
+"layer": "Height of Buildings Map",
+"labels": [
+"Area 1",
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” or “Area 3” on the Height of Buildings Map."
+}
+},
+{
+"id": 22820,
+"clause": "4.3B",
+"v2_land_condition": {
+"layer": "Height of Buildings Map",
+"labels": [
+"Area 1",
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” or “Area 3” on the Height of Buildings Map."
+}
+},
+{
+"id": 22822,
+"clause": "4.3C",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": [
+"R1"
+],
+"verified": true,
+"source": "This clause applies to development for the purposes of residential accommodation on land in Zone R1 General Residential and identified as “Area 1” on the Key Sites Map."
+}
+},
+{
+"id": 22823,
+"clause": "4.3C",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": [
+"R1"
+],
+"verified": true,
+"source": "This clause applies to development for the purposes of residential accommodation on land in Zone R1 General Residential and identified as “Area 1” on the Key Sites Map."
+}
+},
+{
+"id": 22825,
+"clause": "4.3C",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": [
+"R1"
+],
+"verified": true,
+"source": "This clause applies to development for the purposes of residential accommodation on land in Zone R1 General Residential and identified as “Area 1” on the Key Sites Map."
+}
+},
+{
+"id": 22826,
+"clause": "4.3C",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": [
+"R1"
+],
+"verified": true,
+"source": "This clause applies to development for the purposes of residential accommodation on land in Zone R1 General Residential and identified as “Area 1” on the Key Sites Map."
+}
+},
+{
+"id": 22828,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 22829,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 22830,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 22831,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 22832,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 22833,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 22834,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 22835,
+"clause": "4.4A",
+"v2_land_condition": {
+"layer": "Floor Space Ratio Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Floor Space Ratio Map."
+}
+},
+{
+"id": 22836,
+"clause": "4.4A",
+"v2_land_condition": {
+"layer": "Floor Space Ratio Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Floor Space Ratio Map."
+}
+},
+{
+"id": 22838,
+"clause": "4.4A",
+"v2_land_condition": {
+"layer": "Floor Space Ratio Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Floor Space Ratio Map."
+}
+},
+{
+"id": 22841,
+"clause": "4.5",
+"v2_land_condition": null
+},
+{
+"id": 22842,
+"clause": "4.5",
+"v2_land_condition": null
+},
+{
+"id": 22843,
+"clause": "4.5",
+"v2_land_condition": null
+},
+{
+"id": 22844,
+"clause": "4.5",
+"v2_land_condition": null
+},
+{
+"id": 22846,
+"clause": "4.5",
+"v2_land_condition": null
+},
+{
+"id": 22847,
+"clause": "4.5",
+"v2_land_condition": null
+},
+{
+"id": 22848,
+"clause": "4.5",
+"v2_land_condition": null
+},
+{
+"id": 22849,
+"clause": "4.5",
+"v2_land_condition": null
+},
+{
+"id": 22850,
+"clause": "4.5",
+"v2_land_condition": null
+},
+{
+"id": 22853,
+"clause": "4.5",
+"v2_land_condition": null
+},
+{
+"id": 22857,
+"clause": "4.6",
+"v2_land_condition": null
+},
+{
+"id": 22860,
+"clause": "4.6",
+"v2_land_condition": null
+},
+{
+"id": 22861,
+"clause": "4.6",
+"v2_land_condition": null
+},
+{
+"id": 22863,
+"clause": "4.6",
+"v2_land_condition": null
+},
+{
+"id": 22867,
+"clause": "5.1",
+"v2_land_condition": {
+"layer": "Land Reservation Acquisition Map",
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "in relation to the land shown on the Land Reservation Acquisition Map"
+}
+},
+{
+"id": 22869,
+"clause": "5.1",
+"v2_land_condition": {
+"layer": "Land Reservation Acquisition Map",
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "in relation to the land shown on the Land Reservation Acquisition Map"
+}
+},
+{
+"id": 22876,
+"clause": "5.1",
+"v2_land_condition": {
+"layer": "Land Reservation Acquisition Map",
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "in relation to the land shown on the Land Reservation Acquisition Map"
+}
+},
+{
+"id": 22878,
+"clause": "5.1A",
+"v2_land_condition": {
+"layer": "Land Reservation Acquisition Map",
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "identified on the Land Reservation Acquisition Map"
+}
+},
+{
+"id": 22880,
+"clause": "5.1A",
+"v2_land_condition": {
+"layer": "Land Reservation Acquisition Map",
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "identified on the Land Reservation Acquisition Map"
+}
+},
+{
+"id": 22882,
+"clause": "5.2",
+"v2_land_condition": null
+},
+{
+"id": 22891,
+"clause": "5.3",
+"v2_land_condition": null
+},
+{
+"id": 22892,
+"clause": "5.3",
+"v2_land_condition": null
+},
+{
+"id": 22894,
+"clause": "5.3",
+"v2_land_condition": null
+},
+{
+"id": 22898,
+"clause": "5.4",
+"v2_land_condition": null
+},
+{
+"id": 22900,
+"clause": "5.4",
+"v2_land_condition": null
+},
+{
+"id": 22901,
+"clause": "5.4",
+"v2_land_condition": null
+},
+{
+"id": 22902,
+"clause": "5.4",
+"v2_land_condition": null
+},
+{
+"id": 22903,
+"clause": "5.4",
+"v2_land_condition": null
+},
+{
+"id": 22904,
+"clause": "5.4",
+"v2_land_condition": null
+},
+{
+"id": 22905,
+"clause": "5.4",
+"v2_land_condition": null
+},
+{
+"id": 22906,
+"clause": "5.4",
+"v2_land_condition": null
+},
+{
+"id": 22907,
+"clause": "5.4",
+"v2_land_condition": null
+},
+{
+"id": 22908,
+"clause": "5.4",
+"v2_land_condition": null
+},
+{
+"id": 22909,
+"clause": "5.4",
+"v2_land_condition": null
+},
+{
+"id": 22911,
+"clause": "5.4",
+"v2_land_condition": null
+},
+{
+"id": 22914,
+"clause": "5.7",
+"v2_land_condition": {
+"layer": null,
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "any land below the mean high water mark of any body of water subject to tidal influence -- tidal land below mean high water mark is not a layerintersect layer"
+}
+},
+{
+"id": 22922,
+"clause": "5.8",
+"v2_land_condition": null
+},
+{
+"id": 22925,
+"clause": "5.9",
+"v2_land_condition": null
+},
+{
+"id": 22926,
+"clause": "5.9",
+"v2_land_condition": null
+},
+{
+"id": 22932,
+"clause": "5.10",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "a building, work, relic or tree within a heritage conservation area (cl 5.10); heritage items and conservation areas are identified on the Heritage Map"
+}
+},
+{
+"id": 23233,
+"clause": "5.10",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "a building, work, relic or tree within a heritage conservation area (cl 5.10); heritage items and conservation areas are identified on the Heritage Map"
+}
+},
+{
+"id": 23237,
+"clause": "5.10",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "a building, work, relic or tree within a heritage conservation area (cl 5.10); heritage items and conservation areas are identified on the Heritage Map"
+}
+},
+{
+"id": 23239,
+"clause": "5.10",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "a building, work, relic or tree within a heritage conservation area (cl 5.10); heritage items and conservation areas are identified on the Heritage Map"
+}
+},
+{
+"id": 23244,
+"clause": "5.10",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "a building, work, relic or tree within a heritage conservation area (cl 5.10); heritage items and conservation areas are identified on the Heritage Map"
+}
+},
+{
+"id": 23249,
+"clause": "5.12",
+"v2_land_condition": null
+},
+{
+"id": 23257,
+"clause": "5.19",
+"v2_land_condition": null
+},
+{
+"id": 23258,
+"clause": "5.19",
+"v2_land_condition": null
+},
+{
+"id": 23260,
+"clause": "5.19",
+"v2_land_condition": null
+},
+{
+"id": 23262,
+"clause": "5.19",
+"v2_land_condition": null
+},
+{
+"id": 23263,
+"clause": "5.19",
+"v2_land_condition": null
+},
+{
+"id": 23264,
+"clause": "5.19",
+"v2_land_condition": null
+},
+{
+"id": 23266,
+"clause": "5.19",
+"v2_land_condition": null
+},
+{
+"id": 23269,
+"clause": "5.19",
+"v2_land_condition": null
+},
+{
+"id": 23270,
+"clause": "5.19",
+"v2_land_condition": null
+},
+{
+"id": 23276,
+"clause": "5.20",
+"v2_land_condition": null
+},
+{
+"id": 23280,
+"clause": "5.20",
+"v2_land_condition": null
+},
+{
+"id": 23283,
+"clause": "5.21",
+"v2_land_condition": {
+"layer": null,
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "development on land the consent authority considers to be within the flood planning area -- the flood planning area is decided by the consent authority, not a map layer"
+}
+},
+{
+"id": 23285,
+"clause": "5.21",
+"v2_land_condition": {
+"layer": null,
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "development on land the consent authority considers to be within the flood planning area -- the flood planning area is decided by the consent authority, not a map layer"
+}
+},
+{
+"id": 23292,
+"clause": "5.22",
+"v2_land_condition": {
+"layer": null,
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "land between the flood planning area and the probable maximum flood -- the flood planning area is decided by the consent authority, not a map layer"
+}
+},
+{
+"id": 23293,
+"clause": "5.22",
+"v2_land_condition": {
+"layer": null,
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "land between the flood planning area and the probable maximum flood -- the flood planning area is decided by the consent authority, not a map layer"
+}
+},
+{
+"id": 23301,
+"clause": "6.1",
+"v2_land_condition": {
+"layer": "Acid Sulfate Soils Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "on land shown on the Acid Sulfate Soils Map as being of the class specified"
+}
+},
+{
+"id": 23302,
+"clause": "6.1",
+"v2_land_condition": {
+"layer": "Acid Sulfate Soils Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "on land shown on the Acid Sulfate Soils Map as being of the class specified"
+}
+},
+{
+"id": 23303,
+"clause": "6.1",
+"v2_land_condition": {
+"layer": "Acid Sulfate Soils Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "on land shown on the Acid Sulfate Soils Map as being of the class specified"
+}
+},
+{
+"id": 23304,
+"clause": "6.1",
+"v2_land_condition": {
+"layer": "Acid Sulfate Soils Map",
+"labels": null,
+"zones": null,
+"verified": true,
+"source": "on land shown on the Acid Sulfate Soils Map as being of the class specified"
+}
+},
+{
+"id": 23314,
+"clause": "6.2",
+"v2_land_condition": null
+},
+{
+"id": 23317,
+"clause": "6.2",
+"v2_land_condition": null
+},
+{
+"id": 23320,
+"clause": "6.3",
+"v2_land_condition": null
+},
+{
+"id": 23323,
+"clause": "6.3",
+"v2_land_condition": null
+},
+{
+"id": 23324,
+"clause": "6.4",
+"v2_land_condition": {
+"layer": "Terrestrial Biodiversity Map",
+"labels": [
+"Biodiversity"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Biodiversity” on the Natural Resource—Biodiversity Map."
+}
+},
+{
+"id": 23327,
+"clause": "6.4",
+"v2_land_condition": {
+"layer": "Terrestrial Biodiversity Map",
+"labels": [
+"Biodiversity"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Biodiversity” on the Natural Resource—Biodiversity Map."
+}
+},
+{
+"id": 23331,
+"clause": "6.4",
+"v2_land_condition": {
+"layer": "Terrestrial Biodiversity Map",
+"labels": [
+"Biodiversity"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Biodiversity” on the Natural Resource—Biodiversity Map."
+}
+},
+{
+"id": 23332,
+"clause": "6.5",
+"v2_land_condition": {
+"layer": "Foreshore Building Line Map",
+"labels": [
+"Foreshore Area"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to land identified as “Foreshore Area” on the Foreshore Building Line Map."
+}
+},
+{
+"id": 23334,
+"clause": "6.5",
+"v2_land_condition": {
+"layer": "Foreshore Building Line Map",
+"labels": [
+"Foreshore Area"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to land identified as “Foreshore Area” on the Foreshore Building Line Map."
+}
+},
+{
+"id": 23336,
+"clause": "6.5",
+"v2_land_condition": {
+"layer": "Foreshore Building Line Map",
+"labels": [
+"Foreshore Area"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to land identified as “Foreshore Area” on the Foreshore Building Line Map."
+}
+},
+{
+"id": 23337,
+"clause": "6.5",
+"v2_land_condition": {
+"layer": "Foreshore Building Line Map",
+"labels": [
+"Foreshore Area"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to land identified as “Foreshore Area” on the Foreshore Building Line Map."
+}
+},
+{
+"id": 23338,
+"clause": "6.6",
+"v2_land_condition": {
+"layer": "Foreshore Building Line Map",
+"labels": [
+"Foreshore Area"
+],
+"zones": null,
+"verified": false,
+"source": "development in the foreshore area (cl 6.6); land identified as 'Foreshore Area' on the Foreshore Building Line Map (cl 6.5)"
+}
+},
+{
+"id": 23339,
+"clause": "6.6",
+"v2_land_condition": {
+"layer": "Foreshore Building Line Map",
+"labels": [
+"Foreshore Area"
+],
+"zones": null,
+"verified": false,
+"source": "development in the foreshore area (cl 6.6); land identified as 'Foreshore Area' on the Foreshore Building Line Map (cl 6.5)"
+}
+},
+{
+"id": 23341,
+"clause": "6.6",
+"v2_land_condition": {
+"layer": "Foreshore Building Line Map",
+"labels": [
+"Foreshore Area"
+],
+"zones": null,
+"verified": false,
+"source": "development in the foreshore area (cl 6.6); land identified as 'Foreshore Area' on the Foreshore Building Line Map (cl 6.5)"
+}
+},
+{
+"id": 23342,
+"clause": "6.7",
+"v2_land_condition": null
+},
+{
+"id": 23343,
+"clause": "6.7",
+"v2_land_condition": null
+},
+{
+"id": 23348,
+"clause": "6.8",
+"v2_land_condition": {
+"layer": null,
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "in an ANEF contour of 20 or greater -- ANEF contours are not in the layerintersect answer"
+}
+},
+{
+"id": 23349,
+"clause": "6.8",
+"v2_land_condition": {
+"layer": null,
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "in an ANEF contour of 20 or greater -- ANEF contours are not in the layerintersect answer"
+}
+},
+{
+"id": 23350,
+"clause": "6.8",
+"v2_land_condition": {
+"layer": null,
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "in an ANEF contour of 20 or greater -- ANEF contours are not in the layerintersect answer"
+}
+},
+{
+"id": 23352,
+"clause": "6.8",
+"v2_land_condition": {
+"layer": null,
+"labels": null,
+"zones": null,
+"verified": false,
+"source": "in an ANEF contour of 20 or greater -- ANEF contours are not in the layerintersect answer"
+}
+},
+{
+"id": 23353,
+"clause": "6.9",
+"v2_land_condition": null
+},
+{
+"id": 23357,
+"clause": "6.10",
+"v2_land_condition": null
+},
+{
+"id": 23358,
+"clause": "6.10",
+"v2_land_condition": null
+},
+{
+"id": 23359,
+"clause": "6.10",
+"v2_land_condition": null
+},
+{
+"id": 23360,
+"clause": "6.10",
+"v2_land_condition": null
+},
+{
+"id": 23362,
+"clause": "6.11",
+"v2_land_condition": null
+},
+{
+"id": 23363,
+"clause": "5.9",
+"v2_land_condition": null
+},
+{
+"id": 23364,
+"clause": "6.11",
+"v2_land_condition": null
+},
+{
+"id": 23365,
+"clause": "6.11",
+"v2_land_condition": null
+},
+{
+"id": 23366,
+"clause": "6.11",
+"v2_land_condition": null
+},
+{
+"id": 23371,
+"clause": "6.12",
+"v2_land_condition": null
+},
+{
+"id": 23372,
+"clause": "6.12",
+"v2_land_condition": null
+},
+{
+"id": 23373,
+"clause": "6.12",
+"v2_land_condition": null
+},
+{
+"id": 23374,
+"clause": "6.12",
+"v2_land_condition": null
+},
+{
+"id": 23376,
+"clause": "6.13",
+"v2_land_condition": null
+},
+{
+"id": 23379,
+"clause": "6.13",
+"v2_land_condition": null
+},
+{
+"id": 23382,
+"clause": "6.14",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "land identified as “Area 1” on the Key Sites Map"
+}
+},
+{
+"id": 23383,
+"clause": "6.14",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "land identified as “Area 1” on the Key Sites Map"
+}
+},
+{
+"id": 23385,
+"clause": "4.3C",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": [
+"R1"
+],
+"verified": true,
+"source": "This clause applies to development for the purposes of residential accommodation on land in Zone R1 General Residential and identified as “Area 1” on the Key Sites Map."
+}
+},
+{
+"id": 23387,
+"clause": "6.14",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "land identified as “Area 1” on the Key Sites Map"
+}
+},
+{
+"id": 23389,
+"clause": "6.15",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Key Sites Map if"
+}
+},
+{
+"id": 23391,
+"clause": "6.15",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Key Sites Map if"
+}
+},
+{
+"id": 23392,
+"clause": "6.15",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Key Sites Map if"
+}
+},
+{
+"id": 23393,
+"clause": "6.15",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Key Sites Map if"
+}
+},
+{
+"id": 23394,
+"clause": "6.15",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Key Sites Map if"
+}
+},
+{
+"id": 23396,
+"clause": "6.15",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Key Sites Map if"
+}
+},
+{
+"id": 23398,
+"clause": "6.15",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Key Sites Map if"
+}
+},
+{
+"id": 23401,
+"clause": "6.16",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "Lot 1, DP 632522, 141 Allen Street, Leichhardt, identified as “Area 3” on the Key Sites Map,"
+}
+},
+{
+"id": 23403,
+"clause": "6.16",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "Lot 1, DP 632522, 141 Allen Street, Leichhardt, identified as “Area 3” on the Key Sites Map,"
+}
+},
+{
+"id": 23404,
+"clause": "6.16",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "Lot 1, DP 632522, 141 Allen Street, Leichhardt, identified as “Area 3” on the Key Sites Map,"
+}
+},
+{
+"id": 23405,
+"clause": "6.16",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "Lot 1, DP 632522, 141 Allen Street, Leichhardt, identified as “Area 3” on the Key Sites Map,"
+}
+},
+{
+"id": 23406,
+"clause": "6.16",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "Lot 1, DP 632522, 141 Allen Street, Leichhardt, identified as “Area 3” on the Key Sites Map,"
+}
+},
+{
+"id": 23408,
+"clause": "6.16",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "Lot 1, DP 632522, 141 Allen Street, Leichhardt, identified as “Area 3” on the Key Sites Map,"
+}
+},
+{
+"id": 23409,
+"clause": "6.16",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "Lot 1, DP 632522, 141 Allen Street, Leichhardt, identified as “Area 3” on the Key Sites Map,"
+}
+},
+{
+"id": 23410,
+"clause": "6.16",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "Lot 1, DP 632522, 141 Allen Street, Leichhardt, identified as “Area 3” on the Key Sites Map,"
+}
+},
+{
+"id": 23411,
+"clause": "6.16",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 3"
+],
+"zones": null,
+"verified": true,
+"source": "Lot 1, DP 632522, 141 Allen Street, Leichhardt, identified as “Area 3” on the Key Sites Map,"
+}
+},
+{
+"id": 23414,
+"clause": "6.17",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 5"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to the following land at 168 Norton Street, Leichhardt, identified as “Area 5” on the Key Sites Map"
+}
+},
+{
+"id": 23416,
+"clause": "6.17",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 5"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to the following land at 168 Norton Street, Leichhardt, identified as “Area 5” on the Key Sites Map"
+}
+},
+{
+"id": 23417,
+"clause": "6.17",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 5"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to the following land at 168 Norton Street, Leichhardt, identified as “Area 5” on the Key Sites Map"
+}
+},
+{
+"id": 23422,
+"clause": "6.18",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 6"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 1, DP 432612, 101–103 Lilyfield Road, Lilyfield, identified as “Area 6” on the Key Sites Map."
+}
+},
+{
+"id": 23424,
+"clause": "6.17",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 5"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to the following land at 168 Norton Street, Leichhardt, identified as “Area 5” on the Key Sites Map"
+}
+},
+{
+"id": 23425,
+"clause": "6.19",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 7"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lots 21, 22, 24 and 25, Section 1, DP 328 and Lots A and B, DP 377714, 17 Marion Street, Leichhardt, identified as “Area 7” on the Key Sites Map."
+}
+},
+{
+"id": 23426,
+"clause": "6.19",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 7"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lots 21, 22, 24 and 25, Section 1, DP 328 and Lots A and B, DP 377714, 17 Marion Street, Leichhardt, identified as “Area 7” on the Key Sites Map."
+}
+},
+{
+"id": 23427,
+"clause": "6.19",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 7"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lots 21, 22, 24 and 25, Section 1, DP 328 and Lots A and B, DP 377714, 17 Marion Street, Leichhardt, identified as “Area 7” on the Key Sites Map."
+}
+},
+{
+"id": 23432,
+"clause": "6.20",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"C54"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “C54” on the Heritage Map."
+}
+},
+{
+"id": 23434,
+"clause": "6.20",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"C54"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “C54” on the Heritage Map."
+}
+},
+{
+"id": 23435,
+"clause": "6.20",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"C54"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “C54” on the Heritage Map."
+}
+},
+{
+"id": 23437,
+"clause": "6.20",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"C54"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “C54” on the Heritage Map."
+}
+},
+{
+"id": 23439,
+"clause": "6.21",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 19"
+],
+"zones": [
+"E3",
+"E4"
+],
+"verified": true,
+"source": "This clause applies to land in Zone E3 Productivity Support and Zone E4 General Industrial and identified as “Area 19” on the Key Sites Map."
+}
+},
+{
+"id": 23441,
+"clause": "6.21",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 19"
+],
+"zones": [
+"E3",
+"E4"
+],
+"verified": true,
+"source": "This clause applies to land in Zone E3 Productivity Support and Zone E4 General Industrial and identified as “Area 19” on the Key Sites Map."
+}
+},
+{
+"id": 23444,
+"clause": "6.22",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 20"
+],
+"zones": [
+"E3"
+],
+"verified": true,
+"source": "This clause applies to land in Zone E3 Productivity Support and identified as “Area 20” on the Key Sites Map."
+}
+},
+{
+"id": 23447,
+"clause": "6.22",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 20"
+],
+"zones": [
+"E3"
+],
+"verified": true,
+"source": "This clause applies to land in Zone E3 Productivity Support and identified as “Area 20” on the Key Sites Map."
+}
+},
+{
+"id": 23448,
+"clause": "6.22",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 20"
+],
+"zones": [
+"E3"
+],
+"verified": true,
+"source": "This clause applies to land in Zone E3 Productivity Support and identified as “Area 20” on the Key Sites Map."
+}
+},
+{
+"id": 23451,
+"clause": "6.23",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 10",
+"Area 11",
+"Area 12",
+"Area 8",
+"Area 9"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 8”, “Area 9”, “Area 10”, “Area 11” and “Area 12” on the Key Sites Map."
+}
+},
+{
+"id": 23452,
+"clause": "6.24",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 2"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land at Lot 11, DP 499846, 1–5 Chester Street, Annandale, identified as “Area 2” on the Key Sites Map."
+}
+},
+{
+"id": 23455,
+"clause": "6.25",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 15"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 2, DP 1015843, 469–483 Balmain Road, Lilyfield, identified as “Area 15” on the Key Sites Map."
+}
+},
+{
+"id": 23457,
+"clause": "6.25",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 15"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 2, DP 1015843, 469–483 Balmain Road, Lilyfield, identified as “Area 15” on the Key Sites Map."
+}
+},
+{
+"id": 23459,
+"clause": "6.25",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 15"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 2, DP 1015843, 469–483 Balmain Road, Lilyfield, identified as “Area 15” on the Key Sites Map."
+}
+},
+{
+"id": 23461,
+"clause": "6.25",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 15"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 2, DP 1015843, 469–483 Balmain Road, Lilyfield, identified as “Area 15” on the Key Sites Map."
+}
+},
+{
+"id": 23463,
+"clause": "6.25",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 15"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 2, DP 1015843, 469–483 Balmain Road, Lilyfield, identified as “Area 15” on the Key Sites Map."
+}
+},
+{
+"id": 23468,
+"clause": "6.26",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"46"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 1, DP 1208130 and Lot 10, DP 1004198, 287–309 Trafalgar Street, Petersham, identified as “46” on the Additional Permitted Use Map.",
+"label_not_unique": "APU '46' is also Schedule 1 item 46's label; the clause's land is Lot 1 DP 1208130 and Lot 10 DP 1004198 (287-309 Trafalgar St, Petersham), which the portal answer does not name"
+}
+},
+{
+"id": 23471,
+"clause": "6.27",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 16"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 100, DP 1283113, 50–52 Edith Street, 67 and 73–83 Mary Street and 43 Roberts Street, St Peters, identified as “Area 16” on the Key Sites Map"
+}
+},
+{
+"id": 23472,
+"clause": "6.27",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 16"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 100, DP 1283113, 50–52 Edith Street, 67 and 73–83 Mary Street and 43 Roberts Street, St Peters, identified as “Area 16” on the Key Sites Map"
+}
+},
+{
+"id": 23474,
+"clause": "6.27",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 16"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 100, DP 1283113, 50–52 Edith Street, 67 and 73–83 Mary Street and 43 Roberts Street, St Peters, identified as “Area 16” on the Key Sites Map"
+}
+},
+{
+"id": 23475,
+"clause": "6.27",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 16"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 100, DP 1283113, 50–52 Edith Street, 67 and 73–83 Mary Street and 43 Roberts Street, St Peters, identified as “Area 16” on the Key Sites Map"
+}
+},
+{
+"id": 23476,
+"clause": "6.27",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 16"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to Lot 100, DP 1283113, 50–52 Edith Street, 67 and 73–83 Mary Street and 43 Roberts Street, St Peters, identified as “Area 16” on the Key Sites Map"
+}
+},
+{
+"id": 23477,
+"clause": "6.15",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Key Sites Map if"
+}
+},
+{
+"id": 23485,
+"clause": "6.30",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 17"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to the following land in Lilyfield, identified as “Area 17” on the Key Sites Map"
+}
+},
+{
+"id": 23486,
+"clause": "6.15",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Key Sites Map if"
+}
+},
+{
+"id": 23488,
+"clause": "6.30",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 17"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to the following land in Lilyfield, identified as “Area 17” on the Key Sites Map"
+}
+},
+{
+"id": 23490,
+"clause": "6.31",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 13"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 13” on the Key Sites Map."
+}
+},
+{
+"id": 23492,
+"clause": "6.31",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 13"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 13” on the Key Sites Map."
+}
+},
+{
+"id": 23500,
+"clause": "6.15",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 1"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area 1” on the Key Sites Map if"
+}
+},
+{
+"id": 23504,
+"clause": "6.33",
+"v2_land_condition": {
+"layer": "Land Application Map",
+"labels": [
+"Stage 1 Bays West Precinct"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to development on land identified as “Stage 1 Bays West Precinct” on the Land Application Map"
+}
+},
+{
+"id": 23506,
+"clause": "6.33",
+"v2_land_condition": {
+"layer": "Land Application Map",
+"labels": [
+"Stage 1 Bays West Precinct"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to development on land identified as “Stage 1 Bays West Precinct” on the Land Application Map"
+}
+},
+{
+"id": 23507,
+"clause": "6.33",
+"v2_land_condition": {
+"layer": "Land Application Map",
+"labels": [
+"Stage 1 Bays West Precinct"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to development on land identified as “Stage 1 Bays West Precinct” on the Land Application Map"
+}
+},
+{
+"id": 23508,
+"clause": "6.33",
+"v2_land_condition": {
+"layer": "Land Application Map",
+"labels": [
+"Stage 1 Bays West Precinct"
+],
+"zones": null,
+"verified": false,
+"source": "This clause applies to development on land identified as “Stage 1 Bays West Precinct” on the Land Application Map"
+}
+},
+{
+"id": 23514,
+"clause": "6.34",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area L"
+],
+"zones": null,
+"verified": true,
+"source": "This clause applies to land identified as “Area L” on the Key Sites Map."
+}
+},
+{
+"id": 23520,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 23521,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 23522,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 23523,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 23525,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 23528,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 23529,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 23530,
+"clause": "7.3",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 23531,
+"clause": "7.3",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 23535,
+"clause": "7.4",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 23536,
+"clause": "7.4",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 23537,
+"clause": "7.4",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 23539,
+"clause": "7.5",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 23540,
+"clause": "7.5",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 23560,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"1"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 1: land identified as \"1\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23562,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"1"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 1: land identified as \"1\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23568,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"3"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 3: land identified as \"3\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23570,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"4"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 4: land identified as \"4\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23572,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"5"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 5: land identified as \"5\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23574,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"6"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 6: land identified as \"6\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23577,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"7"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 7: land identified as \"7\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23579,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"8"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 8: land identified as \"8\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23581,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"9"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 9: land identified as \"9\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23585,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"10"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 10: land identified as \"10\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23589,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"11"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 11: land identified as \"11\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23591,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"12"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 12: land identified as \"12\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23599,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"13"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 13: land identified as \"13\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23606,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"15"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 15: land identified as \"15\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23609,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"17"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 17: land identified as \"17\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23611,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"18"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 18: land identified as \"18\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23613,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"19"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 19: land identified as \"19\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23621,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"21"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 21: land identified as \"21\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23627,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"23"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 23: land identified as \"23\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23633,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"25"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 25: land identified as \"25\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23635,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"26"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 26: land identified as \"26\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23637,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"27"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 27: land identified as \"27\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23641,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"28"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 28: land identified as \"28\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23645,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"29"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 29: land identified as \"29\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23647,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"30"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 30: land identified as \"30\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23649,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"31"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 31: land identified as \"31\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23652,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"32"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 32: land identified as \"32\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23654,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"32"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 32: land identified as \"32\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23656,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"33"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 33: land identified as \"33\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23658,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"34"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 34: land identified as \"34\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23660,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"35"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 35: land identified as \"35\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23662,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"37"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 37: land identified as \"37\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23664,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"38"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 38: land identified as \"38\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23666,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"39"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 39: land identified as \"39\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23671,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"41"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 41: land identified as \"41\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23673,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"42"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 42: land identified as \"42\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23677,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"43"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 43: land identified as \"43\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23683,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"45"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 45: land identified as \"45\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23689,
+"clause": "7.4",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"46"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 46: land identified as \"46\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23691,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"47"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 47: land identified as \"47\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23693,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"48"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 48: land identified as \"48\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23695,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"49"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 49: land identified as \"49\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23702,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"51"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 51: land identified as \"51\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23704,
+"clause": "Schedule 1",
+"v2_land_condition": {
+"layer": "Additional Permitted Uses Map",
+"labels": [
+"52"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 1 item 52: land identified as \"52\" on the Additional Permitted Uses Map"
+}
+},
+{
+"id": 23706,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 23707,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 23708,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 23710,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 23712,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 23714,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 23715,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 23716,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 23718,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 23723,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 23724,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 23726,
+"clause": "Schedule 2",
+"v2_land_condition": null
+},
+{
+"id": 23735,
+"clause": "Schedule 3",
+"v2_land_condition": null
+},
+{
+"id": 23740,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23742,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23758,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23790,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23801,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23811,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23819,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23823,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23864,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23879,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23883,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23945,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23958,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23963,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23965,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23968,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23975,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23979,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 23982,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24022,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24037,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24043,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24098,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24099,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24123,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24133,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24146,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24147,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24160,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24166,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24176,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24194,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24199,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24247,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24251,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24260,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24261,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24272,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 24324,
+"clause": "Schedule 6",
+"v2_land_condition": null
+},
+{
+"id": 30164,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 30165,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 30166,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 30167,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 30168,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 30170,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 30172,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 30173,
+"clause": "7.2",
+"v2_land_condition": {
+"layer": "Key Sites Map",
+"labels": [
+"Area 14"
+],
+"zones": null,
+"verified": true,
+"source": "Dulwich Grove land means the land identified as 'Area 14' on the Key Sites Map. (cl 7.1)"
+}
+},
+{
+"id": 30190,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I269",
+"I270",
+"I271",
+"I273",
+"I274",
+"I275",
+"I276",
+"I277",
+"I278",
+"I279",
+"I280",
+"I281",
+"I282",
+"I283",
+"I284",
+"I285",
+"I286"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I269, I270, I271, I273, I274, I275, I276, I277, I278, I279, I280, I281, I282, I283, I284, I285, I286"
+}
+},
+{
+"id": 30208,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1791",
+"I584",
+"I585",
+"I586",
+"I587",
+"I588",
+"I589",
+"I590",
+"I591",
+"I592",
+"I593",
+"I594",
+"I595",
+"I596",
+"I597",
+"I598",
+"I599",
+"I600"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1791, I584, I585, I586, I587, I588, I589, I590, I591, I592, I593, I594, I595, I596, I597, I598, I599, I600"
+}
+},
+{
+"id": 30233,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1013",
+"I1014",
+"I1015",
+"I1016",
+"I1017",
+"I1018",
+"I1019",
+"I1020",
+"I1021",
+"I1022",
+"I1023",
+"I1024",
+"I1025",
+"I1026",
+"I1783",
+"I1784"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1013, I1014, I1015, I1016, I1017, I1018, I1019, I1020, I1021, I1022, I1023, I1024, I1025, I1026, I1783, I1784"
+}
+},
+{
+"id": 30235,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1039",
+"I1040",
+"I1041",
+"I1042",
+"I1043",
+"I1044",
+"I1045",
+"I1046",
+"I1047",
+"I1048",
+"I1049",
+"I1050",
+"I1795"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1039, I1040, I1041, I1042, I1043, I1044, I1045, I1046, I1047, I1048, I1049, I1050, I1795"
+}
+},
+{
+"id": 30240,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1123",
+"I1124",
+"I1125",
+"I1126",
+"I1127",
+"I1128",
+"I1129",
+"I1130",
+"I1131",
+"I1132",
+"I1133",
+"I1134",
+"I1135",
+"I1136",
+"I1137",
+"I1138",
+"I1139"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1123, I1124, I1125, I1126, I1127, I1128, I1129, I1130, I1131, I1132, I1133, I1134, I1135, I1136, I1137, I1138, I1139"
+}
+},
+{
+"id": 30250,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1252",
+"I1253",
+"I1254",
+"I1255",
+"I1256",
+"I1257",
+"I1258",
+"I1259",
+"I1260",
+"I1261",
+"I1262",
+"I1797"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1252, I1253, I1254, I1255, I1256, I1257, I1258, I1259, I1260, I1261, I1262, I1797"
+}
+},
+{
+"id": 30251,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1264",
+"I1265",
+"I1266",
+"I1267",
+"I1268",
+"I1269",
+"I1270",
+"I1271",
+"I1272",
+"I1273",
+"I1274",
+"I1275",
+"I1276",
+"I1277"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1264, I1265, I1266, I1267, I1268, I1269, I1270, I1271, I1272, I1273, I1274, I1275, I1276, I1277"
+}
+},
+{
+"id": 30259,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1373",
+"I1374",
+"I1379",
+"I1380",
+"I1381",
+"I1382",
+"I1383",
+"I1384",
+"I1801"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1373, I1374, I1379, I1380, I1381, I1382, I1383, I1384, I1801"
+}
+},
+{
+"id": 30260,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1386",
+"I1387",
+"I1388",
+"I1389",
+"I1390",
+"I1391",
+"I1392",
+"I1393",
+"I1394",
+"I1395",
+"I1396",
+"I1397",
+"I1398"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1386, I1387, I1388, I1389, I1390, I1391, I1392, I1393, I1394, I1395, I1396, I1397, I1398"
+}
+},
+{
+"id": 30264,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1444",
+"I1445",
+"I1446",
+"I1447",
+"I1448",
+"I1449",
+"I1450",
+"I1451",
+"I1452",
+"I1453",
+"I1454",
+"I1455",
+"I1456",
+"I1457",
+"I1805"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1444, I1445, I1446, I1447, I1448, I1449, I1450, I1451, I1452, I1453, I1454, I1455, I1456, I1457, I1805"
+}
+},
+{
+"id": 30265,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1459",
+"I1460",
+"I1461",
+"I1462",
+"I1463",
+"I1464",
+"I1465",
+"I1466",
+"I1467",
+"I1468",
+"I1469",
+"I1470",
+"I1471",
+"I1472",
+"I1473",
+"I1474",
+"I1475"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1459, I1460, I1461, I1462, I1463, I1464, I1465, I1466, I1467, I1468, I1469, I1470, I1471, I1472, I1473, I1474, I1475"
+}
+},
+{
+"id": 30269,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1513",
+"I1514",
+"I1515",
+"I1516",
+"I1517",
+"I1518",
+"I1519",
+"I1520",
+"I1521",
+"I1522",
+"I1523",
+"I1524",
+"I1525"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1513, I1514, I1515, I1516, I1517, I1518, I1519, I1520, I1521, I1522, I1523, I1524, I1525"
+}
+},
+{
+"id": 30275,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1606",
+"I1607",
+"I1608",
+"I1609",
+"I1610",
+"I1611",
+"I1612",
+"I1613",
+"I1614",
+"I1615",
+"I1616",
+"I1617",
+"I1618",
+"I1619",
+"I1620"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1606, I1607, I1608, I1609, I1610, I1611, I1612, I1613, I1614, I1615, I1616, I1617, I1618, I1619, I1620"
+}
+},
+{
+"id": 30276,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1622",
+"I1623",
+"I1624",
+"I1625",
+"I1626",
+"I1627",
+"I1628",
+"I1629",
+"I1630",
+"I1631",
+"I1632",
+"I1633",
+"I1634",
+"I1635",
+"I1636",
+"I1637",
+"I1638",
+"I1639"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1622, I1623, I1624, I1625, I1626, I1627, I1628, I1629, I1630, I1631, I1632, I1633, I1634, I1635, I1636, I1637, I1638, I1639"
+}
+},
+{
+"id": 30277,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1641",
+"I1642",
+"I1643",
+"I1644",
+"I1645",
+"I1646",
+"I1647",
+"I1648",
+"I1649",
+"I1650",
+"I1651",
+"I1652",
+"I1653",
+"I1654",
+"I1655"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1641, I1642, I1643, I1644, I1645, I1646, I1647, I1648, I1649, I1650, I1651, I1652, I1653, I1654, I1655"
+}
+},
+{
+"id": 30279,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1675",
+"I1676",
+"I1677",
+"I1678",
+"I1679",
+"I1681",
+"I1682",
+"I1683",
+"I1684",
+"I1685",
+"I1686",
+"I1687"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1675, I1676, I1677, I1678, I1679, I1681, I1682, I1683, I1684, I1685, I1686, I1687"
+}
+},
+{
+"id": 30280,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1688",
+"I1689",
+"I1690",
+"I1691",
+"I1692",
+"I1693",
+"I1694",
+"I1695",
+"I1696",
+"I1697",
+"I1698",
+"I1699",
+"I1700",
+"I1701"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1688, I1689, I1690, I1691, I1692, I1693, I1694, I1695, I1696, I1697, I1698, I1699, I1700, I1701"
+}
+},
+{
+"id": 30282,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"I1722",
+"I1723",
+"I1724",
+"I1725",
+"I1726",
+"I1727",
+"I1728",
+"I1729",
+"I1730",
+"I1731",
+"I1732",
+"I1733",
+"I1734",
+"I1735",
+"I1736",
+"I1737"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items I1722, I1723, I1724, I1725, I1726, I1727, I1728, I1729, I1730, I1731, I1732, I1733, I1734, I1735, I1736, I1737"
+}
+},
+{
+"id": 30294,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"A10"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items A10"
+}
+},
+{
+"id": 30295,
+"clause": "Schedule 5",
+"v2_land_condition": {
+"layer": "Heritage Map",
+"labels": [
+"A11",
+"A12",
+"A13",
+"A14",
+"A15",
+"A16",
+"A17",
+"A18"
+],
+"zones": null,
+"verified": true,
+"source": "Schedule 5 heritage items A11, A12, A13, A14, A15, A16, A17, A18"
+}
+},
+{
+"id": 30591,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 30592,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 30593,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 30594,
+"clause": "4.4",
+"v2_land_condition": null
+},
+{
+"id": 30595,
+"clause": "4.4",
+"v2_land_condition": null
+}
+],
+"lots": {
+"10 Norton Street, Leichhardt": {
+"propId": 3268260,
+"layers": [
+{
+"layerName": "Land Zoning Map",
+"results": [
+{
+"title": "E1: Local Centre",
+"Zone": "E1"
+}
+]
+},
+{
+"layerName": "Local Provisions",
+"results": [
+{
+"Class": "Inner West Special Entertainment Precinct",
+"Label": "Inner West Special Entertainment Precinct",
+"title": "Special Entertainment Precinct Map"
+}
+]
+},
+{
+"layerName": "Land Application Map",
+"results": [
+{
+"title": "Inner West Local Environmental Plan 2022"
+}
+]
+},
+{
+"layerName": "Floor Space Ratio Map",
+"results": [
+{
+"Additional Controls": "Area 1",
+"Legislative Clause": "Clause 4.4 A"
+},
+{
+"Legislative Clause": "Clause 4.4",
+"title": "1:1"
+}
+]
+},
+{
+"layerName": "Local Aboriginal Land Council",
+"results": [
+{
+"title": "METROPOLITAN"
+}
+]
+},
+{
+"layerName": "Special Provisions",
+"results": [
+{
+"Class": "56",
+"Label": "2040",
+"title": "SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map"
+},
+{
+"Class": "Greater Sydney",
+"title": "Thermal Energy from Waste Prohibition Map - Greater Sydney"
+},
+{
+"Class": "5",
+"Label": "INNER WEST",
+"title": "SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map"
+},
+{
+"Class": "40%",
+"Label": "2040",
+"title": "SEPP (Sustainable Buildings) 2022 Water Use Map"
+}
+]
+},
+{
+"layerName": "Key Sites Map",
+"results": [
+{
+"Class": "Key Sites",
+"Label": "Area 1",
+"Legislative Clause": "Clauses 4.3C, 4.4, 6.14, 6.15",
+"title": "Area 1"
+}
+]
+},
+{
+"layerName": "Additional Permitted Uses Map",
+"results": [
+{
+"Code": "46",
+"title": "Refer to Schedule 1"
+}
+]
+},
+{
+"layerName": "Greater Sydney Tree Canopy Cover 2022",
+"results": [
+{
+"title": "Canopy %"
+}
+]
+},
+{
+"layerName": "Greater Sydney Tree Canopy Cover 2019",
+"results": [
+{
+"title": "Canopy %"
+}
+]
+},
+{
+"layerName": "Acid Sulfate Soils Map",
+"results": [
+{
+"Class": "Class 5",
+"title": "Class 5"
+}
+]
+},
+{
+"layerName": "Regional Plan Boundary",
+"results": [
+{
+"title": "Greater Sydney"
+}
+]
+}
+]
+},
+"45 Victoria Road, Rozelle": {
+"propId": 2830578,
+"layers": [
+{
+"layerName": "Floor Space Ratio Map",
+"results": [
+{
+"Legislative Clause": "Clause 4.4",
+"title": "1:1"
+}
+]
+},
+{
+"layerName": "Land Application Map",
+"results": [
+{
+"title": "Inner West Local Environmental Plan 2022"
+}
+]
+},
+{
+"layerName": "Land Zoning Map",
+"results": [
+{
+"title": "E4: General Industrial",
+"Zone": "E4"
+}
+]
+},
+{
+"layerName": "Local Aboriginal Land Council",
+"results": [
+{
+"title": "METROPOLITAN"
+}
+]
+},
+{
+"layerName": "Acid Sulfate Soils Map",
+"results": [
+{
+"Class": "Class 5",
+"title": "Class 5"
+}
+]
+},
+{
+"layerName": "Greater Sydney Tree Canopy Cover 2022",
+"results": [
+{
+"title": "Canopy %"
+}
+]
+},
+{
+"layerName": "Greater Sydney Tree Canopy Cover 2019",
+"results": [
+{
+"title": "Canopy %"
+}
+]
+},
+{
+"layerName": "Key Sites Map",
+"results": [
+{
+"Class": "Key Sites",
+"Label": "Area 1",
+"Legislative Clause": "Clauses 4.3C, 4.4, 6.14, 6.15",
+"title": "Area 1"
+},
+{
+"Class": "Key Sites",
+"Label": "Area 19",
+"title": "Area 19"
+}
+]
+},
+{
+"layerName": "Regional Plan Boundary",
+"results": [
+{
+"title": "Greater Sydney"
+}
+]
+},
+{
+"layerName": "Special Provisions",
+"results": [
+{
+"Class": "Greater Sydney",
+"title": "Thermal Energy from Waste Prohibition Map - Greater Sydney"
+},
+{
+"Class": "5",
+"Label": "INNER WEST",
+"title": "SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map"
+},
+{
+"Class": "40%",
+"Label": "2039",
+"title": "SEPP (Sustainable Buildings) 2022 Water Use Map"
+},
+{
+"Class": "CBD Metro Future Underground Infrastructure Corridor",
+"Label": "CBD Metro Future Underground Infrastructure Corridor",
+"title": "SEPP (Transport and Infrastructure) 2021 Future Underground Infrastructure Corridors Map"
+},
+{
+"Class": "56",
+"Label": "2039",
+"title": "SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map"
+}
+]
+}
+]
+}
+}
+}

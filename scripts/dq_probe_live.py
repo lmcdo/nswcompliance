@@ -2482,41 +2482,32 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "green app proves nothing about this row.",
     ),
     "DQ-140": (
-        "Served LEP rules whose zone or development-type scope nobody decided",
-        # Split from DQ-114 on 2026-10-09 (user ruling: unblock the merge, then
-        # do the full fix as its own PR). The whole Inner West LEP 2022 was
-        # loaded with no scope: 554 served rules, every one reading ALL for both
-        # keys, 434 as no_config and 120 never tagged at all. An LEP clause
-        # states its own reach in its own words -- "This clause applies to land
-        # in Zone E3", "applies to Lot 1, DP 1070825", or nothing, in which case
-        # cl 1.4 (the land the Plan applies to) is the decision. The rows are
-        # also stored split by subclause, so a fragment like "(a) each lot will
-        # be used for a dwelling house" carries no zone text of its own: the
-        # fix is per CLAUSE, not per row. Counted per key, as DQ-114 is, and
-        # including no_config, because no council config can ever resolve an
-        # LEP (DQ-33's reasoning) -- here no_config is simply "not read yet".
-        "SELECT count(*) FROM ("
-        "  SELECT 1 FROM regulatory_provisions rp"
-        "    JOIN documents d ON d.id = rp.document_id AND d.document_type = 'LEP'"
-        "   WHERE rp.is_current AND rp.v2_is_actionable"
-        "     AND (rp.v2_dev_type_source IN ('config_silent','filtered_to_all',"
-        "                                    'no_document_id','no_config')"
-        "          OR rp.v2_dev_type_source IS NULL)"
-        "  UNION ALL"
-        "  SELECT 1 FROM regulatory_provisions rp"
-        "    JOIN documents d ON d.id = rp.document_id AND d.document_type = 'LEP'"
-        "   WHERE rp.is_current AND rp.v2_is_actionable"
-        "     AND (rp.v2_zone_source IN ('config_silent','filtered_to_all',"
-        "                                'no_document_id','no_config')"
-        "          OR rp.v2_zone_source IS NULL)"
-        ") t",
+        "Served Inner West LEP rules for a named site or map area, with no land condition to match",
+        # Redefined 2026-10-11. The first definition counted keys nobody DECIDED, and read 0 once every
+        # clause was read -- but 67 of 88 clauses were decided as `scope_declined` ("the reach is a lot or
+        # map area the labels can't hold") and config_declined serves to ALL, so cl 6.17 (168 Norton St,
+        # Key Sites 'Area 5') was still shown on every Inner West lot. It measured the decision, not the
+        # rule shown outside its reach. This counts the served rows of the clauses whose reach IS land
+        # (enrichment/config/inner_west_lep_land.py LAND_GATED_CLAUSES -- tests assert the two lists
+        # match) that carry no v2_land_condition (migration 109), so the for-property route has nothing
+        # to match against the lot's portal layers and serves them everywhere.
+        "SELECT count(*) FROM regulatory_provisions rp"
+        " WHERE rp.is_current AND rp.v2_is_actionable"
+        "   AND rp.document_id ~ '^Inner_West_Local_Environmental_Plan_2022'"
+        "   AND rp.v2_land_condition IS NULL"
+        "   AND substring(rp.section_header from '^(Schedule [0-9]+[A-Z]?|[0-9]+[.][0-9]+[A-Z]{0,2})') IN ("
+        "      '2.5','4.1','4.1A','4.3A','4.3B','4.3C','4.4A','5.1','5.1A','5.7',"
+        "      '5.10','5.21','5.22','6.1','6.4','6.5','6.6','6.8','6.14','6.15',"
+        "      '6.16','6.17','6.18','6.19','6.20','6.21','6.22','6.23','6.24','6.25',"
+        "      '6.26','6.27','6.30','6.31','6.33','6.34','7.2','7.3','7.4','7.5',"
+        "      '8.2','Schedule 1','Schedule 5'"
+        "   )",
         (),
-        "Each count is one key -- a zone list or a development-type list -- on "
-        "one served LEP rule, reading ALL because nobody read the clause. The "
-        "rule is shown to every zone and every kind of development, so an E3 "
-        "business-premises clause or a single-lot Schedule 1 clause appears on "
-        "an R2 house. Reachable only by reading each clause's own words and "
-        "recording them, per clause rather than per stored row.",
+        "Each is one served rule of a clause that names its land -- a Key Sites area, a Schedule 1 "
+        "item on the Additional Permitted Uses Map, a Schedule 5 heritage item -- with no condition "
+        "to match against the lot, so it is shown on every Inner West lot. Clears with "
+        "scripts/apply_iw_lep_land_conditions.py --apply. Verify on real lots, not only this count: "
+        "frontend-nextjs/__tests__/api/lep-land-condition.test.ts (10 Norton St, 45 Victoria Rd).",
     ),
     "DQ-141": (
         "Served rules from the second, council-less load of Ashfield DCP 2016",

@@ -1,0 +1,160 @@
+{
+  "tier": "critical",
+  "justification": "Critical: changes which Inner West LEP 2022 rules /api/provisions/for-property serves for a property (site-specific rules withheld off their land), adds a column the route selects (migration 109, applied), and writes conditions to 292 production rows.",
+  "commit_hash": "daf9d929",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    ".gitignore",
+    ".qa/reports/feat__iw-land-match.json",
+    "data/db_rollback_backups/regulatory_provisions_pre_iw_land_condition_2026-10-11_0904.csv",
+    "data/db_rollback_backups/regulatory_provisions_pre_iw_land_condition_2026-10-11_0921.csv",
+    "enrichment/config/inner_west_lep_land.py",
+    "frontend-nextjs/__tests__/api/former-council-for-point.test.ts",
+    "frontend-nextjs/__tests__/api/lep-land-condition.test.ts",
+    "frontend-nextjs/__tests__/fixtures/iw_lep_land_conditions.json",
+    "frontend-nextjs/app/api/assessment/full/route.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/components/compliance/PageGroupedProvisions.tsx",
+    "frontend-nextjs/hooks/useFullPropertyData.ts",
+    "frontend-nextjs/lib/ai/classifier.ts",
+    "frontend-nextjs/lib/ai/router.ts",
+    "frontend-nextjs/lib/lep-land-condition.ts",
+    "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "frontend-nextjs/lib/precinct-service.ts",
+    "frontend-nextjs/lib/property-data.ts",
+    "frontend-nextjs/types/regulatory.ts",
+    "migrations/109_v2_land_condition.sql",
+    "scripts/apply_iw_lep_land_conditions.py",
+    "scripts/dq_probe_live.py",
+    "tests/test_inner_west_lep_land.py"
+  ],
+  "pre_impl": {
+    "existing_data": "554 served Inner West LEP 2022 rows; 67 of 88 clauses recorded scope_declined and served to ALL. Production for-property with former_council=inner_west returned 538 IW LEP rows for any lot (measured 2026-10-11); with former_council=Leichhardt it returned 0 (the document filter excludes the LEP).",
+    "assumption_mismatch": "DQ-140 read 0 because it counted undecided keys; a declined key is decided but still served everywhere. Schedule 1 continuation rows carry no item number and one (23689) carries clause 7.4's heading, so headings alone cannot place them.",
+    "new_vs_existing": "Reuses the land_application pattern (encode on the caller, decode+decide in the route) from lib/dcp-land-application.ts and the layer list nsw-planning-portal.ts already fetches; no new portal call.",
+    "external_source_error": "Portal heritage items are I269/I1123 while the OCR'd Schedule 5 table reads 1269/11123; mapped 1->I. Cl 6.26 names APU '46' for Trafalgar St lots, but the portal returns APU 46 on 10 Norton St too, so 6.26 matches every APU-46 lot -- flagged, not guessed around.",
+    "frontend_type": "Rows gain v2_land_condition (jsonb object or null) and kept rows land_status 'match'|'unconfirmed' plus land_note; PageGroupedProvisions renders the unconfirmed badge.",
+    "user_failure_mode": "Before: cl 6.17 (168 Norton St seniors housing) and every Schedule 1 site's extra uses shown on any Inner West lot reached with former_council=inner_west. Failure of the new path is visible: no portal answer -> rules kept with 'Could not confirm this land'."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-140 ; python -m pytest tests/test_inner_west_lep_land.py -q ; cd frontend-nextjs && npx jest __tests__/api/lep-land-condition.test.ts",
+    "fails_when": "A served land-gated row has no land condition; or 10 Norton St is served 6.17 / item 45 or misses item 46, 6.14, 6.15; or 45 Victoria Rd misses 6.21 or is served item 46.",
+    "observed_red": "DQ-140 read 292 on 2026-10-11 after migration 109 and before the write; 0 after scripts/apply_iw_lep_land_conditions.py --apply wrote 292 rows."
+  },
+  "functions": [
+    {
+      "name": "row_conditions",
+      "file_line": "enrichment/config/inner_west_lep_land.py",
+      "input": "all current rows of one IW LEP document",
+      "output": "a dict mapping each row id to the land condition (layer, labels, zones, verified, source) it must satisfy",
+      "if_none": "a Schedule 1 row whose item cannot be read gets layer None -> shown as unconfirmed"
+    },
+    {
+      "name": "clause_condition",
+      "file_line": "enrichment/config/inner_west_lep_land.py",
+      "input": "one land-gated clause key from LAND_GATED_CLAUSES, such as '6.21' or '7.3'",
+      "output": "its condition from the clause's quoted words or a quoted override",
+      "if_none": "raises ValueError -- a clause cannot silently lack a condition"
+    },
+    {
+      "name": "applyLandConditions",
+      "file_line": "frontend-nextjs/lib/lep-land-condition.ts",
+      "input": "the provision rows of one layer and the lot's LandFacts decoded from the land_facts query value, or null",
+      "output": "the rows to serve, each land-limited one tagged land_status, plus counts of rows withheld and unconfirmed",
+      "if_none": "facts null -> nothing withheld, every land-limited row marked unconfirmed"
+    },
+    {
+      "name": "getFormerCouncilForPoint",
+      "file_line": "frontend-nextjs/lib/precinct-service.ts",
+      "input": "the property's latitude and longitude in WGS84, from the portal's address geometry",
+      "output": "the capitalised former council stored on the Inner West lot under that point, or null when there is none",
+      "if_none": "null keeps the suburb/postcode answer; a failed query also returns null and is logged"
+    }
+  ],
+  "values": [
+    {
+      "value": "292 row conditions",
+      "source": "each clause's own words in enrichment/config/inner_west_lep_config.py scope_evidence (checked verbatim against legislation.nsw.gov.au 2026-10-10)",
+      "read_at": "/api/provisions/for-property",
+      "if_missing": "DQ-140 counts the row; route serves it with no gate"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "read IW LEP rows to build conditions",
+      "file_line": "scripts/apply_iw_lep_land_conditions.py",
+      "where_clause": "WHERE is_current AND document_id ~ '^Inner_West_Local_Environmental_Plan_2022'"
+    },
+    {
+      "purpose": "write one row's condition",
+      "file_line": "scripts/apply_iw_lep_land_conditions.py",
+      "where_clause": "WHERE id = %s AND is_current"
+    },
+    {
+      "purpose": "former council of the lot under the property point",
+      "file_line": "frontend-nextjs/lib/precinct-service.ts",
+      "where_clause": "WHERE former_council IS NOT NULL AND ST_Contains(geom, point)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Portal down / caller does not pass land_facts",
+      "what_happens": "Rows kept, marked 'Could not confirm this land'",
+      "mitigated": true,
+      "how": "decideLandCondition returns unconfirmed when facts is null",
+      "repro": "curl '/api/provisions/for-property?lga=Inner%20West&zone=E1&former_council=inner_west' with no land_facts; every land-limited row returns land_status unconfirmed"
+    },
+    {
+      "scenario": "The land_facts query value is truncated or is not valid JSON at all",
+      "what_happens": "Decoded as null -> unconfirmed, never a match",
+      "mitigated": true,
+      "how": "decodeLandFacts validation + test",
+      "repro": "npx jest __tests__/api/lep-land-condition.test.ts -t 'malformed input is null'"
+    },
+    {
+      "scenario": "A rule's layer is one the portal was never seen returning for any lot",
+      "what_happens": "The rule stays on the page, marked could not confirm this land, and is never withheld",
+      "mitigated": true,
+      "how": "verified flag per condition",
+      "repro": "npx jest __tests__/api/lep-land-condition.test.ts -t 'unverified layer absent'"
+    },
+    {
+      "scenario": "The new route code is deployed to Vercel before migration 109 reaches the database",
+      "what_happens": "Every provisions request fails with a column-does-not-exist SQL error, loudly and visibly",
+      "mitigated": true,
+      "how": "migration 109 applied to production 2026-10-11 before merge",
+      "repro": "SELECT column_name FROM information_schema.columns WHERE table_name='regulatory_provisions' AND column_name='v2_land_condition' -- returns one row (applied 2026-10-11)"
+    },
+    {
+      "scenario": "Inner West LEP rows are re-extracted later and come back without their land conditions",
+      "what_happens": "The DQ-140 probe rises above 0 and the ledger check, declared fixed, turns red",
+      "mitigated": true,
+      "how": "probe in the ledger, declared open until 0",
+      "repro": "python scripts/dq_probe_live.py --id DQ-140"
+    },
+    {
+      "scenario": "A clause's map label is shared with other land, as APU 46 is for cl 6.26 and Schedule 1 item 46",
+      "what_happens": "A label hit returns unconfirmed, so 6.26 shows with could not confirm this land on APU-46 lots and nowhere else",
+      "mitigated": true,
+      "how": "label_not_unique on the condition (Sol finding, 2026-10-11)",
+      "repro": "npx jest __tests__/api/lep-land-condition.test.ts -t 'shows 6.26'"
+    },
+    {
+      "scenario": "The suburb or postcode mapping names the wrong former council, as for St Peters, Enmore and Lewisham",
+      "what_happens": "The lot's stored former council overrides it, so the property gets its own council's DCP rules",
+      "mitigated": true,
+      "how": "lot lookup runs after the mapping in property-data.ts; measured 15 of 16 real lots right, 16th has none and keeps the mapping",
+      "repro": "npx jest __tests__/api/former-council-for-point.test.ts"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Already applied 2026-10-11: migration 109 and 292 condition rows (backup data/db_rollback_backups/regulatory_provisions_pre_iw_land_condition_2026-10-11_0904.csv). DQ-140 reads 0. Nothing further to run."
+  },
+  "real_layer_exempt": {
+    "scripts/apply_iw_lep_land_conditions.py": "Writer for one column on 292 rows; dry run by default, backup + count check + rollback on mismatch with --apply."
+  }
+}

@@ -7,6 +7,7 @@ import { getRoadClassifications, type RoadClassification } from './road-classifi
 import { getClauseNumbersForMapType } from './lep-local-provisions-mapping';
 import { getKeySitesProvision } from './key-sites-map-provisions';
 import { filterToAskedProperty } from './address-number-match';
+import { landFactsFromLayers, type LandFacts } from './lep-land-condition';
 
 export const ADDRESS_SEARCH_UNAVAILABLE = 'Address search unavailable';
 
@@ -146,6 +147,10 @@ export interface PlanningConstraints {
 
  // Planning instruments that apply to this property (from Land Application Map layer)
  landApplicationInstruments?: Array<{ type: string; name: string }> | null;
+
+ // Every layer's map labels for this lot (Key Sites 'Area 19', APU '46', Heritage 'I269'...). The
+ // provisions route serves a site-specific LEP rule only where these carry its land (DQ-140).
+ landFacts?: LandFacts | null;
 
  // ePlanning Phase 1: Exclusion gates (true = excluded, false = not excluded, null = could not determine)
  lowMidRiseExcluded?: boolean | null;
@@ -1038,6 +1043,8 @@ export class NSWPlanningPortalService {
  }
  });
  });
+
+ constraints.landFacts = landFactsFromLayers(layers, constraints.zone);
 
  return constraints;
  }

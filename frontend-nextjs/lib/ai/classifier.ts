@@ -14,6 +14,7 @@
 
 import { google } from '@ai-sdk/google';
 import { generateText } from 'ai';
+import type { LandFacts } from '@/lib/lep-land-condition';
 
 // Question categories
 export type QuestionCategory =
@@ -57,6 +58,8 @@ export interface PropertyContext {
   maxFsr?: number;     // From Planning Portal spatial layers
   /** Land Application Map (layer 8) instruments — decides whether a gated DCP covers the land (DQ-120). */
   landApplicationInstruments?: Array<{ name: string; type: string }> | null;
+  /** DQ-140: the lot's map labels, from lib/nsw-planning-portal.ts `landFacts`. */
+  landFacts?: LandFacts | null;
   constraints?: {
     heritage?: boolean;
     heritageName?: string;
