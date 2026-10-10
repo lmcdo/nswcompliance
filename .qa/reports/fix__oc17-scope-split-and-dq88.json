@@ -1,0 +1,116 @@
+{
+  "tier": "critical",
+  "justification": "Critical: a production data load (migration 095, 43 DCP controls, applied), a prepared law-text refresh and flag clearance (dq88 script + migration 096, to be applied by the owner), and a changed outreach check (OC-17).",
+  "commit_hash": "d0f37ddb",
+  "files": [
+    "scripts/outreach_scoped_councils.py",
+    "scripts/law_change_diff.py",
+    "scripts/dq88_refresh_2026_10_10.py",
+    "migrations/095_dq142_controls_from_registered_pdfs.sql",
+    "migrations/096_dq88_clear_reviewed_instruments.sql",
+    "scripts/dq142_build_controls_migration.py",
+    "data/dq142_controls_pdf_2026-10-10.json",
+    "scripts/control_source_values_baseline.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "pre_impl": {
+    "existing_data": "DQ-142 read 70 after #1248; 9 councils' housing chapters were registered PDFs never extracted. DQ-88 read 30: the monitor was blind 2026-06-08 to 2026-10-07 and its first good run flagged every changed instrument.",
+    "assumption_mismatch": "OC-17's per-council split still counted Inner West LEP rows that DQ-114 moved to DQ-140 on 2026-10-09, so the two totals disagreed (240 vs 0) and OC-17 failed on its own consistency check.",
+    "new_vs_existing": "Controls follow the 092 shape; the generator gains a PDF-page quote check against dcp_chapter_registry.r2_public_pdf_url. The law refresh follows the 2026-09-15 method (version history rows, never delete).",
+    "external_source_error": "Every control quote is checked on its registered PDF page and every figure (with unit) in its quote; every new law passage was checked verbatim in today's in-force text before the refresh was written.",
+    "frontend_type": "No frontend change; the site reads the same control and provision columns as before.",
+    "user_failure_mode": "Without 095 the building-area figure is withheld for these councils; without the refresh, repealed SEPP text (s 2.27) keeps being served as current."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/outreach_scoped_councils.py ; python scripts/dq_probe_live.py --id DQ-142 ; python -m pytest tests/test_dq142_build_controls_migration.py -q -o addopts=",
+    "fails_when": "The OC-17 split stops matching DQ-114 (LEP rows counted again), a council with undecided LEP scope is published, or 095's rows are removed (DQ-142 back to 70).",
+    "observed_red": "Observed 2026-10-10: before this change outreach_scoped_councils.py failed with 'split counts 240 keys but DQ-114 counts 0'; after it passes with inner_west unlisted for DQ-140 1108. 095: the first pass refused 7 (two second-limb rules, five unit forms the check did not read: '900 millimetres', '6.0 metres'); the check was widened and the rules re-quoted, then 43 verified. DQ-142 70 -> 29. The dq88 refresh dry run refused twice (non-breaking spaces after clause numbers; a fragment with no '2.27') before passing: retired 7, edited 5, 0 repealed passages left."
+  },
+  "functions": [
+    {
+      "name": "compute",
+      "file_line": "scripts/outreach_scoped_councils.py",
+      "input": "a database connection and the published list's stated scope exceptions read from the shared JSON",
+      "output": "per council the reasons it cannot be listed (DQ-114, DQ-140, no_config, DQ-115) and any consistency problems",
+      "if_none": "A council with no reasons is listed; an unreachable database is UNKNOWN, never a pass."
+    },
+    {
+      "name": "pdf_page_text",
+      "file_line": "scripts/dq142_build_controls_migration.py",
+      "input": "a council slug, its registered chapter key and a one-based PDF page number from a finding",
+      "output": "that page's text, whitespace-normalised and lowercased, read from the chapter's registered PDF",
+      "if_none": "None when the chapter has no PDF or the page is out of range, so the finding is refused."
+    }
+  ],
+  "values": [
+    {
+      "value": "43 DCP building-area controls for 12 councils (setbacks, landscaped area, deep soil)",
+      "source": "each council's registered DCP chapter PDF, quoted per row with page and section",
+      "read_at": "services/constraint_arithmetic.py buildable-area calculation",
+      "if_missing": "The arithmetic withholds the footprint; no figure is invented."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "LEP rules with undecided scope per council (DQ-140)",
+      "file_line": "scripts/outreach_scoped_councils.py",
+      "where_clause": "rp.is_current AND rp.v2_is_actionable AND rp.source_council IS NOT NULL AND document_type = 'LEP'"
+    },
+    {
+      "purpose": "chapter PDF for a quote",
+      "file_line": "scripts/dq142_build_controls_migration.py",
+      "where_clause": "council = %s AND chapter_key = %s AND is_active"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council's DCP rows are clean but its LEP scope is undecided",
+      "what_happens": "It stays off the published list with reason 'DQ-140 n'",
+      "mitigated": true,
+      "how": "_LEP_SQL adds DQ-140 as a delisting reason",
+      "repro": "python scripts/outreach_scoped_councils.py"
+    },
+    {
+      "scenario": "A reader's quote is paraphrased or from another page",
+      "what_happens": "Refused: the fragment is not on the named PDF page",
+      "mitigated": true,
+      "how": "pdf_page_text plus a normalised substring check",
+      "repro": "python scripts/dq142_build_controls_migration.py data/dq142_controls_pdf_2026-10-10.json migrations/095_dq142_controls_from_registered_pdfs.sql"
+    },
+    {
+      "scenario": "A rule applies to a housing type only through a sentence on another page",
+      "what_happens": "That sentence is quoted with its own page ('pdf:N') and checked too",
+      "mitigated": true,
+      "how": "per-quote page in the generator",
+      "repro": "python scripts/dq142_build_controls_migration.py data/dq142_controls_pdf_2026-10-10.json migrations/095_dq142_controls_from_registered_pdfs.sql"
+    },
+    {
+      "scenario": "Flags are cleared before the repealed text is removed",
+      "what_happens": "Migration 096 refuses: its first assertion finds the repealed passages still current",
+      "mitigated": true,
+      "how": "096 checks the refresh ran",
+      "repro": "python scripts/apply_migration_dry_run.py migrations/096_dq88_clear_reviewed_instruments.sql"
+    },
+    {
+      "scenario": "The refresh's old passage is missing or appears twice in a row",
+      "what_happens": "The script refuses and names the row; nothing is written",
+      "mitigated": true,
+      "how": "exactly-once check per edit, then a sweep for any repealed text still current",
+      "repro": "python scripts/dq88_refresh_2026_10_10.py"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Owner runs: python scripts/dq88_refresh_2026_10_10.py --apply ; python scripts/apply_migration_dry_run.py migrations/096_dq88_clear_reviewed_instruments.sql --apply ; then python scripts/dq_probe_live.py --id DQ-88 reads 3. Migration 095 is already applied (DQ-142 29)."
+  },
+  "real_layer_exempt": {
+    "migrations/095_dq142_controls_from_registered_pdfs.sql": "Applied to production 2026-10-10 after a rolled-back dry run (43 rows).",
+    "scripts/dq142_build_controls_migration.py": "One-off generator; its real-layer run is the production read and PDF fetch of 2026-10-10 (43 verified).",
+    "scripts/dq88_refresh_2026_10_10.py": "One-off data refresh, dry-run against production 2026-10-10 (retired 7, edited 5, rolled back); apply is the owner's.",
+    "migrations/096_dq88_clear_reviewed_instruments.sql": "Dry-run against production refused as designed until the refresh is applied; key list checked live (27 of 27 flagged, 3 left).",
+    "scripts/law_change_diff.py": "Runs on the Fly monitor only (legislation.nsw.gov.au answers that IP); run there 2026-10-10 on 24 instruments.",
+    "scripts/outreach_scoped_councils.py": "Real-DB run 2026-10-10: PASS, 12 of 18 listed."
+  }
+}

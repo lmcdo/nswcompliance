@@ -175,7 +175,25 @@
     1425,
     1427,
     1428,
-    1429
+    1429,
+    1479,
+    1482,
+    1483,
+    1484,
+    1487,
+    1491,
+    1496,
+    1497,
+    1498,
+    1499,
+    1500,
+    1503,
+    1505,
+    1506,
+    1507,
+    1508,
+    1514,
+    1515
   ],
   "valueless_note": "Ids of controls that record a rule with no number at all. Tracked as a SET, not a count: control A losing its value while control B gains one leaves the count at 83 and hides A entirely. A migration that NULLs a real value moves the row here and would otherwise pass as 'nothing to check' \u2014 the check cannot tell an intentional blank from a lost value, so it watches which rows are blank."
 }

@@ -1,0 +1,845 @@
+[
+ {
+  "lga": "bayside",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": 5,
+  "unit": "m",
+  "condition": null,
+  "pdf_page": 200,
+  "section_ref": "5.2.1 Setbacks C5",
+  "quotes": [
+   [
+    "pdf",
+    "Minimum building setback to a rear boundary is 5m."
+   ]
+  ],
+  "source_chapter_key": "bayside-dcp-2022-part3"
+ },
+ {
+  "lga": "bayside",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "0.9 m ground floor; 1.5 m first storey and above. Section 5.2.1 covers dwellings, dual occupancy and semi-detached dwellings.",
+  "pdf_page": 200,
+  "section_ref": "5.2.1 Setbacks C6",
+  "quotes": [
+   [
+    "pdf",
+    "Minimum building setback to a side boundary is 0.9m (ground floor) and 1.5m (first storey and above)."
+   ]
+  ],
+  "source_chapter_key": "bayside-dcp-2022-part3"
+ },
+ {
+  "lga": "bayside",
+  "dev_type": "secondary_dwelling",
+  "control_type": "rear_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "Section 5.1.2 ancillary buildings, primarily secondary dwellings; a nil setback may be considered for some masonry walls (smaller than 900 mm, at council discretion)",
+  "pdf_page": 190,
+  "section_ref": "5.1.2 General C1",
+  "quotes": [
+   [
+    "pdf",
+    "Buildings must have a minimum setback to a side and rear boundary of 900mm."
+   ],
+   [
+    "pdf",
+    "These controls primarily relate to secondary dwellings"
+   ]
+  ],
+  "source_chapter_key": "bayside-dcp-2022-part3"
+ },
+ {
+  "lga": "bayside",
+  "dev_type": "secondary_dwelling",
+  "control_type": "side_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "Section 5.1.2 ancillary buildings, primarily secondary dwellings; a nil setback may be considered for some masonry walls (smaller than 900 mm, at council discretion)",
+  "pdf_page": 190,
+  "section_ref": "5.1.2 General C1",
+  "quotes": [
+   [
+    "pdf",
+    "Buildings must have a minimum setback to a side and rear boundary of 900mm."
+   ],
+   [
+    "pdf",
+    "These controls primarily relate to secondary dwellings"
+   ]
+  ],
+  "source_chapter_key": "bayside-dcp-2022-part3"
+ },
+ {
+  "lga": "burwood",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": 3,
+  "unit": "m",
+  "condition": "3 m ground floor; 6 m to upper level of a two storey dwelling.",
+  "pdf_page": 205,
+  "section_ref": "4.4.3 Setbacks P11",
+  "quotes": [
+   [
+    "pdf",
+    "3 metres setback to the ground floor level of a dwelling."
+   ],
+   [
+    "pdf:204",
+    "following setbacks apply for dual occupancy development and secondary dwellings"
+   ]
+  ],
+  "source_chapter_key": "part-4-residential"
+ },
+ {
+  "lga": "burwood",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "0.9 m ground/single storey; 1.5 m to upper level of two storey dwelling.",
+  "pdf_page": 205,
+  "section_ref": "4.4.3 Setbacks P10",
+  "quotes": [
+   [
+    "pdf",
+    "900 millimetres to the ground floor level or single storey elevation."
+   ],
+   [
+    "pdf:204",
+    "following setbacks apply for dual occupancy development and secondary dwellings"
+   ]
+  ],
+  "source_chapter_key": "part-4-residential"
+ },
+ {
+  "lga": "burwood",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: front setback for the dwelling addressing the primary street is the average of the localised existing building line (ground floor); upper level of two storey dwelling 9 m.",
+  "pdf_page": 205,
+  "section_ref": "4.4.3 Setbacks P9",
+  "quotes": [
+   [
+    "pdf",
+    "The average of the localised existing building line for the ground floor level."
+   ],
+   [
+    "pdf:204",
+    "following setbacks apply for dual occupancy development and secondary dwellings"
+   ]
+  ],
+  "source_chapter_key": "part-4-residential"
+ },
+ {
+  "lga": "burwood",
+  "dev_type": "secondary_dwelling",
+  "control_type": "rear_setback",
+  "value_min": 3,
+  "unit": "m",
+  "condition": "3 m ground floor; 6 m upper level of two storey dwelling. Section 4.4.3 setbacks stated to apply to dual occupancy development and secondary dwellings (p204).",
+  "pdf_page": 205,
+  "section_ref": "4.4.3 Setbacks P11",
+  "quotes": [
+   [
+    "pdf",
+    "3 metres setback to the ground floor level of a dwelling."
+   ],
+   [
+    "pdf:204",
+    "following setbacks apply for dual occupancy development and secondary dwellings"
+   ]
+  ],
+  "source_chapter_key": "part-4-residential"
+ },
+ {
+  "lga": "burwood",
+  "dev_type": "secondary_dwelling",
+  "control_type": "side_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "0.9 m ground/single storey; 1.5 m upper level of two storey dwelling. Section 4.4.3 setbacks stated to apply to dual occupancy development and secondary dwellings (p204).",
+  "pdf_page": 205,
+  "section_ref": "4.4.3 Setbacks P10",
+  "quotes": [
+   [
+    "pdf",
+    "900 millimetres to the ground floor level or single storey elevation."
+   ],
+   [
+    "pdf:204",
+    "following setbacks apply for dual occupancy development and secondary dwellings"
+   ]
+  ],
+  "source_chapter_key": "part-4-residential"
+ },
+ {
+  "lga": "burwood",
+  "dev_type": "secondary_dwelling",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: front setback is the average of the localised existing building line (ground floor); upper level of two storey dwelling 9 m. Section 4.4.3 setbacks stated to apply to dual occupancy development and secondary dwellings (p204).",
+  "pdf_page": 205,
+  "section_ref": "4.4.3 Setbacks P9",
+  "quotes": [
+   [
+    "pdf",
+    "The average of the localised existing building line for the ground floor level."
+   ],
+   [
+    "pdf:204",
+    "following setbacks apply for dual occupancy development and secondary dwellings"
+   ]
+  ],
+  "source_chapter_key": "part-4-residential"
+ },
+ {
+  "lga": "burwood",
+  "dev_type": "dwelling_house",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: single storey front setback is the average of the localised existing building line; second storey component 9 m.",
+  "pdf_page": 221,
+  "section_ref": "4.5 Setbacks P1 Table 3",
+  "quotes": [
+   [
+    "pdf",
+    "Front Setback (i) Two storey (second storey component of the dwelling only) 9m (ii) Single storey Average of localised existing building line"
+   ]
+  ],
+  "source_chapter_key": "part-4-residential"
+ },
+ {
+  "lga": "canada_bay",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: minimum 4.5 m or the Prevailing Street Setback (average of 5 adjoining residential properties each side), whichever is greater; applies to all residential buildings.",
+  "pdf_page": 11,
+  "section_ref": "E4.2 Front setbacks - primary street C1",
+  "quotes": [
+   [
+    "pdf",
+    "The front setback of all residential buildings is to be a minimum of 4.5 metres or no less than the Prevailing Street Setback, whichever is the greater."
+   ]
+  ],
+  "source_chapter_key": "part-e-single-dwellings"
+ },
+ {
+  "lga": "canada_bay",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": 6,
+  "unit": "m",
+  "condition": "Single street frontage, excludes outbuilding or secondary dwelling; upper floor living room 9.0 m. Corner lot: dwelling oriented to secondary frontage 1.5 m rear boundary and 4 m side boundary at rear of dwelling (C12).",
+  "pdf_page": 15,
+  "section_ref": "E4.2 Rear setbacks C9",
+  "quotes": [
+   [
+    "pdf",
+    "All development (not including an outbuilding or secondary dwelling) is to have a minimum rear setback of 6.0 metres"
+   ]
+  ],
+  "source_chapter_key": "part-e-single-dwellings"
+ },
+ {
+  "lga": "canada_bay",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "Single storey 900mm; second storey 1500mm from side boundaries.",
+  "pdf_page": 12,
+  "section_ref": "E4.2 Side setbacks C6",
+  "quotes": [
+   [
+    "pdf",
+    "Single storey dual occupancies are to be set back a minimum of 900mm from side boundaries."
+   ]
+  ],
+  "source_chapter_key": "part-e-single-dwellings"
+ },
+ {
+  "lga": "canada_bay",
+  "dev_type": "secondary_dwelling",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: secondary dwellings must be located behind the front building line of the principal dwelling.",
+  "pdf_page": 11,
+  "section_ref": "E4.2 Front setbacks C3",
+  "quotes": [
+   [
+    "pdf",
+    "Secondary dwellings must be located behind the front building line of the principal dwelling;"
+   ]
+  ],
+  "source_chapter_key": "part-e-single-dwellings"
+ },
+ {
+  "lga": "canada_bay",
+  "dev_type": "secondary_dwelling",
+  "control_type": "rear_setback",
+  "value_min": 3,
+  "unit": "m",
+  "condition": null,
+  "pdf_page": 15,
+  "section_ref": "E4.2 Rear setbacks C11",
+  "quotes": [
+   [
+    "pdf",
+    "A secondary dwelling is to have a minimum rear setback of 3.0m."
+   ]
+  ],
+  "source_chapter_key": "part-e-single-dwellings"
+ },
+ {
+  "lga": "canada_bay",
+  "dev_type": "secondary_dwelling",
+  "control_type": "side_setback",
+  "value_min": 1.5,
+  "unit": "m",
+  "condition": "All walls.",
+  "pdf_page": 12,
+  "section_ref": "E4.2 Side setbacks C6",
+  "quotes": [
+   [
+    "pdf",
+    "set back a minimum of 1500mm from side boundaries of the parent lot. Secondary dwellings"
+   ],
+   [
+    "pdf",
+    "All walls are to be set back a minimum of 1500mm"
+   ]
+  ],
+  "source_chapter_key": "part-e-single-dwellings"
+ },
+ {
+  "lga": "canada_bay",
+  "dev_type": "secondary_dwelling",
+  "control_type": "landscaping_min",
+  "value_min": 35,
+  "unit": "%",
+  "condition": "Percent of parent lot site area (40% in Biodiversity Corridor); also min 50% of front setback and 50% of rear setback landscaped.",
+  "pdf_page": 26,
+  "section_ref": "E4.6 C4, Table E-A",
+  "quotes": [
+   [
+    "pdf",
+    "Secondary dwellings 35% 50% 50% 40%"
+   ]
+  ],
+  "source_chapter_key": "part-e-single-dwellings"
+ },
+ {
+  "lga": "fairfield",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: front setback must be within 1.5 m of the average existing front street setback (R2 zone); where that gives less than 6 m the dwelling, garage and carport must be at least 6 m (porticos and verandas may encroach 500mm)",
+  "pdf_page": 246,
+  "section_ref": "6B.2.3.1 Front Setback a), b)",
+  "quotes": [
+   [
+    "pdf",
+    "a) Any part of the dual occupancy development in the R2 Low Density Residential"
+   ],
+   [
+    "pdf",
+    "b) In cases where control (a) equates to a minimum setback less than 6 metres, the"
+   ]
+  ],
+  "source_chapter_key": "chapter-5-dwelling-houses"
+ },
+ {
+  "lga": "fairfield",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "Ground-floor rear walls not built to the boundary at least 0.9 m (walls may be built to the boundary if ground floor only, continuous length max 10 m, max 50% of boundary length, BCA fire separation, brick/masonry). First floor walls must be at least 6 m from the rear boundary where the lot adjoins residential properties (6B.2.3.3)",
+  "pdf_page": 247,
+  "section_ref": "6B.2.3.2 b) and 6B.2.3.3 Rear Setback",
+  "quotes": [
+   [
+    "pdf",
+    "b) Side and rear walls not built to the boundary should be at least 0.9 metre from the"
+   ],
+   [
+    "pdf",
+    "First floor walls must be set back a minimum of 6 metres from the rear boundary where"
+   ]
+  ],
+  "source_chapter_key": "chapter-5-dwelling-houses"
+ },
+ {
+  "lga": "fairfield",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "Ground floor walls not built to the boundary and upper floor side walls for the first 20 m of the site; beyond the first 20 m upper floor walls must be at least 4 m from side and rear boundaries. Side walls may be built to the boundary on the ground floor only under 6B.2.3.2 a)",
+  "pdf_page": 247,
+  "section_ref": "6B.2.3.2 Side Setback Controls b), c), d)",
+  "quotes": [
+   [
+    "pdf",
+    "b) Side and rear walls not built to the boundary should be at least 0.9 metre from the"
+   ],
+   [
+    "pdf",
+    "c) For the first 20 metres of a site, the upper floor side walls must be setback by a"
+   ]
+  ],
+  "source_chapter_key": "chapter-5-dwelling-houses"
+ },
+ {
+  "lga": "fairfield",
+  "dev_type": "dwelling_house",
+  "control_type": "rear_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "Ground floor walls 0.9 m; upper floor rear walls at least 4 m from rear boundaries where they adjoin residential properties (5A.2.3.2 c)",
+  "pdf_page": 154,
+  "section_ref": "5A.2.3.2 Side and Rear Setback Controls a), c)",
+  "quotes": [
+   [
+    "pdf",
+    "a) Side and rear setbacks for all ground floor walls must be a minimum of 900mm"
+   ],
+   [
+    "pdf",
+    "c) The upper floor rear walls must be set back by at least 4 metres from rear"
+   ]
+  ],
+  "source_chapter_key": "chapter-5-dwelling-houses"
+ },
+ {
+  "lga": "fairfield",
+  "dev_type": "secondary_dwelling",
+  "control_type": "landscaping_min",
+  "value_min": 30,
+  "unit": "%",
+  "condition": "Soft soil zone: minimum 30% of the site; at least 50% of the soft soil zone in the rear yard",
+  "pdf_page": 185,
+  "section_ref": "5B.4.2 Landscaping Controls a)",
+  "quotes": [
+   [
+    "pdf",
+    "a) A minimum of 30% of the site is to be dedicated for soft soil zone."
+   ]
+  ],
+  "source_chapter_key": "chapter-5-dwelling-houses"
+ },
+ {
+  "lga": "randwick",
+  "dev_type": "dual_occupancy",
+  "control_type": "deep_soil_min",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: minimum deep soil permeable surfaces vary by site area (up to 300 sqm 30%; 301-450 sqm 35%; 451-600 sqm 40%; 601 sqm or above 45%), calculated on the overall site area and evenly distributed between the pair of dwellings",
+  "pdf_page": 14,
+  "section_ref": "2.5 Deep soil permeable surfaces, controls a) and g)",
+  "quotes": [
+   [
+    "pdf",
+    "a) New development, or alterations and additions that change the existing site"
+   ],
+   [
+    "pdf",
+    "g) For new development, deep soil permeable surfaces are calculated on the overall site"
+   ],
+   [
+    "pdf:6",
+    "For the development of dual occupancies (detached), in addition to general Objectives and Controls"
+   ]
+  ],
+  "source_chapter_key": "randwick-dcp-c1-low-density"
+ },
+ {
+  "lga": "randwick",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: front setback must be consistent with the average setbacks of the adjoining dwellings; where there are no adjoining dwellings no less than 6 m. Section 1.1.1 (page 6) says dual occupancy proposals must meet the general objectives and controls of the DCP.",
+  "pdf_page": 23,
+  "section_ref": "3.3.1 Front setbacks control a)",
+  "quotes": [
+   [
+    "pdf",
+    "a) The front setback must be consistent with the average setbacks of the adjoining"
+   ],
+   [
+    "pdf:6",
+    "For the development of dual occupancies (detached), in addition to general Objectives and Controls"
+   ]
+  ],
+  "source_chapter_key": "randwick-dcp-c1-low-density"
+ },
+ {
+  "lga": "randwick",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: minimum rear setback is 25% of the allotment depth or 8 m, whichever is the lesser; does not apply to corner allotments. Section 1.1.1 (page 6) says dual occupancy proposals must meet the general objectives and controls of the DCP.",
+  "pdf_page": 25,
+  "section_ref": "3.3.3 Rear setbacks control a)",
+  "quotes": [
+   [
+    "pdf",
+    "a) The minimum rear setback must be 25% of the allotment depth or 8m, whichever is the"
+   ],
+   [
+    "pdf:6",
+    "For the development of dual occupancies (detached), in addition to general Objectives and Controls"
+   ]
+  ],
+  "source_chapter_key": "randwick-dcp-c1-low-density"
+ },
+ {
+  "lga": "randwick",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: minimum side setback is a table keyed to existing primary frontage width (less than 6m merit assessment; 6m to less than 9m 0.9m; 9m to less than 12m 0.9m; 12m and above 1.2m, up to 4.5m height) and increases with height. Section 1.1.1 (page 6) says dual occupancy proposals must meet the general objectives and controls of the DCP.",
+  "pdf_page": 23,
+  "section_ref": "3.3.2 Side setbacks control a)",
+  "quotes": [
+   [
+    "pdf",
+    "a) New buildings and alterations and additions must comply with the following minimum side"
+   ],
+   [
+    "pdf:6",
+    "For the development of dual occupancies (detached), in addition to general Objectives and Controls"
+   ]
+  ],
+  "source_chapter_key": "randwick-dcp-c1-low-density"
+ },
+ {
+  "lga": "randwick",
+  "dev_type": "dwelling_house",
+  "control_type": "max_site_coverage",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: maximum site coverage by site area (up to 300 sqm 60%; 301-450 sqm 55%; 451-600 sqm 50%; 601 sqm or above 45%)",
+  "pdf_page": 12,
+  "section_ref": "2.4 Site coverage control a)",
+  "quotes": [
+   [
+    "pdf",
+    "a) The maximum site coverage of a building must not exceed the following based on site"
+   ]
+  ],
+  "source_chapter_key": "randwick-dcp-c1-low-density"
+ },
+ {
+  "lga": "ryde",
+  "dev_type": "dual_occupancy",
+  "control_type": "deep_soil_min",
+  "value_min": 35,
+  "unit": "%",
+  "condition": "Deep soil must include an 8 m x 8 m back yard area (one such area per allotment for dual occupancies) and a fully permeable front garden. Applies to dual occupancy (attached) only: section 2.3 control a) (page 11) says new dual occupancy (attached) buildings meet the controls for new dwelling houses.",
+  "pdf_page": 20,
+  "section_ref": "2.6.1 Deep Soil Areas controls a), c)",
+  "quotes": [
+   [
+    "pdf",
+    "Sites are to have a deep soil area that is at least 35% of the area of the allotment."
+   ],
+   [
+    "pdf",
+    "Allotments with dual occupancies need only have one 8 m x 8 m deep soil area for the"
+   ],
+   [
+    "pdf:11",
+    "New Dual occupancy (attached) buildings are to meet the controls for new dwelling houses set out in 2.2.1"
+   ]
+  ],
+  "source_chapter_key": "part-3-3-dwelling-houses"
+ },
+ {
+  "lga": "ryde",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": 6,
+  "unit": "m",
+  "condition": "'Generally' 6 m from the street front boundary; corner sites secondary street minimum 2 m. Applies to dual occupancy (attached) only: section 2.3 control a) (page 11) says new dual occupancy (attached) buildings meet the controls for new dwelling houses.",
+  "pdf_page": 25,
+  "section_ref": "2.9.1 Front Setbacks control a)",
+  "quotes": [
+   [
+    "pdf",
+    "Dwellings are generally to be set back 6 m from the street front boundary."
+   ],
+   [
+    "pdf:11",
+    "New Dual occupancy (attached) buildings are to meet the controls for new dwelling houses set out in 2.2.1"
+   ]
+  ],
+  "source_chapter_key": "part-3-3-dwelling-houses"
+ },
+ {
+  "lga": "ryde",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: rear of dwelling set back 25% of the length of the site or 8 m, whichever is the greater; allotments wider than long minimum 4 m. Applies to dual occupancy (attached) only: section 2.3 control a) (page 11) says new dual occupancy (attached) buildings meet the controls for new dwelling houses.",
+  "pdf_page": 28,
+  "section_ref": "2.9.3 Rear Setbacks control a)",
+  "quotes": [
+   [
+    "pdf",
+    "The rear of the dwelling is to be set back from the rear boundary a minimum distance of 25%"
+   ],
+   [
+    "pdf:11",
+    "New Dual occupancy (attached) buildings are to meet the controls for new dwelling houses set out in 2.2.1"
+   ]
+  ],
+  "source_chapter_key": "part-3-3-dwelling-houses"
+ },
+ {
+  "lga": "ryde",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "One storey 0.9 m; two storey dwelling or second storey addition 1.5 m; allotments wider than long: one side setback 20% of width or 8 m whichever greater. Applies to dual occupancy (attached) only: section 2.3 control a) (page 11) says new dual occupancy (attached) buildings meet the controls for new dwelling houses.",
+  "pdf_page": 26,
+  "section_ref": "2.9.2 Side Setbacks controls a), b)",
+  "quotes": [
+   [
+    "pdf",
+    "The outside walls of a one storey dwelling are to be set back from the side boundaries not less than 900 mm"
+   ],
+   [
+    "pdf:11",
+    "New Dual occupancy (attached) buildings are to meet the controls for new dwelling houses set out in 2.2.1"
+   ]
+  ],
+  "source_chapter_key": "part-3-3-dwelling-houses"
+ },
+ {
+  "lga": "strathfield",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: minimum front building setback is the average of the existing front setback at the site and the two existing dwellings either side (5 dwellings); otherwise consistent with the prevailing street setback. Section 3 applies to dwelling houses, secondary dwellings and dual occupancies (sections table, page 5-6).",
+  "pdf_page": 11,
+  "section_ref": "C3.1.1 Front Setback",
+  "quotes": [
+   [
+    "pdf",
+    "C3.1.1 The minimum front building setback is the average of the existing front setback at the site"
+   ]
+  ],
+  "source_chapter_key": "general-residential-dcp-2026"
+ },
+ {
+  "lga": "strathfield",
+  "dev_type": "dwelling_house",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: minimum front building setback is the average of the existing front setback at the site and the two existing dwellings either side (5 dwellings); otherwise consistent with the prevailing street setback. Section 3 applies to dwelling houses, secondary dwellings and dual occupancies (sections table, page 5-6).",
+  "pdf_page": 11,
+  "section_ref": "C3.1.1 Front Setback",
+  "quotes": [
+   [
+    "pdf",
+    "C3.1.1 The minimum front building setback is the average of the existing front setback at the site"
+   ]
+  ],
+  "source_chapter_key": "general-residential-dcp-2026"
+ },
+ {
+  "lga": "strathfield",
+  "dev_type": "secondary_dwelling",
+  "control_type": "landscaping_min",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: secondary dwelling must ensure the minimum landscape and deep soil areas required for the principal dwelling can be complied with; C5.1.1 (page 24) sets dwelling house landscaped area at 30% for lots up to 750 sqm and 35% for lots over 750 sqm",
+  "pdf_page": 38,
+  "section_ref": "C13.5.1 (with C5.1.1)",
+  "quotes": [
+   [
+    "pdf",
+    "C13.5.1 The secondary dwelling must ensure that the minimum landscape and deep soil areas"
+   ]
+  ],
+  "source_chapter_key": "general-residential-dcp-2026"
+ },
+ {
+  "lga": "strathfield",
+  "dev_type": "secondary_dwelling",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: where attached to or incorporated into a new dwelling, or converted from part of an existing dwelling, the secondary dwelling must comply with the setback requirements for single dwellings (front setback = average of 5 dwellings, C3.1.1 page 11); detached secondary dwellings must be behind the rear building line of the primary dwelling",
+  "pdf_page": 37,
+  "section_ref": "C13.1.1, C13.1.2 (with C3.1.1)",
+  "quotes": [
+   [
+    "pdf",
+    "dwelling, the secondary dwelling and principal dwelling must comply with the height and setback"
+   ],
+   [
+    "pdf",
+    "C13.1.2 Detached secondary dwellings are to be located behind the rear building line of the primary"
+   ]
+  ],
+  "source_chapter_key": "general-residential-dcp-2026"
+ },
+ {
+  "lga": "canterbury_bankstown",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": 5.5,
+  "unit": "m",
+  "condition": "former Bankstown area; first storey (ground floor). 6.5m for the second storey.",
+  "pdf_page": 16,
+  "section_ref": "4.7",
+  "quotes": [
+   [
+    "pdf",
+    "The minimum setback for a building wall to the primary street frontage is: (a) 5.5m for the first storey (i.e. the ground floor); and (b) 6.5m for the second storey."
+   ]
+  ],
+  "source_chapter_key": "cb-dcp-2023-ch5-1-bankstown"
+ },
+ {
+  "lga": "canterbury_bankstown",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "former Bankstown area; building wall to side boundary. Council may increase the minimum setback to reduce impact on an adjoining dwelling or avoid a neighbouring tree drip line.",
+  "pdf_page": 16,
+  "section_ref": "4.9",
+  "quotes": [
+   [
+    "pdf",
+    "The minimum setback for a building wall to the side boundary of the site is 0.9m."
+   ]
+  ],
+  "source_chapter_key": "cb-dcp-2023-ch5-1-bankstown"
+ },
+ {
+  "lga": "canterbury_bankstown",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": 6,
+  "unit": "m",
+  "condition": "former Canterbury area; table for dual occupancy and semi-detached dwellings with 12.5m or greater frontage",
+  "pdf_page": 32,
+  "section_ref": "3.5 Table 8",
+  "quotes": [
+   [
+    "pdf",
+    "Front Setback • Minimum setback of 6m from the front boundary. • Maximum 2m recess for the main entrance from the front building line."
+   ],
+   [
+    "pdf",
+    "Table 8: Dual occupancy and semi-detached 12.5m or greater"
+   ]
+  ],
+  "source_chapter_key": "cb-dcp-2023-ch5-2-canterbury"
+ },
+ {
+  "lga": "canterbury_bankstown",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": 1.2,
+  "unit": "m",
+  "condition": "former Canterbury area; table for dual occupancy and semi-detached dwellings with 12.5m or greater frontage. Corner lots: minimum 3.5m from the secondary street frontage (the longer street boundary).",
+  "pdf_page": 32,
+  "section_ref": "3.5 Table 8",
+  "quotes": [
+   [
+    "pdf",
+    "Side Setbacks • Minimum setback of 1.2m from side boundaries. • Corner lots: minimum setback of 3.5m from the secondary street frontage (the longer street boundary)."
+   ],
+   [
+    "pdf",
+    "Table 8: Dual occupancy and semi-detached 12.5m or greater"
+   ]
+  ],
+  "source_chapter_key": "cb-dcp-2023-ch5-2-canterbury"
+ },
+ {
+  "lga": "canterbury_bankstown",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": 6,
+  "unit": "m",
+  "condition": "former Canterbury area; table for dual occupancy and semi-detached dwellings with 12.5m or greater frontage",
+  "pdf_page": 32,
+  "section_ref": "3.5 Table 8",
+  "quotes": [
+   [
+    "pdf",
+    "Rear Setbacks • Minimum setback of 6m from the rear boundary. Table 8: Dual occupancy and semi-detached 12.5m or greater"
+   ]
+  ],
+  "source_chapter_key": "cb-dcp-2023-ch5-2-canterbury"
+ },
+ {
+  "lga": "northern_beaches",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: the minimum front setback is whatever the DCP Map Front Boundary Setback shows for the land (merit assessment where mapped as such); Warringah G10.1 (p253) states Part B Built Form Controls apply to dual occupancy. G10.1 sets no front figure itself.",
+  "pdf_page": 20,
+  "section_ref": "B7 (via G10.1)",
+  "quotes": [
+   [
+    "pdf",
+    "Development is to maintain a minimum setback to road frontages."
+   ],
+   [
+    "pdf:253",
+    "Part D Design of this DCP apply and are be considered for dual occupancy and semi-detached dwelling development"
+   ]
+  ],
+  "source_chapter_key": "warringah-dcp-2011-full"
+ },
+ {
+  "lga": "northern_beaches",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: the minimum rear setback is whatever the DCP Map Rear Boundary Setbacks shows for the land (merit assessment where mapped as such; 6m on R2/R3 land in some exceptions); Warringah G10.1 (p253) states Part B Built Form Controls apply to dual occupancy. G10.1 sets no rear figure itself.",
+  "pdf_page": 22,
+  "section_ref": "B9 (via G10.1)",
+  "quotes": [
+   [
+    "pdf",
+    "Development is to maintain a minimum setback to rear boundaries."
+   ],
+   [
+    "pdf:253",
+    "Part D Design of this DCP apply and are be considered for dual occupancy and semi-detached dwelling development"
+   ]
+  ],
+  "source_chapter_key": "warringah-dcp-2011-full"
+ }
+]
