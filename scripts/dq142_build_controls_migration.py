@@ -48,7 +48,9 @@ def value_in_quotes(v: float, unit: str | None, frags: list[str]) -> bool:
     """True if figure v appears as a whole number in the quotes (metres also as mm)."""
     joined = " ".join(norm(f) for f in frags)
     # Not inside a larger number: 5 must not match "5.5m" or "15%".
-    pat = rf"(?<![\d.]){re.escape(shown(v))}(?![\d]|\.\d)(?:\s?(?:m|metres|mm|%)|\b)"
+    # The unit must match too: 35% must not pass on "35 metres" (cross-review).
+    units = {"%": r"\s?%", "m": r"\s?(?:m\b|metres?\b)"}.get(unit or "", r"\b")
+    pat = rf"(?<![\d.]){re.escape(shown(v))}(?![\d]|\.\d){units}"
     mm = rf"(?<![\d.]){re.escape(shown(v * 1000))}\s?mm" if unit == "m" else None
     return bool(re.search(pat, joined) or (mm and re.search(mm, joined)))
 

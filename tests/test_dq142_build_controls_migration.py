@@ -59,3 +59,8 @@ def test_plain_minimum_passes():
 def test_road_type_and_width_limbs_are_refused():
     assert not dq142.single_figure_rule("9 m to designated roads", ["6m to local roads"])
     assert not dq142.single_figure_rule("buildings to occupy a maximum of 80% of the lot width", ["1.5 metres"])
+
+
+def test_unit_must_match():
+    assert not dq142.value_in_quotes(35, "%", ["a setback of 35 metres"])
+    assert not dq142.value_in_quotes(20, "m", ["20% of the site"])
