@@ -484,6 +484,39 @@ export function registerPrecinctPatterns(councilName: string, patterns: RegExp[]
  * The mapping is owned by the dcp_precinct_localities table, populated from the
  * authoritative section_header values already in regulatory_provisions.
  */
+/**
+ * The former council (Ashfield / Leichhardt / Marrickville) of the Inner West lot under a point, from
+ * lot_search_index.former_council -- set per lot, so it holds where the suburb or postcode does not.
+ *
+ * WHY. The suburb/postcode mapping guessed wrong for St Peters (-> Ashfield), Enmore and Lewisham
+ * (-> Leichhardt); all three are former Marrickville. Measured 2026-10-11: 3 of 16 real addresses wrong
+ * by the mapping, while the nearest lot's stored value was right for all 8 suburbs checked (Rozelle,
+ * St Peters, Enmore, Sydenham, Haberfield, Lewisham, Balmain, Summer Hill). A wrong former council
+ * serves another council's whole DCP to the property.
+ *
+ * Returns the capitalised name, or null when no Inner West lot is under the point (or the query fails),
+ * in which case the caller keeps its previous answer.
+ */
+export async function getFormerCouncilForPoint(lat: number, lon: number): Promise<string | null> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  try {
+    const result = await getDbPool().query(
+      `SELECT former_council FROM lot_search_index
+        WHERE former_council IS NOT NULL
+          AND ST_Contains(geom, ST_SetSRID(ST_MakePoint($1, $2), 4326))
+        LIMIT 1`,
+      [lon, lat]
+    );
+    const fc: unknown = result.rows[0]?.former_council;
+    if (typeof fc !== 'string' || !fc.trim()) return null;
+    const v = fc.trim().toLowerCase();
+    return v.charAt(0).toUpperCase() + v.slice(1);
+  } catch (error) {
+    console.error('[Precinct Service] former council lookup failed:', error);
+    return null;
+  }
+}
+
 export async function getPrecinctFromLocality(
   address: string,
   council: string,

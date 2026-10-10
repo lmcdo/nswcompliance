@@ -10,6 +10,7 @@
     "data/db_rollback_backups/regulatory_provisions_pre_iw_land_condition_2026-10-11_0904.csv",
     "data/db_rollback_backups/regulatory_provisions_pre_iw_land_condition_2026-10-11_0921.csv",
     "enrichment/config/inner_west_lep_land.py",
+    "frontend-nextjs/__tests__/api/former-council-for-point.test.ts",
     "frontend-nextjs/__tests__/api/lep-land-condition.test.ts",
     "frontend-nextjs/__tests__/fixtures/iw_lep_land_conditions.json",
     "frontend-nextjs/app/api/assessment/full/route.ts",
@@ -20,6 +21,8 @@
     "frontend-nextjs/lib/ai/router.ts",
     "frontend-nextjs/lib/lep-land-condition.ts",
     "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "frontend-nextjs/lib/precinct-service.ts",
+    "frontend-nextjs/lib/property-data.ts",
     "frontend-nextjs/types/regulatory.ts",
     "migrations/109_v2_land_condition.sql",
     "scripts/apply_iw_lep_land_conditions.py",
@@ -60,6 +63,13 @@
       "input": "the provision rows of one layer and the lot's LandFacts decoded from the land_facts query value, or null",
       "output": "the rows to serve, each land-limited one tagged land_status, plus counts of rows withheld and unconfirmed",
       "if_none": "facts null -> nothing withheld, every land-limited row marked unconfirmed"
+    },
+    {
+      "name": "getFormerCouncilForPoint",
+      "file_line": "frontend-nextjs/lib/precinct-service.ts",
+      "input": "the property's latitude and longitude in WGS84, from the portal's address geometry",
+      "output": "the capitalised former council stored on the Inner West lot under that point, or null when there is none",
+      "if_none": "null keeps the suburb/postcode answer; a failed query also returns null and is logged"
     }
   ],
   "values": [
@@ -80,6 +90,11 @@
       "purpose": "write one row's condition",
       "file_line": "scripts/apply_iw_lep_land_conditions.py",
       "where_clause": "WHERE id = %s AND is_current"
+    },
+    {
+      "purpose": "former council of the lot under the property point",
+      "file_line": "frontend-nextjs/lib/precinct-service.ts",
+      "where_clause": "WHERE former_council IS NOT NULL AND ST_Contains(geom, point)"
     }
   ],
   "break_it": [
@@ -124,6 +139,13 @@
       "mitigated": true,
       "how": "label_not_unique on the condition (Sol finding, 2026-10-11)",
       "repro": "npx jest __tests__/api/lep-land-condition.test.ts -t 'shows 6.26'"
+    },
+    {
+      "scenario": "The suburb or postcode mapping names the wrong former council, as for St Peters, Enmore and Lewisham",
+      "what_happens": "The lot's stored former council overrides it, so the property gets its own council's DCP rules",
+      "mitigated": true,
+      "how": "lot lookup runs after the mapping in property-data.ts; measured 15 of 16 real lots right, 16th has none and keeps the mapping",
+      "repro": "npx jest __tests__/api/former-council-for-point.test.ts"
     }
   ],
   "post_merge": {

@@ -270,6 +270,18 @@ export class PropertyDataService {
    }
  }
 
+ // The lot's own stored former council beats both guesses above: the suburb/postcode mapping put
+ // St Peters, Enmore and Lewisham in the wrong former council (see getFormerCouncilForPoint).
+ if (precinctModule && constraints.lga?.toLowerCase().includes('inner west')) {
+   const lotCouncil = await precinctModule.getFormerCouncilForPoint(lat, lon);
+   if (lotCouncil) {
+     if (constraints.formerCouncil && constraints.formerCouncil.toLowerCase() !== lotCouncil.toLowerCase()) {
+       console.warn(`[PropertyDataService] former council: lot says ${lotCouncil}, mapping said ${constraints.formerCouncil}`);
+     }
+     constraints.formerCouncil = lotCouncil;
+   }
+ }
+
  // Chapter D precinct locality fallback: if PostGIS found no precinct and formerCouncil is now
  // known, query dcp_precinct_localities to match the address suburb against the DB-owned mapping.
  // Must run after suburbModule so formerCouncil is populated.
