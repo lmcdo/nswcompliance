@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: fixes a live overstatement in the buildable-area arithmetic introduced by #1255, adds per-control coverage findings (migration 106) and two Bayside rules (107), and changes the DQ-142 probe.",
-  "commit_hash": "26b2c489",
+  "commit_hash": "0d043a4a",
   "files": [
     "services/constraint_arithmetic.py",
     "tests/test_constraint_arithmetic.py",
