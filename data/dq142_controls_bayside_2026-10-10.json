@@ -1,0 +1,48 @@
+[
+ {
+  "lga": "bayside",
+  "dev_type": "secondary_dwelling",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": null,
+  "condition": "NO FIGURE: outbuildings, including secondary dwellings, located behind the main street face of the development",
+  "source_chapter_key": "bayside-dcp-2022-part3",
+  "pdf_page": 191,
+  "section_ref": "5.1.2 General C4",
+  "quotes": [
+   [
+    "pdf",
+    "Outbuildings are to be located behind the main street face of the development."
+   ],
+   [
+    "pdf:190",
+    "These controls primarily relate to secondary dwellings"
+   ]
+  ]
+ },
+ {
+  "lga": "bayside",
+  "dev_type": "secondary_dwelling",
+  "control_type": "landscaping_min",
+  "value_min": 25,
+  "unit": "%",
+  "condition": "of the site area; secondary dwellings must not cause non-compliance with the minimum landscaped area (5.1.2 C2)",
+  "source_chapter_key": "bayside-dcp-2022-part3",
+  "pdf_page": 87,
+  "section_ref": "3.7 C12 Table 7; 5.1.2 C2",
+  "quotes": [
+   [
+    "pdf",
+    "Low and medium density residential 25%"
+   ],
+   [
+    "pdf:190",
+    "Outbuildings are not to result in non- compliances relating to minimum landscaped area, private open space, overshadowing, privacy and other relevant"
+   ],
+   [
+    "pdf:190",
+    "These controls primarily relate to secondary dwellings"
+   ]
+  ]
+ }
+]

@@ -453,7 +453,7 @@ def compute_constraint_arithmetic(
     sepp_standards: Optional[list[SEPPStandard]] = None,
     sepp_lep_overrides: Optional[list[SeppLepOverride]] = None,
     shadow_result: Optional[ShadowResult] = None,
-    dcp_coverage: Optional[dict] = None,
+    dcp_coverage: Optional[list[dict] | dict] = None,
 ) -> ConstraintArithmeticResult:
     """Compute constraint arithmetic chain.
 
@@ -640,8 +640,15 @@ def compute_constraint_arithmetic(
     # say so from the recorded finding (dcp_dev_type_coverage) instead of the
     # generic "verify against the DCP". The statement names what was reviewed
     # and when; the source link lets a reader check it.
-    if dcp_coverage and missing_setbacks:
-        gaps.append(f"{dcp_coverage['statement']} Source: {dcp_coverage['evidence_url']}")
+    # A row with no control_type covers the whole housing type; otherwise it
+    # explains one control (migration 106). Only findings for a missing setback
+    # (or the whole type) are shown here.
+    _cov_rows = dcp_coverage if isinstance(dcp_coverage, list) else ([dcp_coverage] if dcp_coverage else [])
+    _cov_shown = [r for r in _cov_rows
+                  if r.get("control_type") in (None, *[f"{m}_setback" for m in missing_setbacks])]
+    if missing_setbacks:
+        for _r in _cov_shown:
+            gaps.append(f"{_r['statement']} Source: {_r['evidence_url']}")
 
     if front_setback is not None or rear_setback is not None or side_setback is not None:
         effective_front = front_setback or 0.0
@@ -651,8 +658,13 @@ def compute_constraint_arithmetic(
         buildable_width = max(0.0, frontage_m - 2 * effective_side)
         buildable_depth = max(0.0, depth_m - effective_front - effective_rear)
         buildable_footprint = buildable_width * buildable_depth
-        # A recorded coverage finding (above) already explains the gap.
-        if missing_setbacks and not dcp_coverage:
+        # The footprint is withheld whenever ANY setback is missing; a recorded
+        # coverage finding (above) only replaces the generic explanation.
+        # FIXED 2026-10-10: the first version tied the footprint to the text, so
+        # a finding sent `else` to publish a footprint with the missing setback
+        # as 0 -- the DQ-139 overstatement. Caught by
+        # test_a_per_control_finding_is_shown_only_for_its_missing_control.
+        if missing_setbacks and not _cov_shown:
             # WORDING. This says what WE hold, not what the DCP says. The code
             # knows only that no CURRENT extracted row exists for this control
             # and development type -- Cumberland has an 8 m rear-setback row
@@ -666,7 +678,7 @@ def compute_constraint_arithmetic(
                 f"and the after-DCP figure are not shown. Verify the applicable "
                 f"control against the council's DCP."
             )
-        else:
+        if not missing_setbacks:
             result.buildable_footprint_m2 = round(buildable_footprint, 1)
 
         if has_battleaxe_head:
@@ -1362,7 +1374,7 @@ def _fetch_constraint_data_from_db(
     return dcp_controls, sepp_standards, sepp_lep_overrides
 
 
-def _fetch_dcp_coverage(lga: Optional[str], dev_type: Optional[str]) -> Optional[dict]:
+def _fetch_dcp_coverage(lga: Optional[str], dev_type: Optional[str]) -> Optional[list[dict]]:
     """The recorded finding that this council's DCP does not (or only partly)
     cover this housing type, from dcp_dev_type_coverage -- or None.
 
@@ -1385,14 +1397,15 @@ def _fetch_dcp_coverage(lga: Optional[str], dev_type: Optional[str]) -> Optional
         conn = psycopg2.connect(db_url, options="-c statement_timeout=5000")
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT coverage, statement, evidence_quote, evidence_url FROM dcp_dev_type_coverage "
-                "WHERE council = %s AND dev_type = %s AND is_current",
+                "SELECT coverage, statement, evidence_quote, evidence_url, control_type FROM dcp_dev_type_coverage "
+                "WHERE council = %s AND dev_type = %s AND is_current ORDER BY control_type NULLS FIRST",
                 (lga, dev_type),
             )
-            row = cur.fetchone()
-        if row is None:
+            rows = cur.fetchall()
+        if not rows:
             return None
-        return {"coverage": row[0], "statement": row[1], "evidence_quote": row[2], "evidence_url": row[3]}
+        return [{"coverage": r[0], "statement": r[1], "evidence_quote": r[2], "evidence_url": r[3],
+                 "control_type": r[4]} for r in rows]
     except Exception as e:  # qa-ignore: silent-failure -- generic gap text is shown instead, which stays true
         logging.getLogger(__name__).warning("dcp coverage lookup failed: %s", e)
         return None

@@ -675,8 +675,9 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # 1508 (strathfield): "C3.1.1" is a DCP section number, not zone C3.
         # 1515 (northern_beaches): R2/R3 named only inside an exception; the rule
         # itself is the DCP map (2026-10-10, #1249).
+        # 1581 (bayside): "5.1.2 C2" is a DCP control number, not zone C2.
         ([815, 816, 817, 818, 823, 824, 825, 826,
-          1104, 1105, 1106, 1107, 1153, 13, 71, 944, 1059, 1508, 1515],),
+          1104, 1105, 1106, 1107, 1153, 13, 71, 944, 1059, 1508, 1515, 1581],),
         "Rows that ARE zone-dependent but invisible to the zone filter. 59 of "
         "76 tagged on 2026-08-12 (backup dcp_setback_controls_dq32b_backup_"
         "20260812); the other 17 are adjudicated non-defects, excluded by id "
@@ -2559,7 +2560,8 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "     AND dev_type IN ('dwelling_house', 'secondary_dwelling', 'dual_occupancy')"
         # A recorded finding that the council's DCP does not (or only partly)
         # cover the housing type is a decision, not a gap (migration 105).
-        "     AND (lga, dev_type) NOT IN (SELECT council, dev_type FROM dcp_dev_type_coverage WHERE is_current)),"
+        "     AND (lga, dev_type) NOT IN (SELECT council, dev_type FROM dcp_dev_type_coverage"
+        "                                  WHERE is_current AND control_type IS NULL)),"
         " needed AS ("
         "  SELECT t.lga, t.dev_type, c.ctl FROM types t"
         "  CROSS JOIN (VALUES ('front_setback'), ('side_setback'), ('rear_setback'), ('cap')) c(ctl)),"
@@ -2573,7 +2575,10 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "          OR (condition LIKE 'NO FIGURE:%%' AND length(trim(source_text)) >= 20)))"
         " SELECT count(*) FROM needed n"
         "  WHERE NOT EXISTS (SELECT 1 FROM have h"
-        "                     WHERE h.lga = n.lga AND h.dev_type = n.dev_type AND h.ctl = n.ctl)",
+        "                     WHERE h.lga = n.lga AND h.dev_type = n.dev_type AND h.ctl = n.ctl)"
+        # A recorded finding that the DCP sets no such control is a decision (106).
+        "    AND NOT EXISTS (SELECT 1 FROM dcp_dev_type_coverage cv WHERE cv.is_current"
+        "                     AND cv.council = n.lga AND cv.dev_type = n.dev_type AND cv.control_type = n.ctl)",
         (),
         "Each count is one control the buildable-area sum needs for a housing "
         "type a council's DCP covers, with neither a number nor a quoted decision "
