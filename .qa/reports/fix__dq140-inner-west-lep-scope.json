@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: changes who 554 served Inner West LEP rules are shown to (57 narrowed), adds a tagger path, and publishes Inner West in the outreach scoped-council list.",
-  "commit_hash": "c64dece9",
+  "commit_hash": "b4eac41a",
   "files": [
     "enrichment/extractors/applicability_tagger.py",
     "enrichment/config/inner_west_lep_config.py",
@@ -11,7 +11,8 @@
     "frontend-nextjs/shared/dcp-scoped-councils.json",
     ".gitignore",
     ".claude/dq_checks.json",
-    ".claude/DATA_QUALITY_TRACKER.md"
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "data/dq88_sepp_nonverbatim_plan_2026-10-10.json"
   ],
   "pre_impl": {
     "existing_data": "DQ-140 read 1,108: all 554 served Inner West LEP 2022 rows had zone and dev-type scope from no_config or never tagged; no row carried its clause (332 had provision_N refs, all section_header NULL).",
@@ -121,6 +122,7 @@
   },
   "real_layer_exempt": {
     "migrations/102_inner_west_lep_clause_headings.sql": "Applied to production 2026-10-10 after a rolled-back dry run (554 rows).",
-    "scripts/retag_applicability_slug_docids.py": "Real run 2026-10-10 for inner_west: dry run, then --apply with backup table and --expect-narrowings 57."
+    "scripts/retag_applicability_slug_docids.py": "Real run 2026-10-10 for inner_west: dry run, then --apply with backup table and --expect-narrowings 57.",
+    "data/dq88_sepp_nonverbatim_plan_2026-10-10.json": "Applied 2026-10-10 with scripts/dq88_sepp_bulk_refresh.py after a rolled-back dry run (19 retired, 12 replaced)."
   }
 }

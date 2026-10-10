@@ -1,0 +1,258 @@
+[
+{
+"id": 34887,
+"sepp": "Biodiversity",
+"served": true,
+"action": "RETIRE",
+"old_text": "Current version for 7 March 2025 to date (accessed 30 July 2025 at 16:50)",
+"why": "page header, not law"
+},
+{
+"id": 34888,
+"sepp": "Biodiversity",
+"served": true,
+"action": "RETIRE",
+"old_text": "Current version for 7 March 2025 to date (accessed 30 July 2025 at 16:50) Legislation on this site is usually updated within 3 working days after a change to the legislation.",
+"why": "page header, not law"
+},
+{
+"id": 19087,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Referenced multiple times in relation to coastal protection works and definitions.",
+"why": "AI-written summary, not the law's words (read 2026-10-10)"
+},
+{
+"id": 19101,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Section 31 defines State significant development relating to thermal energy from waste.",
+"why": "AI-written summary, not the law's words (read 2026-10-10)"
+},
+{
+"id": 19102,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Schedule 2 lists specific sites and development types that are considered State significant development.",
+"why": "AI-written summary, not the law's words (read 2026-10-10)"
+},
+{
+"id": 19111,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Sections 21, 22, and 23 define the scope of development for three major infrastructure projects.",
+"why": "AI-written summary, not the law's words (read 2026-10-10)"
+},
+{
+"id": 19112,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "The projects involve significant infrastructure development across multiple LGAs and waterways.",
+"why": "AI-written summary, not the law's words (read 2026-10-10)"
+},
+{
+"id": 19121,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "The clauses 31-36 define specific development projects (Waratah Super Battery, Dungowan Dam, Warragamba Dam, Narrabri Lateral Pipeline, Parramatta Light Rail Stage 2, Great Western Highway Upgrade) and explicitly list what constitutes 'development' within the context of each project, thereby excluding preliminary investigations and surveys.",
+"why": "AI-written summary, not the law's words (read 2026-10-10)"
+},
+{
+"id": 19122,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Clauses 37, 38, and 39 define specific development projects (Lake Lyell, Mount Piper to Wallerawang, and Muswellbrook) and list the included works.  This likely aims to streamline assessment for these projects by explicitly stating what is and is not included in the development.",
+"why": "AI-written summary, not the law's words (read 2026-10-10)"
+},
+{
+"id": 19125,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Clause 9 addresses delays in development applications exceeding certain cost thresholds.",
+"why": "AI-written summary, not the law's words (read 2026-10-10)"
+},
+{
+"id": 19126,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Clause 10 allows ministerial intervention in councils with unsatisfactory development assessment performance.",
+"why": "AI-written summary, not the law's words (read 2026-10-10)"
+},
+{
+"id": 19135,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Identifies Burwood North Station Site and The Bays Station Site, and Lot 1 at Burwood North Station.",
+"why": "AI-written summary, not the law's words (read 2026-10-10)"
+},
+{
+"id": 42011,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Current version for 11 July 2025 to date (accessed 30 July 2025 at 16:55) Legislation on this site is usually updated within 3 working days after a change to the legislation.",
+"why": "page header, not law"
+},
+{
+"id": 42118,
+"sepp": "Planning Systems",
+"served": false,
+"action": "REPLACE",
+"old_text": "(1) This section applies to a development application (an existing application) if the application—",
+"new_text": "1) This section applies to a development application (an existing application ) if the applicatio"
+},
+{
+"id": 42649,
+"sepp": "Planning Systems",
+"served": false,
+"action": "REPLACE",
+"old_text": "(f) land within 100 m of any of the following—",
+"new_text": "f) land within 100m of any of the following"
+},
+{
+"id": 42010,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Current version for 11 July 2025 to date (accessed 30 July 2025 at 16:55)",
+"why": "page header, not law"
+},
+{
+"id": 1159,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "This version of the legislation is compiled and maintained in a database of legislation by the Parliamentary Counsel's Office and published on the NSW legislation website, and is certified as the form of that legislation that is correct under section 45C of the Interpretation Act 1987.",
+"why": "page header, not law"
+},
+{
+"id": 1160,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Legislation on this site is usually updated within 3 working days after a change to the legislation.",
+"why": "page header, not law"
+},
+{
+"id": 45829,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "(i) 20 00 m 2 , or (ii) 50 % of the gross floor area of the existing building.",
+"why": "OCR-damaged Sch 7 cl 3 standard; cl 3 repealed (siblings retired in plan6)"
+},
+{
+"id": 44557,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(e) no more than 250 m2 of native vegetation is removed.",
+"new_text": "e) no more than 250m 2 of native vegetation is remo"
+},
+{
+"id": 45669,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(5) The burial structure must not be located within 10 m of land in a residential or employment zone.",
+"new_text": "5) The burial structure must not be located within 10m of land in a residential or employment zone"
+},
+{
+"id": 43279,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Current version for 15 August 2025 to date (accessed 30 September 2025 at 7:47)",
+"why": "page header, not law"
+},
+{
+"id": 43280,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Current version for 15 August 2025 to date (accessed 30 September 2025 at 7:47) Legislation on this site is usually updated within 3 working days after a change to the legislation.",
+"why": "page header, not law"
+},
+{
+"id": 35233,
+"sepp": "Biodiversity",
+"served": false,
+"action": "REPLACE",
+"old_text": "\\* whether the development would contribute to soil erosion or other land degradation processes, including rising watertables.   \n\\* the effect of the development on the landscape.   \n\\* the potential loss of wildlife habitat. \\* whether the development would endanger the species of vegetation, either locally or across its range.   \nNote.",
+"new_text": "whether the development would contribute to soil erosion or other land degradation processes, including rising watertables. * the effect of the development on the landscape. * the potential loss of wildlife habitat. * whether the development would endanger the species of vegetation, either locally or across its range. Note",
+"why": "OCR-damaged; clean text from the law (coverage 0.69, size x1.00)"
+},
+{
+"id": 43933,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(i) have a floor space area of not more than 500 m2 , a nd \n(ii) are one storey high and have a height above ground level (existing) of not more than 10 m , and \n(iii) are not within 10 m of any boundary,",
+"new_text": "i) have a floor space area of not more than 500m 2, and (ii) are one storey high and have a height above ground level (existing) of not more than 10m, and (iii) are not within 10m of any boundary",
+"why": "OCR-damaged; clean text from the law (coverage 0.86, size x1.00)"
+},
+{
+"id": 44097,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "The Standard Instrument defines classified road (by reference to the Roads Act 1993) to mean any of the following—",
+"new_text": "The Standard Instrument defines classified road (by reference to the Roads Act 1993 ) to mean any of the following",
+"why": "OCR-damaged; clean text from the law (coverage 0.75, size x1.00)"
+},
+{
+"id": 44118,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(i) no more than 12.5 m high, and (ii) not located within 5 m of a property boundary for a lot in a residential or conservation zone,",
+"new_text": "i) no more than 12.5m high, and (ii) not located within 5m of a property boundary for a lot in a residential or conservation zone",
+"why": "OCR-damaged; clean text from the law (coverage 0.80, size x1.00)"
+},
+{
+"id": 44359,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "Mobile Phone Base Station Code means the Mobile Phone Base Station Deployment CodeC564:2020 published by Communications Alliance Ltd.",
+"new_text": "Mobile Phone Base Station Code means the Mobile Phone Base Station Deployment Code C564:2020 published by Communications Alliance Ltd",
+"why": "OCR-damaged; clean text from the law (coverage 0.80, size x1.00)"
+},
+{
+"id": 44481,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(i) installation of telemetric equipment having a width and height no greater than 600 mm and 2 m , respectively, (ii) maintenance or decommissioning of telemetric equipment,",
+"new_text": "i) installation of telemetric equipment having a width and height no greater than 600mm and 2m, respectively, (ii) maintenance or decommissioning of telemetric equipment",
+"why": "OCR-damaged; clean text from the law (coverage 0.71, size x1.00)"
+},
+{
+"id": 45481,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "A 4.4 k m long roadway consisting mainly of a 6-lane dual carriageway 2 × 3 lanes each) linking Bestic Street, Brighton-Le-Sands to Botany Road, Mascot.",
+"new_text": "A 4.4km long roadway consisting mainly of a 6-lane dual carriageway (2 × 3 lanes each) linking Bestic Street, Brighton-Le-Sands to Botany Road, Mascot",
+"why": "OCR-damaged; clean text from the law (coverage 0.60, size x1.00)"
+},
+{
+"id": 45677,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "(d) 40 m from an intermittent waterbody or watercourse, and (e) 100 m from a permanent waterbody or watercourse, and (f) 10 m from the following—",
+"new_text": "d) 40m from an intermittent waterbody or watercourse, and (e) 100m from a permanent waterbody or watercourse, and (f) 10m from the following",
+"why": "OCR-damaged; clean text from the law (coverage 0.80, size x1.00)"
+}
+]
