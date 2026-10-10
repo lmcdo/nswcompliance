@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: a production data load (migration 095, 43 DCP controls, applied), a prepared law-text refresh and flag clearance (dq88 script + migration 096, to be applied by the owner), and a changed outreach check (OC-17).",
-  "commit_hash": "095ff166",
+  "commit_hash": "cab05ef5",
   "files": [
     "scripts/outreach_scoped_councils.py",
     "scripts/law_change_diff.py",
