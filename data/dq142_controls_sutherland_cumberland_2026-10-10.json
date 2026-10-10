@@ -1,0 +1,557 @@
+[
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dwelling_house",
+  "control_type": "front_setback",
+  "zone": "C3",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: Zone C3; primary street frontage 7.5m unless adjoining dwellings differ, then established street setback; secondary 3.0m; internal lot 4.0m.",
+  "pdf_page": 10,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "7.5m – except where the adjoining dwellings are setback greater than or less than 7.5m, in which case it is the established street setback"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch2-dwelling-houses"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dwelling_house",
+  "control_type": "front_setback",
+  "zone": "C4",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: Zone C4; primary street frontage 7.5m unless adjoining dwellings differ, then established street setback; secondary 3.0m; internal lot 4.0m. C4: 6.0m Greenhills Beach and Ridgeway Estate.",
+  "pdf_page": 29,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "7.5m – except where the adjoining dwellings are setback greater than or less than 7.5m, in which case it is the established street setback"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch2-dwelling-houses"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dwelling_house",
+  "control_type": "front_setback",
+  "zone": "R2",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: Zone R2; primary street frontage 7.5m unless adjoining dwellings differ, then established street setback; secondary 3.0m; internal lot 4.0m.",
+  "pdf_page": 47,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "7.5m – except where the adjoining dwellings are setback greater than or less than 7.5m, in which case it is the established street setback"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch2-dwelling-houses"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dwelling_house",
+  "control_type": "front_setback",
+  "zone": "R3",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: Zone R3; primary street frontage 7.5m unless adjoining dwellings differ, then established street setback; secondary 3.0m; internal lot 4.0m.",
+  "pdf_page": 65,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "7.5m – except where the adjoining dwellings are setback greater than or less than 7.5m, in which case it is the established street setback"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch2-dwelling-houses"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dwelling_house",
+  "control_type": "front_setback",
+  "zone": "R4",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: Zone R4; primary street frontage 7.5m unless adjoining dwellings differ, then established street setback; secondary 3.0m; internal lot 4.0m.",
+  "pdf_page": 81,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "7.5m – except where the adjoining dwellings are setback greater than or less than 7.5m, in which case it is the established street setback"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch2-dwelling-houses"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dwelling_house",
+  "control_type": "front_setback",
+  "zone": "E1",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: Zone E1; primary street frontage 7.5m unless adjoining dwellings differ, then established street setback; secondary 3.0m; internal lot 4.0m.",
+  "pdf_page": 97,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "7.5m – except where the adjoining dwellings are setback greater than or less than 7.5m, in which case it is the established street setback"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch2-dwelling-houses"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dwelling_house",
+  "control_type": "front_setback",
+  "zone": "SP3",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: Zone SP3; primary street frontage 7.5m unless adjoining dwellings differ, then established street setback; secondary 3.0m; internal lot 4.0m.",
+  "pdf_page": 114,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "7.5m – except where the adjoining dwellings are setback greater than or less than 7.5m, in which case it is the established street setback"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch2-dwelling-houses"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "zone": "C3",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: Zone C3; primary street frontage 7.5m unless adjoining dwellings differ, then established street setback; secondary 3.0m; internal lot 4.0m.",
+  "pdf_page": 9,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "7.5m – except where the adjoining dwellings are setback greater than or less than 7.5m, in which case it is the established street setback"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "zone": "C3",
+  "value_min": 1.5,
+  "unit": "m",
+  "condition": "Zone C3; side setback 1.5m.",
+  "pdf_page": 9,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "Internal lot (where both dual occupancy dwellings are located on an internal lot) 4.0m Side 1.5m Rear 6.0m"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "zone": "C3",
+  "value_min": 6.0,
+  "unit": "m",
+  "condition": "Zone C3; rear 6.0m; internal lot (both dwellings on internal lot) 4.0m, some variations apply.",
+  "pdf_page": 9,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "Rear 6.0m Internal lot (where both dual occupancy dwellings are located on an internal lot) 4.0m"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "zone": "C4",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: Zone C4; primary street frontage 7.5m unless adjoining dwellings differ, then established street setback; secondary 3.0m; internal lot 4.0m.",
+  "pdf_page": 29,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "7.5m – except where the adjoining dwellings are setback greater than or less than 7.5m, in which case it is the established street setback"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "zone": "C4",
+  "value_min": 1.5,
+  "unit": "m",
+  "condition": "Zone C4; side setback 1.5m.",
+  "pdf_page": 29,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "Internal lot (where both dual occupancy dwellings are located on an internal lot) 4.0m Side 1.5m Rear 6.0m"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "zone": "C4",
+  "value_min": 6.0,
+  "unit": "m",
+  "condition": "Zone C4; rear 6.0m; internal lot (both dwellings on internal lot) 4.0m, some variations apply.",
+  "pdf_page": 29,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "Rear 6.0m Internal lot (where both dual occupancy dwellings are located on an internal lot) 4.0m"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "zone": "R2",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: Zone R2; primary street frontage 7.5m unless adjoining dwellings differ, then established street setback; secondary 3.0m; internal lot 4.0m.",
+  "pdf_page": 52,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "7.5m – except where the adjoining dwellings are setback greater than or less than 7.5m, in which case it is the established street setback"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "zone": "R2",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "Zone R2; side setback ground floor 0.9m; second storey 1.5m; internal lot 1.5m.",
+  "pdf_page": 52,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "Internal lot (where both dual occupancy dwellings are located on an internal lot) 4.0m Side - Ground floor 0.9m Second storey 1.5m Internal lot 1.5m Rear 6.0m"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "zone": "R2",
+  "value_min": 6.0,
+  "unit": "m",
+  "condition": "Zone R2; rear 6.0m; internal lot (both dwellings on internal lot) 4.0m, some variations apply.",
+  "pdf_page": 52,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "Rear 6.0m Internal lot (where both dual occupancy dwellings are located on an internal lot) 4.0m"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "zone": "R3",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: Zone R3; primary street frontage 7.5m unless adjoining dwellings differ, then established street setback; secondary 3.0m; internal lot 4.0m.",
+  "pdf_page": 74,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "7.5m – except where the adjoining dwellings are setback greater than or less than 7.5m, in which case it is the established street setback"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "zone": "R3",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "Zone R3; side setback ground floor 0.9m; second storey 1.5m; internal lot 1.5m.",
+  "pdf_page": 74,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "Internal lot (where both dual occupancy dwellings are located on an internal lot) 4.0m Side - Ground floor 0.9m Second storey 1.5m Internal lot 1.5m Rear 6.0m"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "zone": "R3",
+  "value_min": 6.0,
+  "unit": "m",
+  "condition": "Zone R3; rear 6.0m; internal lot (both dwellings on internal lot) 4.0m, some variations apply.",
+  "pdf_page": 74,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "Rear 6.0m Internal lot (where both dual occupancy dwellings are located on an internal lot) 4.0m"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "zone": "R4",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: Zone R4; primary street frontage 7.5m unless adjoining dwellings differ, then established street setback; secondary 3.0m; internal lot 4.0m.",
+  "pdf_page": 96,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "7.5m – except where the adjoining dwellings are setback greater than or less than 7.5m, in which case it is the established street setback"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "zone": "R4",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "Zone R4; side setback ground floor 0.9m; second storey 1.5m; internal lot 1.5m.",
+  "pdf_page": 96,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "Internal lot (where both dual occupancy dwellings are located on an internal lot) 4.0m Side - Ground floor 0.9m Second storey 1.5m Internal lot 1.5m Rear 6.0m"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "zone": "R4",
+  "value_min": 6.0,
+  "unit": "m",
+  "condition": "Zone R4; rear 6.0m; internal lot (both dwellings on internal lot) 4.0m, some variations apply.",
+  "pdf_page": 96,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "Rear 6.0m Internal lot(where both dual occupancy dwellings are located on an internal lot) 4.0m"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "zone": "E1",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: Zone E1; primary street frontage 7.5m unless adjoining dwellings differ, then established street setback; secondary 3.0m; internal lot 4.0m.",
+  "pdf_page": 118,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "7.5m – except where the adjoining dwellings are setback greater than or less than 7.5m, in which case it is the established street setback"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "zone": "E1",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "Zone E1; side setback ground floor 0.9m; second storey 1.5m; internal lot 1.5m.",
+  "pdf_page": 118,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "Internal lot (where both dual occupancy dwellings are located on an internal lot) 4.0m Side - Ground floor 0.9m Second storey 1.5m Internal lot 1.5m Rear 6.0m"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "zone": "E1",
+  "value_min": 6.0,
+  "unit": "m",
+  "condition": "Zone E1; rear 6.0m; internal lot (both dwellings on internal lot) 4.0m, some variations apply.",
+  "pdf_page": 118,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "Rear 6.0m Internal lot (where both dual occupancy dwellings are located on an internal lot) 4.0m"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "zone": "SP3",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: Zone SP3; primary street frontage 7.5m unless adjoining dwellings differ, then established street setback; secondary 3.0m; internal lot 4.0m.",
+  "pdf_page": 140,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "7.5m – except where the adjoining dwellings are setback greater than or less than 7.5m, in which case it is the established street setback"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "zone": "SP3",
+  "value_min": 0.9,
+  "unit": "m",
+  "condition": "Zone SP3; side setback ground floor 0.9m; second storey 1.5m; internal lot 1.5m.",
+  "pdf_page": 140,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "Internal lot (where both dual occupancy dwellings are located on an internal lot) 4.0m Side - Ground floor 0.9m Second storey 1.5m Rear 6.0m"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "sutherland_shire",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "zone": "SP3",
+  "value_min": 6.0,
+  "unit": "m",
+  "condition": "Zone SP3; rear 6.0m (no separate internal lot rear figure in table).",
+  "pdf_page": 140,
+  "section_ref": "s2.2 Controls, control 2, Table 1: Setbacks",
+  "quotes": [
+   [
+    "pdf",
+    "Side - Ground floor 0.9m Second storey 1.5m Rear 6.0m"
+   ]
+  ],
+  "source_chapter_key": "sutherland-dcp-2015-ch4-dual-occupancy"
+ },
+ {
+  "lga": "cumberland",
+  "dev_type": "dual_occupancy",
+  "control_type": "front_setback",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: set by Low Rise Housing Diversity Design Guide for Development Applications (Part B s2.1; DCP prevails where inconsistent)",
+  "pdf_page": 31,
+  "section_ref": "Part B s2.1",
+  "quotes": [
+   [
+    "pdf",
+    "will be assessed in accordance with the Principles, Objectives and Design Criteria set out in the Low Rise Housing Diversity Design Guide"
+   ]
+  ],
+  "source_chapter_key": "cumberland-dcp-part-b-residential"
+ },
+ {
+  "lga": "cumberland",
+  "dev_type": "dual_occupancy",
+  "control_type": "side_setback",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: set by Low Rise Housing Diversity Design Guide for Development Applications (Part B s2.1; DCP prevails where inconsistent)",
+  "pdf_page": 31,
+  "section_ref": "Part B s2.1",
+  "quotes": [
+   [
+    "pdf",
+    "will be assessed in accordance with the Principles, Objectives and Design Criteria set out in the Low Rise Housing Diversity Design Guide"
+   ]
+  ],
+  "source_chapter_key": "cumberland-dcp-part-b-residential"
+ },
+ {
+  "lga": "cumberland",
+  "dev_type": "dual_occupancy",
+  "control_type": "rear_setback",
+  "value_min": null,
+  "unit": "m",
+  "condition": "NO FIGURE: set by Low Rise Housing Diversity Design Guide for Development Applications (Part B s2.1; DCP prevails where inconsistent)",
+  "pdf_page": 31,
+  "section_ref": "Part B s2.1",
+  "quotes": [
+   [
+    "pdf",
+    "will be assessed in accordance with the Principles, Objectives and Design Criteria set out in the Low Rise Housing Diversity Design Guide"
+   ]
+  ],
+  "source_chapter_key": "cumberland-dcp-part-b-residential"
+ }
+]

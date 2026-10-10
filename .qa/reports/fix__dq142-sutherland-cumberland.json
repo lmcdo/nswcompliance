@@ -1,0 +1,105 @@
+{
+  "tier": "critical",
+  "justification": "Critical: registers two council DCP chapters and loads 31 building-area controls (migrations 103, 104, applied) that the buildable-area arithmetic serves; the generator now reads council PDFs directly.",
+  "commit_hash": "efa73705",
+  "files": [
+    "migrations/103_register_sutherland_dcp_ch2_ch4.sql",
+    "migrations/104_dq142_sutherland_cumberland_controls.sql",
+    "scripts/dq142_build_controls_migration.py",
+    "data/dq142_controls_sutherland_cumberland_2026-10-10.json",
+    "scripts/control_source_values_baseline.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "pre_impl": {
+    "existing_data": "DQ-142 read 33. Sutherland had no residential DCP chapter registered; Cumberland Part B defers dual occupancy to the Low Rise Housing Diversity Design Guide.",
+    "assumption_mismatch": "Sutherland sets controls per zone, so one council-wide row per control would be wrong; its 50% deep soil applies to the front setback area only, not the lot.",
+    "new_vs_existing": "Same generator as migrations 092/095; adds zone-specific rows (applicability zone_specific + zones_include) and reading a chapter's official PDF when no mirrored copy exists.",
+    "external_source_error": "Every quote is checked on its page of the council's own PDF (fetched through curl when Cloudflare challenges Python), and every figure and unit in its quote.",
+    "frontend_type": "No frontend change; the arithmetic reads the same dcp_setback_controls columns, now with zone-specific rows for Sutherland.",
+    "user_failure_mode": "Without these rows the buildable-area figure is withheld for Sutherland; a council-wide row would serve one zone's setback to every zone."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dq142_build_controls_migration.py -q ; python scripts/dq_probe_live.py --id DQ-142 ; python scripts/dq_probe_live.py --id DQ-32b",
+    "fails_when": "A quote is not on its page of the council PDF, a zone-specific rule is stored council-wide (DQ-32b), or the rows are removed (DQ-142 back to 33).",
+    "observed_red": "Observed 2026-10-10: the first downloads returned a 5.7 KB Cloudflare challenge page; the generator now refuses anything that is not a PDF. Python requests got 403 even with a browser user agent; curl fallback added. The reader's 14 deep-soil rows were dropped (front-setback area only). 31 verified, 0 refused; DQ-142 33 -> 26; DQ-32b 0."
+  },
+  "functions": [
+    {
+      "name": "pdf_page_text",
+      "file_line": "scripts/dq142_build_controls_migration.py",
+      "input": "a council slug, a registered chapter key and a one-based page number from a reader finding",
+      "output": "that page's normalised text, from the mirrored PDF or else the council's official PDF",
+      "if_none": "None when the chapter has no PDF or the page is out of range; a non-PDF response raises rather than verifying against it."
+    }
+  ],
+  "values": [
+    {
+      "value": "31 building-area controls (Sutherland per-zone setbacks; Cumberland deferral to the design guide)",
+      "source": "Sutherland Shire DCP 2015 Ch 2 and Ch 4 (May 2026); Cumberland DCP Part B",
+      "read_at": "services/constraint_arithmetic.py",
+      "if_missing": "The footprint is withheld; no figure is invented."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "chapter PDF location",
+      "file_line": "scripts/dq142_build_controls_migration.py",
+      "where_clause": "council = %s AND chapter_key = %s AND is_active"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council site serves a bot-challenge page instead of the PDF",
+      "what_happens": "The generator refuses to verify against it and stops with a named error",
+      "mitigated": true,
+      "how": "%PDF magic-byte check after the fetch",
+      "repro": "python scripts/dq142_build_controls_migration.py data/dq142_controls_sutherland_cumberland_2026-10-10.json /tmp/x.sql"
+    },
+    {
+      "scenario": "A per-zone setback is stored without its zone and served everywhere",
+      "what_happens": "Prevented: rows carrying a zone are zone_specific with zones_include set",
+      "mitigated": true,
+      "how": "generator zone branch; DQ-32b reads 0",
+      "repro": "python scripts/dq_probe_live.py --id DQ-32b"
+    },
+    {
+      "scenario": "A deep-soil figure that applies only to the front setback is used as a whole-lot cap",
+      "what_happens": "Prevented here: those 14 rows were dropped before generation",
+      "mitigated": true,
+      "how": "main-session review of the reader output",
+      "repro": "python scripts/dq_probe_live.py --id DQ-142"
+    },
+    {
+      "scenario": "A quote was paraphrased or copied from a different page of the PDF",
+      "what_happens": "The finding is refused and named; no SQL row is written for it",
+      "mitigated": true,
+      "how": "normalised substring check on the named page",
+      "repro": "python -m pytest tests/test_dq142_build_controls_migration.py -q"
+    },
+    {
+      "scenario": "A figure appears only inside a larger number or with the wrong unit",
+      "what_happens": "Refused by the whole-number and unit check, so no row is written",
+      "mitigated": true,
+      "how": "value_in_quotes",
+      "repro": "python -m pytest tests/test_dq142_build_controls_migration.py -q -k unit"
+    },
+    {
+      "scenario": "The chapter PDF location in the registry is missing or points to a page that is not the chapter",
+      "what_happens": "With no URL every quote is refused; a non-PDF response stops the run; a wrong document fails the quote-on-page check",
+      "mitigated": true,
+      "how": "COALESCE(r2_public_pdf_url, council_url) + %PDF check + per-page quote match",
+      "repro": "python scripts/dq142_build_controls_migration.py data/dq142_controls_sutherland_cumberland_2026-10-10.json /tmp/x.sql"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Migrations 103 and 104 are applied: python scripts/dq_probe_live.py --id DQ-142 reads 26."
+  },
+  "real_layer_exempt": {
+    "migrations/103_register_sutherland_dcp_ch2_ch4.sql": "Applied to production 2026-10-10 after a rolled-back dry run (2 chapters).",
+    "migrations/104_dq142_sutherland_cumberland_controls.sql": "Applied to production 2026-10-10 after a rolled-back dry run (31 rows).",
+    "scripts/dq142_build_controls_migration.py": "Real run 2026-10-10 against production and the council PDFs (31 verified)."
+  }
+}
