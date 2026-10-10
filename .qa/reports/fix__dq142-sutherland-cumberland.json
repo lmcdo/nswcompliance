@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: registers two council DCP chapters and loads 31 building-area controls (migrations 103, 104, applied) that the buildable-area arithmetic serves; the generator now reads council PDFs directly.",
-  "commit_hash": "efa73705",
+  "commit_hash": "e4efef83",
   "files": [
     "migrations/103_register_sutherland_dcp_ch2_ch4.sql",
     "migrations/104_dq142_sutherland_cumberland_controls.sql",
