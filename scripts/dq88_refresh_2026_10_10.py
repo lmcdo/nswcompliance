@@ -123,8 +123,15 @@ def version(cur, pid: int, text_after: str | None, src: str, ref: str, why: str,
 
 
 def main() -> int:
-    apply = "--apply" in sys.argv
+    # prior-art-checked: reuse not viable because this only closes this script's own connection.
     conn = psycopg2.connect(os.environ["DATABASE_URL"], options="-c statement_timeout=60000")
+    try:
+        return run(conn, "--apply" in sys.argv)
+    finally:
+        conn.close()
+
+
+def run(conn, apply: bool) -> int:
     cur = conn.cursor()
     now = datetime.now(timezone.utc)
     for pid, src, ref, why in RETIRE:
