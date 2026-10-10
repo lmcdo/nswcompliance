@@ -44,7 +44,7 @@ UPDATE instrument_registry
  WHERE is_active AND needs_review
    -- Only the version reviewed here: a later amendment re-flags the instrument with a newer
    -- version_date, and that new flag must not be cleared by this review (cross-review).
-   AND version_date <= DATE '2026-10-10'
+   AND version_date::date <= DATE '2026-10-10'
    AND instrument_key IN (
      'sepp_housing_2021', 'sepp_exempt_complying_2008', 'inner_west_lep_2022', 'parramatta_lep_2023',
      'sutherland_lep_2015', 'the_hills_lep_2019',
