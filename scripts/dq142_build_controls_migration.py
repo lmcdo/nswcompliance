@@ -44,14 +44,25 @@ def pdf_page_text(cur, council: str, chapter: str, page: int) -> str | None:
     if (council, chapter) not in _PDF_PAGES:
         import fitz
         import requests
-        cur.execute("SELECT r2_public_pdf_url FROM dcp_chapter_registry "
+        cur.execute("SELECT COALESCE(r2_public_pdf_url, council_url) FROM dcp_chapter_registry "
                     "WHERE council = %s AND chapter_key = %s AND is_active", (council, chapter))
         r = cur.fetchone()
         pages: list[str] = []
         if r and r[0]:
-            resp = requests.get(r[0], timeout=180)
-            resp.raise_for_status()
-            pages = [pg.get_text() for pg in fitz.open(stream=resp.content, filetype="pdf")]
+            # A chapter not yet mirrored is read from the council's own PDF; some
+            # council sites serve a bot challenge to non-browser user agents.
+            ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+            resp = requests.get(r[0], timeout=180, headers={"User-Agent": ua})
+            if resp.status_code == 403:
+                # Cloudflare challenges Python's TLS client but not curl's.
+                import subprocess
+                body = subprocess.run(["curl", "-sSL", "-A", ua, r[0]], capture_output=True, timeout=180).stdout
+            else:
+                resp.raise_for_status()
+                body = resp.content
+            if not body.startswith(b"%PDF"):
+                raise RuntimeError(f"{r[0]}: not a PDF (bot challenge?) -- refusing to verify against it")
+            pages = [pg.get_text() for pg in fitz.open(stream=body, filetype="pdf")]
         _PDF_PAGES[(council, chapter)] = pages
     pages = _PDF_PAGES[(council, chapter)]
     return norm(pages[page - 1]) if page and 1 <= page <= len(pages) else None
@@ -156,11 +167,15 @@ def main(spec_path: str, out_path: str) -> int:
             refused.append(f"{tag}: already has a decided row; not duplicating")
             continue
         source_text = " ... ".join(frag for _, frag in f["quotes"])
+        # A control the DCP sets per zone is stored zone_specific with that zone,
+        # so the zone filter serves it only there (DQ-32b).
+        applicability = "zone_specific" if f.get("zone") else sib[2]
+        zones_sql = f"ARRAY[{sq(f['zone'])}]" if f.get("zone") else "NULL"
         rows.append(
             f"  ({sq(f['lga'])}, {sq(f['dev_type'])}, {sq(f['control_type'])}, "
             f"{'NULL' if v is None else shown(v)}, NULL, {sq(f.get('unit'))}, {sq(f.get('condition'))}, "
-            f"{sq(sib[2])}, {sq(source_text)}, {sq(f['section_ref'])}, {sq(sib[1])}, TRUE, 'manual_curation', "
-            f"{sq(sib[0])}, {int(f['pdf_page']) if f.get('pdf_page') else 'NULL'}, 'unjudged', FALSE)")
+            f"{sq(applicability)}, {sq(source_text)}, {sq(f['section_ref'])}, {sq(sib[1])}, TRUE, 'manual_curation', "
+            f"{sq(sib[0])}, {int(f['pdf_page']) if f.get('pdf_page') else 'NULL'}, 'unjudged', FALSE, {zones_sql})")
     conn.close()
     for r in refused:
         print("REFUSED", r)
@@ -188,7 +203,7 @@ BEGIN;
 INSERT INTO dcp_setback_controls
   (lga, dev_type, control_type, value_min, value_max, unit, condition, applicability,
    source_text, section_ref, dcp_version, is_current, extraction_method, source_chapter_key,
-   pdf_page, citation_status, needs_review)
+   pdf_page, citation_status, needs_review, zones_include)
 VALUES
 {values};
 
