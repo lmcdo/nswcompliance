@@ -4014,7 +4014,7 @@ def _generate_brief_sse(
             constraint_field = None
             if lot_area_m2 and lot_area_m2 > 0:
                 try:
-                    from services.constraint_arithmetic import compute_constraint_arithmetic
+                    from services.constraint_arithmetic import _fetch_dcp_coverage, compute_constraint_arithmetic
 
                     _excluded_forms = _eligibility_excluded_forms(lat, lng)
                     # Reuse the eligibility run from the SEPP card above — the
@@ -4037,6 +4037,7 @@ def _generate_brief_sse(
                         dcp_controls=dcp_controls.controls.value if dcp_controls.controls.value else [],
                         sepp_standards=sepp_housing,
                         sepp_lep_overrides=sepp_lep_overrides,
+                        dcp_coverage=_fetch_dcp_coverage(dcp_former_council, _floor_form),
                     )
                     if constraint_result is not None:
                         _apply_lmr_attribution(constraint_result, _ceiling_from_lmr, _uplift_citation)

@@ -453,6 +453,7 @@ def compute_constraint_arithmetic(
     sepp_standards: Optional[list[SEPPStandard]] = None,
     sepp_lep_overrides: Optional[list[SeppLepOverride]] = None,
     shadow_result: Optional[ShadowResult] = None,
+    dcp_coverage: Optional[dict] = None,
 ) -> ConstraintArithmeticResult:
     """Compute constraint arithmetic chain.
 
@@ -635,6 +636,12 @@ def compute_constraint_arithmetic(
             (front_setback, "front"), (rear_setback, "rear"), (side_setback, "side"),
         ) if value is None
     ]
+    # Where a council's DCP does not (or only partly) cover this housing type,
+    # say so from the recorded finding (dcp_dev_type_coverage) instead of the
+    # generic "verify against the DCP". The statement names what was reviewed
+    # and when; the source link lets a reader check it.
+    if dcp_coverage and missing_setbacks:
+        gaps.append(f"{dcp_coverage['statement']} Source: {dcp_coverage['evidence_url']}")
 
     if front_setback is not None or rear_setback is not None or side_setback is not None:
         effective_front = front_setback or 0.0
@@ -644,7 +651,8 @@ def compute_constraint_arithmetic(
         buildable_width = max(0.0, frontage_m - 2 * effective_side)
         buildable_depth = max(0.0, depth_m - effective_front - effective_rear)
         buildable_footprint = buildable_width * buildable_depth
-        if missing_setbacks:
+        # A recorded coverage finding (above) already explains the gap.
+        if missing_setbacks and not dcp_coverage:
             # WORDING. This says what WE hold, not what the DCP says. The code
             # knows only that no CURRENT extracted row exists for this control
             # and development type -- Cumberland has an 8 m rear-setback row
@@ -1354,6 +1362,45 @@ def _fetch_constraint_data_from_db(
     return dcp_controls, sepp_standards, sepp_lep_overrides
 
 
+def _fetch_dcp_coverage(lga: Optional[str], dev_type: Optional[str]) -> Optional[dict]:
+    """The recorded finding that this council's DCP does not (or only partly)
+    cover this housing type, from dcp_dev_type_coverage -- or None.
+
+    prior-art-checked: reuse not viable because /api/dcp/coverage lists which
+    councils hold any controls; nothing recorded per-housing-type absence.
+
+    None on any failure as well: the caller then shows the generic gap text,
+    which is true either way; a lookup failure never invents a finding.
+    """
+    import logging
+    import os
+
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url or not lga or not dev_type:
+        return None
+    conn = None
+    try:
+        import psycopg2
+
+        conn = psycopg2.connect(db_url, options="-c statement_timeout=5000")
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT coverage, statement, evidence_quote, evidence_url FROM dcp_dev_type_coverage "
+                "WHERE council = %s AND dev_type = %s AND is_current",
+                (lga, dev_type),
+            )
+            row = cur.fetchone()
+        if row is None:
+            return None
+        return {"coverage": row[0], "statement": row[1], "evidence_quote": row[2], "evidence_url": row[3]}
+    except Exception as e:  # qa-ignore: silent-failure -- generic gap text is shown instead, which stays true
+        logging.getLogger(__name__).warning("dcp coverage lookup failed: %s", e)
+        return None
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 class ConstraintArithmeticFullRequest(BaseModel):
     """Request body for /constraint-arithmetic/full endpoint.
 
@@ -1412,4 +1459,5 @@ async def constraint_arithmetic_full(
         dcp_controls=dcp_controls,
         sepp_standards=sepp_standards,
         sepp_lep_overrides=sepp_lep_overrides,
+        dcp_coverage=_fetch_dcp_coverage(req.lga, req.dev_type),
     )
