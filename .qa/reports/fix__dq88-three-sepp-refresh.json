@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: production law-text changes on 3 SEPPs (455 rows retired or replaced with history; 423 applied, 32 prepared) and a migration that clears their review flags.",
-  "commit_hash": "1d1e47f6",
+  "commit_hash": "d3aff924",
   "files": [
     "scripts/dq88_sepp_bulk_refresh.py",
     "migrations/099_dq88_clear_three_refreshed_sepps.sql",
