@@ -744,9 +744,25 @@ class ApplicabilityTagger:
         zones, dev_types, _prov = self.tag_with_provenance(text, document_id, valid_zones)
         return zones, dev_types
 
+    @classmethod
+    def _get_inner_west_lep_config(cls, document_id: str, clause: Optional[str]) -> Optional[Dict[str, Any]]:
+        """Scope of one Inner West LEP 2022 clause, from the clause's own words (DQ-140).
+
+        An LEP states its reach per CLAUSE ("This clause applies to land in Zone
+        ..."), not per chapter, and the stored rows are split by subclause, so the
+        row text alone often carries no scope. The clause comes from the row's
+        section_header (its verbatim clause heading). An LEP row whose clause has
+        no entry returns a no_config result -- never a text-regex guess.
+        """
+        if 'inner_west_local_environmental_plan' not in (document_id or '').lower():
+            return None
+        from enrichment.config.inner_west_lep_config import INNER_WEST_LEP_CLAUSES, clause_key
+        return cls._from_entry(INNER_WEST_LEP_CLAUSES.get(clause_key(clause)), site_conditions=None)
+
     def tag_with_provenance(
         self, text: str, document_id: str = None,
         valid_zones: Optional[Set[str]] = None,
+        clause: Optional[str] = None,
     ) -> Tuple[List[str], List[str], Dict[str, str]]:
         """As :meth:`tag`, plus WHY each value is what it is.
 
@@ -769,8 +785,11 @@ class ApplicabilityTagger:
         # 1. Get structural config based on document_id
         if document_id:
             council = self._detect_council(document_id)
+            lep_config = self._get_inner_west_lep_config(document_id, clause)
 
-            if council == 'ashfield':
+            if lep_config is not None:
+                config = lep_config
+            elif council == 'ashfield':
                 config = self._get_ashfield_config(document_id)
             elif council == 'leichhardt':
                 config = self._get_leichhardt_config(document_id)

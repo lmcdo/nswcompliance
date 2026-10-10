@@ -1657,7 +1657,7 @@
     "note": "Found 2026-10-08 while measuring the authority surface for the read-gate design. anon is the role behind NEXT_PUBLIC_SUPABASE_ANON_KEY. Nothing is exploitable today: RLS is enabled on these tables with no policies and anon has rolbypassrls=false, so every statement is denied. That is ONE mechanism and the grant sits underneath it - a single permissive policy added for an unrelated feature, or one DISABLE ROW LEVEL SECURITY, turns a public key into a write path, and the grant would make it legal. REVOKE costs nothing functionally because no serving path uses anon or authenticated to read a rule table: the app connects as postgres, the table owner, which bypasses RLS. SCOPE LIMIT, deliberate: the table list in the probe is hardcoded. A catalogue sweep found 72 further rule-shaped tables outside it, including 17 BACKUP tables holding copies of regulatory data (11 dcp_setback_controls_*, 6 regulatory_provisions_citation_backup_*). ALL 149 public base tables are writable by anon and authenticated - 1,192 grant rows, the Supabase default - so this probe counts the rule-bearing subset rather than all 149, because legitimate anon write paths exist (dcp_interest for the register-interest form, feedback, leads). Replace the list with the derived rule-table inventory (A1 of ce-rule-provenance-lockdown-PLAN-2026-10-08.md) when it exists; until then a NEW rule table is not counted here. Verify by re-running the probe, not by checking the app still works - the app is unaffected either way, so a green app proves nothing about this row."
   },
   "DQ-140": {
-    "declared": "open",
+    "declared": "fixed",
     "check": [
       "python",
       "scripts/dq_probe_live.py",

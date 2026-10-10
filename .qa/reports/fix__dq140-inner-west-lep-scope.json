@@ -1,0 +1,126 @@
+{
+  "tier": "critical",
+  "justification": "Critical: changes who 554 served Inner West LEP rules are shown to (57 narrowed), adds a tagger path, and publishes Inner West in the outreach scoped-council list.",
+  "commit_hash": "d96ce6c1",
+  "files": [
+    "enrichment/extractors/applicability_tagger.py",
+    "enrichment/config/inner_west_lep_config.py",
+    "scripts/retag_applicability_slug_docids.py",
+    "migrations/102_inner_west_lep_clause_headings.sql",
+    "tests/test_inner_west_lep_scope.py",
+    "frontend-nextjs/shared/dcp-scoped-councils.json",
+    ".gitignore",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "pre_impl": {
+    "existing_data": "DQ-140 read 1,108: all 554 served Inner West LEP 2022 rows had zone and dev-type scope from no_config or never tagged; no row carried its clause (332 had provision_N refs, all section_header NULL).",
+    "assumption_mismatch": "Scope configs are per DCP chapter and matched by document_id; an LEP states its reach per clause, and its rows are split by subclause, so the row text alone carries no scope.",
+    "new_vs_existing": "Reuses _from_entry/_resolve and the retag script's backup and narrowing guard; adds one config keyed by clause and a clause argument to tag_with_provenance.",
+    "external_source_error": "Clause placement and every scope quote come from the in-force Plan on legislation.nsw.gov.au (fetched via the Fly monitor IP, 2026-10-10); each quote was checked to occur verbatim before the config was written.",
+    "frontend_type": "No type change: v2_applicable_zones / v2_applicable_dev_types keep their array shape; section_header gains clause headings the LEP pages already render.",
+    "user_failure_mode": "Without this, every Inner West LEP rule reaches every property and project because nobody decided its scope; with a wrong narrowing a rule would be hidden, so only zones/types the clause names narrow it."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_inner_west_lep_scope.py -q ; python scripts/dq_probe_live.py --id DQ-140 ; python scripts/outreach_scoped_councils.py",
+    "fails_when": "An Inner West LEP row falls back to text regex or no_config with a clause entry present, a declared scope lacks its quote, or the published council list stops matching.",
+    "observed_red": "Observed 2026-10-10: the first clause placement matched 0 of 554 rows because the Plan fetch had timed out; re-fetched, 534 placed by text and 21 by reading. Readers proposed category-based zone lists (6.3) and a partial dev list (6.10); both were overruled to declined. After the retag OC-17 failed because Inner West now passes but was unpublished; the list was updated. DQ-140 1,108 -> 0."
+  },
+  "functions": [
+    {
+      "name": "_get_inner_west_lep_config",
+      "file_line": "enrichment/extractors/applicability_tagger.py",
+      "input": "a provision's document_id and the clause heading taken from its section_header column",
+      "output": "a config result with zones, dev types and their provenance for that clause, or None for non Inner West LEP documents",
+      "if_none": "An Inner West LEP row whose clause has no entry gets a no_config result, never a text-regex guess."
+    },
+    {
+      "name": "clause_key",
+      "file_line": "enrichment/config/inner_west_lep_config.py",
+      "input": "a section_header string such as '6.34 Development of ...' or 'Land Use Table Zone R1 ...'",
+      "output": "the config key: '6.34', 'Schedule 5' or 'LUT:R1'",
+      "if_none": "Returns None for an empty or unrecognised heading, so the row is no_config."
+    }
+  ],
+  "values": [
+    {
+      "value": "88 clause scope entries",
+      "source": "Inner West LEP 2022 in-force text, quoted per entry",
+      "read_at": "applicability tagger via the retag script",
+      "if_missing": "no_config: the rule stays served to all, flagged undecided by DQ-140."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "rows to retag",
+      "file_line": "scripts/retag_applicability_slug_docids.py",
+      "where_clause": "source_council = ANY(%s) (now also selects section_header)"
+    },
+    {
+      "purpose": "clause headings",
+      "file_line": "migrations/102_inner_west_lep_clause_headings.sql",
+      "where_clause": "id = v.id AND section_header IS NULL AND source_council = 'inner_west'"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A clause names zones only by category ('residential zones') and a reader converts it to codes",
+      "what_happens": "Overruled to declined: the rule stays shown to all zones with the quote recorded",
+      "mitigated": true,
+      "how": "main-session rule: lists only where the clause names the codes",
+      "repro": "python -m pytest tests/test_inner_west_lep_scope.py -q"
+    },
+    {
+      "scenario": "A row's text names a zone but its clause has no entry in the config",
+      "what_happens": "no_config, not a regex narrowing that could hide the rule",
+      "mitigated": true,
+      "how": "the LEP path returns a config result even when empty",
+      "repro": "python -m pytest tests/test_inner_west_lep_scope.py -q -k unknown"
+    },
+    {
+      "scenario": "A DCP document passes a clause argument to the tagger by mistake",
+      "what_happens": "Ignored: only Inner West LEP document ids take the clause path",
+      "mitigated": true,
+      "how": "document_id check first",
+      "repro": "python -m pytest tests/test_inner_west_lep_scope.py -q -k other_documents"
+    },
+    {
+      "scenario": "A declared clause scope has no quote from the Plan behind it",
+      "what_happens": "The test fails and names the clause and field",
+      "mitigated": true,
+      "how": "test over every entry",
+      "repro": "python -m pytest tests/test_inner_west_lep_scope.py -q -k quote"
+    },
+    {
+      "scenario": "Inner West passes its checks but the public council list still omits it",
+      "what_happens": "OC-17 fails until the list names it; it now does",
+      "mitigated": true,
+      "how": "bidirectional list check",
+      "repro": "python scripts/outreach_scoped_councils.py"
+    },
+    {
+      "scenario": "The rows to retag include unserved or retired Inner West rows that must not change what is shown",
+      "what_happens": "They are retagged too, but only served rows reach a property; the dry run listed served narrowings separately (57) and the apply refused any other count",
+      "mitigated": true,
+      "how": "--expect-narrowings 57 guard on served rows, backup table, per-row concurrency guard",
+      "repro": "PYTHONPATH=scripts python scripts/retag_applicability_slug_docids.py --councils inner_west"
+    },
+    {
+      "scenario": "A retag backup table is created in the public schema with default grants",
+      "what_happens": "The public browser key could write to it; the script now revokes those grants and enables row-level security straight after creating it",
+      "mitigated": true,
+      "how": "REVOKE ALL FROM anon, authenticated + ENABLE ROW LEVEL SECURITY; DQ-138 back to 0",
+      "repro": "python scripts/dq_probe_live.py --id DQ-138"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Applied 2026-10-10: migration 102 and the retag (backup table regulatory_provisions_dq140_backup_20261010). python scripts/dq_probe_live.py --id DQ-140 reads 0."
+  },
+  "real_layer_exempt": {
+    "migrations/102_inner_west_lep_clause_headings.sql": "Applied to production 2026-10-10 after a rolled-back dry run (554 rows).",
+    "scripts/retag_applicability_slug_docids.py": "Real run 2026-10-10 for inner_west: dry run, then --apply with backup table and --expect-narrowings 57."
+  }
+}
