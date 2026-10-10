@@ -108,6 +108,10 @@ QUERIES: dict[str, tuple[str, str]] = {
         "  COUNT(*) FILTER (WHERE control_type = 'rear_setback')  AS r "
         "FROM dcp_setback_controls WHERE is_current "
         "  AND (needs_review IS NULL OR needs_review = FALSE) "
+        # A quoted 'NO FIGURE' decision (match the neighbours, a formula) is a rule
+        # but not a setback figure; counting it published 26 where 19 councils hold
+        # a number for all three (DQ-142 migrations, 2026-10-10).
+        "  AND COALESCE(value_min, value_max) IS NOT NULL "
         # Precinct-only rules are not served council-wide (DQ-99, 2026-09-14), so
         # they cannot make a council count: ashfield's only front setback was the
         # Haberfield Yasmar Estate rule.

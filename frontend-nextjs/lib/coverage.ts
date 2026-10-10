@@ -54,6 +54,8 @@
  *                                  count(*) FILTER (WHERE control_type='rear_setback')  r
  *                                FROM dcp_setback_controls WHERE is_current
  *                                  AND (needs_review IS NULL OR needs_review=FALSE)
+ *                                  AND COALESCE(value_min, value_max) IS NOT NULL  -- a number, not a
+ *                                    quoted 'NO FIGURE' rule (2026-10-10: 26 with them, 19 without)
  *                                  AND applicability IS DISTINCT FROM 'precinct_specific'
  *                                  AND lga<>'nsw_statewide' AND lga<>'inner_west' GROUP BY lga)
  *                                SELECT count(*) FILTER (WHERE f>0 AND s>0 AND r>0) FROM t; -> 21
@@ -134,7 +136,7 @@ export const COVERAGE = {
   provisionsTotal: 53716,
   dcpActionableProvisions: 39827,
   dcpNumericCouncils: 26,
-  dcpSetbackTripleCouncils: 21,
+  dcpSetbackTripleCouncils: 19,
   dcpSetbackRows: 1069,
   heritageAreas: 2039,
   regulatoryDefinitions: 474,
@@ -156,7 +158,7 @@ export const COVERAGE_DISPLAY = {
   provisionsTotal: '53,000+',
   dcpActionableProvisions: '39,000+',
   dcpNumericCouncils: '26',
-  dcpSetbackTripleCouncils: '21',
+  dcpSetbackTripleCouncils: '19',
   dcpSetbackRows: '1,000+',
   heritageAreas: '2,039',
   regulatoryDefinitions: '470+',

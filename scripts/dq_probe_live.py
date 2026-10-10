@@ -2537,6 +2537,44 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "council's PDF: retire what duplicates, restore what the current load is "
         "missing, never relabel.",
     ),
+    "DQ-142": (
+        "Building-area controls missing for a council's housing type (every council with DCP controls)",
+        # Measured 2026-10-10 after DQ-139 read 11: DQ-139 only counts a missing
+        # REAR where a front or side exists, so a council missing front AND rear,
+        # or any coverage/landscaping cap, never showed. The buildable-area sum
+        # needs: front, side and rear setbacks, and a footprint cap (site coverage
+        # or landscaped area). Counted per (council, dev type, control) for the
+        # three main low-rise types -- ONLY where the council already has at least
+        # one current control for that type, so no DCP is presumed to cover a type
+        # it may not. That is a recorded scope limit: this is a floor.
+        # A control counts as present when a current, not-under-review row has a
+        # number, or records a decided absence: condition beginning 'NO FIGURE:'
+        # with the DCP's own words in source_text (e.g. 'match the neighbours').
+        "WITH types AS ("
+        "  SELECT DISTINCT lga, dev_type FROM dcp_setback_controls"
+        "   WHERE is_current AND NOT needs_review AND lga <> 'nsw_statewide'"
+        "     AND dev_type IN ('dwelling_house', 'secondary_dwelling', 'dual_occupancy')),"
+        " needed AS ("
+        "  SELECT t.lga, t.dev_type, c.ctl FROM types t"
+        "  CROSS JOIN (VALUES ('front_setback'), ('side_setback'), ('rear_setback'), ('cap')) c(ctl)),"
+        " have AS ("
+        "  SELECT lga, dev_type,"
+        "         CASE WHEN control_type IN ('max_site_coverage', 'landscaping_min', 'deep_soil_min') THEN 'cap'"
+        "              ELSE control_type END AS ctl"
+        "    FROM dcp_setback_controls"
+        "   WHERE is_current AND NOT needs_review"
+        "     AND (COALESCE(value_min, value_max) IS NOT NULL"
+        "          OR (condition LIKE 'NO FIGURE:%%' AND length(trim(source_text)) >= 20)))"
+        " SELECT count(*) FROM needed n"
+        "  WHERE NOT EXISTS (SELECT 1 FROM have h"
+        "                     WHERE h.lga = n.lga AND h.dev_type = n.dev_type AND h.ctl = n.ctl)",
+        (),
+        "Each count is one control the buildable-area sum needs for a housing "
+        "type a council's DCP covers, with neither a number nor a quoted decision "
+        "that there is none. Where it is missing, the app shows no building-area "
+        "figure for that council and type. Cleared by extracting the control from "
+        "the council's DCP, or recording 'NO FIGURE:' with the DCP's own words.",
+    ),
     "DQ-139": (
         "Council/development-type pairs whose setback arithmetic lacks a required control",
         # Origin 2026-10-08, the LEP tab for 45 Graham St Greystanes. The yield card
