@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: three production data changes (migration 091, 4 rear setbacks; 092, 67 building-area controls; 093, cross-review corrections to them), all applied, that the buildable-area arithmetic serves, plus a changed DQ probe.",
-  "commit_hash": "34d2a509",
+  "commit_hash": "db552575",
   "files": [
     "migrations/091_rear_setbacks_quoted_from_stored_dcp_text.sql",
     "migrations/092_dq142_building_area_controls.sql",
@@ -13,7 +13,9 @@
     "scripts/dq_probe_live.py",
     "tests/test_dq142_build_controls_migration.py",
     ".claude/dq_checks.json",
-    ".claude/DATA_QUALITY_TRACKER.md"
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "scripts/verify_coverage_stats.py",
+    "frontend-nextjs/lib/coverage.ts"
   ],
   "pre_impl": {
     "existing_data": "dcp_setback_controls: DQ-142 read 140 missing (council, housing type, control) combinations across 25 councils; DQ-139 read 15. 16 councils have DCP text stored in regulatory_provisions.",
