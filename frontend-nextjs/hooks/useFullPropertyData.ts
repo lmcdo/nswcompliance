@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { detectDevTypeFromZone } from '@/lib/requirement-prioritization';
+import { encodeLandFacts, type LandFacts } from '@/lib/lep-land-condition';
 import type {
   PropertyContext,
   LepCapacityData,
@@ -34,6 +35,7 @@ interface PropertyApiResponse {
       precinctId?: string;
       maxHeight?: number;
       maxFsr?: number;
+      landFacts?: LandFacts | null;
     };
     heritage?: {
       isHeritage?: boolean;
@@ -230,6 +232,9 @@ export function useFullPropertyData(): UseFullPropertyDataReturn {
       if (propertyContext.heritage?.hcaCode) {
         params.set('hca', propertyContext.heritage.hcaCode);
       }
+      // DQ-140: without it a site-specific LEP rule is shown as "could not confirm this land".
+      const landFactsParam = encodeLandFacts(propertyContext.landFacts);
+      if (landFactsParam) params.set('land_facts', landFactsParam);
 
       const response = await fetch(`/api/provisions/for-property?${params.toString()}`);
 
@@ -305,6 +310,7 @@ export function useFullPropertyData(): UseFullPropertyDataReturn {
         lga: propertyResult.data.constraints?.lga || '',
         formerCouncil: propertyResult.data.constraints?.formerCouncil || '',
         precinctId: propertyResult.data.constraints?.precinctId,
+        landFacts: propertyResult.data.constraints?.landFacts ?? null,
         heritage: propertyResult.data.heritage ? {
           isHeritage: propertyResult.data.heritage.isHeritage || false,
           heritageType: propertyResult.data.heritage.heritageType,

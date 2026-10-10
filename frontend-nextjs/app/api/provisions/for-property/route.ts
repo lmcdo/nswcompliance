@@ -35,6 +35,7 @@ import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHe
 import { captureServerException } from '@/lib/posthog-server';
 import { withServedCitation } from '@/lib/citation-display';
 import { decideLandApplication, decodeLandApplication } from '@/lib/dcp-land-application';
+import { applyLandConditions, decodeLandFacts } from '@/lib/lep-land-condition';
 
 
 export const dynamic = 'force-dynamic';
@@ -413,6 +414,20 @@ export async function GET(request: NextRequest) {
         count: layer4.length
       });
 
+      // DQ-140: a site-specific LEP rule (Key Sites 'Area 19', Schedule 1 item 46, a heritage item...)
+      // is served only where the lot's portal layers carry that land. A verified layer that says
+      // otherwise withholds it; no portal answer, or a layer never seen returning labels, keeps it with
+      // land_status 'unconfirmed' so the page says "could not confirm this land" -- never silent.
+      const landFacts = decodeLandFacts(searchParams.get('land_facts'));
+      const landGate = { facts_supplied: landFacts !== null, withheld: 0, unconfirmed: 0 };
+      for (const layerResult of results) {
+        const gated = applyLandConditions(layerResult.provisions, landFacts);
+        layerResult.provisions = gated.kept;
+        layerResult.count = gated.kept.length;
+        landGate.withheld += gated.withheld;
+        landGate.unconfirmed += gated.unconfirmed;
+      }
+
       // No URL adjustment needed - PDF files are correctly named
       // page_N.png contains DCP page N+1 content (verified 2024-12-10)
 
@@ -654,6 +669,7 @@ export async function GET(request: NextRequest) {
           precinct_warning: precinctWarning,
           dcp_currency: dcpCurrency,
           land_application: landApplication,
+          land_conditions: landGate,
         }
       });
       // Temporarily disabled cache for debugging duplicates issue
@@ -740,7 +756,9 @@ const PROVISION_BASE_SELECT = `
   rp.section_header,
   rp.ref_number,
   rp.source_council,
-  rp.citation_status
+  rp.citation_status,
+  -- migration 109 (DQ-140): the land a site-specific LEP rule names; NULL = not land-limited
+  rp.v2_land_condition
 `;
 
 /**

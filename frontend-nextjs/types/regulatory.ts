@@ -1,6 +1,8 @@
 // types/regulatory.ts
 // Types for regulatory data used by AI integration
 
+import type { LandFacts } from '@/lib/lep-land-condition';
+
 /**
  * Property context - core property information for regulatory lookups
  */
@@ -20,6 +22,8 @@ export interface PropertyContext {
     lat: number;
     lng: number;
   };
+  /** DQ-140: the lot's map labels, so the provisions route can match site-specific LEP rules. */
+  landFacts?: LandFacts | null;
 }
 
 /**
