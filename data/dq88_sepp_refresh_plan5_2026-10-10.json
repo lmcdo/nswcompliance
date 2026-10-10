@@ -1,0 +1,46 @@
+[
+{
+"id": 22451,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "(1)  A reference in this Chapter to a land use zone that is equivalent to a named land use zone is a reference to a land\nuse zone under an environmental planning instrument that is not made as provided by section 3.20(2) of the Act\n—\n(a)  that the Planning Secretary has determined under clause 1.6 of State Environmental Planning Policy\n(Exempt and Complying Development Codes) 2008 is a land use zone in which equivalent land uses are\npermitted to those permitted in that named land use zone, or\n(b)  if no such determination has been made in respect of the particular zone, that is a land use zone in which (in\nthe opinion of the relevant authority) equivalent land uses are permitted to those permitted in that named\nland use zone.\n(2)  An assessment made by a relevant authority under subsection (1)(b) applies only in respect of the particular\ndevelopment that is proposed to be carried out and more than one such assessment may be made in respect of\nthe same land use zone.\n(3)  Despite subsection (1), in relation to land—\n(a)  to which an environmental planning instrument that is not made as provided by section 3.20(2) of the Act\napplies, and\n(b)  to which a draft environmental planning instrument that complies with that section and that has been the\nsubject of community consultation also applies,\na reference in this Chapter to a lot or land in a named land use zone is a reference to a lot or land specified in a\nland use zone that is equivalent to such a zone in the last such draft environmental planning instrument that was\nthe subject of such community consultation.\n(4)  In subsection (3), community consultation means community consultation under clause 4 of Schedule 1 to the\nAct or public exhibition under section 66 of the Act (as continued on by clause 12 of the Environmental\nPlanning and Assessment Regulation 2000).\n(5)  In this section, relevant authority means—\n(a)  the public authority proposing to carry out the development, or on whose behalf the development is\nproposed to be carried out, or\n(b)  if the development is to be carried out by or on behalf of a person other than a public authority, the Planning\nSecretary.\nNote.\nLand use zones that are named in this Chapter are those set out in the standard instrument.\n\nState Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation",
+"new_text": "A reference in this chapter to a lot or to land in a named land use zone is a reference— (a) to land that, under an environmental planning instrument made as provided by the Act, section 3.20(2), is in a land use zone specified in the Standard Instrument, and (b) to land that, under an environmental planning instrument that is not made as provided by the Act, section 3.20(2), is in a land use zone in which equivalent land uses are permitted to those permitted in the named land use zone.",
+"agreed": "both readers + main session: s 2.4 substituted"
+},
+{
+"id": 44032,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "(2) Before determining a development application for development to which this section applies, the consent authority must—",
+"new_text": "(2) Development consent must not be granted to development to which this section applies unless the consent authority has considered—",
+"agreed": "second reader + main session: s 2.97(2) lead-in rewritten; limb 44034 survives"
+},
+{
+"id": 42132,
+"sepp": "Planning Systems",
+"action": "RETIRE",
+"old_text": "(a) State Environmental Planning Policy (Biodiversity and Conservation) 2021, section 6.64,   \n(b) State Environmental Planning Policy (Precincts—Central River City) 2021, section 3.19 and Appendices 7, 9 and 11, section 6.10,   \n(c) State Environmental Planning Policy (Precincts—Western Parkland City) 2021, section 3.19,   \n(d) State Environmental Planning Policy (Transport and Infrastructure) 2021, sections 2.97, 2.99, 2.101 and 3.22.",
+"agreed": "second reader + main session: whole text in 2025 copy, absent from today's law"
+},
+{
+"id": 42135,
+"sepp": "Planning Systems",
+"action": "RETIRE",
+"old_text": "(a) Sydney Cove Redevelopment Authority Scheme,   \n(b) Town and Country Planning (General Interim Development) Ordinance, (c) each Planning Scheme Ordinance,   \n(d) each Interim Development Order.",
+"agreed": "second reader + main session: whole text in 2025 copy, absent from today's law"
+},
+{
+"id": 42562,
+"sepp": "Planning Systems",
+"action": "RETIRE",
+"old_text": "(2) The development does not include surveys, test drilling, test excavation, geotechnical investigations or other tests, sampling or investigations.",
+"agreed": "second reader + main session: whole text in 2025 copy, absent from today's law"
+},
+{
+"id": 45831,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(2) Alterations or additions to an existing building must not—",
+"agreed": "second reader + main session: Sch 7 cl 4(2) lead-in and its limb absent from today's law"
+}
+]

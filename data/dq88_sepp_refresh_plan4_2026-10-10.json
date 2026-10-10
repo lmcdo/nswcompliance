@@ -1,0 +1,396 @@
+[
+{
+"id": 35365,
+"sepp": "Biodiversity",
+"action": "RETIRE",
+"old_text": "In deciding whether to grant development consent to development on land in a regulated catchment, the consent authority must consult with the council of each adjacent or downstream local government area on which the development is likely to have an adverse environmental impact.",
+"agreed": "both RETIRE",
+"served": true
+},
+{
+"id": 22186,
+"sepp": "Biodiversity",
+"action": "REPLACE",
+"old_text": "(1)  This Chapter—\n(a)  replaces Murray Regional Environmental Plan No 1—Murray River Riparian Land (which is accordingly\nrepealed).\n(2)  The application of this Chapter to land to which State Environmental Planning Policy No 52—Farm Dams and\nOther Works in Land and Water Management Plan Areas applies is modified by clause 5 of that Policy which\nprovides that the Policy prevails to the extent of any inconsistency with this Chapter and that, to remove any\ndoubt—\n(a)  Part 5.2 of this Chapter applies—\n(i)  when a consent authority determines a development application required by that Policy for land to\nwhich this Chapter applies, and\n\nState Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation\n\n\n(ii)  when a public authority or person proposes to carry out (on land to which this Chapter applies)\ndevelopment which does not require consent because of that Policy but which has the potential to\nadversely affect the riverine environment of the River Murray, and\n(b)  such of the provisions of Part 5.3 as provide for consultation by a consent authority apply when\ndevelopment defined in the Planning Control and Consultation Table in that Part is required to be carried\nout with consent because of that Policy.\n(3)  If this Chapter is inconsistent with another regional environmental plan or a local environmental plan, then this\nChapter prevails to the extent of the inconsistency.\n(4)  However, this Chapter does not permit development which is prohibited by another environmental planning\ninstrument.\n(5)  This Chapter contains planning principles to help councils prepare local environmental plans that apply to the\nriverine land of the River Murray.",
+"new_text": "5.4 How this Chapter affects other plans (1), (2) (Repealed) (3) If this Chapter is inconsistent with another chapter of this policy or environmental planning instrument, then this Chapter prevails to the extent of the inconsistency. (4) However, this Chapter does not permit development which is prohibited by another environmental planning instrument. (5) This Chapter contains planning principles to help councils prepare local environmental plans that apply to the riverine land of the River Murray.",
+"agreed": "both SPAN, overlapping",
+"served": true
+},
+{
+"id": 35621,
+"sepp": "Biodiversity",
+"action": "REPLACE",
+"old_text": "(a) after adequate investigation and assessment, the impact of the development on— (i) the heritage significance of the Aboriginal place of heritage significance, and (ii) any Aboriginal object known or reasonably likely to be located at the place,   \n(b) submissions received from the local Aboriginal communities within 28 days after notice is given under subsection (2).",
+"new_text": "(a) conduct an adequate investigation and assessment, which may involve consideration of a heritage impact statement, and (b) consider the effect of the proposed development on the heritage significance of— (i) the place, and (ii) any Aboriginal object known to be, or reasonably likely to be, located at the place.",
+"agreed": "both SPAN, overlapping",
+"served": false
+},
+{
+"id": 35624,
+"sepp": "Biodiversity",
+"action": "RETIRE",
+"old_text": "(a) notified the Heritage Council of the heritage development, and (b) considered any submissions made by the Heritage Council within 28 days after the notice is given.",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 35654,
+"sepp": "Biodiversity",
+"action": "RETIRE",
+"old_text": "(a) the NorBE Guideline, (b) whether the development will have a neutral or beneficial effect on water quality.",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 35620,
+"sepp": "Biodiversity",
+"action": "REPLACE",
+"old_text": "(3) Development consent must not be granted to heritage development to which this section applies unless the consent authority has considered the following—",
+"new_text": "(3) The consent authority must, before granting development consent to development in an Aboriginal place of heritage significance—",
+"agreed": "both SPAN, overlapping",
+"served": true
+},
+{
+"id": 35652,
+"sepp": "Biodiversity",
+"action": "RETIRE",
+"old_text": "(1) Development consent must not be granted to development on land in the Sydney Drinking Water Catchment unless the consent authority has obtained the concurrence of the Regulatory Authority.",
+"agreed": "both RETIRE",
+"served": true
+},
+{
+"id": 18924,
+"sepp": "Planning Systems",
+"action": "REPLACE",
+"old_text": "In this section—campus student accommodation has the same meaning as in State Environmental Planning Policy (Educational Establishments and Child Care Facilities) 2017. tertiary institution has the same meaning as in State Environmental Planning Policy (Educational Establishments and Child Car",
+"new_text": "campus student accommodation has the same meaning as in State Environmental Planning Policy (Transport and Infrastructure) 2021, Chapter 3. TAFE establishment has the same meaning as in State Environmental Planning Policy (Transport and Infrastructure) 2021, Chapter 3. university has the same meaning as in State Environmental Planning Policy (Transport and Infrastructure) 2021, Chapter 3.",
+"agreed": "both SPAN, overlapping",
+"served": false
+},
+{
+"id": 42293,
+"sepp": "Planning Systems",
+"action": "REPLACE",
+"old_text": "Development on land identified as the Cherrybrook Station Government Land State Significant Precinct Site on the State Significant Development Sites Map if the development—",
+"new_text": "18 Development in Cherrybrook Station Precinct (1) Development for the purposes of residential accommodation on land identified as “Cherrybrook Station Precinct” on the State Significant Development Sites Map—Cherrybrook Station Precinct if the development has an estimated development cost of at least $60 million. (2) A mixed use development on land identified as “Cherrybrook Station Precinct” on the State Significant Development Sites Map—Cherrybrook Station Precinct that includes development for the purposes of residential accommodation if the part of the development that is for the purposes of residential accommodation has an estimated development cost of at least $60 million.",
+"agreed": "both SPAN, overlapping",
+"served": false
+},
+{
+"id": 19042,
+"sepp": "Planning Systems",
+"action": "RETIRE",
+"old_text": "The development is to be carried out on land in the suburbs of Kangaroo Valley, Barrengarry and Fitzroy Falls.",
+"agreed": "both RETIRE",
+"served": true
+},
+{
+"id": 19044,
+"sepp": "Planning Systems",
+"action": "RETIRE",
+"old_text": "Development for the purposes of the Newcastle Gas Terminal Project.",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 19041,
+"sepp": "Planning Systems",
+"action": "RETIRE",
+"old_text": "Development that is ancillary to other development in this section (including the upgrading or construction of access roads, utilities infrastructure, construction accommodation and construction compounds).",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 19043,
+"sepp": "Planning Systems",
+"action": "RETIRE",
+"old_text": "In this section, development does not include the carrying out of surveys, sampling, environmental investigations, archaeological excavations or other tests or investigations for the assessment of the project.",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 19047,
+"sepp": "Planning Systems",
+"action": "RETIRE",
+"old_text": "The development is to be carried out on land in the suburb of Kooragang and includes land within the port of the Port of Newcastle (whether terrestrial or underwater).",
+"agreed": "both RETIRE",
+"served": true
+},
+{
+"id": 42447,
+"sepp": "Planning Systems",
+"action": "RETIRE",
+"old_text": "(4) The development is to be carried out on land in the suburbs of Kangaroo Valley, Barrengarry and Fitzroy Falls. (5) In this section, development does not include the carrying out of surveys, sampling, environmental investigations, archaeological excavations or other tests or investigations for the assessment of the project.",
+"agreed": "both RETIRE",
+"served": true
+},
+{
+"id": 42451,
+"sepp": "Planning Systems",
+"action": "RETIRE",
+"old_text": "(4) The development is to be carried out on land in the suburb of Kooragang and includes land within the port of the Port of Newcastle (whether terrestrial or underwater).",
+"agreed": "both RETIRE",
+"served": true
+},
+{
+"id": 42446,
+"sepp": "Planning Systems",
+"action": "RETIRE",
+"old_text": "(3) Development that is ancillary to other development in this section (including the upgrading or construction of access roads, utilities infrastructure, construction accommodation and construction compounds).",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 42448,
+"sepp": "Planning Systems",
+"action": "RETIRE",
+"old_text": "(1) Development for the purposes of the Newcastle Gas Terminal Project.",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 44042,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(a) within 7 days after the application is made, give written notice of the application to the rail authority for the rail corridor, and   \n(b) take into consideration— (i) any response to the notice that is received within 21 days after the notice is given, and (ii) any guidelines that are issued by the Planning Secretary for the purposes of this section and published in the Gazette.",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 44049,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(a) within 7 days after the application is made, give written notice of the application to the rail authority for the rail corridor, and   \n(b) take into consideration— (i) any response to the notice that is received within 21 days after the notice is given, and (ii) any guidelines issued by the Planning Secretary for the purposes of this section and published in the Gazette.",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 44037,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "(5) The consent authority may grant consent to development to which this section applies without the concurrence of the rail authority for the rail corridor if 21 days have passed since the consent authority gave notice under subsection (2)(a) and the rail authority has not granted or refused to grant concurrence.   \n(6) The consent authority must provide the rail authority for the rail corridor with a copy of the determination of the application within 7 days after the determination is made.   \n(7) In this section— level crossing means a level crossing over railway lines. traf ic includes rail, road and pedestrian traffic.",
+"new_text": "(3)–(6) (Repealed) (7) In this section— level crossing means a level crossing over railway lines. traffic includes rail, road and pedestrian traffic.",
+"agreed": "both SPAN, overlapping",
+"served": true
+},
+{
+"id": 44272,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(8) Development for the purpose of water recycling facilities or sewage reticulation systems may be carried out on land reserved under the National Parks and Wildlife Act 1974 only if the development is authorised by or under that Act.",
+"agreed": "both RETIRE",
+"served": true
+},
+{
+"id": 45433,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "• Building or structure must not be a heritage item or within a heritage conservation area.",
+"new_text": "• Building or structure must not be a heritage item, unless the building or structure is development to which the Heritage Act 1977, section 57(1A), (2) or (3) applies.",
+"agreed": "both SPAN, overlapping",
+"served": true
+},
+{
+"id": 45000,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "(x) a high technology industry, other than a data centre, that is not more than 2 storeys high, (b) minor alterations or additions to a building, such as—",
+"new_text": "(x) a high technology industry, other than a data centre, that is not more than 2 storeys high, or (xi) a permanent or temporary government school or TAFE establishment that is not more than 2 storeys high. (a1) construction of a sporting field or any type of court used for sports that uses synthetic turf, (b) minor alterations or additions to a building, such as—",
+"agreed": "both SPAN, overlapping",
+"served": true
+},
+{
+"id": 44203,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(4) Before determining a development application for development to which this section applies, the consent authority must—",
+"agreed": "both RETIRE",
+"served": true
+},
+{
+"id": 44919,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "(a) the design quality of the development, evaluated in accordance with the design quality principles set out in Schedule 8,   \n(b) the design principles set out in the design guide.",
+"new_text": "(a) the design principles set out in the design guide, and (b) for development for the purposes of a centre-based child care facility, other than a relevant preschool—whether the development is consistent with the objectives set out in the Child Care Planning Guideline, Part 3.",
+"agreed": "both SPAN, overlapping",
+"served": false
+},
+{
+"id": 45136,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(a) within 7 days after the application is made, give written notice of the application to Transport for NSW, and   \n(b) take into consideration— (i) any response to the notice that is received within 21 days after the notice is given, and (ii) any guidelines issued by the Planning Secretary for the purposes of this section and published in the Gazette.",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 43827,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "(a) on Trust lands within the meaning of the Centennial Park and Moore Park Trust Act 1983, by or on behalf of the Centennial Park and Moore Park Trust, or   \n(b) on trust lands within the meaning of the Parramatta Park Trust Act 2001, by or on behalf of the Parramatta Park Trust, or   \n(c) on Crown managed land, by or on behalf of— (i) the Secretary, or",
+"new_text": "(a) on land in the parklands estate within the meaning of the Greater Sydney Parklands Trust Act 2022, other than land identified as “Western Sydney Parklands” on the Western Sydney Parklands Act 2006 Western Sydney Parklands Map deposited in the office of the Western Sydney Parklands Trust, or (b) (Repealed) (c) on Crown managed land, by or on behalf of— (i) the Secretary, or",
+"agreed": "both SPAN, overlapping",
+"served": false
+},
+{
+"id": 44194,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(a) the Eastern Distributor,   \n(b) the Cross City Tunnel,   \n(c) the Lane Cove Tunnel,   \n(d) the Tugun Bypass,   \n(e) the Liverpool—Parramatta Transitway,   \n(f) the North-West Sydney Transitway Network,   \n(g) the Gore Hill Freeway,   \n(h) the Western Distributor,   \n(i) Southern Cross Drive,   \n(j) the Cahill Expressway,   \n(k) General Holmes Drive,   \n(l) the Hume Motorway, (m) the M1 Pacific Motorway,   \n(n) the M2,   \n(o) the M4,   \n(p) the M5,   \n(q) the M4–M5 link,   \n(r) the M7,   \n(s) NorthConnex,   \n(t) the Sydney Harbour Tunnel,   \n(u) the King Georges Road Interchange, (v) the Pacific Highway.",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 44196,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "(a) give written notice of the application to TfNSW within 7 days after the application is made, and   \n(b) take into consideration— (i) any response to the notice that is received within 21 days after the notice is given, and (ii) any guidelines that are issued by the Planning Secretary for the purposes of this section and published in the Gazette, and (iii) any implications of the ground penetration for the structural integrity of the road or project, and (iv) any cost implications for the road or project of the ground penetration.",
+"new_text": "(a) the Development Near Rail Corridors and Busy Roads – Interim Guideline published in December 2008 by the Department, and (b) the implications of the ground penetration for the structural integrity of the road or project, and (c) the cost implications for the road or project of the ground penetration.",
+"agreed": "both SPAN, overlapping",
+"served": false
+},
+{
+"id": 44893,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "approved school means a school for which development consent has been granted, other than an existing school.",
+"new_text": "approved school means a school, other than an existing school— (a) for which development consent has been granted, or (b) for which an approval under the Act, Part 5 has been granted, or (c) for which a Ministerial authorisation under the NSW Reconstruction Authority Act 2022 has been given.",
+"agreed": "both SPAN, overlapping",
+"served": false
+},
+{
+"id": 44173,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(a) give written notice of the application to TfNSW within 7 days after the application is made, and (b) take into consideration any response to the notice that is received within 21 days after the notice is given.",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 22568,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "(1)  This section applies to development that involves the penetration of ground to a depth of at least 3m below\nground level (existing) on land that is the road corridor of any of the following roads or road projects (as\ndescribed in Schedule 2)—\n(a)  the Eastern Distributor,\n(b)  the Cross City Tunnel,\n(c)  the Lane Cove Tunnel,\n(d)  the Tugun Bypass,\n(e)  the Liverpool—Parramatta Transitway,\n(f)  the North-West Sydney Transitway Network,\n(g)  the Gore Hill Freeway,\n(h)  the Western Distributor,\n(i)  Southern Cross Drive,\n(j)  the Cahill Expressway,\n(k)  General Holmes Drive,\n(l)  the Hume Motorway,\n\nState Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation\n\n\n(m)  the M1 Pacific Motorway,\n(n)  the M2,\n(o)  the M4,\n(p)  the M5,\n(q)  the M4–M5 link,\n(r)  the M7,\n(s)  NorthConnex,\n(t)  the Sydney Harbour Tunnel,\n(u)  the King Georges Road Interchange,\n(v)  the Pacific Highway.\n(2)  Before determining a development application (or an application for modification of a consent) for development\nto which this section applies, the consent authority must—\n(a)  give written notice of the application to TfNSW within 7 days after the application is made, and\n(b)  take into consideration—\n(i)  any response to the notice that is received within 21 days after the notice is given, and\n(ii)  any guidelines that are issued by the Planning Secretary for the purposes of this section and published\nin the Gazette, and\n(iii)  any implications of the ground penetration for the structural integrity of the road or project, and\n(iv)  any cost implications for the road or project of the ground penetration.\n(3)  The consent authority must provide TfNSW with a copy of the determination of the application within 7 days\nafter the determination is made.",
+"new_text": "2.121 Excavation in or immediately adjacent to corridors (1) This section applies to development involving the penetration of ground to a depth of at least 3m below ground level (existing) on land that is, or immediately adjacent to, the roads and road projects described in Schedule 2. (2) Before determining a development application, or an application for modification of a consent, for development to which this section applies, the consent authority must consider— (a) the Development Near Rail Corridors and Busy Roads – Interim Guideline published in December 2008 by the Department, and (b) the implications of the ground penetration for the structural integrity of the road or project, and (c) the cost implications for the road or project of the ground penetration.",
+"agreed": "both SPAN, overlapping",
+"served": true
+},
+{
+"id": 22546,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "(1)  This section applies to development (other than development to which section 2.101 applies) that involves the\npenetration of ground to a depth of at least 2m below ground level (existing) on land—\n(a)  within, below or above a rail corridor, or\n\nState Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation\n\n\n(b)  within 25m (measured horizontally) of a rail corridor, or\n(c)  within 25m (measured horizontally) of the ground directly below a rail corridor, or\n(d)  within 25m (measured horizontally) of the ground directly above an underground rail corridor.\n(2)  Before determining a development application for development to which this section applies, the consent\nauthority must—\n(a)  within 7 days after the application is made, give written notice of the application to the rail authority for the\nrail corridor, and\n(b)  take into consideration—\n(i)  any response to the notice that is received within 21 days after the notice is given, and\n(ii)  any guidelines issued by the Planning Secretary for the purposes of this section and published in the\nGazette.\n(3)  Subject to subsection (5), the consent authority must not grant consent to development to which this section\napplies without the concurrence of the rail authority for the rail corridor to which the development application\nrelates.\n(4)  In deciding whether to provide concurrence, the rail authority must take into account—\n(a)  the potential effects of the development (whether alone or cumulatively with other development or proposed\ndevelopment) on—\n(i)  the safety or structural integrity of existing or proposed rail infrastructure facilities in the rail corridor,\nand\n(ii)  the safe and effective operation of existing or proposed rail infrastructure facilities in the rail corridor,\nand\n(b)  what measures are proposed, or could reasonably be taken, to avoid or minimise those potential effects.\n(5)  The consent authority may grant consent to development to which this section applies without the concurrence\nof the rail authority concerned if—\n(a)  the rail corridor is owned by or vested in ARTC or is the subject of an ARTC arrangement, or\n(b)  in any other case, 21 days have passed since the consent authority gave notice under subsection (2)(a) and\nthe rail authority has not granted or refused to grant concurrence.",
+"new_text": "2.99 Excavation in, above, below or adjacent to rail corridors (1) This section applies to development (other than development to which section 2.101 applies) that involves the penetration of ground to a depth of at least 2m below ground level (existing) on land— (a) within, below or above a rail corridor, or (b) within 25m (measured horizontally) of a rail corridor, or (c) within 25m (measured horizontally) of the ground directly below a rail corridor, or (d) within 25m (measured horizontally) of the ground directly above an underground rail corridor. (2) Development consent must not be granted to development to which this section applies unless the consent authority has considered the Development Near Rail Corridors and Busy Roads – Interim Guideline published in December 2008 by the Department. (3)–(5) (Repealed)",
+"agreed": "both SPAN, overlapping",
+"served": true
+},
+{
+"id": 22554,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "Development for the purpose of a monitoring station is exempt development if it complies with section 2.20 and is\ncarried out on land within Zone C1 National Parks and Nature Reserves or a prescribed zone or on land acquired\nunder Part 11 of the National Parks and Wildlife Act 1974.\nDivision 17 Roads and traffic\nSubdivision 1 Roads and road infrastructure facilities",
+"new_text": "2.107 Exempt development (1) Development for the purpose of a monitoring station is exempt development if— (a) the development complies with section 2.20, and (b) the station has a footprint of no more than 30m 2, and (c) the maximum height of the station, excluding any associated antennae, is— (i) if located in a 1% Annual Exceedance Probability flood area—5m, or (ii) otherwise—2.5m. (2) The visual impact of development carried out under subsection (1) must be minimised if— (a) the development is on land in the following zones— (i) Zone RU5 Village, (ii) Zone R1 General Residential, (iii) Zone R2 Low Density Residential, (iv) Zone R3 Medium Density Residential, (v) Zone R4 High Density Residential, (vi) Zone R5 Large Lot Residential, and (b) the development fronts a public road, and (c) the footprint of the station is greater than 6m 2.",
+"agreed": "both SPAN, overlapping",
+"served": true
+},
+{
+"id": 44066,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(3) Except as provided by subsection (5), consent must not be granted to development to which this section applies without the concurrence of the relevant rail authority.",
+"agreed": "both RETIRE",
+"served": true
+},
+{
+"id": 43682,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(a) give written notice of the application to the electricity supply authority for the area in which the development is to be carried out, and   \n(b) take into consideration any response to the notice that is received within 21 days after the notice is given, and   \n(c) be satisfied that any safety risks associated with the development or modification to which the application relates have been identified, and   \n(d) take those risks into consideration.",
+"agreed": "both RETIRE",
+"served": true
+},
+{
+"id": 44091,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "Development for the purpose of a monitoring station is exempt development if it complies with section 2.20 and is carried out on land within Zone C1 National Parks and Nature Reserves or a prescribed zone or on land acquired under Part 11 of the National Parks and Wildlife Act 1974.",
+"new_text": "2.107 Exempt development (1) Development for the purpose of a monitoring station is exempt development if— (a) the development complies with section 2.20, and (b) the station has a footprint of no more than 30m 2, and (c) the maximum height of the station, excluding any associated antennae, is— (i) if located in a 1% Annual Exceedance Probability flood area—5m, or (ii) otherwise—2.5m. (2) The visual impact of development carried out under subsection (1) must be minimised if— (a) the development is on land in the following zones— (i) Zone RU5 Village, (ii) Zone R1 General Residential, (iii) Zone R2 Low Density Residential, (iv) Zone R3 Medium Density Residential, (v) Zone R4 High Density Residential, (vi) Zone R5 Large Lot Residential, and (b) the development fronts a public road, and (c) the footprint of the station is greater than 6m 2.",
+"agreed": "both SPAN, overlapping",
+"served": true
+},
+{
+"id": 43678,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(1) This section applies to a development application, or an application for modification of a consent, for development that involves the following—",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 44207,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(iii) any potential traffic safety, road congestion or parking implications of the development.",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 43343,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(a) to which an environmental planning instrument that is not made as provided by section 3.20(2) of the Act applies, and   \n(b) to which a draft environmental planning instrument that complies with that section and that has been the subject of community consultation also applies,",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 43822,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "public reserve has the same meaning as it has in the Local Government Act 1993, but does not include a Crown reserve that is dedicated or reserved for a public cemetery.",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 43930,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "(c) demolition, carried out in accordance with Australian Standard AS 2601—2001, The demolition of structures, of a building—",
+"new_text": "(c) demolition of a building—",
+"agreed": "both SPAN, overlapping",
+"served": false
+},
+{
+"id": 44793,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(1) This section applies to development for the purpose of a centre-based child care facility if—",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 44794,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(a) the floor area of the building or place does not comply with regulation 107 (indoor unencumbered space requirements) of the Education and Care Services National Regulations, or   \n(b) the outdoor space requirements for the building or place do not comply with regulation 108 (outdoor unencumbered space requirements) of those Regulations.",
+"agreed": "both RETIRE",
+"served": false
+},
+{
+"id": 44930,
+"sepp": "Transport",
+"action": "REPLACE",
+"old_text": "(i) the design quality of the development, evaluated in accordance with the design quality principles set out in Schedule 8, and   \n(ii) the design principles set out in the design guide.",
+"new_text": "(i) the design principles set out in the design guide, and (ii) for development for the purposes of a centre-based child care facility, other than a relevant preschool—whether the development is consistent with the objectives set out in the Child Care Planning Guideline, Part 3.",
+"agreed": "both SPAN, overlapping",
+"served": false
+},
+{
+"id": 45038,
+"sepp": "Transport",
+"action": "RETIRE",
+"old_text": "(3) Development carried out by or on behalf of any person on land within the boundaries of an existing university for the purposes of campus student accommodation is complying development if the development—",
+"agreed": "both RETIRE",
+"served": false
+}
+]

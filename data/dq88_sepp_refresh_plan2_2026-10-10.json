@@ -1,0 +1,887 @@
+[
+{
+"id": 35232,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Department of Planning, Industry and Environment, if the development is likely to significantly affect threatened species, within the meaning of the Biodiversity Conservation Act 2016, section 7.2.",
+"shingle_hit": 0.05,
+"law_shows_repeal": true
+},
+{
+"id": 35535,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "(3) In this section, a reference to a marina does not include a reference to a private marina.",
+"shingle_hit": 0.09,
+"law_shows_repeal": false
+},
+{
+"id": 35214,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "Department of Planning, Industry and Environment, if the development is—",
+"shingle_hit": 0.0,
+"law_shows_repeal": true
+},
+{
+"id": 35204,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "(3) Under Consultation, the names of the agencies to be consulted are listed.",
+"shingle_hit": 0.0,
+"law_shows_repeal": true
+},
+{
+"id": 35215,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "(a) likely to significantly affect threatened species, within the meaning of the Biodiversity Conservation Act 2016, section 7.2, and   \n(b) in the flood planning area.",
+"shingle_hit": 0.06,
+"law_shows_repeal": true
+},
+{
+"id": 35531,
+"sepp": "Biodiversity",
+"served": false,
+"action": "REPLACE",
+"old_text": "6.38 Marinas and boat building and repair facilities in Zone 2",
+"new_text": "6.38 Commercial marinas and boat building and repair facilities in Zone 2 (1) The objectives of this section are as follows—",
+"similarity": 0.69,
+"ratio": 2.0,
+"new_paras": [
+1273,
+1273
+]
+},
+{
+"id": 35534,
+"sepp": "Biodiversity",
+"served": false,
+"action": "REPLACE",
+"old_text": "(2) Despite any other provision of this Part, development for the purposes of marinas or boat building and repair facilities may be carried out with development consent on land in Zone 2 if the land is identified as a special purposes area on the Special Purposes (Marinas and Boat Building and Repair Facilities) Map.",
+"new_text": "(b) to ensure development carried out on the sites, including alterations of or extensions to the facilities, does not substantially increase the scale of the facilities or the intensity of the use of the facilities. (2) Despite any other provision of this part, development for the purposes of commercial marinas or boat building and repair facilities may be carried out with development consent on land in Zone 2 if the land is identified as a special purposes area on the Special Purposes (Commercial Marinas and Boat Building and Repair Facilities) Map.",
+"similarity": 0.73,
+"ratio": 1.75,
+"new_paras": [
+1275,
+1275
+]
+},
+{
+"id": 35231,
+"sepp": "Biodiversity",
+"served": true,
+"action": "REPLACE",
+"old_text": "(a) destruction of native vegetation on protected land as defined under the Soil Conservation Act 1938,   \n(b) destruction of native vegetation in the Western Division (i.e. where Schedule 3 to the Crown Land Management Act 2016 applies),   \n(c) destruction of native vegetation on Crown timber land which is Crown land greater than 2 hectares in size supporting merchantable timber,   \n(d) destruction of vegetation in accordance with forestry operations duly authorised by the Forestry Commission,   \n(e) destruction of native vegetation undertaken in accordance with a Vegetation Management Plan for the land,   \nNote. A Vegetation Management Plan for land within the area of a council should be made available for public inspection at the office of the council.   \n(f) destruction of native vegetation that is unavoidable in the destruction of noxious plants provided that the way in which the noxious plants are destroyed does not involve disturbance of the soil,   \n(g) destruction of native vegetation for the purpose of maintenance of access tracks, fences, domestic and farm buildings, and corridors for existing utilities,   \n(h) lopping or pruning of native vegetation for use as fodder in times of declared drought or after flood or fire,   \n(i) destruction of native vegetation within 3 metres of a property boundary provided the adjoining property is owned by a different person and the vegetation destruction is required to build or maintain a fence,   \n(j) destruction of native vegetation within 0.5 metres of a property boundary where the vegetation destruction is required to enable a survey to be carried out by a registered surveyor.",
+"new_text": "(a) destruction of native vegetation in the Western Division within the meaning of the Crown Land Management Act 2016, (b) destruction of native vegetation on Crown-timber land within the meaning of the Forestry Act 2012, (c) destruction of vegetation in accordance with forestry operations authorised under the Forestry Act 2012, (d) destruction of native vegetation that is unavoidable in the destruction of noxious plants, provided that the way in which the noxious plants are destroyed does not involve disturbance of the soil, (e) destruction of native vegetation for the maintenance of access tracks, fences, domestic and farm buildings and corridors for existing utilities, (f) lopping or pruning of native vegetation for use as fodder in times of declared drought or after flood or fire, (g) destruction of native vegetation within 3m of a property boundary, provided the adjoining property is owned by a different person and the vegetation destruction is required to build or maintain a fence, (h) destruction of native vegetation within 0.5m of a property boundary where the vegetation destruction is required to enable a survey to be carried out by a registered surveyor.",
+"similarity": 0.71,
+"ratio": 0.73,
+"new_paras": [
+594,
+601
+]
+},
+{
+"id": 35304,
+"sepp": "Biodiversity",
+"served": true,
+"action": "REPLACE",
+"old_text": "(a) destruction of native vegetation on protected land as defined under the Soil Conservation Act 1938,   \n(b) destruction of native vegetation in the Western Division (i.e. where Schedule 3 to the Crown Land Management Act 2016 applies),   \n(c) destruction of native vegetation on Crown timber land which is Crown land greater than 2 hectares in size supporting merchantable timber,   \n(d) destruction of vegetation in accordance with forestry operations duly authorised by the Forestry Commission,   \n(e) destruction of native vegetation undertaken in accordance with a Vegetation Management Plan for the land,   \nNote. A Vegetation Management Plan for land within the area of a council should be made available for public inspection a the office of the council.   \n(f) destruction of native vegetation that is unavoidable in the destruction of noxious plants provided that th way in which the noxious plants are destroyed does not involve disturbance of the soil,   \n(g) destruction of native vegetation within 3 metres of a property boundary provided the adjoining property is owned by a different person and the vegetation destruction is required to build or maintain a fence,",
+"new_text": "(a) destruction of native vegetation in the Western Division within the meaning of the Crown Land Management Act 2016, (b) destruction of native vegetation on Crown-timber land within the meaning of the Forestry Act 2012, (c) destruction of vegetation in accordance with forestry operations authorised under the Forestry Act 2012, (d) destruction of native vegetation that is unavoidable in the destruction of noxious plants, provided that the way in which the noxious plants are destroyed does not involve disturbance of the soil, (e) destruction of native vegetation within 3m of a property boundary, provided the adjoining property is owned by a different person and the vegetation destruction is required to build or maintain a fence,",
+"similarity": 0.61,
+"ratio": 0.64,
+"new_paras": [
+768,
+772
+]
+},
+{
+"id": 35396,
+"sepp": "Biodiversity",
+"served": true,
+"action": "REPLACE",
+"old_text": "(2) In deciding whether to grant development consent to development for the purposes of moorings on land in a regulated catchment, the consent authority must consider the following— (a) the type and size of vessels that will be moored,",
+"new_text": "6.19 Moorings (1) Development for the purposes of moorings may be carried out with development consent in the Georges River Catchment and the Hawkesbury-Nepean Catchment. (2) In deciding whether to grant development consent, the consent authority must consider the following— (a) the type and size of vessels that will be moored,",
+"similarity": 0.56,
+"ratio": 1.4,
+"new_paras": [
+962,
+963
+]
+},
+{
+"id": 35307,
+"sepp": "Biodiversity",
+"served": false,
+"action": "RETIRE",
+"old_text": "(a) likely to significantly affect threatened species, within the meaning of the Biodiversity Conservation Act 2016, section 7.2, and",
+"shingle_hit": 0.08,
+"law_shows_repeal": true
+},
+{
+"id": 19100,
+"sepp": "Planning Systems",
+"served": false,
+"action": "RETIRE",
+"old_text": "The Act, Schedule 9 sets out the local government areas in each city in the Six Cities Region.",
+"shingle_hit": 0.0,
+"law_shows_repeal": false
+},
+{
+"id": 22171,
+"sepp": "Biodiversity",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1)  A reference in this Chapter to a named map adopted by this Chapter is a reference to a map by that name—\n(a)  approved by the Minister when the map is adopted, and\n(b)  as amended or replaced from time to time by maps declared by environmental planning instruments to\namend or replace that map, and approved by the persons making the environmental planning instruments\nwhen the instruments are made.\n(2)  Any 2 or more named maps may be combined into a single map. In that case, a reference in this Chapter to any\nsuch named map is a reference to the relevant part or aspect of the single map.\n(3)  Any such maps are to be kept and made available for public access in accordance with arrangements approved\nby the Minister.\n(4)  For the purposes of this Chapter, a map may be in, and may be kept and made available in, electronic or paper\nform, or both.\nNote.\nThe maps adopted by this Chapter are to be deposited in the head office of the Department of Planning, Industry and Environment\nand made available for public access.\nPart 4.2 Development control of koala habitats",
+"new_text": "4.7 Maps (1) A reference in this Chapter to a named map adopted by this Chapter is a reference to a map by that name— (a) approved by the Minister when the map is adopted, and (b) as amended or replaced from time to time by maps declared by environmental planning instruments to amend or replace that map, and approved by the Minister when the instruments are made. (2) Any 2 or more named maps may be combined into a single map. In that case, a reference in this Chapter to any such named map is a reference to the relevant part or aspect of the single map. (3) Any such maps are to be kept and made available for public access in accordance with arrangements approved by the Minister. (4) For the purposes of this Chapter, a map may be in, and may be kept and made available in, electronic or paper form, or both.",
+"similarity": 0.87,
+"ratio": 0.76,
+"new_paras": [
+383,
+385
+]
+},
+{
+"id": 22199,
+"sepp": "Biodiversity",
+"served": true,
+"action": "REPLACE",
+"old_text": "(section 5.5)\nabbreviations of agencies:\nC&NR (Vic) means the Victorian Department of Conservation and Natural Resources.\nCaLM means the NSW Department of Conservation and Land Management.\nDoP means the NSW Department of Planning.\nDWR means the NSW Department of Water Resources.\nEPA means the NSW Environment Protection Authority.\nForestry Commission means the Forestry Commission of New South Wales.\nMDBC means the Murray-Darling Basin Commission.\nMSB means the NSW Maritime Services Board—Maritime Authority of NSW.\nNPWS means the National Parks and Wildlife Service.\nNSW Agriculture means the NSW Department of Agriculture.\n\nState Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation\n\n\nP&D (Vic) means the Victorian Department of Planning and Development.\nPWD means the NSW Public Works Department.\nRWC (Vic) means the Rural Water Corporation of Victoria.\nbank means a change of slope that defines the extent of the bed of the River Murray.\nbed means the land which contains the River Murray, including that which is alternately inundated or left bare from a rise or fall in\nthe supply of water, but does not include any land inundated only in time of flood.\nconsent authority means the Council for the local government area in which the proposed development is to be carried out.\ndevelopment is defined in the Act.\nNote.\nSee also section 5.5(2).\nThe expression means, in relation to land—\n(a)  the erection of a building on that land,\n(b)  the carrying out of a work in, on, over or under that land,\n(c)  the use of that land or of a building or work on that land, and\n(d)  the subdivision of that land.\nLand includes a bay, inlet, lagoon, lake or body of water, a river, stream or watercourse.\nflood liable land means land identified on the map as flood liable land.\nhazardous industry means an industry which, when in operation and when all measures proposed to reduce or minimise its impact\non the locality have been employed (including, for example, measures to isolate the industry from existing or likely future\ndevelopment on other land in the locality), would pose a significant risk in relation to the locality—\n(a)  to human health, life or property, or\n(b)  to the biophysical environment.\nhazardous storage establishment means any establishment where goods, materials or products are stored which, when in operation\nand when all measures proposed to reduce or minimise its impact on the locality have been employed (including, for example,\nmeasures to isolate the establishment from existing or likely future development on the other land in the locality), would pose a\nsignificant risk in relation to the locality—\n(a)  to human health, life or property, or\n(b)  to the biophysical environment.\noffensive industry means an industry which, when in operation and when all measures proposed to reduce or minimise its impact on\nthe locality have been employed (including, for example, measures to isolate the industry from existing or likely future development\non other land in the locality), would emit a polluting discharge (for example, noise) in a manner which would have a significant\nadverse impact in the locality or on the existing or likely future development on other land in the locality.\noffensive storage establishment means any establishment where goods, materials or products are stored which, when in operation\nand when all measures proposed to reduce or minimise its impact on the locality have been employed (including, for example,\nmeasures to isolate the establishment from existing or likely future development on other land in the locality), would emit a polluting\ndischarge (including, for example, noise) in a manner which would have a significant adverse impact in the locality or on the existing\nor likely future development on other land in the locality.\npotentially hazardous industry means an industry which, if it were to operate without employing any measures (including, for\nexample, measures to isolate the industry from existing or likely future development on other land in the locality) to reduce or\nminimise its impact in the locality or on the existing or likely future development on other land, would pose a significant risk in\nrelation to the locality—\n(a)  to human health, life or property, or\n\nState Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation\n\n\n(b)  to the biophysical environment,\nand includes a hazardous industry and the use of a hazardous storage establishment.\npotentially offensive industry means an industry which, if it were to operate without employing any measures (including, for\nexample, measures to isolate the industry from existing or likely future development on other land in the locality) to reduce or\nminimise its impact in the locality or on the existing or likely future development on other land, would emit a polluting discharge (for\nexample, noise) in a manner which would have a significant adverse impact in the locality or on the existing or likely future\ndevelopment on other land, and includes an offensive industry and the use of an offensive storage establishment.\npublic authority means a public or local authority constituted by or under any Act, a Government department or a statutory body\nrepresenting the Crown, and includes a person exercising functions on behalf of that authority, Department or body and also includes\na public or local authority constituted under any Act of the Parliament of the Commonwealth, Victoria or South Australia, a\ngovernment department of the Commonwealth, Victoria or South Australia, a statutory body representing the Crown in right of the\nCommonwealth, Victoria or South Australia and a person exercising functions on behalf of any such authority, department or body.\nRiver Management Plan means any development control plan, plan of management, study, strategy, guideline or the like, which has\nundergone a public participation process, which is consistent with the aims, objectives and principles of this Chapter and which is\nendorsed by the MDBC.\nthe Act means the Environmental Planning and Assessment Act 1979.\nthe map means the map marked “Murray Regional Environmental Plan No 2—Riverine Land” (consisting of an index map and\nsheets 1–19, 21, 23 and 25–42) deposited in the office of the Department of Planning.\nVegetation Management Plan means a plan which is prepared in accordance with guidelines issued by the DoP for such plans and\nwhich is approved by CaLM.",
+"new_text": "(section 5.5) bank means a change of slope that defines the extent of the bed of the River Murray. bed means the land which contains the River Murray, including that which is alternately inundated or left bare from a rise or fall in the supply of water, but does not include any land inundated only in time of flood. consent authority means the Council for the local government area in which the proposed development is to be carried out. flood liable land means land identified on the map as flood liable land. hazardous industry means an industry which, when in operation and when all measures proposed to reduce or minimise its impact on the locality have been employed (including, for example, measures to isolate the industry from existing or likely future development on other land in the locality), would pose a significant risk in relation to the locality— (a) to human health, life or property, or (b) to the biophysical environment. hazardous storage establishment means any establishment where goods, materials or products are stored which, when in operation and when all measures proposed to reduce or minimise its impact on the locality have been employed (including, for example, measures to isolate the establishment from existing or likely future development on the other land in the locality), would pose a significant risk in relation to the locality— (a) to human health, life or property, or (b) to the biophysical environment. offensive industry means an industry which, when in operation and when all measures proposed to reduce or minimise its impact on the locality have been employed (including, for example, measures to isolate the industry from existing or likely future development on other land in the locality), would emit a polluting discharge (for example, noise) in a manner which would have a significant adverse impact in the locality or on the existing or likely future development on other land in the locality. offensive storage establishment means any establishment where goods, materials or products are stored which, when in operation and when all measures proposed to reduce or minimise its impact on the locality have been employed (including, for example, measures to isolate the establishment from existing or likely future development on other land in the locality), would emit a polluting discharge (including, for example, noise) in a manner which would have a significant adverse impact in the locality or on the existing or likely future development on other land in the locality. potentially hazardous industry means an industry which, if it were to operate without employing any measures (including, for example, measures to isolate the industry from existing or likely future development on other land in the locality) to reduce or minimise its impact in the locality or on the existing or likely future development on other land, would pose a significant risk in relation to the locality— (a) to human health, life or property, or (b) to the biophysical environment, and includes a hazardous industry and the use of a hazardous storage establishment. potentially offensive industry means an industry which, if it were to operate without employing any measures (including, for example, measures to isolate the industry from existing or likely future development on other land in the locality) to reduce or minimise its impact in the locality or on the existing or likely future development on other land, would emit a polluting discharge (for example, noise) in a manner which would have a significant adverse impact in the locality or on the existing or likely future development on other land, and includes an offensive industry and the use of an offensive storage establishment. public authority means a public or local authority constituted by or under any Act, a Government department or a statutory body representing the Crown, and includes a person exercising functions on behalf of that authority, Department or body and also includes a public or local authority constituted under any Act of the Parliament of the Commonwealth, Victoria or South Australia, a government department of the Commonwealth, Victoria or South Australia, a statutory body representing the Crown in right of the Commonwealth, Victoria or South Australia and a person exercising functions on behalf of any such authority, department or body. River Management Plan means any development control plan, plan of management, study, strategy, guideline or the like, which has undergone a public participation process, which is consistent with the aims, objectives and principles of this Chapter and which is endorsed by the Murray-Darling Basin Commission. the map means the Murray Regional Environmental Plan No 2—Riverine Land Map.",
+"similarity": 0.84,
+"ratio": 0.74,
+"new_paras": [
+2732,
+2751
+]
+},
+{
+"id": 22184,
+"sepp": "Biodiversity",
+"served": false,
+"action": "REPLACE",
+"old_text": "The objectives of this Chapter are—\n(a)  to ensure that appropriate consideration is given to development with the potential to adversely affect the\nriverine environment of the River Murray, and\n(b)  to establish a consistent and co-ordinated approach to environmental planning and assessment along the River\nMurray, and\n(c)  to conserve and promote the better management of the natural and cultural heritage values of the riverine\nenvironment of the River Murray.\nNote.\nFurther information about the objectives of this Chapter and how it operates may be obtained from information included with the copy\nof this Chapter published by the Department of Planning.",
+"new_text": "5.2 Objectives of this Chapter The objectives of this Chapter are— (a) to ensure that appropriate consideration is given to development with the potential to adversely affect the riverine environment of the River Murray, and (b) to establish a consistent and co-ordinated approach to environmental planning and assessment along the River Murray, and (c) to conserve and promote the better management of the natural and cultural heritage values of the riverine environment of the River Murray.",
+"similarity": 0.8,
+"ratio": 0.75,
+"new_paras": [
+449,
+452
+]
+},
+{
+"id": 22192,
+"sepp": "Biodiversity",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1)  Consultation required by this Part must be carried out—\n(a)  if development consent is required—by the consent authority before determining the development\napplication, or\n(b)  if development consent is not required—by the public authority or person carrying out the development,\nbefore carrying out the development.\n(2)  Consultation by an authority or person with a listed agency must be carried out as follows—\n(a)  the authority or person must write to the listed agency giving a description of the proposed development,\n(b)  the authority or person must request the listed agency to comment on the proposed development within 21\ndays from the date the agency receives the notice,\n(c)  the authority or person must consider any comments made on the proposed development by the listed\nagency within those 21 days.",
+"new_text": "5.10 Consultation—who consults and procedure for consultation (1) This section applies to development that— (a) in the consent authority’s opinion, is contrary to the aims, objectives or principles of this chapter, and (b) in the consent authority’s opinion, may have a significant environmental effect along the River Murray, and (c) does not require development consent. (1A) A public authority or person must not carry out development to which this section applies unless the authority or person has consulted with a relevant agency. (2) Consultation by an authority or person with a relevant agency must be carried out as follows— (a) the authority or person must write to the relevant agency giving a description of the proposed development, (b) the authority or person must request the relevant agency to comment on the proposed development within 21 days from the date the agency receives the notice, (c) the authority or person must consider any comments made on the proposed development by the relevant agency within those 21 days. (3) This section does not apply to development the River Management Plan identifies as being of a minor or routine nature. (4) In this section—",
+"similarity": 0.58,
+"ratio": 1.45,
+"new_paras": [
+522,
+528
+]
+},
+{
+"id": 35418,
+"sepp": "Biodiversity",
+"served": false,
+"action": "REPLACE",
+"old_text": "(a) development carried out partly above and partly below the mean high water mark,   \n(b) development carried out below the mean high water mark for the purposes of one or more of the following Boat building and repair facilities; Boat launching ramps; Boat sheds; Marinas; Public water recreational facilities; Reclamation works; Swimming pools; Water-based restaurants and entertainment facilities; Waterfront access stairs; Wharf or boating facilities that are sea walls   \n(c) development carried out wholly or partly inside the zoned waterway, including development carried out below the mean high water mark, for the purposes of one or more of the following—",
+"new_text": "(a) development carried out partly above and partly below the mean high water mark, other than development to which subsection (1)(a) or (c) applies, (b) development carried out below the mean high water mark for the following purposes— Boat building and repair facilities; Boat launching ramps; Boat sheds; Commercial marinas; Public water recreational facilities; Reclamation works; Seawalls; Swimming pools; Water-based restaurants and entertainment facilities; Waterfront access stairs (c) development carried out wholly or partly inside the zoned waterway, including below the mean high water mark, for the following purposes— Car parks; Commercial premises; Community facilities; Recreational or club facilities; Residential accommodation; Restaurants or cafes; Retail premises; Tourist facilities (3) Subsections (1) and (2) do not apply if another environmental planning instrument specifies a different public authority, other than the council, as the consent authority for the development.",
+"similarity": 0.63,
+"ratio": 1.52,
+"new_paras": [
+1009,
+1013
+]
+},
+{
+"id": 35165,
+"sepp": "Biodiversity",
+"served": true,
+"action": "REPLACE",
+"old_text": "(ii) when a public authority or person proposes to carry out (on land to which this Chapter applies) development which does not require consent because of that Policy but which has the potential to adversely affect the riverine environment of the River Murray, and (b) such of the provisions of Part 5.3 as provide for consultation by a consent authority apply when development defined in the Planning Control and Consultation Table in that Part is required to be carried out with consent because of that Policy.   \n(3) If this Chapter is inconsistent with another regional environmental plan or a local environmental plan, then this Chapter prevails to the extent of the inconsistency.   \n(4) However, this Chapter does not permit development which is prohibited by another environmental planning instrument.   \n(5) This Chapter contains planning principles to help councils prepare local environmental plans that apply to the riverine land of the River Murray.",
+"new_text": "5.4 How this Chapter affects other plans (1), (2) (Repealed) (3) If this Chapter is inconsistent with another chapter of this policy or environmental planning instrument, then this Chapter prevails to the extent of the inconsistency. (4) However, this Chapter does not permit development which is prohibited by another environmental planning instrument. (5) This Chapter contains planning principles to help councils prepare local environmental plans that apply to the riverine land of the River Murray.",
+"similarity": 0.53,
+"ratio": 0.53,
+"new_paras": [
+456,
+456
+]
+},
+{
+"id": 18933,
+"sepp": "Planning Systems",
+"served": true,
+"action": "REPLACE",
+"old_text": "Development permitted under the Housing SEPP, Chapter 3, Part 4 if— (a) the proposed development has an estimated development cost of— (i) for development on land in the Eastern Harbour City, Central River City or Western Parkland City in the Six Cities Region—more than 50 million, or (ii) for development on other land—more than 30 million, and (b) the tenanted component of the proposed development has a value of at least 60% of the estimated development cost of the proposed development, and (",
+"new_text": "27 Build-to-rent housing (1) Development permitted under the Housing SEPP, Chapter 3, Part 4 if— (a) the proposed development has an estimated development cost of— (i) for development on land in a designated Sydney local government area—more than $50 million, or (ii) for development on other land—more than $30 million, and (b) the tenanted component of the proposed development has a value of at least 60% of the estimated development cost of the proposed development, and",
+"similarity": 0.81,
+"ratio": 0.95,
+"new_paras": [
+1031,
+1035
+]
+},
+{
+"id": 42207,
+"sepp": "Planning Systems",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1) Development for the purpose of regional putrescible landfills or an extension to a regional putrescible landfill that— (a) has a capacity to receive more than 75,000 tonnes per year of putrescible waste, or",
+"new_text": "23 Waste and resource management facilities (1) Development comprising a landfill site, or an extension to a landfill site, used for the purposes of disposing of putrescible waste, or waste including putrescible waste, and for managing waste from at least two local government areas and that— (a) has the capacity to receive more than 75,000 tonnes per year of putrescible waste, or",
+"similarity": 0.5,
+"ratio": 1.82,
+"new_paras": [
+993,
+994
+]
+},
+{
+"id": 42222,
+"sepp": "Planning Systems",
+"served": true,
+"action": "REPLACE",
+"old_text": "(a) the part of the development that is residential development has an estimated development cost of— (i) for development on land in the Eastern Harbour City, Central River City or Western Parkland City in the Six Cities Region—more than $75 million, or",
+"new_text": "(a) the part of the development that is residential development has an estimated development cost of— (i) for development on land in a designated Sydney local government area—more than $75 million, or",
+"similarity": 0.7,
+"ratio": 0.79,
+"new_paras": [
+1017,
+1018
+]
+},
+{
+"id": 42233,
+"sepp": "Planning Systems",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1) Development permitted under the Housing SEPP, Chapter 3, Part 4 if— (a) the proposed development has an estimated development cost of— (i) for development on land in the Eastern Harbour City, Central River City or Western Parkland City in the Six Cities Region—more than $50 million, or",
+"new_text": "27 Build-to-rent housing (1) Development permitted under the Housing SEPP, Chapter 3, Part 4 if— (a) the proposed development has an estimated development cost of— (i) for development on land in a designated Sydney local government area—more than $50 million, or",
+"similarity": 0.72,
+"ratio": 0.9,
+"new_paras": [
+1031,
+1033
+]
+},
+{
+"id": 42650,
+"sepp": "Planning Systems",
+"served": false,
+"action": "REPLACE",
+"old_text": "(i) the water’s edge of a coastal lake,   \n(ii) land to which paragraph (c), (d) or (e) applies,   \n(iii) land reserved under the National Parks and Wildlife Act 1974,   \n(iv) land to which State Environmental Planning Policy No 14—Coastal Wetlands applies,",
+"new_text": "(i) the water’s edge of a coastal lake, (ii) land to which paragraph (c), (d) or (e) applies, (iii) land reserved under the National Parks and Wildlife Act 1974, (iv) land within the coastal wetlands and littoral rainforests area, including land identified on the Coastal Wetlands and Littoral Rainforests Area Map within the meaning of State Environmental Planning Policy (Resilience and Hazards) 2021, Chapter 2.",
+"similarity": 0.67,
+"ratio": 1.67,
+"new_paras": [
+93,
+96
+]
+},
+{
+"id": 22495,
+"sepp": "Transport",
+"served": true,
+"action": "RETIRE",
+"old_text": "(1)  This section applies to a development application (or an application for modification of a consent) for\ndevelopment comprising or involving any of the following—\n(a)  the penetration of ground within 2m of an underground electricity power line or an electricity distribution\npole or within 10m of any part of an electricity tower,\n(b)  development carried out—\n(i)  within or immediately adjacent to an easement for electricity purposes (whether or not the electricity\ninfrastructure exists), or\n(ii)  immediately adjacent to an electricity substation, or\n(iii)  within 5m of an exposed overhead electricity power line,\n(c)  installation of a swimming pool any part of which is—\n(i)  within 30m of a structure supporting an overhead electricity transmission line, measured horizontally\nfrom the top of the pool to the bottom of the structure at ground level, or\n(ii)  within 5m of an overhead electricity power line, measured vertically upwards from the top of the pool,\n(d)  development involving or requiring the placement of power lines underground, unless an agreement with\nrespect to the placement underground of power lines is in force between the electricity supply authority and\nthe council for the land concerned.\n(2)  Before determining a development application (or an application for modification of a consent) for development\nto which this section applies, the consent authority must—\n(a)  give written notice to the electricity supply authority for the area in which the development is to be carried\nout, inviting comments about potential safety risks, and\n\nState Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation\n\n\n(b)  take into consideration any response to the notice that is received within 21 days after the notice is given.\n(3)  Subsection (2) does not apply to development specified in subsection (1)(b) if the development involves only\none or more of the following—\n(a)  internal alternations to a building,\n(b)  a change of use of an existing building,\n(c)  a change to the hours of operation specified in the development consent,\n(d)  a subdivision that does not involve construction work.\nDivision 6 Emergency services facilities and bush fire hazard reduction",
+"shingle_hit": 0.07,
+"law_shows_repeal": true
+},
+{
+"id": 45576,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "Subscriber and non-subscriber connection to a telecommunications network deployed by means of radio or satellite dish (including a radiocommunications dish) on land in Zone R1, R2, R3, R4, R5 or RU5 or an equivalent land use zone",
+"new_text": "Subscriber and non-subscriber connection to a telecommunications network deployed by means of radio or satellite dish (including a radiocommunications dish) on land in Zone R1, R2, R3, R4, R5 or RU5",
+"similarity": 0.91,
+"ratio": 0.86,
+"new_paras": [
+5301,
+5301
+]
+},
+{
+"id": 45589,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "An extension to a tower on land other than in Zone R1, R2, R3, R4, R5 or RU5 or an equivalent land use zone",
+"new_text": "An extension to a tower on land other than in Zone R1, R2, R3, R4, R5 or RU5",
+"similarity": 0.86,
+"ratio": 0.71,
+"new_paras": [
+5326,
+5326
+]
+},
+{
+"id": 46074,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "(a) modifications to enlarge an existing pipeline for loading or unloading to the bulk liquid storage tank, or (b) modifications to increase the flow rate of a pipeline for loading or unloading to or from the bulk liquid storage tank, or (c) installation of a new pipeline or dispensing facilities for loading or unloading to the bulk liquid storage tank.",
+"new_text": "(a) modifications to enlarge an existing pipeline for loading to the bulk liquid storage tank, or (b) modifications to increase the flow rate of a pipeline for loading or unloading to or from the bulk liquid storage tank, or (c) installation of a new pipeline or dispensing facilities for loading to the bulk liquid storage tank. (2) A hazard analysis prepared in accordance with the Hazardous Industry Planning Advisory Paper No 6: Hazard Analysis, dated January 2011 and published on the Department’s website, by a person approved by the Planning Secretary must demonstrate that—",
+"similarity": 0.72,
+"ratio": 1.64,
+"new_paras": [
+6180,
+6182
+]
+},
+{
+"id": 44033,
+"sepp": "Transport",
+"served": false,
+"action": "RETIRE",
+"old_text": "(a) within 7 days after the application is made, give written notice of the application to the rail authority for the rail corridor, and",
+"shingle_hit": 0.06,
+"law_shows_repeal": false
+},
+{
+"id": 44052,
+"sepp": "Transport",
+"served": false,
+"action": "RETIRE",
+"old_text": "(b) what measures are proposed, or could reasonably be taken, to avoid or minimise those potential effects.",
+"shingle_hit": 0.0,
+"law_shows_repeal": false
+},
+{
+"id": 44053,
+"sepp": "Transport",
+"served": false,
+"action": "RETIRE",
+"old_text": "(5) The consent authority may grant consent to development to which this section applies without the concurrence of the rail authority concerned if—",
+"shingle_hit": 0.06,
+"law_shows_repeal": false
+},
+{
+"id": 44035,
+"sepp": "Transport",
+"served": true,
+"action": "RETIRE",
+"old_text": "(3) Subject to subsection (5), the consent authority must not grant consent to development to which this section applies without the concurrence of the rail authority for the rail corridor.",
+"shingle_hit": 0.09,
+"law_shows_repeal": false
+},
+{
+"id": 43689,
+"sepp": "Transport",
+"served": true,
+"action": "RETIRE",
+"old_text": "(2) Before determining a development application (or an application for modification of a consent) for development to which this section applies, the consent authority must— (a) give written notice to the electricity supply authority for the area in which the development is to be carried out, inviting comments about potential safety risks, and",
+"shingle_hit": 0.09,
+"law_shows_repeal": true
+},
+{
+"id": 44050,
+"sepp": "Transport",
+"served": true,
+"action": "RETIRE",
+"old_text": "(3) Subject to subsection (5), the consent authority must not grant consent to development to which this section applies without the concurrence of the rail authority for the rail corridor to which the development application relates.",
+"shingle_hit": 0.07,
+"law_shows_repeal": false
+},
+{
+"id": 44936,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(3) A notice given under subsection (2)(a) must include— (a) the information required by the SCPP—new health services facilities and schools, and (b) the information required by the Division 5.1 assessment guidelines for environmental factors, and (c) the information required by the stakeholder and community participation plan.",
+"new_text": "(b) consider any response to the notice that is received within 28 days after the notice is given. (3) A notice given under subsection (2)(a) must include— (a) the information required by the SCPP—new health services facilities and schools, and (b) the information required by the Division 5.1 assessment guidelines, and (c) the information required by the stakeholder and community participation plan. (4) If notice of the intention to carry out development is given under this section to the relevant council or Transport for NSW—",
+"similarity": 0.65,
+"ratio": 1.62,
+"new_paras": [
+3614,
+3617
+]
+},
+{
+"id": 44942,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1) This section applies to development to which section 3.37(1)(a) applies.   \n(2) Before development to which this section applies is carried out, the proponent of the development must— (a) give written notice of the intention to carry out the development to the council for the area in which the land is located (unless the proponent is that council) and to the occupiers of adjoining land, and (b) take into consideration any response to the notice that is received within 21 days after the notice is given.",
+"new_text": "3.38 Notification of carrying out of development under section 3.37(1)(a)(i)–(x) (1) This section applies to development to which section 3.37(1)(a)(i)–(x) applies. (2) Before development to which this section applies is carried out, the proponent of the development must— (a) give written notice of the intention to carry out the development to the council for the area in which the land is located (unless the proponent is that council) and to the occupiers of adjoining land, and (b) take into consideration any response to the notice that is received within 21 days after the notice is given.",
+"similarity": 0.93,
+"ratio": 1.17,
+"new_paras": [
+3624,
+3626
+]
+},
+{
+"id": 45014,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(c) landscaping, including irrigation schemes (whether using recycled or other water), (d) play equipment where adequate safety provisions (including soft landing surfaces) are provided, but only if any structure is more than 1.2 metres from any fence,",
+"new_text": "(c) landscaping, including irrigation schemes, whether using recycled or other water, and landscape structures or features, such as artworks, (d) play equipment where adequate safety provisions (including soft landing surfaces) are provided, but only if any structure is more than 1.2 metres from any fence,",
+"similarity": 0.83,
+"ratio": 1.22,
+"new_paras": [
+3833,
+3834
+]
+},
+{
+"id": 45135,
+"sepp": "Transport",
+"served": true,
+"action": "RETIRE",
+"old_text": "(2) Before determining a development application (or an application for modification of a consent) for development to which subsection (1)(b) applies, the consent authority must—",
+"shingle_hit": 0.0,
+"law_shows_repeal": true
+},
+{
+"id": 43810,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "(a) Barangaroo Site,   \n(b) Darling Harbour Site,   \n(c) Sydney Olympic Park Site, (d) The Rocks Site,   \n(e) Blackwattle Bay Precinct Site, (f) Central Precinct Site.",
+"new_text": "(a) Barangaroo Site, (a1) Bradfield City Centre, (b) Darling Harbour Site, (c) Sydney Olympic Park Site, (d) The Rocks Site, (e) Blackwattle Bay Precinct Site, (f) Central Precinct Site.",
+"similarity": 0.93,
+"ratio": 1.18,
+"new_paras": [
+1198,
+1204
+]
+},
+{
+"id": 43347,
+"sepp": "Transport",
+"served": false,
+"action": "RETIRE",
+"old_text": "Land use zones that are named in this Chapter are those set out in the standard instrument.",
+"shingle_hit": 0.0,
+"law_shows_repeal": false
+},
+{
+"id": 43641,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "(a) is authorised by or under that Act, or   \n(b) is, or is the subject of, an existing interest within the meaning of section 39 of that Act, or   \n(c) is carried out on land to which that Act applies over which an easement has been granted and is not contrary to the terms or nature of the easement, or   \n(d) is an electricity work to which section 53 of the Electricity Supply Act 1995 applies.",
+"new_text": "(a) (Repealed) (b) is, or is the subject of, an existing interest within the meaning of section 39 of that Act, or (c) is carried out on land to which that Act applies over which an easement has been granted and is not contrary to the terms or nature of the easement, or (d) is an electricity work to which section 53 of the Electricity Supply Act 1995 applies. (2) In this section, a reference to development for the purpose of an electricity transmission or distribution network includes a reference to development for any of the following purposes if the development is in connection with such a network—",
+"similarity": 0.74,
+"ratio": 1.56,
+"new_paras": [
+819,
+822
+]
+},
+{
+"id": 43708,
+"sepp": "Transport",
+"served": false,
+"action": "RETIRE",
+"old_text": "(4) Development to which this section applies may only be carried out on land reserved under the National Parks and Wildlife Act 1974 if it is authorised by or under that Act.",
+"shingle_hit": 0.16,
+"law_shows_repeal": true
+},
+{
+"id": 43733,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "(1) Development for the purpose of forestry may be carried out by or on behalf of a public authority without consent on land in Zone RU3 Forestry or an equivalent land use zone.",
+"new_text": "2.58 Development permitted without consent (1) Development for the purpose of forestry may be carried out by or on behalf of a public authority without consent on land in Zone RU3 Forestry. (2) A reference in this section to development for the purpose of forestry includes a reference to development for any of the following purposes—",
+"similarity": 0.61,
+"ratio": 1.89,
+"new_paras": [
+988,
+988
+]
+},
+{
+"id": 43983,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "(a) is authorised by or under that Act, or   \n(b) is, or is the subject of, an existing interest within the meaning of section 39 of that Act, or   \n(c) is on land to which that Act applies over which an easement has been granted and is not contrary to the terms or nature of the easement.",
+"new_text": "(a) (Repealed) (b) is, or is the subject of, an existing interest within the meaning of section 39 of that Act, or (c) is on land to which that Act applies over which an easement has been granted and is not contrary to the terms or nature of the easement. (2) (Repealed) (3) Development for the following purposes may be carried out by or on behalf of a rail authority for a rail corridor without consent on land in a prescribed zone—",
+"similarity": 0.71,
+"ratio": 1.53,
+"new_paras": [
+1650,
+1652
+]
+},
+{
+"id": 44069,
+"sepp": "Transport",
+"served": false,
+"action": "RETIRE",
+"old_text": "(5) The consent authority may grant consent to development to which this section applies without the concurrence of the relevant rail authority if—",
+"shingle_hit": 0.06,
+"law_shows_repeal": true
+},
+{
+"id": 44114,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "(a) is authorised by or under the National Parks and Wildlife Act 1974, or   \n(b) is, or is the subject of, an existing interest within the meaning of section 39 of that Act, or   \n(c) is on land to which that Act applies over which an easement has been granted and is not contrary to the terms or nature of the easement.",
+"new_text": "(a) (Repealed) (b) is, or is the subject of, an existing interest within the meaning of section 39 of that Act, or (c) is on land to which that Act applies over which an easement has been granted and is not contrary to the terms or nature of the easement. (2) Development for any of the following purposes may be carried out by or on behalf of a public authority without consent on land in a prescribed zone—",
+"similarity": 0.7,
+"ratio": 1.3,
+"new_paras": [
+1900,
+1902
+]
+},
+{
+"id": 44204,
+"sepp": "Transport",
+"served": false,
+"action": "RETIRE",
+"old_text": "(a) give written notice of the application to TfNSW within 7 days after the application is made, and (b) take into consideration—",
+"shingle_hit": 0.07,
+"law_shows_repeal": false
+},
+{
+"id": 45004,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "(a) does not require an alteration of transport or traffic arrangements, and   \n(b) does not cause the contravention of any existing condition of the development consent currently operating (other than a complying development certificate) that applies to the university relating to hours of operation, noise, car parking, vehicular movement, traffic generation, loading, waste management, landscaping or student or staff numbers, and",
+"new_text": "(a) does not require an alteration of transport or traffic arrangements outside the boundaries of an existing university, and (b) does not cause the contravention of any existing condition of the development consent currently operating (other than a complying development certificate) that applies to the university relating to hours of operation, noise, car parking, vehicular movement, traffic generation, loading, waste management, landscaping or student or staff numbers, and",
+"similarity": 0.93,
+"ratio": 1.11,
+"new_paras": [
+3814,
+3815
+]
+},
+{
+"id": 45062,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "(a) does not require an alteration of transport or traffic arrangements, and   \n(b) does not cause the contravention of any existing condition of the development consent currently operating (other than a complying development certificate) that applies to the TAFE establishment relating to hours of operation, noise, car parking, vehicular movement, traffic generation, loading, waste management, landscaping or student or staff numbers, and",
+"new_text": "(a) does not require an alteration of transport or traffic arrangements outside the boundaries of an existing TAFE establishment, and (b) does not cause the contravention of any existing condition of the development consent currently operating (other than a complying development certificate) that applies to the TAFE establishment relating to hours of operation, noise, car parking, vehicular movement, traffic generation, loading, waste management, landscaping or student or staff numbers, and",
+"similarity": 0.92,
+"ratio": 1.13,
+"new_paras": [
+3965,
+3966
+]
+},
+{
+"id": 43772,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "(a) the information required by the SCPP—new health services facilities and schools, and (b) the information required by the Division 5.1 assessment guidelines for environmental factors, and (c) the information required by the community participation plan.",
+"new_text": "(a) the information required by the SCPP—new health services facilities and schools, and (b) the information required by the Division 5.1 assessment guidelines, and (c) the information required by the community participation plan. (4) If notice of the intention to carry out development is given under this section to the relevant council or Transport for NSW—",
+"similarity": 0.7,
+"ratio": 1.41,
+"new_paras": [
+1115,
+1117
+]
+},
+{
+"id": 45078,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(i) that is not more than 1 storey high, and   \n(ii) that is more than 5 metres from any property boundary with land in a residential zone and more than 1 metre from any property boundary with land in any other zone,   \nNote. See Schedule 5 for the development standards for a portable office.",
+"new_text": "(i) that is not more than 1 storey high, and (ii) that is more than 5 metres from any property boundary with land in a residential zone and more than 1 metre from any property boundary with land in any other zone, and (iii) that is removed within 48 months after being installed, Note. See Schedule 5 for the development standards for a portable office.",
+"similarity": 0.91,
+"ratio": 1.23,
+"new_paras": [
+3996,
+4000
+]
+},
+{
+"id": 22545,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1)  This section applies to development on land that is in or adjacent to a rail corridor, if the development—\n(a)  is likely to have an adverse effect on rail safety, or\n(b)  involves the placing of a metal finish on a structure and the rail corridor concerned is used by electric trains,\nor\n(c)  involves the use of a crane in air space above any rail corridor, or\n(d)  is located within 5 metres of an exposed overhead electricity power line that is used for the purpose of\nrailways or rail infrastructure facilities.\nNote.\nSection 2.48 also contains provisions relating to development that is within 5 metres of an exposed overhead electricity power\nline.\n(2)  Before determining a development application for development to which this section applies, the consent\nauthority must—\n(a)  within 7 days after the application is made, give written notice of the application to the rail authority for the\nrail corridor, and\n(b)  take into consideration—\n(i)  any response to the notice that is received within 21 days after the notice is given, and\n(ii)  any guidelines that are issued by the Planning Secretary for the purposes of this section and published\nin the Gazette.\n(3)  Despite subsection (2), the consent authority is not required to comply with subsection (2)(a) and (b)(i) if the\ndevelopment application is for development on land that is in or adjacent to a rail corridor vested in or owned\nby ARTC or the subject of an ARTC arrangement.\n(4)  Land is adjacent to a rail corridor for the purpose of this section even if it is separated from the rail corridor by a\nroad or road related area within the meaning of the Road Transport Act 2013.",
+"new_text": "2.98 Development adjacent to rail corridors (1) This section applies to development on land that is in or adjacent to a rail corridor, if the development— (a) is likely to have an adverse effect on rail safety, or (b) involves the placing of a metal finish on a structure and the rail corridor concerned is used by electric trains, or (c) involves the use of a crane in air space above any rail corridor, or (d) is located within 5 metres of an exposed overhead electricity power line that is used for the purpose of railways or rail infrastructure facilities. Note. Section 2.48 also contains provisions relating to development that is within 5 metres of an exposed overhead electricity power line. (2) Development consent must not be granted to development to which this section applies unless the consent authority has considered the Development Near Rail Corridors and Busy Roads – Interim Guideline published in December 2008 by the Department. (3) (Repealed) (4) Land is adjacent to a rail corridor for the purpose of this section even if it is separated from the rail corridor by a road or road related area within the meaning of the Road Transport Act 2013.",
+"similarity": 0.7,
+"ratio": 0.71,
+"new_paras": [
+1762,
+1768
+]
+},
+{
+"id": 22493,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1)  Development for any of the following purposes is exempt development if the development is in connection with\nan electricity transmission or distribution network and complies with section 2.20—\n(a)  installation of cables in existing conduits if the installation involves no greater soil or vegetation disturbance\nthan necessary,\n(b)  maintenance of electricity lines or of poles (or associated structures) for electricity lines,\n(c)  any of the following if the primary purpose of the development is not to increase the capacity of the\nnetwork—\n(i)  replacement or re-alignment of electricity lines for conveying electricity at a voltage of 66kV or less,\n(ii)  installation or upgrading of electricity lines for conveying electricity at a voltage of 66kV or less that\nare above or below ground service lines connecting premises to the network,\n(iii)  replacement of poles with similar sized poles, or of associated support structures, for electricity lines\nfor conveying electricity at a voltage of 66kV or less,\n(iv)  re-alignment of poles, or of associated support structures, for electricity lines for conveying electricity\nat a voltage of 66kV or less,\n(d)  installation, maintenance or replacement of the following—\n\nState Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation\n\n\n(i)  existing plant or equipment in an existing fenced area or in an existing building (including pillars,\nfuses, control points, switches, regulators and protection equipment, but not including outdoor\ninstallation of equipment designed to operate (or convey electricity) at a voltage of more than 66kV),\n(ii)  street lighting if the lighting minimises light spill and artificial sky glow in accordance with the\nLighting for Roads and Public Spaces Standard,\n(iii)  electricity metering,\n(iv)  electrical conductors on existing structures if the primary purpose of the development is not to\nincrease the capacity of the network,\n(e)  maintenance of existing access tracks in easements or rights of way, or on land subject to section 53 of the\nElectricity Supply Act 1995, if it is required to facilitate the maintenance of electricity lines,\n(f)  maintenance or replacement of pole substations, if—\n(i)  the primary purpose of the development is not to increase the capacity of the network, and\n(ii)  in the case of replacement of materials, the replacement materials are similar to the materials being\nreplaced and the replacement does not involve any structural alterations,\n(g)  demolition and removal of electricity works if—\n(i)  the demolition is carried out in accordance with AS 2601—2001, Demolition of structures, and\n(ii)  the development is not associated with substations containing equipment designed to operate (or\nconvey electricity) at a voltage of more than 66kV, and\n(iii)  the development will not be carried out on sites where soil is likely to be contaminated,\n(h)  emergency works to maintain or restore a supply of electricity,\n(i)  construction, maintenance or realignment of security fencing with a height of not more than 3.2m above\nground level (existing),\n(j)  vegetation management that is in accordance with a tree management plan established under clause 37 of the\nElectricity Supply (Safety and Network Management) Regulation 2014,\n(k)  vegetation management that is exempted under clauses 24 and 35(4) of Schedule 5A to the Local Land\nServices Act 2013,\n(l)  vegetation management that is carried out on category 1-exempt land (within the meaning of section 60D of\nthe Local Land Services Act 2013),\n(m)  environmental management works in an existing fenced area or in an existing building.\n(2)  Section 2.20(2)(i) does not apply in relation to development carried out under subsection (1)(j), (k) or (l).\n(3)  To be exempt development, the development specified in subsection (1)(j), (k) and (l) must be carried out in a\nmanner that minimises the risk of soil erosion.\nSubdivision 2 Development likely to affect an electricity transmission or distribution\nnetwork",
+"new_text": "2.46 Exempt development (1) Development for any of the following purposes is exempt development if the development is in connection with an electricity transmission or distribution network and complies with section 2.20— (a) installation of cables in existing conduits if the installation involves no greater soil or vegetation disturbance than necessary, (a1) installation of new conduits, trenches or cables in an existing fenced area or in an existing building, (b) maintenance of electricity lines or of poles (or associated structures) for electricity lines, (c) any of the following if the primary purpose of the development is not to increase the capacity of the network— (i) replacement or re-alignment of electricity lines for conveying electricity at a voltage of 66kV or less, (ii) installation or upgrading of electricity lines for conveying electricity at a voltage of 66kV or less that are above or below ground service lines connecting premises to the network, (iii) replacement of poles with similar sized poles, or of associated support structures, for electricity lines for conveying electricity at a voltage of 132kV or less, (iv) re-alignment of poles, or of associated support structures, for electricity lines for conveying electricity at a voltage of 66kV or less, (d) installation, maintenance or replacement of the following— (i) existing plant or equipment in an existing fenced area or in an existing building not including outdoor installation of equipment designed to operate (or convey electricity) at a voltage of more than 66kV, (ii) street lighting if the lighting minimises light spill and artificial sky glow in accordance with the Lighting for Roads and Public Spaces Standard, (iii) electricity metering, (iv) electrical conductors, early fault detection sensor units or load break switches on existing structures if the primary purpose of the development is not to increase the capacity of the network, (e) maintenance of existing access tracks in easements or rights of way, or on land subject to section 53 of the Electricity Supply Act 1995, if it is required to facilitate the maintenance of electricity lines, (f) maintenance or replacement of pole substations, if— (i) the primary purpose of the development is not to increase the capacity of the network, and (ii) in the case of replacement of materials, the replacement materials are similar to the materials being replaced, (g) demolition and removal of electricity works if— (i) the demolition is carried out in accordance with AS 2601—2001, Demolition of structures, and (ii) the development is not associated with substations containing equipment designed to operate (or convey electricity) at a voltage of more than 200kV, and (iii) the development will not be carried out on sites where soil is likely to be contaminated within the meaning of the Contaminated Land Management Act 1997, (g1) demolition and removal of electricity works undertaken within an existing fenced area or an existing building, (h) emergency works to maintain or restore a supply of electricity, (i) construction, maintenance or realignment of security fencing with a height of not more than 3.2m above ground level (existing), (j) vegetation management that is in accordance with a tree management plan established under clause 37 of the Electricity Supply (Safety and Network Management) Regulation 2014, (k) vegetation management that is exempted under clauses 24 and 35(4) of Schedule 5A to the Local Land Services Act 2013, (l) vegetation management that is carried out on category 1-exempt land (within the meaning of section 60D of the Local Land Services Act 2013 ), (m) environmental management works in an existing fenced area or in an existing building. (2) Section 2.20(2)(i) does not apply in relation to development carried out under subsection (1)(j), (k) or (l). (3) To be exempt development, the development specified in subsection (1)(j), (k) and (l) must be carried out in a manner that minimises the risk of soil erosion.",
+"similarity": 0.91,
+"ratio": 1.01,
+"new_paras": [
+862,
+890
+]
+},
+{
+"id": 22522,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1)  Development for the purpose of a pipeline may be carried out by any person without consent on any land if the\npipeline is subject to a licence under the Pipelines Act 1967 or a licence or authorisation under the Gas Supply\nAct 1996.\n(2)  Development for the purpose of a gas pipeline may be carried out by or on behalf of a public authority without\nconsent on any land.\n(3)  However, subsections (1) and (2) apply with respect to land in Zone C1 National Parks and Nature Reserves or\nan equivalent land use zone only if the development—\n(a)  is authorised by or under the National Parks and Wildlife Act 1974, or\n\nState Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation\n\n\n(b)  is, or is the subject of, an existing interest within the meaning of section 39 of that Act, or\n(c)  is carried out on land to which that Act applies over which an easement has been granted and is not contrary\nto the terms or nature of the easement.\n(4)  In this section, a reference to development for the purpose of a pipeline includes a reference to development for\nany of the following purposes if the development is in connection with a pipeline—\n(a)  construction works,\n(b)  emergency works or routine maintenance works.",
+"new_text": "2.75 Development permitted without consent (1) Development for the purpose of a pipeline may be carried out by any person without consent on any land if the pipeline is subject to a licence under the Pipelines Act 1967 or a licence or authorisation under the Gas Supply Act 1996. (2) Development for the purpose of a gas pipeline may be carried out by or on behalf of a public authority without consent on any land. (3) However, subsections (1) and (2) apply with respect to land in Zone C1 National Parks and Nature Reserves only if the development— (a) (Repealed) (b) is, or is the subject of, an existing interest within the meaning of the National Parks and Wildlife Act 1974, section 39, or (c) is carried out on land to which the National Parks and Wildlife Act 1974 applies over which an easement has been granted and is not contrary to the terms or nature of the easement. (4) In this section, a reference to development for the purpose of a pipeline includes a reference to development for any of the following purposes if the development is in connection with a pipeline— (a) construction works, (b) emergency works or routine maintenance works.",
+"similarity": 0.87,
+"ratio": 0.94,
+"new_paras": [
+1320,
+1325
+]
+},
+{
+"id": 22469,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1)  This section applies to any development that this Chapter provides is complying development.\n(2)  To be complying development, the development must—\n(a)  not be exempt development under this Chapter, and\n(b)  be permissible, with consent, under an environmental planning instrument applying to the land on which the\ndevelopment is carried out, and\nNote.\nAccordingly, development that is permitted to be carried out without consent is not complying development.\n(c)  meet the relevant provisions of the Building Code of Australia, and\n(d)  must be carried out in accordance with the relevant provisions of the Blue Book, and\n(e)  before the complying development certificate is issued, have written consent from the relevant roads\nauthority, if required by the Roads Act 1993—\n(i)  for each opening of a public road required by the development, and\n(ii)  to operate or store machinery, materials or waste required by the development on a road or footpath\nreserve, and\n\nState Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation\n\n\n(f)  if it is the alteration or erection of improvements on land in a mine subsidence district within the meaning of\nthe Mine Subsidence Compensation Act 1961, have the prior approval of the Mine Subsidence Board, and\nNote.\nInformation about mine subsidence is information that is a prescribed matter for the purpose of a planning certificate\nunder section 10.7(2) of the Act.\n(g)  not involve the removal or pruning of a tree or other vegetation that requires a permit or development\nconsent for removal or pruning, unless that removal or pruning is undertaken in accordance with a permit\nor development consent, and\nNote.\nA permit for the removal or pruning of a tree or other vegetation may be granted under a local environmental plan. A\ndevelopment consent for the removal of native vegetation may be granted under the Native Vegetation Act 2003.\n(h)  not be carried out within 1m of any public sewer, if the development comprises the erection of a building,\nexcept with the written approval of the authority that has management or control of that sewer, and\n(i)  not involve the removal of asbestos, unless that removal is undertaken in accordance with Code of practice:\nHow to safely remove asbestos published by SafeWork NSW in December 2022.",
+"new_text": "2.22 General requirements for complying development (1) This section applies to any development that this Chapter provides is complying development. (2) To be complying development, the development must— (a) not be exempt development under this Chapter, and (b) be permissible, with consent, under an environmental planning instrument applying to the land on which the development is carried out, and (c) meet the relevant provisions of the Building Code of Australia, and (d) must be carried out in accordance with the relevant provisions of the Blue Book, and (e) before the complying development certificate is issued, have written consent from the relevant roads authority, if required by the Roads Act 1993 — (i) for each opening of a public road required by the development, and (ii) to operate or store machinery, materials or waste required by the development on a road or footpath reserve, and (f) if it is the alteration or erection of improvements on land in a mine subsidence district within the meaning of the Mine Subsidence Compensation Act 1961, have the prior approval of the Mine Subsidence Board, and Note. Information about mine subsidence is information that is a prescribed matter for the purpose of a planning certificate under section 10.7(2) of the Act. (g) not involve the removal or pruning of a tree or other vegetation that requires a permit or development consent for removal or pruning, unless that removal or pruning is undertaken in accordance with a permit or development consent, and Note. A permit for the removal or pruning of a tree or other vegetation may be granted under a local environmental plan. A development consent for the removal of native vegetation may be granted under the Native Vegetation Act 2003. (h) not be carried out within 1m of any public sewer, if the development comprises the erection of a building, except with the written approval of the authority that has management or control of that sewer, and (i) not involve the removal of asbestos, unless that removal is undertaken in accordance with Code of practice: How to safely remove asbestos published by SafeWork NSW in December 2022.",
+"similarity": 0.95,
+"ratio": 0.93,
+"new_paras": [
+355,
+370
+]
+},
+{
+"id": 22491,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1)  Development for the purpose of an electricity transmission or distribution network may be carried out by or on\nbehalf of an electricity supply authority or public authority without consent on any land. However, such\ndevelopment may be carried out without consent on land reserved under the National Parks and Wildlife Act\n1974 only if the development—\n(a)  is authorised by or under that Act, or\n(b)  is, or is the subject of, an existing interest within the meaning of section 39 of that Act, or\n(c)  is carried out on land to which that Act applies over which an easement has been granted and is not contrary\nto the terms or nature of the easement, or\n(d)  is an electricity work to which section 53 of the Electricity Supply Act 1995 applies.\n(2)  In this section, a reference to development for the purpose of an electricity transmission or distribution network\nincludes a reference to development for any of the following purposes if the development is in connection with\nsuch a network—\n(a)  construction works (whether or not in a heritage conservation area), including—\n\nState Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation\n\n\n(i)  laying and installation of cables and cable pits, co-location of cabling and erection of ventilation and\naccess structures, bridges and tunnel adits, and construction of a tunnel or conduit for an underground\ncable, and\n(ii)  alteration, demolition or relocation of a local heritage item, and\n(iii)  alteration or relocation of a State heritage item, and\n(iv)  installation of overhead wires and associated component parts, including support structures, and\n(v)  construction of access tunnels or access tracks,\n(b)  emergency works or routine maintenance works,\nNote.\nSee section 2.7(4) regarding emergency works and routine maintenance works on land to which State Environmental\nPlanning Policy (Resilience and Hazards) 2021, sections 2.7 and 2.8 apply.\n(c)  environmental management works,\n(d)  establishment of a new substation or an increase in the area of existing substation yards or the installation of\nequipment, plant or structures in existing substation yards or substation buildings,\n(e)  above or below ground co-location of telecommunications cabling and associated structures,\n(f)  an electricity generating unit to provide temporary support to the network, but only if—\n(i)  the combined capacity of all units at the premises where the unit is located, or is intended to be located,\ndoes not exceed 5 megawatts, and\n(ii)  none of the units is operated, or is intended to be operated, for more than 200 hours in any 12 month\nperiod.\n2.44A   Development permitted without consent—coastal wetlands and littoral rainforest\n(1)  This section applies to development that is—\n(a)  on land identified as “coastal wetlands” or “littoral rainforest” on the Coastal Wetlands and Littoral\nRainforests Area Map, and\n(b)  for the following purposes—\n(i)  above or below ground electricity transmission or distribution lines,\n(ii)  telecommunication facilities that are related to the functioning of an electricity transmission or\ndistribution network.\n(2)  Development to which this section applies may be carried out by or on behalf of an electricity supply authority\nor a public authority without development consent if—\n(a)  the development does not involve the clearing of native vegetation from coastal wetlands or littoral\nrainforest, and\n(b)  the electricity supply authority or public authority is satisfied the development—\n(i)  includes adequate measures to minimise adverse impacts on coastal wetlands or littoral rainforest, and\n(ii)  is not likely to significantly impact the biophysical, hydrological or ecological integrity of coastal\nwetlands or littoral rainforest, and\n(iii)  is not likely to significantly impact the quantity and quality of surface and ground water flows to and\nfrom coastal wetlands, and\n\nState Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation\n\n\n(c)  the development does not involve earthworks other than earthworks that are ancillary to the following\ndevelopment—\n(i)  geotechnical testing and sampling that involves a drill hole with a diameter of no more than 120mm,\n(ii)  surveying and the placement of survey marks,\n(iii)  boring or directional drilling that does not disturb the surface of coastal wetlands or littoral rainforest\nand that involves a drill hole with a diameter of no more than 1,800mm,\n(iv)  replacing an electricity pole with a new pole with a diameter of no more than 1,200mm,\n(v)  installing supporting posts for a gate on an existing fence,\n(vi)  creating a trench to lay an electricity line to connect 2 connection points that are no more than 100m\napart.",
+"new_text": "2.44 Development permitted without consent—general (1) Development for the purpose of an electricity transmission or distribution network may be carried out by or on behalf of an electricity supply authority or public authority without consent on any land. However, such development may be carried out without consent on land reserved or acquired under the National Parks and Wildlife Act 1974 only if the development— (a) (Repealed) (b) is, or is the subject of, an existing interest within the meaning of section 39 of that Act, or (c) is carried out on land to which that Act applies over which an easement has been granted and is not contrary to the terms or nature of the easement, or (d) is an electricity work to which section 53 of the Electricity Supply Act 1995 applies. (2) In this section, a reference to development for the purpose of an electricity transmission or distribution network includes a reference to development for any of the following purposes if the development is in connection with such a network— (a) construction works (whether or not in a heritage conservation area), including— (i) laying and installation of cables and cable pits, co-location of cabling and erection of ventilation and access structures, bridges and tunnel adits, and construction of a tunnel or conduit for an underground cable, and (ii) alteration, demolition or relocation of a local heritage item, and (iii) alteration or relocation of a State heritage item, and (iv) installation of overhead wires and associated component parts, including support structures, and (v) construction of access tunnels or access tracks, (b) emergency works or routine maintenance works, Note. See section 2.7(4) regarding emergency works and routine maintenance works on land to which State Environmental Planning Policy (Resilience and Hazards) 2021, sections 2.7 and 2.8 apply. (c) environmental management works, (d) establishment of a new substation or an increase in the area of existing substation yards or the installation of equipment, plant or structures in existing substation yards or substation buildings, (e) above or below ground co-location of telecommunications cabling and associated structures, (f) an electricity generating unit to provide temporary support to the network, but only if the unit will not operate for more than 500 hours in any 12 month period. s 2.44: Am 2024 (654), Sch 1[6] [9]; 2025 (692), Sch 1[22]–[24]. 2.44A Development permitted without consent—coastal wetlands and littoral rainforest (1) This section applies to development that is— (a) on land identified as “coastal wetlands” or “littoral rainforest” on the Coastal Wetlands and Littoral Rainforests Area Map, and (b) for the following purposes— (i) above or below ground electricity transmission or distribution lines, (ii) telecommunication facilities that are related to the functioning of an electricity transmission or distribution network. (2) Development to which this section applies may be carried out by or on behalf of an electricity supply authority or a public authority without development consent if— (a) the development does not involve the clearing of native vegetation from coastal wetlands or littoral rainforest, and (b) the electricity supply authority or public authority is satisfied the development— (i) includes adequate measures to minimise adverse impacts on coastal wetlands or littoral rainforest, and (ii) is not likely to significantly impact the biophysical, hydrological or ecological integrity of coastal wetlands or littoral rainforest, and (iii) is not likely to significantly impact the quantity and quality of surface and ground water flows to and from coastal wetlands, and (c) the development does not involve earthworks other than earthworks that are ancillary to the following development— (i) geotechnical testing and sampling that involves a drill hole with a diameter of no more than 120mm, (ii) surveying and the placement of survey marks, (iii) boring or directional drilling that does not disturb the surface of coastal wetlands or littoral rainforest and that involves a drill hole with a diameter of no more than 1,800mm, (iv) replacing an electricity pole with a new pole with a diameter of no more than 1,200mm, (v) installing supporting posts for a gate on an existing fence, (vi) creating a trench to lay an electricity line to connect 2 connection points that are no more than 100m apart.",
+"similarity": 0.93,
+"ratio": 0.94,
+"new_paras": [
+818,
+853
+]
+},
+{
+"id": 22492,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1)  This section applies to development (other than exempt development) that—\n(a)  is carried out by or on behalf of an electricity supply authority or public authority, and\n(b)  is for the purpose of a new or existing electricity substation of any voltage (including any associated yard,\ncontrol building or building for housing plant), and\n(c)  is not a project to which Part 3A of the Act applies or State significant infrastructure.\n(2)  Before development to which this section applies is carried out, the electricity supply authority or public\nauthority must—\n(a)  give written notice of the intention to carry out the development to the council for the area in which the land\nis located (unless the authority is that council) and to the occupiers of adjoining land, and\n(b)  take into consideration any response to the notice that is received within 21 days after the notice is given.",
+"new_text": "2.45 Notification of certain electricity substation development that may be carried out without consent (1) This section applies to development (other than exempt development) that— (a) is carried out by or on behalf of an electricity supply authority or public authority, and (b) is for the purpose of a new electricity substation or associated building, or an increase in the area of an existing electricity substation or associated substation yard, and (c) is not a project to which Part 3A of the Act applies or State significant infrastructure. (2) Before development to which this section applies is carried out, the electricity supply authority or public authority must— (a) give written notice of the intention to carry out the development to the council for the area in which the land is located (unless the authority is that council) and to the occupiers of adjoining land, and (b) take into consideration any response to the notice that is received within 21 days after the notice is given.",
+"similarity": 0.87,
+"ratio": 1.13,
+"new_paras": [
+855,
+860
+]
+},
+{
+"id": 22519,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "In this Division—\nCrown land manager has the same meaning as in the Crown Land Management Act 2016.\nCrown managed land has the same meaning as in the Crown Land Management Act 2016.\nMinisterial Corporation has the same meaning as in the Crown Land Management Act 2016.\npublic reserve has the same meaning as it has in the Local Government Act 1993, but does not include a Crown\nreserve that is dedicated or reserved for a public cemetery.\nSecretary has the same meaning as in the Crown Land Management Act 2016.",
+"new_text": "2.72 Definitions In this Division— Crown land manager has the same meaning as in the Crown Land Management Act 2016. Crown managed land has the same meaning as in the Crown Land Management Act 2016. Ministerial Corporation has the same meaning as in the Crown Land Management Act 2016. Secretary has the same meaning as in the Crown Land Management Act 2016.",
+"similarity": 0.78,
+"ratio": 0.7,
+"new_paras": [
+1242,
+1246
+]
+},
+{
+"id": 22539,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1)  Development for the purpose of a railway or rail infrastructure facilities may be carried out by or on behalf of a\npublic authority without consent on any land. However, such development may be carried out without consent\non land reserved under the National Parks and Wildlife Act 1974 only if the development—\n(a)  is authorised by or under that Act, or\n(b)  is, or is the subject of, an existing interest within the meaning of section 39 of that Act, or\n(c)  is on land to which that Act applies over which an easement has been granted and is not contrary to the\nterms or nature of the easement.\n(2)    (Repealed)\n(3)  Development for the following purposes may be carried out by or on behalf of a rail authority for a rail corridor\nwithout consent on land in a prescribed zone—\n(a)  any of the following if the development is carried out in a car park intended for use by commuters that is\nowned, leased, managed or controlled by a rail authority—\n(i)  vehicle share car parking,\n(ii)  vehicle hire,\n(iii)  vehicle servicing and cleaning,\n(b)  markets if the development is carried out on land used for the purpose of a railway station or on any land\nthat is owned, leased, managed or controlled by a rail authority no more than once per calendar month.",
+"new_text": "2.92 Development permitted without consent—rail infrastructure facilities generally (1) Development for the purpose of a railway or rail infrastructure facilities may be carried out by or on behalf of a public authority without consent on any land. However, such development may be carried out without consent on land reserved or acquired under the National Parks and Wildlife Act 1974 only if the development— (a) (Repealed) (b) is, or is the subject of, an existing interest within the meaning of section 39 of that Act, or (c) is on land to which that Act applies over which an easement has been granted and is not contrary to the terms or nature of the easement. (2) (Repealed) (3) Development for the following purposes may be carried out by or on behalf of a rail authority for a rail corridor without consent on land in a prescribed zone— (a) any of the following if the development is carried out in a car park intended for use by commuters that is owned, leased, managed or controlled by a rail authority— (i) vehicle share car parking, (ii) vehicle hire, (iii) vehicle servicing and cleaning, (b) markets if the development is carried out on land used for the purpose of a railway station or on any land that is owned, leased, managed or controlled by a rail authority no more than once per calendar month. (4) For the purposes of this section, a reference to rail infrastructure facilities includes a reference to all rail assets, including transport infrastructure, transport vehicles and rolling stocks— (a) used for, or in connection with, or to facilitate the movement of persons and freight by rail, and (b) owned, managed or operated by Transport Heritage NSW Limited, ABN 25 000 570 463, on behalf of Transport Asset Manager of New South Wales constituted under the Transport Administration Act 1988.",
+"similarity": 0.82,
+"ratio": 1.46,
+"new_paras": [
+1649,
+1659
+]
+},
+{
+"id": 22556,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1)  Development for the purpose of a road or road infrastructure facilities may be carried out by or on behalf of a\npublic authority without consent on any land. However, such development may be carried out without consent\non land reserved under the National Parks and Wildlife Act 1974 only if the development—\n(a)  is authorised by or under the National Parks and Wildlife Act 1974, or\n(b)  is, or is the subject of, an existing interest within the meaning of section 39 of that Act, or\n(c)  is on land to which that Act applies over which an easement has been granted and is not contrary to the\nterms or nature of the easement.\n(2)  Development for any of the following purposes may be carried out by or on behalf of a public authority without\nconsent on land in a prescribed zone—\n(a)  bus depots,\n(b)  permanent road maintenance depots and associated infrastructure (such as garages, sheds, tool houses,\nstorage yards, training facilities and workers’ amenities).\n(2A)  The following development for the purposes of bus depots may be carried out by or on behalf of a public\nauthority without consent on land within the boundaries of an existing bus depot—\n(a)  the erection of a building that is—\n(i)  no more than 12.5m high, and\n(ii)  not located within 5m of a property boundary for a lot in a residential or conservation zone,\n(b)  the demolition of a building.\n(3)    (Repealed)",
+"new_text": "2.109 Development permitted without consent—general (1) Development for the purpose of a road or road infrastructure facilities may be carried out by or on behalf of a public authority without consent on any land. However, such development may be carried out without consent on land reserved or acquired under the National Parks and Wildlife Act 1974 only if the development— (a) (Repealed) (b) is, or is the subject of, an existing interest within the meaning of section 39 of that Act, or (c) is on land to which that Act applies over which an easement has been granted and is not contrary to the terms or nature of the easement. (2) Development for any of the following purposes may be carried out by or on behalf of a public authority without consent on land in a prescribed zone— (a) bus depots, (b) permanent road maintenance depots and associated infrastructure (such as garages, sheds, tool houses, storage yards, training facilities and workers’ amenities). (2A) The following development for the purposes of bus depots may be carried out by or on behalf of a public authority without consent on land within the boundaries of an existing bus depot— (a) the erection of a building that is— (i) no more than 12.5m high, and (ii) not located within 5m of a property boundary for a lot in a residential or conservation zone, (b) the demolition of a building. (3) (Repealed)",
+"similarity": 0.96,
+"ratio": 1.0,
+"new_paras": [
+1899,
+1908
+]
+},
+{
+"id": 22569,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1)  This section applies to development specified in Column 1 of the Table to Schedule 3 that involves—\n(a)  new premises of the relevant size or capacity, or\n(b)  an enlargement or extension of existing premises, being an alteration or addition of the relevant size or\ncapacity.\n(2)  In this section, relevant size or capacity means—\n(a)  in relation to development on a site that has direct vehicular or pedestrian access to any road (except as\nprovided by paragraph (b))—the size or capacity specified opposite that development in Column 2 of the\nTable to Schedule 3, or\n(b)  in relation to development on a site that has direct vehicular or pedestrian access to a classified road or to a\nroad that connects to a classified road where the access (measured along the alignment of the connecting\nroad) is within 90m of the connection—the size or capacity specified opposite that development in Column\n3 of the Table to Schedule 3.\n(3)  A public authority, or a person acting on behalf of a public authority, must not carry out development to which\nthis section applies that this Chapter provides may be carried out without consent unless the authority or person\nhas—\n\nState Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation\n\n\n(a)  given written notice of the intention to carry out the development to TfNSW in relation to the development,\nand\n(b)  taken into consideration any response to the notice that is received from TfNSW within 21 days after the\nnotice is given.\n(4)  Before determining a development application for development to which this section applies, the consent\nauthority must—\n(a)  give written notice of the application to TfNSW within 7 days after the application is made, and\n(b)  take into consideration—\n(i)  any submission that RMS provides in response to that notice within 21 days after the notice was given\n(unless, before the 21 days have passed, TfNSW advises that it will not be making a submission), and\n(ii)  the accessibility of the site concerned, including—\n(A)  the efficiency of movement of people and freight to and from the site and the extent of multi-\npurpose trips, and\n(B)  the potential to minimise the need for travel by car and to maximise movement of freight in\ncontainers or bulk freight by rail, and\n(iii)  any potential traffic safety, road congestion or parking implications of the development.\n(5)  The consent authority must give TfNSW a copy of the determination of the application within 7 days after the\ndetermination is made.\n2.122A   Traffic-generating development—exemption for Accelerated TOD Precincts\n(1)  Section 2.122 does not apply to development for the purposes of residential accommodation on land identified as\nan “Accelerated TOD Precinct” on the Accelerated Transport Oriented Development Precincts Rezoning Areas\nMap.\n(2)  This section does not apply in relation to—\n(a)  a development application made, but not finally determined, before the commencement of this section, or\n(b)  a development application made on or after 30 November 2027.\n(3)  In this section—\nAccelerated Transport Oriented Development Precincts Rezoning Areas Map has the same meaning as in\nState Environmental Planning Policy (Housing) 2021.\nSubdivision 3 Electric vehicle charging units",
+"new_text": "2.122 Traffic-generating development (1) This section applies to development specified in the State Environmental Planning Policy (Planning Systems) 2021 ( Planning Systems SEPP ), Schedule 7, table, Column 1 that involves— (a) new premises of the relevant size or capacity, or (b) an enlargement or extension of existing premises, being an alteration or addition of the relevant size or capacity. (2) In this section, relevant size or capacity means— (a) in relation to development on a site that has direct vehicular or pedestrian access to any road (except as provided by paragraph (b))—the size or capacity specified opposite that development in Planning Systems SEPP, Schedule 7, table, Column 2, or (b) in relation to development on a site that has direct vehicular or pedestrian access to a classified road or to a road that connects to a classified road where the access (measured along the alignment of the connecting road) is within 90m of the connection—the size or capacity specified opposite that development in Planning Systems SEPP, Schedule 7, table, Column 3. (3) A public authority, or a person acting on behalf of a public authority, must not carry out development to which this section applies that this Chapter provides may be carried out without consent unless the authority or person has— (a) given written notice of the intention to carry out the development to Development Coordination Authority in relation to the development, and (b) taken into consideration any response to the notice that is received from Development Coordination Authority within 21 days after the notice is given. (4) This section does not apply to a development application— (a) for development for the purposes of residential accommodation on land identified as “Accelerated TOD Precinct” on the Accelerated Transport Oriented Development Precincts Rezoning Areas Map, and (b) made after 27 November 2024. (5) Subsection (4) ceases to have effect on 30 November 2027. (6) In this section— Accelerated Transport Oriented Development Precincts Rezoning Areas Map has the same meaning as in State Environmental Planning Policy (Housing) 2021.",
+"similarity": 0.65,
+"ratio": 0.66,
+"new_paras": [
+2046,
+2055
+]
+},
+{
+"id": 22530,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1)  Development for any of the following purposes is complying development if it is lawfully carried out on land in\nthe area of a port that is managed by the Newcastle Port Corporation, or is vested in Transport for NSW, and\ncomplies with section 2.22—\n(a)  addition to, or alteration (including internal alteration) of, a building that does not result in—\n(i)  the gross floor area of the building being the lesser of 25 per cent or 500m  greater than it was\nimmediately before the commencement of this Chapter, or\n(ii)  the building having a height (including the addition or alteration) of more than 12m above ground\nlevel (existing),\n(b)  a new building that—\n(i)  has a gross floor area of not more than 500m  or is not more than 1 storey high, and\n(ii)  has a height above ground level (existing) of not more than 12m, and\n2\n2\n\nState Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation\n\n\n(iii)  except in the case of a security booth, is erected no closer than 1m from any adjoining property\nboundary (unless the adjoining property is owned or managed by the Port Corporation), and\n(iv)  in the case of food premises, including a canteen or kiosk, is designed, constructed and fitted-out in\naccordance with Australian Standard AS 4674—2004, Design, construction and fit-out of food\npremises,\n(c)  demolition, carried out in accordance with Australian Standard AS 2601—2001, The demolition of\nstructures, of a building—\n(i)  that has a gross floor area not exceeding 2,000m , or\n(ii)  the erection of which is complying development under this section,\n(d)  fences or gates (including security boom gates) that have a height (when closed, in the case of boom gates)\nof not more than 5m above ground level (existing),\n(e)  buildings (including switch rooms or security booths) or sheds that—\n(i)  have a floor space area of not more than 500m , and\n(ii)  are one storey high and have a height above ground level (existing) of not more than 10m, and\n(iii)  are not within 10m of any boundary,\n(f)  retaining walls (other than seawalls) that—\n(i)  have a height of not more than 3m above ground level (existing), and\n(ii)  if they have a height of more than 1m, are certified by a structural engineer as having a satisfactory\ndesign and structure and as having been constructed in accordance with the specifications of that\ndesign, and\n(iii)  comply with—\n(A)  AS 3700—2011, Masonry structures and AS 3700 Supp 1—2004, Masonry structures—\nCommentary (Supplement to AS 3700—2001), and\n(B)  AS/NZS 1170.1:2002, Structural design actions Part 1: Permanent, imposed and other actions\nand AS/NZS 1170.1 Supp1:2002, Structural design actions—Permanent, imposed and other\nactions—Commentary (Supplement to AS/NZS 1170.1:2002), and\n(C)  if the structure is made of timber, AS 1720:1—1997/Amdt 1—1998, Timber structures (known as\nthe SAA Timber Structures Code)—Design methods,\n(g)  removal of existing cranes, replacement of existing cranes with smaller cranes or with cranes of the same\ncapacity, or installation of crane rails for an existing crane, if—\n(i)  the development is not inconsistent with or in contravention of an existing consent, and\n(ii)  in the case of the replacement of cranes or installation of crane rails, the new cranes or crane rails are\ncertified by a structural engineer as having a satisfactory design and as having been erected or\ninstalled in accordance with the specifications of that design,\n(h)  liquid petroleum gas storage containers that—\n(i)  together have a capacity to store, at any one time, a total of not more than 3 tonnes of gas for each\nbusiness, and\n(ii)  comply with the relevant requirements of AS 1940—2004, The storage and handling of flammable and\ncombustible liquids and Australian and New Zealand Standard AS/NZS 1596:2008, The storage and\n2\n2\n\nState Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation\n\n\nhandling of LP Gas,\n(i)  fuel storage tanks that—\n(i)  together have a capacity to store, at any one time, a total of not more than 50,000 litres of fuel for each\nbusiness, and\n(ii)  comply with the relevant requirements of Australian Standard AS 1940—2004, The storage and\nhandling of flammable and combustible liquids,\n(j)  fire water tanks that together have a capacity to store, at any one time, a total of not more than 1,500 tonnes\nof water for each business,\n(k)  new or replacement paving, if the area being paved is not more than 5,000m  and the development is not\ninconsistent with or in contravention of an existing consent,\n(l)  satellite dishes or telecommunications facilities, if—\n(i)  the development will result in there being not more than one dish or one facility on the site at any one\ntime, and\n(ii)  the dish or facility is made of non-reflective materials, has a height of not more than 12m above\nground level (existing) and a diameter of not more than 3m,",
+"new_text": "2.83 Complying development (1) Development for any of the following purposes is complying development if it is lawfully carried out on land in the area of a port that is managed by the Port Authority of New South Wales, or is vested in Transport for NSW, and complies with section 2.22— (a) addition to, or alteration (including internal alteration) of, a building that does not result in— (i) the gross floor area of the building being the lesser of 25 per cent or 500m 2 greater than it was immediately before the commencement of this Chapter, or (ii) the building having a height (including the addition or alteration) of more than 12m above ground level (existing), (b) a new building that— (i) has a gross floor area of not more than 500m 2 or is not more than 1 storey high, and (ii) has a height above ground level (existing) of not more than 12m, and (iii) except in the case of a security booth, is erected no closer than 1m from any adjoining property boundary (unless the adjoining property is owned or managed by the Port Corporation), and (iv) in the case of food premises, including a canteen or kiosk, is designed, constructed and fitted-out in accordance with Australian Standard AS 4674—2004, Design, construction and fit-out of food premises, (c) demolition of a building— (i) that has a gross floor area not exceeding 2,000m 2, or (ii) the erection of which is complying development under this section, (d) fences or gates (including security boom gates) that have a height (when closed, in the case of boom gates) of not more than 5m above ground level (existing), (e) buildings (including switch rooms or security booths) or sheds that— (i) have a floor space area of not more than 500m 2, and (ii) are one storey high and have a height above ground level (existing) of not more than 10m, and (iii) are not within 10m of any boundary, (f) retaining walls (other than seawalls) that— (i) have a height of not more than 3m above ground level (existing), and (ii) if they have a height of more than 1m, are certified by a structural engineer as having a satisfactory design and structure and as having been constructed in accordance with the specifications of that design, and (iii) comply with— (A) AS 3700—2011, Masonry structures and AS 3700 Supp 1—2004, Masonry structures—Commentary (Supplement to AS 3700—2001), and (B) AS/NZS 1170.1:2002, Structural design actions Part 1: Permanent, imposed and other actions and AS/NZS 1170.1 Supp1:2002, Structural design actions—Permanent, imposed and other actions—Commentary (Supplement to AS/NZS 1170.1:2002), and (C) if the structure is made of timber, AS 1720:1—1997/Amdt 1—1998, Timber structures (known as the SAA Timber Structures Code)—Design methods, (g) removal of existing cranes, replacement of existing cranes with smaller cranes or with cranes of the same capacity, or installation of crane rails for an existing crane, if— (i) the development is not inconsistent with or in contravention of an existing consent, and (ii) in the case of the replacement of cranes or installation of crane rails, the new cranes or crane rails are certified by a structural engineer as having a satisfactory design and as having been erected or installed in accordance with the specifications of that design, (h) liquid petroleum gas storage containers that— (i) together have a capacity to store, at any one time, a total of not more than 3 tonnes of gas for each business, and (ii) comply with the relevant requirements of AS 1940—2004, The storage and handling of flammable and combustible liquids and Australian and New Zealand Standard AS/NZS 1596:2008, The storage and handling of LP Gas, (i) fuel storage tanks that— (i) together have a capacity to store, at any one time, a total of not more than 50,000 litres of fuel for each business, and (ii) comply with the relevant requirements of Australian Standard AS 1940—2004, The storage and handling of flammable and combustible liquids, (j) fire water tanks that together have a capacity to store, at any one time, a total of not more than 1,500 tonnes of water for each business, (k) new or replacement paving, if— (i) the area being paved is not more than 5,000m 2, and (ii) the development is not inconsistent with or in contravention of an existing consent, and (iii) it is designed so that any surface water run-off is directed to a stormwater management system, (l) satellite dishes or telecommunications facilities, if— (i) the development will result in there being not more than one dish or one facility on the site at any one time, and (ii) the dish or facility is made of non-reflective materials, has a height of not more than 12m above ground level (existing) and a diameter of not more than 3m,",
+"similarity": 0.95,
+"ratio": 0.97,
+"new_paras": [
+1495,
+1535
+]
+},
+{
+"id": 44034,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "(i) any response to the notice that is received within 21 days after the notice is given, and   \n(ii) the implications of the development for traffic safety including the costs of ensuring an appropriate level of safety, having regard to existing traffic characteristics and any likely change in traffic at level crossings as a result of the development, and   \n(iii) the feasibility of access for the development that does not involve use of level crossings.",
+"new_text": "(a) the implications of the development for traffic safety— (i) including the costs of ensuring an appropriate level of safety, and (ii) having regard to existing traffic characteristics and any likely change in traffic at level crossings as a result of the development, and (b) the feasibility of access for the development that does not involve use of level crossings. (3)–(6) (Repealed) (7) In this section—",
+"similarity": 0.77,
+"ratio": 0.91,
+"new_paras": [
+1755,
+1758
+]
+},
+{
+"id": 43340,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1) A reference in this Chapter to a land use zone that is equivalent to a named land use zone is a reference to a land use zone under an environmental planning instrument that is not made as provided by section 3.20(2) of the Act (a) that the Planning Secretary has determined under clause 1.6 of State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 is a land use zone in which equivalent land uses are permitted to those permitted in that named land use zone, or",
+"new_text": "2.4 Interpretation—references to land use zones A reference in this chapter to a lot or to land in a named land use zone is a reference— (a) to land that, under an environmental planning instrument made as provided by the Act, section 3.20(2), is in a land use zone specified in the Standard Instrument, and (b) to land that, under an environmental planning instrument that is not made as provided by the Act, section 3.20(2), is in a land use zone in which equivalent land uses are permitted to those permitted in the named land use zone.",
+"similarity": 0.56,
+"ratio": 1.09,
+"new_paras": [
+159,
+161
+]
+},
+{
+"id": 43454,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(a) not be exempt development under this Chapter, and   \n(b) be permissible, with consent, under an environmental planning instrument applying to the land on which the development is carried out, and   \nNote. Accordingly, development that is permitted to be carried out without consent is not complying development.   \n(c) meet the relevant provisions of the Building Code of Australia, and   \n(d) must be carried out in accordance with the relevant provisions of the Blue Book, and   \n(e) before the complying development certificate is issued, have written consent from the relevant roads authority, if required by the Roads Act 1993— (i) for each opening of a public road required by the development, and (ii) to operate or store machinery, materials or waste required by the development on a road or footpath reserve, and",
+"new_text": "(a) not be exempt development under this Chapter, and (b) be permissible, with consent, under an environmental planning instrument applying to the land on which the development is carried out, and (c) meet the relevant provisions of the Building Code of Australia, and (d) must be carried out in accordance with the relevant provisions of the Blue Book, and (e) before the complying development certificate is issued, have written consent from the relevant roads authority, if required by the Roads Act 1993 — (i) for each opening of a public road required by the development, and (ii) to operate or store machinery, materials or waste required by the development on a road or footpath reserve, and",
+"similarity": 0.92,
+"ratio": 0.86,
+"new_paras": [
+356,
+362
+]
+},
+{
+"id": 43660,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1) This section applies to development (other than exempt development) that— (a) is carried out by or on behalf of an electricity supply authority or public authority, and (b) is for the purpose of a new or existing electricity substation of any voltage (including any associated yard, control building or building for housing plant), and (c) is not a project to which Part 3A of the Act applies or State significant infrastructure.",
+"new_text": "2.45 Notification of certain electricity substation development that may be carried out without consent (1) This section applies to development (other than exempt development) that— (a) is carried out by or on behalf of an electricity supply authority or public authority, and (b) is for the purpose of a new electricity substation or associated building, or an increase in the area of an existing electricity substation or associated substation yard, and (c) is not a project to which Part 3A of the Act applies or State significant infrastructure. (2) Before development to which this section applies is carried out, the electricity supply authority or public authority must—",
+"similarity": 0.67,
+"ratio": 1.56,
+"new_paras": [
+855,
+858
+]
+},
+{
+"id": 43843,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1) Development for the purpose of a pipeline may be carried out by any person without consent on any land if the pipeline is subject to a licence under the P i p e l i n e s \\ A c t \\ I 967 or a licence or authorisation under the Gas Supply Act 1996. \n(2) Development for the purpose of a gas pipeline may be carried out by or on behalf of a public authority without consent on any land. \n(3) However, subsections (1) and (2) apply with respect to land in Zone C1 National Parks and Nature Reserves or an equivalent land use zone only if the development— (a) is authorised by or under the National Parks and Wildlife Act 1974, or",
+"new_text": "2.75 Development permitted without consent (1) Development for the purpose of a pipeline may be carried out by any person without consent on any land if the pipeline is subject to a licence under the Pipelines Act 1967 or a licence or authorisation under the Gas Supply Act 1996. (2) Development for the purpose of a gas pipeline may be carried out by or on behalf of a public authority without consent on any land. (3) However, subsections (1) and (2) apply with respect to land in Zone C1 National Parks and Nature Reserves only if the development— (a) (Repealed)",
+"similarity": 0.81,
+"ratio": 0.9,
+"new_paras": [
+1320,
+1321
+]
+},
+{
+"id": 44743,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1) This section applies to any development that this Chapter provides is complying development.   \n(2) To be complying development, the development must— (a) meet the general requirements for complying development set out in clause 1.17A of State Environmental Planning Policy (Exempt and Complying Development Codes) 2008, and (b) not be exempt development under this Chapter, and (c) be permissible, with development consent, under an environmental planning instrument applying to the land on which the development is carried out, and Note. Accordingly, development that is permitted to be carried out without development consent is not complying development. (d) meet the relevant provisions of the Building Code of Australia, and (e) not involve the removal or pruning of a tree or other vegetation that requires a permit or approval, unless the removal or pruning is undertaken in accordance with a permit or approval, and Note— A permit or approval may be granted under State Environmental Planning Policy (Biodiversity and Conservation) 2021, Chapter 2. (f) not be carried out within 1 metre of any public sewer, if the development comprises the erection of a building, except with the written approval of the authority that has management or control of that sewer, and (g) if it is on land that is—   \n(i) within or above a rail corridor or interim rail corridor, or   \n(ii) within 25 metres (measured horizontally) of a rail corridor or interim rail corridor, or   \n(iii) within 25 metres (measured horizontally) of the ground directly above an underground rail corridor or an underground interim rail corridor,   \nnot involve excavation to a depth greater than 2 metres below ground level (existing) on the land, and",
+"new_text": "3.18 General requirements for complying development (1) This section applies to any development that this Chapter provides is complying development. (2) To be complying development, the development must— (a) meet the general requirements for complying development set out in clause 1.17A of State Environmental Planning Policy (Exempt and Complying Development Codes) 2008, and (b) not be exempt development under this Chapter, and (c) be permissible, with development consent, under an environmental planning instrument applying to the land on which the development is carried out, and (d) meet the relevant provisions of the Building Code of Australia, and (e) not involve the removal or pruning of a tree or other vegetation that requires a permit or approval, unless the removal or pruning is undertaken in accordance with a permit or approval, and Note— A permit or approval may be granted under State Environmental Planning Policy (Biodiversity and Conservation) 2021, Chapter 2. (f) not be carried out within 1 metre of any public sewer, if the development comprises the erection of a building, except with the written approval of the authority that has management or control of that sewer, and (g) if it is on land that is— (i) within or above a rail corridor or interim rail corridor, or (ii) within 25 metres (measured horizontally) of a rail corridor or interim rail corridor, or (iii) within 25 metres (measured horizontally) of the ground directly above an underground rail corridor or an underground interim rail corridor, not involve excavation to a depth greater than 2 metres below ground level (existing) on the land, and",
+"similarity": 0.96,
+"ratio": 0.96,
+"new_paras": [
+3267,
+3279
+]
+},
+{
+"id": 45261,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(1) This section applies to development on land identified on the Referral Area Map.   \n(2) Before determining a development application for development to which this section applies, the consent authority must give written notice of the development to the Port Operator.   \n(3) Notice must be given no later than 7 days after the development application is made.   \n(4) In determining a development application for the development, the consent authority must consider the following— (a) submissions made to the consent authority by the Port Operator within 21 days after notice is given, (b) the effect of the development on— (i) the practicability, cost, structural integrity and safety of future port expansion or dredging works within navigation channels, and (ii) ship movements to, from or within the port to which the development relates.",
+"new_text": "5.17 Port Operator to be notified of certain development applications (1) This section applies to development on land identified as “Referral Area” on the Referral Area Map. (2) Development consent must not be granted to development to which this section applies unless the consent authority has considered the effect of the proposed development on— (a) the practicability, cost, structural integrity and safety of future port expansion or dredging works within navigation channels, and (b) ship movements to, from or within the port to which the development relates. (3) In this section—",
+"similarity": 0.55,
+"ratio": 0.7,
+"new_paras": [
+4351,
+4353
+]
+},
+{
+"id": 45106,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "(c) any potential traffic safety, road congestion or parking implications of the development.",
+"new_text": "(b) any potential traffic safety, road congestion or parking implications of the development. (3), (4) (Repealed)",
+"similarity": 0.83,
+"ratio": 1.22,
+"new_paras": [
+4057,
+4057
+]
+},
+{
+"id": 44913,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "(i) internal fitouts, or   \n(ii) alterations or additions to address work health and safety requirements or to provide access for people with a disability, or   \n(iii) alterations or additions to the external facade of a building that do not increase the building envelope (for example, porticos, balcony enclosures or covered walkways),",
+"new_text": "(i) internal fitouts, alterations or additions to enable plant or equipment to be installed, or (ii) alterations or additions to address work health and safety requirements or to provide access for people with a disability, or (iii) alterations or additions to the external facade of a building that do not increase the building envelope (for example, porticos, balcony enclosures or covered walkways),",
+"similarity": 0.9,
+"ratio": 1.21,
+"new_paras": [
+3580,
+3582
+]
+}
+]

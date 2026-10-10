@@ -1,0 +1,105 @@
+{
+  "tier": "critical",
+  "justification": "Critical: production law-text changes on 3 SEPPs (455 rows retired or replaced with history; 423 applied, 32 prepared) and a migration that clears their review flags.",
+  "commit_hash": "1d1e47f6",
+  "files": [
+    "scripts/dq88_sepp_bulk_refresh.py",
+    "migrations/099_dq88_clear_three_refreshed_sepps.sql",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "data/dq88_sepp_refresh_plan_2026-10-10.json",
+    "data/dq88_sepp_refresh_plan2_2026-10-10.json",
+    "data/dq88_sepp_refresh_plan3_2026-10-10.json",
+    "data/dq88_sepp_refresh_plan4_2026-10-10.json",
+    "data/dq88_sepp_refresh_plan5_2026-10-10.json",
+    "data/dq88_sepp_refresh_plan6_2026-10-10.json"
+  ],
+  "pre_impl": {
+    "existing_data": "DQ-88 read 3 after migration 096: Biodiversity, Planning Systems and Transport SEPPs, loaded from 2025 PDFs and never monitored until 2026-10-05; 459 stored rows held text the law has since changed.",
+    "assumption_mismatch": "The first sweep matched sentences exactly against the 2025 copy and missed 34 rows whose formatting differed; a re-sweep on 8-word runs found them.",
+    "new_vs_existing": "Uses the version-history writer from scripts/dq88_refresh_2026_10_10.py (provision_versions v1/v2 plus provision_change_log), the 2026-09-15 method; never deletes.",
+    "external_source_error": "Every replacement is cut verbatim from the in-force text on legislation.nsw.gov.au (fetched from the Fly monitor IP); retirements only where the wording is gone from the whole current instrument or two readers agree.",
+    "frontend_type": "No frontend change; the site reads the same provision_text and is_current columns as before.",
+    "user_failure_mode": "Without this, 174 rules shown on the site quote wording the law no longer contains, including repealed concurrence and notice duties."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-88 ; python scripts/dq88_sepp_bulk_refresh.py data/dq88_sepp_refresh_plan6_2026-10-10.json",
+    "fails_when": "A plan row's stored text no longer matches what the plan was built from (the script refuses), or 099 runs before plan6 is applied (it refuses), or any instrument is still flagged after 099.",
+    "observed_red": "Observed 2026-10-10: the first bulk dry run refused on row 22193 (plan built without the retire rows' text); the answer check refused 95 of 165 reader answers (wide ranges, generic wording), which went to exact-span readers and a second reader; 099's dry run refuses until plan6 is applied."
+  },
+  "functions": [
+    {
+      "name": "run",
+      "file_line": "scripts/dq88_sepp_bulk_refresh.py",
+      "input": "a database connection, the apply flag, and a reviewed plan file of retire or replace actions per row",
+      "output": "each row retired or replaced with version history, then committed or rolled back as a whole",
+      "if_none": "A row whose stored text differs from the plan's copy stops the run before anything commits."
+    }
+  ],
+  "values": [
+    {
+      "value": "In-force text of 3 SEPPs for the replaced rows",
+      "source": "legislation.nsw.gov.au in-force HTML, verbatim, per instrument",
+      "read_at": "every surface that serves regulatory_provisions",
+      "if_missing": "Retired rows are no longer served; no text is invented."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "plan row still matches stored text",
+      "file_line": "scripts/dq88_sepp_bulk_refresh.py",
+      "where_clause": "id = %s (then is_current and text equality checked)"
+    },
+    {
+      "purpose": "clear only the reviewed flags",
+      "file_line": "migrations/099_dq88_clear_three_refreshed_sepps.sql",
+      "where_clause": "is_active AND needs_review AND version_date::date <= DATE '2026-10-10' AND instrument_key IN (3 keys)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A row changed after the plan was built",
+      "what_happens": "The script refuses, names the row, and nothing in the run is committed",
+      "mitigated": true,
+      "how": "exact text equality check",
+      "repro": "python scripts/dq88_sepp_bulk_refresh.py data/dq88_sepp_refresh_plan6_2026-10-10.json"
+    },
+    {
+      "scenario": "A reader places a passage in the wrong clause",
+      "what_happens": "Refused unless the new text is word-similar and size-matched, or a second independent reader agrees on an overlapping span",
+      "mitigated": true,
+      "how": "mechanical check, then two-reader agreement",
+      "repro": "python scripts/dq88_sepp_bulk_refresh.py data/dq88_sepp_refresh_plan4_2026-10-10.json"
+    },
+    {
+      "scenario": "A retirement would remove text that is still in force today",
+      "what_happens": "Refused where more than 20% of the row's 8-word runs remain anywhere in the current law, unless two readers agree",
+      "mitigated": true,
+      "how": "shingle check against the whole current instrument",
+      "repro": "python scripts/dq88_sepp_bulk_refresh.py data/dq88_sepp_refresh_plan2_2026-10-10.json"
+    },
+    {
+      "scenario": "The review flags are cleared before the stored text is refreshed",
+      "what_happens": "099 refuses and clears nothing until the plan6 rows are retired",
+      "mitigated": true,
+      "how": "assertion on three plan6 rows",
+      "repro": "python scripts/apply_migration_dry_run.py migrations/099_dq88_clear_three_refreshed_sepps.sql"
+    },
+    {
+      "scenario": "A new amendment to one of these SEPPs arrives before 099 runs",
+      "what_happens": "099 refuses: it clears only flags on the reviewed version and requires none left",
+      "mitigated": true,
+      "how": "version_date filter and final assertion",
+      "repro": "python scripts/apply_migration_dry_run.py migrations/099_dq88_clear_three_refreshed_sepps.sql"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Owner runs: python scripts/dq88_sepp_bulk_refresh.py data/dq88_sepp_refresh_plan6_2026-10-10.json --apply ; python scripts/apply_migration_dry_run.py migrations/099_dq88_clear_three_refreshed_sepps.sql --apply ; then python scripts/dq_probe_live.py --id DQ-88 reads 0."
+  },
+  "real_layer_exempt": {
+    "scripts/dq88_sepp_bulk_refresh.py": "One-off data refresh run against production 2026-10-10: plans 1-5 applied (423 rows), plan6 dry-run passes (32 rows).",
+    "migrations/099_dq88_clear_three_refreshed_sepps.sql": "Dry run against production refuses as designed until plan6 is applied."
+  }
+}
