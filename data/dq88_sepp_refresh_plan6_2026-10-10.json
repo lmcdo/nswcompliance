@@ -1,0 +1,243 @@
+[
+{
+"id": 35435,
+"sepp": "Biodiversity",
+"served": false,
+"action": "REPLACE",
+"old_text": "Above-water boat lifts; Advertisements; Advertising structures; Boat sheds; Floating boat platforms; Houseboats; Intertidal dredging; Mooring pens; Private landing facilities; Private",
+"new_text": "Above-water boat lifts; Advertisements; Advertising structures; Boat sheds; Camping grounds; Caravan parks; Eco-tourist facilities; Floating boat platforms; Houseboats; Intertidal dredging; Manufactured home estates; Mooring pens; Private landing facilities; Private swimming"
+},
+{
+"id": 35465,
+"sepp": "Biodiversity",
+"served": false,
+"action": "REPLACE",
+"old_text": "Above-water boat lifts; Advertisements; Advertising structures; Aviation facilities; Commercial port facilities; Houseboats; Intertidal dredging; Reclamation works; Residential accommodation; Swimming pools; Tourist facilities; Water-based restaurants and entertainment facilities; Waterfront access stairs",
+"new_text": "Above-water boat lifts; Advertisements; Advertising structures; Aviation facilities; Camping grounds; Caravan parks; Commercial port facilities; Eco-tourist facilities; Houseboats; Intertidal dredging; Manufactured home estates; Reclamation works; Residential accommodation; Short-term rental accommodation; Swimming pools; Tourist and visitor accommodation; Tourist facilities; Water-based restaurants and entertainment facilities; Waterfront access stairs"
+},
+{
+"id": 35436,
+"sepp": "Biodiversity",
+"served": false,
+"action": "REPLACE",
+"old_text": "swimming enclosures; Reclamation works; Residential accommodation; Slipways; Swimming pools; Tourist facilities; Water-based restaurants and entertainment facilities; Waterfront access stairs",
+"new_text": "ks; Eco-tourist facilities; Floating boat platforms; Houseboats; Intertidal dredging; Manufactured home estates; Mooring pens; Private landing facilities; Private swimming enclosures; Reclamation works; Residential accommodation; Short-term rental accommodation; Slipways; Swimming pools; Tourist and visitor accommodation; Tourist facilities; Water-based restaurants and entertainment facilities; Waterfront access stairs"
+},
+{
+"id": 35440,
+"sepp": "Biodiversity",
+"served": false,
+"action": "REPLACE",
+"old_text": "Above-water boat lifts; Advertisements; Advertising structures; Aviation facilities; Boat building and repair facilities; Boat lifts; Boat sheds; Charter and tourism boating facilities; Commercial port facilities; Floating boat platforms; Houseboats; Intertidal dredging; Marinas; Mooring pens; Private landing facilities; Private swimming enclosures; Reclamation works; Residential accommodation; Skids; Slipways; Swimming pools; Tourist facilities; Water-based restaurants and entertainment facilities; Waterfront access stairs",
+"new_text": "Above-water boat lifts; Advertisements; Advertising structures; Aviation facilities; Boat building and repair facilities; Boat lifts; Boat sheds; Camping grounds; Caravan parks; Charter and tourism boating facilities; Commercial marinas; Commercial port facilities; Eco-tourist facilities; Floating boat platforms; Houseboats; Intertidal dredging; Manufactured home estates; Mooring pens; Private landing facilities; Private swimming enclosures; Reclamation works; Residential accommodation; Short-term rental accommodation; Skids; Slipways; Swimming pools; Tourist and visitor accommodation; Tourist facilities; Water-based restaurants and entertainment facilities; Waterfront access stairs"
+},
+{
+"id": 35448,
+"sepp": "Biodiversity",
+"served": false,
+"action": "REPLACE",
+"old_text": "Above-water boat lifts; Advertisements; Advertising structures; Boat sheds; Floating boat platforms; Houseboats; Intertidal dredging; Mooring pens; Private landing facilities; Reclamation works; Residential accommodation; Skids; Slipways; Swimming pools; Tourist facilities; Waterbased restaurants and entertainment facilities; Waterfront access stairs",
+"new_text": "Above-water boat lifts; Advertisements; Advertising structures; Boat sheds; Camping grounds; Caravan parks; Eco-tourist facilities; Floating boat platforms; Houseboats; Intertidal dredging; Manufactured home estates; Mooring pens; Private landing facilities; Reclamation works; Residential accommodation; Short-term rental accommodation; Skids; Slipways; Swimming pools; Tourist and visitor accommodation; Tourist facilities; Water-based restaurants and entertainment facilities; Waterfront access stairs"
+},
+{
+"id": 35459,
+"sepp": "Biodiversity",
+"served": false,
+"action": "REPLACE",
+"old_text": "Above-water boat lifts; Advertisements; Advertising structures; Aviation facilities; Boat sheds; Commercial port facilities; Floating boat platforms; Houseboats; Intertidal dredging; Mooring pens; Private landing facilities; Private swimming enclosures; Reclamation works; Residential accommodation; Slipways; Swimming pools; Tourist facilities; Water-based restaurants and entertainment facilities; Waterfront access stairs",
+"new_text": "Above-water boat lifts; Advertisements; Advertising structures; Aviation facilities; Boat sheds; Camping grounds; Caravan parks; Commercial port facilities; Eco-tourist facilities; Floating boat platforms; Houseboats; Intertidal dredging; Manufactured home estates; Mooring pens; Private landing facilities; Private swimming enclosures; Reclamation works; Residential accommodation; Short-term rental accommodation; Slipways; Swimming pools; Tourist and visitor accommodation; Tourist facilities; Water-based restaurants and entertainment facilities; Waterfront access stairs"
+},
+{
+"id": 35477,
+"sepp": "Biodiversity",
+"served": false,
+"action": "REPLACE",
+"old_text": "Above-water boat lifts; Advertisements; Advertising structures; Aviation facilities; Boat sheds; Charter and tourism boating facilities; Commercial port facilities; Houseboats; Intertidal dredging; Marinas; Reclamation works; Residential accommodation; Swimming pools; Tourist facilities; Water-based restaurants and entertainment facilities; Waterfront access stairs",
+"new_text": "Above-water boat lifts; Advertisements; Advertising structures; Aviation facilities; Boat sheds; Camping grounds; Caravan parks; Charter and tourism boating facilities; Commercial marinas; Commercial port facilities; Eco-tourist facilities; Houseboats; Intertidal dredging; Manufactured home estates; Reclamation works; Residential accommodation; Short-term rental accommodation; Swimming pools; Tourist and visitor accommodation; Tourist facilities; Water-based restaurants and entertainment facilities; Waterfront access stairs"
+},
+{
+"id": 35486,
+"sepp": "Biodiversity",
+"served": false,
+"action": "REPLACE",
+"old_text": "Above-water boat lifts; Advertisements; Advertising structures; Aviation facilities; Boat sheds; Charter and tourism boating facilities; Commercial port facilities; Floating boat platforms; Houseboats; Intertidal dredging; Marinas; Mooring pens; Private landing facilities; Private swimming enclosures; Reclamation works; Residential accommodation; Swimming pools; Tourist facilities; Water-based restaurants and entertainment facilities; Waterfront access stairs",
+"new_text": "Above-water boat lifts; Advertisements; Advertising structures; Aviation facilities; Boat sheds; Camping grounds; Caravan parks; Charter and tourism boating facilities; Commercial marinas; Commercial port facilities; Eco-tourist facilities; Floating boat platforms; Houseboats; Intertidal dredging; Manufactured home estates; Mooring pens; Private landing facilities; Private swimming enclosures; Reclamation works; Residential accommodation; Short-term rental accommodation; Swimming pools; Tourist and visitor accommodation; Tourist facilities; Water-based restaurants and entertainment facilities; Waterfront access stairs"
+},
+{
+"id": 35636,
+"sepp": "Biodiversity",
+"served": false,
+"action": "REPLACE",
+"old_text": "NorBE Guideline means the document titled Neutral or Beneficial Ef ect on Water Quality Assessment Guideline 2022 published by Water NSW on the date on which State Environmental Planning Policy Amendment (Water Catchments) 2022 commences.",
+"new_text": "NorBE Guideline means the document titled Neutral or Beneficial Effect on Water Quality Assessment Guideline 2026 published by Water NSW in January 2026."
+},
+{
+"id": 35444,
+"sepp": "Biodiversity",
+"served": true,
+"action": "REPLACE",
+"old_text": "Above-water boat lifts; Advertisements; Advertising structures; Boat sheds; Floating boat platforms; Houseboats; Intertidal dredging; Marinas; Mooring pens; Private landing facilities; Reclamation works; Residential accommodation; Skids; Slipways; Swimming pools; Tourist facilities; Uses and activities prohibited under the Control of Naval Waters Act 1918 of the Commonwealth, Water-based restaurants and entertainment facilities; Waterfront access stairs",
+"new_text": "Above-water boat lifts; Advertisements; Advertising structures; Boat sheds; Camping grounds; Caravan parks; Commercial marinas; Eco-tourist facilities; Floating boat platforms; Houseboats; Intertidal dredging; Manufactured home estates; Mooring pens; Private landing facilities; Reclamation works; Residential accommodation; Short-term rental accommodation; Skids; Slipways; Swimming pools; Tourist and visitor accommodation; Tourist facilities; Uses and activities prohibited under the Control of Naval Waters Act 1918 of the Commonwealth, Water-based restaurants and entertainment facilities; Waterfront access stairs"
+},
+{
+"id": 18921,
+"sepp": "Planning Systems",
+"served": true,
+"action": "REPLACE",
+"old_text": "Development for the purposes of a tertiary institution, including an associated research facility, that has an estimated development cost of more than 50 million.",
+"new_text": "Development for the purposes of a university or a TAFE establishment, including an associated research facility, that has an estimated development cost of more than $50 million."
+},
+{
+"id": 18890,
+"sepp": "Planning Systems",
+"served": false,
+"action": "RETIRE",
+"old_text": "continues to apply to any of the following that are in force as if those policies had not been repealed"
+},
+{
+"id": 19063,
+"sepp": "Planning Systems",
+"served": false,
+"action": "RETIRE",
+"old_text": "Development for the purposes of a new dam and pipeline located at Ogunbil in the Tamworth Regional local government area, including the construction and operation of a dam with up to 22.5GL of storage, construction and operation of a bulk water pipeline from the dam to intersect with the pipeline at the existing Chaffey Dam, decommissioning the existing Dungowan Dam and related infrastructure and services, rehabilitation of the storage area of the existing Dungowan Dam, ancillary development, in"
+},
+{
+"id": 19119,
+"sepp": "Planning Systems",
+"served": false,
+"action": "RETIRE",
+"old_text": "Development for the purposes of the Beaches Link and Gore Hill Freeway Connection project..."
+},
+{
+"id": 19167,
+"sepp": "Planning Systems",
+"served": false,
+"action": "RETIRE",
+"old_text": "State Environmental Planning Policy No 1—Development Standards, as in force immediately before its repeal, continues to apply..."
+},
+{
+"id": 18915,
+"sepp": "Planning Systems",
+"served": true,
+"action": "REPLACE",
+"old_text": "Development for other tourist related purposes (but not including any commercial premises, residential accommodation and serviced apartments whether separate or ancillary to the tourist related component) that—(a) has an estimated development cost of more than 100 million, or (b) has an estimated development cost of more than 10 million and is located in an environmentally sensitive area of State significance or a sensitive coastal location.",
+"new_text": "Development for the purposes of eco-tourist facilities, hotel or motel accommodation or serviced apartments, but not including residential accommodation whether separate or ancillary to the development, that— (a) has an estimated development cost of more than $100 million, or (b) has an estimated development cost of more than $10 million and is located in an environmentally sensitive area of State significance or a sensitive coastal location."
+},
+{
+"id": 18932,
+"sepp": "Planning Systems",
+"served": true,
+"action": "REPLACE",
+"old_text": "In-fill affordable housing (1) Development to which State Environmental Planning Policy (Housing) 2021, Chapter 2, Part 2, Division 1 applies if—(a) the part of the development that is residential development has an estimated development cost of—(i) for development on land in the Eastern Harbour City, Central River City or Western Parkland City in the Six Cities Region—more than 75 million, or (ii) for development on other land—more than 30 million, and (b) the development does not involve dev",
+"new_text": "In-fill affordable housing (1) Development to which State Environmental Planning Policy (Housing) 2021, Chapter 2, Part 2, Division 1 applies if— (a) the part of the development that is residential development has an estimated development cost of— (i) for development on land in a designated Sydney local government area—more than $75 million, or (ii) for development on other land—more than $30 million, and (b) the development does not involve development prohibited under an environmental planning instrument applying to the land."
+},
+{
+"id": 42545,
+"sepp": "Planning Systems",
+"served": false,
+"action": "RETIRE",
+"old_text": "(a) construction and operation of twin motorway tunnels (the Beaches Link tunnels) connecting the Warringah Freeway and the Western Harbour Tunnel at Cammeray and the Gore Hill Freeway at Artarmon to the Burnt Bridge Creek Deviation at Balgowlah and the Wakehurst Parkway at Killarney Heights,   \n(b) upgrade of the Wakehurst Parkway to 2 lanes in each direction between the tunnel portals at Killarney Heights and the intersection with Warringah Road at Frenchs Forest,   \n(c) construction of an access road connection between the Burnt Bridge Creek Deviation and Sydney Road at Balgowlah,   \n(d) associated works to connect the Beaches Link tunnels with the Gore Hill Freeway and the Lane Cove Tunnel at Artarmon,   \n(e) associated works to upgrade and connect the surrounding road network, bridges, ramps, footpaths and shared cycle and pedestrian pathways,   \n(f) ancillary development, including construction compounds, utilities infrastructure, drainage and treatment works, electronic tolling facilities, signage, ventilation systems, emergency systems, systems for the control and management of roads, tunnel support facilities and motorway control centre facilities,   \n(g) development for the purposes of public recreation areas and facilities at Balgowlah."
+},
+{
+"id": 44029,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "Subdivision 2 Development in or adjacent to rail corridors and interim rail corridors— notification and other requirements",
+"new_text": "Subdivision 2 Development in or adjacent to rail corridors—notification and other requirements"
+},
+{
+"id": 43686,
+"sepp": "Transport",
+"served": true,
+"action": "RETIRE",
+"old_text": "(i) within or immediately adjacent to an easement for electricity purposes (whether or not the electricity infrastructure exists), or   \n(ii) immediately adjacent to an electricity substation, or   \n(iii) within 5 m of an exposed overhead electricity power line,"
+},
+{
+"id": 43688,
+"sepp": "Transport",
+"served": true,
+"action": "RETIRE",
+"old_text": "(i) within 30 m of a structure supporting an overhead electricity transmission line, measured horizontally from the top of the pool to the bottom of the structure at ground level, or (ii) within 5 m of an overhead electricity power line, measured vertically upwards from the top of the pool, (d) development involving or requiring the placement of power lines underground, unless an agreement with respect to the placement underground of power lines is in force between the electricity supply authority and the council for the land concerned."
+},
+{
+"id": 44064,
+"sepp": "Transport",
+"served": true,
+"action": "RETIRE",
+"old_text": "(i) involves the penetration of ground to a depth of at least 2 m below ground level (existing), or (ii) has an estimated development cost of more than \\ 200,000and involves the erection of a structure that is 10 or more metres high or an increase in the height of a structure so that it is more than10 mor (c) on the land shown as “Sydney Metro West Tunnel” on a rail corridors map and involves the penetration of ground to a depth of at least2 m below ground level (existing)."
+},
+{
+"id": 44999,
+"sepp": "Transport",
+"served": true,
+"action": "REPLACE",
+"old_text": "(ix) a cafeteria or canteen that is not more than 2 storeys high and carried out in accordance with AS 4674 —2004, Design, construction and fit-out of food premises, published by Standards Australia on 11 February 2004, or",
+"new_text": "(ix) food and drink premises that— (A) are not a pub or small bar, and (B) are not more than 2 storeys high, and (C) provides for students or staff, and (D) are carried out in accordance with AS 4674—2004, Design, construction and fit-out of food premises, published by Standards Australia on 11 February 2004, or"
+},
+{
+"id": 43286,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "Division 5.1 assessment guidelines for environmental factors means the Guidelines for Division 5.1 assessments— Consideration of environmental factors for health services facilities and schools published by the Department in October 2024.",
+"new_text": "Division 5.1 assessment guidelines means the Guidelines for Division 5.1 assessments published by the Department in May 2026."
+},
+{
+"id": 43857,
+"sepp": "Transport",
+"served": false,
+"action": "REPLACE",
+"old_text": "(a) be satisfied that the potential safety risks or risks to the integrity of the pipeline that are associated with the development to which the application relates have been identified, and   \n(b) take those risks into consideration, and   \n(c) give written notice of the application to the pipeline operator concerned within 7 days after the application is made, and   \n(d) take into consideration any response to the notice that is received from the pipeline operator within 21 days after the notice is given.",
+"new_text": "(a) be satisfied that the potential safety risks or risks to the integrity of the pipeline that are associated with the development to which the application relates have been identified, and (b) take those risks into consideration."
+},
+{
+"id": 44062,
+"sepp": "Transport",
+"served": false,
+"action": "RETIRE",
+"old_text": "(a) on the land shown as “Zone A” on a rail corridors map and has an estimated development cost of more than $200,000 , or"
+},
+{
+"id": 44206,
+"sepp": "Transport",
+"served": false,
+"action": "RETIRE",
+"old_text": "(A) the efficiency of movement of people and freight to and from the site and the extent of multipurpose trips, and   \n(B) the potential to minimise the need for travel by car and to maximise movement of freight in containers or bulk freight by rail, and"
+},
+{
+"id": 43679,
+"sepp": "Transport",
+"served": true,
+"action": "RETIRE",
+"old_text": "(a) the penetration of ground to a depth of at least 3 m below ground level (existing) on land that is within 10 m , measured radially, of the centreline of the following electricity supply corridors, or parts of those corridors"
+},
+{
+"id": 18888,
+"sepp": "Planning Systems",
+"served": true,
+"action": "RETIRE",
+"old_text": "In deciding whether to grant concurrence, the Planning Secretary must ta..."
+},
+{
+"id": 42651,
+"sepp": "Planning Systems",
+"served": true,
+"action": "RETIRE",
+"old_text": "(g) residential land (within the meaning of State Environmental Planning Policy No 26—Littoral Rainforests) that is within a distance of 100 m from the outer edge of the heavy black line on the series of maps held in the Department and marked “State Environmental Planning Policy No 26—Littoral Rainforests (Amendment No 2)”."
+},
+{
+"id": 45827,
+"sepp": "Transport",
+"served": true,
+"action": "RETIRE",
+"old_text": "(a) the maximum gross floor area for a building on the land, imposed by an environmental planning instrument, or\n(b) if no environmental planning instrument imposes a development standard referred to in paragraph (a)— 2 000 m2."
+},
+{
+"id": 45102,
+"sepp": "Transport",
+"served": false,
+"action": "RETIRE",
+"old_text": "(a) give written notice of the application to Transport for NSW (TfNSW) within 7 days after the application is made, and   \n(b) take into consideration the matters referred to in subsection (3)."
+}
+]

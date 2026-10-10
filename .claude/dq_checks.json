@@ -639,7 +639,7 @@
    "note": "⚠ Opened as DQ-68 and RENUMBERED to DQ-69 on rebase: #954's ledger took 68 for the untagged-topic row. Measured 2026-08-14: 26 of 26 active instruments stale, max(last_checked) = 2026-06-08 = 67 days blind. TWO independent causes, both fixed: (a) the Fly container died at import - #504 added `refresh_runbook` to legislation_monitor.py and never added the COPY, confirmed live by ModuleNotFoundError; (b) even when it ran, check_instrument returned early whenever the source gave no version, which on the PCO path is the NORMAL case, so a run reporting 'Checked: 26' wrote ZERO rows. (b) also invalidated this probe's first premise - the gate caught its own flaw. PCO's export lists every amended instrument, so absence is an affirmative confirmation and is now recorded, but ONLY where pco_instrument_id is set. Post-fix measured 1. Silence stayed invisible because run_loop.sh swallows failures with `|| echo \"will retry next cycle\"`, the machine stays `started` either way, and the healthchecks.io ping is read by nothing. Telegram on the Fly machine was ALSO returning HTTP 404 (stale token) - reset from the working Railway secret. REVERIFIED 2026-09-01: the tracker's headline row still said '67 days blind, schedule not repaired' three weeks after this note already recorded both causes fixed -- classic check-knew-prose-didn't. Confirmed live from two independent sources: instrument_registry max(last_checked) = 2026-08-27 22:36 UTC across all 26 active instruments, and the ops Telegram log independently shows weekly successful runs on 08-14/08-21/08-28. Residual is still exactly 1 (wingecarribee_lep_2010), matching this note's own predicted floor -- not drift. The 7 needs_review instruments this note's 08-14 measurement also mentioned are NOT part of this check (a human-review backlog, not monitor liveness) and are now tracked separately as DQ-88."
   },
   "DQ-88": {
-   "declared": "open",
+   "declared": "fixed",
    "check": [
     "python",
     "scripts/dq_probe_live.py",
@@ -1215,7 +1215,7 @@
    "kind": "outreach_claim",
    "claim": "For the councils listed, every rule shown carries the council's own sentence and the clause it came from, in the plan registered as in force. Known exceptions are stated.",
    "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
-   "declared": "false",
+   "declared": "true",
    "declared_false_2026-10-05": "User ruling 2026-10-05 (option 1 of 3). Sub-check DQ-88 reads 6: the six SEPPs registered under DQ-130 (Transport and Infrastructure, Biodiversity and Conservation, Planning Systems, Primary Production, Resilience and Hazards, Sustainable Buildings) start needs_review=TRUE because their stored text predates the law in force -- Sustainable Buildings is 4 substantive changes behind (amended 31 Oct 2025). The claim was already untrue for that text before registration; it was invisible. Returns to true when ce-lep-sepp-currency-integration-PROMPT Step 3 refreshes each SEPP and DQ-88 reads 0. Clearing the flags to make this green was rejected: the monitor would then stamp older text verified current.",
    "check": [
     "python",
