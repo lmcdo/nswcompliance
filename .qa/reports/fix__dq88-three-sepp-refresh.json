@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: production law-text changes on 3 SEPPs (455 rows retired or replaced with history; 423 applied, 32 prepared) and a migration that clears their review flags.",
-  "commit_hash": "0fd0757f",
+  "commit_hash": "09268d78",
   "files": [
     "scripts/dq88_sepp_bulk_refresh.py",
     "migrations/099_dq88_clear_three_refreshed_sepps.sql",
@@ -11,7 +11,8 @@
     "data/dq88_sepp_refresh_plan3_2026-10-10.json",
     "data/dq88_sepp_refresh_plan4_2026-10-10.json",
     "data/dq88_sepp_refresh_plan5_2026-10-10.json",
-    "data/dq88_sepp_refresh_plan6_2026-10-10.json"
+    "data/dq88_sepp_refresh_plan6_2026-10-10.json",
+    ".claude/dq_checks.json"
   ],
   "pre_impl": {
     "existing_data": "DQ-88 read 3 after migration 096: Biodiversity, Planning Systems and Transport SEPPs, loaded from 2025 PDFs and never monitored until 2026-10-05; 459 stored rows held text the law has since changed.",
@@ -96,10 +97,10 @@
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Owner runs: python scripts/dq88_sepp_bulk_refresh.py data/dq88_sepp_refresh_plan6_2026-10-10.json --apply ; python scripts/apply_migration_dry_run.py migrations/099_dq88_clear_three_refreshed_sepps.sql --apply ; then python scripts/dq_probe_live.py --id DQ-88 reads 0."
+    "manual_verify": "Done 2026-10-10: plan6 and migration 099 applied; python scripts/dq_probe_live.py --id DQ-88 reads 0 and python scripts/dq_check.py --outreach reads 17 of 17."
   },
   "real_layer_exempt": {
-    "scripts/dq88_sepp_bulk_refresh.py": "One-off data refresh run against production 2026-10-10: plans 1-5 applied (423 rows), plan6 dry-run passes (32 rows).",
-    "migrations/099_dq88_clear_three_refreshed_sepps.sql": "Dry run against production refuses as designed until plan6 is applied."
+    "scripts/dq88_sepp_bulk_refresh.py": "Data refresh run against production 2026-10-10: plans 1-6 applied (455 rows).",
+    "migrations/099_dq88_clear_three_refreshed_sepps.sql": "Applied to production 2026-10-10 after plan6; DQ-88 0."
   }
 }
