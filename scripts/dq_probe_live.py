@@ -2813,13 +2813,14 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # User decision 2026-10-12: a clause number that cannot be proven is not shown; the
         # page is shown instead. So what must be proven is what the page shows: the clause
         # number when lib/citation-display.ts shows it (proven/imprecise), otherwise the page
-        # (dcp_page_repair page_check on_page / moved / read_by_person). Rules with no check
+        # (dcp_page_repair page_check on_page / moved). Rules with no check
         # at all -- statewide instruments and council rows never judged -- count as unproven.
         # Measured 2026-10-12: 564 council + 554 Inner West LEP + 5,274 statewide = 6,392.
         "SELECT count(*) FROM regulatory_provisions"
-        f" WHERE {_SERVED} AND (source_council IS NULL OR citation_status IS NULL"
-        "   OR (citation_status NOT IN ('proven', 'imprecise')"
-        "       AND COALESCE(page_check, '') NOT IN ('on_page', 'moved', 'read_by_person')))",
+        # Proven = a script proved the shown clause OR the page. 'read_by_person' is a person's
+        # reading, not a script's, so it does not count (cross-review 2026-10-12).
+        f" WHERE {_SERVED} AND NOT (COALESCE(citation_status, '') IN ('proven', 'imprecise')"
+        "   OR COALESCE(page_check, '') IN ('on_page', 'moved'))",
         (),
         "Each count is a served rule for which neither the clause number nor the page "
         "the site shows has been proven by a script against the source document. Cleared "
