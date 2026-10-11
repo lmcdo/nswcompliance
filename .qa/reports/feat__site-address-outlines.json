@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds the address-register path and a check against each chapter's own site map to the fail-closed site builder, and extends two keying maps. Nothing changes until the approved write; then 102 rules from seven single-site chapters reach only their own parcels instead of every house in the council.",
-  "commit_hash": "9197f790",
+  "commit_hash": "5eb3854b",
   "files": [
     ".qa/reports/feat__site-address-outlines.json",
     "data/site_chapters/address_sites.json",
