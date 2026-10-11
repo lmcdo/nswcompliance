@@ -67,7 +67,7 @@ describe('the mounted assessment page uses the builder', () => {
     expect(src).toMatch(/buildForPropertyParams\(\{[\s\S]*?landFacts:\s*propertyData\?\.constraints\?\.landFacts/);
   });
 
-  it('passes the lot's flood map and bushfire flag', () => {
+  it("passes the lot's flood map and bushfire flag", () => {
     expect(src).toMatch(/flood:\s*propertyData\?\.constraints\?\.dcpFloodMap\?\.inFloodArea === true/);
     expect(src).toMatch(/bushfire:\s*propertyData\?\.constraints\?\.bushfireProne === true/);
   });
