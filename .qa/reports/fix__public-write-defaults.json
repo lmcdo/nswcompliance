@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Records two privilege changes applied to production with the user's yes: the public schema's default no longer grants write privileges to anon/authenticated, and writes through an unused auto-updatable view are revoked. No data changes.",
-  "commit_hash": "d69aca1c",
+  "commit_hash": "f14cd353",
   "files": [
     "migrations/110_no_public_write_by_default.sql",
     ".qa/reports/fix__public-write-defaults.json"
