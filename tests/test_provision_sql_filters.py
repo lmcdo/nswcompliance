@@ -124,3 +124,76 @@ def test_the_old_predicate_really_dropped_untagged_rules():
     kept = _kept_labels(OLD_PREDICATE)
     assert "no topic, no marker" not in kept
     assert "ordinary topic" in kept
+
+
+# --------------------------------------------------------------------------- zone
+# Found 2026-10-11 (served-answer audit): the route applied the zone predicate to the
+# use_specific layer only, so 2,838 served rules whose own chapter limits them to other
+# zones reached every house -- Marrickville Part 6 industrial (E4) on an R2 house.
+
+# The pre-fix string, kept so the database test shows the check discriminates.
+OLD_ZONE_PREDICATE = (
+    "(v2_applicable_zones IS NULL OR %s = ANY(v2_applicable_zones) "
+    "OR 'ALL' = ANY(v2_applicable_zones))"
+)
+
+# (label, v2_applicable_zones, should_be_kept for an R2 house)
+ZONE_CASES = [
+    ("no zone limit recorded", None, True),
+    ("empty zone list (undecided)", [], True),
+    ("all zones", ["ALL"], True),
+    ("lists the house's zone", ["R2", "R3"], True),  # noqa: zone-codes -- test fixtures, not a lookup
+    ("industrial only", ["E4"], False),  # noqa: zone-codes -- test fixtures, not a lookup
+    ("commercial and mixed use only", ["E1", "MU1"], False),  # noqa: zone-codes -- test fixtures, not a lookup
+]
+
+
+def shared_zone_predicate() -> str:
+    m = re.search(r"export const ZONE_APPLIES_SQL\s*=\s*\(p: number\): string =>\s*`([^`]+)`",
+                  LIB.read_text(encoding="utf-8"))
+    assert m, "ZONE_APPLIES_SQL is no longer a single template literal -- update this reader"
+    return m.group(1).replace("$${p}", "%s")
+
+
+def test_the_route_checks_zone_in_every_layer():
+    """Drift guard: the zone predicate must not be gated to one layer again."""
+    src = ROUTE.read_text(encoding="utf-8")
+    assert "${ZONE_APPLIES_SQL(" in src
+    assert "layer === 'use_specific' && filters.zone" not in src, (
+        "the zone check is gated to the use_specific layer again -- 2,838 rules for other "
+        "zones would reach every house"
+    )
+
+
+def test_the_zone_predicate_carries_no_percent_sign():
+    assert "%" not in shared_zone_predicate().replace("%s", "")
+
+
+def _kept_zone_labels(predicate: str, zone: str = "R2") -> set[str]:
+    conn = _real_conn()
+    try:
+        cur = conn.cursor()
+        rows = ", ".join(["(%s, %s::text[])"] * len(ZONE_CASES))
+        params = [v for label, zones, _ in ZONE_CASES for v in (label, zones)]
+        cur.execute(
+            f"SELECT label FROM (VALUES {rows}) AS r(label, v2_applicable_zones) WHERE {predicate}",
+            params + [zone],
+        )
+        return {r[0] for r in cur.fetchall()}
+    finally:
+        conn.close()
+
+
+@pytest.mark.database
+def test_the_zone_predicate_drops_other_zones_and_keeps_undecided_rows():
+    kept = _kept_zone_labels(shared_zone_predicate())
+    assert kept == {label for label, _, keep in ZONE_CASES if keep}
+
+
+@pytest.mark.database
+def test_the_old_zone_predicate_dropped_undecided_rows():
+    """The check above can fail: the pre-fix string loses the empty-list row, and still
+    keeps the ordinary one, so an empty result cannot satisfy the first test vacuously."""
+    kept = _kept_zone_labels(OLD_ZONE_PREDICATE)
+    assert "empty zone list (undecided)" not in kept
+    assert "lists the house's zone" in kept
