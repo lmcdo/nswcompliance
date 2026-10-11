@@ -82,6 +82,15 @@ WATCHED: list[tuple[str, str]] = [
     ("DQ-139", "council/dev-type pairs whose setback arithmetic lacks a control"),
 ]
 
+#: The outreach scoreboard (user ruling 2026-10-11): every served rule is for this house and
+#: its citation is machine-proven. Printed beside the provenance numbers so no session can
+#: report one step's number without the whole remaining gap in the same view.
+SCOREBOARD: list[tuple[str, str]] = [
+    ("DQ-143", "rules from a part-of-council chapter shown to every house"),
+    ("DQ-144", "rules whose land no machine has confirmed (upper bound)"),
+    ("DQ-145", "served rules whose citation no script has proven"),
+]
+
 
 def _load(name: str, relative: str):
     path = ROOT / relative
@@ -105,7 +114,7 @@ def _measure() -> dict:
     try:
         cur = conn.cursor()
         readings = {}
-        for dq_id, _ in WATCHED:
+        for dq_id, _ in WATCHED + SCOREBOARD:
             entry = probes.get(dq_id)
             if entry is None:
                 readings[dq_id] = None
@@ -145,6 +154,15 @@ def _render(payload: dict, age_s: float, note: str = "") -> str:
     lines.append("    python scripts/dq_probe_live.py --id DQ-136   # and 137, 138, 139")
     lines.append("  A reading above is a FLOOR, not a ceiling: DQ-137 and DQ-139 each")
     lines.append("  carry a recorded scope limit, so the real figure is at least this.")
+    lines.append("OUTREACH SCOREBOARD (target 0 each; report the TOTAL, not one step)")
+    total: int | None = 0
+    for dq_id, means in SCOREBOARD:
+        value = readings.get(dq_id)
+        total = None if value is None or total is None else total + value
+        shown = "UNKNOWN" if value is None else f"{value:,}"
+        lines.append(f"  {dq_id}  {shown:>9}  {means}")
+    total_shown = "UNKNOWN" if total is None else f"{total:,}"
+    lines.append(f"  TOTAL   {total_shown:>9}  python scripts/dq_probe_live.py --id DQ-143  # 144, 145")
     return "\n".join(lines)
 
 
