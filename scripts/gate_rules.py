@@ -58,6 +58,24 @@ GATE_RULES: list[dict] = [
      "where": "source_chapter_key = 'chapter-4-4-vicinity-of-places-of-heritage-significance'"
               " AND v2_dcp_layer = 'heritage'",
      "set": {"v2_dcp_layer": "generic"}},
+    # Ku-ring-gai Part 16 "guides development on land identified on the Ku-ring-gai Bushfire Prone
+    # Land Map and/or ... the Ku-ring-gai Bushfire Risk Evacuation Map" (p2). The Bushfire Prone Land
+    # Map is the one the Planning Portal's bushfire flag reads, so the condition layer serves these to
+    # exactly those houses. Recorded limit (user decision 2026-10-11): land only on the Risk
+    # Evacuation Map has no layer here and is not shown these rules.
+    {"name": "krg_16_bushfire_condition", "council": "ku_ring_gai",
+     "where": "source_chapter_key = 'section-b-part-16-bushfire'",
+     "set": {"v2_dcp_layer": "condition", "v2_site_condition_required": "bushfire"}},
+    # Marrickville 2.23 "applies to the land specified in Inner West Local Environmental Plan 2022
+    # (Inner West LEP 2022) Acid Sulfate Soils Maps" (p5) -- the LEP layer the page reads.
+    {"name": "marrickville_2_23_acid_sulfate", "council": "marrickville",
+     "where": "source_chapter_key = 'part2-s23-acid-sulfate'",
+     "set": {"v2_dcp_layer": "condition", "v2_site_condition_required": "acid_sulfate"}},
+    # Ku-ring-gai Part 17 "guides development on land identified within the Natural Resource --
+    # Riparian Lands Map in the KLEP (see clause 6.4)" (p2) -- the LEP layer the page reads.
+    {"name": "krg_17_riparian", "council": "ku_ring_gai",
+     "where": "source_chapter_key = 'section-b-part-17-riparian'",
+     "set": {"v2_dcp_layer": "condition", "v2_site_condition_required": "riparian"}},
 ]
 _GATE_COLUMNS = {"v2_marker", "v2_dcp_layer", "v2_site_condition_required"}
 

@@ -19,6 +19,14 @@ export interface ForPropertyQueryInput {
   precinctId?: string | null;
   landApplicationInstruments?: LandApplicationInstrument[] | null;
   landFacts?: LandFacts | null;
+  /** The lot is on a flood map (council DCP flood map or the state flood flag). */
+  flood?: boolean | null;
+  /** The lot is on the Bushfire Prone Land Map. */
+  bushfire?: boolean | null;
+  /** The lot is on the LEP Acid Sulfate Soils Map (any class). */
+  acidSulfate?: boolean | null;
+  /** The lot is on the LEP Riparian Lands map. */
+  riparian?: boolean | null;
 }
 
 export function buildForPropertyParams(input: ForPropertyQueryInput): URLSearchParams {
@@ -37,6 +45,14 @@ export function buildForPropertyParams(input: ForPropertyQueryInput): URLSearchP
   // Schedule 1 item) is this land's. Not sent = every such rule is kept as "unconfirmed".
   const landFacts = encodeLandFacts(input.landFacts);
   if (landFacts) params.set('land_facts', landFacts);
+  // Site-condition rules (flood, bushfire) are served only when the route is told the lot has that
+  // condition. The page never sent these, so every condition-layer rule reached no house -- 18 Castra
+  // Pl Double Bay, on Woollahra's Flood Planning Area map, was shown 0 of 44 flood rules (2026-10-11).
+  // Sent only when true: absent means "not on that map or not known", and the route shows none.
+  if (input.flood === true) params.set('flood', 'true');
+  if (input.bushfire === true) params.set('bushfire', 'true');
+  if (input.acidSulfate === true) params.set('acid_sulfate', 'true');
+  if (input.riparian === true) params.set('riparian', 'true');
   // dev_types intentionally excluded -- provisions are property-specific, not dev-type-specific.
   return params;
 }

@@ -369,6 +369,11 @@ export function ProvisionsByTocStructure({
     precinctId,
     landApplicationInstruments: propertyData?.constraints?.landApplicationInstruments,
     landFacts: propertyData?.constraints?.landFacts,
+    flood: propertyData?.constraints?.dcpFloodMap?.inFloodArea === true
+      || propertyData?.constraints?.floodProne === true,
+    bushfire: propertyData?.constraints?.bushfireProne === true,
+    acidSulfate: Boolean(propertyData?.constraints?.acidSulfateSoils),
+    riparian: propertyData?.constraints?.riparianLand?.inRiparianArea === true,
   });
 
   // If no formerCouncil, council DCP is not processed — skip fetch entirely
