@@ -1,0 +1,24 @@
+{
+  "tier": "minor",
+  "justification": "Records two privilege changes applied to production with the user's yes: the public schema's default no longer grants write privileges to anon/authenticated, and writes through an unused auto-updatable view are revoked. No data changes.",
+  "commit_hash": "d69aca1c",
+  "files": [
+    "migrations/110_no_public_write_by_default.sql",
+    ".qa/reports/fix__public-write-defaults.json"
+  ],
+  "break_it": [
+    {
+      "scenario": "A future feature creates a table that the browser must insert into with the public key, such as a sign-up form.",
+      "what_happens": "Inserts from the browser would be refused until a grant and a row policy are added deliberately.",
+      "mitigated": true,
+      "how": "That is the intended default: a public write must be an explicit grant with a policy, never an accident of table creation. The app's server connects as postgres and is unaffected.",
+      "repro": "CREATE TABLE as postgres, then inspect information_schema.role_table_grants"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Already applied 2026-10-12 with the user's yes; re-running is harmless.",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Scratch table showed only SELECT/REFERENCES/TRIGGER for anon and authenticated; DQ-138 reads 0."
+  }
+}
