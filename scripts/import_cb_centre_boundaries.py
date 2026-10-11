@@ -93,6 +93,14 @@ def main() -> int:
         print(f"  {r['precinct_id']:<4} {r['precinct_name']:<30} {r['area_sqm'] / 1e4:7.1f} ha  "
               f"{r['extraction_method']} ({r['confidence_score']})")
     conn = connect()
+    try:
+        return _load(conn, rows, a.commit)
+    finally:
+        conn.close()
+
+
+def _load(conn, rows: list[dict], commit: bool) -> int:
+    # prior-art-checked: closing this script's own connection; no new data source is added.
     cur = conn.cursor()
     cur.execute("SELECT current_database()")
     print(f"database: {cur.fetchone()[0]}")
