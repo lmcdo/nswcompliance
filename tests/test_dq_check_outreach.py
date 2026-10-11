@@ -106,10 +106,12 @@ def test_outreach_rows_are_not_ledger_orphans(dq, monkeypatch):
 
 def test_the_committed_claim_set_matches_the_decision():
     """The 2026-09-14 decision: 17 claims, 14 and 15 retired (their rows assert the claim is gone),
-    every row blocks outreach, and every declared state is one the runner enforces."""
+    plus the user's 2026-10-11 ruling (served-answer audit RESUME section 11): OC-18/19/20 --
+    every rule shown is for this house and its citation is machine-proven. Every row blocks
+    outreach, and every declared state is one the runner enforces."""
     checks = json.loads(_CHECKS.read_text(encoding="utf-8"))["checks"]
     oc = {k: v for k, v in checks.items() if k.startswith("OC-")}
-    assert sorted(oc, key=lambda k: int(k[3:])) == [f"OC-{i}" for i in range(1, 18)]
+    assert sorted(oc, key=lambda k: int(k[3:])) == [f"OC-{i}" for i in range(1, 21)]
     for cid, row in oc.items():
         assert row.get("blocks_outreach") is True, cid
         assert row.get("declared") in {"true", "false", "unverifiable"}, cid

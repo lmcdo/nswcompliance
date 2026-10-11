@@ -20,6 +20,7 @@ shape this whole effort exists to remove.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -31,6 +32,100 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import dq_db  # noqa: E402
 
 SAR_SOURCE = "Microsoft Planetary Computer S1 RTC"
+
+
+#: The ONLY wording that lets a chapter count as covering its whole council. An AI reader
+#: proposed each chapter's scope (data/chapter_scope/); its "whole_council" label counts only
+#: when the chapter's own quoted sentence matches this fixed pattern. Measured 2026-10-11:
+#: 16 of 94 AI "whole_council" labels confirmed; the rest are purpose statements, and at
+#: least one is wrong (C-B 4.4 "vicinity of places of heritage significance"). An AI label
+#: may make a number go UP, never down.
+_AREA = r"(local government area|LGA|city|council area|municipality|shire)"
+_COUNCIL_WIDE = re.compile(
+    r"\ball land (with)?in (the )?.{0,50}?\b" + _AREA + r"\b"
+    r"|\bwhole of the .{0,50}?\b" + _AREA + r"\b"
+    r"|\bentire " + _AREA + r"\b"
+    r"|\bthroughout the .{0,30}?\b" + _AREA + r"\b"
+    r"|\bland to which .{0,60}(LEP|Local Environmental Plan).{0,20}appl",
+    re.I)
+#: Wording that limits land to a mapped or marked part, so the sentence is NOT council-wide
+#: whatever else it says ("all land shown on Map 1"). Cross-review finding 2026-10-11.
+_MAPPED_PART = re.compile(r"\b(shown|identified|marked|edged|hatched|outlined)\b|\b(map|figure)\s*\d", re.I)
+
+
+def _machine_whole_council(chapter: dict) -> bool:
+    quote = chapter.get("quote") or ""
+    return (chapter.get("applies_to") == "whole_council" and bool(_COUNCIL_WIDE.search(quote))
+            and not _MAPPED_PART.search(quote))
+
+
+def _gate_kind(chapter: dict) -> str:
+    """Which gate a part-of-council chapter needs: 'zone', 'heritage' or 'place'."""
+    source = chapter.get("boundary_source") or ""
+    if chapter.get("applies_to") == "zones" or source.startswith("zone"):
+        return "zone"
+    if chapter.get("applies_to") == "heritage_area" or source.startswith("heritage"):
+        return "heritage"
+    return "place"
+
+
+def _load_chapter_scope() -> list[dict]:
+    """The chapters' own words, data/chapter_scope/. Raises rather than returning [] -- an
+    empty list would make DQ-143 read 0, a silent pass (cross-review finding 2026-10-11)."""
+    import json
+    path = Path(__file__).resolve().parents[1] / "data" / "chapter_scope" / "chapter_scope_2026-10-11.json"
+    chapters = json.loads(path.read_text(encoding="utf-8"))["chapters"]
+    if not chapters:
+        raise ValueError(f"{path} lists no chapters")
+    return chapters
+
+
+def _chapter_scope_keys(*, part_of_council: bool | None = None,
+                        applies_to: tuple[str, ...] = (),
+                        machine_whole_council: bool | None = None) -> list[str]:
+    """`council__chapter` keys from data/chapter_scope/ matching every filter given."""
+    return [c["key"] for c in _load_chapter_scope()
+            if (part_of_council is None or bool(c.get("part_of_council")) == part_of_council)
+            and (not applies_to or c.get("applies_to") in applies_to)
+            and (machine_whole_council is None or _machine_whole_council(c) == machine_whole_council)]
+
+
+def _part_of_council_gates() -> tuple[list[str], list[str]]:
+    """Parallel arrays (key, gate kind) for DQ-143."""
+    rows = [c for c in _load_chapter_scope() if c.get("part_of_council")]
+    return [c["key"] for c in rows], [_gate_kind(c) for c in rows]
+
+
+#: DQ-143: the gate a rule carries must be the KIND its chapter needs. A precinct or
+#: site-condition gate limits any chapter. A generic heritage tag does not limit a
+#: heritage-AREA chapter (it reaches every heritage house); only the area's own slug does.
+#: A specific zone tag limits a zone chapter, and never limits a place chapter (a centre
+#: is not a zone). Cross-review finding 2026-10-11. The rule's zones are NOT compared with
+#: the chapter's zones in data/chapter_scope/: those were read by an AI in the plan's old
+#: codes (IN1, B1...) while rows carry current codes (E4, MU1...), so a subset test read
+#: 1,064 false faults. The row's own tag carries the council's words (DQ-115).
+_GATED_FOR_ITS_CHAPTER = (
+    "(rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NOT NULL)"
+    " OR (rp.v2_dcp_layer = 'condition' AND rp.v2_site_condition_required IN ('flood', 'bushfire'))"
+    " OR (cs.kind = 'heritage' AND rp.v2_heritage_hca IS NOT NULL)"
+    " OR (cs.kind = 'zone' AND cardinality(rp.v2_applicable_zones) > 0"
+    "     AND NOT 'ALL' = ANY(rp.v2_applicable_zones))"
+)
+
+
+#: A served rule that reaches EVERY house in its council: not gated to a precinct, not a
+#: site-condition rule, not heritage-tagged, not limited by zone. Mirrors queryLayer in
+#: frontend-nextjs/app/api/provisions/for-property/route.ts. Scope limit (a floor): a
+#: heritage-tagged rule still reaches every heritage house in the council.
+_REACHES_EVERY_HOUSE = (
+    "NOT (v2_dcp_layer = 'precinct' AND v2_precinct_id IS NOT NULL)"
+    " AND COALESCE(v2_dcp_layer, '') <> 'condition'"
+    " AND COALESCE(LOWER(v2_topic), '') <> 'heritage' AND COALESCE(LOWER(v2_marker), '') <> 'heritage'"
+    " AND (v2_applicable_zones IS NULL OR cardinality(v2_applicable_zones) = 0"
+    "      OR 'ALL' = ANY(v2_applicable_zones))"
+)
+_SERVED = ("is_current AND v2_is_actionable"
+           " AND (v2_provision_type IS NULL OR v2_provision_type <> 'TOC')")
 
 #: id -> (headline, sql, params, what a non-zero count MEANS)
 PROBES: dict[str, tuple[str, str, tuple, str]] = {
@@ -2638,6 +2733,52 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "is not evidence that the permissive default is back. Not counted: "
         "constraint_arithmetic.py's own STOREY_HEIGHT_M, MIN_DWELLING_GFA_M2 and "
         "PARKING_AREA_PER_SPACE_M2 are engineering assumptions, not regulatory values.",
+    ),
+    "DQ-143": (
+        "Served rules from a chapter limited to part of a council that reach every house in it",
+        # Served-answer audit 2026-10-11: 35.8 of 100 sampled served rules were for
+        # another property. Root cause: no step asks which land a chapter covers. The
+        # chapter's own words (quote + page, checked against the PDF) are in
+        # data/chapter_scope/. A rule from a part-of-council chapter without the gate its
+        # chapter needs (_GATED_FOR_ITS_CHAPTER) is shown outside the chapter's land.
+        "SELECT count(*) FROM regulatory_provisions rp"
+        " JOIN unnest(%s::text[], %s::text[]) AS cs(key, kind)"
+        "   ON rp.source_council || '__' || COALESCE(rp.source_chapter_key, '') = cs.key"
+        f" WHERE rp.is_current AND rp.v2_is_actionable"
+        "   AND (rp.v2_provision_type IS NULL OR rp.v2_provision_type <> 'TOC')"
+        f"   AND NOT ({_GATED_FOR_ITS_CHAPTER})",
+        _part_of_council_gates(),
+        "Each count is one rule the chapter itself limits to a place, zone or heritage "
+        "area, shown to every house in the council. Cleared by gating the rows to the "
+        "area the chapter names (precinct outline, zone tag, heritage gate, site "
+        "condition), never by hiding the chapter.",
+    ),
+    "DQ-144": (
+        "Served council rules whose chapter's land is undecided, reaching every house (upper bound)",
+        # The step-5 remainder nobody had measured: chapters that mix whole-council and
+        # local Parts (whole-plan files: Northern Beaches, Wollongong, Campbelltown,
+        # Ashfield A...), chapters whose words did not settle it, and rows with no
+        # chapter at all (inner_west LEP), AND chapters an AI called whole-council whose own
+        # sentence the fixed _COUNCIL_WIDE pattern does not confirm. An UPPER bound.
+        "SELECT count(*) FROM regulatory_provisions"
+        f" WHERE {_SERVED} AND {_REACHES_EVERY_HOUSE} AND source_council IS NOT NULL"
+        "   AND NOT (source_council || '__' || COALESCE(source_chapter_key, '') = ANY(%s))",
+        (_chapter_scope_keys(part_of_council=True) + _chapter_scope_keys(machine_whole_council=True),),
+        "Each count is a served rule whose land has not been read from its plan: it may "
+        "be for every house or for one Part's area. Cleared per Part: record the Part's "
+        "own words in data/chapter_scope/ and gate the local rows (DQ-143 then counts "
+        "any that stay ungated).",
+    ),
+    "DQ-145": (
+        "Served rules whose citation is not machine-proven",
+        # User ruling 2026-10-11: outreach-ready = EVERY served citation complete,
+        # correct and deterministically proven. 11,151 of 25,455 proven (43.8%).
+        "SELECT count(*) FROM regulatory_provisions"
+        f" WHERE {_SERVED} AND citation_status IS DISTINCT FROM 'proven'",
+        (),
+        "Each count is a served rule whose clause number, words and page are not all "
+        "proven by a script against the source PDF. Cleared by proving it, or by not "
+        "serving it.",
     ),
 }
 
