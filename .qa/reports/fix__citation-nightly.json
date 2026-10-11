@@ -1,0 +1,74 @@
+{
+  "tier": "standard",
+  "justification": "Schedules the existing citation checker nightly with --apply in data-watch. It writes only citation_status, citation_source_path and citation_checked_at, only onto the chapter PDF in force. The page shows a clause number only when 'proven', so a changed verdict can hide or show a clause number; nothing else changes.",
+  "commit_hash": "cdb51931",
+  "files": [
+    ".github/workflows/data-watch.yml",
+    "scripts/dcp_citation_status.py",
+    ".qa/reports/fix__citation-nightly.json"
+  ],
+  "pre_impl": {
+    "existing_data": "Measured 2026-10-12: served council rules with a verdict were last judged 2026-10-02 (citation_checked_at max); 962 council rules have none -- 408 Ashfield rows restored 2026-10-10 and 554 Inner West LEP rows with no chapter (not DCP, outside this checker). Dry run: 19,627 judged, 440 to change.",
+    "assumption_mismatch": "The checker's docstring said it ran nightly; no workflow, cron or worker scheduled it, and I repeated the claim to the user before checking.",
+    "new_vs_existing": "No new code: one step in the existing nightly data-watch workflow, which already holds the database and R2 secrets and raises a single reused issue on failure."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dcp_citation_status.py",
+    "fails_when": "The dry run prints the verdict counts and the number to write; the nightly step's outcome is in data-watch's FAILED list, so a crash or a missing secret raises the alarm issue.",
+    "observed_red": "Before this, nothing ran: the newest citation_checked_at was 2026-10-02 and 408 restored Ashfield rules had no verdict. The dry run on 2026-10-12 judged 19,627 rules with exit 0."
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/dcp_citation_status.py:80",
+      "input": "DATABASE_URL and R2 secrets from the workflow, and --apply",
+      "output": "Verdict counts printed; changed verdicts written in batches, guarded to the chapter PDF still in force",
+      "if_none": "A missing PDF is the verdict no_source, not a crash; a missing citation_source_path column refuses to write."
+    }
+  ],
+  "values": [
+    {
+      "value": "19,627 / 440",
+      "what": "council rules judged by the dry run / verdicts that would change",
+      "source": "python scripts/dcp_citation_status.py",
+      "read_at": "Production + R2, read-only, 2026-10-12",
+      "if_missing": "A database or R2 failure exits non-zero and raises the data-watch alarm."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Write each changed verdict only onto the chapter PDF still in force.",
+      "file_line": "scripts/dcp_citation_status.py:118",
+      "where_clause": "WHERE p.id = v.id AND p.is_current AND EXISTS (dcp_chapter_registry reg WHERE reg.is_active AND reg.council = p.source_council AND reg.chapter_key = p.source_chapter_key AND reg.r2_current_path IS NOT DISTINCT FROM v.src)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A chapter is republished while the nightly job is writing verdicts for it.",
+      "what_happens": "An old verdict could land on the new chapter's rows and show an unproven clause number.",
+      "mitigated": true,
+      "how": "The UPDATE only writes where the registry's current PDF path equals the PDF the verdict was judged on.",
+      "repro": "scripts/dcp_citation_status.py UPDATE guard"
+    },
+    {
+      "scenario": "The R2 secrets are missing or wrong on the runner.",
+      "what_happens": "Every chapter would be judged no_source and its clause numbers hidden.",
+      "mitigated": true,
+      "how": "A missing secret raises KeyError before any write (os.environ[...]), so the step fails and the alarm issue opens; no verdict is written.",
+      "repro": "run without R2_ACCOUNT_ID"
+    },
+    {
+      "scenario": "Writing each changed verdict hits a row whose chapter is inactive.",
+      "what_happens": "A verdict could be written for a chapter that is no longer served.",
+      "mitigated": true,
+      "how": "The guard requires reg.is_active; inactive chapters are skipped.",
+      "repro": "UPDATE guard"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Nightly from now on (verdict columns only). Today's 440 changes are written only with the user's yes.",
+    "secrets": "No new secrets; reuses DATABASE_URL and R2_* already in data-watch.",
+    "other_repo": "No",
+    "manual_verify": "Dry run 2026-10-12: exit 0, 19,627 judged, 440 to write."
+  }
+}
