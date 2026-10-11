@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Read-only measurement only: three new ledger probes (DQ-143/144/145), three outreach claims declared false, a per-prompt banner line, a committed chapter-scope data file and its tests. Nothing served to a user changes and nothing is written to the database. Standard rather than Minor because six files change and the outreach gate's verdict changes from 16/17 to 16/20.",
-  "commit_hash": "31e61075",
+  "commit_hash": "767f5b02",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
@@ -9,7 +9,8 @@
     ".qa/reports/feat__place-chapter-gates.json",
     "data/chapter_scope/chapter_scope_2026-10-11.json",
     "scripts/dq_probe_live.py",
-    "tests/test_chapter_scope_probes.py"
+    "tests/test_chapter_scope_probes.py",
+    "tests/test_dq_check_outreach.py"
   ],
   "pre_impl": {
     "existing_data": "Measured on production before writing: 25,455 served rules; citation_status proven 11,151; part-of-council chapters ungated 510; mixed/unclear/no-chapter ungated 3,756. The chapter scope came from the served-answer audit's checked proposals (235 chapters, 221 quotes found in the PDF by script).",
