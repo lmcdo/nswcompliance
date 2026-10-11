@@ -1,0 +1,26 @@
+{
+  "tier": "minor",
+  "justification": "Redefines one read-only probe (DQ-145) and the matching ledger row and outreach claim wording, to measure the citation the page actually shows after the user's 2026-10-12 decision.",
+  "commit_hash": "429c2b5e",
+  "files": [
+    "scripts/dq_probe_live.py",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    ".qa/reports/fix__dq145-shown-citation.json"
+  ],
+  "break_it": [
+    {
+      "scenario": "A rule whose clause number is hidden and whose page check is unresolved would be counted as proven by a looser definition.",
+      "what_happens": "The outreach claim would pass while the page shows a citation nothing has proven.",
+      "mitigated": true,
+      "how": "The probe counts any row where neither the shown clause (proven/imprecise) nor the page (on_page/moved/read_by_person) is proven, plus every unchecked row.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-145"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "DQ-145 reads 6,392; dq_check coverage OK (148 rows)."
+  }
+}
