@@ -1,0 +1,85 @@
+{
+  "tier": "standard",
+  "justification": "Adds a fail-closed outline builder and one keying rule. Nothing is served differently until the approved write runs; then 46 rules from three Canterbury-Bankstown single-site chapters reach only their own parcels instead of every house in the council.",
+  "commit_hash": "1d555cd0",
+  "files": [
+    "scripts/build_site_boundaries.py",
+    "scripts/derive_precinct_keys.py",
+    "scripts/apply_site_lot_outlines.sh",
+    "data/site_chapters/lot_sites.json",
+    "tests/test_build_site_boundaries.py",
+    "tests/test_build_site_boundaries_real_db.py",
+    ".qa/reports/feat__place-chapter-keys.json"
+  ],
+  "pre_impl": {
+    "existing_data": "Measured 2026-10-11: DQ-143 556, of which the eleven single-site chapters hold about 234. nsw_cadastre_lots holds exact lotidstring values ('9//DP663160') with a unique index; dcp_precinct_boundaries is unique on (precinct_id, lga).",
+    "assumption_mismatch": "Two lot lists no longer match the cadastre: none of Leichhardt Amendment 1's 24 lots exist after redevelopment, and Milperra's Lot 2 DP101147 is missing while Lot 2 DP1291984 is 196,235 m2 against a stated 19,640 m2. Boorea's only Lot/DP mention is the neighbour it sets back from. The plan's note that Waverley used an address-register method was never built.",
+    "new_vs_existing": "New builder because no script reads a chapter's lot list; it reuses nsw_cadastre_lots, import_cb_centre_boundaries.connect and the existing chapter_map keying strategy in derive_precinct_keys.py."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/build_site_boundaries.py ; python -m pytest tests/test_build_site_boundaries.py -q",
+    "fails_when": "The builder exits 1 and loads nothing for any site whose list is not word for word on the cited page, whose lots are not all in today's cadastre, whose area is more than 10% off the stated area, or whose address point lies outside. The tests fail if ranges or 'A and B' lots are not all read, or a neighbour lot is treated as a site lot.",
+    "observed_red": "First runs failed for real faults: the parser read 3 of 445 Canterbury Road's 9 lots ('Lots A and B' dropped) and the copy check failed on table/bullet layout; both fixed. Leichhardt and Milperra still fail and are held. 445 Canterbury Road then matched 4,412 m2 against the stated 4,414 m2."
+  },
+  "functions": [
+    {
+      "name": "prove",
+      "file_line": "scripts/build_site_boundaries.py:81",
+      "input": "a read-only cursor and one site record from data/site_chapters/lot_sites.json",
+      "output": "A report with checks 1-5, the parcels' union as WKT and its area; ok only if every check passed",
+      "if_none": "A lot missing from the cadastre, an absent address point or a missing PDF page each makes its check False, so the site is held and never written."
+    }
+  ],
+  "values": [
+    {
+      "value": "4,412 m2 vs 4,414 m2",
+      "what": "445 Canterbury Road: area of the nine listed parcels vs the area the chapter states (Table 1, p4)",
+      "source": "python scripts/build_site_boundaries.py",
+      "read_at": "Production cadastre, read-only, 2026-10-11",
+      "if_missing": "Area check is None when the chapter states no area; the other checks still apply."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Find each listed parcel by exact id and union them into the site outline.",
+      "file_line": "scripts/build_site_boundaries.py prove()",
+      "where_clause": "FROM nsw_cadastre_lots WHERE lotidstring = ANY(%s) -- the parsed lot list"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The chapter's lot list was re-subdivided since the plan was written.",
+      "what_happens": "An outline built from the surviving lots would miss part of the site and hide rules from it.",
+      "mitigated": true,
+      "how": "Check 2 requires every listed lot; Leichhardt and Milperra are held for this reason.",
+      "repro": "python scripts/build_site_boundaries.py"
+    },
+    {
+      "scenario": "The data file's lot list was mis-copied from the PDF.",
+      "what_happens": "A wrong parcel would receive site rules.",
+      "mitigated": true,
+      "how": "Check 1 compares the copy with the cited page letter for letter (layout ignored).",
+      "repro": "python scripts/build_site_boundaries.py"
+    },
+    {
+      "scenario": "A lot named only as a neighbour is read as a site lot.",
+      "what_happens": "The neighbour's house would be shown the site's rules.",
+      "mitigated": true,
+      "how": "Only the chapter's land sentence or site table is copied; test_a_neighbouring_lot_is_not_a_site_lot.",
+      "repro": "python -m pytest tests/test_build_site_boundaries.py -q"
+    },
+    {
+      "scenario": "The exact-id parcel query finds the listed parcels but the union covers a different area than the plan meant.",
+      "what_happens": "Rules would reach the wrong houses with every listed lot technically present.",
+      "mitigated": true,
+      "how": "Check 3 compares the union's area with the area the chapter states (445 Canterbury Road 4,412 vs 4,414 m2) and check 4 requires the chapter's own address point inside the union.",
+      "repro": "python scripts/build_site_boundaries.py"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Yes, with the user's yes: bash scripts/apply_site_lot_outlines.sh (loads 3 outlines, keys 46 rows; backups written first).",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Dry runs on production: 3 sites pass, 2 held; keying dry run new=46. 6 unit tests and 2 real-DB tests pass."
+  }
+}
