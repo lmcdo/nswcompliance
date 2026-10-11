@@ -95,7 +95,7 @@ def raster_outline(page, colour: str, dpi: int = 200, clip=None):
         big = max(contours, key=cv2.contourArea).reshape(-1, 2)
         if len(big) < 4:
             continue
-        poly = Polygon([(float(x), float(-y)) for x, y in big]).buffer(0)
+        poly = Polygon(np.column_stack([big[:, 0], -big[:, 1]]).astype(np.float64)).buffer(0)
         return max(poly.geoms, key=lambda g: g.area) if poly.geom_type == "MultiPolygon" else poly
     return None
 
