@@ -27,7 +27,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
-import { NOT_HERITAGE_SQL } from '@/lib/provision-sql-filters';
+import { NOT_HERITAGE_SQL, ZONE_APPLIES_SQL } from '@/lib/provision-sql-filters';
 import { expandDevTypeHierarchy, expandDevTypeHierarchyMulti } from '@/lib/see/devTypeHierarchy';
 import { inferSectionNumberFromHeader } from '@/lib/see/sectionKey';
 import { parseRefNumber } from '@/lib/see/refNumber';
@@ -1093,13 +1093,17 @@ async function queryLayer(
   // Note: Precinct layer (layer === 'precinct') is NOT filtered by heritage status
   // Precinct provisions (including heritage-tagged ones) apply to ALL properties in precinct
 
-  // Layer-specific filtering
-  if (layer === 'use_specific' && filters.zone) {
-    // For use-specific layer, filter by zone applicability
-    // Include provisions where: zone is NULL (universal), zone matches, OR 'ALL' is in zones
-    sql += ` AND (v2_applicable_zones IS NULL OR $${paramIndex++} = ANY(v2_applicable_zones) OR 'ALL' = ANY(v2_applicable_zones))`;
+  // Zone applicability, EVERY layer. This ran for use_specific only, so 2,838 served rules
+  // whose own chapter limits them to other zones (Marrickville Part 6 industrial, Leichhardt
+  // Part C s4 non-residential...) were shown to every house -- 8.7% of what 30 sampled
+  // addresses were served (served-answer audit, 2026-10-11). Each tag carries the council's
+  // own words (DQ-115). NULL, empty, or 'ALL' = not limited by zone, so it is kept.
+  if (filters.zone) {
+    sql += ` AND (${ZONE_APPLIES_SQL(paramIndex++)})`;
     params.push(filters.zone);
   }
+
+  // Layer-specific filtering
 
   if (layer === 'condition') {
     // For condition layer (non-heritage), only include if property has that condition

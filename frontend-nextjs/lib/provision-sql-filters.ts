@@ -28,3 +28,19 @@
  * Keep it a single-line template literal -- that test reads it out of this file.
  */
 export const NOT_HERITAGE_SQL = `(COALESCE(LOWER(v2_topic), '') != 'heritage' AND COALESCE(LOWER(v2_marker), '') != 'heritage' AND (v2_topic IS NOT NULL OR strpos(LOWER(COALESCE(source_chapter_key, '')), 'heritage') = 0))`;
+
+/**
+ * SQL predicate: this provision applies in the property's zone. `p` is the $n index of the
+ * zone parameter.
+ *
+ * Kept: no zone limit recorded (NULL or empty array), 'ALL', or the property's zone listed.
+ * Dropped: a rule whose own chapter limits it to other zones -- Marrickville Part 6
+ * industrial (E4) on an R2 house. The route applied this to the use_specific layer only, so
+ * 2,838 such rules reached every house in their council (served-answer audit 2026-10-11).
+ * An EMPTY array is kept, not dropped: `'R2' = ANY('{}')` is false, and an undecided row
+ * must not vanish silently.
+ *
+ * tests/test_provision_sql_filters.py runs this exact string against real Postgres.
+ * Keep it a single-line template literal -- that test reads it out of this file.
+ */
+export const ZONE_APPLIES_SQL = (p: number): string => `(v2_applicable_zones IS NULL OR cardinality(v2_applicable_zones) = 0 OR $${p} = ANY(v2_applicable_zones) OR 'ALL' = ANY(v2_applicable_zones))`;
