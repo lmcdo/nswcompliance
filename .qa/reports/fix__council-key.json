@@ -1,0 +1,61 @@
+{
+  "tier": "standard",
+  "justification": "Changes how the rules route picks a council's rules and PDF links for every property. Wrong, it serves another council's plan or none; the change replaces a name pattern with the stored key.",
+  "commit_hash": "cc11331d",
+  "files": [
+    "frontend-nextjs/lib/council-key.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/__tests__/lib/council-key.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/council-key.test.ts",
+    "fails_when": "Any former_council value the page sent in the 30-address audit maps to a key other than the stored source_council, or the route goes back to a document-name pattern or a bare toLowerCase lookup.",
+    "observed_red": "Putting back `const councilSlug = filters.former_council.toLowerCase();` printed 'Tests: 1 failed, 17 passed, 18 total'. Restored: 18 passed.",
+    "external_authority": "Production, 2026-10-11: for each of 18 source_council values, rows selected by `document_id ILIKE pattern` and by `source_council = key` were counted: identical for every real council; the pattern additionally caught 2,420 Ashfield rows for 'inner_west' and 22 Marrickville 'part9_p35_parramatta_rd' rows for Parramatta. The audit captures show the page sending 'City of Sydney' (0 chapter_pdf_urls) and 'city_of_parramatta' (0 rules)."
+  },
+  "pre_impl": {
+    "existing_data": "regulatory_provisions.source_council (18 values) and dcp_chapter_registry.council use the same lowercase underscore keys; city_of_sydney registry rows carry r2_public_pdf_url for schedules, section 3 and section 4.",
+    "assumption_mismatch": "The route assumed the page sends a slug. It sends Planning Portal names ('City of Sydney', 'Leichhardt') or page-made slugs ('city_of_parramatta'), and three lookups each converted them differently.",
+    "new_vs_existing": "One small pure function in lib, used at the six lookups; the old COUNCIL_DOC_PATTERNS map and councilToDocPattern are removed because nothing else used them."
+  },
+  "functions": [
+    {
+      "name": "councilKey",
+      "file_line": "frontend-nextjs/lib/council-key.ts:26",
+      "input": "The former council name the page sends: a Planning Portal name, a page-built slug, or nothing at all.",
+      "output": "The lowercase underscore key used as source_council and dcp_chapter_registry.council, with two aliases.",
+      "if_none": "Null for an empty name; the route only adds the council filter when a former council was sent."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council whose stored key differs from its normalised Portal name (another alias like city_of_parramatta).",
+      "what_happens": "That council shows 0 rules -- visible as an empty list, not wrong rules.",
+      "mitigated": true,
+      "how": "The audit's 15 real inputs are pinned in the test; the served-answer audit capture flags any address served 0 rules.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/council-key.test.ts"
+    },
+    {
+      "scenario": "Rows whose source_council is NULL but whose document_id named the council.",
+      "what_happens": "Those rules would quietly stop showing on the page.",
+      "mitigated": true,
+      "how": "Counted on production: 0 such rows for any council (pattern and key select identical sets).",
+      "repro": "SELECT count(*) FROM regulatory_provisions WHERE is_current AND v2_is_actionable AND source_council IS NULL AND document_id ILIKE '%_DCP%'"
+    },
+    {
+      "scenario": "An Inner West house with no former council (inner_west fallback).",
+      "what_happens": "Was shown Ashfield's whole DCP; now shows only Inner West LEP rows.",
+      "mitigated": true,
+      "how": "Intended: no former council means no council DCP can be chosen; the LEP land gate (DQ-140) still applies.",
+      "repro": "grep -n 'inner_west' frontend-nextjs/lib/council-key.ts"
+    }
+  ],
+  "mutation_analysis": "Forced: restoring toLowerCase for the registry turned the suite red. Removing the city_of_parramatta alias fails its case; a councilKey that returned its input unchanged fails 'City of Sydney' and 'Ku-ring-gai'.",
+  "residual_risk": "Other routes (app/api/provisions/route.ts and similar) were not changed in this PR; only the route the assessment page uses. A council added later with an unusual Portal name needs an alias -- it fails visibly (0 rules), not silently wrong.",
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "After deploy: load 6 Eccles Street Ermington and 2 Hawksley Street Waterloo on /assessment; Parramatta rules appear and Sydney rules carry PDF links."
+  }
+}
