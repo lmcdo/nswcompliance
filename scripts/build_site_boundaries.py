@@ -34,6 +34,7 @@ import dq_db  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / "data" / "site_chapters" / "lot_sites.json"
+ADDR_SRC = REPO / "data" / "site_chapters" / "address_sites.json"
 BACKUP_DIR = REPO / "data" / "db_rollback_backups"
 ADDRESS_POINTS = ("https://portal.spatial.nsw.gov.au/server/rest/services/"
                   "NSW_Geocoded_Addressing_Theme/MapServer/1/query")
@@ -78,6 +79,21 @@ def address_point(address: str) -> tuple[float, float] | None:
     return (feats[0]["geometry"]["x"], feats[0]["geometry"]["y"]) if feats else None
 
 
+def fallback_exposed(cur, wkt: str) -> int:
+    """Inner West lots in no outline whose point is within FALLBACK_M of this outline: each would be
+    handed the site's rules by precinct-service.ts findNearestPrecinct. Must be 0 to load."""
+    cur.execute(
+        "SELECT count(*) FROM lot_search_index l"
+        " WHERE l.lga_name = 'INNER WEST'"
+        "   AND ST_DWithin(ST_Transform(ST_PointOnSurface(l.geom), 3857),"
+        "                  ST_Transform(ST_GeomFromText(%s, 4326), 3857), %s)"
+        "   AND NOT ST_Contains(ST_GeomFromText(%s, 4326), ST_PointOnSurface(l.geom))"
+        "   AND NOT EXISTS (SELECT 1 FROM dcp_precinct_boundaries b WHERE LOWER(b.lga) = 'inner west'"
+        "                   AND ST_Contains(b.boundary, ST_PointOnSurface(l.geom)))",
+        (wkt, FALLBACK_M, wkt))
+    return cur.fetchone()[0]
+
+
 def prove(cur, site: dict) -> dict:
     """Run checks 1-5. Returns a report; report['ok'] is True only if every check passed."""
     lots = parse_lots(site["lots_verbatim"])
@@ -101,16 +117,7 @@ def prove(cur, site: dict) -> dict:
                     (r["wkt"], pt[0], pt[1]))
         r["checks"]["4_address"] = bool(cur.fetchone()[0])
     if site["lga"] == "Inner West" and r["wkt"]:
-        cur.execute(
-            "SELECT count(*) FROM lot_search_index l"
-            " WHERE l.lga_name = 'INNER WEST'"
-            "   AND ST_DWithin(ST_Transform(ST_PointOnSurface(l.geom), 3857),"
-            "                  ST_Transform(ST_GeomFromText(%s, 4326), 3857), %s)"
-            "   AND NOT ST_Contains(ST_GeomFromText(%s, 4326), ST_PointOnSurface(l.geom))"
-            "   AND NOT EXISTS (SELECT 1 FROM dcp_precinct_boundaries b WHERE LOWER(b.lga) = 'inner west'"
-            "                   AND ST_Contains(b.boundary, ST_PointOnSurface(l.geom)))",
-            (r["wkt"], FALLBACK_M, r["wkt"]))
-        r["fallback_exposed_lots"] = cur.fetchone()[0]
+        r["fallback_exposed_lots"] = fallback_exposed(cur, r["wkt"])
         r["checks"]["5_fallback"] = r["fallback_exposed_lots"] == 0
     r["ok"] = all(v is not False for v in r["checks"].values())
     return r
@@ -121,7 +128,7 @@ INSERT INTO dcp_precinct_boundaries
   (precinct_id, precinct_name, lga, former_council, boundary, centroid, area_sqm,
    source_document, extraction_method, confidence_score, boundary_description)
 VALUES (%(id)s, %(name)s, %(lga)s, %(fc)s, ST_GeomFromText(%(wkt)s, 4326),
-        ST_Centroid(ST_GeomFromText(%(wkt)s, 4326)), %(area)s, %(src)s, 'chapter_lot_list_cadastre', 1.0, %(desc)s)
+        ST_Centroid(ST_GeomFromText(%(wkt)s, 4326)), %(area)s, %(src)s, %(method)s, 1.0, %(desc)s)
 ON CONFLICT (precinct_id, lga) DO UPDATE SET
   boundary = EXCLUDED.boundary, centroid = EXCLUDED.centroid, area_sqm = EXCLUDED.area_sqm,
   source_document = EXCLUDED.source_document, extraction_method = EXCLUDED.extraction_method,
@@ -133,17 +140,25 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--commit", action="store_true")
     ap.add_argument("--only", help="comma-separated precinct ids to load (each must still pass)")
+    ap.add_argument("--addresses", action="store_true", help="the address-only sites (site_addresses.py)")
     args = ap.parse_args()
-    sites = json.loads(SRC.read_text(encoding="utf-8"))["sites"]
+    src, how = (ADDR_SRC, "addresses") if args.addresses else (SRC, "lot list")
+    sites = json.loads(src.read_text(encoding="utf-8"))["sites"]
+    if args.addresses:
+        from site_addresses import prove_address as check
+    else:
+        check = prove
     conn = dq_db.connect()
     try:
-        reports = [prove(conn.cursor(), s) for s in sites]
+        reports = [check(conn.cursor(), s) for s in sites]
     finally:
         conn.close()
     for r in reports:
         print(f"{'OK  ' if r['ok'] else 'FAIL'} {r['precinct_id']:<24} lots={r['lots_listed']:<3} "
               f"area={r['area_m2']:>7,} m2  checks={r['checks']}"
               + (f"  missing={r['missing_lots']}" if r["missing_lots"] else "")
+              + (f"  missing_named={r['missing_named']}" if r.get("missing_named") else "")
+              + (f"  neighbours_inside={r['neighbours_inside']}" if r.get("neighbours_inside") else "")
               + (f"  fallback_exposed={r.get('fallback_exposed_lots')}" if "fallback_exposed_lots" in r else ""))
     if not args.commit:
         print("DRY RUN - nothing written.")
@@ -169,9 +184,10 @@ def main() -> int:
         bpath.write_text(json.dumps([row[0] for row in cur.fetchall()], indent=1), encoding="utf-8")
         for s, r in zip(sites, reports):
             cur.execute(UPSERT, {
-                "id": s["precinct_id"], "name": f"{s['source_chapter_key']} (lot list p{s['page']})",
+                "id": s["precinct_id"], "name": f"{s['source_chapter_key']} ({how} p{s['page']})",
                 "lga": s["lga"], "fc": s["former_council"], "wkt": r["wkt"], "area": r["area_m2"],
-                "src": f"{s['pdf']}#page={s['page']} lot list: {s['lots_verbatim']}",
+                "method": "chapter_lot_list_cadastre" if how == "lot list" else "chapter_address_register_cadastre",
+                "src": f"{s['pdf']}#page={s['page']} {how}: {s.get('lots_verbatim') or s.get('address_verbatim')}",
                 "desc": f"{r['lots_listed']} lots from nsw_cadastre_lots; checks {r['checks']}"})
         w.commit()
         print(f"COMMITTED {len(sites)} outlines; backup {bpath}")
