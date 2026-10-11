@@ -250,8 +250,8 @@ RULES: list[dict] = [
     # Woollahra C1 "applies to the Paddington HCA as identified in Map 1" (p8); 51 rows already keyed.
     # C-B single sites: outlines = the parcels of the chapter's Lot/DP list or its addresses (build_site_boundaries.py).
     {"name": "canterbury_bankstown_lot_list_sites", "council": "canterbury_bankstown", "validate": False,
-     "where": "source_chapter_key IN ('chapter-11-9-revesby-hospital', 'chapter-11-12-445-canterbury-road', 'chapter-11-15-marco-avenue', 'chapter-11-11-brighton-avenue', 'chapter-11-3-roberts-road', 'chapter-11-8-boorea')",
-     "strategy": {"type": "chapter_map", "map": {"chapter-11-9-revesby-hospital": "11.9", "chapter-11-12-445-canterbury-road": "11.12", "chapter-11-15-marco-avenue": "11.15", "chapter-11-11-brighton-avenue": "11.11", "chapter-11-3-roberts-road": "11.3", "chapter-11-8-boorea": "11.8"}}},
+     "where": "source_chapter_key IN ('chapter-11-9-revesby-hospital', 'chapter-11-12-445-canterbury-road', 'chapter-11-15-marco-avenue', 'chapter-11-11-brighton-avenue', 'chapter-11-3-roberts-road', 'chapter-11-8-boorea', 'chapter-11-1-milton-street', 'chapter-11-10-chullora-marketplace', 'chapter-11-13-former-wsu-campus-milperra')",
+     "strategy": {"type": "chapter_map", "map": {"chapter-11-9-revesby-hospital": "11.9", "chapter-11-12-445-canterbury-road": "11.12", "chapter-11-15-marco-avenue": "11.15", "chapter-11-11-brighton-avenue": "11.11", "chapter-11-3-roberts-road": "11.3", "chapter-11-8-boorea": "11.8", "chapter-11-1-milton-street": "11.1", "chapter-11-10-chullora-marketplace": "11.10", "chapter-11-13-former-wsu-campus-milperra": "11.13"}}},
     {"name": "woollahra_c1_paddington", "council": "woollahra", "validate": False,
      "where": "source_chapter_key = 'chapter-c1-paddington-hca'",
      "strategy": {"type": "constant", "precinct_id": "Paddington HCA"}},

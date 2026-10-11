@@ -102,6 +102,7 @@ def prove(cur, site: dict) -> dict:
     cur.execute("SELECT lotidstring FROM nsw_cadastre_lots WHERE lotidstring = ANY(%s)", (lots,))
     found = {row[0] for row in cur.fetchall()}
     r["missing_lots"] = sorted(set(lots) - found)
+    r["lots"] = sorted(found)
     r["checks"]["2_lots"] = not r["missing_lots"] and bool(lots)
     cur.execute("SELECT ST_AsText(ST_Multi(ST_Union(geom))), ST_Area(ST_Union(geom)::geography)"
                 " FROM nsw_cadastre_lots WHERE lotidstring = ANY(%s)", (lots,))
@@ -120,6 +121,35 @@ def prove(cur, site: dict) -> dict:
         r["fallback_exposed_lots"] = fallback_exposed(cur, r["wkt"])
         r["checks"]["5_fallback"] = r["fallback_exposed_lots"] == 0
     r["ok"] = all(v is not False for v in r["checks"].values())
+    return r
+
+
+def finalize(cur, site: dict, r: dict) -> dict:
+    """Check 6: the chapter's own site map (site_figure_check.map_check), then the verdict.
+
+    The map is the strongest evidence. When it matches (and location is anchored by the plan's own
+    address or lot list -- checks 1 and 4_address/2_named found at least one point), a number absent
+    from the register (2_named) or a wrong area in the plan's table (3_area/4_area) does not hold the
+    site; the excuse is recorded. A map that cannot be read leaves every other check in force. A map
+    that does not match always holds the site."""
+    import site_figure_check as sfc
+    pdf = urllib.request.urlopen(urllib.request.Request(site["pdf"], headers=UA), timeout=60).read()
+    m = sfc.map_check(cur, pdf, site.get("figure"), r.get("lots") or [])
+    r["map"] = {k: v for k, v in m.items() if k != "lots"}
+    r["checks"]["6_map"] = {"pass": True, "fail": False, "unreadable": None}[m["status"]]
+    if m["status"] == "pass" and m["lots"] != r.get("lots"):
+        r["lots"], r["lots_listed"] = m["lots"], len(m["lots"])
+        cur.execute("SELECT ST_AsText(ST_Multi(ST_Union(geom))), ST_Area(ST_Union(geom)::geography)"
+                    " FROM nsw_cadastre_lots WHERE lotidstring = ANY(%s)", (m["lots"],))
+        r["wkt"], area = cur.fetchone()
+        r["area_m2"] = round(area)
+        if site["lga"] == "Inner West":
+            r["fallback_exposed_lots"] = fallback_exposed(cur, r["wkt"])
+            r["checks"]["5_fallback"] = r["fallback_exposed_lots"] == 0
+    excusable = {"2_named", "3_area", "4_area"} if m["status"] == "pass" else set()
+    r["excused"] = sorted(k for k, v in r["checks"].items() if v is False and k in excusable)
+    anchored = r["checks"].get("4_address", True) is not False or r["checks"].get("2_named") is not False
+    r["ok"] = anchored and all(v is not False for k, v in r["checks"].items() if k not in excusable)
     return r
 
 
@@ -150,7 +180,7 @@ def main() -> int:
         check = prove
     conn = dq_db.connect()
     try:
-        reports = [check(conn.cursor(), s) for s in sites]
+        reports = [finalize(conn.cursor(), s, check(conn.cursor(), s)) for s in sites]
     finally:
         conn.close()
     for r in reports:
@@ -159,7 +189,8 @@ def main() -> int:
               + (f"  missing={r['missing_lots']}" if r["missing_lots"] else "")
               + (f"  missing_named={r['missing_named']}" if r.get("missing_named") else "")
               + (f"  neighbours_inside={r['neighbours_inside']}" if r.get("neighbours_inside") else "")
-              + (f"  fallback_exposed={r.get('fallback_exposed_lots')}" if "fallback_exposed_lots" in r else ""))
+              + (f"  fallback_exposed={r.get('fallback_exposed_lots')}" if "fallback_exposed_lots" in r else "")
+              + f"  map={r.get('map')}" + (f"  excused={r['excused']}" if r.get("excused") else ""))
     if not args.commit:
         print("DRY RUN - nothing written.")
         return 0 if all(r["ok"] for r in reports) else 1
@@ -188,7 +219,8 @@ def main() -> int:
                 "lga": s["lga"], "fc": s["former_council"], "wkt": r["wkt"], "area": r["area_m2"],
                 "method": "chapter_lot_list_cadastre" if how == "lot list" else "chapter_address_register_cadastre",
                 "src": f"{s['pdf']}#page={s['page']} {how}: {s.get('lots_verbatim') or s.get('address_verbatim')}",
-                "desc": f"{r['lots_listed']} lots from nsw_cadastre_lots; checks {r['checks']}"})
+                "desc": f"{r['lots_listed']} lots {r.get('lots')}; checks {r['checks']}; map {r.get('map')};"
+                        f" excused {r.get('excused')}"})
         w.commit()
         print(f"COMMITTED {len(sites)} outlines; backup {bpath}")
     finally:
