@@ -1,0 +1,111 @@
+{
+  "tier": "critical",
+  "justification": "Once applied, this changes which houses are shown 905 current DCP rules that today reach no house (DQ-146), and moves Woollahra E2/E4 rules between layers. A wrong rule would hide a rule from houses it covers or show it to houses it does not, silently. The code is read-only until a person runs --apply/--commit with the user's yes.",
+  "commit_hash": "a4787b4e",
+  "files": [
+    "scripts/gate_rules.py",
+    "scripts/derive_precinct_keys.py",
+    "scripts/import_woollahra_b2_union.py",
+    "scripts/dq_probe_live.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/hooks/live-numbers.py",
+    "tests/test_gate_rules.py",
+    "tests/test_chapter_scope_probes.py",
+    "tests/test_dq_check_outreach.py",
+    ".qa/reports/feat__heritage-area-gates.json",
+    "tests/test_gate_rules_real_db.py",
+    "tests/test_derive_precinct_keys_real_db.py",
+    "tests/test_import_woollahra_b2_union_real_db.py",
+    "Dockerfile.monitors",
+    "scripts/apply_dq146_gates.sh"
+  ],
+  "pre_impl": {
+    "existing_data": "Measured on production 2026-10-11: 905 served-flagged rules in the condition layer with no flood/bushfire condition and no heritage marker, by chapter Wollongong E11 342, Ashfield E1 274, Woollahra E2 173, B2 62, Waverley B8 37, Woollahra E4 16, C1 1. The eleven Woollahra B2 outlines already exist in dcp_precinct_boundaries (NSW ePlanning heritage layer, 2026-07-29).",
+    "assumption_mismatch": "I first counted these rules as shown to every house; the route returns them to no house. A live capture of 17 Etham Avenue Darling Point showed 1 of 64 B2 rules. A zone-subset gate test was also wrong (1,064 false faults from old zone codes) and was dropped. The heritage_precinct_mapping table read by precinct-service.ts does not exist in production.",
+    "new_vs_existing": "Reuses derive_precinct_keys.py (re-run by dcp_commit_approved.py after every publish) with its constant strategy; gate rules are a new list in a new module only because the script would pass 500 lines. The union loader reuses import_cb_centre_boundaries.connect. No new table or endpoint.",
+    "external_source_error": "No external call at run time. The chapters' land sentences were read from the council PDFs stored in R2 (Wollongong E11 p3, Ashfield E1 p6, Woollahra E2 p5 and E4 p5, Waverley B8 printed p67, Woollahra B2 p5, C1 p8) and each is quoted beside its rule.",
+    "frontend_type": "No frontend file changes. The route already reads v2_marker, v2_dcp_layer, v2_site_condition_required and v2_precinct_id with the same types; only row values change.",
+    "user_failure_mode": "Today silent omission: a Woollahra B2 house is missing 63 heritage-area rules with no indication. If a rule here were wrong it would be silent too, so DQ-143 and DQ-146 are re-measured after the write and a live capture of 17 Etham Avenue must show the B2 rules."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_gate_rules.py tests/test_chapter_scope_probes.py -q ; python scripts/dq_probe_live.py --id DQ-146",
+    "fails_when": "The tests fail if a gate rule touches a non-gate column, if a dry run writes, if B2.2-B2.12 refs fall into the union rule or B2.1 refs fall out of it, or if the heritage-everywhere pattern accepts a named-area sentence. DQ-146 exits 1 while any rule reaches no house.",
+    "observed_red": "test_heritage_area_chapter_needs_its_own_area_not_a_generic_tag failed after heritage_general was added and was rewritten to assert the marker gates only that kind. DQ-146 reads 905 before the write. Ashfield's dry run showed 29 unrelated key changes from older validate:False rules, so --only was added to keep this write to the new rules."
+  },
+  "functions": [
+    {
+      "name": "apply_gate_rules",
+      "file_line": "scripts/gate_rules.py:52",
+      "input": "a database cursor, an optional council slug, the apply flag, and optional rule names",
+      "output": "Per changed column (id, column, before, after, rule) for the backup; UPDATEs only when apply is true",
+      "if_none": "A rule matching no rows prints rows=0 and changes nothing; a rule naming a non-gate column raises before any write."
+    },
+    {
+      "name": "_prove",
+      "file_line": "scripts/import_woollahra_b2_union.py:109",
+      "input": "the write cursor immediately after the union outline row has been upserted",
+      "output": "Raises unless every member HCA's interior point is inside the union and the Paddington and Woollahra HCA points are not",
+      "if_none": "A missing member outline refuses the build before writing (REFUSED, exit 1)."
+    }
+  ],
+  "values": [
+    {
+      "value": "905",
+      "what": "DQ-146 rules shown to no house",
+      "source": "python scripts/dq_probe_live.py --id DQ-146",
+      "read_at": "Production, 2026-10-11, by the probe itself",
+      "if_missing": "An unreachable database exits 2 (UNKNOWN), never 0."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Select each gate rule's rows by council and chapter, current rows only, before any update.",
+      "file_line": "scripts/gate_rules.py:52",
+      "where_clause": "is_current = true AND source_council = %(council)s AND (<rule where: source_chapter_key = ... [AND ref_number ~ / v2_dcp_part / v2_dcp_layer]>)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The union rule's exclusion regex also excludes B2.1 refs.",
+      "what_happens": "B2.1 general controls stay unkeyed and keep reaching no house.",
+      "mitigated": true,
+      "how": "test_b2_rules_send_each_section_to_one_area_and_b2_1_to_all_eleven checks X__B2_1_7 C1, X__B3 and X__B2_1_3 O1 go to the union.",
+      "repro": "python -m pytest tests/test_gate_rules.py -q"
+    },
+    {
+      "scenario": "A gate rule is edited to set provision_text.",
+      "what_happens": "Regulatory text would be overwritten by a keying pass.",
+      "mitigated": true,
+      "how": "apply_gate_rules refuses any column outside _GATE_COLUMNS; test_unknown_column_is_refused.",
+      "repro": "python -m pytest tests/test_gate_rules.py -q"
+    },
+    {
+      "scenario": "Running --council ashfield --apply also applies older validate:False Ashfield rules.",
+      "what_happens": "29 unrelated Ashfield precinct keys would change without anyone reviewing them.",
+      "mitigated": true,
+      "how": "--only restricts both RULES and GATE_RULES to the named rules; the write uses it.",
+      "repro": "python scripts/derive_precinct_keys.py --council ashfield --only ashfield_e1_heritage"
+    },
+    {
+      "scenario": "The union outline is built from fewer than eleven outlines.",
+      "what_happens": "Houses in a missing HCA lose B2.1 rules.",
+      "mitigated": true,
+      "how": "import_woollahra_b2_union.py refuses unless all eleven members exist, and _prove checks every member point after the upsert.",
+      "repro": "python scripts/import_woollahra_b2_union.py"
+    },
+    {
+      "scenario": "Houses only near a heritage item (Wollongong E11 (iii), Waverley B8 adjacent land).",
+      "what_happens": "They are not shown those rules after the marker is set.",
+      "mitigated": false,
+      "how": "No land layer for adjacency exists; recorded in the rule comments and the ledger as a limit.",
+      "repro": "n/a"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Yes, with the user's yes: python scripts/import_woollahra_b2_union.py --commit; python scripts/derive_precinct_keys.py --council <c> --only <rules> --apply for woollahra, wollongong, ashfield, waverley. Backups in data/db_rollback_backups.",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Dry runs on production: union 11 members found; Woollahra 75 keys + 198 gate changes; Wollongong 374; Ashfield 338; Waverley 37. 48 tests pass; dq_check coverage OK (148 rows). Real-layer: PYTEST_REAL_DB=1 pytest -m database -o addopts= on the three *_real_db.py files: 3 passed against production, read-only session."
+  }
+}

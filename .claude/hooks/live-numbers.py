@@ -89,6 +89,7 @@ SCOREBOARD: list[tuple[str, str]] = [
     ("DQ-143", "rules from a part-of-council chapter shown to every house"),
     ("DQ-144", "rules whose land no machine has confirmed (upper bound)"),
     ("DQ-145", "served rules whose citation no script has proven"),
+    ("DQ-146", "rules shown to no house (written for some, reach none)"),
 ]
 
 
@@ -162,7 +163,7 @@ def _render(payload: dict, age_s: float, note: str = "") -> str:
         shown = "UNKNOWN" if value is None else f"{value:,}"
         lines.append(f"  {dq_id}  {shown:>9}  {means}")
     total_shown = "UNKNOWN" if total is None else f"{total:,}"
-    lines.append(f"  SUM     {total_shown:>9}  (a rule can be in two lines)  python scripts/dq_probe_live.py --id DQ-143  # 144, 145")
+    lines.append(f"  SUM     {total_shown:>9}  (a rule can be in two lines)  python scripts/dq_probe_live.py --id DQ-143  # 144-146")
     return "\n".join(lines)
 
 
