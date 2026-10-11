@@ -142,10 +142,11 @@ _REACHES_EVERY_HOUSE = (
 #: never returned. Proved live 2026-10-11: 17 Etham Avenue Darling Point (inside the Etham
 #: Avenue HCA) is shown 1 of the 64 Woollahra B2 rules written for it.
 _REACHES_NOBODY = (
-    "rp.v2_dcp_layer = 'condition'"
-    " AND COALESCE(rp.v2_site_condition_required, '') NOT IN ('flood', 'bushfire')"
+    "((rp.v2_dcp_layer = 'condition'"
+    "  AND COALESCE(rp.v2_site_condition_required, '') NOT IN ('flood', 'bushfire'))"
+    " OR COALESCE(rp.v2_dcp_layer, '') NOT IN ('generic', 'use_specific', 'condition', 'precinct'))"
     " AND LOWER(COALESCE(rp.v2_marker, '')) <> 'heritage'"
-)
+)  # widened 2026-10-11: 33 C-B rows sat in v2_dcp_layer 'heritage', a layer no query reads
 _SERVED = ("is_current AND v2_is_actionable"
            " AND (v2_provision_type IS NULL OR v2_provision_type <> 'TOC')")
 

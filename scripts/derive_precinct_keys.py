@@ -53,7 +53,7 @@ from pathlib import Path
 import psycopg2
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gate_rules import apply_gate_rules  # noqa: E402
+from gate_rules import EXTRA_KEY_RULES, apply_gate_rules  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
@@ -244,6 +244,7 @@ RULES: list[dict] = [
     # outline; B2.1 and the B3 row filed in B2 to the union of all eleven. Unkeyed they reached no
     # house: 17 Etham Ave was shown 1 of 64 (DQ-146, 2026-10-11).
     *_WOOLLAHRA_B2_RULES,
+    *EXTRA_KEY_RULES,
     {"name": "woollahra_b2_all_eleven", "council": "woollahra", "validate": False,
      "where": "source_chapter_key = 'chapter-b2-neighbourhood-hcas' AND ref_number !~ '__B2_([2-9]|1[0-2])$'",
      "strategy": {"type": "constant", "precinct_id": "Woollahra B2 neighbourhood HCAs"}},
@@ -256,7 +257,6 @@ RULES: list[dict] = [
      "where": "source_chapter_key = 'chapter-c1-paddington-hca'",
      "strategy": {"type": "constant", "precinct_id": "Paddington HCA"}},
 ]
-
 
 
 def _derive(strategy: dict, row: dict) -> str | None:

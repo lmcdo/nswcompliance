@@ -90,3 +90,19 @@ def test_dq146_counts_exactly_what_no_route_query_returns():
     assert "v2_dcp_layer = 'condition'" in sql
     assert "NOT IN ('flood', 'bushfire')" in sql
     assert "<> 'heritage'" in sql
+
+
+def test_cb_4_3_section_21_goes_to_ashbury_and_the_rest_to_all_seven():
+    rules = {r["name"]: r for r in g.EXTRA_KEY_RULES}
+    ash = re.search(r"~ '([^']+)'", rules["cb_4_3_ashbury"]["where"]).group(1)
+    for ref in ("X__21", "X__21_4", "X__21_16"):
+        assert re.search(ash, ref)
+    for ref in ("X__2_1", "X__1", "X__12_5", "X__Objectives O1"):
+        assert not re.search(ash, ref)  # these go to the union rule
+    assert rules["cb_4_3_all_seven"]["strategy"]["precinct_id"] == "C-B 4.3 heritage conservation areas"
+    assert all(r["name"] in {x["name"] for x in dpk.RULES} for r in g.EXTRA_KEY_RULES)
+
+
+def test_dq146_counts_rows_in_a_layer_the_route_never_reads():
+    sql = probes.PROBES["DQ-146"][1]
+    assert "NOT IN ('generic', 'use_specific', 'condition', 'precinct')" in sql
