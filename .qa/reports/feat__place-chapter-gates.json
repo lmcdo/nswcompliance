@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Read-only measurement only: three new ledger probes (DQ-143/144/145), three outreach claims declared false, a per-prompt banner line, a committed chapter-scope data file and its tests. Nothing served to a user changes and nothing is written to the database. Standard rather than Minor because six files change and the outreach gate's verdict changes from 16/17 to 16/20.",
-  "commit_hash": "767f5b02",
+  "commit_hash": "6296a0be",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
