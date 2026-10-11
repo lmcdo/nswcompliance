@@ -1713,8 +1713,8 @@
     "--id",
     "DQ-143"
    ],
-   "passes_when": "exit 0 - no served rule from a part-of-council chapter (data/chapter_scope/) lacks a precinct, zone, heritage or site-condition gate.",
-   "red_when": "a rule the chapter itself limits to a place is shown to every house in the council. Reads 510 on 2026-10-11.",
+   "passes_when": "exit 0 - no served rule from a part-of-council chapter (data/chapter_scope/) lacks the gate its chapter needs: a precinct or site-condition gate for any chapter, the area's own slug (v2_heritage_hca) for a heritage-area chapter, a specific zone tag for a zone chapter.",
+   "red_when": "a rule the chapter itself limits to a place is shown to every house in the council. Reads 1,114 on 2026-10-11.",
    "note": "Served-answer audit 2026-10-11. Scope limit (a floor): heritage-tagged rows still reach every heritage house in the council."
   },
   "DQ-144": {
@@ -1726,7 +1726,7 @@
     "DQ-144"
    ],
    "passes_when": "exit 0 - every served council rule's chapter is either part-of-council (counted by DQ-143) or whole-council confirmed by the fixed _COUNCIL_WIDE pattern on the chapter's own sentence.",
-   "red_when": "a served rule's land was never read from its plan by a machine-checkable rule. Reads 8,599 on 2026-10-11 (upper bound).",
+   "red_when": "a served rule's land was never read from its plan by a machine-checkable rule. Reads 8,694 on 2026-10-11 (upper bound).",
    "note": "An AI reader's label can only raise this count. Cleared per chapter/Part by recording the plan's own land sentence in data/chapter_scope/ and gating local rows."
   },
   "DQ-145": {

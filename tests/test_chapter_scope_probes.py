@@ -16,10 +16,27 @@ def test_scope_file_loads_every_chapter():
     assert all("__" in k for k in keys)
 
 
-def test_dq143_has_part_of_council_chapters():
-    keys = p.PROBES["DQ-143"][2][0]
-    assert len(keys) >= 100
-    assert "leichhardt__amendment-1-george-upward-streets" in keys
+def test_dq143_has_part_of_council_chapters_with_their_gate_kind():
+    keys, kinds = p.PROBES["DQ-143"][2]
+    assert len(keys) == len(kinds) >= 100
+    gate = dict(zip(keys, kinds))
+    assert gate["leichhardt__amendment-1-george-upward-streets"] == "place"
+    assert "heritage" in kinds and "zone" in kinds
+
+
+def test_heritage_area_chapter_needs_its_own_area_not_a_generic_tag():
+    sql = p._GATED_FOR_ITS_CHAPTER
+    assert "cs.kind = 'heritage' AND rp.v2_heritage_hca IS NOT NULL" in sql
+    assert "v2_marker" not in sql  # a generic heritage tag reaches every heritage house
+
+
+def test_missing_scope_file_raises_not_zero(monkeypatch, tmp_path):
+    monkeypatch.setattr(p, "Path", lambda *_a, **_k: tmp_path / "x" / "y" / "z.py")
+    try:
+        p._load_chapter_scope()
+    except (OSError, ValueError):
+        return
+    raise AssertionError("an absent chapter-scope file must raise, never yield []")
 
 
 def test_dq144_excludes_only_decided_chapters():
@@ -36,6 +53,13 @@ def test_council_wide_pattern_confirms_only_land_wording():
     assert yes("applies to the land to which Canterbury-Bankstown LEP 2023 applies")
     assert not yes("any works that take place on land in the vicinity of a place of heritage significance")
     assert not yes("To regulate the effective and orderly development of child care facilities")
+    assert not yes("This chapter applies to the whole of the site")
+
+
+def test_mapped_wording_is_never_council_wide():
+    for quote in ("This chapter applies to all land within the City shown on Map 1",
+                  "applies to all land in the LGA identified in Figure 3"):
+        assert not p._machine_whole_council({"applies_to": "whole_council", "quote": quote})
 
 
 def test_machine_whole_council_needs_the_label_and_the_words():

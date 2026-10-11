@@ -1,38 +1,38 @@
 {
   "tier": "standard",
   "justification": "Read-only measurement only: three new ledger probes (DQ-143/144/145), three outreach claims declared false, a per-prompt banner line, a committed chapter-scope data file and its tests. Nothing served to a user changes and nothing is written to the database. Standard rather than Minor because six files change and the outreach gate's verdict changes from 16/17 to 16/20.",
-  "commit_hash": "f3ca50fe",
+  "commit_hash": "d8f3325d",
   "files": [
-    "scripts/dq_probe_live.py",
-    ".claude/dq_checks.json",
     ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
     ".claude/hooks/live-numbers.py",
+    ".qa/reports/feat__place-chapter-gates.json",
     "data/chapter_scope/chapter_scope_2026-10-11.json",
-    "tests/test_chapter_scope_probes.py",
-    ".qa/reports/feat__place-chapter-gates.json"
+    "scripts/dq_probe_live.py",
+    "tests/test_chapter_scope_probes.py"
   ],
   "pre_impl": {
     "existing_data": "Measured on production before writing: 25,455 served rules; citation_status proven 11,151; part-of-council chapters ungated 510; mixed/unclear/no-chapter ungated 3,756. The chapter scope came from the served-answer audit's checked proposals (235 chapters, 221 quotes found in the PDF by script).",
-    "assumption_mismatch": "The plan said 584 wrong-house rules were left. The whole-gap query found the step-5 chapters were never measured (2,963 + 285 + 508), and only 18 of 94 AI 'whole council' labels carry a sentence a fixed pattern confirms, so the real upper bound is 9,109 across DQ-143 and DQ-144.",
+    "assumption_mismatch": "The plan said 584 wrong-house rules were left. The whole-gap query found the step-5 chapters were never measured (2,963 + 285 + 508), only 16 of 94 AI 'whole council' labels carry a sentence a fixed pattern confirms, and 630 heritage-area rules carry only a generic heritage tag that reaches every heritage property. Real figures: DQ-143 1,114, DQ-144 8,694 (upper bound). Also found: heritage_precinct_mapping, read by lib/precinct-service.ts, does not exist in production.",
     "new_vs_existing": "No new tracker: rows go into the existing ledger (dq_probe_live.py PROBES, dq_checks.json, DATA_QUALITY_TRACKER.md) and the existing per-prompt hook live-numbers.py. DQ-142 was already taken, so the plan's 'DQ-142' is DQ-143/144 here."
   },
   "falsifiable_check": {
     "command": "python -m pytest tests/test_chapter_scope_probes.py -q ; python scripts/dq_probe_live.py --id DQ-143",
     "fails_when": "The tests fail if the chapter-scope file is missing or empty (which would make DQ-143 read 0), if the fixed council-wide pattern accepts the C-B 4.4 heritage-vicinity sentence, or if an AI whole-council label alone is enough to clear a chapter. DQ-143 exits 1 while any part-of-council rule is ungated.",
-    "observed_red": "The test suite failed 2 of 5 on its first run because the council-wide pattern had been written with a literal backspace instead of a word boundary; with that broken pattern DQ-144 read 8,990 instead of 8,599. Fixed, 5 of 5 pass. DQ-143/144/145 exit 1 today (510 / 8,599 / 14,304), as declared open."
+    "observed_red": "The suite failed 2 of 5 on first run because the council-wide pattern had been written with a literal backspace instead of a word boundary (DQ-144 then read 8,990). Cross-review then found four faults, all fixed: a missing scope file now raises (tested), a heritage-area chapter needs its own area slug (generic tag no longer counts; DQ-143 510 -> 1,114), mapped wording ('shown on Map 1') never confirms whole-council (tested), and the banner labels its sum as non-distinct. A zone subset test was tried and dropped: it read 1,064 false faults because chapter zones are in old codes. 8 of 8 tests pass; the three probes exit 1 as declared open."
   },
   "functions": [
     {
       "name": "_chapter_scope_keys",
-      "file_line": "scripts/dq_probe_live.py:59",
+      "file_line": "scripts/dq_probe_live.py:83",
       "input": "filters on part_of_council, applies_to and machine confirmation",
       "output": "The council__chapter keys read from data/chapter_scope/chapter_scope_2026-10-11.json that match every filter given",
-      "if_none": "Returns [] if the file is missing or malformed; tests/test_chapter_scope_probes.py asserts 235 keys so an empty list fails CI rather than letting DQ-143 read 0."
+      "if_none": "_load_chapter_scope raises if the file is missing, malformed or empty, so no probe can read 0 for want of data; test_missing_scope_file_raises_not_zero covers it."
     }
   ],
   "values": [
     {
-      "value": "510 / 8,599 / 14,304",
+      "value": "1,114 / 8,694 / 14,304",
       "what": "DQ-143 / DQ-144 / DQ-145 readings on production",
       "source": "python scripts/dq_probe_live.py --id DQ-143 (144, 145)",
       "read_at": "Read live from production on 2026-10-11 by the probes themselves; the banner re-reads them every ten minutes.",
@@ -67,6 +67,13 @@
       "mitigated": false,
       "how": "Recorded as a scope limit: heritage-tagged rows still reach every heritage house; the predicate mirrors queryLayer in for-property/route.ts as of 2940d1e5. The machine served-answer re-check (step 7) is the end-to-end test.",
       "repro": "python scripts/dq_probe_live.py --id DQ-143"
+    },
+    {
+      "scenario": "A heritage-area chapter's rules carry a generic heritage tag, so the old predicate treated them as gated.",
+      "what_happens": "Rules for one named heritage area reach every heritage property in the council while DQ-143 reads clean.",
+      "mitigated": true,
+      "how": "_GATED_FOR_ITS_CHAPTER requires v2_heritage_hca for heritage-kind chapters; test_heritage_area_chapter_needs_its_own_area_not_a_generic_tag.",
+      "repro": "python -m pytest tests/test_chapter_scope_probes.py -q"
     }
   ],
   "post_merge": {
