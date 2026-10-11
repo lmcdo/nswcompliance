@@ -88,7 +88,7 @@ def test_all_heritage_pattern_reads_the_chapters_own_sentence():
 def test_dq146_counts_exactly_what_no_route_query_returns():
     sql = probes.PROBES["DQ-146"][1]
     assert "v2_dcp_layer = 'condition'" in sql
-    assert "NOT IN ('flood', 'bushfire')" in sql
+    assert "NOT IN ('flood', 'bushfire', 'acid_sulfate', 'riparian')" in sql
     assert "<> 'heritage'" in sql
 
 
@@ -106,3 +106,13 @@ def test_cb_4_3_section_21_goes_to_ashbury_and_the_rest_to_all_seven():
 def test_dq146_counts_rows_in_a_layer_the_route_never_reads():
     sql = probes.PROBES["DQ-146"][1]
     assert "NOT IN ('generic', 'use_specific', 'condition', 'precinct')" in sql
+
+
+def test_b2_area_rules_take_the_whole_sub_section_tree():
+    # cross-review 2026-10-12: a B2.2 sub-section ref must go to Etham Avenue, not to all eleven
+    rules = {r["name"]: r for r in dpk.RULES if r["name"].startswith("woollahra_b2")}
+    etham = re.search(r"~ '([^']+)'", rules["woollahra_b2_2"]["where"]).group(1)
+    union_not = re.search(r"!~ '([^']+)'", rules["woollahra_b2_all_eleven"]["where"]).group(1)
+    for ref in ("X__B2_2", "X__B2_2_1 C1", "X__B2_2 Note"):
+        assert re.search(etham, ref) and re.search(union_not, ref)
+    assert not re.search(etham, "X__B2_21")  # no such section, but 2 must not match 21

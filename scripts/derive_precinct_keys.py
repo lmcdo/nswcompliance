@@ -103,7 +103,7 @@ _WOOLLAHRA_B2 = {
 }
 _WOOLLAHRA_B2_RULES = [
     {"name": f"woollahra_b2_{n}", "council": "woollahra",
-     "where": f"source_chapter_key = 'chapter-b2-neighbourhood-hcas' AND ref_number ~ '__B2_{n}$'",
+     "where": f"source_chapter_key = 'chapter-b2-neighbourhood-hcas' AND ref_number ~ '__B2_{n}([_ ]|$)'",
      "strategy": {"type": "constant", "precinct_id": pid}, "validate": False}
     for n, pid in _WOOLLAHRA_B2.items()
 ]
@@ -246,7 +246,7 @@ RULES: list[dict] = [
     *_WOOLLAHRA_B2_RULES,
     *EXTRA_KEY_RULES,
     {"name": "woollahra_b2_all_eleven", "council": "woollahra", "validate": False,
-     "where": "source_chapter_key = 'chapter-b2-neighbourhood-hcas' AND ref_number !~ '__B2_([2-9]|1[0-2])$'",
+     "where": "source_chapter_key = 'chapter-b2-neighbourhood-hcas' AND ref_number !~ '__B2_([2-9]|1[0-2])([_ ]|$)'",
      "strategy": {"type": "constant", "precinct_id": "Woollahra B2 neighbourhood HCAs"}},
     # Woollahra C1 "applies to the Paddington HCA as identified in Map 1" (p8); 51 rows already keyed.
     # C-B single sites: outlines = the parcels of the chapter's Lot/DP list or its addresses (build_site_boundaries.py).

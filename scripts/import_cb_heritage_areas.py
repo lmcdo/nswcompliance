@@ -89,10 +89,15 @@ def prove(features: list[dict]) -> tuple[dict, dict]:
 
 def wkt_of(feature: dict) -> str:
     from shapely.geometry import MultiPolygon, Polygon
+    from shapely.geometry import LinearRing
     rings = feature["geometry"]["rings"]
-    polys = [Polygon(r) for r in rings]
-    shells = [p for p in polys if p.exterior.is_ccw is False] or polys  # Esri: shells clockwise
-    return MultiPolygon([p.buffer(0) for p in shells]).buffer(0).wkt
+    shells = [r for r in rings if not LinearRing(r).is_ccw] or rings  # Esri: shells clockwise
+    holes = [r for r in rings if LinearRing(r).is_ccw and r not in shells]
+    polys = []
+    for sh in shells:  # each hole belongs to the shell that contains it (cross-review 2026-10-12)
+        outer = Polygon(sh)
+        polys.append(Polygon(sh, [h for h in holes if outer.contains(Polygon(h))]))
+    return MultiPolygon([p.buffer(0) for p in polys]).buffer(0).wkt
 
 
 UPSERT = """

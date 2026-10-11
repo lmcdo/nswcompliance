@@ -21,3 +21,13 @@ def test_a_name_must_match_exactly_one_state_area(monkeypatch):
         pass  # the page fetch is stubbed out; the name rule is exercised below
     hits = [f for f in feats if f["attributes"]["H_NAME"].lower().startswith("ashbury")]
     assert len(hits) == 2  # two candidates -> the loader would refuse ('2_each_name_one_area' False)
+
+
+def test_a_hole_in_a_state_outline_is_kept():
+    # cross-review 2026-10-12: a point inside an excluded hole is outside the area
+    from shapely import wkt as W
+    from shapely.geometry import Point
+    shell = [[0, 0], [0, 10], [10, 10], [10, 0], [0, 0]]      # clockwise (Esri shell)
+    hole = [[4, 4], [6, 4], [6, 6], [4, 6], [4, 4]]           # counter-clockwise (Esri hole)
+    g = W.loads(m.wkt_of({"geometry": {"rings": [shell, hole]}}))
+    assert g.contains(Point(1, 1)) and not g.contains(Point(5, 5))

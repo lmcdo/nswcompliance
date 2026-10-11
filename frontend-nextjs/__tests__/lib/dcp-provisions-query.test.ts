@@ -41,12 +41,35 @@ describe('buildForPropertyParams', () => {
   });
 });
 
+describe('site conditions reach the route', () => {
+  it('sends flood and bushfire only when true', () => {
+    const on = buildForPropertyParams({ formerCouncil: 'Woollahra', flood: true, bushfire: true });
+    expect(on.get('flood')).toBe('true');
+    expect(on.get('bushfire')).toBe('true');
+    for (const v of [false, null, undefined]) {
+      const off = buildForPropertyParams({ formerCouncil: 'Woollahra', flood: v, bushfire: v, acidSulfate: v, riparian: v });
+      expect(off.has('flood')).toBe(false);
+      expect(off.has('bushfire')).toBe(false);
+      expect(off.has('acid_sulfate')).toBe(false);
+      expect(off.has('riparian')).toBe(false);
+    }
+    const more = buildForPropertyParams({ formerCouncil: 'Marrickville', acidSulfate: true, riparian: true });
+    expect(more.get('acid_sulfate')).toBe('true');
+    expect(more.get('riparian')).toBe('true');
+  });
+});
+
 describe('the mounted assessment page uses the builder', () => {
   const src = fs.readFileSync(
     path.join(__dirname, '../../components/compliance/ProvisionsByTocStructure.tsx'), 'utf8');
 
   it('ProvisionsByTocStructure builds its query with buildForPropertyParams and passes landFacts', () => {
     expect(src).toMatch(/buildForPropertyParams\(\{[\s\S]*?landFacts:\s*propertyData\?\.constraints\?\.landFacts/);
+  });
+
+  it("passes the lot's flood map and bushfire flag", () => {
+    expect(src).toMatch(/flood:\s*propertyData\?\.constraints\?\.dcpFloodMap\?\.inFloodArea === true/);
+    expect(src).toMatch(/bushfire:\s*propertyData\?\.constraints\?\.bushfireProne === true/);
   });
 
   it('the assessment page still mounts ProvisionsByTocStructure', () => {

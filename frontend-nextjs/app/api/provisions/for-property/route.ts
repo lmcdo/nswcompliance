@@ -48,6 +48,8 @@ interface PropertyFilters {
   heritage?: boolean;
   flood?: boolean;
   bushfire?: boolean;
+  acid_sulfate?: boolean;  // lot on the LEP Acid Sulfate Soils Map (any class)
+  riparian?: boolean;      // lot on the LEP Riparian Lands / watercourse map
   precinct_id?: string;
   dev_type?: string;
   topic?: string;
@@ -280,6 +282,8 @@ export async function GET(request: NextRequest) {
       heritage: searchParams.get('heritage') === 'true',
       flood: searchParams.get('flood') === 'true',
       bushfire: searchParams.get('bushfire') === 'true',
+      acid_sulfate: searchParams.get('acid_sulfate') === 'true',
+      riparian: searchParams.get('riparian') === 'true',
       precinct_id: searchParams.get('precinct_id') ? normalizePrecinctId(searchParams.get('precinct_id')!) : undefined,
       dev_type: searchParams.get('dev_types') || searchParams.get('dev_type') || undefined,
       topic: searchParams.get('topic') || undefined,
@@ -949,8 +953,14 @@ async function queryLayer(
   // For condition layer with heritage, always use regulatory_provisions.
   // queryHeritageByHca handles both: HCA-specific + general (when hca set)
   // or general-only (when hca not set, e.g. individual heritage items).
+  // A heritage property also has its site conditions: return the heritage rules AND the rules for
+  // the conditions the lot has (flood, bushfire, ...). This returned the heritage rules alone, so a
+  // heritage house on a flood map was never shown its flood rules (found 2026-10-11, DQ-146).
   if (layer === 'condition' && filters.heritage) {
-    return queryHeritageByHca(client, filters);
+    const heritageRows = await queryHeritageByHca(client, filters);
+    const conditionRows = await queryLayer(client, 'condition', { ...filters, heritage: false });
+    const seen = new Set(heritageRows.map((r: any) => r.id));
+    return [...heritageRows, ...conditionRows.filter((r: any) => !seen.has(r.id))];
   }
 
   const params: any[] = [];
@@ -1095,6 +1105,8 @@ async function queryLayer(
     const conditions: string[] = [];
     if (filters.flood) conditions.push('flood');
     if (filters.bushfire) conditions.push('bushfire');
+    if (filters.acid_sulfate) conditions.push('acid_sulfate');
+    if (filters.riparian) conditions.push('riparian');
 
     if (conditions.length === 0) {
       // No conditions apply, skip condition layer
