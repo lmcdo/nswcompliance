@@ -3,13 +3,13 @@
   "justification": "The served-answer audit of 2026-10-11 found every Canterbury-Bankstown house is shown chapters 6.2 Bankstown City Centre, 7.5 Canterbury Local Centre and 7.6 Belmore and Lakemba (1,484 served rules), though each applies only to land shown in its own figure. This adds the three outlines, a loader for dcp_precinct_boundaries, and three constant rules in derive_precinct_keys.py so the chapters' rows are keyed and moved to the precinct layer, which the for-property route filters by the lot's precinct.",
   "commit_hash": "1db655b7",
   "files": [
-    "scripts/build_cb_centre_boundaries.py",
-    "scripts/import_cb_centre_boundaries.py",
-    "scripts/derive_precinct_keys.py",
+    ".gitignore",
     "data/canterbury_bankstown_precincts/centres.geojson",
     "data/canterbury_bankstown_precincts/fit_report.json",
-    "tests/test_cb_centre_boundaries.py",
-    ".gitignore"
+    "scripts/build_cb_centre_boundaries.py",
+    "scripts/derive_precinct_keys.py",
+    "scripts/import_cb_centre_boundaries.py",
+    "tests/test_cb_centre_boundaries.py"
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_cb_centre_boundaries.py -q",
@@ -74,5 +74,9 @@
     "secrets": "None. DATABASE_URL is read from the environment or the main checkout's .env; nothing is written to the repo.",
     "other_repo": "None.",
     "manual_verify": "After the two writes: re-capture 44 Hood Ave Earlwood, 44 Lawford St Greenacre and 5-9 Clack Rd Chester Hill from production /api/provisions/for-property; each must show 0 rows whose document_id is a 6.2, 7.5 or 7.6 chapter."
+  },
+  "real_layer_exempt": {
+    "scripts/build_cb_centre_boundaries.py": "Offline build tool, run by hand; its only database call is a read-only cadastre SELECT (default_transaction_read_only=on). Its output is the committed centres.geojson, which tests/test_cb_centre_boundaries.py checks hermetically; the production effect is proven by the loader.",
+    "scripts/import_cb_centre_boundaries.py": "One-off loader whose real-layer test is built in: after the upsert, inside the same transaction, it runs the site's own lookup SQL against production for every centre and the three audit addresses, and rolls back on any failure. A separate @pytest.mark.database test would need a writable PostGIS with nsw_cadastre_lots, which CI does not have."
   }
 }

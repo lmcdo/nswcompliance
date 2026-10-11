@@ -102,7 +102,7 @@ def main() -> int:
                 (LGA,))
     existing = cur.fetchall()
     print(f"existing {LGA} rows: {len(existing)}")
-    if not a.commit:
+    if not commit:
         print("dry-run: nothing written (pass --commit)")
         return 0
 
