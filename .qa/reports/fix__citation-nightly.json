@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Schedules the existing citation checker nightly with --apply in data-watch. It writes only citation_status, citation_source_path and citation_checked_at, only onto the chapter PDF in force. The page shows a clause number only when 'proven', so a changed verdict can hide or show a clause number; nothing else changes.",
-  "commit_hash": "cdb51931",
+  "commit_hash": "ebb85dc2",
   "files": [
     ".github/workflows/data-watch.yml",
     "scripts/dcp_citation_status.py",
