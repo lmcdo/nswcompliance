@@ -1,0 +1,32 @@
+{
+ "6.2": {
+  "scale_m_per_pt": 4.725,
+  "rotation_deg": 1.244,
+  "lot_line_residual_m": {
+   "median": 3.58,
+   "p75": 6.26
+  },
+  "local_refit_shift_m": {
+   "median": 1.94,
+   "max": 4.92
+  },
+  "figure_area_ha": 243.8,
+  "lots_inside": 1687,
+  "lots_uncertain_kept": 131
+ },
+ "7.5": {
+  "scale_m_per_pt": 2.294,
+  "rotation_deg": 1.934,
+  "lot_line_residual_m": {
+   "median": 3.57,
+   "p75": 7.14
+  },
+  "local_refit_shift_m": {
+   "median": 1.24,
+   "max": 3.33
+  },
+  "figure_area_ha": 28.5,
+  "lots_inside": 388,
+  "lots_uncertain_kept": 13
+ }
+}

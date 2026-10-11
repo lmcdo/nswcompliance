@@ -852,3 +852,6 @@ latent-scope-data/
 
 # Per-prompt provenance readings; re-measured from the database, never source.
 .claude/.live-numbers-cache.json
+
+# source PDFs re-downloaded by scripts/build_cb_centre_boundaries.py
+data/canterbury_bankstown_precincts/.pdf_cache/

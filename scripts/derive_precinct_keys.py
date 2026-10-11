@@ -195,6 +195,33 @@ RULES: list[dict] = [
         },
         "validate": True,
     },
+    # Canterbury-Bankstown DCP 2023 centre chapters. Each applies only "to all development on
+    # the land within" its centre "as identified in Figure N"; the outlines are in
+    # dcp_precinct_boundaries under the same ids (scripts/import_cb_centre_boundaries.py).
+    # Unkeyed, every house in the council was served all 1,484 rules (served-answer audit,
+    # 2026-10-11). 7.5 and 7.6 were 'generic'-layer rows, which no area filter reads; keying
+    # moves them to the precinct layer. validate:False because no key existed before.
+    {
+        "name": "canterbury_bankstown_6_2_bankstown_city_centre",
+        "council": "canterbury_bankstown",
+        "where": "document_id = 'Canterbury-Bankstown_DCP_2023__chapter_6_2_bankstown_city_centre'",
+        "strategy": {"type": "constant", "precinct_id": "6.2"},
+        "validate": False,
+    },
+    {
+        "name": "canterbury_bankstown_7_5_canterbury_local_centre",
+        "council": "canterbury_bankstown",
+        "where": "document_id = 'Canterbury-Bankstown_DCP_2023__chapter_7_5_canterbury_local_centre'",
+        "strategy": {"type": "constant", "precinct_id": "7.5"},
+        "validate": False,
+    },
+    {
+        "name": "canterbury_bankstown_7_6_belmore_and_lakemba",
+        "council": "canterbury_bankstown",
+        "where": "document_id = 'Canterbury-Bankstown_DCP_2023__chapter_7_6_belmore_and_lakemba'",
+        "strategy": {"type": "constant", "precinct_id": "7.6"},
+        "validate": False,
+    },
 ]
 
 
