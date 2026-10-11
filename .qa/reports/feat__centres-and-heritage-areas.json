@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "Loads seven state heritage-area outlines and their union, adds two keying and two gate rules, and widens DQ-146. Already written with the user's yes: 42 C-B 4.3 rules now reach only their heritage areas, 26 C-B 4.2 rules only heritage properties, and 3 C-B 4.4 rules are shown instead of reaching no house.",
+  "commit_hash": "af4f00e7",
+  "files": [
+    "scripts/import_cb_heritage_areas.py",
+    "scripts/gate_rules.py",
+    "scripts/derive_precinct_keys.py",
+    "scripts/dq_probe_live.py",
+    "scripts/apply_cb_heritage_areas.sh",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "tests/test_gate_rules.py",
+    "tests/test_gate_rules_real_db.py",
+    "tests/test_import_cb_heritage_areas.py",
+    "tests/test_import_cb_heritage_areas_real_db.py",
+    "tests/test_cb_centre_boundaries.py",
+    ".qa/reports/feat__centres-and-heritage-areas.json"
+  ],
+  "pre_impl": {
+    "existing_data": "Measured 2026-10-11: chapter 4.3 lists seven HCAs on p4; the state heritage layer holds exactly seven conservation areas for Canterbury-Bankstown LEP 2023 (OBJECTID 186983-187037). 33 served rows sat in v2_dcp_layer 'heritage', a layer for-property never queries.",
+    "assumption_mismatch": "The resume plan said the Ku-ring-gai centre outlines 14A-G were already loaded; only 14B's four sub-precincts are, and the state Local Provisions layer has none, so those centres are not in this change. DQ-146 as first written counted only the condition layer and missed the 'heritage' layer.",
+    "new_vs_existing": "New loader because the importers that loaded Woollahra and Parramatta HCAs from the same state layer no longer run; keying reuses derive_precinct_keys (rules spliced from gate_rules.py because that file is at its 500-line limit)."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/import_cb_heritage_areas.py ; python scripts/dq_probe_live.py --id DQ-146",
+    "fails_when": "The loader refuses if the chapter's list is not on page 4, a listed name matches zero or several state areas, or the state layer holds an eighth area. DQ-146 exits 1 while any served row sits where no route query returns it.",
+    "observed_red": "DQ-146 read 33 after widening and before the write; 0 after. The centre-boundary test failed when the new constant rules appeared and was narrowed to the centre rules by name; the gate-rules real-DB test wrongly required an applied idempotent rule to still match rows and now checks the chapter exists."
+  },
+  "functions": [
+    {
+      "name": "prove",
+      "file_line": "scripts/import_cb_heritage_areas.py:74",
+      "input": "the state layer's conservation-area features for Canterbury-Bankstown LEP 2023",
+      "output": "checks 1-3 and a map from each listed name to its single matching state feature",
+      "if_none": "A name with no or several matches is left out of the map and check 2 fails, so nothing is written."
+    }
+  ],
+  "values": [
+    {
+      "value": "33 -> 0",
+      "what": "DQ-146 served rows reaching no house, after widening",
+      "source": "python scripts/dq_probe_live.py --id DQ-146",
+      "read_at": "Production, read-only, before and after the write on 2026-10-11",
+      "if_missing": "An unreachable database exits 2, never 0."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Fetch the conservation-area outlines the state layer holds for Canterbury-Bankstown LEP 2023.",
+      "file_line": "scripts/import_cb_heritage_areas.py fetch_areas",
+      "where_clause": "EPI_NAME = 'Canterbury-Bankstown Local Environmental Plan 2023' AND LAY_CLASS LIKE 'Conservation Area%'"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Fetching the conservation-area outlines returns an extra or renamed area for the LEP.",
+      "what_happens": "A wrong outline could be keyed to the chapter's rules.",
+      "mitigated": true,
+      "how": "Check 3 requires exactly seven areas and check 2 requires each listed name to match exactly one.",
+      "repro": "python scripts/import_cb_heritage_areas.py"
+    },
+    {
+      "scenario": "Section 21 refs are keyed to all seven areas instead of Ashbury.",
+      "what_happens": "Ashbury-only controls would reach the Hurlstone Park HCAs.",
+      "mitigated": true,
+      "how": "test_cb_4_3_section_21_goes_to_ashbury_and_the_rest_to_all_seven checks the regex on real ref shapes.",
+      "repro": "python -m pytest tests/test_gate_rules.py -q"
+    },
+    {
+      "scenario": "A rule is parked in a layer the route never reads.",
+      "what_happens": "It reaches no house, silently.",
+      "mitigated": true,
+      "how": "DQ-146 now counts any layer outside generic/use_specific/condition/precinct and is declared fixed, so CI fails on a return.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-146"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Done with the user's yes before merge: bash scripts/apply_cb_heritage_areas.sh (8 outline rows, 42 keys, 29 gate rows; backups in data/db_rollback_backups).",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "DQ-146 0 and DQ-143 364 after the write; 56 unit tests and 3 real-source tests pass. Limit: chapter 4.4 'vicinity' has no land layer and is shown council-wide."
+  }
+}

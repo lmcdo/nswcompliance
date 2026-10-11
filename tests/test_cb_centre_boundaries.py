@@ -75,7 +75,8 @@ def test_key_rules_match_the_outlines(centres):
     # The centre rules are the constant-strategy ones; single-site chapters key through their
     # own chapter_map rule (build_site_boundaries.py) and are tested there.
     rules = [r for r in dpk.RULES
-             if r["council"] == "canterbury_bankstown" and r["strategy"]["type"] == "constant"]
+             if r["council"] == "canterbury_bankstown" and r["strategy"]["type"] == "constant"
+             and r["name"].startswith("canterbury_bankstown_")]  # cb_4_3_* key heritage areas
     keyed = {r["strategy"]["precinct_id"] for r in rules}
     assert keyed == set(centres)
     for r in rules:

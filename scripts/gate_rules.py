@@ -45,8 +45,33 @@ GATE_RULES: list[dict] = [
     {"name": "woollahra_e4_whole_council", "council": "woollahra",
      "where": "source_chapter_key = 'chapter-e4-contaminated-land' AND v2_dcp_layer = 'condition'",
      "set": {"v2_dcp_layer": "generic"}},
+    # C-B 4.2 "applies to heritage items listed in the Canterbury-Bankstown LEP 2023 (Schedule 5,
+    # Part 1)" (p4): heritage marker, so heritage properties get it. 22 rows sat in v2_dcp_layer
+    # 'heritage', which the for-property route never queries (DQ-146, widened 2026-10-11).
+    {"name": "cb_4_2_heritage_items", "council": "canterbury_bankstown",
+     "where": "source_chapter_key = 'chapter-4-2-heritage-items'",
+     "set": {"v2_marker": "heritage", "v2_dcp_layer": "generic"}},
+    # C-B 4.4 "vicinity of places of heritage significance": no land layer records "vicinity", so the
+    # 3 rows parked in the unread 'heritage' layer go to the generic layer (shown, scope recorded as
+    # unconfirmed under DQ-144) rather than to no house at all.
+    {"name": "cb_4_4_vicinity_generic", "council": "canterbury_bankstown",
+     "where": "source_chapter_key = 'chapter-4-4-vicinity-of-places-of-heritage-significance'"
+              " AND v2_dcp_layer = 'heritage'",
+     "set": {"v2_dcp_layer": "generic"}},
 ]
 _GATE_COLUMNS = {"v2_marker", "v2_dcp_layer", "v2_site_condition_required"}
+
+#: Precinct-keying rules kept here because derive_precinct_keys.py is at its 500-line limit; it
+#: splices these into RULES. C-B 4.3 lists seven HCAs (p4); section 21 is "Specific controls for the
+#: Ashbury HCA"; every other section applies to all seven (outlines: import_cb_heritage_areas.py).
+EXTRA_KEY_RULES: list[dict] = [
+    {"name": "cb_4_3_ashbury", "council": "canterbury_bankstown", "validate": False,
+     "where": "source_chapter_key = 'chapter-4-3-heritage-conservation-areas' AND ref_number ~ '__21(_|$)'",
+     "strategy": {"type": "constant", "precinct_id": "Ashbury HCA"}},
+    {"name": "cb_4_3_all_seven", "council": "canterbury_bankstown", "validate": False,
+     "where": "source_chapter_key = 'chapter-4-3-heritage-conservation-areas' AND ref_number !~ '__21(_|$)'",
+     "strategy": {"type": "constant", "precinct_id": "C-B 4.3 heritage conservation areas"}},
+]
 
 
 def apply_gate_rules(cur, council: str | None, apply: bool, only: set[str] | None = None) -> list[tuple]:
