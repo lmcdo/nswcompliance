@@ -15,7 +15,8 @@ WHAT IT DOES
 For every served DCP rule: proven | imprecise | partial | not_proven | unjudged | text_not_found,
 or no_source when the chapter's PDF cannot be read. partial = some pieces of the label
 are proven but others were never checked (citation_proof.unjudged_pieces); not shown. Only rows whose verdict CHANGED are written.
-Dry run by default; --apply writes. Runs after every publish and nightly.
+Dry run by default; --apply writes. Runs after every publish (dcp_commit_approved.py) and nightly
+(.github/workflows/data-watch.yml, step "citations" -- unscheduled until 2026-10-12).
 
 USAGE
 -----
@@ -114,13 +115,20 @@ def main() -> int:
                     "WHERE id = ANY(%s) AND is_current", (list(verdicts),))
         current = {i: (s, p) for i, s, p in cur.fetchall()}
         todo = plan_writes(verdicts, sources, current)
+        # A PDF that could not be read tonight is not evidence that its rules lost their proof: never
+        # overwrite an existing verdict with no_source, and fail the run so the alarm fires
+        # (cross-review 2026-10-12 -- a transient download error would hide valid clause numbers).
+        unread = [t for t in todo if t[1] == "no_source" and (current.get(t[0]) or (None,))[0] not in (None, "no_source")]
+        todo = [t for t in todo if t not in unread]
         print(f"scope: {args.council or 'all councils'}  rules: {len(verdicts)}")
         for k, n in Counter(verdicts.values()).most_common():
             print(f"  {n:6}  {k}")
         print(f"  {len(todo):6}  to write (verdict or judged source changed)")
+        if unread:
+            print(f"  {len(unread):6}  NOT written: PDF unreadable now, existing verdict kept")
         if not args.apply:
             print("DRY RUN -- nothing written. Re-run with --apply.")
-            return 0
+            return 1 if unread else 0  # an unread PDF is not a clean check, dry run or not
         for i in range(0, len(todo), BATCH):
             chunk = todo[i:i + BATCH]
             cur.execute(
@@ -136,6 +144,9 @@ def main() -> int:
                 ([t[0] for t in chunk], [t[1] for t in chunk], [t[2] for t in chunk]))
             conn.commit()
         print(f"WROTE {len(todo)} verdicts.")
+        if unread:
+            print(f"KEPT {len(unread)} existing verdicts whose PDF could not be read; failing so it is looked at.")
+            return 1
         return 0
     finally:
         conn.close()

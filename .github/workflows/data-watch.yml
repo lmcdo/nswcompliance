@@ -176,6 +176,23 @@ jobs:
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
         run: python scripts/validate_controls_against_source_pdf.py
 
+      # Citation verdicts, refreshed nightly. scripts/dcp_citation_status.py said it "runs after every
+      # publish and nightly" but nothing scheduled it: the last run was 2026-10-02, and 408 Ashfield
+      # rules restored on 2026-10-10 were never judged (found 2026-10-12). This WRITES only
+      # citation_status / citation_source_path / citation_checked_at, and only onto the chapter PDF
+      # still in force (its own guard). The page shows a clause number only when 'proven'; anything
+      # else shows the page (user decision 2026-10-12). Dry run measured: 19,627 rules judged.
+      - name: Citation verdicts refreshed against the council PDFs (writes verdicts; reads R2)
+        id: citations
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: python scripts/dcp_citation_status.py --apply --workers 4
+
       # github-script, not `gh`. main-red-alarm spent its entire life failing
       # at `gh: command not found` on the self-hosted runners — 12 runs out of
       # 12 — because those images carry neither `gh` nor `jq`. The alarm that
@@ -193,7 +210,7 @@ jobs:
         uses: actions/github-script@v9
         env:
           FAILED: >-
-            ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.lga_flags.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }},${{ steps.answer_quality.outcome }},${{ steps.page_maps.outcome }},${{ steps.controls_vs_pdf.outcome }},${{ steps.audit_chain.outcome }}
+            ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.lga_flags.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }},${{ steps.answer_quality.outcome }},${{ steps.page_maps.outcome }},${{ steps.controls_vs_pdf.outcome }},${{ steps.citations.outcome }},${{ steps.audit_chain.outcome }}
         with:
           script: |
             const { owner, repo } = context.repo;
@@ -205,6 +222,7 @@ jobs:
                            'control source values', 'served-answer quality',
                            'DCP page maps vs their PDFs',
                            'control values vs the council PDF',
+                           'citation verdicts refresh',
                            'report audit chain'];
             const outcomes = (process.env.FAILED || '').split(',');
             const failed = names.filter((_, i) => outcomes[i] === 'failure');
