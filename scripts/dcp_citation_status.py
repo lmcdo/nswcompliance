@@ -15,7 +15,8 @@ WHAT IT DOES
 For every served DCP rule: proven | imprecise | partial | not_proven | unjudged | text_not_found,
 or no_source when the chapter's PDF cannot be read. partial = some pieces of the label
 are proven but others were never checked (citation_proof.unjudged_pieces); not shown. Only rows whose verdict CHANGED are written.
-Dry run by default; --apply writes. Runs after every publish and nightly.
+Dry run by default; --apply writes. Runs after every publish (dcp_commit_approved.py) and nightly
+(.github/workflows/data-watch.yml, step "citations" -- unscheduled until 2026-10-12).
 
 USAGE
 -----
