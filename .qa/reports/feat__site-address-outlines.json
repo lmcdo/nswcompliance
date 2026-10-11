@@ -1,0 +1,90 @@
+{
+  "tier": "standard",
+  "justification": "Adds the address-register path and a check against each chapter's own site map to the fail-closed site builder, and extends two keying maps. Nothing changes until the approved write; then 102 rules from seven single-site chapters reach only their own parcels instead of every house in the council.",
+  "commit_hash": "5eb3854b",
+  "files": [
+    ".qa/reports/feat__site-address-outlines.json",
+    "data/site_chapters/address_sites.json",
+    "data/site_chapters/lot_sites.json",
+    "scripts/apply_site_address_outlines.sh",
+    "scripts/build_site_boundaries.py",
+    "scripts/derive_precinct_keys.py",
+    "scripts/site_addresses.py",
+    "scripts/site_figure_check.py",
+    "tests/test_site_addresses.py",
+    "tests/test_site_addresses_real_db.py",
+    "tests/test_site_figure_check.py",
+    "tests/test_site_figure_check_real_db.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Measured 2026-10-11: DQ-143 518 after the Lot/DP sites. The NSW address register stores single numbers, unit addresses (1/25) and its own ranges (23-25); nsw_cadastre_lots holds the parcels the points sit in.",
+    "assumption_mismatch": "Three named numbers are not in the register (171 Milton St, 353 Waterloo Rd, 101 Eton Rd), so those sites are held. Lettered numbers (149A, 22B) were first treated as neighbours; they are subdivided parts of the named number and now count as the site unless the chapter names lettered numbers itself.",
+    "new_vs_existing": "New module because no script turns an address range into parcels; it reuses build_site_boundaries' checks, loader and fallback count, and the existing chapter_map keying rules for Canterbury-Bankstown and Ku-ring-gai."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/build_site_boundaries.py --addresses ; python -m pytest tests/test_site_addresses.py -q",
+    "fails_when": "The builder holds any site whose address text is not on the cited page, whose named numbers are not all in the register, whose outline contains an address outside the range within 10 numbers (next door or across the street), whose area is off the stated area by more than 10%, or (Inner West) whose nearest-outline fallback reaches a lot. Tests fail if a same-side range takes the other side of the street.",
+    "observed_red": "First run held Milton St and Leichhardt on lettered unit addresses inside their own named numbers; fixed by the lettered-number rule, after which both remain held for other reasons (171 not in the register; Leichhardt area 6,297 vs 14,662 m2 and 112 lots reachable by the fallback). Map check: the first outline reader returned a 207-pixel blob (self-touching contour) and was fixed by filling before tracing; a red legend box scored 0.999 for Marco Avenue until a page-share guard was added; inside pytest the projection library is stubbed, so projection moved into PostGIS. Calibration on Milton: right 0.945, wrong 0.63/0.60/0.28."
+  },
+  "functions": [
+    {
+      "name": "prove_address",
+      "file_line": "scripts/site_addresses.py:81",
+      "input": "a read-only cursor and one site record from data/site_chapters/address_sites.json",
+      "output": "A report with checks 1-5, the site's register addresses, the parcels' union and area; ok only if all pass",
+      "if_none": "An address absent from the register fails check 2; an empty outline fails check 3; either holds the site."
+    }
+  ],
+  "values": [
+    {
+      "value": "4 of 9",
+      "what": "address-only sites passing every check",
+      "source": "python scripts/build_site_boundaries.py --addresses",
+      "read_at": "Production cadastre and NSW address register, read-only, 2026-10-11",
+      "if_missing": "A register timeout raises, so the run fails rather than passing a site."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Find the parcels containing each site address point and union them into the site outline.",
+      "file_line": "scripts/site_addresses.py:81",
+      "where_clause": "FROM nsw_cadastre_lots l JOIN unnest(points) ON ST_Contains(l.geom, point)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A range like 15-33 is read as every number including the other side of the street.",
+      "what_happens": "Houses across the road would be shown the site's rules.",
+      "mitigated": true,
+      "how": "Same-parity ends = one side; the neighbour check also requires every across-the-street address to be outside.",
+      "repro": "python -m pytest tests/test_site_addresses.py -q"
+    },
+    {
+      "scenario": "A named number has been renumbered and is not in the register.",
+      "what_happens": "The outline would miss part of the site.",
+      "mitigated": true,
+      "how": "Check 2 holds the site (Milton St, Chullora, Screen Australia held).",
+      "repro": "python scripts/build_site_boundaries.py --addresses"
+    },
+    {
+      "scenario": "Finding the parcels containing each site address point returns a parcel larger than the site (a big lot shared with neighbours), so the union is too big.",
+      "what_happens": "Neighbouring addresses inside that parcel would get the site's rules.",
+      "mitigated": true,
+      "how": "Check 3 tests every register address within 10 numbers and outside the range against the union; any inside holds the site.",
+      "repro": "python scripts/build_site_boundaries.py --addresses"
+    },
+    {
+      "scenario": "The map outline is a legend swatch or a shape that matches many parcels by luck.",
+      "what_happens": "A wrong outline could pass the map check.",
+      "mitigated": true,
+      "how": "Outlines under 1% of the page are rejected; location must come from the plan's own address or lot list; a neighbour search needs >= 0.95 and a 0.1 lead (a rectangle matched four unrelated lots at 0.98, which is why search alone is never allowed).",
+      "repro": "python -m pytest tests/test_site_figure_check.py -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Yes, with the user's yes: bash scripts/apply_site_address_outlines.sh (7 outlines, 114 rows keyed for Canterbury-Bankstown plus 3 for Ku-ring-gai; backups first).",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Dry runs on production: 4 pass, 5 held; keying dry runs C-B new=91, Ku-ring-gai new=3. 19 unit tests and 4 real-DB tests pass. Limit: no site outline has been compared with the chapter's own figure yet."
+  }
+}
