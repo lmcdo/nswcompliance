@@ -93,8 +93,8 @@ def raster_outline(page, colour: str, dpi: int = 200, clip=None):
             continue
         contours, _ = cv2.findContours(filled, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         big = max(contours, key=cv2.contourArea).reshape(-1, 2)
-        if len(big) < 4:
-            continue
+        if len(big) < 4 or cv2.contourArea(big) < MIN_PAGE_SHARE * filled.size:
+            continue  # a legend swatch, not the site (cross-review 2026-10-12)
         poly = Polygon(np.column_stack([big[:, 0], -big[:, 1]]).astype(np.float64)).buffer(0)
         return max(poly.geoms, key=lambda g: g.area) if poly.geom_type == "MultiPolygon" else poly
     return None

@@ -62,6 +62,8 @@ def register(street: str, suburb: str) -> list[tuple[str, float, float]]:
                                     "resultOffset": offset, "resultRecordCount": 1000})
         d = json.load(urllib.request.urlopen(urllib.request.Request(f"{b.ADDRESS_POINTS}?{q}", headers=b.UA),
                                              timeout=90))
+        if d.get("error"):  # an error is not "no addresses" (cross-review 2026-10-12)
+            raise RuntimeError(f"address register failed for {street} {suburb}: {d['error']}")
         feats = d.get("features") or []
         out += [(f["attributes"]["address"], f["geometry"]["x"], f["geometry"]["y"]) for f in feats]
         if not d.get("exceededTransferLimit") or not feats:
@@ -76,6 +78,27 @@ def _lettered(nums: set[str]) -> bool:
 def _int(token: str) -> int | None:
     m = re.match(r"\d+", token)
     return int(m.group(0)) if m else None
+
+
+def neighbours_inside(cur, site: dict, wkt: str) -> tuple[int, list[str]]:
+    """Register addresses within NEIGHBOUR_SPAN numbers of the site, outside its range, whose point
+    lies inside `wkt`. Run again after a map check widens the parcels (cross-review 2026-10-12)."""
+    site_nums, _ = parse_numbers(site["numbers"])
+    ints = [_int(n) for n in site_nums if _int(n) is not None]
+    lo, hi = min(ints) - NEIGHBOUR_SPAN, max(ints) + NEIGHBOUR_SPAN
+    checked, inside = 0, []
+    for addr, x, y in register(site["street"], site["suburb"]):
+        nums = _base_numbers(addr, site["street"], site["suburb"])
+        if not nums or any(n in site_nums or (str(_int(n)) in site_nums and not _lettered(site_nums)) for n in nums):
+            continue
+        if not any(lo <= (_int(n) or -1) <= hi for n in nums):
+            continue
+        checked += 1
+        cur.execute("SELECT ST_Contains(ST_GeomFromText(%s, 4326), ST_SetSRID(ST_MakePoint(%s, %s), 4326))",
+                    (wkt, x, y))
+        if cur.fetchone()[0]:
+            inside.append(addr)
+    return checked, sorted(set(inside))
 
 
 def prove_address(cur, site: dict) -> dict:

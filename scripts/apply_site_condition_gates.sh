@@ -9,5 +9,5 @@ set -a; . "$(git rev-parse --path-format=absolute --git-common-dir)/../.env"; se
 python scripts/derive_precinct_keys.py --council ku_ring_gai --apply --only krg_16_bushfire_condition,krg_17_riparian
 python scripts/derive_precinct_keys.py --council marrickville --apply --only marrickville_2_23_acid_sulfate
 
-python scripts/dq_probe_live.py --id DQ-143 | head -2 || true
-python scripts/dq_probe_live.py --id DQ-146 | head -2 || true
+python scripts/dq_probe_live.py --id DQ-143 || true   # informational: still open by design
+python scripts/dq_probe_live.py --id DQ-146           # must read 0, or this script fails

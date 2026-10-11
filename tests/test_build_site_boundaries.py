@@ -38,3 +38,9 @@ def test_leichhardt_lists_twenty_four_lots():
 def test_copy_check_ignores_layout_not_words():
     assert b._norm("Lot 3 DP 214260 • Lot 2") == b._norm("Lot 3\nDP 214260 Lot 2")
     assert b._norm("Lot 3 DP 214260") != b._norm("Lot 8 DP 214260")
+
+
+def test_copy_check_keeps_the_separators_that_change_meaning():
+    # cross-review 2026-10-12: 'Lot 1-2' and 'Lot 12' must not compare equal
+    assert b._norm("Lot 1-2 DP 214260") != b._norm("Lot 12 DP 214260")
+    assert b._norm("Lots A and B, DP 355656") == b._norm("Lots A and B,\nDP 355656")

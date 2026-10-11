@@ -59,8 +59,10 @@ def parse_lots(text: str) -> list[str]:
 
 
 def _norm(s: str) -> str:
-    """Letters and digits only: a PDF table or bullet list breaks the same words differently."""
-    return re.sub(r"[^a-z0-9]", "", s.lower())
+    """Drop layout only (whitespace, bullets, table breaks); keep the separators that carry meaning,
+    so 'Lot 1-2' and 'Lot 12' stay different (cross-review 2026-10-12)."""
+    s = s.lower().replace("\u2013", "-").replace("\u2014", "-")
+    return re.sub(r"[^a-z0-9,&\-]", "", s)
 
 
 def verbatim_on_page(site: dict) -> bool:
@@ -146,6 +148,10 @@ def finalize(cur, site: dict, r: dict) -> dict:
         if site["lga"] == "Inner West":
             r["fallback_exposed_lots"] = fallback_exposed(cur, r["wkt"])
             r["checks"]["5_fallback"] = r["fallback_exposed_lots"] == 0
+        if site.get("numbers"):  # widened address site: no out-of-range neighbour may now be inside
+            from site_addresses import neighbours_inside
+            r["neighbours_checked"], r["neighbours_inside"] = neighbours_inside(cur, site, r["wkt"])
+            r["checks"]["3_neighbours"] = not r["neighbours_inside"]
     excusable = {"2_named", "3_area", "4_area"} if m["status"] == "pass" else set()
     r["excused"] = sorted(k for k, v in r["checks"].items() if v is False and k in excusable)
     anchored = r["checks"].get("4_address", True) is not False or r["checks"].get("2_named") is not False
@@ -198,7 +204,13 @@ def main() -> int:
     # sites load. --only narrows to named precinct ids, e.g. to load one site after review.
     passed = [(s, r) for s, r in zip(sites, reports) if r["ok"]]
     if args.only:
-        passed = [(s, r) for s, r in passed if s["precinct_id"] in args.only.split(",")]
+        wanted = set(args.only.split(","))
+        known = {s["precinct_id"]: r for s, r in zip(sites, reports)}
+        bad = sorted(i for i in wanted if i not in known or not known[i]["ok"])
+        if bad:  # every requested site must pass, or the keying step would key a missing outline
+            print(f"REFUSED: requested site(s) unknown or failing: {bad}; nothing written.")
+            return 1
+        passed = [(s, r) for s, r in passed if s["precinct_id"] in wanted]
     if not passed:
         print("REFUSED: no site passed every check; nothing written.")
         return 1
@@ -207,9 +219,12 @@ def main() -> int:
     w = connect()
     try:
         cur = w.cursor()
-        ids = [s["precinct_id"] for s in sites]
-        cur.execute("SELECT row_to_json(b) FROM (SELECT precinct_id, lga, area_sqm, source_document"
-                    " FROM dcp_precinct_boundaries WHERE precinct_id = ANY(%s)) b", (ids,))
+        ids, lgas = [s["precinct_id"] for s in sites], [s["lga"] for s in sites]
+        cur.execute("SELECT row_to_json(b) FROM (SELECT d.precinct_id, d.lga, precinct_name, former_council,"
+                    " area_sqm, source_document, extraction_method, confidence_score, boundary_description,"
+                    " ST_AsText(boundary) AS boundary_wkt FROM dcp_precinct_boundaries d"
+                    " JOIN unnest(%s::text[], %s::text[]) k(pid, lga) ON d.precinct_id = k.pid AND d.lga = k.lga) b",
+                    (ids, lgas))
         BACKUP_DIR.mkdir(parents=True, exist_ok=True)
         bpath = BACKUP_DIR / f"site_boundaries_pre_{datetime.now(timezone.utc):%Y-%m-%dT%H%M%S}.json"
         bpath.write_text(json.dumps([row[0] for row in cur.fetchall()], indent=1), encoding="utf-8")
