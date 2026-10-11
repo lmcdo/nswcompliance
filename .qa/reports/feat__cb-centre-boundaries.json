@@ -1,0 +1,78 @@
+{
+  "tier": "standard",
+  "justification": "The served-answer audit of 2026-10-11 found every Canterbury-Bankstown house is shown chapters 6.2 Bankstown City Centre, 7.5 Canterbury Local Centre and 7.6 Belmore and Lakemba (1,484 served rules), though each applies only to land shown in its own figure. This adds the three outlines, a loader for dcp_precinct_boundaries, and three constant rules in derive_precinct_keys.py so the chapters' rows are keyed and moved to the precinct layer, which the for-property route filters by the lot's precinct.",
+  "commit_hash": "1db655b7",
+  "files": [
+    "scripts/build_cb_centre_boundaries.py",
+    "scripts/import_cb_centre_boundaries.py",
+    "scripts/derive_precinct_keys.py",
+    "data/canterbury_bankstown_precincts/centres.geojson",
+    "data/canterbury_bankstown_precincts/fit_report.json",
+    "tests/test_cb_centre_boundaries.py",
+    ".gitignore"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_cb_centre_boundaries.py -q",
+    "fails_when": "MUTATION run on this branch: replacing the 7.5 geometry with a box covering 44 Hood Ave Earlwood gives 1 failed / 6 passed (test_audit_addresses_are_in_no_centre); restored, 7 passed. In production the loader proves itself inside its transaction and rolls back if any audit address resolves to a precinct or a centre's own centroid is not found by the site's lookup SQL.",
+    "external_authority": "The chapters' own words (each quote is stored on its feature) and the NSW cadastre (nsw_cadastre_lots) for 6.2 and 7.5; the NSW Planning Local Provisions layer OBJECTID 221783 for 7.6, which the chapter's Figure 2 trace matches to median 0.8 m at fitted scale 1:12,494 against the printed 1:12,500.",
+    "observed_red": "Seen red on this branch: with the 7.5 geometry replaced by a box over 44 Hood Ave, pytest printed 'FAILED tests/test_cb_centre_boundaries.py::test_audit_addresses_are_in_no_centre' and '1 failed, 6 passed'; restoring the file gave '7 passed'."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_precinct_boundaries held 0 Canterbury-Bankstown rows. derive_precinct_keys.py already owns precinct keying and is re-run by dcp_commit_approved.py after every commit, so the keys survive re-extraction. import_parramatta_part8_boundaries.py was the model for the loader.",
+    "assumption_mismatch": "Two. The state outlines were expected to match the chapters' figures; measured, only 7.6 does. The state Bankstown City Centre outline is 74.7 ha against Figure 1's ~244 ha, and the Canterbury outline drops 4 lots Figure 1 includes and adds 26. Second, 7.5 and 7.6 rows were in the generic layer, which the route never filters by precinct, so a key alone would have changed nothing; the constant strategy also sets v2_dcp_layer='precinct'.",
+    "new_vs_existing": "New: one build script, one loader, one data file, one test file. Existing: three rules appended to RULES in derive_precinct_keys.py using the existing constant strategy."
+  },
+  "functions": [
+    {
+      "name": "lots_inside",
+      "file_line": "scripts/build_cb_centre_boundaries.py:266",
+      "input": "the fitted figure boundary segments (MGA56) and the cadastre lots in the chapter's box",
+      "output": "lots >=80% inside, and lots 20-80% inside which are also kept so doubt keeps the chapter on the page",
+      "if_none": "an unclosed boundary raises SystemExit; no partial file is written"
+    }
+  ],
+  "values": [
+    {
+      "value": "6.2: 1,687 lots inside + 131 uncertain kept, 250.9 ha; 7.5: 388 + 13, 27.5 ha; 7.6: 436.3 ha",
+      "read_at": "python scripts/build_cb_centre_boundaries.py, 2026-10-11",
+      "if_missing": "without lot counts the size of the change cannot be compared against the figures"
+    },
+    {
+      "value": "derive dry-run: new=1582 changed=0 (777 + 374 + 431 current rows, of which 1,484 are actionable)",
+      "read_at": "python scripts/derive_precinct_keys.py --council canterbury_bankstown, 2026-10-11",
+      "if_missing": "changed=0 is the evidence no other council's or chapter's key is touched"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A house inside a centre on Canterbury Road loses the 13 untagged precinct-layer rows of chapter 8.2 Canterbury Road, because the route serves only that precinct's rows once a precinct is found.",
+      "what_happens": "Chapter 8.2 says it covers certain precincts within the Canterbury Enterprise Corridor; the local centres are not in it on the chapter's own wording, so the loss is expected to be correct, but it is not proven per lot.",
+      "mitigated": false,
+      "how": "Recorded here and in the PR; the served-answer audit's DQ-142 step will key 8.2 to its own outline.",
+      "repro": "GET /api/provisions/for-property?former_council=canterbury_bankstown&precinct_id=7.5 and look for chapter_8_2 rows"
+    },
+    {
+      "scenario": "former_council left NULL on the new boundary rows.",
+      "what_happens": "precinct-service would fall back to PRECINCT_ID_PATTERNS; '6.2' matches the City of Sydney pattern and anything else defaults to 'Marrickville', serving another council's DCP.",
+      "mitigated": true,
+      "how": "The loader sets 'Canterbury-Bankstown'; test_former_council_resolves_to_the_rules_council_key checks it slugs to canterbury_bankstown.",
+      "repro": "python -m pytest tests/test_cb_centre_boundaries.py -q"
+    },
+    {
+      "scenario": "The fitted Bankstown City Centre outline lands in the wrong place (a fit that locks onto the wrong street, which happened twice during development at ~15-40 m).",
+      "what_happens": "Lots on the true edge would be dropped or wrongly added; an outline shifted a whole block would also break the 'audit addresses outside' and 'centroid found' checks only if it moved very far, so those checks alone do not catch it.",
+      "mitigated": true,
+      "how": "Accepted fit was checked by overlay against the cadastre and against the shape of Figure 1 (Stacey St curve, railway, stepped south-west edge); the lot-line residual is recorded in fit_report.json (median 3.58 m) so a re-run that lands elsewhere shows a different number. Doubtful edge lots are kept, not dropped.",
+      "repro": "python scripts/build_cb_centre_boundaries.py and compare data/canterbury_bankstown_precincts/fit_report.json"
+    }
+  ],
+  "mutation_analysis": "One mutation run: a 7.5 outline covering Hood Ave makes test_audit_addresses_are_in_no_centre fail (1 failed / 6 passed). test_each_centre_contains_its_own_interior exists so an empty polygon cannot pass the outside test.",
+  "residual_risk": "6.2 and 7.5 come from figures fitted to the cadastre with ~4 m median residual (kerbs and buildings share the lot-line style); lots near the edge were kept rather than dropped. Chapter 8.2 interaction as above.",
+  "post_merge": {
+    "db_reset": "Yes, user approved 2026-10-11: python scripts/import_cb_centre_boundaries.py --commit, then python scripts/derive_precinct_keys.py --council canterbury_bankstown --apply. Both write backups to data/db_rollback_backups.",
+    "secrets": "None. DATABASE_URL is read from the environment or the main checkout's .env; nothing is written to the repo.",
+    "other_repo": "None.",
+    "manual_verify": "After the two writes: re-capture 44 Hood Ave Earlwood, 44 Lawford St Greenacre and 5-9 Clack Rd Chester Hill from production /api/provisions/for-property; each must show 0 rows whose document_id is a 6.2, 7.5 or 7.6 chapter."
+  }
+}
