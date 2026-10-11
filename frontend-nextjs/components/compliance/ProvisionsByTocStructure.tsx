@@ -369,8 +369,9 @@ export function ProvisionsByTocStructure({
     precinctId,
     landApplicationInstruments: propertyData?.constraints?.landApplicationInstruments,
     landFacts: propertyData?.constraints?.landFacts,
-    flood: propertyData?.constraints?.dcpFloodMap?.inFloodArea === true
-      || propertyData?.constraints?.floodProne === true,
+    // The council's own DCP flood map only: DCP flood rules apply to land on that map, and the
+    // separate state flag could add land outside it (cross-review 2026-10-12).
+    flood: propertyData?.constraints?.dcpFloodMap?.inFloodArea === true,
     bushfire: propertyData?.constraints?.bushfireProne === true,
     acidSulfate: Boolean(propertyData?.constraints?.acidSulfateSoils),
     riparian: propertyData?.constraints?.riparianLand?.inRiparianArea === true,

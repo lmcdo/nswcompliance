@@ -19,7 +19,7 @@ export interface ForPropertyQueryInput {
   precinctId?: string | null;
   landApplicationInstruments?: LandApplicationInstrument[] | null;
   landFacts?: LandFacts | null;
-  /** The lot is on a flood map (council DCP flood map or the state flood flag). */
+  /** The lot is on the council's DCP flood map. */
   flood?: boolean | null;
   /** The lot is on the Bushfire Prone Land Map. */
   bushfire?: boolean | null;
