@@ -1790,7 +1790,7 @@
    "note": "Added 2026-10-11: the gate had no claim for this, which is why it passed 16/17 while the served-answer audit found 35.8/100 rules for another property."
   },
   "DQ-146": {
-   "declared": "open",
+   "declared": "fixed",
    "check": [
     "python",
     "scripts/dq_probe_live.py",
@@ -1798,14 +1798,14 @@
     "DQ-146"
    ],
    "passes_when": "exit 0 - no current, actionable rule sits where no for-property query returns it (condition layer without flood/bushfire condition or heritage marker).",
-   "red_when": "a rule written for some houses is shown to none. Reads 905 on 2026-10-11.",
+   "red_when": "a rule written for some houses is shown to none. Read 905 on 2026-10-11; 0 after the gate-rule write the same day (scripts/apply_dq146_gates.sh).",
    "note": "Proved live on 17 Etham Avenue Darling Point (1 of 64 B2 rules shown). Cleared by gate rules and precinct keys, never by deleting rows."
   },
   "OC-21": {
    "kind": "outreach_claim",
    "claim": "Every rule written for an address's land is shown for it.",
    "source": "~/.claude/plans/ce-served-answer-audit-RESUME-2026-10-11.md#12",
-   "declared": "false",
+   "declared": "true",
    "check": [
     "python",
     "scripts/dq_probe_live.py",

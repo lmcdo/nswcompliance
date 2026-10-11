@@ -1,0 +1,76 @@
+id,precinct_id_before,precinct_id_after,layer_before,rule
+140976,,Etham Avenue HCA,condition,woollahra_b2_2
+140977,,Darling Point Road HCA,condition,woollahra_b2_3
+140978,,Mona Road HCA,condition,woollahra_b2_4
+140979,,Loftus Street and Mona Road HCA,condition,woollahra_b2_5
+140980,,Aston Gardens HCA,condition,woollahra_b2_6
+140981,,Victoria Road HCA,condition,woollahra_b2_7
+140982,,Balfour Road HCA,condition,woollahra_b2_8
+140973,,Rose Bay Gardens Estate HCA,condition,woollahra_b2_10
+140974,,Kent Road HCA,condition,woollahra_b2_11
+140975,,Bell Street HCA,condition,woollahra_b2_12
+140951,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140971,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140939,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140960,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140925,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140934,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140923,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140911,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140917,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140922,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140927,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140931,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140932,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140937,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140941,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140942,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140946,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140953,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140966,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140919,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140915,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140913,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140912,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140916,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140920,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140921,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140926,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140933,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140935,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140936,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140949,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140954,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140961,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140964,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140969,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140972,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+149091,,Woollahra B2 neighbourhood HCAs,generic,woollahra_b2_all_eleven
+140928,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140947,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140956,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140929,,Woollahra B2 neighbourhood HCAs,,woollahra_b2_all_eleven
+140930,,Woollahra B2 neighbourhood HCAs,,woollahra_b2_all_eleven
+140945,,Woollahra B2 neighbourhood HCAs,,woollahra_b2_all_eleven
+140957,,Woollahra B2 neighbourhood HCAs,,woollahra_b2_all_eleven
+140958,,Woollahra B2 neighbourhood HCAs,,woollahra_b2_all_eleven
+140959,,Woollahra B2 neighbourhood HCAs,,woollahra_b2_all_eleven
+140962,,Woollahra B2 neighbourhood HCAs,,woollahra_b2_all_eleven
+140963,,Woollahra B2 neighbourhood HCAs,,woollahra_b2_all_eleven
+140965,,Woollahra B2 neighbourhood HCAs,,woollahra_b2_all_eleven
+140970,,Woollahra B2 neighbourhood HCAs,,woollahra_b2_all_eleven
+140914,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140938,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140967,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140909,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140910,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140924,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140940,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140943,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140948,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140950,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140952,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140955,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140968,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+140944,,Woollahra B2 neighbourhood HCAs,condition,woollahra_b2_all_eleven
+127015,,Paddington HCA,condition,woollahra_c1_paddington
