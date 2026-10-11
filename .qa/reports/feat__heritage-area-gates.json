@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Once applied, this changes which houses are shown 905 current DCP rules that today reach no house (DQ-146), and moves Woollahra E2/E4 rules between layers. A wrong rule would hide a rule from houses it covers or show it to houses it does not, silently. The code is read-only until a person runs --apply/--commit with the user's yes.",
-  "commit_hash": "cb4ba287",
+  "commit_hash": "ab1e3a3c",
   "files": [
     "scripts/gate_rules.py",
     "scripts/derive_precinct_keys.py",
