@@ -1,0 +1,184 @@
+#!/usr/bin/env python3
+"""Build and load single-site outlines from the Lot/DP list in the chapter's own text.
+
+prior-art-checked: the outline is the union of exact cadastre parcels, the same table
+build_cb_centre_boundaries.py fits figures to (nsw_cadastre_lots); loading reuses
+import_cb_centre_boundaries.connect and its upsert-on-(precinct_id, lga) shape. Neither can
+read a lot list: build_cb fits a drawn figure, import_cb loads a committed geojson.
+
+PROOF (each check must pass or the site is NOT built -- DQ-143, 2026-10-11)
+  1 verbatim  the data file's lot list appears word for word on the cited PDF page
+  2 lots      every listed lot is found in nsw_cadastre_lots by exact lotidstring
+  3 area      the parcels' area is within 10% of the area the chapter states (if it states one)
+  4 address   the address register point for the chapter's address is inside the outline
+  5 fallback  Inner West only: no lot outside every outline lies within 500 m of the new outline
+              (precinct-service.ts findNearestPrecinct would hand it the site's rules)
+
+Usage:
+    python scripts/build_site_boundaries.py            # prove every site, print, write nothing
+    python scripts/build_site_boundaries.py --commit   # prove, back up, upsert the sites that pass
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+import urllib.parse
+import urllib.request
+from datetime import datetime, timezone
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import dq_db  # noqa: E402
+
+REPO = Path(__file__).resolve().parent.parent
+SRC = REPO / "data" / "site_chapters" / "lot_sites.json"
+BACKUP_DIR = REPO / "data" / "db_rollback_backups"
+ADDRESS_POINTS = ("https://portal.spatial.nsw.gov.au/server/rest/services/"
+                  "NSW_Geocoded_Addressing_Theme/MapServer/1/query")
+UA = {"User-Agent": "Mozilla/5.0 (build_site_boundaries)"}
+AREA_TOLERANCE = 0.10
+FALLBACK_M = 500
+
+_LOT_RE = re.compile(
+    r"Lots?\s+((?:[0-9A-Z]{1,4}(?:\s*-\s*[0-9A-Z]{1,4})?)(?:\s*(?:,|and)\s*[0-9A-Z]{1,4}(?:\s*-\s*[0-9A-Z]{1,4})?)*?)"
+    r"\s*,?\s*DP\s*(\d+)\b", re.I)
+
+
+def parse_lots(text: str) -> list[str]:
+    """'Lot 6-9, DP79950 Lots A and B, DP 355656' -> ['6//DP79950', ..., 'A//DP355656', 'B//DP355656']."""
+    out: list[str] = []
+    for ids, dp in _LOT_RE.findall(text):
+        for part in re.split(r"\s*(?:,|and)\s*", ids.strip()):
+            m = re.fullmatch(r"(\d+)\s*-\s*(\d+)", part)
+            numbers = [str(n) for n in range(int(m.group(1)), int(m.group(2)) + 1)] if m else [part]
+            out.extend(f"{n.upper()}//DP{dp}" for n in numbers if n)
+    return list(dict.fromkeys(out))
+
+
+def _norm(s: str) -> str:
+    """Letters and digits only: a PDF table or bullet list breaks the same words differently."""
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+def verbatim_on_page(site: dict) -> bool:
+    import fitz  # PyMuPDF
+    data = urllib.request.urlopen(urllib.request.Request(site["pdf"], headers=UA), timeout=60).read()
+    page = fitz.open(stream=data, filetype="pdf")[site["page"] - 1].get_text()
+    return _norm(site["lots_verbatim"]) in _norm(page)
+
+
+def address_point(address: str) -> tuple[float, float] | None:
+    q = urllib.parse.urlencode({"where": f"address = '{address}'", "outFields": "address",
+                                "returnGeometry": "true", "outSR": 4326, "f": "json"})
+    d = json.load(urllib.request.urlopen(urllib.request.Request(f"{ADDRESS_POINTS}?{q}", headers=UA),
+                                         timeout=60))
+    feats = d.get("features") or []
+    return (feats[0]["geometry"]["x"], feats[0]["geometry"]["y"]) if feats else None
+
+
+def prove(cur, site: dict) -> dict:
+    """Run checks 1-5. Returns a report; report['ok'] is True only if every check passed."""
+    lots = parse_lots(site["lots_verbatim"])
+    r: dict = {"precinct_id": site["precinct_id"], "lots_listed": len(lots), "checks": {}}
+    r["checks"]["1_verbatim"] = verbatim_on_page(site)
+    cur.execute("SELECT lotidstring FROM nsw_cadastre_lots WHERE lotidstring = ANY(%s)", (lots,))
+    found = {row[0] for row in cur.fetchall()}
+    r["missing_lots"] = sorted(set(lots) - found)
+    r["checks"]["2_lots"] = not r["missing_lots"] and bool(lots)
+    cur.execute("SELECT ST_AsText(ST_Multi(ST_Union(geom))), ST_Area(ST_Union(geom)::geography)"
+                " FROM nsw_cadastre_lots WHERE lotidstring = ANY(%s)", (lots,))
+    r["wkt"], area = cur.fetchone()
+    r["area_m2"] = round(area or 0)
+    stated = site.get("stated_area_m2")
+    r["checks"]["3_area"] = (abs(r["area_m2"] - stated) <= AREA_TOLERANCE * stated) if stated else None
+    pt = address_point(site["address"])
+    r["address_point"] = pt
+    r["checks"]["4_address"] = False
+    if pt and r["wkt"]:
+        cur.execute("SELECT ST_Contains(ST_GeomFromText(%s, 4326), ST_SetSRID(ST_MakePoint(%s, %s), 4326))",
+                    (r["wkt"], pt[0], pt[1]))
+        r["checks"]["4_address"] = bool(cur.fetchone()[0])
+    if site["lga"] == "Inner West" and r["wkt"]:
+        cur.execute(
+            "SELECT count(*) FROM lot_search_index l"
+            " WHERE l.lga_name = 'INNER WEST'"
+            "   AND ST_DWithin(ST_Transform(ST_PointOnSurface(l.geom), 3857),"
+            "                  ST_Transform(ST_GeomFromText(%s, 4326), 3857), %s)"
+            "   AND NOT ST_Contains(ST_GeomFromText(%s, 4326), ST_PointOnSurface(l.geom))"
+            "   AND NOT EXISTS (SELECT 1 FROM dcp_precinct_boundaries b WHERE LOWER(b.lga) = 'inner west'"
+            "                   AND ST_Contains(b.boundary, ST_PointOnSurface(l.geom)))",
+            (r["wkt"], FALLBACK_M, r["wkt"]))
+        r["fallback_exposed_lots"] = cur.fetchone()[0]
+        r["checks"]["5_fallback"] = r["fallback_exposed_lots"] == 0
+    r["ok"] = all(v is not False for v in r["checks"].values())
+    return r
+
+
+UPSERT = """
+INSERT INTO dcp_precinct_boundaries
+  (precinct_id, precinct_name, lga, former_council, boundary, centroid, area_sqm,
+   source_document, extraction_method, confidence_score, boundary_description)
+VALUES (%(id)s, %(name)s, %(lga)s, %(fc)s, ST_GeomFromText(%(wkt)s, 4326),
+        ST_Centroid(ST_GeomFromText(%(wkt)s, 4326)), %(area)s, %(src)s, 'chapter_lot_list_cadastre', 1.0, %(desc)s)
+ON CONFLICT (precinct_id, lga) DO UPDATE SET
+  boundary = EXCLUDED.boundary, centroid = EXCLUDED.centroid, area_sqm = EXCLUDED.area_sqm,
+  source_document = EXCLUDED.source_document, extraction_method = EXCLUDED.extraction_method,
+  boundary_description = EXCLUDED.boundary_description, updated_at = now()
+"""
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--commit", action="store_true")
+    ap.add_argument("--only", help="comma-separated precinct ids to load (each must still pass)")
+    args = ap.parse_args()
+    sites = json.loads(SRC.read_text(encoding="utf-8"))["sites"]
+    conn = dq_db.connect()
+    try:
+        reports = [prove(conn.cursor(), s) for s in sites]
+    finally:
+        conn.close()
+    for r in reports:
+        print(f"{'OK  ' if r['ok'] else 'FAIL'} {r['precinct_id']:<24} lots={r['lots_listed']:<3} "
+              f"area={r['area_m2']:>7,} m2  checks={r['checks']}"
+              + (f"  missing={r['missing_lots']}" if r["missing_lots"] else "")
+              + (f"  fallback_exposed={r.get('fallback_exposed_lots')}" if "fallback_exposed_lots" in r else ""))
+    if not args.commit:
+        print("DRY RUN - nothing written.")
+        return 0 if all(r["ok"] for r in reports) else 1
+    # A site that fails any check is held (printed FAIL above) and never written; only proven
+    # sites load. --only narrows to named precinct ids, e.g. to load one site after review.
+    passed = [(s, r) for s, r in zip(sites, reports) if r["ok"]]
+    if args.only:
+        passed = [(s, r) for s, r in passed if s["precinct_id"] in args.only.split(",")]
+    if not passed:
+        print("REFUSED: no site passed every check; nothing written.")
+        return 1
+    sites, reports = [s for s, _ in passed], [r for _, r in passed]
+    from import_cb_centre_boundaries import connect
+    w = connect()
+    try:
+        cur = w.cursor()
+        ids = [s["precinct_id"] for s in sites]
+        cur.execute("SELECT row_to_json(b) FROM (SELECT precinct_id, lga, area_sqm, source_document"
+                    " FROM dcp_precinct_boundaries WHERE precinct_id = ANY(%s)) b", (ids,))
+        BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+        bpath = BACKUP_DIR / f"site_boundaries_pre_{datetime.now(timezone.utc):%Y-%m-%dT%H%M%S}.json"
+        bpath.write_text(json.dumps([row[0] for row in cur.fetchall()], indent=1), encoding="utf-8")
+        for s, r in zip(sites, reports):
+            cur.execute(UPSERT, {
+                "id": s["precinct_id"], "name": f"{s['source_chapter_key']} (lot list p{s['page']})",
+                "lga": s["lga"], "fc": s["former_council"], "wkt": r["wkt"], "area": r["area_m2"],
+                "src": f"{s['pdf']}#page={s['page']} lot list: {s['lots_verbatim']}",
+                "desc": f"{r['lots_listed']} lots from nsw_cadastre_lots; checks {r['checks']}"})
+        w.commit()
+        print(f"COMMITTED {len(sites)} outlines; backup {bpath}")
+    finally:
+        w.close()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

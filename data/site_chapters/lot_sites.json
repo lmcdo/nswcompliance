@@ -1,0 +1,67 @@
+{
+ "_about": "Single-site DCP chapters whose OWN text lists the site's Lot/DP numbers. 'lots_verbatim' is copied word for word from the chapter page cited; scripts/build_site_boundaries.py parses it, matches each lot by exact id in nsw_cadastre_lots, and refuses to build unless every lot is found, the parcels' area is within 10% of 'stated_area_m2' (when the chapter states one), and the address register point for 'address' falls inside. Recorded 2026-10-11 (DQ-143).",
+ "sites": [
+  {
+   "precinct_id": "Leichhardt Amendment 1",
+   "council": "leichhardt",
+   "source_chapter_key": "amendment-1-george-upward-streets",
+   "lga": "Inner West",
+   "former_council": "Leichhardt",
+   "pdf": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/leichhardt/v1.1-2026-04-05/amendment-1-george-upward-streets.pdf",
+   "page": 3,
+   "lots_verbatim": "Lot 6-9, DP79950 Lot 1, DP104359 Lot 16, DP69760 Lot 1, DP920105 Lot B, DP327352 Lot 1, DP1108695 Lot 7, DP448755 Lot 1, DP972151 Lots 1-2, DP102461 Lot 5, DP1080665 Lots 5-6, DP745976 Lot 1, DP745979 Lots 10-13, DP 83665 Lot 15, DP1081840 Lot 1, DP745978 Lot 9, DP666322",
+   "stated_area_m2": 14662,
+   "address": "30 GEORGE STREET LEICHHARDT"
+  },
+  {
+   "precinct_id": "11.12",
+   "council": "canterbury_bankstown",
+   "source_chapter_key": "chapter-11-12-445-canterbury-road",
+   "lga": "Canterbury-Bankstown",
+   "former_council": "Canterbury-Bankstown",
+   "pdf": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-11-12-445-canterbury-road.pdf",
+   "page": 4,
+   "lots_verbatim": "Lot 3, DP 337683 4,414m2 Lots A and B, DP 355656 Lot A and B, DP 416123 Lot 15, DP 3995 Lots A and B, DP 391661 Lot 13, DP 3995",
+   "stated_area_m2": 4414,
+   "address": "445 CANTERBURY ROAD CAMPSIE"
+  },
+  {
+   "precinct_id": "11.13",
+   "council": "canterbury_bankstown",
+   "source_chapter_key": "chapter-11-13-former-wsu-campus-milperra",
+   "lga": "Canterbury-Bankstown",
+   "former_council": "Canterbury-Bankstown",
+   "pdf": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-11-13-former-wsu-campus-milperra.pdf",
+   "page": 5,
+   "lots_verbatim": "Lot 2, DP 1291984 19,640m2 2A Bullecourt Avenue, Milperra Lot 2, DP 101147",
+   "stated_area_m2": 19842,
+   "stated_area_note": "Table 1: 19,640m2 (2 Bullecourt Ave) + 202m2 (2A Bullecourt Ave)",
+   "address": "2 BULLECOURT AVENUE MILPERRA",
+   "limit": "The chapter also applies to 'the C2 Woodland Conservation Zone as shown in Figure 2'; that land is not in the lot list and is not added here."
+  },
+  {
+   "precinct_id": "11.9",
+   "council": "canterbury_bankstown",
+   "source_chapter_key": "chapter-11-9-revesby-hospital",
+   "lga": "Canterbury-Bankstown",
+   "former_council": "Canterbury-Bankstown",
+   "pdf": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-11-9-revesby-hospital.pdf",
+   "page": 4,
+   "lots_verbatim": "Lot 9, DP 663160 and Lot 202, DP 840245",
+   "stated_area_m2": null,
+   "address": "297 CANTERBURY ROAD REVESBY"
+  },
+  {
+   "precinct_id": "11.15",
+   "council": "canterbury_bankstown",
+   "source_chapter_key": "chapter-11-15-marco-avenue",
+   "lga": "Canterbury-Bankstown",
+   "former_council": "Canterbury-Bankstown",
+   "pdf": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-11-15-marco-avenue.pdf",
+   "page": 4,
+   "lots_verbatim": "Lot 3 DP 214260 Lot 2 DP 214260 Lot 1 DP 214260",
+   "stated_area_m2": null,
+   "address": "75A MARCO AVENUE REVESBY"
+  }
+ ]
+}

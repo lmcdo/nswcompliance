@@ -247,6 +247,10 @@ RULES: list[dict] = [
      "where": "source_chapter_key = 'chapter-b2-neighbourhood-hcas' AND ref_number !~ '__B2_([2-9]|1[0-2])$'",
      "strategy": {"type": "constant", "precinct_id": "Woollahra B2 neighbourhood HCAs"}},
     # Woollahra C1 "applies to the Paddington HCA as identified in Map 1" (p8); 51 rows already keyed.
+    # C-B single sites whose chapter lists its Lot/DP; outlines = those exact parcels (build_site_boundaries.py).
+    {"name": "canterbury_bankstown_lot_list_sites", "council": "canterbury_bankstown", "validate": False,
+     "where": "source_chapter_key IN ('chapter-11-9-revesby-hospital', 'chapter-11-12-445-canterbury-road', 'chapter-11-15-marco-avenue')",
+     "strategy": {"type": "chapter_map", "map": {"chapter-11-9-revesby-hospital": "11.9", "chapter-11-12-445-canterbury-road": "11.12", "chapter-11-15-marco-avenue": "11.15"}}},
     {"name": "woollahra_c1_paddington", "council": "woollahra", "validate": False,
      "where": "source_chapter_key = 'chapter-c1-paddington-hca'",
      "strategy": {"type": "constant", "precinct_id": "Paddington HCA"}},
