@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which rules the for-property route serves for every property: a predicate that ran in one layer now runs in all four. Wrong in one direction it hides rules that apply; wrong in the other it keeps serving rules for other zones. The tags it reads are already gated by DQ-115 (each declared zone carries the council's words).",
-  "commit_hash": "e0bc6910",
+  "commit_hash": "6ad0ae34",
   "files": [
     "frontend-nextjs/app/api/provisions/for-property/route.ts",
     "frontend-nextjs/lib/provision-sql-filters.ts",
@@ -21,7 +21,7 @@
   "functions": [
     {
       "name": "ZONE_APPLIES_SQL",
-      "file_line": "frontend-nextjs/lib/provision-sql-filters.ts:47",
+      "file_line": "frontend-nextjs/lib/provision-sql-filters.ts:46",
       "input": "The $n index of the property's zone parameter, which the route binds to the Planning Portal zone code for the lot.",
       "output": "A single-line SQL predicate keeping rows with no zone limit, an empty list, ALL, or the lot's zone listed.",
       "if_none": "When the route has no zone for the property the predicate is not added at all, so nothing is withheld for want of a zone."
@@ -56,6 +56,6 @@
     "db_reset": "No.",
     "secrets": "None.",
     "other_repo": "No.",
-    "manual_verify": "After deploy: python scripts/served_answer_audit.py capture against a fresh run and confirm 50 Ruby St Marrickville no longer receives part6-industrial rules."
+    "manual_verify": "After deploy: open /assessment for 50 Ruby Street Marrickville (R2) and confirm no Part 6 industrial or Part 5 commercial rules are listed."
   }
 }
