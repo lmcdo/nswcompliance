@@ -1,0 +1,25 @@
+{
+  "tier": "minor",
+  "justification": "Ledger-only: DQ-146 declared fixed and OC-21 declared true after the approved production write read 0; no code changes.",
+  "commit_hash": "30682d98",
+  "files": [
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".qa/reports/fix__dq146-locked.json"
+  ],
+  "break_it": [
+    {
+      "scenario": "A later change parks rules in the condition layer again with no condition or heritage marker.",
+      "what_happens": "Those rules would reach no house, silently, as before.",
+      "mitigated": true,
+      "how": "DQ-146 is now declared fixed, so dq_check.py in CI fails while its probe reads above 0.",
+      "repro": "python scripts/dq_check.py --id DQ-146"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No (the write was done before this PR, with the user's yes)",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "DQ-146 reads 0; dq_check --id DQ-146 PASSED; coverage OK; outreach 17 of 21 with 0 contradicted; live captures of 147 Darling Point Rd (55 B2 rules) and 19 Sutherland Ave Paddington (0)."
+  }
+}
