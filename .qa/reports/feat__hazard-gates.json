@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which rules the live assessment page shows for every lot on a flood map, the bushfire-prone map, the acid sulfate map or riparian land, and for heritage properties with any of those. Today every condition-layer rule reaches no house because the page never sends the facts.",
-  "commit_hash": "d39695b8",
+  "commit_hash": "b8659ea0",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
