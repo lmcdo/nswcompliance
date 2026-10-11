@@ -65,3 +65,12 @@ describe('the rules route finds councils by key, never by a document-name patter
     expect(src).toMatch(/const fc = councilKey\(filters\.former_council\)/);
   });
 });
+
+describe('an unreadable council name is an error, not an empty plan', () => {
+  it('the route returns 400 when former_council reduces to no key', () => {
+    const src = fs.readFileSync(
+      path.join(__dirname, '../../app/api/provisions/for-property/route.ts'), 'utf8');
+    expect(src).toMatch(/if \(filters\.former_council && !councilKey\(filters\.former_council\)\)[\s\S]{0,300}status: 400/);
+    expect(councilKey('  %%  ')).toBeNull();
+  });
+});

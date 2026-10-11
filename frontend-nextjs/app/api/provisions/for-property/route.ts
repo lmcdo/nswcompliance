@@ -296,6 +296,15 @@ export async function GET(request: NextRequest) {
 
     console.log(`[4-Layer API] Filters: ${JSON.stringify(filters)}`);
 
+    // A council name that reduces to no key would match no rules and look like an empty plan.
+    // Say so instead (cross-review finding on the council-key change).
+    if (filters.former_council && !councilKey(filters.former_council)) {
+      return NextResponse.json(
+        { success: false, error: `Council "${filters.former_council}" is not recognised, so its rules cannot be looked up.` },
+        { status: 400 }
+      );
+    }
+
     // DQ-120: a council DCP that does not cover its whole LGA is served only where
     // the property's Land Application Map names that DCP's LEP. Withheld here,
     // before any query, so no layer below can serve a rule the gate refused.
