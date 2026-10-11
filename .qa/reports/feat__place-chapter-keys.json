@@ -1,15 +1,16 @@
 {
   "tier": "standard",
   "justification": "Adds a fail-closed outline builder and one keying rule. Nothing is served differently until the approved write runs; then 46 rules from three Canterbury-Bankstown single-site chapters reach only their own parcels instead of every house in the council.",
-  "commit_hash": "e49c7f06",
+  "commit_hash": "e81720ad",
   "files": [
+    ".qa/reports/feat__place-chapter-keys.json",
+    "data/site_chapters/lot_sites.json",
+    "scripts/apply_site_lot_outlines.sh",
     "scripts/build_site_boundaries.py",
     "scripts/derive_precinct_keys.py",
-    "scripts/apply_site_lot_outlines.sh",
-    "data/site_chapters/lot_sites.json",
     "tests/test_build_site_boundaries.py",
     "tests/test_build_site_boundaries_real_db.py",
-    ".qa/reports/feat__place-chapter-keys.json"
+    "tests/test_cb_centre_boundaries.py"
   ],
   "pre_impl": {
     "existing_data": "Measured 2026-10-11: DQ-143 556, of which the eleven single-site chapters hold about 234. nsw_cadastre_lots holds exact lotidstring values ('9//DP663160') with a unique index; dcp_precinct_boundaries is unique on (precinct_id, lga).",
