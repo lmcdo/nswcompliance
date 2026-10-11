@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes how the rules route picks a council's rules and PDF links for every property. Wrong, it serves another council's plan or none; the change replaces a name pattern with the stored key.",
-  "commit_hash": "6cdab96b",
+  "commit_hash": "bc63f1ab",
   "files": [
     "frontend-nextjs/lib/council-key.ts",
     "frontend-nextjs/app/api/provisions/for-property/route.ts",
