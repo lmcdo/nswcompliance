@@ -222,6 +222,7 @@ jobs:
                            'control source values', 'served-answer quality',
                            'DCP page maps vs their PDFs',
                            'control values vs the council PDF',
+                           'citation verdicts refresh',
                            'report audit chain'];
             const outcomes = (process.env.FAILED || '').split(',');
             const failed = names.filter((_, i) => outcomes[i] === 'failure');
