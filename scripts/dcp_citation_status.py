@@ -128,7 +128,7 @@ def main() -> int:
             print(f"  {len(unread):6}  NOT written: PDF unreadable now, existing verdict kept")
         if not args.apply:
             print("DRY RUN -- nothing written. Re-run with --apply.")
-            return 0
+            return 1 if unread else 0  # an unread PDF is not a clean check, dry run or not
         for i in range(0, len(todo), BATCH):
             chunk = todo[i:i + BATCH]
             cur.execute(
