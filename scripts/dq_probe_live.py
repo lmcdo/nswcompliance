@@ -59,13 +59,23 @@ def _machine_whole_council(chapter: dict) -> bool:
             and not _MAPPED_PART.search(quote))
 
 
+#: A heritage chapter whose own sentence covers EVERY heritage item and/or EVERY heritage
+#: conservation area its LEP lists (Ashfield E1, C-B 4.2, Ku-ring-gai Part 19). For these a
+#: generic heritage tag IS the right gate. A chapter naming particular areas (Woollahra B2's
+#: list, C-B 4.3's seven, Paddington) does not match and needs those areas' outlines.
+_ALL_HERITAGE = re.compile(
+    r"heritage (items?|conservation areas?)\b.{0,120}?"
+    r"(listed in|identified on|shown on) the .{0,60}?(LEP|Local Environmental Plan|Heritage Map|Schedule 5)",
+    re.I)
+
+
 def _gate_kind(chapter: dict) -> str:
-    """Which gate a part-of-council chapter needs: 'zone', 'heritage' or 'place'."""
+    """Which gate a part-of-council chapter needs: 'zone', 'heritage_general', 'heritage' or 'place'."""
     source = chapter.get("boundary_source") or ""
     if chapter.get("applies_to") == "zones" or source.startswith("zone"):
         return "zone"
     if chapter.get("applies_to") == "heritage_area" or source.startswith("heritage"):
-        return "heritage"
+        return "heritage_general" if _ALL_HERITAGE.search(chapter.get("quote") or "") else "heritage"
     return "place"
 
 
@@ -108,6 +118,8 @@ _GATED_FOR_ITS_CHAPTER = (
     "(rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NOT NULL)"
     " OR (rp.v2_dcp_layer = 'condition' AND rp.v2_site_condition_required IN ('flood', 'bushfire'))"
     " OR (cs.kind = 'heritage' AND rp.v2_heritage_hca IS NOT NULL)"
+    " OR (cs.kind = 'heritage_general'"
+    "     AND (LOWER(COALESCE(rp.v2_marker, '')) = 'heritage' OR LOWER(COALESCE(rp.v2_topic, '')) = 'heritage'))"
     " OR (cs.kind = 'zone' AND cardinality(rp.v2_applicable_zones) > 0"
     "     AND NOT 'ALL' = ANY(rp.v2_applicable_zones))"
 )
@@ -123,6 +135,16 @@ _REACHES_EVERY_HOUSE = (
     " AND COALESCE(LOWER(v2_topic), '') <> 'heritage' AND COALESCE(LOWER(v2_marker), '') <> 'heritage'"
     " AND (v2_applicable_zones IS NULL OR cardinality(v2_applicable_zones) = 0"
     "      OR 'ALL' = ANY(v2_applicable_zones))"
+)
+#: A served-flagged rule the page shows to NO house. Mirrors for-property/route.ts: the
+#: condition layer serves only flood/bushfire rows (queryLayer) and, for heritage houses,
+#: rows whose v2_marker is 'heritage' (queryHeritageByHca). Anything else in that layer is
+#: never returned. Proved live 2026-10-11: 17 Etham Avenue Darling Point (inside the Etham
+#: Avenue HCA) is shown 1 of the 64 Woollahra B2 rules written for it.
+_REACHES_NOBODY = (
+    "rp.v2_dcp_layer = 'condition'"
+    " AND COALESCE(rp.v2_site_condition_required, '') NOT IN ('flood', 'bushfire')"
+    " AND LOWER(COALESCE(rp.v2_marker, '')) <> 'heritage'"
 )
 _SERVED = ("is_current AND v2_is_actionable"
            " AND (v2_provision_type IS NULL OR v2_provision_type <> 'TOC')")
@@ -2746,7 +2768,7 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "   ON rp.source_council || '__' || COALESCE(rp.source_chapter_key, '') = cs.key"
         f" WHERE rp.is_current AND rp.v2_is_actionable"
         "   AND (rp.v2_provision_type IS NULL OR rp.v2_provision_type <> 'TOC')"
-        f"   AND NOT ({_GATED_FOR_ITS_CHAPTER})",
+        f"   AND NOT ({_GATED_FOR_ITS_CHAPTER}) AND NOT ({_REACHES_NOBODY})",
         _part_of_council_gates(),
         "Each count is one rule the chapter itself limits to a place, zone or heritage "
         "area, shown to every house in the council. Cleared by gating the rows to the "
@@ -2768,6 +2790,21 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "be for every house or for one Part's area. Cleared per Part: record the Part's "
         "own words in data/chapter_scope/ and gate the local rows (DQ-143 then counts "
         "any that stay ungated).",
+    ),
+    "DQ-146": (
+        "Served-flagged rules the page shows to no house",
+        # Found 2026-10-11 building DQ-143: rules parked in the condition layer with no
+        # flood/bushfire condition and no heritage marker are returned by no query in
+        # for-property/route.ts. The rule exists, is current and actionable, and is missing
+        # from every page -- including the houses it was written for.
+        "SELECT count(*) FROM regulatory_provisions rp"
+        " WHERE rp.is_current AND rp.v2_is_actionable"
+        "   AND (rp.v2_provision_type IS NULL OR rp.v2_provision_type <> 'TOC')"
+        f"   AND {_REACHES_NOBODY}",
+        (),
+        "Each count is a current rule that no address is ever shown. Cleared by giving it "
+        "the gate its chapter needs (precinct outline, heritage marker, flood/bushfire "
+        "condition) so the houses it covers receive it.",
     ),
     "DQ-145": (
         "Served rules whose citation is not machine-proven",

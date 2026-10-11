@@ -52,6 +52,9 @@ from pathlib import Path
 
 import psycopg2
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gate_rules import apply_gate_rules  # noqa: E402
+
 REPO = Path(__file__).resolve().parent.parent
 DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
 
@@ -90,6 +93,20 @@ with open(REPO / "data" / "cos_precinct_page_ranges.json", encoding="utf-8") as 
 # `validate`: True means --validate asserts the derived key reproduces the key
 # already in the DB (deterministic councils keyed cleanly today). False means the
 # rule is going-forward-correct but the current rows were hand-patched differently.
+# Woollahra DCP 2015 B2.2-B2.12: one neighbourhood HCA each (outline id = boundary precinct_id).
+_WOOLLAHRA_B2 = {
+    2: "Etham Avenue HCA", 3: "Darling Point Road HCA", 4: "Mona Road HCA",
+    5: "Loftus Street and Mona Road HCA", 6: "Aston Gardens HCA", 7: "Victoria Road HCA",
+    8: "Balfour Road HCA", 9: "Beresford Estate HCA", 10: "Rose Bay Gardens Estate HCA",
+    11: "Kent Road HCA", 12: "Bell Street HCA",
+}
+_WOOLLAHRA_B2_RULES = [
+    {"name": f"woollahra_b2_{n}", "council": "woollahra",
+     "where": f"source_chapter_key = 'chapter-b2-neighbourhood-hcas' AND ref_number ~ '__B2_{n}$'",
+     "strategy": {"type": "constant", "precinct_id": pid}, "validate": False}
+    for n, pid in _WOOLLAHRA_B2.items()
+]
+
 RULES: list[dict] = [
     {
         "name": "marrickville_part9",
@@ -222,7 +239,19 @@ RULES: list[dict] = [
         "strategy": {"type": "constant", "precinct_id": "7.6"},
         "validate": False,
     },
+    # Woollahra B2 "applies to the following neighbourhood HCAs" (p5): B2.2-B2.12 to each area's
+    # outline; B2.1 and the B3 row filed in B2 to the union of all eleven. Unkeyed they reached no
+    # house: 17 Etham Ave was shown 1 of 64 (DQ-146, 2026-10-11).
+    *_WOOLLAHRA_B2_RULES,
+    {"name": "woollahra_b2_all_eleven", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-b2-neighbourhood-hcas' AND ref_number !~ '__B2_([2-9]|1[0-2])$'",
+     "strategy": {"type": "constant", "precinct_id": "Woollahra B2 neighbourhood HCAs"}},
+    # Woollahra C1 "applies to the Paddington HCA as identified in Map 1" (p8); 51 rows already keyed.
+    {"name": "woollahra_c1_paddington", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-c1-paddington-hca'",
+     "strategy": {"type": "constant", "precinct_id": "Paddington HCA"}},
 ]
+
 
 
 def _derive(strategy: dict, row: dict) -> str | None:
@@ -328,7 +357,7 @@ def _fingerprint_reasons(fp: dict, pdf_pages: list, n_none: int, n_total: int) -
     return reasons
 
 
-def run(council: str | None, apply: bool, validate: bool) -> int:
+def run(council: str | None, apply: bool, validate: bool, only: set[str] | None = None) -> int:
     conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
     conn.autocommit = not apply
     cur = conn.cursor()
@@ -338,7 +367,7 @@ def run(council: str | None, apply: bool, validate: bool) -> int:
     validation_failures: list[str] = []
 
     for rule in RULES:
-        if council and rule["council"] != council:
+        if (council and rule["council"] != council) or (only and rule["name"] not in only):
             continue
         # Footgun guard: a bulk `--apply` (no --council) must NOT touch validate:False
         # rules — those are going-forward-correct but disagree with current hand-patched
@@ -412,6 +441,8 @@ def run(council: str | None, apply: bool, validate: bool) -> int:
               f"already-ok={r_ok} no-derivation={r_none}{gate}")
         total_new += r_new; total_changed += r_changed; total_ok += r_ok; total_none += r_none
 
+    gate_backup = apply_gate_rules(cur, council, apply, only)
+
     if validate and validation_failures:
         conn.rollback()
         print(f"\nVALIDATION FAILED — {len(validation_failures)} derived keys disagree with existing:")
@@ -431,6 +462,14 @@ def run(council: str | None, apply: bool, validate: bool) -> int:
             if f.tell() == 0:
                 w.writerow(["id", "precinct_id_before", "precinct_id_after", "layer_before", "rule"])
             w.writerows(backup_rows)
+        if gate_backup:
+            gpath = bpath.with_name(f"gate_rules_derived_{datetime.now(timezone.utc):%Y-%m-%d}.csv")
+            with open(gpath, "a", newline="", encoding="utf-8") as f:
+                w = csv.writer(f)
+                if f.tell() == 0:
+                    w.writerow(["id", "column", "before", "after", "rule"])
+                w.writerows(gate_backup)
+            print(f"APPLIED {len(gate_backup)} gate updates; backup {gpath}")
         conn.commit()
         print(f"APPLIED {len(backup_rows)} key updates; backup {bpath}")
     else:
@@ -444,10 +483,12 @@ def main() -> None:
     ap.add_argument("--council")
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--validate", action="store_true", help="assert derived keys reproduce existing keys")
+    ap.add_argument("--only", help="comma-separated rule names (RULES and GATE_RULES); others untouched")
     args = ap.parse_args()
     if not DATABASE_URL:
         sys.exit("DATABASE_URL not set")
-    sys.exit(run(args.council, args.apply, args.validate))
+    sys.exit(run(args.council, args.apply, args.validate,
+                 set(args.only.split(",")) if args.only else None))
 
 
 if __name__ == "__main__":

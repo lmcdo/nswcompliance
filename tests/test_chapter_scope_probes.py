@@ -27,7 +27,10 @@ def test_dq143_has_part_of_council_chapters_with_their_gate_kind():
 def test_heritage_area_chapter_needs_its_own_area_not_a_generic_tag():
     sql = p._GATED_FOR_ITS_CHAPTER
     assert "cs.kind = 'heritage' AND rp.v2_heritage_hca IS NOT NULL" in sql
-    assert "v2_marker" not in sql  # a generic heritage tag reaches every heritage house
+    # A generic heritage tag reaches every heritage house, so it gates ONLY a chapter whose own
+    # sentence covers every heritage item/area (heritage_general), never a named-area chapter.
+    generic = sql.split("cs.kind = 'heritage_general'")
+    assert len(generic) == 2 and "v2_marker" not in generic[0] and "v2_marker" in generic[1]
 
 
 def test_missing_scope_file_raises_not_zero(monkeypatch, tmp_path):

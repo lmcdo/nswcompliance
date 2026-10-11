@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""Gate rules: who a DCP chapter's rows reach, from the chapter's own land sentence.
+
+prior-art-checked: split out of scripts/derive_precinct_keys.py (500-line limit), which runs it
+in the same pass. No other script writes v2_marker / v2_dcp_layer / v2_site_condition_required
+from a rule (grep of scripts/ and migrations/, 2026-10-11).
+"""
+from __future__ import annotations
+
+#: GATE RULES: who a chapter's rows reach, set from the chapter's OWN land sentence (page cited).
+#: Same contract as RULES: a written rule per (council, chapter), re-run by dcp_commit_approved.py
+#: after every publish, so a re-extraction cannot undo it. Each sets only gate columns that the
+#: for-property route reads; provision_text is never touched. Origin: DQ-146 (2026-10-11), 905
+#: current rules parked in the condition layer with no flood/bushfire condition and no heritage
+#: marker -- returned by no query, so shown to no house.
+GATE_RULES: list[dict] = [
+    # "applies to any land within Wollongong LGA where (i) An item of environmental heritage as
+    # listed under Schedule 5 ... (ii) ... within one of the Heritage Conservation Areas ...
+    # (iii) adjacent to or within the vicinity" (Wollongong DCP 2009 E11, p3). (iii) has no land
+    # layer: recorded limit -- a house only NEAR a heritage item is not shown these rules.
+    {"name": "wollongong_e11_heritage", "council": "wollongong",
+     "where": "source_chapter_key = 'chapter-e11-heritage-conservation'",
+     "set": {"v2_marker": "heritage"}},
+    # "Part E1 applies to sites which are listed as Heritage Items listed in the Inner West LEP
+    # 2022, and to sites and places contained within Heritage Conservation Areas" (Ashfield E1 p6).
+    {"name": "ashfield_e1_heritage", "council": "ashfield",
+     "where": "source_chapter_key = 'chapter-e1-heritage'",
+     "set": {"v2_marker": "heritage"}},
+    # "This Part applies to all land identified, and land adjacent to site identified, under
+    # Schedule 5 of WLEP" (Waverley DCP 2022 B8, printed p67). Same adjacency limit as E11.
+    {"name": "waverley_b8_heritage", "council": "waverley",
+     "where": "source_chapter_key = 'waverley-dcp-2022' AND v2_dcp_part = 'B8'",
+     "set": {"v2_marker": "heritage"}},
+    # Woollahra E2.1.1 (p5): stormwater "applies to all land within the Woollahra Municipality";
+    # "The flood risk management component ... applies to all land ... that is within a flood
+    # risk precinct". E2.3 "Flood risk management controls" starts p34.
+    {"name": "woollahra_e2_3_flood", "council": "woollahra",
+     "where": "source_chapter_key = 'chapter-e2-stormwater-flood' AND ref_number ~ '__E2_3'",
+     "set": {"v2_dcp_layer": "condition", "v2_site_condition_required": "flood"}},
+    {"name": "woollahra_e2_whole_council", "council": "woollahra",
+     "where": "source_chapter_key = 'chapter-e2-stormwater-flood' AND ref_number !~ '__E2_3'"
+              " AND v2_dcp_layer = 'condition'",
+     "set": {"v2_dcp_layer": "generic"}},
+    # "This chapter applies to all land within the Woollahra Municipality" (E4 p5).
+    {"name": "woollahra_e4_whole_council", "council": "woollahra",
+     "where": "source_chapter_key = 'chapter-e4-contaminated-land' AND v2_dcp_layer = 'condition'",
+     "set": {"v2_dcp_layer": "generic"}},
+]
+_GATE_COLUMNS = {"v2_marker", "v2_dcp_layer", "v2_site_condition_required"}
+
+
+def apply_gate_rules(cur, council: str | None, apply: bool, only: set[str] | None = None) -> list[tuple]:
+    """Set each GATE_RULES row's gate columns. Returns (id, column, before, after, rule) per
+    changed column, for the backup. Idempotent: a row already holding the values is skipped."""
+    changes: list[tuple] = []
+    for rule in GATE_RULES:
+        if (council and rule["council"] != council) or (only and rule["name"] not in only):
+            continue
+        unknown = set(rule["set"]) - _GATE_COLUMNS
+        if unknown:
+            raise ValueError(f"{rule['name']}: not a gate column {sorted(unknown)}")
+        cols = sorted(rule["set"])
+        cur.execute(
+            f"SELECT id, {', '.join(cols)} FROM regulatory_provisions"
+            f" WHERE is_current = true AND source_council = %(council)s AND ({rule['where']})",
+            {"council": rule["council"]})
+        rows = cur.fetchall()
+        n = 0
+        for row in rows:
+            diff = [(c, row[i + 1], rule["set"][c]) for i, c in enumerate(cols)
+                    if row[i + 1] != rule["set"][c]]
+            if not diff:
+                continue
+            n += 1
+            changes.extend((row[0], c, before, after, rule["name"]) for c, before, after in diff)
+            if apply:
+                cur.execute(
+                    f"UPDATE regulatory_provisions SET {', '.join(f'{c} = %s' for c, _, _ in diff)}"
+                    " WHERE id = %s",
+                    [after for _, _, after in diff] + [row[0]])
+        print(f"  gate {rule['name']:<29} rows={len(rows):<5} to-change={n}")
+    return changes
