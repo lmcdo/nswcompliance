@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Loads seven state heritage-area outlines and their union, adds two keying and two gate rules, and widens DQ-146. Already written with the user's yes: 42 C-B 4.3 rules now reach only their heritage areas, 26 C-B 4.2 rules only heritage properties, and 3 C-B 4.4 rules are shown instead of reaching no house.",
-  "commit_hash": "c95a7d2e",
+  "commit_hash": "af4f00e7",
   "files": [
     "scripts/import_cb_heritage_areas.py",
     "scripts/gate_rules.py",
