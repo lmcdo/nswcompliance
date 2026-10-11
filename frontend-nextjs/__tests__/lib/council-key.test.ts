@@ -27,6 +27,17 @@ describe('councilKey', () => {
     ['woollahra', 'woollahra'],
     ['sydney', 'city_of_sydney'],
     ['INNER WEST', 'inner_west'],
+    // Planning Portal name forms (cross-review finding: "City of Canterbury Bankstown" -> 0 rules)
+    ['City of Canterbury Bankstown', 'canterbury_bankstown'],
+    ['CANTERBURY-BANKSTOWN', 'canterbury_bankstown'],
+    ['City of Parramatta', 'parramatta'],
+    ['CITY OF PARRAMATTA', 'parramatta'],
+    ['City of Sydney Council', 'city_of_sydney'],
+    ['Strathfield Municipal Council', 'strathfield'],
+    ['Woollahra Municipal Council', 'woollahra'],
+    ['Waverley Council', 'waverley'],
+    ['The Hills Shire', 'the_hills_shire'],
+    ['Sutherland Shire', 'sutherland_shire'],
   ])('%s -> %s', (input, key) => {
     expect(councilKey(input)).toBe(key);
   });

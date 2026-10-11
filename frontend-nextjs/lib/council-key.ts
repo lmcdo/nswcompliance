@@ -22,9 +22,20 @@ const COUNCIL_KEY_ALIASES: Record<string, string> = {
   sydney: 'city_of_sydney',
 };
 
+/**
+ * Planning Portal names wrap the council in words the stored key does not carry:
+ * "City of Canterbury Bankstown", "Strathfield Municipal Council". Stripped, except where the
+ * stored key keeps them -- city_of_sydney is stored WITH its prefix, and the_hills_shire /
+ * sutherland_shire WITH "shire", so "shire" is never stripped.
+ */
+const STORED_WITH_CITY_PREFIX = new Set(['city_of_sydney']);
+
 export function councilKey(name: string | null | undefined): string | null {
   if (!name) return null;
-  const slug = name.toLowerCase().trim().replace(/[-\s]+/g, '_').replace(/[^a-z0-9_]/g, '');
+  let slug = name.toLowerCase().trim().replace(/[-\s]+/g, '_').replace(/[^a-z0-9_]/g, '');
   if (!slug) return null;
-  return COUNCIL_KEY_ALIASES[slug] ?? slug;
+  if (COUNCIL_KEY_ALIASES[slug]) return COUNCIL_KEY_ALIASES[slug];
+  slug = slug.replace(/_(municipal_council|city_council|council|municipal)$/, '');
+  if (slug.startsWith('city_of_') && !STORED_WITH_CITY_PREFIX.has(slug)) slug = slug.slice('city_of_'.length);
+  return COUNCIL_KEY_ALIASES[slug] ?? (slug || null);
 }
