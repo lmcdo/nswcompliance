@@ -1,0 +1,61 @@
+{
+  "tier": "standard",
+  "justification": "Changes which rules the for-property route serves for every property: a predicate that ran in one layer now runs in all four. Wrong in one direction it hides rules that apply; wrong in the other it keeps serving rules for other zones. The tags it reads are already gated by DQ-115 (each declared zone carries the council's words).",
+  "commit_hash": "e0bc6910",
+  "files": [
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/lib/provision-sql-filters.ts",
+    "tests/test_provision_sql_filters.py"
+  ],
+  "falsifiable_check": {
+    "command": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_provision_sql_filters.py -o addopts= && python -m pytest tests/test_provision_sql_filters.py -o addopts=",
+    "fails_when": "The zone predicate is gated to one layer again (the source guard on route.ts), or it drops a row with no zone limit, an empty zone list or 'ALL', or keeps a row limited to other zones (real-Postgres VALUES cases).",
+    "observed_red": "Restoring `layer === 'use_specific' && filters.zone` in route.ts made test_the_route_checks_zone_in_every_layer print '1 failed'. The old predicate run against real Postgres drops the empty-list row (test_the_old_zone_predicate_dropped_undecided_rows).",
+    "external_authority": "Measured 2026-10-11 against production on the served-answer audit's 30 addresses (seed 20261011): 3,998 of 46,171 rules shown were tagged v2_applicable_zones excluding the lot's own zone from the NSW Planning Portal. Sampled rows checked by hand: Marrickville part6-industrial [E4], part5-commercial-mixed-use [E1,MU1], Leichhardt part-c-s4-non-residential [E1,E4,MU1] -- chapter-level limits matching each DCP's own structure."
+  },
+  "pre_impl": {
+    "existing_data": "regulatory_provisions.v2_applicable_zones, 2,838 live+actionable rows limited to named zones outside the use_specific layer (marrickville 775, wollongong 584, campbelltown 561, leichhardt 463 ...). DQ-115 reads 0: every declared zone scope carries scope_evidence.",
+    "assumption_mismatch": "The route assumed only use_specific rows carry zone limits. In fact zone-limited chapters were loaded into the generic and precinct layers. council-config zoneFilterEffective looks like a switch but no code reads it.",
+    "new_vs_existing": "Reuses the existing clause unchanged in meaning, moved to lib/provision-sql-filters.ts beside NOT_HERITAGE_SQL with the same read-the-string-and-run-it test pattern; adds only the empty-array keep."
+  },
+  "functions": [
+    {
+      "name": "ZONE_APPLIES_SQL",
+      "file_line": "frontend-nextjs/lib/provision-sql-filters.ts:47",
+      "input": "The $n index of the property's zone parameter, which the route binds to the Planning Portal zone code for the lot.",
+      "output": "A single-line SQL predicate keeping rows with no zone limit, an empty list, ALL, or the lot's zone listed.",
+      "if_none": "When the route has no zone for the property the predicate is not added at all, so nothing is withheld for want of a zone."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A zone tag is wrong (a residential chapter tagged E4 only).",
+      "what_happens": "Its rules disappear for houses where they apply -- silent omission.",
+      "mitigated": true,
+      "how": "DQ-115 requires every declared zone scope to carry the council's own words; the sampled withheld chapters were read by hand and each is a chapter the DCP itself limits by zone. The served-answer audit re-run after deploy measures it on real addresses.",
+      "repro": "python scripts/dq_probe_applicability_config.py --id DQ-115"
+    },
+    {
+      "scenario": "A row carries an empty zone array.",
+      "what_happens": "The old string dropped it ('R2' = ANY('{}') is false).",
+      "mitigated": true,
+      "how": "cardinality(...) = 0 is kept; real-Postgres case 'empty zone list (undecided)'.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_provision_sql_filters.py -o addopts= -k zone"
+    },
+    {
+      "scenario": "The property has no zone (Portal lookup failed).",
+      "what_happens": "Withholding everything zone-limited would hide rules on a lookup failure.",
+      "mitigated": true,
+      "how": "The clause is only added when filters.zone is set -- same as before.",
+      "repro": "grep -n 'if (filters.zone)' frontend-nextjs/app/api/provisions/for-property/route.ts"
+    }
+  ],
+  "mutation_analysis": "Forced: gating the clause back to use_specific turns the route source guard red. Dropping the cardinality term turns the empty-list case red. A predicate that returned TRUE would fail the 'industrial only' and 'commercial and mixed use only' cases; one that returned FALSE would fail the four keep cases.",
+  "residual_risk": "The heritage-by-HCA path (queryHeritageByHca) returns before this clause and is not zone-checked; heritage rows limited by zone are rare and unmeasured here. Campbelltown's 'Zone R3 only' sections are tagged R2-R5 at chapter level, so this fix does not remove them -- section-level scope is a separate fix.",
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "After deploy: python scripts/served_answer_audit.py capture against a fresh run and confirm 50 Ruby St Marrickville no longer receives part6-industrial rules."
+  }
+}
