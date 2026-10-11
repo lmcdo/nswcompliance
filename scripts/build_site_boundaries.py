@@ -62,7 +62,7 @@ def _norm(s: str) -> str:
     """Drop layout only (whitespace, bullets, table breaks); keep the separators that carry meaning,
     so 'Lot 1-2' and 'Lot 12' stay different (cross-review 2026-10-12)."""
     s = s.lower().replace("\u2013", "-").replace("\u2014", "-")
-    return re.sub(r"[^a-z0-9,&\-]", "", s)
+    return re.sub(r"[^a-z0-9,&/\-]", "", s)
 
 
 def verbatim_on_page(site: dict) -> bool:
