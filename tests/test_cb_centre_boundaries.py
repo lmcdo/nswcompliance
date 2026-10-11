@@ -72,7 +72,10 @@ def test_every_centre_carries_its_chapter_quote_and_source(centres):
 
 def test_key_rules_match_the_outlines(centres):
     dpk = _load("derive_precinct_keys")
-    rules = [r for r in dpk.RULES if r["council"] == "canterbury_bankstown"]
+    # The centre rules are the constant-strategy ones; single-site chapters key through their
+    # own chapter_map rule (build_site_boundaries.py) and are tested there.
+    rules = [r for r in dpk.RULES
+             if r["council"] == "canterbury_bankstown" and r["strategy"]["type"] == "constant"]
     keyed = {r["strategy"]["precinct_id"] for r in rules}
     assert keyed == set(centres)
     for r in rules:
