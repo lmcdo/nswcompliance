@@ -2808,15 +2808,23 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "condition) so the houses it covers receive it.",
     ),
     "DQ-145": (
-        "Served rules whose citation is not machine-proven",
-        # User ruling 2026-10-11: outreach-ready = EVERY served citation complete,
-        # correct and deterministically proven. 11,151 of 25,455 proven (43.8%).
+        "Served rules whose SHOWN citation is not machine-proven",
+        # User ruling 2026-10-11: every served citation complete, correct and machine-proven.
+        # User decision 2026-10-12: a clause number that cannot be proven is not shown; the
+        # page is shown instead. So what must be proven is what the page shows: the clause
+        # number when lib/citation-display.ts shows it (proven/imprecise), otherwise the page
+        # (dcp_page_repair page_check on_page / moved). Rules with no check
+        # at all -- statewide instruments and council rows never judged -- count as unproven.
+        # Measured 2026-10-12: 564 council + 554 Inner West LEP + 5,274 statewide = 6,392.
         "SELECT count(*) FROM regulatory_provisions"
-        f" WHERE {_SERVED} AND citation_status IS DISTINCT FROM 'proven'",
+        # Proven = a script proved the shown clause OR the page. 'read_by_person' is a person's
+        # reading, not a script's, so it does not count (cross-review 2026-10-12).
+        f" WHERE {_SERVED} AND NOT (COALESCE(citation_status, '') IN ('proven', 'imprecise')"
+        "   OR COALESCE(page_check, '') IN ('on_page', 'moved'))",
         (),
-        "Each count is a served rule whose clause number, words and page are not all "
-        "proven by a script against the source PDF. Cleared by proving it, or by not "
-        "serving it.",
+        "Each count is a served rule for which neither the clause number nor the page "
+        "the site shows has been proven by a script against the source document. Cleared "
+        "by proving the clause or the page, or by not serving the rule.",
     ),
 }
 
