@@ -1,0 +1,99 @@
+{
+  "tier": "critical",
+  "justification": "Changes which rules the live assessment page shows for every lot on a flood map, the bushfire-prone map, the acid sulfate map or riparian land, and for heritage properties with any of those. Today every condition-layer rule reaches no house because the page never sends the facts.",
+  "commit_hash": "9432bd9a",
+  "files": [
+    "frontend-nextjs/lib/dcp-provisions-query.ts",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/__tests__/lib/dcp-provisions-query.test.ts",
+    "scripts/gate_rules.py",
+    "scripts/dq_probe_live.py",
+    "scripts/apply_site_condition_gates.sh",
+    "tests/test_gate_rules.py",
+    "data/db_rollback_backups/gate_rules_derived_2026-10-11.csv",
+    "data/db_rollback_backups/precinct_keying_derived_2026-10-11.csv",
+    ".qa/reports/feat__hazard-gates.json"
+  ],
+  "pre_impl": {
+    "existing_data": "Measured live 2026-10-11: 18 Castra Pl Double Bay and 44 Victoria St Paddington carry dcpFloodMap.inFloodArea=true in /api/property, yet the page's request has no flood param and shows 0 of 44 Woollahra E2.3 flood rules. Served condition rows: flood 44, heritage 394, none 411 (the latter two reach heritage houses through the heritage branch).",
+    "assumption_mismatch": "I had moved Woollahra E2.3 into the condition layer assuming the page sends flood; it never did (buildForPropertyParams had no flood/bushfire), so 4 rules previously shown to every house became hidden too. The route's heritage branch also returned heritage rules only, so a heritage house never saw its condition rules. /api/property/profile returns a short summary, but the page's rule facts come from /api/property via usePropertyAssessment.",
+    "new_vs_existing": "No new module: extends the existing query builder, the route's existing condition filter, and the existing gate-rule list.",
+    "external_source_error": "The facts come from /api/property (Planning Portal layerintersect plus spatial_overlays). When that lookup fails the page sends no facts, and the condition layer shows nothing -- the same visible-absence state as before, not a wrong rule.",
+    "frontend_type": "New optional boolean inputs on ForPropertyQueryInput; the call site passes strict === true comparisons and Boolean(acidSulfateSoils), so undefined/null never becomes 'true'.",
+    "user_failure_mode": "Silent omission today: flood, bushfire, acid sulfate and riparian rules never appear. After this, a wrong flag would show or hide those rules for a lot; the flags are the Portal's and spatial_overlays' own, and the live checks after deploy must show a flood house getting E2.3 and a dry house not."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/dcp-provisions-query.test.ts ; python -m pytest tests/test_gate_rules.py -q",
+    "fails_when": "The jest test fails if flood/bushfire/acid_sulfate/riparian are sent when not true, not sent when true, or if the mounted component stops passing the flood map and bushfire flag. The pytest suite fails if DQ-146 stops counting the new condition names as reachable or a gate rule touches a non-gate column.",
+    "observed_red": "Live before the change: flood-map houses shown 0 of 44 flood rules. Jest could not run locally (the main checkout's node_modules is incomplete); CI runs it. Python: 46 passed."
+  },
+  "functions": [
+    {
+      "name": "buildForPropertyParams",
+      "file_line": "frontend-nextjs/lib/dcp-provisions-query.ts:30",
+      "input": "the page's former council, zone, heritage, outline ids, land facts and site-condition booleans",
+      "output": "The query string for /api/provisions/for-property, with each site condition present only when true",
+      "if_none": "An absent or null condition sends nothing, and the route treats it as not on that map."
+    }
+  ],
+  "values": [
+    {
+      "value": "0 of 44",
+      "what": "Woollahra E2.3 flood rules shown to a lot on Woollahra's Flood Planning Area map",
+      "source": "live capture of 18 Castra Place Double Bay via /api/property then /api/provisions/for-property",
+      "read_at": "Production, 2026-10-11",
+      "if_missing": "A failed property lookup is reported as such and not counted."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Serve condition-layer rules only for conditions the lot has.",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts queryLayer",
+      "where_clause": "v2_dcp_layer = 'condition' AND v2_site_condition_required = ANY(flood|bushfire|acid_sulfate|riparian, only those sent true)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A heritage house that is also on a flood map asks for its rules.",
+      "what_happens": "Before: only heritage rules came back from the condition layer.",
+      "mitigated": true,
+      "how": "The heritage branch now merges heritage rows with the condition rows for the lot's conditions, de-duplicated by id.",
+      "repro": "route.ts queryLayer heritage branch"
+    },
+    {
+      "scenario": "The property lookup fails and returns no constraints for the lot.",
+      "what_happens": "No site-condition flags are sent, so no condition rules are shown for it.",
+      "mitigated": true,
+      "how": "Strict === true comparisons; nothing is sent, the condition layer returns none -- an omission, not a wrong rule; the lookup-failure fault is tracked separately.",
+      "repro": "jest test 'sends flood and bushfire only when true'"
+    },
+    {
+      "scenario": "The gate-rule write runs before the page change deploys.",
+      "what_happens": "Rules moved to the condition layer would be hidden from every house until deploy.",
+      "mitigated": true,
+      "how": "apply_site_condition_gates.sh says to run after deploy; the write is sequenced after merge and deploy.",
+      "repro": "scripts/apply_site_condition_gates.sh header"
+    },
+    {
+      "scenario": "acidSulfateSoils holds a class string for every lot, including off-map lots.",
+      "what_happens": "Acid sulfate rules would then reach every lot in the council, including dry ones.",
+      "mitigated": true,
+      "how": "It is set only when the Acid Sulfate Soils Map layer intersects the lot (nsw-planning-portal.ts) or the PostGIS acid_sulfate overlay matches; absent otherwise.",
+      "repro": "nsw-planning-portal.ts acidSulfateSoils assignment"
+    },
+    {
+      "scenario": "Querying condition rules with an empty conditions array.",
+      "what_happens": "ANY('{}') would return nothing, which is correct, but a code path that skipped the empty check could error.",
+      "mitigated": true,
+      "how": "The existing early return when no condition is sent is kept.",
+      "repro": "route.ts condition layer early return"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Yes, after deploy, user-approved ('go with your recommendation'): bash scripts/apply_site_condition_gates.sh (25 rows; backups first).",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Live checks after deploy: a flood-map house shows E2.3 flood rules, a dry house shows none; a Ku-ring-gai bushfire-prone house shows Part 16. Jest runs in CI only (local node_modules incomplete)."
+  }
+}
