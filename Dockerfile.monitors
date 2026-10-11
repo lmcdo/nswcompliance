@@ -37,6 +37,8 @@ COPY scripts/dcp_commit_approved.py ./scripts/dcp_commit_approved.py
 # The json is NOT optional: derive_precinct_keys reads it at MODULE level, so the
 # import itself fails without it -- and a FileNotFoundError is not an ImportError.
 COPY scripts/derive_precinct_keys.py ./scripts/derive_precinct_keys.py
+# gate_rules is imported by derive_precinct_keys at module level (DQ-146 gate rules).
+COPY scripts/gate_rules.py ./scripts/gate_rules.py
 COPY data/cos_precinct_page_ranges.json ./data/cos_precinct_page_ranges.json
 # Sibling modules dcp_extract_changed imports at runtime: check_provision (review
 # path) and check_gate (commit-path quality gate). Without these the worker

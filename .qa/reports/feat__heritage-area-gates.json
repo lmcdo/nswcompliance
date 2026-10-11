@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Once applied, this changes which houses are shown 905 current DCP rules that today reach no house (DQ-146), and moves Woollahra E2/E4 rules between layers. A wrong rule would hide a rule from houses it covers or show it to houses it does not, silently. The code is read-only until a person runs --apply/--commit with the user's yes.",
-  "commit_hash": "75ae24f6",
+  "commit_hash": "eb705cca",
   "files": [
     "scripts/gate_rules.py",
     "scripts/derive_precinct_keys.py",
@@ -16,7 +16,9 @@
     ".qa/reports/feat__heritage-area-gates.json",
     "tests/test_gate_rules_real_db.py",
     "tests/test_derive_precinct_keys_real_db.py",
-    "tests/test_import_woollahra_b2_union_real_db.py"
+    "tests/test_import_woollahra_b2_union_real_db.py",
+    "Dockerfile.monitors",
+    "scripts/apply_dq146_gates.sh"
   ],
   "pre_impl": {
     "existing_data": "Measured on production 2026-10-11: 905 served-flagged rules in the condition layer with no flood/bushfire condition and no heritage marker, by chapter Wollongong E11 342, Ashfield E1 274, Woollahra E2 173, B2 62, Waverley B8 37, Woollahra E4 16, C1 1. The eleven Woollahra B2 outlines already exist in dcp_precinct_boundaries (NSW ePlanning heritage layer, 2026-07-29).",
