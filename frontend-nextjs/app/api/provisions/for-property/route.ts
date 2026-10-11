@@ -28,6 +28,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { NOT_HERITAGE_SQL } from '@/lib/provision-sql-filters';
+import { councilKey } from '@/lib/council-key';
 import { expandDevTypeHierarchy, expandDevTypeHierarchyMulti } from '@/lib/see/devTypeHierarchy';
 import { inferSectionNumberFromHeader } from '@/lib/see/sectionKey';
 import { parseRefNumber } from '@/lib/see/refNumber';
@@ -40,29 +41,6 @@ import { applyLandConditions, decodeLandFacts } from '@/lib/lep-land-condition';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Map former_council slug → document_id ILIKE pattern.
- *
- * Document IDs in regulatory_provisions use the DCP's published name
- * (e.g. "Sydney_DCP_2012__section_3_general_provisions") which doesn't
- * always match the formerCouncil slug (e.g. "city_of_sydney").
- */
-const COUNCIL_DOC_PATTERNS: Record<string, string> = {
-  city_of_sydney: 'Sydney_DCP',
-  northern_beaches: 'Warringah_DCP',
-  ku_ring_gai: 'Ku-ring-gai_DCP',
-  the_hills: 'The_Hills',
-  the_hills_shire: 'The_Hills',
-  canada_bay: 'Canada_Bay',
-};
-
-function councilToDocPattern(formerCouncil: string): string {
-  const slug = formerCouncil.toLowerCase().replace(/[-\s]+/g, '_');
-  if (COUNCIL_DOC_PATTERNS[slug]) return COUNCIL_DOC_PATTERNS[slug];
-  // Default: capitalize first letter of each word segment
-  // e.g. "canterbury_bankstown" → "Canterbury_Bankstown"
-  return slug.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('_');
-}
 
 interface PropertyFilters {
   lga?: string;
@@ -466,7 +444,7 @@ export async function GET(request: NextRequest) {
       //      the site-specific rules cannot be shown.
       let precinctWarning = false;
       if (filters.former_council) {
-        const fc = filters.former_council;
+        const fc = councilKey(filters.former_council) ?? '';
 
         let idsMatchProvisions = false;
         if (filters.precinct_id) {
@@ -524,7 +502,7 @@ export async function GET(request: NextRequest) {
       const chapterDcpNames: Record<string, string> = {};
 
       if (filters.former_council) {
-        const councilSlug = filters.former_council.toLowerCase();
+        const councilSlug = councilKey(filters.former_council);
         const registryResult = await client.query(
           `SELECT chapter_key, r2_public_pdf_url, council_url, council_page_url,
                   chapter_label, needs_extraction, dcp_name
@@ -821,11 +799,10 @@ async function queryHeritageByHca(
     sql += ` AND rp.v2_heritage_hca IS NULL`;
   }
 
-  // Filter by former council — map slug to document_id prefix
+  // Filter by council key (lib/council-key.ts), the same value the rules are stored under
   if (filters.former_council) {
-    const docPattern = councilToDocPattern(filters.former_council);
-    sql += ` AND rp.document_id ILIKE $${paramIndex++}`;
-    params.push(`%${docPattern}%`);
+    sql += ` AND rp.source_council = $${paramIndex++}`;
+    params.push(councilKey(filters.former_council));
   }
 
   // Filter by precinct - only include general provisions or property's precinct
@@ -1058,11 +1035,10 @@ async function queryLayer(
   `;
   params.push(layer);
 
-  // Filter by former council name embedded in document_id
+  // Filter by council key (lib/council-key.ts), the same value the rules are stored under
   if (filters.former_council) {
-    const docPattern = councilToDocPattern(filters.former_council);
-    sql += ` AND document_id ILIKE $${paramIndex++}`;
-    params.push(`%${docPattern}%`);
+    sql += ` AND source_council = $${paramIndex++}`;
+    params.push(councilKey(filters.former_council));
   }
 
   // Heritage filtering logic:
@@ -1294,7 +1270,7 @@ function sectionTitleFromChapterKey(chapterKey: string): string {
  * Used for sidebar navigation to show all parts even if current property has no provisions from some parts
  */
 async function getCompleteTocStructure(client: any, formerCouncil: string, devType?: string, partNameMap?: Record<string, string>): Promise<Record<string, TocPart>> {
-  const councilName = councilToDocPattern(formerCouncil);
+  const council = councilKey(formerCouncil);
 
   // When devType is provided, also compute how many provisions in each chapter match
   const expandedTypes = devType ? expandDevTypeHierarchyMulti(devType) : null;
@@ -1312,7 +1288,7 @@ async function getCompleteTocStructure(client: any, formerCouncil: string, devTy
         OR 'ALL' = ANY(v2_applicable_dev_types)
       ) as dev_type_match_count
     FROM regulatory_provisions
-    WHERE document_id ILIKE $1
+    WHERE source_council = $1
       AND v2_is_actionable = true
       AND is_current = TRUE
       AND (v2_dcp_part IS NOT NULL OR source_chapter_key IS NOT NULL)
@@ -1329,7 +1305,7 @@ async function getCompleteTocStructure(client: any, formerCouncil: string, devTy
       source_chapter_key,
       COUNT(*) as provision_count
     FROM regulatory_provisions
-    WHERE document_id ILIKE $1
+    WHERE source_council = $1
       AND v2_is_actionable = true
       AND is_current = TRUE
       AND (v2_dcp_part IS NOT NULL OR source_chapter_key IS NOT NULL)
@@ -1342,8 +1318,8 @@ async function getCompleteTocStructure(client: any, formerCouncil: string, devTy
   `;
 
   const params = expandedTypes
-    ? [`%${councilName}%`, expandedTypes]
-    : [`%${councilName}%`];
+    ? [council, expandedTypes]
+    : [council];
 
   const result = await client.query(query, params);
 
