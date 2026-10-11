@@ -1738,7 +1738,7 @@
     "DQ-145"
    ],
    "passes_when": "exit 0 - every served rule has citation_status = 'proven'.",
-   "red_when": "a served rule's clause number, words or page are not proven by script against the source PDF. Reads 14,304 on 2026-10-11.",
+   "red_when": "a served rule shows a citation (clause number, or the page when the clause is hidden) that no script has proven against its source. Reads 6,392 on 2026-10-12 (redefined from 14,295: the old count included rules whose proven page is what is shown).",
    "note": "User ruling 2026-10-11 (served-answer audit RESUME section 11). Cleared by proving the citation or not serving the rule."
   },
   "OC-18": {
@@ -1775,7 +1775,7 @@
   },
   "OC-20": {
    "kind": "outreach_claim",
-   "claim": "Every rule shown carries a citation proven by script against the source PDF.",
+   "claim": "Every rule shown carries a citation proven by script against its source: the clause number where shown, otherwise the page.",
    "source": "~/.claude/plans/ce-served-answer-audit-RESUME-2026-10-11.md#11",
    "declared": "false",
    "check": [

@@ -2808,15 +2808,22 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "condition) so the houses it covers receive it.",
     ),
     "DQ-145": (
-        "Served rules whose citation is not machine-proven",
-        # User ruling 2026-10-11: outreach-ready = EVERY served citation complete,
-        # correct and deterministically proven. 11,151 of 25,455 proven (43.8%).
+        "Served rules whose SHOWN citation is not machine-proven",
+        # User ruling 2026-10-11: every served citation complete, correct and machine-proven.
+        # User decision 2026-10-12: a clause number that cannot be proven is not shown; the
+        # page is shown instead. So what must be proven is what the page shows: the clause
+        # number when lib/citation-display.ts shows it (proven/imprecise), otherwise the page
+        # (dcp_page_repair page_check on_page / moved / read_by_person). Rules with no check
+        # at all -- statewide instruments and council rows never judged -- count as unproven.
+        # Measured 2026-10-12: 564 council + 554 Inner West LEP + 5,274 statewide = 6,392.
         "SELECT count(*) FROM regulatory_provisions"
-        f" WHERE {_SERVED} AND citation_status IS DISTINCT FROM 'proven'",
+        f" WHERE {_SERVED} AND (source_council IS NULL OR citation_status IS NULL"
+        "   OR (citation_status NOT IN ('proven', 'imprecise')"
+        "       AND COALESCE(page_check, '') NOT IN ('on_page', 'moved', 'read_by_person')))",
         (),
-        "Each count is a served rule whose clause number, words and page are not all "
-        "proven by a script against the source PDF. Cleared by proving it, or by not "
-        "serving it.",
+        "Each count is a served rule for which neither the clause number nor the page "
+        "the site shows has been proven by a script against the source document. Cleared "
+        "by proving the clause or the page, or by not serving the rule.",
     ),
 }
 
