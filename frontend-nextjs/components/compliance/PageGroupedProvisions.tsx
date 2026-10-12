@@ -31,6 +31,7 @@ import { buildSectionKey, parseSectionKey } from '@/lib/see/sectionKey';
 import { resolveCitationUrl } from '@/lib/citation-instrument-urls';
 import type { NumericCheckValues } from './NumericChecker';
 import { pageAnchor, pageHref, pageLabel } from '@/lib/page-citation';
+import { numbersUsable, quoteNote } from '@/lib/council-quote';
 import { provisionTablesToPlainText } from '@/lib/provision-tables';
 
 
@@ -160,6 +161,13 @@ function sanitizeText(text: string | null | undefined): string {
     .trim();
 }
 
+/** Under a council DCP rule: whether its text is the council's own words (lib/council-quote.ts). */
+function QuoteNote({ provision }: { provision: Provision }) {
+  const note = quoteNote(provision);
+  if (!note) return null;
+  return <p className="text-[11px] text-gray-500 mt-1">{note}</p>;
+}
+
 export interface Provision {
   id: number;
   provision_text: string;
@@ -175,6 +183,9 @@ export interface Provision {
   pdf_printed_page?: number;  // Human-readable page number from PDF document
   printed_page_label?: string | null; // Page number as the council prints it (migration 079)
   page_check?: string | null;         // Whether pdf_page holds the rule (lib/page-citation.ts)
+  quote_status?: string | null;       // migration 111: exact / recovered = provision_text is the council's words
+  quote_page?: number | null;         // the page those words were copied from (lib/council-quote.ts)
+  source_council?: string | null;
   pdf_page_image_url?: string;
   layer?: string;
   v2_heritage_type?: 'control' | 'guidance' | 'character' | 'descriptive';
@@ -966,6 +977,7 @@ export function PageGroupedProvisions({
                               </p>
                             )}
                           </div>
+                          <QuoteNote provision={provision} />
                           {provision.provision_text.length > theme.expandThreshold && (
                             <button
                               className="text-xs text-blue-600 hover:text-blue-800 mt-1 font-medium"
@@ -1324,6 +1336,8 @@ export function PageGroupedProvisions({
                         const relevant = cat === 'height' || cat === 'site_coverage' || cat === 'parking' ||
                           topic.includes('height') || topic.includes('coverage') || topic.includes('parking');
                         if (!relevant) return null;
+                        // Numbers only from the council's own words, never from an unchecked rule.
+                        if (!numbersUsable(provision)) return null;
                         const check = checkNumericComplianceRef(
                           provision.provision_text,
                           provision.v2_topic,
@@ -1377,6 +1391,8 @@ export function PageGroupedProvisions({
                           </p>
                         )}
                       </div>
+
+                      <QuoteNote provision={provision} />
 
                       {/* Expand/Collapse Button - always show for long text */}
                       {provision.provision_text.length > theme.expandThreshold && (

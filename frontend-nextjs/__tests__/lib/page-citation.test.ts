@@ -74,3 +74,27 @@ describe('the report cites the same page reference', () => {
     expect(formatCitation({ ...base, pdf_page: 54, pdf_printed_page: 49 })).toBe('Part C, PDF page 49');
   });
 });
+
+describe("a rule showing the council's own words links the page they were copied from (migration 111)", () => {
+  it('links the quote page, even where the stored page differs', () => {
+    const p = { ...DCP, pdf_page: 40, printed_page_label: '38', page_check: 'on_page', quote_status: 'exact', quote_page: 42 };
+    expect(pageHref(URL, p)).toBe(`${URL}#page=42`);
+    expect(pageLabel(p)).toBe('PDF page 42');
+  });
+
+  it("keeps the council's printed page number when the quote page is the stored page", () => {
+    const p = { ...DCP, pdf_page: 40, printed_page_label: '38', page_check: 'on_page', quote_status: 'recovered', quote_page: 40 };
+    expect(pageLabel(p)).toBe('page 38');
+  });
+
+  it('links a quote page even when the old page check never located the rule', () => {
+    const p = { ...DCP, pdf_page: 40, page_check: 'unresolved', quote_status: 'exact', quote_page: 41 };
+    expect(pageAnchor(p)).toBe(41);
+  });
+
+  it('ignores a quote page for a rule whose words are not confirmed', () => {
+    const p = { ...DCP, pdf_page: 40, page_check: 'unresolved', quote_status: 'unconfirmed', quote_page: 41 };
+    expect(pageAnchor(p)).toBeNull();
+    expect(pageLabel(p)).toBe(PAGE_NOT_LOCATED);
+  });
+});
