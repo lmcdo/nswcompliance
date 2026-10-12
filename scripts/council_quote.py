@@ -31,11 +31,14 @@ from __future__ import annotations
 
 import argparse
 import collections
+import csv
+import hashlib
 import json
 import os
 import re
 import sys
 from concurrent.futures import ProcessPoolExecutor
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -202,10 +205,6 @@ class Stream:
             parts.pop()
         return "\n".join(t for _i, t in parts)
 
-    def repeated_inside(self, text: str) -> bool:
-        """A repeated line left inside a copy: a header mid-quote, or a council's repeated wording."""
-        return any(t.strip().lower() in self.repeated for t in text.split("\n")[1:-1])
-
     def copy_from_label(self, k0: int) -> tuple[str, int] | None:
         """From the label opening k0's line (or the label line just above) to before the next
         label of the same kind. None when no label is there."""
@@ -271,7 +270,7 @@ def judge(row: dict, streams: list[Stream]) -> dict:
             return {**out, "status": "unconfirmed", "reason": "casing_unread"}
         text = st.copy(k, k + len(q) - 1)
         return {**out, "status": "exact", "reason": "one_place" if len(pages) == 1 else f"places:{len(pages)}",
-                "quote_page": st.page(k), "quote": text, "repeated_inside": st.repeated_inside(text)}
+                "quote_page": st.page(k), "quote": text}
     if len(q) < MIN_CHARS:
         return {**out, "status": "unconfirmed", "reason": "too_short" if not places else "too_short_many_places"}
 
@@ -323,7 +322,6 @@ def judge(row: dict, streams: list[Stream]) -> dict:
         if ov >= MIN_OVERLAP:
             return {**out, "status": "recovered", "reason": "anchors", "quote_page": st.page(s),
                     "quote": text, "overlap": round(ov, 3), "head_cut_words": head_cut,
-                    "repeated_inside": st.repeated_inside(text),
                     "tail_cut_words": tail_cut,
                     # the complete council text between two printed anchors lacks these: the stored
                     # row's numbers, not the council's. Phase C uses only numbers in the quote.
@@ -359,13 +357,21 @@ def chapter(args) -> tuple[list[dict], str | None]:
         readings, cased = load_chapter(r2_path)
     except Exception as e:  # noqa: BLE001 -- one bad PDF must not stop the fleet
         return [{"id": r["id"], "council": r["source_council"], "stored_page": r["pdf_page"],
-                 "page_check": r["page_check"], "status": "unconfirmed", "reason": "pdf_unreadable"}
+                 "page_check": r["page_check"], "needs_split": False, "status": "unconfirmed",
+                 "reason": "pdf_unreadable", "source_path": r2_path,
+                 "text_md5": hashlib.md5((r["provision_text"] or "").encode("utf-8")).hexdigest()}
                 for r in rows], f"{r2_path}: {e}"[:200]
     streams = [Stream(ch, cased) for ch in readings]
     note = None
     if min(st.cased_share for st in streams) < 0.9:
         note = f"{r2_path}: only {min(st.cased_share for st in streams):.0%} of lines re-read with casing"
-    return [judge(r, streams) for r in rows], note
+    out = []
+    for r in rows:
+        res = judge(r, streams)
+        res["source_path"] = r2_path
+        res["text_md5"] = hashlib.md5((r["provision_text"] or "").encode("utf-8")).hexdigest()
+        out.append(res)
+    return out, note
 
 
 def fetch(council: str | None, ids: list[int] | None) -> list[dict]:
@@ -378,6 +384,50 @@ def fetch(council: str | None, ids: list[int] | None) -> list[dict]:
     finally:
         conn.close()
     return [r for r in rows if not ids or r["id"] in ids]
+
+
+def write(res: list[dict]) -> int:
+    """Store each verdict (migration 111). One transaction per chapter, by primary key, and only
+    where the rule's text is still the text that was judged -- a row edited meanwhile keeps NULL,
+    which the nightly check reports. Returns rows written."""
+    import psycopg2
+    from psycopg2.extras import execute_values
+    stamp = datetime.now().strftime("%Y-%m-%d_%H%M")
+    backup = ROOT / "data" / "db_rollback_backups" / f"regulatory_provisions_pre_council_quote_{stamp}.csv"
+    backup.parent.mkdir(parents=True, exist_ok=True)
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    try:
+        cur = conn.cursor()
+        cur.execute("SET statement_timeout = 30000")
+        cur.execute("SELECT id, council_quote, quote_page, quote_source_path, quote_status, quote_reason, "
+                    "quote_checked_at FROM regulatory_provisions WHERE id = ANY(%s)", ([r["id"] for r in res],))
+        with backup.open("w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow([d[0] for d in cur.description])
+            w.writerows(cur.fetchall())
+        conn.commit()
+        print(f"backup: {backup}")
+        by = collections.defaultdict(list)
+        for r in res:
+            usable = r["status"] in ("exact", "recovered")
+            by[r["source_path"]].append((
+                r["id"], r["text_md5"], (r["quote"].replace("\x00", "") if usable else None),
+                r.get("quote_page") if usable else None, r["source_path"] if usable else None,
+                r["status"], r["reason"]))
+        for path, vals in by.items():
+            execute_values(cur, """
+                UPDATE regulatory_provisions rp
+                   SET council_quote = v.q, quote_page = v.pg, quote_source_path = v.src,
+                       quote_status = v.st, quote_reason = v.why, quote_checked_at = now()
+                  FROM (VALUES %s) AS v(id, md5, q, pg, src, st, why)
+                 WHERE rp.id = v.id AND md5(rp.provision_text) = v.md5 AND rp.is_current""",
+                vals, template="(%s::int, %s, %s::text, %s::int, %s::text, %s, %s)", page_size=500)
+            conn.commit()
+        cur.execute("SELECT count(*) FROM regulatory_provisions WHERE id = ANY(%s) AND quote_checked_at IS NOT NULL",
+                    ([r["id"] for r in res],))
+        return cur.fetchone()[0]
+    finally:
+        conn.close()
 
 
 def report(res: list[dict]) -> None:
@@ -393,8 +443,6 @@ def report(res: list[dict]) -> None:
           f"{sum(1 for r in rec if r.get('missing_numbers'))}")
     print(f"  quote page differs from stored page (exact+recovered): "
           f"{sum(1 for r in res if r.get('quote_page') not in (None, r['stored_page']))}")
-    print(f"  copies with a repeated line inside (header mid-quote, or repeated wording): "
-          f"{sum(1 for r in res if r.get('repeated_inside'))}")
     print(f"  oversized (>{OVERSIZED} chars, several controls): {sum(1 for r in res if r['needs_split'])}")
     print("by council (unconfirmed / total):")
     tot = collections.Counter(r["council"] for r in res)
@@ -412,7 +460,9 @@ def report(res: list[dict]) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--dry-run", action="store_true", required=True, help="the only mode until Phase B")
+    mode = ap.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--dry-run", action="store_true", help="judge and report; write nothing")
+    mode.add_argument("--apply", action="store_true", help="also store each verdict (migration 111)")
     ap.add_argument("--council")
     ap.add_argument("--ids", help="comma-separated rule ids")
     ap.add_argument("--out", default=str(Path(os.environ.get("CLAUDE_JOB_DIR", ROOT)) / "tmp" / "council_quote_dryrun.json"))
@@ -436,6 +486,10 @@ def main() -> int:
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     Path(a.out).write_text(json.dumps(res), encoding="utf-8")
     print(f"written: {a.out}")
+    if a.apply:
+        n = write(res)
+        print(f"stored: {n} of {len(res)} rules")
+        return 0 if n == len(res) else 1
     return 0
 
 
