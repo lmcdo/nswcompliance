@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes the rule text served on four more live routes (DCP browse page, rule-card cross-reference previews, quick-search clause lookup, provisions/by-ids) and moves the property page onto the shared helper. Wrong, a page would show words that are not the council's under a note saying they are.",
-  "commit_hash": "d604715f",
+  "commit_hash": "e58ef02a",
   "files": [
     "frontend-nextjs/lib/council-quote.ts",
     "frontend-nextjs/__tests__/lib/council-quote.test.ts",
