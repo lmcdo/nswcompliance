@@ -2,7 +2,7 @@
 
 What a mocked connection cannot show: that the triggers really fire and the shape constraint
 really refuses. Opt-in like tests/test_drawdown_verify_real_db.py:
-    PYTEST_REAL_DB=1 pytest -m database tests/test_council_quote_real_db.py -o addopts=
+    PYTEST_REAL_DB=1 pytest -m database tests/test_council_quote_db_real.py -o addopts=
 """
 import os
 import sys
@@ -24,7 +24,7 @@ pytestmark = pytest.mark.database
 @pytest.fixture
 def cur():
     if not _REAL_DB_REQUESTED:
-        pytest.skip("Real-DB test. Run with: PYTEST_REAL_DB=1 pytest -m database tests/test_council_quote_real_db.py")
+        pytest.skip("Real-DB test. Run with: PYTEST_REAL_DB=1 pytest -m database tests/test_council_quote_db_real.py")
     if not os.environ.get("DATABASE_URL"):
         pytest.skip("PYTEST_REAL_DB=1 set but no DATABASE_URL available.")
     import psycopg2
@@ -99,3 +99,22 @@ def test_a_new_chapter_pdf_voids_quotes_on_rows_not_current_too(cur):
     cur.execute("""UPDATE dcp_chapter_registry SET r2_current_path = r2_current_path || '.test'
                     WHERE council = %s AND chapter_key = %s AND is_active""", (council, key))
     assert _status(cur, rid) == (None, None)
+
+
+def test_the_real_writer_stores_nothing_for_text_it_did_not_judge(cur):
+    # council_quote_db.write against the real table: a stale text fingerprint matches no row,
+    # so nothing is written and the stored verdict is untouched.
+    import council_quote_db as store
+    rid, _c, _k = _quoted_row(cur)
+    cur.execute("""SELECT reg.r2_current_path, rp.quote_status, rp.quote_checked_at
+                     FROM regulatory_provisions rp JOIN dcp_chapter_registry reg
+                       ON reg.council = rp.source_council AND reg.chapter_key = rp.source_chapter_key
+                      AND reg.is_active WHERE rp.id = %s""", (rid,))
+    path, status, checked = cur.fetchone()
+    n = store.write([{"id": rid, "text_md5": "0" * 32, "status": "unconfirmed", "reason": "test",
+                      "source_path": path}])
+    assert n == 0
+    cur.connection.rollback()
+    cur.execute("SET statement_timeout = 30000")
+    cur.execute("SELECT quote_status, quote_checked_at FROM regulatory_provisions WHERE id = %s", (rid,))
+    assert cur.fetchone() == (status, checked)

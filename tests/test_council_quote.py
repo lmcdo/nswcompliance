@@ -161,3 +161,10 @@ def test_label_copy_cut_off_by_the_line_cap_is_refused():
     lines = ["(a)"] + [f"line {n} of a very long control that never reaches another label" for n in range(60)]
     st = stream({1: lines})
     assert st.copy_from_label(st.s.find("line0")) is None
+
+
+def test_a_short_rule_after_a_figure_title_is_still_a_rule_and_punctuated_legends_are_legends():
+    assert cq.figure_kind("Figure 4d: Parking\n4.4 Garages are to be set back 1m behind the front building line.") is None
+    assert cq.figure_kind("Figure 9: Site\nBuildings must not exceed 9m.") is None
+    assert cq.figure_kind("Figure 12\nLegend:\nHeritage item\nExisting trees") == "figure_legend"
+    assert cq.figure_kind("Figure 12\nLEGEND \u2013\nHeritage item") == "figure_legend"

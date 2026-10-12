@@ -61,6 +61,8 @@ LIGATURES = str.maketrans({"ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi",
                            "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st"})
 _NUM = re.compile(r"\d+(?:\.\d+)?")
 _FIGURE = re.compile(r"^\s*(?:figure|fig\.|map|diagram)\s*\d", re.I)
+_LEGEND = re.compile(r"legend\s*[:.\-–—]?")
+_RULE_WORDS = re.compile(r"\b(?:must|shall|should|are to|is to|to be|maximum|minimum|min\.|max\.)\b")
 #: A label at a line start, by kind. Kinds must match for a label to end a copy.
 _LABELS = (
     ("paren_alpha", re.compile(r"^\(([a-z])\)")),
@@ -256,8 +258,12 @@ def figure_kind(body: str) -> str | None:
     if not _FIGURE.match(body):
         return None
     lines = [ln.strip().lower() for ln in body.strip().splitlines() if ln.strip()]
-    if "legend" in lines[:4]:
+    if any(_LEGEND.fullmatch(ln) for ln in lines[:4]):
         return "figure_legend"
+    # Anything after the title that reads as a rule -- a numbered or labelled line, or rule wording --
+    # makes it a rule, however short ("Figure 4d: Parking / 4.4 Garages are to be set back 1m").
+    if any(label_kind(ln) or _RULE_WORDS.search(ln) for ln in lines[1:]):
+        return None
     return "figure_caption" if len(_WORD.findall(body.lower())) <= 25 else None
 
 
