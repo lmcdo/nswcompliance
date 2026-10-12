@@ -1012,3 +1012,65 @@ def test_the_councils_own_note_about_its_figures_is_kept():
     kept, dropped = drop_figure_narrations(keepers)
     assert dropped == [], [p["code"] for p in dropped]
     assert [p["code"] for p in kept] == ["DS9.1", "3B", "12.1.2", "C14"]
+
+
+class TestV2Brief:
+    """v2 brief (2026-10-12 pilot: CoS 81% -> 96% of rules printed word for word)."""
+
+    def test_prompt_demands_word_for_word_text(self):
+        from ai_extractor import PROMPT
+        low = PROMPT.lower()
+        assert "copied word for word exactly as printed" in low
+        assert "never summarise, reword, merge, shorten or complete it" in low
+
+    def test_prompt_gives_one_provision_per_rule(self):
+        from ai_extractor import PROMPT
+        low = PROMPT.lower()
+        assert "each separate paragraph" in low
+        assert "never return a whole section as one provision" in low
+
+    def test_prompt_keeps_a_colon_lead_in_with_its_list(self):
+        """Blacktown 126612: items cut from "Where the site adjoins a heritage item:" read as unconditional."""
+        from ai_extractor import PROMPT
+        low = PROMPT.lower()
+        assert "ends with a colon" in low
+        assert "stays in one provision together with every item of that list" in low
+
+    def test_prompt_asks_for_the_page_counted_from_the_pages_given(self):
+        from ai_extractor import PROMPT
+        assert '"code","title","text","page"' in PROMPT
+        assert "counting the first page you were given as 1" in PROMPT
+
+
+class TestModelPage:
+    def test_chunk_relative_page_becomes_a_document_page(self):
+        from ai_extractor import _model_page
+        assert _model_page(1, 31, 60) == 31
+        assert _model_page("3", 31, 60) == 33
+        assert _model_page(30, 31, 60) == 60
+
+    def test_a_page_outside_the_chunk_or_unreadable_is_not_used(self):
+        from ai_extractor import _model_page
+        assert _model_page(31, 31, 60) is None      # would be page 61
+        assert _model_page(0, 31, 60) is None
+        assert _model_page(None, 31, 60) is None
+        assert _model_page("p4", 31, 60) is None
+        assert _model_page(2.9, 31, 60) is None     # malformed, not page 32
+        assert _model_page(True, 31, 60) is None
+
+    def test_the_words_decide_and_the_model_page_only_fills_a_gap(self):
+        from types import SimpleNamespace
+        from ai_extractor import _place_on_pages
+        texts = {11: "Contents and history of the area only.",
+                 12: "C3 Front fences are not to exceed 1.2 metres in height and must be of open construction.",
+                 13: "Figure 4 shows the street."}
+        reader = SimpleNamespace(pages=[SimpleNamespace(extract_text=lambda t=texts.get(n, ""): t)
+                                        for n in range(1, 14)])
+        placed = {"text": "Front fences are not to exceed 1.2 metres in height and must be of open construction.",
+                  "page": 3}                       # model says 13; the words are on 12
+        unplaced = {"text": "Words printed in a picture that the text layer does not hold at all.", "page": 2}
+        wild = {"text": "Another rule printed only inside a drawing on these pages somewhere.", "page": 9}
+        _place_on_pages([placed, unplaced, wild], reader, 11, 13)
+        assert placed["page"] == 12
+        assert unplaced["page"] == 12              # 11 + 2 - 1
+        assert wild["page"] == 11                  # 19 is outside the chunk: first page

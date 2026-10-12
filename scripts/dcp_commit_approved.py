@@ -387,6 +387,28 @@ def commit_reviewed_from_queue(cur, council: str, chapter_key: str,
     return superseded, inserted
 
 
+def run_council_quote(council: str, chapter_key: str, run=None) -> int:
+    """Store the council's own words for one committed chapter (scripts/council_quote.py --apply).
+    Returns the exit code; a failure is printed with the command to re-run, never raised, because
+    the provisions are already live. `run` is subprocess.run, injectable for tests."""
+    import subprocess
+    run = run or subprocess.run
+    cmd = [sys.executable, str(ROOT / "scripts" / "council_quote.py"), "--apply",
+           "--council", council, "--chapter", chapter_key, "--workers", "1"]
+    try:
+        r = run(cmd, cwd=str(ROOT), capture_output=True, text=True, timeout=1800)
+    except Exception as exc:  # noqa: BLE001 -- never fail a committed provision
+        print(f"  [warn] council words could not run for {council}/{chapter_key}: {exc}")
+        return 1
+    stored = [ln for ln in r.stdout.splitlines() if ln.startswith("stored:")]
+    print(f"  council words for {council}/{chapter_key}: {(stored or ['no output'])[-1]}")
+    if r.returncode:
+        print(f"  [warn] council words failed for {council}/{chapter_key} (exit {r.returncode}): "
+              f"{r.stderr.strip()[-300:]}. Run `python scripts/council_quote.py --apply --council "
+              f"{council} --chapter {chapter_key}`; until then its new rules show as not yet checked.")
+    return r.returncode
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Commit human-approved DCP chapters.")
     parser.add_argument(
@@ -441,6 +463,7 @@ def main() -> int:
     # re-derivation at the bottom is scoped to exactly these -- never bulk. See the
     # comment on that block for why the scoping is load-bearing, not tidiness.
     committed_councils: set[str] = set()
+    committed_chapters: set[tuple[str, str]] = set()
 
     for cand in candidates:
         council = cand["council"]
@@ -549,6 +572,7 @@ def main() -> int:
                   f"live ({superseded} superseded)")
             committed += 1
             committed_councils.add(council)
+            committed_chapters.add((council, chapter_key))
         except Exception as exc:
             conn.rollback()
             print(f"  [FAILED] {council}/{chapter_key} -- {exc}; rolled back, approval kept.")
@@ -717,6 +741,12 @@ def main() -> int:
                       f"--council {council} --apply`; until then its links stay unchecked.")
         except Exception as exc:  # noqa: BLE001 -- never fail a committed provision
             print(f"  [warn] page-link check could not run for {council}: {exc}")
+        # Council words: copy each committed rule's quote from its PDF (migration 111), after the
+        # page links above, per chapter. A new rule has no quote and the site marks it "not yet
+        # checked against the council's PDF" until this runs.
+        for ch_council, chapter_key in sorted(committed_chapters):
+            if ch_council == council:
+                run_council_quote(council, chapter_key)
 
     # Completeness: did anything a council carries go BACKWARDS?
     #

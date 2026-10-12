@@ -25,7 +25,7 @@ orders. The cache is lowercased, so each line's original text is re-read from th
 same PDF with PyMuPDF and joined back by position (page, y, x).
 
 Usage:
-    python scripts/council_quote.py --dry-run [--council waverley] [--ids 1,2] [--out f.json]
+    python scripts/council_quote.py --dry-run [--council waverley [--chapter k]] [--ids 1,2] [--out f.json]
 """
 from __future__ import annotations
 
@@ -52,6 +52,7 @@ MIN_OVERLAP = 0.6       # share of the stored quote's words the copied text must
 LABEL_LINES = 40        # a label-bounded copy stops after this many lines...
 LABEL_PAGES = 1         # ...or this many page breaks
 REPEATED = 5           # a line printed on this many pages is a running header/footer at a copy's edge
+LABEL_WORDS = 4         # a drawing's label is a short line: "Rear boundary", "3 / 8m", ">400m²"
 OVERSIZED = 2500        # a stored quote this long is several controls: flag for splitting
 KNOWN = (126292, 87150, 95878, 105200, 130236, 150954)
 
@@ -59,8 +60,20 @@ _WORD = re.compile(r"[a-z0-9]+")
 #: Typesetting ligatures PDFs print as one character: "speciﬁcations" is "specifications".
 LIGATURES = str.maketrans({"ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi",
                            "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st"})
+#: A unit's superscript: a reader writes "m²" where the text layer holds "m2" (Hornsby pilot,
+#: 2026-10-12: 17 of 61 misses were tables and "m²"), and norm() would drop "²" altogether.
+#: Only after "m": a superscript elsewhere is a footnote mark, and "24³" must never read as "243".
+UNIT_SUP = {"²": "2", "³": "3"}
+_UNIT_SUP = re.compile(r"(?<=[mM])[²³]")
 _NUM = re.compile(r"\d+(?:\.\d+)?")
 _FIGURE = re.compile(r"^\s*(?:figure|fig\.|map|diagram)\s*\d", re.I)
+#: A rule whose own code names a figure, map or diagram (as a reader codes a drawing's labels).
+_FIGURE_CODE = re.compile(r"^\s*(?:figure|fig\.|map|diagram)\b", re.I)
+#: Positive sign of a sentence, so of a possible rule: a verb of state or obligation, or a full stop
+#: ending a word. Labels ("Street tree", "6m setback", "Building line") carry neither.
+_SENTENCE = re.compile(r"\b(?:is|are|be|been|was|were|will|may|can|cannot|not|no|prohibited|permitted|"
+                       r"required|encouraged|discouraged|avoid|provide|provided|ensure|retain|maintain|"
+                       r"allowed|need|needs|apply|applies)\b|[a-z]\.(?:\s|$)")
 _LEGEND = re.compile(r"legend\s*[:.\-–—]?")
 _RULE_WORDS = re.compile(r"\b(?:must|shall|should|are to|is to|to be|maximum|minimum|min\.|max\.)\b")
 #: A label at a line start, by kind. Kinds must match for a label to end a copy.
@@ -76,7 +89,8 @@ _LABELS = (
 
 
 def norm(s: str | None) -> str:
-    return re.sub(r"[^a-z0-9]", "", (s or "").translate(LIGATURES).lower())
+    s = _UNIT_SUP.sub(lambda m: UNIT_SUP[m.group(0)], (s or "").translate(LIGATURES))
+    return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
 def label_kind(text: str) -> tuple[str, str] | None:
@@ -146,6 +160,8 @@ class Stream:
         buf, self.at = [], []
         for i, t in enumerate(self.text):
             for p, c in enumerate(t):
+                if c in UNIT_SUP and p and t[p - 1] in "mM":     # the copy keeps the council's "m²"
+                    c = UNIT_SUP[c]
                 for c2 in c.lower():
                     if c2 in ALNUM:
                         buf.append(c2)
@@ -268,6 +284,16 @@ def figure_kind(body: str) -> str | None:
     return "figure_caption" if len(_WORD.findall(body.lower())) <= 25 else None
 
 
+def are_labels(body: str) -> bool:
+    """A drawing's labels, by their shape: two or more lines, each of LABEL_WORDS words or fewer,
+    and no rule wording or sign of a sentence anywhere. Hornsby Figure 3.1-f, as read:
+    "Rear boundary / 3 / 8m / Secondary boundary / Dwelling 1". A one-line instruction
+    ("Locate vehicle access on Smith Street") is not labels, whatever its verb."""
+    lines = [ln for ln in body.lower().splitlines() if ln.strip()]
+    return (len(lines) >= 2 and all(len(_WORD.findall(ln)) <= LABEL_WORDS for ln in lines)
+            and not _RULE_WORDS.search(body.lower()) and not _SENTENCE.search(body.lower()))
+
+
 def judge(row: dict, streams: list[Stream]) -> dict:
     import rule_page_locator as rpl
     body = rpl.rule_body(row["provision_text"])
@@ -276,6 +302,11 @@ def judge(row: dict, streams: list[Stream]) -> dict:
            "page_check": row["page_check"], "needs_split": len(body) > OVERSIZED}
     if is_map_labels(body) or figure_kind(body):
         return {**out, "status": "not_a_control", "reason": "map_labels" if is_map_labels(body) else figure_kind(body)}
+    # A drawing's labels, coded as the figure they sit in ("Figure 3.2", "Map 1"), with no rule
+    # wording: Hornsby pilot 2026-10-12, 12 of 61 misses. A coded figure that reads as a sentence
+    # ("must", "is prohibited", a full stop) stays a rule and is judged as one.
+    if _FIGURE_CODE.match(str(row.get("code") or "")) and are_labels(body):
+        return {**out, "status": "not_a_control", "reason": "figure_labels"}
     if len(body) > OVERSIZED:      # several controls in one row: the brief refuses it until split
         return {**out, "status": "unconfirmed", "reason": "oversized"}
     if not any(st.s for st in streams):
@@ -428,6 +459,7 @@ def main() -> int:
     mode.add_argument("--dry-run", action="store_true", help="judge and report; write nothing")
     mode.add_argument("--apply", action="store_true", help="also store each verdict (migration 111)")
     ap.add_argument("--council")
+    ap.add_argument("--chapter", help="one chapter_key (needs --council): the publish step runs this per chapter")
     ap.add_argument("--ids", help="comma-separated rule ids")
     ap.add_argument("--out", default=str(Path(os.environ.get("CLAUDE_JOB_DIR", ROOT)) / "tmp" / "council_quote_dryrun.json"))
     ap.add_argument("--workers", type=int, default=4)
@@ -436,8 +468,10 @@ def main() -> int:
     from dotenv import load_dotenv
     load_dotenv(ROOT.parents[2] / ".env" if (ROOT.parents[2] / ".env").exists() else ROOT / ".env")
     ids = [int(x) for x in a.ids.split(",")] if a.ids else None
+    if a.chapter is not None and (not a.chapter.strip() or not a.council):
+        ap.error("--chapter needs a chapter_key and --council")   # a blank one would widen to the council
     import council_quote_db as store
-    rows = store.fetch(a.council, ids)
+    rows = store.fetch(a.council, ids, a.chapter)
     by = collections.defaultdict(list)
     for r in rows:
         by[r["r2_current_path"]].append(r)

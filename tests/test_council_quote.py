@@ -174,3 +174,89 @@ def test_a_short_rule_after_a_figure_title_is_still_a_rule_and_punctuated_legend
 
 def test_a_rule_under_a_legend_is_still_a_rule():
     assert cq.figure_kind("Figure 12\nLegend:\nExisting trees\n(a) Development must retain mature trees") is None
+
+
+def test_a_superscript_reads_as_the_digit_the_text_layer_holds():
+    """Hornsby pilot 2026-10-12: the reader writes "m²", the PDF text layer holds "m2"."""
+    st = stream({1: ["The minimum private open space is 24m2 with a minimum dimension of 4m."]})
+    out = cq.judge(row("The minimum private open space is 24m² with a minimum dimension of 4m."), [st])
+    assert out["status"] == "exact"
+    assert "24m2" in out["quote"]
+
+
+def test_a_superscript_does_not_make_a_different_number_match():
+    st = stream({1: ["The minimum private open space is 24m2 with a minimum dimension of 4m."]})
+    out = cq.judge(row("The minimum private open space is 243 with a minimum dimension of 4m."), [st])
+    assert out["status"] != "exact"
+
+
+def test_a_figures_labels_coded_as_the_figure_are_not_a_rule():
+    """Hornsby Figure 3.1-f as the reader returned it: one short label per line."""
+    st = stream({1: ["Street tree", "Front garden", "Driveway crossing", "Building line"]})
+    r = {**row("Rear boundary\n3 / 8m\nSecondary boundary\nDwelling 1\nSide boundary"), "code": "Figure 3.2"}
+    out = cq.judge(r, [st])
+    assert out["status"] == "not_a_control" and out["reason"] == "figure_labels"
+
+
+def test_a_coded_figure_with_rule_wording_is_still_judged_as_a_rule():
+    text = "Garages must be set back at least 1 metre behind the building line."
+    st = stream({1: [text]})
+    out = cq.judge({**row(text), "code": "Figure 4"}, [st])
+    assert out["status"] == "exact"
+
+
+def test_a_rule_without_a_figure_code_is_not_dropped_as_labels():
+    st = stream({1: ["Street tree", "Front garden", "Driveway crossing", "Building line"]})
+    out = cq.judge({**row("Street tree Front garden Driveway crossing Building line"), "code": "C3"}, [st])
+    assert out["status"] == "exact"
+
+
+def test_a_footnote_superscript_never_joins_a_number():
+    """Cross-review 2026-10-12: "24³" (a footnote mark) must not read as "243"."""
+    st = stream({1: ["The building height is not to exceed 24³ metres above existing ground level."]})
+    out = cq.judge(row("The building height is not to exceed 243 metres above existing ground level."), [st])
+    assert out["status"] != "exact"
+
+
+def test_the_copy_keeps_the_councils_unit_superscript():
+    st = stream({1: ["The minimum private open space is 24m² with a minimum dimension of 4m."]})
+    out = cq.judge(row("The minimum private open space is 24m2 with a minimum dimension of 4m."), [st])
+    assert out["status"] == "exact" and "24m²" in out["quote"]
+
+
+def test_a_coded_figure_that_reads_as_a_sentence_is_judged_as_a_rule():
+    """Cross-review 2026-10-12: no "must", but a binding sentence all the same."""
+    text = "Vehicle access is prohibited from Smith Street"
+    out = cq.judge({**row(text), "code": "Figure 4"}, [stream({1: [text]})])
+    assert out["status"] == "exact"
+
+
+def test_a_one_line_instruction_coded_as_a_figure_is_judged_as_a_rule():
+    """Cross-review 2026-10-12: no listed verb, but one line of words is an instruction, not labels."""
+    text = "Locate vehicle access on Smith Street"
+    out = cq.judge({**row(text), "code": "Figure 4"}, [stream({1: [text]})])
+    assert out["status"] != "not_a_control"
+
+
+def test_labels_with_a_long_line_are_judged_as_a_rule():
+    text = "Rear boundary\nLocate the garage behind the front building line of the dwelling"
+    out = cq.judge({**row(text), "code": "Figure 4"}, [stream({1: text.split("\n")})])
+    assert out["status"] != "not_a_control"
+
+
+def test_a_blank_chapter_never_widens_to_the_whole_council(monkeypatch):
+    import council_quote_db as store
+    import dcp_page_repair as dpr
+    import pytest
+    rows = [{"id": 1, "source_chapter_key": "a"}, {"id": 2, "source_chapter_key": "b"}]
+    monkeypatch.setattr(dpr, "fetch", lambda conn, council: rows)
+    monkeypatch.setattr("psycopg2.connect", lambda *a, **k: type("C", (), {
+        "cursor": lambda self: type("K", (), {"execute": lambda self, *a: None})(),
+        "close": lambda self: None})())
+    monkeypatch.setenv("DATABASE_URL", "postgresql://x")
+    assert store.fetch("x", None, "") == []
+    assert [r["id"] for r in store.fetch("x", None, "a")] == [1]
+    assert len(store.fetch("x", None, None)) == 2
+    monkeypatch.setattr(sys, "argv", ["council_quote.py", "--dry-run", "--council", "x", "--chapter", " "])
+    with pytest.raises(SystemExit):
+        cq.main()
