@@ -1,0 +1,84 @@
+{
+  "tier": "standard",
+  "justification": "Changes how the copier labels rules and when it writes; it re-wrote 53 production rows. Nothing on the site reads the quote columns yet, so not Critical.",
+  "commit_hash": "run: git rev-parse --short HEAD",
+  "files": [
+    "scripts/council_quote.py",
+    "scripts/council_quote_db.py",
+    "tests/test_council_quote.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions quote columns (migration 111), 19,627 served rows",
+    "assumption_mismatch": "A chapter PDF that cannot be downloaded now leaves stored verdicts untouched and makes --apply exit 1",
+    "new_vs_existing": "Re-judged the 53 rows the changes affect (figure_caption + label_bounded) with --apply --ids"
+  },
+  "functions": [
+    {
+      "name": "figure_kind",
+      "file_line": "scripts/council_quote.py",
+      "input": "rule body text from provision_text",
+      "output": "figure_legend, figure_caption or None for a real rule",
+      "if_none": "empty body never matches the figure pattern, returns None"
+    },
+    {
+      "name": "write",
+      "file_line": "scripts/council_quote_db.py",
+      "input": "list of judge result dicts for served rules",
+      "output": "UPDATE of quote columns per chapter, skipping unreadable PDFs",
+      "if_none": "empty list stores nothing and the count check reports it"
+    }
+  ],
+  "values": [
+    {
+      "value": "reason == pdf_unreadable",
+      "read_at": "scripts/council_quote_db.py",
+      "nullable": "no",
+      "guard_at": "scripts/council_quote_db.py write loop",
+      "if_missing": "N/A"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "store verdicts",
+      "file_line": "scripts/council_quote_db.py",
+      "where_clause": "rp.id = v.id AND md5(rp.provision_text) = v.md5 AND rp.is_current AND active registry path = judged path",
+      "if_zero": "stored count below judged -> exit 1",
+      "if_wrong": "primary key, one row per value"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "An R2 download fails during a scheduled --apply",
+      "what_happens": "good exact quotes would be overwritten as unconfirmed",
+      "mitigated": true,
+      "how": "council_quote_db.write skips pdf_unreadable rows; exit 1",
+      "repro": "run --apply with R2 credentials unset for one chapter"
+    },
+    {
+      "scenario": "A real rule starts with a figure title",
+      "what_happens": "marked not_a_control and hidden",
+      "mitigated": true,
+      "how": "figure_kind: only legends and captions of 25 words or fewer",
+      "repro": "pytest tests/test_council_quote.py::test_a_rule_that_starts_with_a_figure_title_is_still_a_rule"
+    },
+    {
+      "scenario": "Label-bounded copy stopped by the 40-line cap",
+      "what_happens": "a control cut short shown as recovered",
+      "mitigated": true,
+      "how": "copy_from_label returns None unless the council's next label (or document end) bounds it",
+      "repro": "pytest tests/test_council_quote.py::test_label_copy_cut_off_by_the_line_cap_is_refused"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_council_quote.py -o addopts=",
+    "fails_when": "a figure-titled rule is labelled not_a_control, or a capped label copy is returned",
+    "observed_red": "Before figure_kind, the 31 figure_caption rows included real controls (123671 '4.4 Where a setback applies, buildings are to provide...'); re-judged: 23 left not_a_control.",
+    "external_authority": "Production after --apply --ids (53 rows): served totals exact 15,095 / recovered 1,425 / not_a_control 33 / unconfirmed 3,074."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

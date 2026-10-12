@@ -147,3 +147,17 @@ def test_line_without_its_printed_casing_is_never_passed_off_as_the_councils():
     out = cq.judge(row("Front fences are not to exceed 1.2m in height and must be of open "
                        "construction along the primary street."), [st])
     assert out["status"] == "unconfirmed" and out["reason"] == "casing_unread"
+
+
+def test_a_rule_that_starts_with_a_figure_title_is_still_a_rule():
+    body = ("Figure 4d: Parking and vehicle access\nGeneral\n4.4 Where a setback applies, buildings are to "
+            "provide articulated and varied facades that do not present a blank wall to the street.")
+    assert cq.figure_kind(body) is None
+    assert cq.figure_kind("Figure 14L.3-1:\nBuilding Setbacks Plan\nLegend\n2m Front Setback") == "figure_legend"
+    assert cq.figure_kind("Figure 12: Setback Type R3") == "figure_caption"
+
+
+def test_label_copy_cut_off_by_the_line_cap_is_refused():
+    lines = ["(a)"] + [f"line {n} of a very long control that never reaches another label" for n in range(60)]
+    st = stream({1: lines})
+    assert st.copy_from_label(st.s.find("line0")) is None
