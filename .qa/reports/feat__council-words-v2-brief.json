@@ -1,0 +1,107 @@
+{
+  "tier": "critical",
+  "justification": "Changes the brief every AI read of a council DCP uses, what the word-for-word checker accepts, and adds a production write (council_quote --apply) after every publish. Wrong, the reader could cut a condition from its list, or a rule could be marked as the council's words when it is not.",
+  "commit_hash": "759b470a",
+  "files": [
+    ".qa/reports/feat__council-words-v2-brief.json",
+    "scripts/ai_extractor.py",
+    "scripts/council_quote.py",
+    "scripts/council_quote_db.py",
+    "scripts/dcp_commit_approved.py",
+    "scripts/dcp_page_repair.py",
+    "tests/test_ai_extractor.py",
+    "tests/test_council_quote.py",
+    "tests/test_dcp_commit_approved_council_quote.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions quote columns (migration 111/112); dcp_review_queue AI reads; dcp_chapter_registry active PDF",
+    "assumption_mismatch": "The model's page counts from the chunk it was sent, not the document: converted with first + page - 1 and used only when the words cannot place the rule",
+    "new_vs_existing": "Brief applies to new reads only; the checker change re-judges on its next run; the publish hook writes only the chapters it just committed",
+    "external_source_error": "A PDF that cannot be read keeps its stored verdict (pdf_unreadable is never written); a failed copier run is printed with its re-run command and never undoes the publish",
+    "frontend_type": "No frontend change: the site already reads quote_status and council_quote, which this only fills for new rules",
+    "user_failure_mode": "If the copier does not run, new rules show 'Not yet checked against the council's PDF' -- visible, not silent"
+  },
+  "functions": [
+    {
+      "name": "run_council_quote",
+      "file_line": "scripts/dcp_commit_approved.py",
+      "input": "the council slug and the chapter_key that this publish run just committed to production",
+      "output": "exit code of council_quote.py --apply for that chapter",
+      "if_none": "exception or non-zero exit printed as [warn] with the re-run command"
+    },
+    {
+      "name": "_model_page",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "the model's chunk-relative page, chunk first and last page",
+      "output": "the document page number inside the chunk the model was sent, or None when outside or unreadable",
+      "if_none": "rule keeps the chunk's first page; dcp_page_repair re-checks it after publish"
+    }
+  ],
+  "values": [
+    {
+      "value": "provision code (figure/map/diagram)",
+      "read_at": "scripts/council_quote.py judge",
+      "nullable": "yes",
+      "guard_at": "str(row.get('code') or '')",
+      "if_missing": "served rows carry no code: the figure-code rule does not apply and the rule is judged as before"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "served rules of one chapter for the copier",
+      "file_line": "scripts/dcp_page_repair.py SERVED_SQL (adds source_chapter_key) + council_quote_db.fetch",
+      "where_clause": "is_current AND v2_is_actionable AND source_council IS NOT NULL AND active chapter PDF; council = %s; chapter filtered in Python",
+      "if_zero": "nothing judged, 'stored: 0 of 0'",
+      "if_wrong": "the writer only updates rows whose text md5 and active PDF still match the judged ones"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A superscript makes a different number match ('243' vs '24m2')",
+      "what_happens": "a wrong number would be proven as the council's own and shown as its words",
+      "mitigated": true,
+      "how": "superscripts map to their digit only; '243' still differs from '24m2'",
+      "repro": "python -m pytest tests/test_council_quote.py -k superscript"
+    },
+    {
+      "scenario": "A real rule inside a figure is dropped as labels",
+      "what_happens": "a rule would disappear from the confirmed set",
+      "mitigated": true,
+      "how": "figure_labels only when the code names a figure AND the text has no rule wording",
+      "repro": "python -m pytest tests/test_council_quote.py -k coded_figure"
+    },
+    {
+      "scenario": "The model's page overrides where the words are printed",
+      "what_happens": "a rule links a page that does not hold it",
+      "mitigated": true,
+      "how": "the locator decides; the model page only fills a gap and only inside the chunk",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k model_page"
+    },
+    {
+      "scenario": "The copier fails after publish and the run reports success",
+      "what_happens": "new rules would silently show as not yet checked while the log reads as success",
+      "mitigated": true,
+      "how": "run_council_quote prints [warn] with the re-run command on non-zero exit or exception",
+      "repro": "python -m pytest tests/test_dcp_commit_approved_council_quote.py"
+    },
+    {
+      "scenario": "The copier judges every chapter of the council instead of the one committed",
+      "what_happens": "a publish would rewrite quotes for chapters nobody touched, costing time and hiding which run wrote them",
+      "mitigated": true,
+      "how": "run_council_quote passes --council and --chapter; council_quote_db.fetch filters on source_chapter_key",
+      "repro": "python -m pytest tests/test_dcp_commit_approved_council_quote.py -k exactly_that_chapter"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_ai_extractor.py tests/test_council_quote.py tests/test_dcp_commit_approved_council_quote.py",
+    "fails_when": "the brief loses word-for-word / lead-in / page wording, the checker drops the superscript map or figure-label rule, or the publish step stops calling the copier per chapter",
+    "observed_red": "The figure-label test failed red during development (a stray control character in the regex) before it passed.",
+    "external_authority": "Pilot 2026-10-12 (plan AI BRIEF PILOT): CoS 81% -> 96% exact with v2; Hornsby 89% -> 97% excluding picture text after the two checker fixes."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: the next publish log prints 'council words for <council>/<chapter>: stored: N of N'"
+  }
+}
