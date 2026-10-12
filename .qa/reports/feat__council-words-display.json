@@ -1,0 +1,111 @@
+{
+  "tier": "critical",
+  "justification": "Changes the rule text every property page shows for council DCP rules (16,520 of 19,627 now show the council's copied words), their page links, and whether the DCP number chip runs. Wrong, a reader would see words or a page that are not the council's.",
+  "commit_hash": "b90b549b",
+  "files": [
+    "frontend-nextjs/lib/council-quote.ts",
+    "frontend-nextjs/lib/page-citation.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/components/compliance/PageGroupedProvisions.tsx",
+    "frontend-nextjs/__tests__/lib/council-quote.test.ts",
+    "frontend-nextjs/__tests__/lib/page-citation.test.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions.council_quote, quote_page, quote_status (migration 111, filled 2026-10-12 for all 19,627 served council DCP rules)",
+    "assumption_mismatch": "A row with status exact/recovered but no stored quote: servedQuoteStatus sends null, so the extracted text is shown with the 'not yet checked' note and no number chip (the migration 111 CHECK constraint already forbids such a row).",
+    "new_vs_existing": "Applies to every served row on read; nothing is written. A rule whose text changes later loses its quote by trigger (migrations 111-112) and falls back to the note.",
+    "external_source_error": "No external source: the quote columns are in the same row the route already selects. A DB error fails the route as before.",
+    "frontend_type": "Provision interface in PageGroupedProvisions.tsx gains quote_status, quote_page, source_council; PageFields in lib/page-citation.ts gains quote_status, quote_page.",
+    "user_failure_mode": "If the swap failed, the reader sees the extracted text exactly as before, but every council rule carries 'Not yet checked against the council's PDF' -- visible, not silent."
+  },
+  "functions": [
+    {
+      "name": "shownText",
+      "file_line": "frontend-nextjs/lib/council-quote.ts:67",
+      "input": "one served rule row carrying provision_text, council_quote and quote_status from the database",
+      "output": "text string the card and PDF export render, heading line kept",
+      "if_none": "null provision_text and no quote returns an empty string; renderers already handle empty text"
+    },
+    {
+      "name": "servedQuoteStatus",
+      "file_line": "frontend-nextjs/lib/council-quote.ts:37",
+      "input": "one served rule row's quote_status and council_quote columns as read from the database",
+      "output": "status string sent to the client, or null when hollow",
+      "if_none": "null status stays null, so the rule shows the not-yet-checked note"
+    },
+    {
+      "name": "withCouncilWords",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:142",
+      "input": "each database row returned by the two PROVISION_BASE_SELECT queries in this route",
+      "output": "response row with swapped text and normalised status, quote not sent twice",
+      "if_none": "missing columns read as undefined and fall back to extracted text"
+    }
+  ],
+  "values": [
+    {
+      "value": "quote_status",
+      "read_at": "frontend-nextjs/lib/council-quote.ts:43",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/lib/council-quote.ts:37",
+      "if_missing": "rule shows extracted text with 'Not yet checked against the council's PDF' and no number chip"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "select a property's DCP rules with their quote columns",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:766",
+      "where_clause": "unchanged: existing layer filters (council, chapter, zone, dev type, is_current, v2_is_actionable)",
+      "if_zero": "no rules, as before",
+      "if_wrong": "the quote travels with its own row; a rule cannot show another rule's words"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A row claims exact/recovered but its stored quote is empty",
+      "what_happens": "the client would label extracted text as the council's wording",
+      "mitigated": true,
+      "how": "council-quote.ts servedQuoteStatus nulls the status server side; migration 111 CHECK forbids the row",
+      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'hollow'"
+    },
+    {
+      "scenario": "The DCP number chip reads a number from a rule the program could not confirm",
+      "what_happens": "a limit the council never printed is shown beside the rule",
+      "mitigated": true,
+      "how": "PageGroupedProvisions.tsx numeric chip returns null unless numbersUsable",
+      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'unchecked council rule'"
+    },
+    {
+      "scenario": "The council's words sit on a different page than the stored page (713 rules)",
+      "what_happens": "the link would open a page that does not hold the words shown",
+      "mitigated": true,
+      "how": "page-citation.ts anchors quote_page when the rule shows council words",
+      "repro": "npx jest __tests__/lib/page-citation.test.ts -t 'quote page'"
+    },
+    {
+      "scenario": "PDF line breaks inside a sentence render as separate lines",
+      "what_happens": "the council's paragraph would read as broken short lines on the card",
+      "mitigated": true,
+      "how": "council-quote.ts reflow joins non-label lines with a space and keeps a bare '(a)' with its text",
+      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'label on its own PDF line'"
+    },
+    {
+      "scenario": "The query returns the wrong rows or the quote columns are missing",
+      "what_happens": "rules show without the council's words or with another rule's text",
+      "mitigated": true,
+      "how": "quote columns come from the same row (route.ts:766); missing columns fall back to extracted text with the note",
+      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'unchecked council rule'"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/council-quote.test.ts __tests__/lib/page-citation.test.ts",
+    "fails_when": "a recovered rule shows the reader's rewording (NB 130236), an unchecked council rule feeds the number chip or loses its note, or a confirmed rule links a page other than its quote page",
+    "observed_red": "The first version dropped council_quote from the payload while the client still required it, so every council rule would have read 'not yet checked'; caught in review before tests ran, fixed with servedQuoteStatus and the 'hollow' test.",
+    "external_authority": "Production 2026-10-12: served council DCP rules by quote_status = exact 15,095 / recovered 1,425 / not_a_control 27 / unconfirmed 3,080."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: open a property with Waverley and Northern Beaches rules on the preview and check the note and page links"
+  }
+}
