@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes the rule text every property page shows for council DCP rules (16,520 of 19,627 now show the council's copied words), their page links, and whether the DCP number chip runs. Wrong, a reader would see words or a page that are not the council's.",
-  "commit_hash": "dfd38937",
+  "commit_hash": "3dcb0a61",
   "files": [
     "frontend-nextjs/lib/council-quote.ts",
     "frontend-nextjs/lib/page-citation.ts",
