@@ -50,7 +50,7 @@ PROMPT = (
     "This is part of a NSW council Development Control Plan. Extract every provision "
     "(objectives, controls, clauses, requirements, performance criteria, design "
     "solutions). Return a JSON object "
-    '{"provisions": [{"code","title","text"}]}. Split each separately labelled '
+    '{"provisions": [{"code","title","text","page"}]}. Split each separately labelled '
     "objective or control into its own provision. "
     "The \"code\" is the provision's citation and must be COPIED from the page, never "
     "composed: the section number printed in the heading above the provision, then a "
@@ -65,6 +65,18 @@ PROMPT = (
     "words alone. The code is never empty and never contains anything you cannot see "
     "printed. IGNORE running page headers, footers, page numbers, and any faint "
     "rotated watermark/date characters in the margins. Do not invent provisions. "
+    # v2 (2026-10-12), word for word as piloted: CoS 81% -> 96% of rules printed exactly,
+    # Ashfield 100% either way with 12% more text kept, Hornsby two-column a draw (88/87).
+    # Plan: ~/.claude/plans/ce-council-words-PLAN-2026-10-12.md (AI BRIEF PILOT).
+    "The \"text\" must be COPIED word for word exactly as printed on the page: the same words in the "
+    "same order with the same numbers -- never summarise, reword, merge, shorten or complete it. "
+    "Give each separately labelled objective or control its own provision, and each separate paragraph "
+    "of rule text that has no label its own provision; never return a whole section as one provision. "
+    "BUT a sentence that introduces a list (it ends with a colon, e.g. '... must:' or '... the "
+    "following:') stays in ONE provision together with every item of that list, so no item is ever "
+    "separated from the words that give it its meaning. "
+    "The \"page\" is the number of the page the text is printed on, counting the first page you "
+    "were given as 1. "
     "Output ONLY the JSON object."
 )
 
@@ -699,10 +711,11 @@ def _place_on_pages(provs: list[dict], reader, first: int, last: int) -> None:
     dcp_page_repair.py checks served rows with).
 
     Every rule used to get `first`, the chunk's first page: measured 2026-09-26, 45% of
-    17,489 served rules linked to a page that does not hold them. The model's own "page" is
-    not used -- it counts from the start of the chunk it was sent, not of the document.
-    A rule that cannot be placed on exactly one page keeps `first`; dcp_page_repair.py
-    then records it as unresolved rather than as checked.
+    17,489 served rules linked to a page that does not hold them. The words decide the page.
+    The model's own "page" counts from the start of the chunk it was sent (the brief says
+    so), and is used only for a rule the words cannot place on exactly one page, and only
+    when it falls inside the chunk; otherwise `first`. dcp_page_repair.py re-checks every
+    page after publish either way.
     """
     try:
         import rule_page_locator as rpl
@@ -717,7 +730,16 @@ def _place_on_pages(provs: list[dict], reader, first: int, last: int) -> None:
     doc = rpl.Doc(texts)          # only the pages it was read from: a copy elsewhere is never chosen
     for p in provs:
         page, _verdict = rpl.locate(str(p.get("text", "")), [doc], None, range(first, last + 1))
-        p["page"] = page or first
+        p["page"] = page or _model_page(p.get("page"), first, last) or first
+
+
+def _model_page(raw, first: int, last: int) -> int | None:
+    """The model's chunk-relative page as a document page, if it lies in [first, last]. Pure."""
+    try:
+        n = first + int(raw) - 1
+    except (TypeError, ValueError):
+        return None
+    return n if first <= n <= last else None
 
 # ── entrypoint ───────────────────────────────────────────────────────────────
 def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None = None) -> list[dict]:

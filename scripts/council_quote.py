@@ -25,7 +25,7 @@ orders. The cache is lowercased, so each line's original text is re-read from th
 same PDF with PyMuPDF and joined back by position (page, y, x).
 
 Usage:
-    python scripts/council_quote.py --dry-run [--council waverley] [--ids 1,2] [--out f.json]
+    python scripts/council_quote.py --dry-run [--council waverley [--chapter k]] [--ids 1,2] [--out f.json]
 """
 from __future__ import annotations
 
@@ -57,10 +57,14 @@ KNOWN = (126292, 87150, 95878, 105200, 130236, 150954)
 
 _WORD = re.compile(r"[a-z0-9]+")
 #: Typesetting ligatures PDFs print as one character: "speciﬁcations" is "specifications".
+#: Superscripts too: a reader writes "m²" where the text layer holds "m2" (Hornsby pilot,
+#: 2026-10-12: 17 of 61 misses were tables and "m²"), and norm() would drop "²" altogether.
 LIGATURES = str.maketrans({"ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi",
-                           "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st"})
+                           "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st", "²": "2", "³": "3", "¹": "1"})
 _NUM = re.compile(r"\d+(?:\.\d+)?")
 _FIGURE = re.compile(r"^\s*(?:figure|fig\.|map|diagram)\s*\d", re.I)
+#: A rule whose own code names a figure, map or diagram (as a reader codes a drawing's labels).
+_FIGURE_CODE = re.compile(r"^\s*(?:figure|fig\.|map|diagram)\b", re.I)
 _LEGEND = re.compile(r"legend\s*[:.\-–—]?")
 _RULE_WORDS = re.compile(r"\b(?:must|shall|should|are to|is to|to be|maximum|minimum|min\.|max\.)\b")
 #: A label at a line start, by kind. Kinds must match for a label to end a copy.
@@ -276,6 +280,10 @@ def judge(row: dict, streams: list[Stream]) -> dict:
            "page_check": row["page_check"], "needs_split": len(body) > OVERSIZED}
     if is_map_labels(body) or figure_kind(body):
         return {**out, "status": "not_a_control", "reason": "map_labels" if is_map_labels(body) else figure_kind(body)}
+    # A drawing's labels, coded as the figure they sit in ("Figure 3.2", "Map 1"), with no rule
+    # wording: Hornsby pilot 2026-10-12, 12 of 61 misses. A coded figure that says "must" stays a rule.
+    if _FIGURE_CODE.match(str(row.get("code") or "")) and not _RULE_WORDS.search(body.lower()):
+        return {**out, "status": "not_a_control", "reason": "figure_labels"}
     if len(body) > OVERSIZED:      # several controls in one row: the brief refuses it until split
         return {**out, "status": "unconfirmed", "reason": "oversized"}
     if not any(st.s for st in streams):
@@ -428,6 +436,7 @@ def main() -> int:
     mode.add_argument("--dry-run", action="store_true", help="judge and report; write nothing")
     mode.add_argument("--apply", action="store_true", help="also store each verdict (migration 111)")
     ap.add_argument("--council")
+    ap.add_argument("--chapter", help="one chapter_key (needs --council): the publish step runs this per chapter")
     ap.add_argument("--ids", help="comma-separated rule ids")
     ap.add_argument("--out", default=str(Path(os.environ.get("CLAUDE_JOB_DIR", ROOT)) / "tmp" / "council_quote_dryrun.json"))
     ap.add_argument("--workers", type=int, default=4)
@@ -436,8 +445,10 @@ def main() -> int:
     from dotenv import load_dotenv
     load_dotenv(ROOT.parents[2] / ".env" if (ROOT.parents[2] / ".env").exists() else ROOT / ".env")
     ids = [int(x) for x in a.ids.split(",")] if a.ids else None
+    if a.chapter and not a.council:
+        ap.error("--chapter needs --council")
     import council_quote_db as store
-    rows = store.fetch(a.council, ids)
+    rows = store.fetch(a.council, ids, a.chapter)
     by = collections.defaultdict(list)
     for r in rows:
         by[r["r2_current_path"]].append(r)

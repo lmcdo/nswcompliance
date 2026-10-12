@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def fetch(council: str | None, ids: list[int] | None) -> list[dict]:
+def fetch(council: str | None, ids: list[int] | None, chapter: str | None = None) -> list[dict]:
     import psycopg2
     import dcp_page_repair as dpr
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
@@ -22,7 +22,8 @@ def fetch(council: str | None, ids: list[int] | None) -> list[dict]:
         rows = dpr.fetch(conn, council)
     finally:
         conn.close()
-    return [r for r in rows if not ids or r["id"] in ids]
+    return [r for r in rows if (not ids or r["id"] in ids)
+            and (not chapter or r["source_chapter_key"] == chapter)]
 
 
 def write(res: list[dict]) -> int:

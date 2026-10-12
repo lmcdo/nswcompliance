@@ -50,7 +50,7 @@ import rule_page_locator as rpl  # noqa: E402
 BATCH = 500
 MARGIN = 0.08
 SERVED_SQL = """
-SELECT rp.id, rp.source_council, rp.pdf_page, rp.page_range, rp.provision_text,
+SELECT rp.id, rp.source_council, rp.source_chapter_key, rp.pdf_page, rp.page_range, rp.provision_text,
        reg.r2_current_path, reg.r2_public_pdf_url,
        rp.printed_page_label, rp.page_check, rp.page_source_path
 FROM regulatory_provisions rp
