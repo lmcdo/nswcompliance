@@ -1,11 +1,13 @@
 {
   "tier": "standard",
   "justification": "Adds a reader provider used only when AI_MODEL=deepseek; its output still goes through the review queue, the word-for-word checker and the page/chunk guards before anything is published.",
-  "commit_hash": "6e53f1d0",
+  "commit_hash": "8887e4f8",
   "files": [
     ".qa/reports/feat__deepseek-reader.json",
     "scripts/ai_extractor.py",
-    "tests/test_ai_extractor.py"
+    "tests/test_ai_extractor.py",
+    "scripts/dcp_extract_changed.py",
+    "tests/test_dcp_extract_dry_run_writes_nothing.py"
   ],
   "pre_impl": {
     "existing_data": "No database read or written by this change; the provider turns a PDF chunk into the provisions JSON the other providers return",
@@ -77,6 +79,13 @@
       "mitigated": true,
       "how": "the provider raises a RuntimeError naming OPENROUTER_API_KEY, and it is not in the default order",
       "repro": "python -m pytest tests/test_ai_extractor.py -k needs_its_key"
+    },
+    {
+      "scenario": "A pilot is run with --dry-run to see what a new reader produces",
+      "what_happens": "the enrichment phases ran anyway and wrote provenance to production rows during a dry run",
+      "mitigated": true,
+      "how": "main() runs run_standard_enrichment only when not args.dry_run",
+      "repro": "python -m pytest tests/test_dcp_extract_dry_run_writes_nothing.py"
     }
   ],
   "falsifiable_check": {

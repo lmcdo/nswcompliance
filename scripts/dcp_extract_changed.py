@@ -6097,7 +6097,11 @@ def main() -> None:
     # The phase list and its mandatory order live in enrichment.pipeline, shared
     # with scripts/dcp_commit_approved.py. They were previously duplicated here,
     # and three phases that exist and work were wired into neither copy.
-    if passed:
+    # Not on --dry-run: the phases write to EVERY row they select, not only this run's, so a "dry run"
+    # used to record provenance across the table (a DeepSeek pilot on 2026-10-13 wrote 2 rows that way).
+    if passed and args.dry_run:
+        print("\n  [dry-run] enrichment skipped: it writes to the database")
+    if passed and not args.dry_run:
         print(f"\n{'='*60}")
         print("ENRICHMENT PIPELINE")
         print(f"{'='*60}")
