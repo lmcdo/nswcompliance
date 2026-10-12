@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes the brief every AI read of a council DCP uses, what the word-for-word checker accepts, and adds a production write (council_quote --apply) after every publish. Wrong, the reader could cut a condition from its list, or a rule could be marked as the council's words when it is not.",
-  "commit_hash": "2932d2c8",
+  "commit_hash": "13925ce6",
   "files": [
     ".qa/reports/feat__council-words-v2-brief.json",
     "scripts/ai_extractor.py",
