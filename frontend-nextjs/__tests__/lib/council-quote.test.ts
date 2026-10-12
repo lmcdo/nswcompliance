@@ -11,7 +11,7 @@ describe("a council DCP rule shows the council's own words when a program copied
       ...NB,
       provision_text: '# G4 C51 Public Transport\n\nIt is to accommodate the existing local and commuter bus networks.',
       council_quote: 'The interchange is to be capable of accommodating both the existing local and\ncommuter bus networks.',
-      quote_status: 'recovered',
+      quote_status: 'recovered', quote_page: 134,
     };
     expect(shownText(p)).toBe(
       'The interchange is to be capable of accommodating both the existing local and\ncommuter bus networks.');
@@ -19,12 +19,12 @@ describe("a council DCP rule shows the council's own words when a program copied
   });
 
   it('keeps every line break as printed -- joining "Multi-\\nunit" would change the word', () => {
-    const p = { ...NB, provision_text: 'x', quote_status: 'exact', council_quote: 'Multi-\nunit housing is permitted.\nSite area 450m2' };
+    const p = { ...NB, provision_text: 'x', quote_status: 'exact', quote_page: 3, council_quote: 'Multi-\nunit housing is permitted.\nSite area 450m2' };
     expect(shownText(p)).toBe('Multi-\nunit housing is permitted.\nSite area 450m2');
   });
 
   it('joins a label alone on its PDF line to the text printed beside it', () => {
-    const p = { ...NB, provision_text: 'x', quote_status: 'exact',
+    const p = { ...NB, provision_text: 'x', quote_status: 'exact', quote_page: 205,
       council_quote: '(a)\nNew buildings are to provide a minimum 6m\nrear setback.\n(b)\nSide setbacks are to be consistent with Table 3.' };
     expect(shownText(p)).toBe('(a) New buildings are to provide a minimum 6m\nrear setback.\n(b) Side setbacks are to be consistent with Table 3.');
   });
@@ -53,8 +53,15 @@ describe("a council DCP rule shows the council's own words when a program copied
   });
 
   it('serves a confirmed status unchanged when the words are stored', () => {
-    expect(servedQuoteStatus({ ...NB, council_quote: 'Words', quote_status: 'recovered' })).toBe('recovered');
+    expect(servedQuoteStatus({ ...NB, council_quote: 'Words', quote_status: 'recovered', quote_page: 9 })).toBe('recovered');
+    // the words without the page they were copied from are not served as the council's
+    expect(servedQuoteStatus({ ...NB, council_quote: 'Words', quote_status: 'exact', quote_page: null })).toBeNull();
     expect(servedQuoteStatus({ ...NB, council_quote: null, quote_status: 'unconfirmed' })).toBe('unconfirmed');
+  });
+
+  it('does not take a unit printed alone ("m2") for a label', () => {
+    const p = { ...NB, provision_text: 'x', quote_status: 'exact', quote_page: 4, council_quote: 'Site area\nm2\n450' };
+    expect(shownText(p)).toBe('Site area\nm2\n450');
   });
 
   it('leaves LEP and SEPP rules (no council) as they were', () => {
