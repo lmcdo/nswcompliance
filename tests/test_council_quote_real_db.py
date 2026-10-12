@@ -82,3 +82,20 @@ def test_a_new_chapter_pdf_voids_its_quotes(cur):
                     WHERE source_council = %s AND source_chapter_key = %s AND is_current
                       AND quote_status IS NOT NULL""", (council, key))
     assert cur.fetchone()[0] == 0
+
+
+def test_a_text_edit_clears_the_quote_even_when_it_also_stamps_the_check_time(cur):
+    # migration 112: no update that changes the text can be the copier's own
+    rid, _c, _k = _quoted_row(cur)
+    cur.execute("""UPDATE regulatory_provisions SET provision_text = provision_text || ' ',
+                   quote_checked_at = now() + interval '1 second' WHERE id = %s""", (rid,))
+    assert _status(cur, rid) == (None, None)
+
+
+def test_a_new_chapter_pdf_voids_quotes_on_rows_not_current_too(cur):
+    # migration 112: a non-current row must not carry an old PDF's quote back when made current
+    rid, council, key = _quoted_row(cur)
+    cur.execute("UPDATE regulatory_provisions SET is_current = false WHERE id = %s", (rid,))
+    cur.execute("""UPDATE dcp_chapter_registry SET r2_current_path = r2_current_path || '.test'
+                    WHERE council = %s AND chapter_key = %s AND is_active""", (council, key))
+    assert _status(cur, rid) == (None, None)

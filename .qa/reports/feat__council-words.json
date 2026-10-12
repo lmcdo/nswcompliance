@@ -1,9 +1,10 @@
 {
   "tier": "standard",
   "justification": "Adds six columns, a shape constraint and two triggers to regulatory_provisions in production and fills them for all 19,627 served council DCP rules. Nothing reads the columns yet (Phase C), so no served answer changes; not Critical. More than Minor because a wrong trigger would leave stale quotes once Phase C serves them.",
-  "commit_hash": "5cb47b04",
+  "commit_hash": "dfe2e788",
   "files": [
     "migrations/111_council_quote.sql",
+    "migrations/112_council_quote_triggers_tighten.sql",
     "scripts/council_quote.py",
     "tests/test_council_quote.py",
     "tests/test_council_quote_real_db.py"
@@ -75,6 +76,13 @@
       "mitigated": true,
       "how": "council_quote.py judge: cut words must be page furniture else words_cut/values_cut",
       "repro": "pytest tests/test_council_quote.py::test_values_cut_from_the_end_are_unconfirmed_not_recovered"
+    },
+    {
+      "scenario": "A rule's text is edited by an update that also stamps quote_checked_at, or a non-current row is later made current after its chapter got a new PDF",
+      "what_happens": "a stale quote survives on the edited or revived rule",
+      "mitigated": true,
+      "how": "migration 112: any text/chapter change clears; a new PDF voids every row of the chapter",
+      "repro": "PYTEST_REAL_DB=1 pytest -m database tests/test_council_quote_real_db.py -o addopts= -- both new tests failed (2 failed, 4 passed) before 112 was applied, 6 passed after"
     }
   ],
   "falsifiable_check": {
