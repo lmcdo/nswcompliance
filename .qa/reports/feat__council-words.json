@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds six columns, a shape constraint and two triggers to regulatory_provisions in production and fills them for all 19,627 served council DCP rules. Nothing reads the columns yet (Phase C), so no served answer changes; not Critical. More than Minor because a wrong trigger would leave stale quotes once Phase C serves them.",
-  "commit_hash": "ba8f2f9b",
+  "commit_hash": "bccbad65",
   "files": [
     "migrations/111_council_quote.sql",
     "scripts/council_quote.py",
