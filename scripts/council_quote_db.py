@@ -23,7 +23,7 @@ def fetch(council: str | None, ids: list[int] | None, chapter: str | None = None
     finally:
         conn.close()
     return [r for r in rows if (not ids or r["id"] in ids)
-            and (not chapter or r["source_chapter_key"] == chapter)]
+            and (chapter is None or r["source_chapter_key"] == chapter)]
 
 
 def write(res: list[dict]) -> int:

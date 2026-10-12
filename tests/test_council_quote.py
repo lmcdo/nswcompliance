@@ -228,3 +228,27 @@ def test_a_coded_figure_that_reads_as_a_sentence_is_judged_as_a_rule():
     text = "Vehicle access is prohibited from Smith Street"
     out = cq.judge({**row(text), "code": "Figure 4"}, [stream({1: [text]})])
     assert out["status"] == "exact"
+
+
+def test_long_figure_text_is_judged_as_a_rule_not_dropped_as_labels():
+    words = " ".join(f"Label{n}" for n in range(45))
+    out = cq.judge({**row(words), "code": "Figure 7"}, [stream({1: [words]})])
+    assert out["status"] == "exact"
+
+
+def test_a_blank_chapter_never_widens_to_the_whole_council(monkeypatch):
+    import council_quote_db as store
+    import dcp_page_repair as dpr
+    import pytest
+    rows = [{"id": 1, "source_chapter_key": "a"}, {"id": 2, "source_chapter_key": "b"}]
+    monkeypatch.setattr(dpr, "fetch", lambda conn, council: rows)
+    monkeypatch.setattr("psycopg2.connect", lambda *a, **k: type("C", (), {
+        "cursor": lambda self: type("K", (), {"execute": lambda self, *a: None})(),
+        "close": lambda self: None})())
+    monkeypatch.setenv("DATABASE_URL", "postgresql://x")
+    assert store.fetch("x", None, "") == []
+    assert [r["id"] for r in store.fetch("x", None, "a")] == [1]
+    assert len(store.fetch("x", None, None)) == 2
+    monkeypatch.setattr(sys, "argv", ["council_quote.py", "--dry-run", "--council", "x", "--chapter", " "])
+    with pytest.raises(SystemExit):
+        cq.main()

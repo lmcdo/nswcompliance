@@ -52,6 +52,7 @@ MIN_OVERLAP = 0.6       # share of the stored quote's words the copied text must
 LABEL_LINES = 40        # a label-bounded copy stops after this many lines...
 LABEL_PAGES = 1         # ...or this many page breaks
 REPEATED = 5           # a line printed on this many pages is a running header/footer at a copy's edge
+LABEL_WORDS = 40        # a figure's labels run longer than this only when they are really text
 OVERSIZED = 2500        # a stored quote this long is several controls: flag for splitting
 KNOWN = (126292, 87150, 95878, 105200, 130236, 150954)
 
@@ -295,7 +296,7 @@ def judge(row: dict, streams: list[Stream]) -> dict:
     # wording: Hornsby pilot 2026-10-12, 12 of 61 misses. A coded figure that reads as a sentence
     # ("must", "is prohibited", a full stop) stays a rule and is judged as one.
     if (_FIGURE_CODE.match(str(row.get("code") or "")) and not _RULE_WORDS.search(body.lower())
-            and not _SENTENCE.search(body.lower())):
+            and not _SENTENCE.search(body.lower()) and len(_WORD.findall(body.lower())) <= LABEL_WORDS):
         return {**out, "status": "not_a_control", "reason": "figure_labels"}
     if len(body) > OVERSIZED:      # several controls in one row: the brief refuses it until split
         return {**out, "status": "unconfirmed", "reason": "oversized"}
@@ -458,8 +459,8 @@ def main() -> int:
     from dotenv import load_dotenv
     load_dotenv(ROOT.parents[2] / ".env" if (ROOT.parents[2] / ".env").exists() else ROOT / ".env")
     ids = [int(x) for x in a.ids.split(",")] if a.ids else None
-    if a.chapter and not a.council:
-        ap.error("--chapter needs --council")
+    if a.chapter is not None and (not a.chapter.strip() or not a.council):
+        ap.error("--chapter needs a chapter_key and --council")   # a blank one would widen to the council
     import council_quote_db as store
     rows = store.fetch(a.council, ids, a.chapter)
     by = collections.defaultdict(list)
