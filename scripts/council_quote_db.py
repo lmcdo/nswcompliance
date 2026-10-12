@@ -55,25 +55,24 @@ def write(res: list[dict]) -> int:
                 r["id"], r["text_md5"], (r["quote"].replace("\x00", "") if usable else None),
                 r.get("quote_page") if usable else None, r["source_path"] if usable else None,
                 r["status"], r["reason"], r["source_path"]))
-        cur.execute("SELECT now()")
-        started = cur.fetchone()[0]
+        stored: set[int] = set()       # ids THIS run updated, from RETURNING -- not inferred from stamps
         for _path, vals in by.items():
             # Only while the PDF judged is still the chapter's active one: a new PDF in between
             # voids quotes (migration 111), and this must not write the old PDF's back.
             # prior-art-checked: tightens this module's own writer; no other writer of these columns.
-            execute_values(cur, """
+            got = execute_values(cur, """
                 UPDATE regulatory_provisions rp
                    SET council_quote = v.q, quote_page = v.pg, quote_source_path = v.src,
                        quote_status = v.st, quote_reason = v.why, quote_checked_at = now()
                   FROM (VALUES %s) AS v(id, md5, q, pg, src, st, why, judged)
                   JOIN dcp_chapter_registry reg ON reg.r2_current_path = v.judged AND reg.is_active
                  WHERE rp.id = v.id AND md5(rp.provision_text) = v.md5 AND rp.is_current
-                   AND reg.council = rp.source_council AND reg.chapter_key = rp.source_chapter_key""",
-                vals, template="(%s::int, %s, %s::text, %s::int, %s::text, %s, %s, %s)", page_size=500)
+                   AND reg.council = rp.source_council AND reg.chapter_key = rp.source_chapter_key
+                RETURNING rp.id""",
+                vals, template="(%s::int, %s, %s::text, %s::int, %s::text, %s, %s, %s)", page_size=500,
+                fetch=True)
             conn.commit()
-        # this run's writes only: an earlier run's stamp must not make a skipped row look stored
-        cur.execute("SELECT count(*) FROM regulatory_provisions WHERE id = ANY(%s) AND quote_checked_at >= %s",
-                    ([r["id"] for r in res], started))
-        return cur.fetchone()[0]
+            stored.update(row[0] for row in got)
+        return len(stored)
     finally:
         conn.close()

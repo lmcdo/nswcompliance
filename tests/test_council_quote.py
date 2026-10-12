@@ -160,7 +160,9 @@ def test_a_rule_that_starts_with_a_figure_title_is_still_a_rule():
 def test_label_copy_cut_off_by_the_line_cap_is_refused():
     lines = ["(a)"] + [f"line {n} of a very long control that never reaches another label" for n in range(60)]
     st = stream({1: lines})
-    assert st.copy_from_label(st.s.find("line0")) is None
+    k = st.s.find("line0")        # the stream is letters and digits only: "line 0" reads "line0"
+    assert k > 0
+    assert st.copy_from_label(k) is None
 
 
 def test_a_short_rule_after_a_figure_title_is_still_a_rule_and_punctuated_legends_are_legends():
@@ -168,3 +170,7 @@ def test_a_short_rule_after_a_figure_title_is_still_a_rule_and_punctuated_legend
     assert cq.figure_kind("Figure 9: Site\nBuildings must not exceed 9m.") is None
     assert cq.figure_kind("Figure 12\nLegend:\nHeritage item\nExisting trees") == "figure_legend"
     assert cq.figure_kind("Figure 12\nLEGEND \u2013\nHeritage item") == "figure_legend"
+
+
+def test_a_rule_under_a_legend_is_still_a_rule():
+    assert cq.figure_kind("Figure 12\nLegend:\nExisting trees\n(a) Development must retain mature trees") is None

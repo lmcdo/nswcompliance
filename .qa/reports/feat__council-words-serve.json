@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes how the copier labels rules and when it writes; it re-wrote 53 production rows. Nothing on the site reads the quote columns yet, so not Critical.",
-  "commit_hash": "b08242af",
+  "commit_hash": "07205374",
   "files": [
     "scripts/council_quote.py",
     "scripts/council_quote_db.py",

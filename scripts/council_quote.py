@@ -258,12 +258,13 @@ def figure_kind(body: str) -> str | None:
     if not _FIGURE.match(body):
         return None
     lines = [ln.strip().lower() for ln in body.strip().splitlines() if ln.strip()]
-    if any(_LEGEND.fullmatch(ln) for ln in lines[:4]):
-        return "figure_legend"
     # Anything after the title that reads as a rule -- a numbered or labelled line, or rule wording --
-    # makes it a rule, however short ("Figure 4d: Parking / 4.4 Garages are to be set back 1m").
+    # makes it a rule, however short ("Figure 4d: Parking / 4.4 Garages are to be set back 1m"),
+    # even under a legend.
     if any(label_kind(ln) or _RULE_WORDS.search(ln) for ln in lines[1:]):
         return None
+    if any(_LEGEND.fullmatch(ln) for ln in lines[:4]):
+        return "figure_legend"
     return "figure_caption" if len(_WORD.findall(body.lower())) <= 25 else None
 
 
