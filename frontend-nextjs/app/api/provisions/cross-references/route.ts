@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
       FROM cross_reference_index xr
       LEFT JOIN regulatory_provisions rp_target
         ON xr.target_provision_id = rp_target.id
+       AND rp_target.is_current = TRUE   -- a retired target's text or quote is never previewed
       WHERE xr.source_provision_id = $1
     `;
 

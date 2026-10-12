@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { quoteColumns, quoteNote, withCouncilWords } from '@/lib/council-quote';
+import { quoteColumns, quoteNote, showsCouncilWords, withCouncilWords } from '@/lib/council-quote';
 
 /**
  * Fetch provisions by their IDs
@@ -78,7 +78,15 @@ export async function POST(request: NextRequest) {
       // The council's own words when a program copied them (migration 111, lib/council-quote.ts).
       provisions: result.rows.map((row: any) => {
         const served = withCouncilWords(row);
-        return { ...served, quote_note: quoteNote(served) };
+        // The council's words come with the page they were copied from; the stored page and its
+        // image belong to the extracted text, so they are not shown beside the council's words.
+        const moved = showsCouncilWords(served) && served.quote_page && served.quote_page !== served.page_number;
+        return {
+          ...served,
+          page_number: moved ? served.quote_page : served.page_number,
+          pdf_page_image_url: moved ? null : served.pdf_page_image_url,
+          quote_note: quoteNote(served),
+        };
       }),
       metadata: {
         requested_count: ids.length,
