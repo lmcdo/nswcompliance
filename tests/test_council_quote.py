@@ -191,8 +191,9 @@ def test_a_superscript_does_not_make_a_different_number_match():
 
 
 def test_a_figures_labels_coded_as_the_figure_are_not_a_rule():
+    """Hornsby Figure 3.1-f as the reader returned it: one short label per line."""
     st = stream({1: ["Street tree", "Front garden", "Driveway crossing", "Building line"]})
-    r = {**row("Street tree Front garden Driveway crossing Building line"), "code": "Figure 3.2"}
+    r = {**row("Rear boundary\n3 / 8m\nSecondary boundary\nDwelling 1\nSide boundary"), "code": "Figure 3.2"}
     out = cq.judge(r, [st])
     assert out["status"] == "not_a_control" and out["reason"] == "figure_labels"
 
@@ -230,10 +231,17 @@ def test_a_coded_figure_that_reads_as_a_sentence_is_judged_as_a_rule():
     assert out["status"] == "exact"
 
 
-def test_long_figure_text_is_judged_as_a_rule_not_dropped_as_labels():
-    words = " ".join(f"Label{n}" for n in range(45))
-    out = cq.judge({**row(words), "code": "Figure 7"}, [stream({1: [words]})])
-    assert out["status"] == "exact"
+def test_a_one_line_instruction_coded_as_a_figure_is_judged_as_a_rule():
+    """Cross-review 2026-10-12: no listed verb, but one line of words is an instruction, not labels."""
+    text = "Locate vehicle access on Smith Street"
+    out = cq.judge({**row(text), "code": "Figure 4"}, [stream({1: [text]})])
+    assert out["status"] != "not_a_control"
+
+
+def test_labels_with_a_long_line_are_judged_as_a_rule():
+    text = "Rear boundary\nLocate the garage behind the front building line of the dwelling"
+    out = cq.judge({**row(text), "code": "Figure 4"}, [stream({1: text.split("\n")})])
+    assert out["status"] != "not_a_control"
 
 
 def test_a_blank_chapter_never_widens_to_the_whole_council(monkeypatch):

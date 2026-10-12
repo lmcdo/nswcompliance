@@ -52,7 +52,7 @@ MIN_OVERLAP = 0.6       # share of the stored quote's words the copied text must
 LABEL_LINES = 40        # a label-bounded copy stops after this many lines...
 LABEL_PAGES = 1         # ...or this many page breaks
 REPEATED = 5           # a line printed on this many pages is a running header/footer at a copy's edge
-LABEL_WORDS = 40        # a figure's labels run longer than this only when they are really text
+LABEL_WORDS = 4         # a drawing's label is a short line: "Rear boundary", "3 / 8m", ">400m²"
 OVERSIZED = 2500        # a stored quote this long is several controls: flag for splitting
 KNOWN = (126292, 87150, 95878, 105200, 130236, 150954)
 
@@ -284,6 +284,16 @@ def figure_kind(body: str) -> str | None:
     return "figure_caption" if len(_WORD.findall(body.lower())) <= 25 else None
 
 
+def are_labels(body: str) -> bool:
+    """A drawing's labels, by their shape: two or more lines, each of LABEL_WORDS words or fewer,
+    and no rule wording or sign of a sentence anywhere. Hornsby Figure 3.1-f, as read:
+    "Rear boundary / 3 / 8m / Secondary boundary / Dwelling 1". A one-line instruction
+    ("Locate vehicle access on Smith Street") is not labels, whatever its verb."""
+    lines = [ln for ln in body.lower().splitlines() if ln.strip()]
+    return (len(lines) >= 2 and all(len(_WORD.findall(ln)) <= LABEL_WORDS for ln in lines)
+            and not _RULE_WORDS.search(body.lower()) and not _SENTENCE.search(body.lower()))
+
+
 def judge(row: dict, streams: list[Stream]) -> dict:
     import rule_page_locator as rpl
     body = rpl.rule_body(row["provision_text"])
@@ -295,8 +305,7 @@ def judge(row: dict, streams: list[Stream]) -> dict:
     # A drawing's labels, coded as the figure they sit in ("Figure 3.2", "Map 1"), with no rule
     # wording: Hornsby pilot 2026-10-12, 12 of 61 misses. A coded figure that reads as a sentence
     # ("must", "is prohibited", a full stop) stays a rule and is judged as one.
-    if (_FIGURE_CODE.match(str(row.get("code") or "")) and not _RULE_WORDS.search(body.lower())
-            and not _SENTENCE.search(body.lower()) and len(_WORD.findall(body.lower())) <= LABEL_WORDS):
+    if _FIGURE_CODE.match(str(row.get("code") or "")) and are_labels(body):
         return {**out, "status": "not_a_control", "reason": "figure_labels"}
     if len(body) > OVERSIZED:      # several controls in one row: the brief refuses it until split
         return {**out, "status": "unconfirmed", "reason": "oversized"}
