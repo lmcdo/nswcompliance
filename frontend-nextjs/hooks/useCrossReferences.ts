@@ -15,6 +15,8 @@ export interface CrossReference {
   targetProvisionId: number | null;
   targetReference: string | null;
   targetText: string | null;
+  /** What the quote check found for a council target (lib/council-quote.ts); null for LEP/SEPP. */
+  targetQuoteNote?: string | null;
   resolutionStatus: 'resolved' | 'unresolved' | 'partial';
   resolutionConfidence: number;
   isMandatory: boolean;

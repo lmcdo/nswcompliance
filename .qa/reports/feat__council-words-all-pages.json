@@ -1,16 +1,18 @@
 {
   "tier": "critical",
   "justification": "Changes the rule text served on four more live routes (DCP browse page, rule-card cross-reference previews, quick-search clause lookup, provisions/by-ids) and moves the property page onto the shared helper. Wrong, a page would show words that are not the council's under a note saying they are.",
-  "commit_hash": "e58ef02a",
+  "commit_hash": "5c248f6b",
   "files": [
-    "frontend-nextjs/lib/council-quote.ts",
     "frontend-nextjs/__tests__/lib/council-quote.test.ts",
-    "frontend-nextjs/app/api/provisions/for-property/route.ts",
     "frontend-nextjs/app/api/browse/section/route.ts",
-    "frontend-nextjs/components/browse/ProvisionDisplay.tsx",
-    "frontend-nextjs/app/api/provisions/cross-references/route.ts",
     "frontend-nextjs/app/api/clause/[id]/route.ts",
-    "frontend-nextjs/app/api/provisions/by-ids/route.ts"
+    "frontend-nextjs/app/api/provisions/by-ids/route.ts",
+    "frontend-nextjs/app/api/provisions/cross-references/route.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/components/browse/ProvisionDisplay.tsx",
+    "frontend-nextjs/components/compliance/CrossReferenceLink.tsx",
+    "frontend-nextjs/hooks/useCrossReferences.ts",
+    "frontend-nextjs/lib/council-quote.ts"
   ],
   "pre_impl": {
     "existing_data": "regulatory_provisions.council_quote, quote_page, quote_status (migration 111); clause route joins the live row onto regulatory_provisions_canonical by id",
@@ -82,6 +84,13 @@
       "mitigated": true,
       "how": "browse/section sends quoteNote(row) and ProvisionDisplay prints it under every council rule",
       "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'says what the check found'"
+    },
+    {
+      "scenario": "The clause lookup joins a retired live row by id and takes its stored quote",
+      "what_happens": "an old quote would be served as the council's words for a current clause",
+      "mitigated": true,
+      "how": "clause route joins live only where live.is_current = TRUE",
+      "repro": "read frontend-nextjs/app/api/clause/[id]/route.ts join; quote fields are NULL without a current live row"
     }
   ],
   "falsifiable_check": {

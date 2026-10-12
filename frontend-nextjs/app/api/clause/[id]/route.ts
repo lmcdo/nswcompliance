@@ -39,7 +39,8 @@ export async function GET(
  live.quote_page,
  live.quote_status
  FROM regulatory_provisions_canonical rp
- LEFT JOIN regulatory_provisions live ON live.id = rp.id
+ -- only the CURRENT live row: a retired row's quote must not stand in for the clause
+ LEFT JOIN regulatory_provisions live ON live.id = rp.id AND live.is_current = TRUE
  WHERE rp.id = $1
  LIMIT 1
  `;

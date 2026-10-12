@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { withServedCitation } from '@/lib/citation-display';
-import { withCouncilWords } from '@/lib/council-quote';
+import { quoteNote, withCouncilWords } from '@/lib/council-quote';
 
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +27,8 @@ interface CrossReference {
   targetProvisionId: number | null;
   targetReference: string | null;
   targetText: string | null;
+  /** What the quote check found for a council target (lib/council-quote.ts); null for LEP/SEPP. */
+  targetQuoteNote: string | null;
   resolutionStatus: string;
   resolutionConfidence: number;
   isMandatory: boolean;
@@ -108,6 +110,7 @@ export async function GET(request: NextRequest) {
       targetProvisionId: row.target_provision_id,
       targetReference: target.clause_label,
       targetText: target.provision_text ? target.provision_text.substring(0, 200) : null,
+      targetQuoteNote: quoteNote(target),
       resolutionStatus: row.resolution_status,
       resolutionConfidence: row.resolution_confidence,
       isMandatory: row.is_mandatory,
