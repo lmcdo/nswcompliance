@@ -31,14 +31,12 @@ from __future__ import annotations
 
 import argparse
 import collections
-import csv
 import hashlib
 import json
 import os
 import re
 import sys
 from concurrent.futures import ProcessPoolExecutor
-from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,6 +61,8 @@ LIGATURES = str.maketrans({"ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi",
                            "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st"})
 _NUM = re.compile(r"\d+(?:\.\d+)?")
 _FIGURE = re.compile(r"^\s*(?:figure|fig\.|map|diagram)\s*\d", re.I)
+_LEGEND = re.compile(r"legend\s*[:.\-–—]?")
+_RULE_WORDS = re.compile(r"\b(?:must|shall|should|are to|is to|to be|maximum|minimum|min\.|max\.)\b")
 #: A label at a line start, by kind. Kinds must match for a label to end a copy.
 _LABELS = (
     ("paren_alpha", re.compile(r"^\(([a-z])\)")),
@@ -216,16 +216,20 @@ class Stream:
                 break
         if start is None:
             return None
-        end, breaks = start, 0
+        end, breaks, bounded = start, 0, start + 1 >= len(self.text)
         for i in range(start + 1, min(len(self.text), start + LABEL_LINES)):
             if self.lines[i].page != self.lines[i - 1].page:
                 breaks += 1
                 if breaks > LABEL_PAGES:
                     break
             if label_kind(self.text[i]) == lk or self.lines[i].text.startswith(("figure ", "table ")):
+                bounded = True
                 break
             end = i
-        if any(i in self.uncased for i in range(start, end + 1)):
+        else:
+            bounded = end == len(self.text) - 1          # ran out of document, not out of cap
+        # Stopped by the line or page cap, not by the council's next label: the copy may be cut short.
+        if not bounded or any(i in self.uncased for i in range(start, end + 1)):
             return None
         return "\n".join(self.text[start:end + 1]), self.lines[start].page
 
@@ -248,14 +252,30 @@ def is_map_labels(body: str) -> bool:
     return len(toks) >= 20 and sum(1 for t in toks if len(t) == 1 and t.isalpha()) / len(toks) >= 0.3
 
 
+def figure_kind(body: str) -> str | None:
+    """A figure's legend or a bare caption is not a rule. A rule that merely STARTS with a figure
+    title ("Figure 4d: Parking ... 4.4 Where a setback applies, buildings are to ...") still is."""
+    if not _FIGURE.match(body):
+        return None
+    lines = [ln.strip().lower() for ln in body.strip().splitlines() if ln.strip()]
+    # Anything after the title that reads as a rule -- a numbered or labelled line, or rule wording --
+    # makes it a rule, however short ("Figure 4d: Parking / 4.4 Garages are to be set back 1m"),
+    # even under a legend.
+    if any(label_kind(ln) or _RULE_WORDS.search(ln) for ln in lines[1:]):
+        return None
+    if any(_LEGEND.fullmatch(ln) for ln in lines[:4]):
+        return "figure_legend"
+    return "figure_caption" if len(_WORD.findall(body.lower())) <= 25 else None
+
+
 def judge(row: dict, streams: list[Stream]) -> dict:
     import rule_page_locator as rpl
     body = rpl.rule_body(row["provision_text"])
     q = norm(body)
     out = {"id": row["id"], "council": row["source_council"], "stored_page": row["pdf_page"],
            "page_check": row["page_check"], "needs_split": len(body) > OVERSIZED}
-    if is_map_labels(body) or _FIGURE.match(body):
-        return {**out, "status": "not_a_control", "reason": "map_labels" if is_map_labels(body) else "figure_caption"}
+    if is_map_labels(body) or figure_kind(body):
+        return {**out, "status": "not_a_control", "reason": "map_labels" if is_map_labels(body) else figure_kind(body)}
     if len(body) > OVERSIZED:      # several controls in one row: the brief refuses it until split
         return {**out, "status": "unconfirmed", "reason": "oversized"}
     if not any(st.s for st in streams):
@@ -374,70 +394,6 @@ def chapter(args) -> tuple[list[dict], str | None]:
     return out, note
 
 
-def fetch(council: str | None, ids: list[int] | None) -> list[dict]:
-    import psycopg2
-    import dcp_page_repair as dpr
-    conn = psycopg2.connect(os.environ["DATABASE_URL"])
-    try:
-        conn.cursor().execute("SET statement_timeout = 30000")
-        rows = dpr.fetch(conn, council)
-    finally:
-        conn.close()
-    return [r for r in rows if not ids or r["id"] in ids]
-
-
-def write(res: list[dict]) -> int:
-    """Store each verdict (migration 111). One transaction per chapter, by primary key, and only
-    where the rule's text is still the text that was judged -- a row edited meanwhile keeps NULL,
-    which the nightly check reports. Returns rows written."""
-    import psycopg2
-    from psycopg2.extras import execute_values
-    stamp = datetime.now().strftime("%Y-%m-%d_%H%M")
-    backup = ROOT / "data" / "db_rollback_backups" / f"regulatory_provisions_pre_council_quote_{stamp}.csv"
-    backup.parent.mkdir(parents=True, exist_ok=True)
-    conn = psycopg2.connect(os.environ["DATABASE_URL"])
-    try:
-        cur = conn.cursor()
-        cur.execute("SET statement_timeout = 30000")
-        cur.execute("SELECT id, council_quote, quote_page, quote_source_path, quote_status, quote_reason, "
-                    "quote_checked_at FROM regulatory_provisions WHERE id = ANY(%s)", ([r["id"] for r in res],))
-        with backup.open("w", newline="", encoding="utf-8") as f:
-            w = csv.writer(f)
-            w.writerow([d[0] for d in cur.description])
-            w.writerows(cur.fetchall())
-        conn.commit()
-        print(f"backup: {backup}")
-        by = collections.defaultdict(list)
-        for r in res:
-            usable = r["status"] in ("exact", "recovered")
-            by[r["source_path"]].append((
-                r["id"], r["text_md5"], (r["quote"].replace("\x00", "") if usable else None),
-                r.get("quote_page") if usable else None, r["source_path"] if usable else None,
-                r["status"], r["reason"], r["source_path"]))
-        cur.execute("SELECT now()")
-        started = cur.fetchone()[0]
-        for _path, vals in by.items():
-            # Only while the PDF judged is still the chapter's active one: a new PDF in between
-            # voids quotes (migration 111), and this must not write the old PDF's back.
-            # prior-art-checked: tightens this module's own writer; no other writer of these columns.
-            execute_values(cur, """
-                UPDATE regulatory_provisions rp
-                   SET council_quote = v.q, quote_page = v.pg, quote_source_path = v.src,
-                       quote_status = v.st, quote_reason = v.why, quote_checked_at = now()
-                  FROM (VALUES %s) AS v(id, md5, q, pg, src, st, why, judged)
-                  JOIN dcp_chapter_registry reg ON reg.r2_current_path = v.judged AND reg.is_active
-                 WHERE rp.id = v.id AND md5(rp.provision_text) = v.md5 AND rp.is_current
-                   AND reg.council = rp.source_council AND reg.chapter_key = rp.source_chapter_key""",
-                vals, template="(%s::int, %s, %s::text, %s::int, %s::text, %s, %s, %s)", page_size=500)
-            conn.commit()
-        # this run's writes only: an earlier run's stamp must not make a skipped row look stored
-        cur.execute("SELECT count(*) FROM regulatory_provisions WHERE id = ANY(%s) AND quote_checked_at >= %s",
-                    ([r["id"] for r in res], started))
-        return cur.fetchone()[0]
-    finally:
-        conn.close()
-
-
 def report(res: list[dict]) -> None:
     c = collections.Counter(r["status"] for r in res)
     print(f"rules: {len(res)}")
@@ -480,7 +436,8 @@ def main() -> int:
     from dotenv import load_dotenv
     load_dotenv(ROOT.parents[2] / ".env" if (ROOT.parents[2] / ".env").exists() else ROOT / ".env")
     ids = [int(x) for x in a.ids.split(",")] if a.ids else None
-    rows = fetch(a.council, ids)
+    import council_quote_db as store
+    rows = store.fetch(a.council, ids)
     by = collections.defaultdict(list)
     for r in rows:
         by[r["r2_current_path"]].append(r)
@@ -495,9 +452,10 @@ def main() -> int:
     Path(a.out).write_text(json.dumps(res), encoding="utf-8")
     print(f"written: {a.out}")
     if a.apply:
-        n = write(res)
-        print(f"stored: {n} of {len(res)} rules")
-        return 0 if n == len(res) else 1
+        n = store.write(res)
+        unread = sum(1 for r in res if r["reason"] == "pdf_unreadable")
+        print(f"stored: {n} of {len(res)} rules ({unread} not judged: PDF unreadable, left as stored)")
+        return 0 if n == len(res) - unread and not unread else 1
     return 0
 
 
