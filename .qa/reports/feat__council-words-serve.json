@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes how the copier labels rules and when it writes; it re-wrote 53 production rows. Nothing on the site reads the quote columns yet, so not Critical.",
-  "commit_hash": "e9ba73c6",
+  "commit_hash": "a9ed4fa9",
   "files": [
     "scripts/council_quote.py",
     "scripts/council_quote_db.py",
@@ -74,7 +74,7 @@
       "what_happens": "a verdict judged on old text or an old PDF would be stored against the new one",
       "mitigated": true,
       "how": "council_quote_db.write matches md5(provision_text) and the chapter's active r2_current_path; unmatched rows stay NULL and the count check exits 1",
-      "repro": "PYTEST_REAL_DB=1 pytest -m database tests/test_council_quote_real_db.py -o addopts="
+      "repro": "PYTEST_REAL_DB=1 pytest -m database tests/test_council_quote_db_real.py -o addopts="
     }
   ],
   "falsifiable_check": {
