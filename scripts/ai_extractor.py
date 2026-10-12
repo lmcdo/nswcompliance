@@ -475,9 +475,11 @@ def _call_sol(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
 # A chunk is sent DEEPSEEK_PAGES pages at a time, because one answer has a length cap and a dense
 # 12-page chunk overruns it; the pieces are put back together with their pages counted from the
 # chunk's first page, which is what the brief asks every provider for.
+# Pages a piece leaves out are caught after the read, as for every provider: _reread_skipped_pages
+# re-reads them and refuses the chapter if a page holding rules is still missing.
 # prior-art-checked: extends this module's own provider table, same contract as the others.
 DEEPSEEK_MODEL = "deepseek/deepseek-v3.2"
-DEEPSEEK_PAGES = int(os.getenv("AI_DEEPSEEK_PAGES", "4"))
+DEEPSEEK_PAGES = max(1, int(os.getenv("AI_DEEPSEEK_PAGES", "4")))   # 0 or less would read nothing
 DEEPSEEK_TEXT_NOTE = (" The pages are given as text, each starting with a line \"=== PAGE n ===\", where n counts "
                       "the first page given as 1.")
 
