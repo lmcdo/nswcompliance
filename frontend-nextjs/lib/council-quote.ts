@@ -88,3 +88,25 @@ export function quoteNote(p: QuoteFields): string | null {
 export function numbersUsable(p: QuoteFields): boolean {
   return !p.source_council || showsCouncilWords(p);
 }
+
+/** The quote columns every route serving council DCP rules selects, for a table alias. */
+export function quoteColumns(alias = 'rp'): string {
+  return `${alias}.council_quote, ${alias}.quote_page, ${alias}.quote_status`;
+}
+
+/**
+ * Server side: a served rule row as the client must see it -- its text the council's own words when
+ * stored, its status normalised (servedQuoteStatus), and the quote itself not sent twice. `clean`
+ * runs on the extracted text only (e.g. the OCR page-header strip in the for-property route).
+ * One helper for every route, so no page shows the reader's words where another shows the council's.
+ */
+export function withCouncilWords<T extends Record<string, any>>(
+  { council_quote, ...row }: T & { council_quote?: string | null },
+  clean: (t: string | null) => string | null = (t) => t,
+): Omit<T, 'council_quote'> & { provision_text: string | null; quote_status: string | null } {
+  return {
+    ...(row as Omit<T, 'council_quote'>),
+    provision_text: shownText({ ...row, council_quote, provision_text: clean(row.provision_text ?? null) }),
+    quote_status: servedQuoteStatus({ ...row, council_quote }),
+  };
+}

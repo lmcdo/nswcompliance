@@ -20,6 +20,8 @@ interface Provision {
   pdfPage: number | null;
   zone: string | null;
   developmentType: string | null;
+  /** What the quote check found for a council rule (lib/council-quote.ts); null for LEP/SEPP. */
+  quoteNote?: string | null;
 }
 
 interface SectionInfo {
@@ -257,6 +259,9 @@ export function ProvisionDisplay({ documentId, sectionNumber, sectionTitle }: Pr
                       <FormattedProvisionText text={provision.provisionText} />
                     )}
                   </div>
+                  {provision.quoteNote && (
+                    <p className="text-[11px] text-gray-500 mt-1">{provision.quoteNote}</p>
+                  )}
 
                   {/* Metadata */}
                   {(provision.zone || provision.developmentType) && (

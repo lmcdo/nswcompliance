@@ -35,7 +35,7 @@ import { parseRefNumber } from '@/lib/see/refNumber';
 import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
 import { captureServerException } from '@/lib/posthog-server';
 import { withServedCitation } from '@/lib/citation-display';
-import { servedQuoteStatus, shownText } from '@/lib/council-quote';
+import { quoteColumns, withCouncilWords } from '@/lib/council-quote';
 import { decideLandApplication, decodeLandApplication } from '@/lib/dcp-land-application';
 import { applyLandConditions, decodeLandFacts } from '@/lib/lep-land-condition';
 
@@ -132,19 +132,6 @@ function stripDoubledOcrLines(text: string): string {
       return letters === 0 || (letters - collapsed) / letters < 0.3;
     })
     .join('\n');
-}
-
-/**
- * The text a served rule shows: the council's own words when a program copied them from its PDF
- * (migration 111), else the extracted text with its OCR page-header prefix stripped. The quote
- * itself is not sent twice.
- */
-function withCouncilWords({ council_quote, ...row }: any) {
-  return {
-    ...row,
-    provision_text: shownText({ ...row, council_quote, provision_text: stripOcrHeaderPrefix(row.provision_text) }),
-    quote_status: servedQuoteStatus({ ...row, council_quote }),
-  };
 }
 
 function stripOcrHeaderPrefix(text: string | null): string | null {
@@ -763,9 +750,7 @@ const PROVISION_BASE_SELECT = `
   rp.source_council,
   rp.citation_status,
   -- migration 111: the council's own words, copied from its PDF (lib/council-quote.ts)
-  rp.council_quote,
-  rp.quote_page,
-  rp.quote_status,
+  ${quoteColumns('rp')},
   -- migration 109 (DQ-140): the land a site-specific LEP rule names; NULL = not land-limited
   rp.v2_land_condition
 `;
@@ -866,7 +851,7 @@ async function queryHeritageByHca(
   // Strip OCR page-header prefix from all provisions (unconditional).
   // The regex only matches the specific "PART N: ALL CAPS\nPAGE_NUM\n[council name]" pattern —
   // a no-op for any council that doesn't have this OCR artifact.
-  return result.rows.map(withCouncilWords);
+  return result.rows.map((row: any) => withCouncilWords(row, stripOcrHeaderPrefix));
 }
 
 /**
@@ -1207,7 +1192,7 @@ async function queryLayer(
   // Strip OCR page-header prefix from all provisions (unconditional).
   // The regex only matches the specific "PART N: ALL CAPS\nPAGE_NUM\n[council name]" pattern —
   // a no-op for any council that doesn't have this OCR artifact.
-  return result.rows.map(withCouncilWords);
+  return result.rows.map((row: any) => withCouncilWords(row, stripOcrHeaderPrefix));
 }
 
 function groupByTopic(layers: LayerResult[]): Record<string, any[]> {

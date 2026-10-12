@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { withServedCitation } from '@/lib/citation-display';
+import { quoteColumns, quoteNote, showsCouncilWords, withCouncilWords } from '@/lib/council-quote';
 import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
 
 
@@ -24,6 +25,8 @@ interface Provision {
   pdfPage: number | null;
   zone: string | null;
   developmentType: string | null;
+  /** What the quote check found for a council rule (lib/council-quote.ts); null for LEP/SEPP. */
+  quoteNote: string | null;
 }
 
 interface SectionInfo {
@@ -105,7 +108,8 @@ export async function POST(request: NextRequest) {
           p.zone,
           p.development_type,
           p.citation_status,
-          p.source_council
+          p.source_council,
+          ${quoteColumns('p')}
         FROM regulatory_provisions p
         WHERE p.document_id = $1
           AND p.is_current = TRUE
@@ -126,7 +130,8 @@ export async function POST(request: NextRequest) {
           p.zone,
           p.development_type,
           p.citation_status,
-          p.source_council
+          p.source_council,
+          ${quoteColumns('p')}
         FROM regulatory_provisions p
         WHERE p.document_id = $1
           AND p.is_current = TRUE
@@ -142,7 +147,8 @@ export async function POST(request: NextRequest) {
     // Transform provisions
     // An unproven clause number is not served; the page still is (lib/citation-display).
     const provisions: Provision[] = provisionsResult.rows.map((raw) => {
-      const row = withServedCitation(raw, raw.ref_number);
+      // The council's own words when a program copied them (migration 111, lib/council-quote.ts).
+      const row = withServedCitation(withCouncilWords(raw), raw.ref_number);
       return {
       id: row.id,
       documentId: row.document_id,
@@ -150,9 +156,11 @@ export async function POST(request: NextRequest) {
       sectionHeader: row.section_header,
       provisionText: row.provision_text ?? '',
       provisionType: row.provision_type,
-      pdfPage: row.pdf_page,
+      // the page the shown words were copied from, when they are the council's
+      pdfPage: showsCouncilWords(row) && row.quote_page ? row.quote_page : row.pdf_page,
       zone: row.zone,
-      developmentType: row.development_type
+      developmentType: row.development_type,
+      quoteNote: quoteNote(row)
       };
     });
 

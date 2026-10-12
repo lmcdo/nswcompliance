@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { quoteColumns, quoteNote, withCouncilWords } from '@/lib/council-quote';
 
 /**
  * Fetch provisions by their IDs
@@ -46,6 +47,8 @@ export async function POST(request: NextRequest) {
         rp.development_type,
         rp.page_number,
         rp.pdf_page_image_url,
+        rp.source_council,
+        ${quoteColumns('rp')},
         d.pdf_name,
         d.regulation_year,
         d.amendment_reference
@@ -72,7 +75,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      provisions: result.rows,
+      // The council's own words when a program copied them (migration 111, lib/council-quote.ts).
+      provisions: result.rows.map((row: any) => {
+        const served = withCouncilWords(row);
+        return { ...served, quote_note: quoteNote(served) };
+      }),
       metadata: {
         requested_count: ids.length,
         found_count: result.rows.length,
