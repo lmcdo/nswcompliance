@@ -1,0 +1,94 @@
+{
+  "tier": "standard",
+  "justification": "Adds a reader provider used only when AI_MODEL=deepseek; its output still goes through the review queue, the word-for-word checker and the page/chunk guards before anything is published.",
+  "commit_hash": "60804dfb",
+  "files": [
+    ".qa/reports/feat__deepseek-reader.json",
+    "scripts/ai_extractor.py",
+    "tests/test_ai_extractor.py"
+  ],
+  "pre_impl": {
+    "existing_data": "No database read or written by this change; the provider turns a PDF chunk into the provisions JSON the other providers return",
+    "assumption_mismatch": "The model counts pages within the piece it was sent; the provider adds the piece's offset so pages count from the chunk's first page, as the brief asks",
+    "new_vs_existing": "Only new reads with AI_MODEL=deepseek; the default provider order is unchanged",
+    "external_source_error": "An HTTP error propagates to _call_with_retry; a piece with text that returns nothing twice raises ValueError and the chunk fails loudly",
+    "frontend_type": "No frontend change: the rows it produces are queue rows of the same shape as every other reader's",
+    "user_failure_mode": "A failed read fails the chapter's extraction with a message; nothing is enqueued for that chapter, so nothing is lost silently"
+  },
+  "functions": [
+    {
+      "name": "_call_deepseek",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "the bytes of one PDF chunk and the brief, exactly as every other provider receives them",
+      "output": "a JSON string holding every provision of the chunk, pages counted from the chunk's first page",
+      "if_none": "a piece with more than 200 characters of text that returns nothing twice raises ValueError"
+    }
+  ],
+  "values": [
+    {
+      "value": "page returned by the model",
+      "read_at": "scripts/ai_extractor.py _call_deepseek",
+      "nullable": "yes",
+      "guard_at": "_model_page(p.get('page'), 1, len(part))",
+      "if_missing": "the piece's first page; _place_on_pages then places the rule by its words"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "none: the provider runs no query; listed because the report requires one entry",
+      "file_line": "scripts/ai_extractor.py _call_deepseek",
+      "where_clause": "not applicable: no SQL is run by this change",
+      "if_zero": "not applicable: no rows are read",
+      "if_wrong": "not applicable: no rows are written"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A dense 12-page chunk overruns one answer's length cap",
+      "what_happens": "the end of the chunk's rules would be cut off and missing from the read",
+      "mitigated": true,
+      "how": "the chunk is sent four pages at a time and the pieces are joined",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k pieces_are_sent"
+    },
+    {
+      "scenario": "Pages are counted per piece instead of per chunk",
+      "what_happens": "a rule on page 5 of a chunk would be placed on page 1, linking the wrong page",
+      "mitigated": true,
+      "how": "the piece's start offset is added to the model's page",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k pages_count_from_the_chunk"
+    },
+    {
+      "scenario": "One piece silently returns no rules",
+      "what_happens": "rules on those pages would be dropped and a full replace would delete them",
+      "mitigated": true,
+      "how": "a piece with text that returns nothing twice raises and fails the chunk",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k returns_nothing_twice"
+    },
+    {
+      "scenario": "The model returns a page outside the piece",
+      "what_happens": "a rule would be placed on a page of another part of the chunk",
+      "mitigated": true,
+      "how": "_model_page refuses an out-of-range page and the piece's first page is used",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k falls_back"
+    },
+    {
+      "scenario": "The key is missing in the environment that runs the nightly job",
+      "what_happens": "a read would fail with a bare KeyError deep inside a batch of chapters",
+      "mitigated": true,
+      "how": "the provider raises a RuntimeError naming OPENROUTER_API_KEY, and it is not in the default order",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k needs_its_key"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_ai_extractor.py -k Deepseek",
+    "fails_when": "pieces lose their page offset, an empty piece is accepted, or the provider is not registered",
+    "observed_red": "Before this change _PROVIDERS had no 'deepseek' entry and the registration test fails with KeyError.",
+    "external_authority": "Scoring run 2026-10-12 (score_readers.py): CoS 271/271 and Hornsby 403/405 rules printed word for word."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No: OPENROUTER_API_KEY is already in .env",
+    "other_repo": "No",
+    "manual_verify": "Yes: pilot one chapter with AI_MODEL=deepseek --dry-run and check the rule count and checker result"
+  }
+}
