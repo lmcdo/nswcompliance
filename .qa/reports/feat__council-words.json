@@ -1,0 +1,100 @@
+{
+  "tier": "standard",
+  "justification": "Adds six columns, a shape constraint and two triggers to regulatory_provisions in production and fills them for all 19,627 served council DCP rules. Nothing reads the columns yet (Phase C), so no served answer changes; not Critical. More than Minor because a wrong trigger would leave stale quotes once Phase C serves them.",
+  "commit_hash": "a11ff3b8",
+  "files": [
+    "migrations/111_council_quote.sql",
+    "migrations/112_council_quote_triggers_tighten.sql",
+    "scripts/council_quote.py",
+    "tests/test_council_quote.py",
+    "tests/test_council_quote_real_db.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions (new columns council_quote, quote_page, quote_source_path, quote_status, quote_reason, quote_checked_at); read: provision_text, pdf_page, source_council, source_chapter_key joined to dcp_chapter_registry.r2_current_path (dcp_page_repair.SERVED_SQL)",
+    "assumption_mismatch": "A rule edited between judging and writing: the UPDATE matches md5(provision_text) as judged, so the row keeps NULL and the final count shows it (stored N of M; exit 1).",
+    "new_vs_existing": "Existing served rows filled by `council_quote.py --apply`; rows changed later are cleared by trigger and need the copier re-run (Phase C wires it after every publish)."
+  },
+  "functions": [
+    {
+      "name": "judge",
+      "file_line": "scripts/council_quote.py:251",
+      "input": "served row + both readings of its chapter PDF",
+      "output": "dict with status, reason, council quote text and page",
+      "if_none": "empty provision_text -> too_short unconfirmed"
+    },
+    {
+      "name": "write",
+      "file_line": "scripts/council_quote.py:389",
+      "input": "list of judge result dicts for every served rule",
+      "output": "UPDATE per chapter by id where md5(provision_text) matches",
+      "if_none": "no rows -> stores 0, exit 1 when fewer stored than judged"
+    }
+  ],
+  "values": [
+    {
+      "value": "council_quote",
+      "read_at": "nothing yet (Phase C)",
+      "nullable": "yes",
+      "guard_at": "migrations/111_council_quote.sql shape constraint",
+      "if_missing": "exact/recovered without a quote is refused by the constraint"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "store verdicts",
+      "file_line": "scripts/council_quote.py:420",
+      "where_clause": "rp.id = v.id AND md5(rp.provision_text) = v.md5 AND rp.is_current",
+      "if_zero": "final count < judged -> exit 1",
+      "if_wrong": "id is the primary key; one row per value"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A rule's text is edited after its quote was stored",
+      "what_happens": "a stale 'exact' quote would describe text no longer stored",
+      "mitigated": true,
+      "how": "migration 111 regulatory_provisions_clear_quote nulls all six columns",
+      "repro": "proven 2026-10-12 in a rolled-back transaction: id 150954 unconfirmed -> NULL after provision_text edit"
+    },
+    {
+      "scenario": "The chapter gets a new PDF",
+      "what_happens": "quotes copied from the old PDF stay",
+      "mitigated": true,
+      "how": "dcp_chapter_registry_void_quotes nulls the chapter's quotes",
+      "repro": "UPDATE dcp_chapter_registry SET r2_current_path = ... in a transaction, then count quote_status IS NOT NULL for that chapter"
+    },
+    {
+      "scenario": "A status says exact but no quote is stored",
+      "what_happens": "Phase C would show nothing as the council's words",
+      "mitigated": true,
+      "how": "regulatory_provisions_quote_shape CHECK",
+      "repro": "proven 2026-10-12: UPDATE ... SET quote_status='exact' on id 150954 raised CheckViolation"
+    },
+    {
+      "scenario": "Copy drops words or values from either end",
+      "what_happens": "a partial control shown as the council's",
+      "mitigated": true,
+      "how": "council_quote.py judge: cut words must be page furniture else words_cut/values_cut",
+      "repro": "pytest tests/test_council_quote.py::test_values_cut_from_the_end_are_unconfirmed_not_recovered"
+    },
+    {
+      "scenario": "A rule's text is edited by an update that also stamps quote_checked_at, or a non-current row is later made current after its chapter got a new PDF",
+      "what_happens": "a stale quote survives on the edited or revived rule",
+      "mitigated": true,
+      "how": "migration 112: any text/chapter change clears; a new PDF voids every row of the chapter",
+      "repro": "PYTEST_REAL_DB=1 pytest -m database tests/test_council_quote_real_db.py -o addopts= -- both new tests failed (2 failed, 4 passed) before 112 was applied, 6 passed after"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_council_quote.py -o addopts=",
+    "fails_when": "a reworded quote is marked exact, a cut table row is recovered, an oversized row or an uncased line is passed as the council's text",
+    "observed_red": "Before the cross-review fixes the label test expected 'recovered' for a copy with the unprinted ending 'as shown'; the stricter rule turned it red (1 failed, 9 passed) and the test was changed to expect words_cut.",
+    "external_authority": "Production 2026-10-12 after --apply: served council rules by quote_status = exact 15,092 / recovered 1,431 / not_a_control 56 / unconfirmed 3,048; 0 not checked."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
