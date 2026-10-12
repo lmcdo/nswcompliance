@@ -1055,6 +1055,8 @@ class TestModelPage:
         assert _model_page(0, 31, 60) is None
         assert _model_page(None, 31, 60) is None
         assert _model_page("p4", 31, 60) is None
+        assert _model_page(2.9, 31, 60) is None     # malformed, not page 32
+        assert _model_page(True, 31, 60) is None
 
     def test_the_words_decide_and_the_model_page_only_fills_a_gap(self):
         from types import SimpleNamespace

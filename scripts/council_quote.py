@@ -57,14 +57,22 @@ KNOWN = (126292, 87150, 95878, 105200, 130236, 150954)
 
 _WORD = re.compile(r"[a-z0-9]+")
 #: Typesetting ligatures PDFs print as one character: "speciﬁcations" is "specifications".
-#: Superscripts too: a reader writes "m²" where the text layer holds "m2" (Hornsby pilot,
-#: 2026-10-12: 17 of 61 misses were tables and "m²"), and norm() would drop "²" altogether.
 LIGATURES = str.maketrans({"ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi",
-                           "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st", "²": "2", "³": "3", "¹": "1"})
+                           "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st"})
+#: A unit's superscript: a reader writes "m²" where the text layer holds "m2" (Hornsby pilot,
+#: 2026-10-12: 17 of 61 misses were tables and "m²"), and norm() would drop "²" altogether.
+#: Only after "m": a superscript elsewhere is a footnote mark, and "24³" must never read as "243".
+UNIT_SUP = {"²": "2", "³": "3"}
+_UNIT_SUP = re.compile(r"(?<=[mM])[²³]")
 _NUM = re.compile(r"\d+(?:\.\d+)?")
 _FIGURE = re.compile(r"^\s*(?:figure|fig\.|map|diagram)\s*\d", re.I)
 #: A rule whose own code names a figure, map or diagram (as a reader codes a drawing's labels).
 _FIGURE_CODE = re.compile(r"^\s*(?:figure|fig\.|map|diagram)\b", re.I)
+#: Positive sign of a sentence, so of a possible rule: a verb of state or obligation, or a full stop
+#: ending a word. Labels ("Street tree", "6m setback", "Building line") carry neither.
+_SENTENCE = re.compile(r"\b(?:is|are|be|been|was|were|will|may|can|cannot|not|no|prohibited|permitted|"
+                       r"required|encouraged|discouraged|avoid|provide|provided|ensure|retain|maintain|"
+                       r"allowed|need|needs|apply|applies)\b|[a-z]\.(?:\s|$)")
 _LEGEND = re.compile(r"legend\s*[:.\-–—]?")
 _RULE_WORDS = re.compile(r"\b(?:must|shall|should|are to|is to|to be|maximum|minimum|min\.|max\.)\b")
 #: A label at a line start, by kind. Kinds must match for a label to end a copy.
@@ -80,7 +88,8 @@ _LABELS = (
 
 
 def norm(s: str | None) -> str:
-    return re.sub(r"[^a-z0-9]", "", (s or "").translate(LIGATURES).lower())
+    s = _UNIT_SUP.sub(lambda m: UNIT_SUP[m.group(0)], (s or "").translate(LIGATURES))
+    return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
 def label_kind(text: str) -> tuple[str, str] | None:
@@ -150,6 +159,8 @@ class Stream:
         buf, self.at = [], []
         for i, t in enumerate(self.text):
             for p, c in enumerate(t):
+                if c in UNIT_SUP and p and t[p - 1] in "mM":     # the copy keeps the council's "m²"
+                    c = UNIT_SUP[c]
                 for c2 in c.lower():
                     if c2 in ALNUM:
                         buf.append(c2)
@@ -281,8 +292,10 @@ def judge(row: dict, streams: list[Stream]) -> dict:
     if is_map_labels(body) or figure_kind(body):
         return {**out, "status": "not_a_control", "reason": "map_labels" if is_map_labels(body) else figure_kind(body)}
     # A drawing's labels, coded as the figure they sit in ("Figure 3.2", "Map 1"), with no rule
-    # wording: Hornsby pilot 2026-10-12, 12 of 61 misses. A coded figure that says "must" stays a rule.
-    if _FIGURE_CODE.match(str(row.get("code") or "")) and not _RULE_WORDS.search(body.lower()):
+    # wording: Hornsby pilot 2026-10-12, 12 of 61 misses. A coded figure that reads as a sentence
+    # ("must", "is prohibited", a full stop) stays a rule and is judged as one.
+    if (_FIGURE_CODE.match(str(row.get("code") or "")) and not _RULE_WORDS.search(body.lower())
+            and not _SENTENCE.search(body.lower())):
         return {**out, "status": "not_a_control", "reason": "figure_labels"}
     if len(body) > OVERSIZED:      # several controls in one row: the brief refuses it until split
         return {**out, "status": "unconfirmed", "reason": "oversized"}

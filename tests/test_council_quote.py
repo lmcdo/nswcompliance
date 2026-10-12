@@ -208,3 +208,23 @@ def test_a_rule_without_a_figure_code_is_not_dropped_as_labels():
     st = stream({1: ["Street tree", "Front garden", "Driveway crossing", "Building line"]})
     out = cq.judge({**row("Street tree Front garden Driveway crossing Building line"), "code": "C3"}, [st])
     assert out["status"] == "exact"
+
+
+def test_a_footnote_superscript_never_joins_a_number():
+    """Cross-review 2026-10-12: "24³" (a footnote mark) must not read as "243"."""
+    st = stream({1: ["The building height is not to exceed 24³ metres above existing ground level."]})
+    out = cq.judge(row("The building height is not to exceed 243 metres above existing ground level."), [st])
+    assert out["status"] != "exact"
+
+
+def test_the_copy_keeps_the_councils_unit_superscript():
+    st = stream({1: ["The minimum private open space is 24m² with a minimum dimension of 4m."]})
+    out = cq.judge(row("The minimum private open space is 24m2 with a minimum dimension of 4m."), [st])
+    assert out["status"] == "exact" and "24m²" in out["quote"]
+
+
+def test_a_coded_figure_that_reads_as_a_sentence_is_judged_as_a_rule():
+    """Cross-review 2026-10-12: no "must", but a binding sentence all the same."""
+    text = "Vehicle access is prohibited from Smith Street"
+    out = cq.judge({**row(text), "code": "Figure 4"}, [stream({1: [text]})])
+    assert out["status"] == "exact"

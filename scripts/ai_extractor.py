@@ -734,11 +734,15 @@ def _place_on_pages(provs: list[dict], reader, first: int, last: int) -> None:
 
 
 def _model_page(raw, first: int, last: int) -> int | None:
-    """The model's chunk-relative page as a document page, if it lies in [first, last]. Pure."""
-    try:
-        n = first + int(raw) - 1
-    except (TypeError, ValueError):
+    """The model's chunk-relative page as a document page, if it lies in [first, last]. Pure.
+    Only a whole number is a page: 2.9, True or "p4" is malformed output, not page 2."""
+    if isinstance(raw, bool) or not isinstance(raw, (int, str)):
         return None
+    if isinstance(raw, str):
+        if not raw.strip().isdigit():
+            return None
+        raw = int(raw.strip())
+    n = first + raw - 1
     return n if first <= n <= last else None
 
 # ── entrypoint ───────────────────────────────────────────────────────────────
