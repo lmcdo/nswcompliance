@@ -1136,3 +1136,19 @@ class TestDeepseekProvider:
     def test_it_is_a_registered_provider(self):
         import ai_extractor as ax
         assert ax._PROVIDERS["deepseek"] is ax._call_deepseek
+
+    def test_an_answer_with_no_content_counts_as_an_empty_read(self, monkeypatch):
+        import io
+        import json as _json
+        import pytest
+        import ai_extractor as ax
+        calls = []
+
+        def urlopen(req, timeout=None):
+            calls.append(1)
+            return io.BytesIO(_json.dumps({"choices": [{"message": {"content": None}}]}).encode())
+        monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+        monkeypatch.setattr(ax.urllib.request, "urlopen", urlopen)
+        with pytest.raises(ValueError, match="no provisions"):
+            ax._call_deepseek(self._pdf(1))
+        assert len(calls) == 2

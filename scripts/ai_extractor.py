@@ -504,8 +504,11 @@ def _call_deepseek(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
                 "https://openrouter.ai/api/v1/chat/completions", data=json.dumps(body).encode(),
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
             with urllib.request.urlopen(req, timeout=600) as r:
-                content = json.load(r)["choices"][0]["message"]["content"]
-            got = parse_provisions(content)
+                reply = json.load(r)
+            # An answer with no choices or no content is an empty read: retried below, then refused.
+            choice = (reply.get("choices") or [{}])[0] or {}
+            content = (choice.get("message") or {}).get("content")
+            got = parse_provisions(content if isinstance(content, str) else "")
             if got or not any(len(t.strip()) > 200 for t in part):
                 break
         else:
