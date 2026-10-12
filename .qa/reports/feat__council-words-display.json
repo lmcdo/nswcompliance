@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes the rule text every property page shows for council DCP rules (16,520 of 19,627 now show the council's copied words), their page links, and whether the DCP number chip runs. Wrong, a reader would see words or a page that are not the council's.",
-  "commit_hash": "7fed7d72",
+  "commit_hash": "dfd38937",
   "files": [
     "frontend-nextjs/lib/council-quote.ts",
     "frontend-nextjs/lib/page-citation.ts",
@@ -23,7 +23,7 @@
       "name": "shownText",
       "file_line": "frontend-nextjs/lib/council-quote.ts:67",
       "input": "one served rule row carrying provision_text, council_quote and quote_status from the database",
-      "output": "text string the card and PDF export render, heading line kept",
+      "output": "the council's words alone with printed line breaks, else the extracted text",
       "if_none": "null provision_text and no quote returns an empty string; renderers already handle empty text"
     },
     {
@@ -82,11 +82,11 @@
       "repro": "npx jest __tests__/lib/page-citation.test.ts -t 'quote page'"
     },
     {
-      "scenario": "PDF line breaks inside a sentence render as separate lines",
-      "what_happens": "the council's paragraph would read as broken short lines on the card",
+      "scenario": "PDF lines of the council's text are joined for reading",
+      "what_happens": "a hyphenated word or a table row would be altered while labelled as the council's wording",
       "mitigated": true,
-      "how": "council-quote.ts reflow joins non-label lines with a space and keeps a bare '(a)' with its text",
-      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'label on its own PDF line'"
+      "how": "council-quote.ts keeps every printed line break; only a bare label line joins its text",
+      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'keeps every line break'"
     },
     {
       "scenario": "The query returns the wrong rows or the quote columns are missing",
@@ -94,6 +94,20 @@
       "mitigated": true,
       "how": "quote columns come from the same row (route.ts:766); missing columns fall back to extracted text with the note",
       "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'unchecked council rule'"
+    },
+    {
+      "scenario": "Our generated heading line is shown above the council's words",
+      "what_happens": "text the council never printed would sit under a note saying the wording is the council's",
+      "mitigated": true,
+      "how": "shownText returns only the council's words when they are stored",
+      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'not the reader'"
+    },
+    {
+      "scenario": "A rule checked as unmatched or as map text is labelled 'not yet checked'",
+      "what_happens": "the note would misstate what the check found for that council rule",
+      "mitigated": true,
+      "how": "quoteNote returns one note per copier verdict",
+      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'says what the check found'"
     }
   ],
   "falsifiable_check": {

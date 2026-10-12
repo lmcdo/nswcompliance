@@ -6,10 +6,11 @@
  * which is the reader's output. 2026-10-12: 4,552 of 19,627 served quotes were not printed word for
  * word in the council's PDF; some were reworded (Northern Beaches 130236).
  *
- *   exact / recovered   council_quote is the council's printed text; it is shown, and only its
- *                       numbers may feed a reference chip
- *   anything else on a council DCP row (unconfirmed, not_a_control, not checked yet) -> the extracted
- *                       text, marked "not yet checked against the council's PDF"; no number chip
+ *   exact / recovered   council_quote is the council's printed text, shown alone with the council's
+ *                       own line breaks; only its numbers may feed a reference chip
+ *   unconfirmed         extracted text, "Not matched word for word to the council's PDF"; no chip
+ *   not_a_control       extracted text, "Map or figure text from the plan, not a rule"; no chip
+ *   no verdict yet      extracted text, "Not yet checked against the council's PDF"; no chip
  *   rows outside the check (no source_council: LEP/SEPP) -> unchanged
  */
 
@@ -23,12 +24,18 @@ export interface QuoteFields {
 
 const CONFIRMED = new Set(['exact', 'recovered']);
 
-export const QUOTE_NOTE_CONFIRMED = "Council's wording, copied from the plan";
+export const QUOTE_NOTE_CONFIRMED = "Wording copied from the council's plan";
+export const QUOTE_NOTE_UNMATCHED = "Not matched word for word to the council's PDF";
+export const QUOTE_NOTE_NOT_A_RULE = 'Map or figure text from the plan, not a rule';
 export const QUOTE_NOTE_UNCHECKED = "Not yet checked against the council's PDF";
+
+function hasText(q: string | null | undefined): boolean {
+  return typeof q === 'string' && q.trim().length > 0;
+}
 
 /** Server side: true when the council's own words are stored for this rule. */
 export function hasCouncilWords(p: QuoteFields): boolean {
-  return Boolean(p.quote_status && CONFIRMED.has(p.quote_status) && p.council_quote);
+  return Boolean(p.quote_status && CONFIRMED.has(p.quote_status) && hasText(p.council_quote));
 }
 
 /** Server side: the status to send. exact / recovered only when the words really are stored (the
@@ -36,7 +43,7 @@ export function hasCouncilWords(p: QuoteFields): boolean {
  *  the quote itself is not sent twice. */
 export function servedQuoteStatus(p: QuoteFields): string | null {
   const s = p.quote_status ?? null;
-  return s && CONFIRMED.has(s) && !p.council_quote ? null : s;
+  return s && CONFIRMED.has(s) && !hasText(p.council_quote) ? null : s;
 }
 
 /** Client side: the rule's served text is the council's own words. */
@@ -44,41 +51,38 @@ export function showsCouncilWords(p: QuoteFields): boolean {
   return Boolean(p.quote_status && CONFIRMED.has(p.quote_status));
 }
 
-/** A label line ("(b)", "C3", "2.1", "iv.", a bullet) starts a new line; any other PDF line break
- *  is only where the page ran out of width, so it reads as a space. */
-const LABEL = String.raw`(?:\(?(?:[a-z]|[ivx]{1,4}|\d{1,3})[.)]|[A-Z]{1,3}\d+[A-Za-z]?|\d+(?:\.\d+)+|[•▪◦–-])`;
-const STARTS_ITEM = new RegExp(`^${LABEL}(?:\\s|$)`, 'i');
-const BARE_LABEL = new RegExp(`^${LABEL}$`, 'i');
+/** A label alone on its PDF line ("(a)", "C3", "2.1") joins the text printed beside it. Every other
+ *  line break is kept as the council printed it: joining lines changes words ("Multi-\nunit") and
+ *  merges table rows. */
+const BARE_LABEL = /^(?:\(?(?:[a-z]|[ivx]{1,4}|\d{1,3})[.)]|[A-Z]{1,3}\d+[A-Za-z]?|\d+(?:\.\d+)+|[•▪◦])$/i;
 
-function reflow(quote: string): string {
-  const lines = quote.split('\n').map((l) => l.trim()).filter(Boolean);
+function joinBareLabels(quote: string): string {
   const out: string[] = [];
-  for (const line of lines) {
+  for (const line of quote.split('\n')) {
     const last = out[out.length - 1];
-    if (last === undefined) out.push(line);
-    else if (BARE_LABEL.test(last)) out[out.length - 1] = `${last} ${line}`;   // "(a)" + its text
-    else if (STARTS_ITEM.test(line)) out.push(line);
-    else out[out.length - 1] = `${last} ${line}`;
+    if (last !== undefined && BARE_LABEL.test(last.trim()) && line.trim()) out[out.length - 1] = `${last.trim()} ${line.trim()}`;
+    else out.push(line);
   }
-  return out.join('\n');
+  return out.join('\n').trim();
 }
 
-/** The text a rule shows. Keeps the extracted "# heading" line, which renderers use as a title. */
+/** The text a rule shows: only the council's words when they are stored -- no heading of ours above
+ *  them, because the note says the wording is the council's. */
 export function shownText(p: QuoteFields): string {
-  const extracted = p.provision_text ?? '';
-  if (!hasCouncilWords(p)) return extracted;
-  const head = extracted.trimStart().startsWith('#') ? extracted.trimStart().split('\n')[0] : '';
-  const words = reflow(p.council_quote as string);
-  return head ? `${head}\n\n${words}` : words;
+  if (!hasCouncilWords(p)) return p.provision_text ?? '';
+  return joinBareLabels(p.council_quote as string);
 }
 
-/** The note printed under a council DCP rule; null for rules outside the check (LEP/SEPP). */
+/** The note printed under a council DCP rule, by the copier's verdict; null outside the check (LEP/SEPP). */
 export function quoteNote(p: QuoteFields): string | null {
   if (!p.source_council) return null;
-  return showsCouncilWords(p) ? QUOTE_NOTE_CONFIRMED : QUOTE_NOTE_UNCHECKED;
+  if (showsCouncilWords(p)) return QUOTE_NOTE_CONFIRMED;
+  if (p.quote_status === 'unconfirmed') return QUOTE_NOTE_UNMATCHED;
+  if (p.quote_status === 'not_a_control') return QUOTE_NOTE_NOT_A_RULE;
+  return QUOTE_NOTE_UNCHECKED;
 }
 
-/** Whether numbers may be read from this rule's text: never from an unchecked council rule. */
+/** Whether numbers may be read from this rule's text: never from an unconfirmed council rule. */
 export function numbersUsable(p: QuoteFields): boolean {
   return !p.source_council || showsCouncilWords(p);
 }
