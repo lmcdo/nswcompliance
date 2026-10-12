@@ -1074,3 +1074,65 @@ class TestModelPage:
         assert placed["page"] == 12
         assert unplaced["page"] == 12              # 11 + 2 - 1
         assert wild["page"] == 11                  # 19 is outside the chunk: first page
+
+
+class TestDeepseekProvider:
+    """AI_MODEL=deepseek reads the chunk's text in pieces; pages count from the chunk's first page."""
+
+    @staticmethod
+    def _pdf(n_pages: int, text: str = "Front fences are not to exceed 1.2 metres in height. " * 6) -> bytes:
+        import fitz
+        doc = fitz.open()
+        for i in range(n_pages):
+            doc.new_page().insert_text((50, 72), f"Page {i + 1}. " + text[:80])
+            doc[-1].insert_text((50, 100), text[80:200])
+        return doc.tobytes()
+
+    def _fake(self, monkeypatch, answers):
+        import io
+        import json as _json
+        import ai_extractor as ax
+        sent = []
+
+        def urlopen(req, timeout=None):
+            sent.append(_json.loads(req.data))
+            content = answers.pop(0) if answers else '{"provisions": []}'
+            return io.BytesIO(_json.dumps({"choices": [{"message": {"content": content}}]}).encode())
+        monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+        monkeypatch.setattr(ax.urllib.request, "urlopen", urlopen)
+        return ax, sent
+
+    def test_pieces_are_sent_with_page_markers_and_pages_count_from_the_chunk(self, monkeypatch):
+        import json as _json
+        ax, sent = self._fake(monkeypatch, [
+            '{"provisions": [{"code": "C1", "title": "", "text": "Rule one", "page": 2}]}',
+            '{"provisions": [{"code": "C2", "title": "", "text": "Rule two", "page": 1}]}'])
+        out = _json.loads(ax._call_deepseek(self._pdf(6)))["provisions"]
+        assert len(sent) == 2                                    # 6 pages in pieces of 4
+        assert "=== PAGE 1 ===" in sent[0]["messages"][0]["content"]
+        assert "=== PAGE 3 ===" not in sent[1]["messages"][0]["content"]   # second piece holds 2 pages
+        assert [p["page"] for p in out] == [2, 5]                # 4 + 1: chunk-relative, not piece-relative
+
+    def test_a_page_outside_its_piece_falls_back_to_the_pieces_first_page(self, monkeypatch):
+        import json as _json
+        ax, _sent = self._fake(monkeypatch, ['{"provisions": [{"code": "C1", "text": "x", "page": 9}]}'])
+        out = _json.loads(ax._call_deepseek(self._pdf(2)))["provisions"]
+        assert out[0]["page"] == 1
+
+    def test_a_piece_with_text_that_returns_nothing_twice_fails_loudly(self, monkeypatch):
+        import pytest
+        ax, sent = self._fake(monkeypatch, ['{"provisions": []}', '{"provisions": []}'])
+        with pytest.raises(ValueError, match="no provisions"):
+            ax._call_deepseek(self._pdf(2))
+        assert len(sent) == 2                                    # tried twice first
+
+    def test_it_needs_its_key(self, monkeypatch):
+        import pytest
+        import ai_extractor as ax
+        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+        with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
+            ax._call_deepseek(self._pdf(1))
+
+    def test_it_is_a_registered_provider(self):
+        import ai_extractor as ax
+        assert ax._PROVIDERS["deepseek"] is ax._call_deepseek

@@ -468,8 +468,57 @@ def _call_sol(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     return getattr(getattr(choice, "message", None), "content", None) or ""
 
 
+# AI_MODEL=deepseek, added 2026-10-13 (user: no OpenAI for reading). Scored on the same 60 pages of
+# CoS section 5 and Hornsby part 3 with the v2 brief: 100% and 99.5% of rules printed word for word
+# (Mistral 90.5%), about $0.0005 a page. It reads the PDF's TEXT, not the PDF: a page with no text
+# layer gives it nothing, and the chunk-loss and page-coverage guards still judge the chunk.
+# A chunk is sent DEEPSEEK_PAGES pages at a time, because one answer has a length cap and a dense
+# 12-page chunk overruns it; the pieces are put back together with their pages counted from the
+# chunk's first page, which is what the brief asks every provider for.
+# prior-art-checked: extends this module's own provider table, same contract as the others.
+DEEPSEEK_MODEL = "deepseek/deepseek-v3.2"
+DEEPSEEK_PAGES = int(os.getenv("AI_DEEPSEEK_PAGES", "4"))
+DEEPSEEK_TEXT_NOTE = (" The pages are given as text, each starting with a line \"=== PAGE n ===\", where n counts "
+                      "the first page given as 1.")
+
+
+def _call_deepseek(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
+    import fitz
+    key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+    if not key:
+        raise RuntimeError("AI_MODEL=deepseek needs OPENROUTER_API_KEY in the environment")
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    pages = [doc[i].get_text() for i in range(doc.page_count)]
+    doc.close()
+    out: list[dict] = []
+    for start in range(0, len(pages), DEEPSEEK_PAGES):
+        part = pages[start:start + DEEPSEEK_PAGES]
+        text = "\n".join(f"=== PAGE {i} ===\n{t}" for i, t in enumerate(part, 1))
+        body = {"model": os.getenv("AI_MODEL_ID", DEEPSEEK_MODEL), "temperature": 0, "max_tokens": 16000,
+                "response_format": {"type": "json_object"},
+                "messages": [{"role": "user", "content": prompt + DEEPSEEK_TEXT_NOTE + "\n\n" + text}]}
+        for _attempt in range(2):
+            req = urllib.request.Request(
+                "https://openrouter.ai/api/v1/chat/completions", data=json.dumps(body).encode(),
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=600) as r:
+                content = json.load(r)["choices"][0]["message"]["content"]
+            got = parse_provisions(content)
+            if got or not any(len(t.strip()) > 200 for t in part):
+                break
+        else:
+            # A piece holding text that returns nothing twice is a failed read, not an empty page: fail the
+            # chunk loudly rather than let a piece of it go missing silently.
+            raise ValueError(f"deepseek returned no provisions for pages {start + 1}-{start + len(part)} of the chunk")
+        for p in got:
+            n = _model_page(p.get("page"), 1, len(part))
+            p["page"] = start + (n or 1)
+        out += got
+    return json.dumps({"provisions": out})
+
+
 _PROVIDERS = {"haiku": _call_haiku, "sonnet": _call_sonnet, "mistral": _call_mistral,
-              "sol": _call_sol}
+              "sol": _call_sol, "deepseek": _call_deepseek}
 
 
 def _is_retryable(exc: Exception) -> bool:
