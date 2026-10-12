@@ -17,7 +17,12 @@
  *   rows outside this check (no source_council: LEP/SEPP) -> as before.
  *
  * The anchor is always the PDF's own page index: that is what a browser's #page= counts.
+ *
+ * A rule showing the council's own words (lib/council-quote.ts, migration 111) links the page those
+ * words were copied from (quote_page). The copier found the whole quote starting there, so it is
+ * the strongest page evidence there is. It differed from pdf_page on 713 rules (2026-10-12).
  */
+import { showsCouncilWords } from '@/lib/council-quote';
 
 export interface PageFields {
   pdf_page?: number | null;
@@ -25,6 +30,13 @@ export interface PageFields {
   printed_page_label?: string | null;
   page_check?: string | null;
   source_council?: string | null;
+  quote_status?: string | null;
+  quote_page?: number | null;
+}
+
+/** The page the council's shown words were copied from, when the rule shows them. */
+function quotePage(p: PageFields): number | null {
+  return showsCouncilWords(p) ? positive(p.quote_page) : null;
 }
 
 const LOCATED = new Set(['on_page', 'moved', 'read_by_person']);  // read_by_person: migration 080
@@ -42,12 +54,14 @@ function positive(n: number | null | undefined): number | null {
 
 /** The #page= anchor to open, or null when there is no page we can stand behind. */
 export function pageAnchor(p: PageFields): number | null {
-  return unlocated(p) ? null : positive(p.pdf_page);
+  return quotePage(p) ?? (unlocated(p) ? null : positive(p.pdf_page));
 }
 
 /** The page reference to print beside a rule, or null when it has none at all. */
 export function pageLabel(p: PageFields): string | null {
-  if (unlocated(p)) return positive(p.pdf_page) ? PAGE_NOT_LOCATED : null;
+  const qp = quotePage(p);
+  if (qp !== null && qp !== positive(p.pdf_page)) return `PDF page ${qp}`;   // printed label is pdf_page's
+  if (qp === null && unlocated(p)) return positive(p.pdf_page) ? PAGE_NOT_LOCATED : null;
   const label = typeof p.printed_page_label === 'string' ? p.printed_page_label.trim() : '';
   if (label) return `page ${label}`;
   // Rows outside the page check keep the page they always cited.
