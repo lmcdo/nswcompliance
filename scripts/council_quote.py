@@ -136,6 +136,10 @@ class Stream:
         self.text = [cased.get((ln.page, ln.y, ln.x, ln.text), ln.text).translate(LIGATURES)
                      for ln in ch.lines]
         self.cased_share = sum(1 for ln in ch.lines if (ln.page, ln.y, ln.x, ln.text) in cased) / max(1, len(ch.lines))
+        # Lines whose printed casing was not re-read. A picture label named by OCR ("c3") has no
+        # text layer and is short; anything longer must not be passed off as the council's text.
+        self.uncased = {i for i, ln in enumerate(ch.lines)
+                        if (ln.page, ln.y, ln.x, ln.text) not in cased and len(norm(ln.text)) > 4}
         buf, self.at = [], []
         for i, t in enumerate(self.text):
             for p, c in enumerate(t):
@@ -149,13 +153,25 @@ class Stream:
         spot = collections.defaultdict(set)
         for ln in ch.lines:
             spot[(ln.text, round(ln.y / 5), round(ln.x / 5))].add(ln.page)
-        self.repeated = {k[0] for k, ps in spot.items() if len(ps) >= REPEATED}
+        self.repeated = {k[0] for k, ps in spot.items()
+                         if len(ps) >= REPEATED and not label_kind(k[0])}   # "(a)" sits at one spot too
         # Numbers in the lines the reading dropped (page margins, page numbers): "2012", "2.9-7".
         kept = {(ln.page, ln.y, ln.x, ln.text) for ln in ch.lines}
         self.margin_nums = collections.defaultdict(set)
+        self.furniture_words = collections.defaultdict(set)   # margins + running headers, per page
         for key in cased:
             if key not in kept:
                 self.margin_nums[key[0]].update(_NUM.findall(key[3]))
+                self.furniture_words[key[0]].update(_WORD.findall(key[3].translate(LIGATURES)))
+        for ln in ch.lines:
+            if ln.text in self.repeated:
+                self.furniture_words[ln.page].update(_WORD.findall(ln.text.translate(LIGATURES)))
+
+    def casing_unread(self, k0: int, k1: int) -> bool:
+        return any(i in self.uncased for i in range(self.at[k0][0], self.at[k1][0] + 1))
+
+    def furniture(self, pages) -> set:
+        return set().union(*(self.furniture_words[p] for p in pages))
 
     def page(self, k: int) -> int:
         return self.lines[self.at[k][0]].page
@@ -210,6 +226,8 @@ class Stream:
             if label_kind(self.text[i]) == lk or self.lines[i].text.startswith(("figure ", "table ")):
                 break
             end = i
+        if any(i in self.uncased for i in range(start, end + 1)):
+            return None
         return "\n".join(self.text[start:end + 1]), self.lines[start].page
 
 
@@ -239,6 +257,8 @@ def judge(row: dict, streams: list[Stream]) -> dict:
            "page_check": row["page_check"], "needs_split": len(body) > OVERSIZED}
     if is_map_labels(body) or _FIGURE.match(body):
         return {**out, "status": "not_a_control", "reason": "map_labels" if is_map_labels(body) else "figure_caption"}
+    if len(body) > OVERSIZED:      # several controls in one row: the brief refuses it until split
+        return {**out, "status": "unconfirmed", "reason": "oversized"}
     if not any(st.s for st in streams):
         return {**out, "status": "unconfirmed", "reason": "no_text_in_pdf"}
 
@@ -247,6 +267,8 @@ def judge(row: dict, streams: list[Stream]) -> dict:
     pages = {st.page(k) for st, k in places}
     if places and (len(q) >= MIN_CHARS or len(pages) == 1 or row["pdf_page"] in pages):
         st, k = next(((s, k) for s, k in places if s.page(k) == row["pdf_page"]), places[0])
+        if st.casing_unread(k, k + len(q) - 1):
+            return {**out, "status": "unconfirmed", "reason": "casing_unread"}
         text = st.copy(k, k + len(q) - 1)
         return {**out, "status": "exact", "reason": "one_place" if len(pages) == 1 else f"places:{len(pages)}",
                 "quote_page": st.page(k), "quote": text, "repeated_inside": st.repeated_inside(text)}
@@ -284,21 +306,29 @@ def judge(row: dict, streams: list[Stream]) -> dict:
                     best = (score, st, s, e, starts[0], len(toks) - ANCHOR - ends[0])
     if best:
         _sc, st, s, e, head_cut, tail_cut = best
+        if st.casing_unread(s, e):
+            return {**out, "status": "unconfirmed", "reason": "casing_unread"}
         text = st.copy(s, e)
         ov = overlap(body, text)
-        # Words cut from either end must not carry values: a cut footer ("Sydney DCP 2012 2.9-7")
-        # is fine, a cut table row ("Floor space: 80-1000m2. Capacity: 300") is not.
-        cut = " ".join(toks[:head_cut] + toks[len(toks) - tail_cut:] if tail_cut else toks[:head_cut])
+        # Words cut from either end must be page furniture: a cut footer ("Sydney DCP 2012 2.9-7")
+        # or banner is fine; a cut table row ("Capacity: 300") or opening sentence is not.
         pages = range(st.page(s) - 1, st.page(e) + 2)
-        lost = sorted({n for n in _NUM.findall(cut) if n not in set(_NUM.findall(text))
-                       and not any(n in st.margin_nums[p] for p in pages)})
-        if lost:
-            return {**out, "status": "unconfirmed", "reason": "values_cut", "lost_numbers": lost}
+        furniture = st.furniture(pages)
+        cut = toks[:head_cut] + (toks[len(toks) - tail_cut:] if tail_cut else [])
+        real = [t for t in cut if t not in furniture]
+        if real:
+            lost = sorted({t for t in real if any(c.isdigit() for c in t)})
+            return {**out, "status": "unconfirmed", "reason": "values_cut" if lost else "words_cut",
+                    "lost_numbers": lost, "cut_words": real[:12]}
         if ov >= MIN_OVERLAP:
             return {**out, "status": "recovered", "reason": "anchors", "quote_page": st.page(s),
                     "quote": text, "overlap": round(ov, 3), "head_cut_words": head_cut,
                     "repeated_inside": st.repeated_inside(text),
-                    "tail_cut_words": tail_cut, "missing_numbers": missing_numbers(body, text)}
+                    "tail_cut_words": tail_cut,
+                    # the complete council text between two printed anchors lacks these: the stored
+                    # row's numbers, not the council's. Phase C uses only numbers in the quote.
+                    "missing_numbers": [n for n in missing_numbers(body, text)
+                                        if not any(n in st.margin_nums[p] for p in pages)]}
         return {**out, "status": "unconfirmed", "reason": "low_overlap", "overlap": round(ov, 3)}
 
     # recovered: opening only, bounded by the council's own labels
@@ -310,10 +340,13 @@ def judge(row: dict, streams: list[Stream]) -> dict:
             if got:
                 text, page = got
                 ov = overlap(body, text)
+                near = range(page - 1, page + 3)
+                gone = [n for n in missing_numbers(body, text) if not any(n in st.margin_nums[p] for p in near)]
+                if gone:   # a label-bounded copy can stop short of a value: never recovered then
+                    return {**out, "status": "unconfirmed", "reason": "values_missing", "lost_numbers": gone}
                 if ov >= MIN_OVERLAP and len(norm(text)) <= SPAN_MAX * len(q):
                     return {**out, "status": "recovered", "reason": "label_bounded", "quote_page": page,
-                            "quote": text, "overlap": round(ov, 3),
-                            "missing_numbers": missing_numbers(body, text)}
+                            "quote": text, "overlap": round(ov, 3), "missing_numbers": []}
     found = sum(1 for st in streams for _ in st.find_all("".join(toks[:ANCHOR]), cap=1))
     return {**out, "status": "unconfirmed", "reason": "opening_found_no_bound" if found else "not_found"}
 

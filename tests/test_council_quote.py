@@ -115,8 +115,8 @@ def test_label_bounded_copy_stops_at_the_next_label_of_the_same_kind():
     # opening printed; the stored ending was invented, so no closing anchor exists
     stored = "Side setbacks are to be clear of obstructions to allow views between buildings and landscaping as shown."
     out = cq.judge(row(stored), [st])
-    assert out["status"] == "recovered"
-    assert "landscaping" in out["quote"] and "Rear setbacks" not in out["quote"]
+    # "as shown" is not printed and is not page furniture: cutting it is not a copy
+    assert out["status"] == "unconfirmed" and out["reason"] == "words_cut"
     # the label path itself: from "(a)" to before "(b)", never past it
     text, page = st.copy_from_label(st.s.find("sidesetbacks"))
     assert text == ("(a)\nSide setbacks are to be clear of obstructions to allow views between\n"
@@ -131,3 +131,19 @@ def test_label_kind_reads_roman_before_alpha_and_codes_by_prefix():
     assert cq.label_kind("2.1 Heading") == cq.label_kind("4.7 Other")
     assert cq.label_kind("2.1 Heading") != cq.label_kind("2.1.3 Deeper")
     assert cq.label_kind("Ordinary sentence") is None
+
+
+def test_oversized_row_is_unconfirmed_even_when_printed_word_for_word():
+    text = " ".join(f"Control {n}: buildings are to be set back from the boundary." for n in range(60))
+    st = stream({1: [text]})
+    out = cq.judge(row(text), [st])
+    assert out["status"] == "unconfirmed" and out["reason"] == "oversized"
+
+
+def test_line_without_its_printed_casing_is_never_passed_off_as_the_councils():
+    st = stream({1: ["Front fences are not to exceed 1.2m in height and must be",
+                     "of open construction along the primary street."]})
+    st.uncased = {1}       # the second line's printed text could not be re-read
+    out = cq.judge(row("Front fences are not to exceed 1.2m in height and must be of open "
+                       "construction along the primary street."), [st])
+    assert out["status"] == "unconfirmed" and out["reason"] == "casing_unread"
