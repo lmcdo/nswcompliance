@@ -1,6 +1,6 @@
 import {
   QUOTE_NOTE_CONFIRMED, QUOTE_NOTE_NOT_A_RULE, QUOTE_NOTE_UNCHECKED, QUOTE_NOTE_UNMATCHED,
-  hasCouncilWords, numbersUsable, quoteNote, servedQuoteStatus, shownText,
+  hasCouncilWords, numbersUsable, quoteColumns, quoteNote, servedQuoteStatus, shownText, withCouncilWords,
 } from '@/lib/council-quote';
 
 const NB = { source_council: 'northern_beaches' };
@@ -62,6 +62,17 @@ describe("a council DCP rule shows the council's own words when a program copied
   it('does not take a unit printed alone ("m2") for a label', () => {
     const p = { ...NB, provision_text: 'x', quote_status: 'exact', quote_page: 4, council_quote: 'Site area\nm2\n450' };
     expect(shownText(p)).toBe('Site area\nm2\n450');
+  });
+
+  it('serves a row once: council words in, the quote itself out, status normalised, extracted text cleaned only', () => {
+    const row = { id: 1, ...NB, provision_text: '  junk header\nReworded', council_quote: 'Council words', quote_status: 'exact', quote_page: 7 };
+    const served = withCouncilWords(row, (t) => (t ?? '').replace('junk header\n', '').trim());
+    expect(served).toEqual({ id: 1, ...NB, provision_text: 'Council words', quote_status: 'exact', quote_page: 7 });
+    expect('council_quote' in served).toBe(false);
+    const unconfirmed = withCouncilWords({ ...row, council_quote: null, quote_status: 'unconfirmed', quote_page: null },
+      (t) => (t ?? '').replace('junk header\n', '').trim());
+    expect(unconfirmed.provision_text).toBe('Reworded');
+    expect(quoteColumns('p')).toBe('p.council_quote, p.quote_page, p.quote_status');
   });
 
   it('leaves LEP and SEPP rules (no council) as they were', () => {

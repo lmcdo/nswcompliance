@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { withServedCitation } from '@/lib/citation-display';
+import { quoteNote, withCouncilWords } from '@/lib/council-quote';
 
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,8 @@ interface CrossReference {
   targetProvisionId: number | null;
   targetReference: string | null;
   targetText: string | null;
+  /** What the quote check found for a council target (lib/council-quote.ts); null for LEP/SEPP. */
+  targetQuoteNote: string | null;
   resolutionStatus: string;
   resolutionConfidence: number;
   isMandatory: boolean;
@@ -62,10 +65,14 @@ export async function GET(request: NextRequest) {
         rp_target.ref_number as target_reference,
         rp_target.provision_text as target_text,
         rp_target.citation_status as target_citation_status,
-        rp_target.source_council as target_source_council
+        rp_target.source_council as target_source_council,
+        rp_target.council_quote as target_council_quote,
+        rp_target.quote_page as target_quote_page,
+        rp_target.quote_status as target_quote_status
       FROM cross_reference_index xr
       LEFT JOIN regulatory_provisions rp_target
         ON xr.target_provision_id = rp_target.id
+       AND rp_target.is_current = TRUE   -- a retired target's text or quote is never previewed
       WHERE xr.source_provision_id = $1
     `;
 
@@ -86,12 +93,16 @@ export async function GET(request: NextRequest) {
 
     // An unproven target clause number is not served (lib/citation-display).
     const crossReferences: CrossReference[] = result.rows.map(row => {
-      const target = withServedCitation({
+      // The target's council words when a program copied them (migration 111, lib/council-quote.ts).
+      const target = withServedCitation(withCouncilWords({
         citation_status: row.target_citation_status,
         source_council: row.target_source_council,
         ref_number: row.target_reference,
         provision_text: row.target_text,
-      }, row.target_reference);
+        council_quote: row.target_council_quote,
+        quote_page: row.target_quote_page,
+        quote_status: row.target_quote_status,
+      }), row.target_reference);
       return {
       id: row.id,
       referenceType: row.reference_type,
@@ -100,6 +111,7 @@ export async function GET(request: NextRequest) {
       targetProvisionId: row.target_provision_id,
       targetReference: target.clause_label,
       targetText: target.provision_text ? target.provision_text.substring(0, 200) : null,
+      targetQuoteNote: quoteNote(target),
       resolutionStatus: row.resolution_status,
       resolutionConfidence: row.resolution_confidence,
       isMandatory: row.is_mandatory,

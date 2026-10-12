@@ -1,0 +1,108 @@
+{
+  "tier": "critical",
+  "justification": "Changes the rule text served on four more live routes (DCP browse page, rule-card cross-reference previews, quick-search clause lookup, provisions/by-ids) and moves the property page onto the shared helper. Wrong, a page would show words that are not the council's under a note saying they are.",
+  "commit_hash": "91778c1c",
+  "files": [
+    "frontend-nextjs/__tests__/lib/council-quote.test.ts",
+    "frontend-nextjs/app/api/browse/section/route.ts",
+    "frontend-nextjs/app/api/clause/[id]/route.ts",
+    "frontend-nextjs/app/api/provisions/by-ids/route.ts",
+    "frontend-nextjs/app/api/provisions/cross-references/route.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/components/browse/ProvisionDisplay.tsx",
+    "frontend-nextjs/components/compliance/CrossReferenceLink.tsx",
+    "frontend-nextjs/hooks/useCrossReferences.ts",
+    "frontend-nextjs/lib/council-quote.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions.council_quote, quote_page, quote_status (migration 111); clause route joins the live row onto regulatory_provisions_canonical by id",
+    "assumption_mismatch": "A canonical-view text that differs from the live row: the clause route shows the live row's council words for that id, and the extracted canonical text with its note otherwise",
+    "new_vs_existing": "Applies on read to every row; nothing is written",
+    "external_source_error": "No external source; the quote columns come from the same query. A DB error fails each route as before.",
+    "frontend_type": "ProvisionDisplay Provision gains optional quoteNote; browse/section Provision gains quoteNote; clause and by-ids responses gain quote_status and quote_note",
+    "user_failure_mode": "If the swap failed the page shows the extracted text as before, with the note saying it is not matched or not yet checked -- visible, not silent"
+  },
+  "functions": [
+    {
+      "name": "withCouncilWords",
+      "file_line": "frontend-nextjs/lib/council-quote.ts",
+      "input": "one database row carrying provision_text, council_quote, quote_page and quote_status columns",
+      "output": "the row as served: council words in, quote removed, status normalised",
+      "if_none": "missing quote columns read undefined and the extracted text is kept with its note"
+    }
+  ],
+  "values": [
+    {
+      "value": "quote_status",
+      "read_at": "frontend-nextjs/lib/council-quote.ts",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/lib/council-quote.ts servedQuoteStatus",
+      "if_missing": "extracted text with 'Not yet checked against the council's PDF'"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "browse a DCP section's rules with their quote columns",
+      "file_line": "frontend-nextjs/app/api/browse/section/route.ts",
+      "where_clause": "p.document_id = $1 AND p.is_current = TRUE AND p.pdf_page in the section's range (unchanged)",
+      "if_zero": "empty section, as before",
+      "if_wrong": "each quote travels in its own row, so a rule cannot show another rule's words"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A route keeps serving the reader's words while the property page serves the council's",
+      "what_happens": "the same rule reads differently on two pages of the site",
+      "mitigated": true,
+      "how": "all five live routes call lib/council-quote.ts withCouncilWords",
+      "repro": "grep -rln withCouncilWords frontend-nextjs/app/api"
+    },
+    {
+      "scenario": "The clause route spreads the raw row and sends council_quote twice",
+      "what_happens": "the payload carries the quote twice and a client could show the wrong field",
+      "mitigated": true,
+      "how": "clause route destructures council_quote out before building the response",
+      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'serves a row once'"
+    },
+    {
+      "scenario": "The browse page links the stored page while showing words copied from another page",
+      "what_happens": "the page link opens a page that does not hold the words shown",
+      "mitigated": true,
+      "how": "browse/section sends quote_page as pdfPage when the words are the council's",
+      "repro": "npx jest __tests__/lib/page-citation.test.ts -t 'quote page'"
+    },
+    {
+      "scenario": "The browse query returns rows from the wrong document or section",
+      "what_happens": "a section shows rules that are not printed in it",
+      "mitigated": true,
+      "how": "WHERE clause unchanged; quote columns are only added to the select list",
+      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'serves a row once'"
+    },
+    {
+      "scenario": "An unconfirmed council rule shown on the browse page carries no note",
+      "what_happens": "a reader would take the extracted text for the council's own wording",
+      "mitigated": true,
+      "how": "browse/section sends quoteNote(row) and ProvisionDisplay prints it under every council rule",
+      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'says what the check found'"
+    },
+    {
+      "scenario": "The clause lookup joins a retired live row by id and takes its stored quote",
+      "what_happens": "an old quote would be served as the council's words for a current clause",
+      "mitigated": true,
+      "how": "clause route joins live only where live.is_current = TRUE",
+      "repro": "read frontend-nextjs/app/api/clause/[id]/route.ts join; quote fields are NULL without a current live row"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/council-quote.test.ts __tests__/lib/page-citation.test.ts",
+    "fails_when": "withCouncilWords sends the quote twice, keeps the reader's words for a confirmed rule, or a confirmed rule links a page other than its quote page",
+    "observed_red": "Before this change browse/section, cross-references, clause and by-ids returned provision_text unchanged; the 'serves a row once' test fails if withCouncilWords leaves council_quote in the row.",
+    "external_authority": "Preview of #1277 on 2026-10-12: for-property returned 6,948 rules, 3,986 exact and 382 recovered served as the council's words, council_quote sent 0 times."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: on the preview, open a DCP section in /dcp-browse and check the note under each rule"
+  }
+}

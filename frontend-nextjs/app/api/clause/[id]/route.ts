@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DatabaseClient } from '@/lib/database/client';
 import { withServedCitation } from '@/lib/citation-display';
+import { quoteNote, withCouncilWords } from '@/lib/council-quote';
 
 export async function GET(
  request: NextRequest,
@@ -33,9 +34,13 @@ export async function GET(
  rp.document_id,
  rp.created_at,
  live.citation_status,
- live.source_council
+ live.source_council,
+ live.council_quote,
+ live.quote_page,
+ live.quote_status
  FROM regulatory_provisions_canonical rp
- LEFT JOIN regulatory_provisions live ON live.id = rp.id
+ -- only the CURRENT live row: a retired row's quote must not stand in for the clause
+ LEFT JOIN regulatory_provisions live ON live.id = rp.id AND live.is_current = TRUE
  WHERE rp.id = $1
  LIMIT 1
  `;
@@ -50,12 +55,20 @@ export async function GET(
  }
  
  // An unproven DCP clause number is not served (lib/citation-display).
- const raw = result[0];
+ // The council's own words when a program copied them (migration 111, lib/council-quote.ts); the
+ // quote itself is not sent twice.
+ const { council_quote, ...raw } = result[0];
  const served = withServedCitation(
- { ...raw, ref_number: raw.clause_reference, provision_text: raw.full_text },
+ withCouncilWords({ ...raw, council_quote, ref_number: raw.clause_reference, provision_text: raw.full_text }),
  raw.clause_reference,
  );
- const clause = { ...raw, clause_reference: served.clause_label, full_text: served.provision_text };
+ const clause = {
+ ...raw,
+ clause_reference: served.clause_label,
+ full_text: served.provision_text,
+ quote_status: served.quote_status,
+ quote_note: quoteNote(served),
+ };
  
  // Determine document hierarchy level from document_id
  const getAuthorityLevel = (docId: string): string => {

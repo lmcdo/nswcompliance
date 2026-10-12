@@ -112,7 +112,8 @@ function getTooltipContent(reference: CrossReference, targetDocType: DocumentTyp
     const truncated = reference.targetText.length > 150
       ? reference.targetText.substring(0, 147) + '...'
       : reference.targetText;
-    return truncated;
+    // say whether the preview is the council's own wording (lib/council-quote.ts)
+    return reference.targetQuoteNote ? `${truncated}\n(${reference.targetQuoteNote})` : truncated;
   }
 
   if (reference.resolutionStatus === 'unresolved') {
