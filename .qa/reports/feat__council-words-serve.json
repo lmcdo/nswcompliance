@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes how the copier labels rules and when it writes; it re-wrote 53 production rows. Nothing on the site reads the quote columns yet, so not Critical.",
-  "commit_hash": "run: git rev-parse --short HEAD",
+  "commit_hash": "7c426c00",
   "files": [
     "scripts/council_quote.py",
     "scripts/council_quote_db.py",
@@ -56,7 +56,7 @@
     },
     {
       "scenario": "A real rule starts with a figure title",
-      "what_happens": "marked not_a_control and hidden",
+      "what_happens": "marked not_a_control, so the council's rule would be hidden",
       "mitigated": true,
       "how": "figure_kind: only legends and captions of 25 words or fewer",
       "repro": "pytest tests/test_council_quote.py::test_a_rule_that_starts_with_a_figure_title_is_still_a_rule"
@@ -67,6 +67,13 @@
       "mitigated": true,
       "how": "copy_from_label returns None unless the council's next label (or document end) bounds it",
       "repro": "pytest tests/test_council_quote.py::test_label_copy_cut_off_by_the_line_cap_is_refused"
+    },
+    {
+      "scenario": "A rule's text or its chapter PDF changes between judging and storing",
+      "what_happens": "a verdict judged on old text or an old PDF would be stored against the new one",
+      "mitigated": true,
+      "how": "council_quote_db.write matches md5(provision_text) and the chapter's active r2_current_path; unmatched rows stay NULL and the count check exits 1",
+      "repro": "PYTEST_REAL_DB=1 pytest -m database tests/test_council_quote_real_db.py -o addopts="
     }
   ],
   "falsifiable_check": {
