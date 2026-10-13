@@ -370,7 +370,7 @@ COUNCIL_CHAPTER_RANGES: dict[tuple[str, str], list[tuple[str, str, int, int]]] =
         ("9c_13",  "Visual Privacy",                       31, 31),
         ("9c_14",  "Acoustic Privacy",                     32, 32),
         ("9c_15",  "Fencing",                              33, 33),
-        ("9c_16",  "Services",                             34, 35),
+        ("9c_16",  "Services",                             34, 34),   # the PDF ends at page 34 (checked 2026-10-14)
     ],
     # ── Ku-ring-gai DCP Part 14 (Local Centres + specific sites), registered 2026-07-29.
     # Section ranges derived from each PDF's '14X.n' headings (incl. -separated

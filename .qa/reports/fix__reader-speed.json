@@ -1,0 +1,73 @@
+{
+  "tier": "standard",
+  "justification": "Changes how the DeepSeek reader sends a chunk (parallel instead of one after another) and one page range; what is read and returned is unchanged.",
+  "commit_hash": "faa10fce",
+  "files": [
+    ".qa/reports/fix__reader-speed.json",
+    "scripts/ai_extractor.py",
+    "scripts/dcp_extract_changed.py",
+    "tests/test_ai_extractor.py"
+  ],
+  "pre_impl": {
+    "existing_data": "none: the reader writes nothing; its output goes to the existing review queue",
+    "assumption_mismatch": "answers can arrive in any order; pool.map returns them in submission order",
+    "new_vs_existing": "applies to the next DeepSeek read",
+    "external_source_error": "OpenRouter rate limit: each piece keeps its own retry; up to 8 at once (AI_DEEPSEEK_PARALLEL)",
+    "frontend_type": "no frontend change",
+    "user_failure_mode": "a failed piece raises as before and the chapter read fails visibly"
+  },
+  "functions": [
+    {
+      "name": "ai_extractor._call_deepseek",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "one chunk's PDF bytes and the brief",
+      "output": "the chunk's provisions in page order",
+      "if_none": "an empty piece is retried, then left to the page-coverage guard, as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "DEEPSEEK_PARALLEL",
+      "read_at": "scripts/ai_extractor.py",
+      "nullable": "no",
+      "guard_at": "max(1, ...)",
+      "if_missing": "defaults to 8"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The first piece answers after the second",
+      "what_happens": "rules would be stored out of page order with wrong pages",
+      "mitigated": true,
+      "how": "pool.map keeps submission order; each piece sets its pages from its own start",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k parallel_pieces"
+    },
+    {
+      "scenario": "A page range past the end of the PDF",
+      "what_happens": "the chapter is refused every batch",
+      "mitigated": true,
+      "how": "Ku-ring-gai 9C.16 corrected to 34-34, checked against the PDF (34 pages, 9C.16 on page 34)",
+      "repro": "python -m pytest tests/test_dcp_page_map_gate.py"
+    },
+    {
+      "scenario": "Eight pieces at once hit an OpenRouter rate limit",
+      "what_happens": "a piece raises and the chapter read fails",
+      "mitigated": true,
+      "how": "the failure is visible (READ FAILED, chapter stays needs_extraction for retry); AI_DEEPSEEK_PARALLEL lowers the width; a 12-page chunk has only 3 pieces, so 8 is never reached today",
+      "repro": "AI_DEEPSEEK_PARALLEL=1 python scripts/dcp_extract_changed.py ... reads serially"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_ai_extractor.py tests/test_dcp_page_map_gate.py",
+    "fails_when": "parallel answers are joined out of page order",
+    "observed_red": "none observed: the order test passes because pool.map preserves order; it would fail with as_completed",
+    "external_authority": "Parramatta 2026-10-14: 3.6 pages a minute serial, 15 parallel (log line counts at 07:03 and 07:08)"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
