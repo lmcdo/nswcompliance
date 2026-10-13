@@ -1,0 +1,101 @@
+{
+  "tier": "standard",
+  "justification": "Changes the note shown under every council DCP rule whose words are not proven (about 3,000 rules); wrong, the note could cite a page that differs from the link beside it.",
+  "commit_hash": "4dd0e0ca",
+  "files": [
+    ".qa/reports/fix__unproven-note-wording.json",
+    "frontend-nextjs/__tests__/lib/council-quote.test.ts",
+    "frontend-nextjs/lib/council-quote.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions quote_status, pdf_page, page_check, printed_page_label already served to every route that calls quoteNote",
+    "assumption_mismatch": "the page in the note must be the one printed beside the rule, so it reuses pageLabel() from lib/page-citation.ts rather than reading pdf_page",
+    "new_vs_existing": "applies on read to every unproven council rule; nothing is written",
+    "external_source_error": "no external source; a row with no located page gets the note without a page number",
+    "frontend_type": "QuoteFields now extends PageFields (pdf_page, printed_page_label, page_check are optional fields already on the rows)",
+    "user_failure_mode": "if the page label is missing the note still shows, without a page, so the rule is never presented as the council's words"
+  },
+  "functions": [
+    {
+      "name": "unprovenNote",
+      "file_line": "frontend-nextjs/lib/council-quote.ts",
+      "input": "a served council rule row whose words are not proven, with its page fields",
+      "output": "Our reading — check the exact wording on <page label> of the council's plan, or the same without a page",
+      "if_none": "page not located or no page: the note without a page number"
+    }
+  ],
+  "values": [
+    {
+      "value": "pageLabel(p)",
+      "read_at": "frontend-nextjs/lib/council-quote.ts unprovenNote",
+      "nullable": "yes",
+      "guard_at": "label && label !== PAGE_NOT_LOCATED",
+      "if_missing": "the note without a page number"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "none: the change is display text; listed because the report requires one entry",
+      "file_line": "frontend-nextjs/lib/council-quote.ts",
+      "where_clause": "not applicable: no SQL is added or changed by this change",
+      "if_zero": "not applicable: no query is run here",
+      "if_wrong": "not applicable: no rows are read or written here"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The note names PDF page 40 while the link beside the rule says page 12",
+      "what_happens": "a reader would open the wrong page to check the council's exact wording",
+      "mitigated": true,
+      "how": "the note uses pageLabel(), the same function that prints the page beside the rule",
+      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'printed page label'"
+    },
+    {
+      "scenario": "A rule whose page was not located gets a page number in its note",
+      "what_happens": "the note would point at a page that was never shown to hold the rule",
+      "mitigated": true,
+      "how": "PAGE_NOT_LOCATED and null labels give the note without a page",
+      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'not located'"
+    },
+    {
+      "scenario": "A proven rule shows the new unproven note",
+      "what_happens": "the council's own words would be labelled as our reading and look unreliable",
+      "mitigated": true,
+      "how": "quoteNote returns QUOTE_NOTE_CONFIRMED first for every rule that shows the council's words",
+      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'Northern Beaches 130236'"
+    },
+    {
+      "scenario": "The old wording survives in one route that builds its own note",
+      "what_happens": "pages of the site would disagree about what an unproven rule is called",
+      "mitigated": true,
+      "how": "every route calls quoteNote from lib/council-quote.ts; the old strings exist nowhere else",
+      "repro": "grep -rn 'Not yet checked against' frontend-nextjs --include=*.ts --include=*.tsx"
+    },
+    {
+      "scenario": "A statewide (LEP/SEPP) rule gets the council note",
+      "what_happens": "a State rule would be called our reading of a council plan, which is wrong",
+      "mitigated": true,
+      "how": "quoteNote returns null when source_council is missing, unchanged by this change",
+      "repro": "npx jest __tests__/lib/council-quote.test.ts -t 'outside the check'"
+    },
+    {
+      "scenario": "none: the change is display text, yet a route's select list drops the page columns the note needs",
+      "what_happens": "the note would lose its page number on that route while the link beside the rule still shows one",
+      "mitigated": true,
+      "how": "no query or select list is changed; the note reads only fields every route already sends",
+      "repro": "git diff origin/main --stat -- frontend-nextjs/app/api"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/council-quote.test.ts",
+    "fails_when": "the note keeps the old wording, cites a page other than pageLabel, or names a page that was not located",
+    "observed_red": "Before this change the new tests fail: quoteNote returned 'Not yet checked against the council's PDF'.",
+    "external_authority": "User decision 2026-10-13: wording option B, 'Our reading — check the exact wording on page 12 of the council's plan'."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: on the preview, open a property with an unproven council rule and read the note under it"
+  }
+}

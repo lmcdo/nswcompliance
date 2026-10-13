@@ -8,13 +8,16 @@
  *
  *   exact / recovered   council_quote is the council's printed text, shown alone with the council's
  *                       own line breaks; only its numbers may feed a reference chip
- *   unconfirmed         extracted text, "Not matched word for word to the council's PDF"; no chip
+ *   unconfirmed         extracted text, "Our reading — check the exact wording on page N of the council's plan"
+ *   no verdict yet      the same note (user, 2026-10-13: the old "Not yet checked against the council's PDF"
+ *                       read badly); page N is pageLabel(), the label already printed beside the rule; no chip
  *   not_a_control       extracted text, "Map or figure text from the plan, not a rule"; no chip
- *   no verdict yet      extracted text, "Not yet checked against the council's PDF"; no chip
  *   rows outside the check (no source_council: LEP/SEPP) -> unchanged
  */
 
-export interface QuoteFields {
+import { PAGE_NOT_LOCATED, pageLabel, type PageFields } from '@/lib/page-citation';
+
+export interface QuoteFields extends PageFields {
   provision_text?: string | null;
   council_quote?: string | null;
   quote_status?: string | null;
@@ -25,9 +28,18 @@ export interface QuoteFields {
 const CONFIRMED = new Set(['exact', 'recovered']);
 
 export const QUOTE_NOTE_CONFIRMED = "Wording copied from the council's plan";
-export const QUOTE_NOTE_UNMATCHED = "Not matched word for word to the council's PDF";
+/** An unproven rule's note without a page; with one it reads "... on page 12 of the council's plan". */
+export const QUOTE_NOTE_UNMATCHED = "Our reading — check the exact wording in the council's plan";
 export const QUOTE_NOTE_NOT_A_RULE = 'Map or figure text from the plan, not a rule';
-export const QUOTE_NOTE_UNCHECKED = "Not yet checked against the council's PDF";
+export const QUOTE_NOTE_UNCHECKED = QUOTE_NOTE_UNMATCHED;
+
+/** The note for a rule whose words are not proven, naming the page shown beside it when there is one. */
+export function unprovenNote(p: QuoteFields): string {
+  const label = pageLabel(p);
+  return label && label !== PAGE_NOT_LOCATED
+    ? `Our reading — check the exact wording on ${label} of the council's plan`
+    : QUOTE_NOTE_UNMATCHED;
+}
 
 function hasText(q: string | null | undefined): boolean {
   return typeof q === 'string' && q.trim().length > 0;
@@ -79,9 +91,8 @@ export function shownText(p: QuoteFields): string | null {
 export function quoteNote(p: QuoteFields): string | null {
   if (!p.source_council) return null;
   if (showsCouncilWords(p)) return QUOTE_NOTE_CONFIRMED;
-  if (p.quote_status === 'unconfirmed') return QUOTE_NOTE_UNMATCHED;
   if (p.quote_status === 'not_a_control') return QUOTE_NOTE_NOT_A_RULE;
-  return QUOTE_NOTE_UNCHECKED;
+  return unprovenNote(p);
 }
 
 /** Whether numbers may be read from this rule's text: never from an unconfirmed council rule. */

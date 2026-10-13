@@ -82,3 +82,26 @@ describe("a council DCP rule shows the council's own words when a program copied
     expect(numbersUsable(p)).toBe(true);
   });
 });
+
+describe('the note under an unproven council rule names the page shown beside it (user wording, 2026-10-13)', () => {
+  it('uses the printed page label when the page is located', () => {
+    const p = { ...NB, provision_text: 'Maximum height 9m', quote_status: 'unconfirmed', pdf_page: 40,
+      page_check: 'on_page', printed_page_label: '12' };
+    expect(quoteNote(p)).toBe("Our reading — check the exact wording on page 12 of the council's plan");
+  });
+
+  it('says PDF page when no printed label is known', () => {
+    const p = { ...NB, provision_text: 'x', quote_status: null, pdf_page: 40, page_check: 'on_page' };
+    expect(quoteNote(p)).toBe("Our reading — check the exact wording on PDF page 40 of the council's plan");
+  });
+
+  it('names no page when the page was not located', () => {
+    const p = { ...NB, provision_text: 'x', quote_status: 'unconfirmed', pdf_page: 40, page_check: 'not_found' };
+    expect(quoteNote(p)).toBe(QUOTE_NOTE_UNMATCHED);
+  });
+
+  it('no longer says the old "Not yet checked" wording anywhere', () => {
+    expect(QUOTE_NOTE_UNCHECKED).not.toMatch(/Not yet checked/);
+    expect(QUOTE_NOTE_UNMATCHED).not.toMatch(/Not matched/);
+  });
+});
