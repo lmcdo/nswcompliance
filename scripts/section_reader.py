@@ -287,6 +287,8 @@ def picture_pages(pdf_path: str, pages: list[int]) -> list[int]:
     out = []
     with fitz.open(pdf_path) as doc:
         for p in pages:
+            if not 1 <= p <= doc.page_count:      # a window past the last page
+                continue
             pg = doc[p - 1]
             area = sum(fitz.Rect(i["bbox"]).get_area() for i in pg.get_image_info()
                        if min(fitz.Rect(i["bbox"]).width, fitz.Rect(i["bbox"]).height) >= 40)
