@@ -485,6 +485,7 @@ def _call_sol(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
 # prior-art-checked: extends this module's own provider table, same contract as the others.
 DEEPSEEK_MODEL = "deepseek/deepseek-v3.2"
 DEEPSEEK_PAGES = max(1, int(os.getenv("AI_DEEPSEEK_PAGES", "4")))   # 0 or less would read nothing
+DEEPSEEK_PARALLEL = max(1, int(os.getenv("AI_DEEPSEEK_PARALLEL", "8")))   # pieces of one chunk sent at once
 DEEPSEEK_TEXT_NOTE = (" The pages are given as text, each starting with a line \"=== PAGE n ===\", where n counts "
                       "the first page given as 1.")
 
@@ -504,8 +505,8 @@ def _call_deepseek(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     pages = [doc[i].get_text() for i in range(doc.page_count)]
     doc.close()
-    out: list[dict] = []
-    for start in range(0, len(pages), DEEPSEEK_PAGES):
+
+    def read_piece(start: int) -> list[dict]:
         part = pages[start:start + DEEPSEEK_PAGES]
         text = "\n".join(f"=== PAGE {i} ===\n{t}" for i, t in enumerate(part, 1))
         body = {"model": os.getenv("AI_MODEL_ID", DEEPSEEK_MODEL), "temperature": 0, "max_tokens": 16000,
@@ -533,10 +534,18 @@ def _call_deepseek(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
         for p in got:
             n = _model_page(p.get("page"), 1, len(part))
             p["page"] = start + (n or 1)
-        out += got
         # one line per piece, flushed, so a long chapter (Parramatta: 1,563 pages) shows its progress while it runs
         print(f"    [deepseek] chunk pages {start + 1}-{start + len(part)} of {len(pages)}: {len(got)} rules",
               flush=True)
+        return got
+
+    # The pieces of a chunk share one brief and never see each other's answers, so they are sent at the same time
+    # and put back in page order: the same result, less waiting (Parramatta, 2026-10-14: 3.6 pages a minute one
+    # piece after another, 15 a minute in parallel).
+    from concurrent.futures import ThreadPoolExecutor
+    starts = list(range(0, len(pages), DEEPSEEK_PAGES))
+    with ThreadPoolExecutor(max_workers=min(DEEPSEEK_PARALLEL, max(1, len(starts)))) as pool:
+        out = [p for got in pool.map(read_piece, starts) for p in got]
     return json.dumps({"provisions": out})
 
 

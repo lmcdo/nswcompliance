@@ -1101,7 +1101,26 @@ class TestDeepseekProvider:
             return io.BytesIO(_json.dumps({"choices": [{"message": {"content": content}}]}).encode())
         monkeypatch.setenv("OPENROUTER_API_KEY", "k")
         monkeypatch.setattr(ax.urllib.request, "urlopen", urlopen)
+        monkeypatch.setattr(ax, "DEEPSEEK_PARALLEL", 1)   # answers are handed out in call order
         return ax, sent
+
+    def test_parallel_pieces_come_back_in_page_order_when_a_later_one_answers_first(self, monkeypatch):
+        import io
+        import json as _json
+        import time
+        import ai_extractor as ax
+
+        def urlopen(req, timeout=None):
+            content = _json.loads(req.data)["messages"][0]["content"]
+            first = "Page 1." in content
+            time.sleep(0.3 if first else 0)          # the first piece answers last
+            code = "first" if first else "second"
+            answer = _json.dumps({"provisions": [{"code": code, "title": "", "text": code, "page": 1}]})
+            return io.BytesIO(_json.dumps({"choices": [{"message": {"content": answer}}]}).encode())
+        monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+        monkeypatch.setattr(ax.urllib.request, "urlopen", urlopen)
+        out = _json.loads(ax._call_deepseek(self._pdf(6)))["provisions"]
+        assert [(p["code"], p["page"]) for p in out] == [("first", 1), ("second", 5)]
 
     def test_pieces_are_sent_with_page_markers_and_pages_count_from_the_chunk(self, monkeypatch):
         import json as _json
