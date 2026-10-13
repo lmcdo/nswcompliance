@@ -429,7 +429,8 @@ def chapter(args) -> tuple[list[dict], str | None]:
     for r in rows:
         res = judge(r, streams)
         if res["status"] == "unconfirmed" and res["reason"] != "oversized":
-            # printed inside a picture: every word and number read by OCR (scripts/council_quote_picture.py)
+            # printed inside a picture: the whole rule, in order, in one picture's OCR text (council_quote_picture.py) --
+            # the stored rule was read from that picture by another reader, so two independent readings agree
             pic = cqp.prove(rpl.rule_body(r["provision_text"]), pdf, r["pdf_page"])
             if pic:
                 res = {**res, "status": "recovered", "reason": "picture_ocr", **pic}
