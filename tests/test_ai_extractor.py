@@ -1189,3 +1189,28 @@ class TestBriefTablesAndSentences:
     def test_no_sentence_is_left_out(self):
         from ai_extractor import PROMPT
         assert "Never leave out a sentence from the middle of a paragraph" in PROMPT
+
+
+def test_deepseek_counts_as_an_available_llm_reader(monkeypatch):
+    """2026-10-13: AI_MODEL=deepseek was not in _MODEL_PREFERENCE, so chapters with a page map were read by the regex
+    page-range reader instead (all of ashfield)."""
+    import dcp_extract_changed as dec
+    monkeypatch.setenv("AI_MODEL", "deepseek")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+    monkeypatch.delenv("AI_EXTRACTION", raising=False)
+    assert dec.llm_reader_available() is True
+    monkeypatch.delenv("OPENROUTER_API_KEY")
+    assert dec.llm_reader_available() is False
+
+
+def test_deepseek_is_last_so_the_default_model_order_is_unchanged():
+    import ai_extractor as ax
+    assert [m for m, _k in ax._MODEL_PREFERENCE][:4] == ["sonnet", "haiku", "sol", "mistral"]
+    assert ax._MODEL_PREFERENCE[-1] == ("deepseek", "OPENROUTER_API_KEY")
+
+
+def test_a_skipped_page_is_read_again_with_the_note_that_it_holds_rules():
+    import inspect
+    import ai_extractor as ax
+    assert "hold rule text" in ax.REREAD_NOTE
+    assert "REREAD_NOTE" in inspect.getsource(ax._reread_skipped_pages)

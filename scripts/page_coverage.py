@@ -61,7 +61,11 @@ def sentence_lines(texts: list[str]) -> list[list[str]]:
 #: `_RULE_WORDS` for `_rule_bearing_pages`, and `skipped_pages` scores against it.
 RULE_WORDS = re.compile(
     r"\b(shall|must|should|required|requirements?|minimum|maximum|controls?|objectives?|"
-    r"not permitted|is to be|are to be|provide|retain|avoid|ensure)\b", re.IGNORECASE)
+    r"not permitted|is to be|are to be|(?:is|are)(?: not)? to (?:\w+ly )?(?:be|comply|exceed|provide|encroach|project|"
+    r"protrude|extend|obstruct|dominate|occur|reduce|result)|"
+    r"provide|retain|avoid|ensure)\b", re.IGNORECASE)
+# "are not to exceed", "is to comply with" (2026-10-13): councils write rules this way, and a page of them was not
+# counted as holding rules, so the page-coverage guard could let it be skipped.
 
 
 def rule_lines(lines: list[list[str]]) -> list[list[str]]:
@@ -125,13 +129,20 @@ def skipped_pages(pages: dict[int, list[str]], output_texts: list[str]) -> list[
 #: table, definitions x2, suburb history) held 0, 0, 1, 0; the 17 it recovered
 #: held up to 6.
 _OBLIGATION = re.compile(r"\b(must|shall|is to be|are to be|is required|are required|"
-                         r"not permitted|prohibited|minimum|maximum|not exceed)\b")
+                         r"(?:is|are) not to|not permitted|prohibited|minimum|maximum|not exceed)\b")
 RULE_WORDS_MIN = 2
+#: A measurement as controls print them: "6m", "1.2 metres", "45%", "2 spaces", "3 storeys", "45°". A setback or
+#: parking table holds rules without the words above (2026-10-14: such a page, skipped by the reader, raised no alarm).
+_MEASUREMENT = re.compile(r"\b\d+(?:\.\d+)?\s?(?:m\b|m2\b|m²|metres?\b|mm\b|%|spaces?\b|storeys?\b|degrees?\b|°)")
+MEASUREMENTS_MIN = 4
 
 
 def holds_rules(texts: list[str]) -> bool:
-    """True when a page's text carries the words controls are written in. Pure."""
-    return len(_OBLIGATION.findall(" ".join(texts).lower())) >= RULE_WORDS_MIN
+    """True when a page's text carries the words controls are written in, or the measurements a table of controls
+    is printed in. Pure."""
+    text = " ".join(texts).lower()
+    return (len(_OBLIGATION.findall(text)) >= RULE_WORDS_MIN
+            or len(_MEASUREMENT.findall(text)) >= MEASUREMENTS_MIN)
 
 
 def pdf_page_lines(pdf_path: str) -> dict[int, list[str]]:

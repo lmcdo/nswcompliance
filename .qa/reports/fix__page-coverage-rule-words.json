@@ -1,0 +1,112 @@
+{
+  "tier": "standard",
+  "justification": "Widens the rule-wording test the page-coverage guard uses to decide a page holds rules (a stricter guard: more pages must be covered), and stops the quality report crashing on a rule with no heading.",
+  "commit_hash": "3a8bf8af",
+  "files": [
+    ".qa/reports/fix__page-coverage-rule-words.json",
+    "scripts/dcp_quality_report.py",
+    "scripts/page_coverage.py",
+    "tests/test_dcp_quality_report_null_header.py",
+    "tests/test_page_coverage.py",
+    "scripts/ai_extractor.py",
+    "tests/test_ai_extractor.py"
+  ],
+  "pre_impl": {
+    "existing_data": "no database change; RULE_WORDS is a regex read by ai_extractor._rule_bearing_pages and page_coverage.skipped_pages",
+    "assumption_mismatch": "councils write rules as 'are not to exceed' and 'is to comply', which the old list missed; plain 'is to the north' must still not count",
+    "new_vs_existing": "applies to the next extraction of any chapter; nothing already stored changes",
+    "external_source_error": "none: regex and a print statement; the quality report still runs read-only SELECTs",
+    "frontend_type": "no frontend change: both files are backend extraction scripts and no served field changes",
+    "user_failure_mode": "a stricter guard may refuse a chapter it passed before, loudly with the page numbers, never silently"
+  },
+  "functions": [
+    {
+      "name": "page_coverage.RULE_WORDS",
+      "file_line": "scripts/page_coverage.py",
+      "input": "a line or page of PDF text read from a council's development control plan",
+      "output": "a match when the text carries rule wording, now including 'are not to' and 'is to comply/exceed/provide/be'",
+      "if_none": "no match: the line or page is treated as holding no rule words, as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "section_header (w['header'], m['header'])",
+      "read_at": "scripts/dcp_quality_report.py report_granularity and pages section",
+      "nullable": "yes",
+      "guard_at": "(w['header'] or '(no heading)')",
+      "if_missing": "prints '(no heading)' instead of raising TypeError"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "none changed: the quality report's existing read-only SELECT of a council's current provisions",
+      "file_line": "scripts/dcp_quality_report.py",
+      "where_clause": "unchanged by this change: source_council = %s AND is_current",
+      "if_zero": "unchanged: the report prints an empty section",
+      "if_wrong": "unchanged: the report only prints, it writes nothing"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A page of 'are not to exceed' rules is skipped by the reader",
+      "what_happens": "the page was not counted as holding rules, so the chapter could be approved without those rules",
+      "mitigated": true,
+      "how": "RULE_WORDS now matches 'are not to' and 'is to comply/exceed/provide/be'",
+      "repro": "python -m pytest tests/test_page_coverage.py -k negative_and_bare"
+    },
+    {
+      "scenario": "Plain prose 'is to the north' is counted as a rule",
+      "what_happens": "history pages would be treated as rule pages and good chapters refused for skipping them",
+      "mitigated": true,
+      "how": "the bare 'is/are to' form needs a verb after it (comply, exceed, provide, be)",
+      "repro": "python -m pytest tests/test_page_coverage.py -k negative_and_bare"
+    },
+    {
+      "scenario": "A rule with no section heading reaches the quality report",
+      "what_happens": "TypeError crashed the gate, which then skipped the enrichment phases for the whole run",
+      "mitigated": true,
+      "how": "both header prints fall back to '(no heading)'",
+      "repro": "python -m pytest tests/test_dcp_quality_report_null_header.py"
+    },
+    {
+      "scenario": "The stricter guard refuses a chapter mid-batch",
+      "what_happens": "a chapter that passed yesterday is now refused with the pages that hold rules",
+      "mitigated": true,
+      "how": "refusal is loud (PageLoss with page numbers) and leaves the live rules unchanged; merged after the running batches end",
+      "repro": "read scripts/ai_extractor.py _reread_skipped_pages: PageLoss names the pages"
+    },
+    {
+      "scenario": "none changed in the query, yet the report is run on a council with NULL headers",
+      "what_happens": "before this change the whole report raised and printed nothing useful for that council",
+      "mitigated": true,
+      "how": "the query is unchanged and its NULL headers are printed as '(no heading)'",
+      "repro": "python -m pytest tests/test_dcp_quality_report_null_header.py"
+    },
+    {
+      "scenario": "AI_MODEL=deepseek is set but a chapter has a hand-built page map",
+      "what_happens": "the pipeline judged no LLM reader available and read the chapter with the regex page-range reader into fragments",
+      "mitigated": true,
+      "how": "deepseek is in _MODEL_PREFERENCE (last, default order unchanged), so llm_reader_available() is true",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k available_llm_reader"
+    },
+    {
+      "scenario": "A page holding only a setback or parking table is skipped by the reader",
+      "what_happens": "holds_rules found no obligation words, so the page was dropped without refusing the chapter",
+      "mitigated": true,
+      "how": "4 or more measurements (6m, 45%, 2 spaces, 3 storeys) also count as a page that holds rules",
+      "repro": "python -m pytest tests/test_page_coverage.py -k measurements"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_page_coverage.py tests/test_dcp_quality_report_null_header.py",
+    "fails_when": "RULE_WORDS misses 'are not to exceed' or matches 'is to the north', or a header print is not null-safe",
+    "observed_red": "Before this change 'Front fences are not to exceed 1.2m in height.' did not match RULE_WORDS.",
+    "external_authority": "Sonnet trace 2026-10-13: ku_ring_gai has 8 current rules with NULL section_header, 2 over 10,000 chars."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

@@ -152,3 +152,28 @@ def test_one_rule_words_definition_serves_both_modules():
     rule-bearing line is; two copies would drift."""
     import ai_extractor
     assert ai_extractor._RULE_WORDS is pc.RULE_WORDS
+
+
+def test_councils_negative_and_bare_to_forms_count_as_rule_wording():
+    """'are not to exceed' / 'is to comply' (2026-10-13) were not counted, so such a page could be skipped."""
+    from page_coverage import RULE_WORDS
+    for t in ("Front fences are not to exceed 1.2m in height.", "Development is to comply with Table 3.",
+              "Driveways are to be set back 1m.", "Buildings are not to visually dominate adjoining development.",
+              "Works are to fully comply with AS 2890."):
+        assert RULE_WORDS.search(t), t
+    assert not RULE_WORDS.search("The suburb is to the north of the river.")
+    assert not RULE_WORDS.search("The affected lots are not to the north of the river.")   # cross-review
+
+
+def test_a_table_of_measurements_holds_rules_without_rule_words():
+    """2026-10-14: a setback/parking table page has no 'must' but is all controls."""
+    from page_coverage import holds_rules
+    table = ["Front setback 6m", "Side setback 1.5 metres", "Rear setback 8m", "Car parking 2 spaces",
+             "Height 3 storeys"]
+    assert holds_rules(table)
+    assert not holds_rules(["Ashfield was settled in 1838 and grew rapidly after 1855.", "Page 4 of 120"])
+
+
+def test_are_not_to_counts_as_an_obligation():
+    from page_coverage import holds_rules
+    assert holds_rules(["Fences are not to exceed 1.2m.", "Garages are not to dominate the frontage."])
