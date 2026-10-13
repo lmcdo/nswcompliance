@@ -24,8 +24,10 @@ _SYMBOLS = str.maketrans({"≤": "<=", "≥": ">=", "–": "-", "—": "-", "²"
 
 
 def norm(s: str) -> str:
-    """Letters, digits and the symbols that change a rule's meaning, in order; spacing and case dropped."""
-    return re.sub(r"[^a-z0-9<>=%+\-.]", "", (s or "").translate(_SYMBOLS).lower())
+    """Words, numbers and the symbols that change a rule's meaning, in order, one space apart, case dropped. Word
+    boundaries are kept, so "not in" never matches "no tin"."""
+    toks = re.findall(r"[a-z]+|\d+(?:\.\d+)?|[<>=%+\-/]", (s or "").translate(_SYMBOLS).lower())
+    return " " + " ".join(toks) + " "
 
 
 def picture_texts(pdf_path: str, page: int, ocr=None) -> list[str] | None:
@@ -74,6 +76,6 @@ def prove(body: str, pdf_path: str, page: int | None, ocr=None) -> dict | None:
         if p < 1:
             continue
         for text in picture_texts(pdf_path, p, ocr) or []:
-            if q and q in norm(text):
+            if q.strip() and q in norm(text):
                 return {"quote": body.strip(), "quote_page": p}
     return None

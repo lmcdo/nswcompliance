@@ -83,3 +83,12 @@ def test_the_picture_may_be_on_the_next_page(tmp_path):
     out = cqp.prove("Install traffic signals at the Galston Road intersection", pdf(tmp_path, pages=3, picture_on=(3,)), 2,
                     ocr("Install traffic signals at the", "Galston Road intersection"))
     assert out and out["quote_page"] == 3
+
+
+def test_word_boundaries_and_slashes_count(tmp_path):
+    """Cross-review: 'not in' must not match 'no tin'; '1/2' must not match '12'."""
+    assert cqp.prove("Fences are not in front of the building", pdf(tmp_path), 1,
+                     ocr("Fences are no tin front of the building")) is None
+    cqp._cache.clear()
+    assert cqp.prove("Limit the height to 1/2 of the wall length", pdf(tmp_path), 1,
+                     ocr("Limit the height to 12 of the wall length")) is None
