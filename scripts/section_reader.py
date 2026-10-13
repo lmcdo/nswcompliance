@@ -155,6 +155,14 @@ _CONTROL_HEAD = re.compile(r"\b(controls?|development standards?|requirements?|a
                            r"design (?:guidance|criteria)|provisions)\b", re.I)
 
 
+_AIM = re.compile(r"^To\s+(?:[a-z]+\s+){0,2}?(?:provide|ensure|encourage|promote|protect|maintain|achieve|minimise|"
+                  r"minimize|reduce|retain|enhance|improve|create|facilitate|support|allow|enable|increase|limit|manage|"
+                  r"conserve|preserve|respect|reinforce|integrate|establish|avoid|control|maximise|recognise|"
+                  r"accommodate|contribute|deliver|guide|identify|prevent|restrict|set|define|outline)\b")
+_DUTY = re.compile(r"\b(?:must|shall|is to be|are to be|(?:is|are) required|(?:is|are) not required|"
+                   r"(?:is|are) not permitted|not to exceed|minimum of|maximum of)\b", re.I)
+
+
 def heading_kind(heads: list[str]) -> str | None:
     """'objective' or 'control' from the nearest printed heading that names one (e.g. "Objectives", "Desired
     Outcome", "Controls"), searching up from the closest; None when no heading names either. Pure."""
@@ -191,7 +199,7 @@ def build(lines, answers: list[tuple[tuple[int, int, int], dict]]) -> dict:
             if a is None or b is None or not (start <= a <= b < end) or a in heads:
                 continue
             spans.setdefault(a, (b, lab if lab in LABELS else "control", _int((r or {}).get("lead_in"))))
-    report = {"overlaps": 0, "joined_mid_sentence": 0, "lead_ins": 0, "label_from_heading": 0, "lead_ins_rejected": 0}
+    report = {"overlaps": 0, "joined_mid_sentence": 0, "lead_ins": 0, "label_from_heading": 0, "lead_ins_rejected": 0, "label_from_words": 0}
     rules: list[dict] = []
     last_end = -1
     for a in sorted(spans):
@@ -248,6 +256,14 @@ def build(lines, answers: list[tuple[tuple[int, int, int], dict]]) -> dict:
         if kind and r["label"] in ("objective", "control"):
             report["label_from_heading"] += r["label"] != kind
             r["label"] = kind
+        # The rule's own words outrank both the heading and the model: "To provide ..." is an aim wherever it is
+        # printed (Woollahra prints objectives under a Controls heading); "shall", "is required", "must not" make a
+        # requirement even when the model filed it as a note or an objective (Campbelltown 3.6.2.2 setbacks).
+        body = _ITEM.sub("", lines[r["first"]][1]).strip()
+        own = "objective" if _AIM.match(body) else "control" if _DUTY.search(r["text"]) else None
+        if own and own != r["label"] and r["label"] in ("objective", "control", "note"):
+            report["label_from_words"] += 1
+            r["label"] = own
     inside: set[int] = set()
     for r in rules:
         inside.update(range(r["first"], r["last"] + 1))
