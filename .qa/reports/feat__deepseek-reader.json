@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a reader provider used only when AI_MODEL=deepseek; its output still goes through the review queue, the word-for-word checker and the page/chunk guards before anything is published.",
-  "commit_hash": "9d038e33",
+  "commit_hash": "c747dbc5",
   "files": [
     ".qa/reports/feat__deepseek-reader.json",
     "scripts/ai_extractor.py",
