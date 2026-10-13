@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a reader provider used only when AI_MODEL=deepseek; its output still goes through the review queue, the word-for-word checker and the page/chunk guards before anything is published.",
-  "commit_hash": "cebc414d",
+  "commit_hash": "033a8a1c",
   "files": [
     ".qa/reports/feat__deepseek-reader.json",
     "scripts/ai_extractor.py",
@@ -10,7 +10,8 @@
     "tests/test_dcp_extract_dry_run_writes_nothing.py",
     "scripts/council_quote.py",
     "scripts/council_quote_table.py",
-    "tests/test_council_quote_table.py"
+    "tests/test_council_quote_table.py",
+    ".claude/dq_checks.json"
   ],
   "pre_impl": {
     "existing_data": "No database read or written by this change; the provider turns a PDF chunk into the provisions JSON the other providers return",
