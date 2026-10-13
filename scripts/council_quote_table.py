@@ -47,7 +47,10 @@ def _prove_row(cells: list[str], st, page: int, norm) -> str | None:
         q = norm(c)
         if not q:
             return None
-        found = [k for k in st.find_all(q, cap=200) if st.page(k) == page]
+        # a cell must be printed within ONE line: a match running on into the next line could join the next row's
+        # text to this one (cross-review). A cell wrapped over two lines stays unproven -- the safe direction.
+        found = [k for k in st.find_all(q, cap=200)
+                 if st.page(k) == page and st.at[k][0] == st.at[k + len(q) - 1][0]]
         if not found:
             return None
         hits.append([(k, k + len(q) - 1) for k in found])

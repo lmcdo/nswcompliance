@@ -78,3 +78,9 @@ def test_a_compact_table_does_not_pair_a_cell_with_the_next_row():
     assert out["status"] != "exact"
     ok = cq.judge(row("Gymnasium | 1 space per 25sq.m GFA"), [table_stream(compact)])
     assert ok["reason"] == "table_rows"
+
+
+def test_a_cell_running_into_the_next_row_is_refused():
+    """Cross-review 2026-10-13: 'Gymnasium Bulky goods premises' spans two printed rows of the first column."""
+    out = cq.judge(row("Gymnasium Bulky goods premises | 1 space per 45sq.m GFA"), [table_stream(PARKING)])
+    assert out["status"] != "exact"
