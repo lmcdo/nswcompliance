@@ -422,8 +422,18 @@ def chapter(args) -> tuple[list[dict], str | None]:
     if min(st.cased_share for st in streams) < 0.9:
         note = f"{r2_path}: only {min(st.cased_share for st in streams):.0%} of lines re-read with casing"
     out = []
+    import council_quote_picture as cqp
+    import dq_probe_section_code_not_in_source as probe
+    import rule_page_locator as rpl
+    pdf = str(CACHE / "pdf" / (probe._cache_file(CACHE, r2_path).stem + ".pdf"))
     for r in rows:
         res = judge(r, streams)
+        if res["status"] == "unconfirmed" and res["reason"] != "oversized":
+            # printed inside a picture: the whole rule, in order, in one picture's OCR text (council_quote_picture.py) --
+            # the stored rule was read from that picture by another reader, so two independent readings agree
+            pic = cqp.prove(rpl.rule_body(r["provision_text"]), pdf, r["pdf_page"])
+            if pic:
+                res = {**res, "status": "recovered", "reason": "picture_ocr", **pic}
         res["source_path"] = r2_path
         res["text_md5"] = hashlib.md5((r["provision_text"] or "").encode("utf-8")).hexdigest()
         out.append(res)

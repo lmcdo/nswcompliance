@@ -1,0 +1,101 @@
+{
+  "tier": "critical",
+  "justification": "Changes the checker's verdict for rules printed inside pictures: a rule proven by OCR is served as the council's words, so a wrong proof would show text the council did not print.",
+  "commit_hash": "57a973bd",
+  "files": [
+    ".qa/reports/feat__picture-ocr-proof.json",
+    "scripts/council_quote.py",
+    "scripts/council_quote_picture.py",
+    "tests/test_council_quote_picture.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions quote_status/quote_reason (migration 111); verdicts stay within the existing values (recovered, reason picture_ocr)",
+    "assumption_mismatch": "OCR may misread or a page's ordinary text may sit beside a logo; the proof therefore needs the whole rule, in order, inside one picture of 40pt or more",
+    "new_vs_existing": "applies the next time council_quote runs on a chapter; only rules the text check left unconfirmed are tried",
+    "external_source_error": "OCR engine missing (rapidocr not installed): the proof is skipped and the rule stays unconfirmed",
+    "frontend_type": "no frontend change: a recovered rule already shows its quote with the existing note",
+    "user_failure_mode": "a rule the OCR cannot read fully stays 'Our reading — check the exact wording on page N', never shown as the council's words"
+  },
+  "functions": [
+    {
+      "name": "council_quote_picture.prove",
+      "file_line": "scripts/council_quote_picture.py",
+      "input": "the rule's text, the cached chapter PDF path and the rule's stored page number",
+      "output": "the quote and the page holding the picture when the whole rule (every word, number and comparison symbol, word boundaries kept) appears in order in one picture's OCR text, else None",
+      "if_none": "the rule keeps its unconfirmed verdict and its 'Our reading' note on the site"
+    }
+  ],
+  "values": [
+    {
+      "value": "OCR text of each picture on a page",
+      "read_at": "scripts/council_quote_picture.py picture_texts",
+      "nullable": "yes",
+      "guard_at": "None when the page has no picture of 40pt+ or OCR is unavailable",
+      "if_missing": "no proof; verdict unchanged"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Words present in the picture but scattered or reordered",
+      "what_happens": "a rule the picture does not state would be served as the council's",
+      "mitigated": true,
+      "how": "the whole rule must be one unbroken, ordered stretch of one picture's text",
+      "repro": "python -m pytest tests/test_council_quote_picture.py -k scattered"
+    },
+    {
+      "scenario": "The picture lacks a short word such as 'no' or 'not'",
+      "what_happens": "the opposite rule would be proven and served as the council words",
+      "mitigated": true,
+      "how": "every word counts, short ones too",
+      "repro": "python -m pytest tests/test_council_quote_picture.py -k short_word"
+    },
+    {
+      "scenario": "'<' read as '>', or '1/2' as '12'",
+      "what_happens": "a reversed or wrong limit would be served",
+      "mitigated": true,
+      "how": "comparison symbols, % and / are kept and must match",
+      "repro": "python -m pytest tests/test_council_quote_picture.py -k 'symbol or slashes'"
+    },
+    {
+      "scenario": "A number differs between the rule and the picture",
+      "what_happens": "a wrong setback or height would be shown as the council's",
+      "mitigated": true,
+      "how": "numbers are tokens and must match in place",
+      "repro": "python -m pytest tests/test_council_quote_picture.py -k number_not"
+    },
+    {
+      "scenario": "A text page carrying only a small council logo image",
+      "what_happens": "the page's ordinary text would be OCR-proven through the logo",
+      "mitigated": true,
+      "how": "only pictures of 40pt or more are read, each clipped to itself",
+      "repro": "python -m pytest tests/test_council_quote_picture.py -k logo"
+    },
+    {
+      "scenario": "A two-word drawing label such as 'Rear boundary'",
+      "what_happens": "a drawing label would be served as a rule",
+      "mitigated": true,
+      "how": "fewer than 4 words prove nothing",
+      "repro": "python -m pytest tests/test_council_quote_picture.py -k too_few"
+    },
+    {
+      "scenario": "A big chapter has many unconfirmed rules on picture pages",
+      "what_happens": "the checker would OCR the same page many times and run slowly",
+      "mitigated": true,
+      "how": "only unconfirmed rules try it and each page is read once (cache per pdf and page)",
+      "repro": "read scripts/council_quote_picture.py picture_texts cache"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_council_quote_picture.py",
+    "fails_when": "a rule with a missing, reordered or changed word, number or symbol, or one outside a picture, is proven",
+    "observed_red": "The first version (word sets) passed the cross-review's scattered-words, missing-'no' and flipped-'<' cases; the new tests failed against it and pass against the ordered match.",
+    "external_authority": "Hornsby pilot 2026-10-12: targeted OCR raised proven rules on pages 1-60 from 89% to 92%."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: run council_quote --dry-run on hornsby part 3 and count picture_ocr verdicts"
+  }
+}
