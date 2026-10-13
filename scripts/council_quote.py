@@ -322,6 +322,11 @@ def judge(row: dict, streams: list[Stream]) -> dict:
         text = st.copy(k, k + len(q) - 1)
         return {**out, "status": "exact", "reason": "one_place" if len(pages) == 1 else f"places:{len(pages)}",
                 "quote_page": st.page(k), "quote": text}
+    # a table row written "cell | cell": proven cell by cell on one printed row (scripts/council_quote_table.py)
+    import council_quote_table as cqt
+    table = cqt.prove_rows(body, streams, row["pdf_page"], norm)
+    if table:
+        return {**out, "status": "exact", "reason": "table_rows", **table}
     if len(q) < MIN_CHARS:
         return {**out, "status": "unconfirmed", "reason": "too_short" if not places else "too_short_many_places"}
 

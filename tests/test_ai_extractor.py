@@ -1074,3 +1074,118 @@ class TestModelPage:
         assert placed["page"] == 12
         assert unplaced["page"] == 12              # 11 + 2 - 1
         assert wild["page"] == 11                  # 19 is outside the chunk: first page
+
+
+class TestDeepseekProvider:
+    """AI_MODEL=deepseek reads the chunk's text in pieces; pages count from the chunk's first page."""
+
+    @staticmethod
+    def _pdf(n_pages: int, text: str = "Front fences must not exceed 1.2 metres in height. " * 6) -> bytes:
+        import fitz
+        doc = fitz.open()
+        for i in range(n_pages):      # a full page of rule text: above the 300-character rule-page minimum
+            doc.new_page().insert_text((50, 72), f"Page {i + 1}. " + text[:80])
+            for n in range(1, 7):
+                doc[-1].insert_text((50, 72 + 20 * n), text[:80])
+        return doc.tobytes()
+
+    def _fake(self, monkeypatch, answers):
+        import io
+        import json as _json
+        import ai_extractor as ax
+        sent = []
+
+        def urlopen(req, timeout=None):
+            sent.append(_json.loads(req.data))
+            content = answers.pop(0) if answers else '{"provisions": []}'
+            return io.BytesIO(_json.dumps({"choices": [{"message": {"content": content}}]}).encode())
+        monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+        monkeypatch.setattr(ax.urllib.request, "urlopen", urlopen)
+        return ax, sent
+
+    def test_pieces_are_sent_with_page_markers_and_pages_count_from_the_chunk(self, monkeypatch):
+        import json as _json
+        ax, sent = self._fake(monkeypatch, [
+            '{"provisions": [{"code": "C1", "title": "", "text": "Rule one", "page": 2}]}',
+            '{"provisions": [{"code": "C2", "title": "", "text": "Rule two", "page": 1}]}'])
+        out = _json.loads(ax._call_deepseek(self._pdf(6)))["provisions"]
+        assert len(sent) == 2                                    # 6 pages in pieces of 4
+        assert "=== PAGE 1 ===" in sent[0]["messages"][0]["content"]
+        assert "=== PAGE 3 ===" not in sent[1]["messages"][0]["content"]   # second piece holds 2 pages
+        assert [p["page"] for p in out] == [2, 5]                # 4 + 1: chunk-relative, not piece-relative
+
+    def test_a_page_outside_its_piece_falls_back_to_the_pieces_first_page(self, monkeypatch):
+        import json as _json
+        ax, _sent = self._fake(monkeypatch, ['{"provisions": [{"code": "C1", "text": "x", "page": 9}]}'])
+        out = _json.loads(ax._call_deepseek(self._pdf(2)))["provisions"]
+        assert out[0]["page"] == 1
+
+    def test_a_piece_of_rules_that_returns_nothing_is_retried_then_reported(self, monkeypatch, capsys):
+        """Not refused here: the chunk-loss and page-coverage guards judge it (batch 3, 2026-10-13)."""
+        import json as _json
+        ax, sent = self._fake(monkeypatch, ['{"provisions": []}', '{"provisions": []}'])
+        assert _json.loads(ax._call_deepseek(self._pdf(2)))["provisions"] == []
+        assert len(sent) == 2                                    # tried twice first
+        assert "left to the page-coverage guard" in capsys.readouterr().out
+
+    def test_it_needs_its_key(self, monkeypatch):
+        import pytest
+        import ai_extractor as ax
+        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+        with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
+            ax._call_deepseek(self._pdf(1))
+
+    def test_it_is_a_registered_provider(self):
+        import ai_extractor as ax
+        assert ax._PROVIDERS["deepseek"] is ax._call_deepseek
+
+    def test_an_answer_with_no_content_counts_as_an_empty_read(self, monkeypatch):
+        import io
+        import json as _json
+        import pytest
+        import ai_extractor as ax
+        calls = []
+
+        def urlopen(req, timeout=None):
+            calls.append(1)
+            return io.BytesIO(_json.dumps({"choices": [{"message": {"content": None}}]}).encode())
+        monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+        monkeypatch.setattr(ax.urllib.request, "urlopen", urlopen)
+        assert ax._call_deepseek(self._pdf(1)) == '{"provisions": []}'
+        assert len(calls) == 2
+
+
+    def test_a_cover_page_that_returns_nothing_is_accepted(self, monkeypatch):
+        """Batch 1, 2026-10-13: three chapters were refused on cover/contents pages that hold no rules."""
+        import json as _json
+        ax, sent = self._fake(monkeypatch, ['{"provisions": []}', '{"provisions": []}'])
+        import fitz
+        doc = fitz.open()
+        page = doc.new_page()
+        for n in range(8):      # a long cover page: 8 lines of history, no rule wording
+            page.insert_text((50, 72 + 20 * n), "Camperdown North was settled in the nineteenth century as farmland.")
+        out = _json.loads(ax._call_deepseek(doc.tobytes()))["provisions"]
+        assert out == [] and len(sent) == 1           # accepted at once: no retry, no refusal
+
+    def test_a_page_of_rules_that_returns_nothing_is_retried(self, monkeypatch):
+        import fitz
+        ax, sent = self._fake(monkeypatch, ['{"provisions": []}', '{"provisions": []}'])
+        doc = fitz.open()
+        page = doc.new_page()
+        for n in range(8):
+            page.insert_text((50, 72 + 20 * n), f"C{n} Front fences must not exceed 1.2 metres in height.")
+        ax._call_deepseek(doc.tobytes())
+        assert len(sent) == 2                                    # a page of rules gets its retry
+
+
+class TestBriefTablesAndSentences:
+    """2026-10-13: 220 rules were tables rewritten as sentences, 131 dropped a sentence mid-paragraph."""
+
+    def test_tables_are_copied_row_by_row(self):
+        from ai_extractor import PROMPT
+        assert "one printed row at a time" in PROMPT and "' | '" in PROMPT
+        assert "never turn a table into sentences" in PROMPT
+
+    def test_no_sentence_is_left_out(self):
+        from ai_extractor import PROMPT
+        assert "Never leave out a sentence from the middle of a paragraph" in PROMPT

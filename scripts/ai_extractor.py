@@ -75,6 +75,11 @@ PROMPT = (
     "BUT a sentence that introduces a list (it ends with a colon, e.g. '... must:' or '... the "
     "following:') stays in ONE provision together with every item of that list, so no item is ever "
     "separated from the words that give it its meaning. "
+    # 2026-10-13, re-read of 41 chapters: 220 rules were tables turned into sentences or "label: value" lines,
+    # and 131 dropped a sentence from the middle of a paragraph; neither can be proven word for word.
+    "Copy a TABLE one printed row at a time, as the row's cells in order separated by ' | ', exactly as printed; "
+    "never turn a table into sentences or 'label: value' lines. Never leave out a sentence from the middle of a "
+    "paragraph or a list, even an explanatory one. "
     "The \"page\" is the number of the page the text is printed on, counting the first page you "
     "were given as 1. "
     "Output ONLY the JSON object."
@@ -468,8 +473,75 @@ def _call_sol(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     return getattr(getattr(choice, "message", None), "content", None) or ""
 
 
+# AI_MODEL=deepseek, added 2026-10-13 (user: no OpenAI for reading). Scored on the same 60 pages of
+# CoS section 5 and Hornsby part 3 with the v2 brief: 100% and 99.5% of rules printed word for word
+# (Mistral 90.5%), about $0.0005 a page. It reads the PDF's TEXT, not the PDF: a page with no text
+# layer gives it nothing, and the chunk-loss and page-coverage guards still judge the chunk.
+# A chunk is sent DEEPSEEK_PAGES pages at a time, because one answer has a length cap and a dense
+# 12-page chunk overruns it; the pieces are put back together with their pages counted from the
+# chunk's first page, which is what the brief asks every provider for.
+# Pages a piece leaves out are caught after the read, as for every provider: _reread_skipped_pages
+# re-reads them and refuses the chapter if a page holding rules is still missing.
+# prior-art-checked: extends this module's own provider table, same contract as the others.
+DEEPSEEK_MODEL = "deepseek/deepseek-v3.2"
+DEEPSEEK_PAGES = max(1, int(os.getenv("AI_DEEPSEEK_PAGES", "4")))   # 0 or less would read nothing
+DEEPSEEK_TEXT_NOTE = (" The pages are given as text, each starting with a line \"=== PAGE n ===\", where n counts "
+                      "the first page given as 1.")
+
+
+def _holds_rules(text: str) -> bool:
+    """A page that could hold a rule, by the same test _rule_bearing_pages applies to a chunk: enough text, not a
+    contents page, and rule wording or labelled items on it."""
+    return (len(text.strip()) >= RULE_PAGE_MIN_CHARS and not _is_contents_page(text)
+            and bool(_RULE_WORDS.search(text) or _ITEM_LABEL.search(text)))
+
+
+def _call_deepseek(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
+    import fitz
+    key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+    if not key:
+        raise RuntimeError("AI_MODEL=deepseek needs OPENROUTER_API_KEY in the environment")
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    pages = [doc[i].get_text() for i in range(doc.page_count)]
+    doc.close()
+    out: list[dict] = []
+    for start in range(0, len(pages), DEEPSEEK_PAGES):
+        part = pages[start:start + DEEPSEEK_PAGES]
+        text = "\n".join(f"=== PAGE {i} ===\n{t}" for i, t in enumerate(part, 1))
+        body = {"model": os.getenv("AI_MODEL_ID", DEEPSEEK_MODEL), "temperature": 0, "max_tokens": 16000,
+                "response_format": {"type": "json_object"},
+                "messages": [{"role": "user", "content": prompt + DEEPSEEK_TEXT_NOTE + "\n\n" + text}]}
+        for _attempt in range(2):
+            req = urllib.request.Request(
+                "https://openrouter.ai/api/v1/chat/completions", data=json.dumps(body).encode(),
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=600) as r:
+                reply = json.load(r)
+            # An answer with no choices or no content is an empty read: retried below, then refused.
+            choice = (reply.get("choices") or [{}])[0] or {}
+            content = (choice.get("message") or {}).get("content")
+            got = parse_provisions(content if isinstance(content, str) else "")
+            if got or not any(_holds_rules(t) for t in part):
+                break
+        else:
+            # A piece with rule-looking pages that returns nothing twice is reported, not refused here: the
+            # pipeline's own guards judge it -- a chunk with no provisions at all is ChunkLoss, and a page left out
+            # is re-read by _reread_skipped_pages, which refuses the chapter if a page of rules is still missing.
+            # Refusing here stopped whole chapters on their introduction pages (batch 3, 2026-10-13).
+            print(f"    [deepseek] no provisions for pages {start + 1}-{start + len(part)} of the chunk "
+                  f"after a retry; left to the page-coverage guard")
+        for p in got:
+            n = _model_page(p.get("page"), 1, len(part))
+            p["page"] = start + (n or 1)
+        out += got
+        # one line per piece, flushed, so a long chapter (Parramatta: 1,563 pages) shows its progress while it runs
+        print(f"    [deepseek] chunk pages {start + 1}-{start + len(part)} of {len(pages)}: {len(got)} rules",
+              flush=True)
+    return json.dumps({"provisions": out})
+
+
 _PROVIDERS = {"haiku": _call_haiku, "sonnet": _call_sonnet, "mistral": _call_mistral,
-              "sol": _call_sol}
+              "sol": _call_sol, "deepseek": _call_deepseek}
 
 
 def _is_retryable(exc: Exception) -> bool:
