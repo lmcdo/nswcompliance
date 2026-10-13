@@ -158,7 +158,8 @@ def test_councils_negative_and_bare_to_forms_count_as_rule_wording():
     """'are not to exceed' / 'is to comply' (2026-10-13) were not counted, so such a page could be skipped."""
     from page_coverage import RULE_WORDS
     for t in ("Front fences are not to exceed 1.2m in height.", "Development is to comply with Table 3.",
-              "Driveways are to be set back 1m."):
+              "Driveways are to be set back 1m.", "Buildings are not to visually dominate adjoining development.",
+              "Works are to fully comply with AS 2890."):
         assert RULE_WORDS.search(t), t
     assert not RULE_WORDS.search("The suburb is to the north of the river.")
     assert not RULE_WORDS.search("The affected lots are not to the north of the river.")   # cross-review
