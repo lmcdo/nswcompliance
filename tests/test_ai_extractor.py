@@ -1120,12 +1120,13 @@ class TestDeepseekProvider:
         out = _json.loads(ax._call_deepseek(self._pdf(2)))["provisions"]
         assert out[0]["page"] == 1
 
-    def test_a_piece_with_text_that_returns_nothing_twice_fails_loudly(self, monkeypatch):
-        import pytest
+    def test_a_piece_of_rules_that_returns_nothing_is_retried_then_reported(self, monkeypatch, capsys):
+        """Not refused here: the chunk-loss and page-coverage guards judge it (batch 3, 2026-10-13)."""
+        import json as _json
         ax, sent = self._fake(monkeypatch, ['{"provisions": []}', '{"provisions": []}'])
-        with pytest.raises(ValueError, match="no provisions"):
-            ax._call_deepseek(self._pdf(2))
+        assert _json.loads(ax._call_deepseek(self._pdf(2)))["provisions"] == []
         assert len(sent) == 2                                    # tried twice first
+        assert "left to the page-coverage guard" in capsys.readouterr().out
 
     def test_it_needs_its_key(self, monkeypatch):
         import pytest
@@ -1150,8 +1151,7 @@ class TestDeepseekProvider:
             return io.BytesIO(_json.dumps({"choices": [{"message": {"content": None}}]}).encode())
         monkeypatch.setenv("OPENROUTER_API_KEY", "k")
         monkeypatch.setattr(ax.urllib.request, "urlopen", urlopen)
-        with pytest.raises(ValueError, match="no provisions"):
-            ax._call_deepseek(self._pdf(1))
+        assert ax._call_deepseek(self._pdf(1)) == '{"provisions": []}'
         assert len(calls) == 2
 
 
@@ -1167,13 +1167,12 @@ class TestDeepseekProvider:
         out = _json.loads(ax._call_deepseek(doc.tobytes()))["provisions"]
         assert out == [] and len(sent) == 1           # accepted at once: no retry, no refusal
 
-    def test_a_page_of_rules_that_returns_nothing_is_still_refused(self, monkeypatch):
+    def test_a_page_of_rules_that_returns_nothing_is_retried(self, monkeypatch):
         import fitz
-        import pytest
-        ax, _sent = self._fake(monkeypatch, ['{"provisions": []}', '{"provisions": []}'])
+        ax, sent = self._fake(monkeypatch, ['{"provisions": []}', '{"provisions": []}'])
         doc = fitz.open()
         page = doc.new_page()
         for n in range(8):
             page.insert_text((50, 72 + 20 * n), f"C{n} Front fences must not exceed 1.2 metres in height.")
-        with pytest.raises(ValueError, match="no provisions"):
-            ax._call_deepseek(doc.tobytes())
+        ax._call_deepseek(doc.tobytes())
+        assert len(sent) == 2                                    # a page of rules gets its retry

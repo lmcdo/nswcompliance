@@ -519,10 +519,12 @@ def _call_deepseek(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
             if got or not any(_holds_rules(t) for t in part):
                 break
         else:
-            # A piece holding a page of rules that returns nothing twice is a failed read: fail the chunk loudly
-            # rather than let it go missing silently. Cover, contents and introduction pages may return nothing
-            # (batch 1, 2026-10-13: three chapters were refused on their cover pages by a plain length test).
-            raise ValueError(f"deepseek returned no provisions for pages {start + 1}-{start + len(part)} of the chunk")
+            # A piece with rule-looking pages that returns nothing twice is reported, not refused here: the
+            # pipeline's own guards judge it -- a chunk with no provisions at all is ChunkLoss, and a page left out
+            # is re-read by _reread_skipped_pages, which refuses the chapter if a page of rules is still missing.
+            # Refusing here stopped whole chapters on their introduction pages (batch 3, 2026-10-13).
+            print(f"    [deepseek] no provisions for pages {start + 1}-{start + len(part)} of the chunk "
+                  f"after a retry; left to the page-coverage guard")
         for p in got:
             n = _model_page(p.get("page"), 1, len(part))
             p["page"] = start + (n or 1)
