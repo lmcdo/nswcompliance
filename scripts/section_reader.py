@@ -455,6 +455,6 @@ def to_sections(rules: list[dict]) -> list[dict]:
                                           for r in rules])
     # Vision-retyped rules keep their mark. The site shows a rule as the council's words only once council_quote proves
     # it against the PDF (text layer or the OCR picture proof); this mark lets later steps tell them apart.
-    for sec, r in zip(sections, [r for r in rules if str(r.get("code", "")).strip()]):
-        sec["source"] = r.get("source", "text")
+    for sec, r in zip(sections, [r for r in rules if str(r.get("code") or "").strip()]):
+        sec["source"] = (r.get("source") or "text")
     return sections
