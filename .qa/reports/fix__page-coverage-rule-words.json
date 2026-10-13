@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Widens the rule-wording test the page-coverage guard uses to decide a page holds rules (a stricter guard: more pages must be covered), and stops the quality report crashing on a rule with no heading.",
-  "commit_hash": "d8a110b8",
+  "commit_hash": "778988b6",
   "files": [
     ".qa/reports/fix__page-coverage-rule-words.json",
     "scripts/dcp_quality_report.py",
