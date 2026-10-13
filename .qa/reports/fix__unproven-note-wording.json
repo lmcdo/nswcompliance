@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes the note shown under every council DCP rule whose words are not proven (about 3,000 rules); wrong, the note could cite a page that differs from the link beside it.",
-  "commit_hash": "cd055b76",
+  "commit_hash": "c14a392f",
   "files": [
     ".qa/reports/fix__unproven-note-wording.json",
     "frontend-nextjs/__tests__/lib/council-quote.test.ts",
