@@ -214,3 +214,31 @@ def test_picture_pages_without_the_vision_key_refuse_the_chapter(monkeypatch):
     monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
     with pytest.raises(RuntimeError, match="MISTRAL_API_KEY"):
         sr.read_chapter("x.pdf", (1, 1))
+
+
+def test_an_uncovered_obligation_line_is_reread_and_then_included(monkeypatch):
+    """Cross-review: a rule line in no rule must not pass silently; one re-read names it, then it is in a rule."""
+    lines = L("Fences must be 1.2m high.", "Driveways must be 3m wide at the boundary.")
+    first = ans(lines, [rule(0, 0)])
+    monkeypatch.setattr(sr, "ask", lambda text: {"headings": [], "rules": [rule(0, 0), rule(1, 1)]})
+    out = sr.recover_uncovered(lines, first, sr.build(lines, first))
+    assert [r["text"] for r in out["rules"]] == ["Fences must be 1.2m high.", "Driveways must be 3m wide at the boundary."]
+    assert out["report"]["reread_pieces"] == 1
+
+
+def test_an_obligation_line_still_uncovered_after_the_reread_refuses_the_chapter(monkeypatch):
+    import pytest
+    import ai_extractor as ax
+    lines = L("Fences must be 1.2m high.", "Driveways must be 3m wide at the property boundary.")
+    first = ans(lines, [rule(0, 0)])
+    monkeypatch.setattr(sr, "ask", lambda text: {"headings": [], "rules": [rule(0, 0)]})
+    with pytest.raises(ax.PageLoss, match="Driveways must"):
+        sr.recover_uncovered(lines, first, sr.build(lines, first))
+
+
+def test_a_weak_rule_word_line_left_out_is_reported_not_refused(monkeypatch):
+    lines = L("Fences must be 1.2m high.", "Applicants should consider the streetscape character in their design.")
+    first = ans(lines, [rule(0, 0)])
+    monkeypatch.setattr(sr, "ask", lambda text: (_ for _ in ()).throw(AssertionError("no re-read expected")))
+    out = sr.recover_uncovered(lines, first, sr.build(lines, first))
+    assert out["report"]["uncovered"] == 1

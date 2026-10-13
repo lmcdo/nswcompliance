@@ -64,6 +64,37 @@ rules: every provision the council states, each as the run of lines from its fir
 Lines marked (already read) are context from the previous range: do not return rules that end on them."""
 
 
+def docling_lines(pdf_path: str) -> list[tuple[int, str]]:
+    """(page, text) from Docling's layout model: paragraphs, list items and headings in its reading order, and each
+    table row as "cell | cell". The words are the PDF's text layer (OCR off), so they are still the council's.
+    Trial line source (SECTION_READER_LINES=docling), scored on the 100-page answer key against chapter_lines."""
+    from docling.datamodel.base_models import InputFormat
+    from docling.datamodel.pipeline_options import PdfPipelineOptions
+    from docling.document_converter import DocumentConverter, PdfFormatOption
+    opts = PdfPipelineOptions(do_ocr=False, do_table_structure=True)
+    conv = DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)})
+    doc = conv.convert(str(pdf_path)).document
+    out: list[tuple[int, str]] = []
+    for item, _level in doc.iterate_items():
+        prov = getattr(item, "prov", None) or []
+        page = prov[0].page_no if prov else (out[-1][0] if out else 1)
+        label = str(getattr(item, "label", "")).lower()
+        if "page_header" in label or "page_footer" in label:
+            continue
+        if "table" in label and hasattr(item, "data"):
+            grid = item.data.grid or []
+            for row in grid:
+                cells = [c.text.strip() for c in row if c.text and c.text.strip()]
+                if cells:
+                    out.append((page, " | ".join(dict.fromkeys(cells))))
+            continue
+        text = (getattr(item, "text", "") or "").strip()
+        if text:
+            marker = (getattr(item, "marker", "") or "").strip()
+            out.append((page, f"{marker} {text}".strip() if marker and not text.startswith(marker) else text))
+    return out
+
+
 def chapter_lines(pdf_path: str) -> list[tuple[int, str]]:
     """(page, text) for every printed line in reading order, as council_quote proves against; running heads and bare
     page numbers left out."""
@@ -275,7 +306,7 @@ def build(lines, answers: list[tuple[tuple[int, int, int], dict]]) -> dict:
     return {"rules": rules, "report": report, "uncovered": uncovered[:200]}
 
 
-WINDOW = 8   # pages either side kept when reading part of a chapter: enough for running heads to repeat
+WINDOW = int(os.getenv("SECTION_READER_WINDOW", "8"))   # pages either side kept when reading part of a chapter: enough for running heads to repeat
 
 
 def window_pdf(pdf_path: str, pages: tuple[int, int]) -> tuple[str, int]:
@@ -350,19 +381,55 @@ def read_pictures(pdf_path: str, pages: list[int], have: list[str]) -> list[dict
     return out
 
 
+REREAD_NOTE = ("\n\nIMPORTANT: a previous reading left these lines out of every rule: {lines}. Each is part of a "
+               "rule (or a lead-in or condition of one). Include every one of them in the rule it belongs to.")
+
+
+def binding(text: str) -> bool:
+    """A line written as an obligation (page_coverage._OBLIGATION: must, shall, is to be, is required, not
+    permitted ...): the words that, left out of every rule, refuse a chapter -- as the page-coverage guard does."""
+    import page_coverage as pc
+    return bool(pc._OBLIGATION.search(text.lower()))
+
+
+def recover_uncovered(lines, answers, out: dict) -> dict:
+    """Re-read once each piece holding an obligation line no rule covers, naming those lines; then refuse the chapter
+    (ai_extractor.PageLoss, which every caller already refuses on) if any is still in no rule. Lines with weaker rule
+    words stay reported in out["uncovered"] only. Calls the model."""
+    import ai_extractor as ax
+    missing = [i for i, _p, t in out["uncovered"] if binding(t)]
+    if not missing:
+        return out
+    again = []
+    for (ctx, start, end), d in answers:
+        mine = [i for i in missing if start <= i < end]
+        again.append(((ctx, start, end), ask(numbered(lines, ctx, start, end) + REREAD_NOTE.format(lines=mine))
+                      if mine else d))
+    redo = build(lines, again)
+    redo["report"]["reread_pieces"] = sum(1 for (_c, a, b), _d in answers if any(a <= i < b for i in missing))
+    still = [(i, p, t) for i, p, t in redo["uncovered"] if binding(t)]
+    if still:
+        raise ax.PageLoss(f"section_reader: {len(still)} obligation line(s) in no rule after a re-read, e.g. "
+                          + "; ".join(f"p{p} '{t[:70]}'" for _i, p, t in still[:5])
+                          + ". Refusing the chapter rather than serving it without them.")
+    return redo
+
+
 def read_chapter(pdf_path: str, pages: tuple[int, int] | None = None) -> dict:
     """Read a chapter PDF (optionally only pages first..last) and build its rules. Calls the models."""
     offset = 0
     path = pdf_path
     if pages:
         path, offset = window_pdf(pdf_path, pages)
-    lines = [(p + offset, t) for p, t in chapter_lines(path)]
+    reader = docling_lines if os.getenv("SECTION_READER_LINES", "").strip().lower() == "docling" else chapter_lines
+    lines = [(p + offset, t) for p, t in reader(path)]
     if pages:
         lines = [x for x in lines if pages[0] <= x[0] <= pages[1]]
     ps = pieces(lines)
     with ThreadPoolExecutor(max_workers=min(PARALLEL, max(1, len(ps)))) as pool:
         answers = list(pool.map(lambda p: (p, ask(numbered(lines, *p))), ps))
     out = build(lines, answers)
+    out = recover_uncovered(lines, answers, out)
     if pages:
         span = list(range(pages[0], pages[1] + 1))
     else:
