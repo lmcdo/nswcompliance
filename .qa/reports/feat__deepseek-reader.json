@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a reader provider used only when AI_MODEL=deepseek; its output still goes through the review queue, the word-for-word checker and the page/chunk guards before anything is published.",
-  "commit_hash": "323b72c2",
+  "commit_hash": "bbae3968",
   "files": [
     ".qa/reports/feat__deepseek-reader.json",
     "scripts/ai_extractor.py",
@@ -103,7 +103,7 @@
     "command": "python -m pytest tests/test_ai_extractor.py -k Deepseek",
     "fails_when": "pieces lose their page offset, an empty piece is accepted, or the provider is not registered",
     "observed_red": "Before this change _PROVIDERS had no 'deepseek' entry and the registration test fails with KeyError.",
-    "external_authority": "Scoring run 2026-10-12 (score_readers.py): CoS 271/271 and Hornsby 403/405 rules printed word for word."
+    "external_authority": "Reader scoring run 2026-10-12 (a probe kept outside the repo): CoS 271/271 and Hornsby 403/405 rules printed word for word."
   },
   "post_merge": {
     "db_reset": "No",
