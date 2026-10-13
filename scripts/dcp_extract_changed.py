@@ -1863,6 +1863,21 @@ class DCPExtractor:
         document extractor that reads any layout with no per-council config
         (ce-ai-extraction-decision-2026-07). The result is the same section-dict
         shape, so the downstream diff/enqueue/guard pipeline is unchanged."""
+        if (os.getenv("DCP_READER") or "").strip().lower() == "section":
+            # The section reader (scripts/section_reader.py): the model marks where each rule starts and ends, the
+            # program copies the words from the PDF. Opt-in until it beats the live site on the 100-page answer key
+            # and passes the Parramatta pilot (~/.claude/plans/ce-section-reader-DESIGN-2026-10-14.md).
+            from scripts import section_reader as sr
+            print("    [extractor] section reader (DCP_READER=section)")
+            self.reader_used = "section"
+            out = sr.read_chapter(self.pdf_path)
+            rep = out["report"]
+            print(f"    [section-reader] {len(out['rules'])} rules from {out['pieces']} pieces; picture/jumbled pages "
+                  f"{len(out['picture_pages'])}; empty answers {out['empty_answers']}; overlaps {rep['overlaps']}; "
+                  f"rule lines in no rule {rep['uncovered']}", flush=True)
+            for _i, page, text in out["uncovered"][:10]:
+                print(f"      not in any rule: p{page} {text[:100]}")
+            return sr.to_sections(out["rules"])
         if ai_extraction_enabled():
             from scripts.ai_extractor import ai_extract_chapter, configured_model
             # An explicit AI_MODEL wins inside ai_extract_chapter, so asking
