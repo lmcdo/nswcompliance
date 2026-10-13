@@ -88,6 +88,13 @@
       "mitigated": true,
       "how": "deepseek is in _MODEL_PREFERENCE (last, default order unchanged), so llm_reader_available() is true",
       "repro": "python -m pytest tests/test_ai_extractor.py -k available_llm_reader"
+    },
+    {
+      "scenario": "A page holding only a setback or parking table is skipped by the reader",
+      "what_happens": "holds_rules found no obligation words, so the page was dropped without refusing the chapter",
+      "mitigated": true,
+      "how": "4 or more measurements (6m, 45%, 2 spaces, 3 storeys) also count as a page that holds rules",
+      "repro": "python -m pytest tests/test_page_coverage.py -k measurements"
     }
   ],
   "falsifiable_check": {

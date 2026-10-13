@@ -748,6 +748,13 @@ def _rule_bearing_pages(reader, a: int, b: int) -> list[tuple[int, int]]:
     return out
 
 
+#: Added to the brief when pages a first reading left out are read again on their own: they were found to hold rule
+#: text, so the model is told so. 2026-10-14: DeepSeek passed over Marrickville boarding-houses page 6 twice and the
+#: chapter was refused.
+REREAD_NOTE = (" These pages were left out of a first reading but they hold rule text: copy every control, objective, "
+               "list item and table row printed on them, word for word.")
+
+
 def _reread_skipped_pages(pdf_path, reader, model: str, collected: list[dict]) -> None:
     """Count, by code, the pages the reading left out; read them again on their
     own; refuse the chapter if a page that holds rules is still missing. A page
@@ -767,7 +774,7 @@ def _reread_skipped_pages(pdf_path, reader, model: str, collected: list[dict]) -
     print(f"    [page-coverage] {len(skipped)} page(s) left out, reading again: {skipped}")
     for first, last in pc.runs(skipped, AI_CHUNK_PAGES):
         found = _call_and_parse_with_empty_retry(
-            model, _subset_bytes(reader, first - 1, last), _build_prompt(None))
+            model, _subset_bytes(reader, first - 1, last), _build_prompt(None) + REREAD_NOTE)
         _place_on_pages(found, reader, first, last)
         collected.extend(found)
     still = pc.skipped_pages({p: lines[p] for p in skipped}, texts())
