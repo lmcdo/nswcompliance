@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes the checker's verdict for rules printed inside pictures: a rule proven by OCR is served as the council's words, so a wrong proof would show text the council did not print.",
-  "commit_hash": "c5331ba3",
+  "commit_hash": "fbf7134b",
   "files": [
     ".qa/reports/feat__picture-ocr-proof.json",
     "scripts/council_quote.py",
