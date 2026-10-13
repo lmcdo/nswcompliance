@@ -75,6 +75,11 @@ PROMPT = (
     "BUT a sentence that introduces a list (it ends with a colon, e.g. '... must:' or '... the "
     "following:') stays in ONE provision together with every item of that list, so no item is ever "
     "separated from the words that give it its meaning. "
+    # 2026-10-13, re-read of 41 chapters: 220 rules were tables turned into sentences or "label: value" lines,
+    # and 131 dropped a sentence from the middle of a paragraph; neither can be proven word for word.
+    "Copy a TABLE one printed row at a time, as the row's cells in order separated by ' | ', exactly as printed; "
+    "never turn a table into sentences or 'label: value' lines. Never leave out a sentence from the middle of a "
+    "paragraph or a list, even an explanatory one. "
     "The \"page\" is the number of the page the text is printed on, counting the first page you "
     "were given as 1. "
     "Output ONLY the JSON object."

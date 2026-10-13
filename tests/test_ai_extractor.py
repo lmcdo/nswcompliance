@@ -1176,3 +1176,16 @@ class TestDeepseekProvider:
             page.insert_text((50, 72 + 20 * n), f"C{n} Front fences must not exceed 1.2 metres in height.")
         ax._call_deepseek(doc.tobytes())
         assert len(sent) == 2                                    # a page of rules gets its retry
+
+
+class TestBriefTablesAndSentences:
+    """2026-10-13: 220 rules were tables rewritten as sentences, 131 dropped a sentence mid-paragraph."""
+
+    def test_tables_are_copied_row_by_row(self):
+        from ai_extractor import PROMPT
+        assert "one printed row at a time" in PROMPT and "' | '" in PROMPT
+        assert "never turn a table into sentences" in PROMPT
+
+    def test_no_sentence_is_left_out(self):
+        from ai_extractor import PROMPT
+        assert "Never leave out a sentence from the middle of a paragraph" in PROMPT
