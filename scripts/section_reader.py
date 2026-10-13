@@ -89,7 +89,9 @@ def chapter_lines(pdf_path: str) -> list[tuple[int, str]]:
         for t in best:
             # Campbelltown draws every line twice, one copy on top of the other (page_coverage), sometimes once with
             # its label and once without ("d) A BASIX ..." / "A BASIX ..."): keep one.
-            if out and out[-1][0] == page and _ITEM.sub("", out[-1][1]).strip() == _ITEM.sub("", t).strip():
+            if out and out[-1][0] == page and (out[-1][1] == t or (
+                    _ITEM.sub("", out[-1][1]).strip() == _ITEM.sub("", t).strip()
+                    and not (_ITEM.match(out[-1][1]) and _ITEM.match(t)))):   # "(a) X" and "(b) X" are two rules
                 continue
             out.append((page, t))
     return out
@@ -189,16 +191,16 @@ def build(lines, answers: list[tuple[tuple[int, int, int], dict]]) -> dict:
             if a is None or b is None or not (start <= a <= b < end) or a in heads:
                 continue
             spans.setdefault(a, (b, lab if lab in LABELS else "control", _int((r or {}).get("lead_in"))))
-    report = {"overlaps": 0, "joined_mid_sentence": 0, "lead_ins": 0, "label_from_heading": 0}
+    report = {"overlaps": 0, "joined_mid_sentence": 0, "lead_ins": 0, "label_from_heading": 0, "lead_ins_rejected": 0}
     rules: list[dict] = []
     last_end = -1
     for a in sorted(spans):
         b, lab, lead = spans[a]
-        if a <= last_end:                                   # overlap: the earlier rule keeps its lines
+        if a <= last_end:
+            # Overlap: the earlier rule keeps its lines and the later span is dropped whole -- trimming it would serve
+            # a fragment missing its opening words. Lines it alone held are listed as uncovered.
             report["overlaps"] += 1
-            if b <= last_end:
-                continue
-            a = last_end + 1
+            continue
         first_text = lines[a][1]
         # A rule starting mid-sentence or with a bare condition belongs to the rule just before it.
         if (rules and a == rules[-1]["last"] + 1 and not _ITEM.match(first_text)
@@ -228,7 +230,12 @@ def build(lines, answers: list[tuple[tuple[int, int, int], dict]]) -> dict:
             path[heads[h]] = lines[h][1]
         r["section"] = " > ".join(path[k] for k in sorted(path))
         lead = r["lead_in"]
-        if lead is not None and 0 <= lead < r["first"] and lines[lead][1] not in r["text"]:
+        if lead is not None and not (0 <= lead < r["first"] and r["first"] - lead <= 40
+                                     and lines[lead][1].rstrip().endswith(":")
+                                     and not any(lead < h < r["first"] for h in hs)):
+            report["lead_ins_rejected"] += 1
+            lead = r["lead_in"] = None
+        if lead is not None and lines[lead][1] not in r["text"]:
             r["text"] = lines[lead][1] + "\n" + r["text"]
         numbered_heads = [path[k] for k in sorted(path) if re.match(r"^\s*[A-Z]?\d", path[k])]
         m = re.match(r"^\s*([A-Z]?\d+(?:\.\d+)*[A-Z]?)", numbered_heads[-1]) if numbered_heads else None
@@ -320,7 +327,7 @@ def read_pictures(pdf_path: str, pages: list[int], have: list[str]) -> list[dict
                 continue
             seen.append(body)
             out.append({"first": None, "last": None, "label": "control", "lead_in": None, "section": "",
-                        "text": str(prov.get("text", "")), "page": p, "code": str(prov.get("code") or f"P{p}"),
+                        "text": str(prov.get("text") or ""), "page": p, "code": str(prov.get("code") or f"P{p}"),
                         "title": str(prov.get("title") or ""), "source": "picture"})
     return out
 
@@ -338,9 +345,17 @@ def read_chapter(pdf_path: str, pages: tuple[int, int] | None = None) -> dict:
     with ThreadPoolExecutor(max_workers=min(PARALLEL, max(1, len(ps)))) as pool:
         answers = list(pool.map(lambda p: (p, ask(numbered(lines, *p))), ps))
     out = build(lines, answers)
-    span = list(range(pages[0], pages[1] + 1)) if pages else sorted({p for p, _t in lines})
+    if pages:
+        span = list(range(pages[0], pages[1] + 1))
+    else:
+        import fitz
+        with fitz.open(pdf_path) as doc:
+            span = list(range(1, doc.page_count + 1))      # a scanned page gives no text lines but can hold rules
     pics = sorted(set(picture_pages(pdf_path, [p for p in span if p >= 1])) | set(scrambled_pages(lines)))
-    if pics and os.environ.get("MISTRAL_API_KEY"):
+    if pics:
+        if not os.environ.get("MISTRAL_API_KEY"):
+            raise RuntimeError(f"section_reader: {len(pics)} picture/jumbled page(s) {pics[:10]} need the vision reader "
+                               "and MISTRAL_API_KEY is not set; refusing a chapter with those pages unread")
         out["rules"] += read_pictures(pdf_path, pics, [r["text"] for r in out["rules"]])
     out["picture_pages"] = pics
     out["pieces"] = len(ps)
@@ -351,5 +366,10 @@ def read_chapter(pdf_path: str, pages: tuple[int, int] | None = None) -> dict:
 def to_sections(rules: list[dict]) -> list[dict]:
     """The pipeline's section dicts (ai_extractor.provisions_to_sections), so review queue and commit are unchanged."""
     import ai_extractor as ax
-    return ax.provisions_to_sections([{"code": r["code"], "title": r["title"], "text": r["text"], "page": r["page"]}
-                                      for r in rules])
+    sections = ax.provisions_to_sections([{"code": r["code"], "title": r["title"], "text": r["text"], "page": r["page"]}
+                                          for r in rules])
+    # Vision-retyped rules keep their mark. The site shows a rule as the council's words only once council_quote proves
+    # it against the PDF (text layer or the OCR picture proof); this mark lets later steps tell them apart.
+    for sec, r in zip(sections, [r for r in rules if str(r.get("code", "")).strip()]):
+        sec["source"] = r.get("source", "text")
+    return sections

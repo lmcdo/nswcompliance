@@ -48,11 +48,11 @@ def test_rule_starting_on_a_heading_line_is_ignored():
 
 
 # 3
-def test_overlapping_second_rule_is_trimmed_to_start_after_the_first():
-    lines = L("One.", "Two.", "Three.", "Four.", "Five.", "Six.")
+def test_overlapping_second_rule_is_dropped_whole_never_trimmed_into_a_fragment():
+    """Cross-review: trimming served the later rule without its opening words."""
+    lines = L("One.", "Two.", "Three.", "Four.", "Five must be shown.", "Six must be shown.")
     out = sr.build(lines, ans(lines, [rule(0, 3), rule(2, 5)]))
-    assert [(r["first"], r["last"]) for r in out["rules"]] == [(0, 3), (4, 5)]
-    assert out["rules"][1]["text"] == "Five.\nSix."
+    assert [(r["first"], r["last"]) for r in out["rules"]] == [(0, 3)]
     assert out["report"]["overlaps"] == 1
 
 
@@ -169,3 +169,48 @@ def test_numbered_marks_lines_before_start_as_already_read_and_rows_are_indexed(
     lines = [(1, "a"), (1, "b"), (2, "c"), (2, "d"), (3, "e")]
     rows = sr.numbered(lines, 1, 3, 5).split("\n")
     assert rows == ["[1] (already read) p1: b", "[2] (already read) p2: c", "[3] p2: d", "[4] p3: e"]
+
+
+def test_a_lead_in_far_away_or_not_ending_in_a_colon_is_rejected():
+    """Cross-review: a model lead_in pointing at unrelated text must never be prepended."""
+    lines = L("Unrelated background sentence.", "Other text.", "(a) Fences must be 1.2m high.")
+    out = sr.build(lines, ans(lines, [rule(2, 2, lead_in=0)]))
+    assert out["rules"][0]["text"] == "(a) Fences must be 1.2m high."
+    assert out["report"]["lead_ins_rejected"] == 1
+
+
+def test_items_with_the_same_words_but_different_labels_are_both_kept(monkeypatch):
+    """Cross-review: '(a) X' and '(b) X' are two rules, not one line drawn twice."""
+    class Ln:
+        def __init__(self, page, text):
+            self.page, self.text = page, text
+
+    class St:
+        def __init__(self, reading, cased):
+            self.lines = reading
+            self.text = [ln.text for ln in reading]
+            self.repeated = set()
+
+    import citation_proof as cp
+    import council_quote as cq
+    reading = [Ln(1, "(a) Development is prohibited."), Ln(1, "(b) Development is prohibited."),
+               Ln(1, "d) A BASIX certificate shall accompany"), Ln(1, "A BASIX certificate shall accompany")]
+    monkeypatch.setattr(cp, "read_raw_lines", lambda path: ([], 600))
+    monkeypatch.setattr(cp, "both_orders", lambda raw, w: (reading, reading))
+    monkeypatch.setattr(cq, "cased_text", lambda path: {})
+    monkeypatch.setattr(cq, "Stream", St)
+    out = [t for _p, t in sr.chapter_lines("x.pdf")]
+    assert out == ["(a) Development is prohibited.", "(b) Development is prohibited.",
+                   "d) A BASIX certificate shall accompany"]
+
+
+def test_picture_pages_without_the_vision_key_refuse_the_chapter(monkeypatch):
+    """Cross-review: never return a chapter with its picture pages silently unread."""
+    import pytest
+    monkeypatch.setattr(sr, "chapter_lines", lambda path: [(1, "Fences must be 1.2m high.")])
+    monkeypatch.setattr(sr, "ask", lambda text: {"headings": [], "rules": []})
+    monkeypatch.setattr(sr, "picture_pages", lambda path, pages: [1])
+    monkeypatch.setattr(sr, "window_pdf", lambda path, pages: (path, 0))
+    monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="MISTRAL_API_KEY"):
+        sr.read_chapter("x.pdf", (1, 1))
