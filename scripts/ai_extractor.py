@@ -484,6 +484,13 @@ DEEPSEEK_TEXT_NOTE = (" The pages are given as text, each starting with a line \
                       "the first page given as 1.")
 
 
+def _holds_rules(text: str) -> bool:
+    """A page that could hold a rule, by the same test _rule_bearing_pages applies to a chunk: enough text, not a
+    contents page, and rule wording or labelled items on it."""
+    return (len(text.strip()) >= RULE_PAGE_MIN_CHARS and not _is_contents_page(text)
+            and bool(_RULE_WORDS.search(text) or _ITEM_LABEL.search(text)))
+
+
 def _call_deepseek(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     import fitz
     key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
@@ -509,11 +516,12 @@ def _call_deepseek(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
             choice = (reply.get("choices") or [{}])[0] or {}
             content = (choice.get("message") or {}).get("content")
             got = parse_provisions(content if isinstance(content, str) else "")
-            if got or not any(len(t.strip()) > 200 for t in part):
+            if got or not any(_holds_rules(t) for t in part):
                 break
         else:
-            # A piece holding text that returns nothing twice is a failed read, not an empty page: fail the
-            # chunk loudly rather than let a piece of it go missing silently.
+            # A piece holding a page of rules that returns nothing twice is a failed read: fail the chunk loudly
+            # rather than let it go missing silently. Cover, contents and introduction pages may return nothing
+            # (batch 1, 2026-10-13: three chapters were refused on their cover pages by a plain length test).
             raise ValueError(f"deepseek returned no provisions for pages {start + 1}-{start + len(part)} of the chunk")
         for p in got:
             n = _model_page(p.get("page"), 1, len(part))

@@ -1080,12 +1080,13 @@ class TestDeepseekProvider:
     """AI_MODEL=deepseek reads the chunk's text in pieces; pages count from the chunk's first page."""
 
     @staticmethod
-    def _pdf(n_pages: int, text: str = "Front fences are not to exceed 1.2 metres in height. " * 6) -> bytes:
+    def _pdf(n_pages: int, text: str = "Front fences must not exceed 1.2 metres in height. " * 6) -> bytes:
         import fitz
         doc = fitz.open()
-        for i in range(n_pages):
+        for i in range(n_pages):      # a full page of rule text: above the 300-character rule-page minimum
             doc.new_page().insert_text((50, 72), f"Page {i + 1}. " + text[:80])
-            doc[-1].insert_text((50, 100), text[80:200])
+            for n in range(1, 7):
+                doc[-1].insert_text((50, 72 + 20 * n), text[:80])
         return doc.tobytes()
 
     def _fake(self, monkeypatch, answers):
@@ -1152,3 +1153,27 @@ class TestDeepseekProvider:
         with pytest.raises(ValueError, match="no provisions"):
             ax._call_deepseek(self._pdf(1))
         assert len(calls) == 2
+
+
+    def test_a_cover_page_that_returns_nothing_is_accepted(self, monkeypatch):
+        """Batch 1, 2026-10-13: three chapters were refused on cover/contents pages that hold no rules."""
+        import json as _json
+        ax, sent = self._fake(monkeypatch, ['{"provisions": []}', '{"provisions": []}'])
+        import fitz
+        doc = fitz.open()
+        page = doc.new_page()
+        for n in range(8):      # a long cover page: 8 lines of history, no rule wording
+            page.insert_text((50, 72 + 20 * n), "Camperdown North was settled in the nineteenth century as farmland.")
+        out = _json.loads(ax._call_deepseek(doc.tobytes()))["provisions"]
+        assert out == [] and len(sent) == 1           # accepted at once: no retry, no refusal
+
+    def test_a_page_of_rules_that_returns_nothing_is_still_refused(self, monkeypatch):
+        import fitz
+        import pytest
+        ax, _sent = self._fake(monkeypatch, ['{"provisions": []}', '{"provisions": []}'])
+        doc = fitz.open()
+        page = doc.new_page()
+        for n in range(8):
+            page.insert_text((50, 72 + 20 * n), f"C{n} Front fences must not exceed 1.2 metres in height.")
+        with pytest.raises(ValueError, match="no provisions"):
+            ax._call_deepseek(doc.tobytes())
