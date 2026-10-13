@@ -68,3 +68,13 @@ def test_a_row_on_another_page_far_away_is_not_used():
 def test_prose_without_cells_is_not_a_table():
     import council_quote_table as cqt
     assert cqt.prove_rows("Gymnasium needs 1 space per 25sq.m GFA", [table_stream(PARKING)], 1, cq.norm) is None
+
+
+def test_a_compact_table_does_not_pair_a_cell_with_the_next_row():
+    """Cross-review 2026-10-13: rows 6 points apart; the next row's rate must never prove this row."""
+    compact = [(1, 100, 50, "Gymnasium"), (1, 106, 50, "Bulky goods premises"),
+               (1, 106, 300, "1 space per 45sq.m GFA"), (1, 100, 300, "1 space per 25sq.m GFA")]
+    out = cq.judge(row("Gymnasium | 1 space per 45sq.m GFA"), [table_stream(compact)])
+    assert out["status"] != "exact"
+    ok = cq.judge(row("Gymnasium | 1 space per 25sq.m GFA"), [table_stream(compact)])
+    assert ok["reason"] == "table_rows"

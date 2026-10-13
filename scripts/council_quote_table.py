@@ -54,11 +54,16 @@ def _prove_row(cells: list[str], st, page: int, norm) -> str | None:
     # choose one placement per cell: same printed row as the first cell, left to right
     for k0, e0 in hits[0]:
         y0 = st.lines[st.at[k0][0]].y
-        x_prev = st.lines[st.at[k0][0]].x
+        x0 = st.lines[st.at[k0][0]].x
+        # the row band comes from the table itself: half the gap to the nearest other line in the first cell's
+        # column, never more than ROW_DY -- so a compact table's next row can never fall inside it (cross-review)
+        gaps = [abs(ln.y - y0) for ln in st.lines if ln.page == page and abs(ln.x - x0) <= 2 and ln.y != y0]
+        band = min([ROW_DY] + [g / 2 for g in gaps])
+        x_prev = x0
         chosen = [(k0, e0)]
         for cell_hits in hits[1:]:
             ok = [(k, e) for k, e in cell_hits
-                  if abs(st.lines[st.at[k][0]].y - y0) <= ROW_DY and st.lines[st.at[k][0]].x > x_prev]
+                  if abs(st.lines[st.at[k][0]].y - y0) < band and st.lines[st.at[k][0]].x > x_prev]
             if not ok:
                 break
             k, e = min(ok, key=lambda h: st.lines[st.at[h[0]][0]].x)
