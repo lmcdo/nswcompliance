@@ -1,0 +1,80 @@
+{
+  "tier": "standard",
+  "justification": "Adds an opt-in reader (DCP_READER=section). Off by default, so no chapter is read differently until it is switched on for the pilot; output goes to the review queue like every reader.",
+  "commit_hash": "81680bfd",
+  "files": [
+    ".qa/reports/feat__section-reader.json",
+    "scripts/section_reader.py",
+    "scripts/dcp_extract_changed.py",
+    "tests/test_section_reader.py"
+  ],
+  "pre_impl": {
+    "existing_data": "none read or written by the reader; it returns ai_extractor.provisions_to_sections dicts to the existing review-queue path",
+    "assumption_mismatch": "PDF reading order fails on two-column pages; each page takes whichever of the two existing readings runs sentences on",
+    "new_vs_existing": "applies only when DCP_READER=section is set",
+    "external_source_error": "an unusable model answer is retried once, then counted as an empty answer and printed",
+    "frontend_type": "no frontend change",
+    "user_failure_mode": "rule lines no rule covers are printed per chapter, so a skipped rule is visible before review"
+  },
+  "functions": [
+    {
+      "name": "section_reader.build",
+      "file_line": "scripts/section_reader.py",
+      "input": "the chapter's printed lines and the model's line ranges",
+      "output": "rules whose text is the PDF lines first..last, with heading path, label and lead-in",
+      "if_none": "no rules; every rule-worded line is then listed as uncovered"
+    }
+  ],
+  "values": [
+    {
+      "value": "model line numbers",
+      "read_at": "scripts/section_reader.py build",
+      "nullable": "yes",
+      "guard_at": "_int and range checks against the piece",
+      "if_missing": "that rule is skipped and its lines show as uncovered"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The model returns a line range that overlaps the previous rule",
+      "what_happens": "the same council words would be served twice under two rules",
+      "mitigated": true,
+      "how": "the earlier rule keeps its lines; the later one starts after it or is dropped",
+      "repro": "python -m pytest tests/test_section_reader.py -k overlap"
+    },
+    {
+      "scenario": "A condition line such as 'where the site adjoins' is returned as its own rule",
+      "what_happens": "the condition would be shown apart from the rule it qualifies",
+      "mitigated": true,
+      "how": "a rule starting lower-case or with where/unless joins the rule before it unless that ended a sentence",
+      "repro": "python -m pytest tests/test_section_reader.py -k mid_sentence"
+    },
+    {
+      "scenario": "Items (a)(b) after a lead-in ending with a colon",
+      "what_happens": "each item would be served without the sentence that says when it applies",
+      "mitigated": true,
+      "how": "the lead-in line is copied onto each item; a lead-in returned alone is dropped",
+      "repro": "python -m pytest tests/test_section_reader.py -k lead_in"
+    },
+    {
+      "scenario": "Two-column page read straight across both columns",
+      "what_happens": "rules would be stitched from two columns into nonsense",
+      "mitigated": true,
+      "how": "per page, the reading order whose lines run on as sentences is used; jumbled pages are also read from the image",
+      "repro": "score_section_reader.py --only 008 (Hornsby 3-14: 2/12 before, 10-12/12 after)"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_section_reader.py",
+    "fails_when": "rule text differs from the joined PDF lines, or overlaps/lead-ins/conditions are mishandled",
+    "observed_red": "Hornsby 3-14 scored 2/12 before the reading-order choice; the 100-page key score is the outside check",
+    "external_authority": "Opus 100-page answer key (17 councils, 977 entries) scored against live site and this reader"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: DCP_READER=section dcp_extract_changed --review on Parramatta (pilot), compared with the before snapshot"
+  }
+}
