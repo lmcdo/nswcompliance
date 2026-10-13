@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a reader provider used only when AI_MODEL=deepseek; its output still goes through the review queue, the word-for-word checker and the page/chunk guards before anything is published.",
-  "commit_hash": "c747dbc5",
+  "commit_hash": "70e9f17c",
   "files": [
     ".qa/reports/feat__deepseek-reader.json",
     "scripts/ai_extractor.py",
@@ -13,7 +13,7 @@
     "existing_data": "No database read or written by this change; the provider turns a PDF chunk into the provisions JSON the other providers return",
     "assumption_mismatch": "The model counts pages within the piece it was sent; the provider adds the piece's offset so pages count from the chunk's first page, as the brief asks",
     "new_vs_existing": "Only new reads with AI_MODEL=deepseek; the default provider order is unchanged",
-    "external_source_error": "An HTTP error propagates to _call_with_retry; a piece with text that returns nothing twice raises ValueError and the chunk fails loudly",
+    "external_source_error": "An HTTP error propagates to _call_with_retry; a piece with rule pages that returns nothing is retried once, then printed and left to the pipeline's guards (ChunkLoss for an empty chunk, _reread_skipped_pages re-reads skipped pages and refuses the chapter if rules are still missing)",
     "frontend_type": "No frontend change: the rows it produces are queue rows of the same shape as every other reader's",
     "user_failure_mode": "A failed read fails the chapter's extraction with a message; nothing is enqueued for that chapter, so nothing is lost silently"
   },
@@ -23,7 +23,7 @@
       "file_line": "scripts/ai_extractor.py",
       "input": "the bytes of one PDF chunk and the brief, exactly as every other provider receives them",
       "output": "a JSON string holding every provision of the chunk, pages counted from the chunk's first page",
-      "if_none": "a piece with more than 200 characters of text that returns nothing twice raises ValueError"
+      "if_none": "a piece with rule pages that returns nothing is retried once, then reported and left to ChunkLoss / _reread_skipped_pages, which refuse the chapter if rules are still missing"
     }
   ],
   "values": [
@@ -63,8 +63,8 @@
       "scenario": "One piece silently returns no rules",
       "what_happens": "rules on those pages would be dropped and a full replace would delete them",
       "mitigated": true,
-      "how": "a piece with text that returns nothing twice raises and fails the chunk",
-      "repro": "python -m pytest tests/test_ai_extractor.py -k returns_nothing_twice"
+      "how": "retried once, then reported; the chunk-loss guard and _reread_skipped_pages refuse the chapter if a page of rules is still missing",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k retried_then_reported"
     },
     {
       "scenario": "The model returns a page outside the piece",
