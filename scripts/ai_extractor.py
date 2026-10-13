@@ -571,6 +571,10 @@ _MODEL_PREFERENCE = (
     ("haiku", "ANTHROPIC_API_KEY"),
     ("sol", "OPENAI_API_KEY"),
     ("mistral", "MISTRAL_API_KEY"),
+    # last, so the default order is unchanged; listed so AI_MODEL=deepseek counts as an available LLM reader --
+    # without it dcp_extract_changed.llm_reader_available() was False and every chapter with a page map (all of
+    # ashfield, 25 ku_ring_gai chapters) silently went to the regex page-range reader (2026-10-13)
+    ("deepseek", "OPENROUTER_API_KEY"),
 )
 
 

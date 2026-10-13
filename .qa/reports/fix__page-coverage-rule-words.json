@@ -1,13 +1,15 @@
 {
   "tier": "standard",
   "justification": "Widens the rule-wording test the page-coverage guard uses to decide a page holds rules (a stricter guard: more pages must be covered), and stops the quality report crashing on a rule with no heading.",
-  "commit_hash": "2f834b47",
+  "commit_hash": "583b8082",
   "files": [
     ".qa/reports/fix__page-coverage-rule-words.json",
     "scripts/dcp_quality_report.py",
     "scripts/page_coverage.py",
     "tests/test_dcp_quality_report_null_header.py",
-    "tests/test_page_coverage.py"
+    "tests/test_page_coverage.py",
+    "scripts/ai_extractor.py",
+    "tests/test_ai_extractor.py"
   ],
   "pre_impl": {
     "existing_data": "no database change; RULE_WORDS is a regex read by ai_extractor._rule_bearing_pages and page_coverage.skipped_pages",
@@ -79,6 +81,13 @@
       "mitigated": true,
       "how": "the query is unchanged and its NULL headers are printed as '(no heading)'",
       "repro": "python -m pytest tests/test_dcp_quality_report_null_header.py"
+    },
+    {
+      "scenario": "AI_MODEL=deepseek is set but a chapter has a hand-built page map",
+      "what_happens": "the pipeline judged no LLM reader available and read the chapter with the regex page-range reader into fragments",
+      "mitigated": true,
+      "how": "deepseek is in _MODEL_PREFERENCE (last, default order unchanged), so llm_reader_available() is true",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k available_llm_reader"
     }
   ],
   "falsifiable_check": {
