@@ -1,13 +1,16 @@
 {
   "tier": "standard",
   "justification": "Adds a reader provider used only when AI_MODEL=deepseek; its output still goes through the review queue, the word-for-word checker and the page/chunk guards before anything is published.",
-  "commit_hash": "1006cffa",
+  "commit_hash": "b4894190",
   "files": [
     ".qa/reports/feat__deepseek-reader.json",
     "scripts/ai_extractor.py",
     "tests/test_ai_extractor.py",
     "scripts/dcp_extract_changed.py",
-    "tests/test_dcp_extract_dry_run_writes_nothing.py"
+    "tests/test_dcp_extract_dry_run_writes_nothing.py",
+    "scripts/council_quote.py",
+    "scripts/council_quote_table.py",
+    "tests/test_council_quote_table.py"
   ],
   "pre_impl": {
     "existing_data": "No database read or written by this change; the provider turns a PDF chunk into the provisions JSON the other providers return",
@@ -86,6 +89,13 @@
       "mitigated": true,
       "how": "main() runs run_standard_enrichment only when not args.dry_run",
       "repro": "python -m pytest tests/test_dcp_extract_dry_run_writes_nothing.py"
+    },
+    {
+      "scenario": "A table rate is proven against the wrong use (a rate printed on another row of the same page)",
+      "what_happens": "a parking or setback figure would be shown as the council's words for the wrong land use",
+      "mitigated": true,
+      "how": "every cell must sit on one printed row (within 6 points) and run left to right",
+      "repro": "python -m pytest tests/test_council_quote_table.py -k wrong_use"
     }
   ],
   "falsifiable_check": {

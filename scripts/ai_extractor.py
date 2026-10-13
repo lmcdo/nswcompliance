@@ -534,6 +534,9 @@ def _call_deepseek(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
             n = _model_page(p.get("page"), 1, len(part))
             p["page"] = start + (n or 1)
         out += got
+        # one line per piece, flushed, so a long chapter (Parramatta: 1,563 pages) shows its progress while it runs
+        print(f"    [deepseek] chunk pages {start + 1}-{start + len(part)} of {len(pages)}: {len(got)} rules",
+              flush=True)
     return json.dumps({"provisions": out})
 
 
