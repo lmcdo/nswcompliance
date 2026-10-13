@@ -161,3 +161,4 @@ def test_councils_negative_and_bare_to_forms_count_as_rule_wording():
               "Driveways are to be set back 1m."):
         assert RULE_WORDS.search(t), t
     assert not RULE_WORDS.search("The suburb is to the north of the river.")
+    assert not RULE_WORDS.search("The affected lots are not to the north of the river.")   # cross-review
