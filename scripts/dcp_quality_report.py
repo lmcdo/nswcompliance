@@ -236,7 +236,8 @@ def report_granularity(by_council, councils, scores):
         if worst and worst[0]['chars'] > OVERSIZED:
             for w in worst:
                 if w['chars'] > OVERSIZED:
-                    print(f"  {'':15s}  >> {w['chars']:,d} chars: {w['header'][:60]}")
+                    # a rule with no section heading crashed the whole gate here, and a crash skips enrichment
+                    print(f"  {'':15s}  >> {w['chars']:,d} chars: {(w['header'] or '(no heading)')[:60]}")
         print()
 
         scores.setdefault(council, {})['granularity'] = pct_fit
@@ -532,7 +533,7 @@ def report_pages(by_council, councils, scores):
         if null_page > 0 and null_page <= 20:
             missing = [p for p in provs if p['pdf_page'] is None][:5]
             for m in missing:
-                print(f"  {'':15s}  missing: ID {m['id']} — {m['header'][:50]}")
+                print(f"  {'':15s}  missing: ID {m['id']} — {(m['header'] or '(no heading)')[:50]}")
         print()
 
         scores.setdefault(council, {})['pages'] = pct

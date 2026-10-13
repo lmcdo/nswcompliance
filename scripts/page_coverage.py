@@ -61,7 +61,10 @@ def sentence_lines(texts: list[str]) -> list[list[str]]:
 #: `_RULE_WORDS` for `_rule_bearing_pages`, and `skipped_pages` scores against it.
 RULE_WORDS = re.compile(
     r"\b(shall|must|should|required|requirements?|minimum|maximum|controls?|objectives?|"
-    r"not permitted|is to be|are to be|provide|retain|avoid|ensure)\b", re.IGNORECASE)
+    r"not permitted|is to be|are to be|(?:is|are) not to|(?:is|are) to (?:comply|exceed|provide|be)|"
+    r"provide|retain|avoid|ensure)\b", re.IGNORECASE)
+# "are not to exceed", "is to comply with" (2026-10-13): councils write rules this way, and a page of them was not
+# counted as holding rules, so the page-coverage guard could let it be skipped.
 
 
 def rule_lines(lines: list[list[str]]) -> list[list[str]]:

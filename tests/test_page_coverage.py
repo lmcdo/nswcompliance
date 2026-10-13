@@ -152,3 +152,12 @@ def test_one_rule_words_definition_serves_both_modules():
     rule-bearing line is; two copies would drift."""
     import ai_extractor
     assert ai_extractor._RULE_WORDS is pc.RULE_WORDS
+
+
+def test_councils_negative_and_bare_to_forms_count_as_rule_wording():
+    """'are not to exceed' / 'is to comply' (2026-10-13) were not counted, so such a page could be skipped."""
+    from page_coverage import RULE_WORDS
+    for t in ("Front fences are not to exceed 1.2m in height.", "Development is to comply with Table 3.",
+              "Driveways are to be set back 1m."):
+        assert RULE_WORDS.search(t), t
+    assert not RULE_WORDS.search("The suburb is to the north of the river.")
