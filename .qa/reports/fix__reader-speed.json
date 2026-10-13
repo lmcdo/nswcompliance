@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes how the DeepSeek reader sends a chunk (parallel instead of one after another) and one page range; what is read and returned is unchanged.",
-  "commit_hash": "01cba373",
+  "commit_hash": "faa10fce",
   "files": [
     ".qa/reports/fix__reader-speed.json",
     "scripts/ai_extractor.py",
