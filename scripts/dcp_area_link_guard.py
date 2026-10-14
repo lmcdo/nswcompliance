@@ -42,7 +42,11 @@ def fill_parts(cur, council: str, chapter_key: str, tagger=None) -> int:
     it here with the same LayerTopicTagger.tag gives the guard what publish will produce; enrichment later selects
     v2_dcp_layer IS NULL rows and writes the same Part. Returns rows filled."""
     if tagger is None:
-        from enrichment.pipeline import LayerTopicTagger
+        try:
+            from enrichment.pipeline import LayerTopicTagger
+        except ImportError as exc:   # the guard then sees fewer links and refuses: the safe direction
+            print(f"    [area-link] Part not filled ({exc}); the guard judges the rows as they are")
+            return 0
         tagger = LayerTopicTagger()
     cur.execute("""SELECT id, document_id, provision_text FROM regulatory_provisions
                     WHERE is_current AND source_council = %s AND source_chapter_key = %s

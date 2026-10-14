@@ -107,6 +107,22 @@ _WOOLLAHRA_B2_RULES = [
      "strategy": {"type": "constant", "precinct_id": pid}, "validate": False}
     for n, pid in _WOOLLAHRA_B2.items()
 ]
+# Woollahra DCP 2015 D1.2-D1.10: one neighbourhood centre each, by PDF PAGE. Each section opens on the page of its
+# centre map ("D1.4 Vaucluse Shopping Village, Vaucluse MAP 3", p21). Not by section code: the section reader filed
+# pages 24-26 (Vaucluse, "26-36 New South Head Road") under D1_7 Streatfield Road (2026-10-15). D1 p7 "This chapter
+# applies to the following centres, as identified on Map A", so pages before D1.2 (intro, D1.1) apply to all nine.
+# Keys = the names the live rules were hand-keyed with = outline ids (scripts/import_woollahra_d1_centre_boundaries.py).
+_WOOLLAHRA_D1_PAGES = [
+    ("Woollahra Neighbourhood Centres", 1, 11), ("Hopetoun Avenue Centre", 12, 16),
+    ("South Head Roundabout Centre", 17, 20), ("Vaucluse Shopping Village", 21, 26), ("Plumer Road Centre", 27, 32),
+    ("O'Sullivan Road Centre", 33, 36), ("Streatfield Road Centre", 37, 42), ("Bellevue Hill Shops", 43, 49),
+    ("Manning Road Centre", 50, 54), ("Darling Point Road Centre", 55, 58),
+]
+_WOOLLAHRA_D1_RULES = [
+    {"name": "woollahra_d1_centres_by_page", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-d1-neighbourhood-centres'",
+     "strategy": {"type": "page_range", "ranges": _WOOLLAHRA_D1_PAGES}},
+]
 
 RULES: list[dict] = [
     {
@@ -178,7 +194,9 @@ RULES: list[dict] = [
         "where": "source_chapter_key = 'section-2-locality-statements'",
         "strategy": {"type": "page_range", "ranges": _COS_RANGES["Sydney_DCP_2012__section_2_locality_statements"]},
         "validate": True,
-        "fingerprint": {"max_page": 169, "min_coverage": 0.95},
+        # 171: PDF pages 170-171 (printed 2.13-20, 2.13-21) continue 2.13.14 Waterloo Estate (South); the old reader
+        # never served them, the section reader does (2026-10-14). Same PDF, same content hash -- not a re-pagination.
+        "fingerprint": {"max_page": 171, "min_coverage": 0.95},
     },
     {
         "name": "city_of_sydney_section_5_areas",
@@ -244,6 +262,7 @@ RULES: list[dict] = [
     # outline; B2.1 and the B3 row filed in B2 to the union of all eleven. Unkeyed they reached no
     # house: 17 Etham Ave was shown 1 of 64 (DQ-146, 2026-10-11).
     *_WOOLLAHRA_B2_RULES,
+    *_WOOLLAHRA_D1_RULES,
     *EXTRA_KEY_RULES,
     {"name": "woollahra_b2_all_eleven", "council": "woollahra", "validate": False,
      "where": "source_chapter_key = 'chapter-b2-neighbourhood-hcas' AND ref_number !~ '__B2_([2-9]|1[0-2])([_ ]|$)'",
