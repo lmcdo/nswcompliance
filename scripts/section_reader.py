@@ -521,7 +521,7 @@ def binding(text: str) -> bool:
 
 def recover_uncovered(lines, answers, out: dict) -> dict:
     """Re-read once each piece holding an obligation line no rule covers, naming those lines; then refuse the chapter
-    (ai_extractor.PageLoss, which every caller already refuses on) if any is still in no rule. Lines with weaker rule
+    then hand what is still uncovered to add_rule_lines. Lines with weaker rule
     words stay reported in out["uncovered"] only. Calls the model."""
     import ai_extractor as ax
     missing = [i for i, _p, t in out["uncovered"] if binding(t)]
@@ -540,13 +540,47 @@ def recover_uncovered(lines, answers, out: dict) -> dict:
             again[k] = (answers[k][0], d)
             print(f"    [section-reader] re-read {n}/{len(todo)} (p{lines[answers[k][0][1]][0]})", flush=True)
     redo = build(lines, again)
-    redo["report"]["reread_pieces"] = sum(1 for (_c, a, b), _d in answers if any(a <= i < b for i in missing))
-    still = [(i, p, t) for i, p, t in redo["uncovered"] if binding(t)]
-    if still:
-        raise ax.PageLoss(f"section_reader: {len(still)} obligation line(s) in no rule after a re-read, e.g. "
-                          + "; ".join(f"p{p} '{t[:70]}'" for _i, p, t in still[:5])
-                          + ". Refusing the chapter rather than serving it without them.")
-    return redo
+    redo["report"]["reread_pieces"] = len(todo)
+    return add_rule_lines(lines, redo)
+
+
+def add_rule_lines(lines, out: dict) -> dict:
+    """After the re-read, an obligation line still in no rule is ADDED as a rule by the program when it is a rule by
+    its form -- a labelled item, or a line under a Controls/Objectives heading -- copying the PDF's lines from it to
+    the line before the next label, heading or rule (at most 15). Anything else (Parramatta's 'This DCP is to be read
+    in conjunction with the LEP', Leichhardt's character descriptions) is background: reported, never refused; the
+    R2 gate against the live chapter remains the check that nothing served is lost. Pure."""
+    heads = {i for i, _p, t in [(i, *lines[i]) for i in range(len(lines))] if numbered_level(t)}
+    taken = {i for r in out["rules"] for i in range(r["first"], r["last"] + 1)}
+    starts = sorted(r["first"] for r in out["rules"])
+    added = []
+    for i, _p, t in out["uncovered"]:
+        if i in taken or not binding(t):
+            continue
+        above = [lines[h][1] for h in range(max(0, i - 60), i) if h in heads or _CONTROL_HEAD.search(lines[h][1])
+                 or _OBJECTIVE_HEAD.search(lines[h][1])]
+        kind = heading_kind(above[-3:]) if above else None
+        if not (_ITEM.match(t) or kind):
+            continue
+        end = i
+        while (end + 1 < len(lines) and end + 1 - i < 15 and end + 1 not in taken and end + 1 not in heads
+               and end + 1 not in starts and not _ITEM.match(lines[end + 1][1])
+               and not lines[end][1].rstrip().endswith((".", ";"))):
+            end += 1
+        num = next((lines[h][1] for h in range(i - 1, -1, -1) if h in heads and _NUM_HEADING.match(lines[h][1])), "")
+        item = _ITEM.match(t)
+        code = " ".join(x for x in (num.split()[0] if num else "", item.group(0).strip().strip("().") if item else "")
+                        if x) or f"L{i}"
+        rule = {"first": i, "last": end, "label": kind or "control", "lead_in": None, "section": num,
+                "text": "\n".join(t2 for _p2, t2 in lines[i:end + 1]), "page": lines[i][0], "source": "added_by_program",
+                "code": code, "title": ""}
+        added.append(rule)
+        taken.update(range(i, end + 1))
+    out["rules"] = sorted(out["rules"] + added, key=lambda r: r["first"])
+    out["uncovered"] = [u for u in out["uncovered"] if u[0] not in taken]
+    out["report"]["added_by_program"] = len(added)
+    out["report"]["uncovered"] = len(out["uncovered"])
+    return out
 
 
 def read_chapter(pdf_path: str, pages: tuple[int, int] | None = None) -> dict:

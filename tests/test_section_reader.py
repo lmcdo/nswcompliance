@@ -226,15 +226,26 @@ def test_an_uncovered_obligation_line_is_reread_and_then_included(monkeypatch):
     assert out["report"]["reread_pieces"] == 1
 
 
-def test_an_obligation_line_still_uncovered_after_the_reread_refuses_the_chapter(monkeypatch):
-    import pytest
-    import ai_extractor as ax
-    lines = L("Fences must be 1.2m high.", "Driveways must be 3m wide at the property boundary.")
+def test_a_labelled_rule_line_still_uncovered_after_the_reread_is_added_by_the_program(monkeypatch):
+    """City of Sydney 2: '(a) Development must achieve ...' left out twice; it is copied in, not lost."""
+    lines = L("Fences must be 1.2m high.", "(a) Development must achieve and satisfy the outcomes expressed in",
+              "the character statement.")
     first = ans(lines, [rule(0, 0)])
     monkeypatch.setattr(sr, "ask", lambda text: {"headings": [], "rules": [rule(0, 0)]})
-    with pytest.raises(ax.PageLoss, match="Driveways must"):
-        sr.recover_uncovered(lines, first, sr.build(lines, first))
+    out = sr.recover_uncovered(lines, first, sr.build(lines, first))
+    added = [r for r in out["rules"] if r.get("source") == "added_by_program"]
+    assert [r["text"] for r in added] == [
+        "(a) Development must achieve and satisfy the outcomes expressed in\nthe character statement."]
+    assert out["report"]["uncovered"] == 0
 
+
+def test_a_background_sentence_with_rule_words_is_reported_not_added_or_refused(monkeypatch):
+    """Parramatta p8: 'This DCP is to be read in conjunction with the Parramatta LEP 2023.' is not a control."""
+    lines = L("Fences must be 1.2m high.", "This DCP is to be read in conjunction with the Parramatta LEP 2023.")
+    first = ans(lines, [rule(0, 0)])
+    monkeypatch.setattr(sr, "ask", lambda text: {"headings": [], "rules": [rule(0, 0)]})
+    out = sr.recover_uncovered(lines, first, sr.build(lines, first))
+    assert len(out["rules"]) == 1 and out["report"]["uncovered"] == 1
 
 def test_a_weak_rule_word_line_left_out_is_reported_not_refused(monkeypatch):
     lines = L("Fences must be 1.2m high.", "Applicants should consider the streetscape character in their design.")
