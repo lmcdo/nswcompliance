@@ -203,6 +203,7 @@ def is_title(text: str, after: str) -> bool:
     starts something new (a capital or a label) rather than finishing this one's sentence. Pure."""
     return (bool(_SHORT_TITLE.match(text)) and len(text.split()) <= 4
             and bool(after[:1].isupper() or _ITEM.match(after) or _BARE_LABEL.match(after)))
+_CONTENTS_LINE = re.compile(r"\.{4,}\s*\d+\s*$|\s\d{1,4}\s*$(?<=\.\s\d)")   # "... to be addressed in the POM ...... 19"
 _BARE_LABEL = re.compile(r"^\s*(?:[A-Z]{1,3}\d{1,3}(?:\.\d+)?|\(?[a-z]{1,3}\)|\d{1,2}\.)\s*$")
 _NONE_HERE = re.compile(r"^\s*(?:nil|none|n/a|not applicable)\.?\s*$|^\s*there (?:are|is) no\b", re.I)
 _OBJECTIVE_HEAD = re.compile(r"\b(objectives?|desired (?:future )?(?:outcomes?|character)|aims?|intent|purpose)\b", re.I)
@@ -585,13 +586,26 @@ def add_rule_lines(lines, out: dict) -> dict:
         if i in taken:
             continue
         kind = section_kind(i)
-        if not ((binding(t) and (_ITEM.match(t) or kind)) or kind):
+        if _CONTENTS_LINE.search(t):
+            continue
+        # Any rule-worded line in no rule is the council's text and is kept: City of Sydney's locality statements
+        # ("contributory buildings are to be retained") are binding through principle (a) yet sit under no Controls
+        # heading (pilot: 135 lines R2 caught). Walk back to where the sentence starts, forward to where it ends.
+        while (i - 1 >= 0 and i - 1 not in taken and i - 1 not in heads and i - (r0 := i) < 15
+               and not lines[i - 1][1].rstrip().endswith((".", ";", ":")) and not _ITEM.match(t)
+               and not _BARE_LABEL.match(lines[i - 1][1]) and not is_title(lines[i - 1][1], t)):
+            i -= 1
+            t = lines[i][1]
+        if i in taken:
             continue
         end = i
         while (end + 1 < len(lines) and end + 1 - i < 15 and end + 1 not in taken and end + 1 not in heads
                and end + 1 not in starts and not _ITEM.match(lines[end + 1][1])
                and not lines[end][1].rstrip().endswith((".", ";"))):
             end += 1
+        if not kind:      # judged on the whole sentence: the duty word is often on its second line
+            whole = " ".join(t2 for _p2, t2 in lines[i:end + 1])
+            kind = "objective" if _AIM.match(_ITEM.sub("", whole).strip()) else "control" if binding(whole) else "note"
         num = next((lines[h][1] for h in range(i - 1, -1, -1) if h in heads and _NUM_HEADING.match(lines[h][1])), "")
         item = _ITEM.match(t)
         code = " ".join(x for x in (num.split()[0] if num else "", item.group(0).strip().strip("().") if item else "")

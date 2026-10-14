@@ -239,20 +239,25 @@ def test_a_labelled_rule_line_still_uncovered_after_the_reread_is_added_by_the_p
     assert out["report"]["uncovered"] == 0
 
 
-def test_a_background_sentence_with_rule_words_is_reported_not_added_or_refused(monkeypatch):
-    """Parramatta p8: 'This DCP is to be read in conjunction with the Parramatta LEP 2023.' is not a control."""
-    lines = L("Fences must be 1.2m high.", "This DCP is to be read in conjunction with the Parramatta LEP 2023.")
+def test_a_rule_worded_sentence_outside_any_controls_heading_is_kept_whole(monkeypatch):
+    """City of Sydney locality statements: binding prose under no Controls heading (pilot: 135 lines lost)."""
+    lines = L("Fences must be 1.2m high.", "Victorian and Federation terraces and other contributory buildings",
+              "are to be retained to preserve the streetscape.")
     first = ans(lines, [rule(0, 0)])
     monkeypatch.setattr(sr, "ask", lambda text: {"headings": [], "rules": [rule(0, 0)]})
     out = sr.recover_uncovered(lines, first, sr.build(lines, first))
-    assert len(out["rules"]) == 1 and out["report"]["uncovered"] == 1
+    added = [r for r in out["rules"] if r.get("source") == "added_by_program"]
+    assert [r["text"] for r in added] == ["Victorian and Federation terraces and other contributory buildings\n"
+                                          "are to be retained to preserve the streetscape."]
+    assert added[0]["label"] == "control"
 
-def test_a_weak_rule_word_line_left_out_is_reported_not_refused(monkeypatch):
-    lines = L("Fences must be 1.2m high.", "Applicants should consider the streetscape character in their design.")
+
+def test_a_contents_page_line_is_never_added(monkeypatch):
+    lines = L("Fences must be 1.2m high.", "premises - to be addressed in the POM.................................. 19")
     first = ans(lines, [rule(0, 0)])
-    monkeypatch.setattr(sr, "ask", lambda text: (_ for _ in ()).throw(AssertionError("no re-read expected")))
+    monkeypatch.setattr(sr, "ask", lambda text: {"headings": [], "rules": [rule(0, 0)]})
     out = sr.recover_uncovered(lines, first, sr.build(lines, first))
-    assert out["report"]["uncovered"] == 1
+    assert len(out["rules"]) == 1
 
 
 def test_a_label_printed_beside_the_text_becomes_the_rule_number():
