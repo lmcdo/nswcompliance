@@ -13,6 +13,7 @@
     "scripts/gate_rules.py",
     "scripts/section_reader.py",
     "tests/test_dcp_area_link_guard.py",
+    "tests/test_dcp_area_link_guard_real_db.py",
     "tests/test_dcp_commit_approved_records_hash.py",
     "tests/test_section_reader.py"
   ],
