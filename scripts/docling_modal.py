@@ -80,11 +80,16 @@ def _split(pdf_path: str) -> list[tuple[int, bytes]]:
     return chunks
 
 
+import threading
+
+_RUN_LOCK = threading.Lock()   # one Modal session at a time: concurrent app.run() calls clash (NotFoundError)
+
+
 def remote_docling_lines(pdf_path: str) -> list[tuple[int, str]]:
     """(page, text) like section_reader.docling_lines, converted on a Modal GPU in parallel chunks."""
     chunks = _split(str(pdf_path))
     out: list[tuple[int, str]] = []
-    with app.run():
+    with _RUN_LOCK, app.run():
         for n, ((offset, _b), lines) in enumerate(zip(chunks, docling_chunk.map([b for _o, b in chunks])), 1):
             out.extend((int(p) + offset, t) for p, t in lines)
             # progress after every chunk, never only at the end

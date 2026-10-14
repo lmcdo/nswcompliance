@@ -242,3 +242,63 @@ def test_a_weak_rule_word_line_left_out_is_reported_not_refused(monkeypatch):
     monkeypatch.setattr(sr, "ask", lambda text: (_ for _ in ()).throw(AssertionError("no re-read expected")))
     out = sr.recover_uncovered(lines, first, sr.build(lines, first))
     assert out["report"]["uncovered"] == 1
+
+
+def test_a_label_printed_beside_the_text_becomes_the_rule_number():
+    """Marrickville 9.8.5.1: 'C1' sits on its own line in the margin beside 'Development must be massed ...'."""
+    lines = L("9.8.5.1 76 Wilford Street, Newtown", "C1", "Development must be massed as follows:")
+    out = sr.build(lines, ans(lines, [rule(2, 2)], headings=[(0, 2)]))
+    assert out["rules"][0]["code"] == "9.8.5.1 C1"
+
+
+def test_a_nothing_applies_line_under_a_heading_is_kept_as_a_note():
+    lines = L("9.8.3 Heritage Conservation Areas (HCAs)", "There are no Heritage Conservation Areas in the precinct.",
+              "9.8.4 Precinct-specific planning controls", "Nil")
+    out = sr.build(lines, ans(lines, [], headings=[(0, 2), (2, 2)]))
+    assert [(r["label"], r["text"]) for r in out["rules"]] == [
+        ("note", "There are no Heritage Conservation Areas in the precinct."), ("note", "Nil")]
+
+
+def test_a_numbered_line_is_a_heading_even_when_the_model_misses_it():
+    lines = L("9.8.5.1 76 Wilford Street, Newtown", "C4 The residential component must be no greater than 70 percent.")
+    out = sr.build(lines, ans(lines, [rule(1, 1)]))
+    assert out["rules"][0]["code"] == "9.8.5.1 C4"
+
+
+def test_an_item_under_a_labelled_lead_in_carries_that_label():
+    lines = L("9.8.5.1 76 Wilford Street, Newtown", "C2 Development must ensure:",
+              "i. Any common building entries are accessed off Wilford Street;")
+    out = sr.build(lines, ans(lines, [rule(2, 2, lead_in=1)]))
+    assert out["rules"][0]["code"] == "9.8.5.1 C2 i"
+    assert out["rules"][0]["text"].startswith("C2 Development must ensure:")
+
+
+def test_an_item_whose_lead_in_has_a_margin_label_carries_it():
+    lines = L("9.8.5.1 76 Wilford Street, Newtown", "C1", "Development must be massed as follows:",
+              "i. Basement mass may cover the full site area.")
+    out = sr.build(lines, ans(lines, [rule(3, 3, lead_in=2)]))
+    assert out["rules"][0]["code"] == "9.8.5.1 C1 i"
+
+
+def test_a_rule_started_on_its_heading_title_and_label_starts_after_them():
+    """Marrickville 9.8.5.1 read 3: the model began C1 at '9.8.5.1 76 Wilford Street, Newtown'."""
+    lines = L("9.8.5.1 76 Wilford Street, Newtown", "Massing", "C1", "Development must be massed as follows:",
+              "i. Basement mass may cover the full site area.")
+    out = sr.build(lines, ans(lines, [rule(0, 4)]))
+    r = out["rules"][0]
+    assert r["code"] == "9.8.5.1 C1"
+    assert r["title"] == "Massing"
+    assert r["text"] == "Development must be massed as follows:\ni. Basement mass may cover the full site area."
+
+
+def test_a_control_returned_whole_is_split_at_its_items_the_same_as_when_returned_split():
+    lines = L("9.8.5.1 76 Wilford Street, Newtown", "C2", "Development must ensure:",
+              "i. Any common building entries are accessed off Wilford Street;",
+              "ii. Basement car parking has car access from Phillip Lane;", "a. which is sealed; and",
+              "iii. There is no entry off Gladstone Lane.")
+    whole = sr.build(lines, ans(lines, [rule(2, 6)]))
+    split = sr.build(lines, ans(lines, [rule(3, 3, lead_in=2), rule(4, 5, lead_in=2), rule(6, 6, lead_in=2)]))
+    for out in (whole, split):
+        assert [r["code"] for r in out["rules"]] == ["9.8.5.1 C2 i", "9.8.5.1 C2 ii", "9.8.5.1 C2 iii"]
+        assert out["rules"][1]["text"] == ("Development must ensure:\nii. Basement car parking has car access from "
+                                           "Phillip Lane;\na. which is sealed; and")

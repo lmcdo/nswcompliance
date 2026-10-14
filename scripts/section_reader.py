@@ -181,6 +181,30 @@ def ask(text: str) -> dict:
     return {}
 
 
+_NUM_HEADING = re.compile(r"^\s*(\d+(?:\.\d+){1,4})\s+[A-Z0-9][^.;:]{2,80}$")
+_SHORT_TITLE = re.compile(r"^\s*[A-Z][A-Za-z,&/' -]{2,40}$")     # "Massing", "Building entries": no digits, no stop
+TITLE_LEVEL = 9
+
+
+_PART_HEADING = re.compile(r"^\s*(?:part|section|chapter|volume)\s+[A-Z0-9]{1,4}\b", re.I)
+
+
+def numbered_level(text: str) -> int | None:
+    """Level of a numbered heading from its number alone: "Part 4 ..." 1, "4.3 ..." 3, "9.8.5.1 ..." 5 (one more
+    per dot, under any Part). None for anything else. Pure."""
+    if _PART_HEADING.match(text) and len(text.split()) <= 10 and not text.rstrip().endswith("."):
+        return 1
+    m = _NUM_HEADING.match(text)
+    return min(TITLE_LEVEL - 1, m.group(1).count(".") + 2) if m else None
+
+
+def is_title(text: str, after: str) -> bool:
+    """A short unnumbered title ("Massing", "Building entries"): four words or fewer, no full stop, and the next line
+    starts something new (a capital or a label) rather than finishing this one's sentence. Pure."""
+    return (bool(_SHORT_TITLE.match(text)) and len(text.split()) <= 4
+            and bool(after[:1].isupper() or _ITEM.match(after) or _BARE_LABEL.match(after)))
+_BARE_LABEL = re.compile(r"^\s*(?:[A-Z]{1,3}\d{1,3}(?:\.\d+)?|\(?[a-z]{1,3}\)|\d{1,2}\.)\s*$")
+_NONE_HERE = re.compile(r"^\s*(?:nil|none|n/a|not applicable)\.?\s*$|^\s*there (?:are|is) no\b", re.I)
 _OBJECTIVE_HEAD = re.compile(r"\b(objectives?|desired (?:future )?(?:outcomes?|character)|aims?|intent|purpose)\b", re.I)
 _CONTROL_HEAD = re.compile(r"\b(controls?|development standards?|requirements?|acceptable solutions?|"
                            r"design (?:guidance|criteria)|provisions)\b", re.I)
@@ -192,6 +216,42 @@ _AIM = re.compile(r"^To\s+(?:[a-z]+\s+){0,2}?(?:provide|ensure|encourage|promote
                   r"accommodate|contribute|deliver|guide|identify|prevent|restrict|set|define|outline)\b")
 _DUTY = re.compile(r"\b(?:must|shall|is to be|are to be|(?:is|are) required|(?:is|are) not required|"
                    r"(?:is|are) not permitted|not to exceed|minimum of|maximum of)\b", re.I)
+
+
+_ROMAN = re.compile(r"^\s*\(?([ivx]{1,5})[.)]\s+")
+_LETTER = re.compile(r"^\s*\(?([a-z])[.)]\s+")
+_DIGIT = re.compile(r"^\s*\(?(\d{1,2})[.)]\s+")
+
+
+def _item_kind(text: str) -> str | None:
+    for kind, rx in (("roman", _ROMAN), ("digit", _DIGIT), ("letter", _LETTER)):
+        if rx.match(text):
+            return kind
+    return None
+
+
+def split_items(lines, r: dict) -> list[dict]:
+    """One rule per top-level item, the same on every read (the model kept Marrickville 9.8.5.1 C2 i-v whole on one
+    read and split it on the next). The top level is the kind of the first item line ("i." / "1." / "a."); a line of
+    that kind starts a new rule, deeper items stay with their parent, and the lines before the first item become each
+    part's lead-in. A rule with fewer than two top-level items is returned unchanged. Pure."""
+    span = list(range(r["first"], r["last"] + 1))
+    kinds = [(i, _item_kind(lines[i][1])) for i in span]
+    first = next(((i, k) for i, k in kinds if k), None)
+    if not first:
+        return [r]
+    top = [i for i, k in kinds if k == first[1]]
+    if len(top) < 2 or first[0] == r["first"] and r.get("lead_in") is None and len(top) < 2:
+        return [r]
+    lead = r["lead_in"] if first[0] == r["first"] else first[0] - 1
+    if first[0] != r["first"] and first[0] - r["first"] > 1:
+        return [r]                                   # more than one lead-in line: keep the rule whole
+    out = []
+    for n, a in enumerate(top):
+        b = (top[n + 1] - 1) if n + 1 < len(top) else r["last"]
+        out.append({**r, "first": a, "last": b, "lead_in": lead,
+                    "text": "\n".join(t for _p, t in lines[a:b + 1]), "page": lines[a][0]})
+    return out
 
 
 def heading_kind(heads: list[str]) -> str | None:
@@ -230,7 +290,34 @@ def build(lines, answers: list[tuple[tuple[int, int, int], dict]]) -> dict:
             if a is None or b is None or not (start <= a <= b < end) or a in heads:
                 continue
             spans.setdefault(a, (b, lab if lab in LABELS else "control", _int((r or {}).get("lead_in"))))
-    report = {"overlaps": 0, "joined_mid_sentence": 0, "lead_ins": 0, "label_from_heading": 0, "lead_ins_rejected": 0, "label_from_words": 0}
+    # A short numbered line ("9.8.5.1 76 Wilford Street, Newtown") is a heading whatever the model said: the model
+    # marked it on one read of Marrickville 9.8 and not on the next, and the rules' section number moved with it.
+    for i, (_p, t) in enumerate(lines):
+        lvl = numbered_level(t)
+        if lvl:    # the number decides the level, not the model (it put 9.8.5.1 above 9.8.5 on one read)
+            heads[i] = lvl
+    # Every other heading's level is the program's too: a bare label ("C2") is never a heading, and an unnumbered
+    # title ("Massing", "Controls") always sits below the numbered ones -- the model's levels for these varied by read
+    # and pushed "9.8.5.1" out of the section path.
+    for i in list(heads):
+        if numbered_level(lines[i][1]):
+            continue
+        if _BARE_LABEL.match(lines[i][1]) or _ITEM.match(lines[i][1]):
+            del heads[i]
+        else:
+            heads[i] = TITLE_LEVEL
+    # A rule the model started on a heading, a short title or a bare margin label ("9.8.5.1 76 Wilford Street" /
+    # "Massing" / "C1" / "Development must ...") starts after them: the heading files it, the title names it, and the
+    # bare label numbers it (both found again below from the lines just before the rule).
+    trimmed: dict[int, tuple[int, str, int | None]] = {}
+    for a, (b, lab, lead) in spans.items():
+        while a < b and (a in heads or _BARE_LABEL.match(lines[a][1]) or is_title(lines[a][1], lines[a + 1][1])):
+            if not (a in heads or _BARE_LABEL.match(lines[a][1])):
+                heads.setdefault(a, TITLE_LEVEL)             # below every numbered heading
+            a += 1
+        trimmed.setdefault(a, (b, lab, lead))
+    spans = trimmed
+    report = {"overlaps": 0, "joined_mid_sentence": 0, "lead_ins": 0, "label_from_heading": 0, "lead_ins_rejected": 0, "label_from_words": 0, "none_notes": 0}
     rules: list[dict] = []
     last_end = -1
     for a in sorted(spans):
@@ -255,11 +342,23 @@ def build(lines, answers: list[tuple[tuple[int, int, int], dict]]) -> dict:
         rules.append({"first": a, "last": b, "label": lab, "lead_in": lead,
                       "text": "\n".join(t for _p, t in lines[a:b + 1]), "page": lines[a][0]})
         last_end = b
+    rules = [x for r in rules for x in split_items(lines, r)]
     # A lead-in the model also returned as a one-line rule of its own travels with its items instead.
     leads = {r["lead_in"] for r in rules if r["lead_in"] is not None}
     rules = [r for r in rules if not (r["first"] in leads and r["first"] == r["last"])]
     report["lead_ins"] = len(leads)
     hs = sorted(heads)
+    inside_any = {i for r in rules for i in range(r["first"], r["last"] + 1)}
+    # A section that says nothing applies ("Nil", "There are no Heritage Conservation Areas in the precinct") is kept
+    # as a note: it tells the reader of an address that nothing of that kind applies, rather than leaving a gap.
+    for h in hs:
+        n = h + 1
+        if n < len(lines) and n not in inside_any and n not in heads and _NONE_HERE.match(lines[n][1]):
+            rules.append({"first": n, "last": n, "label": "note", "lead_in": None,
+                          "text": lines[n][1], "page": lines[n][0]})
+            inside_any.add(n)
+            report["none_notes"] += 1
+    rules.sort(key=lambda r: r["first"])
     for r in rules:
         path: dict[int, str] = {}
         for h in hs:
@@ -279,7 +378,23 @@ def build(lines, answers: list[tuple[tuple[int, int, int], dict]]) -> dict:
         numbered_heads = [path[k] for k in sorted(path) if re.match(r"^\s*[A-Z]?\d", path[k])]
         m = re.match(r"^\s*([A-Z]?\d+(?:\.\d+)*[A-Z]?)", numbered_heads[-1]) if numbered_heads else None
         item = _ITEM.match(lines[r["first"]][1])
-        parts = [m.group(1) if m else "", item.group(0).strip().strip("().") if item else ""]
+        label = item.group(0).strip().strip("().") if item else ""
+        if not label:
+            # A label printed on its own beside the text ("C1" in the margin, Marrickville 9.8.5.1) arrives as the
+            # line just before the rule: it is the rule's number.
+            for b in (r["first"] - 1, r["first"] - 2):
+                if b >= 0 and b not in inside_any and _BARE_LABEL.match(lines[b][1]):
+                    label = lines[b][1].strip().strip("().")
+                    break
+        if r["lead_in"] is not None:
+            parent = _ITEM.match(lines[r["lead_in"]][1])
+            plabel = parent.group(0).strip().strip("().") if parent else ""
+            b = r["lead_in"] - 1
+            if not plabel and b >= 0 and _BARE_LABEL.match(lines[b][1]):     # "C1" in the margin beside the lead-in
+                plabel = lines[b][1].strip().strip("().")
+            if plabel and plabel != label:
+                label = f"{plabel} {label}".strip()        # Marrickville 9.8.5.1 C2 i, not a bare "i"
+        parts = [m.group(1) if m else "", label]
         r["code"] = " ".join(x for x in parts if x) or f"L{r['first']}"
         r["title"] = path[max(path)] if path else ""
         # The label is proven by the printed heading above the rule when one names it; the model's guess otherwise.
