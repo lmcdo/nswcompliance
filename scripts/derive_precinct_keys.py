@@ -169,7 +169,10 @@ RULES: list[dict] = [
     {
         "name": "ashfield_chapter_d_parts",
         "council": "ashfield",
-        "where": "document_id = 'Inner_West_Ashfield_DCP_2016__chapter_d_precinct_guidelines'",
+        # By chapter, not document_id: the re-read carries the amended edition's id
+        # ('..._with_IWLEP_2022_amendments_Nov_22', which live Part 3 already used at the same pages), so the
+        # old id matched none of the new rows and the publish guard predicted 0 of 639 links (2026-10-15).
+        "where": "source_chapter_key = 'chapter-d-precinct-guidelines'",
         "strategy": {"type": "page_range", "ranges": _ASHFIELD_D_PARTS},
         "validate": False,
     },
@@ -272,6 +275,12 @@ RULES: list[dict] = [
     {"name": "canterbury_bankstown_lot_list_sites", "council": "canterbury_bankstown", "validate": False,
      "where": "source_chapter_key IN ('chapter-11-9-revesby-hospital', 'chapter-11-12-445-canterbury-road', 'chapter-11-15-marco-avenue', 'chapter-11-11-brighton-avenue', 'chapter-11-3-roberts-road', 'chapter-11-8-boorea', 'chapter-11-1-milton-street', 'chapter-11-10-chullora-marketplace', 'chapter-11-13-former-wsu-campus-milperra')",
      "strategy": {"type": "chapter_map", "map": {"chapter-11-9-revesby-hospital": "11.9", "chapter-11-12-445-canterbury-road": "11.12", "chapter-11-15-marco-avenue": "11.15", "chapter-11-11-brighton-avenue": "11.11", "chapter-11-3-roberts-road": "11.3", "chapter-11-8-boorea": "11.8", "chapter-11-1-milton-street": "11.1", "chapter-11-10-chullora-marketplace": "11.10", "chapter-11-13-former-wsu-campus-milperra": "11.13"}}},
+    # Woollahra C3 "applies to the land identified in Map 1 ... predominantly the Watsons Bay HCA ... but also includes
+    # other land" (p5). Keyed as live was hand-keyed (38 rows 'Watsons Bay HCA'); Map 1's other land is not yet an
+    # outline (ce-precinct-maps-PLAN). Precinct A-E outlines do not exist, so the chapter key is used for all.
+    {"name": "woollahra_c3_watsons_bay", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-c3-watsons-bay-hca'",
+     "strategy": {"type": "constant", "precinct_id": "Watsons Bay HCA"}},
     {"name": "woollahra_c1_paddington", "council": "woollahra", "validate": False,
      "where": "source_chapter_key = 'chapter-c1-paddington-hca'",
      "strategy": {"type": "constant", "precinct_id": "Paddington HCA"}},
