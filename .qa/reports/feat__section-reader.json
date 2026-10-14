@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds an opt-in reader (DCP_READER=section). Off by default, so no chapter is read differently until it is switched on for the pilot; output goes to the review queue like every reader.",
-  "commit_hash": "17e325cd",
+  "commit_hash": "6576f399",
   "files": [
     ".qa/reports/feat__section-reader.json",
     "scripts/dcp_extract_changed.py",
