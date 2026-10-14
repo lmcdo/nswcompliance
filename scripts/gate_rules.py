@@ -95,6 +95,12 @@ GATE_RULES: list[dict] = [
     {"name": "cb_8_1_employment_zones", "council": "canterbury_bankstown",
      "where": "source_chapter_key = 'chapter-8-1-general-requirements'",
      "set": {"v2_applicable_zones": ["E3", "SP4"]}},  # noqa: zone-codes (the plan's own zones)
+    # "Part 19 applies to any development associated with a Heritage Item or within a Heritage Conservation Area
+    # (HCA) identified on the KLEP Heritage Map." (Ku-ring-gai DCP Part 19, p2). Same gate as ashfield_e1_heritage.
+    # Recorded limit: 19F's "vicinity of a heritage item" has no land layer, so a lot only adjoining one is not shown it.
+    {"name": "krg_19_heritage", "council": "ku_ring_gai",
+     "where": "source_chapter_key = 'section-b-part-19-heritage'",
+     "set": {"v2_marker": "heritage"}},
 ]
 _GATE_COLUMNS = {"v2_marker", "v2_dcp_layer", "v2_site_condition_required", "v2_applicable_zones"}
 #: v2_applicable_zones added 2026-10-14: a zone limit set by hand was undone by every re-extraction (dry run of the
