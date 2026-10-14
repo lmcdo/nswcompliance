@@ -54,6 +54,7 @@ import dcp_extract_changed as dx  # noqa: E402
 from scripts.dcp_supersede_guard import enforce as enforce_section_loss  # noqa: E402
 from scripts.dcp_supersede_guard import snapshot as section_snapshot  # noqa: E402
 from scripts.dcp_supersede_guard import enforce_fidelity, enforce_legibility  # noqa: E402
+from scripts import dcp_area_link_guard as area_links  # noqa: E402
 
 
 def find_committable_chapters(cur) -> list[dict]:
@@ -428,6 +429,10 @@ def main() -> int:
               "to publish text a two-column read has scrambled."),
     )
     parser.add_argument(
+        "--allow-area-link-loss", action="append", default=[], metavar="COUNCIL/CHAPTER",
+        help="Let ONE named chapter publish although fewer of its rules would keep their precinct/marker/zone link.",
+    )
+    parser.add_argument(
         "--allow-fidelity", action="append", default=[], metavar="COUNCIL/CHAPTER",
         help=("Let ONE named chapter through the fidelity guard. Repeatable. Separate "
               "from the other two again: deciding that a chapter may shed sections, or "
@@ -439,6 +444,7 @@ def main() -> int:
     allowed_loss = frozenset(args.allow_section_loss)
     allowed_garble = frozenset(args.allow_garble)
     allowed_fidelity = frozenset(args.allow_fidelity)
+    allowed_area = frozenset(args.allow_area_link_loss)
 
     conn = psycopg2.connect(dx.DATABASE_URL)
     conn.autocommit = False
@@ -523,6 +529,7 @@ def main() -> int:
             # the approval is kept, so it is refused again every day until a person
             # decides. 2026-09-13: this swap took marrickville low-density 215 -> 26.
             before = section_snapshot(cur, council, chapter_key)
+            linked_before = area_links.linked_count(cur, council, chapter_key)
             # Before the writes, because this one reads the QUEUE: dcp_fidelity_gate has
             # already graded these rows against the council's own PDF and, until now,
             # nothing on this path looked at the verdict. Raising here rolls the
@@ -541,6 +548,9 @@ def main() -> int:
             # Judged on the same before/after snapshot, inside the same uncommitted
             # transaction, so a refusal rolls the chapter back and keeps the approval.
             enforce_legibility(cur, council, chapter_key, before, allowed_garble)
+            # Who the rules reach: precinct, marker and zone links are re-made after publish by written rules, so a
+            # new version they no longer fit would reach every house (Waverley pilot: 4 of 89 Part E links).
+            area_links.enforce(cur, council, chapter_key, linked_before, allowed_area)
             # Resolve the worklist: the reviewed provisions are now live. The status
             # enum has no 'committed', so the resolved rows are deleted (the permanent
             # record is regulatory_provisions, extraction_method='ai-reviewed').

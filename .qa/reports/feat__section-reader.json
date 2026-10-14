@@ -4,9 +4,16 @@
   "commit_hash": "6576f399",
   "files": [
     ".qa/reports/feat__section-reader.json",
+    "railway.dcp-monitor.toml",
+    "scripts/dcp_area_link_guard.py",
+    "scripts/dcp_commit_approved.py",
     "scripts/dcp_extract_changed.py",
+    "scripts/dcp_fidelity_gate.py",
     "scripts/docling_modal.py",
+    "scripts/gate_rules.py",
     "scripts/section_reader.py",
+    "tests/test_dcp_area_link_guard.py",
+    "tests/test_dcp_commit_approved_records_hash.py",
     "tests/test_section_reader.py"
   ],
   "pre_impl": {

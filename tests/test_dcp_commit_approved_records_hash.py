@@ -104,6 +104,8 @@ def _wire(monkeypatch, approved_hash, registry_hash="pdf-v2", commit_raises=Fals
                         lambda cur, council, chapter_key: Snapshot(frozenset(), 0, frozenset()))
     monkeypatch.setattr(dca, "enforce_section_loss", lambda *a, **k: None)
     monkeypatch.setattr(dca, "enforce_legibility", lambda *a, **k: frozenset())
+    monkeypatch.setattr(dca.area_links, "linked_count", lambda *a, **k: 0)
+    monkeypatch.setattr(dca.area_links, "relinkable_count", lambda *a, **k: 0)
 
     # Everything after the commit loop is out of scope here and must not reach a network.
     pipeline = type(sys)("enrichment.pipeline")
