@@ -485,8 +485,12 @@ def read_pictures(pdf_path: str, pages: list[int], have: list[str]) -> list[dict
     seen = [norm(t) for t in have]
     out = []
 
+    # The pages are cut out first, in this thread: a PdfReader is not safe to share between threads (Leichhardt C2
+    # pilot: "Invalid page object" when the parallel calls each cut their own page).
+    cut = {p: ax._subset_bytes(reader, p - 1, p) for p in pages}
+
     def one(p: int) -> tuple[int, list[dict]]:
-        got = ax._call_and_parse_with_empty_retry("mistral", ax._subset_bytes(reader, p - 1, p), ax.PROMPT)
+        got = ax._call_and_parse_with_empty_retry("mistral", cut[p], ax.PROMPT)
         return p, got
 
     done = 0
