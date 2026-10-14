@@ -313,3 +313,11 @@ def test_a_control_returned_whole_is_split_at_its_items_the_same_as_when_returne
         assert [r["code"] for r in out["rules"]] == ["9.8.5.1 C2 i", "9.8.5.1 C2 ii", "9.8.5.1 C2 iii"]
         assert out["rules"][1]["text"] == ("Development must ensure:\nii. Basement car parking has car access from "
                                            "Phillip Lane;\na. which is sealed; and")
+
+
+def test_a_letter_prefixed_section_number_is_a_heading_and_files_the_rule():
+    """Leichhardt C2: 'C2.2.1.4 Booth Street ...' numbers the precinct its rules are linked to."""
+    lines = L("C2.2.1.4 Booth Street Distinctive Neighbourhood", "Controls",
+              "C11 The development to a primary street frontage must respect the existing character.")
+    out = sr.build(lines, ans(lines, [rule(2, 2)]))
+    assert out["rules"][0]["code"] == "C2.2.1.4 C11"

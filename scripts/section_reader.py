@@ -181,7 +181,7 @@ def ask(text: str) -> dict:
     return {}
 
 
-_NUM_HEADING = re.compile(r"^\s*(\d+(?:\.\d+){1,4})\s+[A-Z0-9][^.;:]{2,80}$")
+_NUM_HEADING = re.compile(r"^\s*([A-Z]{0,2}\d+(?:\.\d+){1,5})\s+[A-Z0-9][^.;:]{2,80}$")   # 9.8.5.1, C2.2.1.4
 _SHORT_TITLE = re.compile(r"^\s*[A-Z][A-Za-z,&/' -]{2,40}$")     # "Massing", "Building entries": no digits, no stop
 TITLE_LEVEL = 9
 
