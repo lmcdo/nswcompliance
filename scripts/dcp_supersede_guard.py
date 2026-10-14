@@ -59,6 +59,7 @@ toward refusing, never toward letting a loss through.
 from __future__ import annotations
 
 import os
+import re
 import sys
 from dataclasses import dataclass, field
 
@@ -328,6 +329,26 @@ FIDELITY_MIN_GRADED = 20
 # and is excluded from both numerator and denominator -- counting ungraded rows as bad
 # would make the gate fire hardest on chapters nobody has checked.
 FIDELITY_PASSING = ("grounded", "ok")
+# A row flagged ONLY because its clause number is not proven on its page: its words and numbers
+# passed every other check. The site shows such a rule with its page, not the number (#1170), so
+# the number cannot mislead anyone, and counting it against the bar refused 7 chapters of
+# word-for-word rules on 2026-10-15 (Woollahra C3: 452 of 483 flags; Waverley 968 of 989).
+# "(" after the prefix is the proven/imprecise verdict; the ": " variants ("the rule's wording
+# could not be located", "lines unreadable") are words problems and stay failures, as does any
+# row carrying a second finding or a page-level suspect_reason.
+_OTHER_FINDINGS = re.compile(r"URL not in source|numbers not in source|% of words found in source|"
+                             r"number split by the reader|% of tokens are not on the page|"
+                             r"% of word pairs survive")
+
+
+def citation_only(status: str | None, suspect: str | None, detail: str | None) -> bool:
+    """True when a row's only finding is an unproven clause number (its words passed)."""
+    try:
+        from scripts.citation_proof import CITATION_FINDING
+    except ImportError:  # invoked as `python scripts/dcp_commit_approved.py`
+        from citation_proof import CITATION_FINDING
+    return (status == "flagged" and not suspect and bool(detail)
+            and detail.startswith(CITATION_FINDING + " (") and not _OTHER_FINDINGS.search(detail))
 
 
 class FidelityRefused(RuntimeError):
@@ -348,7 +369,7 @@ def fidelity_snapshot(cur, council: str, chapter_key: str, batch_ts) -> tuple:
     cur.execute(
         """
         SELECT COALESCE(ref_number, '(unnumbered)'), fidelity_status,
-               COALESCE(suspect_reason, fidelity_detail, '')
+               COALESCE(suspect_reason, fidelity_detail, ''), suspect_reason, fidelity_detail
         FROM dcp_review_queue
         WHERE council = %s AND chapter_key = %s AND created_at = %s
           AND status = 'approved'
@@ -357,7 +378,14 @@ def fidelity_snapshot(cur, council: str, chapter_key: str, batch_ts) -> tuple:
     )
     rows = cur.fetchall()
     graded = [r for r in rows if r[1] is not None]
-    bad = [(r[0], r[1], r[2]) for r in graded if r[1] not in FIDELITY_PASSING]
+    # (ref, status, shown, suspect_reason, fidelity_detail); a row without the last two is never excused
+    excused = {id(r) for r in graded if len(r) >= 5 and citation_only(r[1], r[3], r[4])}
+    number_only = len(excused)
+    if number_only:
+        print(f"    [fidelity] {council}/{chapter_key}: {number_only} row(s) flagged only for an "
+              f"unproven clause number count as passing (served with their page, #1170)")
+    bad = [(r[0], r[1], r[2]) for r in graded
+           if r[1] not in FIDELITY_PASSING and id(r) not in excused]
     return len(graded), len(bad), bad, len(rows)
 
 
