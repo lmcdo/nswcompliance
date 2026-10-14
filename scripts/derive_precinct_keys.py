@@ -296,6 +296,13 @@ RULES: list[dict] = [
          ("Wallaroy Precinct", 18, 20), ("Manning Road Precinct", 21, 23), ("Point Piper Precinct", 24, 26),
          ("Bellevue Hill South Precinct", 27, 29), ("Bellevue Hill North Precinct", 30, 33),
          ("Rose Bay Precinct", 34, 36), ("Vaucluse West Precinct", 37, 39), ("Vaucluse East Precinct", 40, 42)]}},
+    # Woollahra D2.2-D2.4: one mixed use centre each, by PDF page from each section's MAP page ("D2.3 Rose Bay North MAP
+    # 2", p15); D2.1 (pp1-8) applies to all three. Keys = live's; outlines = LEP zone MU1 (data/woollahra_d2_centres).
+    {"name": "woollahra_d2_centres_by_page", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-d2-mixed-use-centres'",
+     "strategy": {"type": "page_range", "ranges": [
+         ("Woollahra Mixed Use Centres", 1, 8), ("New South Head Road Corridor Edgecliff", 9, 14),
+         ("Rose Bay North Centre", 15, 19), ("Rose Bay South Centre", 20, 24)]}},
     {"name": "woollahra_c3_watsons_bay", "council": "woollahra", "validate": False,
      "where": "source_chapter_key = 'chapter-c3-watsons-bay-hca'",
      "strategy": {"type": "constant", "precinct_id": "Watsons Bay HCA"}},

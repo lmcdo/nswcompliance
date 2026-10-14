@@ -34,7 +34,7 @@ SRC = REPO / "data" / "woollahra_d1_centres" / "centres.geojson"
 BACKUP_DIR = REPO / "data" / "db_rollback_backups"
 LGA = "Woollahra"
 FORMER_COUNCIL = "Woollahra"
-CONFIDENCE = {"lep_zone_e1_named_by_address_register": 0.9, "cadastre_lot_from_dcp_map": 0.8,
+CONFIDENCE = {"lep_zone_e1_named_by_address_register": 0.9, "lep_zone_mu1_named_by_address_register": 0.9, "cadastre_lot_from_dcp_map": 0.8,
               "union_of_d1_centres": 0.9}
 LOOKUP_SQL = """SELECT precinct_id FROM dcp_precinct_boundaries
                  WHERE ST_Contains(boundary, ST_SetSRID(ST_MakePoint(%s, %s), 4326)) AND LOWER(lga) = LOWER(%s)"""
