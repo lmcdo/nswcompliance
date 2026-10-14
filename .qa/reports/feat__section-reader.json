@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds an opt-in reader (DCP_READER=section). Off by default, so no chapter is read differently until it is switched on for the pilot; output goes to the review queue like every reader.",
-  "commit_hash": "d29aaca7",
+  "commit_hash": "9f7c0bf1",
   "files": [
     ".qa/reports/feat__section-reader.json",
     "railway.dcp-monitor.toml",

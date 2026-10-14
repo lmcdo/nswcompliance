@@ -264,6 +264,20 @@ def test_an_is_to_sentence_with_any_verb_is_kept_as_a_control(monkeypatch):
         ("control", "The area is to maintain its low scale residential character below\nthe tree canopy.")]
 
 
+def test_walking_back_to_a_sentence_start_stops_after_15_lines(monkeypatch):
+    """The cap was `i - (r0 := i) < 15`, always 0, and the forward walk was counted from the walked-back start: the
+    rule line itself fell outside and 15 lines of background were added in its place."""
+    run = [f"background words line {k} without an end mark" for k in range(30)]
+    lines = L("Fences must be 1.2m high.", *run, "the building is to be set back 3 metres.")
+    first = ans(lines, [rule(0, 0)])
+    monkeypatch.setattr(sr, "ask", lambda text: {"headings": [], "rules": [rule(0, 0)]})
+    out = sr.recover_uncovered(lines, first, sr.build(lines, first))
+    added = [r for r in out["rules"] if r.get("source") == "added_by_program"]
+    assert len(added) == 1
+    assert added[0]["text"].endswith("the building is to be set back 3 metres.")
+    assert len(added[0]["text"].splitlines()) <= 16
+
+
 def test_a_contents_page_line_is_never_added(monkeypatch):
     lines = L("Fences must be 1.2m high.", "premises - to be addressed in the POM.................................. 19")
     first = ans(lines, [rule(0, 0)])
@@ -364,3 +378,10 @@ def test_a_part_code_in_a_running_header_is_recognised():
     """Waverley DCP pages carry 'Bondi Junction      E1' at the top; the Part is nowhere else on the page."""
     assert sr._HEADER_PART.match("Bondi Junction      E1 ").group("b") == "E1"
     assert sr._HEADER_PART.match("WAVERLEY DEVELOPMENT CONTROL PLAN 2022") is None
+
+
+def test_a_part_code_after_a_single_space_is_recognised():
+    """Waverley E6's header has one space before the code; with 2+ required, all of E6 lost its Part (and its link)."""
+    m = sr._HEADER_PART.match(" 194-214 Oxford Street, 2 Nelson Street and Osmund Lane E6 ")
+    assert m and m.group("b") == "E6"
+    assert sr._HEADER_PART.match("Bondi Junction Centre") is None

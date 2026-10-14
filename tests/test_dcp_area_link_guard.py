@@ -31,3 +31,14 @@ def test_enforce_raises_and_the_override_lets_one_named_chapter_through(monkeypa
         g.enforce(None, "waverley", "waverley-dcp-2022", 89)
     assert g.enforce(None, "waverley", "waverley-dcp-2022", 89,
                      frozenset({"waverley/waverley-dcp-2022"})) == 4
+
+
+def test_both_publish_paths_run_the_guard_before_they_commit():
+    """PR #1285 review: the direct-to-live path (dcp_extract_changed) published without it."""
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1] / "scripts"
+    for name in ("dcp_commit_approved.py", "dcp_extract_changed.py"):
+        src = (root / name).read_text(encoding="utf-8")
+        assert "area_links.linked_count(cur, council, chapter_key)" in src, name
+        guard = src.index("area_links.enforce(cur, council, chapter_key")
+        assert "conn.commit()" in src[guard:guard + 400] or name == "dcp_commit_approved.py", name

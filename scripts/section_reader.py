@@ -597,15 +597,16 @@ def add_rule_lines(lines, out: dict) -> dict:
         # Any rule-worded line in no rule is the council's text and is kept: City of Sydney's locality statements
         # ("contributory buildings are to be retained") are binding through principle (a) yet sit under no Controls
         # heading (pilot: 135 lines R2 caught). Walk back to where the sentence starts, forward to where it ends.
-        while (i - 1 >= 0 and i - 1 not in taken and i - 1 not in heads and i - (r0 := i) < 15
+        start = i
+        while (i - 1 >= 0 and i - 1 not in taken and i - 1 not in heads and start - i < 15
                and not lines[i - 1][1].rstrip().endswith((".", ";", ":")) and not _ITEM.match(t)
                and not _BARE_LABEL.match(lines[i - 1][1]) and not is_title(lines[i - 1][1], t)):
             i -= 1
             t = lines[i][1]
         if i in taken:
             continue
-        end = i
-        while (end + 1 < len(lines) and end + 1 - i < 15 and end + 1 not in taken and end + 1 not in heads
+        end = start       # forward from the candidate itself, so walking back never cuts off the rule line
+        while (end + 1 < len(lines) and end + 1 - start < 15 and end + 1 not in taken and end + 1 not in heads
                and end + 1 not in starts and not _ITEM.match(lines[end + 1][1])
                and not lines[end][1].rstrip().endswith((".", ";"))):
             end += 1
@@ -628,14 +629,15 @@ def add_rule_lines(lines, out: dict) -> dict:
     return out
 
 
-_HEADER_PART = re.compile(r"^\s*(?:(?P<a>[A-Z]\d{1,2})\s{2,}\S.*|.*\S\s{2,}(?P<b>[A-Z]\d{1,2}))\s*$")
+_HEADER_PART = re.compile(r"^\s*(?:(?P<a>[A-Z]\d{1,2})\s{2,}\S.*|.*\S\s+(?P<b>[A-Z]\d{1,2}))\s*$")
 
 
 def page_parts(pdf_path: str) -> dict[int, str]:
     """page -> Part code printed in that page's running header ("Bondi Junction      E1" on Waverley DCP p289-), for
     whole-plan PDFs whose Part lives only in the header. A code counts when the same header line is on 3+ pages.
     The reader drops running heads as noise, and the Part was then lost from every rule's number (Waverley pilot:
-    4 of 89 Part E precinct rules kept their Part)."""
+    4 of 89 Part E precinct rules kept their Part). A trailing code may follow a single space: Waverley E6's header
+    is "194-214 Oxford Street, 2 Nelson Street and Osmund Lane E6" (E6 was lost while the earlier Parts kept theirs)."""
     import collections
     import fitz
     found: dict[int, str] = {}

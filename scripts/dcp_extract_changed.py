@@ -57,6 +57,7 @@ from scripts.dcp_page_map_gate import (
 # of its sections. Measured before the write, judged after it, same transaction.
 from scripts.dcp_supersede_guard import enforce as enforce_section_loss
 from scripts.dcp_supersede_guard import snapshot as section_snapshot
+from scripts import dcp_area_link_guard as area_links
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -4658,6 +4659,7 @@ def extract_chapter(
     dry_run: bool,
     review: bool = False,
     allow_section_loss: frozenset = frozenset(),
+    allow_area_link_loss: frozenset = frozenset(),
 ) -> tuple[bool, dict | None]:
     """
     Download PDF, extract provisions, commit atomically.
@@ -5139,6 +5141,7 @@ def extract_chapter(
                 # Section-loss guard, part 1: the live chapter as it stands before any
                 # write. Part 2 judges it again just before conn.commit() below.
                 section_loss_before = section_snapshot(cur, council, chapter_key)
+                linked_before = area_links.linked_count(cur, council, chapter_key)
                 if status == "restructure" or first_extraction:
                     # Full replace: soft-delete all existing + bulk insert.
                     # Strict source_chapter_key = %s only — never wipe NULL-keyed
@@ -5326,6 +5329,9 @@ def extract_chapter(
                 # needs_extraction stays TRUE so the chapter is not silently dropped.
                 enforce_section_loss(cur, council, chapter_key, section_loss_before,
                                      allow_section_loss)
+                # Who the rules reach: the same precinct/marker/zone link guard as the commit path (PR #1285 review:
+                # this path published without it, so a version the link rules no longer fit reached every house).
+                area_links.enforce(cur, council, chapter_key, linked_before, allow_area_link_loss)
                 conn.commit()
 
             except Exception as exc:
@@ -5869,6 +5875,11 @@ def main() -> None:
         help=("Let ONE named chapter through the section-loss guard on a direct commit. "
               "Repeatable. Only for a loss a person has checked against the source document."),
     )
+    parser.add_argument(
+        "--allow-area-link-loss", action="append", default=[], metavar="COUNCIL/CHAPTER",
+        help=("Let ONE named chapter through the precinct/area-link guard on a direct commit. "
+              "Repeatable. Only for a loss a person has checked."),
+    )
     args = parser.parse_args()
 
     require_r2()
@@ -5928,6 +5939,7 @@ def main() -> None:
             dry_run=args.dry_run,
             review=args.review,
             allow_section_loss=frozenset(args.allow_section_loss),
+            allow_area_link_loss=frozenset(args.allow_area_link_loss),
         )
         # extract_chapter takes conn as a PARAMETER, so its own revive cannot
         # reach this one. Without this the first chapter's hour of PDF work
