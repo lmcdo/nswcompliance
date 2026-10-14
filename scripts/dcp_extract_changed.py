@@ -5331,6 +5331,7 @@ def extract_chapter(
                                      allow_section_loss)
                 # Who the rules reach: the same precinct/marker/zone link guard as the commit path (PR #1285 review:
                 # this path published without it, so a version the link rules no longer fit reached every house).
+                area_links.fill_parts(cur, council, chapter_key)
                 area_links.enforce(cur, council, chapter_key, linked_before, allow_area_link_loss)
                 conn.commit()
 

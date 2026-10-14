@@ -33,6 +33,29 @@ def linked_count(cur, council: str, chapter_key: str) -> int:
     return cur.fetchone()[0]
 
 
+def fill_parts(cur, council: str, chapter_key: str, tagger=None) -> int:
+    """Set v2_dcp_part on the chapter's current rows that have none, with the tagger enrichment uses after publish.
+
+    The Part is what Waverley's precinct rule (column_copy of v2_dcp_part) and its heritage gate rule (Part B8) key
+    on, but enrichment fills it only AFTER the commit, so inside the transaction every new row had none and this
+    guard predicted 0 of 126 links (2026-10-15) while the published version would carry 1,028 Part E rows. Filling
+    it here with the same LayerTopicTagger.tag gives the guard what publish will produce; enrichment later selects
+    v2_dcp_layer IS NULL rows and writes the same Part. Returns rows filled."""
+    if tagger is None:
+        from enrichment.pipeline import LayerTopicTagger
+        tagger = LayerTopicTagger()
+    cur.execute("""SELECT id, document_id, provision_text FROM regulatory_provisions
+                    WHERE is_current AND source_council = %s AND source_chapter_key = %s
+                      AND v2_dcp_part IS NULL AND provision_text IS NOT NULL""", (council, chapter_key))
+    filled = 0
+    for rid, doc, text in cur.fetchall():
+        part = tagger.tag(doc, text)[1]
+        if part:
+            cur.execute("UPDATE regulatory_provisions SET v2_dcp_part = %s WHERE id = %s", (part, rid))
+            filled += 1
+    return filled
+
+
 def relinkable_count(cur, council: str, chapter_key: str) -> int:
     """Current rows of the chapter that the publish-time rules WILL link: a precinct rule that derives a key for the
     row, or a gate rule whose selector matches it. Read-only; runs the same selectors and _derive as publish."""

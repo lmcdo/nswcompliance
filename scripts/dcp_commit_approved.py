@@ -429,6 +429,10 @@ def main() -> int:
               "to publish text a two-column read has scrambled."),
     )
     parser.add_argument(
+        "--only", action="append", default=[], metavar="COUNCIL/CHAPTER",
+        help="Commit only these named chapters (repeatable). Without it, every fully-approved chapter.",
+    )
+    parser.add_argument(
         "--allow-area-link-loss", action="append", default=[], metavar="COUNCIL/CHAPTER",
         help="Let ONE named chapter publish although fewer of its rules would keep their precinct/marker/zone link.",
     )
@@ -451,6 +455,9 @@ def main() -> int:
     cur = conn.cursor()
 
     candidates = find_committable_chapters(cur)
+    if args.only:
+        # a "commit" names chapters; other fully-approved chapters wait for their own decision
+        candidates = [c for c in candidates if f"{c['council']}/{c['chapter_key']}" in set(args.only)]
     if not candidates:
         print("Nothing to commit -- no fully-approved chapters in dcp_review_queue.")
         cur.close()
@@ -550,6 +557,8 @@ def main() -> int:
             enforce_legibility(cur, council, chapter_key, before, allowed_garble)
             # Who the rules reach: precinct, marker and zone links are re-made after publish by written rules, so a
             # new version they no longer fit would reach every house (Waverley pilot: 4 of 89 Part E links).
+            # The Part those rules key on is filled first, as enrichment would after commit (else always 0).
+            area_links.fill_parts(cur, council, chapter_key)
             area_links.enforce(cur, council, chapter_key, linked_before, allowed_area)
             # Resolve the worklist: the reviewed provisions are now live. The status
             # enum has no 'committed', so the resolved rows are deleted (the permanent
