@@ -278,6 +278,24 @@ RULES: list[dict] = [
     # Woollahra C3 "applies to the land identified in Map 1 ... predominantly the Watsons Bay HCA ... but also includes
     # other land" (p5). Keyed as live was hand-keyed (38 rows 'Watsons Bay HCA'); Map 1's other land is not yet an
     # outline (ce-precinct-maps-PLAN). Precinct A-E outlines do not exist, so the chapter key is used for all.
+    # Woollahra D5 / D6 "apply to the Double Bay / Rose Bay Centre, as identified in Figure 1/2" (p1): whole chapter, the
+    # key live was hand-keyed with; outline = LEP zone E1 (scripts/import_woollahra_d1_centre_boundaries.py --src).
+    {"name": "woollahra_d5_double_bay", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-d5-double-bay-centre'",
+     "strategy": {"type": "constant", "precinct_id": "Double Bay Centre"}},
+    {"name": "woollahra_d6_rose_bay", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-d6-rose-bay-centre'",
+     "strategy": {"type": "constant", "precinct_id": "Rose Bay Centre"}},
+    # Woollahra B1.2-B1.11: one residential precinct each, by PDF page from each section's MAP page ("B1.2 Darling Point
+    # Precinct MAP 2", p11); pages before (B1.1) apply to all, under the key live used. No outlines exist yet: the
+    # precinct maps are figure-only (ce-precinct-maps-PLAN), so these rules keep live's reach until they are traced.
+    {"name": "woollahra_b1_precincts_by_page", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-b1-residential-precincts'",
+     "strategy": {"type": "page_range", "ranges": [
+         ("Woollahra Residential Precincts", 1, 10), ("Darling Point Precinct", 11, 14), ("Double Bay Precinct", 15, 17),
+         ("Wallaroy Precinct", 18, 20), ("Manning Road Precinct", 21, 23), ("Point Piper Precinct", 24, 26),
+         ("Bellevue Hill South Precinct", 27, 29), ("Bellevue Hill North Precinct", 30, 33),
+         ("Rose Bay Precinct", 34, 36), ("Vaucluse West Precinct", 37, 39), ("Vaucluse East Precinct", 40, 42)]}},
     {"name": "woollahra_c3_watsons_bay", "council": "woollahra", "validate": False,
      "where": "source_chapter_key = 'chapter-c3-watsons-bay-hca'",
      "strategy": {"type": "constant", "precinct_id": "Watsons Bay HCA"}},

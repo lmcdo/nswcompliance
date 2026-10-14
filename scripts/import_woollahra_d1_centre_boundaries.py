@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,7 +41,8 @@ LOOKUP_SQL = """SELECT precinct_id FROM dcp_precinct_boundaries
 
 
 def load() -> list[dict]:
-    return json.loads(SRC.read_text(encoding="utf-8"))["features"]
+    src = Path(sys.argv[sys.argv.index("--src") + 1]) if "--src" in sys.argv else SRC   # D5/D6 centres reuse this
+    return json.loads(src.read_text(encoding="utf-8"))["features"]
 
 
 def prove(cur, feats: list[dict]) -> list[str]:
@@ -64,6 +66,7 @@ def prove(cur, feats: list[dict]) -> list[str]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--commit", action="store_true")
+    ap.add_argument("--src", help="another centres geojson (default: the D1 file)")
     a = ap.parse_args()
     feats = load()
     for f in feats:
