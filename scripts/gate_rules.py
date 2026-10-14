@@ -84,8 +84,21 @@ GATE_RULES: list[dict] = [
     {"name": "krg_17_riparian", "council": "ku_ring_gai",
      "where": "source_chapter_key = 'section-b-part-17-riparian'",
      "set": {"v2_dcp_layer": "condition", "v2_site_condition_required": "riparian"}},
+    # "General Requirements for residential flat buildings and mixed use development in areas zoned R4, B3 and B4
+    # zones." (Campbelltown DCP Part 4, p2). B3 and B4 were retired by the 2023 Employment Zones reform; the repo's
+    # own translation (frontend-nextjs/shared/zone-taxonomy.json legacyToCurrentAliases) maps B3 -> E2, B4 -> MU1.
+    {"name": "campbelltown_part4_zones", "council": "campbelltown",
+     "where": "source_chapter_key = 'part-4-rfb-mixed-use'",
+     "set": {"v2_applicable_zones": ["R4", "E2", "MU1"]}},  # noqa: zone-codes (the plan's own zones, translated)
+    # "to enhance the function, design and amenity of employment lands within Zones E3 Productivity Support and SP4
+    # Enterprise." (Canterbury-Bankstown DCP 2023 chapter 8.1, p4).
+    {"name": "cb_8_1_employment_zones", "council": "canterbury_bankstown",
+     "where": "source_chapter_key = 'chapter-8-1-general-requirements'",
+     "set": {"v2_applicable_zones": ["E3", "SP4"]}},  # noqa: zone-codes (the plan's own zones)
 ]
-_GATE_COLUMNS = {"v2_marker", "v2_dcp_layer", "v2_site_condition_required"}
+_GATE_COLUMNS = {"v2_marker", "v2_dcp_layer", "v2_site_condition_required", "v2_applicable_zones"}
+#: v2_applicable_zones added 2026-10-14: a zone limit set by hand was undone by every re-extraction (dry run of the
+#: map job); as a gate rule it is re-applied after every publish like the others.
 
 #: Precinct-keying rules kept here because derive_precinct_keys.py is at its 500-line limit; it
 #: splices these into RULES. C-B 4.3 lists seven HCAs (p4); section 21 is "Specific controls for the
@@ -97,6 +110,12 @@ EXTRA_KEY_RULES: list[dict] = [
     {"name": "cb_4_3_all_seven", "council": "canterbury_bankstown", "validate": False,
      "where": "source_chapter_key = 'chapter-4-3-heritage-conservation-areas' AND ref_number !~ '__21(_|$)'",
      "strategy": {"type": "constant", "precinct_id": "C-B 4.3 heritage conservation areas"}},
+    # "This chapter applies to the Woollahra Heritage Conservation Area, which is shown in Map 1." (Woollahra DCP 2015
+    # C2, p5). Outline already loaded (precinct 'Woollahra HCA'); 47 of its rows were keyed by hand, so a re-extraction
+    # would have unkeyed them -- now a rule.
+    {"name": "woollahra_c2_woollahra_hca", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-c2-woollahra-hca'",
+     "strategy": {"type": "constant", "precinct_id": "Woollahra HCA"}},
 ]
 
 
