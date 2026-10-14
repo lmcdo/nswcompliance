@@ -321,3 +321,29 @@ def test_a_letter_prefixed_section_number_is_a_heading_and_files_the_rule():
               "C11 The development to a primary street frontage must respect the existing character.")
     out = sr.build(lines, ans(lines, [rule(2, 2)]))
     assert out["rules"][0]["code"] == "C2.2.1.4 C11"
+
+
+def test_a_plain_instruction_under_a_controls_heading_left_out_is_added(monkeypatch):
+    """Leichhardt C2 p21: 'Contain upper floors within the roof form ...' has no must/shall."""
+    lines = L("C2.2.1.4 Booth Street", "Controls", "C1 Fences must be 1.2m high.",  # noqa: zone-codes (DCP Part codes, not zones)
+              "Contain upper floors within the roof form, so as not to be visible from the street frontage.")
+    first = ans(lines, [rule(2, 2)])
+    monkeypatch.setattr(sr, "ask", lambda text: {"headings": [], "rules": [rule(2, 2)]})
+    out = sr.recover_uncovered(lines, first, sr.build(lines, first))
+    assert any(r["text"].startswith("Contain upper floors") for r in out["rules"])
+
+
+def test_background_text_under_a_character_heading_is_not_added(monkeypatch):
+    lines = L("C2.2.1.4 Booth Street", "Existing Character",
+              "The area retains a strong industrial character with many warehouses.", "Controls",
+              "C1 Fences must be 1.2m high.")
+    first = ans(lines, [rule(4, 4)])
+    monkeypatch.setattr(sr, "ask", lambda text: {"headings": [], "rules": [rule(4, 4)]})
+    out = sr.recover_uncovered(lines, first, sr.build(lines, first))
+    assert [r["text"] for r in out["rules"]] == ["C1 Fences must be 1.2m high."]
+
+
+def test_a_part_code_in_a_running_header_is_recognised():
+    """Waverley DCP pages carry 'Bondi Junction      E1' at the top; the Part is nowhere else on the page."""
+    assert sr._HEADER_PART.match("Bondi Junction      E1 ").group("b") == "E1"
+    assert sr._HEADER_PART.match("WAVERLEY DEVELOPMENT CONTROL PLAN 2022") is None

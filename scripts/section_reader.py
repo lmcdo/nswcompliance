@@ -530,7 +530,7 @@ def recover_uncovered(lines, answers, out: dict) -> dict:
     import ai_extractor as ax
     missing = [i for i, _p, t in out["uncovered"] if binding(t)]
     if not missing:
-        return out
+        return add_rule_lines(lines, out)
     todo = [k for k, ((_c, a, b), _d) in enumerate(answers) if any(a <= i < b for i in missing)]
 
     def reread(k: int):
@@ -558,13 +558,34 @@ def add_rule_lines(lines, out: dict) -> dict:
     taken = {i for r in out["rules"] for i in range(r["first"], r["last"] + 1)}
     starts = sorted(r["first"] for r in out["rules"])
     added = []
-    for i, _p, t in out["uncovered"]:
-        if i in taken or not binding(t):
+
+    def section_kind(i: int) -> str | None:
+        """'control' / 'objective' when the nearest short heading above i, inside its numbered section, names one."""
+        for h in range(i - 1, max(-1, i - 80), -1):
+            t2 = lines[h][1]
+            if h in heads:
+                return None
+            if len(t2.split()) <= 6 and not t2.rstrip().endswith((".", ";", ":")):
+                k = heading_kind([t2])
+                if k:
+                    return k
+        return None
+
+    uncovered_idx = {i for i, _p, _t in out["uncovered"]}
+    # Candidates: every uncovered obligation line, AND every sentence start under a Controls/Objectives heading in no
+    # rule, whatever its wording -- Leichhardt C2 p21 "Contain upper floors within the roof form ..." has no must/shall
+    # and was dropped by one read (R2 caught 33 such lines).
+    cands = sorted(uncovered_idx | {
+        i for i, (_p, t) in enumerate(lines)
+        if i not in taken and i not in heads and len(t.split()) >= 4 and section_kind(i)
+        and (i == 0 or lines[i - 1][1].rstrip().endswith((".", ";", ":")) or i - 1 in heads or i - 1 in taken
+             or _ITEM.match(t) or _BARE_LABEL.match(lines[i - 1][1]) or t[:1].isupper() and len(lines[i - 1][1].split()) <= 6)})
+    for i in cands:
+        t = lines[i][1]
+        if i in taken:
             continue
-        above = [lines[h][1] for h in range(max(0, i - 60), i) if h in heads or _CONTROL_HEAD.search(lines[h][1])
-                 or _OBJECTIVE_HEAD.search(lines[h][1])]
-        kind = heading_kind(above[-3:]) if above else None
-        if not (_ITEM.match(t) or kind):
+        kind = section_kind(i)
+        if not ((binding(t) and (_ITEM.match(t) or kind)) or kind):
             continue
         end = i
         while (end + 1 < len(lines) and end + 1 - i < 15 and end + 1 not in taken and end + 1 not in heads
@@ -585,6 +606,32 @@ def add_rule_lines(lines, out: dict) -> dict:
     out["report"]["added_by_program"] = len(added)
     out["report"]["uncovered"] = len(out["uncovered"])
     return out
+
+
+_HEADER_PART = re.compile(r"^\s*(?:(?P<a>[A-Z]\d{1,2})\s{2,}\S.*|.*\S\s{2,}(?P<b>[A-Z]\d{1,2}))\s*$")
+
+
+def page_parts(pdf_path: str) -> dict[int, str]:
+    """page -> Part code printed in that page's running header ("Bondi Junction      E1" on Waverley DCP p289-), for
+    whole-plan PDFs whose Part lives only in the header. A code counts when the same header line is on 3+ pages.
+    The reader drops running heads as noise, and the Part was then lost from every rule's number (Waverley pilot:
+    4 of 89 Part E precinct rules kept their Part)."""
+    import collections
+    import fitz
+    found: dict[int, str] = {}
+    seen: collections.Counter = collections.Counter()
+    with fitz.open(pdf_path) as doc:
+        heads = []
+        for n, page in enumerate(doc, 1):
+            top = [ln for ln in page.get_text().splitlines()[:3] if ln.strip()]
+            heads.append((n, top[0] if top else ""))
+            if top:
+                seen[top[0].strip()] += 1
+    for n, h in heads:
+        m = _HEADER_PART.match(h) if seen[h.strip()] >= 3 else None
+        if m:
+            found[n] = m.group("a") or m.group("b")
+    return found
 
 
 def read_chapter(pdf_path: str, pages: tuple[int, int] | None = None) -> dict:
@@ -628,6 +675,11 @@ def read_chapter(pdf_path: str, pages: tuple[int, int] | None = None) -> dict:
                                "and MISTRAL_API_KEY is not set; refusing a chapter with those pages unread")
         out["rules"] += read_pictures(pdf_path, pics, [r["text"] for r in out["rules"]])
     out["picture_pages"] = pics
+    parts = page_parts(pdf_path)
+    for r in out["rules"]:
+        part = parts.get(r["page"])
+        if part and not str(r.get("code", "")).startswith(part):
+            r["code"] = f"{part} {r['code']}"         # "E1 1.21.1 a": the Part the publish step files it under
     out["pieces"] = len(ps)
     out["empty_answers"] = sum(1 for _p, d in answers if not d)
     return out
