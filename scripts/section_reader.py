@@ -369,8 +369,20 @@ def read_pictures(pdf_path: str, pages: list[int], have: list[str]) -> list[dict
     norm = lambda t: "".join(re.findall(r"[a-z0-9]+", (t or "").lower()))   # noqa: E731
     seen = [norm(t) for t in have]
     out = []
+
+    def one(p: int) -> tuple[int, list[dict]]:
+        got = ax._call_and_parse_with_empty_retry("mistral", ax._subset_bytes(reader, p - 1, p), ax.PROMPT)
+        return p, got
+
+    done = 0
+    results: dict[int, list[dict]] = {}
+    with ThreadPoolExecutor(max_workers=min(PARALLEL, max(1, len(pages)))) as pool:
+        for p, got in pool.map(one, pages):        # map keeps page order
+            results[p] = got
+            done += 1
+            print(f"    [section-reader] picture page {done}/{len(pages)} (p{p}): {len(got)} rules", flush=True)
     for p in pages:
-        for prov in ax._call_and_parse_with_empty_retry("mistral", ax._subset_bytes(reader, p - 1, p), ax.PROMPT):
+        for prov in results[p]:
             body = norm(prov.get("text"))
             if len(body) < 8 or any(body[:60] in x or x[:60] in body for x in seen if x):
                 continue
@@ -400,11 +412,18 @@ def recover_uncovered(lines, answers, out: dict) -> dict:
     missing = [i for i, _p, t in out["uncovered"] if binding(t)]
     if not missing:
         return out
-    again = []
-    for (ctx, start, end), d in answers:
+    todo = [k for k, ((_c, a, b), _d) in enumerate(answers) if any(a <= i < b for i in missing)]
+
+    def reread(k: int):
+        ctx, start, end = answers[k][0]
         mine = [i for i in missing if start <= i < end]
-        again.append(((ctx, start, end), ask(numbered(lines, ctx, start, end) + REREAD_NOTE.format(lines=mine))
-                      if mine else d))
+        return k, ask(numbered(lines, ctx, start, end) + REREAD_NOTE.format(lines=mine))
+
+    again = list(answers)
+    with ThreadPoolExecutor(max_workers=min(PARALLEL, max(1, len(todo)))) as pool:
+        for n, (k, d) in enumerate(pool.map(reread, todo), 1):     # all at once, progress after each
+            again[k] = (answers[k][0], d)
+            print(f"    [section-reader] re-read {n}/{len(todo)} (p{lines[answers[k][0][1]][0]})", flush=True)
     redo = build(lines, again)
     redo["report"]["reread_pieces"] = sum(1 for (_c, a, b), _d in answers if any(a <= i < b for i in missing))
     still = [(i, p, t) for i, p, t in redo["uncovered"] if binding(t)]
@@ -421,13 +440,26 @@ def read_chapter(pdf_path: str, pages: tuple[int, int] | None = None) -> dict:
     path = pdf_path
     if pages:
         path, offset = window_pdf(pdf_path, pages)
-    reader = docling_lines if os.getenv("SECTION_READER_LINES", "").strip().lower() == "docling" else chapter_lines
+    source = os.getenv("SECTION_READER_LINES", "").strip().lower()
+    if source == "docling_modal":
+        from docling_modal import remote_docling_lines as reader
+    else:
+        reader = docling_lines if source == "docling" else chapter_lines
     lines = [(p + offset, t) for p, t in reader(path)]
     if pages:
         lines = [x for x in lines if pages[0] <= x[0] <= pages[1]]
     ps = pieces(lines)
+    from concurrent.futures import as_completed
+    got: dict[int, dict] = {}
     with ThreadPoolExecutor(max_workers=min(PARALLEL, max(1, len(ps)))) as pool:
-        answers = list(pool.map(lambda p: (p, ask(numbered(lines, *p))), ps))
+        futs = {pool.submit(lambda p=p: ask(numbered(lines, *p))): k for k, p in enumerate(ps)}
+        for n, fut in enumerate(as_completed(futs), 1):
+            k = futs[fut]
+            got[k] = fut.result()
+            if len(ps) > 3:     # progress as each piece lands (never only at the end, never held up by a slow one)
+                print(f"    [section-reader] piece {n}/{len(ps)} (p{lines[ps[k][1]][0]}): "
+                      f"{len(got[k].get('rules') or [])} rules", flush=True)
+    answers = [(ps[k], got[k]) for k in range(len(ps))]
     out = build(lines, answers)
     out = recover_uncovered(lines, answers, out)
     if pages:

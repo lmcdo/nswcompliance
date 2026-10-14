@@ -3077,7 +3077,12 @@ def preflight_layout(pdf_path, council: str) -> dict:
         front_texts: list[str] = []
         with pdfplumber.open(pdf_path) as pdf:
             total = len(pdf.pages)
+            # The section reader does its own layout work (Docling / both reading orders), so with it on only the
+            # front pages are read, for the repeal stamp; the per-page layout counts cost ~8 minutes on Parramatta.
+            front_only = (os.getenv("DCP_READER") or "").strip().lower() == "section"
             for idx, page in enumerate(pdf.pages):
+                if front_only and idx >= PREFLIGHT_REPEALED_PAGES:
+                    break
                 if idx < PREFLIGHT_REPEALED_PAGES:
                     try:
                         front_texts.append(page.extract_text() or "")
