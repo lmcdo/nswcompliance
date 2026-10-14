@@ -181,6 +181,11 @@ def ask(text: str) -> dict:
     return {}
 
 
+# "The area is to maintain its low scale ...", "Ross Street is to continue to serve ...": City of Sydney's locality
+# statements state the duty with any verb after "is to". page_coverage.RULE_WORDS names only some verbs, so 31 such
+# lines were left out (pilot 2026-10-14, R2). The R2 gate counts any "is to" / "are to"; this matches it.
+_IS_TO = re.compile(r"\b(?:is|are)(?: not)? to (?!(?:the|this|that|these|those|its|their|which|our|your)\b)[a-z]{3,}",
+                    re.IGNORECASE)    # "is to the north" is a place, not a duty
 _NUM_HEADING = re.compile(r"^\s*([A-Z]{0,2}\d+(?:\.\d+){1,5})\s+[A-Z0-9][^.;:]{2,80}$")   # 9.8.5.1, C2.2.1.4
 _SHORT_TITLE = re.compile(r"^\s*[A-Z][A-Za-z,&/' -]{2,40}$")     # "Massing", "Building entries": no digits, no stop
 TITLE_LEVEL = 9
@@ -417,7 +422,8 @@ def build(lines, answers: list[tuple[tuple[int, int, int], dict]]) -> dict:
         if r["lead_in"] is not None:
             inside.add(r["lead_in"])
     uncovered = [(i, p, t) for i, (p, t) in enumerate(lines)
-                 if i not in inside and i not in heads and len(t.split()) >= 6 and pc.RULE_WORDS.search(t)]
+                 if i not in inside and i not in heads and len(t.split()) >= 6
+                 and (pc.RULE_WORDS.search(t) or _IS_TO.search(t))]
     report["uncovered"] = len(uncovered)
     return {"rules": rules, "report": report, "uncovered": uncovered[:200]}
 
@@ -521,7 +527,7 @@ def binding(text: str) -> bool:
     """A line written as an obligation (page_coverage._OBLIGATION: must, shall, is to be, is required, not
     permitted ...): the words that, left out of every rule, refuse a chapter -- as the page-coverage guard does."""
     import page_coverage as pc
-    return bool(pc._OBLIGATION.search(text.lower()))
+    return bool(pc._OBLIGATION.search(text.lower()) or _IS_TO.search(text))
 
 
 def recover_uncovered(lines, answers, out: dict) -> dict:

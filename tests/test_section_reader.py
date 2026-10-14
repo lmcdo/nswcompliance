@@ -252,6 +252,18 @@ def test_a_rule_worded_sentence_outside_any_controls_heading_is_kept_whole(monke
     assert added[0]["label"] == "control"
 
 
+def test_an_is_to_sentence_with_any_verb_is_kept_as_a_control(monkeypatch):
+    """City of Sydney 2.x: 'The area is to maintain its low scale ...' -- 31 lines R2 caught (pilot 2026-10-14)."""
+    lines = L("Fences must be 1.2m high.", "The area is to maintain its low scale residential character below",
+              "the tree canopy.", "The park is to the north of the railway line and the station.")
+    first = ans(lines, [rule(0, 0)])
+    monkeypatch.setattr(sr, "ask", lambda text: {"headings": [], "rules": [rule(0, 0)]})
+    out = sr.recover_uncovered(lines, first, sr.build(lines, first))
+    added = [r for r in out["rules"] if r.get("source") == "added_by_program"]
+    assert [(r["label"], r["text"]) for r in added] == [
+        ("control", "The area is to maintain its low scale residential character below\nthe tree canopy.")]
+
+
 def test_a_contents_page_line_is_never_added(monkeypatch):
     lines = L("Fences must be 1.2m high.", "premises - to be addressed in the POM.................................. 19")
     first = ans(lines, [rule(0, 0)])
