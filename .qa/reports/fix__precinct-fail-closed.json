@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which houses are shown which DCP rules. The route change stops 2,827 unkeyed precinct rules reaching every house without a precinct; the gate rule, once applied with the user's yes, stops 913 Marrickville Part 8 heritage rules reaching non-heritage houses. A mistake would hide rules from houses they cover or keep showing them to houses they do not, silently.",
-  "commit_hash": "01462d65",
+  "commit_hash": "e9e434a0",
   "files": [
     "frontend-nextjs/app/api/provisions/for-property/route.ts",
     "frontend-nextjs/__tests__/api/precinct-layer-fail-closed.test.ts",
