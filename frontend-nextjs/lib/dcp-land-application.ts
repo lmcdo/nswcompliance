@@ -59,6 +59,15 @@ const DCP_LAND_BINDING: Record<string, DcpLandBinding> = {
     source:
       'Sydney DCP 2012 Section 1, clauses 1.4 and 1.5 (page 4) and Figure 1.1 (page 5)',
   },
+  // Northern Beaches has three plans in force; only Warringah DCP 2011 is loaded. Part A.3
+  // "Land to which this plan applies" (page 3): "This Plan applies to all land to which
+  // Warringah Local Environmental Plan 2011 applies". Without this, 1/28A Addison Rd Manly
+  // (layer 8: Manly LEP 2013) was served Warringah's rules (address audit 2026-10-15).
+  northern_beaches: {
+    dcp: 'Warringah DCP 2011',
+    lep: 'Warringah Local Environmental Plan 2011',
+    source: 'Warringah DCP 2011 Part A.3 Land to which this plan applies (page 3)',
+  },
 };
 
 export type LandApplicationStatus =
