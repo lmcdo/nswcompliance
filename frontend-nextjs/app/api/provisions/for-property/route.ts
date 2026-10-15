@@ -27,7 +27,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
-import { NOT_HERITAGE_SQL, ZONE_APPLIES_SQL } from '@/lib/provision-sql-filters';
+import { NOT_HERITAGE_SQL, ZONE_APPLIES_SQL, hcaTagSql } from '@/lib/provision-sql-filters';
 import { councilKey } from '@/lib/council-key';
 import { expandDevTypeHierarchy, expandDevTypeHierarchyMulti } from '@/lib/see/devTypeHierarchy';
 import { inferSectionNumberFromHeader } from '@/lib/see/sectionKey';
@@ -803,16 +803,12 @@ async function queryHeritageByHca(
 
   // Include HCA-specific controls only when a specific HCA is provided.
   // Without HCA (e.g. individual heritage items): general controls only.
+  // General controls, the property's own HCA, and rules for any HCA (ANY_HCA).
   if (filters.hca) {
-    sql += `
-      AND (
-        rp.v2_heritage_hca IS NULL  -- General heritage controls
-        OR rp.v2_heritage_hca = $${paramIndex++}  -- Property's specific HCA
-      )
-    `;
+    sql += ` AND ${hcaTagSql(paramIndex++)}`;
     params.push(filters.hca);
   } else {
-    sql += ` AND rp.v2_heritage_hca IS NULL`;
+    sql += ` AND ${hcaTagSql(null)}`;
   }
 
   // Filter by council key (lib/council-key.ts), the same value the rules are stored under
@@ -1078,11 +1074,12 @@ async function queryLayer(
     // Heritage without HCA - include but filter by precinct to avoid showing ALL precincts
     if (filters.precinct_id) {
       const precinctIds = filters.precinct_id.split(',').map((s: string) => s.trim()).filter(Boolean);
-      sql += ` AND (${NOT_HERITAGE_SQL} OR v2_precinct_id IS NULL OR v2_precinct_id = ANY($${paramIndex++}::text[]))`;
+      sql += ` AND (${NOT_HERITAGE_SQL} OR (${hcaTagSql(null, 'v2_heritage_hca')} AND (v2_precinct_id IS NULL OR v2_precinct_id = ANY($${paramIndex++}::text[]))))`;
       params.push(precinctIds);
     } else {
       // No precinct specified - only show non-precinct heritage provisions
-      sql += ` AND (${NOT_HERITAGE_SQL} OR v2_precinct_id IS NULL)`;
+      // An HCA's own rules (v2_heritage_hca set) never reach a heritage property in no HCA.
+      sql += ` AND (${NOT_HERITAGE_SQL} OR (v2_precinct_id IS NULL AND ${hcaTagSql(null, 'v2_heritage_hca')}))`;
     }
   }
   // Note: Precinct layer (layer === 'precinct') is NOT filtered by heritage status

@@ -32,6 +32,17 @@ export interface PrecinctMapping {
 const NEAREST_FALLBACK_LGAS = new Set(['inner west']);
 
 /**
+ * Former councils whose precincts tile their land, so a lot just outside one outline is a boundary
+ * edge case and the nearest precinct is the right one. Measured 2026-10-15 (lot_search_index point
+ * on surface vs dcp_precinct_boundaries): Marrickville 733 of 26,424 lots fall outside every outline
+ * and Leichhardt 281 of 19,549 -- edge slivers. Ashfield's Chapter D precincts are town centres and
+ * enterprise zones: 9,374 of 10,271 Ashfield lots are in none, and the 500 m snap gave 8,296 of them a
+ * centre they are not in (145 Queen St Ashfield got Part 7 Hurlstone Park, address audit). For a
+ * council not listed here, no outline means no precinct.
+ */
+export const NEAREST_SNAP_FORMER_COUNCILS = ['marrickville', 'leichhardt'];
+
+/**
  * Row cap for a single precinct's provisions.
  *
  * Not a target — a backstop against a runaway query. The largest precinct in
@@ -291,6 +302,7 @@ async function findNearestPrecinct(
         ) as distance_m
       FROM dcp_precinct_boundaries
       WHERE LOWER(lga) = LOWER($3)
+      AND LOWER(former_council) = ANY($4::text[])
       AND ST_DWithin(
         ST_Transform(boundary, 3857),
         ST_Transform(ST_SetSRID(ST_MakePoint($1, $2), 4326), 3857),
@@ -300,7 +312,7 @@ async function findNearestPrecinct(
       LIMIT 1
     `;
 
-    const result = await getDbPool().query(query, [longitude, latitude, lga]);
+    const result = await getDbPool().query(query, [longitude, latitude, lga, NEAREST_SNAP_FORMER_COUNCILS]);
 
     if (result.rows.length === 0) {
       return null;
