@@ -24,6 +24,7 @@ import urllib.request
 import build_site_boundaries as b
 
 NEIGHBOUR_SPAN = 10
+ANCHOR_M = 60  # register_absent sites: a neighbour this close to the outline anchors it to the street
 
 
 def parse_numbers(spec: str) -> tuple[set[str], set[str]]:
@@ -124,11 +125,32 @@ def prove_address(cur, site: dict) -> dict:
     r["checks"]["2_named"] = not r["missing_named"] and bool(inside)
     r["site_addresses"] = sorted({a for a, _, _ in inside})
     pts = [f"POINT({x} {y})" for _, x, y in inside]
-    cur.execute("SELECT array_agg(DISTINCT l.lotidstring), ST_AsText(ST_Multi(ST_Union(l.geom))),"
-                " ST_Area(ST_Union(l.geom)::geography) FROM nsw_cadastre_lots l"
-                " JOIN unnest(%s::text[]) p(wkt) ON ST_Contains(l.geom, ST_GeomFromText(p.wkt, 4326))",
-                (pts,))
-    lots, r["wkt"], area = cur.fetchone()
+    absent = site.get("register_absent")
+    if absent and not inside:
+        # prior-art-checked: reuse not viable because this IS the address-site prover; the branch extends it
+        # in place for a site whose number left the register, using the same cadastre table and map check.
+        # The site was subdivided after the plan (14H: 101 Eton Road became DP271066 lots 1-11 + SP109812,
+        # 2019-2025). The chapter's own map then chooses the lots (check 6 must pass) and the street anchors
+        # them: register neighbours must sit next to the outline (4_address) and none inside it (3_neighbours).
+        cur.execute("SELECT array_agg(DISTINCT lotidstring), ST_AsText(ST_Multi(ST_Union(geom))),"
+                    " ST_Area(ST_Union(geom)::geography) FROM nsw_cadastre_lots WHERE lotidstring = ANY(%s)",
+                    (absent["lots"],))
+        lots, r["wkt"], area = cur.fetchone()
+        r["register_absent_why"] = absent["why"]
+        anchors = []
+        for addr, x, y in near:
+            cur.execute("SELECT ST_DWithin(ST_GeomFromText(%s, 4326)::geography,"
+                        " ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, %s)", (r["wkt"], x, y, ANCHOR_M))
+            if r["wkt"] and cur.fetchone()[0]:
+                anchors.append(addr)
+        r["anchors_near"] = sorted(set(anchors))
+        r["checks"]["4_address"] = len(r["anchors_near"]) >= 2
+    else:
+        cur.execute("SELECT array_agg(DISTINCT l.lotidstring), ST_AsText(ST_Multi(ST_Union(l.geom))),"
+                    " ST_Area(ST_Union(l.geom)::geography) FROM nsw_cadastre_lots l"
+                    " JOIN unnest(%s::text[]) p(wkt) ON ST_Contains(l.geom, ST_GeomFromText(p.wkt, 4326))",
+                    (pts,))
+        lots, r["wkt"], area = cur.fetchone()
     r["lots"], r["lots_listed"], r["area_m2"] = sorted(lots or []), len(lots or []), round(area or 0)
     leaked = []
     for addr, x, y in near:

@@ -91,7 +91,28 @@
    "council": "ku_ring_gai",
    "version": "v1.0-baseline",
    "quote": "All development within the Roseville local centre, as outlined in Figure 14F.1-1, is to be designed to support and enhance the planned future character of the centre.",
-   "line_w_max": 0.9
+   "line_w_max": 0.9,
+   "accept_on_lot_lines": {
+    "_why": "Plan drawn on lot lines (not kerbs): road share 0.54 reads it as off-road. Addresses from the chapter: R1 p13 'Nos 17 ... 31-35 Hill Street; and Nos 37-41 ... 63, 63A Hill Street'; R2 p19 '64-116 Pacific Highway'; R3 p20 '83 Pacific Highway' heritage item / '89 Pacific Highway' station master's residence. Outside: 65 Hill St (next after 63A, not listed) and 132 Pacific Hwy (past 64-116).",
+    "inside": {
+     "R1": [
+      "31-35 HILL STREET ROSEVILLE",
+      "63A HILL STREET ROSEVILLE"
+     ],
+     "R2": [
+      "64 PACIFIC HIGHWAY ROSEVILLE",
+      "100 PACIFIC HIGHWAY ROSEVILLE"
+     ],
+     "R3": [
+      "83 PACIFIC HIGHWAY ROSEVILLE",
+      "89 PACIFIC HIGHWAY ROSEVILLE"
+     ]
+    },
+    "outside": [
+     "65 HILL STREET ROSEVILLE",
+     "132 PACIFIC HIGHWAY ROSEVILLE"
+    ]
+   }
   }
  ]
 }

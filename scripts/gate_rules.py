@@ -186,6 +186,13 @@ EXTRA_KEY_RULES: list[dict] = [
     {"name": "cb_11_4_croydon_street", "council": "canterbury_bankstown", "validate": False,
      "where": "source_chapter_key = 'chapter-11-4-croydon-street-precinct'",
      "strategy": {"type": "constant", "precinct_id": "11.4"}},
+    # Ku-ring-gai Part 14H: "The site at 101 Eton Road, Lindfield, which is currently occupied by Screen Australia"
+    # (p3), drawn as the orange "Site Location" in Figure 14H.1-1 (p2) -- every section is that one site. 101 left the
+    # address register when the site was subdivided (DP271066 2019, SP109812 2025); outline = those 12 lots, shape
+    # 0.997 against the figure (build_site_boundaries.py --addresses, register_absent).
+    {"name": "krg_14h_screen_australia", "council": "ku_ring_gai", "validate": False,
+     "where": "source_chapter_key = 'section-b-part-14h-screen-australia-site'",
+     "strategy": {"type": "constant", "precinct_id": "14H"}},
     {"name": "krg_14a_st_ives_by_page", "council": "ku_ring_gai", "validate": False,
      "where": "source_chapter_key = 'section-b-part-14a-st-ives-local-centre'",
      "strategy": {"type": "page_range", "ranges": [
