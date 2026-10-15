@@ -1101,9 +1101,16 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # parramatta 341, canterbury_bankstown 216, marrickville 157, ashfield 118
         # and five smaller councils. Each needs its unconfigured documents declared
         # the way leichhardt's were. Lower this again each time one is done.
-        "SELECT GREATEST(count(*) - 1158, 0) FROM regulatory_provisions "
+        #
+        # STATED EXCEPTION, user decision 2026-10-15: Parramatta is excluded, not
+        # repaired. Its config is test-pinned ALL (tests/test_parramatta_numbered_parts_scope.py)
+        # and Part-by-page scoping is deferred. Its 341 rows inside the old floor
+        # come out of the floor too (1158 -> 817), so excluding it cannot hide
+        # anything new elsewhere. Parramatta's own count (1,793 on 2026-10-15) is
+        # reported by --id DQ-33 so the exception stays visible.
+        "SELECT GREATEST(count(*) - 817, 0) FROM regulatory_provisions "
         "WHERE is_current AND v2_is_actionable "
-        "AND source_council IS NOT NULL "
+        "AND source_council IS NOT NULL AND source_council <> 'parramatta' "
         "AND v2_dev_type_source = 'no_config'",
         (),
         "no_config on served COUNCIL rows has risen above the 1,278 left "
