@@ -54,6 +54,7 @@ PDF_BASE = "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps
 METHOD = "dcp_vector_plan_fitted_to_cadastre"
 ON_EDGE_MIN, OUTLINE_EDGE_MAX, OUTSIDE_MAX_M2 = 0.75, 4.0, 1500
 RES = 2.0  # metres per pixel of the coarse search
+LOT_OUTLINE_MAX, IOU_MIN = 1.5, 0.85  # accept_on_lot_lines chapters only (see fit_chapter)
 CORE_ZONES = "^(E1|MU1)"  # noqa: zone-codes -- a SCALE guess from the plans' own legend (core precinct = B2/B4), not a rule
 
 
@@ -133,6 +134,13 @@ def seed(suburb: str) -> tuple[float, float]:
     if not fs:
         raise SystemExit(f"[ABORT] no address points for {suburb}")
     return tuple(np.median(np.array([[f["geometry"]["x"], f["geometry"]["y"]] for f in fs]), 0))
+
+
+def address_point(address: str):
+    """The NSW register point (MGA 56) of one exact address, or None when the register lacks it."""
+    fs = rf._get(rf.ADDR, {"where": f"address = '{address}'", "outFields": "address", "returnGeometry": "true",
+                          "outSR": "28356", "f": "json"}).get("features") or []
+    return Point(fs[0]["geometry"]["x"], fs[0]["geometry"]["y"]) if fs else None
 
 
 def scale_prior(sx: float, sy: float, labels: dict) -> float:
@@ -222,8 +230,23 @@ def fit_chapter(ch: dict, pdf: Path) -> dict:
     edge_lines = unary_union([g.boundary for _, g in cad])
     dist = [Point(p).distance(edge_lines) for g in placed.values() for c in _poly_coords(g) for p in c[::3]]
     row["outline_edge_median_m"] = round(float(np.median(dist)), 2) if dist else None
-    fails = [m for m, bad in (("drawing off the road network", row["lines_within_10m_of_a_road"] < ON_EDGE_MIN),
-                              ("outlines not on lot lines", (row["outline_edge_median_m"] or 99) > OUTLINE_EDGE_MAX),
+    lot_proof = ch.get("accept_on_lot_lines")
+    if lot_proof:
+        # A plan drawn with lot lines, not kerbs (Roseville 14F): its thin lines sit on cadastre EDGES, so the
+        # road test reads them as off-road. Accepted instead on a stricter lot-line proof -- the drawing's lines
+        # on lot edges, outlines on lot lines, each snapped precinct the drawn shape (IoU), and register
+        # addresses the chapter itself places inside / outside (checked after snapping, below).
+        cad_tree = cKDTree(cb.edge_points([g for _, g in cad]))
+        row["lines_within_1_5m_of_a_lot_edge_info"] = round(float((cad_tree.query(cb.apply(fit, near))[0] <= 1.5).mean()), 3)
+    road_bad = row["lines_within_10m_of_a_road"] < ON_EDGE_MIN
+    if lot_proof:
+        # Roseville draws kerbs AND lot lines (0.355 of its lines on a lot edge, 0.54 within 10 m of a road), so
+        # neither line share can decide. The placement is proved by its result instead: outlines <= 1.5 m from
+        # lot lines, every snapped precinct the drawn shape (IoU >= 0.85) and the chapter's own addresses.
+        road_bad = False
+    fails = [m for m, bad in (("drawing off the road network", road_bad),
+                              ("outlines not on lot lines", (row["outline_edge_median_m"] or 99)
+                               > (LOT_OUTLINE_MAX if lot_proof else OUTLINE_EDGE_MAX)),
                               ("precinct labels missing", sorted(labels) != sorted(ch["labels"]))) if bad]
     row["_fit"], row["_fig"], row["_placed"] = fit, fig, placed
     if fails:
@@ -243,6 +266,23 @@ def fit_chapter(ch: dict, pdf: Path) -> dict:
     empty = sorted(lab for lab, g in out.items() if g.is_empty)
     if empty:
         row["refused"] = f"no cadastre lot inside precinct(s) {empty}"
+    elif lot_proof:
+        bad = []
+        row["iou"] = {lab: round(placed[lab].intersection(g).area / placed[lab].union(g).area, 3) for lab, g in out.items()}
+        bad += [f"{lab} IoU {v} < {IOU_MIN}" for lab, v in row["iou"].items() if v < IOU_MIN]
+        union = unary_union(list(out.values()))
+        for lab, addrs in lot_proof["inside"].items():
+            for a in addrs:
+                p = address_point(a)
+                if p is None or not out[lab].contains(p):
+                    bad.append(f"{a} not inside {lab}")
+        for a in lot_proof["outside"]:
+            p = address_point(a)
+            if p is None or union.contains(p):
+                bad.append(f"{a} not outside")
+        row["address_proof"] = {"inside": lot_proof["inside"], "outside": lot_proof["outside"], "failed": bad}
+        if bad:
+            row["refused"] = "; ".join(bad)
     row["_geoms"] = out
     return row
 

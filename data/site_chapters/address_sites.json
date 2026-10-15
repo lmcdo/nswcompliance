@@ -118,6 +118,23 @@
     ],
     "min_width": 2.0,
     "caption": "Figure 14H.1-1: Urban Structure plan (orange = Site Location)"
+   },
+   "register_absent": {
+    "lots": [
+     "1//DP271066",
+     "2//DP271066",
+     "3//DP271066",
+     "4//DP271066",
+     "5//DP271066",
+     "6//DP271066",
+     "7//DP271066",
+     "8//DP271066",
+     "9//DP271066",
+     "10//DP271066",
+     "11//DP271066",
+     "//SP109812"
+    ],
+    "why": "101 Eton Road is not in the NSW address register (2026-10-15: 91-99 and 100 are). The site was subdivided as DP271066 (2019; lots 1-11) and SP109812 (2025): west of Eton Road opposite Abingdon Road, behind the Winchester Ave lots, north of the road to the oval -- the place Figure 14H.1-1 draws. The figure outline matches their union (IoU 0.997)."
    }
   },
   {
