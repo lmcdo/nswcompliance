@@ -47,6 +47,50 @@ def decide(current: str | None, abs_council: str | None, depth_m: float | None, 
     return abs_council
 
 
+# prior-art-checked: reuse not viable because precinct-service.ts / for-property read the stored
+# former_council and the archive checks only compare outlines; nothing else assigns it at build time.
+def assign(abs_council: str | None, depth_m: float | None, precinct_council: str | None,
+           margin_m: float = 20.0) -> str | None:
+    """A lot's former council at build time (build_lot_search_index Step 9).
+
+    The ABS former-LGA polygon decides any lot deeper than the margin. An edge lot takes the
+    precinct outline that CONTAINS it, if one does. Otherwise None: the property API then falls
+    back to its suburb mapping. The nearest precinct is never used -- it is a neighbour's council
+    wherever outlines leave a gap (162/137 Victoria St Ashfield -> Marrickville precinct 16).
+    """
+    if abs_council and depth_m is not None and depth_m > margin_m:
+        return abs_council
+    return (precinct_council or "").lower() or None
+
+
+BUILD_SQL = """
+WITH a AS (SELECT * FROM (VALUES ('ashfield', ST_SetSRID(ST_GeomFromGeoJSON(%(ashfield)s), 4326)),
+                                 ('leichhardt', ST_SetSRID(ST_GeomFromGeoJSON(%(leichhardt)s), 4326)),
+                                 ('marrickville', ST_SetSRID(ST_GeomFromGeoJSON(%(marrickville)s), 4326))) v(fc, g))
+SELECT l.lotidstring, a.fc,
+       ST_Distance(ST_Boundary(a.g)::geography, ST_PointOnSurface(l.geom)::geography),
+       (SELECT pb.former_council FROM dcp_precinct_boundaries pb
+         WHERE pb.former_council IS NOT NULL AND UPPER(pb.lga) = UPPER(l.lga_name)
+           AND ST_Contains(pb.boundary, ST_Centroid(l.geom))
+         ORDER BY pb.precinct_id LIMIT 1)
+FROM lot_search_index l
+LEFT JOIN a ON ST_Contains(a.g, ST_PointOnSurface(l.geom))
+WHERE l.lga_name = %(lga)s AND l.geom IS NOT NULL
+"""
+
+
+def assign_for_lga(conn, lga_name: str, margin_m: float = 20.0) -> tuple[int, int]:
+    """Set former_council for every lot of a merged LGA. Returns (assigned, left NULL)."""
+    if lga_name.upper() != "INNER WEST":
+        return 0, 0
+    cur = conn.cursor()
+    cur.execute("SET statement_timeout = 120000")
+    cur.execute(BUILD_SQL, {**fetch_polygons(), "lga": lga_name})
+    updates = [(assign(fc, depth, pfc, margin_m), lot) for lot, fc, depth, pfc in cur.fetchall()]
+    cur.executemany("UPDATE lot_search_index SET former_council = %s WHERE lotidstring = %s", updates)
+    return sum(1 for v, _ in updates if v), sum(1 for v, _ in updates if not v)
+
+
 def fetch_polygons() -> dict[str, str]:
     out = {}
     for slug, name in FORMER.items():
