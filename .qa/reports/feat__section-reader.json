@@ -44,7 +44,12 @@
     "data/canterbury_bankstown_precincts/raster_centres_7_2.json",
     "data/canterbury_bankstown_precincts/centres_7_2.geojson",
     "data/canterbury_bankstown_precincts/fit_report_7_2.json",
-    "tests/test_import_cb_centre_boundaries_real_db.py"
+    "tests/test_import_cb_centre_boundaries_real_db.py",
+    "scripts/fit_vector_centres.py",
+    "scripts/import_vector_centres.py",
+    "data/ku_ring_gai_precincts/vector_centres.json",
+    "data/ku_ring_gai_precincts/centres_vector.geojson",
+    "data/ku_ring_gai_precincts/fit_report_vector.json"
   ],
   "pre_impl": {
     "existing_data": "none read or written by the reader; it returns ai_extractor.provisions_to_sections dicts to the existing review-queue path",
@@ -116,6 +121,8 @@
     "manual_verify": "Yes: DCP_READER=section dcp_extract_changed --review on Parramatta (pilot), compared with the before snapshot"
   },
   "real_layer_exempt": {
-    "scripts/fit_cb_raster_centres.py": "read-only fitter; its writes go through import_cb_centre_boundaries.py, whose in-transaction proof (lookup + audit addresses) ran against production on 2026-10-15 and rolled back twice before passing"
+    "scripts/fit_cb_raster_centres.py": "read-only fitter; its writes go through import_cb_centre_boundaries.py, whose in-transaction proof (lookup + audit addresses) ran against production on 2026-10-15 and rolled back twice before passing",
+    "scripts/fit_vector_centres.py": "read-only fitter; its only write path is import_vector_centres.py, whose in-transaction lookup proof ran against production 2026-10-15",
+    "scripts/import_vector_centres.py": "its proof runs inside the production transaction (lookup of every written id, 14B_T1/14I still found, audit addresses unaffected) and rolls back on failure; ran 2026-10-15"
   }
 }

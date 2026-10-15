@@ -157,6 +157,27 @@ EXTRA_KEY_RULES: list[dict] = [
          ("7.2.6", 29, 32), ("7.2.7", 33, 35), ("7.2.8", 36, 41), ("7.2.9", 42, 49), ("7.2.10", 50, 53),
          ("7.2.11", 54, 61), ("7.2.12", 62, 64), ("7.2.13", 65, 70), ("7.2", 71, 84), ("7.2.2", 85, 108)]},
      "fingerprint": {"max_page": 96, "min_coverage": 0.95}},
+    # Ku-ring-gai Part 14 centres, by PDF PAGE from each precinct section's own running heading ("14D.7 PRECINCT G1:
+    # ST JOHNS AVENUE AND HENRY STREET" ...). Sections x.1-x.6 apply to the whole centre ("All development within the
+    # Gordon local centre, as outlined in Figure 14D.1-1") -> the union outline. Outlines:
+    # scripts/fit_vector_centres.py + import_vector_centres.py. Address audit 2026-10-15: all unkeyed.
+    {"name": "krg_14a_st_ives_by_page", "council": "ku_ring_gai", "validate": False,
+     "where": "source_chapter_key = 'section-b-part-14a-st-ives-local-centre'",
+     "strategy": {"type": "page_range", "ranges": [
+         ("14A", 1, 8), ("14A_S1", 9, 13), ("14A_S2", 14, 19), ("14A_S3", 20, 22)]},
+     "fingerprint": {"max_page": 22, "min_coverage": 0.95}},
+    {"name": "krg_14d_gordon_by_page", "council": "ku_ring_gai", "validate": False,
+     "where": "source_chapter_key = 'section-b-part-14d-gordon-local-centre'",
+     "strategy": {"type": "page_range", "ranges": [
+         ("14D", 1, 9), ("14D_G1", 10, 15), ("14D_G2", 16, 21), ("14D_G3", 22, 27), ("14D_G4", 28, 33),
+         ("14D_G5", 34, 36)]},
+     "fingerprint": {"max_page": 35, "min_coverage": 0.95}},
+    {"name": "krg_14e_lindfield_by_page", "council": "ku_ring_gai", "validate": False,
+     "where": "source_chapter_key = 'section-b-part-14e-lindfield-local-centre'",
+     "strategy": {"type": "page_range", "ranges": [
+         ("14E", 1, 10), ("14E_L1", 11, 17), ("14E_L2", 18, 23), ("14E_L3", 24, 29), ("14E_L4", 30, 42),
+         ("14E_L5", 43, 55), ("14E_L6", 56, 64), ("14E_L7", 65, 66), ("14E_L8", 67, 70)]},
+     "fingerprint": {"max_page": 69, "min_coverage": 0.95}},
 ]
 
 

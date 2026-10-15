@@ -1,0 +1,48 @@
+[
+ {
+  "chapter": "section-b-part-14d-gordon-local-centre",
+  "coarse_share": 0.88,
+  "scale_prior": 4.044,
+  "m_per_pt": 2.8488,
+  "rotation_deg": 0.0,
+  "lines_within_10m_of_a_road": 0.961,
+  "line_to_road_median_m": 4.77,
+  "labels_found": [
+   "G1",
+   "G2",
+   "G3",
+   "G4",
+   "G5"
+  ],
+  "labels_expected": [
+   "G1",
+   "G2",
+   "G3",
+   "G4",
+   "G5"
+  ],
+  "outline_edge_median_m": 1.37,
+  "lots": {
+   "G1": [
+    13,
+    3
+   ],
+   "G4": [
+    36,
+    5
+   ],
+   "G3": [
+    10,
+    1
+   ],
+   "G2": [
+    48,
+    1
+   ],
+   "G5": [
+    2,
+    0
+   ]
+  }
+ }
+]

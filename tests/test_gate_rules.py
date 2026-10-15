@@ -1,5 +1,7 @@
 """Gate rules (scripts/gate_rules.py) and the Woollahra B2 keying rules (DQ-146)."""
 import re
+
+import pytest
 import sys
 from pathlib import Path
 
@@ -160,3 +162,17 @@ def test_cb_7_2_pages_tile_the_chapter_and_match_the_outline_ids():
     pages = sorted(p for _, lo, hi in ranges for p in range(lo, hi + 1))
     assert pages == list(range(1, 109))
     assert {pid for pid, _, _ in ranges} == imp.RASTER_IDS["centres_7_2.geojson"]
+
+
+@pytest.mark.parametrize("name,last,ids", [
+    ("krg_14a_st_ives_by_page", 22, {"14A", "14A_S1", "14A_S2", "14A_S3"}),
+    ("krg_14d_gordon_by_page", 36, {"14D", *(f"14D_G{i}" for i in range(1, 6))}),
+    ("krg_14e_lindfield_by_page", 70, {"14E", *(f"14E_L{i}" for i in range(1, 9))}),
+])
+def test_krg_centre_pages_tile_the_chapter(name, last, ids):
+    # Address audit 2026-10-15. Pages 1..last tiled once; ids are those fit_vector_centres.py writes, which
+    # import_vector_centres.py loads WITH former_council (they miss the ^14[A-O](_T\d)?$ fallback).
+    rule = next(r for r in g.EXTRA_KEY_RULES if r["name"] == name)
+    ranges = rule["strategy"]["ranges"]
+    assert sorted(p for _, lo, hi in ranges for p in range(lo, hi + 1)) == list(range(1, last + 1))
+    assert {pid for pid, _, _ in ranges} == ids
