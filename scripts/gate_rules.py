@@ -168,8 +168,8 @@ EXTRA_KEY_RULES: list[dict] = [
     # no outline). Those rows stay unkeyed -- shown to no house -- rather than guessed. Fingerprint: 135/206 rows keyed.
     {"name": "cb_8_3_hume_highway_by_page", "council": "canterbury_bankstown", "validate": False,
      "where": "source_chapter_key = 'chapter-8-3-hume-highway'",
-     "strategy": {"type": "page_range", "ranges": [("8.3.4", 10, 14), ("8.3.6", 19, 33)]},
-     "fingerprint": {"max_page": 42, "min_coverage": 0.6}},
+     "strategy": {"type": "page_range", "ranges": [("8.3.4", 10, 14), ("8.3.6", 19, 33), ("8.3.8", 38, 41)]},
+     "fingerprint": {"max_page": 42, "min_coverage": 0.6}},  # S8 (p38-41): placed from its site plan, Fig 8a
     # C-B Ch 7.1 / 6.1 "General requirements": Part 7 holds the local and village centres (7.2-7.6), Part 6 the strategic
     # centres (6.2 Bankstown, 6.3 Campsie); each .1 chapter's controls "enhance the function, design and amenity of the
     # centres" (7.1/6.1 p5). Keyed to the union of the Part's centres MAPPED so far (cb_part7 / cb_part6 unions):

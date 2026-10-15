@@ -49,7 +49,11 @@
     "scripts/import_vector_centres.py",
     "data/ku_ring_gai_precincts/vector_centres.json",
     "data/ku_ring_gai_precincts/centres_vector.geojson",
-    "data/ku_ring_gai_precincts/fit_report_vector.json"
+    "data/ku_ring_gai_precincts/fit_report_vector.json",
+    "scripts/fit_site_plans.py",
+    "data/canterbury_bankstown_precincts/site_plans_8_3.json",
+    "data/canterbury_bankstown_precincts/site_plans_8_3.geojson",
+    "data/canterbury_bankstown_precincts/fit_report_site_plans_8_3.json"
   ],
   "pre_impl": {
     "existing_data": "none read or written by the reader; it returns ai_extractor.provisions_to_sections dicts to the existing review-queue path",
@@ -123,6 +127,7 @@
   "real_layer_exempt": {
     "scripts/fit_cb_raster_centres.py": "read-only fitter; its writes go through import_cb_centre_boundaries.py, whose in-transaction proof (lookup + audit addresses) ran against production on 2026-10-15 and rolled back twice before passing",
     "scripts/fit_vector_centres.py": "read-only fitter; its only write path is import_vector_centres.py, whose in-transaction lookup proof ran against production 2026-10-15",
-    "scripts/import_vector_centres.py": "its proof runs inside the production transaction (lookup of every written id, 14B_T1/14I still found, audit addresses unaffected) and rolls back on failure; ran 2026-10-15"
+    "scripts/import_vector_centres.py": "its proof runs inside the production transaction (lookup of every written id, 14B_T1/14I still found, audit addresses unaffected) and rolls back on failure; ran 2026-10-15",
+    "scripts/fit_site_plans.py": "read-only fitter; loads go through import_cb_centre_boundaries.py, whose in-transaction lookup proof ran on 2026-10-15"
   }
 }

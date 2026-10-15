@@ -37,10 +37,12 @@ EXPECTED_IDS = {"6.2", "7.5", "7.6"}
 #: Other files (--src) carry their own ids: the 7.2 raster centres are 7.2.2-7.2.13 + the union '7.2'
 #: (scripts/fit_cb_raster_centres.py). Their ids are checked against the file's own config, not this set.
 RASTER_IDS = {"centres_7_2.geojson": {"7.2", *(f"7.2.{n}" for n in range(2, 14))}}
+#: Site files: any subset of these ids (refused sites are simply absent; there is no union).
+SITE_IDS = {"site_plans_8_3.geojson": {"8.3.5", "8.3.7", "8.3.8"}}
 #: The Planning Portal's state outline is the council's legal map layer (1.0). A figure fitted to
 #: the cadastre is positionally ~4 m, and doubtful lots were kept, so it is recorded lower.
 CONFIDENCE = {"nsw_planning_local_provisions": 1.0, "dcp_figure_georeferenced_to_cadastre": 0.9,
-              "dcp_raster_map_fitted_to_road_centrelines": 0.85}
+              "dcp_raster_map_fitted_to_road_centrelines": 0.85, "dcp_site_plan_shape_fitted_to_cadastre": 0.85}
 CB_ENVELOPE = (150.95, -33.99, 151.18, -33.85)
 
 #: Lot points (ST_PointOnSurface of nsw_cadastre_lots, 2026-10-11) of the served-answer audit's
@@ -71,7 +73,11 @@ def load_rows(src: Path = SRC) -> list[dict]:
     expected = RASTER_IDS.get(src.name, EXPECTED_IDS)
     # A raster file may lack centres the fit REFUSED (their rules stay unkeyed); it may never hold an unknown id,
     # and it must hold the chapter's union.
-    ok = ids <= expected and min(expected, key=len) in ids if src.name in RASTER_IDS else ids == expected
+    if src.name in SITE_IDS:
+        expected = SITE_IDS[src.name]
+        ok = bool(ids) and ids <= expected
+    else:
+        ok = ids <= expected and min(expected, key=len) in ids if src.name in RASTER_IDS else ids == expected
     if not ok:
         raise SystemExit(f"[ABORT] {src.name} holds {sorted(ids)}, expected {sorted(expected)}")
     return rows
