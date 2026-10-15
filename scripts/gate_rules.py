@@ -116,7 +116,48 @@ GATE_RULES: list[dict] = [
      "where": "source_chapter_key = 'section-b-part-19-heritage'",
      "set": {"v2_marker": "heritage"}},
 ]
-_GATE_COLUMNS = {"v2_marker", "v2_dcp_layer", "v2_site_condition_required", "v2_applicable_zones"}
+# ---- lane-gates 2026-10-15: Marrickville Part 8 by HCA ----------------------------------------------------------
+# Part 8 section 8.2.N (N >= 3) is "<name> Heritage Conservation Area - HCA N-2" (contents, PDF p3-12): its rules
+# are that HCA's. 8.2.1-8.2.2 (principles for HCAs), 8.3 "Controls for residential HCAs", 8.4 "Controls for retail
+# streetscapes in Heritage Conservation Areas" and 8.5 "HCA Style Sheets" apply in any HCA, not to a heritage item
+# outside one (ANY_HCA in frontend-nextjs/lib/provision-sql-filters.ts). Slugs = heritage_conservation_areas.db_slug
+# of the Inner West LEP 2022 HCA with the same name -- what the route resolves the property's HCA to; same table as
+# scripts/enrichment/link_marrickville_hca_provisions.py, plus HCA 13, 24, 36-38 matched by name. Address audit
+# 2026-10-15: 5 of 10 rules at 21/1-3 Coronation Ave Petersham (heritage item, no HCA) were other HCAs' rules.
+# Recorded limit: an HCA whose LEP name is stored mis-encoded (C70 Porter's, C67 Inter-War) does not resolve, so
+# its lots get the general Part 8 rules only -- missing rules, never another area's.
+_MARRICKVILLE_8_2_HCA = {
+    3: "the_abergeldie_estate_heritage_conservation_area", 4: "hca_2", 5: "hca_3",
+    6: "railway_street_petersham_heritage_conservation_area", 7: "hca_5", 8: "hca_6", 9: "hca_7", 10: "hca_8",
+    11: "hca_9", 12: "hca_10", 13: "hca_11", 14: "hca_12", 15: "enmore_house_heritage_conservation_area",
+    16: "hca_14", 17: "hca_15", 18: "hca_16", 19: "kingston_south_heritage_conservation_area",
+    20: "petersham_south_norwood_estate_heritage_conservation_area", 21: "hca_19",
+    22: "audley_street_south_bayswater_estate_heritage_conservation_area", 23: "hca_21", 24: "hca_22",
+    25: "hca_23", 26: "hca_24", 27: "hca_25", 28: "hca_26", 29: "hca_27", 30: "hca_28",
+    31: "south_dulwich_hill_heritage_conservation_area", 32: "hca_30", 33: "hca_31", 34: "hca_32", 35: "hca_33",
+    36: "hca_34", 37: "hca_35", 38: "hoskins_park_and_environs_heritage_conservation_area",
+    39: "lackey_street_and_simpson_park_heritage_conservation_area",
+    40: "camden_street_and_james_street_heritage_conservation_area",
+}
+_P8 = "source_chapter_key = 'part8-heritage' AND ref_number ~ "
+GATE_RULES += [
+    {"name": f"marrickville_8_2_{n}_hca", "council": "marrickville",
+     "where": _P8 + f"'__8_2_{n}([_~ ]|$)'", "set": {"v2_heritage_hca": slug}}
+    for n, slug in sorted(_MARRICKVILLE_8_2_HCA.items())
+] + [
+    {"name": "marrickville_part8_any_hca", "council": "marrickville",
+     "where": _P8 + "'__(8_2_[12]|8_[345])([_~ ]|$)'", "set": {"v2_heritage_hca": "__any_hca__"}},
+]
+GATE_RULES += [
+    # "This section applies to land zoned MU1 Mixed Use in the Paddington business precinct in Oxford Street and
+    # the streets adjoining" (Woollahra DCP 2015 E1.8.4, p25): zone tag here, Paddington HCA key in EXTRA_KEY_RULES.
+    {"name": "woollahra_e1_8_4_zone", "council": "woollahra",
+     "where": "source_chapter_key = 'chapter-e1-parking-access' AND ref_number ~ '__E1_8_4([_~ ]|$)'",
+     "set": {"v2_applicable_zones": ["MU1"]}},  # noqa: zone-codes (the plan's own zone)
+]
+# ---- end lane-gates ----------------------------------------------------------------------------------------------
+_GATE_COLUMNS = {"v2_marker", "v2_dcp_layer", "v2_site_condition_required", "v2_applicable_zones",
+                 "v2_heritage_hca"}
 #: v2_applicable_zones added 2026-10-14: a zone limit set by hand was undone by every re-extraction (dry run of the
 #: map job); as a gate rule it is re-applied after every publish like the others.
 
@@ -213,6 +254,22 @@ EXTRA_KEY_RULES: list[dict] = [
          ("14E_L5", 43, 55), ("14E_L6", 56, 64), ("14E_L7", 65, 66), ("14E_L8", 67, 70)]},
      "fingerprint": {"max_page": 69, "min_coverage": 0.95}},
 ]
+
+
+# ---- lane-gates 2026-10-15: rules whose own words name their area (address audit run2) ----
+EXTRA_KEY_RULES += [
+    # Woollahra E1.8.4 "Certain land in Paddington zoned MU1 Mixed Use" (p25) -> Paddington HCA outline + MU1 tag.
+    {"name": "woollahra_e1_8_4_paddington", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-e1-parking-access' AND ref_number ~ '__E1_8_4([_~ ]|$)'",
+     "strategy": {"type": "constant", "precinct_id": "Paddington HCA"}},
+    # Waverley DCP 2022 B7 7.1(i)(i) "Basement parking areas and structures ... In Bondi Junction must not protrude
+    # above the level of the adjacent street" (p58) -> outline E1 Bondi Junction. Only the rows that say so.
+    {"name": "waverley_b7_in_bondi_junction", "council": "waverley", "validate": False,
+     "where": "source_chapter_key = 'waverley-dcp-2022' AND v2_dcp_part = 'B7'"
+              " AND provision_text ~* '\mIn Bondi Junction must\M'",
+     "strategy": {"type": "constant", "precinct_id": "E1"}},
+]
+# ---- end lane-gates keys ----
 
 
 def apply_gate_rules(cur, council: str | None, apply: bool, only: set[str] | None = None) -> list[tuple]:

@@ -176,3 +176,14 @@ def test_krg_centre_pages_tile_the_chapter(name, last, ids):
     ranges = rule["strategy"]["ranges"]
     assert sorted(p for _, lo, hi in ranges for p in range(lo, hi + 1)) == list(range(1, last + 1))
     assert {pid for pid, _, _ in ranges} == ids
+
+
+def test_marrickville_part8_sections_go_to_their_own_hca():
+    rules = [r for r in g.GATE_RULES if "v2_heritage_hca" in r["set"]]
+    pat = lambda w: re.search(r"ref_number ~ '([^']+)'", w).group(1)  # noqa: E731
+    cases = [("X__8_2_4_1 9", "hca_2"), ("X__8_2_31_1~2", "south_dulwich_hill_heritage_conservation_area"),
+             ("X__8_2_12", "hca_10"), ("X__8_2_1", "__any_hca__"), ("X__8_5_2 C1", "__any_hca__"),
+             ("X__8_3_2~3", "__any_hca__"), ("X__8_1_7 C2", None)]
+    for ref, want in cases:
+        hits = [r["set"]["v2_heritage_hca"] for r in rules if re.search(pat(r["where"]), ref)]
+        assert hits == ([want] if want else []), ref
