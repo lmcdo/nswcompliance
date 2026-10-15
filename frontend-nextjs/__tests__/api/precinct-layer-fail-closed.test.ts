@@ -7,10 +7,10 @@
  */
 import { NextRequest } from 'next/server';
 
-const calls: { sql: string; params: unknown[] }[] = [];
+const calls: { sql: string; values: unknown[] }[] = [];
 const client = {
   query: jest.fn(async (sql: string, params: unknown[] = []) => {
-    calls.push({ sql, params });
+    calls.push({ sql, values: params });
     return { rows: [] };
   }),
   release: jest.fn(),
@@ -30,7 +30,7 @@ function req(params: Record<string, string>) {
 }
 
 const precinctLayerQueries = () =>
-  calls.filter((c) => /v2_dcp_layer = \$\d+/.test(c.sql) && c.params.includes('precinct'));
+  calls.filter((c) => /v2_dcp_layer = \$\d+/.test(c.sql) && c.values.includes('precinct'));
 
 describe('precinct layer fails closed', () => {
   beforeEach(() => {
