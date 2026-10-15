@@ -28,7 +28,6 @@ from .penrith_config import PENRITH_CONFIG
 from .hornsby_config import HORNSBY_CONFIG
 from .georges_river_config import GEORGES_RIVER_CONFIG
 from .northern_beaches_config import NORTHERN_BEACHES_CONFIG
-from .cumberland_config import CUMBERLAND_CONFIG
 from .parramatta_config import PARRAMATTA_CONFIG
 from .wollongong_config import WOLLONGONG_CONFIG
 
@@ -66,8 +65,6 @@ COUNCIL_CONFIGS: dict[str, dict] = {
     # it narrows: bare-number misreads resolve to a Part directly.
     "parramatta": PARRAMATTA_CONFIG,
     "wollongong": WOLLONGONG_CONFIG,
-    # Added 2026-10-15 (DQ-33). document_id is "Cumberland_DCP_Part_B_..._Residential_Zones_2021__cumberland_dcp_part_b_residential".
-    "cumberland": CUMBERLAND_CONFIG,
 }
 
 __all__ = [
@@ -83,7 +80,6 @@ __all__ = [
     'HORNSBY_CONFIG',
     'GEORGES_RIVER_CONFIG',
     'NORTHERN_BEACHES_CONFIG',
-    'CUMBERLAND_CONFIG',
     'WAVERLEY_CONFIG',
     'WOOLLAHRA_CONFIG',
     'CITY_OF_SYDNEY_CONFIG',

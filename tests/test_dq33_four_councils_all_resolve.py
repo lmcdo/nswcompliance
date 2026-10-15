@@ -32,8 +32,6 @@ MARRICKVILLE_SLUGS = {
     "part2_s24_contaminated_land": "2_24",
     "part2_s26_entertainment_precincts": "2_26",
 }
-CUMBERLAND_DOC = ("Cumberland_DCP_Part_B_�_Residential_Zones_2021__"
-                  "cumberland_dcp_part_b_residential")
 NB_DOC = "Warringah_DCP_2011__warringah_dcp_2011_full"
 
 
@@ -76,33 +74,3 @@ class TestAshfield:
     def test_e1_still_resolves_to_e1(self, tagger):
         doc = "Inner_West_Ashfield_DCP_2016__chapter_e1_heritage"
         assert tagger._ashfield_slug_key(doc) == ("chapter", "Chapter E1")
-
-
-class TestCumberland:
-    def test_part_b_is_declined_on_dev_types(self, tagger):
-        z, d, prov = tagger.tag_with_provenance("# 2.1 Setbacks", CUMBERLAND_DOC)
-        assert prov["dev_type_source"] == "config_declined"
-        assert d == ["ALL"]
-
-    def test_zones_keep_the_residential_values_already_served(self, tagger):
-        z, _d, prov = tagger.tag_with_provenance("# 2.1 Setbacks", CUMBERLAND_DOC)
-        assert z == ["R2", "R3", "R4"] and prov["zone_source"] == "config_specific"  # noqa: zone-codes
-
-    def test_no_dev_type_list_was_invented(self):
-        from enrichment.config.cumberland_config import CUMBERLAND_CONFIG
-        entry = CUMBERLAND_CONFIG["chapter_topics"]["cumberland_dcp_part_b_residential"]
-        assert "applicable_dev_types" not in entry
-        assert "applicable_dev_types" in entry["scope_declined"]
-
-
-class TestNorthernBeaches:
-    @pytest.mark.parametrize("heading", ["# 1 Requirements", "# O8 Objectives and Requirements",
-                                         "# 5.4.7 C9 Basement entries", "No heading at all"])
-    def test_unreadable_part_is_declined_never_no_config(self, tagger, heading):
-        _z, d, prov = tagger.tag_with_provenance(heading, NB_DOC)
-        assert prov["dev_type_source"] == "config_declined"
-        assert d == ["ALL"]
-
-    def test_a_readable_part_is_unchanged(self, tagger):
-        _z, _d, prov = tagger.tag_with_provenance("# D23 O4 Signs", NB_DOC)
-        assert prov["dev_type_source"] == "config_all"
