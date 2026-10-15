@@ -48,6 +48,14 @@ UNIONS: dict[str, dict] = {
                "ST_Union of the eleven B2.2-B2.12 outlines already loaded from NSW ePlanning "
                "EPI_Primary_Planning_Layers/0 (Woollahra LEP 2014)",
     },
+    "cb_8_3_4": {
+        "lga": "Canterbury-Bankstown", "id": "8.3.4",
+        "name": "Canterbury-Bankstown DCP 2023 Ch 8.3 Section 4 Rookwood Village Centre (sites found in the register)",
+        "members": ("8.3.4a", "8.3.4b"),
+        "outside": ("8.3.6",),
+        "src": "Ch 8.3 p11 '324-326 Hume Highway ...; 342 Hume Highway and 2-8 George Street; 348 ...; 350 Hume Highway and "
+               "18 George Street' <- union of the address-proved sites (2-8 and 18 George St are not in the NSW address register)",
+    },
     "krg_14b": {
         "lga": "Ku-ring-gai", "id": "14B",
         "name": "Ku-ring-gai DCP Part 14B Turramurra Local Centre (precincts T1-T4)",

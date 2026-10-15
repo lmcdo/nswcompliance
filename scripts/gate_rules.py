@@ -161,6 +161,14 @@ EXTRA_KEY_RULES: list[dict] = [
     # ST JOHNS AVENUE AND HENRY STREET" ...). Sections x.1-x.6 apply to the whole centre ("All development within the
     # Gordon local centre, as outlined in Figure 14D.1-1") -> the union outline. Outlines:
     # scripts/fit_vector_centres.py + import_vector_centres.py. Address audit 2026-10-15: all unkeyed.
+    # C-B Ch 8.3 Hume Highway: only the sections whose land is PROVED are keyed. S4 Rookwood (p10-14) -> union of the
+    # register-found sites (8.3.4); S6 167 Hume Hwy (p19-33) -> its Lot 402 DP 631754 (8.3.6). S5/S7/S8 name addresses
+    # the NSW register does not hold; S1-S3 and Appendix 1 cover the whole corridor (S3: E3 land adjoining the highway,
+    # no outline). Those rows stay unkeyed -- shown to no house -- rather than guessed. Fingerprint: 135/206 rows keyed.
+    {"name": "cb_8_3_hume_highway_by_page", "council": "canterbury_bankstown", "validate": False,
+     "where": "source_chapter_key = 'chapter-8-3-hume-highway'",
+     "strategy": {"type": "page_range", "ranges": [("8.3.4", 10, 14), ("8.3.6", 19, 33)]},
+     "fingerprint": {"max_page": 42, "min_coverage": 0.6}},
     {"name": "krg_14a_st_ives_by_page", "council": "ku_ring_gai", "validate": False,
      "where": "source_chapter_key = 'section-b-part-14a-st-ives-local-centre'",
      "strategy": {"type": "page_range", "ranges": [
