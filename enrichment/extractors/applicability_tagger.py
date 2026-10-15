@@ -276,9 +276,9 @@ class ApplicabilityTagger:
             key = f"Part_{int(m.group(1))}"
             return ("chapter_f_part", key) if key in fparts else None
 
-        # `chapter_e2_haberfield` deliberately does NOT resolve: ASHFIELD_CONFIG
-        # declares no 'Chapter E2'. Inventing one to cover 118 rows is exactly the
-        # guess this rule forbids.
+        # `chapter_e2_haberfield` resolves to 'Chapter E2', declared 2026-10-15 from the
+        # chapter's own Application section. Before that it deliberately did NOT: the key
+        # was undeclared and inventing one was the guess this rule forbids.
         m = re.match(r"chapter_([a-z]\d?)(?:_|$)", t)
         if m:
             key = f"Chapter {m.group(1).upper()}"
@@ -604,6 +604,13 @@ class ApplicabilityTagger:
 
         parts = config.get("parts", {})
         chapter_topics = config.get("chapter_topics")
+        # A whole-DCP `parts` config may declare what to say about a row whose Part
+        # cannot be read (DQ-33, northern_beaches). Absent for every other council, so
+        # they still return None and fall to text extraction exactly as before.
+        unresolved = parts.get("_UNRESOLVED_PART") if not chapter_topics else None
+
+        def _unresolved():
+            return self._from_entry(unresolved) if unresolved else None
 
         # chapter_topics path (City of Sydney, Ku-ring-gai, Canterbury-Bankstown)
         if chapter_topics:
@@ -634,7 +641,7 @@ class ApplicabilityTagger:
         if not section_code:
             # Preamble provisions carry no heading code: use the document's chapter.
             if not doc_code and not part_code:
-                return None
+                return _unresolved()
             section_code = doc_code or part_code
         elif doc_code and section_code != doc_code and not section_code.startswith(doc_code + '.'):
             # DQ-126: a chapter can number its own sections in another chapter's style --
@@ -688,7 +695,7 @@ class ApplicabilityTagger:
                 is_precinct_specific=entry.get('is_precinct_specific', False),
             )
 
-        return None
+        return _unresolved()
 
     @staticmethod
     def _extract_section_code(text: str) -> Optional[str]:
