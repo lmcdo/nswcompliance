@@ -190,8 +190,11 @@ def _load(conn, rows: list[dict], commit: bool, former: bool = False) -> int:
             halves = [h for h in hit if h.startswith("C-B former ")]
             if len(halves) != 1 or len(hit) != 1:
                 problems.append(f"{label} resolves to {hit}; expected exactly one former council")
-        elif hit:
-            problems.append(f"{label} now resolves to {hit}")
+        else:
+            # The former-council halves tile the whole LGA, so every address is in one; only a CENTRE/site hit is wrong.
+            hit = [h for h in hit if not h.startswith("C-B former ")]
+            if hit:
+                problems.append(f"{label} now resolves to {hit}")
     if problems:
         conn.rollback()
         print("[ROLLED BACK]\n  " + "\n  ".join(problems))
