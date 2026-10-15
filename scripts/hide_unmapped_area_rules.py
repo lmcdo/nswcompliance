@@ -25,7 +25,6 @@ REPO = Path(__file__).resolve().parent.parent
 LIST = REPO / "data" / "chapter_scope" / "not_covered_2026-10-15.json"
 BACKUP_DIR = REPO / "data" / "db_rollback_backups"
 
-SERVED = "is_current AND v2_is_actionable AND (v2_provision_type IS NULL OR v2_provision_type <> 'TOC')"
 
 
 def selectors() -> list[dict]:
@@ -56,7 +55,9 @@ def main() -> int:
         todo = []
         for sel in selectors():
             w, p = where_for(sel)
-            cur.execute(f"SELECT id, v2_dcp_layer, v2_precinct_id FROM regulatory_provisions WHERE {SERVED} AND {w}", p)
+            cur.execute("SELECT id, v2_dcp_layer, v2_precinct_id FROM regulatory_provisions "
+                        "WHERE is_current AND v2_is_actionable "
+                        "AND (v2_provision_type IS NULL OR v2_provision_type <> 'TOC') AND " + w, p)
             rows = cur.fetchall()
             if sel.get("expect") is not None and len(rows) != sel["expect"]:
                 raise SystemExit(f"[ABORT] {sel['council']}/{sel['chapter_key']}: {len(rows)} rows, list says {sel['expect']}")

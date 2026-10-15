@@ -44,7 +44,7 @@ export const ANY_HCA = '__any_hca__';
  * untagged rules pass, so an HCA's own rules never reach a heritage item outside it.
  */
 export function hcaTagSql(hcaParam: number | null, column = 'rp.v2_heritage_hca'): string {
-  if (hcaParam === null) return `${column} IS NULL`;
+  if (hcaParam == null) return `${column} IS NULL`;
   return `(${column} IS NULL OR ${column} = $${hcaParam} OR ${column} = '${ANY_HCA}')`;
 }
 

@@ -124,6 +124,7 @@ def main() -> int:
         args.append([int(x) for x in a.ids.split(",")])
     cur.execute(sql, args)
     rows = cur.fetchall()
+    conn.close()  # read-only probe: every row is fetched before the PDF work starts
     pages: dict = {}
     spliced, unplaced = [], 0
     for rid, text, page, path in rows:
