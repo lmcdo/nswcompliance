@@ -31,3 +31,4 @@ def test_a_heading_code_that_matches_still_wins_over_the_part():
     a = ApplicabilityTagger().tag_with_provenance("# C1\n\nThe dwelling is setback 6m.", DOC, part="E1")  # noqa: zone-codes (Waverley DCP Part keys, not zones)
     b = ApplicabilityTagger().tag_with_provenance("# C1\n\nThe dwelling is setback 6m.", DOC)
     assert a == b
+

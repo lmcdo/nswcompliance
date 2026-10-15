@@ -628,6 +628,8 @@ class ApplicabilityTagger:
         # The row's own Part (v2_dcp_part) when the heading carries none the config is keyed by: a whole-plan document
         # read by the section reader heads its rules with section numbers ("16.2") while the config is keyed by Part
         # letter ("B", "E"), so 448 Waverley rows fell to no_config (OC-17, 2026-10-15). Used ONLY as a fallback.
+        # letter Parts only (Waverley "B12"): numbered-Part councils (Parramatta) must not narrow on a Part
+        # (tests/test_parramatta_numbered_parts_scope.py -- bare-number misreads)
         part_code = part if part and re.fullmatch(r'[A-Z]\d{0,2}(\.\d+)*', part) else None
         if not section_code:
             # Preamble provisions carry no heading code: use the document's chapter.
