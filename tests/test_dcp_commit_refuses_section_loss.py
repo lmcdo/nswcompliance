@@ -111,6 +111,11 @@ def _wire(monkeypatch, before_headers, after_headers, graded=()):
     monkeypatch.setitem(sys.modules, "enrichment.pipeline", pipeline)
     dpk = type(sys)("derive_precinct_keys")
     dpk.run = lambda council, apply, validate: 0
+    # The area-link guard (dcp_area_link_guard) is its own suite (tests/test_dcp_area_link_guard*.py);
+    # here it would judge the fake connection's rows, so it is held neutral like enrichment above.
+    monkeypatch.setattr(dca.area_links, "linked_count", lambda *a, **k: 0)
+    monkeypatch.setattr(dca.area_links, "fill_parts", lambda *a, **k: 0)
+    monkeypatch.setattr(dca.area_links, "enforce", lambda *a, **k: 0)
     monkeypatch.setitem(sys.modules, "derive_precinct_keys", dpk)
     monkeypatch.setitem(sys.modules, "scripts.derive_precinct_keys", dpk)
     ccc = type(sys)("check_council_completeness")

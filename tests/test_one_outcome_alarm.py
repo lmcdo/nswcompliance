@@ -63,40 +63,26 @@ def _dq117_sql(code_only: bool = False) -> str:
 
 
 class TestTheWindowMatchesTheRealSchedule:
-    def test_the_declared_cron_is_fortnightly(self):
+    def test_the_declared_cron_is_weekly(self):
         """The fact the window is derived from. If the schedule file changes, this test
         fails and the window has to be revisited rather than silently drifting."""
         assert TOML.exists(), "railway.dcp-monitor.toml is gone; the window's basis is"
         text = TOML.read_text(encoding="utf-8")
         m = re.search(r'cronSchedule\s*=\s*"([^"]+)"', text)
         assert m, "dcp-monitor declares no cronSchedule"
-        assert m.group(1).strip() == "0 2 1,15 * *", (
-            f"the sweep's schedule changed to {m.group(1)!r}. DQ-117's 17-day window "
-            f"was derived from a fortnightly 1st-and-15th cron; re-derive it."
+        assert m.group(1).strip() == "0 2 * * 1", (
+            f"the sweep's schedule changed to {m.group(1)!r}. DQ-117's 8-day window "
+            f"was derived from a weekly Monday cron (7-day gap + 1 day for the run); re-derive it."
         )
 
-    def test_the_window_is_seventeen_days(self):
-        assert "INTERVAL '17 days'" in _dq117_sql()
+    def test_the_window_is_eight_days(self):
+        assert "INTERVAL '8 days'" in _dq117_sql()
 
-    def test_the_ten_day_window_is_gone(self):
-        """10 days on a 14-to-17-day cycle is red while nothing is wrong."""
-        assert "INTERVAL '10 days'" not in _dq117_sql(), (
-            "the 10-day window is back, so DQ-117 will read red on a healthy "
-            "fortnightly schedule every cycle"
-        )
-
-    def test_seventeen_covers_the_longest_healthy_gap(self):
-        """15 Jan -> 1 Feb is 17 days, the widest gap a 1st-and-15th cron produces.
-        Computed, not asserted, so a leap year or a month length cannot surprise it."""
-        from datetime import date
-        gaps = []
-        for year in (2025, 2026, 2027, 2028):
-            for month in range(1, 13):
-                nxt = date(year + (month == 12), 1 if month == 12 else month + 1, 1)
-                gaps.append((nxt - date(year, month, 15)).days)
-                gaps.append((date(year, month, 15) - date(year, month, 1)).days)
-        assert max(gaps) == 17, f"the widest 1st/15th gap is {max(gaps)}, not 17"
-        assert "INTERVAL '17 days'" in _dq117_sql()
+    def test_no_window_shorter_than_the_weekly_gap(self):
+        """A window under 7 days is red while nothing is wrong, every week."""
+        import re as _re
+        days = [int(d) for d in _re.findall(r"INTERVAL '(\d+) days'", _dq117_sql(code_only=True))]
+        assert days and min(days) > 7, f"DQ-117 window {days} is not longer than the 7-day cycle"
 
     def test_the_wrong_premise_is_recorded_not_quietly_fixed(self):
         """A window changed with no reason recorded is a window someone changes back."""

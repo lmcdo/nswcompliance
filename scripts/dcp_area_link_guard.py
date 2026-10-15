@@ -79,7 +79,7 @@ def relinkable_count(cur, council: str, chapter_key: str) -> int:
                   FROM regulatory_provisions
                  WHERE is_current = true AND source_council = %(council)s AND source_chapter_key = %(key)s
                    AND ({rule['where']})""",
-            {"council": council, "key": chapter_key, **dict(rule.get("params", {}))})
+            {"council": council, "key": chapter_key, **dict(rule.get("params") or {})})
         cols = [d[0] for d in cur.description]
         for r in cur.fetchall():
             row = dict(zip(cols, r))
