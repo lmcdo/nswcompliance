@@ -81,11 +81,12 @@ class TestItAsksOnlyWhereTheAnswerCanChange:
         assert floor <= 1278, (
             f"the floor was RAISED to {floor}. A ratchet floor may only fall; raising it "
             f"to match a measurement makes the row unable to fail.")
-        assert floor == 1158, (
-            f"the floor is {floor}, not the 1,158 measured immediately after the "
-            f"leichhardt repair. If another council's documents have since been "
-            f"declared, lower it to the new measured residue and update this number "
-            f"in the same commit.")
+        # 1158 -> 817 (2026-10-15): Parramatta excluded as a stated exception, its 341 rows
+        # inside the floor removed with it. 817 -> 0 (2026-10-16): the four remaining
+        # councils' documents declared (DQ-33 measured 0 after the live retag).
+        assert floor == 0, (
+            f"the floor is {floor}, not the 0 measured after the 2026-10-16 retag. "
+            f"A ratchet floor may only fall.")
 
     def test_the_scope_matches_the_repair_it_ratchets(self):
         """Read from the repair, not assumed: if that script ever starts touching rows

@@ -1108,7 +1108,10 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # come out of the floor too (1158 -> 817), so excluding it cannot hide
         # anything new elsewhere. Parramatta's own count (1,793 on 2026-10-15) is
         # reported by --id DQ-33 so the exception stays visible.
-        "SELECT GREATEST(count(*) - 817, 0) FROM regulatory_provisions "
+        # FLOOR 817 -> 0 on 2026-10-16: the dev-type declarations for northern_beaches,
+        # marrickville, ashfield and cumberland (feat/lane-devtype) resolved every remaining
+        # no_config row outside Parramatta. Any new one is now a regression.
+        "SELECT GREATEST(count(*) - 0, 0) FROM regulatory_provisions "
         "WHERE is_current AND v2_is_actionable "
         "AND source_council IS NOT NULL AND source_council <> 'parramatta' "
         "AND v2_dev_type_source = 'no_config'",
