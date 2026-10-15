@@ -1,0 +1,109 @@
+{
+  "tier": "critical",
+  "justification": "Changes which houses are shown which DCP rules. The route change stops 2,827 unkeyed precinct rules reaching every house without a precinct; the gate rule, once applied with the user's yes, stops 913 Marrickville Part 8 heritage rules reaching non-heritage houses. A mistake would hide rules from houses they cover or keep showing them to houses they do not, silently.",
+  "commit_hash": "e9e434a0",
+  "files": [
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/__tests__/api/precinct-layer-fail-closed.test.ts",
+    "scripts/dq_probe_live.py",
+    "scripts/gate_rules.py",
+    "data/chapter_scope/chapter_scope_2026-10-11.json",
+    "tests/test_gate_rules.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".qa/reports/fix__precinct-fail-closed.json"
+  ],
+  "pre_impl": {
+    "existing_data": "Measured on production 2026-10-15: 2,827 served rules with v2_dcp_layer 'precinct', v2_precinct_id NULL and zones ALL (canterbury_bankstown 1,953, ku_ring_gai 858, parramatta 16). Marrickville part8-heritage: 1,361 served rules, all generic layer, none with v2_marker 'heritage'; 913 have a non-heritage topic, 448 topic 'heritage'. Hand-checked address audit (30 addresses, 300 rules): 49 severe, 42 of them rules for another area; 24 are unkeyed precinct rules, 6 Part 8 rules on non-heritage lots.",
+    "assumption_mismatch": "chapter_scope recorded Part 8 as whole_council although its own sentence (p15) names heritage items and HCAs. The _ALL_HERITAGE pattern did not match its wording, so it would have been counted as a named-area chapter. The 448 topic-heritage Part 8 rules were hidden not only from non-heritage houses but from every HCA house too, because queryHeritageByHca reads v2_marker only.",
+    "new_vs_existing": "Reuses GATE_RULES (re-run by dcp_commit_approved.py after every publish) and the existing DQ-143/146 probes; the route change removes a branch rather than adding one. The existing precinct warning still tells the user precinct controls may exist.",
+    "external_source_error": "No external call. The Part 8 sentence was read from the council PDF in R2 (part8-heritage.pdf p15, quote_check found).",
+    "frontend_type": "queryLayer returns [] for the precinct layer when no precinct_id is sent, the same type as an empty result.",
+    "user_failure_mode": "Before: silent wrong answer (a centre or site rule shown at a house outside it). After: the rule is missing at houses inside its precinct until the precinct is keyed, and the page's existing precinct warning says site-specific controls may exist. Counted by DQ-146 (reopened, 2,945)."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/precinct-layer-fail-closed.test.ts ; cd .. && python -m pytest tests/test_gate_rules.py tests/test_chapter_scope_probes.py -q",
+    "fails_when": "The jest test fails if the route queries the precinct layer for an address without a precinct, or queries unkeyed rows when a precinct is given. The pytest tests fail if the Part 8 sentence stops matching _ALL_HERITAGE, if Part 8 is not a heritage_general chapter in DQ-143, if the gate rule is missing, or if the probes stop mirroring the route.",
+    "observed_red": "With route.ts restored from origin/main the new jest test fails 1 of 2 (the no-precinct case). The first regex edit did not apply (string mismatch) and was redone."
+  },
+  "functions": [
+    {
+      "name": "queryLayer (precinct branch)",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:1119",
+      "input": "the layer name 'precinct' plus the property filters, including an optional comma-separated precinct_id",
+      "output": "Rules keyed to the given precinct ids; [] when no precinct id is given",
+      "if_none": "No precinct id returns [] before any query; the precinct warning is computed separately."
+    }
+  ],
+  "values": [
+    {
+      "value": "2,827",
+      "what": "served precinct-layer rules with no precinct key",
+      "source": "SELECT count(*) FROM regulatory_provisions WHERE served set AND v2_dcp_layer='precinct' AND v2_precinct_id IS NULL AND zones ALL",
+      "read_at": "Production, 2026-10-15",
+      "if_missing": "n/a"
+    },
+    {
+      "value": "2,945 / 1,969 / 18,626",
+      "what": "DQ-146 / DQ-143 / DQ-144 with the new definitions, before the Part 8 write",
+      "source": "python scripts/dq_probe_live.py --id DQ-146|DQ-143|DQ-144",
+      "read_at": "Production, 2026-10-15",
+      "if_missing": "An unreachable database exits 2 (UNKNOWN), never 0."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Precinct layer rows for the property's precinct only.",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:1125",
+      "where_clause": "v2_is_actionable AND is_current AND v2_dcp_layer = 'precinct' AND source_council = $ AND (v2_precinct_id = ANY($) OR v2_precinct_id = 'PART_G_OVERVIEW')"
+    },
+    {
+      "purpose": "Part 8 gate rule rows.",
+      "file_line": "scripts/gate_rules.py:28",
+      "where_clause": "is_current = true AND source_council = 'marrickville' AND source_chapter_key = 'part8-heritage'"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A house inside a C-B or Ku-ring-gai centre whose rules are unkeyed.",
+      "what_happens": "It no longer sees those centre rules until their precinct is keyed.",
+      "mitigated": false,
+      "how": "Accepted by the user (2026-10-15): missing is better than wrong. The precinct warning still shows; DQ-146 counts every hidden rule until it is keyed.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-146"
+    },
+    {
+      "scenario": "An HCA-specific Part 8 statement (e.g. Enmore-Newtown) with v2_heritage_hca NULL.",
+      "what_happens": "Shown to every HCA house in Marrickville, not only its own HCA.",
+      "mitigated": false,
+      "how": "Recorded limit; the heritage_general gate does not compare areas (DQ-143 scope note). Next step: key Part 8 statements of significance to their HCA.",
+      "repro": "n/a"
+    },
+    {
+      "scenario": "A house that is only an archaeological site or Aboriginal heritage place.",
+      "what_happens": "That house is not shown the Part 8 heritage rules at all.",
+      "mitigated": false,
+      "how": "No land layer for those; recorded in the gate rule comment and the chapter_scope note.",
+      "repro": "n/a"
+    },
+    {
+      "scenario": "A precinct_id is sent but names no keyed precinct (locality fallback ids).",
+      "what_happens": "The precinct layer query returns no rows for that house.",
+      "mitigated": true,
+      "how": "Unchanged by this PR: that branch never returned unkeyed rows, and the route's precinct warning (case 2: ids match zero precinct provisions) still fires.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/api/precinct-layer-fail-closed.test.ts"
+    },
+    {
+      "scenario": "Marrickville Part 8 is re-published and the new rows arrive without the heritage marker.",
+      "what_happens": "Part 8 rules would reach every Marrickville house again, heritage or not.",
+      "mitigated": true,
+      "how": "marrickville_part8_heritage is a GATE_RULES entry, which dcp_commit_approved.py re-runs for the council after every publish; DQ-143 counts any Part 8 row left untagged.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-143"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Yes, with the user's yes: python scripts/derive_precinct_keys.py --council marrickville --only marrickville_part8_heritage --apply (1,361 rows get v2_marker 'heritage'; backup in data/db_rollback_backups).",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Jest 2/2 and pytest gate/scope 21 pass; full pytest 8,440 passed, 6 failed in AI-key tests that import none of these files (they read the root .env). dq_check --id DQ-146 PASSED; outreach 16/21 (OC-17 was contradicted before this change)."
+  }
+}

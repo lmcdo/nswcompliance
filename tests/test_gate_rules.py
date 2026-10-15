@@ -116,3 +116,23 @@ def test_b2_area_rules_take_the_whole_sub_section_tree():
     for ref in ("X__B2_2", "X__B2_2_1 C1", "X__B2_2 Note"):
         assert re.search(etham, ref) and re.search(union_not, ref)
     assert not re.search(etham, "X__B2_21")  # no such section, but 2 must not match 21
+
+
+def test_marrickville_part8_reaches_heritage_houses_only():
+    # Address audit 2026-10-15: Part 8 was recorded whole-council, so 913 of its rules reached
+    # non-heritage houses. Its own sentence (p15) names heritage items and every HCA.
+    assert probes._ALL_HERITAGE.search(
+        "Part 8 applies to heritage items, heritage conservation areas (HCAs), archaeological "
+        "sites and Aboriginal heritage.")
+    keys, kinds = probes.PROBES["DQ-143"][2]
+    assert dict(zip(keys, kinds))["marrickville__part8-heritage"] == "heritage_general"
+    rule = next(r for r in g.GATE_RULES if r["name"] == "marrickville_part8_heritage")
+    assert rule["set"] == {"v2_marker": "heritage"} and "'part8-heritage'" in rule["where"]
+
+
+def test_a_precinct_rule_with_no_precinct_reaches_nobody():
+    # Mirrors for-property/route.ts since 2026-10-15: the precinct layer returns nothing for an
+    # address without a precinct, so an unkeyed precinct rule is shown to no house (DQ-146),
+    # never to every house (it was: 2,827 rules, 24 of 49 audit errors).
+    assert "(rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL)" in probes._REACHES_NOBODY
+    assert "COALESCE(v2_dcp_layer, '') <> 'precinct'" in probes._REACHES_EVERY_HOUSE

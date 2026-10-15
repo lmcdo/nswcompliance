@@ -26,6 +26,14 @@ GATE_RULES: list[dict] = [
     {"name": "ashfield_e1_heritage", "council": "ashfield",
      "where": "source_chapter_key = 'chapter-e1-heritage'",
      "set": {"v2_marker": "heritage"}},
+    # "Part 8 applies to heritage items, heritage conservation areas (HCAs), archaeological sites
+    # and Aboriginal heritage" (Marrickville DCP 2011 Part 8, p15). Address audit 2026-10-15: 913
+    # rules with a non-heritage topic reached every house; the other 448 reached no HCA house
+    # (queryHeritageByHca reads v2_marker only). Recorded limit: archaeological sites and
+    # Aboriginal heritage have no land layer, so a house that is only one of those is not shown these.
+    {"name": "marrickville_part8_heritage", "council": "marrickville",
+     "where": "source_chapter_key = 'part8-heritage'",
+     "set": {"v2_marker": "heritage"}},
     # "This Part applies to all land identified, and land adjacent to site identified, under
     # Schedule 5 of WLEP" (Waverley DCP 2022 B8, printed p67). Same adjacency limit as E11.
     {"name": "waverley_b8_heritage", "council": "waverley",
