@@ -30,7 +30,7 @@ function req(params: Record<string, string>) {
 }
 
 const precinctLayerQueries = () =>
-  calls.filter((c) => /v2_dcp_layer = \$\d+/.test(c.sql) && c.values.includes('precinct'));
+  calls.filter((c) => /v2_dcp_layer = \$\d+/.test(c.sql) && c.values?.includes('precinct'));
 
 describe('precinct layer fails closed', () => {
   beforeEach(() => {
