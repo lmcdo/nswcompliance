@@ -358,62 +358,42 @@ def assign_overlays_for_lga(conn, lga_name: str, dry_run: bool = False) -> int:
     log.info("  Step 8 done: %d acid sulfate flags", n)
     conn.commit()
 
-    # Step 9: Former council assignment (for merged LGAs)
+    # Step 9: Former council assignment (for merged LGAs). The ABS former-LGA polygon decides;
+    # an edge lot takes the precinct outline that contains it; otherwise NULL. Never the NEAREST
+    # precinct: outlines leave gaps, and the nearest one is a neighbour's council there (1,894
+    # Inner West lots, e.g. 162/137 Victoria St Ashfield -> Marrickville, 2026-10-15).
     log.info("  Step 9: Assign former council...")
-    cur.execute("""
-        UPDATE lot_search_index lsi
-        SET former_council = sub.former_council
-        FROM (
-            SELECT DISTINCT ON (lsi2.lotidstring)
-                lsi2.lotidstring,
-                LOWER(pb.former_council) as former_council
-            FROM lot_search_index lsi2
-            JOIN dcp_precinct_boundaries pb
-                ON ST_Contains(pb.boundary, ST_Centroid(lsi2.geom))
-            WHERE lsi2.lga_name = %s
-                AND lsi2.former_council IS NULL
-                AND pb.former_council IS NOT NULL
-            ORDER BY lsi2.lotidstring
-        ) sub
-        WHERE lsi.lotidstring = sub.lotidstring
-    """, (lga_name,))
-    fc_count = cur.rowcount
-    conn.commit()
-    log.info("  Step 9 done: %d lots assigned to former councils", fc_count)
-
-    # Step 9b: Fallback — nearest precinct boundary for lots outside all precincts.
-    # Precinct boundaries don't tile the full LGA (gaps between precincts),
-    # so use nearest precinct's former_council for the remainder.
-    cur.execute("""
-        SELECT COUNT(*) FROM lot_search_index
-        WHERE lga_name = %s AND former_council IS NULL AND geom IS NOT NULL
-    """, (lga_name,))
-    remaining = cur.fetchone()[0]
-    if remaining > 0:
-        log.info("  Step 9b: %d lots outside precincts — assigning via nearest boundary...", remaining)
+    if lga_name.upper() == "INNER WEST" and not dry_run:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from repair_former_council_from_abs import assign_for_lga
+        fc_count, left = assign_for_lga(conn, lga_name)
+        conn.commit()
+        log.info("  Step 9 done: %d lots assigned, %d left NULL (no polygon, no containing precinct)",
+                 fc_count, left)
+    elif not dry_run:
+        # Other LGAs keep the containment-only assignment they always had, now scoped to the
+        # LGA's own outlines (an Inner West outline had tagged 185 Canada Bay/Sydney/C-B/Bayside
+        # lots) and without the nearest-precinct fallback.
         cur.execute("""
             UPDATE lot_search_index lsi
-            SET former_council = LOWER(nearest.former_council)
+            SET former_council = sub.former_council
             FROM (
-                SELECT u.lotidstring,
-                       b.former_council
-                FROM lot_search_index u
-                CROSS JOIN LATERAL (
-                    SELECT former_council, boundary
-                    FROM dcp_precinct_boundaries
-                    WHERE UPPER(lga) = %s AND boundary IS NOT NULL
-                    ORDER BY u.geom <-> boundary
-                    LIMIT 1
-                ) b
-                WHERE u.lga_name = %s
-                  AND u.former_council IS NULL
-                  AND u.geom IS NOT NULL
-            ) nearest
-            WHERE lsi.lotidstring = nearest.lotidstring
+                SELECT DISTINCT ON (lsi2.lotidstring)
+                    lsi2.lotidstring, LOWER(pb.former_council) AS former_council
+                FROM lot_search_index lsi2
+                JOIN dcp_precinct_boundaries pb
+                    ON ST_Contains(pb.boundary, ST_Centroid(lsi2.geom))
+                   AND UPPER(pb.lga) = UPPER(lsi2.lga_name)
+                WHERE lsi2.lga_name = %s
+                    AND lsi2.former_council IS NULL
+                    AND pb.former_council IS NOT NULL
+                ORDER BY lsi2.lotidstring, pb.confidence_score DESC NULLS LAST, pb.precinct_id, pb.id
+            ) sub
+            WHERE lsi.lotidstring = sub.lotidstring AND lsi.lga_name = %s
         """, (lga_name, lga_name))
-        fb_count = cur.rowcount
+        fc_count = cur.rowcount
         conn.commit()
-        log.info("  Step 9b done: %d lots assigned via nearest precinct", fb_count)
+        log.info("  Step 9 done: %d lots assigned from containing precincts", fc_count)
 
     return lot_count
 

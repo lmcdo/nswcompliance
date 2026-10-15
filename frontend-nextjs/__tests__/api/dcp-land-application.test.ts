@@ -79,6 +79,19 @@ describe('decideLandApplication', () => {
     expect(d.status).toBe('covered');
   });
 
+  it('withholds Warringah DCP from Manly and Pittwater land, serves it on Warringah land', () => {
+    const warringah = { name: 'Warringah Local Environmental Plan 2011', type: 'Included' };
+    const manly = { name: 'Manly Local Environmental Plan 2013', type: 'Included' };
+    const pittwater = { name: 'Pittwater Local Environmental Plan 2014', type: 'Included' };
+    expect(decideLandApplication('northern_beaches', [warringah]).withhold).toBe(false);
+    for (const other of [manly, pittwater]) {
+      const d = decideLandApplication('northern_beaches', [other]);
+      expect(d.status).toBe('excluded');
+      expect(d.withhold).toBe(true);
+    }
+    expect(decideLandApplication('NORTHERN BEACHES', [manly]).withhold).toBe(true);
+  });
+
   it('leaves councils without a declared binding exactly as before', () => {
     const d = decideLandApplication('marrickville', null);
     expect(d.status).toBe('not_gated');
