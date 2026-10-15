@@ -158,10 +158,10 @@ def fit(c: dict) -> dict:
     sx, sy = corner(sx, sy, *c["streets"][:2])
     pts, keys = rf.fetch_roads(sx, sy, 600)
     streets = [rf.named(pts, keys, [n])[0] for n in c["streets"][:2]]
-    cad = cb.fetch_cadastre(tuple(float(v) for v in (sx - 300, sy - 300, sx + 300, sy + 300)))
+    cad = cb.fetch_cadastre(tuple(float(v) for v in (sx - 300, sy - 300, sx + 300, sy + 300)))  # qa-ignore: v is seed arithmetic, never None
     anchors = None
     if c.get("anchor_placement"):
-        anchors = np.array([p for p in (register_point(a) for a in c.get("register_addresses", [])) if p])
+        anchors = np.array([p for p in (register_point(a) for a in (c.get("register_addresses") or [])) if p])
     share, s, x0, y0 = place(mask, sx, sy, cad, np.geomspace(*c.get("scale_range", (0.04, 0.4)), 70), streets, anchors)
     share, s, x0, y0 = place(mask, sx, sy, cad, np.linspace(s * 0.95, s * 1.05, 15), streets, anchors)
     cs, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -181,7 +181,7 @@ def fit(c: dict) -> dict:
     row["iou"] = round(sfc.shape_iou(shape_mga, union)[0], 3)
     row["lots_m2"] = round(union.area)
     inside_ok = []
-    for addr in c.get("register_addresses", []):
+    for addr in (c.get("register_addresses") or []):
         pt = register_point(addr)
         inside_ok.append(pt is not None and union.buffer(1).contains(Point(*pt)))
     row["register_addresses_inside"] = inside_ok

@@ -174,7 +174,7 @@ def coarse_fit(fig: np.ndarray, cad_edges: np.ndarray, box: tuple, scales=None) 
         iy, ix = np.unravel_index(np.argmax(C), C.shape)
         if C[iy, ix] > best[0]:
             # pixel (ix, iy) is where the figure's (min x, max y) corner lands
-            best = (float(C[iy, ix]), float(s), float(bx0 + ix * RES - fx0 * s), float(by1 - iy * RES - fy1 * s))
+            best = (float(C[iy, ix]), float(s), float(bx0 + ix * RES - fx0 * s), float(by1 - iy * RES - fy1 * s))  # qa-ignore: computed floats, never None
     return best
 
 
@@ -258,7 +258,7 @@ def draw(row: dict, path: Path) -> None:
 
     def poly(c, colour, w):
         cv2.polylines(img, [np.c_[(c[:, 0] - x0) * k, (y1 - c[:, 1]) * k].astype(np.int32)], True, colour, w)
-    for _, g in cb.fetch_cadastre(tuple(float(v) for v in (x0, y0, x1, y1))):
+    for _, g in cb.fetch_cadastre(tuple(float(v) for v in (x0, y0, x1, y1))):  # qa-ignore: computed floats, never None
         for c in _poly_coords(g):
             poly(c, (190, 190, 190), 1)
     u = ((P[:, 0] - x0) * k).astype(int)
