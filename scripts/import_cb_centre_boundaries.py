@@ -34,9 +34,13 @@ BACKUP_DIR = REPO / "data" / "db_rollback_backups"
 LGA = "Canterbury-Bankstown"
 FORMER_COUNCIL = "Canterbury-Bankstown"
 EXPECTED_IDS = {"6.2", "7.5", "7.6"}
+#: Other files (--src) carry their own ids: the 7.2 raster centres are 7.2.2-7.2.13 + the union '7.2'
+#: (scripts/fit_cb_raster_centres.py). Their ids are checked against the file's own config, not this set.
+RASTER_IDS = {"centres_7_2.geojson": {"7.2", *(f"7.2.{n}" for n in range(2, 14))}}
 #: The Planning Portal's state outline is the council's legal map layer (1.0). A figure fitted to
 #: the cadastre is positionally ~4 m, and doubtful lots were kept, so it is recorded lower.
-CONFIDENCE = {"nsw_planning_local_provisions": 1.0, "dcp_figure_georeferenced_to_cadastre": 0.9}
+CONFIDENCE = {"nsw_planning_local_provisions": 1.0, "dcp_figure_georeferenced_to_cadastre": 0.9,
+              "dcp_raster_map_fitted_to_road_centrelines": 0.85}
 CB_ENVELOPE = (150.95, -33.99, 151.18, -33.85)
 
 #: Lot points (ST_PointOnSurface of nsw_cadastre_lots, 2026-10-11) of the served-answer audit's
@@ -52,8 +56,8 @@ LOOKUP_SQL = """SELECT precinct_id FROM dcp_precinct_boundaries
                    AND LOWER(lga) = LOWER(%s)"""
 
 
-def load_rows() -> list[dict]:
-    fc = json.loads(SRC.read_text(encoding="utf-8"))
+def load_rows(src: Path = SRC) -> list[dict]:
+    fc = json.loads(src.read_text(encoding="utf-8"))
     rows = []
     for f in fc["features"]:
         p = f["properties"]
@@ -64,8 +68,12 @@ def load_rows() -> list[dict]:
             "source_document": p["source"], "boundary_description": p["quote"],
         })
     ids = {r["precinct_id"] for r in rows}
-    if ids != EXPECTED_IDS:
-        raise SystemExit(f"[ABORT] {SRC.name} holds {sorted(ids)}, expected {sorted(EXPECTED_IDS)}")
+    expected = RASTER_IDS.get(src.name, EXPECTED_IDS)
+    # A raster file may lack centres the fit REFUSED (their rules stay unkeyed); it may never hold an unknown id,
+    # and it must hold the chapter's union.
+    ok = ids <= expected and min(expected, key=len) in ids if src.name in RASTER_IDS else ids == expected
+    if not ok:
+        raise SystemExit(f"[ABORT] {src.name} holds {sorted(ids)}, expected {sorted(expected)}")
     return rows
 
 
@@ -87,8 +95,9 @@ def connect():
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--commit", action="store_true")
+    ap.add_argument("--src", default=str(SRC), help="another outline file in the same shape")
     a = ap.parse_args()
-    rows = load_rows()
+    rows = load_rows(Path(a.src))
     for r in rows:
         print(f"  {r['precinct_id']:<4} {r['precinct_name']:<30} {r['area_sqm'] / 1e4:7.1f} ha  "
               f"{r['extraction_method']} ({r['confidence_score']})")
@@ -141,13 +150,16 @@ def _load(conn, rows: list[dict], commit: bool) -> int:
         """, {**r, "lga": LGA, "fc": FORMER_COUNCIL})
 
     # Proof, inside the transaction: placed on Earth correctly, found by the SAME lookup the
-    # site runs, and the audit addresses still in no precinct.
+    # site runs, and the audit addresses still in no precinct. The test point is ST_PointOnSurface,
+    # not the stored centroid: trigger update_precinct_geometry_stats sets centroid = ST_Centroid,
+    # which for a multi-part outline (the 7.2 centres) can lie between the parts.
     problems = []
     cur.execute("""SELECT precinct_id, ST_XMin(boundary), ST_YMin(boundary), ST_XMax(boundary),
-                          ST_YMax(boundary), ST_X(centroid), ST_Y(centroid)
-                     FROM dcp_precinct_boundaries WHERE lga = %s""", (LGA,))
+                          ST_YMax(boundary), ST_X(ST_PointOnSurface(boundary)), ST_Y(ST_PointOnSurface(boundary))
+                     FROM dcp_precinct_boundaries WHERE lga = %s AND precinct_id = ANY(%s)""",
+                (LGA, [r["precinct_id"] for r in rows]))
     got = cur.fetchall()
-    if {g[0] for g in got} != EXPECTED_IDS:
+    if {g[0] for g in got} != {r["precinct_id"] for r in rows}:
         problems.append(f"rows after write: {sorted(g[0] for g in got)}")
     x0, y0, x1, y1 = CB_ENVELOPE
     for pid, a0, b0, a1, b1, cx, cy in got:
@@ -155,7 +167,7 @@ def _load(conn, rows: list[dict], commit: bool) -> int:
             problems.append(f"{pid} outside the Canterbury-Bankstown envelope")
         cur.execute(LOOKUP_SQL, (cx, cy, "CANTERBURY-BANKSTOWN"))
         if pid not in {r[0] for r in cur.fetchall()}:
-            problems.append(f"{pid}: its own centroid is not found by the site's lookup")
+            problems.append(f"{pid}: a point inside it is not found by the site's lookup")
     for label, (x, y) in OUTSIDE_ALL.items():
         cur.execute(LOOKUP_SQL, (x, y, "CANTERBURY-BANKSTOWN"))
         hit = [r[0] for r in cur.fetchall()]

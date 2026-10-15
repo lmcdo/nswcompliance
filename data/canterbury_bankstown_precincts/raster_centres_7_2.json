@@ -1,0 +1,32 @@
+{
+ "_about": "Canterbury-Bankstown DCP 2023 Chapter 7.2 City West: each Section N 'applies to land shown in Figure Na' (Land Application Map, a raster street basemap). Streets are the labels READ off each figure (a person or model reads; scripts/fit_cb_raster_centres.py fits and proves). seed 'suburb' = median of the suburb's address points; 'street' = the first named street's address points in that suburb.",
+ "pdf": "chapter-7-2-city-west.pdf",
+ "union_id": "7.2",
+ "union_name": "Canterbury-Bankstown DCP 2023 Chapter 7.2 City West centres (each section mapped; Georges Hall pending)",
+ "centres": [
+  {"section": 2, "page": 6, "name": "Bass Hill Small Village Centre", "suburb": "BASS HILL", "seed": "suburb",
+   "streets": ["Hume Hwy", "Johnston Rd", "Carey St", "Manuka Cres", "Arundle Rd"]},
+  {"section": 3, "page": 17, "name": "Birrong Small Village Centre", "suburb": "BIRRONG", "seed": "street",
+   "streets": ["Rodd St", "Wentworth St", "Stephenson St", "Auburn Rd", "Hudson Parade"]},
+  {"section": 4, "page": 22, "name": "Chester Hill Local Centre", "suburb": "CHESTER HILL", "seed": "suburb",
+   "streets": ["Waldron Rd", "Wellington Rd", "Chester Hill Rd", "Campbell Hill Rd", "Leicester St", "Priam St", "Proctor Parade"]},
+  {"section": 5, "page": 26, "name": "Condell Park Small Village Centre", "suburb": "CONDELL PARK", "seed": "street",
+   "streets": ["Simmat Ave", "Edgar St", "Lancelot St", "Townsend St", "Lee St"]},
+  {"section": 6, "page": 29, "name": "East Hills Small Village Centre", "suburb": "EAST HILLS", "seed": "suburb",
+   "streets": ["Maclaurin Ave", "Park Rd", "Cook Cres", "Henry Lawson Dr"]},
+  {"section": 7, "page": 33, "name": "Georges Hall Small Village Centre", "suburb": "GEORGES HALL", "seed": "street",
+   "streets": ["Haig Ave", "Birdwood Rd", "Georges Cres", "Beale St"]},
+  {"section": 8, "page": 36, "name": "Greenacre Local Centre", "suburb": "GREENACRE", "seed": "street",
+   "streets": ["Waterloo Rd", "Boronia Rd", "Juno Parade", "Banksia Rd", "Chiswick Rd", "Pandora St"]},
+  {"section": 9, "page": 42, "name": "Padstow Local Centre", "suburb": "PADSTOW", "seed": "suburb",
+   "streets": ["Cahors Rd", "Iberia St", "Howard Rd", "Gloucester Ave", "Segers Ave", "Faraday Rd", "Padstow Parade"]},
+  {"section": 10, "page": 50, "name": "Panania Small Village Centre", "suburb": "PANANIA", "seed": "suburb",
+   "streets": ["Tower St", "Weston St", "Anderson Ave", "Peffer St", "Picnic Point Rd"]},
+  {"section": 11, "page": 54, "name": "Revesby Local Centre", "suburb": "REVESBY", "seed": "suburb",
+   "streets": ["Selems Parade", "Marco Ave", "Swan St", "Simmonds St", "Brett St", "The River Rd"]},
+  {"section": 12, "page": 62, "name": "Sefton Small Village Centre", "suburb": "SEFTON", "seed": "street",
+   "streets": ["Helen St", "Wellington Rd", "Carlingford St", "Waldron Rd", "Kara St", "Torrington Ave"]},
+  {"section": 13, "page": 65, "name": "Yagoona Local Centre", "suburb": "YAGOONA", "seed": "suburb",
+   "streets": ["Hume Hwy", "Church Rd", "Ritchie Rd", "Cooper Rd", "Auburn Rd"]}
+ ]
+}

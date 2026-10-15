@@ -149,3 +149,14 @@ def test_krg_14b_pages_cover_the_chapter_once_and_use_ids_precinct_service_attri
     assert pages == list(range(1, 39)) and rule["fingerprint"]["max_page"] == 38
     assert all(re.fullmatch(r"14[A-O](_T\d)?", pid, re.I) for pid, _, _ in ranges)
     assert {pid for pid, _, _ in ranges} == {u.UNIONS["krg_14b"]["id"], *u.UNIONS["krg_14b"]["members"]}
+
+
+def test_cb_7_2_pages_tile_the_chapter_and_match_the_outline_ids():
+    # Address audit 2026-10-15: 339 C-B 7.2 rules had no key. Pages 1-108 tiled once; every id is one the
+    # raster fit writes (7.2.2-7.2.13 + union 7.2) and the importer accepts.
+    import import_cb_centre_boundaries as imp
+    rule = next(r for r in g.EXTRA_KEY_RULES if r["name"] == "cb_7_2_city_west_by_page")
+    ranges = rule["strategy"]["ranges"]
+    pages = sorted(p for _, lo, hi in ranges for p in range(lo, hi + 1))
+    assert pages == list(range(1, 109))
+    assert {pid for pid, _, _ in ranges} == imp.RASTER_IDS["centres_7_2.geojson"]

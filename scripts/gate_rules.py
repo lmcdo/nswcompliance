@@ -145,6 +145,18 @@ EXTRA_KEY_RULES: list[dict] = [
      "strategy": {"type": "page_range", "ranges": [
          ("14B", 1, 9), ("14B_T1", 10, 20), ("14B_T2", 21, 26), ("14B_T3", 27, 34), ("14B_T4", 35, 38)]},
      "fingerprint": {"max_page": 38, "min_coverage": 0.95}},
+    # Canterbury-Bankstown DCP 2023 Ch 7.2 City West, by PDF PAGE from its contents (p3): Section N "applies to land
+    # shown in Figure Na" (2 Bass Hill p6 ... 13 Yagoona p65). Section 1 (p1-5) and Appendix 1 Setbacks (p71-84)
+    # apply to every centre -> union '7.2'. Appendix 2 (p85-108) is the lot table Section 2.21 points to (Arundle Rd
+    # lots) -> Bass Hill. Outlines: scripts/fit_cb_raster_centres.py. Address audit 2026-10-15: all 339 served rows
+    # sat in the precinct layer with no key. Fingerprint = the last page any current row sits on.
+    {"name": "cb_7_2_city_west_by_page", "council": "canterbury_bankstown", "validate": False,
+     "where": "source_chapter_key = 'chapter-7-2-city-west'",
+     "strategy": {"type": "page_range", "ranges": [
+         ("7.2", 1, 5), ("7.2.2", 6, 16), ("7.2.3", 17, 21), ("7.2.4", 22, 25), ("7.2.5", 26, 28),
+         ("7.2.6", 29, 32), ("7.2.7", 33, 35), ("7.2.8", 36, 41), ("7.2.9", 42, 49), ("7.2.10", 50, 53),
+         ("7.2.11", 54, 61), ("7.2.12", 62, 64), ("7.2.13", 65, 70), ("7.2", 71, 84), ("7.2.2", 85, 108)]},
+     "fingerprint": {"max_page": 96, "min_coverage": 0.95}},
 ]
 
 
