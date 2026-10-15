@@ -38,7 +38,8 @@ EXPECTED_IDS = {"6.2", "7.5", "7.6"}
 #: (scripts/fit_cb_raster_centres.py). Their ids are checked against the file's own config, not this set.
 RASTER_IDS = {"centres_7_2.geojson": {"7.2", *(f"7.2.{n}" for n in range(2, 14))}}
 #: Site files: any subset of these ids (refused sites are simply absent; there is no union).
-SITE_IDS = {"site_plans_8_3.geojson": {"8.3.5", "8.3.7", "8.3.8"}, "site_plans_11_4.geojson": {"11.4"}}
+SITE_IDS = {"site_plans_8_3.geojson": {"8.3.5", "8.3.7", "8.3.8"}, "site_plans_11_4.geojson": {"11.4"},
+            "lep_area1_7_4.geojson": {"7.4"}}  # 7.4: the LEP's own Area 1 polygons (69 centres, one union)
 #: Former-council halves (ABS ASGS 2015, scripts/build in the file's own 'source'). They tile the whole LGA, so the
 #: audit addresses must each land in EXACTLY ONE of them instead of in no precinct.
 FORMER_IDS = {"former_councils_abs2015.geojson": {"C-B former Bankstown", "C-B former Canterbury"}}

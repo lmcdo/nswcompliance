@@ -211,6 +211,11 @@ EXTRA_KEY_RULES: list[dict] = [
     # former Bankstown Local Government Area" (p4), Sections 9-10 (p66-) "... in the former Canterbury Local Government
     # Area" (p66). Keyed to the ABS 2015 former-LGA outlines (former_councils_abs2015.geojson). Address audit 2026-10-15:
     # 29 Mavis St / 37A Victoria St Revesby (former Bankstown) were served Section 9.
+    # C-B Ch 7.4 Neighbourhood centres applies to "neighbourhood centres that are identified as 'Area 1' on the Land
+    # Zoning Map" (p4-5). Keyed to the union of the LEP's own Area 1 polygons (lep_area1_7_4.geojson, Planning Portal).
+    {"name": "cb_7_4_neighbourhood_centres", "council": "canterbury_bankstown", "validate": False,
+     "where": "source_chapter_key = 'chapter-7-4-neighbourhood-centres'",
+     "strategy": {"type": "constant", "precinct_id": "7.4"}},
     {"name": "cb_2_2_flood_by_former_council", "council": "canterbury_bankstown", "validate": False,
      "where": "source_chapter_key = 'chapter-2-2-flood-risk-management'",
      "strategy": {"type": "page_range", "ranges": [
