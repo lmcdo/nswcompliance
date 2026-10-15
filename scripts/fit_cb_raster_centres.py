@@ -97,7 +97,7 @@ def seed(c: dict) -> tuple[float, float]:
     else:
         where = f"address LIKE '% {c['suburb']} %' OR address LIKE '% {c['suburb']}'"
     fs = _get(ADDR, {"where": where, "outFields": "address", "returnGeometry": "true", "outSR": "28356",
-                     "f": "json", "resultRecordCount": 1000}).get("features", [])
+                     "f": "json", "resultRecordCount": 1000}).get("features") or []
     if not fs:
         raise SystemExit(f"[ABORT] no address points for seed {where!r}")
     pts = np.array([[f["geometry"]["x"], f["geometry"]["y"]] for f in fs])
@@ -112,7 +112,7 @@ def fetch_roads(cx: float, cy: float, half: float) -> tuple[np.ndarray, np.ndarr
                             "inSR": "28356", "spatialRel": "esriSpatialRelIntersects", "outFields": "roadnamebase,roadnametype",
                             "returnGeometry": "true", "outSR": "28356", "f": "json", "orderByFields": "objectid",
                             "resultOffset": offset, "resultRecordCount": 2000})
-        fs += page.get("features", [])
+        fs += page.get("features") or []
         if not page.get("exceededTransferLimit") or not page.get("features"):
             break
         offset += len(page["features"])

@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds an opt-in reader (DCP_READER=section). Off by default, so no chapter is read differently until it is switched on for the pilot; output goes to the review queue like every reader.",
-  "commit_hash": "be4efb80",
+  "commit_hash": "f0d5dcf3",
   "files": [
     ".qa/reports/feat__section-reader.json",
     "railway.dcp-monitor.toml",
@@ -43,7 +43,8 @@
     "scripts/import_cb_centre_boundaries.py",
     "data/canterbury_bankstown_precincts/raster_centres_7_2.json",
     "data/canterbury_bankstown_precincts/centres_7_2.geojson",
-    "data/canterbury_bankstown_precincts/fit_report_7_2.json"
+    "data/canterbury_bankstown_precincts/fit_report_7_2.json",
+    "tests/test_import_cb_centre_boundaries_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "none read or written by the reader; it returns ai_extractor.provisions_to_sections dicts to the existing review-queue path",
