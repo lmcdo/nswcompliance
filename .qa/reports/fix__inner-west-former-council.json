@@ -1,0 +1,76 @@
+{
+  "tier": "standard",
+  "justification": "Inner West lots get their former council from the ABS 2015 former-LGA polygons instead of the nearest precinct outline; Step 9 of the lot index no longer guesses.",
+  "commit_hash": "f0c7592d",
+  "files": [
+    ".qa/reports/fix__inner-west-former-council.json",
+    "scripts/build_lot_search_index.py",
+    "scripts/repair_former_council_from_abs.py",
+    "tests/test_repair_former_council_from_abs.py"
+  ],
+  "pre_impl": {
+    "existing_data": "lot_search_index.former_council, read by precinct-service getFormerCouncilForPoint for Inner West addresses",
+    "assumption_mismatch": "Step 9b assumed precinct outlines tile each former council; they do not, so nearest-precinct put 1,901 lots in a neighbour's council",
+    "new_vs_existing": "replaces the nearest-precinct fallback with containment in an official boundary; edge lots within 20 m are left unchanged"
+  },
+  "functions": [
+    {
+      "name": "decide",
+      "file_line": "scripts/repair_former_council_from_abs.py",
+      "input": "stored council, ABS council containing the lot, depth inside it, margin",
+      "output": "the council to write, or None to leave the lot",
+      "if_none": "lot left as stored; it is counted in the edge total"
+    }
+  ],
+  "values": [
+    {
+      "value": "ABS polygon per former council",
+      "read_at": "fetch_polygons",
+      "nullable": "no",
+      "guard_at": "raises unless exactly one polygon is returned per name",
+      "if_missing": "the run stops before any write"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "write the ABS-derived former council for lots that disagree",
+      "file_line": "scripts/repair_former_council_from_abs.py main",
+      "where_clause": "lotidstring = %s AND lga_name = 'INNER WEST'"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "lot near a former-council boundary where ABS polygons are generalised",
+      "what_happens": "a correct value could be overwritten",
+      "mitigated": true,
+      "how": "lots within 20 m of the boundary are never changed",
+      "repro": "python -m pytest tests/test_repair_former_council_from_abs.py"
+    },
+    {
+      "scenario": "ABS service returns zero or two polygons for a name",
+      "what_happens": "lots would be judged against a wrong or missing boundary",
+      "mitigated": true,
+      "how": "fetch_polygons raises before any query",
+      "repro": "python -m pytest tests/test_repair_former_council_from_abs.py"
+    },
+    {
+      "scenario": "the lot index is rebuilt after this merge",
+      "what_happens": "the old nearest-precinct step would reintroduce wrong councils",
+      "mitigated": true,
+      "how": "Step 9 uses the same ABS decision; a test fails if a nearest-precinct query returns",
+      "repro": "python -m pytest tests/test_repair_former_council_from_abs.py"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_repair_former_council_from_abs.py",
+    "fails_when": "162/137 Victoria Street Ashfield is not assigned ashfield, or Step 9 contains a nearest-precinct query",
+    "observed_red": "prod /api/property returned Marrickville for 162/137 Victoria St Ashfield on 2026-10-15 before the repair; Ashfield after",
+    "external_authority": "ABS ASGS 2015 LGA polygons Ashfield (A), Leichhardt (A), Marrickville (A)"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: repair already applied 2026-10-15 20:55; re-run the dry run and expect 0 changes"
+  }
+}
