@@ -225,10 +225,23 @@ def test_a_non_actionable_key_is_never_inherited(conn):
     Drop v2_is_actionable from the lookup and 8.4.1 becomes available, so a
     property in Sylvia Gardens is served a non-actionable row that reads exactly
     like a control.
+
+    2026-10-15: the Parramatta recovery publish gave 8.4.1 actionable rows, so
+    the case is now picked from live data: any key whose current rows are ALL
+    non-actionable. A pinned key goes stale the day its chapter is re-read.
     """
-    out = resolve(conn, ["8.4.1"], "parramatta")
-    assert "8.4.1" not in out, (
-        "8.4.1 has no actionable provisions — resolving to it means the "
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT source_council, v2_precinct_id FROM regulatory_provisions"
+            " WHERE is_current AND v2_precinct_id IS NOT NULL AND source_council IS NOT NULL"
+            " GROUP BY 1, 2 HAVING bool_and(NOT v2_is_actionable) ORDER BY 1, 2 LIMIT 1")
+        row = cur.fetchone()
+    if row is None:
+        pytest.skip("no precinct key whose current rows are all non-actionable exists today")
+    council, key = row
+    out = resolve(conn, [key], council)
+    assert key not in out, (
+        f"{council} {key} has no actionable provisions — resolving to it means the "
         "availability lookup has lost its v2_is_actionable filter"
     )
 
