@@ -107,7 +107,8 @@ GATE_RULES: list[dict] = [
     # Enterprise." (Canterbury-Bankstown DCP 2023 chapter 8.1, p4).
     {"name": "cb_8_1_employment_zones", "council": "canterbury_bankstown",
      "where": "source_chapter_key = 'chapter-8-1-general-requirements'",
-     "set": {"v2_applicable_zones": ["E3", "SP4"]}},  # noqa: zone-codes (the plan's own zones)
+     # layer 'generic': in the precinct layer with no precinct the zone tag was never read (2026-10-15 fail-closed)
+     "set": {"v2_applicable_zones": ["E3", "SP4"], "v2_dcp_layer": "generic"}},  # noqa: zone-codes (the plan's own zones)
     # "Part 19 applies to any development associated with a Heritage Item or within a Heritage Conservation Area
     # (HCA) identified on the KLEP Heritage Map." (Ku-ring-gai DCP Part 19, p2). Same gate as ashfield_e1_heritage.
     # Recorded limit: 19F's "vicinity of a heritage item" has no land layer, so a lot only adjoining one is not shown it.
@@ -169,6 +170,16 @@ EXTRA_KEY_RULES: list[dict] = [
      "where": "source_chapter_key = 'chapter-8-3-hume-highway'",
      "strategy": {"type": "page_range", "ranges": [("8.3.4", 10, 14), ("8.3.6", 19, 33)]},
      "fingerprint": {"max_page": 42, "min_coverage": 0.6}},
+    # C-B Ch 7.1 / 6.1 "General requirements": Part 7 holds the local and village centres (7.2-7.6), Part 6 the strategic
+    # centres (6.2 Bankstown, 6.3 Campsie); each .1 chapter's controls "enhance the function, design and amenity of the
+    # centres" (7.1/6.1 p5). Keyed to the union of the Part's centres MAPPED so far (cb_part7 / cb_part6 unions):
+    # a centre not yet mapped is missing these rules, never given them wrongly.
+    {"name": "cb_7_1_part7_centres", "council": "canterbury_bankstown", "validate": False,
+     "where": "source_chapter_key = 'chapter-7-1-general-requirements'",
+     "strategy": {"type": "constant", "precinct_id": "C-B Part 7 centres"}},
+    {"name": "cb_6_1_part6_centres", "council": "canterbury_bankstown", "validate": False,
+     "where": "source_chapter_key = 'chapter-6-1-general-requirements'",
+     "strategy": {"type": "constant", "precinct_id": "C-B Part 6 centres"}},
     {"name": "krg_14a_st_ives_by_page", "council": "ku_ring_gai", "validate": False,
      "where": "source_chapter_key = 'section-b-part-14a-st-ives-local-centre'",
      "strategy": {"type": "page_range", "ranges": [

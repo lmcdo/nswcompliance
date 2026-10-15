@@ -56,6 +56,18 @@ UNIONS: dict[str, dict] = {
         "src": "Ch 8.3 p11 '324-326 Hume Highway ...; 342 Hume Highway and 2-8 George Street; 348 ...; 350 Hume Highway and "
                "18 George Street' <- union of the address-proved sites (2-8 and 18 George St are not in the NSW address register)",
     },
+    "cb_part7": {
+        "lga": "Canterbury-Bankstown", "id": "C-B Part 7 centres",
+        "name": "Canterbury-Bankstown DCP 2023 Part 7 local and village centres (mapped so far)",
+        "members": ("7.2", "7.5", "7.6"), "outside": ("6.2", "8.3.6"),
+        "src": "Ch 7.1 applies to the Part 7 centres; union of the mapped outlines 7.2 (City West), 7.5, 7.6",
+    },
+    "cb_part6": {
+        "lga": "Canterbury-Bankstown", "id": "C-B Part 6 centres",
+        "name": "Canterbury-Bankstown DCP 2023 Part 6 strategic centres (mapped so far: Bankstown)",
+        "members": ("6.2",), "outside": ("7.5", "7.6"),
+        "src": "Ch 6.1 applies to the Part 6 strategic centres (Bankstown, Campsie); Campsie 6.3 not yet mapped",
+    },
     "krg_14b": {
         "lga": "Ku-ring-gai", "id": "14B",
         "name": "Ku-ring-gai DCP Part 14B Turramurra Local Centre (precincts T1-T4)",
