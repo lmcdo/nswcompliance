@@ -160,6 +160,126 @@ MARRICKVILLE_CONFIG = {
             "site_conditions": None,
         },
 
+        # -- Added 2026-10-15 (DQ-33): six ingested Part 2 sections had NO entry --
+        # 535 served rows carried v2_dev_type_source='no_config' (2.20 tree
+        # management 66, 2.21 waste 212, 2.22 flood 76, 2.23 acid sulfate 36, 2.24
+        # contaminated land 124, 2.26 entertainment precincts 21). The slug resolver
+        # (_marrickville_slug_key) already derives "2_20".."2_26" and only needs the
+        # key to exist. Each scope below is quoted from the section's own chapter PDF
+        # (page = PDF page of that file) and is the non-hiding answer: a section whose
+        # stated scope is a site condition or subject matter binds whatever is built,
+        # and a section whose scope is a set of uses the vocabulary cannot name is
+        # DECLINED rather than narrowed. Showing an irrelevant control is noise;
+        # hiding a binding one is the liability.
+        "2_20": {
+            "description": "Tree Management",
+            "applicable_zones": ALL_ZONES,
+            "applicable_dev_types": ALL_DEV_TYPES,
+            "site_conditions": None,
+            "scope_evidence": {
+                "applicable_zones":
+                    "2.20 Tree Management, 1 Purpose (PDF p3) verbatim: 'The vegetation "
+                    "described in this Development Control Plan is vegetation to which Chapter 1 "
+                    "and 2 of the vegetation SEPP applies as amended from time to time.' Scoped "
+                    "by vegetation, not by zone; the canopy-target table on the same page is the "
+                    "only zone reference and sets targets, not applicability.",
+                "applicable_dev_types":
+                    "2.20 Tree Management, 4 Trees on Development Sites, C13 (PDF p10) verbatim: "
+                    "'All development proposals must be designed to maintain or improve the urban "
+                    "forest values of the site by minimising the impact on tree/s'. No "
+                    "development type is named anywhere in the section.",
+            },
+        },
+        "2_21": {
+            "description": "Site Facilities and Waste Management",
+            "applicable_zones": ALL_ZONES,
+            "applicable_dev_types": ALL_DEV_TYPES,
+            "site_conditions": None,
+            "scope_evidence": {
+                "applicable_zones":
+                    "2.21 Site Facilities and Waste Management (PDF p4) verbatim: 'The objectives "
+                    "in this section support the aims of Inner West LEP 2022.' It states no land "
+                    "or zone of its own, so it inherits the plan's extent.",
+                "applicable_dev_types":
+                    "2.21 (PDF p4) verbatim: 'facilitating safe and efficient waste and recycling "
+                    "management and collection from all premises'. Sub-sections qualify by "
+                    "application stage (2.21.2.3 p7: 'This section of the DCP applies to all "
+                    "development applications that require Part 1 of the RWMP'), not by "
+                    "development type, and one appendix note (p26) addresses multi dwelling "
+                    "housing and residential flat buildings, which ALL does not hide.",
+            },
+        },
+        "2_22": {
+            "description": "Flood Management",
+            "applicable_zones": ALL_ZONES,
+            "applicable_dev_types": ALL_DEV_TYPES,
+            "site_conditions": None,
+            "scope_evidence": {
+                "applicable_zones":
+                    "2.22.2 Land affected (PDF p5) verbatim: 'It applies to land identified on "
+                    "the DCP 2011 Flood Planning Area Map in Appendix 1 and land identified as "
+                    "being flood liable land on the DCP 2011 Flood Liable Land Map in Appendix 2.' "
+                    "Scoped by flood maps, not zone.",
+                "applicable_dev_types":
+                    "2.22.3 Development affected (PDF p6) verbatim: 'For land in a flood planning "
+                    "area, the controls apply to all development that requires development "
+                    "consent.' On flood liable land outside a flood planning area the same "
+                    "paragraph adds a list of uses, which widens the section, so ALL hides "
+                    "nothing.",
+            },
+        },
+        "2_23": {
+            "description": "Acid Sulfate Soils",
+            "applicable_zones": ALL_ZONES,
+            "applicable_dev_types": ALL_DEV_TYPES,
+            "site_conditions": None,
+            "scope_evidence": {
+                "applicable_zones":
+                    "2.23.2 Application of this section (PDF p5) verbatim: 'This section applies "
+                    "to the land specified in Inner West Local Environmental Plan 2022 (Inner West "
+                    "LEP 2022) Acid Sulfate Soils Maps.' Scoped by map, not zone.",
+                "applicable_dev_types":
+                    "2.23.4 (PDF p8) verbatim: 'All development applications for proposals which "
+                    "will disturb acid sulfate soils must include a soils management plan "
+                    "prepared in accordance with the Acid Sulfate Soil Manual.' Scoped by what the "
+                    "proposal disturbs, not by development type.",
+            },
+        },
+        "2_24": {
+            "description": "Contaminated Land",
+            "applicable_zones": ALL_ZONES,
+            "applicable_dev_types": ALL_DEV_TYPES,
+            "site_conditions": None,
+            "scope_evidence": {
+                "applicable_zones":
+                    "2.24 Contaminated Land (PDF p5) verbatim: 'This section forms the basis for "
+                    "the control and management of contaminated land within the Inner West Local "
+                    "Government Area (LGA).' LGA-wide, no zone named.",
+                "applicable_dev_types":
+                    "2.24.5 (PDF p7) verbatim: 'Council is required to consider contamination "
+                    "issues in assessing all development applications.'",
+            },
+        },
+        "2_26": {
+            "description": "Special Entertainment Precincts",
+            "applicable_zones": ALL_ZONES,
+            "scope_declined": ("applicable_dev_types",),
+            "site_conditions": None,
+            "scope_evidence": {
+                "applicable_zones":
+                    "2.26 Application (PDF p1) verbatim: 'Section 2.26 applies to land identified "
+                    "as a Sound Category Area in the following maps'. Scoped by map, not zone.",
+                "applicable_dev_types":
+                    "2.26.1 Objectives O5 (PDF p4) verbatim: 'To future proof new sensitive "
+                    "receivers and entertainment venues within and around Special Entertainment "
+                    "Precincts with appropriate sound attenuation measures to enable them to co-"
+                    "exist.' The section binds two defined classes of use (p4 Definitions: "
+                    "'Sensitive receivers' and 'Entertainment venues'), neither of which is a "
+                    "term in the development-type vocabulary, so any list would drop part of "
+                    "what the section names. Declined.",
+            },
+        },
+
         # Part 3 - Subdivision
         "3": {
             "description": "Subdivision, Amalgamation, Movement Network",

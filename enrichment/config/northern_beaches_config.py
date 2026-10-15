@@ -258,6 +258,39 @@ NORTHERN_BEACHES_CONFIG: dict = {
             "is_precinct_specific": True,
         },
 
+        # UNRESOLVED PART -- ADDED 2026-10-15 (DQ-33). 1,518 served rows (63% of the
+        # council's no_config) carry a heading code that names NO Part letter: a bare
+        # number ("# 1 Requirements", "# 5.4.7 C9 Basement entries") or a control code
+        # ("# O8 Objectives and Requirements", "# R8.1 ..."), because the section reader
+        # lost the Part heading. The Part cannot be recovered from the row and is NOT
+        # guessed here. What CAN be said without it is the UNION over every Part, and the
+        # union is not narrower than the rest: Parts A, B, C, D, E, E11, G and H each
+        # declare development types ALL (their own A.6 sentences above) and Part F
+        # declines them. A row from any Part therefore cannot carry a narrower
+        # development-type scope than this, so declining narrowing for the unresolved
+        # rows hides nothing a resolved Part would have shown. ZONES differ by Part
+        # (B, C, F, G declined, others ALL) so they are declined too. Both are
+        # `config_declined`, deliberately NOT `config_all`: a row of unknown Part is not
+        # an assertion of universality, only a refusal to narrow.
+        "_UNRESOLVED_PART": {
+            "scope_declined": ("applicable_zones", "applicable_dev_types"),
+            "scope_evidence": {
+                "applicable_zones":
+                    _PLAN_LAND + "Zone scope is stated Part by Part (B, C, F and G each decline "
+                    "or qualify it above), so a row whose Part is unknown has no zone scope that "
+                    "can be read from the plan. Declined.",
+                "applicable_dev_types":
+                    "Section A.6 'Parts of the DCP' (PDF p4), Part by Part, verbatim: 'A series "
+                    "of built form controls, including setbacks and landscaped open space, is "
+                    "contained in Part B Built Form Controls.' 'Matters relating to design form "
+                    "Part D.' 'Part E covers issues relating to the natural environment including "
+                    "trees on private property, flooding, vegetation, and riparian land.' 'Part G "
+                    "applies controls to special areas of Warringah'. No Part names a development "
+                    "type, so the union over every Part is ALL; Part F declines. Declined for rows "
+                    "whose Part is unknown.",
+            },
+        },
+
         # Part H — appendices (carparking, vegetation). Referenced by the
         # controls above rather than scoped away from them.
         "H": {

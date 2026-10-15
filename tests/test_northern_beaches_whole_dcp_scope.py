@@ -96,11 +96,31 @@ class TestItRefusesToGuess:
         """110 served rows carry a code belonging to no Part letter in this
         plan's structure (`# 5.4.7 C9 Basement entries`). Guessing a Part for
         them to improve the number is what DQ-33 exists to refuse, so they stay
-        unmatched and keep being counted."""
-        assert tagger._get_config_driven(DOC, "# 5.4.7 C9 Basement entries") is None
+        unmatched and keep being counted.
 
-    def test_a_row_with_no_code_stays_unmatched(self, tagger):
-        assert tagger._get_config_driven(DOC, "No heading at all here.") is None
+        2026-10-15 (DQ-33): they still get NO Part. What changed is that they no longer
+        read as `no_config`: they resolve to the declared _UNRESOLVED_PART entry, which
+        DECLINES narrowing (`config_declined`) because the union over every Part is not
+        narrower than ALL. A guessed Part would be `config_all` or `config_specific`."""
+        got = tagger._get_config_driven(DOC, "# 5.4.7 C9 Basement entries")
+        assert got is not None
+        assert got["dev_type_source"] == "config_declined"
+        assert got["zone_source"] == "config_declined"
+        assert got["applicable_dev_types"] == ["ALL"]
+
+    def test_a_row_with_no_code_is_declined_not_guessed(self, tagger):
+        got = tagger._get_config_driven(DOC, "No heading at all here.")
+        assert got["dev_type_source"] == "config_declined"
+        assert got["dev_type_source"] != "config_all"
+
+    def test_the_fallback_never_beats_a_resolvable_part(self, tagger):
+        got = tagger._get_config_driven(DOC, "# E11 C1 Flood Prone Land")
+        assert got["dev_type_source"] == "config_all"
+
+    def test_the_fallback_is_northern_beaches_only(self, tagger):
+        """Every other whole-DCP `parts` council still returns None for an
+        unreadable row, so its rows still reach text extraction as before."""
+        assert tagger._get_config_driven("Waverley_DCP_2022__waverley_dcp_2022", "No heading here.") is None
 
     def test_both_registry_spellings_reach_the_config(self):
         """The document_id says Warringah; the council slug says
