@@ -1,0 +1,15 @@
+{
+  "source_pdf": "source-pdfs/dcps/northern_beaches/v-html-2026-09-18/warringah-dcp-2011-full.pdf",
+  "method": "Part headings are the 13.5pt lines 'Part X <title>' in the PDF (PyMuPDF spans). A Part owns the pages strictly between its heading page and the next Part's heading page. A heading page itself holds two Parts (the heading sits mid-page) so it is NOT resolved; nor are the cover/amendment pages before Part A's heading. Page numbers are 1-based PDF pages (= regulatory_provisions.pdf_page).",
+  "heading_pages": {"A": 3, "B": 15, "C": 27, "D": 37, "E": 66, "F": 90, "G": 94, "H": 259},
+  "ranges": [
+    {"part": "A", "first_page": 4, "last_page": 14},
+    {"part": "B", "first_page": 16, "last_page": 26},
+    {"part": "C", "first_page": 28, "last_page": 36},
+    {"part": "D", "first_page": 38, "last_page": 65},
+    {"part": "E", "first_page": 67, "last_page": 89},
+    {"part": "F", "first_page": 91, "last_page": 93},
+    {"part": "G", "first_page": 95, "last_page": 258},
+    {"part": "H", "first_page": 260, "last_page": 273}
+  ]
+}
