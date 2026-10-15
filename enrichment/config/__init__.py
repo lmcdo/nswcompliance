@@ -30,6 +30,7 @@ from .georges_river_config import GEORGES_RIVER_CONFIG
 from .northern_beaches_config import NORTHERN_BEACHES_CONFIG
 from .parramatta_config import PARRAMATTA_CONFIG
 from .wollongong_config import WOLLONGONG_CONFIG
+from .cumberland_config import CUMBERLAND_CONFIG
 
 # Registry for config-driven LayerTopicTagger dispatch.
 # Keys are substrings matched against document_id.lower().
@@ -65,6 +66,8 @@ COUNCIL_CONFIGS: dict[str, dict] = {
     # it narrows: bare-number misreads resolve to a Part directly.
     "parramatta": PARRAMATTA_CONFIG,
     "wollongong": WOLLONGONG_CONFIG,
+    # Part B is five sub-Parts in one document; keyed on the sub-Part via the PDF page (cumberland_part_pages.json).
+    "cumberland_dcp_part_b_residential": CUMBERLAND_CONFIG,
 }
 
 __all__ = [
@@ -75,6 +78,7 @@ __all__ = [
     'CAMPBELLTOWN_CONFIG',
     'PARRAMATTA_CONFIG',
     'WOLLONGONG_CONFIG',
+    'CUMBERLAND_CONFIG',
     'BLACKTOWN_CONFIG',
     'PENRITH_CONFIG',
     'HORNSBY_CONFIG',
