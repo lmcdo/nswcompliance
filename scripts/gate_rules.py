@@ -288,12 +288,27 @@ def apply_gate_rules(cur, council: str | None, apply: bool, only: set[str] | Non
     """Set each GATE_RULES row's gate columns. Returns (id, column, before, after, rule) per
     changed column, for the backup. Idempotent: a row already holding the values is skipped."""
     changes: list[tuple] = []
+    truth = slug_key = None
     for rule in GATE_RULES:
         if (council and rule["council"] != council) or (only and rule["name"] not in only):
             continue
         unknown = set(rule["set"]) - _GATE_COLUMNS
         if unknown:
             raise ValueError(f"{rule['name']}: not a gate column {sorted(unknown)}")
+        if "v2_applicable_zones" in rule["set"]:
+            # DQ-30: a zone this council's LEP does not have would reach no house. Refuse before writing.
+            if truth is None:
+                try:
+                    from validate_zone_code_validity import load_ground_truth, load_slug_resolution
+                except ImportError:                   # imported as scripts.gate_rules
+                    from scripts.validate_zone_code_validity import load_ground_truth, load_slug_resolution
+                truth = load_ground_truth(cur)
+                slug_key = load_slug_resolution(cur, truth)
+            key = slug_key.get(rule["council"])
+            zones = set(rule["set"]["v2_applicable_zones"]) - {"ALL"}
+            if key is None or not zones <= truth.get(key, set()):
+                raise ValueError(f"{rule['name']}: zones {sorted(zones - truth.get(key or '', set()))} are not in "
+                                 f"{rule['council']}'s LEP land-use table (or the council has none)")
         cols = sorted(rule["set"])
         cur.execute(
             f"SELECT id, {', '.join(cols)} FROM regulatory_provisions"
