@@ -672,7 +672,7 @@ def run_applicability_tagging(
     failed_ids: list[int] = []  # a row that raised is tried once (see run_layer_tagging)
     while processed < total:
         fetch_sql = f"""
-            SELECT id, provision_text, document_id, source_council, v2_dcp_part
+            SELECT id, provision_text, document_id, source_council, v2_dcp_part, pdf_page
             FROM regulatory_provisions
             WHERE v2_applicable_zones IS NULL
               AND provision_text IS NOT NULL
@@ -695,7 +695,7 @@ def run_applicability_tagging(
 
             try:
                 zones, dev_types, prov_src = tagger.tag_with_provenance(
-                    prov['provision_text'], prov['document_id'], part=prov.get('v2_dcp_part'))
+                    prov['provision_text'], prov['document_id'], part=prov.get('v2_dcp_part'), pdf_page=prov.get('pdf_page'))
 
                 # DQ-30: never STORE a code that does not exist in this row's LGA.
                 # The tagger reads prose, and "Part B3" reads as zone B3. Filtering

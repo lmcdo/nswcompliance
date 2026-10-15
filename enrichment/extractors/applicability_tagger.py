@@ -587,7 +587,8 @@ class ApplicabilityTagger:
         return self._from_entry(None, site_conditions=None)
 
     def _get_config_driven(self, document_id: str, text: str,
-                           part: Optional[str] = None) -> Optional[Dict[str, Any]]:
+                           part: Optional[str] = None,
+                           pdf_page: Optional[int] = None) -> Optional[Dict[str, Any]]:
         """Get applicability from COUNCIL_CONFIGS (woollahra, waverley, etc.).
 
         Uses the same section-code extraction as LayerTopicTagger._tag_from_config().
@@ -604,6 +605,14 @@ class ApplicabilityTagger:
 
         parts = config.get("parts", {})
         chapter_topics = config.get("chapter_topics")
+
+        # Whole-DCP councils that declare page ranges per Part (northern_beaches): the row's PDF page names its Part
+        # when the row carries none. A page in no range (heading pages, cover) gives None -- never a guess.
+        if not (part and re.fullmatch(r'[A-Z]\d{0,2}(\.\d+)*', part)) and pdf_page and config.get("part_pages"):
+            for rng in config["part_pages"]:
+                if rng["first_page"] <= pdf_page <= rng["last_page"]:
+                    part = rng["part"]
+                    break
 
         # chapter_topics path (City of Sydney, Ku-ring-gai, Canterbury-Bankstown)
         if chapter_topics:
@@ -782,6 +791,7 @@ class ApplicabilityTagger:
         valid_zones: Optional[Set[str]] = None,
         clause: Optional[str] = None,
         part: Optional[str] = None,
+        pdf_page: Optional[int] = None,
     ) -> Tuple[List[str], List[str], Dict[str, str]]:
         """As :meth:`tag`, plus WHY each value is what it is.
 
@@ -816,7 +826,7 @@ class ApplicabilityTagger:
                 config = self._get_marrickville_config(document_id)
             else:
                 # Config-driven path: woollahra, waverley, city_of_sydney, ku_ring_gai
-                config = self._get_config_driven(document_id, text, part)
+                config = self._get_config_driven(document_id, text, part, pdf_page)
 
             if config:
                 struct_zones = config.get('applicable_zones', ['ALL'])

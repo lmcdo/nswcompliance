@@ -197,7 +197,7 @@ def build_plan(cur, councils):
         f"""SELECT is_current AND v2_is_actionable AS served,
                    id, document_id, provision_text,
                    v2_applicable_zones, v2_applicable_dev_types,
-                   source_council, section_header
+                   source_council, section_header, pdf_page
             FROM {TABLE} WHERE source_council = ANY(%s)""",
         (list(councils),),
     )
@@ -258,11 +258,11 @@ def build_plan(cur, councils):
 
     plan, prov_only, narrowings, invalid = [], [], [], []
     stats = Counter()
-    for served, pid, doc, txt, old_z, old_d, council, section in rows:
+    for served, pid, doc, txt, old_z, old_d, council, section, pdf_page in rows:
         # section_header carries an LEP row's clause heading (DQ-140): the tagger
         # scopes an Inner West LEP row by its clause, not by its text.
         zones, devs, prov = tagger.tag_with_provenance(
-            txt or "", doc, valid_zones=_valid_zones_for(council), clause=section)
+            txt or "", doc, valid_zones=_valid_zones_for(council), clause=section, pdf_page=pdf_page)
         bad = retired_zone_codes(zones, council, truth, slug_key)
         if bad:
             invalid.append((pid, council, bad))

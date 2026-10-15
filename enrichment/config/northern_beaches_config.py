@@ -76,7 +76,17 @@ _PLAN_LAND = ("Section A.3 'Land to which this plan applies' (PDF p3) verbatim: 
               "Section A.2 adds that this is 'the only development control plan that applies to "
               "all land within the Warringah LGA'. ")
 
+def _load_part_pages() -> list:
+    """Page ranges per Part, read from the PDF's own Part headings (northern_beaches_part_pages.json)."""
+    import json
+    from pathlib import Path
+    with open(Path(__file__).with_name("northern_beaches_part_pages.json"), encoding="utf-8") as fh:
+        return json.load(fh)["ranges"]
+
+
 NORTHERN_BEACHES_CONFIG: dict = {
+    # Used by the tagger only when a row's heading names no Part; a page outside every range stays unresolved.
+    "part_pages": _load_part_pages(),
     "parts": {
         # Matched before the letter-only fallback, so this wins over "E".
         # Part E11 Flood Prone Land: a SITE CONDITION, not a development type —
