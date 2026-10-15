@@ -127,34 +127,37 @@ def main() -> int:
 
     polys = fetch_polygons()
     conn = psycopg2.connect(os.environ["DATABASE_URL"], connect_timeout=20)
-    cur = conn.cursor()
-    cur.execute("SET statement_timeout = 120000")
-    cur.execute("SELECT current_database()")
-    print("database:", cur.fetchone()[0])
-    cur.execute(SQL, polys)
-    rows = cur.fetchall()
-    changes = [(lot, old, decide(old, fc, depth, a.margin)) for lot, old, fc, depth in rows]
-    changes = [c for c in changes if c[2]]
-    by: dict[tuple, int] = {}
-    for _, old, new in changes:
-        by[(old, new)] = by.get((old, new), 0) + 1
-    print(f"disagree {len(rows)}; change {len(changes)}; left (edge within {a.margin} m) {len(rows) - len(changes)}")
-    for (old, new), n in sorted(by.items(), key=lambda x: -x[1]):
-        print(f"  {old} -> {new}: {n}")
-    if not a.apply or not changes:
-        print("dry run: nothing written" if not a.apply else "nothing to change")
+    try:
+        cur = conn.cursor()
+        cur.execute("SET statement_timeout = 120000")
+        cur.execute("SELECT current_database()")
+        print("database:", cur.fetchone()[0])
+        cur.execute(SQL, polys)
+        rows = cur.fetchall()
+        changes = [(lot, old, decide(old, fc, depth, a.margin)) for lot, old, fc, depth in rows]
+        changes = [c for c in changes if c[2]]
+        by: dict[tuple, int] = {}
+        for _, old, new in changes:
+            by[(old, new)] = by.get((old, new), 0) + 1
+        print(f"disagree {len(rows)}; change {len(changes)}; left (edge within {a.margin} m) {len(rows) - len(changes)}")
+        for (old, new), n in sorted(by.items(), key=lambda x: -x[1]):
+            print(f"  {old} -> {new}: {n}")
+        if not a.apply or not changes:
+            print("dry run: nothing written" if not a.apply else "nothing to change")
+            return 0
+        BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+        bk = BACKUP_DIR / f"lot_former_council_pre_abs_{datetime.now():%Y-%m-%dT%H%M%S}.json"
+        bk.write_text(json.dumps([{"lotidstring": lot, "former_council": old} for lot, old, _ in changes]),
+                      encoding="utf-8")
+        print("backup:", bk)
+        cur.executemany("UPDATE lot_search_index SET former_council = %s "
+                        "WHERE lotidstring = %s AND lga_name = 'INNER WEST'",
+                        [(new, lot) for lot, _, new in changes])
+        conn.commit()
+        print(f"updated {len(changes)} lots")
         return 0
-    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    bk = BACKUP_DIR / f"lot_former_council_pre_abs_{datetime.now():%Y-%m-%dT%H%M%S}.json"
-    bk.write_text(json.dumps([{"lotidstring": lot, "former_council": old} for lot, old, _ in changes]),
-                  encoding="utf-8")
-    print("backup:", bk)
-    cur.executemany("UPDATE lot_search_index SET former_council = %s "
-                    "WHERE lotidstring = %s AND lga_name = 'INNER WEST'",
-                    [(new, lot) for lot, _, new in changes])
-    conn.commit()
-    print(f"updated {len(changes)} lots")
-    return 0
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

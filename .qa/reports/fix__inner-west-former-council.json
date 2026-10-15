@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Inner West lots get their former council from the ABS 2015 former-LGA polygons instead of the nearest precinct outline; Step 9 of the lot index no longer guesses.",
-  "commit_hash": "f0c7592d",
+  "commit_hash": "204a3574",
   "files": [
     ".qa/reports/fix__inner-west-former-council.json",
     "scripts/build_lot_search_index.py",
@@ -72,5 +72,9 @@
     "secrets": "No",
     "other_repo": "No",
     "manual_verify": "Yes: repair already applied 2026-10-15 20:55; re-run the dry run and expect 0 changes"
+  },
+  "real_layer_exempt": {
+    "scripts/repair_former_council_from_abs.py": "ran against production on 2026-10-15: dry run 1,901 changes, then --apply with backup; prod /api/property for 162/137 Victoria St Ashfield then returned Ashfield",
+    "scripts/build_lot_search_index.py": "Step 9 reuses the unit-tested decide() and the same ABS SQL as the repair script that ran on production; the full index rebuild itself has NOT been run against production with this change, recorded here as an open gap"
   }
 }
