@@ -19,7 +19,7 @@ def _tag(page):
 def test_each_known_page_gets_its_sub_parts_types():
     # noqa: zone-codes - Cumberland residential zones asserted as stored
     assert _tag(8) == (["R2", "R3", "R4"], ["dwelling_house", "secondary_dwelling"], "config_specific")  # noqa: zone-codes
-    assert _tag(31)[1] == ["dual_occupancy"]
+    assert _tag(31)[1] == ["dual_occupancy", "multi_dwelling_housing"]
     assert _tag(39)[1] == ["residential_flat_building"]
     assert _tag(45)[1] == ["boarding_house"]
 

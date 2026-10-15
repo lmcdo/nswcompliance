@@ -45,7 +45,7 @@ CUMBERLAND_CONFIG: dict = {
         },
         "B2": {
             "applicable_zones": _RESIDENTIAL_ZONES,
-            "applicable_dev_types": ["dual_occupancy"],
+            "applicable_dev_types": ["dual_occupancy", "multi_dwelling_housing"],
             "scope_evidence": {
                 "applicable_zones": _ZONES + "NOT applied: B2 1.2 (PDF p31) says the Part guides dual occupancy "
                     "'located with the R2 and R3 zones'; that is a purpose sentence, not the application clause, "  # noqa: zone-codes
@@ -54,8 +54,9 @@ CUMBERLAND_CONFIG: dict = {
                     "B2 1.1 (PDF p31) verbatim: 'This Part applies to low rise dual occupancy development under "
                     "the Cumberland Local Environment Plan 2021.' Note B2 2.1 (PDF p31) goes on to say all low "
                     "rise medium density development is assessed against the Low Rise Housing Diversity Design "
-                    "Guide, 'including: dual occupancies; manor houses ...; and multi-dwelling housing'. 1.1 is "
-                    "the application clause and is followed.",
+                    "Guide, 'including: dual occupancies; manor houses ...; and multi-dwelling housing'. Both are "
+                    "kept (2026-10-16): narrowing to 1.1 alone would hide B2 rules from multi-dwelling housing "
+                    "that 2.1 brings in, and a hidden rule is the worse error.",
             },
         },
         "B3": {
