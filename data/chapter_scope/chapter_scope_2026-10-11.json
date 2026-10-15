@@ -3277,7 +3277,7 @@
    "key": "marrickville__part8-heritage",
    "council": "marrickville",
    "chapter": "part8-heritage",
-   "applies_to": "whole_council",
+   "applies_to": "heritage_area",
    "zones": [],
    "heritage_area": null,
    "place": null,
@@ -3285,8 +3285,10 @@
    "quote": "Part 8 applies to heritage items, heritage conservation areas (HCAs), archaeological sites and Aboriginal heritage.",
    "page": 15,
    "quote_check": "found",
-   "note": "LGA-wide but only to heritage-affected land",
-   "part_of_council": false
+   "note": "heritage items and all HCAs; not one area. Was whole_council until 2026-10-15: 913 rules reached non-heritage houses (address audit). Archaeological sites and Aboriginal heritage have no land layer here.",
+   "part_of_council": true,
+   "boundary_source": "heritage area (Portal heritage map)",
+   "link": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/marrickville/v1.1-2026-03-09/part8-heritage.pdf#page=15"
   },
   {
    "key": "marrickville__part9-p03-stanmore-north",

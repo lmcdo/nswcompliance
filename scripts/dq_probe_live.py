@@ -65,7 +65,9 @@ def _machine_whole_council(chapter: dict) -> bool:
 #: list, C-B 4.3's seven, Paddington) does not match and needs those areas' outlines.
 _ALL_HERITAGE = re.compile(
     r"heritage (items?|conservation areas?)\b.{0,120}?"
-    r"(listed in|identified on|shown on) the .{0,60}?(LEP|Local Environmental Plan|Heritage Map|Schedule 5)",
+    r"(listed in|identified on|shown on) the .{0,60}?(LEP|Local Environmental Plan|Heritage Map|Schedule 5)"
+    # Marrickville Part 8 p15: "applies to heritage items, heritage conservation areas (HCAs), ..."
+    r"|applies to heritage items,? (and )?heritage conservation areas",
     re.I)
 
 
@@ -130,12 +132,14 @@ _GATED_FOR_ITS_CHAPTER = (
 #: frontend-nextjs/app/api/provisions/for-property/route.ts. Scope limit (a floor): a
 #: heritage-tagged rule still reaches every heritage house in the council.
 _REACHES_EVERY_HOUSE = (
-    "NOT (v2_dcp_layer = 'precinct' AND v2_precinct_id IS NOT NULL)"
+    "COALESCE(v2_dcp_layer, '') <> 'precinct'"
     " AND COALESCE(v2_dcp_layer, '') <> 'condition'"
     " AND COALESCE(LOWER(v2_topic), '') <> 'heritage' AND COALESCE(LOWER(v2_marker), '') <> 'heritage'"
     " AND (v2_applicable_zones IS NULL OR cardinality(v2_applicable_zones) = 0"
     "      OR 'ALL' = ANY(v2_applicable_zones))"
 )
+#: A precinct-layer rule reaches only its precinct's houses; one with no precinct reaches none
+#: (route fails closed since 2026-10-15; it reached every house without a precinct -- 2,827 rules).
 #: A served-flagged rule the page shows to NO house. Mirrors for-property/route.ts: the
 #: condition layer serves only flood/bushfire rows (queryLayer) and, for heritage houses,
 #: rows whose v2_marker is 'heritage' (queryHeritageByHca). Anything else in that layer is
@@ -144,6 +148,7 @@ _REACHES_EVERY_HOUSE = (
 _REACHES_NOBODY = (
     "((rp.v2_dcp_layer = 'condition'"
     "  AND COALESCE(rp.v2_site_condition_required, '') NOT IN ('flood', 'bushfire', 'acid_sulfate', 'riparian'))"
+    " OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL)"
     " OR COALESCE(rp.v2_dcp_layer, '') NOT IN ('generic', 'use_specific', 'condition', 'precinct'))"
     " AND LOWER(COALESCE(rp.v2_marker, '')) <> 'heritage'"
 )  # widened 2026-10-11: 33 C-B rows sat in v2_dcp_layer 'heritage', a layer no query reads

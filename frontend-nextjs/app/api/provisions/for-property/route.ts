@@ -1126,15 +1126,13 @@ async function queryLayer(
       sql += ` AND (v2_precinct_id = ANY($${paramIndex++}::text[]) OR v2_precinct_id = 'PART_G_OVERVIEW')`;
       params.push(precinctIds);
     } else {
-      // No precinct ID - exclude all precinct-specific provisions
-      console.log(`[4-Layer API] No precinct_id provided - excluding all precinct provisions`);
-      sql += ` AND v2_precinct_id IS NULL`;
-
-      // Also filter heritage for non-heritage properties
-      // (Provisions with v2_precinct_id IS NULL don't get precinct boundary protection)
-      if (!filters.heritage) {
-        sql += ` AND ${NOT_HERITAGE_SQL}`;
-      }
+      // No precinct ID - the precinct layer has nothing for this address. A precinct-layer rule
+      // whose precinct is unknown (v2_precinct_id NULL) was returned here, so a rule we know is
+      // for one centre or site reached every house without a precinct: 2,827 served rules
+      // (C-B 1,953, Ku-ring-gai 858), 24 of the 49 wrong answers in the 300-rule address audit
+      // of 2026-10-15. Fail closed: not shown until its precinct is keyed (DQ-146 counts it).
+      console.log(`[4-Layer API] No precinct_id provided - precinct layer returns nothing`);
+      return [];
     }
   }
 

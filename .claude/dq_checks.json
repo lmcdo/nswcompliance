@@ -1791,7 +1791,7 @@
    "note": "Added 2026-10-11: the gate had no claim for this, which is why it passed 16/17 while the served-answer audit found 35.8/100 rules for another property."
   },
   "DQ-146": {
-   "declared": "fixed",
+   "declared": "open",
    "check": [
     "python",
     "scripts/dq_probe_live.py",
@@ -1799,14 +1799,14 @@
     "DQ-146"
    ],
    "passes_when": "exit 0 - no current, actionable rule sits where no for-property query returns it (condition layer without flood/bushfire condition or heritage marker).",
-   "red_when": "a rule written for some houses is shown to none. Read 905 on 2026-10-11; 0 after the gate-rule write the same day (scripts/apply_dq146_gates.sh).",
+   "red_when": "a rule written for some houses is shown to none. Read 905 on 2026-10-11; 0 after the gate-rule write the same day (scripts/apply_dq146_gates.sh). REOPENED 2026-10-15 at 2,945: the precinct layer now fails closed, so 2,827 precinct rules with no precinct key (C-B 1,953, Ku-ring-gai 858, Parramatta 16) reach no house instead of every house. Cleared by keying each to its precinct outline.",
    "note": "Proved live on 17 Etham Avenue Darling Point (1 of 64 B2 rules shown). Cleared by gate rules and precinct keys, never by deleting rows."
   },
   "OC-21": {
    "kind": "outreach_claim",
    "claim": "No current rule sits where the address page's rule query can never return it (a layer or site condition the page does not send). Whether each map-based condition has map data for every council is not part of this claim.",
    "source": "~/.claude/plans/ce-served-answer-audit-RESUME-2026-10-11.md#12",
-   "declared": "true",
+   "declared": "false",
    "check": [
     "python",
     "scripts/dq_probe_live.py",
@@ -1816,7 +1816,7 @@
    "blocks_outreach": true,
    "passes_when": "exit 0 - DQ-146 reads 0",
    "red_when": "the declared state and the check disagree in either direction",
-   "note": "Added 2026-10-11: OC-18/19 catch rules shown to the wrong house; this catches rules shown to no house."
+   "note": "Added 2026-10-11: OC-18/19 catch rules shown to the wrong house; this catches rules shown to no house. Declared false 2026-10-15: unkeyed precinct rules were moved from every house to no house (DQ-146)."
   }
  }
 }
