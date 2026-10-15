@@ -1,0 +1,12 @@
+{
+  "source_pdf": "source-pdfs/dcps/cumberland/v1.1-2026-04-27/cumberland-dcp-part-b-residential.pdf",
+  "method": "Cumberland DCP Part B is FIVE sub-Parts in one 54-page PDF. Each opens with a full divider page ('PART B1 DWELLING HOUSES AND SECONDARY DWELLINGS' at 36pt, PyMuPDF spans) followed by a 'left intentionally blank' page, then its own '1. Introduction / 1.1 Land to which this Part applies'. A sub-Part owns the pages strictly between its divider page and the next sub-Part's divider page. Divider pages themselves, and the cover/contents pages 1-5 before B1's divider, are NOT resolved. Page numbers are 1-based PDF pages (= regulatory_provisions.pdf_page); the PDF's own footer 'Page B8 of B54' agrees.",
+  "heading_pages": {"B1": 6, "B2": 29, "B3": 37, "B4": 43, "B5": 51},
+  "ranges": [
+    {"part": "B1", "first_page": 7, "last_page": 28},
+    {"part": "B2", "first_page": 30, "last_page": 36},
+    {"part": "B3", "first_page": 38, "last_page": 42},
+    {"part": "B4", "first_page": 44, "last_page": 50},
+    {"part": "B5", "first_page": 52, "last_page": 54}
+  ]
+}
