@@ -135,6 +135,16 @@ EXTRA_KEY_RULES: list[dict] = [
     {"name": "woollahra_c2_woollahra_hca", "council": "woollahra", "validate": False,
      "where": "source_chapter_key = 'chapter-c2-woollahra-hca'",
      "strategy": {"type": "constant", "precinct_id": "Woollahra HCA"}},
+    # Ku-ring-gai Part 14B, by PDF PAGE (refs are garbled L-codes). Each precinct section opens on the page of
+    # its figure: 14B.8 T1 p10, 14B.9 T2 p21, 14B.10 T3 p27, 14B.11 T4 p35. 14B.1-14B.7 (p1-9) apply to the
+    # whole centre, Figure 14B.1-1 p2 = T1-T4 together: outline '14B' (import_woollahra_b2_union.py --union
+    # krg_14b; the id must match precinct-service's ^14[A-O] pattern). Address audit 2026-10-15: all 184
+    # served rows sat in the precinct layer with no key.
+    {"name": "krg_14b_turramurra_by_page", "council": "ku_ring_gai", "validate": False,
+     "where": "source_chapter_key = 'section-b-part-14b-turramurra-local-centre'",
+     "strategy": {"type": "page_range", "ranges": [
+         ("14B", 1, 9), ("14B_T1", 10, 20), ("14B_T2", 21, 26), ("14B_T3", 27, 34), ("14B_T4", 35, 38)]},
+     "fingerprint": {"max_page": 38, "min_coverage": 0.95}},
 ]
 
 

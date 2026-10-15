@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Load one outline covering all eleven Woollahra B2 neighbourhood HCAs.
+"""Load one outline that is the union of outlines already loaded (Woollahra B2, Ku-ring-gai 14B).
 
 prior-art-checked: modelled on import_cb_centre_boundaries.py (upsert on the (precinct_id, lga)
 unique key, former_council set, proof after write). No new geometry is drawn: the outline is the
@@ -11,9 +11,13 @@ controls apply to all eleven, and a rule carries one v2_precinct_id, so it needs
 outline is the eleven together. precinct-service.ts returns EVERY outline containing a lot, so a
 house in Etham Avenue HCA gets both 'Etham Avenue HCA' and this id.
 
+Ku-ring-gai 14B (2026-10-15): 14B.1-14B.7 apply to the whole Turramurra centre, which Figure
+14B.1-1 (p2) draws as precincts T1-T4 together. Id '14B': Ku-ring-gai outline rows carry no
+former_council, so precinct-service.ts attributes them by the ^14[A-O] id pattern.
+
 Usage:
-    python scripts/import_woollahra_b2_union.py            # dry run: prints what it would write
-    python scripts/import_woollahra_b2_union.py --commit   # backup, upsert, prove
+    python scripts/import_woollahra_b2_union.py [--union krg_14b]            # dry run
+    python scripts/import_woollahra_b2_union.py [--union krg_14b] --commit   # backup, upsert, prove
 """
 from __future__ import annotations
 
@@ -28,16 +32,32 @@ import dq_db  # noqa: E402  (finds the main checkout's .env from a worktree)
 
 REPO = Path(__file__).resolve().parent.parent
 BACKUP_DIR = REPO / "data" / "db_rollback_backups"
-LGA = "Woollahra"
-UNION_ID = "Woollahra B2 neighbourhood HCAs"
-#: Exactly the eleven B2.2-B2.12 areas; the union refuses to build from any other count.
-MEMBERS = (
-    "Etham Avenue HCA", "Darling Point Road HCA", "Mona Road HCA", "Loftus Street and Mona Road HCA",
-    "Aston Gardens HCA", "Victoria Road HCA", "Balfour Road HCA", "Beresford Estate HCA",
-    "Rose Bay Gardens Estate HCA", "Kent Road HCA", "Bell Street HCA",
-)
-#: Lots that must NOT fall in the union: the two large HCAs that have chapters of their own.
-OUTSIDE = ("Paddington HCA", "Woollahra HCA")
+#: Each union: its members (the union refuses to build from any other set) and outlines whose interior
+#: point must NOT fall inside it (neighbours with chapters of their own).
+UNIONS: dict[str, dict] = {
+    "woollahra_b2": {
+        "lga": "Woollahra", "id": "Woollahra B2 neighbourhood HCAs",
+        "name": "Woollahra DCP 2015 B2 neighbourhood HCAs (all eleven)",
+        "members": (
+            "Etham Avenue HCA", "Darling Point Road HCA", "Mona Road HCA", "Loftus Street and Mona Road HCA",
+            "Aston Gardens HCA", "Victoria Road HCA", "Balfour Road HCA", "Beresford Estate HCA",
+            "Rose Bay Gardens Estate HCA", "Kent Road HCA", "Bell Street HCA",
+        ),
+        "outside": ("Paddington HCA", "Woollahra HCA"),
+        "src": "Woollahra DCP 2015 B2 p5 'applies to the following neighbourhood HCAs' <- "
+               "ST_Union of the eleven B2.2-B2.12 outlines already loaded from NSW ePlanning "
+               "EPI_Primary_Planning_Layers/0 (Woollahra LEP 2014)",
+    },
+    "krg_14b": {
+        "lga": "Ku-ring-gai", "id": "14B",
+        "name": "Ku-ring-gai DCP Part 14B Turramurra Local Centre (precincts T1-T4)",
+        "members": ("14B_T1", "14B_T2", "14B_T3", "14B_T4"),
+        # 14K Tennyson Ave Turramurra and 14O Pymble Golf Club: nearby sites with Parts of their own.
+        "outside": ("14K", "14O"),
+        "src": "Ku-ring-gai DCP Part 14B p2 Figure 14B.1-1 'Turramurra Local Centre Precinct Plan' (T1-T4) <- "
+               "ST_Union of the four 14B.8-14B.11 precinct outlines already loaded",
+    },
+}
 
 UPSERT = """
 INSERT INTO dcp_precinct_boundaries
@@ -57,7 +77,10 @@ ON CONFLICT (precinct_id, lga) DO UPDATE SET
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--commit", action="store_true")
+    ap.add_argument("--union", choices=sorted(UNIONS), default="woollahra_b2")
     args = ap.parse_args()
+    u = UNIONS[args.union]
+    LGA, UNION_ID, MEMBERS = u["lga"], u["id"], u["members"]
 
     conn = dq_db.connect() if not args.commit else _write_connection()
     try:
@@ -76,21 +99,17 @@ def main() -> int:
         before = [r[0] for r in cur.fetchall()]
         print(f"existing '{UNION_ID}' rows: {len(before)}")
 
-        params = {"id": UNION_ID, "name": "Woollahra DCP 2015 B2 neighbourhood HCAs (all eleven)",
-                  "lga": LGA, "members": list(MEMBERS),
-                  "src": "Woollahra DCP 2015 B2 p5 'applies to the following neighbourhood HCAs' <- "
-                         "ST_Union of the eleven B2.2-B2.12 outlines already loaded from NSW ePlanning "
-                         "EPI_Primary_Planning_Layers/0 (Woollahra LEP 2014)",
-                  "desc": "Union of: " + "; ".join(MEMBERS)}
+        params = {"id": UNION_ID, "name": u["name"], "lga": LGA, "members": list(MEMBERS),
+                  "src": u["src"], "desc": "Union of: " + "; ".join(MEMBERS)}
         if not args.commit:
             print("DRY RUN - would upsert 1 row:", json.dumps({k: v for k, v in params.items() if k != "members"}))
             return 0
 
         BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-        bpath = BACKUP_DIR / f"woollahra_b2_union_pre_{datetime.now(timezone.utc):%Y-%m-%dT%H%M%S}.json"
+        bpath = BACKUP_DIR / f"{args.union}_union_pre_{datetime.now(timezone.utc):%Y-%m-%dT%H%M%S}.json"
         bpath.write_text(json.dumps(before, indent=1), encoding="utf-8")
         cur.execute(UPSERT, params)
-        _prove(cur)
+        _prove(cur, u)
         conn.commit()
         print(f"COMMITTED 1 row; backup {bpath}")
         return 0
@@ -106,8 +125,9 @@ def _write_connection():
     return w
 
 
-def _prove(cur) -> None:
-    """Every member's interior point is inside the union; neither the Paddington nor the Woollahra HCA point is. Raises."""
+def _prove(cur, u: dict) -> None:
+    """Every member's interior point is inside the union; no `outside` outline's point is. Raises."""
+    LGA, UNION_ID, MEMBERS, OUTSIDE = u["lga"], u["id"], u["members"], u["outside"]
     probe = ("SELECT ST_Contains((SELECT boundary FROM dcp_precinct_boundaries WHERE lga = %s AND precinct_id = %s),"
              " (SELECT ST_PointOnSurface(boundary) FROM dcp_precinct_boundaries WHERE lga = %s AND precinct_id = %s))")
     for pid in MEMBERS + OUTSIDE:
@@ -115,7 +135,7 @@ def _prove(cur) -> None:
         inside = cur.fetchone()[0]
         if inside != (pid in MEMBERS):
             raise RuntimeError(f"proof failed: point of {pid} inside union = {inside}")
-    print(f"proved: 11 member points inside, {len(OUTSIDE)} other HCAs outside")
+    print(f"proved: {len(MEMBERS)} member points inside, {len(OUTSIDE)} other outlines outside")
 
 
 if __name__ == "__main__":

@@ -136,3 +136,16 @@ def test_a_precinct_rule_with_no_precinct_reaches_nobody():
     # never to every house (it was: 2,827 rules, 24 of 49 audit errors).
     assert "(rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL)" in probes._REACHES_NOBODY
     assert "COALESCE(v2_dcp_layer, '') <> 'precinct'" in probes._REACHES_EVERY_HOUSE
+
+
+def test_krg_14b_pages_cover_the_chapter_once_and_use_ids_precinct_service_attributes():
+    # Address audit 2026-10-15: 184 Turramurra rules had no key. Ranges must tile p1-38 with no gap or
+    # overlap, and every id must match precinct-service.ts's Ku-ring-gai pattern (its outline rows carry
+    # no former_council, so an id outside ^14[A-O](_T\d)?$ would be attributed to another council).
+    import import_woollahra_b2_union as u
+    rule = next(r for r in g.EXTRA_KEY_RULES if r["name"] == "krg_14b_turramurra_by_page")
+    ranges = rule["strategy"]["ranges"]
+    pages = [p for _, lo, hi in ranges for p in range(lo, hi + 1)]
+    assert pages == list(range(1, 39)) and rule["fingerprint"]["max_page"] == 38
+    assert all(re.fullmatch(r"14[A-O](_T\d)?", pid, re.I) for pid, _, _ in ranges)
+    assert {pid for pid, _, _ in ranges} == {u.UNIONS["krg_14b"]["id"], *u.UNIONS["krg_14b"]["members"]}
