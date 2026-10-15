@@ -586,7 +586,8 @@ class ApplicabilityTagger:
         # Nothing matched — ALL is a fallthrough here, and says so.
         return self._from_entry(None, site_conditions=None)
 
-    def _get_config_driven(self, document_id: str, text: str) -> Optional[Dict[str, Any]]:
+    def _get_config_driven(self, document_id: str, text: str,
+                           part: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Get applicability from COUNCIL_CONFIGS (woollahra, waverley, etc.).
 
         Uses the same section-code extraction as LayerTopicTagger._tag_from_config().
@@ -624,11 +625,15 @@ class ApplicabilityTagger:
         # "Woollahra_DCP_2015__chapter_b1_residential_precincts" -> "B1".
         doc_match = re.search(r'chapter_([a-z]\d+)', doc_lower)
         doc_code = doc_match.group(1).upper() if doc_match else None
+        # The row's own Part (v2_dcp_part) when the heading carries none the config is keyed by: a whole-plan document
+        # read by the section reader heads its rules with section numbers ("16.2") while the config is keyed by Part
+        # letter ("B", "E"), so 448 Waverley rows fell to no_config (OC-17, 2026-10-15). Used ONLY as a fallback.
+        part_code = part if part and re.fullmatch(r'[A-Z]\d{0,2}(\.\d+)*', part) else None
         if not section_code:
             # Preamble provisions carry no heading code: use the document's chapter.
-            if not doc_code:
+            if not doc_code and not part_code:
                 return None
-            section_code = doc_code
+            section_code = doc_code or part_code
         elif doc_code and section_code != doc_code and not section_code.startswith(doc_code + '.'):
             # DQ-126: a chapter can number its own sections in another chapter's style --
             # Woollahra D5 (Double Bay Centre) heads its sections A2.x, and A2 is a repealed
@@ -651,6 +656,16 @@ class ApplicabilityTagger:
         # Letter-only prefix
         if not entry and section_code[0].isalpha():
             entry = parts.get(section_code[0])
+
+        # The row's Part, then its letter, when the heading code matched nothing (see part_code above)
+        if not entry and part_code and part_code != section_code:
+            code = part_code
+            while code and not entry:
+                entry = parts.get(code)
+                shorter = re.sub(r'\.?\d+$', '', code)
+                if shorter == code:
+                    break
+                code = shorter
 
         if entry:
             # Carry is_precinct_specific through, exactly as the chapter_topics
@@ -764,6 +779,7 @@ class ApplicabilityTagger:
         self, text: str, document_id: str = None,
         valid_zones: Optional[Set[str]] = None,
         clause: Optional[str] = None,
+        part: Optional[str] = None,
     ) -> Tuple[List[str], List[str], Dict[str, str]]:
         """As :meth:`tag`, plus WHY each value is what it is.
 
@@ -798,7 +814,7 @@ class ApplicabilityTagger:
                 config = self._get_marrickville_config(document_id)
             else:
                 # Config-driven path: woollahra, waverley, city_of_sydney, ku_ring_gai
-                config = self._get_config_driven(document_id, text)
+                config = self._get_config_driven(document_id, text, part)
 
             if config:
                 struct_zones = config.get('applicable_zones', ['ALL'])
