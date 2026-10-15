@@ -1,0 +1,69 @@
+{
+  "tier": "standard",
+  "justification": "Adds Northern Beaches to the existing Land Application gate so Warringah DCP 2011 is served only where layer 8 names Warringah LEP 2011; Manly and Pittwater land is withheld.",
+  "commit_hash": "f5eb5faa",
+  "files": [
+    ".qa/reports/fix__northern-beaches-dcp-land.json",
+    "frontend-nextjs/lib/dcp-land-application.ts",
+    "frontend-nextjs/__tests__/api/dcp-land-application.test.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "reads the layer-8 landApplicationInstruments the property API already returns; no table read or written",
+    "assumption_mismatch": "assumed one DCP per council; Northern Beaches has three plans and only Warringah's is loaded",
+    "new_vs_existing": "one new entry in the existing DCP_LAND_BINDING map, same decision code as City of Sydney"
+  },
+  "functions": [
+    {
+      "name": "decideLandApplication",
+      "file_line": "frontend-nextjs/lib/dcp-land-application.ts",
+      "input": "council slug and layer-8 instruments",
+      "output": "covered / excluded / partial / unknown, with withhold flag",
+      "if_none": "unknown, withheld for a gated council, which shows the plan cannot be confirmed"
+    }
+  ],
+  "values": [
+    {
+      "value": "landApplicationInstruments",
+      "read_at": "for-property route land_application param",
+      "nullable": "yes",
+      "guard_at": "decodeLandApplication returns null for malformed input",
+      "if_missing": "status unknown and Warringah rules withheld, never served by default"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Manly lot whose layer 8 names Manly LEP 2013",
+      "what_happens": "Warringah rules would be served to land they do not cover",
+      "mitigated": true,
+      "how": "binding requires the Warringah LEP name, so status is excluded",
+      "repro": "npx jest __tests__/api/dcp-land-application.test.ts -t Warringah"
+    },
+    {
+      "scenario": "Pittwater lot whose layer 8 names Pittwater LEP 2014",
+      "what_happens": "same wrong-plan serving as Manly",
+      "mitigated": true,
+      "how": "excluded by the same binding test",
+      "repro": "npx jest __tests__/api/dcp-land-application.test.ts -t Warringah"
+    },
+    {
+      "scenario": "council passed as display name NORTHERN BEACHES",
+      "what_happens": "a slug mismatch would skip the gate silently",
+      "mitigated": true,
+      "how": "toLgaSlug normalises it; test asserts withhold for the display name",
+      "repro": "npx jest __tests__/api/dcp-land-application.test.ts -t Warringah"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "npx jest __tests__/api/dcp-land-application.test.ts",
+    "fails_when": "a Manly or Pittwater layer-8 answer is not withheld, or a Warringah answer is withheld",
+    "observed_red": "before the binding, 1/28A Addison Rd Manly was served 10 of 10 Warringah rules in the 2026-10-15 address audit",
+    "external_authority": "Warringah DCP 2011 Part A.3 page 3: applies to all land to which Warringah LEP 2011 applies"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: /api/provisions/for-property for 1/28A Addison Road Manly returns no Warringah rules"
+  }
+}
