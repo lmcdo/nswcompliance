@@ -166,6 +166,15 @@ EXTRA_KEY_RULES: list[dict] = [
     # register-found sites (8.3.4); S6 167 Hume Hwy (p19-33) -> its Lot 402 DP 631754 (8.3.6). S5/S7/S8 name addresses
     # the NSW register does not hold; S1-S3 and Appendix 1 cover the whole corridor (S3: E3 land adjoining the highway,
     # no outline). Those rows stay unkeyed -- shown to no house -- rather than guessed. Fingerprint: 135/206 rows keyed.
+    # C-B Ch 2.2 Flood risk management is two plans in one PDF: Sections 1-8 (p4-65) are "Flood risk management in the
+    # former Bankstown Local Government Area" (p4), Sections 9-10 (p66-) "... in the former Canterbury Local Government
+    # Area" (p66). Keyed to the ABS 2015 former-LGA outlines (former_councils_abs2015.geojson). Address audit 2026-10-15:
+    # 29 Mavis St / 37A Victoria St Revesby (former Bankstown) were served Section 9.
+    {"name": "cb_2_2_flood_by_former_council", "council": "canterbury_bankstown", "validate": False,
+     "where": "source_chapter_key = 'chapter-2-2-flood-risk-management'",
+     "strategy": {"type": "page_range", "ranges": [
+         ("C-B former Bankstown", 1, 65), ("C-B former Canterbury", 66, 69)]},
+     "fingerprint": {"max_page": 69, "min_coverage": 0.95}},
     {"name": "cb_8_3_hume_highway_by_page", "council": "canterbury_bankstown", "validate": False,
      "where": "source_chapter_key = 'chapter-8-3-hume-highway'",
      "strategy": {"type": "page_range", "ranges": [("8.3.4", 10, 14), ("8.3.6", 19, 33), ("8.3.8", 38, 41)]},

@@ -39,10 +39,14 @@ EXPECTED_IDS = {"6.2", "7.5", "7.6"}
 RASTER_IDS = {"centres_7_2.geojson": {"7.2", *(f"7.2.{n}" for n in range(2, 14))}}
 #: Site files: any subset of these ids (refused sites are simply absent; there is no union).
 SITE_IDS = {"site_plans_8_3.geojson": {"8.3.5", "8.3.7", "8.3.8"}, "site_plans_11_4.geojson": {"11.4"}}
+#: Former-council halves (ABS ASGS 2015, scripts/build in the file's own 'source'). They tile the whole LGA, so the
+#: audit addresses must each land in EXACTLY ONE of them instead of in no precinct.
+FORMER_IDS = {"former_councils_abs2015.geojson": {"C-B former Bankstown", "C-B former Canterbury"}}
 #: The Planning Portal's state outline is the council's legal map layer (1.0). A figure fitted to
 #: the cadastre is positionally ~4 m, and doubtful lots were kept, so it is recorded lower.
 CONFIDENCE = {"nsw_planning_local_provisions": 1.0, "dcp_figure_georeferenced_to_cadastre": 0.9,
-              "dcp_raster_map_fitted_to_road_centrelines": 0.85, "dcp_site_plan_shape_fitted_to_cadastre": 0.85}
+              "dcp_raster_map_fitted_to_road_centrelines": 0.85, "dcp_site_plan_shape_fitted_to_cadastre": 0.85,
+              "abs_asgs_2015_former_lga": 0.95}
 CB_ENVELOPE = (150.95, -33.99, 151.18, -33.85)
 
 #: Lot points (ST_PointOnSurface of nsw_cadastre_lots, 2026-10-11) of the served-answer audit's
@@ -73,7 +77,10 @@ def load_rows(src: Path = SRC) -> list[dict]:
     expected = RASTER_IDS.get(src.name, EXPECTED_IDS)
     # A raster file may lack centres the fit REFUSED (their rules stay unkeyed); it may never hold an unknown id,
     # and it must hold the chapter's union.
-    if src.name in SITE_IDS:
+    if src.name in FORMER_IDS:
+        expected = FORMER_IDS[src.name]
+        ok = ids == expected
+    elif src.name in SITE_IDS:
         expected = SITE_IDS[src.name]
         ok = bool(ids) and ids <= expected
     else:
@@ -109,12 +116,12 @@ def main() -> int:
               f"{r['extraction_method']} ({r['confidence_score']})")
     conn = connect()
     try:
-        return _load(conn, rows, a.commit)
+        return _load(conn, rows, a.commit, former=Path(a.src).name in FORMER_IDS)
     finally:
         conn.close()
 
 
-def _load(conn, rows: list[dict], commit: bool) -> int:
+def _load(conn, rows: list[dict], commit: bool, former: bool = False) -> int:
     # prior-art-checked: closing this script's own connection; no new data source is added.
     cur = conn.cursor()
     cur.execute("SELECT current_database()")
@@ -178,7 +185,11 @@ def _load(conn, rows: list[dict], commit: bool) -> int:
         cur.execute(LOOKUP_SQL, (x, y, "CANTERBURY-BANKSTOWN"))
         hit = [r[0] for r in cur.fetchall()]
         print(f"  lookup {label}: {hit or 'no precinct'}")
-        if hit:
+        if former:
+            halves = [h for h in hit if h.startswith("C-B former ")]
+            if len(halves) != 1 or len(hit) != 1:
+                problems.append(f"{label} resolves to {hit}; expected exactly one former council")
+        elif hit:
             problems.append(f"{label} now resolves to {hit}")
     if problems:
         conn.rollback()
