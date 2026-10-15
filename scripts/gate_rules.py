@@ -34,6 +34,13 @@ GATE_RULES: list[dict] = [
     {"name": "marrickville_part8_heritage", "council": "marrickville",
      "where": "source_chapter_key = 'part8-heritage'",
      "set": {"v2_marker": "heritage"}},
+    # Parramatta DCP 2023 Part 7 Heritage (p290): "works on heritage items, archaeological site or a building or place
+    # within a heritage conservation area" (7.2, p292), plus 7.5 development in their vicinity (no land layer: limit as
+    # Wollongong E11 (iii)). Rows already keyed to a 7.10 conservation area keep that key (precinct gate). 230 rows were
+    # parked in the condition layer with no marker after the 2026-10-14 publish -- shown to no house (OC-21).
+    {"name": "parramatta_part7_heritage", "council": "parramatta",
+     "where": "source_chapter_key = 'parramatta-dcp-2023-full' AND ref_number ~ '__7_' AND v2_precinct_id IS NULL",
+     "set": {"v2_marker": "heritage"}},
     # "This Part applies to all land identified, and land adjacent to site identified, under
     # Schedule 5 of WLEP" (Waverley DCP 2022 B8, printed p67). Same adjacency limit as E11.
     {"name": "waverley_b8_heritage", "council": "waverley",
@@ -56,6 +63,12 @@ GATE_RULES: list[dict] = [
     # C-B 4.2 "applies to heritage items listed in the Canterbury-Bankstown LEP 2023 (Schedule 5,
     # Part 1)" (p4): heritage marker, so heritage properties get it. 22 rows sat in v2_dcp_layer
     # 'heritage', which the for-property route never queries (DQ-146, widened 2026-10-11).
+    # C-B 4.1 is the heritage chapters' introduction ("does not remove the requirement to comply with the LEP ... that
+    # may affect a heritage item or a building within a heritage conservation area", p6): same reach as 4.2. Its 60 rows
+    # sat in the unread 'heritage' layer -- shown to no house (OC-21, 2026-10-15).
+    {"name": "cb_4_1_heritage_intro", "council": "canterbury_bankstown",
+     "where": "source_chapter_key = 'chapter-4-1-introduction'",
+     "set": {"v2_marker": "heritage", "v2_dcp_layer": "generic"}},
     {"name": "cb_4_2_heritage_items", "council": "canterbury_bankstown",
      "where": "source_chapter_key = 'chapter-4-2-heritage-items'",
      "set": {"v2_marker": "heritage", "v2_dcp_layer": "generic"}},
