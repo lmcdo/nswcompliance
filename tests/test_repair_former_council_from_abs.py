@@ -56,3 +56,15 @@ def test_build_step9_has_no_nearest_precinct_query():
     step9 = src[src.index("# Step 9:"):src.index("return lot_count", src.index("# Step 9:"))]
     assert "<->" not in step9 and "ST_DWithin" not in step9
     assert "assign_for_lga" in step9
+
+
+def test_build_step9_other_lgas_scope_outlines_and_update_to_their_own_lga():
+    src = (Path(__file__).resolve().parent.parent / "scripts" / "build_lot_search_index.py").read_text(encoding="utf-8")
+    step9 = src[src.index("# Step 9:"):src.index("return lot_count", src.index("# Step 9:"))]
+    assert "UPPER(pb.lga) = UPPER(lsi2.lga_name)" in step9
+    assert "lsi.lotidstring = sub.lotidstring AND lsi.lga_name = %s" in step9
+
+
+def test_repair_updates_are_lga_scoped_and_tie_break_is_deterministic():
+    assert "WHERE lotidstring = %s AND lga_name = %s" in Path(mod.__file__).read_text(encoding="utf-8")
+    assert "pb.precinct_id, pb.id LIMIT 1" in mod.BUILD_SQL

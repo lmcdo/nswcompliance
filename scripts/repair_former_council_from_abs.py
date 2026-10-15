@@ -72,7 +72,7 @@ SELECT l.lotidstring, a.fc,
        (SELECT pb.former_council FROM dcp_precinct_boundaries pb
          WHERE pb.former_council IS NOT NULL AND UPPER(pb.lga) = UPPER(l.lga_name)
            AND ST_Contains(pb.boundary, ST_Centroid(l.geom))
-         ORDER BY pb.precinct_id LIMIT 1)
+         ORDER BY pb.confidence_score DESC NULLS LAST, pb.precinct_id, pb.id LIMIT 1)
 FROM lot_search_index l
 LEFT JOIN a ON ST_Contains(a.g, ST_PointOnSurface(l.geom))
 WHERE l.lga_name = %(lga)s AND l.geom IS NOT NULL
@@ -86,9 +86,10 @@ def assign_for_lga(conn, lga_name: str, margin_m: float = 20.0) -> tuple[int, in
     cur = conn.cursor()
     cur.execute("SET statement_timeout = 120000")
     cur.execute(BUILD_SQL, {**fetch_polygons(), "lga": lga_name})
-    updates = [(assign(fc, depth, pfc, margin_m), lot) for lot, fc, depth, pfc in cur.fetchall()]
-    cur.executemany("UPDATE lot_search_index SET former_council = %s WHERE lotidstring = %s", updates)
-    return sum(1 for v, _ in updates if v), sum(1 for v, _ in updates if not v)
+    updates = [(assign(fc, depth, pfc, margin_m), lot, lga_name) for lot, fc, depth, pfc in cur.fetchall()]
+    cur.executemany("UPDATE lot_search_index SET former_council = %s WHERE lotidstring = %s AND lga_name = %s",
+                    updates)
+    return sum(1 for v, *_ in updates if v), sum(1 for v, *_ in updates if not v)
 
 
 def fetch_polygons() -> dict[str, str]:

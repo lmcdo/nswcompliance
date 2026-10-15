@@ -370,6 +370,30 @@ def assign_overlays_for_lga(conn, lga_name: str, dry_run: bool = False) -> int:
         conn.commit()
         log.info("  Step 9 done: %d lots assigned, %d left NULL (no polygon, no containing precinct)",
                  fc_count, left)
+    elif not dry_run:
+        # Other LGAs keep the containment-only assignment they always had, now scoped to the
+        # LGA's own outlines (an Inner West outline had tagged 185 Canada Bay/Sydney/C-B/Bayside
+        # lots) and without the nearest-precinct fallback.
+        cur.execute("""
+            UPDATE lot_search_index lsi
+            SET former_council = sub.former_council
+            FROM (
+                SELECT DISTINCT ON (lsi2.lotidstring)
+                    lsi2.lotidstring, LOWER(pb.former_council) AS former_council
+                FROM lot_search_index lsi2
+                JOIN dcp_precinct_boundaries pb
+                    ON ST_Contains(pb.boundary, ST_Centroid(lsi2.geom))
+                   AND UPPER(pb.lga) = UPPER(lsi2.lga_name)
+                WHERE lsi2.lga_name = %s
+                    AND lsi2.former_council IS NULL
+                    AND pb.former_council IS NOT NULL
+                ORDER BY lsi2.lotidstring, pb.confidence_score DESC NULLS LAST, pb.precinct_id, pb.id
+            ) sub
+            WHERE lsi.lotidstring = sub.lotidstring AND lsi.lga_name = %s
+        """, (lga_name, lga_name))
+        fc_count = cur.rowcount
+        conn.commit()
+        log.info("  Step 9 done: %d lots assigned from containing precincts", fc_count)
 
     return lot_count
 
