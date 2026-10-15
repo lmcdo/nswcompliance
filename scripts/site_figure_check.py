@@ -57,6 +57,10 @@ def colour_mask(img, colour: str):
     r, g, b = img[:, :, 0], img[:, :, 1], img[:, :, 2]
     if colour == "red":
         return (r > 150) & (g < 100) & (b < 100) & (r - g > 80)
+    if colour == "dark-red":  # C-B 11.4 Fig 1a precinct line ~(140,47,40) over an aerial
+        return (r > 110) & (r < 200) & (g < 80) & (b < 80) & (r - g > 60)
+    if colour == "light-blue":  # C-B 11.14 Fig 1 site line ~(130,213,245) over an aerial
+        return (b - r > 60) & (b > 200) & (g > 170) & (r < 170)
     if colour == "green":
         return (g > 120) & (g - r > 60) & (g - b > 30)
     if colour == "orange":

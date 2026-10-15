@@ -1,0 +1,40 @@
+[
+ {
+  "chapter": "section-b-part-14c-pymble-local-centre",
+  "coarse_share": 0.35,
+  "scale_prior": 4.441,
+  "m_per_pt": 1.7051,
+  "rotation_deg": -2.547,
+  "lines_within_10m_of_a_road": 0.479,
+  "line_to_road_median_m": 10.64,
+  "labels_found": [
+   "P1"
+  ],
+  "labels_expected": [
+   "P1"
+  ],
+  "outline_edge_median_m": 4.44,
+  "refused": "drawing off the road network; outlines not on lot lines"
+ },
+ {
+  "chapter": "section-b-part-14f-roseville-local-centre",
+  "coarse_share": 0.467,
+  "scale_prior": 1.917,
+  "m_per_pt": 0.7715,
+  "rotation_deg": -2.575,
+  "lines_within_10m_of_a_road": 0.545,
+  "line_to_road_median_m": 8.88,
+  "labels_found": [
+   "R1",
+   "R2",
+   "R3"
+  ],
+  "labels_expected": [
+   "R1",
+   "R2",
+   "R3"
+  ],
+  "outline_edge_median_m": 8.35,
+  "refused": "drawing off the road network; outlines not on lot lines"
+ }
+]

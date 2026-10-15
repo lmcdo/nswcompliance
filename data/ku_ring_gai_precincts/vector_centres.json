@@ -31,7 +31,8 @@
    "label_re": "[A-Z]\\d{1,2}",
    "council": "ku_ring_gai",
    "version": "v1.0-baseline",
-   "quote": "All development within the Pymble local centre, as outlined in Figure 14C.1-1, is to be designed to support and enhance the planned future character of the centre."
+   "quote": "All development within the Pymble local centre, as outlined in Figure 14C.1-1, is to be designed to support and enhance the planned future character of the centre.",
+   "line_w_max": 0.7
   },
   {
    "id": "14D",
@@ -89,7 +90,8 @@
    "label_re": "[A-Z]\\d{1,2}",
    "council": "ku_ring_gai",
    "version": "v1.0-baseline",
-   "quote": "All development within the Roseville local centre, as outlined in Figure 14F.1-1, is to be designed to support and enhance the planned future character of the centre."
+   "quote": "All development within the Roseville local centre, as outlined in Figure 14F.1-1, is to be designed to support and enhance the planned future character of the centre.",
+   "line_w_max": 0.9
   }
  ]
 }

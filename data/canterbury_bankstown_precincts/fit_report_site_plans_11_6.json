@@ -1,0 +1,19 @@
+[
+ {
+  "precinct_id": "11.6",
+  "corner_mga": [
+   317443,
+   6247442
+  ],
+  "edge_share": 0.653,
+  "m_per_px": 0.2116,
+  "lots": [
+   "4//DP16220"
+  ],
+  "shape_m2": 2432,
+  "iou": 0.468,
+  "lots_m2": 545,
+  "register_addresses_inside": [],
+  "refused": "shape does not match the plan"
+ }
+]

@@ -180,6 +180,12 @@ EXTRA_KEY_RULES: list[dict] = [
     {"name": "cb_6_1_part6_centres", "council": "canterbury_bankstown", "validate": False,
      "where": "source_chapter_key = 'chapter-6-1-general-requirements'",
      "strategy": {"type": "constant", "precinct_id": "C-B Part 6 centres"}},
+    # C-B Ch 11.4 Croydon Street Precinct: "Chapter 11.4 of this DCP applies to the site as shown in the Land
+    # Application Map (Figure 1a)" (p5) -- every section. Outline: scripts/fit_site_plans.py --config
+    # site_plans_11_4.json (dark-red precinct line placed on lot lines, shape 0.985, 8/8 register addresses inside).
+    {"name": "cb_11_4_croydon_street", "council": "canterbury_bankstown", "validate": False,
+     "where": "source_chapter_key = 'chapter-11-4-croydon-street-precinct'",
+     "strategy": {"type": "constant", "precinct_id": "11.4"}},
     {"name": "krg_14a_st_ives_by_page", "council": "ku_ring_gai", "validate": False,
      "where": "source_chapter_key = 'section-b-part-14a-st-ives-local-centre'",
      "strategy": {"type": "page_range", "ranges": [

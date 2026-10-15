@@ -1,0 +1,8 @@
+{"_about": "C-B DCP 2023 Ch 11.14 Riverwood Estate (Stage 1): 'This section of the DCP applies to part of the land within the Riverwood Estate, as outlined in blue and illustrated in Figure 1' ... 'bound by Washington Avenue to the north, Belmore Road North to the east, and Roosevelt Avenue to the south' (p5). Figure 1 is an aerial; the site is the light-blue dashed line. Placed by scripts/fit_site_plans.py.",
+ "sites": [
+  {"precinct_id": "11.14", "name": "Riverwood Estate Stage 1", "pdf": "chapter-11-14-riverwood-estate.pdf", "page": 5,
+   "figure": "Figure 1. The site (outlined in blue) within the Riverwood Estate (outlined in red)", "suburb": "RIVERWOOD",
+   "streets": ["Washington Ave", "Belmore Rd"], "outline_colour": "light-blue", "scale_range": [0.5, 0.75], "scale_note": "Belmore Rd from Washington Ave to Roosevelt Ave = 178 m on NSW centrelines = the outline east edge (~289 px at 200 dpi) -> ~0.62 m/px",
+   "quote": "This section of the DCP applies to part of the land within the Riverwood Estate, as outlined in blue and illustrated in Figure 1. (p5)",
+   "register_addresses": []}
+ ]}

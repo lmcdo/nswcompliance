@@ -78,15 +78,32 @@ def _segs(d) -> list:
     return out
 
 
-def read_plan(pdf: Path, page: int, label_re: str):
-    """(lot-line points y-up, {label: polygon in PDF points y-up}) from the vector plan."""
+def read_plan(pdf: Path, page: int, label_re: str, line_w_max: float = 0.2):
+    """(lot-line points y-up, {label: polygon in PDF points y-up}) from the vector plan.
+
+    Cached on disk (.page_cache, keyed by pdf stem + page + label_re + line_w_max) so a re-run on the same
+    PDF page does not re-extract its drawings. line_w_max: some plans draw lot lines/kerbs thicker than 0.2 pt
+    (14C 0.6, 14F 0.8); it is a per-chapter config field, the acceptance checks are unchanged."""
+    import hashlib
+    import pickle
+    key = hashlib.sha1(f"{label_re}|{line_w_max}".encode()).hexdigest()[:8]
+    cache = OUT / ".page_cache" / f"{pdf.stem}__p{page}__{key}.pkl"
+    if cache.exists():
+        return pickle.loads(cache.read_bytes())
+    res = _read_plan(pdf, page, label_re, line_w_max)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_bytes(pickle.dumps(res))
+    return res
+
+
+def _read_plan(pdf: Path, page: int, label_re: str, line_w_max: float):
     pg = fitz.open(pdf)[page - 1]
     lots, outline = [], []
     for d in pg.get_drawings():
         col, w = d.get("color"), d.get("width") or 0
         if _is_orange(col) and w >= 2:
             outline += _segs(d)
-        elif col and len(col) == 3 and max(col) < 0.5 and w < 0.2:
+        elif col and len(col) == 3 and max(col) < 0.5 and w < line_w_max:
             lots += _segs(d)
     if not lots or not outline:
         raise SystemExit(f"[ABORT] {pdf.name} p{page}: lot lines or precinct outlines not found")
@@ -166,7 +183,7 @@ def _poly_coords(g):
 
 
 def fit_chapter(ch: dict, pdf: Path) -> dict:
-    fig, labels = read_plan(pdf, ch["page"], ch["label_re"])
+    fig, labels = read_plan(pdf, ch["page"], ch["label_re"], ch.get("line_w_max", 0.2))
     # The drawing runs far past the printed frame (Gordon: 900 pt wide, ~300 visible). Keep the part round the
     # precincts, else the true scale cannot fit inside the search box and only a wrong, shrunken one can.
     if labels:

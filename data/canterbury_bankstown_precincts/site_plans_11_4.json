@@ -1,0 +1,10 @@
+{"_about": "C-B DCP 2023 Ch 11.4 Croydon Street Precinct: 'Chapter 11.4 of this DCP applies to the site as shown in the Land Application Map (Figure 1a)' (p5). The map is an aerial; the precinct is its dark-red dashed 'Precinct boundary line' (legend). Most labelled addresses are not in the NSW register (consolidated); the ones it holds must fall inside. Placed by scripts/fit_site_plans.py.",
+ "sites": [
+  {"precinct_id": "11.4", "name": "Croydon Street Precinct, Lakemba", "pdf": "chapter-11-4-croydon-street-precinct.pdf", "page": 5,
+   "figure": "Figure 1a: Croydon Street Precinct", "suburb": "LAKEMBA", "streets": ["Lakemba St", "Croydon St"],
+   "outline_colour": "dark-red", "anchor_placement": true,
+   "quote": "Chapter 11.4 of this DCP applies to the site as shown in the Land Application Map (Figure 1a). (p5)",
+   "register_addresses": ["212 LAKEMBA STREET LAKEMBA", "212A LAKEMBA STREET LAKEMBA", "9 CROYDON STREET LAKEMBA",
+     "11 CROYDON STREET LAKEMBA", "53 RAILWAY PARADE LAKEMBA", "54 RAILWAY PARADE LAKEMBA", "54A RAILWAY PARADE LAKEMBA",
+     "55 RAILWAY PARADE LAKEMBA"]}
+ ]}

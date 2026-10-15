@@ -60,6 +60,39 @@ def site_shape(pdf: Path, page: int) -> np.ndarray:
     return filled
 
 
+def outline_shape(pdf: Path, page: int, colour: str) -> np.ndarray:
+    """Binary mask of the region inside the outline drawn in `colour` (site_figure_check.raster_outline),
+    for plans drawn over an aerial where every pixel is coloured. Cached beside the PDFs: same page, same mask."""
+    cache = OUT / ".page_cache" / f"{pdf.stem}_p{page}_{colour}_outline.png"
+    if cache.exists():
+        return _crop((cv2.imread(str(cache), cv2.IMREAD_GRAYSCALE) > 0).astype(np.uint8))
+    p = fitz.open(pdf)[page - 1]
+    poly = sfc.raster_outline(p, colour)
+    if poly is None:
+        raise SystemExit(f"[ABORT] no closed {colour} outline on p{page}")
+    pix = p.get_pixmap(dpi=200)
+    mask = np.zeros((pix.height, pix.width), np.uint8)
+    ring = np.asarray(poly.exterior.coords)
+    cv2.fillPoly(mask, [np.c_[ring[:, 0], -ring[:, 1]].astype(np.int32)], 1)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(cache), mask * 255)
+    return _crop(mask)
+
+
+def _crop(mask: np.ndarray, pad: int = 10) -> np.ndarray:
+    """The outline's bounding box only: a whole-page mask must fit the 500 m search window at the fitted scale,
+    which excluded the true placement of C-B 11.4 (page 410 m tall at 0.175 m/px)."""
+    ys, xs = np.nonzero(mask)
+    return mask[max(0, ys.min() - pad):ys.max() + pad + 1, max(0, xs.min() - pad):xs.max() + pad + 1]
+
+
+def register_point(addr: str) -> tuple[float, float] | None:
+    """MGA point of an NSW address register entry (prefix match), or None."""
+    fs = rf._get(rf.ADDR, {"where": f"address LIKE '{addr}%'", "outFields": "address", "returnGeometry": "true",
+                           "outSR": "28356", "f": "json", "resultRecordCount": 1}).get("features") or []
+    return (fs[0]["geometry"]["x"], fs[0]["geometry"]["y"]) if fs else None
+
+
 def corner(cx: float, cy: float, a: str, b: str) -> tuple[float, float]:
     pts, keys = rf.fetch_roads(cx, cy, 2500)
     pa, _ = rf.named(pts, keys, [a])
@@ -71,7 +104,7 @@ def corner(cx: float, cy: float, a: str, b: str) -> tuple[float, float]:
     return tuple((pa[k] + pb[ii[k]]) / 2)
 
 
-def place(mask: np.ndarray, sx: float, sy: float, cad, scales, streets=None) -> tuple:
+def place(mask: np.ndarray, sx: float, sy: float, cad, scales, streets=None, anchors=None) -> tuple:
     """Best (edge share, m/px, x0, y0): image pixel (c, r) -> MGA (x0 + c*s, y0 - r*s)."""
     x_0, y_1 = sx - 250, sy + 250
     W = H = int(500 / RES) + 1
@@ -90,11 +123,22 @@ def place(mask: np.ndarray, sx: float, sy: float, cad, scales, streets=None) -> 
         if e.shape[0] >= H or e.shape[1] >= W or e.sum() < 50:
             continue
         C = fftconvolve(E, e[::-1, ::-1], mode="valid") / e.sum()
+        if anchors is not None and len(anchors):
+            # only shifts that put EVERY register point the site holds inside the shape (C-B 11.4: a shrunken shape
+            # inside two lots scored edge 1.0 with all 8 points outside; top-peak filtering found no valid shift)
+            mk = cv2.resize(mask, (e.shape[1], e.shape[0]), interpolation=cv2.INTER_NEAREST)
+            iy, ix = np.indices(C.shape)
+            for ax, ay in np.c_[(anchors[:, 0] - x_0) / RES, (y_1 - anchors[:, 1]) / RES].astype(int):
+                r, q = ay - iy, ax - ix
+                ok = (r >= 0) & (q >= 0) & (r < mk.shape[0]) & (q < mk.shape[1])
+                hit = np.zeros(C.shape, bool)
+                hit[ok] = mk[r[ok], q[ok]] > 0
+                C = np.where(hit, C, -1.0)
         # the plan labels the streets the site fronts: a placement whose edge is not within 20 m of BOTH is not the
         # site (a shrunken shape scores well inside one big lot -- S5/S7 first run). Best few candidates per scale.
         for idx in np.argsort(C, axis=None)[::-1][:40]:
             iy, ix = np.unravel_index(idx, C.shape)
-            if C[iy, ix] <= best[0]:
+            if C[iy, ix] <= max(best[0], 0.0):
                 break
             ox, oy = x_0 + ix * RES, y_1 - iy * RES
             if streets is not None:
@@ -109,14 +153,17 @@ def place(mask: np.ndarray, sx: float, sy: float, cad, scales, streets=None) -> 
 
 def fit(c: dict) -> dict:
     pdf = OUT / ".pdf_cache" / c["pdf"]
-    mask = site_shape(pdf, c["page"])
+    mask = outline_shape(pdf, c["page"], c["outline_colour"]) if c.get("outline_colour") else site_shape(pdf, c["page"])
     sx, sy = rf.seed({"seed": "street", "streets": [c["streets"][0]], "suburb": c["suburb"]})
     sx, sy = corner(sx, sy, *c["streets"][:2])
     pts, keys = rf.fetch_roads(sx, sy, 600)
     streets = [rf.named(pts, keys, [n])[0] for n in c["streets"][:2]]
     cad = cb.fetch_cadastre(tuple(float(v) for v in (sx - 300, sy - 300, sx + 300, sy + 300)))
-    share, s, x0, y0 = place(mask, sx, sy, cad, np.geomspace(0.04, 0.4, 70), streets)
-    share, s, x0, y0 = place(mask, sx, sy, cad, np.linspace(s * 0.95, s * 1.05, 15), streets)
+    anchors = None
+    if c.get("anchor_placement"):
+        anchors = np.array([p for p in (register_point(a) for a in c.get("register_addresses", [])) if p])
+    share, s, x0, y0 = place(mask, sx, sy, cad, np.geomspace(*c.get("scale_range", (0.04, 0.4)), 70), streets, anchors)
+    share, s, x0, y0 = place(mask, sx, sy, cad, np.linspace(s * 0.95, s * 1.05, 15), streets, anchors)
     cs, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     ring = max(cs, key=cv2.contourArea)[:, 0, :].astype(float)
     shape_mga = Polygon(np.c_[x0 + ring[:, 0] * s, y0 - ring[:, 1] * s]).buffer(0)
@@ -135,9 +182,8 @@ def fit(c: dict) -> dict:
     row["lots_m2"] = round(union.area)
     inside_ok = []
     for addr in c.get("register_addresses", []):
-        fs = rf._get(rf.ADDR, {"where": f"address LIKE '{addr}%'", "outFields": "address", "returnGeometry": "true",
-                               "outSR": "28356", "f": "json", "resultRecordCount": 1}).get("features") or []
-        inside_ok.append(bool(fs) and union.buffer(1).contains(Point(fs[0]["geometry"]["x"], fs[0]["geometry"]["y"])))
+        pt = register_point(addr)
+        inside_ok.append(pt is not None and union.buffer(1).contains(Point(*pt)))
     row["register_addresses_inside"] = inside_ok
     fails = [m for m, bad in (("shape does not match the plan", row["iou"] < IOU_MIN),
                               ("plan edge not on lot lines", share < EDGE_MIN),
@@ -167,9 +213,10 @@ def main() -> int:
             feats.append(cb.feature(c["precinct_id"], c["name"], g, {
                 "method": "dcp_site_plan_shape_fitted_to_cadastre", "source": f"{c['pdf']} p{c['page']} {c['figure']}",
                 "quote": c["quote"], "proof": row}))
-    (OUT / "site_plans_8_3.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}, indent=1),
-                                                encoding="utf-8")
-    (OUT / "fit_report_site_plans_8_3.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
+    stem = Path(a.config).stem  # site_plans_8_3 -> site_plans_8_3.geojson + fit_report_site_plans_8_3.json
+    (OUT / f"{stem}.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}, indent=1),
+                                         encoding="utf-8")
+    (OUT / f"fit_report_{stem}.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
     print(f"accepted {len(feats)} / {len(report)}")
     return 0
 

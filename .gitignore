@@ -855,3 +855,5 @@ latent-scope-data/
 
 # source PDFs re-downloaded by scripts/build_cb_centre_boundaries.py
 data/canterbury_bankstown_precincts/.pdf_cache/
+data/*_precincts/.page_cache/
+data/ku_ring_gai_precincts/.pdf_cache/
