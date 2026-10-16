@@ -61,15 +61,19 @@ _MAPPED_PART = re.compile(r"\b(shown|identified|marked|edged|hatched|outlined)\b
 #: section apply to all development to which this DCP applies" (Sydney 3 p6). Refused when the sentence also
 #: names a place, a site condition or a zone -- those are land limits.
 _USE_TYPE = re.compile(
-    r"\b(this|the) (part|section|chapter|guideline|provisions in this section)s? (of (this|the) (DCP|plan) )?"
-    r"appl(y|ies) to (all )?(development|applications|buildings|[a-z ,/-]{0,60}?"
+    r"\b(this|the) (DCP )?(part|section|chapter|guideline|provisions in this section)s? (of (this|the) (DCP|plan) )?"
+    # "...and applies to all forms of development" (Georges River 3 p4): the same clause after a purpose phrase
+    r"([^.]{0,120}? and )?"
+    r"appl(y|ies) to (all |any )?(forms of )?(development|applications|buildings|[a-z ,/-]{0,60}?"
     r"(dwelling|occupanc|housing|building|premises|subdivision|terraces|sites))",
     re.I)
 _LAND_LIMIT = re.compile(
     # a named place: "within the Lindfield local centre" -- but "in Section A of this DCP" names the plan, not land
-    r"\b(in|within|at|on|near|adjoining) (the )?(?!(Section|Part|Chapter|Schedule|Appendix|Table)\b)[A-Z][a-z]+"
-    r"|\b(centres?|precincts?|site|estate|vicinity|flood|heritage|bushfire|riparian|zones?|zoned|foreshore"
-    r"|corridor|area)\b")  # case-sensitive on purpose: [A-Z] must mean a capital
+    # ...unless the named place IS the council: "in the Wollongong Local Government Area" (Wollongong E3 p3)
+    r"\b(in|within|at|on|near|adjoining|for) (the )?(?!(Section|Part|Chapter|Schedule|Appendix|Table)\b)"
+    r"(?![A-Z][\w-]*( [A-Z][\w-]*){0,3} (Local Government Area|LGA)\b)[A-Z][a-z]+"
+    r"|\b(?i:centres?|precincts?|site|estate|vicinity|flood|heritage|bushfire|riparian|zones?|zoned|foreshore"
+    r"|corridor|(?<!government )area)\b")  # case-sensitive except the keywords: [A-Z] must mean a capital
 
 
 def _machine_whole_council(chapter: dict) -> bool:

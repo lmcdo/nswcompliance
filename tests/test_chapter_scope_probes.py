@@ -89,6 +89,14 @@ _NEW_CASES = [
     ("use_type", "The provisions in this section apply to all development to which this DCP applies, except "
                  "where it is clear that they are not relevant to a particular development type or use.", True),
     ("whole_council", "This DCP applies to land within the Canterbury-Bankstown Local Government Area.", True),
+    ("use_type", "This part contains objectives and design controls for the protection of the environment and "
+                 "applies to all forms of development.", True),
+    ("use_type", "This DCP Chapter applies to any development requiring development consent under Part 4 or "
+                 "approval under Part 5 of the Environmental Planning and Assessment Act 1979", True),
+    ("use_type", "This part contains controls for the Hurstville City Centre and applies to all development", False),
+    ("use_type", "This DCP Chapter applies to any development requiring development consent under Part 4 in the "
+                 "Wollongong Local Government Area.", True),
+    ("use_type", "This Part applies to development in the Wollongong City Centre", False),
     ("whole_council", "This Chapter of the DCP applies to all lands within the City of Wollongong Local "
                       "Government Area.", True),
 ]
