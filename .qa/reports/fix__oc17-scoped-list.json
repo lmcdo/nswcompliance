@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "OC-17 failed on DQ-33 (66 Warringah rules on Part heading pages applied to every development type by fallback) and on the published council list (Ashfield, Marrickville pass but were not listed). Each heading-page row was given its Part by where its text sits relative to the 13.5pt 'Part X' heading on the page (backup data/db_rollback_backups/nb66_part_pre_2026-10-16.json); the retag now passes v2_dcp_part to the tagger exactly as enrichment/pipeline.py already does, so a retag no longer undoes the publish. 4 rows on p259 sat above the Part H heading, i.e. the end of Part G (withheld area), and are withheld too.",
-  "commit_hash": "6e70f123",
+  "commit_hash": "e22de1f9",
   "files": [
     "scripts/retag_applicability_slug_docids.py",
     "frontend-nextjs/shared/dcp-scoped-councils.json",
