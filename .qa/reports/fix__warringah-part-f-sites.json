@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Audit run8 (2026-10-16) found Warringah DCP 2011 Part F1 requirement 13 ('The Strand, Dee Why') served to a Brookvale E3 house. Part F1 requirements 11-15 each name one centre; F2 is the Brookvale Brickworks site (Lots 11 and 12 DP 1101677); F3/F4 name individual special-use sites. None has an outline, so all 21 are withheld under the 2026-10-15 rule and listed. F1 general requirements 1-9 stay served: their zone scope is declined on purpose in northern_beaches_config (B1/B2 retired).",
-  "commit_hash": "3b3eb197",
+  "commit_hash": "671d510c",
   "files": [
     "data/chapter_scope/not_covered_2026-10-15.json",
     "frontend-nextjs/shared/not-covered-councils.json"
