@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "OC-20 (user decision 2026-10-17, option 1): the claim is checked in three parts instead of DQ-145 = 0. (a) a clause number is shown only when a script proved it, else the page (#1170/#1307 tests); (b) every citation surface renders the 'Citation not yet checked' mark for an unproven rule (#1313 tests incl. the badge inventory); (c) DQ-145 is a ratchet at 1,011 that may only fall, run with the probe's own SQL. OC-20 declared true; claim wording is the approved draft's.",
-  "commit_hash": "0a7279ac",
+  "commit_hash": "82862857",
   "files": [
     "scripts/outreach_claim_checks.py",
     ".claude/dq_checks.json",
