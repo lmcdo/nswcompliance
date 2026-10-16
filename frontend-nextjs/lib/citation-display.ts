@@ -60,7 +60,7 @@ const NUM = String.raw`\d+[A-Z]{0,2}(?:\.\d+[A-Z]{0,2})*(?:\s*\([A-Za-z0-9]{1,4}
 const DIVISION = String.raw`(?:schedule|sch|chapter|part|division|div)\.?\s+\d+[A-Z]{0,2}`;
 const CLAUSE_WORD = String.raw`(?:clause|cl|section|sec|s)\.?\s*`;
 const STATE_CLAUSE_RE = new RegExp(
-  String.raw`^(?:${DIVISION}(?:\s*,?\s*(?:${CLAUSE_WORD})?${NUM})?|(?:${CLAUSE_WORD})${NUM}|${NUM})$`,
+  String.raw`^(?:${DIVISION}(?:\s*,?\s*${DIVISION})*(?:\s*,?\s*(?:${CLAUSE_WORD})?${NUM})?|(?:${CLAUSE_WORD})${NUM}|${NUM})$`,
   'i',
 );
 
@@ -84,6 +84,17 @@ export function stateClauseLabel(ref?: unknown): string | null {
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(s)) return null;
   if (/^\d{4,}$/.test(s)) return null;
   return STATE_CLAUSE_RE.test(s) ? s : null;
+}
+
+/**
+ * A reference for a row known only by its document id. Fails closed: the stored
+ * reference passes through only when the id is clearly a council DCP; every other
+ * or unrecognised id goes through stateClauseLabel.
+ */
+export function referenceForDocument(ref: unknown, documentId?: string | null): string | null {
+  const id = documentId ?? '';
+  const isCouncilDcp = /dcp|development_control/i.test(id) && !/sepp|state_environmental|lep|environmental_plan/i.test(id);
+  return isCouncilDcp ? asTrimmedString(ref) : stateClauseLabel(ref);
 }
 
 /** Council rows keep their proven label; state rows only a well-formed one. */

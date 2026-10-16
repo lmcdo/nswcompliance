@@ -1,4 +1,4 @@
-import { citationIsShown, stripStoredCode, withServedCitation, stripOccurrenceSuffix, stateClauseLabel, servedClauseLabel } from '@/lib/citation-display';
+import { citationIsShown, stripStoredCode, withServedCitation, stripOccurrenceSuffix, stateClauseLabel, servedClauseLabel, referenceForDocument } from '@/lib/citation-display';
 
 const NL = '\n';
 
@@ -86,6 +86,24 @@ describe('the internal occurrence suffix never reaches a reader', () => {
       { citation_status: 'not_proven', source_council: 'city_of_sydney' },
       'Sydney_DCP_2012__schedules__7_4 (a)~2');
     expect(r.clause_label).toBeNull();
+  });
+});
+
+describe('compound structural references and document-id fail-closed', () => {
+  it.each(['Part 2, Division 3', 'Part 2 Division 3', 'Schedule 1 Part 2', 'Chapter 3 Part 2', 'Part 5A'])('accepts %s', (ref) => {
+    expect(stateClauseLabel(ref)).toBe(ref);
+  });
+  it('still rejects internal ids with a Part-like prefix', () => {
+    expect(stateClauseLabel('Part_2')).toBeNull();
+    expect(stateClauseLabel('Part provision_9')).toBeNull();
+  });
+  it('referenceForDocument: unrecognised document id with provision_99 gets no clause', () => {
+    expect(referenceForDocument('provision_99', 'Some_Unknown_Doc')).toBeNull();
+    expect(referenceForDocument('provision_99', null)).toBeNull();
+    expect(referenceForDocument('provision_99', 'State_Environmental_Planning_Policy_DCP')).toBeNull();
+  });
+  it('referenceForDocument: a council DCP document passes its reference', () => {
+    expect(referenceForDocument('C4.9', 'Warringah_DCP_2011')).toBe('C4.9');
   });
 });
 

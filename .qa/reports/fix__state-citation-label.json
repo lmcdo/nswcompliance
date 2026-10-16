@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Code review 2026-10-16: state-law rows (source_council NULL) carry internal ids such as provision_2344 in ref_number with section_header NULL. citationIsShown shows the label for source_council NULL whatever citation_status is, and the clause, browse, SEPP and constraint routes passed ref_number through, so an internal id could be displayed as the law's clause number (the DQ-111 fabricated-citation class). One helper, stateClauseLabel in lib/citation-display.ts, now gates every served state reference to real clause shapes; council (DCP) behaviour is unchanged.",
-  "commit_hash": "cd103ebe",
+  "commit_hash": "6a066d63",
   "files": [
     "frontend-nextjs/lib/citation-display.ts",
     "frontend-nextjs/lib/sepp-parking-cards.ts",
@@ -67,11 +67,11 @@
       "repro": "jest citation-display: council rows are unchanged"
     },
     {
-      "scenario": "a real state clause in an unlisted format, e.g. 'Part 2, Division 3'",
+      "scenario": "a real state clause in an unlisted format, e.g. Chapter 3 Part 2 Division 1 Subdivision 4",
       "what_happens": "reference hidden; instrument and link still shown",
       "mitigated": true,
       "how": "fails closed: hidden, never invented",
-      "repro": "stateClauseLabel('Part 2, Division 3')"
+      "repro": "stateClauseLabel Subdivision form"
     },
     {
       "scenario": "an internal id that happens to match the clause shape, e.g. '12'",
@@ -82,7 +82,7 @@
     }
   ],
   "mutation_analysis": "Making stateClauseLabel return its input unchanged fails 'never shows internal ids' and 'withServedCitation: state row with internal id'. Making servedClauseLabel filter council rows fails 'council rows are unchanged'.",
-  "residual_risk": "Components that print ref_number from APIs not touched here (precinct and DCP browsers) serve council rows only. Short integer internal ids would pass the shape check.",
+  "residual_risk": "Sol finding 2 (short bare integers such as 12 pass the shape check) is accepted as residual: shape is checked, not truth. Sol findings 1 (compound Part/Division/Schedule references) and 3 (document-id heuristic failed open) are fixed: stateClauseLabel accepts compound forms and referenceForDocument passes a reference only for a clearly council DCP document id.",
   "post_merge": {
     "db_reset": "No",
     "secrets": "None",

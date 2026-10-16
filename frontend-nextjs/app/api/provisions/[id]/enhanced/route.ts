@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
-import { stateClauseLabel } from '@/lib/citation-display';
+import { referenceForDocument } from '@/lib/citation-display';
 
 const pool = new Pool({
   host: process.env.DB_HOST || process.env.DATABASE_HOST || 'localhost',
@@ -143,7 +143,7 @@ export async function GET(
     // Build enhanced response
     const enhanced: EnhancedProvision = {
       id: provision.id,
-      refNumber: (/dcp|development_control/i.test(provision.document_id || '') || !/sepp|state_environmental|lep|environmental_plan/i.test(provision.document_id || '') ? provision.ref_number : stateClauseLabel(provision.ref_number)) || 'N/A',
+      refNumber: referenceForDocument(provision.ref_number, provision.document_id) || 'N/A',
       provisionText: provision.provision_text || '',
       zone: provision.zone,
       documentId: provision.document_id,
