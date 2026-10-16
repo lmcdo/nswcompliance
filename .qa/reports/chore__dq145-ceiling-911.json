@@ -8,11 +8,11 @@
   ],
   "falsifiable_check": {
     "command": "python -m pytest -q -o addopts= tests/test_outreach_claim_checks_oc20.py && python scripts/outreach_claim_checks.py OC-20",
-    "fails_when": "DQ-145 exceeds 1,011, any citation test fails (a card stops rendering the mark, the server flag drifts from DQ-145, a clause shows unproven), or the DQ-145 query breaks",
+    "fails_when": "DQ-145 exceeds 911, any citation test fails (a card stops rendering the mark, the server flag drifts from DQ-145, a clause shows unproven), or the DQ-145 query breaks",
     "observed_red": "Mutating the ratchet from <= to < made test_at_ceiling_passes fail (1 failed, 6 passed); restored, 7 passed."
   },
   "real_layer_exempt": {
-    "scripts/outreach_claim_checks.py": "the ratchet runs the DQ-145 probe SQL unchanged; unit tests use a fake connection and assert the exact SQL and params are passed; the live run read 1,011"
+    "scripts/outreach_claim_checks.py": "the ratchet runs the DQ-145 probe SQL unchanged; unit tests use a fake connection and assert the exact SQL and params are passed; the live run read 911 after the #1316 apply"
   },
   "pre_impl": {
     "existing_data": "DQ-145 probe SQL in scripts/dq_probe_live.PROBES; jest_file and pytest_files helpers already run OC-9's tests",
