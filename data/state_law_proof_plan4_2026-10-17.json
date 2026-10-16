@@ -1,0 +1,47 @@
+{
+ "generated": "2026-10-17",
+ "set": {
+  "citation_status": "proven"
+ },
+ "note": "Pass 4: rules 1-3 of scripts/state_law_evidence.py. Only citation_status (+ source path / checked_at) is written; evidence lives in the committed JSONL, keyed by id + text md5.",
+ "manifest": {
+  "epi-2008-0572": {
+   "file": "epi-2008-0572_2026-10-16.html",
+   "sha256": "13b5577ccfd028a6359b2278d28acc924b766678c9d27a1176bb412c1d2b6807",
+   "bytes": 2882206,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572"
+  }
+ },
+ "evidence_file": "data/state_law_evidence_2026-10-17.jsonl",
+ "rows": [
+  {
+   "id": 39980,
+   "md5": "d68634d0ebd2e41ae4b16d47d3a76e56",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572#sec.3D.34-ssec.2-tbl",
+   "derived_clause": null,
+   "evidence": {
+    "epi": "epi-2008-0572",
+    "snapshot_sha256": "13b5577ccfd028a6359b2278d28acc924b766678c9d27a1176bb412c1d2b6807",
+    "normaliser": "sl-norm/1",
+    "parser": "sl-units/1",
+    "rule": 1,
+    "matcher": "sl-excerpt/1",
+    "units": [
+     {
+      "id": "sec.3D.34-ssec.2-tbl",
+      "cls": "frag-table",
+      "start": 0,
+      "end": 117,
+      "unit_chars": 117
+     }
+    ],
+    "abs_start": 620680,
+    "abs_end": 620797,
+    "tier": "exact",
+    "whole_unit": true
+   }
+  }
+ ]
+}

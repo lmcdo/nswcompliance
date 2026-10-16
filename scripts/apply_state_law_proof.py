@@ -38,6 +38,30 @@ def check_plan(plan_rows: list[dict], db_rows: dict[int, tuple]) -> list[str]:
     return bad
 
 
+def check_evidence(plan: dict, plan_rows: list[dict], root: Path = ROOT) -> list[str]:
+    """Plans carrying `evidence_file` (pass 4) are applied only if EVERY row has an evidence record with the same
+    id + text md5 that scripts/verify_state_law_evidence.py re-derives from the pinned snapshot. Fail closed."""
+    ef = plan.get("evidence_file")
+    if not ef:
+        return []
+    import verify_state_law_evidence as vse
+    recs = {}
+    for ln in (root / ef).read_text(encoding="utf8").splitlines():
+        if ln.strip():
+            r = json.loads(ln)
+            recs[r["id"]] = r
+    bad, snaps = [], {}
+    for r in plan_rows:
+        rec = recs.get(r["id"])
+        if rec is None or rec.get("text_md5") != r["md5"]:
+            bad.append(f"{r['id']}: no evidence record for this id + text md5")
+            continue
+        why = vse.verify_record(rec, snaps, root / "data" / "law_text_cache")
+        if why:
+            bad.append(f"{r['id']}: evidence does not verify: {', '.join(why)}")
+    return bad
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("plan")
@@ -54,6 +78,11 @@ def main(argv: list[str] | None = None) -> int:
     bad = check_plan(rows, db)
     if bad:
         print(f"REFUSING: {len(bad)} planned rows no longer match; first 10:")
+        print("\n".join(bad[:10]))
+        return 1
+    bad = check_evidence(plan, rows)
+    if bad:
+        print(f"REFUSING: {len(bad)} planned rows lack verifying evidence; first 10:")
         print("\n".join(bad[:10]))
         return 1
     print(f"plan rows: {len(rows)}  all md5-identical to the proof  already proven: "
