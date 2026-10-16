@@ -12,7 +12,7 @@ import dq_probe_live as p  # noqa: E402
 
 def test_scope_file_loads_every_chapter():
     keys = p._chapter_scope_keys()
-    assert len(keys) == 235
+    assert len(keys) == 265  # 2026-10-16: +1 wollongong a1; +27 waverley Parts; +2 plan introductions (ku-ring-gai, ashfield)
     assert all("__" in k for k in keys)
 
 
@@ -70,3 +70,108 @@ def test_machine_whole_council_needs_the_label_and_the_words():
     assert p._machine_whole_council({"applies_to": "whole_council", "quote": words})
     assert not p._machine_whole_council({"applies_to": "place", "quote": words})
     assert not p._machine_whole_council({"applies_to": "whole_council", "quote": None})
+
+
+# 2026-10-16: wider wording, accepted with the user's OK, tested on known-wrong sentences first.
+import pytest  # noqa: E402
+
+_NEW_CASES = [
+    ("use_type", "This chapter applies to development in the vicinity of places of heritage significance", False),
+    ("use_type", "This Part applies to development within the Lindfield local centre", False),
+    ("use_type", "This Part applies to residential development in the R2 zone", False),
+    ("use_type", "This Part applies to development on land in the Turramurra area", False),
+    ("whole_council", "This Part applies to land shown on Map 1", False),
+    ("whole_council", "Council has consolidated all of its DCPs that apply to the Parramatta Local Government "
+                      "Area (LGA) into one plan", False),
+    ("use_type", "This Part applies to development for dual occupancy dwellings", True),
+    ("use_type", "This Part applies to all development types whether or not it is individually specified in "
+                 "Section A of this DCP.", True),
+    ("use_type", "The provisions in this section apply to all development to which this DCP applies, except "
+                 "where it is clear that they are not relevant to a particular development type or use.", True),
+    ("whole_council", "This DCP applies to land within the Canterbury-Bankstown Local Government Area.", True),
+    ("use_type", "This part contains objectives and design controls for the protection of the environment and "
+                 "applies to all forms of development.", True),
+    ("use_type", "This DCP Chapter applies to any development requiring development consent under Part 4 or "
+                 "approval under Part 5 of the Environmental Planning and Assessment Act 1979", True),
+    ("use_type", "This part contains controls for the Hurstville City Centre and applies to all development", False),
+    ("use_type", "This DCP Chapter applies to any development requiring development consent under Part 4 in the "
+                 "Wollongong Local Government Area.", True),
+    ("use_type", "This Part applies to development in the Wollongong City Centre", False),
+    ("whole_council", "This DCP applies to land within the Rosebery Estate in the City of Sydney Local Government "
+                      "Area", False),
+    ("use_type", "This Part applies to development at 10 Smith Street", False),
+    ("whole_council", "This chapter applies to all land within the Woollahra Municipality.", True),
+    ("whole_council", "Blacktown DCP 2015 applies to all land within the Blacktown Local Government Area that is "
+                      "zoned under Blacktown Local Environmental Plan", True),
+    ("use_type", "This Part applies to residential development on land zoned R2", False),
+    ("use_type", "This Part applies to development in the City Centre", False),
+    ("whole_council", "This DCP applies to land within rosebery in the City of Sydney Local Government Area.", False),
+    ("use_type", "This Part applies to development on Lot 402 DP 631754", False),
+    ("whole_council", "This Chapter of the DCP applies to all lands within the City of Wollongong Local "
+                      "Government Area.", True),
+]
+
+
+@pytest.mark.parametrize("applies_to,quote,want", _NEW_CASES)
+def test_wider_wording_accepts_only_unlimited_land(applies_to, quote, want):
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import dq_probe_live as d
+    assert d._machine_whole_council({"applies_to": applies_to, "quote": quote}) is want
+
+
+def test_waverley_place_and_condition_parts_are_never_listed_as_whole_council():
+    """B4 Coastal Risk, B8 Heritage and E1-E4 (Bondi Junction, Bondi Beachfront, village centres, special  # noqa: zone-codes (Waverley DCP Part numbers, not zones)
+    character areas) are land limits. Listing any of them as inheriting the plan's land would serve their
+    rules to every house in Waverley."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import dq_probe_live as d
+    keys = set(d._chapter_scope_keys(machine_whole_council=True))
+    for part in ("B4", "B8", "E", "E1", "E2", "E3", "E4"):  # noqa: zone-codes (Waverley DCP Part numbers, not zones)
+        assert f"waverley__waverley-dcp-2022#{part}" not in keys
+    assert "waverley__waverley-dcp-2022#C1" in keys          # Low Density Residential inherits the plan's land
+    assert "waverley__waverley-dcp-2022" not in keys          # the whole document stays mixed_parts
+
+
+def test_a_chapter_recorded_mixed_is_not_overridden_by_inheritance():
+    """City of Sydney Schedules mixes general schedules with area ones (Schedule 6 Signage in The Rocks, Green
+    Square). A scan of its first pages found no land wording, but that does not make it whole-council."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import dq_probe_live as d
+    assert "city_of_sydney__schedules" not in set(d._chapter_scope_keys(machine_whole_council=True))
+
+
+def test_inheritance_needs_no_own_clause():
+    """A chapter that carries its own quote must be judged by it, never inherit (cross-review 2026-10-16)."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import dq_probe_live as d
+    real = d._load_chapter_scope
+    src = {"key": "x__intro", "council": "x", "applies_to": "whole_council",
+           "quote": "This plan applies to all land within the X Local Government Area."}
+    bad = {"key": "x__part", "council": "x", "applies_to": "inherits_plan", "plan_source": "x__intro",
+           "quote": "This chapter applies only within the Lindfield local centre", "quote_check": "found"}
+    good = dict(bad, key="x__ok", quote="", quote_check="no_own_clause")
+    try:
+        d._load_chapter_scope = lambda: [src, bad, good]
+        keys = set(d._chapter_scope_keys(machine_whole_council=True))
+    finally:
+        d._load_chapter_scope = real
+    assert "x__ok" in keys and "x__part" not in keys
+
+
+def test_a_whole_council_quote_must_name_the_chapters_own_council():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import dq_probe_live as d
+    q = "This DCP applies to land within the Shellharbour Local Government Area."
+    assert not d._machine_whole_council({"council": "wollongong", "applies_to": "whole_council", "quote": q})
+    ok = "This plan applies to all lands within the Wollongong LGA."
+    assert d._machine_whole_council({"council": "wollongong", "applies_to": "whole_council", "quote": ok})

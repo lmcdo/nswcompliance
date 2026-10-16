@@ -46,17 +46,86 @@ _COUNCIL_WIDE = re.compile(
     r"|\bwhole of the .{0,50}?\b" + _AREA + r"\b"
     r"|\bentire " + _AREA + r"\b"
     r"|\bthroughout the .{0,30}?\b" + _AREA + r"\b"
-    r"|\bland to which .{0,60}(LEP|Local Environmental Plan).{0,20}appl",
+    r"|\bland to which .{0,60}(LEP|Local Environmental Plan).{0,20}appl"
+    # Added 2026-10-16 (user OK): the same sentence without "all", or with "lands" -- "This DCP applies to
+    # land within the Canterbury-Bankstown Local Government Area" (C-B 1.1 p5), "all lands within the City of
+    # Wollongong Local Government Area" (Wollongong E17 p3). _MAPPED_PART still refuses any shown/mapped land.
+    # Only the council's own name may sit between "land within the" and the area word: capitalised words and "City
+    # of", nothing else ("land within rosebery in the City of Sydney LGA" is refused -- cross-review 2026-10-16).
+    r"|\bappl(y|ies) to (all )?lands? (with)?in (the )?(?-i:(City of )?[A-Z][\w-]*( [A-Z][\w-]*){0,3}) " + _AREA + r"\b",
     re.I)
 #: Wording that limits land to a mapped or marked part, so the sentence is NOT council-wide
 #: whatever else it says ("all land shown on Map 1"). Cross-review finding 2026-10-11.
 _MAPPED_PART = re.compile(r"\b(shown|identified|marked|edged|hatched|outlined)\b|\b(map|figure)\s*\d", re.I)
+#: A chapter that limits WHO (a development type) but not WHERE: its land is the plan's own land, which the
+#: Land Application gate decides (lib/dcp-land-application.ts). Added 2026-10-16 with the user's OK.
+#: "This Part applies to development for dual occupancy dwellings" (Ku-ring-gai 5 p2); "The provisions in this
+#: section apply to all development to which this DCP applies" (Sydney 3 p6). Refused when the sentence also
+#: names a place, a site condition or a zone -- those are land limits.
+_USE_TYPE = re.compile(
+    r"\b(this|the) (DCP )?(part|section|chapter|guideline|provisions in this section)s? (of (this|the) (DCP|plan) )?"
+    # "...and applies to all forms of development" (Georges River 3 p4): the same clause after a purpose phrase
+    r"([^.]{0,120}? and )?"
+    r"appl(y|ies) to (all |any )?(forms of )?(development|applications|buildings|[a-z ,/-]{0,60}?"
+    r"(dwelling|occupanc|housing|building|premises|subdivision|terraces|sites))",
+    re.I)
+_LAND_LIMIT = re.compile(
+    # a named place: "within the Lindfield local centre" -- but "in Section A of this DCP" names the plan, not land
+    # ...unless the named place IS the council: "in the Wollongong Local Government Area" (Wollongong E3 p3)
+    r"\b(in|within|at|on|near|adjoining|for) (the )?(?!(Section|Part|Chapter|Schedule|Appendix|Table)\b)"
+    # ("the Woollahra Municipality", "the City of Wollongong Local Government Area" are the council too)
+    r"(?!(City of )?[A-Z][\w-]*( [A-Z][\w-]*){0,3} (Local Government Area|LGA|Municipality|Shire|Council area)\b)"
+    r"(?!(City|Municipality|Shire)\b(?! (?i:centre|council|of)))"  # "all land in the City." is the council itself
+    r"[A-Z][a-z]+"
+    # a street address or a lot: "development at 10 Smith Street", "Lot 402 DP 631754" (cross-review 2026-10-16)
+    r"|\b\d+[A-Z]?(-\d+)? [A-Z][a-z]+ (?i:street|road|avenue|parade|drive|lane|highway|place|crescent)\b"
+    r"|\b(?i:lots? \d+|DP ?\d{3,}|SP ?\d{3,})\b"
+    # "zoned under Blacktown LEP" is every zoned lot, i.e. the council; "zoned R2" is a limit
+    r"|\b(?i:centres?|precincts?|site|estate|vicinity|flood|heritage|bushfire|riparian|zones?|zoned(?! under)|foreshore"
+    r"|corridor|(?<!government )area)\b")  # case-sensitive except the keywords: [A-Z] must mean a capital
+
+
+#: A plan that covers its own mapped EXTENT, where that extent is enforced before a rule is served: the three former
+#: Inner West councils (each DCP covers its former council; served by lot_search_index.former_council, repaired from
+#: the ABS 2015 boundaries on 2026-10-15, #1287) and City of Sydney (Figure 1.1 is the Land Application gate,
+#: lib/dcp-land-application.ts). Leichhardt A1.3: "applies to the Inner West Local Government Area for the extent of
+#: land identified in Figure A5: Land covered by this Development Control Plan". Added 2026-10-16 with the user's OK.
+_PLAN_EXTENT = re.compile(
+    r"(this (development control plan|DCP|plan) applies to .{0,80}?for the extent of land (shown|show|identified) "
+    r"(on|in) (Figure|Map) [A-Z]?\d+"
+    r"|this development control plan applies to the land identifi?\s?ed in Figure 1)", re.I)
+_EXTENT_ENFORCED = frozenset({"ashfield", "leichhardt", "marrickville", "city_of_sydney"})
+#: The council an LGA phrase names, checked against the chapter's own council.
+_NAMED_AREA = re.compile(r"\b(City of )?([A-Z][\w-]*( [A-Z][\w-]*){0,3}) (Local Government Area|LGA|Municipality)\b")
+_COUNCIL_ALIASES: dict[str, tuple[str, ...]] = {
+    "canterbury_bankstown": ("canterbury-bankstown",), "wollongong": ("wollongong",), "woollahra": ("woollahra",),
+    "waverley": ("waverley",), "northern_beaches": ("warringah", "northern beaches"), "ku_ring_gai": ("ku-ring-gai",),
+    "city_of_sydney": ("sydney",), "parramatta": ("parramatta",), "hornsby": ("hornsby",), "blacktown": ("blacktown",),
+    "penrith": ("penrith",), "georges_river": ("georges river",), "cumberland": ("cumberland",),
+    "ashfield": ("inner west", "ashfield"), "leichhardt": ("inner west", "leichhardt"),
+    "marrickville": ("inner west", "marrickville"), "inner_west": ("inner west",),
+}
 
 
 def _machine_whole_council(chapter: dict) -> bool:
     quote = chapter.get("quote") or ""
-    return (chapter.get("applies_to") == "whole_council" and bool(_COUNCIL_WIDE.search(quote))
-            and not _MAPPED_PART.search(quote))
+    if chapter.get("applies_to") == "plan_extent":
+        return chapter.get("council") in _EXTENT_ENFORCED and bool(_PLAN_EXTENT.search(quote))
+    if _MAPPED_PART.search(quote):
+        return False
+    if chapter.get("applies_to") == "whole_council":
+        # The LGA must be the land itself: "land within the Rosebery Estate in the City of Sydney Local Government
+        # Area" names a place first and is refused (cross-review 2026-10-16).
+        if not _COUNCIL_WIDE.search(quote) or _LAND_LIMIT.search(quote):
+            return False
+        # ...and it must be THIS council's area: a Wollongong chapter quoting "the Shellharbour Local Government
+        # Area" is a data error, not a confirmation (cross-review 2026-10-16).
+        named = [m.group(2).lower() for m in _NAMED_AREA.finditer(quote)]
+        aliases = _COUNCIL_ALIASES.get(chapter.get("council") or "", ())
+        return not named or not aliases or any(a in n for n in named for a in aliases)
+    if chapter.get("applies_to") == "use_type":
+        return bool(_USE_TYPE.search(quote)) and not _LAND_LIMIT.search(quote)
+    return False
 
 
 #: A heritage chapter whose own sentence covers EVERY heritage item and/or EVERY heritage
@@ -96,10 +165,29 @@ def _chapter_scope_keys(*, part_of_council: bool | None = None,
                         applies_to: tuple[str, ...] = (),
                         machine_whole_council: bool | None = None) -> list[str]:
     """`council__chapter` keys from data/chapter_scope/ matching every filter given."""
-    return [c["key"] for c in _load_chapter_scope()
+    chapters = _load_chapter_scope()
+    by_key = {c["key"]: c for c in chapters}
+
+    def whole(c: dict) -> bool:
+        # A chapter that states no land of its own INHERITS its plan's (DQ-114's own wording: "the case where the
+        # chapter states nothing and inherits the plan's stated scope"). Accepted only when the plan's introduction
+        # entry it names passes the strict whole-council wording itself, and the chapter's own name and opening
+        # pages were checked for land limits (recorded as plan_source by the 2026-10-16 scan).
+        if c.get("applies_to") == "inherits_plan":
+            # Only a chapter recorded as having NO clause of its own may inherit (cross-review 2026-10-16): a quote
+            # it carries would be its own, possibly narrower, land.
+            if (c.get("quote") or "").strip() or c.get("quote_check") != "no_own_clause":
+                return False
+            src = by_key.get(c.get("plan_source") or "")
+            return bool(src) and src["council"] == c["council"] \
+                and src.get("applies_to") in ("whole_council", "plan_extent") \
+                and _machine_whole_council(src)
+        return _machine_whole_council(c)
+
+    return [c["key"] for c in chapters
             if (part_of_council is None or bool(c.get("part_of_council")) == part_of_council)
             and (not applies_to or c.get("applies_to") in applies_to)
-            and (machine_whole_council is None or _machine_whole_council(c) == machine_whole_council)]
+            and (machine_whole_council is None or whole(c) == machine_whole_council)]
 
 
 def _part_of_council_gates() -> tuple[list[str], list[str]]:
@@ -2800,8 +2888,14 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # sentence the fixed _COUNCIL_WIDE pattern does not confirm. An UPPER bound.
         "SELECT count(*) FROM regulatory_provisions"
         f" WHERE {_SERVED} AND {_REACHES_EVERY_HOUSE} AND source_council IS NOT NULL"
-        "   AND NOT (source_council || '__' || COALESCE(source_chapter_key, '') = ANY(%s))",
-        (_chapter_scope_keys(part_of_council=True) + _chapter_scope_keys(machine_whole_council=True),),
+        "   AND NOT (source_council || '__' || COALESCE(source_chapter_key, '') = ANY(%s))"
+        # A whole-plan document is decided Part by Part (2026-10-16): a key 'council__chapter#PART' covers the rows
+        # whose v2_dcp_part is that Part (Waverley DCP 2022: B1 Waste, C1 Low Density ... inherit the plan's land;
+        # B4 Coastal, B8 Heritage and E1-E4 places are not listed).
+        "   AND NOT (source_council || '__' || COALESCE(source_chapter_key, '') || '#' || COALESCE(v2_dcp_part, '')"
+        "            = ANY(%s))",
+        (_chapter_scope_keys(part_of_council=True) + _chapter_scope_keys(machine_whole_council=True),
+         [k for k in _chapter_scope_keys(machine_whole_council=True) if "#" in k]),
         "Each count is a served rule whose land has not been read from its plan: it may "
         "be for every house or for one Part's area. Cleared per Part: record the Part's "
         "own words in data/chapter_scope/ and gate the local rows (DQ-143 then counts "
