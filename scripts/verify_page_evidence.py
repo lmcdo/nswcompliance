@@ -133,9 +133,13 @@ def main() -> int:
         conn = psycopg2.connect(os.environ["DATABASE_URL"], connect_timeout=30)
         conn.set_session(readonly=True)
         cur = conn.cursor()
-        cur.execute("SELECT id, md5(provision_text), provision_text FROM regulatory_provisions "
-                    "WHERE is_current AND id = ANY(%s)", ([r["id"] for r in recs],))
-        texts = {i: (m, t) for i, m, t in cur.fetchall()}
+        # prior-art-checked: widens this file's own existing read-only SELECT by two columns; no new source
+        cur.execute("SELECT id, md5(provision_text), provision_text, pdf_page, page_range "
+                    "FROM regulatory_provisions WHERE is_current AND id = ANY(%s)",
+                    ([r["id"] for r in recs],))
+        rows_db = cur.fetchall()
+        texts = {i: (m, t) for i, m, t, _p, _r in rows_db}
+        pages_db = {i: (p, list(r or [])) for i, _m, _t, p, r in rows_db}
         conn.close()
     pdfs, pages_cache, labels_cache, failures = {}, {}, {}, []
 
@@ -191,6 +195,12 @@ def main() -> int:
                     bad.append("provision_text changed since the proof (md5)")
                 elif pe.rule_words(t) != ev["span"]:
                     bad.append("rule words differ from the evidence span")
+                if len(ev.get("all_pages") or ()) > 1:
+                    # an ambiguous span is anchored ONLY by the row's own stored page, so the
+                    # file's claim of what that page is must equal the live row (on_page leaves it)
+                    live = pages_db.get(rec["id"])
+                    if live != (rec["old"].get("pdf_page"), list(rec["old"].get("page_range") or [])):
+                        bad.append("stored pdf_page/page_range in the file differ from the live row")
         except Exception as e:  # noqa: BLE001 -- an unreadable proof is a failed proof
             bad.append(f"error: {type(e).__name__}: {str(e)[:100]}")
         if bad:
