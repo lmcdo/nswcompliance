@@ -215,8 +215,8 @@ def test_apply_preflight_refuses_changed_text_and_taken_rows():
 
 # -- span on several pages: proven only where the row's stored page is one of them -------
 
-LINE = "The upper level setback must be 4m above street wall."
-WORDS = "upper level setback must be 4m above street wall"
+LINE = "The upper level setback must be 4m above the street wall height."
+WORDS = "upper level setback must be 4m above the street wall height"
 OLD = {"pdf_page": 3, "page_range": [3]}
 
 
@@ -276,3 +276,15 @@ def test_verifier_still_checks_old_evidence_without_all_pages(tmp_path):
     ev = pe.prove(WORDS, pages, {3})[1]
     del ev["all_pages"]
     assert vpe.check_uniqueness(ev, OLD, "on_page", pages)   # old rule: two pages -> fail
+
+
+def test_shared_page_label_or_repeated_cells_stay_unresolved(tmp_path):
+    """A label or a run of repeated table cells on several pages proves nothing, even on the held page."""
+    f = tmp_path / "l.pdf"
+    label = "3 2 3 height"
+    cells = "queen anne bungalow queen anne bungalow queen anne bungalow queen anne"
+    make_pdf(f, [("text", [label, cells]), ("text", ["Other."]), ("text", [label, cells])])
+    pages = read(f)
+    for words in (label, cells):
+        v, ev, info = pe.prove(words, pages, {3}, 3)
+        assert v == "unresolved" and ev is None and info["pages"] == [1, 3], words

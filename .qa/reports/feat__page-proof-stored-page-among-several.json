@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Extends the deterministic page proof (#1316): a span printed on several pages is proven on_page when the row's own stored page (pdf_page or a page_range member) is one of them, with every page listed in evidence.all_pages. If the stored page is not among them the row stays unresolved and no page is picked. Matcher, planner and verifier only; the planner is read-only on the database, apply is a dry run, nothing is written to production.",
-  "commit_hash": "6738a2ab",
+  "commit_hash": "39201d91",
   "files": [
     "scripts/page_evidence.py",
     "scripts/page_proof_council.py",

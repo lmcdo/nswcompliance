@@ -19,7 +19,7 @@ A proof is an EVIDENCE dict that scripts/verify_page_evidence.py re-derives from
 
 Fail closed: the span must lie on exactly ONE page of the whole PDF (any matcher, any order),
 EXCEPT when the row's own stored page (pdf_page or a page of page_range) is one of the pages it
-is printed on (matcher v2): then the stored page does hold the words -> proven, and the
+is printed on and the span is a sentence (>= MIN_WORDS_SHARED words, half distinct; matcher v3): then the stored page does hold the words -> proven, and the
 evidence lists EVERY page the span is on (`all_pages`) so a reader sees it was ambiguous. No page
 is picked: if the stored page is not among them the row stays `unresolved`.
 No page -> `not_found`. Fewer than MIN_WORDS words -> `too_short`.
@@ -31,7 +31,12 @@ import re
 import unicodedata
 
 MIN_WORDS = 3
-MATCHER_VERSION = "page-evidence-v2-stored-page-among-several"
+# A span printed on several pages proves the stored page only if it is a real sentence, not a label
+# or a repeated table cell ("3 2 3 height", "queen anne ... queen anne"): >= 10 words, at least
+# half of them distinct. User review 2026-10-18 of the first 21 multi-page proofs.
+MIN_WORDS_SHARED = 10
+MIN_DISTINCT_SHARED = 0.5
+MATCHER_VERSION = "page-evidence-v3-shared-page-needs-a-sentence"
 ORDERS = ("raw", "sorted")
 _WORD = re.compile(r"[a-z0-9]+")
 _BULLETS = re.compile("[•‣▪●◦⁃∙·]")
@@ -199,6 +204,9 @@ def prove(words: str, pages: dict, held=None, primary=None):
     if not hits:
         return "not_found", None, {"pages": []}
     if len(hits) > 1:
+        toks = words.split()
+        if len(toks) < MIN_WORDS_SHARED or len(set(toks)) / len(toks) < MIN_DISTINCT_SHARED:
+            return "unresolved", None, {"pages": sorted(hits), "reason": "span on several pages is a label or repeated cells"}
         both = sorted(set(held or ()) & set(hits))
         if primary in both:
             pno = primary                  # the row's own page; never swapped for a range member
