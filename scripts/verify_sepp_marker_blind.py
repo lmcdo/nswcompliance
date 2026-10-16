@@ -60,6 +60,11 @@ def verify(plan: dict, evidence: list[dict], cache_dir: Path | None = None) -> t
         if not (snap.sha256 == e["snapshot_sha256"] == plan["manifest"].get(epi, {}).get("sha256") == want):
             bad.append(f"{rid}: snapshot sha256 differs from evidence/plan/cache manifest")
             continue
+        # the applier writes plan source as citation_source_path: it must be exactly the verified unit's URL
+        if (r.get("source") != f"{mb.p1.LAW_URL.format(epi=epi)}#{e['unit_id']}" or r.get("epi") != epi
+                or r.get("law_date") != e.get("law_date")):
+            bad.append(f"{rid}: plan source/epi/law_date differ from the verified unit")
+            continue
         if mb.md5(r["old_text"]) != e["old_md5"] or r["md5"] != e["old_md5"]:
             bad.append(f"{rid}: old text md5 does not match the evidence")
             continue

@@ -176,10 +176,11 @@ def build(snap, tmp_path, rows):
         assert d["verdict"] in ("accept", "recopy"), d
         rule = d["verdict"]
         plan_rows.append({"id": rid, "md5": mb.md5(text), "rule": rule, "epi": EPI, "unit_id": d["unit"],
-                          "ref_number": ref, "old_text": text,
+                          "ref_number": ref, "old_text": text, "law_date": "2026-10-16",
+                          "source": f"{mb.p1.LAW_URL.format(epi=EPI)}#{d['unit']}",
                           "new_text": snap.units[d["unit"]].text if rule == "recopy" else None})
         e = {"id": rid, "rule": rule, "epi": EPI, "snapshot_file": snap.file, "snapshot_sha256": snap.sha256,
-             "unit_id": d["unit"], "norm_version": mb.NORM_VERSION, "match_version": mb.MATCH_VERSION,
+             "unit_id": d["unit"], "law_date": "2026-10-16", "norm_version": mb.NORM_VERSION, "match_version": mb.MATCH_VERSION,
              "old_md5": mb.md5(text)}
         e.update({k: d[k] for k in ("word_start", "word_end", "n_words", "unit_words", "tokens_sha256", "matched_words",
                                     "coverage", "size_ratio", "new_sha256") if k in d})
@@ -228,6 +229,18 @@ def test_verifier_fails_when_old_text_changed(snap, tmp_path):
 def test_verifier_fails_when_old_text_differs_only_by_a_marker(snap, tmp_path):
     plan, ev = good(snap, tmp_path)
     plan["rows"][0]["old_text"] = "(1) " + plan["rows"][0]["old_text"]   # same words, different bytes
+    assert ver.verify(plan, ev, tmp_path)[1]
+
+
+def test_verifier_fails_when_source_url_points_elsewhere(snap, tmp_path):
+    plan, ev = good(snap, tmp_path)
+    plan["rows"][0]["source"] = plan["rows"][0]["source"].replace("sec.5-ssec.1", "sec.6-ssec.1")
+    assert ver.verify(plan, ev, tmp_path)[1]
+
+
+def test_verifier_fails_when_law_date_differs(snap, tmp_path):
+    plan, ev = good(snap, tmp_path)
+    plan["rows"][1]["law_date"] = "2020-01-01"
     assert ver.verify(plan, ev, tmp_path)[1]
 
 

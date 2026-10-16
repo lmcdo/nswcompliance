@@ -31,7 +31,7 @@ BACKUPS = ROOT / "data" / "db_rollback_backups"
 SELECT = ("SELECT id, md5(provision_text), source_council, is_current, "
           "(SELECT count(*) FROM provision_versions v WHERE v.provision_id = p.id), "
           "provision_text, citation_status, citation_source_path, citation_checked_at, version_count, "
-          "current_version_id, text_hash, text_hash_current FROM regulatory_provisions p WHERE id = ANY(%s)")
+          "current_version_id, text_hash, text_hash_current, ref_number FROM regulatory_provisions p WHERE id = ANY(%s)")
 
 
 def check(plan_rows: list[dict], full: dict[int, tuple]) -> list[str]:
@@ -42,6 +42,8 @@ def check(plan_rows: list[dict], full: dict[int, tuple]) -> list[str]:
         t = full.get(r["id"])
         if t is None:
             continue
+        if t[13] != r["ref_number"]:
+            bad.append(f"{r['id']}: ref_number changed since the plan")
         if t[6] == "proven":
             bad.append(f"{r['id']}: already proven")
         if r["rule"] == "recopy" and t[4]:
@@ -95,12 +97,16 @@ def main(argv: list[str] | None = None) -> int:
     conn.autocommit = False
     now = datetime.now(timezone.utc)
     for r in rows:
-        cur.execute("SELECT md5(provision_text) FROM regulatory_provisions WHERE id = %s AND is_current "
+        # prior-art-checked: extends this file's own existing lock query (same table, same guards); adds ref_number and a version recount
+        cur.execute("SELECT md5(provision_text), ref_number, "
+                    "(SELECT count(*) FROM provision_versions v WHERE v.provision_id = p.id) "
+                    "FROM regulatory_provisions p WHERE id = %s AND is_current "
                     "AND source_council IS NULL AND COALESCE(citation_status,'') <> 'proven' FOR UPDATE", (r["id"],))
         got = cur.fetchone()
-        if got is None or got[0] != r["md5"]:
+        # the ref_number was part of what was verified (proven shows it as a checked clause); versions re-counted under the lock
+        if got is None or got[0] != r["md5"] or got[1] != r["ref_number"] or (r["rule"] == "recopy" and got[2]):
             conn.rollback()
-            print(f"ROLLED BACK: {r['id']} changed under us")
+            print(f"ROLLED BACK: {r['id']} changed under us (text, ref_number or version history)")
             return 1
         want_md5 = r["md5"]
         if r["rule"] == "recopy":

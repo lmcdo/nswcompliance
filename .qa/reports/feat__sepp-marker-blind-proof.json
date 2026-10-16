@@ -115,10 +115,17 @@
       "mitigated": true,
       "how": "The applier refuses unless every row md5 equals the plan, is not already proven and has no version history for recopy rows, re-checks under FOR UPDATE, and rolls back on any rowcount or end-state mismatch.",
       "repro": "python scripts/apply_sepp_marker_blind.py data/sepp_marker_blind_plan_2026-10-18.json data/sepp_marker_blind_evidence_2026-10-18.jsonl"
+    },
+    {
+      "scenario": "The plan's source URL, epi or law_date is edited while the evidence is left alone.",
+      "what_happens": "The applier writes the plan source as citation_source_path, so a false clause link would be stored on a proven row.",
+      "mitigated": true,
+      "how": "The verifier requires source to equal the canonical law URL plus the verified unit id, and epi and law_date to equal the evidence. The applier also refuses if ref_number changed since the plan, and recounts version history under the row lock.",
+      "repro": "python -m pytest tests/test_sepp_marker_blind.py -o addopts= -q -k \"source_url or law_date\""
     }
   ],
   "mutation_analysis": "Twenty-two one-line mutations were run against the scripts with the test file in place, each restored afterwards. Twenty were killed outright. Two verifier checks survive individually because the offset slice check and the evidence field diff both catch a tampered offset; this redundancy is deliberate and stated. Earlier survivors (coverage floor, repeated run, md5-only change) got their own tests and were re-run until killed. The ambiguity refusal for rule 1 only fires when two related units are both filled by the row, which the sec.10 fixture covers.",
-  "residual_risk": "177 of 341 in-scope rows are refused for ref_mismatch because their ref_number is a topic label or provision id rather than a clause, so most of the unproven set stays unproven until a deterministic ref fix. A marker letter that is really a unit symbol, such as (m) for metres, is stripped on both sides and could hide a dropped symbol. The classification CSV is a snapshot; rows are re-read from the database at plan time but the in-scope list is fixed. No production write has been made.",
+  "residual_risk": "177 of 341 in-scope rows are refused for ref_mismatch because their ref_number is a topic label or provision id rather than a clause, so most of the unproven set stays unproven until a deterministic ref fix. A marker letter that is really a unit symbol, such as (m) for metres, is stripped on both sides and could hide a dropped symbol. The classification CSV is a snapshot; rows are re-read from the database at plan time but the in-scope list is fixed. No production write has been made. ref_unit reads only the section and first parenthesised subclause, so 9 planned rows whose ref_number names a paragraph (for example 3.29(3)(e)) are related to the whole subclause; a recopy of such a row replaces the paragraph text with the subclause text. The 3x size cap bounds it; a paragraph-exact rule is left to the user.",
   "post_merge": {
     "db_reset": "No. Nothing is written by this branch.",
     "secrets": "None written. The database URL is read from the existing .env by the existing connect helper.",
