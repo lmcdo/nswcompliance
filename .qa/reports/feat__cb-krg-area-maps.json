@@ -1,0 +1,74 @@
+{
+  "tier": "standard",
+  "justification": "OC-21 (approved rewording): no rule sits where the page query can never return it, except area rules with no map yet, which are withheld, listed, and announced on the address page. 2026-10-17: Ku-ring-gai 14G Pymble Business Park outline fitted from the plan's vector lot lines (IoU 0.944 vs Figure 14G.1-1, picture looked at) and loaded, 97 rows keyed; ten other C-B/KRG areas refused by the fit (IoU < 0.85) and listed with Parramatta Part 8 intros and one Ashfield contents row.",
+  "commit_hash": "875b0478",
+  "files": [
+    "scripts/fit_area_maps.py",
+    "scripts/gate_rules.py",
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    ".claude/dq_checks.json",
+    "data/area_map_checks/candidates.geojson"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-146",
+    "fails_when": "any served rule sits on the precinct layer with no key and is not in the not-covered list, or sits in a layer/condition the page never sends",
+    "observed_red": "2026-10-17: 1,156 before; 1,076 after keying 14G (live: 21 Ryde Rd Pymble gets 81 14G rules, 2 Mona Vale Rd gets 0); 0 after listing the refused areas.",
+    "external_authority": "each listed chapter's own figure (shape IoU recorded in data/area_map_checks/candidates_report.json) and the production address answer for in/out addresses"
+  },
+  "real_layer_exempt": {
+    "scripts/fit_area_maps.py": "read-only fitting tool; its real-layer checks are the address-register in/out test against production and the shape score against the PDF figure, both recorded per target"
+  },
+  "pre_impl": {
+    "existing_data": "KRG outlines 14A/14D/14E use lga and former_council 'Ku-ring-gai'",
+    "assumption_mismatch": "the zone route for 14C/14F failed IoU (0.51-0.70), so those stay listed",
+    "new_vs_existing": "one fitting script, one keying rule, list entries"
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/fit_area_maps.py:513",
+      "input": "the target chapters' figures and the cadastre and road layers",
+      "output": "candidate outlines with shape score, address proof and a check picture, or a refusal",
+      "if_none": "a target with no passing fit is refused and written nowhere"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ-146 1,156 -> 0; 14G IoU 0.944",
+      "read_at": "2026-10-17",
+      "if_missing": "OC-21 unproven"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "14G keyed to the whole business park serves street-group controls to every park lot",
+      "what_happens": "a control for the Ryde Road group shows on a West Street lot",
+      "mitigated": false,
+      "how": "all lots are one zone (E3) inside one precinct; sub-groups recorded as residual",
+      "repro": "Figure 14G.1-1 legend"
+    },
+    {
+      "scenario": "listing hides rules that could be mapped",
+      "what_happens": "OC-21 passes while rules stay hidden",
+      "mitigated": true,
+      "how": "each entry names why (IoU below 0.85 or unreadable figure) and the page tells the user; the list is the work list for maps",
+      "repro": "data/area_map_checks/candidates_report.json"
+    },
+    {
+      "scenario": "a future publish re-keys or un-keys rows",
+      "what_happens": "DQ-146 rises and OC-21 goes red",
+      "mitigated": true,
+      "how": "DQ-146 runs in CI; listed ids are exact",
+      "repro": "python scripts/dq_probe_live.py --id DQ-146"
+    }
+  ],
+  "mutation_analysis": "Removing the new list entries restores DQ-146 1,076; dropping the 14G rule leaves its 97 rows unkeyed.",
+  "residual_risk": "Ten area chapters (C-B 7.3, 11.14, 8.2, 11.6, 11.5, 8.3 parts, 6.3, 11.2; KRG 14C, 14F) are not served to their own land until a fit passes. 14G street-group sub-areas are not separated. Address proof for 14G: 6/7 inside, 11/14 outside correct (edge points).",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "none"
+  }
+}
