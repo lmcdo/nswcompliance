@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Lists the C-B Carinya Road, Picnic Point floodplain rules (clause 4.4, Schedules 4A-4C, 97 rows) as not covered yet; already withheld live with backup.",
-  "commit_hash": "6dd3e621",
+  "commit_hash": "2fae687a",
   "files": [
     ".qa/reports/fix__cb-carinya-road-withheld.json",
     "data/chapter_scope/not_covered_2026-10-15.json"
