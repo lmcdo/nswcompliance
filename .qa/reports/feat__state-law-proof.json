@@ -1,0 +1,76 @@
+{
+  "tier": "standard",
+  "justification": "DQ-145 counted 5,274 served state-law (SEPP) rules with no citation verdict. scripts/state_law_proof.py tests each rule's whole text for a verbatim match in the instrument in force (legislation.nsw.gov.au HTML fetched once via the Fly app, sha256 in data/law_text_cache/manifest.json) and records the verdict and the clause it sits under. Read-only; scripts/apply_state_law_proof.py (not run) sets citation_status='proven' only for plan rows whose provision_text md5 is unchanged. No clause is written: the site reads none for state rows.",
+  "commit_hash": "043b3160",
+  "files": [
+    "scripts/state_law_proof.py",
+    "scripts/apply_state_law_proof.py",
+    "tests/test_state_law_proof.py",
+    "data/law_text_cache/manifest.json",
+    "data/state_law_proof_2026-10-16.csv",
+    "data/state_law_proof_plan_2026-10-16.json",
+    ".gitignore"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/state_law_proof.py",
+    "fails_when": "a row whose text is not in the instrument is reported proven, or the candidate count differs from DQ-145's state-law share (5,274)",
+    "observed_red": "Dry run 2026-10-16: 4,018 proven, 224 partial, 972 text_not_found of 5,214 mapped (60 unmapped non-SEPP rows listed); change-note fragments such as 'Specifies a minimum measurement (previously 3m, now 4.5m).' are text_not_found, as expected.",
+    "external_authority": "the NSW legislation website's in-force text of each SEPP"
+  },
+  "real_layer_exempt": {
+    "scripts/apply_state_law_proof.py": "not run in this PR; a database-marked test would write to production. Its refusal logic (check_plan) is unit tested and its dry run reads production read-only."
+  },
+  "pre_impl": {
+    "existing_data": "5,274 candidate rows across 9 SEPP titles x several document_id spellings; citation_status/citation_source_path/citation_checked_at exist (migrations 076-078)",
+    "assumption_mismatch": "assumed the HTML was cp1252; it is UTF-8. Assumed ref_number held clauses; most are 'provision_N'.",
+    "new_vs_existing": "reuses law_change_diff.paragraphs; dcp_citation_status.py is DCP/PDF-only and skips source_council IS NULL"
+  },
+  "functions": [
+    {
+      "name": "prove",
+      "file_line": "scripts/state_law_proof.py:151",
+      "input": "the stored provision_text of one served state-law rule row",
+      "output": "status proven/partial/text_not_found, tier, unique derived clause, clause candidates",
+      "if_none": "empty or heading-only text is text_not_found"
+    }
+  ],
+  "values": [
+    {
+      "value": "4,018 proven / 224 partial / 972 text_not_found; 60 unmapped (LE9962_1 33, Chapter_E2_Haberfield_Neighbourhood 27)",
+      "read_at": "python scripts/state_law_proof.py --write-plan, 2026-10-16",
+      "if_missing": "count unproven"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a short sentence repeated in many clauses is 'proven' by any of them",
+      "what_happens": "proof says the words exist, not which clause the rule came from",
+      "mitigated": true,
+      "how": "derived_clause is set only when every match sits under one clause; otherwise empty with candidates; 575 ambiguous rows",
+      "repro": "pytest tests/test_state_law_proof.py::test_repeated_text_in_two_clauses_has_no_single_clause"
+    },
+    {
+      "scenario": "an edited word still passes",
+      "what_happens": "a stale rule would be proven",
+      "mitigated": true,
+      "how": "whole-text match; the relaxed tier folds only whitespace, line-break hyphens and unicode dash/quote forms",
+      "repro": "pytest tests/test_state_law_proof.py::test_changed_word_is_not_proven"
+    },
+    {
+      "scenario": "row text changes between plan and apply",
+      "what_happens": "a verdict would be written for text that was never proven",
+      "mitigated": true,
+      "how": "apply refuses on any md5 difference and verifies rowcount",
+      "repro": "pytest tests/test_state_law_proof.py::test_apply_refuses_changed_md5_and_missing_rows"
+    }
+  ],
+  "mutation_analysis": "Replacing Law.prove's match with 'return proven' fails test_changed_word_is_not_proven and test_garbled_text_not_found_and_empty.",
+  "residual_risk": "31 proven rows are under 8 words (weak evidence). Proof is of text presence in the current instrument, not that the rule belongs to the stored clause. 'partial' (224) and 'text_not_found' (972) rows remain unproven and are DQ-88 candidates.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "user decides whether to run apply_state_law_proof.py --apply"
+  }
+}
