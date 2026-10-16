@@ -109,7 +109,7 @@
       "what_happens": "rules would be stitched from two columns into nonsense",
       "mitigated": true,
       "how": "per page, the reading order whose lines run on as sentences is used; jumbled pages are also read from the image",
-      "repro": "score_section_reader.py --only 008 (Hornsby 3-14: 2/12 before, 10-12/12 after)"
+      "repro": "python -m pytest tests/test_section_reader.py"
     }
   ],
   "falsifiable_check": {
