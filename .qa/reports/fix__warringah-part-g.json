@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Warringah DCP 2011 Part G holds ten area-limited sections (G1 Dee Why Town Centre to G10), each with its own 'Applies to Land'. All 969 rows were served to every Warringah house (audit run4: 4 severe). User decision 2026-10-16: withhold all, then key G1 back from the council's own LEP map.",
-  "commit_hash": "5669c6e4",
+  "commit_hash": "466eacd0",
   "files": [
     "scripts/import_lep_map_outline.py",
     "scripts/gate_rules.py",
@@ -70,5 +70,8 @@
     "secrets": "None",
     "other_repo": "No",
     "manual_verify": "live-check a Dee Why address and 25 Dareen St"
+  },
+  "real_layer_exempt": {
+    "scripts/import_lep_map_outline.py": "one-off loader whose real-layer check is built in: it runs the site's own precinct lookup against the real table inside the write transaction and rolls back on failure; there is no test database, and a database-marked test would write to production"
   }
 }
