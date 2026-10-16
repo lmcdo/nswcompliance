@@ -55,7 +55,7 @@ def zone_polys(regex: str, lga: str, cx: float, cy: float, radius: float) -> lis
         cur.execute("""SELECT ST_AsGeoJSON(ST_Transform(geom,28356),1) FROM spatial_overlays
                         WHERE layer_type='zone' AND lga_name ILIKE %s AND value ~ %s
                           AND ST_DWithin(geom::geography, ST_Transform(ST_SetSRID(ST_MakePoint(%s,%s),28356),4326)::geography, %s)""",
-                    (lga, regex, float(cx), float(cy), float(radius)))
+                    (lga, regex, float(cx or 0.0), float(cy or 0.0), float(radius or 0.0)))
         out = [shape(json.loads(r[0])) for r in cur.fetchall()]
     conn.close()
     return out
