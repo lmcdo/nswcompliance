@@ -88,7 +88,7 @@ describe('clause/[id]', () => {
 
   it('replaces an unproven number and strips it from the text', async () => {
     const c = await call(unproven);
-    expect(c.clause_reference).not.toContain('C4');
+    expect(c.clause_reference ?? '').not.toContain('C4');
     expect(c.full_text).toBe(`# Fences${NL}Text`);
     expect(c.page_number).toBe(12);
   });

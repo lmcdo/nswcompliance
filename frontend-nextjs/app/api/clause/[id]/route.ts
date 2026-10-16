@@ -85,7 +85,7 @@ export async function GET(
  success: true,
  clause: {
  id: clause.id,
- clause_reference: clause.clause_reference || (clause.source_council ? `Provision ${clause.id}` : null), // state rows: no internal-id stand-in
+ clause_reference: clause.clause_reference ?? null, // never a label derived from the row id
  full_text: clause.full_text,
  section_header: clause.section_header,
  document_name: clause.document_id,

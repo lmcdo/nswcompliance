@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Code review 2026-10-16: state-law rows (source_council NULL) carry internal ids such as provision_2344 in ref_number with section_header NULL. citationIsShown shows the label for source_council NULL whatever citation_status is, and the clause, browse, SEPP and constraint routes passed ref_number through, so an internal id could be displayed as the law's clause number (the DQ-111 fabricated-citation class). One helper, stateClauseLabel in lib/citation-display.ts, now gates every served state reference to real clause shapes; council (DCP) behaviour is unchanged.",
-  "commit_hash": "edb98b7d",
+  "commit_hash": "de87885d",
   "files": [
     "frontend-nextjs/lib/citation-display.ts",
     "frontend-nextjs/lib/sepp-parking-cards.ts",
