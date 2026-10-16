@@ -8,6 +8,7 @@ id,rule,reason,ref_number,unit_found,detail
 14289,,ref_mismatch,Complying Development Certificate,sec.5A.5,
 14397,,ref_mismatch,Complying development on bush fire prone land,sec.3.4-ssec.2-para1.e,
 14399,,ref_mismatch,Complying development on bush fire prone land (Zone RU5),sec.3.4;sec.3.4-ssec.2;sec.3.4-ssec.2-para1.g;sec.3B.4;sec.3B.4-ssec.2;sec.3B.4-ssec.2-para1.g,
+14517,,ref_more_specific_than_unit,5A.20(a),sec.5A.20,sec.5A.20-para1.a
 14522,,ref_mismatch,Floor Space Ratio,sec.5A.20;sec.5A.8,
 14523,,unit_too_big,Gross Floor Area,,
 14543,,ref_mismatch,Complying Development under Fire Safety Code,sch.10-note,
@@ -70,6 +71,7 @@ id,rule,reason,ref_number,unit_found,detail
 17566,,unit_too_big,3.29(2)(f),,
 17567,,excerpt,3.29(3)(a),sec.3.29-ssec.3,ref_mismatch
 17568,,unit_too_big,3.29(3)(b),,
+17571,,ref_more_specific_than_unit,3.29(3)(e),sec.3.29-ssec.3,sec.3.29-ssec.3-para1.e
 17572,,unit_too_big,3.29(3)(f),,
 17582,,ref_mismatch,Fences,sec.3.29;sec.3.29-ssec.1;sec.3C.32;sec.3C.32-ssec.1;sec.3D.53;sec.3D.53-ssec.2,
 17624,,ref_mismatch,driveway,sec.3A.28-ssec.2,

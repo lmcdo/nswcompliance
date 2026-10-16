@@ -103,20 +103,6 @@
    "new_text": "(2) The maximum gross floor area for a building on land in Zone E3, B5, B6 or B7 is 10,000m2."
   },
   {
-   "id": 14517,
-   "md5": "f119725e7a9f15cca257d58234ab9769",
-   "rule": "recopy",
-   "kind": "marker_blind_recopy",
-   "epi": "epi-2008-0572",
-   "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_45",
-   "ref_number": "5A.20(a)",
-   "unit_id": "sec.5A.20",
-   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572#sec.5A.20",
-   "law_date": "2026-10-16",
-   "old_text": "The maximum floor space ratio for a building is—the maximum floor space ratio that applies under another environmental planning instrument",
-   "new_text": "5A.20 Maximum floor space ratio\nThe maximum floor space ratio for a building is—\n(a) the maximum floor space ratio that applies under another environmental planning instrument, or\n(b) if there is no maximum floor space ratio referred to in paragraph (a)—1:1."
-  },
-  {
    "id": 14794,
    "md5": "ea5a0d32d864e3817110cf458711d0d6",
    "rule": "recopy",
@@ -311,20 +297,6 @@
    "law_date": "2026-10-16",
    "old_text": "Development standards\nThe standards specified for that development are that the development must—\n(a)  not cover more than 20% of the surface of the window in which it is displayed or 6m , whichever is the lesser, and\n(b)  not be illuminated, and\n(c)  if it involves a sign advertising a home business, home industry or home occupation—not result in more than one\nsign per premises.",
    "new_text": "2.95 Development standards\nThe standards specified for that development are that the development must—\n(a) not cover more than 20% of the surface of the window in which it is displayed or 6m2, whichever is the lesser, and\n(b) not be illuminated, and\n(c) if it involves a sign advertising a home business, home industry or home occupation—not result in more than one sign per premises."
-  },
-  {
-   "id": 17571,
-   "md5": "2ef7ee790067fefec50f6341be0324ce",
-   "rule": "recopy",
-   "kind": "marker_blind_recopy",
-   "epi": "epi-2008-0572",
-   "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_13",
-   "ref_number": "3.29(3)(e)",
-   "unit_id": "sec.3.29-ssec.3",
-   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572#sec.3.29-ssec.3",
-   "law_date": "2026-10-16",
-   "old_text": "A fence erected forward of the building line must be open for at least 20% of the area of the fence that is more than 400mm above ground level (existing), with any individual solid element of the fence above that height being no more than 350mm wide with a minimum aperture of 25mm",
-   "new_text": "(3) A fence erected forward of the building line on a lot must—\n(a) not be higher than 1.2m above ground level (existing), and\n(b) not incorporate barbed wire in its construction or be electrified, and\n(c) if it includes an entrance gate—not have a gate that opens outward, and\n(d) if it is constructed of metal components—be of low reflective, factory pre-coloured materials, and\n(e) be open for at least 20% of the area of the fence that is more than 400mm above ground level (existing), with any individual solid element of the fence above that height being no more than 350mm wide with a minimum aperture of 25mm, and\n(f) be designed so as not to restrict the flow of any floodwater."
   },
   {
    "id": 17573,

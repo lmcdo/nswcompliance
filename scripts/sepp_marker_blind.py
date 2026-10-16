@@ -163,7 +163,48 @@ def pick_exact(snap: Snapshot, cands: list[str], ref: str | None) -> tuple[str |
     return None, "ambiguous_unit"
 
 
+_PARA_KIND = (r"[a-z]{1,2}", r"[ivxlc]{1,6}", r"[A-Z]{1,2}")
+
+
+def ref_full(ref: str | None) -> tuple[str | None, bool]:
+    """(unit id the WHOLE ref names, ref goes below the section/subclause). 'Section 107(2)(d)' ->
+    ('sec.107-ssec.2-para1.d', True); 'Clause 5A.20(a)' -> ('sec.5A.20-para1.a', True); a paren group that does not
+    parse as the next level gives (None, True): the ref is more specific than anything we can resolve."""
+    m = re.match(r"^(?:Section|Clause|Subclause|cl|s)?\s*(\d+[A-Z]{0,3}(?:\.\d+[A-Z]{0,3})?)((?:\s*\([^)]*\))*)",
+                 (ref or "").strip(), re.I)
+    if not m:
+        return None, False
+    uid, extra, level = f"sec.{m.group(1)}", False, 0
+    for i, g in enumerate(re.findall(r"\(\s*([^)]*?)\s*\)", m.group(2))):
+        if i == 0 and re.fullmatch(r"\d+[A-Z]?", g):
+            uid += f"-ssec.{g}"
+            continue
+        if uid is not None and level < 3 and re.fullmatch(_PARA_KIND[level], g):
+            extra = True
+            level += 1
+            uid += f"-para{level}.{g}"
+        elif re.fullmatch(r"[A-Za-z][A-Za-z ,'&-]{3,}", g) and not re.fullmatch(_PARA_KIND[1], g):
+            continue   # a title in brackets, '3D.61 (Excavation)': a label, not a sub-unit
+        else:
+            extra = True
+            uid = None
+    return uid, extra
+
+
 def decide(old: str, ref: str | None, snap: Snapshot, allow_recopy: bool = True) -> dict:
+    """_decide plus: a ref naming a paragraph/sub-unit more specific than the chosen unit is refused (the site would
+    show that paragraph's citation as checked against a wider unit's text)."""
+    d = _decide(old, ref, snap, allow_recopy)
+    if d["verdict"] == "refuse":
+        return d
+    full, extra = ref_full(ref)
+    if extra and not (full in snap.units and (d["unit"] == full or full in snap.ancestors(d["unit"]))):
+        return {"verdict": "refuse", "reason": "ref_more_specific_than_unit", "unit": d["unit"],
+                "detail": full or "unresolved", "n_words": d["n_words"]}
+    return d
+
+
+def _decide(old: str, ref: str | None, snap: Snapshot, allow_recopy: bool = True) -> dict:
     """The whole verdict for one row against one snapshot. Everything the verifier re-derives comes from here.
     -> {verdict: accept|recopy|refuse, reason, unit, ...evidence fields}"""
     row = norm_tokens(old)

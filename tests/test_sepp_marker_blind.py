@@ -17,6 +17,8 @@ B = "a retaining wall on the land must not exceed a height of 1 metre above grou
 D = "the owner of the building must provide the council with a copy of the certificate on request"
 E = "an awning over the footpath must be at least two and a half metres above the ground"
 F = "a flagpole on the roof must be set back from every boundary of the lot by a fair distance"
+G = "the gate must open outwards and be fitted with a self closing latch at all times"
+H = "the following requirements apply to every pool fence installed under this code"
 C = "water tanks installed under this code must be screened from the street frontage entirely"
 
 HTML = f"""<html><body>
@@ -30,6 +32,9 @@ HTML = f"""<html><body>
 <div class="frag-clause" id="sec.11"><h3>11 Flags</h3><p>{" ".join(["padding"] * 80)}</p>
  <div class="frag-subclause" id="sec.11-ssec.1"><p>(1) {F}.</p></div>
  <div class="frag-subclause" id="sec.11-ssec.2"><p>(2) {F}.</p></div></div>
+<div class="frag-clause" id="sec.12"><h3>12 Gates</h3>
+ <div class="frag-subclause" id="sec.12-ssec.1"><p>(1) {H}:</p>
+  <div class="frag-li" id="sec.12-ssec.1-para1.a"><p>(a) {G};</p></div></div></div>
 <div class="frag-clause" id="sec.10"><h3>10 Awnings</h3>
  <div class="frag-subclause" id="sec.10-ssec.1"><p>(1) {E}.</p></div>
  <div class="frag-subclause" id="sec.10-ssec.2"><p>(2) {E}.</p></div></div>
@@ -113,6 +118,23 @@ def test_ref_mismatch_refused_even_when_text_is_verbatim(snap):
 def test_ref_mismatch_refused_for_recopy_too(snap):
     d = mb.decide(drop(A, "keep"), "Section 6(1)", snap)
     assert d["verdict"] == "refuse" and d["reason"] == "ref_mismatch" and d["unit"].startswith("sec.5")
+
+
+def test_ref_naming_a_paragraph_is_refused_when_the_unit_is_wider(snap):
+    d = mb.decide(A, "Section 5(1)(a)", snap)   # text is in the subclause; the ref names a paragraph that does not exist
+    assert d["verdict"] == "refuse" and d["reason"] == "ref_more_specific_than_unit" and d["detail"] == "sec.5-ssec.1-para1.a"
+    spanning = H + ": (a) " + G   # intro + paragraph: only the subclause holds it, but the ref names paragraph (a)
+    d2 = mb.decide(spanning, "Section 12(1)(a)", snap)
+    assert d2["verdict"] == "refuse" and d2["reason"] == "ref_more_specific_than_unit"
+    assert d2["unit"] == "sec.12-ssec.1"
+    assert mb.decide(drop(A, "keep"), "Section 5(1)(zz9)", snap)["reason"] == "ref_more_specific_than_unit"   # unparseable
+
+
+def test_ref_naming_a_paragraph_is_accepted_when_the_unit_is_that_paragraph(snap):
+    d = mb.decide(G, "Section 12(1)(a)", snap)
+    assert d["verdict"] == "accept" and d["unit"] == "sec.12-ssec.1-para1.a"
+    assert mb.decide(A, "Section 5(1) (Access)", snap)["verdict"] == "accept"   # a title in brackets is a label
+    assert mb.decide(A, "Section 5(1)", snap)["verdict"] == "accept"   # a subclause ref is not "more specific" than ssec
 
 
 def test_excerpt_short_of_the_clause_is_recopied_not_accepted(snap):

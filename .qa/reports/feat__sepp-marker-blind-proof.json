@@ -1,7 +1,7 @@
 {
   "tier": "standard",
-  "justification": "Adds a plan, verifier and dry-run-only applier that would mark 5 served SEPP rows proven and re-copy 40 more from the law's own unit text. A row is planned only when the law unit relates to its ref_number, because proven makes the site show that clause number as checked. Nothing is written to production by this branch: the apply script is dry-run by default and was not run with --apply. Standard rather than critical because the only write path is gated behind a verifier that re-derives every row and an explicit flag, and all rows keep a backup and version history.",
-  "commit_hash": "11341740",
+  "justification": "Adds a plan, verifier and dry-run-only applier that would mark 5 served SEPP rows proven and re-copy 38 more from the law's own unit text. A row is planned only when the law unit relates to its ref_number, because proven makes the site show that clause number as checked. Nothing is written to production by this branch: the apply script is dry-run by default and was not run with --apply. Standard rather than critical because the only write path is gated behind a verifier that re-derives every row and an explicit flag, and all rows keep a backup and version history.",
+  "commit_hash": "d2eaba24",
   "files": [
     "scripts/sepp_marker_blind.py",
     "scripts/verify_sepp_marker_blind.py",
@@ -22,14 +22,14 @@
   "functions": [
     {
       "name": "decide",
-      "file_line": "scripts/sepp_marker_blind.py:165",
+      "file_line": "scripts/sepp_marker_blind.py:194",
       "input": "the stored row text, its ref_number and a parsed law snapshot",
       "output": "a verdict dict: accept with unit and word offsets, recopy with coverage and new text hash, or refuse with a reason",
       "if_none": "an empty or missing row text yields fewer than 8 words and is refused as too_short; a missing ref_number only removes the unit preference and leaves the unique-smallest rule"
     },
     {
       "name": "norm_tokens",
-      "file_line": "scripts/sepp_marker_blind.py:62",
+      "file_line": "scripts/sepp_marker_blind.py:63",
       "input": "any text, a stored row or a snapshot unit",
       "output": "the list of letter and digit runs after list markers, dashes, bullets and punctuation are removed",
       "if_none": "None becomes an empty string and an empty list, which downstream is refused as too_short"
@@ -44,17 +44,17 @@
   ],
   "values": [
     {
-      "value": "plan: 5 accepted, 40 recopied, 296 refused of 341 in-scope rows (ref_mismatch 177, unit_too_big 81, number_missing 16, no_unit_covers_90pct 12, excerpt 8, has_version_history 2); 229 rows out of scope untouched",
+      "value": "plan: 5 accepted, 38 recopied, 298 refused of 341 in-scope rows (ref_mismatch 177, unit_too_big 81, number_missing 16, no_unit_covers_90pct 12, excerpt 8, ref_more_specific_than_unit 2, has_version_history 2); 229 rows out of scope untouched",
       "read_at": "python scripts/sepp_marker_blind.py against the read-only database session, 2026-10-18",
       "if_missing": "without the counts the user cannot size the write before approving it"
     },
     {
-      "value": "verifier: 45 verified, 0 mismatches, exit 0",
+      "value": "verifier: 43 verified, 0 mismatches, exit 0",
       "read_at": "python scripts/verify_sepp_marker_blind.py on the generated plan and evidence, 2026-10-18",
       "if_missing": "the plan would be unverified and the applier refuses to run without it"
     },
     {
-      "value": "dry run of the applier: 45 rows verified, md5 identical to the database, current, state-law, not proven, no version history on recopy rows; nothing written",
+      "value": "dry run of the applier: 43 rows verified, md5 identical to the database, current, state-law, not proven, no version history on recopy rows; nothing written",
       "read_at": "python scripts/apply_sepp_marker_blind.py on the generated plan, 2026-10-18",
       "if_missing": "a row changed since classification would be found only at write time"
     }
@@ -122,10 +122,17 @@
       "mitigated": true,
       "how": "The verifier requires source to equal the canonical law URL plus the verified unit id, and epi and law_date to equal the evidence. The applier also refuses if ref_number changed since the plan, and recounts version history under the row lock.",
       "repro": "python -m pytest tests/test_sepp_marker_blind.py -o addopts= -q -k \"source_url or law_date\""
+    },
+    {
+      "scenario": "A ref_number names a paragraph, such as 3.29(3)(e), but the row's text is only found in the wider subclause.",
+      "what_happens": "Proving or recopying against the subclause would show the paragraph citation as checked against text that is not that paragraph, and a recopy would replace the paragraph's text with the whole subclause.",
+      "mitigated": true,
+      "how": "ref_full resolves the whole ref to a unit id; a verdict whose unit is neither that unit nor inside it is refused as ref_more_specific_than_unit, as is a ref whose extra level cannot be resolved. A title in brackets such as 3D.61 (Excavation) is treated as a label. Tests cover the refusal, the accepted paragraph case and the label case.",
+      "repro": "python -m pytest tests/test_sepp_marker_blind.py -o addopts= -q -k \"naming_a_paragraph\""
     }
   ],
-  "mutation_analysis": "Twenty-two one-line mutations were run against the scripts with the test file in place, each restored afterwards. Twenty were killed outright. Two verifier checks survive individually because the offset slice check and the evidence field diff both catch a tampered offset; this redundancy is deliberate and stated. Earlier survivors (coverage floor, repeated run, md5-only change) got their own tests and were re-run until killed. The ambiguity refusal for rule 1 only fires when two related units are both filled by the row, which the sec.10 fixture covers.",
-  "residual_risk": "177 of 341 in-scope rows are refused for ref_mismatch because their ref_number is a topic label or provision id rather than a clause, so most of the unproven set stays unproven until a deterministic ref fix. A marker letter that is really a unit symbol, such as (m) for metres, is stripped on both sides and could hide a dropped symbol. The classification CSV is a snapshot; rows are re-read from the database at plan time but the in-scope list is fixed. No production write has been made. ref_unit reads only the section and first parenthesised subclause, so 9 planned rows whose ref_number names a paragraph (for example 3.29(3)(e)) are related to the whole subclause; a recopy of such a row replaces the paragraph text with the subclause text. The 3x size cap bounds it; a paragraph-exact rule is left to the user.",
+  "mutation_analysis": "Twenty-two one-line mutations were run against the scripts with the test file in place, each restored afterwards. Twenty were killed outright. Two verifier checks survive individually because the offset slice check and the evidence field diff both catch a tampered offset; this redundancy is deliberate and stated. Earlier survivors (coverage floor, repeated run, md5-only change) got their own tests and were re-run until killed. The ambiguity refusal for rule 1 only fires when two related units are both filled by the row, which the sec.10 fixture covers. For the paragraph rule five more mutations were run (check off, ancestor-only, always-true, unparseable level ignored, label branch off); all were killed.",
+  "residual_risk": "177 of 341 in-scope rows are refused for ref_mismatch because their ref_number is a topic label or provision id rather than a clause, so most of the unproven set stays unproven until a deterministic ref fix. A marker letter that is really a unit symbol, such as (m) for metres, is stripped on both sides and could hide a dropped symbol. The classification CSV is a snapshot; rows are re-read from the database at plan time but the in-scope list is fixed. No production write has been made. A ref naming a paragraph more specific than the chosen unit is now refused (ref_more_specific_than_unit, 2 rows).",
   "post_merge": {
     "db_reset": "No. Nothing is written by this branch.",
     "secrets": "None written. The database URL is read from the existing .env by the existing connect helper.",
