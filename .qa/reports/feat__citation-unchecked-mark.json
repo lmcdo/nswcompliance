@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "OC-20: a rule whose citation is not machine-proven shows 'Citation not yet checked'. isCitationChecked (lib/citation-display.ts) mirrors DQ-145 (citation_status proven/imprecise OR page_check on_page/moved), is carried as citation_checked by withServedCitation on every served rule, and the rule card renders the mark unless citation_checked === true (missing = unchecked, fail closed). A jest parity test reads the DQ-145 SQL text and fails if the value sets drift.",
-  "commit_hash": "0e0a632c",
+  "commit_hash": "7c4ec596",
   "files": [
     "frontend-nextjs/lib/citation-display.ts",
     "frontend-nextjs/components/compliance/PageGroupedProvisions.tsx",
