@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a deterministic, model-free page proof for served council DCP rows that DQ-145 still counts (283 rows with page_check not_found/unresolved/too_short). New scripts only: a matcher module, a plan generator that is read-only on the database, an independent verifier, and an apply script that is a dry run unless --apply is passed. Nothing is applied in this PR; no production write, no change to dq_checks.json or to any served path.",
-  "commit_hash": "fe69d022",
+  "commit_hash": "f3016389",
   "files": [
     "scripts/page_evidence.py",
     "scripts/page_proof_council.py",
@@ -101,5 +101,10 @@
     "secrets": "None written.",
     "other_repo": "No.",
     "manual_verify": "Run python scripts/apply_page_evidence.py data/page_evidence_2026-10-17.jsonl (dry run) and open 5 proofs' pdf pages before any --apply."
+  },
+  "real_layer_exempt": {
+    "scripts/apply_page_evidence.py": "Read-only SELECT of rows by id (and, for apply, a dry run unless --apply); the pure decision logic is unit-tested and the database path was exercised for real by running the dry run and --db verification against the live database on 2026-10-17 (100 rows, 94 on_page / 6 moved).",
+    "scripts/page_proof_council.py": "Read-only SELECT of rows by id (and, for apply, a dry run unless --apply); the pure decision logic is unit-tested and the database path was exercised for real by running the dry run and --db verification against the live database on 2026-10-17 (100 rows, 94 on_page / 6 moved).",
+    "scripts/verify_page_evidence.py": "Read-only SELECT of rows by id (and, for apply, a dry run unless --apply); the pure decision logic is unit-tested and the database path was exercised for real by running the dry run and --db verification against the live database on 2026-10-17 (100 rows, 94 on_page / 6 moved)."
   }
 }

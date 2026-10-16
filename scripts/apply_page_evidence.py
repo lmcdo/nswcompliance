@@ -77,7 +77,7 @@ def main() -> int:
         cur.execute(dpr.SERVED_SQL + " AND rp.id = ANY(%s)", (ids,))
         cols = [d[0] for d in cur.description]
         allrows = [dict(zip(cols, r)) for r in cur.fetchall()]
-        cur.execute("SELECT id, md5(provision_text) FROM regulatory_provisions WHERE id = ANY(%s)", (ids,))
+        cur.execute("SELECT id, md5(provision_text) FROM regulatory_provisions WHERE is_current AND id = ANY(%s)", (ids,))
         md5 = dict(cur.fetchall())
         rows = {x["id"]: {**x, "md5": md5.get(x["id"])} for x in allrows}
         bad = preflight(recs, rows)

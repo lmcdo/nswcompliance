@@ -104,7 +104,7 @@ def main() -> int:
         conn.set_session(readonly=True)
         cur = conn.cursor()
         cur.execute("SELECT id, md5(provision_text), provision_text FROM regulatory_provisions "
-                    "WHERE id = ANY(%s)", ([r["id"] for r in recs],))
+                    "WHERE is_current AND id = ANY(%s)", ([r["id"] for r in recs],))
         texts = {i: (m, t) for i, m, t in cur.fetchall()}
         conn.close()
     pdfs, pages_cache, failures = {}, {}, []
