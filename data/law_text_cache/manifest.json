@@ -1,0 +1,56 @@
+{
+  "epi-2008-0572": {
+    "bytes": 2882206,
+    "file": "epi-2008-0572_2026-10-16.html",
+    "sha256": "13b5577ccfd028a6359b2278d28acc924b766678c9d27a1176bb412c1d2b6807",
+    "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572"
+  },
+  "epi-2021-0714": {
+    "bytes": 887253,
+    "file": "epi-2021-0714_2026-10-16.html",
+    "sha256": "fa3f07f0bf4fbd483fa981ca1fa9135e57528d3967c5f7096e0e0cccd6e91ead",
+    "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714"
+  },
+  "epi-2021-0722": {
+    "bytes": 853862,
+    "file": "epi-2021-0722_2026-10-16.html",
+    "sha256": "352d4bc83ff8eb87e1d9a40d46160a1f9fac18f2e9b5a2d25e36b7cca35c4d80",
+    "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0722"
+  },
+  "epi-2021-0723": {
+    "bytes": 290513,
+    "file": "epi-2021-0723_2026-10-16.html",
+    "sha256": "f11fe98b347d508016f3a93dd66cc9e77939ac2babed363548fd767b4161cca8",
+    "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0723"
+  },
+  "epi-2021-0724": {
+    "bytes": 647752,
+    "file": "epi-2021-0724_2026-10-16.html",
+    "sha256": "63120a9b62c193aadeb9f8cfb765661f1bd55a87c6b0ecf2ebc4df8466d51936",
+    "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0724"
+  },
+  "epi-2021-0729": {
+    "bytes": 208124,
+    "file": "epi-2021-0729_2026-10-16.html",
+    "sha256": "bd9caadb97a53c26cc45c5c251ce22b7bfb90d9f0a1542c00d0cd73dbd72f1c0",
+    "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0729"
+  },
+  "epi-2021-0730": {
+    "bytes": 153836,
+    "file": "epi-2021-0730_2026-10-16.html",
+    "sha256": "61701898f36e9591d3b9925367f57b35cd10859c381427255590b6d7cde6c5ce",
+    "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0730"
+  },
+  "epi-2021-0732": {
+    "bytes": 2087294,
+    "file": "epi-2021-0732_2026-10-16.html",
+    "sha256": "e9d581d57eeca8b9991f9ff3f3b7e08fc9c5148ab54dee1a9f9c5c1212afa6d5",
+    "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0732"
+  },
+  "epi-2022-0521": {
+    "bytes": 177033,
+    "file": "epi-2022-0521_2026-10-16.html",
+    "sha256": "6d790102aef5a11ad1033d49cd8200c5def7521a2eb98678ccd059cdcad0e84d",
+    "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0521"
+  }
+}
