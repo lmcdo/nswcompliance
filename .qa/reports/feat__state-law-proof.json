@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "DQ-145 counted 5,274 served state-law (SEPP) rules with no citation verdict. scripts/state_law_proof.py tests each rule's whole text for a verbatim match in the instrument in force (legislation.nsw.gov.au HTML fetched once via the Fly app, sha256 in data/law_text_cache/manifest.json) and records the verdict and the clause it sits under. Read-only; scripts/apply_state_law_proof.py (not run) sets citation_status='proven' only for plan rows whose provision_text md5 is unchanged. No clause is written: the site reads none for state rows. RECOPY (follow-on, same branch): ~830 served state-law rows are the law's text stored imperfectly (ellipses, split sub-clauses, table/markdown leftovers, dash and ligature losses) and 49 are wording amended since. scripts/state_law_recopy.py cuts each cached instrument into its numbered units from the id paths the legislation HTML carries, picks the one smallest unit holding >=90% of a row's 5-word runs (several -> ambiguous, skipped), and accepts only if the unit text is verbatim by both provers, no content word of the row is missing from it, length ratio 0.8-3.0, no number vanishes; amended rows must be verbatim in the point-in-time law and absent today, same id path today. No model reads or writes text. scripts/apply_state_law_recopy.py (NOT run) writes the unit text with provision_versions history.",
-  "commit_hash": "748ecb6f",
+  "commit_hash": "6daeb608",
   "files": [
     ".gitignore",
     "data/law_text_cache/manifest.json",
