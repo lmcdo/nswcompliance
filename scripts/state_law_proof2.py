@@ -210,8 +210,8 @@ def main(argv=None) -> int:
         w = csv.writer(fh)
         w.writerow(["id", "document_id", "epi", "pass1_status", "status", "run_share", "words", "pit_date", "head"])
         for rid, doc, epi, ld, md5, c, d in results:
-            w.writerow([rid, doc, epi, prev.get(rid, {}).get("status", ""), c["status"], c["share"], c["words"],
-                        c.get("pit", ""), re.sub(r"\s+", " ", texts[rid])[:120]])
+            w.writerow([rid, doc, epi, (prev.get(rid) or {}).get("status") or "", c["status"], c["share"], c["words"],
+                        c.get("pit") or "", re.sub(r"\s+", " ", texts[rid])[:120]])
     print(f"wrote {out.relative_to(ROOT)}")
 
     plan = {"generated": stamp, "set": {"citation_status": "proven"},

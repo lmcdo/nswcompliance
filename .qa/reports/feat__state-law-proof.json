@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "DQ-145 counted 5,274 served state-law (SEPP) rules with no citation verdict. scripts/state_law_proof.py tests each rule's whole text for a verbatim match in the instrument in force (legislation.nsw.gov.au HTML fetched once via the Fly app, sha256 in data/law_text_cache/manifest.json) and records the verdict and the clause it sits under. Read-only; scripts/apply_state_law_proof.py (not run) sets citation_status='proven' only for plan rows whose provision_text md5 is unchanged. No clause is written: the site reads none for state rows.",
-  "commit_hash": "1497a535",
+  "commit_hash": "07e3890b",
   "files": [
     "scripts/state_law_proof.py",
     "scripts/apply_state_law_proof.py",
@@ -18,6 +18,7 @@
     "external_authority": "the NSW legislation website's in-force text of each SEPP"
   },
   "real_layer_exempt": {
+    "scripts/state_law_proof2.py": "read-only session (default_transaction_read_only=on); its real-layer check is its own run against production plus the cached legislation text; the fly fetch is operator-run. A database-marked test would add nothing it does not already run.",
     "scripts/state_law_proof.py": "read-only session (default_transaction_read_only=on); its real-layer check is its own dry run against production plus the cached legislation text (observed_red); a database-marked test would add nothing it does not already run",
     "scripts/apply_state_law_proof.py": "not run in this PR; a database-marked test would write to production. Its refusal logic (check_plan) is unit tested and its dry run reads production read-only."
   },
