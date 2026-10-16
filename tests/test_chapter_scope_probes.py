@@ -105,6 +105,7 @@ _NEW_CASES = [
                       "zoned under Blacktown Local Environmental Plan", True),
     ("use_type", "This Part applies to residential development on land zoned R2", False),
     ("use_type", "This Part applies to development in the City Centre", False),
+    ("whole_council", "This DCP applies to land within rosebery in the City of Sydney Local Government Area.", False),
     ("use_type", "This Part applies to development on Lot 402 DP 631754", False),
     ("whole_council", "This Chapter of the DCP applies to all lands within the City of Wollongong Local "
                       "Government Area.", True),

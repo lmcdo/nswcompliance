@@ -50,7 +50,9 @@ _COUNCIL_WIDE = re.compile(
     # Added 2026-10-16 (user OK): the same sentence without "all", or with "lands" -- "This DCP applies to
     # land within the Canterbury-Bankstown Local Government Area" (C-B 1.1 p5), "all lands within the City of
     # Wollongong Local Government Area" (Wollongong E17 p3). _MAPPED_PART still refuses any shown/mapped land.
-    r"|\bappl(y|ies) to (all )?lands? (with)?in (the )?.{0,50}?\b" + _AREA + r"\b",
+    # Only the council's own name may sit between "land within the" and the area word: capitalised words and "City
+    # of", nothing else ("land within rosebery in the City of Sydney LGA" is refused -- cross-review 2026-10-16).
+    r"|\bappl(y|ies) to (all )?lands? (with)?in (the )?(?-i:(City of )?[A-Z][\w-]*( [A-Z][\w-]*){0,3}) " + _AREA + r"\b",
     re.I)
 #: Wording that limits land to a mapped or marked part, so the sentence is NOT council-wide
 #: whatever else it says ("all land shown on Map 1"). Cross-review finding 2026-10-11.
