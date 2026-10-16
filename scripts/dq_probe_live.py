@@ -124,10 +124,24 @@ def _chapter_scope_keys(*, part_of_council: bool | None = None,
                         applies_to: tuple[str, ...] = (),
                         machine_whole_council: bool | None = None) -> list[str]:
     """`council__chapter` keys from data/chapter_scope/ matching every filter given."""
-    return [c["key"] for c in _load_chapter_scope()
+    chapters = _load_chapter_scope()
+    by_key = {c["key"]: c for c in chapters}
+
+    def whole(c: dict) -> bool:
+        # A chapter that states no land of its own INHERITS its plan's (DQ-114's own wording: "the case where the
+        # chapter states nothing and inherits the plan's stated scope"). Accepted only when the plan's introduction
+        # entry it names passes the strict whole-council wording itself, and the chapter's own name and opening
+        # pages were checked for land limits (recorded as plan_source by the 2026-10-16 scan).
+        if c.get("applies_to") == "inherits_plan":
+            src = by_key.get(c.get("plan_source") or "")
+            return bool(src) and src["council"] == c["council"] and src.get("applies_to") == "whole_council" \
+                and _machine_whole_council(src)
+        return _machine_whole_council(c)
+
+    return [c["key"] for c in chapters
             if (part_of_council is None or bool(c.get("part_of_council")) == part_of_council)
             and (not applies_to or c.get("applies_to") in applies_to)
-            and (machine_whole_council is None or _machine_whole_council(c) == machine_whole_council)]
+            and (machine_whole_council is None or whole(c) == machine_whole_council)]
 
 
 def _part_of_council_gates() -> tuple[list[str], list[str]]:
