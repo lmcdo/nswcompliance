@@ -1,0 +1,244 @@
+[
+ {
+  "section": 2,
+  "name": "Bass Hill Small Village Centre",
+  "lift": 0.623,
+  "m_per_px": 1.034,
+  "origin_mga": [
+   313866.9,
+   6247682.1
+  ],
+  "seed": "suburb",
+  "named_on_road": 1.0,
+  "all_on_road": 0.887,
+  "names_not_in_nsw_roads": [],
+  "parts": 1,
+  "outline_m2": 480824,
+  "lot_edge_median_m": 3.17,
+  "lot_edge_p90_m": 7.66,
+  "lots_in": 298,
+  "lots_uncertain_kept": 13
+ },
+ {
+  "section": 3,
+  "name": "Birrong Small Village Centre",
+  "lift": 0.753,
+  "m_per_px": 0.2312,
+  "origin_mga": [
+   316964.8,
+   6248358.0
+  ],
+  "seed": "street",
+  "named_on_road": 0.997,
+  "all_on_road": 0.693,
+  "names_not_in_nsw_roads": [],
+  "parts": 2,
+  "outline_m2": 1171,
+  "lot_edge_median_m": 3.49,
+  "lot_edge_p90_m": 10.19,
+  "lots_in": 0,
+  "lots_uncertain_kept": 4
+ },
+ {
+  "section": 4,
+  "name": "Chester Hill Local Centre",
+  "lift": 0.62,
+  "m_per_px": 0.8892,
+  "origin_mga": [
+   314605.8,
+   6249506.7
+  ],
+  "seed": "suburb",
+  "named_on_road": 0.991,
+  "all_on_road": 0.903,
+  "names_not_in_nsw_roads": [],
+  "parts": 1,
+  "outline_m2": 194863,
+  "lot_edge_median_m": 3.59,
+  "lot_edge_p90_m": 6.46,
+  "lots_in": 172,
+  "lots_uncertain_kept": 15
+ },
+ {
+  "section": 5,
+  "name": "Condell Park Small Village Centre",
+  "lift": 0.763,
+  "m_per_px": 0.4077,
+  "origin_mga": [
+   315970.7,
+   6244911.7
+  ],
+  "seed": "street",
+  "named_on_road": 1.0,
+  "all_on_road": 0.957,
+  "names_not_in_nsw_roads": [],
+  "parts": 1,
+  "outline_m2": 20939,
+  "lot_edge_median_m": 3.23,
+  "lot_edge_p90_m": 5.38,
+  "lots_in": 13,
+  "lots_uncertain_kept": 3
+ },
+ {
+  "section": 6,
+  "name": "East Hills Small Village Centre",
+  "lift": 0.509,
+  "m_per_px": 0.5059,
+  "origin_mga": [
+   313436.2,
+   6240441.4
+  ],
+  "seed": "suburb",
+  "named_on_road": 1.0,
+  "all_on_road": 0.824,
+  "names_not_in_nsw_roads": [],
+  "parts": 1,
+  "outline_m2": 28492,
+  "lot_edge_median_m": 2.68,
+  "lot_edge_p90_m": 9.19,
+  "lots_in": 20,
+  "lots_uncertain_kept": 3
+ },
+ {
+  "section": 7,
+  "name": "Georges Hall Small Village Centre",
+  "lift": 0.623,
+  "m_per_px": 0.1942,
+  "origin_mga": [
+   313468.3,
+   6245847.0
+  ],
+  "seed": "street",
+  "named_on_road": 0.806,
+  "all_on_road": 0.647,
+  "names_not_in_nsw_roads": [],
+  "parts": 1,
+  "outline_m2": 4190,
+  "lot_edge_median_m": 7.13,
+  "lot_edge_p90_m": 18.29,
+  "refused": "named streets off the map's roads; outline not on lot lines"
+ },
+ {
+  "section": 8,
+  "name": "Greenacre Local Centre",
+  "lift": 0.728,
+  "m_per_px": 0.5907,
+  "origin_mga": [
+   320031.8,
+   6246748.2
+  ],
+  "seed": "street",
+  "named_on_road": 1.0,
+  "all_on_road": 0.911,
+  "names_not_in_nsw_roads": [],
+  "parts": 1,
+  "outline_m2": 73944,
+  "lot_edge_median_m": 1.11,
+  "lot_edge_p90_m": 6.13,
+  "lots_in": 74,
+  "lots_uncertain_kept": 3
+ },
+ {
+  "section": 9,
+  "name": "Padstow Local Centre",
+  "lift": 0.528,
+  "m_per_px": 0.6335,
+  "origin_mga": [
+   317763.8,
+   6241870.3
+  ],
+  "seed": "suburb",
+  "named_on_road": 1.0,
+  "all_on_road": 0.823,
+  "names_not_in_nsw_roads": [],
+  "parts": 1,
+  "outline_m2": 132564,
+  "lot_edge_median_m": 2.0,
+  "lot_edge_p90_m": 5.91,
+  "lots_in": 168,
+  "lots_uncertain_kept": 10
+ },
+ {
+  "section": 10,
+  "name": "Panania Small Village Centre",
+  "lift": 0.546,
+  "m_per_px": 0.6573,
+  "origin_mga": [
+   314780.0,
+   6241358.8
+  ],
+  "seed": "suburb",
+  "named_on_road": 1.0,
+  "all_on_road": 0.837,
+  "names_not_in_nsw_roads": [],
+  "parts": 1,
+  "outline_m2": 95937,
+  "lot_edge_median_m": 1.46,
+  "lot_edge_p90_m": 7.49,
+  "lots_in": 154,
+  "lots_uncertain_kept": 1
+ },
+ {
+  "section": 11,
+  "name": "Revesby Local Centre",
+  "lift": 0.612,
+  "m_per_px": 0.6335,
+  "origin_mga": [
+   316187.1,
+   6241769.6
+  ],
+  "seed": "suburb",
+  "named_on_road": 1.0,
+  "all_on_road": 0.9,
+  "names_not_in_nsw_roads": [
+   "SIMMONDS STREET",
+   "THE RIVER ROAD"
+  ],
+  "parts": 1,
+  "outline_m2": 208139,
+  "lot_edge_median_m": 2.01,
+  "lot_edge_p90_m": 4.73,
+  "lots_in": 207,
+  "lots_uncertain_kept": 1
+ },
+ {
+  "section": 12,
+  "name": "Sefton Small Village Centre",
+  "lift": 0.737,
+  "m_per_px": 0.5386,
+  "origin_mga": [
+   315729.7,
+   6249111.8
+  ],
+  "seed": "street",
+  "named_on_road": 1.0,
+  "all_on_road": 0.845,
+  "names_not_in_nsw_roads": [],
+  "parts": 1,
+  "outline_m2": 54596,
+  "lot_edge_median_m": 3.3,
+  "lot_edge_p90_m": 6.67,
+  "lots_in": 63,
+  "lots_uncertain_kept": 10
+ },
+ {
+  "section": 13,
+  "name": "Yagoona Local Centre",
+  "lift": 0.551,
+  "m_per_px": 0.6271,
+  "origin_mga": [
+   316916.8,
+   6246755.1
+  ],
+  "seed": "suburb",
+  "named_on_road": 1.0,
+  "all_on_road": 0.799,
+  "names_not_in_nsw_roads": [],
+  "parts": 2,
+  "outline_m2": 123253,
+  "lot_edge_median_m": 1.35,
+  "lot_edge_p90_m": 5.39,
+  "lots_in": 121,
+  "lots_uncertain_kept": 7
+ }
+]

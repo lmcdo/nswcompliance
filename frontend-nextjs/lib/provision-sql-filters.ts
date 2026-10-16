@@ -30,6 +30,25 @@
 export const NOT_HERITAGE_SQL = `(COALESCE(LOWER(v2_topic), '') != 'heritage' AND COALESCE(LOWER(v2_marker), '') != 'heritage' AND (v2_topic IS NOT NULL OR strpos(LOWER(COALESCE(source_chapter_key, '')), 'heritage') = 0))`;
 
 /**
+ * v2_heritage_hca value for a rule that applies to land in ANY heritage conservation area, but
+ * not to a heritage item outside one. Marrickville DCP 2011 Part 8: 8.2.1-8.2.2 ("Development
+ * principles for HCAs"), 8.3 "Controls for residential HCAs", 8.4 "Controls for retail
+ * streetscapes in Heritage Conservation Areas", 8.5 "HCA Style Sheets". Address audit 2026-10-15:
+ * these reached 21/1-3 Coronation Ave Petersham, a heritage item in no HCA.
+ */
+export const ANY_HCA = '__any_hca__';
+
+/**
+ * Which HCA-tagged rules a heritage property is shown. `hcaParam` is the $n index of the
+ * property's resolved HCA slug, or null when the property is in no (resolvable) HCA -- then only
+ * untagged rules pass, so an HCA's own rules never reach a heritage item outside it.
+ */
+export function hcaTagSql(hcaParam: number | null, column = 'rp.v2_heritage_hca'): string {
+  if (hcaParam == null) return `${column} IS NULL`;
+  return `(${column} IS NULL OR ${column} = $${hcaParam} OR ${column} = '${ANY_HCA}')`;
+}
+
+/**
  * SQL predicate: this provision applies in the property's zone. `p` is the $n index of the
  * zone parameter.
  *

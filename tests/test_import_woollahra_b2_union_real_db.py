@@ -23,8 +23,10 @@ def ro_cursor():
         conn.close()
 
 
-def test_all_eleven_member_outlines_exist(ro_cursor):
+@pytest.mark.parametrize("name,n", [("woollahra_b2", 11), ("krg_14b", 4)])
+def test_every_member_outline_exists(ro_cursor, name, n):
     import import_woollahra_b2_union as m
+    u = m.UNIONS[name]
     ro_cursor.execute("SELECT count(*) FROM dcp_precinct_boundaries WHERE lga = %s AND precinct_id = ANY(%s)",
-                      (m.LGA, list(m.MEMBERS)))
-    assert ro_cursor.fetchone()[0] == len(m.MEMBERS) == 11
+                      (u["lga"], list(u["members"])))
+    assert ro_cursor.fetchone()[0] == len(u["members"]) == n

@@ -29,6 +29,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+import functools
 import re
 
 import psycopg2
@@ -399,12 +400,21 @@ def _tokens(text: str) -> list:
     return _TOKEN_RE.findall(re.sub(r"(?<=\d),(?=\d)", "", (text or "").lower()))
 
 
+@functools.lru_cache(maxsize=256)
+def _source_tokens(source: str) -> tuple[frozenset, frozenset]:
+    """The source's token set and token-pair set, computed once per source text. Every row on a page is judged
+    against the same window, so without this a chapter's page text was re-tokenised once per row (Parramatta
+    section-reader pilot 2026-10-14: 9,500 rows, the gate ran for hours). Same tokens, same verdicts."""
+    src = _tokens(source)
+    return frozenset(src), frozenset(zip(src, src[1:]))
+
+
 def _unsourced_ratio(text: str, source: str) -> float:
     """Fraction of the row's tokens that appear nowhere in the source as a whole token."""
     toks = _tokens(text)
     if len(toks) < _MIN_TOKENS:
         return 0.0
-    src = set(_tokens(source))
+    src = _source_tokens(source)[0]
     return sum(1 for t in toks if t not in src) / len(toks)
 
 
@@ -420,8 +430,7 @@ def _adjacency_ratio(text: str, source: str) -> float:
     pairs = list(zip(toks, toks[1:]))
     if len(pairs) < _MIN_BIGRAMS:
         return 1.0
-    src = _tokens(source)
-    src_pairs = set(zip(src, src[1:]))
+    src_pairs = _source_tokens(source)[1]
     return sum(1 for p in pairs if p in src_pairs) / len(pairs)
 
 

@@ -1,0 +1,118 @@
+{
+ "_about": "Ku-ring-gai DCP Part 14 centre precinct plans (vector). Labels and pages read from the PDFs by scripts/fit_vector_centres.py; quote = the chapter's own land sentence (data/chapter_scope).",
+ "chapters": [
+  {
+   "id": "14A",
+   "chapter": "section-b-part-14a-st-ives-local-centre",
+   "name": "St Ives Local Centre",
+   "suburb": "ST IVES",
+   "labels": [
+    "S1",
+    "S2",
+    "S3"
+   ],
+   "figure": "Figure 1A.1-1",
+   "page": 2,
+   "label_re": "[A-Z]\\d{1,2}",
+   "council": "ku_ring_gai",
+   "version": "v1.0-baseline",
+   "quote": "All development within the St Ives local centre, as outlined in Figure 1A.1-1, is to be designed to support and enhance the planned future character of the centre."
+  },
+  {
+   "id": "14C",
+   "chapter": "section-b-part-14c-pymble-local-centre",
+   "name": "Pymble Local Centre",
+   "suburb": "PYMBLE",
+   "labels": [
+    "P1"
+   ],
+   "figure": "Figure 14C.1-1",
+   "page": 2,
+   "label_re": "[A-Z]\\d{1,2}",
+   "council": "ku_ring_gai",
+   "version": "v1.0-baseline",
+   "quote": "All development within the Pymble local centre, as outlined in Figure 14C.1-1, is to be designed to support and enhance the planned future character of the centre.",
+   "line_w_max": 0.7
+  },
+  {
+   "id": "14D",
+   "chapter": "section-b-part-14d-gordon-local-centre",
+   "name": "Gordon Local Centre",
+   "suburb": "GORDON",
+   "labels": [
+    "G1",
+    "G2",
+    "G3",
+    "G4",
+    "G5"
+   ],
+   "figure": "Figure 14D.1-1",
+   "page": 2,
+   "label_re": "[A-Z]\\d{1,2}",
+   "council": "ku_ring_gai",
+   "version": "v1.0-baseline",
+   "quote": "All development within the Gordon local centre, as outlined in Figure 14D.1-1, is to be designed to support and enhance the planned future character of the centre."
+  },
+  {
+   "id": "14E",
+   "chapter": "section-b-part-14e-lindfield-local-centre",
+   "name": "Lindfield Local Centre",
+   "suburb": "LINDFIELD",
+   "labels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "L6",
+    "L7",
+    "L8"
+   ],
+   "figure": "Figure 14E.1-1",
+   "page": 2,
+   "label_re": "[A-Z]\\d{1,2}",
+   "council": "ku_ring_gai",
+   "version": "v1.0-baseline",
+   "quote": "All development within the Lindfield local centre, as outlined in Figure 14E.1-1, is to be designed to support and enhance the planned future character of the centre."
+  },
+  {
+   "id": "14F",
+   "chapter": "section-b-part-14f-roseville-local-centre",
+   "name": "Roseville Local Centre",
+   "suburb": "ROSEVILLE",
+   "labels": [
+    "R1",
+    "R2",
+    "R3"
+   ],
+   "figure": "Figure 14F.1-1",
+   "page": 2,
+   "label_re": "[A-Z]\\d{1,2}",
+   "council": "ku_ring_gai",
+   "version": "v1.0-baseline",
+   "quote": "All development within the Roseville local centre, as outlined in Figure 14F.1-1, is to be designed to support and enhance the planned future character of the centre.",
+   "line_w_max": 0.9,
+   "accept_on_lot_lines": {
+    "_why": "Plan drawn on lot lines (not kerbs): road share 0.54 reads it as off-road. Addresses from the chapter: R1 p13 'Nos 17 ... 31-35 Hill Street; and Nos 37-41 ... 63, 63A Hill Street'; R2 p19 '64-116 Pacific Highway'; R3 p20 '83 Pacific Highway' heritage item / '89 Pacific Highway' station master's residence. Outside: 65 Hill St (next after 63A, not listed) and 132 Pacific Hwy (past 64-116).",
+    "inside": {
+     "R1": [
+      "31-35 HILL STREET ROSEVILLE",
+      "63A HILL STREET ROSEVILLE"
+     ],
+     "R2": [
+      "64 PACIFIC HIGHWAY ROSEVILLE",
+      "100 PACIFIC HIGHWAY ROSEVILLE"
+     ],
+     "R3": [
+      "83 PACIFIC HIGHWAY ROSEVILLE",
+      "89 PACIFIC HIGHWAY ROSEVILLE"
+     ]
+    },
+    "outside": [
+     "65 HILL STREET ROSEVILLE",
+     "132 PACIFIC HIGHWAY ROSEVILLE"
+    ]
+   }
+  }
+ ]
+}

@@ -54,6 +54,7 @@ LABEL_PAGES = 1         # ...or this many page breaks
 REPEATED = 5           # a line printed on this many pages is a running header/footer at a copy's edge
 LABEL_WORDS = 4         # a drawing's label is a short line: "Rear boundary", "3 / 8m", ">400m²"
 OVERSIZED = 2500        # a stored quote this long is several controls: flag for splitting
+PIECE_PAGES = 1         # a multi-line rule's lines (lead-in, item) lie within this many pages of the first
 KNOWN = (126292, 87150, 95878, 105200, 130236, 150954)
 
 _WORD = re.compile(r"[a-z0-9]+")
@@ -74,6 +75,10 @@ _FIGURE_CODE = re.compile(r"^\s*(?:figure|fig\.|map|diagram)\b", re.I)
 _SENTENCE = re.compile(r"\b(?:is|are|be|been|was|were|will|may|can|cannot|not|no|prohibited|permitted|"
                        r"required|encouraged|discouraged|avoid|provide|provided|ensure|retain|maintain|"
                        r"allowed|need|needs|apply|applies)\b|[a-z]\.(?:\s|$)")
+#: A line that is only a list label: "3.", "(b)", "g)", "C.04".
+_BARE_LABEL = re.compile(r"^\(?(?:[a-z]|\d{1,2}|[ivx]{1,4}|[A-Z]\.?\d{1,3})[.)]?$", re.I)
+#: How a sentence, a lead-in or a list item ends: "... the development.", "... the following:", "...; and".
+_PIECE_END = re.compile(r"(?:[.:;?!)][\"'”’]?|;\s*(?:and|or))\s*$", re.I)
 _LEGEND = re.compile(r"legend\s*[:.\-–—]?")
 _RULE_WORDS = re.compile(r"\b(?:must|shall|should|are to|is to|to be|maximum|minimum|min\.|max\.)\b")
 #: A label at a line start, by kind. Kinds must match for a label to end a copy.
@@ -294,6 +299,54 @@ def are_labels(body: str) -> bool:
             and not _RULE_WORDS.search(body.lower()) and not _SENTENCE.search(body.lower()))
 
 
+def prove_pieces(body: str, streams: list[Stream], cqt, page: int | None = None) -> dict | None:
+    """{'quote', 'quote_page'} when every line of a multi-line rule is printed whole, in order, close together.
+
+    The section reader stores a list item with its lead-in ("C.09 A carwash bay must be provided in accordance
+    with the following:" / "g) Approval must be obtained ..."): both printed word for word, items (a)-(f) between
+    them. Not one run of text, so the whole-quote match misses it and the anchors find no end (Parramatta
+    2026-10-15: 193 of 272 unconfirmed). Each prose line must be printed whole in ONE reading, after the line
+    before it, within PIECE_PAGES of the first; a "cell | cell" line must be a proven table row on a page in that
+    window. The quote is the council's own text of each line; nothing between them is copied or claimed.
+
+    Two guards from the 2026-10-15 dry run (255 passes, eye-checked): the first line must sit on the stored page
+    or the one before it (a lead-in turns the page) -- short generic lines matched 61 pages away; and every prose
+    line must be MIN_CHARS long or a bare label ("3.") -- old two-column rows hold fragments ("Village.",
+    "retained and conserved.") that are each printed but are not one of the council's sentences."""
+    lines = [ln.strip() for ln in body.splitlines() if ln.strip()]
+    prose = [ln for ln in lines if "|" not in ln]
+    if (not page or len(lines) < 2 or not prose or "|" in lines[0]
+            or any(len(norm(ln)) < MIN_CHARS and not _BARE_LABEL.match(ln) for ln in prose)
+            # a fragment stops mid-sentence ("To improve the image, quality and amenity of", Ashfield 123339)
+            or any(not _BARE_LABEL.match(ln) and not _PIECE_END.search(ln) for ln in prose)):
+        return None
+    for st in streams:
+        for k0 in st.find_all(norm(lines[0])):
+            out, end, p0 = [], -1, st.page(k0)
+            if p0 not in (page, page - 1):
+                continue
+            for ln in lines:
+                if "|" in ln:
+                    row = next((r for p in range(p0, p0 + PIECE_PAGES + 1)
+                                if (r := cqt._prove_row(cqt._cells(ln), st, p, norm))), None)
+                    if row is None:
+                        break
+                    out.append(row)
+                    continue
+                q = norm(ln)
+                k = k0 if not out else next((h for h in st.find_all(q, cap=200) if h > end), None)
+                if not q or k is None:
+                    break
+                e = k + len(q) - 1
+                if st.page(e) - p0 > PIECE_PAGES or st.casing_unread(k, e):
+                    break
+                out.append(st.copy(k, e))
+                end = e
+            else:
+                return {"quote": "\n".join(out), "quote_page": p0}
+    return None
+
+
 def judge(row: dict, streams: list[Stream]) -> dict:
     import rule_page_locator as rpl
     body = rpl.rule_body(row["provision_text"])
@@ -327,6 +380,9 @@ def judge(row: dict, streams: list[Stream]) -> dict:
     table = cqt.prove_rows(body, streams, row["pdf_page"], norm)
     if table:
         return {**out, "status": "exact", "reason": "table_rows", **table}
+    pieces = prove_pieces(body, streams, cqt, row["pdf_page"])
+    if pieces:
+        return {**out, "status": "exact", "reason": "pieces", **pieces}
     if len(q) < MIN_CHARS:
         return {**out, "status": "unconfirmed", "reason": "too_short" if not places else "too_short_many_places"}
 

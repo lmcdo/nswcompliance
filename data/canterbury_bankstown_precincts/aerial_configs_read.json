@@ -1,0 +1,242 @@
+{
+ "chapter-7-3-city-east": {
+  "title": "CB DCP 2023 Ch 7.3 City East (Amended March 2026), 40 pages",
+  "land_sentence": [
+   {"section": "2 Belfield", "page": 6, "text": "Section 2 applies to land shown in Figure 2a."},
+   {"section": "4 Canterbury", "page": 9, "text": "Section 4 applies to land shown as the study area in Figure 4a."},
+   {"section": "5 Croydon Park", "page": 14, "text": "Section 5 applies to land shown in Figure 5a."},
+   {"section": "6 Earlwood", "page": 17, "text": "Section 6 applies to land shown in Figure 6a."},
+   {"section": "7 Hurlstone Park", "page": 20, "text": "Section 7 applies to land shown in Figure 7a."},
+   {"section": "9 Narwee", "page": 23, "text": "Section 9 applies to land shown in Figure 9a."},
+   {"section": "10 Punchbowl", "page": 26, "text": "Section 10 applies to land shown in Figure 10a."},
+   {"section": "11 Roselands", "page": 32, "text": "Section 11 applies to land shown in Figure 11a."},
+   {"section": "12 Wiley Park", "page": 36, "text": "Section 12 applies to land shown in Figure 12a."}
+  ],
+  "maps": [
+   {"section": "2 Belfield Small Village Centre", "pdf_page": 6, "figure": "Figure 2a: Structure plan", "suburb": "Belfield", "style": "aerial photo (low-res, rotated about 35 degrees) with coloured overlay", "boundary": "red dash-dot line, legend 'Plan area'", "streets_legible": ["BURWOOD ROAD", "DOWNES STREET", "LINDA STREET"], "unreadable": ["bottom-edge label clipped to '...ST ROAD'", "right-edge label clipped to 'BLACK...'"], "notes": "Only 3 full street names; 2 more clipped by the image edge. Burwood Rd runs through the middle."},
+   {"section": "4 Canterbury Local Centre", "pdf_page": 9, "figure": "Figure 4a: Application map (study area)", "suburb": "Canterbury", "style": "coloured street basemap with building footprints, cadastre lines, railway and Cooks River; storey colours overlaid", "boundary": "red dash-dot line, legend 'STUDY AREA BOUNDARY'", "streets_legible": ["CANTERBURY ROAD", "BROUGHTON STREET", "JOHN STREET", "ROBERT STREET (north-east of rail)", "ROBERT ST (south-west of rail, by river)", "CHARLES STREET", "MINTER STREET", "CHURCH STREET", "INCOMBE STREET (small, read as 'INCOMBE')"], "other_labels": ["CANTERBURY STATION", "COOKS RIVER", "TASKER PARK", "'...Y MCKILLOP RESERVE' (clipped)"], "unreadable": [], "notes": "Best-labelled map in the chapter. Railway line and Cooks River are strong anchors. Part of the basemap is blanked white right of centre."},
+   {"section": "4 Canterbury Local Centre (same area)", "pdf_page": 11, "figure": "Figure 4b specific heights / Figure 4c public domain structure plan (4d parking is on p12)", "suburb": "Canterbury", "style": "coloured plans, not examined for labels", "boundary": "not read", "streets_legible": [], "unreadable": ["not examined; same area as Fig 4a"], "notes": "Overlays of the same study area; Fig 4a is the application map."},
+   {"section": "5 Croydon Park Small Village Centre", "pdf_page": 14, "figure": "Figure 5a: Structure plan", "suburb": "Croydon Park", "style": "aerial photo with coloured overlay", "boundary": "red dash-dot line, legend 'Plan area'", "streets_legible": ["GEORGES RIVER ROAD", "BOYLE STREET", "BEAUFORT STREET", "BRIGHTON AVENUE", "SEYMOUR S... (clipped at top)"], "unreadable": ["'...REET' bottom-left (clipped)", "'...STREET' bottom, left of centre (clipped)", "'...NMORE STREET' (first letters unclear)"], "notes": "Georges River Rd runs west-east through the middle. Plan area is three separate blocks fronting its south side."},
+   {"section": "6 Earlwood Local Centre", "pdf_page": 17, "figure": "Figure 6a: Structure plan", "suburb": "Earlwood", "style": "aerial photo with coloured overlay, tall narrow crop", "boundary": "red dash-dot line, legend 'Plan area'", "streets_legible": ["HOMER STREET", "CLARKE STREET", "HARTILL-LAW AVENUE", "EARLWOOD A... (clipped)", "COLLINGWOOD AVEN... (clipped)", "WARDELL ROAD", "VIEW STREET", "ST GEORGES PARADE", "MINNAMORRA AVENUE", "'...LLIAM STREET' (top, first letters clipped)"], "other_labels": ["GIRRAHWEEN PARK"], "unreadable": ["'...ONEY ROAD' right edge"], "notes": "Homer Street is the spine. Girrahween Park (green) at the west is a good shape anchor."},
+   {"section": "7 Hurlstone Park Small Village Centre", "pdf_page": 20, "figure": "Figure 7a: Structure plan", "suburb": "Hurlstone Park", "style": "aerial photo with pink and blue overlay", "boundary": "red dashed line, legend 'Plan area'", "streets_legible": ["CRINAN STREET", "FLOSS STREET (twice, west and east)", "HAMPDEN STREET", "'...NTROON STREET' (first letters hidden by the dash line)"], "other_labels": ["HURLSTONE PARK STATION"], "unreadable": [], "notes": "Plan area is four separate pieces around the station and rail crossing."},
+   {"section": "9 Narwee Village Centre", "pdf_page": 23, "figure": "Figure 9a: Structure plan", "suburb": "Narwee", "style": "aerial photo with coloured overlay", "boundary": "red dash-dot line, legend 'Plan area'", "streets_legible": ["BROADARROW ROAD", "WYATT PARADE", "FISHER PLACE", "HANNANS RO... (clipped)"], "other_labels": ["NARWEE STATION", "'FISHER LANE' (lane label, spelling uncertain)"], "unreadable": ["'PENSH...' top (clipped)", "'LA...' top (clipped)", "'GL...' top-right (clipped)"], "notes": "Plan area is two pieces north and two pieces south of the rail line."},
+   {"section": "10 Punchbowl Village Centre", "pdf_page": 28, "figure": "Figure 10a: Structure plan (image is on p28, not p27 where 10.1 cites it)", "suburb": "Punchbowl", "style": "aerial photo with coloured overlay, tall narrow crop", "boundary": "red dash-dot line, legend 'Plan area'", "streets_legible": ["THE BOULEVARDE", "MATTHEWS STREET", "ARTHUR STREET", "ROSSMORE AVENUE", "'BROADWA...' top (clipped)", "'...BOWL ROAD' bottom (clipped)"], "other_labels": ["PUNCHBOWL STATION", "SCHOOL"], "unreadable": ["'...NER STREET' right edge (first letters clipped)"], "notes": "Page 27 holds the land sentence and 10.1 but has no image."},
+   {"section": "11 Roselands Village Centre", "pdf_page": 32, "figure": "Figure 11a: Structure plan", "suburb": "Roselands", "style": "cadastral lot plan (line work with lot and house numbers, no aerial) with yellow zones and cyan centre site marked 3(a5)", "boundary": "yellow filled polygon with black outline; cyan block with red outline", "streets_legible": ["PAYTEN (AV or ST, clipped)", "DIANA AV", "VIOLET ST", "MARTIN ... STREET", "ROSELAND AV", "FENWICK AV", "SYLVESTER AV", "HILTON AV", "KING GEORGES ROAD", "CANARYS ROAD", "HAIGH AV", "KENT ST"], "unreadable": ["'BERF...' right edge", "'GEORGES' bottom (partial)"], "notes": "No aerial. House numbers printed along each street help cadastre matching. Many labels are small."},
+   {"section": "12 Wiley Park Village Centre", "pdf_page": 36, "figure": "Figure 12a: Structure plan", "suburb": "Wiley Park", "style": "aerial photo with coloured overlay", "boundary": "red dash-dot line, legend 'Plan area'", "streets_legible": ["LAKEMBA STREET", "THE BOULEVARDE", "'...ORGES ROAD' top-left (first letters clipped)", "WILEY LANE (small, west edge)"], "other_labels": ["WILEY PARK STATION"], "unreadable": ["'...T' at top right edge"], "notes": "Two blocks either side of the road corridor north of the station."}
+  ],
+  "page_ranges": [
+   ["front matter: cover, welcome, contents", 1, 3],
+   ["1 Introduction (all centres; Fig 1a is a centres hierarchy diagram)", 4, 5],
+   ["2 Belfield", 6, 8],
+   ["3 Belmore (listed 'Replaced by Chapter 7.6', no pages)", null, null],
+   ["4 Canterbury", 9, 13],
+   ["5 Croydon Park", 14, 16],
+   ["6 Earlwood", 17, 19],
+   ["7 Hurlstone Park", 20, 22],
+   ["8 Lakemba (listed 'Replaced by Chapter 7.6', no pages)", null, null],
+   ["9 Narwee", 23, 25],
+   ["10 Punchbowl (p27-29 former Canterbury LGA controls; p29-31 former Bankstown LGA controls)", 26, 31],
+   ["11 Roselands", 32, 35],
+   ["12 Wiley Park", 36, 38],
+   ["13 Lanes (general, applies wherever a new lane is shown)", 39, 40]
+  ],
+  "properties_listed": [],
+  "blockers": [
+   "Section 10: 10.1 on p27 cites Fig 10a but the image is on p28.",
+   "Section 10 splits controls into former Canterbury LGA (p27-29) and former Bankstown LGA (p29-31); one Fig 10a covers both.",
+   "Belfield, Croydon Park, Earlwood, Narwee, Punchbowl maps have street labels clipped by the image edge.",
+   "Section 1 Fig 1a (p4) and Section 13 Figs 13a-c (p40) are diagrams, not land maps.",
+   "Sections 3 Belmore and 8 Lakemba are replaced by Ch 7.6 and have no pages here."
+  ],
+  "summary": "9 land maps (one per section 2, 4, 5, 6, 7, 9, 10, 11, 12): 8 aerial or street basemaps, 1 cadastral lot plan (Roselands)."
+ },
+ "chapter-8-3-hume-highway": {
+  "title": "CB DCP 2023 Ch 8.3 Hume Highway Enterprise Corridor (Amended April 2025), 42 pages",
+  "land_sentence": [
+   {"section": "3 Remembrance Driveway Landscape Corridor", "page": 8, "text": "This clause applies to sites within Zone E3 Productivity Support that adjoin the Hume Highway."},
+   {"section": "4 Rookwood Village Centre", "page": 11, "text": "4.1 Council may apply the storey limit (not including basements) shown in Figure 4b to land within Zone E3 Productivity Support only if it is satisfied that: (a) development will consolidate all adjoining lots shown edged with a heavy black line in Figure 4a into a single site"},
+   {"section": "4 Rookwood Village Centre", "page": 12, "text": "This clause applies to 324-326 Hume Highway, Bankstown."},
+   {"section": "5 Greenacre Motor Alley, 139-159 Hume Highway", "page": 16, "text": "Council may apply the storey limit (not including basements) shown in Figure 5a to the site at 139-159 Hume Highway in Greenacre only if it is satisfied that: (a) development will consolidate all the lots into a single site"},
+   {"section": "6 Greenacre Motor Alley, 167 Hume Highway", "page": 19, "text": "This section of the DCP applies to the following properties as shown in Figure 6a below."},
+   {"section": "7 Greenacre Motor Alley, 225-243A Hume Highway", "page": 35, "text": "Council may apply the storey limit (not including basements) shown in Figure 7a to the site at 225-243A Hume Highway, 112 Northcote Road, and 24 Hillcrest Avenue in Greenacre only if it is satisfied that: (a) development will consolidate all the lots into a single site"},
+   {"section": "8 Greenacre Motor Alley, 315 Hume Highway", "page": 39, "text": "Council may apply the storey limit (not including basements) shown in Figure 8a to the site at 315 Hume Highway and 177-183 Banksia Road in Bankstown only if it is satisfied that: (a) development will consolidate all the lots into a single site"}
+  ],
+  "maps": [
+   {"section": "4 Rookwood Village Centre", "pdf_page": 11, "figure": "Figure 4a: land to consolidate (324-326 Hume Hwy; 342 Hume Hwy and 2-8 George St; 348 Hume Hwy; 350 Hume Hwy and 18 George St)", "suburb": "Bankstown / Rookwood Road area (Greenacre border)", "style": "faint grey street and lot basemap, no aerial", "boundary": "consolidated lots = heavy black line; study area = dark red dashed line, legend 'STUDY AREA'", "streets_legible": ["GEORGE ST", "THE BOULEVARDE", "ROOKWOOD RD", "HUME HIGHWAY", "DAVIS LANE"], "unreadable": [], "notes": "Strong map: lot lines drawn and 5 street names. Block bounded by George St (north), The Boulevarde (west), Hume Highway (south), Rookwood Rd (east)."},
+   {"section": "4 Rookwood Village Centre", "pdf_page": 13, "figure": "Figure 4b: storey limit and setback controls (same sites)", "suburb": "same", "style": "coloured architectural plan, no basemap", "boundary": "none (massing only)", "streets_legible": ["GEORGE ST", "THE BOULEVARDE", "ROOKWOOD RD", "HUME HIGHWAY", "DAVIS LANE"], "unreadable": [], "notes": "Same area as 4a; use 4a for fitting."},
+   {"section": "6 167 Hume Highway Greenacre", "pdf_page": 19, "figure": "Figure 6a: 167 Hume Highway, Greenacre", "suburb": "Greenacre", "style": "aerial photo with orange street labels", "boundary": "thick red line, legend 'Subject Site'; thin yellow lines = allotment boundaries", "streets_legible": ["HUME HIGHWAY", "TENNYSON ROAD", "PETER CRESCENT", "HILLCREST AVENUE", "MUIR ROAD", "GARDINAN ROAD (as read; spelling uncertain)", "CAMILL LANE (as read; uncertain)"], "unreadable": [], "notes": "The one true site map with street names. Text gives Lot 402, DP 631754."},
+   {"section": "6 167 Hume Highway Greenacre", "pdf_page": 22, "figure": "Figure 6b: Indicative structure plan", "suburb": "Greenacre", "style": "line plan with cadastre lines and building envelopes", "boundary": "red dash-dot, legend 'Site Boundary'", "streets_legible": ["Hume Highway", "Peter Crescent"], "unreadable": [], "notes": "Same site as 6a; only 2 street names."}
+  ],
+  "page_ranges": [
+   ["cover, welcome", 1, 2],
+   ["contents", 3, 3],
+   ["1 Introduction", 4, 5],
+   ["2 Desired character (Fig 2a precinct diagram)", 6, 7],
+   ["3 Remembrance Driveway Landscape Corridor (zone-based: E3 land adjoining Hume Highway)", 8, 9],
+   ["4 Rookwood Village Centre", 10, 14],
+   ["5 Greenacre Motor Alley, 139-159 Hume Highway", 15, 18],
+   ["6 Greenacre Motor Alley, 167 Hume Highway", 19, 33],
+   ["7 Greenacre Motor Alley, 225-243A Hume Hwy, 112 Northcote Rd, 24 Hillcrest Ave", 34, 37],
+   ["8 Greenacre Motor Alley, 315 Hume Hwy, 177-183 Banksia Rd", 38, 41],
+   ["Appendix 1 suitable trees on Hume Highway (supports Section 3)", 42, 42]
+  ],
+  "properties_listed": [
+   {"page": 19, "address": "167 Hume Highway, Greenacre", "lot_dp": "Lot 402, DP 631754", "area": "11,750m2"},
+   {"page": 11, "address": "324-326 Hume Highway; 342 Hume Highway and 2-8 George Street; 348 Hume Highway; 350 Hume Highway and 18 George Street (Bankstown)"},
+   {"page": 16, "address": "139-159 Hume Highway in Greenacre"},
+   {"page": 35, "address": "225-243A Hume Highway, 112 Northcote Road, and 24 Hillcrest Avenue in Greenacre"},
+   {"page": 39, "address": "315 Hume Highway and 177-183 Banksia Road in Bankstown"}
+  ],
+  "blockers": [
+   "Figure 2a (p6) is a schematic precinct plan (stylised ovals along a red line; labels Woodville Rd, Miller Rd, Australia St, Auburn St, Woodbine St, Rookwood Rd, Brunker Rd, Stacey St, Hume Highway), NOT a map. It cannot be fitted to roads. The chapter controls only Rookwood Village Centre, Greenacre Motor Alley and the Remembrance Drive corridor, not the seven precincts.",
+   "Section 3 applies by ZONE (E3 sites adjoining Hume Highway), not by a drawn boundary.",
+   "Figures 5a, 7a, 8a are schematic site diagrams (Hume Highway plus 1-2 streets, no basemap); place sections 5, 7, 8 by the street addresses in the text.",
+   "Section 4: clause 4.2 applies to Zone E1 land in the precinct with no figure of its own."
+  ],
+  "summary": "2 usable maps: Fig 4a (street basemap) and Fig 6a (aerial). Sections 5, 7, 8 are address-only; Fig 2a is a schematic."
+ },
+ "chapter-11-2-undercliffe-bridge-precinct": {
+  "title": "CB DCP 2023 Ch 11.2 Undercliffe Bridge Precinct, Earlwood (Amended August 2024), 5 pages",
+  "land_sentence": [
+   {"section": "1 (whole chapter)", "page": 1, "text": "No land-application sentence. Cover title reads 'Undercliffe Bridge Precinct, Earlwood'; p3 objective O3 names the existing Adora Chocolate Shop building at 10 Homer Street."}
+  ],
+  "maps": [
+   {"section": "1 Undercliffe Bridge Precinct", "pdf_page": 4, "figure": "Figure 1a: Undercliffe Bridge specific heights", "suburb": "Earlwood", "style": "coloured plan on a plain road and lot basemap (grey roads, white lot lines, black existing buildings); no photo", "boundary": "red dash-dot line, legend 'SITE BOUNDARY'", "streets_legible": [], "unreadable": ["no street names printed on any figure"], "notes": "Only text label is '10 HOMER ST.' on the east block. Shape anchors: a roundabout, a curving road along the west and south, the bridge road, and two separate site pieces either side of the road."},
+   {"section": "1 Undercliffe Bridge Precinct", "pdf_page": 5, "figure": "Figure 1b: setbacks / Figure 1c: open space and view corridors", "suburb": "Earlwood", "style": "same basemap as 1a", "boundary": "red dash-dot, 'SITE BOUNDARY'", "streets_legible": [], "unreadable": ["no names; 1c shows green public open space to the north (Cooks River foreshore) and a pedestrian and cycle path"], "notes": "Same area. Text names Homer Street (river views, 1.4) and the Cooks River."}
+  ],
+  "page_ranges": [
+   ["cover and welcome", 1, 2],
+   ["1 Undercliffe Bridge Precinct (whole chapter)", 3, 5]
+  ],
+  "properties_listed": [
+   {"page": 3, "address": "10 Homer Street (Adora Chocolate Shop building), mentioned in objectives only, not a list of applicable land"}
+  ],
+  "blockers": [
+   "No street names on any map and no explicit land sentence. Fitting must use shape (roundabout, bridge road, Cooks River foreshore to the north) plus the Homer Street text."
+  ],
+  "summary": "Figures 1a-1c on pp4-5, one precinct in two site pieces; plain basemap with zero street labels."
+ },
+ "chapter-11-4-croydon-street-precinct": {
+  "title": "CB DCP 2023 Ch 11.4 Croydon Street Precinct, Lakemba (Amended April 2025), 24 pages",
+  "land_sentence": [
+   {"section": "1 Introduction", "page": 5, "text": "Chapter 11.4 of this DCP applies to the site as shown in the Land Application Map (Figure 1a)."}
+  ],
+  "maps": [
+   {"section": "Whole chapter", "pdf_page": 5, "figure": "Figure 1a: Croydon Street Precinct (Land Application Map)", "suburb": "Lakemba", "style": "muted street basemap (greyed aerial and cadastre) with coloured zone overlay", "boundary": "dark red dashed line, legend 'Precinct boundary line'; orange dashed = subdivision lot boundary; blue = B2 zone, peach = R4 zone", "streets_legible": ["Lakemba Street", "Croydon Street", "Railway Parade", "MacDonald Street", "Bellevue Avenue"], "other_labels": ["Lakemba Train Station", "Lakemba Baptist Church", "Jubilee Park"], "unreadable": [], "notes": "Excellent: 5 street names, railway, park and church anchors, plus lot addresses printed inside the boundary."},
+   {"section": "Whole chapter", "pdf_page": 7, "figure": "Figure 2a: Structure Plan", "suburb": "Lakemba", "style": "same muted basemap, coloured overlay", "boundary": "dark red dashed line, 'Precinct boundary line'", "streets_legible": ["Lakemba Street", "Croydon Street", "Railway Parade"], "other_labels": ["Lakemba Train Station", "Lakemba Baptist Church", "Jubilee Park"], "unreadable": [], "notes": "Same area as Fig 1a."}
+  ],
+  "page_ranges": [
+   ["cover and welcome", 1, 2],
+   ["contents", 3, 3],
+   ["1 Introduction", 4, 5],
+   ["2 Character statement (Fig 2a)", 6, 7],
+   ["3 Building envelopes", 8, 11],
+   ["4 Streetscape", 12, 14],
+   ["5 Landscaping", 15, 15],
+   ["6 Pedestrian and vehicular links/access", 16, 18],
+   ["7 Building articulation", 19, 20],
+   ["8 Overland flow path", 21, 24]
+  ],
+  "properties_listed": [
+   {"page": 5, "note": "Labels printed on Fig 1a, not in body text", "addresses": ["194-198 Lakemba St", "206-210 Lakemba St", "212 Lakemba St", "212A Lakemba St", "241 Lakemba St (as printed)", "5-9 Croydon St", "11 Croydon St", "15-19 Croydon St", "53 Railway Pde", "54 Railway Pde", "54A Railway Pde", "55 Railway Pde"]}
+  ],
+  "blockers": [
+   "None. Single precinct; the whole chapter applies. The map prints 241 Lakemba St among the 212 numbers, which is odd; check against the cadastre."
+  ],
+  "summary": "1 land map (Fig 1a p5) plus Fig 2a repeat; muted street basemap; one precinct."
+ },
+ "chapter-11-6-potts-hill": {
+  "title": "CB DCP 2023 Ch 11.6 Former Potts Hill Reservoir site, Potts Hill (Amended August 2024), 21 pages",
+  "land_sentence": [
+   {"section": "1 Introduction", "page": 4, "text": "Chapter 11.6 of this DCP applies to the former Potts Hill Reservoir site, Potts Hill as shown in Figure 1. It applies to residential development for dwelling houses, dual occupancies, attached dwellings, residential flat buildings and community housing development that are identified within specific areas shown on the Land Application Map."}
+  ],
+  "maps": [
+   {"section": "Whole chapter", "pdf_page": 5, "figure": "Figure 1: Land Application Map", "suburb": "Potts Hill", "style": "coloured subdivision lot plan (proposed lots numbered, existing lots plain outlines), tall narrow, no aerial", "boundary": "thick black line, legend 'Land to which these controls apply'; fills: peach detached, red attached, tan apartments, orange community housing, green open space", "streets_legible": ["BRUNKER ROAD (bottom edge)", "MARMION STREET", "HOLLAND STREET", "RODD STREET", "COOPER ... ROAD (read 'COOPER' near bottom and 'ROAD' above, vertical on west edge)", "'SYDNEY - BANKSTOWN' (diagonal label at top, clipped; likely a pipeline or road corridor)"], "unreadable": ["tiny lot numbers", "DP 16924 and DP 35518 labels along west edge are tiny"], "notes": "Mostly proposed lots, not today's cadastre. Only the west edge (Cooper Rd) and south edge (Brunker Rd) match existing streets; the east side borders open reservoir land. Legend section numbers (1 detached, 2 attached, 3 apartments, 4 community housing) do NOT match the chapter sections (2 dwelling houses, 3 dual occupancies and attached, 4 RFB, 5 community housing)."}
+  ],
+  "page_ranges": [
+   ["cover and welcome", 1, 2],
+   ["contents", 3, 3],
+   ["1 Introduction (land map Fig 1 on p5)", 4, 5],
+   ["2 Dwelling houses", 6, 10],
+   ["3 Dual occupancies and attached dwellings", 11, 16],
+   ["4 Residential flat buildings", 17, 18],
+   ["5 Community housing", 19, 21]
+  ],
+  "properties_listed": [],
+  "blockers": [
+   "Only about 5 street labels on a lot plan, along the west and south edges.",
+   "The map shows the site as subdivided (stage labels, 'PROPOSED LOT 107'), so lots may not match the current cadastre.",
+   "Per-section areas are encoded by colour fill on Fig 1, not by separate maps.",
+   "Pages 6-8 and 11-18 carry images but they are controls diagrams, not land maps."
+  ],
+  "summary": "1 land map (Fig 1 p5), coloured lot plan; mappable by the west and south road frontage; legend section numbers mismatched."
+ },
+ "chapter-11-14-riverwood-estate": {
+  "title": "CB DCP 2023 Ch 11.14 Riverwood Estate Stage 1 (August 2025), 36 pages",
+  "land_sentence": [
+   {"section": "1.3 Land to which this DCP applies", "page": 5, "text": "This section of the DCP applies to part of the land within the Riverwood Estate, as outlined in blue and illustrated in Figure 1. The proposed first stage of development is located to the north east of the Riverwood Estate bound by Washington Avenue to the north, Belmore Road North to the east, and Roosevelt Avenue to the south."}
+  ],
+  "maps": [
+   {"section": "1.3 Land to which DCP applies", "pdf_page": 5, "figure": "Figure 1. The site (outlined in blue) within the Riverwood Estate (outlined in red)", "suburb": "Riverwood", "style": "aerial photo (clear, faded), landscape page", "boundary": "Stage 1 site = light-blue dashed line; whole Riverwood Estate = red dashed line", "streets_legible": ["Washington Avenue", "Belmore Road", "Roosevelt Avenue", "South Western Motorway (M5)"], "other_labels": ["Kentucky Road Reserve", "Karne Street Reserve", "Riverwood Wetlands Playground", "Roosevelt Park"], "unreadable": [], "notes": "Best fit map: aerial with M5 motorway, wetlands and parks as anchors. Text names the three bounding streets."},
+   {"section": "3.1 Structure plan", "pdf_page": 11, "figure": "Figure 2. Structure Plan", "suburb": "Riverwood", "style": "white-background plan with building massing, no photo", "boundary": "Site boundary = red dash-dot; Riverwood Estate boundary = black dashed", "streets_legible": ["Washington Avenue", "Virginia Place", "Belmore Road", "Roosevelt Avenue"], "unreadable": [], "notes": "Same Stage 1 block, sharper. Virginia Place is an internal street the plan realigns (C2, p12)."},
+   {"section": "3.5 Open space", "pdf_page": 18, "figure": "Figure 7. Indicative tree retention and canopy cover plan", "suburb": "Riverwood", "style": "white-background plan", "boundary": "red dash-dot site boundary; black dashed estate boundary", "streets_legible": ["Washington Avenue", "Virginia Place", "Belmore Road", "Roosevelt Avenue"], "unreadable": [], "notes": "Same basemap as Fig 2. Figs 3-6 (pp12-15) and Fig 8 (p25) also use it."}
+  ],
+  "page_ranges": [
+   ["cover, acknowledgement of country, contents", 1, 3],
+   ["1 Introduction (1.1-1.4; land = 1.3 on p5)", 4, 6],
+   ["2 Vision and Character", 7, 9],
+   ["3 Structure Plan and Built Form (3.1-3.7)", 10, 22],
+   ["4 General Provisions (4.1-4.4)", 23, 34],
+   ["Appendix: acronyms and list of figures", 35, 35],
+   ["back cover (blank)", 36, 36]
+  ],
+  "properties_listed": [],
+  "blockers": [
+   "None for Stage 1 placement. The whole chapter applies to the Stage 1 site only, not the rest of the Riverwood Estate (shown in red on Fig 1 for context)."
+  ],
+  "summary": "1 land map (Fig 1 p5, aerial) plus Figs 2-8 on the same block; Stage 1 = north-east corner bounded by Washington Ave, Belmore Rd North, Roosevelt Ave."
+ },
+ "chapter-6-3-campsie-town-centre": {
+  "title": "CB DCP 2023 Ch 6.3 Campsie Town Centre (Amended April 2025), 10 pages",
+  "land_sentence": [
+   {"section": "2 Structure plan", "page": 5, "text": "2.1 Development in the Campsie Town Centre is to be in accordance to the structure plan shown in Figure 2a. The structure plan contains controls in relation to parking, laneways, pedestrian pathways, retail/commercial activation locations and other matters."}
+  ],
+  "maps": [
+   {"section": "2 Structure plan (whole centre)", "pdf_page": 5, "figure": "Figure 2a: Structure Plan", "suburb": "Campsie", "style": "aerial photo with coloured overlay, tall narrow crop, edges cut so some labels are clipped", "boundary": "red dash-dot line, legend 'Plan area'", "streets_legible": ["Beamish Street (3 times)", "Shakespeare Street", "Clissold Parade", "North Parade", "South Parade", "Ninth Avenue", "Sixth Avenue", "Campsie Street", "London St", "Harold Street", "Amy Street", "Evaline Street", "Claremont Street"], "other_labels": ["Campsie Station", "Anzac Mall", "Anzac Park", "Civic Centre Precinct (refer to separate figures)"], "unreadable": ["'...ENUE' top-left (clipped)", "'BROWNING...' top right (clipped)", "'...ES ST' left edge (clipped)", "'EVA...' right (clipped)", "'MARL...' and 'BEAM...' bottom edge (clipped)"], "notes": "Excellent: Beamish St spine, railway line, Anzac Park and Mall. A thin blue-grey outline marks the Civic Centre Precinct, which defers to Figs 2b and 2c."},
+   {"section": "2 Structure plan (Civic Centre sub-area)", "pdf_page": 6, "figure": "Figure 2b: Campsie Civic Centre upper level open space; Figure 2c: Campsie Civic Centre pedestrian through site links", "suburb": "Campsie", "style": "coloured plan with building footprints on white, no photo", "boundary": "red dashed 'SITE BOUNDARY'", "streets_legible": ["BRIGHTON AVENUE", "BEAMISH STREET", "SHAKESPEARE STREET", "CLISSOLD PARADE"], "unreadable": [], "notes": "Triangular block: Brighton Ave (north tip), Beamish St (west), Shakespeare St (east), Clissold Parade (south). Matches the thin outline in Fig 2a."}
+  ],
+  "page_ranges": [
+   ["cover and welcome", 1, 2],
+   ["contents", 3, 3],
+   ["1 Introduction", 4, 4],
+   ["2 Structure plan (Fig 2a p5; Civic Centre Figs 2b, 2c p6)", 5, 6],
+   ["3 Setbacks", 7, 8],
+   ["4 Lanes (Figs 4a-4c are diagrams)", 9, 10]
+  ],
+  "properties_listed": [],
+  "blockers": [
+   "Fig 2a edges clip several labels. Section 3 setbacks refer to the E1 zone and residential boundaries, not the map; Section 4 lane figures (p10) are diagrams."
+  ],
+  "summary": "1 land map (Fig 2a aerial) plus Civic Centre sub-block (Figs 2b, 2c)."
+ },
+ "chapter-11-5-riverlands": {
+  "title": "CB DCP 2023 Ch 11.5 Former Riverlands Golf Course Site, Milperra (Amended August 2024), 11 pages",
+  "land_sentence": [
+   {"section": "1 (whole chapter)", "page": 4, "text": "Chapter 11.5 of this DCP applies to the site as shown in the Land Application Map (Figure 1a)."}
+  ],
+  "maps": [
+   {"section": "Whole chapter", "pdf_page": 4, "figure": "Figure 1a: Land Application Map", "suburb": "Milperra", "style": "plain black-and-white cadastral line map (Bankstown LEP 2015 planning proposal map), grey = Georges River; no aerial", "boundary": "thick black outline, legend 'LEP Land Application - Included'", "streets_legible": ["Henry Lawson Drive", "Auld Avenue", "Newland Avenue", "Prescott Parade", "Lone Pine Avenue", "Chauvel Avenue", "Sadlier Avenue", "M5 Motorway (small)"], "unreadable": ["most local streets have tiny text; only the larger ones listed were read at 400 dpi"], "notes": "West edge is the Georges River shoreline, a strong shape anchor. Includes a smaller separate polygon in the north (above Auld Ave)."},
+   {"section": "Whole chapter", "pdf_page": 10, "figure": "Figure 1c: Hollow bearing trees to be protected", "suburb": "Milperra", "style": "aerial photo (clear), tall crop, north up", "boundary": "red solid line, legend 'Proposal Site'", "streets_legible": ["Newland Ave", "Dunstan Ave", "Stratton Cres", "Pozieres Ave", "Lone Pine Ave", "Cambrai Pl", "Raleigh Rd", "Lemnos Ave", "Prescot Pde (as printed)", "Maydar Clos (as read, uncertain)", "South Western Mtwy", "Bugden Av (clipped)"], "other_labels": ["Vale of Ah Reserve (twice)"], "unreadable": ["'Nieman...' right edge (clipped)"], "notes": "Best map for fitting: clear aerial, 12 street names, M5 motorway along the south. Covers the main (southern) polygon only."},
+   {"section": "Whole chapter", "pdf_page": 8, "figure": "Figure 1b: Overland flow paths (BMT WBM Fig 3-7)", "suburb": "Milperra", "style": "aerial photo with flood-impact overlay, rotated", "boundary": "red outline, legend 'Site Boundary'", "streets_legible": ["Raleigh Road", "Prescott Parade", "Martin Crescent", "Georges River"], "unreadable": [], "notes": "Fewer labels than Fig 1c. Same southern polygon."}
+  ],
+  "page_ranges": [
+   ["cover and welcome", 1, 2],
+   ["1 Former Riverlands Golf Course Site (whole chapter; land map on p4)", 3, 11]
+  ],
+  "properties_listed": [],
+  "blockers": [
+   "Fig 1a includes a second, northern polygon that Figs 1b and 1c omit. Fig 1a street text is very small. Single section, so all pages apply to the whole site."
+  ],
+  "summary": "3 maps (1a plain cadastre, 1b and 1c aerials). Best fit: Fig 1c aerial for the south polygon, Fig 1a for the north piece."
+ }
+}

@@ -118,6 +118,23 @@
     ],
     "min_width": 2.0,
     "caption": "Figure 14H.1-1: Urban Structure plan (orange = Site Location)"
+   },
+   "register_absent": {
+    "lots": [
+     "1//DP271066",
+     "2//DP271066",
+     "3//DP271066",
+     "4//DP271066",
+     "5//DP271066",
+     "6//DP271066",
+     "7//DP271066",
+     "8//DP271066",
+     "9//DP271066",
+     "10//DP271066",
+     "11//DP271066",
+     "//SP109812"
+    ],
+    "why": "101 Eton Road is not in the NSW address register (2026-10-15: 91-99 and 100 are). The site was subdivided as DP271066 (2019; lots 1-11) and SP109812 (2025): west of Eton Road opposite Abingdon Road, behind the Winchester Ave lots, north of the road to the oval -- the place Figure 14H.1-1 draws. The figure outline matches their union (IoU 0.997)."
    }
   },
   {
@@ -187,6 +204,34 @@
     "colour": "red",
     "caption": "Figure 1: The site context, with the subject site outlined in red"
    }
+  },
+  {
+   "precinct_id": "8.3.4a",
+   "council": "canterbury_bankstown",
+   "source_chapter_key": "chapter-8-3-hume-highway",
+   "lga": "Canterbury-Bankstown",
+   "former_council": "Canterbury-Bankstown",
+   "pdf": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-8-3-hume-highway.pdf",
+   "page": 11,
+   "address_verbatim": "324–326 Hume Highway into a single site",
+   "numbers": "324-326",
+   "street": "HUME HIGHWAY",
+   "suburb": "BANKSTOWN",
+   "stated_area_m2": null
+  },
+  {
+   "precinct_id": "8.3.4b",
+   "council": "canterbury_bankstown",
+   "source_chapter_key": "chapter-8-3-hume-highway",
+   "lga": "Canterbury-Bankstown",
+   "former_council": "Canterbury-Bankstown",
+   "pdf": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-8-3-hume-highway.pdf",
+   "page": 11,
+   "address_verbatim": "342 Hume Highway and 2–8 George Street into a single site",
+   "numbers": "342,348,350",
+   "street": "HUME HIGHWAY",
+   "suburb": "BANKSTOWN",
+   "stated_area_m2": null
   }
  ]
 }

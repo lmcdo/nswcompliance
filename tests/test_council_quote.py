@@ -260,3 +260,90 @@ def test_a_blank_chapter_never_widens_to_the_whole_council(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["council_quote.py", "--dry-run", "--council", "x", "--chapter", " "])
     with pytest.raises(SystemExit):
         cq.main()
+
+
+# -- a lead-in and one of its items, printed apart (prove_pieces) -------------------------------------
+LEAD = "C.09 A carwash bay must be provided in accordance with the following:"
+ITEM = "g) Approval must be obtained from Sydney Water prior to construction of the development."
+BETWEEN = ["a) The bay is to be roofed and bunded so that rain water cannot enter.",
+           "b) Wash water is to drain to the sewer through a pre-treatment device."]
+
+
+def test_a_lead_in_and_its_item_printed_apart_are_exact_in_the_councils_words():
+    st = stream({1: [LEAD] + BETWEEN + [ITEM]})
+    out = cq.judge(row(f"# 8.5.9.6 g Car parking\n\n{LEAD}\n{ITEM}"), [st])
+    assert out["status"] == "exact" and out["reason"] == "pieces"
+    assert out["quote"] == f"{LEAD}\n{ITEM}"          # the items between are never copied
+    assert out["quote_page"] == 1
+
+
+def test_an_item_on_the_next_page_is_still_proven():
+    st = stream({1: [LEAD] + BETWEEN, 2: [ITEM]})
+    assert cq.judge(row(f"{LEAD}\n{ITEM}"), [st])["reason"] == "pieces"
+
+
+def test_an_item_printed_far_from_its_lead_in_is_not_proven():
+    pages = {1: [LEAD], 2: ["unrelated filler on page 2"], 3: ["unrelated filler on page 3"], 4: [ITEM]}
+    out = cq.judge(row(f"{LEAD}\n{ITEM}"), [stream(pages)])
+    assert out["status"] == "unconfirmed"
+
+
+def test_an_item_printed_before_its_lead_in_is_not_proven():
+    out = cq.judge(row(f"{LEAD}\n{ITEM}"), [stream({1: [ITEM] + BETWEEN + [LEAD]})])
+    assert out["status"] == "unconfirmed"
+
+
+def test_an_item_with_a_word_the_council_did_not_print_is_not_proven():
+    st = stream({1: [LEAD] + BETWEEN + [ITEM]})
+    out = cq.judge(row(f"{LEAD}\n{ITEM.replace('prior to', 'before')}"), [st])
+    assert out["status"] != "exact"
+
+
+def test_an_item_whose_number_differs_is_not_proven():
+    st = stream({1: ["C.02 The following minimum setbacks apply:"] + BETWEEN
+                 + ["c) Rear setback of 6 metres for all dwellings on the site."]})
+    out = cq.judge(row("C.02 The following minimum setbacks apply:\nc) Rear setback of 8 metres for all "
+                       "dwellings on the site."), [st])
+    assert out["status"] != "exact"
+
+
+def test_two_short_lines_are_never_proven_as_pieces():
+    st = stream({1: ["Objectives", "filler line one here", "Controls"], 2: ["Objectives", "Controls"]})
+    assert cq.prove_pieces("Objectives\nControls", [st], __import__("council_quote_table"), 1) is None
+
+
+def test_a_lead_in_on_the_page_before_the_stored_page_is_proven():
+    st = stream({1: [LEAD] + BETWEEN, 2: [ITEM]})
+    assert cq.judge(row(f"{LEAD}\n{ITEM}", page=2), [st])["reason"] == "pieces"
+
+
+def test_pieces_printed_far_from_the_stored_page_are_not_proven():
+    pages = {p: [f"unrelated filler on page {p}"] for p in range(1, 40)}
+    pages[3] = [LEAD] + BETWEEN + [ITEM]
+    out = cq.judge(row(f"{LEAD}\n{ITEM}", page=35), [stream(pages)])
+    assert out["reason"] != "pieces"     # the older anchor path may still recover it; this check must not
+
+
+def test_fragments_of_a_two_column_page_are_not_proven():
+    # Ashfield 123241 as stored: each fragment is printed, the row is not one of the council's sentences
+    st = stream({1: ["Heritage items are to preserve the character of buildings within the Urban",
+                     "Character areas where the original fabric is to be retained and conserved.",
+                     "Village."]})
+    out = cq.judge(row("to preserve the character of buildings within the Urban\nretained and conserved.\nVillage."), [st])
+    assert out["status"] != "exact"
+
+
+def test_a_line_that_stops_mid_sentence_is_not_proven_as_a_piece():
+    # Ashfield 123339 as stored: both lines printed, the second cut off mid-sentence
+    st = stream({1: ["Parramatta Road streetscape.", "To improve the image, quality and amenity of",
+                     "the Parramatta Road corridor."]})
+    out = cq.judge(row("Parramatta Road streetscape.\nTo improve the image, quality and amenity of"), [st])
+    assert out["reason"] != "pieces"
+
+
+def test_a_bare_label_line_does_not_block_a_proof():
+    st = stream({1: ["Applicants are required to ensure that the proposal is consistent with:", "1.", "Text one.",
+                     "3.", "Roof coverage and panels number is appropriate to the scale of the building."]})
+    out = cq.judge(row("Applicants are required to ensure that the proposal is consistent with:\n3.\n"
+                       "Roof coverage and panels number is appropriate to the scale of the building."), [st])
+    assert out["reason"] == "pieces"

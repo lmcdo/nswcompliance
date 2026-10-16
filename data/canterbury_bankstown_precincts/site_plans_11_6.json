@@ -1,0 +1,7 @@
+{"_about": "C-B DCP 2023 Ch 11.6 Potts Hill: 'Chapter 11.6 of this DCP applies to the former Potts Hill Reservoir site, Potts Hill as shown' in Figure 1 Land Application Map (p4-5), a coloured subdivision plan on white. Placed by scripts/fit_site_plans.py (coloured-land mode).",
+ "sites": [
+  {"precinct_id": "11.6", "name": "Former Potts Hill Reservoirs site (Western Residential Precinct)", "pdf": "chapter-11-6-potts-hill.pdf", "page": 5,
+   "figure": "Figure 1: Land Application Map", "suburb": "POTTS HILL", "streets": ["Cooper Rd", "Brunker Rd"], "scale_range": [0.2, 2.0],
+   "quote": "Chapter 11.6 of this DCP applies to the former Potts Hill Reservoir site, Potts Hill as shown (p4) - Figure 1: Land Application Map (p5)",
+   "register_addresses": []}
+ ]}

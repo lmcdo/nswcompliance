@@ -347,6 +347,9 @@ _UNWIRED_OK = {
     "check_served_output.py": "needs a running dev server AND currently fails on the "
                               "live #928 defect. Wire it in the PR that closes #928.",
     "dq_db.py": "library, not a check: connection helper imported by the probes.",
+    "dq_probe_column_splice.py": "a diagnostic that always exits 0 (it counts, never gates); run by hand "
+                                 "after a column re-read (Hornsby 2026-10-16: Part 1 138 -> 0 spliced). "
+                                 "Give it a failing exit and a ledger row before wiring it as a gate.",
     "dq_probe_live.py": "invoked through .claude/dq_checks.json by this file.",
     "check_registry.py": "loads .env from beside itself, so it cannot find credentials "
                          "from a worktree, and CI has no DATABASE_URL either. Port it to "

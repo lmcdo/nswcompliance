@@ -1,0 +1,13 @@
+{"_about": "C-B DCP 2023 Ch 8.3 sites whose addresses the NSW register no longer holds; placed from the section's own site plan (scripts/fit_site_plans.py). streets = the two labels the plan prints at the site's corner.",
+ "sites": [
+  {"precinct_id": "8.3.5", "name": "Greenacre Motor Alley, 139-159 Hume Highway", "pdf": "chapter-8-3-hume-highway.pdf", "page": 17,
+   "figure": "Figure 5a", "suburb": "GREENACRE", "streets": ["Hume Hwy", "Cahill Ln"],
+   "quote": "the site at 139–159 Hume Highway in Greenacre (p16)", "register_addresses": []},
+  {"precinct_id": "8.3.7", "name": "Greenacre Motor Alley, 225-243A Hume Hwy, 112 Northcote Rd, 24 Hillcrest Ave", "pdf": "chapter-8-3-hume-highway.pdf", "page": 36,
+   "figure": "Figure 7a", "suburb": "GREENACRE", "streets": ["Hume Hwy", "Northcote Rd"],
+   "quote": "the site at 225–243A Hume Highway, 112 Northcote Road, and 24 Hillcrest Avenue in Greenacre (p35)",
+   "register_addresses": ["243A HUME HIGHWAY GREENACRE"]},
+  {"precinct_id": "8.3.8", "name": "Greenacre Motor Alley, 315 Hume Hwy and 177-183 Banksia Rd", "pdf": "chapter-8-3-hume-highway.pdf", "page": 40,
+   "figure": "Figure 8a", "suburb": "BANKSTOWN", "streets": ["Hume Hwy", "Stacey St"],
+   "quote": "the site at 315 Hume Highway and 177–183 Banksia Road in Bankstown (p39)", "register_addresses": []}
+ ]}

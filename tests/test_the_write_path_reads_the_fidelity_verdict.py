@@ -52,9 +52,11 @@ class FakeCursor:
         return self._rows
 
 
-def rows(good=0, bad=0, status="failed", reason="section_collapsed"):
-    return ([(f"ok{i}", "grounded", "") for i in range(good)]
-            + [(f"bad{i}", status, reason) for i in range(bad)])
+def rows(good=0, bad=0, status="failed", reason="section_collapsed", detail=None):
+    """(ref, status, shown reason, suspect_reason, fidelity_detail) as fidelity_snapshot selects them.
+    A page-level `reason` is a suspect_reason; pass `detail` for a row-level finding instead."""
+    return ([(f"ok{i}", "grounded", "", None, None) for i in range(good)]
+            + [(f"bad{i}", status, detail or reason, None if detail else reason, detail) for i in range(bad)])
 
 
 class TestTheVerdictIsActuallyConsulted:
@@ -263,3 +265,48 @@ class TestASmallBatchIsNotAnnouncedAsHavingPassed:
         cur = FakeCursor(rows(good=118, bad=2))
         g.enforce_fidelity(cur, "c", "ch", "ts")
         assert "under the 5% bar" in capsys.readouterr().out
+
+
+NUMBER_ONLY = "citation not proven on its page (not_proven): C3: label_as_section"
+
+
+class TestAnUnprovenClauseNumberAloneIsNotAWordFailure:
+    """2026-10-15: 7 chapters of word-for-word rules were refused because their clause NUMBER was not
+    proven on the page (Woollahra C3 452 of 483 flags). The site shows such a rule with its page,
+    not the number (#1170). Only a row whose ONLY finding is that number stops counting."""
+
+    def test_a_batch_flagged_only_for_clause_numbers_commits(self):
+        g = _guard()
+        cur = FakeCursor(rows(good=90, bad=34, status="flagged", detail=NUMBER_ONLY))
+        graded, bad, _ = g.enforce_fidelity(cur, "woollahra", "c3", "ts")
+        assert (graded, bad) == (124, 0)
+
+    @pytest.mark.parametrize("detail", [
+        "citation not proven on its page: the rule's wording could not be located line by line, so its "
+        "clause number cannot be proven",
+        "citation not proven on its page: lines unreadable (r2 timeout)",
+        NUMBER_ONLY + "; number split by the reader: 12 appear only inside a different number on the page",
+        NUMBER_ONLY + "; numbers not in source: 4.5",
+        NUMBER_ONLY + "; only 60% of words found in source",
+        NUMBER_ONLY + "; only 40% of word pairs survive in the source",
+    ])
+    def test_a_words_problem_still_counts_even_beside_a_number_flag(self, detail):
+        g = _guard()
+        with pytest.raises(g.FidelityRefused):
+            g.enforce_fidelity(FakeCursor(rows(good=90, bad=34, status="flagged", detail=detail)), "c", "ch", "ts")
+
+    def test_a_page_level_suspect_reason_still_counts(self):
+        g = _guard()
+        r = [(f"ok{i}", "grounded", "", None, None) for i in range(90)] +             [(f"b{i}", "flagged", "preflight_two_column", "preflight_two_column", NUMBER_ONLY) for i in range(34)]
+        with pytest.raises(g.FidelityRefused):
+            g.enforce_fidelity(FakeCursor(r), "c", "ch", "ts")
+
+    def test_a_failed_row_is_never_excused_by_its_detail(self):
+        g = _guard()
+        with pytest.raises(g.FidelityRefused):
+            g.enforce_fidelity(FakeCursor(rows(good=90, bad=34, status="failed", detail=NUMBER_ONLY)), "c", "ch", "ts")
+
+    def test_the_rows_let_through_are_counted_out_loud(self, capsys):
+        g = _guard()
+        g.enforce_fidelity(FakeCursor(rows(good=90, bad=34, status="flagged", detail=NUMBER_ONLY)), "c", "ch", "ts")
+        assert "34 row(s) flagged only for an unproven clause number" in capsys.readouterr().out

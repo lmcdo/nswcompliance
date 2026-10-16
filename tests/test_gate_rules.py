@@ -1,5 +1,7 @@
 """Gate rules (scripts/gate_rules.py) and the Woollahra B2 keying rules (DQ-146)."""
 import re
+
+import pytest
 import sys
 from pathlib import Path
 
@@ -136,3 +138,52 @@ def test_a_precinct_rule_with_no_precinct_reaches_nobody():
     # never to every house (it was: 2,827 rules, 24 of 49 audit errors).
     assert "(rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL)" in probes._REACHES_NOBODY
     assert "COALESCE(v2_dcp_layer, '') <> 'precinct'" in probes._REACHES_EVERY_HOUSE
+
+
+def test_krg_14b_pages_cover_the_chapter_once_and_use_ids_precinct_service_attributes():
+    # Address audit 2026-10-15: 184 Turramurra rules had no key. Ranges must tile p1-38 with no gap or
+    # overlap, and every id must match precinct-service.ts's Ku-ring-gai pattern (its outline rows carry
+    # no former_council, so an id outside ^14[A-O](_T\d)?$ would be attributed to another council).
+    import import_woollahra_b2_union as u
+    rule = next(r for r in g.EXTRA_KEY_RULES if r["name"] == "krg_14b_turramurra_by_page")
+    ranges = rule["strategy"]["ranges"]
+    pages = [p for _, lo, hi in ranges for p in range(lo, hi + 1)]
+    assert pages == list(range(1, 39)) and rule["fingerprint"]["max_page"] == 38
+    assert all(re.fullmatch(r"14[A-O](_T\d)?", pid, re.I) for pid, _, _ in ranges)
+    assert {pid for pid, _, _ in ranges} == {u.UNIONS["krg_14b"]["id"], *u.UNIONS["krg_14b"]["members"]}
+
+
+def test_cb_7_2_pages_tile_the_chapter_and_match_the_outline_ids():
+    # Address audit 2026-10-15: 339 C-B 7.2 rules had no key. Pages 1-108 tiled once; every id is one the
+    # raster fit writes (7.2.2-7.2.13 + union 7.2) and the importer accepts.
+    import import_cb_centre_boundaries as imp
+    rule = next(r for r in g.EXTRA_KEY_RULES if r["name"] == "cb_7_2_city_west_by_page")
+    ranges = rule["strategy"]["ranges"]
+    pages = sorted(p for _, lo, hi in ranges for p in range(lo, hi + 1))
+    assert pages == list(range(1, 109))
+    assert {pid for pid, _, _ in ranges} == imp.RASTER_IDS["centres_7_2.geojson"]
+
+
+@pytest.mark.parametrize("name,last,ids", [
+    ("krg_14a_st_ives_by_page", 22, {"14A", "14A_S1", "14A_S2", "14A_S3"}),
+    ("krg_14d_gordon_by_page", 36, {"14D", *(f"14D_G{i}" for i in range(1, 6))}),
+    ("krg_14e_lindfield_by_page", 70, {"14E", *(f"14E_L{i}" for i in range(1, 9))}),
+])
+def test_krg_centre_pages_tile_the_chapter(name, last, ids):
+    # Address audit 2026-10-15. Pages 1..last tiled once; ids are those fit_vector_centres.py writes, which
+    # import_vector_centres.py loads WITH former_council (they miss the ^14[A-O](_T\d)?$ fallback).
+    rule = next(r for r in g.EXTRA_KEY_RULES if r["name"] == name)
+    ranges = rule["strategy"]["ranges"]
+    assert sorted(p for _, lo, hi in ranges for p in range(lo, hi + 1)) == list(range(1, last + 1))
+    assert {pid for pid, _, _ in ranges} == ids
+
+
+def test_marrickville_part8_sections_go_to_their_own_hca():
+    rules = [r for r in g.GATE_RULES if "v2_heritage_hca" in r["set"]]
+    pat = lambda w: re.search(r"ref_number ~ '([^']+)'", w).group(1)  # noqa: E731
+    cases = [("X__8_2_4_1 9", "hca_2"), ("X__8_2_31_1~2", "south_dulwich_hill_heritage_conservation_area"),
+             ("X__8_2_12", "hca_10"), ("X__8_2_1", "__any_hca__"), ("X__8_5_2 C1", "__any_hca__"),
+             ("X__8_3_2~3", "__any_hca__"), ("X__8_1_7 C2", None)]
+    for ref, want in cases:
+        hits = [r["set"]["v2_heritage_hca"] for r in rules if re.search(pat(r["where"]), ref)]
+        assert hits == ([want] if want else []), ref

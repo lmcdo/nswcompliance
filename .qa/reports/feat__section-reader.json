@@ -1,0 +1,135 @@
+{
+  "tier": "standard",
+  "justification": "Adds an opt-in reader (DCP_READER=section). Off by default, so no chapter is read differently until it is switched on for the pilot; output goes to the review queue like every reader.",
+  "commit_hash": "c16409c8",
+  "files": [
+    ".qa/reports/feat__section-reader.json",
+    "railway.dcp-monitor.toml",
+    "scripts/dcp_area_link_guard.py",
+    "scripts/dcp_commit_approved.py",
+    "scripts/dcp_extract_changed.py",
+    "scripts/dcp_fidelity_gate.py",
+    "scripts/docling_modal.py",
+    "scripts/gate_rules.py",
+    "scripts/section_reader.py",
+    "tests/test_dcp_area_link_guard.py",
+    "tests/test_dcp_area_link_guard_real_db.py",
+    "tests/test_dcp_commit_approved_records_hash.py",
+    "tests/test_section_reader.py",
+    "data/cos_precinct_page_ranges.json",
+    "data/woollahra_d1_centres/centres.geojson",
+    "data/woollahra_d2_centres/centres.geojson",
+    "data/woollahra_d5_d6_centres/centres.geojson",
+    "enrichment/config/canterbury_bankstown_config.py",
+    "enrichment/extractors/applicability_tagger.py",
+    "enrichment/pipeline.py",
+    "scripts/council_quote.py",
+    "scripts/dcp_supersede_guard.py",
+    "scripts/derive_precinct_keys.py",
+    "scripts/import_woollahra_b2_union.py",
+    "scripts/import_woollahra_d1_centre_boundaries.py",
+    "tests/test_applicability_part_fallback.py",
+    "tests/test_council_quote.py",
+    "tests/test_gate_rules.py",
+    "tests/test_import_woollahra_b2_union_real_db.py",
+    "tests/test_the_write_path_reads_the_fidelity_verdict.py",
+    ".claude/dq_checks.json",
+    "scripts/dq_probe_live.py",
+    "tests/test_dcp_commit_rederives_precinct_keys.py",
+    "tests/test_dcp_commit_refuses_section_loss.py",
+    "tests/test_one_outcome_alarm.py",
+    "tests/test_import_woollahra_d1_centre_boundaries_real_db.py",
+    "scripts/fit_cb_raster_centres.py",
+    "scripts/import_cb_centre_boundaries.py",
+    "data/canterbury_bankstown_precincts/raster_centres_7_2.json",
+    "data/canterbury_bankstown_precincts/centres_7_2.geojson",
+    "data/canterbury_bankstown_precincts/fit_report_7_2.json",
+    "tests/test_import_cb_centre_boundaries_real_db.py",
+    "scripts/fit_vector_centres.py",
+    "scripts/import_vector_centres.py",
+    "data/ku_ring_gai_precincts/vector_centres.json",
+    "data/ku_ring_gai_precincts/centres_vector.geojson",
+    "data/ku_ring_gai_precincts/fit_report_vector.json",
+    "scripts/fit_site_plans.py",
+    "data/canterbury_bankstown_precincts/site_plans_8_3.json",
+    "data/canterbury_bankstown_precincts/site_plans_8_3.geojson",
+    "data/canterbury_bankstown_precincts/fit_report_site_plans_8_3.json"
+  ],
+  "pre_impl": {
+    "existing_data": "none read or written by the reader; it returns ai_extractor.provisions_to_sections dicts to the existing review-queue path",
+    "assumption_mismatch": "PDF reading order fails on two-column pages; each page takes whichever of the two existing readings runs sentences on",
+    "new_vs_existing": "applies only when DCP_READER=section is set",
+    "external_source_error": "an unusable model answer is retried once, then counted as an empty answer and printed",
+    "frontend_type": "no frontend change",
+    "user_failure_mode": "rule lines no rule covers are printed per chapter, so a skipped rule is visible before review"
+  },
+  "functions": [
+    {
+      "name": "section_reader.build",
+      "file_line": "scripts/section_reader.py",
+      "input": "the chapter's printed lines and the model's line ranges",
+      "output": "rules whose text is the PDF lines first..last, with heading path, label and lead-in",
+      "if_none": "no rules; every rule-worded line is then listed as uncovered"
+    }
+  ],
+  "values": [
+    {
+      "value": "model line numbers",
+      "read_at": "scripts/section_reader.py build",
+      "nullable": "yes",
+      "guard_at": "_int and range checks against the piece",
+      "if_missing": "that rule is skipped and its lines show as uncovered"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The model returns a line range that overlaps the previous rule",
+      "what_happens": "the same council words would be served twice under two rules",
+      "mitigated": true,
+      "how": "the earlier rule keeps its lines; the later one starts after it or is dropped",
+      "repro": "python -m pytest tests/test_section_reader.py -k overlap"
+    },
+    {
+      "scenario": "A condition line such as 'where the site adjoins' is returned as its own rule",
+      "what_happens": "the condition would be shown apart from the rule it qualifies",
+      "mitigated": true,
+      "how": "a rule starting lower-case or with where/unless joins the rule before it unless that ended a sentence",
+      "repro": "python -m pytest tests/test_section_reader.py -k mid_sentence"
+    },
+    {
+      "scenario": "Items (a)(b) after a lead-in ending with a colon",
+      "what_happens": "each item would be served without the sentence that says when it applies",
+      "mitigated": true,
+      "how": "the lead-in line is copied onto each item; a lead-in returned alone is dropped",
+      "repro": "python -m pytest tests/test_section_reader.py -k lead_in"
+    },
+    {
+      "scenario": "Two-column page read straight across both columns",
+      "what_happens": "rules would be stitched from two columns into nonsense",
+      "mitigated": true,
+      "how": "per page, the reading order whose lines run on as sentences is used; jumbled pages are also read from the image",
+      "repro": "python -m pytest tests/test_section_reader.py"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_section_reader.py",
+    "fails_when": "rule text differs from the joined PDF lines, or overlaps/lead-ins/conditions are mishandled",
+    "observed_red": "Hornsby 3-14 scored 2/12 before the reading-order choice; the 100-page key score is the outside check",
+    "external_authority": "Opus 100-page answer key (17 councils, 977 entries) scored against live site and this reader"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: DCP_READER=section dcp_extract_changed --review on Parramatta (pilot), compared with the before snapshot"
+  },
+  "real_layer_exempt": {
+    "scripts/fit_cb_raster_centres.py": "read-only fitter; its writes go through import_cb_centre_boundaries.py, whose in-transaction proof (lookup + audit addresses) ran against production on 2026-10-15 and rolled back twice before passing",
+    "scripts/fit_vector_centres.py": "read-only fitter; its only write path is import_vector_centres.py, whose in-transaction lookup proof ran against production 2026-10-15",
+    "scripts/import_vector_centres.py": "its proof runs inside the production transaction (lookup of every written id, 14B_T1/14I still found, audit addresses unaffected) and rolls back on failure; ran 2026-10-15",
+    "scripts/fit_site_plans.py": "read-only fitter; loads go through import_cb_centre_boundaries.py, whose in-transaction lookup proof ran on 2026-10-15",
+    "scripts/hide_unmapped_area_rules.py": "ran against production 2026-10-16: dry run 131, then --apply with backup hide_unmapped_area_rules_pre_2026-10-15T230939.json; withheld 131",
+    "scripts/dq_probe_column_splice.py": "read-only probe; ran against production 2026-10-15/16: Hornsby Part 1 138 -> 0 spliced after the re-read, Part 3 84"
+  }
+}

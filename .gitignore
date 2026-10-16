@@ -263,6 +263,9 @@ enrichment/tests/*
 !enrichment/precompute_amenity.py
 !enrichment/config/
 !enrichment/config/__init__.py
+!enrichment/config/cumberland_config.py
+!enrichment/config/cumberland_part_pages.json
+!enrichment/config/northern_beaches_part_pages.json
 !enrichment/config/ashfield_config.py
 !enrichment/config/leichhardt_config.py
 !enrichment/config/marrickville_config.py
@@ -855,3 +858,5 @@ latent-scope-data/
 
 # source PDFs re-downloaded by scripts/build_cb_centre_boundaries.py
 data/canterbury_bankstown_precincts/.pdf_cache/
+data/*_precincts/.page_cache/
+data/ku_ring_gai_precincts/.pdf_cache/

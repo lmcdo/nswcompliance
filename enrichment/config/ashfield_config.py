@@ -88,6 +88,28 @@ ASHFIELD_CONFIG = {
             "site_conditions": ["heritage"],  # Only show if property has heritage listing
         },
 
+        # Chapter E2 - Haberfield Neighbourhood. Added 2026-10-15 (DQ-33): 198 served
+        # rows were no_config because no entry existed. Scope read from the chapter's
+        # own PDF (chapter-e2-haberfield.pdf, PDF page 1), not its title.
+        "Chapter E2": {
+            "description": "Haberfield Neighbourhood - desired future character and conservation area",
+            "applicable_zones": ALL_ZONES,
+            "applicable_dev_types": ALL_DEV_TYPES,
+            "site_conditions": None,
+            "scope_evidence": {
+                "applicable_zones":
+                    "Application (PDF p1) verbatim: 'This chapter applies to the Haberfield "
+                    "Neighbourhood as shown on Figure 1.' Scoped by a map, which a zone list "
+                    "cannot express; every zone inside the Neighbourhood is bound.",
+                "applicable_dev_types":
+                    "Application (PDF p1) names no development type. Its note (p2) verbatim: "
+                    "'Development on land within the area marked 'A' will be assessed against "
+                    "all applicable relevant controls not just the site-specific controls.' "
+                    "Controls speak of 'any new development (new building or extension to an "
+                    "existing building)' (2.1 C1, p3). ALL is the non-hiding answer.",
+            },
+        },
+
         # Chapter F - Development Categories: Dev type specific controls
         # Note: In database, these appear as "Ashfield_DCP_2016_Chapter_F_Part_X"
         # F1: Dwelling Houses, F2: Dual Occupancy, F3: Multi Dwelling, etc.

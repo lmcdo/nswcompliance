@@ -57,6 +57,7 @@ from scripts.dcp_page_map_gate import (
 # of its sections. Measured before the write, judged after it, same transaction.
 from scripts.dcp_supersede_guard import enforce as enforce_section_loss
 from scripts.dcp_supersede_guard import snapshot as section_snapshot
+from scripts import dcp_area_link_guard as area_links
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -1863,6 +1864,21 @@ class DCPExtractor:
         document extractor that reads any layout with no per-council config
         (ce-ai-extraction-decision-2026-07). The result is the same section-dict
         shape, so the downstream diff/enqueue/guard pipeline is unchanged."""
+        if (os.getenv("DCP_READER") or "").strip().lower() == "section":
+            # The section reader (scripts/section_reader.py): the model marks where each rule starts and ends, the
+            # program copies the words from the PDF. Opt-in until it beats the live site on the 100-page answer key
+            # and passes the Parramatta pilot (~/.claude/plans/ce-section-reader-DESIGN-2026-10-14.md).
+            from scripts import section_reader as sr
+            print("    [extractor] section reader (DCP_READER=section)")
+            self.reader_used = "section"
+            out = sr.read_chapter(self.pdf_path)
+            rep = out["report"]
+            print(f"    [section-reader] {len(out['rules'])} rules from {out['pieces']} pieces; picture/jumbled pages "
+                  f"{len(out['picture_pages'])}; empty answers {out['empty_answers']}; overlaps {rep['overlaps']}; "
+                  f"rule lines in no rule {rep['uncovered']}", flush=True)
+            for _i, page, text in out["uncovered"][:10]:
+                print(f"      not in any rule: p{page} {text[:100]}")
+            return sr.to_sections(out["rules"])
         if ai_extraction_enabled():
             from scripts.ai_extractor import ai_extract_chapter, configured_model
             # An explicit AI_MODEL wins inside ai_extract_chapter, so asking
@@ -3062,7 +3078,12 @@ def preflight_layout(pdf_path, council: str) -> dict:
         front_texts: list[str] = []
         with pdfplumber.open(pdf_path) as pdf:
             total = len(pdf.pages)
+            # The section reader does its own layout work (Docling / both reading orders), so with it on only the
+            # front pages are read, for the repeal stamp; the per-page layout counts cost ~8 minutes on Parramatta.
+            front_only = (os.getenv("DCP_READER") or "").strip().lower() == "section"
             for idx, page in enumerate(pdf.pages):
+                if front_only and idx >= PREFLIGHT_REPEALED_PAGES:
+                    break
                 if idx < PREFLIGHT_REPEALED_PAGES:
                     try:
                         front_texts.append(page.extract_text() or "")
@@ -4638,6 +4659,7 @@ def extract_chapter(
     dry_run: bool,
     review: bool = False,
     allow_section_loss: frozenset = frozenset(),
+    allow_area_link_loss: frozenset = frozenset(),
 ) -> tuple[bool, dict | None]:
     """
     Download PDF, extract provisions, commit atomically.
@@ -5119,6 +5141,7 @@ def extract_chapter(
                 # Section-loss guard, part 1: the live chapter as it stands before any
                 # write. Part 2 judges it again just before conn.commit() below.
                 section_loss_before = section_snapshot(cur, council, chapter_key)
+                linked_before = area_links.linked_count(cur, council, chapter_key)
                 if status == "restructure" or first_extraction:
                     # Full replace: soft-delete all existing + bulk insert.
                     # Strict source_chapter_key = %s only — never wipe NULL-keyed
@@ -5306,6 +5329,10 @@ def extract_chapter(
                 # needs_extraction stays TRUE so the chapter is not silently dropped.
                 enforce_section_loss(cur, council, chapter_key, section_loss_before,
                                      allow_section_loss)
+                # Who the rules reach: the same precinct/marker/zone link guard as the commit path (PR #1285 review:
+                # this path published without it, so a version the link rules no longer fit reached every house).
+                area_links.fill_parts(cur, council, chapter_key)
+                area_links.enforce(cur, council, chapter_key, linked_before, allow_area_link_loss)
                 conn.commit()
 
             except Exception as exc:
@@ -5849,6 +5876,11 @@ def main() -> None:
         help=("Let ONE named chapter through the section-loss guard on a direct commit. "
               "Repeatable. Only for a loss a person has checked against the source document."),
     )
+    parser.add_argument(
+        "--allow-area-link-loss", action="append", default=[], metavar="COUNCIL/CHAPTER",
+        help=("Let ONE named chapter through the precinct/area-link guard on a direct commit. "
+              "Repeatable. Only for a loss a person has checked."),
+    )
     args = parser.parse_args()
 
     require_r2()
@@ -5908,6 +5940,7 @@ def main() -> None:
             dry_run=args.dry_run,
             review=args.review,
             allow_section_loss=frozenset(args.allow_section_loss),
+            allow_area_link_loss=frozenset(args.allow_area_link_loss),
         )
         # extract_chapter takes conn as a PARAMETER, so its own revive cannot
         # reach this one. Without this the first chapter's hour of PDF work

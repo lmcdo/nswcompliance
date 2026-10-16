@@ -565,6 +565,27 @@ CANTERBURY_BANKSTOWN_CONFIG: dict = {
                     "Section 1 Introduction (PDF p4), verbatim: 'additional objectives and development controls to manage the location, design and operation of certain commercial uses including amusement centres, massage services premises and restricted premises'. DECLINED: none of the three has a term in the serving taxonomy, so no list can name them; the served value stays ALL."},
             "applicable_zones": ["ALL"],
         },
+        # --- added 2026-10-15: two chapters had served rows and no entry (no_config, OC-17) ---
+        "chapter_1_1_introduction_and_administration": {
+            "scope_evidence": {"applicable_zones":
+                    "Section 3 'Land where this DCP applies' (PDF p5), verbatim: 'This DCP applies to land within the "
+                    "Canterbury-Bankstown Local Government Area.'",
+                "applicable_dev_types":
+                    "Objectives (PDF p5), verbatim: 'O2 To have objectives and development controls that establish clear "
+                    "guidelines for effective and orderly development in Canterbury-Bankstown' -- the plan's introduction "
+                    "and administration, for every development: ALL."},
+            **_ALL,
+        },
+        "chapter_10_8_telecommunications_facilities": {
+            "scope_declined": ("applicable_dev_types",),
+            "scope_evidence": {"applicable_zones":
+                    _PLAN + "Chapter 10.8 states no land scope of its own (read 2026-10-15: Section 1 Introduction, PDF p4).",
+                "applicable_dev_types":
+                    "Section 1 Introduction (PDF p4), verbatim: 'additional objectives and development controls to manage "
+                    "the location and design of telecommunications facilities'. DECLINED: telecommunications facilities "
+                    "have no term in the serving taxonomy, so no list can name them; the served value stays ALL."},
+            "applicable_zones": ["ALL"],
+        },
         "chapter_3_3_waste_management": {
             "scope_evidence": {"applicable_zones":
                     _PLAN + "Chapter 3.3 states no land scope of its own (read 2026-10-04: Section 1 Introduction, PDF p4-5).",

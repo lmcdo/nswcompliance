@@ -77,24 +77,27 @@ class TestResolvesTheRealSlugConvention:
 class TestNeverInventsAKeyTheConfigLacks:
     """The whole safety property. A guessed part is a hidden control."""
 
-    def test_ashfield_chapter_e2_does_not_resolve(self, tagger):
-        # 118 served rows. ASHFIELD_CONFIG declares no 'Chapter E2', and inventing
-        # one to cover them is exactly the guess this rule forbids.
-        assert "Chapter E2" not in (ASHFIELD_CONFIG.get("chapters") or {})
+    def test_ashfield_undeclared_chapter_does_not_resolve(self, tagger):
+        # Chapter E2 was the example here until 2026-10-15, when it was DECLARED from
+        # the chapter's own Application section (DQ-33). The rule is unchanged: a
+        # chapter the config does not declare stays unresolved rather than guessed.
+        assert "Chapter Z9" not in (ASHFIELD_CONFIG.get("chapters") or {})
         assert tagger._ashfield_slug_key(
-            "Inner_West_Ashfield_DCP_2016__chapter_e2_haberfield") is None
+            "Inner_West_Ashfield_DCP_2016__chapter_z9_invented") is None
 
     def test_a_part_2_subsection_the_config_omits_does_not_resolve(self, tagger):
         """131 served rows, and the right answer is still None.
 
-        MARRICKVILLE_CONFIG enumerates 2_1..2_25 selectively and has no '2_21';
-        the fallback candidate '2' is not a declared part either. Resolving it to
-        the nearest neighbour would be a guess, so it stays ALL / no_config.
+        MARRICKVILLE_CONFIG enumerates 2_1..2_26 selectively and has no '2_19'
+        (2_21 was the example until 2026-10-15, when it was declared from its own
+        chapter, DQ-33); the fallback candidate '2' is not a declared part either.
+        Resolving it to the nearest neighbour would be a guess, so it stays ALL /
+        no_config.
         """
         parts = MARRICKVILLE_CONFIG.get("parts") or {}
-        assert "2_21" not in parts and "2" not in parts
+        assert "2_19" not in parts and "2" not in parts
         assert tagger._marrickville_slug_key(
-            "Marrickville_DCP_2011__part2_s21_site_facilities_waste") is None
+            "Marrickville_DCP_2011__part2_s19_something_undeclared") is None
 
     def test_marrickville_unknown_part_does_not_resolve(self, tagger):
         assert "99" not in (MARRICKVILLE_CONFIG.get("parts") or {})
@@ -158,7 +161,7 @@ class TestEndToEndThroughTag:
     def test_an_unresolved_document_keeps_all_and_says_no_config(self, tagger):
         zones, devs, prov = tagger.tag_with_provenance(
             "Heritage conservation area controls.",
-            "Inner_West_Ashfield_DCP_2016__chapter_e2_haberfield")
+            "Inner_West_Ashfield_DCP_2016__chapter_z9_invented")
         assert zones == ["ALL"] and devs == ["ALL"]
         assert prov["zone_source"] == "no_config"
         assert prov["zone_source"] not in TRUSTED_ALL_SOURCES

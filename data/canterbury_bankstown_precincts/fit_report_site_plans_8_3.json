@@ -1,0 +1,49 @@
+[
+ {
+  "precinct_id": "8.3.5",
+  "corner_mga": [
+   319969,
+   6247748
+  ],
+  "edge_share": 0.768,
+  "m_per_px": 0.1961,
+  "lots": [
+   "1//DP1173495",
+   "100//DP852059",
+   "2//DP1173495"
+  ],
+  "shape_m2": 5697,
+  "iou": 0.524,
+  "lots_m2": 1767,
+  "register_addresses_inside": [],
+  "refused": "shape does not match the plan"
+ },
+ {
+  "precinct_id": "8.3.7",
+  "corner_mga": [
+   319448,
+   6247291
+  ],
+  "edge_share": 0.558,
+  "m_per_px": 0.1391,
+  "lots": [],
+  "shape_m2": 4775,
+  "refused": "no lot inside the placed shape"
+ },
+ {
+  "precinct_id": "8.3.8",
+  "corner_mga": [
+   318807,
+   6246553
+  ],
+  "edge_share": 1.0,
+  "m_per_px": 0.1999,
+  "lots": [
+   "//SP88998"
+  ],
+  "shape_m2": 10096,
+  "iou": 0.987,
+  "lots_m2": 10124,
+  "register_addresses_inside": []
+ }
+]

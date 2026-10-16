@@ -107,6 +107,22 @@ _WOOLLAHRA_B2_RULES = [
      "strategy": {"type": "constant", "precinct_id": pid}, "validate": False}
     for n, pid in _WOOLLAHRA_B2.items()
 ]
+# Woollahra DCP 2015 D1.2-D1.10: one neighbourhood centre each, by PDF PAGE. Each section opens on the page of its
+# centre map ("D1.4 Vaucluse Shopping Village, Vaucluse MAP 3", p21). Not by section code: the section reader filed
+# pages 24-26 (Vaucluse, "26-36 New South Head Road") under D1_7 Streatfield Road (2026-10-15). D1 p7 "This chapter
+# applies to the following centres, as identified on Map A", so pages before D1.2 (intro, D1.1) apply to all nine.
+# Keys = the names the live rules were hand-keyed with = outline ids (scripts/import_woollahra_d1_centre_boundaries.py).
+_WOOLLAHRA_D1_PAGES = [
+    ("Woollahra Neighbourhood Centres", 1, 11), ("Hopetoun Avenue Centre", 12, 16),
+    ("South Head Roundabout Centre", 17, 20), ("Vaucluse Shopping Village", 21, 26), ("Plumer Road Centre", 27, 32),
+    ("O'Sullivan Road Centre", 33, 36), ("Streatfield Road Centre", 37, 42), ("Bellevue Hill Shops", 43, 49),
+    ("Manning Road Centre", 50, 54), ("Darling Point Road Centre", 55, 58),
+]
+_WOOLLAHRA_D1_RULES = [
+    {"name": "woollahra_d1_centres_by_page", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-d1-neighbourhood-centres'",
+     "strategy": {"type": "page_range", "ranges": _WOOLLAHRA_D1_PAGES}},
+]
 
 RULES: list[dict] = [
     {
@@ -153,7 +169,10 @@ RULES: list[dict] = [
     {
         "name": "ashfield_chapter_d_parts",
         "council": "ashfield",
-        "where": "document_id = 'Inner_West_Ashfield_DCP_2016__chapter_d_precinct_guidelines'",
+        # By chapter, not document_id: the re-read carries the amended edition's id
+        # ('..._with_IWLEP_2022_amendments_Nov_22', which live Part 3 already used at the same pages), so the
+        # old id matched none of the new rows and the publish guard predicted 0 of 639 links (2026-10-15).
+        "where": "source_chapter_key = 'chapter-d-precinct-guidelines'",
         "strategy": {"type": "page_range", "ranges": _ASHFIELD_D_PARTS},
         "validate": False,
     },
@@ -178,7 +197,9 @@ RULES: list[dict] = [
         "where": "source_chapter_key = 'section-2-locality-statements'",
         "strategy": {"type": "page_range", "ranges": _COS_RANGES["Sydney_DCP_2012__section_2_locality_statements"]},
         "validate": True,
-        "fingerprint": {"max_page": 169, "min_coverage": 0.95},
+        # 171: PDF pages 170-171 (printed 2.13-20, 2.13-21) continue 2.13.14 Waterloo Estate (South); the old reader
+        # never served them, the section reader does (2026-10-14). Same PDF, same content hash -- not a re-pagination.
+        "fingerprint": {"max_page": 171, "min_coverage": 0.95},
     },
     {
         "name": "city_of_sydney_section_5_areas",
@@ -244,6 +265,7 @@ RULES: list[dict] = [
     # outline; B2.1 and the B3 row filed in B2 to the union of all eleven. Unkeyed they reached no
     # house: 17 Etham Ave was shown 1 of 64 (DQ-146, 2026-10-11).
     *_WOOLLAHRA_B2_RULES,
+    *_WOOLLAHRA_D1_RULES,
     *EXTRA_KEY_RULES,
     {"name": "woollahra_b2_all_eleven", "council": "woollahra", "validate": False,
      "where": "source_chapter_key = 'chapter-b2-neighbourhood-hcas' AND ref_number !~ '__B2_([2-9]|1[0-2])([_ ]|$)'",
@@ -253,6 +275,37 @@ RULES: list[dict] = [
     {"name": "canterbury_bankstown_lot_list_sites", "council": "canterbury_bankstown", "validate": False,
      "where": "source_chapter_key IN ('chapter-11-9-revesby-hospital', 'chapter-11-12-445-canterbury-road', 'chapter-11-15-marco-avenue', 'chapter-11-11-brighton-avenue', 'chapter-11-3-roberts-road', 'chapter-11-8-boorea', 'chapter-11-1-milton-street', 'chapter-11-10-chullora-marketplace', 'chapter-11-13-former-wsu-campus-milperra')",
      "strategy": {"type": "chapter_map", "map": {"chapter-11-9-revesby-hospital": "11.9", "chapter-11-12-445-canterbury-road": "11.12", "chapter-11-15-marco-avenue": "11.15", "chapter-11-11-brighton-avenue": "11.11", "chapter-11-3-roberts-road": "11.3", "chapter-11-8-boorea": "11.8", "chapter-11-1-milton-street": "11.1", "chapter-11-10-chullora-marketplace": "11.10", "chapter-11-13-former-wsu-campus-milperra": "11.13"}}},
+    # Woollahra C3 "applies to the land identified in Map 1 ... predominantly the Watsons Bay HCA ... but also includes
+    # other land" (p5). Keyed as live was hand-keyed (38 rows 'Watsons Bay HCA'); Map 1's other land is not yet an
+    # outline (ce-precinct-maps-PLAN). Precinct A-E outlines do not exist, so the chapter key is used for all.
+    # Woollahra D5 / D6 "apply to the Double Bay / Rose Bay Centre, as identified in Figure 1/2" (p1): whole chapter, the
+    # key live was hand-keyed with; outline = LEP zone E1 (scripts/import_woollahra_d1_centre_boundaries.py --src).
+    {"name": "woollahra_d5_double_bay", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-d5-double-bay-centre'",
+     "strategy": {"type": "constant", "precinct_id": "Double Bay Centre"}},
+    {"name": "woollahra_d6_rose_bay", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-d6-rose-bay-centre'",
+     "strategy": {"type": "constant", "precinct_id": "Rose Bay Centre"}},
+    # Woollahra B1.2-B1.11: one residential precinct each, by PDF page from each section's MAP page ("B1.2 Darling Point
+    # Precinct MAP 2", p11); pages before (B1.1) apply to all, under the key live used. No outlines exist yet: the
+    # precinct maps are figure-only (ce-precinct-maps-PLAN), so these rules keep live's reach until they are traced.
+    {"name": "woollahra_b1_precincts_by_page", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-b1-residential-precincts'",
+     "strategy": {"type": "page_range", "ranges": [
+         ("Woollahra Residential Precincts", 1, 10), ("Darling Point Precinct", 11, 14), ("Double Bay Precinct", 15, 17),
+         ("Wallaroy Precinct", 18, 20), ("Manning Road Precinct", 21, 23), ("Point Piper Precinct", 24, 26),
+         ("Bellevue Hill South Precinct", 27, 29), ("Bellevue Hill North Precinct", 30, 33),
+         ("Rose Bay Precinct", 34, 36), ("Vaucluse West Precinct", 37, 39), ("Vaucluse East Precinct", 40, 42)]}},
+    # Woollahra D2.2-D2.4: one mixed use centre each, by PDF page from each section's MAP page ("D2.3 Rose Bay North MAP
+    # 2", p15); D2.1 (pp1-8) applies to all three. Keys = live's; outlines = LEP zone MU1 (data/woollahra_d2_centres).
+    {"name": "woollahra_d2_centres_by_page", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-d2-mixed-use-centres'",
+     "strategy": {"type": "page_range", "ranges": [
+         ("Woollahra Mixed Use Centres", 1, 8), ("New South Head Road Corridor Edgecliff", 9, 14),
+         ("Rose Bay North Centre", 15, 19), ("Rose Bay South Centre", 20, 24)]}},
+    {"name": "woollahra_c3_watsons_bay", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-c3-watsons-bay-hca'",
+     "strategy": {"type": "constant", "precinct_id": "Watsons Bay HCA"}},
     {"name": "woollahra_c1_paddington", "council": "woollahra", "validate": False,
      "where": "source_chapter_key = 'chapter-c1-paddington-hca'",
      "strategy": {"type": "constant", "precinct_id": "Paddington HCA"}},
