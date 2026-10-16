@@ -8,7 +8,7 @@ the outline; listed outside addresses stay outside).
 
     python scripts/import_lep_map_outline.py --layer Planning_Portal_Local_Provisions/437 \
       --where "EPI_NAME='Warringah Local Environmental Plan 2011' AND LAY_CLASS='Dee Why Town Centre'" \
-      --precinct-id "G1 Dee Why Town Centre" --lga "Northern Beaches" --former-council Warringah --outside 151.2496,-33.7398
+      --precinct-id "G1 Dee Why Town Centre" --lga "Northern Beaches" --outside 151.2496,-33.7398
 """
 from __future__ import annotations
 
@@ -24,6 +24,8 @@ from pathlib import Path
 
 BASE = "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/"
 BACKUP_DIR = Path(__file__).resolve().parent.parent / "data" / "db_rollback_backups"
+# former_council is written as --lga on purpose: the property lookup copies a matched outline's former_council into
+# the house's council, and the rules match on that. 'Warringah' (a pre-2016 name) served Dee Why 0 rules, 2026-10-16.
 LOOKUP = ("SELECT precinct_id FROM dcp_precinct_boundaries WHERE ST_Contains(boundary, ST_SetSRID(ST_MakePoint(%s,%s),4326))"
           " AND LOWER(lga) = LOWER(%s)")
 
@@ -49,7 +51,6 @@ def main() -> int:
     ap.add_argument("--where", required=True)
     ap.add_argument("--precinct-id", required=True)
     ap.add_argument("--lga", required=True, help="as the Planning Portal names it, e.g. 'Northern Beaches'")
-    ap.add_argument("--former-council", help="pre-2016 council the plan belongs to, e.g. 'Warringah' (default: --lga)")
     ap.add_argument("--outside", action="append", default=[], help="lon,lat that must stay outside")
     ap.add_argument("--commit", action="store_true")
     a = ap.parse_args()
@@ -83,7 +84,7 @@ def main() -> int:
                                ST_PointOnSurface(ST_SetSRID(ST_GeomFromGeoJSON(%s),4326)), %s, 'nsw_planning_local_provisions', 1.0, %s, now(), now())
                        ON CONFLICT (precinct_id, lga) DO UPDATE SET boundary = EXCLUDED.boundary, centroid = EXCLUDED.centroid,
                          source_document = EXCLUDED.source_document, boundary_description = EXCLUDED.boundary_description, updated_at = now()""",
-                    (a.precinct_id, a.precinct_id, a.lga, a.former_council or a.lga, json.dumps(mapping(geom)), json.dumps(mapping(geom)),
+                    (a.precinct_id, a.precinct_id, a.lga, a.lga, json.dumps(mapping(geom)), json.dumps(mapping(geom)),
                      f"NSW Planning Portal {a.layer}", a.where))
         p = geom.representative_point()
         cur.execute(LOOKUP, (p.x, p.y, a.lga))
