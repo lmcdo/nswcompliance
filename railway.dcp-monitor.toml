@@ -17,7 +17,9 @@ dockerfilePath = "Dockerfile.monitors"
 
 [deploy]
 startCommand = "python scripts/run_monitors.py"
-cronSchedule = "0 2 * * 1"   # weekly: Mondays 02:00 UTC (user decision 2026-10-14; was 1st+15th). A fingerprint check, no reading when unchanged.
+cronSchedule = "0 2 1,15 * *"   # fortnightly: 1st and 15th, 02:00 UTC
+# PENDING (user decision 2026-10-14): weekly "0 2 * * 1". Change it in its own PR, together with DQ-117's
+# window (17 -> 8 days) and tests/test_one_outcome_alarm.py; set the live value first (serviceInstanceUpdate).
 # Was monthly. Raised to fortnightly 2026-09-10 after measuring the real change
 # rate: excluding the March and May 2026 onboarding spikes, 15-30 of 564 active
 # chapters change per month (~3-5%), so something changes most weeks but any one

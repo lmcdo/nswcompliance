@@ -365,11 +365,6 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # a fortnight, which for a corpus that amends ~5 times a year across 28
         # councils is proportionate.
         #
-        # 2026-10-14 the user moved the sweep to weekly ("0 2 * * 1", Mondays 02:00
-        # UTC). Same rule, re-derived: the longest healthy gap is 7 days, plus 1
-        # for the run itself (a fleet sweep takes hours, so the median ages past 7
-        # before the next run finishes) = 8 days. One missed Monday reads red.
-        #
         # ⚠ The toml is the DECLARED schedule, not proof of the live one:
         # scripts/check_railway_cron_drift.py exists because on 2026-09-10 six of
         # eight services ran a different schedule from their file and four had no
@@ -424,7 +419,7 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # byte-identical. That is DQ-118's question, not this one's.
         "SELECT CASE WHEN COALESCE(percentile_disc(0.5) WITHIN GROUP ("
         "                 ORDER BY COALESCE(url_last_checked, '-infinity'::timestamptz)), "
-        "               '-infinity'::timestamptz) < NOW() - INTERVAL '8 days' "
+        "               '-infinity'::timestamptz) < NOW() - INTERVAL '17 days' "
         "            THEN 1 ELSE 0 END "
         "FROM dcp_chapter_registry "
         "WHERE is_active AND NOT COALESCE(is_inert, false) "
