@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "OC-21 (approved rewording): no rule sits where the page query can never return it, except area rules with no map yet, which are withheld, listed, and announced on the address page. 2026-10-17: Ku-ring-gai 14G Pymble Business Park outline fitted from the plan's vector lot lines (IoU 0.944 vs Figure 14G.1-1, picture looked at) and loaded, 97 rows keyed; ten other C-B/KRG areas refused by the fit (IoU < 0.85) and listed with Parramatta Part 8 intros and one Ashfield contents row.",
-  "commit_hash": "b39c7e0d",
+  "commit_hash": "19cdbd6c",
   "files": [
     "scripts/fit_area_maps.py",
     "scripts/gate_rules.py",
