@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a deterministic, evidence-recording proof method for served state-law rows (rules 1-3) and a verifier that re-derives each proof from stored evidence alone. Read-only against the database; no write is applied by this change. The plan it produces proves 1 of 630 candidate rows, which is the honest yield: 525 rows are not contiguous in the in-force law at all (paraphrase / stale), and the method fails closed on ambiguity.",
-  "commit_hash": "e602a7de",
+  "commit_hash": "12457786",
   "files": [
     "scripts/state_law_evidence.py",
     "scripts/state_law_proof4.py",
