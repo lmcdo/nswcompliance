@@ -13,7 +13,9 @@ describe('DcpNotCoveredNotice', () => {
     render(<DcpNotCoveredNotice notCovered={getNotCovered('Marrickville')} />);
     const text = screen.getByTestId('dcp-not-covered-notice').textContent ?? '';
     expect(text).toContain('Those rules are not shown here');
-    expect(text).toContain('Part2 s14 unique env features');
+    // the plan's own title from the not-covered list, not the internal chapter key
+    expect(text).toContain('Part 2.14 Unique Environmental Features');
+    expect(text).not.toContain('part2-s14');
     expect(text).not.toMatch(/\b(safe|compliant|verified|complete|comprehensive|accurate)\b/i);
   });
 

@@ -32,7 +32,8 @@ def build(source: Path = SOURCE) -> dict:
         chapters = out.setdefault(e["council"], {})
         row = chapters.setdefault(
             e["chapter_key"],
-            {"chapter_key": e["chapter_key"], "reason": e["reason"], "count_hint": 0},
+            {"chapter_key": e["chapter_key"], "title": e.get("title") or e["chapter_key"], "reason": e["reason"],
+             "count_hint": 0},
         )
         row["count_hint"] += int(e.get("expect") or len(e.get("ids") or []))
     return {c: sorted(r.values(), key=lambda x: x["chapter_key"]) for c, r in sorted(out.items())}

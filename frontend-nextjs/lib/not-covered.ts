@@ -11,6 +11,8 @@ import { councilKey } from '@/lib/council-key';
 
 export interface NotCoveredChapter {
   chapter_key: string;
+  /** The plan's own name for the part withheld (data/chapter_scope/not_covered_*.json `title`). */
+  title?: string;
   reason: string;
 }
 
@@ -27,7 +29,7 @@ export function getNotCovered(formerCouncil: string | null | undefined): NotCove
   if (!slug) return null;
   const rows = Object.prototype.hasOwnProperty.call(DATA, slug) ? DATA[slug] : undefined;
   if (!rows || rows.length === 0) return null;
-  return { council: slug, chapters: rows.map((r) => ({ chapter_key: r.chapter_key, reason: r.reason })) };
+  return { council: slug, chapters: rows.map((r) => ({ chapter_key: r.chapter_key, title: r.title, reason: r.reason })) };
 }
 
 /** "chapter-2-2-flood-risk-management" -> "Chapter 2 2 flood risk management". */

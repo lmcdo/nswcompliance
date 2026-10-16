@@ -10,7 +10,7 @@ import { chapterLabel, type NotCovered } from '@/lib/not-covered';
 
 export function DcpNotCoveredNotice({ notCovered }: { notCovered: NotCovered | null | undefined }) {
   if (!notCovered || notCovered.chapters.length === 0) return null;
-  const names = notCovered.chapters.map((c) => chapterLabel(c.chapter_key)).join('; ');
+  const names = notCovered.chapters.map((c) => c.title || chapterLabel(c.chapter_key)).join('; ');
   return (
     <p
       data-testid="dcp-not-covered-notice"
