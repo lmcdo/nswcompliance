@@ -46,17 +46,41 @@ _COUNCIL_WIDE = re.compile(
     r"|\bwhole of the .{0,50}?\b" + _AREA + r"\b"
     r"|\bentire " + _AREA + r"\b"
     r"|\bthroughout the .{0,30}?\b" + _AREA + r"\b"
-    r"|\bland to which .{0,60}(LEP|Local Environmental Plan).{0,20}appl",
+    r"|\bland to which .{0,60}(LEP|Local Environmental Plan).{0,20}appl"
+    # Added 2026-10-16 (user OK): the same sentence without "all", or with "lands" -- "This DCP applies to
+    # land within the Canterbury-Bankstown Local Government Area" (C-B 1.1 p5), "all lands within the City of
+    # Wollongong Local Government Area" (Wollongong E17 p3). _MAPPED_PART still refuses any shown/mapped land.
+    r"|\bappl(y|ies) to (all )?lands? (with)?in (the )?.{0,50}?\b" + _AREA + r"\b",
     re.I)
 #: Wording that limits land to a mapped or marked part, so the sentence is NOT council-wide
 #: whatever else it says ("all land shown on Map 1"). Cross-review finding 2026-10-11.
 _MAPPED_PART = re.compile(r"\b(shown|identified|marked|edged|hatched|outlined)\b|\b(map|figure)\s*\d", re.I)
+#: A chapter that limits WHO (a development type) but not WHERE: its land is the plan's own land, which the
+#: Land Application gate decides (lib/dcp-land-application.ts). Added 2026-10-16 with the user's OK.
+#: "This Part applies to development for dual occupancy dwellings" (Ku-ring-gai 5 p2); "The provisions in this
+#: section apply to all development to which this DCP applies" (Sydney 3 p6). Refused when the sentence also
+#: names a place, a site condition or a zone -- those are land limits.
+_USE_TYPE = re.compile(
+    r"\b(this|the) (part|section|chapter|guideline|provisions in this section)s? (of (this|the) (DCP|plan) )?"
+    r"appl(y|ies) to (all )?(development|applications|buildings|[a-z ,/-]{0,60}?"
+    r"(dwelling|occupanc|housing|building|premises|subdivision|terraces|sites))",
+    re.I)
+_LAND_LIMIT = re.compile(
+    # a named place: "within the Lindfield local centre" -- but "in Section A of this DCP" names the plan, not land
+    r"\b(in|within|at|on|near|adjoining) (the )?(?!(Section|Part|Chapter|Schedule|Appendix|Table)\b)[A-Z][a-z]+"
+    r"|\b(centres?|precincts?|site|estate|vicinity|flood|heritage|bushfire|riparian|zones?|zoned|foreshore"
+    r"|corridor|area)\b")  # case-sensitive on purpose: [A-Z] must mean a capital
 
 
 def _machine_whole_council(chapter: dict) -> bool:
     quote = chapter.get("quote") or ""
-    return (chapter.get("applies_to") == "whole_council" and bool(_COUNCIL_WIDE.search(quote))
-            and not _MAPPED_PART.search(quote))
+    if _MAPPED_PART.search(quote):
+        return False
+    if chapter.get("applies_to") == "whole_council":
+        return bool(_COUNCIL_WIDE.search(quote))
+    if chapter.get("applies_to") == "use_type":
+        return bool(_USE_TYPE.search(quote)) and not _LAND_LIMIT.search(quote)
+    return False
 
 
 #: A heritage chapter whose own sentence covers EVERY heritage item and/or EVERY heritage

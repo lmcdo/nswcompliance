@@ -12,7 +12,7 @@ import dq_probe_live as p  # noqa: E402
 
 def test_scope_file_loads_every_chapter():
     keys = p._chapter_scope_keys()
-    assert len(keys) == 235
+    assert len(keys) == 236  # +1 2026-10-16: wollongong__chapter-a1-introduction (its own "all lands within the Wollongong LGA")
     assert all("__" in k for k in keys)
 
 
@@ -70,3 +70,34 @@ def test_machine_whole_council_needs_the_label_and_the_words():
     assert p._machine_whole_council({"applies_to": "whole_council", "quote": words})
     assert not p._machine_whole_council({"applies_to": "place", "quote": words})
     assert not p._machine_whole_council({"applies_to": "whole_council", "quote": None})
+
+
+# 2026-10-16: wider wording, accepted with the user's OK, tested on known-wrong sentences first.
+import pytest  # noqa: E402
+
+_NEW_CASES = [
+    ("use_type", "This chapter applies to development in the vicinity of places of heritage significance", False),
+    ("use_type", "This Part applies to development within the Lindfield local centre", False),
+    ("use_type", "This Part applies to residential development in the R2 zone", False),
+    ("use_type", "This Part applies to development on land in the Turramurra area", False),
+    ("whole_council", "This Part applies to land shown on Map 1", False),
+    ("whole_council", "Council has consolidated all of its DCPs that apply to the Parramatta Local Government "
+                      "Area (LGA) into one plan", False),
+    ("use_type", "This Part applies to development for dual occupancy dwellings", True),
+    ("use_type", "This Part applies to all development types whether or not it is individually specified in "
+                 "Section A of this DCP.", True),
+    ("use_type", "The provisions in this section apply to all development to which this DCP applies, except "
+                 "where it is clear that they are not relevant to a particular development type or use.", True),
+    ("whole_council", "This DCP applies to land within the Canterbury-Bankstown Local Government Area.", True),
+    ("whole_council", "This Chapter of the DCP applies to all lands within the City of Wollongong Local "
+                      "Government Area.", True),
+]
+
+
+@pytest.mark.parametrize("applies_to,quote,want", _NEW_CASES)
+def test_wider_wording_accepts_only_unlimited_land(applies_to, quote, want):
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import dq_probe_live as d
+    assert d._machine_whole_council({"applies_to": applies_to, "quote": quote}) is want
