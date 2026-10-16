@@ -88,13 +88,13 @@ describe('clause/[id]', () => {
 
   it('replaces an unproven number and strips it from the text', async () => {
     const c = await call(unproven);
-    expect(c.clause_reference).not.toContain('C4');
+    expect(c.clause_reference ?? '').not.toContain('C4');
     expect(c.full_text).toBe(`# Fences${NL}Text`);
     expect(c.page_number).toBe(12);
   });
 
-  it('serves an LEP/SEPP row (no council) as before', async () => {
+  it('serves an LEP/SEPP row (no council) without an internal-id-shaped reference', async () => {
     const c = await call({ ...unproven, citation_status: null as unknown as string, source_council: null as unknown as string });
-    expect(c.clause_reference).toBe('Doc__C4_9');
+    expect(c.clause_reference).toBeNull();
   });
 });

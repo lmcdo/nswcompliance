@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { stateClauseLabel } from '@/lib/citation-display';
 
 // Database connection (PRP-A1 compliant)
 const pool = new Pool({
@@ -216,7 +217,7 @@ export async function POST(request: NextRequest) {
     const provisions = result.rows.map(row => ({
       id: row.id,
       documentId: row.document_id,
-      clause: row.ref_number,
+      clause: stateClauseLabel(row.ref_number), // internal ids are not clause numbers
       sectionHeader: row.section_header,
       fullText: row.provision_text,
       provisionType: row.provision_type,

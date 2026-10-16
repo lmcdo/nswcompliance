@@ -1,0 +1,58 @@
+{"rule_key": "000:213340", "label": "ok", "reason": ""}
+{"rule_key": "000:211825", "label": "ok", "reason": ""}
+{"rule_key": "000:212528", "label": "ok", "reason": ""}
+{"rule_key": "000:213496", "label": "ok", "reason": ""}
+{"rule_key": "001:212347", "label": "ok", "reason": ""}
+{"rule_key": "001:213438", "label": "ok", "reason": ""}
+{"rule_key": "001:213687", "label": "minor", "reason": "heading repeated"}
+{"rule_key": "001:212490", "label": "ok", "reason": ""}
+{"rule_key": "002:185269", "label": "ok", "reason": ""}
+{"rule_key": "002:162498", "label": "ok", "reason": ""}
+{"rule_key": "003:160385", "label": "ok", "reason": ""}
+{"rule_key": "003:162556", "label": "ok", "reason": ""}
+{"rule_key": "003:165893", "label": "ok", "reason": ""}
+{"rule_key": "004:200724", "label": "ok", "reason": ""}
+{"rule_key": "005:190486", "label": "ok", "reason": ""}
+{"rule_key": "005:163540", "label": "ok", "reason": ""}
+{"rule_key": "006:159855", "label": "ok", "reason": ""}
+{"rule_key": "006:180952", "label": "ok", "reason": ""}
+{"rule_key": "007:116642", "label": "ok", "reason": ""}
+{"rule_key": "008:231344", "label": "ok", "reason": ""}
+{"rule_key": "008:231400", "label": "ok", "reason": ""}
+{"rule_key": "008:231425", "label": "severe", "category": "wrong-words", "reason": "Ashfield Chapter D p139 controls spliced across the two columns"}
+{"rule_key": "008:243154", "label": "ok", "reason": ""}
+{"rule_key": "009:241144", "label": "ok", "reason": ""}
+{"rule_key": "009:243200", "label": "ok", "reason": ""}
+{"rule_key": "009:249934", "label": "ok", "reason": ""}
+{"rule_key": "011:152262", "label": "ok", "reason": ""}
+{"rule_key": "011:159020", "label": "ok", "reason": ""}
+{"rule_key": "011:161360", "label": "ok", "reason": ""}
+{"rule_key": "012:204801", "label": "ok", "reason": ""}
+{"rule_key": "013:124111", "label": "minor", "reason": "rule runs onto next page with running header inside"}
+{"rule_key": "013:161646", "label": "ok", "reason": ""}
+{"rule_key": "014:183625", "label": "ok", "reason": ""}
+{"rule_key": "014:182752", "label": "ok", "reason": ""}
+{"rule_key": "016:226343", "label": "ok", "reason": ""}
+{"rule_key": "016:225762", "label": "ok", "reason": ""}
+{"rule_key": "016:226776", "label": "ok", "reason": ""}
+{"rule_key": "016:225926", "label": "ok", "reason": ""}
+{"rule_key": "017:225293", "label": "ok", "reason": ""}
+{"rule_key": "017:225592", "label": "ok", "reason": ""}
+{"rule_key": "018:192324", "label": "ok", "reason": ""}
+{"rule_key": "018:190949", "label": "severe", "category": "wrong-area", "reason": "Warringah Part F1 requirement 13 'The Strand, Dee Why' served to a Brookvale E3 house"}
+{"rule_key": "018:191293", "label": "ok", "reason": ""}
+{"rule_key": "020:249433", "label": "ok", "reason": ""}
+{"rule_key": "020:211033", "label": "ok", "reason": ""}
+{"rule_key": "020:211317", "label": "minor", "reason": "rule continues onto next page"}
+{"rule_key": "021:211134", "label": "ok", "reason": ""}
+{"rule_key": "023:202388", "label": "minor", "reason": "table row fragment, readable"}
+{"rule_key": "023:202682", "label": "ok", "reason": ""}
+{"rule_key": "023:202381", "label": "ok", "reason": ""}
+{"rule_key": "024:175104", "label": "ok", "reason": ""}
+{"rule_key": "025:248868", "label": "unsure", "reason": "Penrith C10 parking table row: land-use cell and rate cell words interleaved"}
+{"rule_key": "025:248758", "label": "ok", "reason": ""}
+{"rule_key": "026:182549", "label": "ok", "reason": ""}
+{"rule_key": "027:181850", "label": "minor", "reason": "table header words inside a rate row"}
+{"rule_key": "028:248249", "label": "ok", "reason": ""}
+{"rule_key": "028:248206", "label": "ok", "reason": ""}
+{"rule_key": "028:244946", "label": "ok", "reason": ""}
