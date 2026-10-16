@@ -1,0 +1,70 @@
+{"rule_key": "000:212628", "label": "ok", "reason": ""}
+{"rule_key": "000:211834", "label": "ok", "reason": ""}
+{"rule_key": "000:212406", "label": "ok", "reason": ""}
+{"rule_key": "000:211718", "label": "ok", "reason": ""}
+{"rule_key": "001:212141", "label": "ok", "reason": ""}
+{"rule_key": "001:212043", "label": "ok", "reason": ""}
+{"rule_key": "001:213532", "label": "ok", "reason": ""}
+{"rule_key": "001:211828", "label": "ok", "reason": ""}
+{"rule_key": "002:165679", "label": "ok", "reason": ""}
+{"rule_key": "002:160302", "label": "ok", "reason": ""}
+{"rule_key": "002:158893", "label": "ok", "reason": ""}
+{"rule_key": "003:184783", "label": "ok", "reason": ""}
+{"rule_key": "003:185243", "label": "ok", "reason": ""}
+{"rule_key": "003:184860", "label": "ok", "reason": ""}
+{"rule_key": "004:178307", "label": "ok", "reason": ""}
+{"rule_key": "004:178921", "label": "ok", "reason": ""}
+{"rule_key": "004:179146", "label": "ok", "reason": ""}
+{"rule_key": "005:238381", "label": "ok", "reason": ""}
+{"rule_key": "005:238242", "label": "ok", "reason": ""}
+{"rule_key": "005:238155", "label": "ok", "reason": ""}
+{"rule_key": "005:238273", "label": "ok", "reason": ""}
+{"rule_key": "006:162169", "label": "ok", "reason": ""}
+{"rule_key": "007:172565", "label": "minor", "reason": "flow-chart fragment"}
+{"rule_key": "007:207365", "label": "ok", "reason": ""}
+{"rule_key": "007:207352", "label": "ok", "reason": ""}
+{"rule_key": "007:208020", "label": "ok", "reason": ""}
+{"rule_key": "008:183834", "label": "ok", "reason": ""}
+{"rule_key": "009:161756", "label": "ok", "reason": ""}
+{"rule_key": "009:123852", "label": "ok", "reason": ""}
+{"rule_key": "009:249521", "label": "minor", "reason": "form-table fragment"}
+{"rule_key": "010:152190", "label": "ok", "reason": ""}
+{"rule_key": "010:158717", "label": "minor", "reason": "SIA table flattened, readable"}
+{"rule_key": "010:247041", "label": "ok", "reason": ""}
+{"rule_key": "011:163689", "label": "ok", "reason": ""}
+{"rule_key": "011:185642", "label": "ok", "reason": ""}
+{"rule_key": "011:185670", "label": "severe", "reason": "wrong-words: Ashfield Chapter A Part 8 p68 performance criteria spliced across the two columns", "category": "wrong-words"}
+{"rule_key": "011:185633", "label": "unsure", "reason": "Ashfield Chapter A parking-rate table flattened; rates still beside their uses but 'Bulky Goods Salesroom or Showroom' split"}
+{"rule_key": "012:210209", "label": "ok", "reason": ""}
+{"rule_key": "012:152661", "label": "ok", "reason": ""}
+{"rule_key": "014:183611", "label": "ok", "reason": ""}
+{"rule_key": "014:159993", "label": "ok", "reason": ""}
+{"rule_key": "015:160073", "label": "ok", "reason": ""}
+{"rule_key": "015:151895", "label": "ok", "reason": ""}
+{"rule_key": "016:226133", "label": "ok", "reason": ""}
+{"rule_key": "016:226152", "label": "ok", "reason": ""}
+{"rule_key": "016:225843", "label": "ok", "reason": ""}
+{"rule_key": "016:225691", "label": "ok", "reason": ""}
+{"rule_key": "016:226848", "label": "ok", "reason": ""}
+{"rule_key": "017:226589", "label": "ok", "reason": ""}
+{"rule_key": "017:225203", "label": "ok", "reason": ""}
+{"rule_key": "018:191815", "label": "ok", "reason": ""}
+{"rule_key": "019:191099", "label": "minor", "reason": "rule starts p48, continues p49 (page shown = start)"}
+{"rule_key": "019:191870", "label": "ok", "reason": ""}
+{"rule_key": "019:191189", "label": "ok", "reason": ""}
+{"rule_key": "019:191951", "label": "ok", "reason": ""}
+{"rule_key": "021:249348", "label": "ok", "reason": ""}
+{"rule_key": "022:202581", "label": "ok", "reason": ""}
+{"rule_key": "022:249608", "label": "ok", "reason": ""}
+{"rule_key": "022:202240", "label": "ok", "reason": ""}
+{"rule_key": "022:202540", "label": "ok", "reason": ""}
+{"rule_key": "022:249603", "label": "minor", "reason": "letter-spaced 'N ote s'"}
+{"rule_key": "024:248770", "label": "ok", "reason": ""}
+{"rule_key": "024:248968", "label": "ok", "reason": ""}
+{"rule_key": "026:181937", "label": "ok", "reason": ""}
+{"rule_key": "026:182004", "label": "minor", "reason": "loading table row order"}
+{"rule_key": "026:181901", "label": "minor", "reason": "table header words inside a row"}
+{"rule_key": "027:182549", "label": "ok", "reason": ""}
+{"rule_key": "027:181472", "label": "ok", "reason": ""}
+{"rule_key": "027:170589", "label": "ok", "reason": ""}
+{"rule_key": "028:244750", "label": "ok", "reason": ""}
