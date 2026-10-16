@@ -5,7 +5,8 @@
 For each line: (1) the PDF is the pinned one -- its sha256 equals the recorded one; (2) the
 evidence's own location (page, order or table + cells, char offsets) holds EXACTLY the recorded
 span; (3) the span's sha256 matches; (4) the span is on no other page of the PDF (unless
---no-unique); (5) the plan's page is the evidence's page and its verdict follows from the old
+--no-unique) -- or, when evidence.all_pages is present, all_pages is re-derived from the PDF and
+must be identical and the row's stored page must be one of them; (5) the plan's page is the evidence's page and its verdict follows from the old
 page. With --db the row's provision_text must still hash to the recorded md5 and its words
 must equal the span. Exit 1 on any mismatch, 2 when nothing could be verified.
 
@@ -86,6 +87,28 @@ def check_evidence(ev: dict, page, words_sha: str | None = None) -> list:
     return bad
 
 
+def check_uniqueness(ev: dict, old: dict, verdict: str, pages: dict) -> list:
+    """Problems with the 'where else is the span printed' half of a proof. Pure over `pages`
+    (page -> (texts, prepared tables)). Evidence with all_pages: the list must be re-derived
+    exactly from the PDF and the row's stored page must be one of them. Older evidence (no
+    all_pages): the span must be on exactly the one recorded page."""
+    if "all_pages" not in ev:
+        v, ev2, info = pe.prove(ev["span"], pages)
+        if v != "proven" or ev2["page"] != ev["page"]:
+            return [f"span now {v} on pages {info.get('pages')}"]
+        return []
+    held = set(old.get("page_range") or []) | {old.get("pdf_page")}
+    v, ev2, info = pe.prove(ev["span"], pages, held, old.get("pdf_page"))
+    if v != "proven" or ev2["page"] != ev["page"] or info["pages"] != ev["all_pages"]:
+        return [f"span now {v} on pages {info.get('pages')}, recorded all_pages {ev['all_pages']}"]
+    # prove() only picks a page of an ambiguous span from `held`, and the page it picked must be
+    # the evidence's, so a pass above already means the stored page is among all_pages; a
+    # single-page span may legitimately be 'moved'.
+    if len(ev["all_pages"]) > 1 and verdict != "on_page":
+        return ["span on several pages but verdict is not on_page"]
+    return []
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").strip().splitlines()[0])
     ap.add_argument("jsonl")
@@ -110,9 +133,13 @@ def main() -> int:
         conn = psycopg2.connect(os.environ["DATABASE_URL"], connect_timeout=30)
         conn.set_session(readonly=True)
         cur = conn.cursor()
-        cur.execute("SELECT id, md5(provision_text), provision_text FROM regulatory_provisions "
-                    "WHERE is_current AND id = ANY(%s)", ([r["id"] for r in recs],))
-        texts = {i: (m, t) for i, m, t in cur.fetchall()}
+        # prior-art-checked: widens this file's own existing read-only SELECT by two columns; no new source
+        cur.execute("SELECT id, md5(provision_text), provision_text, pdf_page, page_range "
+                    "FROM regulatory_provisions WHERE is_current AND id = ANY(%s)",
+                    ([r["id"] for r in recs],))
+        rows_db = cur.fetchall()
+        texts = {i: (m, t) for i, m, t, _p, _r in rows_db}
+        pages_db = {i: (p, list(r or [])) for i, _m, _t, p, r in rows_db}
         conn.close()
     pdfs, pages_cache, labels_cache, failures = {}, {}, {}, []
 
@@ -143,9 +170,7 @@ def main() -> int:
                 if not bad and not args.no_unique:
                     if got not in pages_cache:
                         pages_cache[got] = ppc.read_pages(path, got, Path(args.cache_dir))
-                    v, ev2, info = pe.prove(ev["span"], pages_cache[got])
-                    if v != "proven" or ev2["page"] != ev["page"]:
-                        bad.append(f"span now {v} on pages {info.get('pages')}")
+                    bad += check_uniqueness(ev, rec["old"], rec["verdict"], pages_cache[got])
             plan, old = rec["plan"], rec["old"]
             if plan["pdf_page"] != ev["page"] or plan["page_check"] != rec["verdict"]:
                 bad.append("plan page/verdict disagree with the evidence")
@@ -170,6 +195,12 @@ def main() -> int:
                     bad.append("provision_text changed since the proof (md5)")
                 elif pe.rule_words(t) != ev["span"]:
                     bad.append("rule words differ from the evidence span")
+                if len(ev.get("all_pages") or ()) > 1:
+                    # an ambiguous span is anchored ONLY by the row's own stored page, so the
+                    # file's claim of what that page is must equal the live row (on_page leaves it)
+                    live = pages_db.get(rec["id"])
+                    if live != (rec["old"].get("pdf_page"), list(rec["old"].get("page_range") or [])):
+                        bad.append("stored pdf_page/page_range in the file differ from the live row")
         except Exception as e:  # noqa: BLE001 -- an unreadable proof is a failed proof
             bad.append(f"error: {type(e).__name__}: {str(e)[:100]}")
         if bad:

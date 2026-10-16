@@ -7,7 +7,8 @@
 For each unproven served council row (page_check not on_page/moved, citation not proven):
 re-read its chapter PDF (the registry's r2_current_path, sha256 pinned) and try
 scripts/page_evidence.py. A row is `proven` only when its whole normalised text is one
-contiguous span on exactly one page; otherwise it stays unresolved / not_found / too_short.
+contiguous span on exactly one page, or on several pages one of which is the row's own stored
+page (verdict on_page, evidence.all_pages lists them all); otherwise it stays unresolved / not_found / too_short.
 
   python scripts/page_proof_council.py [--council ashfield] [--out data/page_evidence_DATE.jsonl]
 
@@ -94,14 +95,14 @@ def judge_pdf(args):
     out = []
     for r in rows:
         words = pe.rule_words(r["provision_text"])
-        v, ev, info = pe.prove(words, pages)
+        held = set(r["page_range"] or []) | {r["pdf_page"]}
+        v, ev, info = pe.prove(words, pages, held, r["pdf_page"])
         res = {"id": r["id"], "words": len(words.split()), "pages": info.get("pages")}
         if v != "proven":
             res["verdict"] = v
             out.append(res)
             continue
         page = ev["page"]
-        held = set(r["page_range"] or []) | {r["pdf_page"]}
         verdict = "on_page" if page in held else "moved"
         plan = dpr.plan_row(r, page, verdict, labels)
         res.update(verdict=verdict, plan=plan, evidence=ev)
