@@ -21,7 +21,8 @@ const CITATION_MARKERS = [
   /<SeppCitationLink\b/,
   /LEP Clause \d/,
 ];
-const USES_BADGE = /CitationUncheckedBadge|<SeppCitationLink\b/;
+// JSX element, not an import or a comment: an unused import must not satisfy the inventory.
+const USES_BADGE = /<CitationUncheckedBadge\b|<SeppCitationLink\b/;
 
 /** Files that match a marker but render no citation to the reader, or are not mounted. */
 const EXEMPT: Record<string, string> = {

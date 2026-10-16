@@ -187,6 +187,7 @@ export function CrossReferenceLink({
   };
 
   return (
+    <span className="inline-flex items-center gap-1">
     <TooltipProvider>
       <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>
@@ -224,7 +225,6 @@ export function CrossReferenceLink({
             <div className="text-gray-600 whitespace-pre-line">
               {tooltipContent}
             </div>
-            {isResolved && <CitationUncheckedBadge checked={reference.targetCitationChecked} />}
             {isResolved && (
               <div className="text-gray-400 text-[10px] mt-1">
                 Click to {isSameDocument ? 'scroll to' : 'navigate to'} reference
@@ -239,6 +239,9 @@ export function CrossReferenceLink({
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
+    {/* Visible beside the link, not only in the tooltip (OC-20). */}
+    {isResolved && <CitationUncheckedBadge checked={reference.targetCitationChecked} />}
+    </span>
   );
 }
 
