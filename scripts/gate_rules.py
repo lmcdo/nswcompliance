@@ -151,11 +151,11 @@ GATE_RULES += [
     for n, slug in sorted(_MARRICKVILLE_8_2_HCA.items())
 ] + [
     {"name": "marrickville_8_3_c11_hca14", "council": "marrickville", "where": _P8_196 + "'__C11$'",
-     "set": {"v2_heritage_hca": "hca_14"}},
+     "set": {"v2_heritage_hca": _MARRICKVILLE_8_2_HCA[16]}},  # HCA 14 = 8.2.16,
     {"name": "marrickville_8_3_c12_hca31", "council": "marrickville", "where": _P8_196 + "'__C12$'",
-     "set": {"v2_heritage_hca": "hca_31"}},
+     "set": {"v2_heritage_hca": _MARRICKVILLE_8_2_HCA[33]}},  # HCA 31 = 8.2.33,
     {"name": "marrickville_8_3_c13_kingston", "council": "marrickville", "where": _P8_196 + "'__C13$'",
-     "set": {"v2_heritage_hca": "kingston_south_heritage_conservation_area"}},
+     "set": {"v2_heritage_hca": _MARRICKVILLE_8_2_HCA[19]}},  # HCA 17 = 8.2.19,
     {"name": "marrickville_8_3_c8_c10_any", "council": "marrickville", "where": _P8_196 + "'__C(8|9|10)$'",
      "set": {"v2_heritage_hca": "__any_hca__"}},
 ] + [
