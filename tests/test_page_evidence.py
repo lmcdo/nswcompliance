@@ -242,6 +242,13 @@ def test_several_pages_stored_page_not_among_them_is_unresolved(tmp_path):
         assert v == "unresolved" and ev is None and info["pages"] == [1, 3]
 
 
+def test_several_held_pages_prefer_primary_and_never_pick_a_range_member(tmp_path):
+    _f, pages = _three_pages(tmp_path)
+    v, ev, _ = pe.prove(WORDS, pages, {1, 3}, 3)
+    assert v == "proven" and ev["page"] == 3                 # primary kept, not min()
+    assert pe.prove(WORDS, pages, {1, 3}, 2)[0] == "unresolved"   # two range members, no primary
+
+
 def test_verifier_accepts_honest_all_pages_and_rejects_tampered(tmp_path):
     _f, pages = _three_pages(tmp_path)
     ev = pe.prove(WORDS, pages, {3})[1]

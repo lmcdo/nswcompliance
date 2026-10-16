@@ -98,7 +98,7 @@ def check_uniqueness(ev: dict, old: dict, verdict: str, pages: dict) -> list:
             return [f"span now {v} on pages {info.get('pages')}"]
         return []
     held = set(old.get("page_range") or []) | {old.get("pdf_page")}
-    v, ev2, info = pe.prove(ev["span"], pages, held)
+    v, ev2, info = pe.prove(ev["span"], pages, held, old.get("pdf_page"))
     if v != "proven" or ev2["page"] != ev["page"] or info["pages"] != ev["all_pages"]:
         return [f"span now {v} on pages {info.get('pages')}, recorded all_pages {ev['all_pages']}"]
     # prove() only picks a page of an ambiguous span from `held`, and the page it picked must be

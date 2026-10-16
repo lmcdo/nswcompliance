@@ -96,7 +96,7 @@ def judge_pdf(args):
     for r in rows:
         words = pe.rule_words(r["provision_text"])
         held = set(r["page_range"] or []) | {r["pdf_page"]}
-        v, ev, info = pe.prove(words, pages, held)
+        v, ev, info = pe.prove(words, pages, held, r["pdf_page"])
         res = {"id": r["id"], "words": len(words.split()), "pages": info.get("pages")}
         if v != "proven":
             res["verdict"] = v

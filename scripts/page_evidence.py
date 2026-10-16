@@ -180,11 +180,12 @@ def match_page(words: str, texts: dict, streams: list) -> list:
     return found
 
 
-def prove(words: str, pages: dict, held=None):
+def prove(words: str, pages: dict, held=None, primary=None):
     """(verdict, evidence-or-None, info) for `words` over every page of a PDF.
 
     pages: page number -> (texts, prepare(grids)). held: pages the row already points at
-    (pdf_page + page_range). Verdict: proven | unresolved | not_found | too_short.
+    (pdf_page + page_range), primary the row's pdf_page (preferred when it is among the hits;
+    with several held hits and no primary match nothing is picked). Verdict: proven | unresolved | not_found | too_short.
     info always carries the pages that matched, so an `unresolved` says where the rival is.
     A span on several pages is proven only on a page in `held`; evidence.all_pages lists all.
     """
@@ -199,9 +200,12 @@ def prove(words: str, pages: dict, held=None):
         return "not_found", None, {"pages": []}
     if len(hits) > 1:
         both = sorted(set(held or ()) & set(hits))
-        if not both:
+        if primary in both:
+            pno = primary                  # the row's own page; never swapped for a range member
+        elif len(both) == 1:
+            pno = both[0]
+        else:                              # none held, or several range members and no primary: no pick
             return "unresolved", None, {"pages": sorted(hits), "reason": "span printed on several pages"}
-        pno = both[0]
     else:
         (pno,) = hits
     m = hits[pno]
