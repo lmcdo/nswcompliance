@@ -2842,8 +2842,14 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # sentence the fixed _COUNCIL_WIDE pattern does not confirm. An UPPER bound.
         "SELECT count(*) FROM regulatory_provisions"
         f" WHERE {_SERVED} AND {_REACHES_EVERY_HOUSE} AND source_council IS NOT NULL"
-        "   AND NOT (source_council || '__' || COALESCE(source_chapter_key, '') = ANY(%s))",
-        (_chapter_scope_keys(part_of_council=True) + _chapter_scope_keys(machine_whole_council=True),),
+        "   AND NOT (source_council || '__' || COALESCE(source_chapter_key, '') = ANY(%s))"
+        # A whole-plan document is decided Part by Part (2026-10-16): a key 'council__chapter#PART' covers the rows
+        # whose v2_dcp_part is that Part (Waverley DCP 2022: B1 Waste, C1 Low Density ... inherit the plan's land;
+        # B4 Coastal, B8 Heritage and E1-E4 places are not listed).
+        "   AND NOT (source_council || '__' || COALESCE(source_chapter_key, '') || '#' || COALESCE(v2_dcp_part, '')"
+        "            = ANY(%s))",
+        (_chapter_scope_keys(part_of_council=True) + _chapter_scope_keys(machine_whole_council=True),
+         [k for k in _chapter_scope_keys(machine_whole_council=True) if "#" in k]),
         "Each count is a served rule whose land has not been read from its plan: it may "
         "be for every house or for one Part's area. Cleared per Part: record the Part's "
         "own words in data/chapter_scope/ and gate the local rows (DQ-143 then counts "

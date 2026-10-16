@@ -12,7 +12,7 @@ import dq_probe_live as p  # noqa: E402
 
 def test_scope_file_loads_every_chapter():
     keys = p._chapter_scope_keys()
-    assert len(keys) == 236  # +1 2026-10-16: wollongong__chapter-a1-introduction (its own "all lands within the Wollongong LGA")
+    assert len(keys) == 263  # 2026-10-16: +1 wollongong a1; +27 waverley Parts (council__chapter#PART)
     assert all("__" in k for k in keys)
 
 
@@ -109,3 +109,18 @@ def test_wider_wording_accepts_only_unlimited_land(applies_to, quote, want):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
     import dq_probe_live as d
     assert d._machine_whole_council({"applies_to": applies_to, "quote": quote}) is want
+
+
+def test_waverley_place_and_condition_parts_are_never_listed_as_whole_council():
+    """B4 Coastal Risk, B8 Heritage and E1-E4 (Bondi Junction, Bondi Beachfront, village centres, special  # noqa: zone-codes (Waverley DCP Part numbers, not zones)
+    character areas) are land limits. Listing any of them as inheriting the plan's land would serve their
+    rules to every house in Waverley."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import dq_probe_live as d
+    keys = set(d._chapter_scope_keys(machine_whole_council=True))
+    for part in ("B4", "B8", "E", "E1", "E2", "E3", "E4"):  # noqa: zone-codes (Waverley DCP Part numbers, not zones)
+        assert f"waverley__waverley-dcp-2022#{part}" not in keys
+    assert "waverley__waverley-dcp-2022#C1" in keys          # Low Density Residential inherits the plan's land
+    assert "waverley__waverley-dcp-2022" not in keys          # the whole document stays mixed_parts
