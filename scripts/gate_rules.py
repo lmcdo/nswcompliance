@@ -162,6 +162,57 @@ GATE_RULES += [
     {"name": "marrickville_part8_any_hca", "council": "marrickville",
      "where": _P8 + "'__(8_2_[12]|8_[345])([_~ ]|$)'", "set": {"v2_heritage_hca": "__any_hca__"}},
 ]
+# ---- lane-ashfield-hca 2026-10-16: Ashfield E1 Part 9 by HCA ---------------------------------------------------------
+# Ashfield DCP Chapter E1 Part 9 is, per Heritage Conservation Area, "C<n> <name>": key period, statement of
+# significance, key character elements, non-contributory elements, history and building rankings (PDF p47-391, each
+# section opens on the page of its "C<n>" heading row). Those are that HCA's own statements, so a heritage item
+# outside every HCA (3 Rectory Ave Ashfield) must not be shown them: they are keyed by page range to the HCA's
+# heritage_conservation_areas.db_slug (the Inner West LEP 2022 HCA of the same name; what the route resolves the
+# property's HCA to), as for Marrickville above. Part 9 p44-46 (location map, list of all HCAs) apply in any HCA
+# (ANY_HCA, frontend-nextjs/lib/provision-sql-filters.ts). Parts 1-8 (items and general HCA controls) stay untagged.
+# Section numbers C8, C22, C25, C36, C41, C42 do not exist in the DCP. 49 sections, all resolve to a slug.
+# Recorded limits: (a) the twelve Summer Hill HCAs (C44-C55) share db_slug 'summer_hill' in the table,
+# so a lot in any of them is shown all twelve sections; (b) section C12 Murrell opens mid-page 113 below the tail of
+# Mountjoy's photo table (rows ~217-219), so only its heading row is keyed to Murrell on that page.
+_ASHFIELD_E1_HCA = [  # (section no., first PDF page, last PDF page, db_slug)
+    (1, 47, 54, "holwood"), (2, 55, 59, "eccles_estate_heritage_conservation_area"), (3, 60, 67, "farleigh"),
+    (4, 68, 74, "goodwin_avenue_heritage_conservation_area"), (5, 75, 80, "hillcot_street_heritage_conservation_area"),
+    (6, 81, 86, "king_street"), (7, 87, 93, "harland"), (9, 94, 98, "ilford_avenue_heritage_conservation_area"),
+    (10, 99, 102, "miller_avenue_heritage_conservation_area"),
+    (11, 103, 113, "mountjoy_estate_heritage_conservation_area"),  # p113: all but the C12 heading row
+    (12, 114, 119, "murrell"), (13, 120, 129, "federal_fyle_heritage_conservation_area"),
+    (14, 130, 139, "park_avenue_heritage_conservation_area"), (15, 140, 144, "rectory_estate_heritage_conservation_area"),
+    (16, 145, 149, "richmond_avenue_heritage_conservation_area"), (17, 150, 154, "rose_street_heritage_conservation_area"),
+    (18, 155, 163, "service_avenue_heritage_conservation_area"), (19, 164, 167, "somerville"),
+    (20, 168, 174, "taringa_estate_heritage_conservation_area"), (21, 175, 181, "tintern"),
+    (23, 182, 190, "victoria_square"), (24, 191, 196, "webbs_avenue_heritage_conservation_area"),
+    (26, 197, 200, "birriga_road_heritage_conservation_area"), (27, 201, 204, "bridges_avenue_heritage_conservation_area"),
+    (28, 205, 210, "edwin_street_north_heritage_conservation_area"), (29, 211, 217, "gads_hill_heritage_conservation_area"),
+    (30, 218, 224, "hammond_park_estate_heritage_conservation_area"), (31, 225, 231, "howes_estate_heritage_conservation_area"),
+    (32, 232, 239, "ivanhoe_heritage_conservation_area"),
+    (33, 240, 243, "lang_street_heritage_conservation_area"), (34, 244, 252, "lucy_street_heritage_conservation_area"),
+    (35, 253, 260, "rathgael_estate_heritage_conservation_area"), (37, 261, 268, "the_ranch_heritage_conservation_area"),
+    (38, 269, 275, "wetherill_street_heritage_conservation_area"), (39, 276, 282, "goodlet_heritage_conservation_area"),
+    (40, 283, 290, "hillside_heritage_conservation_area"), (43, 291, 296, "clover_hill_heritage_conservation_area"),
+    (44, 297, 303, "summer_hill"), (45, 304, 309, "summer_hill"), (46, 310, 316, "summer_hill"),
+    (47, 317, 328, "summer_hill"), (48, 329, 333, "summer_hill"), (49, 334, 341, "summer_hill"),
+    (50, 342, 348, "summer_hill"), (51, 349, 357, "summer_hill"), (52, 358, 368, "summer_hill"),
+    (53, 369, 377, "summer_hill"), (54, 378, 383, "summer_hill"), (55, 384, 391, "summer_hill"),
+]
+_A9 = "source_chapter_key = 'chapter-e1-heritage' AND ref_number ~ '__Part 9' AND "
+GATE_RULES += [
+    {"name": f"ashfield_e1_9_c{n}_hca", "council": "ashfield",
+     "where": _A9 + (f"((pdf_page BETWEEN {a} AND {b}) OR (pdf_page = 113 AND ref_number ~ '__Part 9 C12$'))"
+                     if n == 12 else
+                     f"pdf_page BETWEEN {a} AND {b} AND ref_number !~ '__Part 9 C12$'" if n == 11 else
+                     f"pdf_page BETWEEN {a} AND {b}"),
+     "set": {"v2_heritage_hca": slug}}
+    for n, a, b, slug in _ASHFIELD_E1_HCA
+] + [
+    {"name": "ashfield_e1_9_any_hca", "council": "ashfield",
+     "where": _A9 + "pdf_page BETWEEN 44 AND 46", "set": {"v2_heritage_hca": "__any_hca__"}},
+]
+# ---- end lane-ashfield-hca ---------------------------------------------------------------------------------------
 GATE_RULES += [
     # "This section applies to land zoned MU1 Mixed Use in the Paddington business precinct in Oxford Street and
     # the streets adjoining" (Woollahra DCP 2015 E1.8.4, p25): zone tag here, Paddington HCA key in EXTRA_KEY_RULES.

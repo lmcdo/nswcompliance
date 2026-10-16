@@ -1,0 +1,28 @@
+{
+  "tier": "minor",
+  "justification": "Gate rules key each Ashfield DCP E1 Part 9 HCA character statement to its HCA (49 sections), the same pattern as Marrickville Part 8. Applied live 2026-10-16 (1,185 rows, backup).",
+  "commit_hash": "bbed1efe",
+  "files": [
+    ".qa/reports/fix__ashfield-e1-hca.json",
+    "scripts/gate_rules.py"
+  ],
+  "pre_impl": {},
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a heritage item outside every HCA is assessed",
+      "what_happens": "other HCAs' character statements were shown as its rules",
+      "mitigated": true,
+      "how": "each Part 9 section is tagged to its HCA slug; live check at 3 Rectory Ave Ashfield shows 0 Part 9 rows",
+      "repro": "python -m pytest tests/test_gate_rules.py"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
