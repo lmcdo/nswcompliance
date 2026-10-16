@@ -61,7 +61,9 @@ def main() -> int:
             rows = cur.fetchall()
             if sel.get("expect") is not None and len(rows) != sel["expect"]:
                 raise SystemExit(f"[ABORT] {sel['council']}/{sel['chapter_key']}: {len(rows)} rows, list says {sel['expect']}")
-            change = [r for r in rows if not (r[1] == "precinct" and r[2] is None)]
+            # A precinct row is already off the council-wide list: withheld (no id) or keyed to its outline by a
+            # gate rule (e.g. Warringah G1 -> Dee Why). Un-keying the latter would undo that rule.
+            change = [r for r in rows if r[1] != "precinct"]
             print(f"  {sel['council']}/{sel['chapter_key']}: served {len(rows)}, to withhold {len(change)}")
             todo += change
         print(f"total to withhold: {len(todo)}")
