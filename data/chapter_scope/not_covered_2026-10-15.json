@@ -5,13 +5,15 @@
       "council": "leichhardt",
       "chapter_key": "amendment-1-george-upward-streets",
       "expect": 108,
-      "reason": "Site DCP 'George & Upward Streets, Leichhardt DCP 2014' -- no outline of the site; was served across Leichhardt (audit run2: 32/1-15 Barr St Balmain)"
+      "reason": "Site DCP 'George & Upward Streets, Leichhardt DCP 2014' -- no outline of the site; was served across Leichhardt (audit run2: 32/1-15 Barr St Balmain)",
+      "title": "George and Upward Streets site (Leichhardt DCP Amendment 1)"
     },
     {
       "council": "marrickville",
       "chapter_key": "part2-s14-unique-env-features",
       "expect": 20,
-      "reason": "Section 2.14 applies to land with identified unique environmental features (e.g. Thornley St scenic protection area) -- no outline; was served across Marrickville (audit run2: Enmore)"
+      "reason": "Section 2.14 applies to land with identified unique environmental features (e.g. Thornley St scenic protection area) -- no outline; was served across Marrickville (audit run2: Enmore)",
+      "title": "Part 2.14 Unique Environmental Features"
     },
     {
       "council": "woollahra",
@@ -21,7 +23,8 @@
         172686
       ],
       "expect": 2,
-      "reason": "E1.8.6 applies to residential land in the block bounded by Syd Einfeld Dr, Edgecliff Rd, Adelaide St and Vernon St -- no outline (audit run2: Vaucluse)"
+      "reason": "E1.8.6 applies to residential land in the block bounded by Syd Einfeld Dr, Edgecliff Rd, Adelaide St and Vernon St -- no outline (audit run2: Vaucluse)",
+      "title": "Chapter E1 Parking and Access: E1.8.6 (Syd Einfeld Dr / Edgecliff Rd block)"
     },
     {
       "council": "ashfield",
@@ -30,7 +33,8 @@
         183861
       ],
       "expect": 1,
-      "reason": "DS1.3 names stormwater outlets at Hawthorne Parade and Dobroyd Canal -- a site-specific public domain control, no outline (audit run2: Queen St Ashfield)"
+      "reason": "DS1.3 names stormwater outlets at Hawthorne Parade and Dobroyd Canal -- a site-specific public domain control, no outline (audit run2: Queen St Ashfield)",
+      "title": "Chapter C Sustainability: DS1.3 stormwater outlets at Hawthorne Parade and Dobroyd Canal"
     },
     {
       "council": "canterbury_bankstown",
@@ -135,7 +139,8 @@
         185304
       ],
       "expect": 97,
-      "reason": "Carinya Road, Picnic Point floodplain: clause 4.4 (p12) and Schedules 4A-4C (p25-51) apply only to that floodplain and its subdivision; no outline of it. Address audit run3: '69 Carinya Road' served at Marco Ave Revesby."
+      "reason": "Carinya Road, Picnic Point floodplain: clause 4.4 (p12) and Schedules 4A-4C (p25-51) apply only to that floodplain and its subdivision; no outline of it. Address audit run3: '69 Carinya Road' served at Marco Ave Revesby.",
+      "title": "Chapter 2.2 Flood Risk Management: Carinya Road controls"
     },
     {
       "council": "northern_beaches",
@@ -1116,7 +1121,8 @@
         192444
       ],
       "expect": 973,
-      "reason": "Warringah DCP 2011 Part G (p95-258): ten named areas (G1 Dee Why Town Centre .. G10), each 'Applies to Land' limited to that area; served to all of Warringah (audit run4). G1 general sections 1-11 are keyed back to the Dee Why Town Centre outline by gate rule warringah_g1_dee_why_town_centre; the rest wait for outlines. Plus 4 rows on p259 printed above the Part H heading (end of Part G), found 2026-10-16 resolving mixed heading pages."
+      "reason": "Warringah DCP 2011 Part G (p95-258): ten named areas (G1 Dee Why Town Centre .. G10), each 'Applies to Land' limited to that area; served to all of Warringah (audit run4). G1 general sections 1-11 are keyed back to the Dee Why Town Centre outline by gate rule warringah_g1_dee_why_town_centre; the rest wait for outlines. Plus 4 rows on p259 printed above the Part H heading (end of Part G), found 2026-10-16 resolving mixed heading pages.",
+      "title": "Warringah DCP 2011 Part G Special Area Controls"
     },
     {
       "council": "leichhardt",
@@ -1155,7 +1161,8 @@
         189475
       ],
       "expect": 31,
-      "reason": "Leichhardt DCP 2013 Part G site-specific rules left unkeyed: Section 3 Jane Street Balmain (p13-15), G10 17 Marion Street (p116), Section 11 1-5 Chester Street Annandale (p124) -- no outline; served across Leichhardt (audit run5: 118 Louisa Rd Birchgrove). The p9 introduction rows stay served."
+      "reason": "Leichhardt DCP 2013 Part G site-specific rules left unkeyed: Section 3 Jane Street Balmain (p13-15), G10 17 Marion Street (p116), Section 11 1-5 Chester Street Annandale (p124) -- no outline; served across Leichhardt (audit run5: 118 Louisa Rd Birchgrove). The p9 introduction rows stay served.",
+      "title": "Part G Site Specific Controls: Jane Street, 17 Marion Street, 1-5 Chester Street"
     },
     {
       "council": "canterbury_bankstown",
@@ -1319,7 +1326,8 @@
       ],
       "expect": 155,
       "reason": "C-B DCP 2023 Chapter 6.2 Section 6 Key sites (p167-213): controls for nine named sites KS1-KS9 (e.g. KS9 Bankstown Central, KS3 67-70 Rickard Road); no site outlines, so they were served to every house in the 6.2 city centre outline (audit run6: 33 Chertsey Ave).",
-      "from_precinct": "6.2"
+      "from_precinct": "6.2",
+      "title": "Chapter 6.2 Bankstown City Centre: Section 6 Key sites"
     }
   ],
   "unmapped_precinct_chapters": "rules in these chapters are already shown to no house (DQ-146) until a map exists: C-B 11.14 Riverwood, 11.6 Potts Hill, 8.3 Hume Hwy (S1-3, S5, S7), 6.3 Campsie, 11.2 Undercliffe, 8.2 Canterbury Rd (outside Area 9), KRG 14C/14G if refused, Parramatta 16",

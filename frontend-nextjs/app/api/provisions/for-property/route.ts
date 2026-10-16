@@ -27,6 +27,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { getNotCovered } from '@/lib/not-covered';
 import { NOT_HERITAGE_SQL, ZONE_APPLIES_SQL, hcaTagSql } from '@/lib/provision-sql-filters';
 import { councilKey } from '@/lib/council-key';
 import { expandDevTypeHierarchy, expandDevTypeHierarchyMulti } from '@/lib/see/devTypeHierarchy';
@@ -662,6 +663,7 @@ export async function GET(request: NextRequest) {
           dcp_currency: dcpCurrency,
           land_application: landApplication,
           land_conditions: landGate,
+          not_covered: getNotCovered(filters.former_council),
         }
       });
       // Temporarily disabled cache for debugging duplicates issue

@@ -36,6 +36,8 @@ import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from 
 import { DCPInterestForm } from './DCPInterestForm';
 import { DcpStructuredControls } from './DcpStructuredControls';
 import { DcpLandApplicationNotice } from './DcpLandApplicationNotice';
+import { DcpNotCoveredNotice } from './DcpNotCoveredNotice';
+import type { NotCovered } from '@/lib/not-covered';
 import { type LandApplicationDecision } from '@/lib/dcp-land-application';
 import { buildForPropertyParams } from '@/lib/dcp-provisions-query';
 import { DcpFilterBar } from './DcpFilterBar';
@@ -394,6 +396,7 @@ export function ProvisionsByTocStructure({
       chapter_pdf_urls?: Record<string, string> | null;
       precinct_warning?: boolean;
       land_application?: LandApplicationDecision;
+      not_covered?: NotCovered | null;
       dcp_currency?: {
         verified_at: string | null;
         amendment_pending: boolean;
@@ -2124,6 +2127,8 @@ export function ProvisionsByTocStructure({
           Precinct data is not available for this property — site-specific precinct controls may not be shown.
         </p>
       )}
+
+      <DcpNotCoveredNotice notCovered={data?.meta?.not_covered} />
 
       {landApplication?.status === 'partial' && (
         <DcpLandApplicationNotice decision={landApplication} />
