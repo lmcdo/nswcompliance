@@ -335,6 +335,15 @@ EXTRA_KEY_RULES: list[dict] = [
 
 # ---- lane-gates 2026-10-15: rules whose own words name their area (address audit run2) ----
 EXTRA_KEY_RULES += [
+    # Warringah DCP 2011 G1 "applies to land identified in the B4 Mixed Use Zone ... known as the Dee Why Town Centre"
+    # (p95). Outline = WLEP 2011 Centres Map 'Dee Why Town Centre' (MU1 IoU 0.998). Sections 1-11 only (p95-104 and the
+    # p105 'General' landscaping rows); 12 Key Sites, 13 Civic Centre Site, 14 RFBs and G2 (p110) stay withheld.
+    {"name": "warringah_g1_dee_why_town_centre", "council": "northern_beaches", "validate": False,
+     "where": "source_chapter_key = 'warringah-dcp-2011-full' AND (pdf_page BETWEEN 95 AND 104"
+              " OR id IN (190884, 191033, 191125, 191195, 192013))",
+     "strategy": {"type": "constant", "precinct_id": "G1 Dee Why Town Centre"}},
+]
+EXTRA_KEY_RULES += [
     # Woollahra E1.8.4 "Certain land in Paddington zoned MU1 Mixed Use" (p25) -> Paddington HCA outline + MU1 tag.
     {"name": "woollahra_e1_8_4_paddington", "council": "woollahra", "validate": False,
      "where": "source_chapter_key = 'chapter-e1-parking-access' AND ref_number ~ '__E1_8_4([_~ ]|$)'",
