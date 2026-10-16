@@ -318,6 +318,12 @@ EXTRA_KEY_RULES: list[dict] = [
      "strategy": {"type": "page_range", "ranges": [
          ("14A", 1, 8), ("14A_S1", 9, 13), ("14A_S2", 14, 19), ("14A_S3", 20, 22)]},
      "fingerprint": {"max_page": 22, "min_coverage": 0.95}},
+    # 14G Pymble Business Park: "Core Urban Precinct (E3 Productivity Support Zone)" as outlined in Figure 14G.1-1 (p2);
+    # outline fitted from the plan's vector lot lines to the cadastre, IoU 0.944 vs the figure (2026-10-17,
+    # scripts/fit_area_maps.py, picture data/area_map_checks/section-b-part-14g-pymble-business-park_14G.png).
+    {"name": "krg_14g_pymble_business_park", "council": "ku_ring_gai", "validate": False,
+     "where": "source_chapter_key = 'section-b-part-14g-pymble-business-park'",
+     "strategy": {"type": "constant", "precinct_id": "14G"}},
     {"name": "krg_14d_gordon_by_page", "council": "ku_ring_gai", "validate": False,
      "where": "source_chapter_key = 'section-b-part-14d-gordon-local-centre'",
      "strategy": {"type": "page_range", "ranges": [

@@ -1,0 +1,174 @@
+{
+ "14G": {
+  "chapter": "section-b-part-14g-pymble-business-park",
+  "route": "vector_plan_lot_lines_started_from_legend_zone",
+  "zone_start_edge_median_m": 1.38,
+  "m_per_pt": 1.7985,
+  "rotation_deg": 0.188,
+  "plan_lines_within_1_5m_of_lot_edge": 0.659,
+  "plan_line_to_lot_edge_median_m": 1.02,
+  "lots": [
+   38,
+   5
+  ],
+  "iou_vs_figure": 0.944,
+  "address_proof": {
+   "inside_checked": 7,
+   "inside_ok": 6,
+   "outside_checked": 14,
+   "outside_ok": 11,
+   "inside": [
+    {
+     "number": "21",
+     "ok": true,
+     "address": "21 RYDE ROAD PYMBLE"
+    },
+    {
+     "number": "6",
+     "ok": true,
+     "address": "2/6 WEST STREET PYMBLE"
+    }
+   ],
+   "outside": [
+    {
+     "number": "2",
+     "ok": true,
+     "address": "2 MONA VALE ROAD PYMBLE"
+    },
+    {
+     "number": "4",
+     "ok": true,
+     "address": "4 MONA VALE ROAD PYMBLE"
+    }
+   ]
+  },
+  "picture": "data/area_map_checks/section-b-part-14g-pymble-business-park_14G.png",
+  "refused": null,
+  "precinct_id": "14G",
+  "pages_keyed": "1-16 (whole chapter; figure 14G.1-1 p2)"
+ },
+ "11.5": {
+  "chapter": "chapter-11-5-riverlands",
+  "route": "raster_map_lot_lines_template_matched_to_cadastre",
+  "m_per_px": 2.1856,
+  "printed_scale_m_per_px": 2.31,
+  "rotation_deg": 0.008,
+  "plan_lines_within_3m_of_lot_edge": 0.355,
+  "plan_line_to_lot_edge_median_m": 4.57,
+  "lots": [
+   127,
+   28
+  ],
+  "iou_vs_figure": 0.493,
+  "address_proof": {
+   "inside_checked": 82,
+   "inside_ok": 81,
+   "outside_checked": 127,
+   "outside_ok": 124,
+   "inside": [
+    {
+     "address": "51 MARTIN CRESCENT MILPERRA",
+     "dist_m": 4.1,
+     "ok": true
+    },
+    {
+     "address": "37 MARTIN CRESCENT MILPERRA",
+     "dist_m": 4.2,
+     "ok": true
+    }
+   ],
+   "outside": [
+    {
+     "address": "5 RALEIGH ROAD MILPERRA",
+     "dist_m": 5.3,
+     "ok": true
+    },
+    {
+     "address": "53 RALEIGH ROAD MILPERRA",
+     "dist_m": 6.4,
+     "ok": true
+    }
+   ],
+   "source": "register points within 80 m of the boundary"
+  },
+  "picture": "data/area_map_checks/chapter-11-5-riverlands_11.5.png",
+  "refused": "shape IoU 0.493 < 0.85; plan lot lines not on cadastre lot edges",
+  "precinct_id": "11.5",
+  "pages_keyed": "1-11 (whole chapter; Figure 1a Land Application Map p4)"
+ },
+ "11.6": {
+  "chapter": "chapter-11-6-potts-hill",
+  "route": "raster_map_lot_lines_template_matched_to_cadastre",
+  "m_per_px": 0.622,
+  "printed_scale_m_per_px": 1.0,
+  "rotation_deg": 6.867,
+  "plan_lines_within_3m_of_lot_edge": 0.23,
+  "plan_line_to_lot_edge_median_m": 8.42,
+  "lots": [
+   0,
+   0
+  ],
+  "iou_vs_figure": 0.0,
+  "address_proof": {
+   "inside_checked": 0,
+   "inside_ok": 0,
+   "outside_checked": 82,
+   "outside_ok": 82,
+   "inside": [],
+   "outside": [
+    {
+     "address": "162 AMY STREET REGENTS PARK",
+     "dist_m": 19.6,
+     "ok": true
+    },
+    {
+     "address": "164 AMY STREET REGENTS PARK",
+     "dist_m": 25.8,
+     "ok": true
+    }
+   ],
+   "source": "register points within 80 m of the boundary"
+  },
+  "picture": "data/area_map_checks/chapter-11-6-potts-hill_11.6.png",
+  "refused": "shape IoU 0.0 < 0.85; address points: inside 0/0, outside 82/82; plan lot lines not on cadastre lot edges",
+  "precinct_id": "11.6",
+  "pages_keyed": "1-21 (whole chapter; Figure 1 Land Application Map p5)"
+ },
+ "11.2": {
+  "chapter": "chapter-11-2-undercliffe-bridge-precinct",
+  "route": "raster_land_road_mask_matched_to_cadastre",
+  "match_score": 0.576,
+  "m_per_px": 0.25,
+  "rotation_deg": 168.0,
+  "plan_line_to_lot_edge_median_m": 0.0,
+  "lots": [
+   6,
+   15
+  ],
+  "iou_vs_figure": 0.444,
+  "address_proof": {
+   "inside_checked": 0,
+   "inside_ok": 0,
+   "outside_checked": 22,
+   "outside_ok": 22,
+   "inside": [],
+   "outside": [
+    {
+     "address": "568 ILLAWARRA ROAD MARRICKVILLE",
+     "dist_m": 25.9,
+     "ok": true
+    },
+    {
+     "address": "562A ILLAWARRA ROAD MARRICKVILLE",
+     "dist_m": 37.3,
+     "ok": true
+    }
+   ],
+   "source": "register points within 80 m of the boundary"
+  },
+  "picture": "data/area_map_checks/chapter-11-2-undercliffe-bridge-precinct_11.2.png",
+  "refused": "shape IoU 0.444 < 0.85; address points: inside 0/0, outside 22/22",
+  "precinct_id": "11.2",
+  "pages_keyed": "1-5 (Figure 1a site boundary p4; hidden rules on p3-4)"
+ }
+}

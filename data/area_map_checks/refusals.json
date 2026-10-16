@@ -1,0 +1,30 @@
+{
+ "_about": "Targets with no candidate outline, and why. Measured 2026-10-17 by scripts/fit_area_maps.py (see candidates_report.json for the targets that were fitted) or by reading the chapter's own figure. Nothing here is loaded and no rule is keyed.",
+ "refused": {
+  "canterbury_bankstown/chapter-7-3-city-east": {
+   "hidden_rules": 236,
+   "reason": "Every section's Land Application / structure plan (Figures 2a, 4a, 5a, 6a, 7a, 9a, 10a, 11a, 12a) is a low-resolution AERIAL PHOTOGRAPH (385-1,326 px wide) with the plan area as a red dash-dot line and lot lines drawn only inside the plan. Section 6 (Earlwood) is printed rotated 90 degrees. There is no road-colour basemap for fit_cb_raster_centres.py (it needs white roads on grey) and no printed scale, so a fit needs hand-read control points good to about 5 m; a person reading junctions off a photo cannot give that, and an outline off by 20 m fails the 80%-inside lot snap. Not attempted beyond reading all nine figures.",
+   "pages_by_section": {"2 Belfield": "6-8", "4 Canterbury": "9-13", "5 Croydon Park": "14-16", "6 Earlwood": "17-19", "7 Hurlstone Park": "20-22", "9 Narwee": "23-25", "10 Punchbowl": "26-31", "11 Roselands": "32-35", "12 Wiley Park": "36-38", "13 Lanes": "39"}
+  },
+  "canterbury_bankstown/chapter-11-14-riverwood-estate": {
+   "hidden_rules": 218,
+   "reason": "Already refused twice (fit_site_plans: IoU 0.773 and 0.73 with lots 400-402//DP221230). Figure 1 is an aerial with the Stage 1 site as a light-blue dashed line; Stage 1 has been redeveloped since the plan, so the current cadastre has no lot edges on that line. Needs the Stage 1 subdivision plan, not another fit. Not re-run."
+  },
+  "canterbury_bankstown/chapter-8-2-canterbury-road": {
+   "hidden_rules": 161,
+   "reason": "The chapter has NO land map: Figures 2a-2e are artist impressions and road cross-sections, p4-5 define the land by precinct names, LEP zones (E1, E3 'Area 9' on the Special Provisions Map). There is no figure outline to score an IoU against, so no candidate can pass the stated test. A corridor outline would have to come from the LEP Area 9 polygon (Local_Provisions/570 per the feat/lane-cb notes) and is a different, un-scored route."
+  },
+  "canterbury_bankstown/chapter-8-3-hume-highway": {
+   "hidden_rules": 55,
+   "reason": "p4-9 (Sections 1-3) describe the whole corridor (Figure 2a precinct plan names seven precincts, only Rookwood Village and Greenacre Motor Alley are in this chapter) -- no single site to outline. Sections 5 (139-159 Hume Highway, p15-16) and 7 (225-243A Hume Highway, 112 Northcote Rd, 24 Hillcrest Ave, p34-35): Figures 5a/7a are schematic diagrams with dimensions, not maps. Address route: the register holds 135, 155, 159 Hume Hwy but NOT 139 (a named range end); for Section 7 it holds 225 and 243A but not 112 Northcote Rd (110 only) or 24 Hillcrest Ave (22 only), so the named-number proof fails. Earlier FFT fits refused (5.5: IoU 0.52; 5.7: no lot inside). Section 8 (315 Hume Hwy) was accepted earlier (8.3.8, IoU 0.987) and is not in the hidden count."
+  },
+  "canterbury_bankstown/chapter-6-3-campsie-town-centre": {
+   "hidden_rules": 42,
+   "reason": "Figure 2a is a tall AERIAL structure plan (491 x 1400 px) with the plan area as a red dash-dot line; no printed scale and no lot lines. Same barrier as 7.3: control points read off a photograph cannot reach the 5 m the lot snap needs. Not attempted."
+  },
+  "canterbury_bankstown/chapter-11-6-potts-hill": {
+   "hidden_rules": 136,
+   "reason": "Figure 1 is a clean coloured subdivision plan. Template match of its lot lines against the cadastre (scale 0.4-1.6 m/px, north up) gave no good line fit (best plan-line-to-lot-edge median 8.4 m, 23% of lines within 3 m, rotation 6.9 deg, scale at the search edge; the first run, scale 0.68, scored IoU 0.50). The second run's picture (data/area_map_checks/chapter-11-6-potts-hill_11.6.png) shows the plan outline sitting on the old reservoir ground: left edge along the road, foot along the road beside the Brunker Road end, and it encloses NO cadastre lots and no register address -- the subdivided lots drawn in the plan do not exist in the NSW cadastre (the ground is still one large lot). So there is no lot to outline and no address that the 136 rules could reach; the placement itself is not proven (plan lines do not sit on lot edges). Refused."
+  }
+ }
+}
