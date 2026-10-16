@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Audit run5 (2026-10-16) found a Leichhardt Part G site rule (Jane Street, Balmain) served to 118 Louisa Rd Birchgrove: 31 Part G rules for three named sites were left on the generic layer. Withheld under the user's 2026-10-15 rule. The hide script's dry run also wanted to un-key the 49 Warringah G1 rows keyed to Dee Why in #1296; it now leaves every precinct-layer row alone.",
-  "commit_hash": "73f0d10a",
+  "commit_hash": "166d6b9e",
   "files": [
     "data/chapter_scope/not_covered_2026-10-15.json",
     "scripts/hide_unmapped_area_rules.py"
