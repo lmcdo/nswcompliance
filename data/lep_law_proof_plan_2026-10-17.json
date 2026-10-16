@@ -1,0 +1,3987 @@
+{
+ "generated": "2026-10-17",
+ "scope": "registry_lep",
+ "set": {
+  "citation_status": "proven"
+ },
+ "note": "Registry-listed LEP rows proven verbatim (>= 8 words) after the state_law_proof2 normaliser. Only citation_status (+ source path/checked_at) is written. Apply needs --include-registry-lep.",
+ "manifest": {
+  "epi-2022-0457": {
+   "file": "epi-2022-0457_2026-10-17.html",
+   "sha256": "d11176642a41431f403f2f8ef0c3199897c44775f8ede70dd1b46fdc60c03d93",
+   "bytes": 2396653,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457"
+  }
+ },
+ "rows": [
+  {
+   "id": 7648,
+   "md5": "a3bffe7c40eb606f5548fda4aab13be0",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 32"
+  },
+  {
+   "id": 7649,
+   "md5": "20c59c40d8f36088eddf79795d9aa3e6",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 32"
+  },
+  {
+   "id": 7652,
+   "md5": "854d8963f376dbc52eaaa59e13df5399",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 33"
+  },
+  {
+   "id": 7655,
+   "md5": "beb970c2aba24ae218a205c57c0ac30c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 37"
+  },
+  {
+   "id": 7656,
+   "md5": "b0ad82f465d90baf6a9c000c30d159c7",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 38"
+  },
+  {
+   "id": 7678,
+   "md5": "8f8c33b72846452037ff688e7e89e6d2",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 7687,
+   "md5": "b299d9107606495e53d95a7cad501bc8",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 51"
+  },
+  {
+   "id": 7691,
+   "md5": "de58928e599c2fa8502e61cf47b4120a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 8013,
+   "md5": "3d4690ca8f2b3ff2a649d50912ea3aef",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 8015,
+   "md5": "2098bc89a93820a0f9084a3ac909d9d5",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 8053,
+   "md5": "7aa418b8d5e13b7a753be830d9179bad",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 8069,
+   "md5": "4727bb4590de912b73e4a0ee97ade725",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 8072,
+   "md5": "5a430f56bc96350fdad73f9212f1b83e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 8091,
+   "md5": "dd23995e34d74bee7e17b6b3e58d6acb",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 8093,
+   "md5": "fe1a98357ed7487b3990856ba2306f01",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 8098,
+   "md5": "b5c19b3a00f2ceab04a976470ac766f1",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 8104,
+   "md5": "77392b5672ccca0cd0cb3c53abbae579",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 8111,
+   "md5": "22273d0b4a5712aba4eebf3d9a0a41a9",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 8444,
+   "md5": "85749aee410565f7bdc715e5f0731231",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 8445,
+   "md5": "3ef64494d4ac7dc49803116443e3c4eb",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 1"
+  },
+  {
+   "id": 8447,
+   "md5": "b60158dc8854c5ed7912750e589a8d4b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 8448,
+   "md5": "099d03babf177d27f7ce060aff498bac",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 3"
+  },
+  {
+   "id": 8449,
+   "md5": "a62a7a037e12aa3a99534cc60b1e364f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 4"
+  },
+  {
+   "id": 8454,
+   "md5": "115ee7d10bea6436ac9570ea74d8abc2",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 8455,
+   "md5": "2fe3f01e824cdabbcf8976ea615bbd96",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 3"
+  },
+  {
+   "id": 8456,
+   "md5": "81019c09ffe735ab65857ea1d79da472",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 4"
+  },
+  {
+   "id": 8472,
+   "md5": "0407ce9323445112a9b99e04bc3327b7",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 8475,
+   "md5": "49972b26628c0d20a1ee84a9ed67fdb5",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 8501,
+   "md5": "e37f8fa6812378d0631b4c17f8d97fe9",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 8536,
+   "md5": "3fb63d0363d07bc8aec004b697b844cb",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 8538,
+   "md5": "141d87b2cd9bb57caaa65c934e5aa971",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 3"
+  },
+  {
+   "id": 8539,
+   "md5": "a8a3285918ec1de363ca0ba9313c5c0d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 4"
+  },
+  {
+   "id": 8540,
+   "md5": "891895323f379006d7429c7e1bd89b00",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.21"
+  },
+  {
+   "id": 8541,
+   "md5": "79ce1ba265b42a3bad22641d989dbc6c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.22"
+  },
+  {
+   "id": 8543,
+   "md5": "348c1cd0f34fe2799a183ee7fd61354b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.22"
+  },
+  {
+   "id": 8545,
+   "md5": "86b6e8d8882a676c59459bde237366f9",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.2"
+  },
+  {
+   "id": 8546,
+   "md5": "36c512f868e0eae7d89c9a9cb8bb622f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.3"
+  },
+  {
+   "id": 8547,
+   "md5": "edfbf2981c7844836355e711d1ec7008",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.4"
+  },
+  {
+   "id": 8552,
+   "md5": "11fc8bc67bba79f547025fad36c95945",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.7"
+  },
+  {
+   "id": 8553,
+   "md5": "7e845d27c48527a0057a72ad5d4e7728",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.8"
+  },
+  {
+   "id": 8554,
+   "md5": "cb88f3e9c9867781359dbfdd721b59b4",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.9"
+  },
+  {
+   "id": 8555,
+   "md5": "71e107090389b0bb05901e9a742708fe",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.10"
+  },
+  {
+   "id": 8556,
+   "md5": "4bf2bb6838924137b5e3aa7e2ba6c2bf",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.11"
+  },
+  {
+   "id": 8560,
+   "md5": "9438a90dd78c98ccc28a954270a68149",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.10"
+  },
+  {
+   "id": 8593,
+   "md5": "1db4386ef585f5c358d17bbdf084da83",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.33"
+  },
+  {
+   "id": 8594,
+   "md5": "7733edd8b9046ec7ad6e3843db4c6d45",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.33"
+  },
+  {
+   "id": 8595,
+   "md5": "b504dc7d44aff81c954e5c62da2ffe4e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.33"
+  },
+  {
+   "id": 8599,
+   "md5": "50883510ab011a2b0b2b483a7033b0d1",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.2"
+  },
+  {
+   "id": 8604,
+   "md5": "5e6a146f78d80be4a8b361bed22a34bf",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.4"
+  },
+  {
+   "id": 8605,
+   "md5": "a64b3e32c5e4190f91f52079dca6cf74",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.4"
+  },
+  {
+   "id": 8606,
+   "md5": "28543406535d79346368e1aeaa7bbee1",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.4"
+  },
+  {
+   "id": 8607,
+   "md5": "4d7c4a45c080f6af735170d44a33a184",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.4"
+  },
+  {
+   "id": 8609,
+   "md5": "16df9f4f308b2227ef5c728af6a05d4a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.5"
+  },
+  {
+   "id": 8610,
+   "md5": "5a1a50b6491d0b686b825c5e0d919561",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.5"
+  },
+  {
+   "id": 8623,
+   "md5": "26ed7fa80b68433d2d9353a77e07d6bc",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 1"
+  },
+  {
+   "id": 8624,
+   "md5": "1cfbaf5bd0942c384b38aed8958788ca",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 2"
+  },
+  {
+   "id": 8625,
+   "md5": "7072fe34bbfe876c799ffb7b65e3a330",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 3"
+  },
+  {
+   "id": 8626,
+   "md5": "3e66fbdada28d926b999e2566121ff62",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 4"
+  },
+  {
+   "id": 8627,
+   "md5": "9e102b98e0cd79484a85af7548481e0a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 5"
+  },
+  {
+   "id": 8628,
+   "md5": "8cab185fa35e5ba9934e9fe218523b31",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 6"
+  },
+  {
+   "id": 8629,
+   "md5": "e99ef4c482a56110db4c07cab7def4e8",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 7"
+  },
+  {
+   "id": 8630,
+   "md5": "2a5972c7cb28d9b8d159256bbfefc1df",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 8"
+  },
+  {
+   "id": 8631,
+   "md5": "ed928f366e5aec8372ef70e43842cfa5",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 9"
+  },
+  {
+   "id": 8632,
+   "md5": "2fcb97cc81fff3e3896691fd898b4717",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 10"
+  },
+  {
+   "id": 8635,
+   "md5": "79756050d02665816b06a95689b7264d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 14"
+  },
+  {
+   "id": 8636,
+   "md5": "8e67fabcb68fb09dde5f2097377a7bc9",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 15"
+  },
+  {
+   "id": 8639,
+   "md5": "14290994dad950486be58ab29bf89db4",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.21"
+  },
+  {
+   "id": 8641,
+   "md5": "27eb26bbf356996ccb3e4d97a2d8860b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.1"
+  },
+  {
+   "id": 8642,
+   "md5": "e09a8c71d7d565ec3cf9770371c29f70",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.2"
+  },
+  {
+   "id": 8643,
+   "md5": "c4795bae9627feb37b009b11b6c57c6d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.3"
+  },
+  {
+   "id": 8644,
+   "md5": "eb3e1f908b3d2ce562fecc0e19ff3b9b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.4"
+  },
+  {
+   "id": 8646,
+   "md5": "c39253a3e806e3b20a22c184d4bdf63f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.5"
+  },
+  {
+   "id": 8647,
+   "md5": "3c21310241f20ee0604a17bcc044fc22",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.7"
+  },
+  {
+   "id": 8650,
+   "md5": "938ef834750df00cdba5466ccde58bc0",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.6"
+  },
+  {
+   "id": 8651,
+   "md5": "11ce38cb9915054598121fd382bb2d62",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.9"
+  },
+  {
+   "id": 8652,
+   "md5": "98309d5a5611475614bd45d9033363fa",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.10"
+  },
+  {
+   "id": 8653,
+   "md5": "8dd17d2612d00d7d66ce0ce23dcd5bd9",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.11"
+  },
+  {
+   "id": 8659,
+   "md5": "6fb38a27c0315475467a7e23b755e5ff",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.16"
+  },
+  {
+   "id": 8660,
+   "md5": "b03a666aa389a815d5b55a32512e75f1",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 8662,
+   "md5": "18541adf9b3601d7aecced0f77f5945e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.21"
+  },
+  {
+   "id": 8665,
+   "md5": "fbafceb9e814ac4d6656014ff2746f8c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.24"
+  },
+  {
+   "id": 8667,
+   "md5": "b0258e5407797d86c3a33659753a4451",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.25"
+  },
+  {
+   "id": 8669,
+   "md5": "d276ccadd3f1283d0c717aee84b1860e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.26"
+  },
+  {
+   "id": 8674,
+   "md5": "99f2e14865c019e85208f045a12680dc",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 8.2"
+  },
+  {
+   "id": 8681,
+   "md5": "c7703fe7093c47479246d1069f941631",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.2"
+  },
+  {
+   "id": 8692,
+   "md5": "1343107c20f1463a00ba8ba594b9ba50",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.16"
+  },
+  {
+   "id": 8732,
+   "md5": "78d0e245dd0c03a3cb37147b28008fc9",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.1"
+  },
+  {
+   "id": 8741,
+   "md5": "7dffa11ba9e028f7741a772e0668ce08",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.9"
+  },
+  {
+   "id": 8762,
+   "md5": "2388d25de7aecff4e39bea7b8c22f21d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.26"
+  },
+  {
+   "id": 8765,
+   "md5": "9534dab64daa69aff6f9bf4dba1f31cb",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.25"
+  },
+  {
+   "id": 8769,
+   "md5": "e9caa50e3f305d0ceee23c21a7608e31",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.4"
+  },
+  {
+   "id": 8771,
+   "md5": "c9f126f8a68fa5441864d704487a6fb1",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 14"
+  },
+  {
+   "id": 8772,
+   "md5": "4f622bf25fb475dd2526c09fdd717996",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 9093,
+   "md5": "332dcbd8c9d66b623839737c96f29913",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3A"
+  },
+  {
+   "id": 9094,
+   "md5": "34e2277960ff85240fa99d1ddfc4fabe",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3B"
+  },
+  {
+   "id": 9097,
+   "md5": "2a7d55e6ca52c493f3adc2a4503ecac8",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4A"
+  },
+  {
+   "id": 9191,
+   "md5": "452c09565d3499eae5a3ae1a12db1c13",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 2.4"
+  },
+  {
+   "id": 9192,
+   "md5": "48ae51865799e147b56c83347438c7d4",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 2.5"
+  },
+  {
+   "id": 9195,
+   "md5": "ee3b6622885b7e882c9eb7237038c7a0",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 2.8"
+  },
+  {
+   "id": 9199,
+   "md5": "eee7a7a7649d0671a3a87c1bed0d1fd8",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 2.9"
+  },
+  {
+   "id": 9210,
+   "md5": "4c8adb0f683fd19969f5197549e9f9db",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3"
+  },
+  {
+   "id": 9211,
+   "md5": "30f4c1a6ef194f0f92862dea8ff42cb2",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4"
+  },
+  {
+   "id": 9215,
+   "md5": "3e368d8e1504a89c183c159c1050e1c7",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3"
+  },
+  {
+   "id": 9216,
+   "md5": "7f93935567bfd30a4f93335a64c81560",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4"
+  },
+  {
+   "id": 9219,
+   "md5": "96b926217a66d7abfd0a8887739becb6",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3"
+  },
+  {
+   "id": 9224,
+   "md5": "8656e56689208f92b031962dbb2845fb",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3"
+  },
+  {
+   "id": 9225,
+   "md5": "171b9e1338caf172aa6e2d542d6d53fc",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4"
+  },
+  {
+   "id": 9227,
+   "md5": "0451c482d8a5c47cf6223a387e595695",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3"
+  },
+  {
+   "id": 9245,
+   "md5": "ecab9942d4c73a69ad40600818934d0e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3.1"
+  },
+  {
+   "id": 9246,
+   "md5": "fcbc4e4bc11940915eefa4cd2e7e3412",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4"
+  },
+  {
+   "id": 9247,
+   "md5": "38d4cc5aac840c57887c3aea217f4a5f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4A"
+  },
+  {
+   "id": 9248,
+   "md5": "634c468108ac0adbd31c3484b4b5341d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4"
+  },
+  {
+   "id": 9270,
+   "md5": "d83591b89d1bce0e276e7feaf365452b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "1.9A"
+  },
+  {
+   "id": 9271,
+   "md5": "748731959faa4fa5a7a03f3ea0f8e7e6",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 2.8"
+  },
+  {
+   "id": 9272,
+   "md5": "0c17c9625c80bef7ed35ea8c07d5f2a3",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 2.4"
+  },
+  {
+   "id": 9300,
+   "md5": "7b61c2b98f84b3c2000229353cc137fa",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 1"
+  },
+  {
+   "id": 9321,
+   "md5": "ec559e57d3785976782fbd6026e43f86",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3.1"
+  },
+  {
+   "id": 9322,
+   "md5": "fbd564a2bba6dedd83bdb3ef7a58ff71",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4"
+  },
+  {
+   "id": 9323,
+   "md5": "cf784221dfe3927fbffe0b69cc891cff",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4A"
+  },
+  {
+   "id": 9324,
+   "md5": "e7b5199c9f3bfa40f748ce2d1651aa18",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.5"
+  },
+  {
+   "id": 9327,
+   "md5": "44c6adf48f0efbdaf12aeadf8850caed",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.1A"
+  },
+  {
+   "id": 9328,
+   "md5": "046a45e44a9998ba8d0c5844a702dfa7",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.2"
+  },
+  {
+   "id": 9329,
+   "md5": "a005ee063a123fa984756b3933d2fa79",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.3"
+  },
+  {
+   "id": 9332,
+   "md5": "f5380d67634ca36945ffb84e88452f14",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 2.6"
+  },
+  {
+   "id": 9334,
+   "md5": "919a4f401e6009a16b11be40642d296b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4"
+  },
+  {
+   "id": 9369,
+   "md5": "ff809e581ad78541fcd5d48b7b2ba048",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4"
+  },
+  {
+   "id": 9372,
+   "md5": "c0b28e4e9940fb3a9dc05fa23beb8b6e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4"
+  },
+  {
+   "id": 9380,
+   "md5": "ca658f594eb7fb368d39a098892f893f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.2"
+  },
+  {
+   "id": 9388,
+   "md5": "b48b9314cd104aeb257186a2af13e906",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4A"
+  },
+  {
+   "id": 22669,
+   "md5": "a954a53cb4522ecaaa97517d45a25024",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "1.7"
+  },
+  {
+   "id": 22671,
+   "md5": "93a76c4696944af1a78735f6b98a3e9d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "1.7"
+  },
+  {
+   "id": 22674,
+   "md5": "40ccd86ecbc0f35321b2aef24c0094dd",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "1.8"
+  },
+  {
+   "id": 22678,
+   "md5": "1c98d48dbd2f0ac268b30f6fc4a860cd",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "1.8A"
+  },
+  {
+   "id": 22679,
+   "md5": "5e27c87d6f6d168e745e342d642056e0",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "1.8A"
+  },
+  {
+   "id": 22682,
+   "md5": "367c7219e4d20927673416e9390fe8c3",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "1.9A"
+  },
+  {
+   "id": 22684,
+   "md5": "99a44f28ae440460edee2406d83c81cb",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "2.1"
+  },
+  {
+   "id": 22689,
+   "md5": "cdb52e35481b1af6c10b3fa7d361b868",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "2.3"
+  },
+  {
+   "id": 22690,
+   "md5": "1ef0078862be8ab0140435cd3c1bdf69",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "2.3"
+  },
+  {
+   "id": 22694,
+   "md5": "cdbee859182aa74571ccc7afa8f299a7",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "2.3"
+  },
+  {
+   "id": 22697,
+   "md5": "823904dad5d7f48b290ab9ba4daec146",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 2.4"
+  },
+  {
+   "id": 22704,
+   "md5": "9d633a0fdf1d0b8e4a77d41d6bc0d817",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 2.6"
+  },
+  {
+   "id": 22708,
+   "md5": "78a26755338c574b304a99de7d3569c5",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 2.8"
+  },
+  {
+   "id": 22709,
+   "md5": "9f8486d5793b5c97b609ee14c9205091",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 2.8"
+  },
+  {
+   "id": 22712,
+   "md5": "33d4781f9e20593589b0582ab7650f23",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 2.9"
+  },
+  {
+   "id": 22743,
+   "md5": "f25d842040410b51a33f9a87d3e6f01e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 1"
+  },
+  {
+   "id": 22753,
+   "md5": "752b7788b6ce47453502fef2687c0de1",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3"
+  },
+  {
+   "id": 22755,
+   "md5": "ef195bb50eed100d3d0be81fd6a79a86",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3"
+  },
+  {
+   "id": 22774,
+   "md5": "763675ea4e767a61a1a6d336cf237b9b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3.1"
+  },
+  {
+   "id": 22776,
+   "md5": "77328bc350e7298220870791dca7ca7c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3.1"
+  },
+  {
+   "id": 22777,
+   "md5": "8f37894d7f7dfd23fd19d5d48ef37c04",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3.1"
+  },
+  {
+   "id": 22778,
+   "md5": "3e0ceecb8abc98ad92e9897eaf2cc1ad",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3.1"
+  },
+  {
+   "id": 22781,
+   "md5": "ddf9823bf312ef0485e6dd76d2318298",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3.1"
+  },
+  {
+   "id": 22786,
+   "md5": "bf0ae9da4bc30750aa3ec6b5085f9e54",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3.2"
+  },
+  {
+   "id": 22790,
+   "md5": "4e4958096f6339601dbaa85ea03d62cb",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3.2"
+  },
+  {
+   "id": 22791,
+   "md5": "4ee5f693d62b8236028f5abf016fdef5",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3.2"
+  },
+  {
+   "id": 22794,
+   "md5": "5a67ae209ecef1490bf5ffcdaaa74b64",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3.3"
+  },
+  {
+   "id": 22796,
+   "md5": "778065d00c415e067a1e0c750b0d0a0f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 3.3"
+  },
+  {
+   "id": 22799,
+   "md5": "ea226f2ed421d20718916e2c11b14a2a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.1"
+  },
+  {
+   "id": 22803,
+   "md5": "4f44f8b54b5859df7a5ff7a30ab22446",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.1A"
+  },
+  {
+   "id": 22804,
+   "md5": "62f7cc79de6d177629e7d6d295c81195",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.1A"
+  },
+  {
+   "id": 22805,
+   "md5": "976624f406c0133d0c8f8a64ca5ef92b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.1A"
+  },
+  {
+   "id": 22807,
+   "md5": "72d80bfaaaae7b60a5fd947a729e690e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.1A"
+  },
+  {
+   "id": 22808,
+   "md5": "d52a5fdb69884ae82c8b4d1e9e8f1d7d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3"
+  },
+  {
+   "id": 22809,
+   "md5": "8522ae505fdfe12244706ad7d07dd0f3",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3"
+  },
+  {
+   "id": 22810,
+   "md5": "a1fccd304f7643151b27eb2cc7db42fa",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3"
+  },
+  {
+   "id": 22811,
+   "md5": "c544cbdb7eecd913b06369fffcf6bc98",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3"
+  },
+  {
+   "id": 22812,
+   "md5": "2e5618ad7286ac16b2325352ad21762b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3A"
+  },
+  {
+   "id": 22813,
+   "md5": "d37f3bf1593d8d7eb28d1e31fb43d357",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3A"
+  },
+  {
+   "id": 22814,
+   "md5": "3c8b96cf78ee051021614b196ab5938d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3A"
+  },
+  {
+   "id": 22816,
+   "md5": "6403aabbb77b1f960e89e0c22bbbe7a4",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3A"
+  },
+  {
+   "id": 22817,
+   "md5": "85a0e7ee856865556457b2d717c9d214",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3A"
+  },
+  {
+   "id": 22818,
+   "md5": "4d26512679328d6d4dd4748ccce6a195",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3B"
+  },
+  {
+   "id": 22819,
+   "md5": "59fe902ff08c18bace806c039716eeb4",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3B"
+  },
+  {
+   "id": 22820,
+   "md5": "88789ee59709a7b611f00dea7b01ebf8",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3B"
+  },
+  {
+   "id": 22823,
+   "md5": "af967542927f8544a3a86ac6dbf3004f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3C"
+  },
+  {
+   "id": 22825,
+   "md5": "e24c1409b43ebe1c487fe8cf82ece7f8",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3C"
+  },
+  {
+   "id": 22826,
+   "md5": "2287745a74f779bbb0ec9a183d20a378",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.3C"
+  },
+  {
+   "id": 22828,
+   "md5": "6ff60cccebc1dd9e93d516f25aa2badf",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4"
+  },
+  {
+   "id": 22829,
+   "md5": "65d28787792385909c72849f314168fa",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4"
+  },
+  {
+   "id": 22830,
+   "md5": "63f32e1c4855521256f3ccc7d0e987a1",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4"
+  },
+  {
+   "id": 22831,
+   "md5": "1d608f5a5b62f7a27b02edf6159e806d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4"
+  },
+  {
+   "id": 22833,
+   "md5": "3b442795b9e8ff20c73ff8b9cb6b245c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4"
+  },
+  {
+   "id": 22834,
+   "md5": "ce38e25cc93b9dc49fd50e5bdcf9eaeb",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4"
+  },
+  {
+   "id": 22835,
+   "md5": "a619880f4c8e45162cdb2e9de5cc767f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4A"
+  },
+  {
+   "id": 22836,
+   "md5": "75cfc0ebc0dfe44c66fc2bbdb13ee5a7",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4A"
+  },
+  {
+   "id": 22838,
+   "md5": "a00d53912e4adb52168010f278c783a4",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.4A"
+  },
+  {
+   "id": 22841,
+   "md5": "7e09031e11e78f6eecb772215a01e162",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.5"
+  },
+  {
+   "id": 22842,
+   "md5": "42d6c50d8ef67d1785fa6d531c6e334e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.5"
+  },
+  {
+   "id": 22843,
+   "md5": "411471f61695a805995b8e1904059dda",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.5"
+  },
+  {
+   "id": 22844,
+   "md5": "cd533ba2a3ba6fc326bfc7676207fbab",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.5"
+  },
+  {
+   "id": 22846,
+   "md5": "8ec2319c3d7d4633a51f749a7b8c526f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.5"
+  },
+  {
+   "id": 22847,
+   "md5": "fcc3adf312a8bf84a989ab8b3902337d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.5"
+  },
+  {
+   "id": 22848,
+   "md5": "ce687630b54113d7e3b075b8eb1d9b9b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.5"
+  },
+  {
+   "id": 22849,
+   "md5": "91d9eeb239a48969f0f2aa2c9612a759",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.5"
+  },
+  {
+   "id": 22850,
+   "md5": "28277e752959a29235b8b30ee36f34a6",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.5"
+  },
+  {
+   "id": 22853,
+   "md5": "e6aa6d2dfc2f33d9def141c6de4c084a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.5"
+  },
+  {
+   "id": 22857,
+   "md5": "806144328ed1bcbe13eae42b9541366a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.6"
+  },
+  {
+   "id": 22860,
+   "md5": "02162c2e5433d4d3b9b11f4c174a8e30",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.6"
+  },
+  {
+   "id": 22861,
+   "md5": "cfc773af3919537b1fc50295f67280f6",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.6"
+  },
+  {
+   "id": 22863,
+   "md5": "2c960ec5a7aedc8a2de29c7ea5497e93",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 4.6"
+  },
+  {
+   "id": 22869,
+   "md5": "bca0394c9c8722560560bf11cd9dd50c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.1"
+  },
+  {
+   "id": 22876,
+   "md5": "47dc975c851cba28c5f974344c2ad2cb",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.1"
+  },
+  {
+   "id": 22878,
+   "md5": "299031c2dac78e8a50dda31d305d6e99",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.1A"
+  },
+  {
+   "id": 22880,
+   "md5": "3bd9513b6b3608f6f9bf81a0e33f3fd1",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.1A"
+  },
+  {
+   "id": 22882,
+   "md5": "17535d75920f711a77ffef279e3865f4",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.2"
+  },
+  {
+   "id": 22891,
+   "md5": "26beaa305cb3cb353d3c0081c289ee6e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.3"
+  },
+  {
+   "id": 22892,
+   "md5": "86b5020e96ead9a35b013b95a7b44fd0",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.3"
+  },
+  {
+   "id": 22894,
+   "md5": "4b7340382b4da45e824f648f303b38fa",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.3"
+  },
+  {
+   "id": 22898,
+   "md5": "cd947a7879f67ce8cc2e6b4039b52d7d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.4"
+  },
+  {
+   "id": 22900,
+   "md5": "21a8c8563ebde1788af0d4bddbedf031",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.4"
+  },
+  {
+   "id": 22901,
+   "md5": "523fddb97e80350493943627b83bee42",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.4"
+  },
+  {
+   "id": 22902,
+   "md5": "6bb29566bb7a6383e04d80ee976de26e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.4"
+  },
+  {
+   "id": 22903,
+   "md5": "5901a9692de7bb267e12c0a519992d51",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.4"
+  },
+  {
+   "id": 22904,
+   "md5": "235d6f97b938b69e2cb968756115d2de",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.4"
+  },
+  {
+   "id": 22905,
+   "md5": "fa0c32f4258966d0729c838a1f54773f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.4"
+  },
+  {
+   "id": 22906,
+   "md5": "c3eec4279803e12f2e510d6bf0267f23",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.4"
+  },
+  {
+   "id": 22907,
+   "md5": "79c31fb25388581c1bae3a477ee1097a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.4"
+  },
+  {
+   "id": 22908,
+   "md5": "61ab01ef5c693f71bef6855941987907",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.4"
+  },
+  {
+   "id": 22909,
+   "md5": "28ea544757a43aae2b5c06f2720314ba",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.4"
+  },
+  {
+   "id": 22911,
+   "md5": "f620067bb77ac410228815815da9f26c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.4"
+  },
+  {
+   "id": 22914,
+   "md5": "cb44e91b32ddbdf49a037c8ab7b2acf1",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.7"
+  },
+  {
+   "id": 22922,
+   "md5": "b32d7c56bd2e08b7218b079cd07e59b1",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.8"
+  },
+  {
+   "id": 22925,
+   "md5": "e7c473c943a4aee0b3d0b7d223687e40",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.9"
+  },
+  {
+   "id": 22926,
+   "md5": "500e0f8d37ec59f30f99801c4c3bb332",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.9"
+  },
+  {
+   "id": 22932,
+   "md5": "fded0a1b425208f98c99b0b1d2a3365c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.10"
+  },
+  {
+   "id": 23233,
+   "md5": "f5b1ca108a94af15a7dd57d1fdccad48",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.10"
+  },
+  {
+   "id": 23237,
+   "md5": "d9c68ef100d7f29748f0236f651fa5aa",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.10"
+  },
+  {
+   "id": 23239,
+   "md5": "92c1829a768da9294f597687634ad922",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.10"
+  },
+  {
+   "id": 23244,
+   "md5": "5e859fa70701ae36ebd52d34bfd67a59",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.10"
+  },
+  {
+   "id": 23249,
+   "md5": "4003d534900e2cd569c35b57b895fc4f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.12"
+  },
+  {
+   "id": 23257,
+   "md5": "1f0e596558e67c7e702237c50c58aa7f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.19"
+  },
+  {
+   "id": 23260,
+   "md5": "f25c7338a4f5ed4b3407a370bc625a43",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.19"
+  },
+  {
+   "id": 23262,
+   "md5": "afcad5b1222c7808af0f8fb8dc422ebc",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.19"
+  },
+  {
+   "id": 23263,
+   "md5": "f510c8d5daeaad56d0cee04828e5418c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.19"
+  },
+  {
+   "id": 23264,
+   "md5": "d4a74737f9205b8b8ec963afa4429d96",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.19"
+  },
+  {
+   "id": 23266,
+   "md5": "ac8ec456bda6c266893943ed008655d7",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.19"
+  },
+  {
+   "id": 23269,
+   "md5": "3d6f3cb621ddf6f6061f386b44fd545e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.19"
+  },
+  {
+   "id": 23270,
+   "md5": "5c0c22cb7820c841dba1e7efbd9b870a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.19"
+  },
+  {
+   "id": 23276,
+   "md5": "942d88281e234e27feea5f908b9f8635",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.20"
+  },
+  {
+   "id": 23280,
+   "md5": "fa5e47a8730743bd5df1d68e5c3607d3",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.20"
+  },
+  {
+   "id": 23283,
+   "md5": "388f5fd7ea6bdafb9ec445bb6666471f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.21"
+  },
+  {
+   "id": 23285,
+   "md5": "bf116961ac7e9991364c11a6cbde9096",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.21"
+  },
+  {
+   "id": 23293,
+   "md5": "973cb2b94c796404ba3f794c135f02f3",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 5.22"
+  },
+  {
+   "id": 23301,
+   "md5": "cbf966e2c5ff404556b2e0d205b35f19",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.1"
+  },
+  {
+   "id": 23303,
+   "md5": "94521881c65b51c8f0ea289a58c933ba",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.1"
+  },
+  {
+   "id": 23304,
+   "md5": "15712149b315c4f2ad505c69205dc355",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.1"
+  },
+  {
+   "id": 23314,
+   "md5": "56434a2627276b446a6f3f939d9cf1df",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.2"
+  },
+  {
+   "id": 23317,
+   "md5": "56babbea1ffa5747a7f63f57d48f01fd",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.2"
+  },
+  {
+   "id": 23320,
+   "md5": "ba379fc099c157d6852a0cdcc33deae8",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.3"
+  },
+  {
+   "id": 23323,
+   "md5": "92ce9f7fb625585afff1f45704bffa61",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.3"
+  },
+  {
+   "id": 23324,
+   "md5": "d4c423bd4581763842e15c4940c41017",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.4"
+  },
+  {
+   "id": 23327,
+   "md5": "6adca3048e929d0be4d43feb5df80d3d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.4"
+  },
+  {
+   "id": 23332,
+   "md5": "c492bc6b4b7d6f270ab2a205a8c25853",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.5"
+  },
+  {
+   "id": 23334,
+   "md5": "d9281924d8299102894b1405e31dc586",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.5"
+  },
+  {
+   "id": 23336,
+   "md5": "bd292a35422ff99d739e7970c4e2870a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.5"
+  },
+  {
+   "id": 23337,
+   "md5": "efb688ab8aa3cb9d5827210d813b3722",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.5"
+  },
+  {
+   "id": 23338,
+   "md5": "3932806210d9ce2523e3ac19fd23f880",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.6"
+  },
+  {
+   "id": 23339,
+   "md5": "0fae4d39f2ad436ae799cd8e7f6eb193",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.6"
+  },
+  {
+   "id": 23341,
+   "md5": "19851eeb5a2d9a68ea6a5fd260b4806c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.6"
+  },
+  {
+   "id": 23342,
+   "md5": "dbfcaa7558e08a655b73939d194ab486",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.7"
+  },
+  {
+   "id": 23343,
+   "md5": "1e5c003cad6b904ee14fb7fb5e340136",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.7"
+  },
+  {
+   "id": 23348,
+   "md5": "c45dfca7b2823b238317d9a356973485",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.8"
+  },
+  {
+   "id": 23349,
+   "md5": "c43781138c6da24ca4c1cbcd36b0ae77",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.8"
+  },
+  {
+   "id": 23350,
+   "md5": "2a5832322c939c89460e329a823c5faa",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.8"
+  },
+  {
+   "id": 23352,
+   "md5": "c4adf16ee6d4637f8267cdea76fd4d1b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.8"
+  },
+  {
+   "id": 23353,
+   "md5": "1e04373b6bdb7bce90e45983edf2f460",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.9"
+  },
+  {
+   "id": 23357,
+   "md5": "6533392790d2a1550b0988424c92ff2c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.10"
+  },
+  {
+   "id": 23358,
+   "md5": "ffa0e86d8612812797e7e4f7916f1f2c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.10"
+  },
+  {
+   "id": 23359,
+   "md5": "cee49539d62c9b92c76f1c2aa9e120bf",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.10"
+  },
+  {
+   "id": 23360,
+   "md5": "a4cb49888e5d9631d1fcff07f092d2e9",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.10"
+  },
+  {
+   "id": 23362,
+   "md5": "a840e6253c153e3a48b3c6c0d86ef7ff",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.11"
+  },
+  {
+   "id": 23363,
+   "md5": "ecd7fcace840d2da65dabe8c18d14fde",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.11"
+  },
+  {
+   "id": 23364,
+   "md5": "9a291ee24f606378498b50d476aac39f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.11"
+  },
+  {
+   "id": 23365,
+   "md5": "697314c3bb13778ee56f7a157e801853",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.11"
+  },
+  {
+   "id": 23366,
+   "md5": "a6cab5178cd384a55a936ef38c3d24a2",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.11"
+  },
+  {
+   "id": 23371,
+   "md5": "a73dd58383630f244a691707b521b418",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.12"
+  },
+  {
+   "id": 23372,
+   "md5": "8a8d297e109f5de8b5ffa2cc509c3d32",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.12"
+  },
+  {
+   "id": 23373,
+   "md5": "87b5a7f6f18278645ce95fbe05d63960",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.12"
+  },
+  {
+   "id": 23374,
+   "md5": "acea4ecf39daacde58e7b0518b67d491",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.12"
+  },
+  {
+   "id": 23376,
+   "md5": "d8ca5cec040bd8c88ddf1f9e64ce9873",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.13"
+  },
+  {
+   "id": 23379,
+   "md5": "81c18c4d4d0016b582b72e3d1f14ae0c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.13"
+  },
+  {
+   "id": 23382,
+   "md5": "fcdb7ed5e1d95aba163853ceb951d618",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.14"
+  },
+  {
+   "id": 23385,
+   "md5": "c948fa7e1285842c611defe1d640c21a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23387,
+   "md5": "0fef8a47551a4da962b8fbdae778f3c4",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.14"
+  },
+  {
+   "id": 23389,
+   "md5": "ee7396704f87232c4f721901f86bf643",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.15"
+  },
+  {
+   "id": 23392,
+   "md5": "cb6f2cf156af1fd9971182cfe5f2da93",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.15"
+  },
+  {
+   "id": 23393,
+   "md5": "6d636d3e5a32194fc7f650028fbc4ca9",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23394,
+   "md5": "3e22b1b7204abb4852bfd2acbd79feb3",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.15"
+  },
+  {
+   "id": 23396,
+   "md5": "228750bcdf5fa9cbdb2c2524ca359496",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.15"
+  },
+  {
+   "id": 23398,
+   "md5": "960443413ee919a50d355a1652c24917",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.15"
+  },
+  {
+   "id": 23401,
+   "md5": "ee0167212e28d1c6515d9665a665a734",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.16"
+  },
+  {
+   "id": 23403,
+   "md5": "1f2d827538fbad1405cba0661fef9b52",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.16"
+  },
+  {
+   "id": 23404,
+   "md5": "5e0a53d8e5f8fdbd245da9ff224438b4",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.16"
+  },
+  {
+   "id": 23405,
+   "md5": "47d8b90211951fafdaac1c44cf713fc5",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.16"
+  },
+  {
+   "id": 23406,
+   "md5": "614f21bb2e1961041f1c19c6e51d214a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.16"
+  },
+  {
+   "id": 23408,
+   "md5": "b9cc8a0a236d6a2a28354beb938bb584",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.16"
+  },
+  {
+   "id": 23409,
+   "md5": "b9efa3b6b042400085dcddf586b307bf",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.16"
+  },
+  {
+   "id": 23410,
+   "md5": "adca9e1af10636793387e5fbd448061e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.16"
+  },
+  {
+   "id": 23411,
+   "md5": "6639716ee8b76ef8d86dd8be276d6849",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.16"
+  },
+  {
+   "id": 23414,
+   "md5": "0b8a5bf36cdfb6e5784b4a9f395df5ae",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.17"
+  },
+  {
+   "id": 23416,
+   "md5": "7849b43f593d97c0faf198953f7c712b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.17"
+  },
+  {
+   "id": 23417,
+   "md5": "5452cfb9b94d20c93590eae7d076e26b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.17"
+  },
+  {
+   "id": 23422,
+   "md5": "e9751600471fe480e539b39f5d4ea3b9",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.18"
+  },
+  {
+   "id": 23424,
+   "md5": "429c20de4fae3bbc513b138ef8c60cbf",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23425,
+   "md5": "b28afd44578e4abbac5da1cff904208f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.19"
+  },
+  {
+   "id": 23426,
+   "md5": "fe46a406944fbe6e64ac0bb828db075d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.19"
+  },
+  {
+   "id": 23427,
+   "md5": "171a6a818961e257d3469d93b7425a7e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.19"
+  },
+  {
+   "id": 23432,
+   "md5": "dc3d881100806b28113e990804c87710",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.20"
+  },
+  {
+   "id": 23434,
+   "md5": "49022671a52d658e259f3b98e7b75a22",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.20"
+  },
+  {
+   "id": 23435,
+   "md5": "3812b0698a091db181b43b932f7f1ed1",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.20"
+  },
+  {
+   "id": 23437,
+   "md5": "9f543f57bda231a3e4b66fdfbea7fc3d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.20"
+  },
+  {
+   "id": 23439,
+   "md5": "e2e40e6cd266e7346725bdf4ed80a0de",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.21"
+  },
+  {
+   "id": 23441,
+   "md5": "d491d0507dc1ce838bb56c0a044516c8",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.21"
+  },
+  {
+   "id": 23444,
+   "md5": "4399c572a5b7e5d00891ecbae7c63d8c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.22"
+  },
+  {
+   "id": 23447,
+   "md5": "7e8003c3bb31dc60ddf452187577d2f8",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.22"
+  },
+  {
+   "id": 23455,
+   "md5": "a6b64e1ce2597be30723d53b93684a30",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.25"
+  },
+  {
+   "id": 23457,
+   "md5": "19002095bb6fd59cd196218340463ee3",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.25"
+  },
+  {
+   "id": 23461,
+   "md5": "9a8e92a1e1b1bb7418613242c8f7fc1f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.25"
+  },
+  {
+   "id": 23463,
+   "md5": "3515073b22c701a1ce6766088373f630",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.25"
+  },
+  {
+   "id": 23468,
+   "md5": "708b7e3ad9ccf6954bacc70a72ea35c0",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.26"
+  },
+  {
+   "id": 23471,
+   "md5": "9954e6701a94224af52209f67f055820",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.26"
+  },
+  {
+   "id": 23472,
+   "md5": "ca9698a4b696bf090b8b093ab5c085e5",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.26"
+  },
+  {
+   "id": 23474,
+   "md5": "78f07c08f8345226b2db2a3fb419dfe2",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.26"
+  },
+  {
+   "id": 23475,
+   "md5": "b51ebb7801d0ee2e985f73ca2a312912",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.26"
+  },
+  {
+   "id": 23476,
+   "md5": "2f5a2d43007142f6b40c113582eedeb0",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.26"
+  },
+  {
+   "id": 23477,
+   "md5": "2207a9e91cb42974b2381b795de67e21",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.26"
+  },
+  {
+   "id": 23485,
+   "md5": "aab3620c2dbb6738aa53c8facf5e266e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.30"
+  },
+  {
+   "id": 23486,
+   "md5": "8f6e5d1826792e9b1b59174366e2c1fc",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23488,
+   "md5": "81263cf9c87d2ea07777062c413357b5",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.30"
+  },
+  {
+   "id": 23490,
+   "md5": "419b726da26d0c4d0574a1ae5e4c78d1",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.31"
+  },
+  {
+   "id": 23492,
+   "md5": "676cbf402a214ac9f79df800b31e5775",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.31"
+  },
+  {
+   "id": 23500,
+   "md5": "21ad3b2d871b880cb0a336044fd670ec",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.31"
+  },
+  {
+   "id": 23504,
+   "md5": "4a20ac6b96d96289284b86bfa1f467a2",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.33"
+  },
+  {
+   "id": 23506,
+   "md5": "8015fe49c4dfdefe9fdd730d7fcafaa4",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.33"
+  },
+  {
+   "id": 23507,
+   "md5": "3de939cef2a4ecce9cacbef08ba23940",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.33"
+  },
+  {
+   "id": 23508,
+   "md5": "60afea42e08dfec2fa3e6977b37679b7",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.33"
+  },
+  {
+   "id": 23514,
+   "md5": "0994a374832e86a877d491cd8612fb3c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 6.34"
+  },
+  {
+   "id": 23520,
+   "md5": "91c54114bbec4c3edefe7468a3c08d3c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.2"
+  },
+  {
+   "id": 23521,
+   "md5": "e041d97d65c46814870745b0007a3203",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.2"
+  },
+  {
+   "id": 23522,
+   "md5": "d774341994ce74c5f5c4c26089589b8b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.2"
+  },
+  {
+   "id": 23523,
+   "md5": "ed272f617d5ca0b634cfa3a2b236ae41",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.2"
+  },
+  {
+   "id": 23525,
+   "md5": "0270714acb14b3c9fc3ec89390019001",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.2"
+  },
+  {
+   "id": 23528,
+   "md5": "f715acca92cf35bd74f7eba258bb585b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.2"
+  },
+  {
+   "id": 23529,
+   "md5": "ed45251f47318cfba1f1545446f7ca4a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.3"
+  },
+  {
+   "id": 23530,
+   "md5": "0ada0563982762365c04eeef949bd181",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.3"
+  },
+  {
+   "id": 23535,
+   "md5": "10c2c63396ac00f468b60207900a28aa",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.4"
+  },
+  {
+   "id": 23536,
+   "md5": "fbde7b005ab00c4a7475c4c85f01b727",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.4"
+  },
+  {
+   "id": 23537,
+   "md5": "831c02431ff5c0a267d7c24d1b94906f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.4"
+  },
+  {
+   "id": 23539,
+   "md5": "98e4985a4a1c220a690255388645c2e5",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.5"
+  },
+  {
+   "id": 23540,
+   "md5": "b5967482a3505e251bddd7f95c0c5785",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 3 cl 7.5"
+  },
+  {
+   "id": 23560,
+   "md5": "aff3da4140c5ae46468c8d35c538ab81",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 1"
+  },
+  {
+   "id": 23562,
+   "md5": "c5cc56e6be34f0d6503aaa827189e47d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 1"
+  },
+  {
+   "id": 23568,
+   "md5": "ccdef9f8fcc460c159d3cc1fd96894fb",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 3"
+  },
+  {
+   "id": 23570,
+   "md5": "9b41bf2a8cc08ae98b31136106921833",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 4"
+  },
+  {
+   "id": 23572,
+   "md5": "54d3612e36672cc15a92b0a1acd3cff2",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 5"
+  },
+  {
+   "id": 23574,
+   "md5": "ed9c38b1657d188dd247de89386dcd7f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 6"
+  },
+  {
+   "id": 23577,
+   "md5": "d946755b55eefca005865b8c6701afe8",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 7"
+  },
+  {
+   "id": 23579,
+   "md5": "0c94d4020428177bdcb5b8bdc43c12bf",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 8"
+  },
+  {
+   "id": 23581,
+   "md5": "59cb960b683d7209a88e17af43cde540",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 9"
+  },
+  {
+   "id": 23589,
+   "md5": "36b6d68252da283e8c8995057266e28c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 11"
+  },
+  {
+   "id": 23591,
+   "md5": "65e57c700e9cadaeedb9e7ea24cc7cce",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 12"
+  },
+  {
+   "id": 23599,
+   "md5": "c8bc5a82f9880049a29145054119c9cf",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23606,
+   "md5": "e3aae17f189e14a8b751bfb1bb99f15d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 15"
+  },
+  {
+   "id": 23609,
+   "md5": "d92f212f3e0564df186a9cbd152a8f11",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 17"
+  },
+  {
+   "id": 23611,
+   "md5": "b51aa775e8461a4b58bfc73b923ac76f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 18"
+  },
+  {
+   "id": 23613,
+   "md5": "8ffc325aae1714e419a7f9ca3803e1ce",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 19"
+  },
+  {
+   "id": 23621,
+   "md5": "7caffeb95a866b7693a1de22fb039996",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 21"
+  },
+  {
+   "id": 23627,
+   "md5": "cff0b2c47d8cb0cd2de61921b3bdae4c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 23"
+  },
+  {
+   "id": 23633,
+   "md5": "67f7a1e94781178ef9699a33e38582b3",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 25"
+  },
+  {
+   "id": 23637,
+   "md5": "c4d13e9219ab84aad9aa71c35244121c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 27"
+  },
+  {
+   "id": 23641,
+   "md5": "0181b2cad12eed46a573deffb0a6d51c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 28"
+  },
+  {
+   "id": 23647,
+   "md5": "1f9a5ef6902b5a16066698e5f9437e8d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 30"
+  },
+  {
+   "id": 23649,
+   "md5": "23741e03963288b4112fc23eb0f622f7",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 31"
+  },
+  {
+   "id": 23652,
+   "md5": "0f86bb469cf9c9025e47619f599d1db0",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 32"
+  },
+  {
+   "id": 23654,
+   "md5": "5d7bba5aab259b50000ffeb1008cdfa7",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 32"
+  },
+  {
+   "id": 23656,
+   "md5": "dab5c0b1c46cdc0e30d2dee852d1d42c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 33"
+  },
+  {
+   "id": 23658,
+   "md5": "79a243953677fdf3b286eddee3e00c3b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 34"
+  },
+  {
+   "id": 23660,
+   "md5": "3fa3e5188bf602741f8f01828541f247",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 35"
+  },
+  {
+   "id": 23662,
+   "md5": "c90188f5564865ae2c903c97b7163739",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 37"
+  },
+  {
+   "id": 23664,
+   "md5": "d2252218792b160a98df91745ddea7c3",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 38"
+  },
+  {
+   "id": 23666,
+   "md5": "9c67e3ae16cf0cb3e29e7b8ebacfda5f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 39"
+  },
+  {
+   "id": 23671,
+   "md5": "e7d0dd3fa5fb2caf430b4f0b56821a8a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 41"
+  },
+  {
+   "id": 23673,
+   "md5": "95c340091b3f7f83206b656137777087",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 42"
+  },
+  {
+   "id": 23677,
+   "md5": "d86ab196fe60abce1dbcadbd5c32dc5a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 43"
+  },
+  {
+   "id": 23683,
+   "md5": "ad487f6759a2d88fe4a5b01f8b629d71",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 45"
+  },
+  {
+   "id": 23689,
+   "md5": "2f1be60965c6b4b08774e5b4f4f3829e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 46"
+  },
+  {
+   "id": 23691,
+   "md5": "112a2f0ab17819991d2f8beca087bf4d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 47"
+  },
+  {
+   "id": 23693,
+   "md5": "76d8044d00120ca59a82199ef4939a43",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 48"
+  },
+  {
+   "id": 23695,
+   "md5": "66ae215196e1d2766e6013c8cc00ad9d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 49"
+  },
+  {
+   "id": 23702,
+   "md5": "1457bcdba2e3d9231fdd61c5ac6d0c0e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 51"
+  },
+  {
+   "id": 23704,
+   "md5": "8bb03b6c70d691bd29357c724b2827ec",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 1 cl 52"
+  },
+  {
+   "id": 23706,
+   "md5": "3009d5e177f76081aa4c1b2098273f81",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23707,
+   "md5": "be23aa0d96bb08e99459d542054398ad",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23708,
+   "md5": "cac2d37251ef82c2469603f08ee36672",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23710,
+   "md5": "1c2dbac20f988635ef9b59d44adbf851",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23712,
+   "md5": "2c956afa8fae832e2dcebaf6517d475f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23715,
+   "md5": "4872e59394dc5cc4f9e65fdaa1adc609",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23716,
+   "md5": "86d0ba28cd518bc32c986a210ba856a4",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23718,
+   "md5": "7d68189d6929941db9a663fbe6989687",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23723,
+   "md5": "61187b919f3dfa4058e46df12deb8343",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23724,
+   "md5": "ea1f3e90927811c1a451badbaf8791f7",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23726,
+   "md5": "81fd4647f9d7d65a619872051297eaf3",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23735,
+   "md5": "7a91b4d587b40332f94ed2c0a36e9111",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23740,
+   "md5": "dde406a70cd999f9ab870b6147eed06a",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  },
+  {
+   "id": 23742,
+   "md5": "ab1a7e3b022123069964081081fdc8a9",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 1"
+  },
+  {
+   "id": 23758,
+   "md5": "a1cecd0a958427dc1bc454bfd8f324a2",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 10"
+  },
+  {
+   "id": 23790,
+   "md5": "5f3671a7aefaf983ec0d8bc118f965c5",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 23801,
+   "md5": "038ce0253f618280c4082ce45a0a1bd4",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 23811,
+   "md5": "7b1ab0625b46d5821ad3cda62d80e455",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 23819,
+   "md5": "191a9333b70895bcbef603fbacde8431",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 23823,
+   "md5": "e221cf26b12f63e8a6d7a370f9648cb0",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 23864,
+   "md5": "3cd87aa7d0607685478e815ffcbb72b3",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 23879,
+   "md5": "a3afaf8f1773198edbc7a5ef4df47e48",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 23883,
+   "md5": "9a50cc825e2cf261f8b48da0030c3dea",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 23945,
+   "md5": "f5605bf5bd51770bc3137c5f1858d959",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 23958,
+   "md5": "a8b7ae1bc684339ed26178c162f7d50d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 23963,
+   "md5": "e9155f63fdfb75dcdd7a5e7547e1d8f9",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 23965,
+   "md5": "05a8995b7be4d963d50da615ccd75c6f",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 23968,
+   "md5": "d015c18bb5c90a1280fdefcb1a85c5cb",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 23982,
+   "md5": "763611f5d301dab79acd41dc0974a7f4",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24022,
+   "md5": "a83c01dfe59bf733cf362b2eb0748f03",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24037,
+   "md5": "f7a709360494a52ab7e728f135f5e5ea",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24043,
+   "md5": "9e598efd157d241fc8b1191341403b94",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24098,
+   "md5": "d17629a4d4b6e43824f26cfa952c65c5",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24099,
+   "md5": "26e1e9346df5e02b1d2afc7c689b8783",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24123,
+   "md5": "924bba546f87b4bef99f0f935f45cd0b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24133,
+   "md5": "5d9aeff9af2621de57378f31c3b0913c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24146,
+   "md5": "db0a92f22cf2a29fb2e7e8bff40f25ee",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24147,
+   "md5": "c79ad489b16b2acf7e9ff7f0b7518b0b",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24160,
+   "md5": "5fb17600b9e0188a4363e2ae65dec0fd",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24166,
+   "md5": "5dbe43cb8921784e4e541000e796461e",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24176,
+   "md5": "2fd4c6ff69c46c8b7656f6cfa4cf9406",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24194,
+   "md5": "c1f94d27fd7dc45c729f0bf41e1399e6",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24199,
+   "md5": "3cba81df484abf481cd257ee7574f5d2",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24247,
+   "md5": "8de3c3c1a2041aa8c694f0c4da392dc2",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24251,
+   "md5": "8b0e05e23a05a9221ed59a7db26c188d",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24260,
+   "md5": "1f7c34796b1bcbe9a49bf034dbfcf461",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24261,
+   "md5": "509c58ebb397d7d58b1eeb1186f0fe9c",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24272,
+   "md5": "5bb11065b6e76c746f109f644c548d80",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 24324,
+   "md5": "aaafab3b3fc41b14f7730f8d9adf43c7",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": "Schedule 6 cl 11"
+  },
+  {
+   "id": 30168,
+   "md5": "7afedf42cd6b17638c95965e4ba99ed0",
+   "epi": "epi-2022-0457",
+   "law_date": "2026-10-17",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457",
+   "source_council": "inner_west",
+   "derived_clause": null
+  }
+ ]
+}
