@@ -7,6 +7,15 @@
 ## Worktree Rule
 After context compaction, if `.claude/worktrees/` contains directories, check which branch you're on and run all commands from that worktree path.
 
+## Compact Instructions
+When summarising this conversation, keep verbatim:
+- Current branch and worktree path; open PR numbers and their gate state.
+- Every count or scoreboard figure **with the query or command that produced it**. A number without its query is dropped, not paraphrased.
+- Production writes: which ran (with backup path), which were dry-run only, which the user approved but have not run.
+- DQ ids touched, and the plan/handoff file the work belongs to (`~/.claude/plans/...`).
+- What failed and why, in one line each — not the attempts.
+Drop: tool output bodies, file dumps, exploration that led nowhere.
+
 ## Hooks Guard [ENFORCED] — DO THIS AT SESSION START
 ```bash
 git config core.hooksPath .githooks
