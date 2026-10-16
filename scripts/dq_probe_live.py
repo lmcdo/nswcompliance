@@ -71,8 +71,15 @@ _LAND_LIMIT = re.compile(
     # a named place: "within the Lindfield local centre" -- but "in Section A of this DCP" names the plan, not land
     # ...unless the named place IS the council: "in the Wollongong Local Government Area" (Wollongong E3 p3)
     r"\b(in|within|at|on|near|adjoining|for) (the )?(?!(Section|Part|Chapter|Schedule|Appendix|Table)\b)"
-    r"(?![A-Z][\w-]*( [A-Z][\w-]*){0,3} (Local Government Area|LGA)\b)[A-Z][a-z]+"
-    r"|\b(?i:centres?|precincts?|site|estate|vicinity|flood|heritage|bushfire|riparian|zones?|zoned|foreshore"
+    # ("the Woollahra Municipality", "the City of Wollongong Local Government Area" are the council too)
+    r"(?!(City of )?[A-Z][\w-]*( [A-Z][\w-]*){0,3} (Local Government Area|LGA|Municipality|Shire|Council area)\b)"
+    r"(?!(City|Municipality|Shire)\b(?! (?i:centre|council|of)))"  # "all land in the City." is the council itself
+    r"[A-Z][a-z]+"
+    # a street address or a lot: "development at 10 Smith Street", "Lot 402 DP 631754" (cross-review 2026-10-16)
+    r"|\b\d+[A-Z]?(-\d+)? [A-Z][a-z]+ (?i:street|road|avenue|parade|drive|lane|highway|place|crescent)\b"
+    r"|\b(?i:lots? \d+|DP ?\d{3,}|SP ?\d{3,})\b"
+    # "zoned under Blacktown LEP" is every zoned lot, i.e. the council; "zoned R2" is a limit
+    r"|\b(?i:centres?|precincts?|site|estate|vicinity|flood|heritage|bushfire|riparian|zones?|zoned(?! under)|foreshore"
     r"|corridor|(?<!government )area)\b")  # case-sensitive except the keywords: [A-Z] must mean a capital
 
 
@@ -95,7 +102,9 @@ def _machine_whole_council(chapter: dict) -> bool:
     if _MAPPED_PART.search(quote):
         return False
     if chapter.get("applies_to") == "whole_council":
-        return bool(_COUNCIL_WIDE.search(quote))
+        # The LGA must be the land itself: "land within the Rosebery Estate in the City of Sydney Local Government
+        # Area" names a place first and is refused (cross-review 2026-10-16).
+        return bool(_COUNCIL_WIDE.search(quote)) and not _LAND_LIMIT.search(quote)
     if chapter.get("applies_to") == "use_type":
         return bool(_USE_TYPE.search(quote)) and not _LAND_LIMIT.search(quote)
     return False
@@ -147,6 +156,10 @@ def _chapter_scope_keys(*, part_of_council: bool | None = None,
         # entry it names passes the strict whole-council wording itself, and the chapter's own name and opening
         # pages were checked for land limits (recorded as plan_source by the 2026-10-16 scan).
         if c.get("applies_to") == "inherits_plan":
+            # Only a chapter recorded as having NO clause of its own may inherit (cross-review 2026-10-16): a quote
+            # it carries would be its own, possibly narrower, land.
+            if (c.get("quote") or "").strip() or c.get("quote_check") != "no_own_clause":
+                return False
             src = by_key.get(c.get("plan_source") or "")
             return bool(src) and src["council"] == c["council"] \
                 and src.get("applies_to") in ("whole_council", "plan_extent") \

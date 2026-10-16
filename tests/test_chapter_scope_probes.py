@@ -97,6 +97,15 @@ _NEW_CASES = [
     ("use_type", "This DCP Chapter applies to any development requiring development consent under Part 4 in the "
                  "Wollongong Local Government Area.", True),
     ("use_type", "This Part applies to development in the Wollongong City Centre", False),
+    ("whole_council", "This DCP applies to land within the Rosebery Estate in the City of Sydney Local Government "
+                      "Area", False),
+    ("use_type", "This Part applies to development at 10 Smith Street", False),
+    ("whole_council", "This chapter applies to all land within the Woollahra Municipality.", True),
+    ("whole_council", "Blacktown DCP 2015 applies to all land within the Blacktown Local Government Area that is "
+                      "zoned under Blacktown Local Environmental Plan", True),
+    ("use_type", "This Part applies to residential development on land zoned R2", False),
+    ("use_type", "This Part applies to development in the City Centre", False),
+    ("use_type", "This Part applies to development on Lot 402 DP 631754", False),
     ("whole_council", "This Chapter of the DCP applies to all lands within the City of Wollongong Local "
                       "Government Area.", True),
 ]
@@ -134,3 +143,23 @@ def test_a_chapter_recorded_mixed_is_not_overridden_by_inheritance():
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
     import dq_probe_live as d
     assert "city_of_sydney__schedules" not in set(d._chapter_scope_keys(machine_whole_council=True))
+
+
+def test_inheritance_needs_no_own_clause():
+    """A chapter that carries its own quote must be judged by it, never inherit (cross-review 2026-10-16)."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import dq_probe_live as d
+    real = d._load_chapter_scope
+    src = {"key": "x__intro", "council": "x", "applies_to": "whole_council",
+           "quote": "This plan applies to all land within the X Local Government Area."}
+    bad = {"key": "x__part", "council": "x", "applies_to": "inherits_plan", "plan_source": "x__intro",
+           "quote": "This chapter applies only within the Lindfield local centre", "quote_check": "found"}
+    good = dict(bad, key="x__ok", quote="", quote_check="no_own_clause")
+    try:
+        d._load_chapter_scope = lambda: [src, bad, good]
+        keys = set(d._chapter_scope_keys(machine_whole_council=True))
+    finally:
+        d._load_chapter_scope = real
+    assert "x__ok" in keys and "x__part" not in keys
