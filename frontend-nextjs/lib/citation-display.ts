@@ -19,6 +19,29 @@
 const SHOWN = new Set(['proven', 'imprecise']);
 
 /**
+ * Machine-proven citation: a script proved the clause (citation_status) or the page
+ * (page_check) against the source document. Mirrors DQ-145 in scripts/dq_probe_live.py:
+ *   COALESCE(citation_status,'') IN ('proven','imprecise') OR COALESCE(page_check,'') IN ('on_page','moved')
+ * 'read_by_person' is a person's reading, not a script's, so it does not count.
+ * tests/test_citation_checked_parity.py (and the jest parity test) fail if the two drift.
+ */
+export const CITATION_PROVEN_STATUSES = ['proven', 'imprecise'] as const;
+export const CITATION_PROVEN_PAGE_CHECKS = ['on_page', 'moved'] as const;
+
+/** Whether a served rule's citation is machine-proven. Missing columns = not checked (fail closed). */
+export function isCitationChecked(row?: { citation_status?: unknown; page_check?: unknown } | null): boolean {
+  if (!row) return false;
+  const status = typeof row.citation_status === 'string' ? row.citation_status : '';
+  const check = typeof row.page_check === 'string' ? row.page_check : '';
+  return (CITATION_PROVEN_STATUSES as readonly string[]).includes(status)
+    || (CITATION_PROVEN_PAGE_CHECKS as readonly string[]).includes(check);
+}
+
+export const CITATION_UNCHECKED_LABEL = 'Citation not yet checked';
+export const CITATION_UNCHECKED_TOOLTIP =
+  "We have not yet confirmed this rule's page or clause against the source. Check the source document.";
+
+/**
  * The "<instrument> — <clause>" badge text, or null when we hold neither.
  *
  * Same principle as citationIsShown below, applied to the LEP/SEPP cards: name
@@ -165,12 +188,14 @@ export function withServedCitation<T extends {
   source_council?: string | null;
   ref_number?: string | null;
   provision_text?: string | null;
-}>(p: T, clauseLabel: string | null): T & { clause_label: string | null; citation_shown: boolean } {
+  page_check?: string | null;
+}>(p: T, clauseLabel: string | null): T & { clause_label: string | null; citation_shown: boolean; citation_checked: boolean } {
   const shown = citationIsShown(p.citation_status, p.source_council);
   return {
     ...p,
     provision_text: shown ? p.provision_text : stripStoredCode(p.provision_text, p.ref_number),
     clause_label: shown ? servedClauseLabel(stripOccurrenceSuffix(clauseLabel), p.source_council) : null,
     citation_shown: shown,
+    citation_checked: isCitationChecked(p),
   };
 }

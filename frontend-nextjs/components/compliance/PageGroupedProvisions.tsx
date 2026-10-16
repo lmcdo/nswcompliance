@@ -32,6 +32,7 @@ import { resolveCitationUrl } from '@/lib/citation-instrument-urls';
 import type { NumericCheckValues } from './NumericChecker';
 import { pageAnchor, pageHref, pageLabel } from '@/lib/page-citation';
 import { numbersUsable, quoteNote } from '@/lib/council-quote';
+import { CITATION_UNCHECKED_LABEL, CITATION_UNCHECKED_TOOLTIP } from '@/lib/citation-display';
 import { provisionTablesToPlainText } from '@/lib/provision-tables';
 
 
@@ -164,12 +165,30 @@ function sanitizeText(text: string | null | undefined): string {
 /** Under a council DCP rule: whether its text is the council's own words (lib/council-quote.ts). */
 function QuoteNote({ provision }: { provision: Provision }) {
   const note = quoteNote(provision);
-  if (!note) return null;
-  return <p className="text-[11px] text-gray-500 mt-1">{note}</p>;
+  // Fail closed: a rule the server did not mark checked (or sent no flag for) shows the mark.
+  const unchecked = provision.citation_checked !== true;
+  if (!note && !unchecked) return null;
+  return (
+    <p className="text-[11px] text-gray-500 mt-1">
+      {note}
+      {unchecked && (
+        <span
+          data-testid="citation-unchecked"
+          title={CITATION_UNCHECKED_TOOLTIP}
+          className={`inline-block rounded bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 ${note ? 'ml-2' : ''}`}
+        >
+          {CITATION_UNCHECKED_LABEL}
+          <span className="sr-only"> {CITATION_UNCHECKED_TOOLTIP}</span>
+        </span>
+      )}
+    </p>
+  );
 }
 
 export interface Provision {
   id: number;
+  /** Server: true only when a script proved the clause or page (lib/citation-display isCitationChecked). Missing = not checked. */
+  citation_checked?: boolean;
   provision_text: string;
   v2_dcp_layer: string;
   v2_dcp_part?: string;
