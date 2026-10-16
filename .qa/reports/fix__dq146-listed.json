@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "User decision 2026-10-16 (option 1): rules withheld on purpose because their area has no outline, and listed in data/chapter_scope/not_covered_2026-10-15.json, are stated exceptions to OC-21. DQ-146 counted them as 'shown to no house', so OC-21 could never pass while any exception existed. DQ-146 now counts only rules hidden by accident; the claim text names the list.",
-  "commit_hash": "03fee8ab",
+  "commit_hash": "ea54af32",
   "files": [
     "scripts/dq_probe_live.py",
     ".claude/dq_checks.json"
