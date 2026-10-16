@@ -82,7 +82,7 @@ def verify_record(rec: dict, snaps: dict, cache: Path) -> list[str]:
         if again is None or again.get("units") != units or (again["abs_start"], again["abs_end"]) != (s, t):
             bad.append("rederivation_differs")
         pdf = e.get("pdf") or {}
-        head = ev.normalise(pdf.get("page_heading_text", ""))
+        head = ev.normalise(pdf.get("page_heading_text") or "")
         k = snap.by_id.get(cid)
         if k is None or not head or snap.items[k].heading not in head:
             bad.append("container_heading_not_on_recorded_pdf_page")
@@ -109,7 +109,7 @@ def main(argv=None) -> int:
         import state_law_proof as p1
         conn = p1.connect()
         cur = conn.cursor()
-        cur.execute("SELECT id, md5(provision_text) FROM regulatory_provisions WHERE id = ANY(%s)",
+        cur.execute("SELECT id, md5(provision_text) FROM regulatory_provisions WHERE id = ANY(%s) AND is_current",
                     ([r["id"] for r in recs],))
         live = dict(cur.fetchall())
         conn.close()

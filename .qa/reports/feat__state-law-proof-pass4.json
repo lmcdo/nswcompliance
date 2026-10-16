@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a deterministic, evidence-recording proof method for served state-law rows (rules 1-3) and a verifier that re-derives each proof from stored evidence alone. Read-only against the database; no write is applied by this change. The plan it produces proves 1 of 630 candidate rows, which is the honest yield: 525 rows are not contiguous in the in-force law at all (paraphrase / stale), and the method fails closed on ambiguity.",
-  "commit_hash": "12457786",
+  "commit_hash": "1cf6cb77",
   "files": [
     "scripts/state_law_evidence.py",
     "scripts/state_law_proof4.py",
@@ -83,5 +83,10 @@
     "secrets": "none added; the runner reads DATABASE_URL read-only as passes 1-3 do",
     "other_repo": "none",
     "manual_verify": "With the snapshots cached, run python scripts/verify_state_law_evidence.py data/state_law_evidence_2026-10-17.jsonl --db and expect 1 verified; applying the plan is a separate decision."
+  },
+  "real_layer_exempt": {
+    "scripts/apply_state_law_proof.py": "check_evidence reads a JSONL file and the pinned snapshots, no database or HTTP call; the existing database write path is unchanged and still dry-run by default. ",
+    "scripts/state_law_proof4.py": "Read-only database session (default_transaction_read_only=on) used only to fetch candidate rows; every decision is made by pure functions (state_law_evidence.py) that tests/test_state_law_evidence.py exercises on synthetic HTML, and the final result is checked against the real pinned law snapshots by verify_state_law_evidence.py. No write path is added.",
+    "scripts/verify_state_law_evidence.py": "The optional --db flag runs one read-only SELECT of md5(provision_text); the verification itself is database-free and run against the real snapshots on 2026-10-17 (1 of 1 verified)."
   }
 }
