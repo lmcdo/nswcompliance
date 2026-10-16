@@ -51,8 +51,8 @@ def prep(text: str) -> str:
     """Common front half of the normaliser: html tags -> space, entities, NFKC, fold dashes/quotes, drop markdown."""
     t = re.sub(r"<[^>]+>", " ", text or "")
     t = html.unescape(t)
-    t = unicodedata.normalize("NFKC", t).translate(_FOLD)   # ² -> 2, nbsp -> space
-    t = re.sub(r"(?<=\w)-[ \t]*\n[ \t]*(?=\w)", "", t)      # hyphen at a line break
+    t = re.sub(r"(?<=\w)-[ \t]*\n[ \t]*(?=\w)", "", t)      # ASCII hyphen at a line break, BEFORE folding so an
+    t = unicodedata.normalize("NFKC", t).translate(_FOLD)   # em dash ending a line survives.  ² -> 2, nbsp -> space
     for ch in "*_#":
         t = t.replace(chr(92) + ch, ch)                      # markdown escapes such as backslash-star
     t = re.sub(r"[*_`]{1,3}", "", t)                         # markdown emphasis
