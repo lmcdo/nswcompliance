@@ -188,7 +188,7 @@ def load_law(epi: str, manifest: dict) -> tuple[Law, str]:
     raw = f.read_bytes()
     manifest[epi] = {"file": f.name, "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw),
                      "source": LAW_URL.format(epi=epi)}
-    return Law(paragraphs(raw.decode("utf-8", errors="replace"))), f.name.split("_", 1)[1][:-5]
+    return Law(paragraphs(raw.decode("utf-8", errors="replace"))), f.stem.rpartition("_")[2]
 
 
 def connect():
@@ -199,13 +199,13 @@ def connect():
             if cand.exists():
                 for line in cand.read_text(encoding="utf8").splitlines():
                     if line.startswith("DATABASE_URL="):
-                        os.environ["DATABASE_URL"] = line.split("=", 1)[1].strip().strip("\"'")
+                        os.environ["DATABASE_URL"] = line.partition("=")[2].strip().strip("\"'")
                         break
     return psycopg2.connect(os.environ["DATABASE_URL"], options="-c default_transaction_read_only=on")
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description="Prove served state-law rules against the instrument in force")
     ap.add_argument("--write-plan", action="store_true", help="also write data/state_law_proof_plan_<date>.json")
     ap.add_argument("--date", default=None, help="output date stamp (default: today)")
     args = ap.parse_args(argv)
