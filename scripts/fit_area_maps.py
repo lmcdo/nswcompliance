@@ -47,6 +47,8 @@ CLOSE_M = 15.0
 
 def zone_polys(regex: str, lga: str, cx: float, cy: float, radius: float) -> list:
     import psycopg2
+    if cx is None or cy is None or radius is None:
+        raise ValueError("zone lookup needs a centre and radius")
     conn = psycopg2.connect(cb.database_url(), connect_timeout=15,
                             options="-c statement_timeout=60000 -c default_transaction_read_only=on")
     with conn.cursor() as cur:
@@ -396,7 +398,7 @@ def fit_lotmask(cfg: dict) -> dict:
             tt = t * m
             res = cv2.matchTemplate(T, tt, cv2.TM_CCOEFF_NORMED, mask=m)
             iy, ix = np.unravel_index(np.nanargmax(res), res.shape)
-            if res[iy, ix] > best[0]:
+            if res[iy, ix] > best[0] and s is not None and rot is not None:
                 best = (float(res[iy, ix]), float(s), float(rot), int(ix), int(iy), M.copy(), cw, ch)
     score, s, rot, ix, iy, M, cw, ch = best
     # image px (u,v) -> warped px (M) -> target px (+ix,+iy) -> MGA (box[0]+x*R, box[3]-y*R)
