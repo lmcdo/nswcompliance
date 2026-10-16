@@ -1784,9 +1784,9 @@
     "OC-20"
    ],
    "blocks_outreach": true,
-   "passes_when": "exit 0 - (a) a clause number is shown only when a script proved it, else the page (citation-display tests, #1170/#1307); (b) every surface showing an unproven rule's citation renders the 'Citation not yet checked' mark (#1313 tests incl. the badge inventory); (c) DQ-145 is at or below its ceiling (1,011 on 2026-10-17) and may only fall",
+   "passes_when": "exit 0 - (a) a clause number is shown only when a script proved it, else the page (citation-display tests, #1170/#1307); (b) every surface showing an unproven rule's citation renders the 'Citation not yet checked' mark (#1313 tests incl. the badge inventory); (c) DQ-145 is at or below its ceiling (911 on 2026-10-17) and may only fall",
    "red_when": "the declared state and the check disagree in either direction",
-   "note": "Reworded 2026-10-16. 2026-10-16: 4,071 state-law rows proven verbatim against legislation.nsw.gov.au in force; 244 non-law paraphrases withheld; DQ-145 6,104 -> 1,796. 2026-10-17 (user decision, option 1): the check is three parts, not DQ-145 = 0; unproven rules now carry the mark, and DQ-145 is a ratchet at 1,011."
+   "note": "Reworded 2026-10-16. 2026-10-16: 4,071 state-law rows proven verbatim against legislation.nsw.gov.au in force; 244 non-law paraphrases withheld; DQ-145 6,104 -> 1,796. 2026-10-17 (user decision, option 1): the check is three parts, not DQ-145 = 0; unproven rules now carry the mark, and DQ-145 is a ratchet at 1,011; lowered to 911 the same day after 100 council pages were proven (#1316)."
   },
   "DQ-146": {
    "declared": "fixed",

@@ -519,9 +519,9 @@ SELECT (SELECT count(*) FROM dcp_setback_controls s
 
 # ── the claims ─────────────────────────────────────────────────────────────────────────────────────
 
-#: OC-20 part (c), user decision 2026-10-17 (option 1): DQ-145 may only fall. Measured 1,011 on 2026-10-17
+#: OC-20 part (c), user decision 2026-10-17 (option 1): DQ-145 may only fall. Measured 1,011, then 911 on 2026-10-17 after #1316
 #: (`python scripts/dq_probe_live.py --id DQ-145`). Lower it when a proof pass lands; never raise it.
-DQ145_CEILING = 1011
+DQ145_CEILING = 911
 
 
 def unproven_citations_only_fall() -> Result:
