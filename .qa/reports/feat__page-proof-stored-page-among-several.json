@@ -17,7 +17,7 @@
   },
   "pre_impl": {
     "existing_data": "page_evidence.py prove() returned unresolved for any span on 2+ pages; 64 of the 183 rows still unproven after #1316 were unresolved.",
-    "assumption_mismatch": "Assumed most unresolved rows would have their stored page among the rival pages. Measured: 21 of 64 do; ku_ring_gai (35 unresolved) mostly does not, so it stays unresolved.",
+    "assumption_mismatch": "Assumed most unresolved rows would have their stored page among the rival pages. Measured: 21 of 64 do (8 after the v3 sentence rule); ku_ring_gai (35 unresolved) mostly does not, so it stays unresolved.",
     "new_vs_existing": "Same module, new optional argument held; older evidence without all_pages still verifies by the old one-page rule (100/100 of the 2026-10-17 file re-verified)."
   },
   "functions": [
@@ -38,13 +38,13 @@
   ],
   "values": [
     {
-      "value": "21 newly proven (all on_page): ashfield 8, city_of_sydney 4, hornsby 4, penrith 2, canterbury_bankstown 1, ku_ring_gai 1, leichhardt 1; 43 stay unresolved",
-      "read_at": "python scripts/page_proof_council.py, read-only, 2026-10-17",
+      "value": "8 newly proven (all on_page) after the v3 sentence rule: city_of_sydney 4, penrith 2, leichhardt 1, canterbury_bankstown 1. The v2 rule's other 13 were labels or repeated table cells.",
+      "read_at": "python scripts/page_proof_council.py --out data/page_evidence_2026-10-18.jsonl, 2026-10-18",
       "if_missing": "yield of the change would be unmeasured"
     },
     {
-      "value": "verify_page_evidence --db: verified 21/21 proofs (8 pinned PDFs); apply dry run: 21 rows to write, on_page=21, moved=0, nothing written",
-      "read_at": "run on the committed JSONL, 2026-10-17",
+      "value": "verify_page_evidence --db: verified 8/8 proofs (4 pinned PDFs); 2026-10-17 file 100/100; apply dry run: 8 rows to write, on_page=8, moved=0, nothing written",
+      "read_at": "run on the committed JSONL, 2026-10-18",
       "if_missing": "proofs would be unverified by anything but the code that made them"
     }
   ],
