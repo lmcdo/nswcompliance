@@ -1,0 +1,68 @@
+{
+  "tier": "standard",
+  "justification": "Audit run8 (2026-10-16) found Warringah DCP 2011 Part F1 requirement 13 ('The Strand, Dee Why') served to a Brookvale E3 house. Part F1 requirements 11-15 each name one centre; F2 is the Brookvale Brickworks site (Lots 11 and 12 DP 1101677); F3/F4 name individual special-use sites. None has an outline, so all 21 are withheld under the 2026-10-15 rule and listed. F1 general requirements 1-9 stay served: their zone scope is declined on purpose in northern_beaches_config (B1/B2 retired).",
+  "commit_hash": "671d510c",
+  "files": [
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    "frontend-nextjs/shared/not-covered-councils.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/hide_unmapped_area_rules.py",
+    "fails_when": "the served count for the Warringah selector drifts from expect=994, or any listed row is back on a council-wide layer",
+    "observed_red": "Dry run 2026-10-16 before apply: 'northern_beaches/warringah-dcp-2011-full: served 994, to withhold 21'. After apply: 0 to withhold.",
+    "external_authority": "Warringah DCP 2011 PDF p90-94: F1 'Applies to land zoned B1 or B2'; requirements 11-15 headed by centre names; F2 'This control applies to land known as the Brookvale Brickworks (Lots 11 and 12 in DP 1101677)'"
+  },
+  "pre_impl": {
+    "existing_data": "Part F rows tagged v2_dcp_part F, zones config_declined",
+    "assumption_mismatch": "assumed Part F was zone-wide only; it mixes zone-wide and single-centre requirements",
+    "new_vs_existing": "21 ids added to an existing selector"
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/hide_unmapped_area_rules.py:45",
+      "input": "the served rows each listed selector matches in production",
+      "output": "the 21 Part F named-place rows withheld",
+      "if_none": "prints nothing to change and writes nothing"
+    }
+  ],
+  "values": [
+    {
+      "value": "21 withheld; backup hide_unmapped_area_rules_pre_2026-10-16T231732.json",
+      "read_at": "--apply 2026-10-16",
+      "if_missing": "count unproven"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a general F1 requirement is withheld by mistake",
+      "what_happens": "a zone-wide centre control disappears for every Warringah centre house",
+      "mitigated": true,
+      "how": "only requirements whose own first words name a centre or site were listed, read row by row",
+      "repro": "grep -c 1909 data/chapter_scope/not_covered_2026-10-15.json"
+    },
+    {
+      "scenario": "F1 general requirements still reach R2 houses",
+      "what_happens": "centre controls shown to non-centre houses",
+      "mitigated": false,
+      "how": "stated decision in northern_beaches_config Part F (zone codes retired); recorded as residual",
+      "repro": "enrichment/config/northern_beaches_config.py Part F scope_declined"
+    },
+    {
+      "scenario": "the notice file drifts from the list",
+      "what_happens": "the site names the wrong withheld chapters",
+      "mitigated": true,
+      "how": "tests/test_not_covered_councils_drift.py fails on any difference",
+      "repro": "python -m pytest tests/test_not_covered_councils_drift.py"
+    }
+  ],
+  "mutation_analysis": "Removing the 21 ids restores 'to withhold 21' in the dry run.",
+  "residual_risk": "F1 general requirements 1-9 are shown to every Warringah house until B1/B2 -> E1 zone migration data exists.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "none"
+  }
+}

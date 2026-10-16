@@ -3,6 +3,10 @@
   "claim": "For the councils listed, every rule shown carries the council's own sentence and the clause it came from, in the plan registered as in force. Known exceptions are stated.",
   "councils": [
     {
+      "slug": "ashfield",
+      "name": "Inner West (former Ashfield area only)"
+    },
+    {
       "slug": "blacktown",
       "name": "Blacktown"
     },
@@ -37,6 +41,10 @@
     {
       "slug": "leichhardt",
       "name": "Inner West (former Leichhardt area only)"
+    },
+    {
+      "slug": "marrickville",
+      "name": "Inner West (former Marrickville area only)"
     },
     {
       "slug": "penrith",

@@ -1,0 +1,91 @@
+{
+ "tier": "standard",
+ "justification": "Adds a read-only check over committed audit files and moves audit tooling into the repo. No served number changes, no database access, no production write. Directionality: the check can only FAIL a claim (exit 1) that lacks fresh, large-enough, low-error evidence; it never produces a clean verdict from missing data.",
+ "commit_hash": "4664afe0",
+ "files": [
+  "scripts/audit_rate_check.py",
+  "tests/test_audit_rate_check.py",
+  "data/address_audit/2026-10-16-run6/labels.jsonl",
+  "data/address_audit/2026-10-16-run7/labels.jsonl",
+  "scripts/address_audit/build_packets.py",
+  "scripts/address_audit/flag_packets.py",
+  "scripts/address_audit/fill_pages.py"
+ ],
+ "falsifiable_check": {
+  "command": "python scripts/audit_rate_check.py",
+  "fails_when": "Exit 1 when pooled packets < 500, addresses < 50, newest run older than 30 days, or the exact one-sided 95% Poisson upper bound per 100 rules is not below 2.0. It fails today on real data (bound 2.11 with unsure counted as severe), so it is not satisfiable by existing.",
+  "external_authority": "Labels are a person's reading of each rule against the council's plan; the bound is chi2.ppf(0.95, 2(k+1))/2 (exact Poisson), checked in the tests against the known 0-event value of about 3.0 per 100 per 100 rules.",
+  "observed_red": "Run on the real committed data before any threshold change: exit 1, 'FAIL: upper bound 2.11 per 100 is not below 2.0' with 560 packets, 56 addresses, 4 severe, 2 unsure."
+ },
+ "pre_impl": {
+  "existing_data": "Runs 6 and 7 hold 270 and 290 packets, 31 summary entries each (56 with rules served), 62 and 70 labels. Severe: 003:132289, 003:132283, 015:203577, 011:185670. Unsure: 1 per run.",
+  "assumption_mismatch": "Expected roughly 60 addresses; summary entries with served rules number 56. The check counts addresses that served rules, not summary lines.",
+  "new_vs_existing": "Prior-art: no existing script computes an audit error-rate bound. The three tooling scripts are copies of the plan-folder originals with only path assumptions changed.",
+  "external_source_error": "Packet files hold public addresses and public DCP text only; grep for postgres, password, secret, token and eyJ found nothing."
+ },
+ "functions": [
+  {
+   "name": "evaluate",
+   "file_line": "scripts/audit_rate_check.py",
+   "what": "Pools runs dated within 30 days, counts severe and unsure labels, computes the 95% upper bound and returns pass/fail with a plain reason.",
+   "input": "data_dir (Path) and today (date)",
+   "output": "Tuple of pass flag and message text",
+   "if_none": "No run in the window gives FAIL, not a pass on zero errors.",
+   "edge_cases": "Unknown label raises ValueError; zero packets gives an infinite bound; runs without a dated name or labels file are skipped.",
+   "failure_mode": "Conservative: unsure counts as severe and the denominator is all packets, so the bound is only as good as the stated sampling assumption."
+  },
+  {
+   "name": "upper_bound_per_100",
+   "file_line": "scripts/audit_rate_check.py",
+   "what": "Exact one-sided 95% Poisson upper limit on errors per 100 rules.",
+   "input": "Integer k errors and integer n rules",
+   "output": "Float errors per 100 rules",
+   "if_none": "n of 0 is guarded by the caller.",
+   "edge_cases": "k of 0 gives about 3 per 100 rules.",
+   "failure_mode": "Poisson approximates the binomial; slightly conservative at these rates."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Unread rules are treated as correct.",
+   "what_happens": "The denominator includes rules neither flagged nor sampled, so the bound could be too tight if the code pass misses errors.",
+   "mitigated": false,
+   "how": "Stated in the docstring and printed on every run. The 10% random sample of unflagged rules is the check on this; its own error count is not yet reported separately.",
+   "repro": "python scripts/audit_rate_check.py"
+  },
+  {
+   "scenario": "A stale run is left in place.",
+   "what_happens": "Claim would appear supported by old evidence.",
+   "mitigated": true,
+   "how": "Runs older than 30 days are excluded and the newest run must be within 30 days.",
+   "repro": "tests/test_audit_rate_check.py::test_too_old"
+  },
+  {
+   "scenario": "An uncertain label is quietly counted as fine.",
+   "what_happens": "The bound would be understated and the claim looks stronger.",
+   "mitigated": true,
+   "how": "unsure counts as severe for the bound; both figures are printed.",
+   "repro": "tests/test_audit_rate_check.py::test_unsure_counted_as_severe"
+  }
+ ],
+ "verified": [
+  "9 tests pass against real files in tmp_path.",
+  "Real data: 560 packets, 56 addresses, 4 severe, 2 unsure, bound 2.11 per 100 so the check exits 1.",
+  "flag_packets.py rerun on run7 reproduces 70 rules to read (43 flagged, 27 sampled)."
+ ],
+ "gaps": [
+  "The check fails on real data today: 6 events in 560 rules gives 2.11 per 100; OC-18 is not yet supported.",
+  "Only 132 of 560 rules were read by a person.",
+  "build_packets.py and fill_pages.py got path fixes and None-safe .get/.close hardening only and were not run (they need network and DATABASE_URL); flag_packets.py was rerun and reproduces run7."
+ ],
+ "post_merge": {
+  "db_reset": "None. No schema change and no data written.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Run python scripts/audit_rate_check.py after each new labelled run is committed under data/address_audit/."
+ },
+ "real_layer_exempt": {
+  "scripts/address_audit/build_packets.py": "Manual tool that calls the live verify site, NSW spatial services and the production database to draw new audit samples. It is run by a person, never in CI, and its outputs are the reviewed data files this check reads.",
+  "scripts/address_audit/fill_pages.py": "Manual one-off helper that reads PDF pages for an existing packet file from the production database and R2. Not run in CI."
+ }
+}

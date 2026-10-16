@@ -1,0 +1,72 @@
+{
+  "tier": "standard",
+  "justification": "OC-17 failed on DQ-33 (66 Warringah rules on Part heading pages applied to every development type by fallback) and on the published council list (Ashfield, Marrickville pass but were not listed). Each heading-page row was given its Part by where its text sits relative to the 13.5pt 'Part X' heading on the page (backup data/db_rollback_backups/nb66_part_pre_2026-10-16.json); the retag now passes v2_dcp_part to the tagger exactly as enrichment/pipeline.py already does, so a retag no longer undoes the publish. 4 rows on p259 sat above the Part H heading, i.e. the end of Part G (withheld area), and are withheld too.",
+  "commit_hash": "364815c2",
+  "files": [
+    "scripts/retag_applicability_slug_docids.py",
+    "frontend-nextjs/shared/dcp-scoped-councils.json",
+    "data/chapter_scope/not_covered_2026-10-15.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/outreach_claim_checks.py OC-17",
+    "fails_when": "any OC-17 sub-check fails, or the published council list differs from the computed one in either direction",
+    "observed_red": "2026-10-16 before: 'FAIL DQ-33' (count 66) and 'scoped-council list does not match: passes but not published: ashfield ... marrickville'. After: 'OC-17: HOLDS'; DQ-33 count 0.",
+    "external_authority": "Warringah DCP 2011 PDF: Part headings (13.5pt 'Part A'..'Part H' at pages 3,15,27,37,66,90,94,259) and each row's text position on its page"
+  },
+  "real_layer_exempt": {
+    "scripts/retag_applicability_slug_docids.py": "one column added to an existing SELECT and passed to an existing tagger argument; real-layer check is the script's own dry run against production (VALUES change 4, SERVED ROWS NARROWED 0)"
+  },
+  "pre_impl": {
+    "existing_data": "northern_beaches_part_pages.json leaves heading pages unresolved by design; tagger already accepts part as fallback (Waverley, 2026-10-15)",
+    "assumption_mismatch": "assumed the retag read v2_dcp_part; it did not, unlike the publish pipeline",
+    "new_vs_existing": "no new code path; one argument passed"
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/retag_applicability_slug_docids.py:307",
+      "input": "every row of the councils named, with its stored Part now included",
+      "output": "zones and development types re-derived by the tagger, now using the row's Part as the pipeline does",
+      "if_none": "a row with no Part behaves exactly as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ-33 66 -> 0; retag dry run VALUES change 4, NARROWED 0",
+      "read_at": "2026-10-16",
+      "if_missing": "effect unproven"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a row's stored Part is wrong and now drives its tags",
+      "what_happens": "the row would get another Part's development types",
+      "mitigated": true,
+      "how": "Parts set only on 66 heading-page rows, each by measured text position against the heading (none unresolved); retag refuses any narrowing (--expect-narrowings 0)",
+      "repro": "retag dry run prints SERVED ROWS NARROWED 0"
+    },
+    {
+      "scenario": "passing part changes tags for other councils' rows on the next retag",
+      "what_happens": "tags change for other councils without anyone reviewing them",
+      "mitigated": true,
+      "how": "the publish pipeline already passes part for every council, so stored tags already reflect it; the NB dry run changed 4 values",
+      "repro": "python scripts/retag_applicability_slug_docids.py --councils <council> (dry run)"
+    },
+    {
+      "scenario": "the council list drifts after a later publish",
+      "what_happens": "the site names a council that no longer passes",
+      "mitigated": true,
+      "how": "OC-17 recomputes the list from the database and fails on any difference",
+      "repro": "python scripts/outreach_scoped_councils.py"
+    }
+  ],
+  "mutation_analysis": "Dropping part=dcp_part restores 66 no_config in the NB dry run.",
+  "residual_risk": "Part assignment by text position was a one-off write; a re-extraction of Warringah would need the same resolution again (the part_pages map still leaves heading pages unresolved).",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "none"
+  }
+}

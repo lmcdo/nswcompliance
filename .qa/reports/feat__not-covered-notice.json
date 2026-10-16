@@ -1,0 +1,76 @@
+{
+  "tier": "standard",
+  "justification": "OC-21 addition: an address whose council has withheld area rules says so on its page. The list data/chapter_scope/not_covered_2026-10-15.json is exported to frontend-nextjs/shared/not-covered-councils.json by scripts/export_not_covered_councils.py; for-property meta.not_covered carries the served council's chapters or null; DcpNotCoveredNotice renders a plain amber note in ProvisionsByTocStructure. Per council because the areas have no outline.",
+  "commit_hash": "090377ea",
+  "files": [
+    "scripts/export_not_covered_councils.py",
+    "frontend-nextjs/shared/not-covered-councils.json",
+    "frontend-nextjs/lib/not-covered.ts",
+    "frontend-nextjs/components/compliance/DcpNotCoveredNotice.tsx",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/not-covered-meta.test.ts __tests__/components/compliance/DcpNotCoveredNotice.test.tsx && cd .. && python -m pytest tests/test_not_covered_councils_drift.py",
+    "fails_when": "a council listed in the data file gets meta.not_covered null, an unlisted council gets non-null, the notice does not render, or the shared JSON differs from the data file",
+    "observed_red": "Drift test fails if the shared file is stale (compares render(build()) to the file); the meta test asserts null for parramatta and non-null for Leichhardt.",
+    "external_authority": "data/chapter_scope/not_covered_2026-10-15.json (user decision 2026-10-15)"
+  },
+  "real_layer_exempt": {
+    "scripts/export_not_covered_councils.py": "reads one local JSON file, no database"
+  },
+  "pre_impl": {
+    "existing_data": "no existing frontend reader of the not-covered list; DcpLandApplicationNotice is a per-property LEP gate",
+    "assumption_mismatch": "none found; the route already keys councils with councilKey",
+    "new_vs_existing": "one export script, one lib, one notice component"
+  },
+  "functions": [
+    {
+      "name": "getNotCovered",
+      "file_line": "frontend-nextjs/lib/not-covered.ts:27",
+      "input": "the former_council request parameter, any spelling",
+      "output": "council slug and chapter list, or null",
+      "if_none": "returns null so no notice is shown"
+    },
+    {
+      "name": "build",
+      "file_line": "scripts/export_not_covered_councils.py:30",
+      "input": "every withheld_area_rules entry in the data file",
+      "output": "map of council slug to chapter rows",
+      "if_none": "returns an empty map and writes an empty file"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "council name spelled differently (Inner West former councils, City of X)",
+      "what_happens": "the notice is silently missing for that address",
+      "mitigated": true,
+      "how": "uses councilKey, the same key the route uses for rules",
+      "repro": "not-covered-meta test with 'Leichhardt'"
+    },
+    {
+      "scenario": "data file edited without regenerating",
+      "what_happens": "page shows a stale list",
+      "mitigated": true,
+      "how": "drift pytest fails",
+      "repro": "python -m pytest tests/test_not_covered_councils_drift.py"
+    },
+    {
+      "scenario": "council string like 'constructor' or 'toString'",
+      "what_happens": "prototype property returned as a list",
+      "mitigated": true,
+      "how": "hasOwnProperty check",
+      "repro": "frontend-nextjs/lib/not-covered.ts"
+    }
+  ],
+  "mutation_analysis": "Returning null from getNotCovered fails the meta and component tests; returning data for every council fails the parramatta null test.",
+  "residual_risk": "Per council, so addresses outside the unmapped areas also see the notice. Chapter names are derived from chapter_key, not titles. The land-application withheld early return has no not_covered field (no rules are shown there anyway).",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "none"
+  }
+}
