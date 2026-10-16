@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a deterministic, model-free page proof for served council DCP rows that DQ-145 still counts (283 rows with page_check not_found/unresolved/too_short). New scripts only: a matcher module, a plan generator that is read-only on the database, an independent verifier, and an apply script that is a dry run unless --apply is passed. Nothing is applied in this PR; no production write, no change to dq_checks.json or to any served path.",
-  "commit_hash": "6657dd12",
+  "commit_hash": "fe69d022",
   "files": [
     "scripts/page_evidence.py",
     "scripts/page_proof_council.py",
