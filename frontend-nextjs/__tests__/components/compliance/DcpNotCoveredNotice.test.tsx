@@ -20,7 +20,7 @@ describe('DcpNotCoveredNotice', () => {
   });
 
   it('getNotCovered is null for an unlisted council', () => {
-    expect(getNotCovered('Parramatta')).toBeNull();
+    expect(getNotCovered('Hornsby')).toBeNull();
     expect(getNotCovered(undefined)).toBeNull();
   });
 

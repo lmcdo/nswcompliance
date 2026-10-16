@@ -32,7 +32,7 @@ describe('meta.not_covered', () => {
 
   it('is null for a council with no entry', async () => {
     const { GET } = await import('@/app/api/provisions/for-property/route');
-    const body = await (await GET(req({ former_council: 'parramatta', zone: 'R2' }))).json();
+    const body = await (await GET(req({ former_council: 'hornsby', zone: 'R2' }))).json();
     expect(body.meta.not_covered).toBeNull();
   });
 
