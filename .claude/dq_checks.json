@@ -315,7 +315,8 @@
    "why_no_check": "Needs a component render fixture; not yet written."
   },
   "DQ-33": {
-   "declared": "open",
+   "declared": "fixed",
+   "fixed_by": "#1302 (2026-10-16): Warringah heading-page rows given their Part; retag passes v2_dcp_part",
    "check": [
     "python",
     "scripts/dq_probe_live.py",
