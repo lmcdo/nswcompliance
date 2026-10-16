@@ -519,6 +519,32 @@ SELECT (SELECT count(*) FROM dcp_setback_controls s
 
 # ── the claims ─────────────────────────────────────────────────────────────────────────────────────
 
+#: OC-20 part (c), user decision 2026-10-17 (option 1): DQ-145 may only fall. Measured 1,011 on 2026-10-17
+#: (`python scripts/dq_probe_live.py --id DQ-145`). Lower it when a proof pass lands; never raise it.
+DQ145_CEILING = 1011
+
+
+def unproven_citations_only_fall() -> Result:
+    """DQ-145 as a ratchet: the count of served rules whose shown citation no script proved.
+
+    Uses the probe's own SQL (scripts/dq_probe_live.PROBES), so the ratchet and DQ-145 cannot drift apart.
+    """
+    import dq_probe_live
+    _headline, sql, params, _meaning = dq_probe_live.PROBES["DQ-145"]
+    conn = _connect()
+    if conn is None:
+        return UNKNOWN, "DQ-145 ratchet: database unreachable"
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            n = cur.fetchone()[0]
+    except Exception as exc:  # noqa: BLE001 - a query that no longer runs is a broken check: FAIL
+        return FAIL, f"DQ-145 ratchet: query failed ({exc})"
+    finally:
+        conn.close()
+    return (PASS if n <= DQ145_CEILING else FAIL), f"DQ-145 ratchet: {n} unproven (may not exceed {DQ145_CEILING})"
+
+
 CLAIMS: dict[str, list[Callable[[], Result]]] = {
     # Reworded 2026-10-03 (user ruling, ce-outreach-narrowed-claims-PROMPT-2026-10-03.md section 5): the
     # claim is the two counts and nothing else, so the check is the two counts and nothing else. The
@@ -554,6 +580,21 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
                              "tests/test_fabricated_verdicts.py"),
         lambda: probe("DQ-50"),
         lambda: jest_file("__tests__/api/canibuildit/lead-verdict-integrity.test.ts"),
+    ],
+    # OC-20, three parts (user decision 2026-10-17, option 1). (a) a clause number is shown only when a script
+    # proved it, else the page (#1170, #1307). (b) every surface that shows an unproven rule's citation renders
+    # the "Citation not yet checked" mark (#1313): the mark, the server flag mirroring DQ-145, and the inventory
+    # that fails when a new citation surface lacks the badge. (c) DQ-145 may only fall.
+    "OC-20": [
+        lambda: pytest_files("tests/test_dcp_citation_status.py"),
+        lambda: jest_file("__tests__/lib/citation-display.test.ts"),
+        lambda: jest_file("__tests__/api/citation-fallback-routes.test.ts"),
+        lambda: jest_file("__tests__/components/compliance/citation-unchecked-mark.test.tsx"),
+        lambda: jest_file("__tests__/components/compliance/citation-badge-inventory.test.ts"),
+        lambda: jest_file("__tests__/lib/citation-checked.test.ts"),
+        lambda: jest_file("__tests__/api/citation-checked-for-property.test.ts"),
+        lambda: jest_file("__tests__/api/citation-checked-other-routes.test.ts"),
+        unproven_citations_only_fall,
     ],
     "OC-10": [
         dcp_plans_are_dated,
