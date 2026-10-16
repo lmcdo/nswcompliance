@@ -1,0 +1,86 @@
+{
+  "tier": "standard",
+  "justification": "DQ-145 stood at 1,796 on 2026-10-17; 554 of them are Inner West LEP 2022 clauses (source_council='inner_west', document_id Inner_West_Local_Environmental_Plan_2022*) that the state-law proof skipped because it selects source_council IS NULL only. scripts/lep_law_proof.py reuses state_law_proof/state_law_proof2 (parser, Law, classify) unchanged and only widens candidate selection to documents whose title opens with an active instrument_registry LEP label. Read-only; writes a CSV, a plan JSON (scope registry_lep), paraphrase and amended lists. apply_state_law_proof.py gains --include-registry-lep; a registry_lep plan is refused without it and the flag does not widen a state-law plan. Nothing is applied.",
+  "commit_hash": "38a22333",
+  "files": [
+    "data/lep_law_amended_2026-10-17.json",
+    "data/lep_law_paraphrase_2026-10-17.json",
+    "data/lep_law_proof_2026-10-17.csv",
+    "data/lep_law_proof_plan_2026-10-17.json",
+    "scripts/apply_state_law_proof.py",
+    "scripts/lep_law_proof.py",
+    "scripts/withhold_state_paraphrase.py",
+    "tests/test_lep_law_proof.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/lep_law_proof.py --date 2026-10-17",
+    "fails_when": "a row whose text is not in the in-force Inner West LEP is reported proven, or the registry-LEP candidate count differs from the 554 Inner West LEP rows in DQ-145",
+    "observed_red": "Run 2026-10-17: 554 candidates -> 441 proven, 2 short_unproven, 67 partial (31 unresolved + 36 high), 44 paraphrase, 0 amended; 414 proven rows have one derived clause, 12 ambiguous, 15 none.",
+    "external_authority": "the NSW legislation website in-force text of Inner West LEP 2022 (epi-2022-0457), fetched once through the Fly app"
+  },
+  "real_layer_exempt": {
+    "scripts/lep_law_proof.py": "read-only session (default_transaction_read_only=on); its real-layer check is its own run against production plus the cached legislation text; the fly fetch is operator-run. A database-marked test would add nothing it does not already run.",
+    "scripts/apply_state_law_proof.py": "not run in this PR; a database-marked test would write to production. The new scope guard (scope_clause) is unit tested.",
+    "scripts/withhold_state_paraphrase.py": "one-off production write; real-layer check is its own dry run against production plus rowcount verification"
+  },
+  "pre_impl": {
+    "existing_data": "instrument_registry has 24 active LEPs with pco_instrument_id; only Inner West LEP 2022 has unproven served rows (554). Other unproven council rows (283) are DCP chapters; 959 are state-law rows not yet applied from #1304.",
+    "assumption_mismatch": "assumed apply could take any row; it hard-codes source_council IS NULL, so a plan of council-tagged rows needed an explicit opt-in rather than a looser default.",
+    "new_vs_existing": "reuses state_law_proof.Law/paragraphs/connect and state_law_proof2.classify/Doc/fetch_pit; new code is only registry-title mapping and the council remainder listing"
+  },
+  "functions": [
+    {
+      "name": "lep_for",
+      "file_line": "scripts/lep_law_proof.py:57",
+      "input": "a document_id and the registry title map",
+      "output": "the epi id of the LEP whose title opens the document_id on a word boundary, else None",
+      "if_none": "a DCP chapter, a SEPP or a missing document_id maps to None and is left out of the LEP proof"
+    },
+    {
+      "name": "scope_clause",
+      "file_line": "scripts/apply_state_law_proof.py:29",
+      "input": "the plan dict and the --include-registry-lep flag",
+      "output": "the SQL guard: source_council IS NULL by default, IS NOT NULL for a registry_lep plan with the flag",
+      "if_none": "a registry_lep plan without the flag, or the flag with a state-law plan, exits with a refusal"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ-145 1,796 = 554 Inner West LEP + 283 council DCP + 959 state-law (source_council NULL); LEP rows 441 proven / 2 short / 67 partial / 44 paraphrase / 0 amended",
+      "read_at": "python scripts/lep_law_proof.py --fetch and --council-remainder, 2026-10-17",
+      "if_missing": "composition unmeasured"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a DCP chapter whose name starts with the same council words is treated as the LEP",
+      "what_happens": "DCP controls would be proven against the LEP and wrongly pass",
+      "mitigated": true,
+      "how": "the whole slugged LEP title must open the document_id on a word boundary; Inner_West_Ashfield_DCP_2016 and Woollahra_DCP_2015 do not match",
+      "repro": "pytest tests/test_lep_law_proof.py::test_dcp_and_sepp_documents_do_not_map"
+    },
+    {
+      "scenario": "the new flag loosens the default and a state-law plan is applied to council rows, or the reverse",
+      "what_happens": "a verdict written to rows outside the plan's scope",
+      "mitigated": true,
+      "how": "the default guard is unchanged; registry_lep plans need the flag; the flag with any other plan is refused",
+      "repro": "pytest tests/test_lep_law_proof.py::test_flag_does_not_widen_state_plan"
+    },
+    {
+      "scenario": "a longer LEP title is shadowed by a shorter prefix title",
+      "what_happens": "rows proven against the wrong instrument",
+      "mitigated": true,
+      "how": "titles are tried longest first",
+      "repro": "pytest tests/test_lep_law_proof.py::test_longest_title_wins"
+    }
+  ],
+  "mutation_analysis": "Dropping the word-boundary test in lep_for (startswith(label) only) fails test_word_boundary_required; changing the default guard to IS NOT NULL fails test_scope_default_is_state_only; the proof itself is state_law_proof2.classify, covered by tests/test_state_law_proof2.py.",
+  "residual_risk": "Proof is of text presence in the current instrument, not that the rule belongs to the stored clause (15 proven rows have no derived clause, 12 are ambiguous). 67 partial and 44 paraphrase rows stay unproven and are DQ-88 candidates; 0 amended because the three point-in-time versions loaded did not contain any of them. Sol cross-review result is reported in the PR conversation. APPLIED 2026-10-17: 441 Inner West LEP rows proven (backup state_law_proof_pre_2026-10-17T002008.json); 15 non-table summaries withheld (29 table rows left unproven, not withheld: they are LEP tables stored as HTML). Sol finding 1 fixed (UPDATE requires source_council IS NOT DISTINCT FROM the plan's). Findings 2-3 accepted: all 554 rows are inner_west; remainder listing is read-only. DQ-145 1,467 -> ~1,011.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "user decides whether to run apply_state_law_proof.py data/lep_law_proof_plan_2026-10-17.json --include-registry-lep --apply"
+  }
+}

@@ -37,17 +37,24 @@ def listed_ids(path: Path = LIST) -> list[int]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--list", default=str(LIST), help="paraphrase list JSON (default: the state-law list)")
+    ap.add_argument("--council", default=None,
+                    help="rows of this council (registry LEP rows, e.g. inner_west); default state-law rows only")
     a = ap.parse_args()
     import psycopg2
-    ids = listed_ids()
+    ids = listed_ids(Path(a.list))
+    who, wp = (("source_council = %s", [a.council]) if a.council else ("source_council IS NULL", []))
     conn = psycopg2.connect(os.environ["DATABASE_URL"], connect_timeout=20)
     try:
         cur = conn.cursor()
         cur.execute("SET statement_timeout = 30000")
         cur.execute("SELECT id, v2_is_actionable FROM regulatory_provisions WHERE id = ANY(%s) AND is_current"
-                    " AND source_council IS NULL", (ids,))
+                    f" AND {who}", [ids] + wp)
         rows = cur.fetchall()
         served = [r for r in rows if r[1]]
+        if len(rows) != len(ids):
+            # a mistyped --council or a stale list matches fewer rows and would otherwise "succeed" doing nothing
+            raise SystemExit(f"[ABORT] {len(ids)} listed but {len(rows)} current rows match ({who}); check --council/--list")
         print(f"listed {len(ids)} | current state rows {len(rows)} | still served {len(served)}")
         if not a.apply or not served:
             print("dry run: nothing written" if not a.apply else "nothing to change")
@@ -56,7 +63,7 @@ def main() -> int:
         bk = BACKUP_DIR / f"withhold_state_paraphrase_pre_{datetime.now():%Y-%m-%dT%H%M%S}.json"
         bk.write_text(json.dumps([{"id": i, "v2_is_actionable": v} for i, v in served]), encoding="utf-8")
         cur.execute("UPDATE regulatory_provisions SET v2_is_actionable = FALSE WHERE id = ANY(%s) AND is_current"
-                    " AND source_council IS NULL AND v2_is_actionable", ([r[0] for r in served],))
+                    f" AND {who} AND v2_is_actionable", [[r[0] for r in served]] + wp)
         if cur.rowcount != len(served):
             conn.rollback()
             raise SystemExit(f"[ROLLED BACK] updated {cur.rowcount}, expected {len(served)}")
