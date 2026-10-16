@@ -1,0 +1,105 @@
+{
+  "tier": "standard",
+  "justification": "Adds a deterministic, model-free page proof for served council DCP rows that DQ-145 still counts (283 rows with page_check not_found/unresolved/too_short). New scripts only: a matcher module, a plan generator that is read-only on the database, an independent verifier, and an apply script that is a dry run unless --apply is passed. Nothing is applied in this PR; no production write, no change to dq_checks.json or to any served path.",
+  "commit_hash": "6657dd12",
+  "files": [
+    "scripts/page_evidence.py",
+    "scripts/page_proof_council.py",
+    "scripts/verify_page_evidence.py",
+    "scripts/apply_page_evidence.py",
+    "tests/test_page_evidence.py",
+    "data/page_evidence_2026-10-17.jsonl"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_page_evidence.py -q && python scripts/verify_page_evidence.py data/page_evidence_2026-10-17.jsonl --db",
+    "fails_when": "A matcher accepts a span that is not printed, or the verifier accepts a tampered proof. Measured on this branch: mutating find_span's word-boundary test, the one-page-only rule, the MIN_WORDS rule, the verifier's offset comparison and the header+row reading each turned at least one test red (1 failed each). The verifier was fed a tampered copy of three real lines (offset shifted, wrong sha256, wrong page) and rejected all three with exit 1; the untouched file verifies 100/100 against the pinned PDFs and the live provision_text md5s.",
+    "external_authority": "The chapter PDFs themselves, pinned by sha256 and re-read by PyMuPDF in the verifier; and the live provision_text md5 for each row. Neither the matcher's own output nor a model is consulted by the verifier.",
+    "observed_red": "Watched red on this branch, 2026-10-17. Mutation: removing the one-page-only rule in prove() printed '1 failed, 5 passed' (test_text_run_on_two_pages_is_unresolved). Removing the MIN_WORDS rule printed '1 failed, 7 passed'. Removing the verifier's offset comparison printed '1 failed, 14 passed'. Removing the word-boundary test printed '1 failed, 7 passed' after test_span_ending_mid_word_is_not_a_match was added. Tampered JSONL of three real lines: verify_page_evidence printed 'FAIL id=131843: start/end do not frame the span', 'FAIL id=131985: pdf sha256 99377f918fe4 != recorded 000000000000', 'FAIL id=131986: page text at the recorded offsets is not the span', 'verified 0/3 proofs' and exited 1."
+  },
+  "pre_impl": {
+    "existing_data": "scripts/dcp_page_repair.py and scripts/rule_page_locator.py already judge pages with a half-match tolerance (HOLD 0.5) that cannot say which words matched where. regulatory_provisions has no evidence column (migration 079 adds pdf_page, page_range, printed_page_label, page_check, page_checked_at, page_source_path only), so evidence is a committed JSONL keyed by id + md5 and the apply path reuses dcp_page_repair.plan_row/backup/write unchanged.",
+    "assumption_mismatch": "Assumed the large Ashfield group (heritage Part 9 street tables) would be rows of a table. They are COLUMNS of a table (one repeated street or style name per line), so a row-only table matcher would have proved none of them; the matcher reads rows, columns and header+one data row.",
+    "new_vs_existing": "New module page_evidence.py because the existing locator is score-based; it is used only on rows the locator left unresolved. dcp_page_repair is imported, not modified."
+  },
+  "functions": [
+    {
+      "name": "prove",
+      "file_line": "scripts/page_evidence.py:178",
+      "input": "the rule's normalised words and every page's text and table readings",
+      "output": "(proven, evidence, info) when the whole span is on exactly one page; otherwise unresolved / not_found / too_short with the rival pages",
+      "if_none": "an empty or sub-3-word rule returns too_short and no evidence; a PDF with no readable page returns not_found"
+    },
+    {
+      "name": "check_evidence",
+      "file_line": "scripts/verify_page_evidence.py:34",
+      "input": "one evidence dict and the fitz page it names",
+      "output": "a list of problems; empty only when the recorded offsets hold exactly the recorded span on that page",
+      "if_none": "missing span, offsets, table index, or a merged/None cell each return a problem rather than passing"
+    }
+  ],
+  "values": [
+    {
+      "value": "283 rows in scope: ashfield 142, ku_ring_gai 39, canterbury_bankstown 30, city_of_sydney 15, others 57",
+      "read_at": "read-only SELECT of the DQ-145 council set on 2026-10-17",
+      "if_missing": "without the count the proven share cannot be stated against the target"
+    },
+    {
+      "value": "100 of 283 proven (94 on_page, 6 moved); 47 text-run on_page, 47 table-cells on_page, 5 moved text-run, 1 moved table-cells; 183 left (114 not_found, 64 unresolved, 5 too_short)",
+      "read_at": "python scripts/page_proof_council.py, 44 PDFs, 2026-10-17",
+      "if_missing": "the plan would have no measured yield"
+    },
+    {
+      "value": "verify_page_evidence --db: verified 100/100 proofs (28 pinned PDFs)",
+      "read_at": "run on the committed JSONL, 2026-10-17",
+      "if_missing": "proofs would be unverified by anything but the code that made them"
+    }
+  ],
+  "queries": [
+    {
+      "query": "DQ-145 council subset (is_current AND v2_is_actionable, not TOC, source_council NOT NULL, not inner_west_lep, citation_status not proven/imprecise, page_check not on_page/moved)",
+      "scope": "regulatory_provisions joined to dcp_chapter_registry on the active row",
+      "filters": "is_current, v2_is_actionable, is_active; read-only session; 30s statement timeout",
+      "purpose": "List the served council DCP rows DQ-145 counts as unproven, with their chapter PDF path, so each can be re-read against its PDF.",
+      "file_line": "scripts/page_proof_council.py:37",
+      "where_clause": "rp.is_current AND rp.v2_is_actionable AND source_council IS NOT NULL AND source_council <> 'inner_west_lep' AND NOT (citation_status IN ('proven','imprecise') OR page_check IN ('on_page','moved'))"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The same words are printed on two pages (a control restated per site, or a contents page plus the body).",
+      "what_happens": "The row is reported unresolved with both pages and receives no evidence.",
+      "mitigated": true,
+      "how": "prove() requires exactly one matching page across all readings; test_text_run_on_two_pages_is_unresolved fails if that rule is removed (mutation run).",
+      "repro": "python -m pytest tests/test_page_evidence.py::test_text_run_on_two_pages_is_unresolved -q"
+    },
+    {
+      "scenario": "A rule ends mid-word of the printed text (setback vs setbacks).",
+      "what_happens": "No match; spans must start and end on word boundaries.",
+      "mitigated": true,
+      "how": "find_span boundary test; test_span_ending_mid_word_is_not_a_match fails when the boundary check is removed (mutation run).",
+      "repro": "python -m pytest tests/test_page_evidence.py::test_span_ending_mid_word_is_not_a_match -q"
+    },
+    {
+      "scenario": "Evidence is edited after the fact (offset, page, sha256, cell list, table index).",
+      "what_happens": "The verifier re-reads the pinned PDF and exits 1.",
+      "mitigated": true,
+      "how": "tampered copy of three real lines rejected; unit tests tamper each field.",
+      "repro": "python scripts/verify_page_evidence.py <copy of data/page_evidence_2026-10-17.jsonl with one line's evidence.start incremented> ; echo $?"
+    },
+    {
+      "scenario": "provision_text changes, the row is proven by someone else, or the chapter PDF is republished between plan and apply.",
+      "what_happens": "apply_page_evidence refuses the whole file and writes nothing.",
+      "mitigated": true,
+      "how": "preflight() compares md5, current page_check and r2_current_path per line; unit-tested; --apply also checks the written rowcount equals the line count.",
+      "repro": "python -m pytest tests/test_page_evidence.py::test_apply_preflight_refuses_changed_text_and_taken_rows -q"
+    }
+  ],
+  "mutation_analysis": "Six mutations run against the new tests: word-boundary check removed (initially survived, because the fixture differed on the next word as well; test_span_ending_mid_word_is_not_a_match was added and now kills it), one-page-only rule removed (killed), MIN_WORDS rule removed (killed), verifier offset comparison removed (killed), header+row reading widened to a second row (killed), merged-cell None check removed (survives, an equivalent mutant: the empty-cell check on the next line rejects the same input).",
+  "residual_risk": "A short span (3 to 6 words) that is printed on exactly one page is accepted, for example a diagram label or a heading; it proves the words are on that page, not that the page is where the council states the control. Columns are read with empty cells skipped, so a column of generic style names matched at four non-adjacent cells (id 244169, moved p260 to p66) is a weaker claim than a prose run; it is labelled table-cells with the exact cells so a reviewer can see it. 183 of the 283 rows remain unproven: contents-page fragments, map and figure labels, interleaved table cells and figure captions that no PDF text layer prints contiguously. Nothing is applied here; applying needs the user's go.",
+  "post_merge": {
+    "db_reset": "No. Read-only against the database; apply_page_evidence is a dry run unless --apply is passed.",
+    "secrets": "None written.",
+    "other_repo": "No.",
+    "manual_verify": "Run python scripts/apply_page_evidence.py data/page_evidence_2026-10-17.jsonl (dry run) and open 5 proofs' pdf pages before any --apply."
+  }
+}
