@@ -76,8 +76,22 @@ _LAND_LIMIT = re.compile(
     r"|corridor|(?<!government )area)\b")  # case-sensitive except the keywords: [A-Z] must mean a capital
 
 
+#: A plan that covers its own mapped EXTENT, where that extent is enforced before a rule is served: the three former
+#: Inner West councils (each DCP covers its former council; served by lot_search_index.former_council, repaired from
+#: the ABS 2015 boundaries on 2026-10-15, #1287) and City of Sydney (Figure 1.1 is the Land Application gate,
+#: lib/dcp-land-application.ts). Leichhardt A1.3: "applies to the Inner West Local Government Area for the extent of
+#: land identified in Figure A5: Land covered by this Development Control Plan". Added 2026-10-16 with the user's OK.
+_PLAN_EXTENT = re.compile(
+    r"(this (development control plan|DCP|plan) applies to .{0,80}?for the extent of land (shown|show|identified) "
+    r"(on|in) (Figure|Map) [A-Z]?\d+"
+    r"|this development control plan applies to the land identifi?\s?ed in Figure 1)", re.I)
+_EXTENT_ENFORCED = frozenset({"ashfield", "leichhardt", "marrickville", "city_of_sydney"})
+
+
 def _machine_whole_council(chapter: dict) -> bool:
     quote = chapter.get("quote") or ""
+    if chapter.get("applies_to") == "plan_extent":
+        return chapter.get("council") in _EXTENT_ENFORCED and bool(_PLAN_EXTENT.search(quote))
     if _MAPPED_PART.search(quote):
         return False
     if chapter.get("applies_to") == "whole_council":
@@ -134,7 +148,8 @@ def _chapter_scope_keys(*, part_of_council: bool | None = None,
         # pages were checked for land limits (recorded as plan_source by the 2026-10-16 scan).
         if c.get("applies_to") == "inherits_plan":
             src = by_key.get(c.get("plan_source") or "")
-            return bool(src) and src["council"] == c["council"] and src.get("applies_to") == "whole_council" \
+            return bool(src) and src["council"] == c["council"] \
+                and src.get("applies_to") in ("whole_council", "plan_extent") \
                 and _machine_whole_council(src)
         return _machine_whole_council(c)
 

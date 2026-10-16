@@ -12,7 +12,7 @@ import dq_probe_live as p  # noqa: E402
 
 def test_scope_file_loads_every_chapter():
     keys = p._chapter_scope_keys()
-    assert len(keys) == 263  # 2026-10-16: +1 wollongong a1; +27 waverley Parts (council__chapter#PART)
+    assert len(keys) == 265  # 2026-10-16: +1 wollongong a1; +27 waverley Parts; +2 plan introductions (ku-ring-gai, ashfield)
     assert all("__" in k for k in keys)
 
 
@@ -124,3 +124,13 @@ def test_waverley_place_and_condition_parts_are_never_listed_as_whole_council():
         assert f"waverley__waverley-dcp-2022#{part}" not in keys
     assert "waverley__waverley-dcp-2022#C1" in keys          # Low Density Residential inherits the plan's land
     assert "waverley__waverley-dcp-2022" not in keys          # the whole document stays mixed_parts
+
+
+def test_a_chapter_recorded_mixed_is_not_overridden_by_inheritance():
+    """City of Sydney Schedules mixes general schedules with area ones (Schedule 6 Signage in The Rocks, Green
+    Square). A scan of its first pages found no land wording, but that does not make it whole-council."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import dq_probe_live as d
+    assert "city_of_sydney__schedules" not in set(d._chapter_scope_keys(machine_whole_council=True))
