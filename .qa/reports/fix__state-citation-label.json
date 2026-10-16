@@ -1,0 +1,92 @@
+{
+  "tier": "standard",
+  "justification": "Code review 2026-10-16: state-law rows (source_council NULL) carry internal ids such as provision_2344 in ref_number with section_header NULL. citationIsShown shows the label for source_council NULL whatever citation_status is, and the clause, browse, SEPP and constraint routes passed ref_number through, so an internal id could be displayed as the law's clause number (the DQ-111 fabricated-citation class). One helper, stateClauseLabel in lib/citation-display.ts, now gates every served state reference to real clause shapes; council (DCP) behaviour is unchanged.",
+  "commit_hash": "dba7e989",
+  "files": [
+    "frontend-nextjs/lib/citation-display.ts",
+    "frontend-nextjs/lib/sepp-parking-cards.ts",
+    "frontend-nextjs/app/api/clause/[id]/route.ts",
+    "frontend-nextjs/app/api/sepp/full-text/route.ts",
+    "frontend-nextjs/app/api/provisions/by-ids/route.ts",
+    "frontend-nextjs/app/api/provisions/[id]/complete/route.ts",
+    "frontend-nextjs/app/api/provisions/[id]/enhanced/route.ts",
+    "frontend-nextjs/app/api/compliance/constraints/route.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/citation-display.test.ts",
+    "fails_when": "stateClauseLabel('provision_2344') is not null, or withServedCitation on a source_council NULL row with ref_number provision_2344 returns a clause_label",
+    "observed_red": "Before the change withServedCitation returned clause_label 'provision_2344' for a state row; the clause route test expected 'Doc__C4_9' and the SEPP parking test expected refNumber 'provision_187' to be served.",
+    "external_authority": "NSW legislation clause numbering (e.g. 2.30AB, 3A.12, Schedule 2 cl 6) as printed in the instrument on legislation.nsw.gov.au"
+  },
+  "real_layer_exempt": {
+    "frontend-nextjs/lib/citation-display.ts": "pure string function; no database layer",
+    "frontend-nextjs/app/api/clause/[id]/route.ts": "one-line fallback change, covered by the route unit test",
+    "frontend-nextjs/app/api/provisions/by-ids/route.ts": "pass-through of the helper; no query changed",
+    "frontend-nextjs/app/api/sepp/full-text/route.ts": "pass-through of the helper; no query changed",
+    "frontend-nextjs/app/api/provisions/[id]/complete/route.ts": "pass-through of the helper; no query changed",
+    "frontend-nextjs/app/api/provisions/[id]/enhanced/route.ts": "pass-through of the helper; no query changed",
+    "frontend-nextjs/app/api/compliance/constraints/route.ts": "pass-through of the helper; no query changed",
+    "frontend-nextjs/lib/sepp-parking-cards.ts": "pass-through of the helper; no query changed"
+  },
+  "pre_impl": {
+    "existing_data": "grep of ref_number/clause_label/withServedCitation across app, components, lib; parseRefNumber already returns null for non-Leichhardt/Marrickville in for-property",
+    "assumption_mismatch": "assumed only the clause and browse routes leaked; SEPP full-text, SEPP parking cards, by-ids, provision complete/enhanced and constraints also passed ref_number through",
+    "new_vs_existing": "extends lib/citation-display.ts; no new module"
+  },
+  "functions": [
+    {
+      "name": "stateClauseLabel",
+      "file_line": "frontend-nextjs/lib/citation-display.ts:80",
+      "input": "a stored ref_number of unknown type",
+      "output": "the trimmed reference if it has the shape of a real NSW clause, section or schedule reference, else null",
+      "if_none": "caller shows the instrument name and legislation link only, no clause"
+    },
+    {
+      "name": "servedClauseLabel",
+      "file_line": "frontend-nextjs/lib/citation-display.ts:90",
+      "input": "a label and the row's source_council",
+      "output": "council rows: the label unchanged; state rows: stateClauseLabel(label)",
+      "if_none": "returns null and the caller shows no clause at all"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "internal id shaped like a real clause, e.g. a bare 4+ digit row id or 'Provision 12'",
+      "what_happens": "would be shown as a clause",
+      "mitigated": true,
+      "how": "bare integers of 4+ digits and anything containing provision, layout, underscore or a uuid prefix are refused",
+      "repro": "jest citation-display: never shows internal ids"
+    },
+    {
+      "scenario": "council row passes through the new gate",
+      "what_happens": "a proven DCP label would be dropped",
+      "mitigated": true,
+      "how": "servedClauseLabel only filters when source_council is falsy",
+      "repro": "jest citation-display: council rows are unchanged"
+    },
+    {
+      "scenario": "a real state clause in an unlisted format, e.g. Chapter 3 Part 2 Division 1 Subdivision 4",
+      "what_happens": "reference hidden; instrument and link still shown",
+      "mitigated": true,
+      "how": "fails closed: hidden, never invented",
+      "repro": "stateClauseLabel Subdivision form"
+    },
+    {
+      "scenario": "an internal id that happens to match the clause shape, e.g. '12'",
+      "what_happens": "the id would be shown as a clause number",
+      "mitigated": false,
+      "how": "shape is checked, not truth; short integers are accepted as section numbers",
+      "repro": "stateClauseLabel('12')"
+    }
+  ],
+  "mutation_analysis": "Making stateClauseLabel return its input unchanged fails 'never shows internal ids' and 'withServedCitation: state row with internal id'. Making servedClauseLabel filter council rows fails 'council rows are unchanged'.",
+  "residual_risk": "Sol finding 2 (short bare integers such as 12 pass the shape check) is accepted as residual: shape is checked, not truth. Sol findings 1 (compound Part/Division/Schedule references) and 3 (document-id heuristic failed open) are fixed: stateClauseLabel accepts compound forms and referenceForDocument passes a reference only for a clearly council DCP document id.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "none"
+  }
+}

@@ -1,4 +1,4 @@
-import { citationIsShown, stripStoredCode, withServedCitation, stripOccurrenceSuffix } from '@/lib/citation-display';
+import { citationIsShown, stripStoredCode, withServedCitation, stripOccurrenceSuffix, stateClauseLabel, servedClauseLabel, referenceForDocument } from '@/lib/citation-display';
 
 const NL = '\n';
 
@@ -86,5 +86,47 @@ describe('the internal occurrence suffix never reaches a reader', () => {
       { citation_status: 'not_proven', source_council: 'city_of_sydney' },
       'Sydney_DCP_2012__schedules__7_4 (a)~2');
     expect(r.clause_label).toBeNull();
+  });
+});
+
+describe('compound structural references and document-id fail-closed', () => {
+  it.each(['Part 2, Division 3', 'Part 2 Division 3', 'Schedule 1 Part 2', 'Chapter 3 Part 2', 'Part 5A'])('accepts %s', (ref) => {
+    expect(stateClauseLabel(ref)).toBe(ref);
+  });
+  it('still rejects internal ids with a Part-like prefix', () => {
+    expect(stateClauseLabel('Part_2')).toBeNull();
+    expect(stateClauseLabel('Part provision_9')).toBeNull();
+  });
+  it('referenceForDocument: unrecognised document id with provision_99 gets no clause', () => {
+    expect(referenceForDocument('provision_99', 'Some_Unknown_Doc')).toBeNull();
+    expect(referenceForDocument('provision_99', null)).toBeNull();
+    expect(referenceForDocument('provision_99', 'State_Environmental_Planning_Policy_DCP')).toBeNull();
+  });
+  it('referenceForDocument: a council DCP document passes its reference', () => {
+    expect(referenceForDocument('C4.9', 'Warringah_DCP_2011')).toBe('C4.9');
+  });
+});
+
+describe('a state-law reference is shown only if it looks like a real NSW clause', () => {
+  it('shows real clause shapes', () => {
+    for (const ok of ['2.30AB', '3A.12', 'cl 5.10', 'Clause 4.1', 'Schedule 2 cl 6', 'Schedule 1', 's 87', '4.6(3)', 'Chapter 3']) {
+      expect(stateClauseLabel(ok)).toBe(ok);
+    }
+  });
+  it('never shows internal ids', () => {
+    for (const bad of ['provision_2344', 'layout_no', 'Provision 12', '2344', '3f2b8c1e-1234-4abc-9def-0123456789ab', 'SEPP__part_3__3_1', '', '   ', null, undefined, 42]) {
+      expect(stateClauseLabel(bad)).toBeNull();
+    }
+  });
+  it('withServedCitation: state row with internal id gets no clause label, real one kept', () => {
+    const base = { citation_status: null, source_council: null, provision_text: 'x' };
+    expect(withServedCitation({ ...base, ref_number: 'provision_2344' }, 'provision_2344').clause_label).toBeNull();
+    expect(withServedCitation({ ...base, ref_number: '2.30AB' }, '2.30AB').clause_label).toBe('2.30AB');
+  });
+  it('council rows are unchanged', () => {
+    expect(servedClauseLabel('C4.9', 'warringah')).toBe('C4.9');
+    expect(servedClauseLabel('2.6 C3', 'marrickville')).toBe('2.6 C3');
+    const p = { citation_status: 'proven', source_council: 'warringah', ref_number: 'D__C4_9', provision_text: 'x' };
+    expect(withServedCitation(p, 'C4.9').clause_label).toBe('C4.9');
   });
 });

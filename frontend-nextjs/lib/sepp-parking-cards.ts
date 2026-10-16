@@ -45,6 +45,8 @@
  * `citation_status`; see CITATION_STATUS_NOTE). Scoping to it is load-bearing, not
  * tidiness: unscoped, 5 of the 9 predicates below match 2-3 rows across generations.
  */
+import { stateClauseLabel } from './citation-display';
+
 export const HOUSING_SEPP_DOCUMENT_ID =
   'State_Environmental_Planning_Policy_Housing_2021__NSW_Legislation';
 
@@ -417,7 +419,7 @@ export function resolveParkingCards(allRows: ParkingProvisionRow[]): ResolvedPar
       provisions.push({
         role: ref.role,
         provisionId: row.id,
-        refNumber: row.ref_number,
+        refNumber: stateClauseLabel(row.ref_number),
         pdfPage: row.pdf_page,
         citationProven: row.citation_status === 'verified',
         text: row.provision_text,

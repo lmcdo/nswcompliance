@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { referenceForDocument } from '@/lib/citation-display';
 
 const pool = new Pool({
   host: process.env.DB_HOST || process.env.DATABASE_HOST || 'localhost',
@@ -148,7 +149,7 @@ export async function GET(
 
     const response: CompleteProvisionResponse = {
       id: provision.id,
-      reference: provision.ref_number || 'N/A',
+      reference: referenceForDocument(provision.ref_number, provision.document_id) || 'N/A',
       excerptText: provision.provision_text?.substring(0, 200) || '',
       fullClauseText: provision.provision_text || null,
       legalPrecedence: precedence,
