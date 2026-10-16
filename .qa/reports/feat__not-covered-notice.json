@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "OC-21 addition: an address whose council has withheld area rules says so on its page. The list data/chapter_scope/not_covered_2026-10-15.json is exported to frontend-nextjs/shared/not-covered-councils.json by scripts/export_not_covered_councils.py; for-property meta.not_covered carries the served council's chapters or null; DcpNotCoveredNotice renders a plain amber note in ProvisionsByTocStructure. Per council because the areas have no outline.",
-  "commit_hash": "fd0453ad",
+  "commit_hash": "090377ea",
   "files": [
     "scripts/export_not_covered_councils.py",
     "frontend-nextjs/shared/not-covered-councils.json",
