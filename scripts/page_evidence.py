@@ -17,8 +17,12 @@ A proof is an EVIDENCE dict that scripts/verify_page_evidence.py re-derives from
                used -- PyMuPDF Table.extract(), never to_markdown), char start/end in the
                normalised stream of those cells, and the span itself.
 
-Fail closed: the span must lie on exactly ONE page of the whole PDF (any matcher, any order).
-Two pages -> `unresolved`. No page -> `not_found`. Fewer than MIN_WORDS words -> `too_short`.
+Fail closed: the span must lie on exactly ONE page of the whole PDF (any matcher, any order),
+EXCEPT when the row's own stored page (pdf_page or a page of page_range) is one of the pages it
+is printed on (matcher v2): then the stored page does hold the words -> proven, and the
+evidence lists EVERY page the span is on (`all_pages`) so a reader sees it was ambiguous. No page
+is picked: if the stored page is not among them the row stays `unresolved`.
+No page -> `not_found`. Fewer than MIN_WORDS words -> `too_short`.
 """
 from __future__ import annotations
 
@@ -27,6 +31,7 @@ import re
 import unicodedata
 
 MIN_WORDS = 3
+MATCHER_VERSION = "page-evidence-v2-stored-page-among-several"
 ORDERS = ("raw", "sorted")
 _WORD = re.compile(r"[a-z0-9]+")
 _BULLETS = re.compile("[•‣▪●◦⁃∙·]")
@@ -175,11 +180,13 @@ def match_page(words: str, texts: dict, streams: list) -> list:
     return found
 
 
-def prove(words: str, pages: dict):
+def prove(words: str, pages: dict, held=None):
     """(verdict, evidence-or-None, info) for `words` over every page of a PDF.
 
-    pages: page number -> (texts, prepare(grids)). Verdict: proven | unresolved | not_found | too_short.
+    pages: page number -> (texts, prepare(grids)). held: pages the row already points at
+    (pdf_page + page_range). Verdict: proven | unresolved | not_found | too_short.
     info always carries the pages that matched, so an `unresolved` says where the rival is.
+    A span on several pages is proven only on a page in `held`; evidence.all_pages lists all.
     """
     if len(words.split()) < MIN_WORDS:
         return "too_short", None, {"pages": []}
@@ -191,10 +198,17 @@ def prove(words: str, pages: dict):
     if not hits:
         return "not_found", None, {"pages": []}
     if len(hits) > 1:
-        return "unresolved", None, {"pages": sorted(hits), "reason": "span printed on several pages"}
-    (pno, m), = hits.items()
+        both = sorted(set(held or ()) & set(hits))
+        if not both:
+            return "unresolved", None, {"pages": sorted(hits), "reason": "span printed on several pages"}
+        pno = both[0]
+    else:
+        (pno,) = hits
+    m = hits[pno]
     m.sort(key=lambda x: (x["matcher"] != "text-run", x.get("order", ""), x["start"]))
     ev = dict(m[0])
     ev["page"] = pno
+    ev["all_pages"] = sorted(hits)
+    ev["matcher_version"] = MATCHER_VERSION
     ev["span_sha256"] = hashlib.sha256(words.encode()).hexdigest()
-    return "proven", ev, {"pages": [pno], "alternatives": len(m)}
+    return "proven", ev, {"pages": sorted(hits), "alternatives": len(m)}

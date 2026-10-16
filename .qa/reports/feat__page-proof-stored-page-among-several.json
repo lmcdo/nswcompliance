@@ -1,0 +1,96 @@
+{
+  "tier": "standard",
+  "justification": "Extends the deterministic page proof (#1316): a span printed on several pages is proven on_page when the row's own stored page (pdf_page or a page_range member) is one of them, with every page listed in evidence.all_pages. If the stored page is not among them the row stays unresolved and no page is picked. Matcher, planner and verifier only; the planner is read-only on the database, apply is a dry run, nothing is written to production.",
+  "commit_hash": "01de94d8",
+  "files": [
+    "scripts/page_evidence.py",
+    "scripts/page_proof_council.py",
+    "scripts/verify_page_evidence.py",
+    "tests/test_page_evidence.py",
+    "data/page_evidence_2026-10-18.jsonl"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_page_evidence.py -q && python scripts/verify_page_evidence.py data/page_evidence_2026-10-18.jsonl --db",
+    "fails_when": "A multi-page span is proven on a page the row does not point at, all_pages is not the full list of pages the span is printed on, or the verifier accepts an edited all_pages.",
+    "external_authority": "The chapter PDFs, pinned by sha256 and re-read by PyMuPDF in the verifier, and the live provision_text md5 of each row.",
+    "observed_red": "Mutations run on this branch 2026-10-17: ignoring the stored page in prove() -> 5 failed; always unresolved for multi-page -> 3 failed; all_pages cut to the one page -> 2 failed; verifier not comparing all_pages -> 1 failed; verifier not requiring on_page for an ambiguous span -> 1 failed. Restored: 22 passed."
+  },
+  "pre_impl": {
+    "existing_data": "page_evidence.py prove() returned unresolved for any span on 2+ pages; 64 of the 183 rows still unproven after #1316 were unresolved.",
+    "assumption_mismatch": "Assumed most unresolved rows would have their stored page among the rival pages. Measured: 21 of 64 do; ku_ring_gai (35 unresolved) mostly does not, so it stays unresolved.",
+    "new_vs_existing": "Same module, new optional argument held; older evidence without all_pages still verifies by the old one-page rule (100/100 of the 2026-10-17 file re-verified)."
+  },
+  "functions": [
+    {
+      "name": "prove",
+      "file_line": "scripts/page_evidence.py:183",
+      "input": "the rule's normalised words, every page's readings, and the pages the row already points at",
+      "output": "(proven, evidence with all_pages and matcher_version, info); on several pages proven only on a held page, else unresolved",
+      "if_none": "held=None behaves as the old rule: several pages -> unresolved"
+    },
+    {
+      "name": "check_uniqueness",
+      "file_line": "scripts/verify_page_evidence.py:90",
+      "input": "one evidence dict, the row's old page fields, the verdict, and all pages of the pinned PDF",
+      "output": "a list of problems; empty only when all_pages is re-derived exactly and an ambiguous span is on_page on a held page",
+      "if_none": "evidence without all_pages is checked by the old exactly-one-page rule"
+    }
+  ],
+  "values": [
+    {
+      "value": "21 newly proven (all on_page): ashfield 8, city_of_sydney 4, hornsby 4, penrith 2, canterbury_bankstown 1, ku_ring_gai 1, leichhardt 1; 43 stay unresolved",
+      "read_at": "python scripts/page_proof_council.py, read-only, 2026-10-17",
+      "if_missing": "yield of the change would be unmeasured"
+    },
+    {
+      "value": "verify_page_evidence --db: verified 21/21 proofs (8 pinned PDFs); apply dry run: 21 rows to write, on_page=21, moved=0, nothing written",
+      "read_at": "run on the committed JSONL, 2026-10-17",
+      "if_missing": "proofs would be unverified by anything but the code that made them"
+    }
+  ],
+  "queries": [
+    {
+      "query": "DQ-145 council subset, unchanged from #1316",
+      "scope": "regulatory_provisions joined to dcp_chapter_registry on the active row",
+      "filters": "is_current, v2_is_actionable, is_active; read-only session; 30s statement timeout",
+      "purpose": "List served council DCP rows DQ-145 counts as unproven with their chapter PDF path.",
+      "file_line": "scripts/page_proof_council.py:37",
+      "where_clause": "rp.is_current AND rp.v2_is_actionable AND source_council IS NOT NULL AND source_council <> 'inner_west_lep' AND NOT (citation_status IN ('proven','imprecise') OR page_check IN ('on_page','moved'))"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The span is printed on several pages and the row points at none of them.",
+      "what_happens": "Row stays unresolved; no page is picked.",
+      "mitigated": true,
+      "how": "prove() takes a page only from the held set; test_several_pages_stored_page_not_among_them_is_unresolved fails if that is removed.",
+      "repro": "python -m pytest tests/test_page_evidence.py::test_several_pages_stored_page_not_among_them_is_unresolved -q"
+    },
+    {
+      "scenario": "all_pages in the evidence is edited (page dropped, page added).",
+      "what_happens": "The verifier re-derives the list from the PDF and fails.",
+      "mitigated": true,
+      "how": "check_uniqueness compares the recorded list to the re-derived one.",
+      "repro": "python -m pytest tests/test_page_evidence.py::test_verifier_accepts_honest_all_pages_and_rejects_tampered -q"
+    },
+    {
+      "scenario": "A genuinely moved row (single page, not the stored one) carries all_pages.",
+      "what_happens": "Still accepted as moved; an ambiguous span can never be moved.",
+      "mitigated": true,
+      "how": "test_verifier_accepts_single_page_move_with_all_pages and the moved check in check_uniqueness.",
+      "repro": "python -m pytest tests/test_page_evidence.py -q"
+    }
+  ],
+  "mutation_analysis": "Five mutations killed (listed above). Two redundant verifier guards (stored page in held, evidence page in all_pages) were removed as unreachable: prove() with held already fails in both cases, so mutating them could not change behaviour.",
+  "residual_risk": "Boilerplate spans (a repeated objective printed on 86 pages, a 3-word span such as 'apartments shall be' on 2 pages) are proven on the stored page: it does hold the words, but the proof does not show the page is where this particular control is stated. all_pages in the evidence makes the ambiguity visible. Nothing is applied; applying needs the user's go.",
+  "post_merge": {
+    "db_reset": "No. Read-only against the database; apply_page_evidence is a dry run unless --apply is passed.",
+    "secrets": "None written.",
+    "other_repo": "No.",
+    "manual_verify": "Run python scripts/apply_page_evidence.py data/page_evidence_2026-10-18.jsonl (dry run) and open 5 proofs' pdf pages before any --apply."
+  },
+  "real_layer_exempt": {
+    "scripts/page_proof_council.py": "Read-only SELECT; pure decision logic unit-tested; database path exercised by running the planner, --db verification and the apply dry run against the live database on 2026-10-17 (21 rows).",
+    "scripts/verify_page_evidence.py": "Read-only SELECT by id; pure logic unit-tested; exercised with --db against the live database on 2026-10-17 (21 rows)."
+  }
+}

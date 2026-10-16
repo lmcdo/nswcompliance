@@ -211,3 +211,61 @@ def test_apply_preflight_refuses_changed_text_and_taken_rows():
     assert ape.preflight([rec], {1: {**ok, "r2_current_path": "q.pdf"}})
     assert ape.preflight([rec], {})
     assert ape.preflight([{**rec, "plan": {"id": 2}}], {1: ok})     # plan would write another row
+
+
+# -- span on several pages: proven only where the row's stored page is one of them -------
+
+LINE = "The upper level setback must be 4m above street wall."
+WORDS = "upper level setback must be 4m above street wall"
+OLD = {"pdf_page": 3, "page_range": [3]}
+
+
+def _three_pages(tmp_path):
+    f = tmp_path / "m.pdf"
+    make_pdf(f, [("text", [LINE]), ("text", ["Other text only."]), ("text", [LINE])])
+    return f, read(f)
+
+
+def test_several_pages_stored_page_among_them_is_on_page(tmp_path):
+    _f, pages = _three_pages(tmp_path)
+    v, ev, info = pe.prove(WORDS, pages, {3})
+    assert v == "proven" and ev["page"] == 3 and ev["all_pages"] == [1, 3]
+    assert ev["matcher_version"] == pe.MATCHER_VERSION and info["pages"] == [1, 3]
+    v, ev, _ = pe.prove(WORDS, pages, {2, 1})            # a page_range member counts too
+    assert v == "proven" and ev["page"] == 1 and ev["all_pages"] == [1, 3]
+
+
+def test_several_pages_stored_page_not_among_them_is_unresolved(tmp_path):
+    _f, pages = _three_pages(tmp_path)
+    for held in ({2}, set(), None):
+        v, ev, info = pe.prove(WORDS, pages, held)
+        assert v == "unresolved" and ev is None and info["pages"] == [1, 3]
+
+
+def test_verifier_accepts_honest_all_pages_and_rejects_tampered(tmp_path):
+    _f, pages = _three_pages(tmp_path)
+    ev = pe.prove(WORDS, pages, {3})[1]
+    assert vpe.check_uniqueness(ev, OLD, "on_page", pages) == []
+    for tamper in ({"all_pages": [3]}, {"all_pages": [1, 2, 3]}, {"all_pages": [1, 3, 4]}):
+        assert vpe.check_uniqueness({**ev, **tamper}, OLD, "on_page", pages), tamper
+    # stored page not among all_pages (row points at page 2)
+    assert vpe.check_uniqueness(ev, {"pdf_page": 2, "page_range": [2]}, "on_page", pages)
+    # an ambiguous span can never be a 'moved'
+    assert vpe.check_uniqueness(ev, OLD, "moved", pages)
+
+
+def test_verifier_accepts_single_page_move_with_all_pages(tmp_path):
+    f = tmp_path / "s.pdf"
+    make_pdf(f, [("text", ["Intro."]), ("text", [LINE])])
+    pages = read(f)
+    ev = pe.prove(WORDS, pages, {1})[1]
+    assert ev["page"] == 2 and ev["all_pages"] == [2]
+    assert vpe.check_uniqueness(ev, {"pdf_page": 1, "page_range": [1]}, "moved", pages) == []
+    assert vpe.check_uniqueness({**ev, "page": 1}, {"pdf_page": 1, "page_range": [1]}, "moved", pages)
+
+
+def test_verifier_still_checks_old_evidence_without_all_pages(tmp_path):
+    _f, pages = _three_pages(tmp_path)
+    ev = pe.prove(WORDS, pages, {3})[1]
+    del ev["all_pages"]
+    assert vpe.check_uniqueness(ev, OLD, "on_page", pages)   # old rule: two pages -> fail
