@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Warringah DCP 2011 Part G holds ten area-limited sections (G1 Dee Why Town Centre to G10), each with its own 'Applies to Land'. All 969 rows were served to every Warringah house (audit run4: 4 severe). User decision 2026-10-16: withhold all, then key G1 back from the council's own LEP map.",
-  "commit_hash": "466eacd0",
+  "commit_hash": "69676a85",
   "files": [
     "scripts/import_lep_map_outline.py",
     "scripts/gate_rules.py",
@@ -64,7 +64,7 @@
     }
   ],
   "mutation_analysis": "expect=969 in the selector aborts on any count drift; the loader's outside-point proof rolls back a wrong shape",
-  "residual_risk": "G2-G10 (916 rows) stay hidden until outlines exist; pdf_page/id selectors drift on a re-read (derive would then report no-derivation, hide aborts on count)",
+  "residual_risk": "G2-G10 (916 rows) stay hidden until outlines exist; pdf_page/id selectors drift on a re-read (derive would then report no-derivation, hide aborts on count). Sol 2026-10-16: (1) 0.011 of 20.186 inside the outline is other zones -- boundary slivers along road edges (0.05% of area), not lots; verdict no live instance. (2) former_council now passed as Warringah via --former-council.",
   "post_merge": {
     "db_reset": "No",
     "secrets": "None",
