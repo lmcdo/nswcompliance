@@ -1,0 +1,86 @@
+{
+  "tier": "standard",
+  "justification": "Audit run6 (2026-10-16) found C-B Chapter 6.2 Section 6 key-site controls (KS9 Bankstown Central) served to 33 Chertsey Ave. derive rule canterbury_bankstown_6_2_bankstown_city_centre keyed the whole document to the 6.2 city-centre outline, including Section 6 (p167-213), which holds nine named sites with no outline. 155 rows withheld; the derive rule now skips those pages so a re-run does not re-key them. Also DQ-78 (CI red on this PR): its single-letter-ratio signature flagged Blacktown Part A p68's flood controls matrix ('| N | N | E5 |'), a correct table read cell by cell from the drawn grid on 2026-10-16. Whole-cell single letters are now blanked before counting.",
+  "commit_hash": "108abfa2",
+  "files": [
+    "scripts/derive_precinct_keys.py",
+    "scripts/hide_unmapped_area_rules.py",
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    "scripts/dq_probe_live.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -c \"import urllib.request,json,time;u='https://verify.plotdetect.com.au/api/provisions/for-property?groupBy=toc&zone=R4&heritage=false&former_council=Canterbury-Bankstown&precinct_id=C-B%20former%20Bankstown,6.2,C-B%20Part%206%20centres&_cb='+str(int(time.time()));d=json.load(urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':'x'})));print(sum(1 for l in d['data']['by_layer'] for r in l['provisions'] if '6_2_bankstown' in (r.get('ref_number') or '') and 167<=(r.get('pdf_page') or 0)<=213))\"",
+    "fails_when": "the live answer for a city-centre house outside every key site contains any Section 6 key-site rule (audit run6 found KS9 ids 132289 and 132283)",
+    "observed_red": "Audit run6 (before): ids 132289 and 132283 served to 33 Chertsey Ave. After apply (live, 2026-10-16): 2,642 rules, 0 key-site rules, 571 other 6.2 rules still served.",
+    "external_authority": "the production address answer, checked against C-B DCP 2023 Chapter 6.2 p167, which lists KS1-KS9 as named sites"
+  },
+  "real_layer_exempt": {
+    "scripts/hide_unmapped_area_rules.py": "one-line filter change; its real-layer check is its own dry run against production (observed_red); a database-marked test would write to production",
+    "scripts/derive_precinct_keys.py": "a where-clause narrowing; checked by the script's own dry run against production (already-ok=604, new=0)"
+  },
+  "pre_impl": {
+    "existing_data": "no KS outlines in dcp_precinct_boundaries; 155 served rows on p167-213 all keyed 6.2",
+    "assumption_mismatch": "assumed every precinct-layer row was correctly keyed; 6.2's constant rule keyed sub-sites to the whole centre",
+    "new_vs_existing": "one selector option, one where-clause narrowing"
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/hide_unmapped_area_rules.py:45",
+      "input": "the served rows each listed selector matches in production",
+      "output": "rows not on the precinct layer, plus rows keyed to the selector's named over-wide outline",
+      "if_none": "prints nothing to change and writes nothing"
+    }
+  ],
+  "values": [
+    {
+      "value": "155 withheld; backup hide_unmapped_area_rules_pre_2026-10-16T212612.json",
+      "read_at": "--apply 2026-10-16",
+      "if_missing": "count unproven"
+    },
+    {
+      "value": "DQ-78 count 1 -> 0 (only row was 249608, Blacktown p68 matrix, ratio 0.26)",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-78, 2026-10-16",
+      "if_missing": "the cause of the CI red would be unproven"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "derive re-run re-keys the key-site rows to 6.2",
+      "what_happens": "site rules reach every centre house again",
+      "mitigated": true,
+      "how": "where excludes pdf_page 167-213",
+      "repro": "derive dry run: new=0"
+    },
+    {
+      "scenario": "from_precinct un-keys rows correctly keyed elsewhere",
+      "what_happens": "rules correctly keyed elsewhere would be hidden by mistake",
+      "mitigated": true,
+      "how": "applies only to listed ids and only when their precinct equals the named id",
+      "repro": "grep from_precinct data/chapter_scope/not_covered_2026-10-15.json"
+    },
+    {
+      "scenario": "a later re-read renumbers the chapter's pages",
+      "what_happens": "page bound misses key-site rows",
+      "mitigated": false,
+      "how": "hide aborts on count drift (expect=155); derive range would need updating",
+      "repro": "hide dry run"
+    },
+    {
+      "scenario": "DQ-78 cell exclusion also hides real map scramble from the check",
+      "what_happens": "a scrambled row would read as clean and keep being served",
+      "mitigated": true,
+      "how": "forced on fixtures against production Postgres: map scramble 0.75 and scramble inside one table cell 0.74 still flag (>=0.20); the 'N' matrix scores 0.00",
+      "repro": "SELECT ... regexp_replace(text,'(^|\\|)[ \t]*[A-Za-z][ \t]*(?=\\||$)','\u0001','gn') on the three fixtures (see PR)"
+    }
+  ],
+  "mutation_analysis": "Removing from_precinct reproduces 'total to withhold: 0'.",
+  "residual_risk": "KS1-KS9 rules are not served to their own sites until outlines exist; KS3 (67-70 Rickard Rd), KS7 (8-14 West Terrace) and KS8 (212 South Terrace) are named by address and could be built. Sol 2026-10-16: NULL pdf_page rows were excluded by NOT BETWEEN; now 'pdf_page IS NULL OR NOT BETWEEN' (null-page rows today: see derive dry run).",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "none"
+  }
+}

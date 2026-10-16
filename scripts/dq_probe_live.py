@@ -1515,9 +1515,14 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # defect, not a map. At tokens>=100 and ratio>=0.20 the result is 111
         # rows and 110 of them are one council, which is the shape of a single
         # broken document rather than a threshold artefact.
+        # A single letter that is a WHOLE table cell is not scramble (2026-10-16): Blacktown DCP Part A p68's flood
+        # controls matrix is cells of 'N' ('| N | N | E5 |'), read cell by cell from the drawn grid and checked
+        # against the page. Such cells are blanked before counting; map scramble has its letters loose in running
+        # text, never alone between cell bars, so it still counts.
         r"SELECT count(*) FROM ("
         r"SELECT cardinality(regexp_split_to_array(btrim(provision_text), '\s+')) AS n, "
-        r"(SELECT count(*) FROM unnest(regexp_split_to_array(btrim(provision_text), '\s+')) w "
+        r"(SELECT count(*) FROM unnest(regexp_split_to_array(btrim(regexp_replace(provision_text, "
+        r"'(^|\|)[ \t]*[A-Za-z][ \t]*(?=\||$)', '\1', 'gn')), '\s+')) w "
         r"WHERE w ~ '^[A-Za-z]$') AS singles "
         r"FROM regulatory_provisions "
         r"WHERE is_current AND v2_is_actionable AND length(provision_text) > 80) x "
