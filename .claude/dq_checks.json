@@ -1746,40 +1746,37 @@
   },
   "OC-18": {
    "kind": "outreach_claim",
-   "claim": "Every rule shown for an address that its plan limits to part of a council is gated to that part.",
-   "source": "~/.claude/plans/ce-served-answer-audit-RESUME-2026-10-11.md#11",
-   "declared": "false",
+   "claim": "In an independent check of the rules shown at random addresses, read by a person against the council's plan, fewer than 2 in 100 had a serious error: a rule for another property or area, words that are not the council's, or a page that does not hold them (95% confidence). The check is repeated at least every 30 days; the method and every rule read are published.",
+   "source": "~/.claude/plans/ce-outreach-claims-reword-DRAFT-2026-10-16.md",
+   "declared": "true",
    "check": [
     "python",
-    "scripts/dq_probe_live.py",
-    "--id",
-    "DQ-143"
+    "scripts/audit_rate_check.py"
    ],
    "blocks_outreach": true,
-   "passes_when": "exit 0 - DQ-143 reads 0",
+   "passes_when": "exit 0 - pooled address-audit runs read within 30 days cover >= 500 rules at >= 50 addresses and the one-sided 95% upper bound of serious errors (unsure counted as serious) is below 2.0 per 100",
    "red_when": "the declared state and the check disagree in either direction",
-   "note": "Added 2026-10-11: the gate had no claim for this, which is why it passed 16/17 while the served-answer audit found 35.8/100 rules for another property."
+   "note": "Reworded 2026-10-16 (user-approved draft): the old wording ('every rule ... gated to that part', DQ-143 = 0) could not be reached under the 2026-10-02 shipping line. DQ-143 stays as an internal ratchet. First pass: runs 6-8, 830 rules, 83 addresses, 6 serious + 3 unsure, upper bound 1.89."
   },
   "OC-19": {
    "kind": "outreach_claim",
-   "claim": "Every rule shown for an address comes from a chapter whose land a machine has confirmed from the plan's own words.",
-   "source": "~/.claude/plans/ce-served-answer-audit-RESUME-2026-10-11.md#11",
-   "declared": "false",
+   "claim": "RETIRED 2026-10-16: the site no longer claims that every rule's chapter land was confirmed by a machine from the plan's own words. A rule for the wrong area is now measured by OC-18; DQ-144 remains an internal count that may only fall.",
+   "source": "~/.claude/plans/ce-outreach-claims-reword-DRAFT-2026-10-16.md",
+   "declared": "true",
    "check": [
     "python",
-    "scripts/dq_probe_live.py",
-    "--id",
-    "DQ-144"
+    "scripts/outreach_claim_checks.py",
+    "OC-19"
    ],
    "blocks_outreach": true,
-   "passes_when": "exit 0 - DQ-144 reads 0",
+   "passes_when": "exit 0 - no rendered page, component or lib string makes the retired claim",
    "red_when": "the declared state and the check disagree in either direction",
    "note": "Added 2026-10-11: the gate had no claim for this, which is why it passed 16/17 while the served-answer audit found 35.8/100 rules for another property."
   },
   "OC-20": {
    "kind": "outreach_claim",
-   "claim": "Every rule shown carries a citation proven by script against its source: the clause number where shown, otherwise the page.",
-   "source": "~/.claude/plans/ce-served-answer-audit-RESUME-2026-10-11.md#11",
+   "claim": "Every clause number shown has been checked by a script against the council's plan or the official state law text. Where a clause number cannot be checked it is not shown; the page is shown instead.",
+   "source": "~/.claude/plans/ce-outreach-claims-reword-DRAFT-2026-10-16.md",
    "declared": "false",
    "check": [
     "python",
@@ -1790,7 +1787,7 @@
    "blocks_outreach": true,
    "passes_when": "exit 0 - DQ-145 reads 0",
    "red_when": "the declared state and the check disagree in either direction",
-   "note": "Added 2026-10-11: the gate had no claim for this, which is why it passed 16/17 while the served-answer audit found 35.8/100 rules for another property."
+   "note": "Reworded 2026-10-16. Still measured by DQ-145 (= 0). 2026-10-16: 4,071 state-law rows proven verbatim against legislation.nsw.gov.au in force; 244 non-law paraphrases withheld; DQ-145 6,104 -> 1,796."
   },
   "DQ-146": {
    "declared": "open",
@@ -1806,8 +1803,8 @@
   },
   "OC-21": {
    "kind": "outreach_claim",
-   "claim": "No current rule sits where the address page's rule query can never return it (a layer or site condition the page does not send). Known exceptions are stated: rules limited to an area with no map yet are withheld and listed as not covered (data/chapter_scope/not_covered_2026-10-15.json). Whether each map-based condition has map data for every council is not part of this claim.",
-   "source": "~/.claude/plans/ce-served-answer-audit-RESUME-2026-10-11.md#12",
+   "claim": "No current rule sits where the address page's rule query can never return it (a layer or site condition the page does not send). Known exceptions are stated: rules limited to an area with no map yet are withheld and listed as not covered (data/chapter_scope/not_covered_2026-10-15.json), and an address whose council has such rules says so on its page. Whether each map-based condition has map data for every council is not part of this claim.",
+   "source": "~/.claude/plans/ce-outreach-claims-reword-DRAFT-2026-10-16.md",
    "declared": "false",
    "check": [
     "python",

@@ -584,6 +584,11 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
         lambda: no_rendered_phrase("retired '7 councils with full structured provisions'",
                                    r"dcpFullCouncils|full structured (provisions|DCP|build)"),
     ],
+    # Retired 2026-10-16 (user-approved rewording): replaced by OC-18's measured serious-error rate.
+    "OC-19": [
+        lambda: no_rendered_phrase("retired 'every rule's land confirmed by a machine'",
+                                   r"land a machine has confirmed|machine has confirmed from the plan"),
+    ],
     "OC-15": [
         lambda: no_rendered_phrase("retired planner time savings",
                                    r"TIME_SAVINGS|10 minutes, not 2 hours|2 hours to 10 minutes|"
