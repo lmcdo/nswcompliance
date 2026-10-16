@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "justification": "Adds a plan, verifier and dry-run-only applier that would mark 42 served SEPP rows proven and re-copy 102 more from the law's own unit text. Nothing is written to production by this branch: the apply script is dry-run by default and was not run with --apply. Standard rather than critical because the only write path is gated behind a verifier that re-derives every row and an explicit flag, and all rows keep a backup and version history.",
+  "justification": "Adds a plan, verifier and dry-run-only applier that would mark 5 served SEPP rows proven and re-copy 40 more from the law's own unit text. A row is planned only when the law unit relates to its ref_number, because proven makes the site show that clause number as checked. Nothing is written to production by this branch: the apply script is dry-run by default and was not run with --apply. Standard rather than critical because the only write path is gated behind a verifier that re-derives every row and an explicit flag, and all rows keep a backup and version history.",
   "commit_hash": "11341740",
   "files": [
     "scripts/sepp_marker_blind.py",
@@ -10,7 +10,7 @@
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_sepp_marker_blind.py -o addopts= -q && python scripts/verify_sepp_marker_blind.py data/sepp_marker_blind_plan_2026-10-18.json data/sepp_marker_blind_evidence_2026-10-18.jsonl",
-    "fails_when": "A rule is loosened or a proof is altered. Sixteen single-line mutations were applied to the scripts and the tests re-run: marker removal off, the attached-marker guard off, size cap 3x raised to 300x, coverage floor 0.9 lowered to 0.3, the number check off, the ambiguity refusal off, the peer check off, the repeated-run refusal off, the ref_number preference off, the minimum word count off, and five verifier checks off. All were killed by at least one test except two verifier checks (offset slice and field diff) that are redundant with each other: removing either alone is still caught by the other. The verifier on the real plan reports 144 verified, 0 mismatches.",
+    "fails_when": "A rule is loosened or a proof is altered. Twenty-two single-line mutations were applied to the scripts and the tests re-run: marker removal off, the attached-marker guard off, size cap 3x raised to 300x, coverage floor 0.9 lowered to 0.3, the number check off, the ambiguity refusal off, the peer check off, the repeated-run refusal off, the ref_number preference off, the minimum word count off, the ref_related filter off in rule 1 and in rule 2, the span floor 0.9 set to 0, the excerpt flag removed, the full-unit preference removed, the excerpt refusal renamed, and five verifier checks off. Twenty were killed; the two survivors are verifier checks (offset slice and field diff) that are redundant with each other. The verifier on the real plan reports 45 verified, 0 mismatches.",
     "external_authority": "The law snapshots in data/law_text_cache, pinned by sha256 in manifest.json, are the authority. The verifier re-parses the snapshot HTML and recomputes every verdict from the stored row text; it does not trust the plan's offsets, unit ids or new text.",
     "observed_red": "With SIZE_MAX raised from 3.0 to 300.0 the command printed 'FAILED tests/test_sepp_marker_blind.py::test_rule2_unit_more_than_3x_the_row_refused' and '1 failed, 24 passed'; restored, it printed 25 passed."
   },
@@ -44,17 +44,17 @@
   ],
   "values": [
     {
-      "value": "plan: 42 accepted, 102 recopied, 197 refused of 341 in-scope rows; 229 rows out of scope untouched",
+      "value": "plan: 5 accepted, 40 recopied, 296 refused of 341 in-scope rows (ref_mismatch 177, unit_too_big 81, number_missing 16, no_unit_covers_90pct 12, excerpt 8, has_version_history 2); 229 rows out of scope untouched",
       "read_at": "python scripts/sepp_marker_blind.py against the read-only database session, 2026-10-18",
       "if_missing": "without the counts the user cannot size the write before approving it"
     },
     {
-      "value": "verifier: 144 verified, 0 mismatches, exit 0",
+      "value": "verifier: 45 verified, 0 mismatches, exit 0",
       "read_at": "python scripts/verify_sepp_marker_blind.py on the generated plan and evidence, 2026-10-18",
       "if_missing": "the plan would be unverified and the applier refuses to run without it"
     },
     {
-      "value": "dry run of the applier: 144 rows verified, md5 identical to the database, current, state-law, not proven, no version history on recopy rows; nothing written",
+      "value": "dry run of the applier: 45 rows verified, md5 identical to the database, current, state-law, not proven, no version history on recopy rows; nothing written",
       "read_at": "python scripts/apply_sepp_marker_blind.py on the generated plan, 2026-10-18",
       "if_missing": "a row changed since classification would be found only at write time"
     }
@@ -76,23 +76,30 @@
   "break_it": [
     {
       "scenario": "A row is a truncated excerpt of a long unit, such as one sentence of a clause, and still matches as an exact contiguous run.",
-      "what_happens": "Rule 1 marks it proven although the stored row is only part of the clause. 38 of the 42 accepted rows are such sub-spans.",
-      "mitigated": false,
-      "how": "Not mitigated in code because the user's rule is exactly a contiguous run of one unit. span_share is recorded in the evidence of every accepted row so the user can set a floor.",
-      "repro": "python -c \"import json;print(sum(json.loads(l)['span_share']<0.9 for l in open('data/sepp_marker_blind_evidence_2026-10-18.jsonl') if json.loads(l)['rule']=='accept'))\""
+      "what_happens": "Rule 1 would mark it proven although the stored row stops before the clause ends and may have dropped a condition.",
+      "mitigated": true,
+      "how": "Rule 1 now needs the row to be at least 90 percent of the unit's words. A shorter run is re-copied as the whole unit under rule 2 or refused as excerpt (8 rows). Tests cover the recopy and the refusal.",
+      "repro": "python -m pytest tests/test_sepp_marker_blind.py -o addopts= -q -k excerpt"
+    },
+    {
+      "scenario": "The row's text is verbatim in a unit that is not the clause its ref_number names, such as ref 3D.22(7) with text only in sec.3D.21-ssec.7.",
+      "what_happens": "Marking it proven makes the site show 3D.22(7) as a checked clause number when it is not.",
+      "mitigated": true,
+      "how": "A row is accepted or recopied only when the unit is the ref_number's unit or its parent or child. Otherwise it is refused as ref_mismatch (177 rows) and the unit found is listed in the refused CSV for a later ref fix. ref_number is never rewritten. Tests cover accept and recopy refusals.",
+      "repro": "python -m pytest tests/test_sepp_marker_blind.py -o addopts= -q -k ref_mismatch"
     },
     {
       "scenario": "The same text appears in several sibling codes or schedules, so the row could be a copy of any of them.",
       "what_happens": "Picking one would attach the row to a possibly wrong clause with no error.",
       "mitigated": true,
-      "how": "Two or more matching units with no ref_number match and no unique smallest unit are refused as ambiguous_unit. 69 rows were refused this way. Tests cover the refusal and the ref_number tie-break.",
+      "how": "Two or more matching related units with no ref_number match and no unique smallest unit are refused as ambiguous_unit. Tests cover the refusal and the ref_number tie-break for both rules.",
       "repro": "python -m pytest tests/test_sepp_marker_blind.py -o addopts= -q -k ambiguous"
     },
     {
       "scenario": "A re-copy swaps in a unit whose numbers differ from the row, such as a different metre limit.",
       "what_happens": "The served rule would silently carry a different figure.",
       "mitigated": true,
-      "how": "Every number in the old text must be in the unit text or the row is refused as number_missing. 29 rows were refused this way. A test changes 1 metre to 7 metre and expects the refusal.",
+      "how": "Every number in the old text must be in the unit text or the row is refused as number_missing (16 rows). A test changes 1 metre to 7 metre and expects the refusal.",
       "repro": "python -m pytest tests/test_sepp_marker_blind.py -o addopts= -q -k missing_number"
     },
     {
@@ -103,15 +110,15 @@
       "repro": "python -m pytest tests/test_sepp_marker_blind.py -o addopts= -q -k sha_mismatch"
     },
     {
-      "scenario": "A row is edited in the database between planning and applying.",
-      "what_happens": "The write would overwrite or prove text that was never checked.",
+      "scenario": "A row is edited in the database between plan time and apply time, so the row's current text, md5, proven state or version count differs from the plan.",
+      "what_happens": "The write would overwrite or prove text that was never checked, across any of the planned rows.",
       "mitigated": true,
       "how": "The applier refuses unless every row md5 equals the plan, is not already proven and has no version history for recopy rows, re-checks under FOR UPDATE, and rolls back on any rowcount or end-state mismatch.",
       "repro": "python scripts/apply_sepp_marker_blind.py data/sepp_marker_blind_plan_2026-10-18.json data/sepp_marker_blind_evidence_2026-10-18.jsonl"
     }
   ],
-  "mutation_analysis": "Sixteen one-line mutations were run against the scripts with the test file in place, and each was restored afterwards. Fourteen were killed outright. Two verifier checks survive individually because the offset slice check and the evidence field diff both catch a tampered offset; this redundancy is deliberate and is stated rather than hidden. The coverage floor, the repeated-run refusal and the md5-only change initially survived, so three tests were added for them and re-run until killed.",
-  "residual_risk": "Rule 1 accepts excerpts, so a stored row that is a short true quotation of a longer unit is marked proven. A marker letter that is really a unit symbol, such as (m) for metres, is stripped on both sides and could hide a dropped symbol. The classification CSV is a snapshot; rows are re-read from the database at plan time but the in-scope list is fixed. No production write has been made.",
+  "mutation_analysis": "Twenty-two one-line mutations were run against the scripts with the test file in place, each restored afterwards. Twenty were killed outright. Two verifier checks survive individually because the offset slice check and the evidence field diff both catch a tampered offset; this redundancy is deliberate and stated. Earlier survivors (coverage floor, repeated run, md5-only change) got their own tests and were re-run until killed. The ambiguity refusal for rule 1 only fires when two related units are both filled by the row, which the sec.10 fixture covers.",
+  "residual_risk": "177 of 341 in-scope rows are refused for ref_mismatch because their ref_number is a topic label or provision id rather than a clause, so most of the unproven set stays unproven until a deterministic ref fix. A marker letter that is really a unit symbol, such as (m) for metres, is stripped on both sides and could hide a dropped symbol. The classification CSV is a snapshot; rows are re-read from the database at plan time but the in-scope list is fixed. No production write has been made.",
   "post_merge": {
     "db_reset": "No. Nothing is written by this branch.",
     "secrets": "None written. The database URL is read from the existing .env by the existing connect helper.",

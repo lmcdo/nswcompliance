@@ -51,6 +51,7 @@ COVERAGE_MIN = 0.90
 SIZE_MAX = 3.0
 PEER_MARGIN = 0.05
 PREFILTER = 0.80          # row's distinct words found in the unit before the ordered match is even tried
+SPAN_MIN = 0.90          # rule 1 only when the row is >= this share of the unit's words
 IN_SCOPE = {"near_copy", "copy_with_gaps"}
 
 _LET = r"(?:[a-z]|(?P<l>[a-z])(?P=l)|[ivxlc]{2,6}|[A-Z]|(?P<u>[A-Z])(?P=u))"
@@ -171,16 +172,33 @@ def decide(old: str, ref: str | None, snap: Snapshot, allow_recopy: bool = True)
     rf = ref_unit(ref)
     hits = find_seq(snap, row)
     if hits:
-        uid, how = pick_exact(snap, sorted(hits), rf)
+        rel = [u for u in sorted(hits) if ref_related(snap, rf, u)]
+        if not rel:   # citation_status='proven' shows ref_number as a checked clause: the unit must relate to it
+            return {"verdict": "refuse", "reason": "ref_mismatch", "candidates": sorted(hits)[:6], "n_words": len(row)}
+        # Prefer a related unit the row fills (>= SPAN_MIN of its words): a row equal to a sub-clause is proven against
+        # that sub-clause even when ref_number names its section. Only if none is filled is the row an excerpt.
+        full = [u for u in rel if len(row) / len(snap.tokens[u]) >= SPAN_MIN]
+        uid, how = pick_exact(snap, full or rel, rf)
         if uid is None:
-            return {"verdict": "refuse", "reason": "ambiguous_unit", "candidates": sorted(hits)[:6], "n_words": len(row)}
+            return {"verdict": "refuse", "reason": "ambiguous_unit", "candidates": rel[:6], "n_words": len(row)}
         if len(hits[uid]) != 1:
             return {"verdict": "refuse", "reason": "repeated_in_unit", "unit": uid, "n_words": len(row)}
         s = hits[uid][0]
         ut = snap.tokens[uid]
-        return {"verdict": "accept", "reason": how, "unit": uid, "word_start": s, "word_end": s + len(row),
-                "n_words": len(row), "unit_words": len(ut), "span_share": round(len(row) / len(ut), 3),
-                "tokens_sha256": tokens_sha(row), "ref_related": ref_related(snap, rf, uid)}
+        share = round(len(row) / len(ut), 3)
+        if share >= SPAN_MIN:
+            return {"verdict": "accept", "reason": how, "unit": uid, "word_start": s, "word_end": s + len(row),
+                    "n_words": len(row), "unit_words": len(ut), "span_share": share,
+                    "tokens_sha256": tokens_sha(row), "ref_related": True}
+        # A run that stops short of the clause may have dropped a condition: re-copy the whole unit (rule 2) or refuse.
+        if not allow_recopy:
+            return {"verdict": "refuse", "reason": "excerpt", "unit": uid, "n_words": len(row)}
+        d = decide_recopy(old, row, rf, snap)
+        if d["verdict"] == "recopy":
+            d["excerpt"] = True
+            return d
+        return {"verdict": "refuse", "reason": "excerpt", "unit": uid, "n_words": len(row),
+                "detail": d["reason"]}
     if not allow_recopy:
         return {"verdict": "refuse", "reason": "not_contiguous", "n_words": len(row)}
     return decide_recopy(old, row, rf, snap)
@@ -205,6 +223,11 @@ def decide_recopy(old: str, row: list[str], rf: str | None, snap: Snapshot) -> d
     if not scored:
         r = "unit_too_big" if why["too_big"] else "no_unit_covers_90pct"
         return {"verdict": "refuse", "reason": r, "n_words": len(row)}
+    related = [t for t in scored if ref_related(snap, rf, t[0])]
+    if not related:
+        best = max(scored, key=lambda t: t[2])
+        return {"verdict": "refuse", "reason": "ref_mismatch", "unit": best[0], "n_words": len(row)}
+    scored = related
     # numbers: every number in the row must be in the unit; a unit that lacks one is not a candidate
     lost_all = {}
     ok = []
@@ -293,9 +316,9 @@ def main(argv=None) -> int:
         for rid, doc, ref, old, om5, _cs, _cur, _sc, nver in by_epi[epi]:
             d = decide(old, ref, snap)
             if d["verdict"] == "refuse":
-                refused.append({"id": rid, "rule": "", "reason": d["reason"],
-                                "detail": ";".join(d.get("candidates", [])) or d.get("unit", "")
-                                or ",".join(d.get("numbers_lost", []))})
+                refused.append({"id": rid, "rule": "", "reason": d["reason"], "ref_number": ref,
+                                "unit_found": ";".join(d.get("candidates", [])) or d.get("unit", ""),
+                                "detail": d.get("detail", "") or ",".join(d.get("numbers_lost", []))})
                 continue
             if d["verdict"] == "recopy" and nver:
                 refused.append({"id": rid, "rule": "recopy", "reason": "has_version_history", "detail": f"{nver} versions"})
@@ -307,7 +330,7 @@ def main(argv=None) -> int:
                   "law_date": law_date, "unit_id": uid, "norm_version": NORM_VERSION, "match_version": MATCH_VERSION,
                   "old_md5": om5, "ref_number": ref, "pick": d["reason"]}
             ev.update({k: d[k] for k in ("word_start", "word_end", "n_words", "unit_words", "span_share",
-                                         "tokens_sha256", "ref_related", "matched_words", "coverage", "size_ratio", "new_sha256")
+                                         "tokens_sha256", "ref_related", "excerpt", "matched_words", "coverage", "size_ratio", "new_sha256")
                        if k in d})
             new = snap.units[uid].text if rule == "recopy" else None
             plan_rows.append({"id": rid, "md5": om5, "rule": rule, "kind": "marker_blind_" + rule, "epi": epi,
@@ -324,7 +347,7 @@ def main(argv=None) -> int:
     ep.write_text("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in evidence), encoding="utf8")
     rp = ROOT / "data" / f"sepp_marker_blind_refused_{stamp}.csv"
     with rp.open("w", newline="", encoding="utf8") as fh:
-        w = csv.DictWriter(fh, fieldnames=["id", "rule", "reason", "detail"])
+        w = csv.DictWriter(fh, fieldnames=["id", "rule", "reason", "ref_number", "unit_found", "detail"], restval="")
         w.writeheader()
         w.writerows(refused)
 

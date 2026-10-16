@@ -15,6 +15,8 @@ import verify_sepp_marker_blind as ver  # noqa: E402
 A = "the occupier of the land must keep the access path clear of obstructions at all times"
 B = "a retaining wall on the land must not exceed a height of 1 metre above ground level"
 D = "the owner of the building must provide the council with a copy of the certificate on request"
+E = "an awning over the footpath must be at least two and a half metres above the ground"
+F = "a flagpole on the roof must be set back from every boundary of the lot by a fair distance"
 C = "water tanks installed under this code must be screened from the street frontage entirely"
 
 HTML = f"""<html><body>
@@ -25,6 +27,12 @@ HTML = f"""<html><body>
  <div class="frag-subclause" id="sec.6-ssec.1"><p>(1) {C}.</p></div></div>
 <div class="frag-clause" id="sch.1-sec.7"><h3>7 Tanks</h3>
  <div class="frag-subclause" id="sch.1-sec.7-ssec.1"><p>(1) {C}.</p></div></div>
+<div class="frag-clause" id="sec.11"><h3>11 Flags</h3><p>{" ".join(["padding"] * 80)}</p>
+ <div class="frag-subclause" id="sec.11-ssec.1"><p>(1) {F}.</p></div>
+ <div class="frag-subclause" id="sec.11-ssec.2"><p>(2) {F}.</p></div></div>
+<div class="frag-clause" id="sec.10"><h3>10 Awnings</h3>
+ <div class="frag-subclause" id="sec.10-ssec.1"><p>(1) {E}.</p></div>
+ <div class="frag-subclause" id="sec.10-ssec.2"><p>(2) {E}.</p></div></div>
 <div class="frag-clause" id="sec.9"><h3>9 Twice</h3><p>{D}. Later, {D}.</p></div>
 <div class="frag-clause" id="sec.8"><h3>8 Big</h3><p>{B} and then a great deal of other unrelated text follows here, {" ".join(["filler"] * 60)}</p></div>
 </body></html>"""
@@ -64,15 +72,15 @@ def test_rule1_marker_only_difference_is_accepted(snap):
 
 
 def test_rule1_row_with_its_own_markers_accepted(snap):
-    d = mb.decide("(1) (a) " + A, None, snap)
+    d = mb.decide("(1) (a) " + A, "Section 5(1)", snap)
     assert d["verdict"] == "accept"
 
 
 def test_rule1_one_dropped_word_is_not_accepted(snap):
     row = drop(A, "keep")
-    d = mb.decide(row, None, snap, allow_recopy=False)
+    d = mb.decide(row, "Section 5(1)", snap, allow_recopy=False)
     assert d["verdict"] == "refuse" and d["reason"] == "not_contiguous"
-    assert mb.decide(row, None, snap)["verdict"] == "recopy"   # ... it goes to rule 2 instead
+    assert mb.decide(row, "Section 5(1)", snap)["verdict"] == "recopy"   # ... it goes to rule 2 instead
 
 
 def test_rule1_changed_word_is_not_accepted(snap):
@@ -81,7 +89,7 @@ def test_rule1_changed_word_is_not_accepted(snap):
 
 
 def test_rule1_ambiguous_unit_refused(snap):
-    d = mb.decide(C, "provision_9", snap)
+    d = mb.decide(E, "Section 10", snap)   # the same words fill sec.10-ssec.1 and sec.10-ssec.2; the ref names neither
     assert d["verdict"] == "refuse" and d["reason"] == "ambiguous_unit"
 
 
@@ -93,6 +101,30 @@ def test_rule1_ref_number_picks_between_equal_units(snap):
 def test_rule1_run_that_repeats_inside_the_unit_is_refused(snap):
     d = mb.decide(D, "Section 9", snap)
     assert d["verdict"] == "refuse" and d["reason"] == "repeated_in_unit"
+
+
+def test_ref_mismatch_refused_even_when_text_is_verbatim(snap):
+    for ref in ("provision_9", "Section 6(1)", None, "Earthworks"):   # text is only in sec.5-ssec.1
+        d = mb.decide(A, ref, snap)
+        assert d["verdict"] == "refuse" and d["reason"] == "ref_mismatch" and "sec.5-ssec.1" in d["candidates"]
+    assert mb.decide(A, "Section 5", snap)["verdict"] == "accept"   # parent of the unit counts as related
+
+
+def test_ref_mismatch_refused_for_recopy_too(snap):
+    d = mb.decide(drop(A, "keep"), "Section 6(1)", snap)
+    assert d["verdict"] == "refuse" and d["reason"] == "ref_mismatch" and d["unit"].startswith("sec.5")
+
+
+def test_excerpt_short_of_the_clause_is_recopied_not_accepted(snap):
+    row = " ".join(A.split()[:14])   # first 14 of 16 words: contiguous, but only 87 percent of the unit
+    d = mb.decide(row, "Section 5(1)", snap)
+    assert d["verdict"] == "recopy" and d["unit"] == "sec.5-ssec.1" and d["excerpt"] is True
+    assert mb.decide(row, "Section 5(1)", snap, allow_recopy=False)["reason"] == "excerpt"
+
+
+def test_excerpt_refused_when_the_whole_unit_is_too_big_to_recopy(snap):
+    d = mb.decide(B, "Section 8", snap)   # 16 words of an 80-word unit
+    assert d["verdict"] == "refuse" and d["reason"] == "excerpt" and d["detail"] == "ref_mismatch"
 
 
 def test_rule1_too_short_refused(snap):
@@ -127,12 +159,12 @@ def test_rule2_eighty_percent_coverage_refused(snap):
 
 
 def test_rule2_low_coverage_refused(snap):
-    d = mb.decide("the occupier of the land will keep paths free of any junk at every moment", None, snap)
+    d = mb.decide("the occupier of the land will keep paths free of any junk at every moment", "Section 5(1)", snap)
     assert d["verdict"] == "refuse"
 
 
 def test_rule2_ambiguous_refused(snap):
-    d = mb.decide(drop(C, "must"), "provision_9", snap)
+    d = mb.decide(drop(F, "fair"), "Section 11", snap)
     assert d["verdict"] == "refuse" and d["reason"] == "ambiguous_unit"
 
 
