@@ -111,13 +111,13 @@ def main(argv: list[str] | None = None) -> int:
                     now)
             want_md5 = rcp.md5(r["new_text"])
         cur.execute("UPDATE regulatory_provisions SET citation_status = 'proven', citation_source_path = %s, "
-                    "citation_checked_at = now() WHERE id = %s AND md5(provision_text) = %s",
+                    "citation_checked_at = now() WHERE id = %s AND is_current AND source_council IS NULL AND md5(provision_text) = %s",
                     (r["source"], r["id"], want_md5))
         if cur.rowcount != 1:
             conn.rollback()
             print(f"ROLLED BACK: {r['id']} text is not the planned text after the write")
             return 1
-    cur.execute("SELECT id, md5(provision_text), citation_status FROM regulatory_provisions WHERE id = ANY(%s)", (ids,))
+    cur.execute("SELECT id, md5(provision_text), citation_status FROM regulatory_provisions WHERE id = ANY(%s) AND is_current", (ids,))
     now_rows = {i: (m, s) for i, m, s in cur.fetchall()}
     wrong = [r["id"] for r in rows
              if now_rows.get(r["id"]) != ((rcp.md5(r["new_text"]) if r["rule"] == "recopy" else r["md5"]), "proven")]

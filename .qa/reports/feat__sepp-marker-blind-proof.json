@@ -117,5 +117,10 @@
     "secrets": "None written. The database URL is read from the existing .env by the existing connect helper.",
     "other_repo": "No. Single repository.",
     "manual_verify": "Run the verifier and the dry-run applier again at the moment of any --apply, since rows and snapshots may have moved."
+  },
+  "real_layer_exempt": {
+    "scripts/apply_sepp_marker_blind.py": "Dry-run-only tooling for a plan that is not applied; the database session is read-only and the planning, verifying and refusal logic is tested against a synthetic snapshot. A real-database test would need the production write this branch does not make.",
+    "scripts/sepp_marker_blind.py": "Dry-run-only tooling for a plan that is not applied; the database session is read-only and the planning, verifying and refusal logic is tested against a synthetic snapshot. A real-database test would need the production write this branch does not make.",
+    "scripts/sepp_unproven_classify.py": "Dry-run-only tooling for a plan that is not applied; the database session is read-only and the planning, verifying and refusal logic is tested against a synthetic snapshot. A real-database test would need the production write this branch does not make."
   }
 }
