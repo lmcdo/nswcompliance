@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Audit run6 (2026-10-16) found C-B Chapter 6.2 Section 6 key-site controls (KS9 Bankstown Central) served to 33 Chertsey Ave. derive rule canterbury_bankstown_6_2_bankstown_city_centre keyed the whole document to the 6.2 city-centre outline, including Section 6 (p167-213), which holds nine named sites with no outline. 155 rows withheld; the derive rule now skips those pages so a re-run does not re-key them.",
-  "commit_hash": "18f8d4b0",
+  "commit_hash": "ef0380f7",
   "files": [
     "scripts/derive_precinct_keys.py",
     "scripts/hide_unmapped_area_rules.py",
