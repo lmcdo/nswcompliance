@@ -1,0 +1,77 @@
+{
+  "tier": "standard",
+  "justification": "DQ-144 accepts more of the plans' own council-wide wordings, lets a chapter with no land clause inherit its plan's confirmed clause, and decides whole-plan documents Part by Part. Changes a check, not served data.",
+  "commit_hash": "0b1f185f",
+  "files": [
+    ".qa/reports/feat__scope-wording.json",
+    "scripts/dq_probe_live.py",
+    "data/chapter_scope/chapter_scope_2026-10-11.json",
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    "tests/test_chapter_scope_probes.py"
+  ],
+  "pre_impl": {
+    "existing_data": "reads data/chapter_scope/chapter_scope_2026-10-11.json; the DQ-144 query reads regulatory_provisions only",
+    "assumption_mismatch": "assumed council-wide plans always say 'all land within the LGA'; most say it another way or inherit the plan's clause",
+    "new_vs_existing": "extends _COUNCIL_WIDE and _machine_whole_council; adds use_type, inherits_plan, plan_extent and council__chapter#PART keys"
+  },
+  "functions": [
+    {
+      "name": "_machine_whole_council",
+      "file_line": "scripts/dq_probe_live.py",
+      "input": "one chapter_scope entry with its applies_to label and quote",
+      "output": "True only when the entry's own quote proves council-wide land",
+      "if_none": "False, so the chapter stays counted"
+    }
+  ],
+  "values": [
+    {
+      "value": "chapter_scope quote",
+      "read_at": "_machine_whole_council",
+      "nullable": "yes",
+      "guard_at": "empty quote passes only via inherits_plan with a confirmed plan_source",
+      "if_missing": "the chapter stays counted by DQ-144"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "count served rules whose chapter or Part land is undecided",
+      "file_line": "scripts/dq_probe_live.py DQ-144",
+      "where_clause": "served AND reaches every house AND key not in decided chapter keys AND key#part not in decided Part keys"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "a chapter limited to a named centre is worded like a development-type chapter",
+      "what_happens": "its rules would stop being counted though they reach every house",
+      "mitigated": true,
+      "how": "_LAND_LIMIT refuses named places, centre/precinct/site/zone words; tested on Lindfield local centre and Hurstville City Centre",
+      "repro": "python -m pytest tests/test_chapter_scope_probes.py"
+    },
+    {
+      "scenario": "a mixed chapter has area-specific sections after the first pages",
+      "what_happens": "inheritance would mark it whole-council",
+      "mitigated": true,
+      "how": "full-PDF scan forced to fire on Sydney Schedules first; Sydney Schedules and Leichhardt C2 reverted; a test pins Schedules",
+      "repro": "python -m pytest tests/test_chapter_scope_probes.py -k mixed"
+    },
+    {
+      "scenario": "a whole-plan document's place Parts are listed as inheriting",
+      "what_happens": "Bondi Junction or heritage rules would stop being counted",
+      "mitigated": true,
+      "how": "Waverley B4, B8 and E Parts are never listed; a test asserts it",
+      "repro": "python -m pytest tests/test_chapter_scope_probes.py -k waverley"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_chapter_scope_probes.py",
+    "fails_when": "a known land-limited sentence is accepted as council-wide, or a pinned mixed chapter or place Part is listed",
+    "observed_red": "the tests caught Lindfield local centre, Hurstville City Centre and Local Government Area cases before any entry relied on them",
+    "external_authority": "each plan's own 'land to which this plan applies' clause, quoted with page"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: python scripts/dq_probe_live.py --id DQ-144 prints 8,179 and DQ-143 stays 949"
+  }
+}
