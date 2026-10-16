@@ -15,8 +15,8 @@
       "scenario": "a re-extraction renumbers the withheld row ids",
       "what_happens": "new rows for Carinya Road would be served council-wide again",
       "mitigated": false,
-      "how": "the list is by id; the address audit flag script catches street names in rules",
-      "repro": "python flag_packets.py run3"
+      "how": "the list is by id with an expected count; the hide script aborts if the count changes, which shows a renumbering",
+      "repro": "python scripts/hide_unmapped_area_rules.py"
     }
   ],
   "post_merge": {
