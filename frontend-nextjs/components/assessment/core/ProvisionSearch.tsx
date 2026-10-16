@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { ProvisionSearchFilters, ProvisionSearchResult, ComplianceProvision } from '@/lib/assessment/types';
 
 interface ProvisionSearchProps {
@@ -246,7 +247,7 @@ export default function ProvisionSearch({
  {/* Content */}
  <div className="space-y-2">
  <div className="flex items-center gap-2">
- <span className="font-medium text-gray-900">{provision.ref_number || provision.clause}</span>
+ <span className="font-medium text-gray-900">{provision.ref_number || provision.clause}</span> <CitationUncheckedBadge checked={(provision as { citation_checked?: boolean }).citation_checked} />
  {hasRanking && provision.ranking!.quant_boost > 1 && (
  <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
  📋 Has measurements

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+import { CitationUncheckedBadge } from "@/components/compliance/CitationUncheckedBadge"
 
 interface PropertyProvisions {
  zone?: string
@@ -167,6 +168,7 @@ export function QuickSearch() {
  setSelectedClause({
  title: result.title,
  clauseNumber: data.clause.clause_reference,
+ citationChecked: data.clause.citation_checked,
  documentName: data.clause.document_name,
  content: data.clause.full_text,
  documentType: data.clause.document_type,
@@ -311,7 +313,8 @@ export function QuickSearch() {
  </div>
  <div className="bg-gray-50 p-4 rounded-lg">
  <h4 className="font-semibold text-gray-900 mb-2">
- {selectedClause?.clauseNumber} - Full Clause Text
+ {selectedClause?.clauseNumber} - Full Clause Text{' '}
+ <CitationUncheckedBadge checked={selectedClause?.citationChecked} />
  </h4>
  <div className="text-xs leading-tight text-gray-800 whitespace-pre-wrap">
  {selectedClause?.content}

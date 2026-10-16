@@ -11,6 +11,7 @@ import { ChevronDown, ChevronRight, CheckCircle2, FileImage } from 'lucide-react
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { getPdfImageUrl } from '@/lib/pdf-image-url';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { AuthorityColors, SemanticColors } from '@/lib/design-tokens';
 
 /**
@@ -176,7 +177,7 @@ export function StructuredSeppRequirements({
           {/* Show citation (item-specific or category-level) */}
           {(legal_citation || categoryLegalCitation) && (
             <div className="mt-1 text-xs text-purple-700">
-              📎 {sanitizeText(legal_citation || categoryLegalCitation)}
+              📎 {sanitizeText(legal_citation || categoryLegalCitation)} <CitationUncheckedBadge checked={false} />
             </div>
           )}
         </div>
@@ -275,7 +276,7 @@ export function StructuredSeppRequirements({
                         {/* Show category legal citation */}
                         {category.legal_citation && (
                           <div className="mt-2 ml-6 text-xs text-purple-700 bg-purple-100 border border-purple-200 rounded px-2 py-1">
-                            📎 {sanitizeText(category.legal_citation)}
+                            📎 {sanitizeText(category.legal_citation)} <CitationUncheckedBadge checked={false} />
                           </div>
                         )}
                         <ul className="mt-2 space-y-2 ml-6">

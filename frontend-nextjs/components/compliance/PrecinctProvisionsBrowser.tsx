@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MapPin, FileText, FileImage, ChevronDown, ChevronRight } from 'lucide-react';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 
 interface PrecinctInfo {
@@ -240,6 +241,7 @@ export function PrecinctProvisionsBrowser({
                               {provision.ref_number}
                             </Badge>
                           )}
+                          <CitationUncheckedBadge checked={(provision as { citation_checked?: boolean }).citation_checked} />
                           {provision.provision_type && (
                             <Badge variant="secondary" className="text-xs">
                               {provision.provision_type}
@@ -296,6 +298,7 @@ export function PrecinctProvisionsBrowser({
                                   {provision.ref_number}
                                 </Badge>
                               )}
+                              <CitationUncheckedBadge checked={(provision as { citation_checked?: boolean }).citation_checked} />
                               <span className="text-xs font-semibold text-gray-700">
                                 {provision.section_header}
                               </span>

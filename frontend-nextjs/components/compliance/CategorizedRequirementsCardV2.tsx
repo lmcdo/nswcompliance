@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { ChevronDown, ChevronRight, ExternalLink, CheckCircle, AlertTriangle } from 'lucide-react';
 import { PdfPageButton, PdfPageFooter } from './PdfPageButton';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
@@ -495,6 +496,7 @@ export function CategorizedRequirementsCard({
                                         {provision.ref_number}
                                       </Badge>
                                     )}
+                                    <CitationUncheckedBadge checked={provision.citation_checked} />
                                     {provision.section_header && (
                                       <span className="text-xs font-semibold text-gray-700">
                                         {provision.section_header}

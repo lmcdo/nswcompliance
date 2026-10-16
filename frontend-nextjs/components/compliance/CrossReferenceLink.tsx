@@ -25,6 +25,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { CrossReference } from '@/hooks/useCrossReferences';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 
 export type DocumentType = 'dcp' | 'lep' | 'sepp' | null;
 
@@ -186,6 +187,7 @@ export function CrossReferenceLink({
   };
 
   return (
+    <span className="inline-flex items-center gap-1">
     <TooltipProvider>
       <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>
@@ -237,6 +239,9 @@ export function CrossReferenceLink({
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
+    {/* Visible beside the link, not only in the tooltip (OC-20). */}
+    {isResolved && <CitationUncheckedBadge checked={reference.targetCitationChecked} />}
+    </span>
   );
 }
 

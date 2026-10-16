@@ -10,6 +10,7 @@ import {
   getExcludableTopics,
   type IntakeAnswers,
 } from '@/lib/see/intake';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { ANCILLARY_WORKS } from '@/lib/see/ancillaryWorks';
 
 /** Fields that are auto-derived from scope (ancillary works checkboxes) */
@@ -282,7 +283,7 @@ export function DAIntakeModal({
                           <div key={field} className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-gray-700 leading-snug">{label}</p>
-                              <p className={`text-xs mt-0.5 ${isYes ? 'text-amber-600' : 'text-blue-600'}`}>{src!.citation}</p>
+                              <p className={`text-xs mt-0.5 ${isYes ? 'text-amber-600' : 'text-blue-600'}`}>{src!.citation} <CitationUncheckedBadge checked={false} /></p>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <span className={`text-xs px-2 py-0.5 rounded border font-medium ${

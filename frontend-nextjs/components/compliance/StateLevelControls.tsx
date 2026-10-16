@@ -26,7 +26,8 @@ import { ExemptComplyingProvisions } from './ExemptComplyingProvisions';
 import { PathwaySummaryCard } from './PathwaySummaryCard';
 import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone, isLMRApplicable, permitsApartmentDevelopment } from '@/lib/regulatory-constants';
 import { getAdgPdfUrl } from '@/lib/pdf-url-builder';
-import { SeppCitationLink, SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL, seppHousingProvisionUrl } from './SeppCitationLink';
+import { CitationUncheckedBadge } from './CitationUncheckedBadge';
+import { SeppCitationLink,SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL, seppHousingProvisionUrl } from './SeppCitationLink';
 import { tryGetLGAConfig } from '@/lib/lga-configs';
 import { battleaxeAwareLotWidth, firstMeasuredWidth } from '@/lib/geometry/effective-lot-width';
 
@@ -1002,7 +1003,7 @@ export function StateLevelControls({
               )}
               {propertyData.constraints.hiaArea.legislativeClause && (
                 <p className="text-xs text-purple-500 mt-0.5">
-                  {propertyData.constraints.hiaArea.legislativeClause}
+                  {propertyData.constraints.hiaArea.legislativeClause} <CitationUncheckedBadge checked={false} />
                 </p>
               )}
             </div>

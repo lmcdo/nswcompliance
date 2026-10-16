@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { X, Bookmark, Share2, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { getProvisionDisplayTitle, isMachineGeneratedId } from '@/lib/provision-title-utils';
 
 export interface ProvisionContent {
@@ -990,7 +991,7 @@ export function LegalTextPanel({
                             <CardContent className="pt-4">
                               <div className="flex justify-between items-start mb-2">
                                 <h4 className="font-semibold text-sm text-green-900">
-                                  📄 Full Section {provision.ref_number}
+                                  📄 Full Section {provision.ref_number} <CitationUncheckedBadge checked={(provision as { citation_checked?: boolean }).citation_checked} />
                                 </h4>
                               </div>
                               <div className="text-sm text-gray-800 prose prose-sm max-w-none bg-white p-4 rounded border">

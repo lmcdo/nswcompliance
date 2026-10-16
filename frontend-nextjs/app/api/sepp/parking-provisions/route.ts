@@ -39,7 +39,7 @@ export const dynamic = 'force-dynamic';
  * whether the paragraph is still in force, and an unknown must not be served as the law.
  */
 const PARKING_PROVISIONS_SQL = `
-  SELECT id, ref_number, pdf_page, citation_status, provision_text, document_id
+  SELECT id, ref_number, pdf_page, citation_status, page_check, provision_text, document_id
   FROM regulatory_provisions
   WHERE is_current
     AND source_council IS NULL

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface SeppProvision {
@@ -193,6 +194,7 @@ export function SeppOverrideAlert({ sepps, propertyData }: SeppOverrideAlertProp
                           {affected}
                         </Badge>
                       ))}
+                      {sepp.affects.some((a) => /clause/i.test(a)) && <CitationUncheckedBadge checked={false} />}
                     </div>
                   </div>
 

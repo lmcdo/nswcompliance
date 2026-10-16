@@ -1,6 +1,7 @@
 'use client';
 
 import { instrumentClauseLabel } from '@/lib/citation-display';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -133,6 +134,8 @@ export function LandUseZoningCard({
                 {citation}
               </Badge>
             )}
+            {/* The clause is the Planning Portal's own text; no script here proves it. */}
+            {citation && <CitationUncheckedBadge checked={false} />}
             {amendment && (
               <Badge className="text-xs px-2 py-0.5 bg-amber-50 text-amber-700">
                 {amendment}

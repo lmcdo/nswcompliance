@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { User, Bot, AlertTriangle, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { Citation } from '@/lib/ai/router';
 
 // Message structure
@@ -113,6 +114,7 @@ export function ChatMessage({ message, onSuggestedQuestion }: ChatMessageProps) 
                   >
                     <span className="truncate">{citation.source}</span>
                     {citation.clause && <span>({citation.clause})</span>}
+                    {citation.clause && <CitationUncheckedBadge checked={false} />}
                     {citation.url && (
                       <a
                         href={citation.url}
