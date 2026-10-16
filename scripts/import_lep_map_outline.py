@@ -55,7 +55,10 @@ def main() -> int:
     a = ap.parse_args()
     from shapely.geometry import mapping, shape
     from shapely.ops import unary_union
-    feats = fetch(a.layer, a.where).get("features") or []
+    res = fetch(a.layer, a.where)
+    if res.get("exceededTransferLimit") or (res.get("properties") or {}).get("exceededTransferLimit"):
+        raise SystemExit("[ABORT] the layer returned a partial page of shapes -- narrow the filter")
+    feats = res.get("features") or []
     if not feats:
         raise SystemExit("[ABORT] the layer returned no shapes for that filter -- never guess a boundary")
     geom = unary_union([shape(f["geometry"]) for f in feats])
