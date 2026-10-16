@@ -1,0 +1,28 @@
+{
+  "tier": "minor",
+  "justification": "Lists the C-B Carinya Road, Picnic Point floodplain rules (clause 4.4, Schedules 4A-4C, 97 rows) as not covered yet; already withheld live with backup.",
+  "commit_hash": "2fae687a",
+  "files": [
+    ".qa/reports/fix__cb-carinya-road-withheld.json",
+    "data/chapter_scope/not_covered_2026-10-15.json"
+  ],
+  "pre_impl": {},
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a re-extraction renumbers the withheld row ids",
+      "what_happens": "new rows for Carinya Road would be served council-wide again",
+      "mitigated": false,
+      "how": "the list is by id with an expected count; the hide script aborts if the count changes, which shows a renumbering",
+      "repro": "python scripts/hide_unmapped_area_rules.py"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
