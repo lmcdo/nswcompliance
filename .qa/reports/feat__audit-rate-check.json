@@ -1,13 +1,10 @@
 {
  "tier": "standard",
  "justification": "Adds a read-only check over committed audit files and moves audit tooling into the repo. No served number changes, no database access, no production write. Directionality: the check can only FAIL a claim (exit 1) that lacks fresh, large-enough, low-error evidence; it never produces a clean verdict from missing data.",
- "commit_hash": "c2415f0e",
+ "commit_hash": "f4ab9ff6",
  "files": [
   "scripts/audit_rate_check.py",
   "tests/test_audit_rate_check.py",
-  "scripts/address_audit/build_packets.py",
-  "scripts/address_audit/flag_packets.py",
-  "scripts/address_audit/fill_pages.py",
   "data/address_audit/2026-10-16-run6/labels.jsonl",
   "data/address_audit/2026-10-16-run7/labels.jsonl"
  ],
