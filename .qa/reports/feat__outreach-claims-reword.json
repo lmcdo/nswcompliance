@@ -1,0 +1,69 @@
+{
+  "tier": "standard",
+  "justification": "User approved (2026-10-16) rewording OC-18..21 so the outreach gate measures what a planner sees. OC-18 becomes a measured serious-error rate from the hand-labelled address audit (scripts/audit_rate_check.py, merged in #1301); OC-19 is retired as a public claim (its harm is OC-18's); OC-20 and OC-21 are reworded and keep their checks. Address-audit run8 (30 new addresses, 270 rules, labelled by hand) is added as data.",
+  "commit_hash": "56c56c04",
+  "files": [
+    ".claude/dq_checks.json",
+    "scripts/outreach_claim_checks.py",
+    "data/address_audit/2026-10-16-run8/labels.jsonl"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_check.py --outreach",
+    "fails_when": "a claim's declared state contradicts its check; OC-18 fails when pooled runs within 30 days have < 500 rules, < 50 addresses, or a 95% upper bound >= 2.0 per 100; OC-19 fails if the retired wording appears on any rendered page",
+    "observed_red": "python scripts/audit_rate_check.py on runs 6-7 only (before run8): FAIL upper bound 2.11 per 100 (6 events incl. unsure / 560). With run8: PASS 1.89 (9 / 830). Gate after: 18 of 21 pass locally, OC-9 unverifiable here only for missing node_modules.",
+    "external_authority": "each serious error is a rule read by a person against the council's PDF page (labels.jsonl reasons); the bound is the exact Poisson one-sided 95% limit"
+  },
+  "pre_impl": {
+    "existing_data": "audit_rate_check.py and runs 6-7 merged in #1301; outreach_claim_checks.py retired-claim pattern (OC-14)",
+    "assumption_mismatch": "the claims file has mixed indentation; rewritten entry by entry to keep the diff small",
+    "new_vs_existing": "one retired-claim check; four entries changed"
+  },
+  "functions": [
+    {
+      "name": "no_rendered_phrase",
+      "file_line": "scripts/outreach_claim_checks.py:229",
+      "input": "the rendered site source files the existing no_rendered_phrase helper scans",
+      "output": "PASS when no rendered string makes the retired machine-confirmed-land claim",
+      "if_none": "no match means the retired claim is not made anywhere, which passes"
+    }
+  ],
+  "values": [
+    {
+      "value": "runs 6-8: 830 rules, 83 addresses, 6 serious + 3 unsure; upper 95% bound 1.89 (severe only 1.43)",
+      "read_at": "python scripts/audit_rate_check.py, 2026-10-16",
+      "if_missing": "OC-18 unproven"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "the audit labels are wrong in the lenient direction",
+      "what_happens": "OC-18 passes while users meet more serious errors than counted",
+      "mitigated": true,
+      "how": "unsure labels count as serious for the bound; every label carries its reason and is published for re-reading; the check expires after 30 days",
+      "repro": "python scripts/audit_rate_check.py"
+    },
+    {
+      "scenario": "retiring OC-19 hides the land-confirmation gap",
+      "what_happens": "rules whose land nobody read stop being tracked",
+      "mitigated": true,
+      "how": "DQ-144 stays a ledger row and ratchet; its user-facing harm is counted in OC-18",
+      "repro": "python scripts/dq_probe_live.py --id DQ-144"
+    },
+    {
+      "scenario": "the audit goes stale and the claim stays green",
+      "what_happens": "an old rate is quoted as current",
+      "mitigated": true,
+      "how": "newest run must be <= 30 days old or OC-18 fails",
+      "repro": "tests/test_audit_rate_check.py too-old case"
+    }
+  ],
+  "mutation_analysis": "Removing run8 makes OC-18 fail at 2.11 per 100; declaring OC-18 false while the check passes makes the gate report 'contradicted'.",
+  "residual_risk": "OC-18 rests on 830 hand-read rules; a planner reading more may find more. OC-20 (DQ-145 1,796) and OC-21 (DQ-146 1,156) remain not yet.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None (audit packets are public addresses and public plan text; grep for keys found none)",
+    "other_repo": "No",
+    "manual_verify": "re-run the address audit before 30 days elapse"
+  }
+}
