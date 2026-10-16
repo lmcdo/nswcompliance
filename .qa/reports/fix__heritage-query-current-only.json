@@ -1,0 +1,29 @@
+{
+  "tier": "minor",
+  "justification": "One SQL filter: the heritage query now serves current rules only, like every other provision query in the route.",
+  "commit_hash": "d6e0ed8a",
+  "files": [
+    ".qa/reports/fix__heritage-query-current-only.json",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/__tests__/api/heritage-query-current-only.test.ts"
+  ],
+  "pre_impl": {},
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a heritage property is served retired rows from a superseded extraction",
+      "what_happens": "old wording is shown as the current rule",
+      "mitigated": true,
+      "how": "rp.is_current = TRUE in queryHeritageByHca; a test pins it",
+      "repro": "npx jest __tests__/api/heritage-query-current-only.test.ts"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: /api/provisions/for-property for 8 Douglas St Stanmore no longer returns row 98602"
+  }
+}
