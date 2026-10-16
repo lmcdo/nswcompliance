@@ -63,7 +63,9 @@ def main() -> int:
                 raise SystemExit(f"[ABORT] {sel['council']}/{sel['chapter_key']}: {len(rows)} rows, list says {sel['expect']}")
             # A precinct row is already off the council-wide list: withheld (no id) or keyed to its outline by a
             # gate rule (e.g. Warringah G1 -> Dee Why). Un-keying the latter would undo that rule.
-            change = [r for r in rows if r[1] != "precinct"]
+            # ... unless the entry names an outline that is too wide for these rows ("from_precinct": C-B 6.2 key
+            # sites were keyed to the whole city centre): those are taken off it.
+            change = [r for r in rows if r[1] != "precinct" or (sel.get("from_precinct") and r[2] == sel["from_precinct"])]
             print(f"  {sel['council']}/{sel['chapter_key']}: served {len(rows)}, to withhold {len(change)}")
             todo += change
         print(f"total to withhold: {len(todo)}")
