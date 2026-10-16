@@ -1,0 +1,28 @@
+{
+  "tier": "minor",
+  "justification": "Four gate rules for Marrickville Part 8.3 page 196, whose C-numbered refs the any-HCA rule missed; already applied live (16 rows).",
+  "commit_hash": "4af2c9a0",
+  "files": [
+    ".qa/reports/fix__marrickville-8-3-subdivision.json",
+    "scripts/gate_rules.py"
+  ],
+  "pre_impl": {},
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a re-extraction renumbers the C8-C13 refs on page 196",
+      "what_happens": "the rules would stop matching and those rows fall back to untagged",
+      "mitigated": true,
+      "how": "untagged Part 8 rows are visible to the heritage gate as general rules only, never another HCA's",
+      "repro": "python -m pytest tests/test_gate_rules.py"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
