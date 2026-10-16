@@ -1,6 +1,7 @@
 /** OC-20: the rule card shows "Citation not yet checked" unless the server said citation_checked === true. */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { CITATION_UNCHECKED_TOOLTIP } from '@/lib/citation-display';
 import { PageGroupedProvisions, type Provision } from '@/components/compliance/PageGroupedProvisions';
 
 const base: Provision = {
@@ -15,7 +16,7 @@ describe('citation unchecked mark', () => {
     show({ citation_checked: false });
     expect(screen.getAllByText(/Citation not yet checked/).length).toBeGreaterThan(0);
     expect(screen.getByTestId('citation-unchecked').getAttribute('title'))
-      .toBe("We have not yet confirmed this rule's page or clause against the source. Check the source document.");
+      .toBe(CITATION_UNCHECKED_TOOLTIP);
   });
   it('shows when the field is missing (fail closed)', () => {
     show({});
