@@ -52,6 +52,9 @@ def main() -> int:
                     f" AND {who}", [ids] + wp)
         rows = cur.fetchall()
         served = [r for r in rows if r[1]]
+        if len(rows) != len(ids):
+            # a mistyped --council or a stale list matches fewer rows and would otherwise "succeed" doing nothing
+            raise SystemExit(f"[ABORT] {len(ids)} listed but {len(rows)} current rows match ({who}); check --council/--list")
         print(f"listed {len(ids)} | current state rows {len(rows)} | still served {len(served)}")
         if not a.apply or not served:
             print("dry run: nothing written" if not a.apply else "nothing to change")
