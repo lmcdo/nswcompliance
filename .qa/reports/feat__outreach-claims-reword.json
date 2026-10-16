@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "User approved (2026-10-16) rewording OC-18..21 so the outreach gate measures what a planner sees. OC-18 becomes a measured serious-error rate from the hand-labelled address audit (scripts/audit_rate_check.py, merged in #1301); OC-19 is retired as a public claim (its harm is OC-18's); OC-20 and OC-21 are reworded and keep their checks. Address-audit run8 (30 new addresses, 270 rules, labelled by hand) is added as data.",
-  "commit_hash": "56c56c04",
+  "commit_hash": "37a1ef9f",
   "files": [
     ".claude/dq_checks.json",
     "scripts/outreach_claim_checks.py",
