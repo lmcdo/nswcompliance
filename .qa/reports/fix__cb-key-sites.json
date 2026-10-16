@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Audit run6 (2026-10-16) found C-B Chapter 6.2 Section 6 key-site controls (KS9 Bankstown Central) served to 33 Chertsey Ave. derive rule canterbury_bankstown_6_2_bankstown_city_centre keyed the whole document to the 6.2 city-centre outline, including Section 6 (p167-213), which holds nine named sites with no outline. 155 rows withheld; the derive rule now skips those pages so a re-run does not re-key them.",
-  "commit_hash": "788b1592",
+  "commit_hash": "18f8d4b0",
   "files": [
     "scripts/derive_precinct_keys.py",
     "scripts/hide_unmapped_area_rules.py",
@@ -63,7 +63,7 @@
     }
   ],
   "mutation_analysis": "Removing from_precinct reproduces 'total to withhold: 0'.",
-  "residual_risk": "KS1-KS9 rules are not served to their own sites until outlines exist; KS3 (67-70 Rickard Rd), KS7 (8-14 West Terrace) and KS8 (212 South Terrace) are named by address and could be built.",
+  "residual_risk": "KS1-KS9 rules are not served to their own sites until outlines exist; KS3 (67-70 Rickard Rd), KS7 (8-14 West Terrace) and KS8 (212 South Terrace) are named by address and could be built. Sol 2026-10-16: NULL pdf_page rows were excluded by NOT BETWEEN; now 'pdf_page IS NULL OR NOT BETWEEN' (null-page rows today: see derive dry run).",
   "post_merge": {
     "db_reset": "No",
     "secrets": "None",

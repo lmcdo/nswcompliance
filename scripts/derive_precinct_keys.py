@@ -247,7 +247,7 @@ RULES: list[dict] = [
         # withheld in data/chapter_scope/not_covered_2026-10-15.json (audit run6, 2026-10-16: KS9 Bankstown
         # Central rules served to 33 Chertsey Ave). Keying them to 6.2 put every site's rules on every centre house.
         "where": "document_id = 'Canterbury-Bankstown_DCP_2023__chapter_6_2_bankstown_city_centre'"
-                 " AND NOT (pdf_page BETWEEN 167 AND 213)",
+                 " AND (pdf_page IS NULL OR pdf_page NOT BETWEEN 167 AND 213)",
         "strategy": {"type": "constant", "precinct_id": "6.2"},
         "validate": False,
     },
