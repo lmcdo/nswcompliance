@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "DQ-145 counted 5,274 served state-law (SEPP) rules with no citation verdict. scripts/state_law_proof.py tests each rule's whole text for a verbatim match in the instrument in force (legislation.nsw.gov.au HTML fetched once via the Fly app, sha256 in data/law_text_cache/manifest.json) and records the verdict and the clause it sits under. Read-only; scripts/apply_state_law_proof.py (not run) sets citation_status='proven' only for plan rows whose provision_text md5 is unchanged. No clause is written: the site reads none for state rows.",
-  "commit_hash": "f8ae7882",
+  "commit_hash": "1a276e1f",
   "files": [
     "scripts/state_law_proof.py",
     "scripts/apply_state_law_proof.py",
