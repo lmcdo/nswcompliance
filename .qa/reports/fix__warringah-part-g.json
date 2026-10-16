@@ -1,0 +1,74 @@
+{
+  "tier": "standard",
+  "justification": "Warringah DCP 2011 Part G holds ten area-limited sections (G1 Dee Why Town Centre to G10), each with its own 'Applies to Land'. All 969 rows were served to every Warringah house (audit run4: 4 severe). User decision 2026-10-16: withhold all, then key G1 back from the council's own LEP map.",
+  "commit_hash": "5669c6e4",
+  "files": [
+    "scripts/import_lep_map_outline.py",
+    "scripts/gate_rules.py",
+    "data/chapter_scope/not_covered_2026-10-15.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/hide_unmapped_area_rules.py && python scripts/derive_precinct_keys.py --council northern_beaches --only warringah_g1_dee_why_town_centre",
+    "fails_when": "hide aborts if the served Part G count is not 969; derive reports no-derivation if the outline is missing; the loader rolls back if its own inside point is not found or 25 Dareen St Beacon Hill resolves inside",
+    "external_authority": "WLEP 2011 Centres Map (Planning Portal Local Provisions layer 437, LAY_CLASS 'Dee Why Town Centre'); DCP p95 'applies to land ... in the B4 Mixed Use Zone ... known as the Dee Why Town Centre'",
+    "observed_red": "Forced: selector expect set to 968 in a dry run -> '[ABORT] northern_beaches/warringah-dcp-2011-full: 969 rows, list says 968' (2026-10-16)."
+  },
+  "pre_impl": {
+    "existing_data": "no Northern Beaches outlines in dcp_precinct_boundaries; import_vector_centres/import_cb_centre_boundaries hard-code their council",
+    "assumption_mismatch": "G1 is not one area throughout: sections 12-14 (Key Sites, Civic Centre Site, RFBs on lots adjoining it) are narrower sites, and G2 starts on p110; those stay withheld",
+    "new_vs_existing": "one generic loader; one EXTRA_KEY_RULES entry; one withheld selector"
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/import_lep_map_outline.py:44",
+      "input": "layer, filter, precinct id, lga",
+      "output": "one upserted outline, proven inside the transaction",
+      "if_none": "aborts when the layer returns no shapes"
+    }
+  ],
+  "values": [
+    {
+      "value": "centre outline 20.186 vs MU1 inside it 20.176 (x1e-6 deg2) -> IoU ~0.998",
+      "read_at": "layer 437 vs Principal Planning layer 19, 2026-10-16",
+      "if_missing": "outline would be unproven"
+    },
+    {
+      "value": "dry run: 969 to withhold; 53 G1 rows keyed",
+      "read_at": "dry runs 2026-10-16",
+      "if_missing": "counts unknown"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "G1 site sections keyed to the whole centre",
+      "what_happens": "Key Site rules shown to every centre house",
+      "mitigated": true,
+      "how": "only p95-104 plus five p105 'General' ids are keyed",
+      "repro": "grep -n warringah_g1 scripts/gate_rules.py"
+    },
+    {
+      "scenario": "The state Centres map outline is wider than the DCP's B4/MU1 land",
+      "what_happens": "G1 rules reach non-MU1 houses",
+      "mitigated": true,
+      "how": "intersected with the Land Zoning layer: other zones inside the outline total 0.011 of 20.186",
+      "repro": "query layer 437 and Principal Planning 19 over the outline bbox"
+    },
+    {
+      "scenario": "Outline loaded under the wrong lga string",
+      "what_happens": "precinct lookup (LOWER(lga)=LOWER(property LGA)) never finds it; 53 G1 rows reach nobody",
+      "mitigated": true,
+      "how": "loader proves inside the transaction with the site's own lookup query and rolls back if not found",
+      "repro": "grep -n LOOKUP scripts/import_lep_map_outline.py"
+    }
+  ],
+  "mutation_analysis": "expect=969 in the selector aborts on any count drift; the loader's outside-point proof rolls back a wrong shape",
+  "residual_risk": "G2-G10 (916 rows) stay hidden until outlines exist; pdf_page/id selectors drift on a re-read (derive would then report no-derivation, hide aborts on count)",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "live-check a Dee Why address and 25 Dareen St"
+  }
+}
