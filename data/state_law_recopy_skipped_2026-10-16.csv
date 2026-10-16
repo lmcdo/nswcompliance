@@ -1,0 +1,550 @@
+id,reason,detail
+22620,has_version_history,2 version rows
+22628,has_version_history,2 version rows
+22630,has_version_history,2 version rows
+22213,has_version_history,2 version rows
+22361,has_version_history,2 version rows
+46345,has_version_history,2 version rows
+46346,has_version_history,2 version rows
+6079,has_version_history,2 version rows
+43153,has_version_history,2 version rows
+14087,no_unit_holds_90pct,
+14157,failed_b_no_content_word_dropped,sch.11-sec.4 ratio=2.48 dropped=was nums_lost=
+14159,failed_c_length_ratio,sch.11-sec.6 ratio=3.398 dropped= nums_lost=
+14174,ambiguous,sch.10-sec.4;sch.11-sec.5;sch.6-sec.5;sch.6A-sec.6;sch.8-sec.5;sch.9-sec.5
+14213,failed_c_length_ratio,sch.11-sec.10 ratio=3.931 dropped= nums_lost=
+14215,no_unit_holds_90pct,
+14219,failed_c_length_ratio,sch.11-sec.15 ratio=3.143 dropped= nums_lost=
+14289,failed_c_length_ratio,sec.5A.5 ratio=4.014 dropped= nums_lost=
+14306,ambiguous,sec.3.31-note-oc.2;sec.3B.59-note-oc.2;sec.3C.34-note-oc.2;sec.3D.62-note-oc.2
+14397,no_unit_holds_90pct,
+14399,ambiguous,sec.3.4-ssec.2-para1.g;sec.3B.4-ssec.2-para1.g;sec.3C.5-ssec.2-para1.g
+14498,no_unit_holds_90pct,
+14499,ambiguous,sec.5A.19-ssec.2;sec.5A.19-ssec.3;sec.5A.7
+14510,too_short,
+14511,too_short,
+14513,ambiguous,sec.5A.19-ssec.2;sec.5A.19-ssec.3;sec.5A.7
+14517,ambiguous,sec.5A.20;sec.5A.8
+14522,ambiguous,sec.5A.20;sec.5A.8
+14523,no_unit_holds_90pct,
+14546,ambiguous,sch.10-sec.8-ssec.1-para1.c;sch.6-sec.10-ssec.1-para1.c;sch.6A-sec.16-ssec.1-para1.c;sch.8-sec.11-ssec.1-para1.c
+14547,ambiguous,sch.10-sec.8-ssec.1-para1.d;sch.6-sec.10-ssec.1-para1.d;sch.6A-sec.16-ssec.1-para1.d;sch.8-sec.11-ssec.1-para1.d
+14553,ambiguous,sch.10-sec.3;sch.6-sec.3;sch.6A-sec.4;sch.7-sec.2;sch.8-sec.3;sch.9-sec.3
+14745,ambiguous,sch.10-sec.8-ssec.1;sch.6-sec.10-ssec.1;sch.6A-sec.16-ssec.1;sch.8-sec.11-ssec.1
+14746,ambiguous,sch.10-sec.8-ssec.1-para1.b;sch.6-sec.10-ssec.1-para1.b;sch.6A-sec.16-ssec.1-para1.b;sch.8-sec.11-ssec.1-para1.b
+14747,ambiguous,sch.10-sec.8-ssec.1-para1.c;sch.6-sec.10-ssec.1-para1.c;sch.6A-sec.16-ssec.1-para1.c;sch.8-sec.11-ssec.1-para1.c
+14752,ambiguous,sch.10-note;sch.11-note;sch.6-note;sch.6A-note;sch.6B-note;sch.7-note
+14759,no_unit_holds_90pct,
+14788,ambiguous,sec.3B.59;sec.3BA.9;sec.3D.62
+14792,ambiguous,sec.3.30-ssec.7;sec.3A.29-ssec.7;sec.3B.58-ssec.8;sec.3BA.8-ssec.10;sec.3C.33-ssec.7;sec.3D.61-ssec.9
+14794,ambiguous,sec.3B.58-ssec.3A;sec.3BA.8-ssec.5;sec.3D.61-ssec.4A
+14911,no_unit_holds_90pct,
+14930,ambiguous,sec.3.30-ssec.1;sec.3A.29-ssec.1;sec.3B.58-ssec.1;sec.3BA.8-ssec.1;sec.3C.33-ssec.1;sec.3D.61-ssec.1
+14931,too_short,
+14932,ambiguous,sec.3.30-ssec.7;sec.3A.29-ssec.7;sec.3B.58-ssec.8;sec.3BA.8-ssec.10;sec.3C.33-ssec.7;sec.3D.61-ssec.9
+14933,ambiguous,sec.3.31;sec.3C.34
+14934,ambiguous,sec.3.32;sec.3B.60;sec.3BA.10;sec.3C.35;sec.3D.63
+14935,ambiguous,sec.3.33-ssec.2;sec.3B.61-ssec.2;sec.3BA.11-ssec.2;sec.3C.36-ssec.2;sec.3D.64-ssec.2
+14937,no_unit_holds_90pct,
+14952,ambiguous,pt.2-note-oc.2;pt.3-note-oc.3;pt.3A-note-oc.3;pt.3B-note-oc.2;pt.3C-note-oc.2;pt.3C-note-oc.3
+15013,ambiguous,sec.3.4-ssec.2-para1.d;sec.3B.4-ssec.2-para1.d;sec.3C.5-ssec.2-para1.d;sec.3D.6-ssec.2-para1.d
+15014,ambiguous,sec.3.4-ssec.2-para1.e;sec.3C.5-ssec.2-para1.e;sec.3D.6-ssec.2-para1.e
+15016,ambiguous,sec.3.4-ssec.2-para1.g;sec.3B.4-ssec.2-para1.g;sec.3C.5-ssec.2-para1.g
+15017,ambiguous,sec.3.4-ssec.2-para1.h;sec.3B.4-ssec.2-para1.h;sec.3C.5-ssec.2-para1.h
+15020,ambiguous,sec.3.5-ssec.1;sec.3A.38-ssec.1;sec.3B.5-ssec.1;sec.3C.6-ssec.1;sec.3D.7-ssec.1;sec.5A.6K-ssec.1
+15165,failed_c_length_ratio,sch.8-sec.23-ssec.2 ratio=3.289 dropped= nums_lost=
+15183,no_unit_holds_90pct,
+15268,ambiguous,sch.10-sec.9;sch.6-sec.9;sch.6A-sec.15;sch.8-sec.10;sch.9-sec.9
+15269,ambiguous,sch.10-sec.8-ssec.1;sch.6-sec.10-ssec.1;sch.6A-sec.16-ssec.1;sch.8-sec.11-ssec.1
+15272,ambiguous,sch.6-sec.11B;sch.6A-sec.19;sch.8-sec.12A;sch.9-sec.9B
+15273,ambiguous,sch.10-sec.11;sch.6-sec.12;sch.6A-sec.20;sch.8-sec.13
+15274,ambiguous,sch.6-sec.13;sch.6A-sec.21;sch.9-sec.10
+15312,no_unit_holds_90pct,
+15427,failed_b_no_content_word_dropped,sec.5B.6-ssec.1 ratio=1.588 dropped=t nums_lost=
+15446,no_unit_holds_90pct,
+15510,no_unit_holds_90pct,
+15511,failed_b_no_content_word_dropped+c_length_ratio,sec.9.13-ssec.1 ratio=6.861 dropped=or agricu nums_lost=
+15525,failed_b_no_content_word_dropped,sec.9.13-ssec.1-para1.j ratio=2.279 dropped=etc nums_lost=
+15526,failed_b_no_content_word_dropped+c_length_ratio,sec.9.13-ssec.1 ratio=10.597 dropped=or etc nums_lost=
+15533,ambiguous,sec.2.108-ssec.1-para1.f;sec.4A.6-para1.l;sec.4A.8-para1.d
+15602,no_unit_holds_90pct,
+15894,no_unit_holds_90pct,
+15897,ambiguous,sec.3.5-ssec.2-para1.d;sec.3A.38-ssec.2-para1.d;sec.3B.5-ssec.2-para1.d;sec.3C.6-ssec.2-para1.d;sec.3D.7-ssec.2-para1.d;sec.5A.6K-ssec.2-para1.d
+15898,ambiguous,sec.3.5-ssec.2-para1.e;sec.3A.38-ssec.2-para1.e;sec.3B.5-ssec.2-para1.e;sec.3C.6-ssec.2-para1.e;sec.3D.7-ssec.2-para1.e;sec.5A.6K-ssec.2-para1.e
+15899,no_unit_holds_90pct,
+15900,no_unit_holds_90pct,
+15905,no_unit_holds_90pct,
+15940,ambiguous,sch.10-sec.8;sch.6-sec.10;sch.6A-sec.16;sch.8-sec.11
+15950,ambiguous,sch.10-sec.2;sch.6-sec.2;sch.6A-sec.3;sch.7-sec.1;sch.8-sec.2;sch.9-sec.2
+15954,failed_b_no_content_word_dropped+c_length_ratio,sch.6A-sec.7 ratio=4.168 dropped=specifications for specifications fence barrier nums_lost=
+15955,failed_b_no_content_word_dropped,sch.6A-sec.8-ssec.1 ratio=1.006 dropped=e nums_lost=
+16232,ambiguous,sec.3A.33-ssec.2A;sec.3A.36-ssec.2
+16240,ambiguous,sec.3.5-ssec.2-para1.f;sec.3A.38-ssec.2-para1.f;sec.3C.6-ssec.2-para1.f;sec.3D.7-ssec.2-para1.f
+16302,failed_b_no_content_word_dropped,sec.2.74D ratio=1.341 dropped=5m under nums_lost=
+16723,ambiguous,sec.3.16-ssec.5-tbl;sec.3C.19-ssec.5-tbl;sec.3D.27-ssec.2-tbl;sec.3D.38-ssec.5-tbl
+16737,no_unit_holds_90pct,
+16739,ambiguous,sec.3.14-ssec.2;sec.3C.16-ssec.2;sec.3D.25-ssec.2;sec.3D.36-ssec.2
+16740,ambiguous,sec.3.14-ssec.3;sec.3C.16-ssec.3;sec.3D.25-ssec.3;sec.3D.36-ssec.3
+16741,no_unit_holds_90pct,
+16742,ambiguous,sec.3.14-ssec.6;sec.3C.16-ssec.6;sec.3D.25-ssec.6;sec.3D.36-ssec.6
+16743,ambiguous,sec.3A.21-ssec.5;sec.3D.36-ssec.7
+16744,no_unit_holds_90pct,
+16772,no_unit_holds_90pct,
+16773,no_unit_holds_90pct,
+16776,ambiguous,sec.3.4-ssec.2-para1.d;sec.3B.4-ssec.2-para1.d;sec.3C.5-ssec.2-para1.d;sec.3D.6-ssec.2-para1.d
+16777,ambiguous,sec.3.4-ssec.2-para1.e;sec.3C.5-ssec.2-para1.e;sec.3D.6-ssec.2-para1.e
+16831,ambiguous,sec.5.24B-ssec.1;sec.5A.6L-ssec.2
+16833,no_unit_holds_90pct,
+16982,ambiguous,sec.3B.17-ssec.3;sec.3B.29-ssec.3;sec.3B.42-ssec.3
+16985,no_unit_holds_90pct,
+17005,too_short,
+17015,failed_c_length_ratio,sec.3B.49 ratio=67.91 dropped= nums_lost=
+17018,no_unit_holds_90pct,
+17053,ambiguous,sec.3.21-ssec.9;sec.3B.49-ssec.9;sec.3C.24-ssec.9;sec.3D.44-ssec.9
+17064,no_unit_holds_90pct,
+17282,failed_b_no_content_word_dropped,sec.2.91 ratio=1.963 dropped=5m acco nums_lost=
+17284,failed_b_no_content_word_dropped,sec.2.93 ratio=1.929 dropped=5m cons nums_lost=
+17286,failed_b_no_content_word_dropped,sec.2.95 ratio=1.013 dropped=6m nums_lost=
+17326,no_unit_holds_90pct,
+17349,no_unit_holds_90pct,
+17351,failed_c_length_ratio,sec.3D.21-ssec.7 ratio=5.7 dropped= nums_lost=
+17366,ambiguous,sec.3.10-ssec.7;sec.3C.11-ssec.5;sec.3D.21-ssec.11
+17367,ambiguous,sec.3.10-ssec.8;sec.3D.21-ssec.12
+17381,no_unit_holds_90pct,
+17390,ambiguous,sec.3.11-ssec.5;sec.3B.25-ssec.4;sec.3C.12-ssec.5;sec.3D.22-ssec.5;sec.3D.33-ssec.3
+17395,ambiguous,sec.3.10-note;sec.3B.11-note;sec.3B.24-note;sec.3B.36-note;sec.3C.11-note
+17462,too_short,
+17464,no_unit_holds_90pct,
+17465,no_unit_holds_90pct,
+17549,no_unit_holds_90pct,
+17550,no_unit_holds_90pct,
+17552,no_unit_holds_90pct,
+17553,ambiguous,sec.3.21;sec.3B.49;sec.3C.24;sec.3D.44
+17555,ambiguous,sec.3.29-ssec.2;sec.3B.57-ssec.3;sec.3C.32-ssec.2;sec.3D.53-ssec.3
+17556,ambiguous,sec.3.29-ssec.3;sec.3B.57-ssec.4;sec.3C.32-ssec.3;sec.3D.53-ssec.4
+17561,ambiguous,sec.3.29-ssec.2;sec.3B.57-ssec.3;sec.3C.32-ssec.2;sec.3D.53-ssec.3
+17562,no_unit_holds_90pct,
+17565,no_unit_holds_90pct,
+17566,no_unit_holds_90pct,
+17567,ambiguous,sec.3.29-ssec.3;sec.3B.57-ssec.4;sec.3C.32-ssec.3;sec.3D.53-ssec.4
+17568,no_unit_holds_90pct,
+17570,no_unit_holds_90pct,
+17571,no_unit_holds_90pct,
+17572,no_unit_holds_90pct,
+17573,ambiguous,sec.3.29-ssec.4;sec.3C.32-ssec.4;sec.3D.53-ssec.5
+17582,ambiguous,sec.3.29-ssec.1;sec.3C.32-ssec.1;sec.3D.53-ssec.2
+17609,too_short,
+17610,too_short,
+17623,no_unit_holds_90pct,
+17624,no_unit_holds_90pct,
+17764,failed_c_length_ratio,sec.2.108-ssec.1 ratio=4.08 dropped= nums_lost=
+17826,no_unit_holds_90pct,
+17827,no_unit_holds_90pct,
+17828,no_unit_holds_90pct,
+17831,ambiguous,sec.2.120-para1.b;sec.4A.6-para1.c
+17832,ambiguous,sec.2.122-para1.e;sec.2.124-para1.d
+17833,ambiguous,sec.2.122-para1.a;sec.2.124-para1.a
+17834,no_unit_holds_90pct,
+17935,no_unit_holds_90pct,
+18399,failed_c_length_ratio,sec.2.34-ssec.1 ratio=9.454 dropped= nums_lost=
+18411,ambiguous,sec.2.10;sec.2.101;sec.2.103;sec.2.105-ssec.1;sec.2.107;sec.2.110
+18418,failed_b_no_content_word_dropped,sec.2.40 ratio=1.014 dropped=5m nums_lost=
+18420,failed_b_no_content_word_dropped,sec.2.40B-ssec.1 ratio=1.084 dropped=development standards bui nums_lost=
+18421,no_unit_holds_90pct,
+18423,no_unit_holds_90pct,
+18520,no_unit_holds_90pct,
+18521,no_unit_holds_90pct,
+18523,too_short,
+18587,no_unit_holds_90pct,
+18595,ambiguous,sec.2.4-ssec.1-para1.b;sec.2.4-ssec.1-para1.c
+18609,failed_c_length_ratio,sec.2.14 ratio=8.392 dropped= nums_lost=
+18610,no_unit_holds_90pct,
+18611,no_unit_holds_90pct,
+18613,no_unit_holds_90pct,
+18614,no_unit_holds_90pct,
+18616,no_unit_holds_90pct,
+18628,failed_c_length_ratio,sec.2.28 ratio=8.115 dropped= nums_lost=
+22616,failed_b_no_content_word_dropped,sec.1.5-ssec.1 ratio=0.952 dropped=18m 2 a word or expression used in nums_lost=
+22625,no_unit_holds_90pct,
+22632,no_unit_holds_90pct,
+22633,no_unit_holds_90pct,
+22634,no_unit_holds_90pct,
+22635,no_unit_holds_90pct,
+22636,no_unit_holds_90pct,
+22637,no_unit_holds_90pct,
+22640,failed_b_no_content_word_dropped+d_numbers_kept,sch.3-pt.1-tbl ratio=1.493 dropped=clause 1 12 part 1 general 450m 2 nums_lost=1.12
+22642,no_unit_holds_90pct,
+22643,no_unit_holds_90pct,
+22644,no_unit_holds_90pct,
+22645,no_unit_holds_90pct,
+22646,no_unit_holds_90pct,
+22647,no_unit_holds_90pct,
+22648,no_unit_holds_90pct,
+36148,failed_b_no_content_word_dropped+d_numbers_kept,sec.1.13 ratio=1.198 dropped=1 14 review nums_lost=1.14
+36183,failed_b_no_content_word_dropped+d_numbers_kept,sec.1.18 ratio=1.388 dropped=1 19 land on which complying development may nums_lost=1.19
+36184,failed_c_length_ratio,sec.1.19-ssec.1 ratio=4.148 dropped= nums_lost=
+36242,failed_b_no_content_word_dropped,sec.2.6-ssec.1 ratio=1.089 dropped=t nums_lost=
+36268,failed_c_length_ratio,sec.2.8-ssec.1 ratio=6.029 dropped= nums_lost=
+36281,failed_b_no_content_word_dropped+c_length_ratio,sec.2.12-ssec.1 ratio=6.308 dropped=25 m2 nd nums_lost=
+36284,ambiguous,sec.2.12-ssec.1-para1.f;sec.2.18-ssec.1-para1.d;sec.2.20-ssec.1-para1.e
+36288,failed_c_length_ratio,sec.2.12-ssec.1 ratio=5.223 dropped= nums_lost=
+36307,failed_b_no_content_word_dropped,sec.2.20-ssec.1 ratio=1.031 dropped=20 development standards nums_lost=
+36381,failed_b_no_content_word_dropped,sec.2.30-para1.f ratio=1.228 dropped=uppermos nums_lost=
+36395,failed_b_no_content_word_dropped,sec.2.30AD-ssec.1 ratio=1.998 dropped=inside nums_lost=
+36413,failed_b_no_content_word_dropped+c_length_ratio,sec.2.32-ssec.1 ratio=5.734 dropped=7 m nums_lost=
+36525,no_unit_holds_90pct,
+36614,failed_c_length_ratio+d_numbers_kept,"sec.2.42AB ratio=5.316 dropped= nums_lost=00,000,50"
+36620,failed_b_no_content_word_dropped,sec.2.42B-ssec.1 ratio=1.129 dropped=conserv nums_lost=
+36728,failed_b_no_content_word_dropped,sec.2.70 ratio=1.202 dropped=store mes nums_lost=
+36740,failed_b_no_content_word_dropped,sec.2.72 ratio=1.618 dropped=are nums_lost=
+36816,ambiguous,sec.2.85-para1.h;sec.2.87-para1.j;sec.2.91-para1.h;sec.2.93-para1.g;sec.5.14-ssec.1-para1.f;sec.5.16-para1.h
+36836,ambiguous,sec.2.85-para1.h;sec.2.87-para1.j;sec.2.91-para1.h;sec.2.93-para1.g;sec.5.14-ssec.1-para1.f;sec.5.16-para1.h
+36845,failed_b_no_content_word_dropped,sec.2.95 ratio=1.357 dropped=on nums_lost=
+36869,failed_b_no_content_word_dropped+c_length_ratio,sec.2.107 ratio=3.971 dropped=m2 and nums_lost=
+36875,failed_b_no_content_word_dropped,sec.2.107B ratio=2.071 dropped=f nums_lost=
+36922,failed_c_length_ratio,sec.2.118 ratio=4.994 dropped= nums_lost=
+37028,ambiguous,sec.3.4-ssec.2-para1.g;sec.3B.4-ssec.2-para1.g;sec.3C.5-ssec.2-para1.g
+37062,no_unit_holds_90pct,
+37071,no_unit_holds_90pct,
+37106,ambiguous,sec.3.13;sec.3.27;sec.3C.15;sec.3C.30
+37145,ambiguous,sec.3.16-ssec.2;sec.3.23-ssec.1;sec.3B.18-ssec.4;sec.3B.30-ssec.4;sec.3B.43-ssec.4;sec.3B.50-ssec.1
+37202,ambiguous,sec.3.23-ssec.1;sec.3B.50-ssec.1;sec.3C.26-ssec.1;sec.3D.46-ssec.1
+37250,no_unit_holds_90pct,
+37289,ambiguous,sec.3.30-ssec.1;sec.3A.29-ssec.1;sec.3B.58-ssec.1;sec.3C.33-ssec.1
+37312,ambiguous,sec.3.33-ssec.1;sec.3B.61-ssec.1;sec.3BA.11-ssec.1;sec.3C.36-ssec.1;sec.3D.64-ssec.1
+37336,ambiguous,sec.3A.3-ssec.1;sec.3A.5-ssec.1
+37351,failed_b_no_content_word_dropped,sec.3A.9 ratio=1.143 dropped=lea 12 m 12 m nums_lost=
+37356,failed_c_length_ratio,sec.3A.13 ratio=3.476 dropped= nums_lost=
+37383,failed_d_numbers_kept,"sec.3A.16-ssec.2 ratio=1.823 dropped= nums_lost=00,40"
+37397,failed_c_length_ratio,sec.3A.22 ratio=5.305 dropped= nums_lost=
+37402,failed_c_length_ratio,sec.3A.23 ratio=6.182 dropped= nums_lost=
+37416,failed_c_length_ratio,sec.3A.27 ratio=6.41 dropped= nums_lost=
+37425,ambiguous,sec.3.30-ssec.1;sec.3A.29-ssec.1;sec.3B.58-ssec.1;sec.3C.33-ssec.1
+37610,ambiguous,sec.3.16-ssec.2;sec.3.23-ssec.1;sec.3B.18-ssec.4;sec.3B.30-ssec.4;sec.3B.43-ssec.4;sec.3B.50-ssec.1
+37643,failed_b_no_content_word_dropped+c_length_ratio+d_numbers_kept,sec.3B.24-ssec.5 ratio=3.22 dropped=s h 3 m nums_lost=3
+37665,failed_c_length_ratio,sec.3B.27 ratio=6.841 dropped= nums_lost=
+37689,failed_a_verbatim_in_law,sec.3B.30 ratio=2.911 dropped= nums_lost=
+37731,failed_b_no_content_word_dropped,sec.3B.38 ratio=1.061 dropped=fro nums_lost=
+37768,failed_c_length_ratio,sec.3B.43 ratio=3.188 dropped= nums_lost=
+37785,failed_b_no_content_word_dropped,sec.3B.48-ssec.1 ratio=1.654 dropped=45 m2 nums_lost=
+37918,ambiguous,sec.3B.61-ssec.1;sec.3BA.11-ssec.1
+37963,ambiguous,sec.3BA.8-ssec.1;sec.3D.61-ssec.1
+37984,ambiguous,sec.3B.61;sec.3BA.11
+38070,no_unit_holds_90pct,
+38073,no_unit_holds_90pct,
+38075,no_unit_holds_90pct,
+38085,ambiguous,sec.3.10-ssec.13;sec.3C.11-ssec.10
+38103,failed_b_no_content_word_dropped+c_length_ratio,sec.3C.13 ratio=7.792 dropped=18 m2 nums_lost=
+38123,no_unit_holds_90pct,
+38379,failed_c_length_ratio+d_numbers_kept,sec.3D.6-ssec.2 ratio=3.264 dropped= nums_lost=00
+38398,ambiguous,sec.3D.10-ssec.1-para1.a;sec.3D.29-ssec.1-para1.a;sec.3D.40
+38462,failed_b_no_content_word_dropped+d_numbers_kept,sec.3D.21-ssec.8 ratio=1.783 dropped=s h 3 m nums_lost=3
+38468,no_unit_holds_90pct,
+38541,ambiguous,sec.3.16-ssec.1;sec.3C.19-ssec.1;sec.3D.27-ssec.1
+38559,ambiguous,sec.3D.10-ssec.1-para1.a;sec.3D.29-ssec.1-para1.a;sec.3D.40
+38611,failed_b_no_content_word_dropped,sec.3D.35 ratio=2.545 dropped=m nums_lost=
+38616,failed_c_length_ratio,sec.3D.36 ratio=8.801 dropped= nums_lost=
+38625,no_unit_holds_90pct,
+38637,failed_a_verbatim_in_law+c_length_ratio,sec.3D.38 ratio=8.191 dropped= nums_lost=
+38643,ambiguous,sec.3.16-ssec.2;sec.3.23-ssec.1;sec.3B.18-ssec.4;sec.3B.30-ssec.4;sec.3B.43-ssec.4;sec.3B.50-ssec.1
+38675,no_unit_holds_90pct,
+38702,ambiguous,sec.3C.26;sec.3D.46
+38711,failed_b_no_content_word_dropped,sec.3D.46-ssec.10 ratio=1.421 dropped=parkin nums_lost=
+38717,failed_c_length_ratio,sec.3D.48 ratio=12.419 dropped= nums_lost=
+38782,failed_b_no_content_word_dropped,sec.3D.57-ssec.2 ratio=1.83 dropped=ice nums_lost=
+38833,failed_b_no_content_word_dropped,sec.3D.64-ssec.1 ratio=1.676 dropped=s m nums_lost=
+38896,failed_c_length_ratio,sec.4A.6 ratio=3.494 dropped= nums_lost=
+39000,ambiguous,sec.5.22B-ssec.4;sec.5A.6F-ssec.2
+39044,ambiguous,sec.5A.6D-ssec.1;sec.5A.6D-ssec.2
+39047,failed_b_no_content_word_dropped+d_numbers_kept,"sec.5A.6D-ssec.4 ratio=2.811 dropped=10 00 m2 nums_lost=00,10"
+39051,no_unit_holds_90pct,
+39066,failed_d_numbers_kept,"sec.5A.6H-ssec.2 ratio=0.96 dropped= nums_lost=00,1"
+39068,failed_d_numbers_kept,sec.5A.6H-ssec.3 ratio=1.574 dropped= nums_lost=00
+39109,failed_d_numbers_kept,"sec.5A.11-ssec.1 ratio=0.983 dropped= nums_lost=00,10"
+39137,failed_d_numbers_kept,"sec.5A.19-ssec.1 ratio=1.94 dropped= nums_lost=00,10,500"
+39160,ambiguous,sec.5A.10-ssec.4A;sec.5A.22-ssec.2
+39216,failed_b_no_content_word_dropped,sec.6.4-ssec.1 ratio=1.266 dropped=200 m2 nums_lost=
+39300,failed_b_no_content_word_dropped,sec.9.2-ssec.3 ratio=0.997 dropped=the standards specified in subclause and are satisfied nums_lost=
+39401,no_unit_holds_90pct,
+39463,failed_b_no_content_word_dropped+c_length_ratio+d_numbers_kept,sch.3-pt.1-tbl ratio=75.258 dropped=00 m 15 00 m2 nums_lost=00
+39482,ambiguous,sch.3-pt.3-sec.3;sch.3-pt.4-sec.3
+39516,failed_b_no_content_word_dropped+d_numbers_kept,sch.3-pt.3-sec.3-ssec.27 ratio=0.971 dropped=668 m 18 m3 nums_lost=668
+39520,no_unit_holds_90pct,
+39521,no_unit_holds_90pct,
+39528,failed_b_no_content_word_dropped+c_length_ratio,sch.3-pt.4-sec.3 ratio=30.439 dropped=m nums_lost=
+39530,failed_b_no_content_word_dropped+d_numbers_kept,sch.3-pt.4-sec.3-ssec.4 ratio=0.954 dropped=668 10 m3 nums_lost=668
+39534,ambiguous,sch.3-pt.3-sec.3;sch.3-pt.4-sec.3
+39557,ambiguous,sch.3-pt.3-sec.3;sch.3-pt.4-sec.3
+39564,failed_b_no_content_word_dropped,sch.3-pt.4-sec.3-ssec.24 ratio=0.981 dropped=8 m 18 m3 nums_lost=
+39568,no_unit_holds_90pct,
+39608,ambiguous,sch.10-sec.8-ssec.1;sch.6-sec.10-ssec.1;sch.6A-sec.16-ssec.1;sch.8-sec.11-ssec.1
+39664,ambiguous,sch.10-sec.8-ssec.1;sch.6-sec.10-ssec.1;sch.6A-sec.16-ssec.1;sch.8-sec.11-ssec.1
+39796,ambiguous,sch.8-sec.10;sch.9-sec.9
+39884,failed_b_no_content_word_dropped+d_numbers_kept,sch.11-sec.12 ratio=1.005 dropped=l o c a l g o e nums_lost=993
+39922,ambiguous,sch.11-sec.20;sch.11-sec.26
+39940,no_unit_holds_90pct,
+39963,no_unit_holds_90pct,
+39964,no_unit_holds_90pct,
+39980,no_unit_holds_90pct,
+39993,no_unit_holds_90pct,
+39994,no_unit_holds_90pct,
+39995,no_unit_holds_90pct,
+40001,no_unit_holds_90pct,
+14345,failed_b_no_content_word_dropped+c_length_ratio,sec.42-ssec.1 ratio=3.644 dropped=rat nums_lost=
+14356,too_short,
+14374,no_unit_holds_90pct,
+14619,failed_c_length_ratio,sec.126-ssec.1 ratio=4.101 dropped= nums_lost=
+14620,no_unit_holds_90pct,
+14670,no_unit_holds_90pct,
+14722,no_unit_holds_90pct,
+14896,failed_c_length_ratio,sec.141-ssec.3 ratio=10.947 dropped= nums_lost=
+15003,ambiguous,sec.177-ssec.2;sec.83A-ssec.2
+15051,failed_b_no_content_word_dropped+c_length_ratio,sec.87 ratio=3.036 dropped=sit nums_lost=
+15072,no_unit_holds_90pct,
+15073,no_unit_holds_90pct,
+15084,failed_c_length_ratio,sec.144-ssec.3 ratio=3.109 dropped= nums_lost=
+15094,failed_c_length_ratio,sec.142-ssec.1 ratio=12.262 dropped= nums_lost=
+15451,failed_c_length_ratio,sec.107 ratio=5.042 dropped= nums_lost=
+15455,no_unit_holds_90pct,
+15680,failed_b_no_content_word_dropped,sec.6 ratio=2.026 dropped=environ nums_lost=
+16026,ambiguous,sec.108C-ssec.1;sec.108CB-ssec.1;sec.30-ssec.1;sec.43A-ssec.1
+16027,ambiguous,sec.108CA;sec.108CB-ssec.4;sec.30A;sec.43B;sec.44-ssec.3
+16028,failed_c_length_ratio,sec.30B ratio=4.812 dropped= nums_lost=
+16043,no_unit_holds_90pct,
+16044,no_unit_holds_90pct,
+16045,no_unit_holds_90pct,
+16251,ambiguous,sec.141K-ssec.1;sec.147-ssec.1;sec.161;sec.177-ssec.2;sec.20-ssec.1;sec.20-ssec.3
+16295,no_unit_holds_90pct,
+16298,ambiguous,sch.1-sec.10-ssec.1-para1.a;sch.1-sec.16-ssec.1-para1.a;sch.1-sec.7-ssec.1-para1.b-para2.i;sch.1-sec.7-ssec.3-para1.a;sch.1-sec.9-ssec.1-para1.a;sec.54-ssec.2-para1.c
+16399,no_unit_holds_90pct,
+16402,no_unit_holds_90pct,
+16405,no_unit_holds_90pct,
+16408,no_unit_holds_90pct,
+16441,ambiguous,sch.4-sec.11-ssec.1;sch.4-sec.12-ssec.1;sch.4-sec.6-ssec.3
+17652,no_unit_holds_90pct,
+17653,no_unit_holds_90pct,
+17654,no_unit_holds_90pct,
+17661,too_short,
+22203,no_unit_holds_90pct,
+22204,no_unit_holds_90pct,
+22205,no_unit_holds_90pct,
+22207,no_unit_holds_90pct,
+22210,no_unit_holds_90pct,
+22211,no_unit_holds_90pct,
+22212,no_unit_holds_90pct,
+40258,no_unit_holds_90pct,
+40265,failed_b_no_content_word_dropped+d_numbers_kept,sec.17-ssec.3 ratio=1.809 dropped=a h 100 nums_lost=100
+40394,failed_c_length_ratio,sec.42-ssec.1 ratio=5.935 dropped= nums_lost=
+40423,ambiguous,sec.108CB-ssec.4;sec.44-ssec.3
+40442,failed_c_length_ratio,sec.47-ssec.2 ratio=5.992 dropped= nums_lost=
+40455,no_unit_holds_90pct,
+40531,no_unit_holds_90pct,
+40539,no_unit_holds_90pct,
+40586,failed_c_length_ratio,sec.69 ratio=10.088 dropped= nums_lost=
+40638,no_unit_holds_90pct,
+40652,no_unit_holds_90pct,
+40653,no_unit_holds_90pct,
+40654,no_unit_holds_90pct,
+40664,no_unit_holds_90pct,
+40706,failed_c_length_ratio,sec.107-ssec.2 ratio=4.52 dropped= nums_lost=
+40730,failed_b_no_content_word_dropped+d_numbers_kept,sec.108B-ssec.1-para1.b-para2.ii ratio=0.933 dropped=9 5 m or nums_lost=3
+40750,ambiguous,sec.108CB-ssec.4;sec.44-ssec.3
+40876,no_unit_holds_90pct,
+40889,no_unit_holds_90pct,
+41160,ambiguous,sch.1-sec.10-ssec.1-para1.a-para2.ii;sch.1-sec.10-ssec.1-para1.b-para2.ii;sch.1-sec.10-ssec.1-para1.c-para2.ii
+41165,failed_b_no_content_word_dropped,sch.1-sec.11 ratio=2.997 dropped=zo nums_lost=
+41208,no_unit_holds_90pct,
+41212,no_unit_holds_90pct,
+41230,no_unit_holds_90pct,
+41231,no_unit_holds_90pct,
+41238,no_unit_holds_90pct,
+41240,no_unit_holds_90pct,
+41245,failed_c_length_ratio,sch.2-sec.14 ratio=4.379 dropped= nums_lost=
+41249,no_unit_holds_90pct,
+41251,no_unit_holds_90pct,
+41260,no_unit_holds_90pct,
+41266,no_unit_holds_90pct,
+41268,no_unit_holds_90pct,
+41271,no_unit_holds_90pct,
+41276,no_unit_holds_90pct,
+41278,no_unit_holds_90pct,
+41280,no_unit_holds_90pct,
+41288,no_unit_holds_90pct,
+41357,failed_d_numbers_kept,"sch.4-sec.13-ssec.2 ratio=2.679 dropped= nums_lost=00,11"
+41359,failed_c_length_ratio,sch.4-sec.13 ratio=7.186 dropped= nums_lost=
+41365,failed_d_numbers_kept,"sch.4-sec.16-ssec.2 ratio=0.991 dropped= nums_lost=22,50"
+41370,failed_d_numbers_kept,"sch.4-sec.18-ssec.3 ratio=1.879 dropped= nums_lost=15,50"
+41382,failed_d_numbers_kept,"sch.4-sec.19-ssec.2 ratio=1.083 dropped= nums_lost=15,50"
+41385,failed_d_numbers_kept,"sch.4-sec.19-ssec.4 ratio=1.783 dropped= nums_lost=00,11"
+41500,no_unit_holds_90pct,
+15046,e_id_path_drift,sec.84-ssec.3
+22121,no_unit_holds_90pct,
+22133,no_unit_holds_90pct,
+22170,ambiguous,sec.3.4;sec.4.6
+34904,failed_b_no_content_word_dropped+c_length_ratio,sec.2.2-ssec.1 ratio=7.803 dropped=of sets nums_lost=
+35117,failed_b_no_content_word_dropped,sec.4.9 ratio=2.982 dropped=accoun nums_lost=
+35935,no_unit_holds_90pct,
+9868,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.18 ratio=1.001 dropped=part 2 4 principal development standards nums_lost=2.4
+9878,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.26 ratio=1.004 dropped=part 2 5 miscellaneous provisions nums_lost=2.5
+9901,no_unit_holds_90pct,
+9921,failed_b_no_content_word_dropped,sec.3.8 ratio=1.021 dropped=division 2 control of advertisements nums_lost=
+9939,no_unit_holds_90pct,
+9956,failed_b_no_content_word_dropped+d_numbers_kept,sec.3.27 ratio=1.069 dropped=part 3 4 miscellaneous nums_lost=3.4
+10026,no_unit_holds_90pct,
+10027,no_unit_holds_90pct,
+10043,too_short,
+10107,no_unit_holds_90pct,
+10171,no_unit_holds_90pct,
+10172,no_unit_holds_90pct,
+10174,failed_c_length_ratio,sec.3.17 ratio=3.727 dropped= nums_lost=
+22235,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.16 ratio=0.998 dropped=part 2 3 development control plans nums_lost=2.3
+22256,no_unit_holds_90pct,
+22260,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.41-ssec.2 ratio=0.938 dropped=this section applies to development requiring consent that nums_lost=1
+22266,failed_b_no_content_word_dropped,sec.3.2-ssec.1 ratio=0.912 dropped=the advertising display area of an advertising structure nums_lost=
+22300,no_unit_holds_90pct,
+22301,no_unit_holds_90pct,
+41690,failed_c_length_ratio,sec.2.31 ratio=4.313 dropped= nums_lost=
+41709,no_unit_holds_90pct,
+42008,no_unit_holds_90pct,
+9877,e_id_path_drift,sec.2.25
+22280,e_id_path_drift,sec.3.16
+41672,e_id_path_drift,sec.2.25
+41713,e_id_path_absent_today,sec.2.35-ssec.1
+41714,e_id_path_absent_today,sec.2.35-ssec.2
+41730,e_id_path_drift,sec.2.37-ssec.2
+41733,e_id_path_drift,sec.2.37-ssec.4
+41883,e_id_path_drift,sec.3.16
+41884,e_id_path_absent_today,sec.3.16-ssec.3
+18855,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.18 ratio=0.994 dropped=part 2 4 regionally significant development nums_lost=2.4
+18857,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.20 ratio=1.025 dropped=part 2 5 miscellaneous nums_lost=2.5
+18876,failed_b_no_content_word_dropped,sec.3.10-ssec.1 ratio=1.703 dropped=ha nums_lost=
+18894,no_unit_holds_90pct,
+18897,failed_c_length_ratio,sch.1-sec.3 ratio=4.78 dropped= nums_lost=
+18898,failed_c_length_ratio,sch.1-sec.4 ratio=3.107 dropped= nums_lost=
+18899,failed_b_no_content_word_dropped,sch.1-sec.5 ratio=1.854 dropped=minera nums_lost=
+18945,failed_b_no_content_word_dropped+d_numbers_kept,sch.1-sec.31-ssec.1 ratio=0.908 dropped=development for the purposes of industry or nums_lost=2
+18974,no_unit_holds_90pct,
+19075,failed_b_no_content_word_dropped,sch.6-sec.5 ratio=1.3 dropped=cent nums_lost=
+19085,failed_b_no_content_word_dropped,sch.6-sec.9 ratio=1.191 dropped=developm nums_lost=
+19093,no_unit_holds_90pct,
+19128,failed_c_length_ratio,sec.3.7-ssec.3 ratio=3.101 dropped= nums_lost=
+19129,failed_c_length_ratio,sec.3.8 ratio=4.588 dropped= nums_lost=
+22329,no_unit_holds_90pct,
+22333,no_unit_holds_90pct,
+22335,no_unit_holds_90pct,
+18928,failed_c_length_ratio,sch.1-sec.23 ratio=4.114 dropped=for the purpose of regional putrescible landfills regional nums_lost=
+42204,e_id_path_drift,sch.1-sec.21
+13443,failed_c_length_ratio,sch.4-sec.4-ssec.4 ratio=10.73 dropped= nums_lost=
+13483,no_unit_holds_90pct,
+13484,failed_c_length_ratio,sec.2.17-ssec.4 ratio=7.794 dropped= nums_lost=
+13486,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.17 ratio=1.02 dropped=part 2 5 sustainable aquaculture division 1 preliminary nums_lost=2.5
+13491,failed_c_length_ratio,sec.3.4 ratio=6.806 dropped= nums_lost=
+13500,failed_c_length_ratio,sch.4-sec.4-ssec.4 ratio=10.481 dropped= nums_lost=
+13561,failed_c_length_ratio,sch.5-sec.7-ssec.1 ratio=3.069 dropped= nums_lost=
+22346,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.6 ratio=1.024 dropped=part 2 2 state significant agricultural land nums_lost=2.2
+22348,no_unit_holds_90pct,
+22365,no_unit_holds_90pct,
+22366,no_unit_holds_90pct,
+42716,no_unit_holds_90pct,
+42877,no_unit_holds_90pct,
+12653,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.9 ratio=1.025 dropped=division 3 coastal environment area nums_lost=3
+12655,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.11 ratio=1.024 dropped=division 5 general nums_lost=5
+12707,failed_b_no_content_word_dropped,sec.2.1 ratio=1.28 dropped=ar nums_lost=
+12711,failed_c_length_ratio,sec.2.10-ssec.1 ratio=4.304 dropped= nums_lost=
+12712,ambiguous,sec.2.10-ssec.2;sec.2.12;sec.2.8-ssec.1;sec.2.9
+12760,failed_c_length_ratio,sec.3.12 ratio=5.737 dropped= nums_lost=
+12779,failed_c_length_ratio,sec.4.19-ssec.3 ratio=10.235 dropped= nums_lost=
+12782,failed_c_length_ratio,sec.4.19-ssec.3 ratio=5.0 dropped= nums_lost=
+22381,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.10 ratio=1.019 dropped=division 4 coastal use area nums_lost=4
+22456,no_unit_holds_90pct,
+22457,ambiguous,sec.2.10;sec.3.8
+22459,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.12-ssec.2 ratio=0.975 dropped=repealed nums_lost=1
+22465,failed_b_no_content_word_dropped,sec.2.18 ratio=1.003 dropped=division 3 site compatibility certificates nums_lost=
+22470,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.23 ratio=0.999 dropped=part 2 3 development controls division 1 air nums_lost=2.3
+22477,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.30 ratio=1.004 dropped=division 3 data centres nums_lost=3
+22486,failed_b_no_content_word_dropped,sec.2.39 ratio=1.565 dropped=the clean energy council 500m 2 nums_lost=
+22488,failed_b_no_content_word_dropped,sec.2.41 ratio=1.008 dropped=the clean energy council 150m 2 attached to nums_lost=
+22501,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.54 ratio=1.009 dropped=division 7 flood mitigation work nums_lost=7
+22508,no_unit_holds_90pct,
+22510,failed_b_no_content_word_dropped,sec.2.63 ratio=1.263 dropped=5m 30m 2 2 2 63a repealed nums_lost=
+22511,failed_b_no_content_word_dropped,sec.2.64 ratio=1.081 dropped=250m nums_lost=
+22517,no_unit_holds_90pct,
+22518,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.71 ratio=0.99 dropped=division 12 parks and other public reserves nums_lost=12
+22521,no_unit_holds_90pct,
+22523,failed_b_no_content_word_dropped,sec.2.76 ratio=0.986 dropped=subdivision 2 development adjacent to pipeline corridors nums_lost=
+22540,no_unit_holds_90pct,
+22543,no_unit_holds_90pct,
+22547,ambiguous,sec.2.100;sec.2.120
+22557,no_unit_holds_90pct,
+22560,failed_b_no_content_word_dropped,sec.2.113 ratio=1.005 dropped=and nums_lost=
+22561,failed_b_no_content_word_dropped,sec.2.114 ratio=1.007 dropped=100m 100m 250m 2 2 2 500m nums_lost=
+22571,no_unit_holds_90pct,
+22574,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.127 ratio=0.998 dropped=division 18a shooting ranges nums_lost=18
+22578,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.131 ratio=0.994 dropped=division 19 soil conservation works nums_lost=19
+22584,ambiguous,sec.2.110A;sec.2.126A;sec.2.137A;sec.2.159A;sec.2.80A;sec.2.93A
+22586,no_unit_holds_90pct,
+22591,failed_b_no_content_word_dropped,sec.2.144-ssec.1 ratio=0.902 dropped=or an equivalent land use zone despite subsection nums_lost=
+22596,no_unit_holds_90pct,
+22597,no_unit_holds_90pct,
+22602,failed_b_no_content_word_dropped+d_numbers_kept,"sch.5-tbl ratio=1.219 dropped=sections 3 17 3 39 3 49 and nums_lost=2.5,3.17,3.39,3.49,3.56"
+22603,no_unit_holds_90pct,
+22606,no_unit_holds_90pct,
+22607,no_unit_holds_90pct,
+22610,no_unit_holds_90pct,
+22611,no_unit_holds_90pct,
+43321,failed_c_length_ratio,sec.2.3-ssec.2 ratio=6.974 dropped= nums_lost=
+43382,failed_b_no_content_word_dropped,sec.2.14 ratio=1.488 dropped=th nums_lost=
+43540,failed_c_length_ratio,sec.2.35 ratio=7.16 dropped= nums_lost=
+43658,ambiguous,sec.2.110A-ssec.2-para1.c;sec.2.126A-ssec.2-para1.c;sec.2.137A-ssec.2-para1.c;sec.2.159A-ssec.2-para1.c;sec.2.44A-ssec.2-para1.c;sec.2.80A-ssec.2-para1.c
+43756,failed_b_no_content_word_dropped+d_numbers_kept,sec.2.61-ssec.2 ratio=1.127 dropped=repealed nums_lost=3
+43795,failed_b_no_content_word_dropped,sec.2.64-ssec.1-para1.f ratio=1.141 dropped=metr nums_lost=
+43798,failed_c_length_ratio,sec.2.64 ratio=10.639 dropped= nums_lost=
+43907,failed_c_length_ratio,sec.2.82 ratio=7.928 dropped= nums_lost=
+43931,failed_c_length_ratio,sec.2.83-ssec.1 ratio=15.952 dropped= nums_lost=
+43939,failed_c_length_ratio+d_numbers_kept,"sec.2.83-ssec.1 ratio=4.911 dropped= nums_lost=00,50"
+44139,failed_b_no_content_word_dropped,sec.2.113-ssec.1-para1.a ratio=1.338 dropped=and nums_lost=
+44259,ambiguous,sec.2.124D-ssec.1-para1.h;sec.2.124E-para1.h;sec.2.124F-para1.i
+44303,failed_b_no_content_word_dropped,sec.2.131-ssec.2-para1.a ratio=1.174 dropped=an nums_lost=
+44365,no_unit_holds_90pct,
+44544,failed_b_no_content_word_dropped,sec.2.176-ssec.2 ratio=1.936 dropped=s nums_lost=
+44896,failed_b_no_content_word_dropped+c_length_ratio,sec.3.34-ssec.1 ratio=4.893 dropped=lot nums_lost=
+45047,failed_b_no_content_word_dropped+d_numbers_kept,"sec.3.51-ssec.1-para1.b ratio=1.814 dropped=gov au view whole html inforce current epi nums_lost=0732,2021"
+45423,failed_b_no_content_word_dropped+c_length_ratio,sch.1-tbl ratio=148.152 dropped=36 m2 nums_lost=
+45442,failed_c_length_ratio,sch.1-tbl ratio=18.787 dropped= nums_lost=
+45446,failed_c_length_ratio,sch.1-tbl ratio=5.089 dropped= nums_lost=
+45449,no_unit_holds_90pct,
+45452,failed_c_length_ratio,sch.1-tbl ratio=13.753 dropped= nums_lost=
+45454,no_unit_holds_90pct,
+45699,failed_b_no_content_word_dropped+c_length_ratio,sch.4A-sec.21-ssec.13 ratio=4.146 dropped=5 m nums_lost=
+45700,failed_c_length_ratio,sch.4A-sec.21-ssec.13 ratio=3.946 dropped= nums_lost=
+45792,ambiguous,sch.6-sec.7;sch.7-sec.8
+45814,ambiguous,sch.6-sec.13;sch.7-sec.15
+45869,ambiguous,sch.6-sec.13-ssec.3;sch.7-sec.15-ssec.3
+45957,failed_d_numbers_kept,"sch.10-sec.12B-ssec.2 ratio=1.085 dropped= nums_lost=00,50"
+45960,ambiguous,sch.10-sec.14;sch.12-sec.12
+45999,ambiguous,sch.10-sec.30;sch.12-sec.28
+46030,ambiguous,sch.10-sec.14-ssec.2;sch.11-sec.9
+46122,no_unit_holds_90pct,
+46226,ambiguous,sch.10-sec.5-ssec.2-para1.a;sch.12-sec.2-ssec.2
+46271,ambiguous,sch.10-sec.30;sch.12-sec.28
+46290,failed_d_numbers_kept,"sch.13-sec.2-ssec.1 ratio=0.984 dropped= nums_lost=00,12"
+46343,no_unit_holds_90pct,
+46344,no_unit_holds_90pct,
+43395,failed_c_length_ratio,sec.2.15-ssec.2 ratio=5.12 dropped= nums_lost=
+43447,e_pit_unit_ambiguous,
+43613,failed_c_length_ratio,sec.2.41-ssec.4 ratio=4.769 dropped=the clean energy council nums_lost=
+43620,failed_c_length_ratio,sec.2.41-ssec.4-para1.f ratio=3.532 dropped=any of a building nums_lost=
+43702,failed_c_length_ratio,sec.2.49 ratio=4.798 dropped= nums_lost=
+44193,e_id_path_drift,sec.2.121-ssec.1
+44946,failed_c_length_ratio,sec.3.39-ssec.1 ratio=4.276 dropped= nums_lost=
+45276,failed_c_length_ratio,sec.5.21 ratio=0.629 dropped=despite any other provision of this chapter development nums_lost=
+45317,failed_c_length_ratio,sec.5.25 ratio=5.153 dropped= nums_lost=
+6102,failed_b_no_content_word_dropped+c_length_ratio,sch.1-sec.2 ratio=4.632 dropped=hous nums_lost=
+6112,failed_c_length_ratio,sch.1-sec.5 ratio=3.589 dropped= nums_lost=
+6152,no_unit_holds_90pct,
+6159,failed_c_length_ratio,sec.3.2-ssec.1 ratio=4.23 dropped= nums_lost=
+22440,no_unit_holds_90pct,
+22441,no_unit_holds_90pct,
+22443,no_unit_holds_90pct,
+43263,no_unit_holds_90pct,
+43270,failed_b_no_content_word_dropped,sch.1-sec.2-inc-tbl ratio=1.0 dropped=zone nums_lost=
