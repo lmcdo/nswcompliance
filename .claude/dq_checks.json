@@ -1790,7 +1790,7 @@
    "note": "Reworded 2026-10-16. Still measured by DQ-145 (= 0). 2026-10-16: 4,071 state-law rows proven verbatim against legislation.nsw.gov.au in force; 244 non-law paraphrases withheld; DQ-145 6,104 -> 1,796."
   },
   "DQ-146": {
-   "declared": "open",
+   "declared": "fixed",
    "check": [
     "python",
     "scripts/dq_probe_live.py",
@@ -1799,7 +1799,7 @@
    ],
    "passes_when": "exit 0 - no current, actionable rule sits where no for-property query returns it (condition layer without flood/bushfire condition or heritage marker).",
    "red_when": "a rule written for some houses is shown to none. Read 905 on 2026-10-11; 0 after the gate-rule write the same day (scripts/apply_dq146_gates.sh). REOPENED 2026-10-15 at 2,945: the precinct layer now fails closed, so 2,827 precinct rules with no precinct key (C-B 1,953, Ku-ring-gai 858, Parramatta 16) reach no house instead of every house. Cleared by keying each to its precinct outline.",
-   "note": "Proved live on 17 Etham Avenue Darling Point (1 of 64 B2 rules shown). Cleared by gate rules and precinct keys, never by deleting rows."
+   "note": "Proved live on 17 Etham Avenue Darling Point (1 of 64 B2 rules shown). Cleared by gate rules and precinct keys, never by deleting rows. FIXED 2026-10-17 (#1312): KRG 14G outline loaded; unmapped C-B/KRG/Parramatta area rules are listed as not covered. Probe reads 0."
   },
   "OC-21": {
    "kind": "outreach_claim",
