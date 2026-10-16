@@ -1,0 +1,71 @@
+{
+  "tier": "standard",
+  "justification": "Audit run5 (2026-10-16) found a Leichhardt Part G site rule (Jane Street, Balmain) served to 118 Louisa Rd Birchgrove: 31 Part G rules for three named sites were left on the generic layer. Withheld under the user's 2026-10-15 rule. The hide script's dry run also wanted to un-key the 49 Warringah G1 rows keyed to Dee Why in #1296; it now leaves every precinct-layer row alone.",
+  "commit_hash": "166d6b9e",
+  "files": [
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    "scripts/hide_unmapped_area_rules.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/hide_unmapped_area_rules.py",
+    "fails_when": "aborts if the served count for a selector drifts from its expect; prints a non-zero 'to withhold' if a listed row is back on a council-wide layer",
+    "observed_red": "Before the filter change the dry run printed 'northern_beaches/warringah-dcp-2011-full: served 969, to withhold 49' -- the 49 Dee Why keyed rows (2026-10-16). After: 0.",
+    "external_authority": "Leichhardt DCP 2013 Part G: Section 3 'Area 3 on the map in Figure G1' (p13), G10.1 '17 Marion Street ... Lot 25 Sec 1 DP 328 ...' (p116), G11.1 '1-5 Chester Street, Annandale being Lot 11 DP499846' (p124)"
+  },
+  "real_layer_exempt": {
+    "scripts/hide_unmapped_area_rules.py": "one-line filter change; the script's real-layer check is its own dry run against production, which is the observed_red above; a database-marked test would write to production"
+  },
+  "pre_impl": {
+    "existing_data": "883 of 918 Part G rows already keyed to site outlines; 35 generic, of which 4 are the p9 introduction",
+    "assumption_mismatch": "assumed the hide script only touched unkeyed rows; it also un-keyed rows a gate rule had keyed",
+    "new_vs_existing": "one selector; one filter line"
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/hide_unmapped_area_rules.py:45",
+      "input": "the served rows each listed selector matches in production",
+      "output": "the rows not yet on the precinct layer, which are backed up then withheld",
+      "if_none": "prints nothing to change and writes nothing"
+    }
+  ],
+  "values": [
+    {
+      "value": "31 withheld; backup hide_unmapped_area_rules_pre_2026-10-16T191150.json",
+      "read_at": "--apply 2026-10-16",
+      "if_missing": "count unproven"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Marion St and Chester St outlines built from their lot lists",
+      "what_happens": "Marion: none of its 6 lots exist in today's cadastre; Chester: builder's fallback check finds 21 Inner West lots within 500 m that findNearestPrecinct would hand the site's rules",
+      "mitigated": true,
+      "how": "not loaded; rules stay withheld",
+      "repro": "python scripts/build_site_boundaries.py with the two sites added"
+    },
+    {
+      "scenario": "A withheld row is later keyed by a derive rule",
+      "what_happens": "the hide script must not undo it",
+      "mitigated": true,
+      "how": "precinct-layer rows are skipped whatever their id",
+      "repro": "dry run shows 0 for Warringah after the change"
+    },
+    {
+      "scenario": "Intro rows on p9 withheld too",
+      "what_happens": "Part G's own introduction disappears",
+      "mitigated": true,
+      "how": "ids listed explicitly; p9 rows excluded",
+      "repro": "grep part-g-s1-site-specific data/chapter_scope/not_covered_2026-10-15.json"
+    }
+  ],
+  "mutation_analysis": "Restoring the old filter reproduces 'to withhold 49' for Warringah in the dry run.",
+  "residual_risk": "Jane Street, Marion Street and Chester Street rules are not served to their own sites until outlines exist.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "none"
+  }
+}
