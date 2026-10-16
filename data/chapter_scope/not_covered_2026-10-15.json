@@ -1,14 +1,70 @@
 {
   "decided": "2026-10-15 by the user: rules for small areas with no map are hidden and listed as not covered yet",
   "withheld_area_rules": [
-    {"council": "leichhardt", "chapter_key": "amendment-1-george-upward-streets", "expect": 108,
-     "reason": "Site DCP 'George & Upward Streets, Leichhardt DCP 2014' -- no outline of the site; was served across Leichhardt (audit run2: 32/1-15 Barr St Balmain)"},
-    {"council": "marrickville", "chapter_key": "part2-s14-unique-env-features", "expect": 20,
-     "reason": "Section 2.14 applies to land with identified unique environmental features (e.g. Thornley St scenic protection area) -- no outline; was served across Marrickville (audit run2: Enmore)"},
-    {"council": "woollahra", "chapter_key": "chapter-e1-parking-access", "ids": [172682, 172686], "expect": 2,
-     "reason": "E1.8.6 applies to residential land in the block bounded by Syd Einfeld Dr, Edgecliff Rd, Adelaide St and Vernon St -- no outline (audit run2: Vaucluse)"},
-    {"council": "ashfield", "chapter_key": "chapter-c-sustainability", "ids": [183861], "expect": 1,
-     "reason": "DS1.3 names stormwater outlets at Hawthorne Parade and Dobroyd Canal -- a site-specific public domain control, no outline (audit run2: Queen St Ashfield)"}
+    {
+      "council": "leichhardt",
+      "chapter_key": "amendment-1-george-upward-streets",
+      "expect": 108,
+      "reason": "Site DCP 'George & Upward Streets, Leichhardt DCP 2014' -- no outline of the site; was served across Leichhardt (audit run2: 32/1-15 Barr St Balmain)"
+    },
+    {
+      "council": "marrickville",
+      "chapter_key": "part2-s14-unique-env-features",
+      "expect": 20,
+      "reason": "Section 2.14 applies to land with identified unique environmental features (e.g. Thornley St scenic protection area) -- no outline; was served across Marrickville (audit run2: Enmore)"
+    },
+    {
+      "council": "woollahra",
+      "chapter_key": "chapter-e1-parking-access",
+      "ids": [
+        172682,
+        172686
+      ],
+      "expect": 2,
+      "reason": "E1.8.6 applies to residential land in the block bounded by Syd Einfeld Dr, Edgecliff Rd, Adelaide St and Vernon St -- no outline (audit run2: Vaucluse)"
+    },
+    {
+      "council": "ashfield",
+      "chapter_key": "chapter-c-sustainability",
+      "ids": [
+        183861
+      ],
+      "expect": 1,
+      "reason": "DS1.3 names stormwater outlets at Hawthorne Parade and Dobroyd Canal -- a site-specific public domain control, no outline (audit run2: Queen St Ashfield)"
+    }
   ],
-  "unmapped_precinct_chapters": "rules in these chapters are already shown to no house (DQ-146) until a map exists: C-B 11.14 Riverwood, 11.6 Potts Hill, 8.3 Hume Hwy (S1-3, S5, S7), 6.3 Campsie, 11.2 Undercliffe, 8.2 Canterbury Rd (outside Area 9), KRG 14C/14G if refused, Parramatta 16"
+  "unmapped_precinct_chapters": "rules in these chapters are already shown to no house (DQ-146) until a map exists: C-B 11.14 Riverwood, 11.6 Potts Hill, 8.3 Hume Hwy (S1-3, S5, S7), 6.3 Campsie, 11.2 Undercliffe, 8.2 Canterbury Rd (outside Area 9), KRG 14C/14G if refused, Parramatta 16",
+  "subclause_area_limits_to_gate": [
+    {
+      "chapter": "city_of_sydney__section-3-general-provisions",
+      "page": 15,
+      "quote": "The following provisions do not apply to development in Central Sydney as defined in Section 2 Locality Statements."
+    },
+    {
+      "chapter": "city_of_sydney__section-4-development-types",
+      "page": 4,
+      "quote": "Not all provisions within this Section apply to the Rosebery Estate."
+    },
+    {
+      "chapter": "city_of_sydney__section-4-development-types",
+      "page": 25,
+      "quote": "Not all provisions in this Section apply to development in Central Sydney and Green Square."
+    },
+    {
+      "chapter": "georges_river__grdcp-part-6-1-low-density",
+      "page": 32,
+      "quote": "Narrow Lot Housing - Bellevue Estate: The following provisions apply to nominated sites within Bellevue Estate"
+    },
+    {
+      "chapter": "canterbury_bankstown__chapter-10-2-schools",
+      "page": 20,
+      "quote": "This clause applies to sites that adjoin the Hume Highway."
+    },
+    {
+      "chapter": "ku_ring_gai__section-c-part-24-water",
+      "page": 16,
+      "quote": "the following controls apply to Location C properties."
+    }
+  ],
+  "subclause_note": "Found 2026-10-16 by a full-PDF scan of chapters recorded as whole-council: the chapter's land is the plan's, but these clauses are limited to an area. Gate the clause rows (DQ-143 / OC-18 work), not the chapter."
 }
