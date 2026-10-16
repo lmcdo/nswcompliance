@@ -161,6 +161,18 @@ def _load_chapter_scope() -> list[dict]:
     return chapters
 
 
+def _withheld_listed() -> tuple[list[str], list[int]]:
+    """Rules withheld ON PURPOSE and listed as not covered (data/chapter_scope/not_covered_2026-10-15.json):
+    whole-chapter keys 'council__chapter' and row ids. User decision 2026-10-16 (option 1): OC-21 states them as
+    known exceptions, so DQ-146 counts only rules hidden by accident. A row hidden but not listed still counts."""
+    import json
+    path = Path(__file__).resolve().parents[1] / "data" / "chapter_scope" / "not_covered_2026-10-15.json"
+    sels = json.loads(path.read_text(encoding="utf-8"))["withheld_area_rules"]
+    keys = [f"{s['council']}__{s['chapter_key']}" for s in sels if not s.get("ids")]
+    ids = [i for s in sels for i in (s.get("ids") or [])]
+    return keys, ids
+
+
 def _chapter_scope_keys(*, part_of_council: bool | None = None,
                         applies_to: tuple[str, ...] = (),
                         machine_whole_council: bool | None = None) -> list[str]:
@@ -2915,8 +2927,10 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "SELECT count(*) FROM regulatory_provisions rp"
         " WHERE rp.is_current AND rp.v2_is_actionable"
         "   AND (rp.v2_provision_type IS NULL OR rp.v2_provision_type <> 'TOC')"
-        f"   AND {_REACHES_NOBODY}",
-        (),
+        f"   AND {_REACHES_NOBODY}"
+        "   AND NOT (rp.source_council || '__' || COALESCE(rp.source_chapter_key, '') = ANY(%s))"
+        "   AND NOT (rp.id = ANY(%s))",
+        _withheld_listed(),
         "Each count is a current rule that no address is ever shown. Cleared by giving it "
         "the gate its chapter needs (precinct outline, heritage marker, flood/bushfire "
         "condition) so the houses it covers receive it.",

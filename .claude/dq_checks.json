@@ -1805,7 +1805,7 @@
   },
   "OC-21": {
    "kind": "outreach_claim",
-   "claim": "No current rule sits where the address page's rule query can never return it (a layer or site condition the page does not send). Whether each map-based condition has map data for every council is not part of this claim.",
+   "claim": "No current rule sits where the address page's rule query can never return it (a layer or site condition the page does not send). Known exceptions are stated: rules limited to an area with no map yet are withheld and listed as not covered (data/chapter_scope/not_covered_2026-10-15.json). Whether each map-based condition has map data for every council is not part of this claim.",
    "source": "~/.claude/plans/ce-served-answer-audit-RESUME-2026-10-11.md#12",
    "declared": "false",
    "check": [
