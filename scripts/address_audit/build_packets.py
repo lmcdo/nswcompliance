@@ -56,7 +56,7 @@ def address_near(x: float, y: float) -> str | None:
     q = urllib.parse.urlencode({"geometry": f"{x-d},{y-d},{x+d},{y+d}", "geometryType": "esriGeometryEnvelope",
                                 "inSR": 4326, "spatialRel": "esriSpatialRelIntersects",
                                 "outFields": "address", "returnGeometry": "false", "f": "json"})
-    feats = json.loads(get(f"{ADDR_URL}?{q}")).get("features", [])
+    feats = json.loads(get(f"{ADDR_URL}?{q}")).get("features") or []
     addrs = sorted({f["attributes"]["address"] for f in feats if f["attributes"].get("address")})
     return addrs
 
@@ -167,14 +167,14 @@ def main() -> int:
                             "constraints": {k: (p.get("constraints") or {}).get(k) for k in ("lga", "zone")}})
             continue
         fp = json.loads(get(f"{BASE}/api/provisions/for-property?{urllib.parse.urlencode(q)}", timeout=180))
-        rows = {r["id"]: r for layer in (fp.get("data") or {}).get("by_layer", []) for r in layer["provisions"]}
+        rows = {r["id"]: r for layer in (fp.get("data") or {}).get("by_layer") or [] for r in layer["provisions"]}
         c = p.get("constraints") or {}
         prop_view = {"zone": c.get("zone"), "lga": c.get("lga"), "formerCouncil": c.get("formerCouncil"),
                      "precinctId": c.get("precinctId"), "heritage": p.get("heritage"),
                      "flood": q.get("flood"), "bushfire": q.get("bushfire"),
                      "coords": p.get("coordinates"), "land_application": c.get("landApplicationInstruments")}
         summary.append({"idx": tag, "address": addr, "lga": lga, "served": len(rows), "params": q,
-                        "property": prop_view, "precinct_warning": fp.get("meta", {}).get("precinct_warning")})
+                        "property": prop_view, "precinct_warning": (fp.get("meta") or {}).get("precinct_warning")})
         print(tag, addr, len(rows), flush=True)
         for rid in rnd.sample(sorted(rows), min(a.per_address, len(rows))):
             r = rows[rid]
@@ -182,7 +182,7 @@ def main() -> int:
                                   rp.quote_status, rp.quote_reason, rp.quote_page, rp.v2_applicable_zones,
                                   rp.ref_number, rp.citation_status
                            FROM regulatory_provisions rp LEFT JOIN documents d ON d.id = rp.document_id
-                           WHERE rp.id = %s""", (rid,))
+                           WHERE rp.id = %s  -- is_current not filtered: audit reads the row exactly as served""", (rid,))
             dbr = cur.fetchone()
             shown = r.get("pdf_page")
             text = None
@@ -209,6 +209,7 @@ def main() -> int:
             f.write(json.dumps(pk, ensure_ascii=False, default=str) + "\n")
     print("addresses", len(addrs), "packets", len(packets),
           "errors", sum(1 for s in summary if "error" in s))
+    conn.close()
     return 0
 
 

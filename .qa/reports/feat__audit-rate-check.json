@@ -1,12 +1,15 @@
 {
  "tier": "standard",
  "justification": "Adds a read-only check over committed audit files and moves audit tooling into the repo. No served number changes, no database access, no production write. Directionality: the check can only FAIL a claim (exit 1) that lacks fresh, large-enough, low-error evidence; it never produces a clean verdict from missing data.",
- "commit_hash": "f4ab9ff6",
+ "commit_hash": "4664afe0",
  "files": [
   "scripts/audit_rate_check.py",
   "tests/test_audit_rate_check.py",
   "data/address_audit/2026-10-16-run6/labels.jsonl",
-  "data/address_audit/2026-10-16-run7/labels.jsonl"
+  "data/address_audit/2026-10-16-run7/labels.jsonl",
+  "scripts/address_audit/build_packets.py",
+  "scripts/address_audit/flag_packets.py",
+  "scripts/address_audit/fill_pages.py"
  ],
  "falsifiable_check": {
   "command": "python scripts/audit_rate_check.py",
@@ -73,12 +76,16 @@
  "gaps": [
   "The check fails on real data today: 6 events in 560 rules gives 2.11 per 100; OC-18 is not yet supported.",
   "Only 132 of 560 rules were read by a person.",
-  "build_packets.py and fill_pages.py were path-fixed but not run (they need network and DATABASE_URL)."
+  "build_packets.py and fill_pages.py got path fixes and None-safe .get/.close hardening only and were not run (they need network and DATABASE_URL); flag_packets.py was rerun and reproduces run7."
  ],
  "post_merge": {
   "db_reset": "None. No schema change and no data written.",
   "secrets": "None.",
   "other_repo": "None.",
   "manual_verify": "Run python scripts/audit_rate_check.py after each new labelled run is committed under data/address_audit/."
+ },
+ "real_layer_exempt": {
+  "scripts/address_audit/build_packets.py": "Manual tool that calls the live verify site, NSW spatial services and the production database to draw new audit samples. It is run by a person, never in CI, and its outputs are the reviewed data files this check reads.",
+  "scripts/address_audit/fill_pages.py": "Manual one-off helper that reads PDF pages for an existing packet file from the production database and R2. Not run in CI."
  }
 }

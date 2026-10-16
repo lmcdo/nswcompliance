@@ -91,7 +91,7 @@ def flags(p: dict) -> list[str]:
     if (p.get("rule_gate") or {}).get("layer") == "precinct":
         out.append("precinct-layer rule: check the house is in that area")
     her = prop.get("heritage") or {}
-    if HERITAGE.search(rule) and not her.get("hcaName") and her.get("heritageType", "").startswith("Item") is False:
+    if HERITAGE.search(rule) and not her.get("hcaName") and (her.get("heritageType") or "").startswith("Item") is False:
         out.append("heritage-area wording; house not in an HCA")
     if (p.get("rule_gate") or {}).get("marker") == "heritage" and not her.get("hcaName"):
         out.append("heritage-marked rule; house in no HCA")
