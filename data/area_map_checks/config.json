@@ -1,0 +1,28 @@
+{
+ "_about": "Targets for scripts/fit_area_maps.py. zone_regex = the zone the plan's own legend names for the outlined precinct (a START only, never the outline). seed_street = a street the chapter names. address_checks come from the chapter's own text (page cited in _src). pages_keyed = the chapter pages that the outline would key (pages 1-2 cover/contents excluded by the keying step, not here).",
+ "vector": [
+  {"id": "14G", "name": "Pymble Business Park (Core Urban Precinct)", "chapter": "section-b-part-14g-pymble-business-park", "page": 2, "precinct_id": "14G", "suburb": "PYMBLE",
+   "lines": "fill", "zone_regex": "^E3", "zone_pick": "largest", "pages_keyed": "1-16 (whole chapter; figure 14G.1-1 p2)"},
+  {"id": "14F", "name": "Roseville Local Centre (R1-R3)", "chapter": "section-b-part-14f-roseville-local-centre", "page": 2, "precinct_id": "14F", "suburb": "ROSEVILLE",
+   "line_w_max": 0.5, "init": "roads", "zone_regex": "^(E1|MU1)", "seed_street": "HILL STREET ROSEVILLE", "outline_half_width_pt": 0, "outline_parts": "all", "local_parts": true,
+   "pages_keyed": "whole centre p1-8; R1 p9-14, R2 p15-19, R3 p20-24",
+   "_src": "R1 p13 Nos 17..63A Hill Street; R2 p19 64-116 Pacific Highway; R3 p20 83/89 Pacific Highway; 65 Hill St and 132 Pacific Hwy are next after the listed ranges",
+   "address_checks": {"inside": ["31-35 HILL STREET ROSEVILLE", "63A HILL STREET ROSEVILLE", "64 PACIFIC HIGHWAY ROSEVILLE", "100 PACIFIC HIGHWAY ROSEVILLE", "83 PACIFIC HIGHWAY ROSEVILLE", "89 PACIFIC HIGHWAY ROSEVILLE"],
+                      "outside": ["65 HILL STREET ROSEVILLE", "132 PACIFIC HIGHWAY ROSEVILLE"]}},
+  {"id": "14C", "name": "Pymble Local Centre (P1)", "chapter": "section-b-part-14c-pymble-local-centre", "page": 2, "precinct_id": "14C", "suburb": "PYMBLE",
+   "line_w_max": 0.3, "init": "roads", "zone_regex": "^(E1|MU1)", "seed_street": "GRANDVIEW STREET PYMBLE", "outline_half_width_pt": 0,
+   "pages_keyed": "1-14 (whole chapter; figure 14C.1-1 p2)",
+   "_src": "p12 Nos 2-4 Park Crescent, 91-93 and 99-101, 103-107 Grandview Street; centre ends before no. 45",
+   "address_checks": {"inside": ["103 GRANDVIEW STREET PYMBLE", "93 GRANDVIEW STREET PYMBLE", "4 PARK CRESCENT PYMBLE"],
+                      "outside": ["45 GRANDVIEW STREET PYMBLE", "31 GRANDVIEW STREET PYMBLE"]}},
+  {"id": "11.5", "kind": "raster", "name": "Riverlands (former golf course site, Milperra)", "chapter": "chapter-11-5-riverlands", "page": 4, "precinct_id": "11.5", "suburb": "MILPERRA",
+   "m_per_px": 2.31, "legend_frac": 0.2, "line_below": 224, "outline_below": 110, "boundary_points": true, "lot_edge_max_m": 3.0,
+   "pages_keyed": "1-11 (whole chapter; Figure 1a Land Application Map p4)"},
+  {"id": "11.6", "kind": "raster", "name": "Former Potts Hill Reservoir site", "chapter": "chapter-11-6-potts-hill", "page": 5, "precinct_id": "11.6", "suburb": "POTTS HILL",
+   "m_per_px": 1.0, "scale_span": 0.6, "scale_steps": 25, "half": 2000, "recoarse": true, "crop": [0.1, 0.04, 0.9, 0.78], "line_below": 130, "outline_mode": "coloured",
+   "boundary_points": true, "lot_edge_max_m": 3.0, "pages_keyed": "1-21 (whole chapter; Figure 1 Land Application Map p5)"},
+  {"id": "11.2", "kind": "lotmask", "name": "Undercliffe Bridge Precinct (site boundary)", "chapter": "chapter-11-2-undercliffe-bridge-precinct", "page": 4, "precinct_id": "11.2",
+   "suburb": "EARLWOOD", "seed_streets": ["Homer St", "Undercliffe Rd"], "road_grey": [160, 215], "legend_box": [0.78, 0.66], "scale_range": [0.25, 0.6, 0.05], "rot_step": 6,
+   "boundary_points": true, "lot_edge_max_m": 99,    "pages_keyed": "1-5 (Figure 1a site boundary p4; hidden rules on p3-4)"}
+ ]
+}
