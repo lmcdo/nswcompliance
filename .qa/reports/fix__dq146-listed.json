@@ -1,0 +1,71 @@
+{
+  "tier": "standard",
+  "justification": "User decision 2026-10-16 (option 1): rules withheld on purpose because their area has no outline, and listed in data/chapter_scope/not_covered_2026-10-15.json, are stated exceptions to OC-21. DQ-146 counted them as 'shown to no house', so OC-21 could never pass while any exception existed. DQ-146 now counts only rules hidden by accident; the claim text names the list.",
+  "commit_hash": "ea54af32",
+  "files": [
+    "scripts/dq_probe_live.py",
+    ".claude/dq_checks.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-146",
+    "fails_when": "a rule hidden but NOT listed still counts; the count rises if any withheld row is not in the list",
+    "observed_red": "2026-10-16 before: 2,490; after: 1,156. Split measured first: 1,334 listed (northern_beaches 920, canterbury_bankstown 252, leichhardt 139, marrickville 20, woollahra 2, ashfield 1) vs 1,156 unlisted (canterbury_bankstown 934, ku_ring_gai 206, parramatta 16).",
+    "external_authority": "the not-covered list, each entry citing the plan page that limits the rules to an area"
+  },
+  "real_layer_exempt": {
+    "scripts/dq_probe_live.py": "read-only probe; its real-layer check is running it against production (observed_red)"
+  },
+  "pre_impl": {
+    "existing_data": "not_covered_2026-10-15.json selectors (whole chapter or ids)",
+    "assumption_mismatch": "OC-21 had no exception clause though OC-17 does",
+    "new_vs_existing": "one helper reading the existing list"
+  },
+  "functions": [
+    {
+      "name": "_withheld_listed",
+      "file_line": "scripts/dq_probe_live.py:164",
+      "input": "the withheld_area_rules selectors in the not-covered list file",
+      "output": "whole-chapter keys and listed row ids excluded from DQ-146",
+      "if_none": "both lists empty, so DQ-146 counts every hidden rule as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ-146 2,490 -> 1,156",
+      "read_at": "dq_probe_live.py --id DQ-146, 2026-10-16",
+      "if_missing": "effect unproven"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a rule hidden by mistake inside a listed chapter",
+      "what_happens": "it is excluded with the listed ones and never counted",
+      "mitigated": false,
+      "how": "whole-chapter selectors exclude the whole chapter; id selectors are exact. Residual for whole-chapter entries (leichhardt amendment-1, marrickville 2.14).",
+      "repro": "grep -c chapter_key data/chapter_scope/not_covered_2026-10-15.json"
+    },
+    {
+      "scenario": "the list grows to hide unmapped rules instead of mapping them",
+      "what_happens": "OC-21 passes while rules stay hidden",
+      "mitigated": true,
+      "how": "each entry must cite the plan page and reason (test_every_listed_entry_is_bounded_and_explained); the claim names the list publicly",
+      "repro": "python -m pytest tests/test_hide_unmapped_area_rules.py"
+    },
+    {
+      "scenario": "the list file is missing or malformed in CI",
+      "what_happens": "the probe would crash instead of counting",
+      "mitigated": true,
+      "how": "the file is committed; json.loads raises loudly rather than counting zero",
+      "repro": "python scripts/dq_probe_live.py --id DQ-146"
+    }
+  ],
+  "mutation_analysis": "Returning ([], []) from _withheld_listed restores 2,490.",
+  "residual_risk": "The site does not yet tell a user that rules for their area are withheld; 'known exceptions are stated' is true in the repo, not yet on the page.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "none"
+  }
+}
