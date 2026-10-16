@@ -20,6 +20,7 @@ const ROWS = [
   rowFor(4, {}),
   rowFor(5, { citation_status: 'read_by_person' }),
 ];
+// The mock stands in for the route queries: rows are is_current = TRUE rows, as the route filters.
 const client = {
   query: jest.fn(async (sql: string) => ({
     rows: /FROM regulatory_provisions rp/.test(sql) && /rp\.page_check/.test(sql) ? ROWS : [],
