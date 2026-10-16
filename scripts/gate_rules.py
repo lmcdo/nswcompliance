@@ -140,10 +140,24 @@ _MARRICKVILLE_8_2_HCA = {
     40: "camden_street_and_james_street_heritage_conservation_area",
 }
 _P8 = "source_chapter_key = 'part8-heritage' AND ref_number ~ "
+# Part 8.3 subdivision controls (PDF p196) carry C8-C13 refs, not 8.3, so the any-HCA rule's regex missed them
+# (live check 2026-10-16). C11-C13 each name one HCA: "C11 HCA 14 Llewellyn Estate", "C12 HCA 31 David Street",
+# "C13 HCA 17 Kingston South" (HCA N = section 8.2.N+2); C8-C10 apply in any HCA.
+_P8_196 = "source_chapter_key = 'part8-heritage' AND pdf_page = 196 AND ref_number ~ "
+
 GATE_RULES += [
     {"name": f"marrickville_8_2_{n}_hca", "council": "marrickville",
      "where": _P8 + f"'__8_2_{n}([_~ ]|$)'", "set": {"v2_heritage_hca": slug}}
     for n, slug in sorted(_MARRICKVILLE_8_2_HCA.items())
+] + [
+    {"name": "marrickville_8_3_c11_hca14", "council": "marrickville", "where": _P8_196 + "'__C11$'",
+     "set": {"v2_heritage_hca": "hca_14"}},
+    {"name": "marrickville_8_3_c12_hca31", "council": "marrickville", "where": _P8_196 + "'__C12$'",
+     "set": {"v2_heritage_hca": "hca_31"}},
+    {"name": "marrickville_8_3_c13_kingston", "council": "marrickville", "where": _P8_196 + "'__C13$'",
+     "set": {"v2_heritage_hca": "kingston_south_heritage_conservation_area"}},
+    {"name": "marrickville_8_3_c8_c10_any", "council": "marrickville", "where": _P8_196 + "'__C(8|9|10)$'",
+     "set": {"v2_heritage_hca": "__any_hca__"}},
 ] + [
     {"name": "marrickville_part8_any_hca", "council": "marrickville",
      "where": _P8 + "'__(8_2_[12]|8_[345])([_~ ]|$)'", "set": {"v2_heritage_hca": "__any_hca__"}},
