@@ -95,6 +95,16 @@ _PLAN_EXTENT = re.compile(
     r"(on|in) (Figure|Map) [A-Z]?\d+"
     r"|this development control plan applies to the land identifi?\s?ed in Figure 1)", re.I)
 _EXTENT_ENFORCED = frozenset({"ashfield", "leichhardt", "marrickville", "city_of_sydney"})
+#: The council an LGA phrase names, checked against the chapter's own council.
+_NAMED_AREA = re.compile(r"\b(City of )?([A-Z][\w-]*( [A-Z][\w-]*){0,3}) (Local Government Area|LGA|Municipality)\b")
+_COUNCIL_ALIASES: dict[str, tuple[str, ...]] = {
+    "canterbury_bankstown": ("canterbury-bankstown",), "wollongong": ("wollongong",), "woollahra": ("woollahra",),
+    "waverley": ("waverley",), "northern_beaches": ("warringah", "northern beaches"), "ku_ring_gai": ("ku-ring-gai",),
+    "city_of_sydney": ("sydney",), "parramatta": ("parramatta",), "hornsby": ("hornsby",), "blacktown": ("blacktown",),
+    "penrith": ("penrith",), "georges_river": ("georges river",), "cumberland": ("cumberland",),
+    "ashfield": ("inner west", "ashfield"), "leichhardt": ("inner west", "leichhardt"),
+    "marrickville": ("inner west", "marrickville"), "inner_west": ("inner west",),
+}
 
 
 def _machine_whole_council(chapter: dict) -> bool:
@@ -106,7 +116,13 @@ def _machine_whole_council(chapter: dict) -> bool:
     if chapter.get("applies_to") == "whole_council":
         # The LGA must be the land itself: "land within the Rosebery Estate in the City of Sydney Local Government
         # Area" names a place first and is refused (cross-review 2026-10-16).
-        return bool(_COUNCIL_WIDE.search(quote)) and not _LAND_LIMIT.search(quote)
+        if not _COUNCIL_WIDE.search(quote) or _LAND_LIMIT.search(quote):
+            return False
+        # ...and it must be THIS council's area: a Wollongong chapter quoting "the Shellharbour Local Government
+        # Area" is a data error, not a confirmation (cross-review 2026-10-16).
+        named = [m.group(2).lower() for m in _NAMED_AREA.finditer(quote)]
+        aliases = _COUNCIL_ALIASES.get(chapter.get("council") or "", ())
+        return not named or not aliases or any(a in n for n in named for a in aliases)
     if chapter.get("applies_to") == "use_type":
         return bool(_USE_TYPE.search(quote)) and not _LAND_LIMIT.search(quote)
     return False

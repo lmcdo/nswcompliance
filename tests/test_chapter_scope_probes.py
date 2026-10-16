@@ -164,3 +164,14 @@ def test_inheritance_needs_no_own_clause():
     finally:
         d._load_chapter_scope = real
     assert "x__ok" in keys and "x__part" not in keys
+
+
+def test_a_whole_council_quote_must_name_the_chapters_own_council():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import dq_probe_live as d
+    q = "This DCP applies to land within the Shellharbour Local Government Area."
+    assert not d._machine_whole_council({"council": "wollongong", "applies_to": "whole_council", "quote": q})
+    ok = "This plan applies to all lands within the Wollongong LGA."
+    assert d._machine_whole_council({"council": "wollongong", "applies_to": "whole_council", "quote": ok})
