@@ -1,15 +1,17 @@
 {
   "tier": "standard",
   "justification": "DQ-145 counted 5,274 served state-law (SEPP) rules with no citation verdict. scripts/state_law_proof.py tests each rule's whole text for a verbatim match in the instrument in force (legislation.nsw.gov.au HTML fetched once via the Fly app, sha256 in data/law_text_cache/manifest.json) and records the verdict and the clause it sits under. Read-only; scripts/apply_state_law_proof.py (not run) sets citation_status='proven' only for plan rows whose provision_text md5 is unchanged. No clause is written: the site reads none for state rows.",
-  "commit_hash": "3ba11d9b",
+  "commit_hash": "8cc2e19c",
   "files": [
-    "scripts/state_law_proof.py",
-    "scripts/apply_state_law_proof.py",
-    "tests/test_state_law_proof.py",
+    ".gitignore",
     "data/law_text_cache/manifest.json",
     "data/state_law_proof_2026-10-16.csv",
     "data/state_law_proof_plan_2026-10-16.json",
-    ".gitignore"
+    "scripts/apply_state_law_proof.py",
+    "scripts/state_law_proof.py",
+    "scripts/withhold_state_paraphrase.py",
+    "tests/test_state_law_proof.py",
+    "tests/test_withhold_state_paraphrase.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/state_law_proof.py",
@@ -68,7 +70,7 @@
     }
   ],
   "mutation_analysis": "Replacing Law.prove's match with 'return proven' fails test_changed_word_is_not_proven and test_garbled_text_not_found_and_empty.",
-  "residual_risk": "31 proven rows are under 8 words (weak evidence). Proof is of text presence in the current instrument, not that the rule belongs to the stored clause. 'partial' (224) and 'text_not_found' (972) rows remain unproven and are DQ-88 candidates.",
+  "residual_risk": "31 proven rows are under 8 words (weak evidence). Proof is of text presence in the current instrument, not that the rule belongs to the stored clause. 'partial' (224) and 'text_not_found' (972) rows remain unproven and are DQ-88 candidates. APPLIED 2026-10-16: 4,001 + 70 rows proven live (backups state_law_proof_pre_*); 244 paraphrase rows withheld (v2_is_actionable=false, backup withhold_state_paraphrase_pre_*), user decision option 1 -- some are law fragments and come back once read. DQ-145 6,104 -> 1,796. Sol cross-review SKIPPED: diff over 512 KB (data files).",
   "post_merge": {
     "db_reset": "No",
     "secrets": "None",
