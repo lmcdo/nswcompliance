@@ -45,7 +45,7 @@
  * `citation_status`; see CITATION_STATUS_NOTE). Scoping to it is load-bearing, not
  * tidiness: unscoped, 5 of the 9 predicates below match 2-3 rows across generations.
  */
-import { stateClauseLabel } from './citation-display';
+import { stateClauseLabel, isCitationChecked } from './citation-display';
 
 export const HOUSING_SEPP_DOCUMENT_ID =
   'State_Environmental_Planning_Policy_Housing_2021__NSW_Legislation';
@@ -272,6 +272,7 @@ export interface ParkingProvisionRow {
   ref_number: string | null;
   pdf_page: number | null;
   citation_status: string | null;
+  page_check?: string | null;
   provision_text: string;
   document_id: string;
 }
@@ -283,6 +284,8 @@ export interface ResolvedParkingProvision {
   pdfPage: number | null;
   /** True when the row carries a proven clause citation. Always false today. */
   citationProven: boolean;
+  /** DQ-145 condition (lib/citation-display isCitationChecked): a script proved the clause or the page. */
+  citationChecked: boolean;
   text: string;
 }
 
@@ -422,6 +425,7 @@ export function resolveParkingCards(allRows: ParkingProvisionRow[]): ResolvedPar
         refNumber: stateClauseLabel(row.ref_number),
         pdfPage: row.pdf_page,
         citationProven: row.citation_status === 'verified',
+        citationChecked: isCitationChecked(row),
         text: row.provision_text,
       });
     }

@@ -4,6 +4,7 @@
 import { useState, useCallback } from 'react';
 import { ChevronDown, ChevronRight, FileText, Scale, Book, AlertCircle } from 'lucide-react';
 import { AuthorityColors } from '@/lib/design-tokens';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 
 interface LegislationClause {
  id: number;
@@ -15,6 +16,8 @@ interface LegislationClause {
  authority_explanation: string;
  legal_context: string;
  page_number?: number;
+ /** Server flag: a script proved the clause or page. Missing = not checked. */
+ citation_checked?: boolean;
 }
 
 interface SetbackReference {
@@ -178,7 +181,8 @@ export function ReferencedLegislationAccordion({
  <div className="flex justify-between items-start mb-2">
  <div>
  <div className="text-sm font-medium text-gray-800">
- {ref.clause_reference || 'Clause Reference Not Available'}
+ {ref.clause_reference || 'Clause Reference Not Available'}{' '}
+ <CitationUncheckedBadge checked={ref.provision_id != null ? loadedClauses.get(ref.provision_id)?.citation_checked : false} />
  </div>
  <div className="text-xs text-gray-600">
  Applies to: {ref.boundary_type.replace('_', ' ')} setback

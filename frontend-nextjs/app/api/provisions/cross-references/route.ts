@@ -29,6 +29,8 @@ interface CrossReference {
   targetText: string | null;
   /** What the quote check found for a council target (lib/council-quote.ts); null for LEP/SEPP. */
   targetQuoteNote: string | null;
+  /** True only when a script proved the target's clause or page (lib/citation-display isCitationChecked). */
+  targetCitationChecked: boolean;
   resolutionStatus: string;
   resolutionConfidence: number;
   isMandatory: boolean;
@@ -65,6 +67,7 @@ export async function GET(request: NextRequest) {
         rp_target.ref_number as target_reference,
         rp_target.provision_text as target_text,
         rp_target.citation_status as target_citation_status,
+        rp_target.page_check as target_page_check,
         rp_target.source_council as target_source_council,
         rp_target.council_quote as target_council_quote,
         rp_target.quote_page as target_quote_page,
@@ -96,6 +99,7 @@ export async function GET(request: NextRequest) {
       // The target's council words when a program copied them (migration 111, lib/council-quote.ts).
       const target = withServedCitation(withCouncilWords({
         citation_status: row.target_citation_status,
+        page_check: row.target_page_check,
         source_council: row.target_source_council,
         ref_number: row.target_reference,
         provision_text: row.target_text,
@@ -112,6 +116,7 @@ export async function GET(request: NextRequest) {
       targetReference: target.clause_label,
       targetText: target.provision_text ? target.provision_text.substring(0, 200) : null,
       targetQuoteNote: quoteNote(target),
+      targetCitationChecked: target.citation_checked,
       resolutionStatus: row.resolution_status,
       resolutionConfidence: row.resolution_confidence,
       isMandatory: row.is_mandatory,

@@ -10,6 +10,7 @@
 
 import React, { useState } from 'react';
 import useSWR from 'swr';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { ChevronDown, ChevronRight, Ruler, Car, TreePine, Building2, Maximize2, LayoutGrid, FileText, ExternalLink, Sun, Eye, Home, AlertCircle, MinusCircle } from 'lucide-react';
 
 type ControlDataStatus = 'numeric' | 'not_applicable' | 'under_review';
@@ -362,7 +363,7 @@ export function DcpStructuredControls({
                             </p>
                             {citation && (
                               <p className="text-xs text-gray-400 mt-1 font-mono">
-                                {citation}
+                                {citation} <CitationUncheckedBadge checked={false} />
                               </p>
                             )}
                           </div>

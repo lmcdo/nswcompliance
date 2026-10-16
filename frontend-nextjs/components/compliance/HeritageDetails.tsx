@@ -1,6 +1,7 @@
 "use client"
 
 import { asTrimmedString, instrumentClauseLabel } from '@/lib/citation-display';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -170,7 +171,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-white rounded-lg p-2 border border-amber-100">
               <div className="text-xs text-amber-600 mb-0.5">Legislative Control</div>
-              <div className="text-sm font-semibold text-amber-900 mb-1.5">{legislativeControlLabel(displayHCA.legislativeClause, displayHCA.epiName)}</div>
+              <div className="text-sm font-semibold text-amber-900 mb-1.5">{legislativeControlLabel(displayHCA.legislativeClause, displayHCA.epiName)} <CitationUncheckedBadge checked={false} /></div>
               {heritage?.heritageLegislationUrl && (
                 <a
                   href={heritage.heritageLegislationUrl}
@@ -247,7 +248,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-white rounded-lg p-2 border border-amber-100">
               <div className="text-xs text-amber-600 mb-0.5">Legislative Control</div>
-              <div className="text-sm font-semibold text-amber-900 mb-1.5">{legislativeControlLabel(hcaData.legislativeClause, hcaData.epiName)}</div>
+              <div className="text-sm font-semibold text-amber-900 mb-1.5">{legislativeControlLabel(hcaData.legislativeClause, hcaData.epiName)} <CitationUncheckedBadge checked={false} /></div>
               {onViewDCPHeritage && (
                 <button
                   onClick={onViewDCPHeritage}
@@ -335,7 +336,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil
         {heritage?.heritageClause && (
           <div className="bg-white rounded-lg p-3 border border-blue-200">
             <div className="text-xs font-semibold text-gray-600 mb-1">Legislative Control</div>
-            <div className="text-sm font-bold text-gray-900">{heritage.heritageClause}</div>
+            <div className="text-sm font-bold text-gray-900">{heritage.heritageClause} <CitationUncheckedBadge checked={false} /></div>
             {heritage?.heritageLegislationUrl && (
               <a
                 href={heritage.heritageLegislationUrl}
@@ -420,6 +421,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil
                 <div className="text-xs">
                   <span className="text-amber-700">Legislative Control:</span>
                   <span className="ml-1 font-semibold text-amber-900">{legislativeControlLabel(hcaData.legislativeClause, hcaData.epiName)}</span>
+                  <CitationUncheckedBadge checked={false} className="ml-1" />
                 </div>
 
                 <div className="text-xs italic text-amber-800 mt-2 pt-2 border-t border-amber-200">

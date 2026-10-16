@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { servedClauseLabel } from '@/lib/citation-display';
+import { servedClauseLabel, isCitationChecked } from '@/lib/citation-display';
 import { quoteColumns, quoteNote, showsCouncilWords, withCouncilWords } from '@/lib/council-quote';
 
 /**
@@ -49,6 +49,8 @@ export async function POST(request: NextRequest) {
         rp.page_number,
         rp.pdf_page_image_url,
         rp.source_council,
+        rp.citation_status,
+        rp.page_check,
         ${quoteColumns('rp')},
         d.pdf_name,
         d.regulation_year,
@@ -89,6 +91,7 @@ export async function POST(request: NextRequest) {
           page_number: moved ? served.quote_page : served.page_number,
           pdf_page_image_url: moved ? null : served.pdf_page_image_url,
           quote_note: quoteNote(served),
+          citation_checked: isCitationChecked(row),
         };
       }),
       metadata: {

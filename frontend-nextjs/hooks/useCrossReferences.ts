@@ -17,6 +17,8 @@ export interface CrossReference {
   targetText: string | null;
   /** What the quote check found for a council target (lib/council-quote.ts); null for LEP/SEPP. */
   targetQuoteNote?: string | null;
+  /** Server flag: a script proved the target's clause or page. Missing = not checked. */
+  targetCitationChecked?: boolean;
   resolutionStatus: 'resolved' | 'unresolved' | 'partial';
   resolutionConfidence: number;
   isMandatory: boolean;

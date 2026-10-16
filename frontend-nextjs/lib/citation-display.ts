@@ -39,7 +39,7 @@ export function isCitationChecked(row?: { citation_status?: unknown; page_check?
 
 export const CITATION_UNCHECKED_LABEL = 'Citation not yet checked';
 export const CITATION_UNCHECKED_TOOLTIP =
-  "We have not yet confirmed this rule's page or clause against the source. Check the source document.";
+  'No automated page or clause match is recorded for this rule. Compare it with the source document.';
 
 /**
  * The "<instrument> — <clause>" badge text, or null when we hold neither.

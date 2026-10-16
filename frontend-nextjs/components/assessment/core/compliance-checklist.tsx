@@ -4,6 +4,7 @@ import { useState } from "react"
 import { CheckCircle2, Circle, AlertTriangle, FileText, MessageSquare, ChevronDown, ChevronUp } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { Progress } from "@/components/ui/progress"
 
 interface ChecklistItem {
@@ -154,7 +155,7 @@ export function ComplianceChecklist() {
  <div className="flex-1">
  <div className="flex items-center justify-between">
  <h4 className="font-semibold text-gray-900 text-sm">
- {item.title} ({item.clause})
+ {item.title} ({item.clause}) <CitationUncheckedBadge checked={false} />
  </h4>
  {isExpanded ? (
  <ChevronUp className="h-4 w-4 text-gray-400" />

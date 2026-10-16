@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronUp, ExternalLink, AlertCircle, FileText, MapPin } from 'lucide-react';
 import { ProvisionVersionInline } from './ProvisionVersionBadge';
 import type { ProvisionVersionMetadata } from '@/types/provision-search';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { getProvisionShortTitle, getProvisionSectionName, formatConstraintValue } from '@/lib/provision-title-utils';
 
 // Import types
@@ -514,7 +515,7 @@ export function ConstraintCard({
                   {seppProvisions.map((provision) => (
                     <div key={provision.id} className="bg-white p-3 rounded-lg border border-gray-200">
                       <div className="flex items-start justify-between mb-1">
-                        <span className="font-medium text-sm">Clause {provision.ref_number}</span>
+                        <span className="font-medium text-sm">Clause {provision.ref_number}</span> <CitationUncheckedBadge checked={(provision as { citation_checked?: boolean }).citation_checked} />
                         <span className="text-xs text-gray-500">{provision.document_id}</span>
                       </div>
                       {provision.section_header && (
@@ -537,7 +538,7 @@ export function ConstraintCard({
                   {constraint.provisions.map((provision) => (
                     <div key={provision.id} className="bg-white p-3 rounded-lg border border-gray-200">
                       <div className="flex items-start justify-between mb-1">
-                        <span className="font-medium text-sm">{provision.ref_number}</span>
+                        <span className="font-medium text-sm">{provision.ref_number}</span> <CitationUncheckedBadge checked={(provision as { citation_checked?: boolean }).citation_checked} />
                         <span className="text-xs text-gray-500">{provision.document_id}</span>
                       </div>
                       {provision.section_header && (

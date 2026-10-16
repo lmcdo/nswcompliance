@@ -25,6 +25,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { CrossReference } from '@/hooks/useCrossReferences';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 
 export type DocumentType = 'dcp' | 'lep' | 'sepp' | null;
 
@@ -223,6 +224,7 @@ export function CrossReferenceLink({
             <div className="text-gray-600 whitespace-pre-line">
               {tooltipContent}
             </div>
+            {isResolved && <CitationUncheckedBadge checked={reference.targetCitationChecked} />}
             {isResolved && (
               <div className="text-gray-400 text-[10px] mt-1">
                 Click to {isSameDocument ? 'scroll to' : 'navigate to'} reference

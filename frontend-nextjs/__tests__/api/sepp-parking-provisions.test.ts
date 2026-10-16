@@ -125,6 +125,7 @@ describe('GET /api/sepp/parking-provisions', () => {
         refNumber: null,
         pdfPage: 11,
         citationProven: false,
+        citationChecked: false, // OC-20: NULL citation_status and no page_check = not checked
         text: expect.stringContaining('0.2 parking spaces for each boarding room'),
       },
     ]);

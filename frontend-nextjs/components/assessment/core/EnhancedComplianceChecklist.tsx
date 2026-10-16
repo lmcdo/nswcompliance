@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { ComplianceCheck, Citation } from '@/lib/assessment/types';
 
 interface EnhancedComplianceChecklistProps {
@@ -218,7 +219,7 @@ export default function EnhancedComplianceChecklist({
  <div>
  <span className="font-medium">{citation.document_type}</span>
  <span className="text-gray-500 mx-2">•</span>
- <span>{citation.clause}</span>
+ <span>{citation.clause}</span> <CitationUncheckedBadge checked={false} />
  </div>
  <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
  {citation.citation_style}

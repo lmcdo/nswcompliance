@@ -5,6 +5,7 @@
  */
 import { ExternalLink } from 'lucide-react';
 import { REGISTRY_INSTRUMENT_URLS, legislationAnchorUrl } from '@/lib/citation-instrument-urls';
+import { CitationUncheckedBadge } from './CitationUncheckedBadge';
 
 /**
  * SEPP (Sustainable Buildings) 2022 has no instrument_registry row (see
@@ -27,6 +28,8 @@ interface SeppCitationLinkProps {
   /** What the link opens — used for the tooltip and the accessible name. */
   label: string;
   className?: string;
+  /** True only when a script proved the clause. Omitted = not checked (fail closed). */
+  checked?: boolean;
 }
 
 /**
@@ -34,8 +37,12 @@ interface SeppCitationLinkProps {
  * PDF page images, which froze a single past version of the instrument (and, for
  * some, pointed at image paths that were never published).
  */
-export function SeppCitationLink({ href, label, className }: SeppCitationLinkProps) {
+export function SeppCitationLink({ href, label, className, checked }: SeppCitationLinkProps) {
+  // The link opens the in-force text of the clause; the clause heading beside it is written by
+  // hand, not proven by a script, so the mark is shown unless the caller passes checked.
   return (
+    <>
+    <CitationUncheckedBadge checked={checked} />
     <a
       href={href}
       target="_blank"
@@ -49,5 +56,6 @@ export function SeppCitationLink({ href, label, className }: SeppCitationLinkPro
     >
       <ExternalLink className="h-4 w-4" />
     </a>
+    </>
   );
 }

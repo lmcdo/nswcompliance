@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, Table2, Hash, Search, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { FormattedProvisionText } from '@/components/compliance/FormattedProvisionText';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 
 interface Provision {
   id: number;
@@ -22,6 +23,8 @@ interface Provision {
   developmentType: string | null;
   /** What the quote check found for a council rule (lib/council-quote.ts); null for LEP/SEPP. */
   quoteNote?: string | null;
+  /** Server flag: a script proved the clause or page. Missing = not checked. */
+  citationChecked?: boolean;
 }
 
 interface SectionInfo {
@@ -233,6 +236,7 @@ export function ProvisionDisplay({ documentId, sectionNumber, sectionTitle }: Pr
                           {provision.refNumber}
                         </span>
                       )}
+                      <CitationUncheckedBadge checked={provision.citationChecked} />
                       {provision.pdfPage && (
                         <span>Page {provision.pdfPage}</span>
                       )}

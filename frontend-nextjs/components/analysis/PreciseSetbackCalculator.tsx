@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { Loader2, Calculator, AlertTriangle, Building, Ruler, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useSetbackCalculation } from '@/hooks/useSetbackCalculation';
 import { lotGeometryAreaM2 } from '@/lib/geometry/mercator';
@@ -355,7 +356,7 @@ function SetbackCard({ result }: { result: SetbackResult }) {
  <div className="mt-4 flex justify-between items-center">
  <div>
  <p className="text-sm font-medium text-gray-700">Reference</p>
- <p className="text-sm text-gray-600">{result.clause_reference || result.legal_source || 'N/A'}</p>
+ <p className="text-sm text-gray-600">{result.clause_reference || result.legal_source || 'N/A'} <CitationUncheckedBadge checked={false} /></p>
  </div>
  <div className="text-right">
  <span className="text-sm font-semibold text-green-600">

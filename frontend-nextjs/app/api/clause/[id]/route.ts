@@ -34,6 +34,7 @@ export async function GET(
  rp.document_id,
  rp.created_at,
  live.citation_status,
+ live.page_check,
  live.source_council,
  live.council_quote,
  live.quote_page,
@@ -68,6 +69,7 @@ export async function GET(
  full_text: served.provision_text,
  quote_status: served.quote_status,
  quote_note: quoteNote(served),
+ citation_checked: served.citation_checked,
  };
  
  // Determine document hierarchy level from document_id
@@ -88,6 +90,7 @@ export async function GET(
  clause_reference: clause.clause_reference ?? null, // never a label derived from the row id
  full_text: clause.full_text,
  section_header: clause.section_header,
+ citation_checked: clause.citation_checked,
  document_name: clause.document_id,
  document_type: authorityLevel,
  page_number: clause.page_number,

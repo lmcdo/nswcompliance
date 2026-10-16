@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { 
  Loader2, 
  Calculator, 
@@ -428,7 +429,7 @@ function EnhancedSetbackCard({
  <div className="grid grid-cols-2 gap-4">
  <div>
  <strong>Clause Reference:</strong>
- <div className="font-mono text-xs">{result.legal_authority.clause_reference}</div>
+ <div className="font-mono text-xs">{result.legal_authority.clause_reference} <CitationUncheckedBadge checked={false} /></div>
  </div>
  <div>
  <strong>Amendment:</strong>

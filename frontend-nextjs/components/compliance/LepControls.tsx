@@ -10,6 +10,7 @@ import { PlanningConstraints, PlanningLayer } from '@/lib/nsw-planning-portal';
 import { AuthorityColors } from '@/lib/design-tokens';
 import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin, CheckCircle2, AlertCircle, XCircle, Anchor, BookOpen, LandPlot, FileText, Info } from 'lucide-react';
 import { calculateGFA, anefStatusConfig, bushfireCategoryAnnotation } from '@/lib/see/propertyUtils';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 
 interface StrataInfo {
   isStrata: boolean;
@@ -120,7 +121,7 @@ export function LepControls({
                   {constraints.maxHeight}m
                 </div>
                 <div className="text-xs text-gray-500">
-                  LEP Clause 4.3
+                  LEP Clause 4.3 <CitationUncheckedBadge checked={false} />
                 </div>
               </div>
             )}
@@ -141,7 +142,7 @@ export function LepControls({
                   </div>
                 )}
                 <div className="text-xs text-gray-500">
-                  LEP Clause 4.4{lotArea ? ` · Lot area ${lotArea.toLocaleString()}m²` : ''}
+                  LEP Clause 4.4{lotArea ? ` · Lot area ${lotArea.toLocaleString()}m²` : ''} <CitationUncheckedBadge checked={false} />
                 </div>
               </div>
             )}
@@ -157,7 +158,7 @@ export function LepControls({
                   {constraints.minLotSize}m²
                 </div>
                 <div className="text-xs text-gray-500">
-                  LEP Clause 4.1
+                  LEP Clause 4.1 <CitationUncheckedBadge checked={false} />
                 </div>
               </div>
             )}
@@ -435,6 +436,7 @@ export function LepControls({
               <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.keySite?.isKeySite ? 'text-yellow-800' : 'text-gray-400'}`}>
                 {constraints?.keySite?.isKeySite ? (constraints.keySite.clause || 'Yes') : 'No'}
               </span>
+              {constraints?.keySite?.isKeySite && constraints.keySite.clause && <CitationUncheckedBadge checked={false} className="ml-1" />}
             </div>
 
             {/* Active Street Frontage */}

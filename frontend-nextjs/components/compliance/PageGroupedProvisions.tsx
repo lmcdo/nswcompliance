@@ -32,7 +32,7 @@ import { resolveCitationUrl } from '@/lib/citation-instrument-urls';
 import type { NumericCheckValues } from './NumericChecker';
 import { pageAnchor, pageHref, pageLabel } from '@/lib/page-citation';
 import { numbersUsable, quoteNote } from '@/lib/council-quote';
-import { CITATION_UNCHECKED_LABEL, CITATION_UNCHECKED_TOOLTIP } from '@/lib/citation-display';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import { provisionTablesToPlainText } from '@/lib/provision-tables';
 
 
@@ -171,16 +171,7 @@ function QuoteNote({ provision }: { provision: Provision }) {
   return (
     <p className="text-[11px] text-gray-500 mt-1">
       {note}
-      {unchecked && (
-        <span
-          data-testid="citation-unchecked"
-          title={CITATION_UNCHECKED_TOOLTIP}
-          className={`inline-block rounded bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 ${note ? 'ml-2' : ''}`}
-        >
-          {CITATION_UNCHECKED_LABEL}
-          <span className="sr-only"> {CITATION_UNCHECKED_TOOLTIP}</span>
-        </span>
-      )}
+      {unchecked && <CitationUncheckedBadge checked={provision.citation_checked} className={note ? 'ml-2' : ''} />}
     </p>
   );
 }

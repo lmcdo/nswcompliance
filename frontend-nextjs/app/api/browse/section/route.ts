@@ -27,6 +27,8 @@ interface Provision {
   developmentType: string | null;
   /** What the quote check found for a council rule (lib/council-quote.ts); null for LEP/SEPP. */
   quoteNote: string | null;
+  /** True only when a script proved the clause or page (lib/citation-display isCitationChecked). */
+  citationChecked: boolean;
 }
 
 interface SectionInfo {
@@ -108,6 +110,7 @@ export async function POST(request: NextRequest) {
           p.zone,
           p.development_type,
           p.citation_status,
+          p.page_check,
           p.source_council,
           ${quoteColumns('p')}
         FROM regulatory_provisions p
@@ -130,6 +133,7 @@ export async function POST(request: NextRequest) {
           p.zone,
           p.development_type,
           p.citation_status,
+          p.page_check,
           p.source_council,
           ${quoteColumns('p')}
         FROM regulatory_provisions p
@@ -160,7 +164,8 @@ export async function POST(request: NextRequest) {
       pdfPage: showsCouncilWords(row) && row.quote_page ? row.quote_page : row.pdf_page,
       zone: row.zone,
       developmentType: row.development_type,
-      quoteNote: quoteNote(row)
+      quoteNote: quoteNote(row),
+      citationChecked: row.citation_checked
       };
     });
 
