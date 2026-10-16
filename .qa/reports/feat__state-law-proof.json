@@ -1,16 +1,22 @@
 {
   "tier": "standard",
-  "justification": "DQ-145 counted 5,274 served state-law (SEPP) rules with no citation verdict. scripts/state_law_proof.py tests each rule's whole text for a verbatim match in the instrument in force (legislation.nsw.gov.au HTML fetched once via the Fly app, sha256 in data/law_text_cache/manifest.json) and records the verdict and the clause it sits under. Read-only; scripts/apply_state_law_proof.py (not run) sets citation_status='proven' only for plan rows whose provision_text md5 is unchanged. No clause is written: the site reads none for state rows.",
-  "commit_hash": "8a22e026",
+  "justification": "DQ-145 counted 5,274 served state-law (SEPP) rules with no citation verdict. scripts/state_law_proof.py tests each rule's whole text for a verbatim match in the instrument in force (legislation.nsw.gov.au HTML fetched once via the Fly app, sha256 in data/law_text_cache/manifest.json) and records the verdict and the clause it sits under. Read-only; scripts/apply_state_law_proof.py (not run) sets citation_status='proven' only for plan rows whose provision_text md5 is unchanged. No clause is written: the site reads none for state rows. RECOPY (follow-on, same branch): ~830 served state-law rows are the law's text stored imperfectly (ellipses, split sub-clauses, table/markdown leftovers, dash and ligature losses) and 49 are wording amended since. scripts/state_law_recopy.py cuts each cached instrument into its numbered units from the id paths the legislation HTML carries, picks the one smallest unit holding >=90% of a row's 5-word runs (several -> ambiguous, skipped), and accepts only if the unit text is verbatim by both provers, no content word of the row is missing from it, length ratio 0.8-3.0, no number vanishes; amended rows must be verbatim in the point-in-time law and absent today, same id path today. No model reads or writes text. scripts/apply_state_law_recopy.py (NOT run) writes the unit text with provision_versions history.",
+  "commit_hash": "748ecb6f",
   "files": [
     ".gitignore",
     "data/law_text_cache/manifest.json",
     "data/state_law_proof_2026-10-16.csv",
     "data/state_law_proof_plan_2026-10-16.json",
+    "data/state_law_recopy_plan_2026-10-16.json",
+    "data/state_law_recopy_skipped_2026-10-16.csv",
     "scripts/apply_state_law_proof.py",
+    "scripts/apply_state_law_recopy.py",
     "scripts/state_law_proof.py",
+    "scripts/state_law_proof2.py",
+    "scripts/state_law_recopy.py",
     "scripts/withhold_state_paraphrase.py",
     "tests/test_state_law_proof.py",
+    "tests/test_state_law_recopy.py",
     "tests/test_withhold_state_paraphrase.py"
   ],
   "falsifiable_check": {
@@ -23,7 +29,9 @@
     "scripts/state_law_proof2.py": "read-only session (default_transaction_read_only=on); its real-layer check is its own run against production plus the cached legislation text; the fly fetch is operator-run. A database-marked test would add nothing it does not already run.",
     "scripts/state_law_proof.py": "read-only session (default_transaction_read_only=on); its real-layer check is its own dry run against production plus the cached legislation text (observed_red); a database-marked test would add nothing it does not already run",
     "scripts/apply_state_law_proof.py": "not run in this PR; a database-marked test would write to production. Its refusal logic (check_plan) is unit tested and its dry run reads production read-only.",
-    "scripts/withhold_state_paraphrase.py": "one-off production write whose real-layer check is its own dry run against production (listed 244, served 244) and rowcount verification; a database-marked test would write to production"
+    "scripts/withhold_state_paraphrase.py": "one-off production write whose real-layer check is its own dry run against production (listed 244, served 244) and rowcount verification; a database-marked test would write to production",
+    "scripts/state_law_recopy.py": "read-only session (default_transaction_read_only=on); its real-layer check is its own run against production rows plus the cached legislation text (330 planned, every new text re-proven by state_law_proof.Law.prove); a database-marked test would add nothing it does not already run.",
+    "scripts/apply_state_law_recopy.py": "not run in this PR; a database-marked test would write to production. Its refusal logic (check_plan) is unit tested and its dry run reads production read-only (330 rows, md5-identical, no version history)."
   },
   "pre_impl": {
     "existing_data": "5,274 candidate rows across 9 SEPP titles x several document_id spellings; citation_status/citation_source_path/citation_checked_at exist (migrations 076-078)",
@@ -37,6 +45,20 @@
       "input": "the stored provision_text of one served state-law rule row",
       "output": "status proven/partial/text_not_found, tier, unique derived clause, clause candidates",
       "if_none": "empty or heading-only text is text_not_found"
+    },
+    {
+      "name": "pick_unit",
+      "file_line": "scripts/state_law_recopy.py:351",
+      "input": "one stored row text and an Instrument",
+      "output": "(unit id | None, reason, candidates)",
+      "if_none": "None with reason too_short / no_unit_holds_90pct / ambiguous"
+    },
+    {
+      "name": "judge",
+      "file_line": "scripts/state_law_recopy.py:334",
+      "input": "old text, Instrument, unit id",
+      "output": "ok flag, failed checks, words dropped, ratio, numbers lost",
+      "if_none": "empty unit text fails the verbatim check"
     }
   ],
   "values": [
@@ -44,6 +66,11 @@
       "value": "4,018 proven / 224 partial / 972 text_not_found; 60 unmapped (LE9962_1 33, Chapter_E2_Haberfield_Neighbourhood 27)",
       "read_at": "python scripts/state_law_proof.py --write-plan, 2026-10-16",
       "if_missing": "count unproven"
+    },
+    {
+      "value": "330 planned (302 partial, 28 amended) of 879; skips: 203 no unit holds 90%, 121 ambiguous, 70 length ratio, ~100 content word/number differs",
+      "read_at": "python scripts/state_law_recopy.py --date 2026-10-16",
+      "if_missing": "row left untouched"
     }
   ],
   "queries": [],
@@ -68,10 +95,38 @@
       "mitigated": true,
       "how": "apply refuses on any md5 difference and verifies rowcount",
       "repro": "pytest tests/test_state_law_proof.py::test_apply_refuses_changed_md5_and_missing_rows"
+    },
+    {
+      "scenario": "the row is replaced by a unit that says something different (a stale or reworded rule)",
+      "what_happens": "the served rule text silently changes its meaning",
+      "mitigated": true,
+      "how": "check b: every word of the row must be in the unit in order (only ellipsis, markers, markup, page furniture, lost f-ligatures and an end-of-row cut-off are explained); check d: no number may vanish",
+      "repro": "pytest tests/test_state_law_recopy.py::test_content_word_dropped_is_refused"
+    },
+    {
+      "scenario": "the same sentence appears in two clauses",
+      "what_happens": "the wrong clause could be copied",
+      "mitigated": true,
+      "how": "more than one smallest qualifying unit is AMBIGUOUS and skipped (121 rows)",
+      "repro": "pytest tests/test_state_law_recopy.py::test_identical_text_in_two_places_is_ambiguous"
+    },
+    {
+      "scenario": "a number in the old text is not in the new",
+      "what_happens": "a limit would silently change",
+      "mitigated": true,
+      "how": "check d with thousands-group spellings folded",
+      "repro": "pytest tests/test_state_law_recopy.py::test_a_number_that_vanishes_is_refused"
+    },
+    {
+      "scenario": "apply runs on rows that changed or already have version history",
+      "what_happens": "history collides or newer text is overwritten",
+      "mitigated": true,
+      "how": "check_plan refuses md5 change, version rows, non-state rows, empty or U+FFFD text; one transaction, md5 and rowcount verified",
+      "repro": "pytest tests/test_state_law_recopy.py::test_apply_refuses_changed_text_version_history_and_non_state_rows"
     }
   ],
-  "mutation_analysis": "Replacing Law.prove's match with 'return proven' fails test_changed_word_is_not_proven and test_garbled_text_not_found_and_empty.",
-  "residual_risk": "31 proven rows are under 8 words (weak evidence). Proof is of text presence in the current instrument, not that the rule belongs to the stored clause. 'partial' (224) and 'text_not_found' (972) rows remain unproven and are DQ-88 candidates. APPLIED 2026-10-16: 4,001 + 70 rows proven live (backups state_law_proof_pre_*); 244 paraphrase rows withheld (v2_is_actionable=false, backup withhold_state_paraphrase_pre_*), user decision option 1 -- some are law fragments and come back once read. DQ-145 6,104 -> 1,796. Sol cross-review SKIPPED: diff over 512 KB (data files).",
+  "mutation_analysis": "Replacing Law.prove's match with 'return proven' fails test_changed_word_is_not_proven and test_garbled_text_not_found_and_empty. Recopy: replacing check d, check b, the ambiguity test or the ratio band with True each fail tests in tests/test_state_law_recopy.py (run 2026-10-17).",
+  "residual_risk": "31 proven rows are under 8 words (weak evidence). Proof is of text presence in the current instrument, not that the rule belongs to the stored clause. 'partial' (224) and 'text_not_found' (972) rows remain unproven and are DQ-88 candidates. APPLIED 2026-10-16: 4,001 + 70 rows proven live (backups state_law_proof_pre_*); 244 paraphrase rows withheld (v2_is_actionable=false, backup withhold_state_paraphrase_pre_*), user decision option 1 -- some are law fragments and come back once read. DQ-145 6,104 -> 1,796. Sol cross-review SKIPPED: diff over 512 KB (data files). RECOPY NOT APPLIED: 330 plan rows await --apply. 9 planned-looking rows hold version history and are skipped. A row that was a fragment (e.g. table cells) becomes its whole unit (ratio up to 3.0). state_law_proof2.prep now removes only an ASCII hyphen at a line break (it used to eat an em dash that ended a line, which made units ending 'must-' unprovable).",
   "post_merge": {
     "db_reset": "No",
     "secrets": "None",
