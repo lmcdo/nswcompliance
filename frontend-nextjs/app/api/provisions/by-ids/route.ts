@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { servedClauseLabel } from '@/lib/citation-display';
 import { quoteColumns, quoteNote, showsCouncilWords, withCouncilWords } from '@/lib/council-quote';
 
 /**
@@ -83,6 +84,8 @@ export async function POST(request: NextRequest) {
         const moved = showsCouncilWords(served) && served.quote_page && served.quote_page !== served.page_number;
         return {
           ...served,
+          // a state row's internal id is not a clause number (lib/citation-display)
+          ref_number: servedClauseLabel(served.ref_number, served.source_council),
           page_number: moved ? served.quote_page : served.page_number,
           pdf_page_image_url: moved ? null : served.pdf_page_image_url,
           quote_note: quoteNote(served),

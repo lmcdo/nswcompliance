@@ -56,6 +56,42 @@ export function instrumentClauseLabel(epiName?: unknown, clause?: unknown): stri
   return instrument ?? reference;
 }
 
+const NUM = String.raw`\d+[A-Z]{0,2}(?:\.\d+[A-Z]{0,2})*(?:\s*\([A-Za-z0-9]{1,4}\))*`;
+const DIVISION = String.raw`(?:schedule|sch|chapter|part|division|div)\.?\s+\d+[A-Z]{0,2}`;
+const CLAUSE_WORD = String.raw`(?:clause|cl|section|sec|s)\.?\s*`;
+const STATE_CLAUSE_RE = new RegExp(
+  String.raw`^(?:${DIVISION}(?:\s*,?\s*(?:${CLAUSE_WORD})?${NUM})?|(?:${CLAUSE_WORD})${NUM}|${NUM})$`,
+  'i',
+);
+
+/**
+ * A state-law (SEPP/LEP) reference as served, or null.
+ *
+ * state rows (source_council NULL) carry `ref_number` values that are often OUR
+ * internal ids (`provision_2344`, `layout_no`, uuids); `section_header` is NULL, so
+ * nothing else says what they are. Shown as-is they look like the law's clause number
+ * -- the DQ-111 fabricated-citation class. Only a string shaped like a real NSW
+ * clause/section/schedule reference ("2.30AB", "3A.12", "cl 5.10",
+ * "Schedule 2 cl 6", "s 87") is shown; otherwise the caller shows the instrument name
+ * and its legislation link only. Shape is checked, not truth: a real-looking value
+ * still depends on the extractor. A bare integer longer than 3 digits is refused
+ * (reads as a row id).
+ */
+export function stateClauseLabel(ref?: unknown): string | null {
+  const s = asTrimmedString(ref);
+  if (!s || s.length > 60) return null;
+  if (/provision|layout|_|__|~/i.test(s)) return null;
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(s)) return null;
+  if (/^\d{4,}$/.test(s)) return null;
+  return STATE_CLAUSE_RE.test(s) ? s : null;
+}
+
+/** Council rows keep their proven label; state rows only a well-formed one. */
+export function servedClauseLabel(label: string | null | undefined, sourceCouncil?: string | null): string | null {
+  if (sourceCouncil) return asTrimmedString(label);
+  return stateClauseLabel(label);
+}
+
 export function citationIsShown(status?: string | null, sourceCouncil?: string | null): boolean {
   if (status == null) return !sourceCouncil;
   return SHOWN.has(status);
@@ -123,7 +159,7 @@ export function withServedCitation<T extends {
   return {
     ...p,
     provision_text: shown ? p.provision_text : stripStoredCode(p.provision_text, p.ref_number),
-    clause_label: shown ? stripOccurrenceSuffix(clauseLabel) : null,
+    clause_label: shown ? servedClauseLabel(stripOccurrenceSuffix(clauseLabel), p.source_council) : null,
     citation_shown: shown,
   };
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { stateClauseLabel } from '@/lib/citation-display';
 import { getDCPSection, extractLGA } from '@/lib/dcp-section-service';
 import { determineFormerCouncilArea } from '@/lib/inner-west-mapping-v2';
 import { getPrecinctForAddress, getPrecinctControls } from '@/lib/precinct-service';
@@ -609,7 +610,7 @@ function transformControlsToConstraints(
     // Create provisions array for ConstraintCard compatibility with version metadata
     const provisions = control.provision_text ? [{
       id: control.provision_id || 0,
-      ref_number: control.ref_number || 'N/A',
+      ref_number: (authority === 'DCP' ? control.ref_number : stateClauseLabel(control.ref_number)) || 'N/A',
       section_header: control.section_header || '',
       provision_text: control.provision_text,
       document_id: control.document_id || '',
