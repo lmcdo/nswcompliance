@@ -1,0 +1,62 @@
+{"rule_key": "000:212414", "label": "ok", "reason": ""}
+{"rule_key": "000:211696", "label": "ok", "reason": ""}
+{"rule_key": "000:212608", "label": "ok", "reason": ""}
+{"rule_key": "000:213919", "label": "ok", "reason": ""}
+{"rule_key": "001:212929", "label": "ok", "reason": ""}
+{"rule_key": "001:212683", "label": "ok", "reason": ""}
+{"rule_key": "001:212707", "label": "ok", "reason": ""}
+{"rule_key": "001:211829", "label": "ok", "reason": ""}
+{"rule_key": "002:184841", "label": "ok", "reason": ""}
+{"rule_key": "002:164758", "label": "ok", "reason": ""}
+{"rule_key": "002:184921", "label": "ok", "reason": ""}
+{"rule_key": "003:132289", "label": "severe", "reason": "wrong-house + splice: KS9 Bankstown Central key-site control (6.9) served to 33 Chertsey Ave via the whole 6.2 outline; page-header splice", "category": "wrong-area"}
+{"rule_key": "003:132283", "label": "severe", "reason": "wrong-house: Jacobs Street Extension dedication -- KS9 Bankstown Central key site, served across the 6.2 city centre", "category": "wrong-area"}
+{"rule_key": "003:131712", "label": "ok", "reason": ""}
+{"rule_key": "003:132261", "label": "ok", "reason": ""}
+{"rule_key": "004:190133", "label": "minor", "reason": "figure labels prefixed to a sign control"}
+{"rule_key": "004:189985", "label": "ok", "reason": ""}
+{"rule_key": "004:178447", "label": "ok", "reason": ""}
+{"rule_key": "005:190480", "label": "ok", "reason": ""}
+{"rule_key": "005:238787", "label": "ok", "reason": ""}
+{"rule_key": "006:166211", "label": "ok", "reason": ""}
+{"rule_key": "006:206635", "label": "ok", "reason": ""}
+{"rule_key": "008:161596", "label": "ok", "reason": ""}
+{"rule_key": "008:152645", "label": "ok", "reason": ""}
+{"rule_key": "009:185597", "label": "ok", "reason": ""}
+{"rule_key": "009:185667", "label": "ok", "reason": ""}
+{"rule_key": "009:241202", "label": "ok", "reason": ""}
+{"rule_key": "010:152668", "label": "minor", "reason": "sentence cut mid-way"}
+{"rule_key": "010:208377", "label": "ok", "reason": ""}
+{"rule_key": "010:192517", "label": "ok", "reason": ""}
+{"rule_key": "011:240961", "label": "ok", "reason": ""}
+{"rule_key": "013:106018", "label": "ok", "reason": ""}
+{"rule_key": "014:183550", "label": "ok", "reason": ""}
+{"rule_key": "014:153021", "label": "ok", "reason": ""}
+{"rule_key": "015:151890", "label": "ok", "reason": ""}
+{"rule_key": "015:196525", "label": "ok", "reason": ""}
+{"rule_key": "015:151930", "label": "ok", "reason": ""}
+{"rule_key": "015:183415", "label": "ok", "reason": ""}
+{"rule_key": "015:203577", "label": "severe", "reason": "wrong-words: KRG Part 5 p48 objectives and controls spliced (objectives-beside-controls layout)", "category": "wrong-words"}
+{"rule_key": "015:205317", "label": "ok", "reason": ""}
+{"rule_key": "015:205298", "label": "minor", "reason": "table fragment 'minimum soil volume 11m 3'"}
+{"rule_key": "016:226511", "label": "ok", "reason": ""}
+{"rule_key": "016:226522", "label": "ok", "reason": ""}
+{"rule_key": "016:225159", "label": "ok", "reason": ""}
+{"rule_key": "016:225682", "label": "ok", "reason": ""}
+{"rule_key": "018:191969", "label": "ok", "reason": ""}
+{"rule_key": "018:192265", "label": "ok", "reason": ""}
+{"rule_key": "018:192315", "label": "ok", "reason": ""}
+{"rule_key": "018:191958", "label": "ok", "reason": ""}
+{"rule_key": "020:249402", "label": "minor", "reason": "plant-type table flattened, readable"}
+{"rule_key": "020:210998", "label": "ok", "reason": ""}
+{"rule_key": "020:249222", "label": "ok", "reason": ""}
+{"rule_key": "023:249727", "label": "minor", "reason": "list items rendered as cells"}
+{"rule_key": "023:202449", "label": "ok", "reason": ""}
+{"rule_key": "024:175262", "label": "ok", "reason": ""}
+{"rule_key": "024:175407", "label": "ok", "reason": ""}
+{"rule_key": "025:248819", "label": "unsure", "reason": "Penrith C10 road configuration table flattened; values in order but header lost"}
+{"rule_key": "026:170523", "label": "ok", "reason": ""}
+{"rule_key": "027:181853", "label": "ok", "reason": ""}
+{"rule_key": "027:181805", "label": "ok", "reason": ""}
+{"rule_key": "028:244711", "label": "ok", "reason": ""}
+{"rule_key": "029:248346", "label": "ok", "reason": ""}

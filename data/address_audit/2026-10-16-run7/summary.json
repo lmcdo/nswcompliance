@@ -1,0 +1,1190 @@
+[
+ {
+  "idx": "000",
+  "address": "31A DOWNING STREET EPPING",
+  "lga": "CITY OF PARRAMATTA",
+  "served": 2123,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "city_of_parramatta",
+   "zone": "R2",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Parramatta Local Environmental Plan 2023\",\"type\":\"INCLUDED\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Lot Size Map\":[\"550 m²\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Floor Space Ratio Map\":[\"0.5:1\"],\"Land Application Map\":[\"Parramatta Local Environmental Plan 2023\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Special Provisions\":[\"2121\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"CITY OF PARRAMATTA\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\"],\"Local Provisions\":[\"D\",\"Dual Occupancy Development Prohibited\",\"Dual Occupancy Prohibition Map\"],\"Height of Buildings Map\":[\"9 m\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"]}}"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "CITY OF PARRAMATTA",
+   "formerCouncil": "city_of_parramatta",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.7703778883583,
+    "lon": 151.065338003747
+   },
+   "land_application": [
+    {
+     "type": "INCLUDED",
+     "name": "Parramatta Local Environmental Plan 2023"
+    }
+   ]
+  },
+  "precinct_warning": true
+ },
+ {
+  "idx": "001",
+  "address": "3 MURIEL AVENUE EPPING",
+  "lga": "CITY OF PARRAMATTA",
+  "served": 2123,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "city_of_parramatta",
+   "zone": "R2",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Parramatta Local Environmental Plan 2023\",\"type\":\"INCLUDED\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Special Provisions\":[\"2121\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"CITY OF PARRAMATTA\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\"],\"Local Provisions\":[\"D\",\"Dual Occupancy Development Prohibited\",\"Dual Occupancy Prohibition Map\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Land Application Map\":[\"Parramatta Local Environmental Plan 2023\"],\"Lot Size Map\":[\"550 m²\"],\"Height of Buildings Map\":[\"9 m\"],\"Floor Space Ratio Map\":[\"0.5:1\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"]}}"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "CITY OF PARRAMATTA",
+   "formerCouncil": "city_of_parramatta",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.77812503271376,
+    "lon": 151.09072331233276
+   },
+   "land_application": [
+    {
+     "type": "INCLUDED",
+     "name": "Parramatta Local Environmental Plan 2023"
+    }
+   ]
+  },
+  "precinct_warning": true
+ },
+ {
+  "idx": "002",
+  "address": "19B CRINAN STREET HURLSTONE PARK",
+  "lga": "CANTERBURY-BANKSTOWN",
+  "served": 2226,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "Canterbury-Bankstown",
+   "zone": "E1",
+   "heritage": "true",
+   "precinct_id": "C-B 4.3 heritage conservation areas,Crinan Street Shops HCA,C-B former Canterbury",
+   "land_application": "[{\"name\":\"Canterbury-Bankstown Local Environmental Plan 2023\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"E1\",\"layers\":{\"Special Provisions\":[\"2193\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"CANTERBURY-BANKSTOWN\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\"],\"Local Provisions\":[\"Area 2\",\"Clause Application Map\"],\"Land Zoning Map\":[\"E1: Local Centre\"],\"Heritage Map\":[\"C2\",\"Crinan Street Shops Heritage Conservation Area Significance: Local\"],\"Land Application Map\":[\"Canterbury-Bankstown Local Environmental Plan 2023\"],\"Acid Sulfate Soils Map\":[\"Class 5\"],\"Height of Buildings Map\":[\"11 m\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"]}}",
+   "acid_sulfate": "true"
+  },
+  "property": {
+   "zone": "E1",
+   "lga": "CANTERBURY-BANKSTOWN",
+   "formerCouncil": "Canterbury-Bankstown",
+   "precinctId": "C-B 4.3 heritage conservation areas,Crinan Street Shops HCA,C-B former Canterbury",
+   "heritage": {
+    "isHeritage": true,
+    "heritageType": "Conservation Area - General",
+    "heritageItemName": "Crinan Street Shops Heritage Conservation Area",
+    "heritageItemNumber": "C2",
+    "heritageClause": "Clause 5.10",
+    "heritageSignificance": "Local",
+    "heritageLegislationUrl": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2023-0336"
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.909257252252274,
+    "lon": 151.13175070087084
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Canterbury-Bankstown Local Environmental Plan 2023"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "003",
+  "address": "11/47 ALLINGHAM STREET CONDELL PARK",
+  "lga": "CANTERBURY-BANKSTOWN",
+  "served": 1872,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "Canterbury-Bankstown",
+   "zone": "E4",
+   "heritage": "false",
+   "precinct_id": "C-B former Bankstown",
+   "land_application": "[{\"name\":\"Canterbury-Bankstown Local Environmental Plan 2023\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"E4\",\"layers\":{\"Lot Size Map\":[\"1000 m²\"],\"Land Zoning Map\":[\"E4: General Industrial\"],\"Floor Space Ratio Map\":[\"1:1\"],\"Additional Permitted Uses Map\":[\"36\",\"Additional Permitted Uses\"],\"Land Application Map\":[\"Canterbury-Bankstown Local Environmental Plan 2023\"],\"Special Provisions\":[\"2200\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"CANTERBURY-BANKSTOWN\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\"],\"Local Provisions\":[\"30km\",\"30 km\",\"SEPP (Western Sydney Aerotropolis) 2020 Wind Turbines Map\",\"Area 1\",\"Clause Application Map\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Local Aboriginal Land Council\":[\"GANDANGARA\"]}}"
+  },
+  "property": {
+   "zone": "E4",
+   "lga": "CANTERBURY-BANKSTOWN",
+   "formerCouncil": "Canterbury-Bankstown",
+   "precinctId": "C-B former Bankstown",
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.91895875869533,
+    "lon": 151.00140793004405
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Canterbury-Bankstown Local Environmental Plan 2023"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "004",
+  "address": "2/274 BRIDGE ROAD FOREST LODGE",
+  "lga": "SYDNEY",
+  "served": 2022,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "City of Sydney",
+   "zone": "R1",
+   "heritage": "true",
+   "precinct_id": "2.6.8",
+   "land_application": "[{\"name\":\"Sydney Local Environmental Plan 2012\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R1\",\"layers\":{\"Land Zoning Map\":[\"R1: General Residential\"],\"Floor Space Ratio Map\":[\"1:1\"],\"Special Provisions\":[\"SYDNEY\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"2037\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Local Provisions\":[\"C\",\"Category C\",\"Land Use and Transport Integration Map\",\"F\",\"Category F\",\"Public Transport Accessibility Level Map\",\"Residual Lands\",\"Locality and Site Identification Map\"],\"Land Application Map\":[\"Sydney Local Environmental Plan 2012\"],\"Acid Sulfate Soils Map\":[\"Class 5\"],\"Heritage Map\":[\"C33\",\"Hereford and Forest Lodge Significance: Local\",\"I634\",\"Terrace group 'Magnolia Terrace' Significance: Local\"],\"Height of Buildings Map\":[\"9 m\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"]}}",
+   "acid_sulfate": "true"
+  },
+  "property": {
+   "zone": "R1",
+   "lga": "SYDNEY",
+   "formerCouncil": "City of Sydney",
+   "precinctId": "2.6.8",
+   "heritage": {
+    "isHeritage": true,
+    "heritageType": "Item - General",
+    "heritageItemName": "Terrace group 'Magnolia Terrace'",
+    "heritageItemNumber": "I634",
+    "heritageClause": "Clause 5.10",
+    "heritageSignificance": "Local",
+    "heritageLegislationUrl": "https://www.legislation.nsw.gov.au/#/view/EPI/2012/628"
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.883245308698264,
+    "lon": 151.18101761236744
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Sydney Local Environmental Plan 2012"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "005",
+  "address": "1604/127-153 KENT STREET MILLERS POINT",
+  "lga": "SYDNEY",
+  "served": 2128,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "City of Sydney",
+   "zone": "SP5",
+   "heritage": "false",
+   "precinct_id": "5.1",
+   "land_application": "[{\"name\":\"Sydney Local Environmental Plan 2012\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"SP5\",\"layers\":{\"Land Zoning Map\":[\"SP5: Metropolitan Centre\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"],\"Floor Space Ratio Map\":[\"8:1\",\"Area 3\"],\"Land Application Map\":[\"Sydney Local Environmental Plan 2012\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Acid Sulfate Soils Map\":[\"Class 5\"],\"Local Provisions\":[\"Land Affected by Clause 6.17 and 6.18\",\"Sun Access Protection Map\",\"A\",\"Category A\",\"Land Use and Transport Integration Map\",\"Central Sydney\",\"Locality and Site Identification Map\",\"D\",\"Category D\",\"Public Transport Accessibility Level Map\"],\"Special Provisions\":[\"SYDNEY\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"2000\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"17\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\"],\"Height of Buildings Map\":[\"80 m\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"]}}",
+   "acid_sulfate": "true"
+  },
+  "property": {
+   "zone": "SP5",
+   "lga": "SYDNEY",
+   "formerCouncil": "City of Sydney",
+   "precinctId": "5.1",
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.86174824205033,
+    "lon": 151.20354497916082
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Sydney Local Environmental Plan 2012"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "006",
+  "address": "8 HOPETOUN AVENUE VAUCLUSE",
+  "lga": "WOOLLAHRA",
+  "served": 1623,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "woollahra",
+   "zone": "R2",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Woollahra Local Environmental Plan 2014\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Acid Sulfate Soils Map\":[\"Class 5\"],\"Lot Size Map\":[\"675 m²\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Floor Space Ratio Map\":[\"0.5:1\"],\"Land Application Map\":[\"Woollahra Local Environmental Plan 2014\"],\"Special Provisions\":[\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"2030\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"WOOLLAHRA\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\"],\"Height of Buildings Map\":[\"9.5 m\"],\"Local Aboriginal Land Council\":[\"LA PEROUSE\"]}}",
+   "acid_sulfate": "true"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "WOOLLAHRA",
+   "formerCouncil": "woollahra",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.85856069298734,
+    "lon": 151.27535938532765
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Woollahra Local Environmental Plan 2014"
+    }
+   ]
+  },
+  "precinct_warning": true
+ },
+ {
+  "idx": "007",
+  "address": "88 UNDERWOOD STREET PADDINGTON",
+  "lga": "WOOLLAHRA",
+  "served": 2748,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "Woollahra",
+   "zone": "R2",
+   "heritage": "true",
+   "precinct_id": "Paddington HCA",
+   "land_application": "[{\"name\":\"Woollahra Local Environmental Plan 2014\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Land Application Map\":[\"Woollahra Local Environmental Plan 2014\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Special Provisions\":[\"2021\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"WOOLLAHRA\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\"],\"Heritage Map\":[\"C8\",\"Paddington Significance: Local\"],\"Height of Buildings Map\":[\"9.5 m\"],\"Acid Sulfate Soils Map\":[\"Class 5\"],\"Lot Size Map\":[\"230 m²\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Local Aboriginal Land Council\":[\"LA PEROUSE\"]}}",
+   "acid_sulfate": "true"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "WOOLLAHRA",
+   "formerCouncil": "Woollahra",
+   "precinctId": "Paddington HCA",
+   "heritage": {
+    "isHeritage": true,
+    "heritageType": "Conservation Area - General",
+    "heritageItemName": "Paddington",
+    "heritageItemNumber": "C8",
+    "heritageClause": "Clause 5.10",
+    "heritageSignificance": "Local",
+    "heritageLegislationUrl": "https://www.legislation.nsw.gov.au/#/view/EPI/2015/20"
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.88565627498514,
+    "lon": 151.23015989384734
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Woollahra Local Environmental Plan 2014"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "008",
+  "address": "39 EDWIN STREET CROYDON",
+  "lga": "INNER WEST",
+  "served": 1405,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "Ashfield",
+   "zone": "R2",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Inner West Local Environmental Plan 2022\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Lot Size Map\":[\"Area 1\",\"200 NA\",\"500 m²\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Floor Space Ratio Map\":[\"0.7:1\"],\"Land Application Map\":[\"Inner West Local Environmental Plan 2022\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Special Provisions\":[\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"INNER WEST\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"2132\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Height of Buildings Map\":[\"8.5 m\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"]}}"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "INNER WEST",
+   "formerCouncil": "Ashfield",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.88531395439626,
+    "lon": 151.1153525156811
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Inner West Local Environmental Plan 2022"
+    }
+   ]
+  },
+  "precinct_warning": true
+ },
+ {
+  "idx": "009",
+  "address": "38 STATION STREET TEMPE",
+  "lga": "INNER WEST",
+  "served": 1824,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "Marrickville",
+   "zone": "R2",
+   "heritage": "false",
+   "precinct_id": "34_",
+   "land_application": "[{\"name\":\"Inner West Local Environmental Plan 2022\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Land Application Map\":[\"Inner West Local Environmental Plan 2022\"],\"Acid Sulfate Soils Map\":[\"Class 5\"],\"Floor Space Ratio Map\":[\"0.6:1\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Special Provisions\":[\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"2044\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"INNER WEST\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Height of Buildings Map\":[\"9.5 m\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"],\"Terrestrial Biodiversity Map\":[\"Biodiversity\"]}}",
+   "acid_sulfate": "true"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "INNER WEST",
+   "formerCouncil": "Marrickville",
+   "precinctId": "34_",
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.926179804517986,
+    "lon": 151.1599017234645
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Inner West Local Environmental Plan 2022"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "010",
+  "address": "82 DENISON STREET CAMPERDOWN",
+  "lga": "INNER WEST",
+  "served": 1817,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "Marrickville",
+   "zone": "R2",
+   "heritage": "false",
+   "precinct_id": "4_",
+   "land_application": "[{\"name\":\"Inner West Local Environmental Plan 2022\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Land Application Map\":[\"Inner West Local Environmental Plan 2022\"],\"Floor Space Ratio Map\":[\"0.6:1\"],\"Special Provisions\":[\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"INNER WEST\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"2050\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\"],\"Height of Buildings Map\":[\"9.5 m\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"]}}"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "INNER WEST",
+   "formerCouncil": "Marrickville",
+   "precinctId": "4_",
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.89101195429205,
+    "lon": 151.17534503656256
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Inner West Local Environmental Plan 2022"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "011",
+  "address": "42 BOOMERANG STREET HABERFIELD",
+  "lga": "INNER WEST",
+  "served": 1852,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "Ashfield",
+   "zone": "R2",
+   "heritage": "true",
+   "precinct_id": "Haberfield",
+   "land_application": "[{\"name\":\"Inner West Local Environmental Plan 2022\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Special Provisions\":[\"2045\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"INNER WEST\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Heritage Map\":[\"C54\",\"Haberfield Heritage Conservation Area (nominated area of State significance) Significance: Local\"],\"Land Application Map\":[\"Inner West Local Environmental Plan 2022\"],\"Acid Sulfate Soils Map\":[\"Class 5\"],\"Lot Size Map\":[\"500 m²\"],\"Height of Buildings Map\":[\"7 m\"],\"Floor Space Ratio Map\":[\"0.5:1\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"]}}",
+   "acid_sulfate": "true"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "INNER WEST",
+   "formerCouncil": "Ashfield",
+   "precinctId": "Haberfield",
+   "heritage": {
+    "isHeritage": true,
+    "heritageType": "Conservation Area - General",
+    "heritageItemName": "Haberfield Heritage Conservation Area (nominated area of State significance)",
+    "heritageItemNumber": "C54",
+    "heritageClause": "Clause 5.10",
+    "heritageSignificance": "Local",
+    "heritageLegislationUrl": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0457"
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.87278514307191,
+    "lon": 151.1431477245738
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Inner West Local Environmental Plan 2022"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "012",
+  "address": "16 BUCKLEY STREET MARRICKVILLE",
+  "lga": "INNER WEST",
+  "served": 1774,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "Marrickville",
+   "zone": "E4",
+   "heritage": "false",
+   "precinct_id": "31_",
+   "land_application": "[{\"name\":\"Inner West Local Environmental Plan 2022\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"E4\",\"layers\":{\"Acid Sulfate Soils Map\":[\"Class 2\"],\"Additional Permitted Uses Map\":[\"49\",\"Refer to Schedule 1\"],\"Land Zoning Map\":[\"E4: General Industrial\"],\"Land Application Map\":[\"Inner West Local Environmental Plan 2022\"],\"Special Provisions\":[\"2204\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"INNER WEST\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\"],\"Floor Space Ratio Map\":[\"0.95:1\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"]}}",
+   "flood": "true",
+   "acid_sulfate": "true"
+  },
+  "property": {
+   "zone": "E4",
+   "lga": "INNER WEST",
+   "formerCouncil": "Marrickville",
+   "precinctId": "31_",
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": "true",
+   "bushfire": null,
+   "coords": {
+    "lat": -33.913355982011616,
+    "lon": 151.16541615423225
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Inner West Local Environmental Plan 2022"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "013",
+  "address": "88 ALT STREET ASHFIELD",
+  "lga": "INNER WEST",
+  "error": "no formerCouncil (page fetches nothing)",
+  "constraints": {
+   "lga": null,
+   "zone": null
+  }
+ },
+ {
+  "idx": "014",
+  "address": "49 TOROKINA AVENUE ST IVES",
+  "lga": "KU-RING-GAI",
+  "served": 2699,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "ku_ring_gai",
+   "zone": "R2",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Ku-ring-gai Local Environmental Plan 2015\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Special Provisions\":[\"2075\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"KU-RING-GAI\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Land Application Map\":[\"Ku-ring-gai Local Environmental Plan 2015\"],\"Acid Sulfate Soils Map\":[\"Class 5\"],\"Lot Size Map\":[\"930 m²\"],\"Height of Buildings Map\":[\"9.5 m\"],\"Floor Space Ratio Map\":[\"0.3:1\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"],\"Terrestrial Biodiversity Map\":[\"Biodiversity\"]}}",
+   "acid_sulfate": "true"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "KU-RING-GAI",
+   "formerCouncil": "ku_ring_gai",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.738517882287404,
+    "lon": 151.1711272104953
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Ku-ring-gai Local Environmental Plan 2015"
+    }
+   ]
+  },
+  "precinct_warning": true
+ },
+ {
+  "idx": "015",
+  "address": "4 TAYLOR AVENUE TURRAMURRA",
+  "lga": "KU-RING-GAI",
+  "served": 2699,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "ku_ring_gai",
+   "zone": "R2",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Ku-ring-gai Local Environmental Plan 2015\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Acid Sulfate Soils Map\":[\"Class 5\"],\"Lot Size Map\":[\"930 m²\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Floor Space Ratio Map\":[\"0.3:1\"],\"Land Application Map\":[\"Ku-ring-gai Local Environmental Plan 2015\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"],\"Special Provisions\":[\"KU-RING-GAI\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"2074\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\"],\"Height of Buildings Map\":[\"9.5 m\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"]}}",
+   "acid_sulfate": "true"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "KU-RING-GAI",
+   "formerCouncil": "ku_ring_gai",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.74403210464204,
+    "lon": 151.11959053924463
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Ku-ring-gai Local Environmental Plan 2015"
+    }
+   ]
+  },
+  "precinct_warning": true
+ },
+ {
+  "idx": "016",
+  "address": "16A QUEENS PARK ROAD QUEENS PARK",
+  "lga": "WAVERLEY",
+  "served": 2032,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "waverley",
+   "zone": "R2",
+   "heritage": "true",
+   "land_application": "[{\"name\":\"Waverley Local Environmental Plan 2012\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Local Aboriginal Land Council\":[\"LA PEROUSE\"],\"Floor Space Ratio Map\":[\"0.5:1\"],\"Lot Size Map\":[\"325 m²\"],\"Height of Buildings Map\":[\"8.5 m\"],\"Land Application Map\":[\"Waverley Local Environmental Plan 2012\"],\"Special Provisions\":[\"WAVERLEY\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"2022\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Heritage Map\":[\"C14\",\"Queens Park Significance: Local\"],\"Regional Plan Boundary\":[\"Greater Sydney\"]}}"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "WAVERLEY",
+   "formerCouncil": "waverley",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": true,
+    "heritageType": "Conservation Area - General",
+    "heritageItemName": "Queens Park",
+    "heritageItemNumber": "C14",
+    "heritageClause": "Clause 5.10",
+    "heritageSignificance": "Local",
+    "heritageLegislationUrl": "https://www.legislation.nsw.gov.au/#/view/EPI/2012/540"
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.89816265054946,
+    "lon": 151.24416159731464
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Waverley Local Environmental Plan 2012"
+    }
+   ]
+  },
+  "precinct_warning": true
+ },
+ {
+  "idx": "017",
+  "address": "1/26 CLARKE STREET VAUCLUSE",
+  "lga": "WAVERLEY",
+  "served": 1799,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "waverley",
+   "zone": "R3",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Waverley Local Environmental Plan 2012\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R3\",\"layers\":{\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Special Provisions\":[\"WAVERLEY\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"2030\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\"],\"Land Zoning Map\":[\"R3: Medium Density Residential\"],\"Land Application Map\":[\"Waverley Local Environmental Plan 2012\"],\"Lot Size Map\":[\"325 m²\"],\"Height of Buildings Map\":[\"12.5 m\"],\"Floor Space Ratio Map\":[\"0.9:1\"],\"Local Aboriginal Land Council\":[\"LA PEROUSE\"]}}"
+  },
+  "property": {
+   "zone": "R3",
+   "lga": "WAVERLEY",
+   "formerCouncil": "waverley",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.85774772474084,
+    "lon": 151.28418893411677
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Waverley Local Environmental Plan 2012"
+    }
+   ]
+  },
+  "precinct_warning": true
+ },
+ {
+  "idx": "018",
+  "address": "134 OWEN STANLEY AVENUE ALLAMBIE HEIGHTS",
+  "lga": "NORTHERN BEACHES",
+  "served": 641,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "northern_beaches",
+   "zone": "R2",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Warringah Local Environmental Plan 2011\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Special Provisions\":[\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"2100\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"NORTHERN BEACHES\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Land Application Map\":[\"Warringah Local Environmental Plan 2011\"],\"Height of Buildings Map\":[\"8.5 m\"],\"Landslide Risk Land\":[\"Area A - Slope <5\",\"Area B - Flanking Slopes 5 to 25\"],\"Bushfire Prone Land (Non-EPI)\":[\"Vegetation Buffer\"],\"Lot Size Map\":[\"600 m²\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"]}}"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "NORTHERN BEACHES",
+   "formerCouncil": "northern_beaches",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.765528327297666,
+    "lon": 151.25317803273836
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Warringah Local Environmental Plan 2011"
+    }
+   ]
+  },
+  "precinct_warning": true
+ },
+ {
+  "idx": "019",
+  "address": "57 OCEANA STREET NARRAWEENA",
+  "lga": "NORTHERN BEACHES",
+  "served": 641,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "northern_beaches",
+   "zone": "R2",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Warringah Local Environmental Plan 2011\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Special Provisions\":[\"2099\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"NORTHERN BEACHES\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Land Application Map\":[\"Warringah Local Environmental Plan 2011\"],\"Landslide Risk Land\":[\"Area A - Slope <5\"],\"Lot Size Map\":[\"600 m²\"],\"Height of Buildings Map\":[\"8.5 m\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"]}}"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "NORTHERN BEACHES",
+   "formerCouncil": "northern_beaches",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.754112057721315,
+    "lon": 151.2745646244607
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Warringah Local Environmental Plan 2011"
+    }
+   ]
+  },
+  "precinct_warning": true
+ },
+ {
+  "idx": "020",
+  "address": "33 WINDSOR CRESCENT BROWNSVILLE",
+  "lga": "WOLLONGONG",
+  "served": 822,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "wollongong",
+   "zone": "R2",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Wollongong Local Environmental Plan 2009\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Special Provisions\":[\"WOLLONGONG\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"2530\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Land Application Map\":[\"Wollongong Local Environmental Plan 2009\"],\"Acid Sulfate Soils Map\":[\"Class 3\",\"Class 5\",\"Class 4\"],\"Bushfire Prone Land (Non-EPI)\":[\"Vegetation Category  3\",\"Vegetation Buffer\"],\"Lot Size Map\":[\"449 m²\"],\"Height of Buildings Map\":[\"9 m\"],\"Floor Space Ratio Map\":[\"0.5:1\"],\"Regional Plan Boundary\":[\"Illawarra-Shoalhaven\"],\"Local Aboriginal Land Council\":[\"ILLAWARRA\"]}}",
+   "bushfire": "true",
+   "acid_sulfate": "true"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "WOLLONGONG",
+   "formerCouncil": "wollongong",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": "true",
+   "coords": {
+    "lat": -34.48107622099058,
+    "lon": 150.80791966959202
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Wollongong Local Environmental Plan 2009"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "021",
+  "address": "48 BENDENA GARDENS STANWELL TOPS",
+  "lga": "WOLLONGONG",
+  "served": 369,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "wollongong",
+   "zone": "C3",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Wollongong Local Environmental Plan 2009\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"C3\",\"layers\":{\"Bushfire Prone Land (Non-EPI)\":[\"Vegetation Buffer\",\"Vegetation Category  1\"],\"Land Application Map\":[\"Wollongong Local Environmental Plan 2009\"],\"Special Provisions\":[\"WOLLONGONG\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"2508\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\"],\"Local Provisions\":[\"<Null>\",\"Illawarra Escarpment\",\"Illawarra Escarpment Map\"],\"Height of Buildings Map\":[\"9 m\"],\"Lot Size Map\":[\"39.99 ha\"],\"Land Zoning Map\":[\"C3: Environmental Management\"],\"Regional Plan Boundary\":[\"Illawarra-Shoalhaven\"],\"Local Aboriginal Land Council\":[\"ILLAWARRA\"],\"Underground Coal Mining (Non-EPI)\":[\"Underground coal mining has occurred in this area\"],\"Terrestrial Biodiversity Map\":[\"Natural resource sensitivity - biodiversity\"]}}",
+   "bushfire": "true"
+  },
+  "property": {
+   "zone": "C3",
+   "lga": "WOLLONGONG",
+   "formerCouncil": "wollongong",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": "true",
+   "coords": {
+    "lat": -34.21918358224621,
+    "lon": 150.97133404674108
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Wollongong Local Environmental Plan 2009"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "022",
+  "address": "23 REYCROFT AVENUE QUAKERS HILL",
+  "lga": "BLACKTOWN",
+  "served": 744,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "blacktown",
+   "zone": "R2",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Blacktown Local Environmental Plan 2015\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Special Provisions\":[\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"2763\",\"28\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"BLACKTOWN\",\"6\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\"],\"Local Provisions\":[\"30km\",\"30 km\",\"SEPP (Western Sydney Aerotropolis) 2020 Wind Turbines Map\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Land Application Map\":[\"Blacktown Local Environmental Plan 2015\"],\"Lot Size Map\":[\"450 m²\"],\"Height of Buildings Map\":[\"9 m\"],\"Local Aboriginal Land Council\":[\"DEERUBBIN\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"]}}"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "BLACKTOWN",
+   "formerCouncil": "blacktown",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.71452072569804,
+    "lon": 150.87838067170583
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Blacktown Local Environmental Plan 2015"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "023",
+  "address": "69 MIDLANDS TERRACE STANHOPE GARDENS",
+  "lga": "BLACKTOWN",
+  "served": 744,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "blacktown",
+   "zone": "R3",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Blacktown Local Environmental Plan 2015\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R3\",\"layers\":{\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Key Sites Map\":[\"Schedule 1, Clause 1 (1)\"],\"Lot Size Map\":[\"330 m²\"],\"Land Zoning Map\":[\"R3: Medium Density Residential\"],\"Land Application Map\":[\"Blacktown Local Environmental Plan 2015\"],\"Special Provisions\":[\"2768\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"28\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"BLACKTOWN\",\"6\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\"],\"Local Provisions\":[\"30km\",\"30 km\",\"SEPP (Western Sydney Aerotropolis) 2020 Wind Turbines Map\"],\"Height of Buildings Map\":[\"9 m\"],\"Local Aboriginal Land Council\":[\"DEERUBBIN\"],\"Bushfire Prone Land (Non-EPI)\":[\"Vegetation Buffer\"]}}",
+   "bushfire": "true"
+  },
+  "property": {
+   "zone": "R3",
+   "lga": "BLACKTOWN",
+   "formerCouncil": "blacktown",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": "true",
+   "coords": {
+    "lat": -33.71769572428898,
+    "lon": 150.93382309766264
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Blacktown Local Environmental Plan 2015"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "024",
+  "address": "22 HERBERT STREET CAMBRIDGE PARK",
+  "lga": "PENRITH",
+  "served": 788,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "penrith",
+   "zone": "R2",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Penrith Local Environmental Plan 2010\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Special Provisions\":[\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"PENRITH\",\"6\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"2747\",\"28\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Local Provisions\":[\"30km\",\"30 km\",\"SEPP (Western Sydney Aerotropolis) 2020 Wind Turbines Map\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Land Application Map\":[\"Penrith Local Environmental Plan 2010\"],\"Lot Size Map\":[\"550 m²\"],\"Height of Buildings Map\":[\"8.5 m\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Local Aboriginal Land Council\":[\"DEERUBBIN\"]}}"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "PENRITH",
+   "formerCouncil": "penrith",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.75498192814012,
+    "lon": 150.73162426915803
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Penrith Local Environmental Plan 2010"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "025",
+  "address": "10 ERIE PLACE ST CLAIR",
+  "lga": "PENRITH",
+  "served": 788,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "penrith",
+   "zone": "R2",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Penrith Local Environmental Plan 2010\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Local Aboriginal Land Council\":[\"DEERUBBIN\"],\"Obstacle Limitation Surface Map\":[\"230.5-230.5\"],\"Special Provisions\":[\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"PENRITH\",\"6\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"2759\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"28\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\"],\"Local Provisions\":[\"30km\",\"30 km\",\"SEPP (Western Sydney Aerotropolis) 2020 Wind Turbines Map\",\"13km\",\"13 km\",\"SEPP (Western Sydney Aerotropolis) 2020 Wildlife Buffer Zone Map\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Land Application Map\":[\"Penrith Local Environmental Plan 2010\"],\"Lot Size Map\":[\"550 m²\"],\"Height of Buildings Map\":[\"8.5 m\"]}}"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "PENRITH",
+   "formerCouncil": "penrith",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.803339237558745,
+    "lon": 150.77557507881244
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Penrith Local Environmental Plan 2010"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "026",
+  "address": "9/2 CARWAR LANE CARSS PARK",
+  "lga": "GEORGES RIVER",
+  "served": 731,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "georges_river",
+   "zone": "E1",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Georges River Local Environmental Plan 2021\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"E1\",\"layers\":{\"Special Provisions\":[\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"2221\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"GEORGES RIVER\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\"],\"Height of Buildings Map\":[\"12 m\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Acid Sulfate Soils Map\":[\"Class 2\",\"Class 5\"],\"Land Zoning Map\":[\"E1: Local Centre\"],\"Floor Space Ratio Map\":[\"1.8:1\"],\"Land Application Map\":[\"Georges River Local Environmental Plan 2021\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"]}}",
+   "flood": "true",
+   "acid_sulfate": "true"
+  },
+  "property": {
+   "zone": "E1",
+   "lga": "GEORGES RIVER",
+   "formerCouncil": "georges_river",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": "true",
+   "bushfire": null,
+   "coords": {
+    "lat": -33.98199340221939,
+    "lon": 151.11834538667497
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Georges River Local Environmental Plan 2021"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "027",
+  "address": "57A MOONS AVENUE LUGARNO",
+  "lga": "GEORGES RIVER",
+  "served": 731,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "georges_river",
+   "zone": "R2",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Georges River Local Environmental Plan 2021\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Special Provisions\":[\"2210\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"GEORGES RIVER\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Local Provisions\":[\"30km\",\"30 km\",\"SEPP (Western Sydney Aerotropolis) 2020 Wind Turbines Map\",\"U\",\"1000\",\"Lot Size for Dual Occupancy Development Map\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Land Application Map\":[\"Georges River Local Environmental Plan 2021\"],\"Acid Sulfate Soils Map\":[\"Class 5\"],\"Bushfire Prone Land (Non-EPI)\":[\"Vegetation Buffer\",\"Vegetation Category  1\"],\"Lot Size Map\":[\"700 m²\"],\"Height of Buildings Map\":[\"9 m\"],\"Floor Space Ratio Map\":[\"0.55:1\",\"AREA 1\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"],\"Scenic Protection Land\":[\"Foreshore Scenic Protection Area\"]}}",
+   "bushfire": "true",
+   "acid_sulfate": "true"
+  },
+  "property": {
+   "zone": "R2",
+   "lga": "GEORGES RIVER",
+   "formerCouncil": "georges_river",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": "true",
+   "coords": {
+    "lat": -33.985297912682526,
+    "lon": 151.03473304430827
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Georges River Local Environmental Plan 2021"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "028",
+  "address": "77 GRANTHAM CRESCENT DANGAR ISLAND",
+  "lga": "HORNSBY",
+  "served": 269,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "hornsby",
+   "zone": "C4",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Hornsby Local Environmental Plan 2013\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"C4\",\"layers\":{\"Height of Buildings Map\":[\"8.5 m\"],\"Land Application Map\":[\"Hornsby Local Environmental Plan 2013\"],\"Foreshore Building Line Map\":[\"Foreshore Building Line\",\"Foreshore Area\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"],\"Floor Space Ratio Map\":[\"0.3:1\"],\"Lot Size Map\":[\"40 ha\"],\"Scenic Protection Land\":[\"Significance beyond the region\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Acid Sulfate Soils Map\":[\"Class 3\",\"Class 1\"],\"Land Zoning Map\":[\"C4: Environmental Living\"],\"Special Provisions\":[\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"2083\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"HORNSBY\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"]}}",
+   "acid_sulfate": "true"
+  },
+  "property": {
+   "zone": "C4",
+   "lga": "HORNSBY",
+   "formerCouncil": "hornsby",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": null,
+   "coords": {
+    "lat": -33.53985133807457,
+    "lon": 151.23954617802548
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Hornsby Local Environmental Plan 2013"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "idx": "029",
+  "address": "9-11 MUNDOWI ROAD MOUNT KURING-GAI",
+  "lga": "HORNSBY",
+  "served": 269,
+  "params": {
+   "groupBy": "toc",
+   "former_council": "hornsby",
+   "zone": "E4",
+   "heritage": "false",
+   "land_application": "[{\"name\":\"Hornsby Local Environmental Plan 2013\",\"type\":\"Included\"}]",
+   "land_facts": "{\"zone\":\"E4\",\"layers\":{\"Bushfire Prone Land (Non-EPI)\":[\"Vegetation Buffer\"],\"Land Zoning Map\":[\"E4: General Industrial\"],\"Floor Space Ratio Map\":[\"1:1\"],\"Land Application Map\":[\"Hornsby Local Environmental Plan 2013\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Special Provisions\":[\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"2080\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"HORNSBY\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\"],\"Height of Buildings Map\":[\"14.5 m\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"]}}",
+   "bushfire": "true"
+  },
+  "property": {
+   "zone": "E4",
+   "lga": "HORNSBY",
+   "formerCouncil": "hornsby",
+   "precinctId": null,
+   "heritage": {
+    "isHeritage": false
+   },
+   "flood": null,
+   "bushfire": "true",
+   "coords": {
+    "lat": -33.643985578813904,
+    "lon": 151.12744990864965
+   },
+   "land_application": [
+    {
+     "type": "Included",
+     "name": "Hornsby Local Environmental Plan 2013"
+    }
+   ]
+  },
+  "precinct_warning": false
+ },
+ {
+  "unfound_redrawn": [
+   {
+    "lga": "SYDNEY",
+    "address": "7C/4 DISTILLERY DRIVE PYRMONT",
+    "error": "HTTP Error 404: Not Found"
+   },
+   {
+    "lga": "SYDNEY",
+    "address": "42/66 HUNTER STREET SYDNEY",
+    "error": "HTTP Error 404: Not Found"
+   },
+   {
+    "lga": "WOOLLAHRA",
+    "address": "1 PROMENADE ROAD VAUCLUSE",
+    "error": "HTTP Error 404: Not Found"
+   },
+   {
+    "lga": "INNER WEST",
+    "address": "27 ROBERT STREET ROZELLE",
+    "error": "HTTP Error 404: Not Found"
+   },
+   {
+    "lga": "KU-RING-GAI",
+    "address": "VALE STREET GORDON",
+    "error": "HTTP Error 404: Not Found"
+   },
+   {
+    "lga": "NORTHERN BEACHES",
+    "address": "88 EURABBA ROAD DUFFYS FOREST",
+    "error": "HTTP Error 404: Not Found"
+   },
+   {
+    "lga": "WOLLONGONG",
+    "address": "CLEVELAND ROAD AVONDALE",
+    "error": "HTTP Error 404: Not Found"
+   },
+   {
+    "lga": "BLACKTOWN",
+    "address": "ARCHBOLD ROAD MINCHINBURY",
+    "error": "HTTP Error 404: Not Found"
+   },
+   {
+    "lga": "BLACKTOWN",
+    "address": "PERTH STREET VINEYARD",
+    "error": "HTTP Error 404: Not Found"
+   },
+   {
+    "lga": "PENRITH",
+    "address": "18-28 BOWMAN ROAD LONDONDERRY",
+    "error": "HTTP Error 404: Not Found"
+   },
+   {
+    "lga": "PENRITH",
+    "address": "365-403 LUDDENHAM ROAD LUDDENHAM",
+    "error": "HTTP Error 404: Not Found"
+   },
+   {
+    "lga": "PENRITH",
+    "address": "53 DEVLIN ROAD CASTLEREAGH",
+    "error": "HTTP Error 404: Not Found"
+   },
+   {
+    "lga": "PENRITH",
+    "address": "51 SALISBURY AVENUE KEMPS CREEK",
+    "error": "HTTP Error 404: Not Found"
+   },
+   {
+    "lga": "PENRITH",
+    "address": "171-187 THE NORTHERN ROAD LONDONDERRY",
+    "error": "HTTP Error 404: Not Found"
+   }
+  ]
+ }
+]
