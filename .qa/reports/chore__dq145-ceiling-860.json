@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "justification": "Lower the OC-20 DQ-145 ratchet ceiling from 911 to 860 after 8 shared-page council proofs (#1320) and 43 state-law rows (#1321) were applied live on 2026-10-18. Measured by python scripts/dq_probe_live.py --id DQ-145 = 860.",
+  "justification": "Lower the OC-20 DQ-145 ratchet ceiling from 911 to 860 after 8 shared-page council proofs (#1320) and 43 state-law rows (#1321) were applied live on 2026-10-17. Measured by python scripts/dq_probe_live.py --id DQ-145 = 860.",
   "commit_hash": "7c1c2f68",
   "files": [
     "scripts/outreach_claim_checks.py",
@@ -31,7 +31,7 @@
   "values": [
     {
       "value": "DQ145_CEILING = 860",
-      "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-18 after both applies",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-17 after both applies",
       "if_missing": "n/a (constant)"
     }
   ],
