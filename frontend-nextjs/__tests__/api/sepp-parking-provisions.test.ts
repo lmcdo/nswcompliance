@@ -122,7 +122,7 @@ describe('GET /api/sepp/parking-provisions', () => {
       {
         role: 'rate',
         provisionId: 40310,
-        refNumber: 'provision_187',
+        refNumber: null,
         pdfPage: 11,
         citationProven: false,
         text: expect.stringContaining('0.2 parking spaces for each boarding room'),

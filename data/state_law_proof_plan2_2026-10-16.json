@@ -1,0 +1,625 @@
+{
+ "generated": "2026-10-16",
+ "set": {
+  "citation_status": "proven"
+ },
+ "note": "Pass 2: verbatim after the stronger normaliser (state_law_proof2.py), >= 8 words. Only citation_status (+ source path/checked_at) is written.",
+ "manifest": {
+  "epi-2008-0572": {
+   "file": "epi-2008-0572_2026-10-16.html",
+   "sha256": "13b5577ccfd028a6359b2278d28acc924b766678c9d27a1176bb412c1d2b6807",
+   "bytes": 2882206,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572"
+  },
+  "epi-2021-0714": {
+   "file": "epi-2021-0714_2026-10-16.html",
+   "sha256": "fa3f07f0bf4fbd483fa981ca1fa9135e57528d3967c5f7096e0e0cccd6e91ead",
+   "bytes": 887253,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714"
+  },
+  "epi-2021-0722": {
+   "file": "epi-2021-0722_2026-10-16.html",
+   "sha256": "352d4bc83ff8eb87e1d9a40d46160a1f9fac18f2e9b5a2d25e36b7cca35c4d80",
+   "bytes": 853862,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0722"
+  },
+  "epi-2021-0723": {
+   "file": "epi-2021-0723_2026-10-16.html",
+   "sha256": "f11fe98b347d508016f3a93dd66cc9e77939ac2babed363548fd767b4161cca8",
+   "bytes": 290513,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0723"
+  },
+  "epi-2021-0724": {
+   "file": "epi-2021-0724_2026-10-16.html",
+   "sha256": "63120a9b62c193aadeb9f8cfb765661f1bd55a87c6b0ecf2ebc4df8466d51936",
+   "bytes": 647752,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0724"
+  },
+  "epi-2021-0729": {
+   "file": "epi-2021-0729_2026-10-16.html",
+   "sha256": "bd9caadb97a53c26cc45c5c251ce22b7bfb90d9f0a1542c00d0cd73dbd72f1c0",
+   "bytes": 208124,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0729"
+  },
+  "epi-2021-0730": {
+   "file": "epi-2021-0730_2026-10-16.html",
+   "sha256": "61701898f36e9591d3b9925367f57b35cd10859c381427255590b6d7cde6c5ce",
+   "bytes": 153836,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0730"
+  },
+  "epi-2021-0732": {
+   "file": "epi-2021-0732_2026-10-16.html",
+   "sha256": "e9d581d57eeca8b9991f9ff3f3b7e08fc9c5148ab54dee1a9f9c5c1212afa6d5",
+   "bytes": 2087294,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0732"
+  },
+  "epi-2022-0521": {
+   "file": "epi-2022-0521_2026-10-16.html",
+   "sha256": "6d790102aef5a11ad1033d49cd8200c5def7521a2eb98678ccd059cdcad0e84d",
+   "bytes": 177033,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0521"
+  }
+ },
+ "rows": [
+  {
+   "id": 14140,
+   "md5": "fc084d6f5269a00822c0696ab811a9dc",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 14146,
+   "md5": "f2a811c5ae88a6e95667bd05e2b287f0",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 14148,
+   "md5": "ec8670bbc30f1608f7be9f1c1bd2dff9",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 14152,
+   "md5": "69988e210e8d75a293d051cdbe040a6e",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 14240,
+   "md5": "3d30394fc17476fb97b1ff5f8fd658c4",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 14241,
+   "md5": "2255ebd79507d293da4c859c279e270a",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 14807,
+   "md5": "a8d8a0d7f01e2f20f22f921e08543e92",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15127,
+   "md5": "61620162e569c0e022545b66eecc836e",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15136,
+   "md5": "a03593193c4401d88d76df5b56bcc3a1",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15169,
+   "md5": "07062fecfdd832c51d57d2baea085c30",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15195,
+   "md5": "83bba54a14f86e92156faee3847448cc",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15206,
+   "md5": "c66e9c91f53b44050bc4c3c808d24c7b",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15207,
+   "md5": "931d12fee1cfc3382926df801f483709",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15208,
+   "md5": "dd4cf04a68cc02a3a1c7e0c43879e77d",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15209,
+   "md5": "2d9a9548d14755f30fb1213ed276a389",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15375,
+   "md5": "9913695e08836c112eb63a553fff9978",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15389,
+   "md5": "b52aeb3296f001eaa3953e079760582d",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15428,
+   "md5": "fff73481aa3315959b82b839630778a3",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15429,
+   "md5": "484105c622b23b5d6a3c59a664765537",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15433,
+   "md5": "1ab5e6aea3543134aeb03285256799d1",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15443,
+   "md5": "0b3c36106d333ba3d2daa6eb3ba20ef1",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15508,
+   "md5": "c1580d073cd20959140a47df827977ea",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15509,
+   "md5": "d27e87c41fae31059828ad810c17f435",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15512,
+   "md5": "6db906332418f4e44b55be58892f27cb",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 15542,
+   "md5": "a6eaf2413bc8ed140cbec81a484d27ec",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 16231,
+   "md5": "8f80281ac08b8adab1a10377627d68fd",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 16835,
+   "md5": "b5c5970e9682e8a71250efce747d9318",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 16836,
+   "md5": "b0ea1b3f8688a1144a5c7ca5a9d8d6d1",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 16874,
+   "md5": "eab4f14e3e7e6aba87c3efe1cdf44f76",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 16877,
+   "md5": "d242bde4223262949993612626b2a426",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 16972,
+   "md5": "4079941dfae8a5408d5a5e0551b92bd1",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 17026,
+   "md5": "c6d90cdbb72c7e919fce07b5d9a441f4",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 18466,
+   "md5": "28e555af7ff7ee104a33fd2368f187c7",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 18516,
+   "md5": "4f84e408bc69be86da70e42ef596d9e0",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 18577,
+   "md5": "e9ab586dc9408c0f3c02949cae59debb",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 18626,
+   "md5": "b2e05687a7d70566ddf37ecb17d8eae8",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 39936,
+   "md5": "6bb94f6c69e86c67d8020b124c2d6767",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 39939,
+   "md5": "85e9cf1627afcd46dbcb6637f02910e2",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 39942,
+   "md5": "d28c60cbd1eb8ec08fc8b6f575c2ab00",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 39943,
+   "md5": "e3139d87b2c7b49e1dec66a1bc72073a",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 39947,
+   "md5": "dcf807958118ee69ee7635fceb901371",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 39950,
+   "md5": "f3b3a45850a5d4e9b1fcafa10aadca6d",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 39953,
+   "md5": "27327efda7c3817ada993441fd4e6dd5",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 39956,
+   "md5": "228af488dc2174d6f25a4221e70a2637",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 39958,
+   "md5": "246603201b3991c093991327c144eecf",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 39977,
+   "md5": "33ffcf38105b323b06d2bd4e0225268e",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 39983,
+   "md5": "7b40213c20743059701cb29461e39221",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 39988,
+   "md5": "c1cd9071018f6fe695edfb261b689999",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 39989,
+   "md5": "cdc1d20a66fa171fe6ef0bcb669f7421",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 39990,
+   "md5": "4f80f6898cd8127ca28cf9ae5a42b6f1",
+   "epi": "epi-2008-0572",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572",
+   "derived_clause": null
+  },
+  {
+   "id": 14328,
+   "md5": "d6bce78b10d038c3ca33228dc94212d5",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 14342,
+   "md5": "6c57ffb38865b382ec9e7f126eac677f",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 14694,
+   "md5": "822b96bba73cd97d453a275830102295",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 14697,
+   "md5": "4b28fbd9f0971f665d18d38f45e3f232",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 14699,
+   "md5": "6adafd5c9ee7563a7f6880a328864715",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 14700,
+   "md5": "bacae1be5618b4bb8a41a3b7c7c86668",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 14702,
+   "md5": "cdf88bc4bb912d42ed5468ff7526e8d1",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 14972,
+   "md5": "80614b6a713ecc21292651e18021e31f",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 14987,
+   "md5": "7b9d6fdb8618a52b4913e52dfac875b4",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 15045,
+   "md5": "262494a60f0ef80f07ea2549fd615ff2",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 15070,
+   "md5": "56688f6a7b9f6261cad97225231fb8bf",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 15074,
+   "md5": "203c7d8ce1f8b42e54e04b737d529aee",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 15466,
+   "md5": "8343bae9b07399121b8ea0f479f6a6f4",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 15469,
+   "md5": "c2ffdd5c01c625a0411c85ce1ae9747c",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 15470,
+   "md5": "9309bb53078cb698d4167afa2c9532f1",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 17625,
+   "md5": "dd9661e6226847d01bce519d2aa57501",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 17628,
+   "md5": "6cef63062af37eda1bf2f47f3432568b",
+   "epi": "epi-2021-0714",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "derived_clause": null
+  },
+  {
+   "id": 35245,
+   "md5": "1109c76867cdcd9852aa432b95d2b0ef",
+   "epi": "epi-2021-0722",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0722",
+   "derived_clause": null
+  },
+  {
+   "id": 6143,
+   "md5": "b87406afe752495a45860bbc2a4a32ee",
+   "epi": "epi-2022-0521",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0521",
+   "derived_clause": null
+  },
+  {
+   "id": 6154,
+   "md5": "fd57d1ab3adfaee10e171ff2d67fc31c",
+   "epi": "epi-2022-0521",
+   "law_date": "2026-10-16",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0521",
+   "derived_clause": null
+  }
+ ]
+}
