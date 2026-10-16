@@ -220,7 +220,11 @@
         190700,
         190701,
         190702,
+        190704,
+        190705,
+        190706,
         190707,
+        190709,
         190717,
         190718,
         190719,
@@ -1111,8 +1115,8 @@
         192443,
         192444
       ],
-      "expect": 969,
-      "reason": "Warringah DCP 2011 Part G (p95-258): ten named areas (G1 Dee Why Town Centre .. G10), each 'Applies to Land' limited to that area; served to all of Warringah (audit run4). G1 general sections 1-11 are keyed back to the Dee Why Town Centre outline by gate rule warringah_g1_dee_why_town_centre; the rest wait for outlines."
+      "expect": 973,
+      "reason": "Warringah DCP 2011 Part G (p95-258): ten named areas (G1 Dee Why Town Centre .. G10), each 'Applies to Land' limited to that area; served to all of Warringah (audit run4). G1 general sections 1-11 are keyed back to the Dee Why Town Centre outline by gate rule warringah_g1_dee_why_town_centre; the rest wait for outlines. Plus 4 rows on p259 printed above the Part H heading (end of Part G), found 2026-10-16 resolving mixed heading pages."
     },
     {
       "council": "leichhardt",
