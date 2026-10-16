@@ -89,10 +89,12 @@ def main(argv: list[str] | None = None) -> int:
     conn.rollback()
     cur.execute("SET default_transaction_read_only = off")
     cur.execute("UPDATE regulatory_provisions p SET citation_status = 'proven', citation_source_path = v.src, "
-                "citation_checked_at = now() FROM unnest(%s::bigint[], %s::text[], %s::text[]) AS v(id, md5, src) "
+                "citation_checked_at = now() FROM unnest(%s::bigint[], %s::text[], %s::text[], %s::text[]) AS v(id, md5, src, council) "
                 f"WHERE p.id = v.id AND p.is_current AND p.{guard} "
-                "AND md5(p.provision_text) = v.md5",
-                (ids, [r["md5"] for r in rows], [r["source"] for r in rows]))
+                # the row's council must still be the one it was proven for: a row retagged to another council
+                # after planning keeps its md5 and would otherwise be written (cross-review 2026-10-17)
+                "AND md5(p.provision_text) = v.md5 AND p.source_council IS NOT DISTINCT FROM v.council",
+                (ids, [r["md5"] for r in rows], [r["source"] for r in rows], [r.get("source_council") for r in rows]))
     n = cur.rowcount
     if n != len(rows):
         conn.rollback()
