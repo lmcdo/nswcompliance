@@ -1,11 +1,12 @@
 {
   "tier": "standard",
-  "justification": "Audit run6 (2026-10-16) found C-B Chapter 6.2 Section 6 key-site controls (KS9 Bankstown Central) served to 33 Chertsey Ave. derive rule canterbury_bankstown_6_2_bankstown_city_centre keyed the whole document to the 6.2 city-centre outline, including Section 6 (p167-213), which holds nine named sites with no outline. 155 rows withheld; the derive rule now skips those pages so a re-run does not re-key them.",
-  "commit_hash": "ef0380f7",
+  "justification": "Audit run6 (2026-10-16) found C-B Chapter 6.2 Section 6 key-site controls (KS9 Bankstown Central) served to 33 Chertsey Ave. derive rule canterbury_bankstown_6_2_bankstown_city_centre keyed the whole document to the 6.2 city-centre outline, including Section 6 (p167-213), which holds nine named sites with no outline. 155 rows withheld; the derive rule now skips those pages so a re-run does not re-key them. Also DQ-78 (CI red on this PR): its single-letter-ratio signature flagged Blacktown Part A p68's flood controls matrix ('| N | N | E5 |'), a correct table read cell by cell from the drawn grid on 2026-10-16. Whole-cell single letters are now blanked before counting.",
+  "commit_hash": "93142bd2",
   "files": [
     "scripts/derive_precinct_keys.py",
     "scripts/hide_unmapped_area_rules.py",
-    "data/chapter_scope/not_covered_2026-10-15.json"
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    "scripts/dq_probe_live.py"
   ],
   "falsifiable_check": {
     "command": "python -c \"import urllib.request,json,time;u='https://verify.plotdetect.com.au/api/provisions/for-property?groupBy=toc&zone=R4&heritage=false&former_council=Canterbury-Bankstown&precinct_id=C-B%20former%20Bankstown,6.2,C-B%20Part%206%20centres&_cb='+str(int(time.time()));d=json.load(urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':'x'})));print(sum(1 for l in d['data']['by_layer'] for r in l['provisions'] if '6_2_bankstown' in (r.get('ref_number') or '') and 167<=(r.get('pdf_page') or 0)<=213))\"",
@@ -36,6 +37,11 @@
       "value": "155 withheld; backup hide_unmapped_area_rules_pre_2026-10-16T212612.json",
       "read_at": "--apply 2026-10-16",
       "if_missing": "count unproven"
+    },
+    {
+      "value": "DQ-78 count 1 -> 0 (only row was 249608, Blacktown p68 matrix, ratio 0.26)",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-78, 2026-10-16",
+      "if_missing": "the cause of the CI red would be unproven"
     }
   ],
   "queries": [],
@@ -60,6 +66,13 @@
       "mitigated": false,
       "how": "hide aborts on count drift (expect=155); derive range would need updating",
       "repro": "hide dry run"
+    },
+    {
+      "scenario": "DQ-78 cell exclusion also hides real map scramble from the check",
+      "what_happens": "a scrambled row would read as clean and keep being served",
+      "mitigated": true,
+      "how": "forced on fixtures against production Postgres: map scramble 0.75 and scramble inside one table cell 0.74 still flag (>=0.20); the 'N' matrix scores 0.00",
+      "repro": "SELECT ... regexp_replace(text,'(^|\\|)[ \t]*[A-Za-z][ \t]*(?=\\||$)','\u0001','gn') on the three fixtures (see PR)"
     }
   ],
   "mutation_analysis": "Removing from_precinct reproduces 'total to withhold: 0'.",
