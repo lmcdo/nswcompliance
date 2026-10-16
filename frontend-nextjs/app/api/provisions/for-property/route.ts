@@ -798,8 +798,11 @@ async function queryHeritageByHca(
     FROM regulatory_provisions rp
     LEFT JOIN heritage_conservation_areas hca ON hca.db_slug = rp.v2_heritage_hca
     WHERE rp.v2_is_actionable = true
+      AND rp.is_current = TRUE
       AND rp.v2_marker = 'heritage'
   `;
+  // is_current added 2026-10-16: without it this query served superseded rows (2,561 retired heritage rows in 6
+  // councils; address audit run3 saw Marrickville row 98602, retired, at a heritage item in Stanmore).
 
   // Include HCA-specific controls only when a specific HCA is provided.
   // Without HCA (e.g. individual heritage items): general controls only.
