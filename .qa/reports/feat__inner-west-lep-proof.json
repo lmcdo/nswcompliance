@@ -1,15 +1,16 @@
 {
   "tier": "standard",
   "justification": "DQ-145 stood at 1,796 on 2026-10-17; 554 of them are Inner West LEP 2022 clauses (source_council='inner_west', document_id Inner_West_Local_Environmental_Plan_2022*) that the state-law proof skipped because it selects source_council IS NULL only. scripts/lep_law_proof.py reuses state_law_proof/state_law_proof2 (parser, Law, classify) unchanged and only widens candidate selection to documents whose title opens with an active instrument_registry LEP label. Read-only; writes a CSV, a plan JSON (scope registry_lep), paraphrase and amended lists. apply_state_law_proof.py gains --include-registry-lep; a registry_lep plan is refused without it and the flag does not widen a state-law plan. Nothing is applied.",
-  "commit_hash": "d1efc053",
+  "commit_hash": "35197f1c",
   "files": [
-    "scripts/lep_law_proof.py",
-    "scripts/apply_state_law_proof.py",
-    "tests/test_lep_law_proof.py",
+    "data/lep_law_amended_2026-10-17.json",
+    "data/lep_law_paraphrase_2026-10-17.json",
     "data/lep_law_proof_2026-10-17.csv",
     "data/lep_law_proof_plan_2026-10-17.json",
-    "data/lep_law_paraphrase_2026-10-17.json",
-    "data/lep_law_amended_2026-10-17.json"
+    "scripts/apply_state_law_proof.py",
+    "scripts/lep_law_proof.py",
+    "scripts/withhold_state_paraphrase.py",
+    "tests/test_lep_law_proof.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/lep_law_proof.py --date 2026-10-17",
@@ -19,7 +20,8 @@
   },
   "real_layer_exempt": {
     "scripts/lep_law_proof.py": "read-only session (default_transaction_read_only=on); its real-layer check is its own run against production plus the cached legislation text; the fly fetch is operator-run. A database-marked test would add nothing it does not already run.",
-    "scripts/apply_state_law_proof.py": "not run in this PR; a database-marked test would write to production. The new scope guard (scope_clause) is unit tested."
+    "scripts/apply_state_law_proof.py": "not run in this PR; a database-marked test would write to production. The new scope guard (scope_clause) is unit tested.",
+    "scripts/withhold_state_paraphrase.py": "one-off production write; real-layer check is its own dry run against production plus rowcount verification"
   },
   "pre_impl": {
     "existing_data": "instrument_registry has 24 active LEPs with pco_instrument_id; only Inner West LEP 2022 has unproven served rows (554). Other unproven council rows (283) are DCP chapters; 959 are state-law rows not yet applied from #1304.",
@@ -74,7 +76,7 @@
     }
   ],
   "mutation_analysis": "Dropping the word-boundary test in lep_for (startswith(label) only) fails test_word_boundary_required; changing the default guard to IS NOT NULL fails test_scope_default_is_state_only; the proof itself is state_law_proof2.classify, covered by tests/test_state_law_proof2.py.",
-  "residual_risk": "Proof is of text presence in the current instrument, not that the rule belongs to the stored clause (15 proven rows have no derived clause, 12 are ambiguous). 67 partial and 44 paraphrase rows stay unproven and are DQ-88 candidates; 0 amended because the three point-in-time versions loaded did not contain any of them. Sol cross-review result is reported in the PR conversation.",
+  "residual_risk": "Proof is of text presence in the current instrument, not that the rule belongs to the stored clause (15 proven rows have no derived clause, 12 are ambiguous). 67 partial and 44 paraphrase rows stay unproven and are DQ-88 candidates; 0 amended because the three point-in-time versions loaded did not contain any of them. Sol cross-review result is reported in the PR conversation. APPLIED 2026-10-17: 441 Inner West LEP rows proven (backup state_law_proof_pre_2026-10-17T002008.json); 15 non-table summaries withheld (29 table rows left unproven, not withheld: they are LEP tables stored as HTML). Sol finding 1 fixed (UPDATE requires source_council IS NOT DISTINCT FROM the plan's). Findings 2-3 accepted: all 554 rows are inner_west; remainder listing is read-only. DQ-145 1,467 -> ~1,011.",
   "post_merge": {
     "db_reset": "No",
     "secrets": "None",
