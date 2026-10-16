@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "DQ-145 stood at 1,796 on 2026-10-17; 554 of them are Inner West LEP 2022 clauses (source_council='inner_west', document_id Inner_West_Local_Environmental_Plan_2022*) that the state-law proof skipped because it selects source_council IS NULL only. scripts/lep_law_proof.py reuses state_law_proof/state_law_proof2 (parser, Law, classify) unchanged and only widens candidate selection to documents whose title opens with an active instrument_registry LEP label. Read-only; writes a CSV, a plan JSON (scope registry_lep), paraphrase and amended lists. apply_state_law_proof.py gains --include-registry-lep; a registry_lep plan is refused without it and the flag does not widen a state-law plan. Nothing is applied.",
-  "commit_hash": "1200d356",
+  "commit_hash": "d1efc053",
   "files": [
     "scripts/lep_law_proof.py",
     "scripts/apply_state_law_proof.py",
