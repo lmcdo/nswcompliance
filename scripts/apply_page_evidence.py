@@ -37,6 +37,8 @@ def preflight(recs: list, rows: dict) -> list:
             bad.append((r["id"], "row not current/served any more"))
         elif cur["md5"] != r["provision_text_md5"]:
             bad.append((r["id"], "provision_text changed (md5)"))
+        elif r["plan"].get("id") != r["id"]:
+            bad.append((r["id"], "plan id differs from the record id"))
         elif cur["page_check"] in ("on_page", "moved"):
             bad.append((r["id"], f"already {cur['page_check']}"))
         elif cur["r2_current_path"] != r["pdf_path"]:
@@ -56,7 +58,8 @@ def main() -> int:
     if len({r["id"] for r in recs}) != len(recs):
         print("duplicate ids in the file")
         return 1
-    v = subprocess.run([sys.executable, str(ROOT / "scripts" / "verify_page_evidence.py"), args.jsonl])
+    # --db: the evidence span must be THIS row's own words, not just a valid phrase from the PDF.
+    v = subprocess.run([sys.executable, str(ROOT / "scripts" / "verify_page_evidence.py"), args.jsonl, "--db"])
     if v.returncode != 0:
         print("REFUSED: the evidence does not verify.")
         return 1

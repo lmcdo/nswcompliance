@@ -192,7 +192,8 @@ def test_verifier_rejects_tampered_table_evidence(proven):
     f, _, ev = proven
     pg = page_of(f, ev["page"])
     assert vpe.check_evidence(ev, pg) == []
-    for key, val in (("table", 7), ("cells", [[1, 2], [3, 2]]), ("cells", [[1, 2], [2, 2], [3, 1]]),
+    for key, val in (("table", 7), ("cells", [[-1, 2], [3, 2]]), ("cells", [[3, 2], [2, 2], [1, 2]]),
+                     ("cells", [[1, 2], [1, 2], [2, 2]]), ("cells", [[1, 2], [3, 2]]), ("cells", [[1, 2], [2, 2], [3, 1]]),
                      ("cells", [[0, 0], [9, 9]]), ("reading", "row"), ("start", 1)):
         t = copy.deepcopy(ev)
         t[key] = val
@@ -202,10 +203,11 @@ def test_verifier_rejects_tampered_table_evidence(proven):
 # -- apply gate ------------------------------------------------------------------------
 
 def test_apply_preflight_refuses_changed_text_and_taken_rows():
-    rec = {"id": 1, "provision_text_md5": "aaa", "pdf_path": "p.pdf"}
+    rec = {"id": 1, "provision_text_md5": "aaa", "pdf_path": "p.pdf", "plan": {"id": 1}}
     ok = {"md5": "aaa", "page_check": "not_found", "r2_current_path": "p.pdf"}
     assert ape.preflight([rec], {1: ok}) == []
     assert ape.preflight([rec], {1: {**ok, "md5": "bbb"}})
     assert ape.preflight([rec], {1: {**ok, "page_check": "on_page"}})
     assert ape.preflight([rec], {1: {**ok, "r2_current_path": "q.pdf"}})
     assert ape.preflight([rec], {})
+    assert ape.preflight([{**rec, "plan": {"id": 2}}], {1: ok})     # plan would write another row

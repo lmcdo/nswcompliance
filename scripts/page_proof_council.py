@@ -141,6 +141,9 @@ def main() -> int:
     for r in rows:
         by_pdf[r["r2_current_path"]].append(r)
     jobs = [(p, rs, args.cache_dir) for p, rs in by_pdf.items() if p]
+    nosrc = by_pdf.get(None, [])
+    if nosrc:
+        print(f"WARNING: {len(nosrc)} rows have no chapter PDF path (no_source), not judged")
     Path(args.cache_dir).mkdir(parents=True, exist_ok=True)
     results, pdfs = [], {}
     with ProcessPoolExecutor(max_workers=max(1, args.workers)) as ex:

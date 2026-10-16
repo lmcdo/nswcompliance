@@ -55,6 +55,9 @@ def check_evidence(ev: dict, page, words_sha: str | None = None) -> list:
             return bad + ["table index not on the page"]
         grid, cells = grids[t], ev.get("cells") or []
         parts = []
+        for rc in cells:
+            if (len(rc) != 2 or not all(isinstance(x, int) and x >= 0 for x in rc)):
+                return bad + [f"cell coordinate {rc} is not a non-negative [row, col]"]
         for r, c in cells:
             if r >= len(grid) or c >= len(grid[r]) or grid[r][c] is None:
                 return bad + [f"cell {r},{c} missing or merged (None)"]
@@ -70,8 +73,10 @@ def check_evidence(ev: dict, page, words_sha: str | None = None) -> list:
               "header+row": rows <= {0, max(rows)} and len(rows - {0}) <= 1}.get(kind, False)
         if not ok:
             bad.append(f"cells do not form a '{kind}' reading")
-        if cells != sorted(cells, key=lambda x: (x[0], x[1])) and kind != "col":
+        if cells != sorted(cells, key=lambda x: (x[0], x[1])):
             bad.append("cells not in reading order")
+        if len({tuple(c) for c in cells}) != len(cells):
+            bad.append("a cell is listed twice")
     else:
         return bad + ["unknown matcher"]
     if hay[s:e] != span:
@@ -94,7 +99,9 @@ def main() -> int:
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env")
     load_dotenv(ROOT.parents[2] / ".env")
+    import dcp_page_repair as dpr
     import page_proof_council as ppc
+    import rule_page_locator as rpl
 
     recs = [json.loads(x) for x in Path(args.jsonl).read_text(encoding="utf-8").splitlines() if x.strip()]
     texts = {}
@@ -107,7 +114,7 @@ def main() -> int:
                     "WHERE is_current AND id = ANY(%s)", ([r["id"] for r in recs],))
         texts = {i: (m, t) for i, m, t in cur.fetchall()}
         conn.close()
-    pdfs, pages_cache, failures = {}, {}, []
+    pdfs, pages_cache, labels_cache, failures = {}, {}, {}, []
 
     def pdf_for(rec):
         sha = rec["pdf_sha256"]
@@ -145,6 +152,16 @@ def main() -> int:
             held = set(old.get("page_range") or []) | {old.get("pdf_page")}
             if (rec["verdict"] == "on_page") != (ev["page"] in held):
                 bad.append("verdict does not follow from the old page")
+            if plan.get("id") != rec["id"]:
+                bad.append("plan id differs from the record id")
+            exp_range = (dpr.shift_range(old.get("page_range"), old.get("pdf_page"), ev["page"])
+                         if rec["verdict"] == "moved" else old.get("page_range"))
+            if list(plan.get("page_range") or []) != list(exp_range or []):
+                bad.append("plan page_range is not the old range shifted by the page move")
+            if got not in labels_cache:
+                labels_cache[got] = rpl.printed_labels(dpr._margins(str(path)))
+            if plan.get("printed_page_label") != labels_cache[got].get(ev["page"]):
+                bad.append("plan printed_page_label is not the label printed on that page")
             if plan["page_source_path"] != rec["pdf_path"]:
                 bad.append("plan page_source_path is not the pinned pdf")
             if args.db:
