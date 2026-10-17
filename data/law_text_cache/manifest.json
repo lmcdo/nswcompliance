@@ -47,6 +47,12 @@
     "sha256": "e9d581d57eeca8b9991f9ff3f3b7e08fc9c5148ab54dee1a9f9c5c1212afa6d5",
     "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0732"
   },
+  "epi-2022-0457": {
+    "bytes": 2396653,
+    "file": "epi-2022-0457_2026-10-17.html",
+    "sha256": "d11176642a41431f403f2f8ef0c3199897c44775f8ede70dd1b46fdc60c03d93",
+    "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457"
+  },
   "epi-2022-0521": {
     "bytes": 177033,
     "file": "epi-2022-0521_2026-10-16.html",

@@ -1,0 +1,129 @@
+{
+ "generated": "2026-10-17",
+ "norm_version": "sl-norm/2",
+ "match_version": "sl-match/1",
+ "manifest": {
+  "epi-2008-0572": {
+   "file": "epi-2008-0572_2026-10-16.html",
+   "sha256": "13b5577ccfd028a6359b2278d28acc924b766678c9d27a1176bb412c1d2b6807",
+   "bytes": 2882206,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572"
+  },
+  "epi-2021-0714": {
+   "file": "epi-2021-0714_2026-10-16.html",
+   "sha256": "fa3f07f0bf4fbd483fa981ca1fa9135e57528d3967c5f7096e0e0cccd6e91ead",
+   "bytes": 887253,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714"
+  },
+  "epi-2021-0730": {
+   "file": "epi-2021-0730_2026-10-16.html",
+   "sha256": "61701898f36e9591d3b9925367f57b35cd10859c381427255590b6d7cde6c5ce",
+   "bytes": 153836,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0730"
+  },
+  "epi-2021-0732": {
+   "file": "epi-2021-0732_2026-10-16.html",
+   "sha256": "e9d581d57eeca8b9991f9ff3f3b7e08fc9c5148ab54dee1a9f9c5c1212afa6d5",
+   "bytes": 2087294,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0732"
+  }
+ },
+ "method": "scripts/sepp_complete_unit.py (docstring has the rules). No model reads or writes text.",
+ "rows": [
+  {
+   "id": 17390,
+   "md5": "6618d7ade4c42699a7984fe6e659db40",
+   "rule": "recopy",
+   "kind": "complete_unit_recopy",
+   "epi": "epi-2008-0572",
+   "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_12",
+   "ref_number": "Clause 3.10(10)",
+   "unit_id": "sec.3.11-ssec.5",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572#sec.3.11-ssec.5",
+   "law_date": "2026-10-16",
+   "old_text": "If the lot has a rear boundary with a lane, the building may be erected within 900mm of, or abut, the rear boundary for a maximum of 50% of the length of that boundary.",
+   "new_text": "(5) Lots with rear lanes Despite clause 3.10(10), if the lot has a rear boundary with a lane, the building may be erected within 900mm of, or abut, the rear boundary for a maximum of 50% of the length of that boundary.",
+   "old_ref_number": "Clause 3.10(10)",
+   "new_ref_number": "Section 3.11(5)"
+  },
+  {
+   "id": 17562,
+   "md5": "6bdbc2fa5ef1ade92957437107221aa9",
+   "rule": "recopy",
+   "kind": "complete_unit_recopy",
+   "epi": "epi-2008-0572",
+   "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_13",
+   "ref_number": "3.29(2)(b)",
+   "unit_id": "sec.3.29-ssec.2",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572#sec.3.29-ssec.2",
+   "law_date": "2026-10-16",
+   "old_text": "A fence erected behind the building line on a lot must not incorporate barbed wire in its construction or be electrified",
+   "new_text": "(2) A fence erected behind the building line on a lot must—\n(a) not be higher than 1.8m above ground level (existing), and\n(b) not incorporate barbed wire in its construction or be electrified, and\n(c) if it includes an entrance gate—not have a gate that opens outward, and\n(d) if it is constructed of metal components—be of low reflective, factory pre-coloured materials, and\n(e) if it is on a sloping site and stepped to accommodate the fall in the land—be no higher than 2.2m above ground level (existing) at each step, and\n(f) be designed so as not to restrict the flow of any floodwater.",
+   "old_ref_number": "3.29(2)(b)",
+   "new_ref_number": "Section 3.29(2)"
+  },
+  {
+   "id": 17565,
+   "md5": "39f8aa4628c92550ab7834b409a85df3",
+   "rule": "recopy",
+   "kind": "complete_unit_recopy",
+   "epi": "epi-2008-0572",
+   "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_13",
+   "ref_number": "3.29(2)(e)",
+   "unit_id": "sec.3.29",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572#sec.3.29",
+   "law_date": "2026-10-16",
+   "old_text": "If a fence erected behind the building line is on a sloping site and stepped to accommodate the fall in the land, it must be no higher than 2.2m above ground level (existing) at each step",
+   "new_text": "3.29 Development standards for fences\n(1) A fence may be erected on a lot under this code if it is not constructed or installed—\n(a) on a lot, or along a common boundary of a lot that contains a heritage item or a draft heritage item, or\n(b) along the boundary of, or within the setback area of, a primary or secondary road within a heritage conservation area or draft heritage conservation area.\n(2) A fence erected behind the building line on a lot must—\n(a) not be higher than 1.8m above ground level (existing), and\n(b) not incorporate barbed wire in its construction or be electrified, and\n(c) if it includes an entrance gate—not have a gate that opens outward, and\n(d) if it is constructed of metal components—be of low reflective, factory pre-coloured materials, and\n(e) if it is on a sloping site and stepped to accommodate the fall in the land—be no higher than 2.2m above ground level (existing) at each step, and\n(f) be designed so as not to restrict the flow of any floodwater.\n(3) A fence erected forward of the building line on a lot must—\n(a) not be higher than 1.2m above ground level (existing), and\n(b) not incorporate barbed wire in its construction or be electrified, and\n(c) if it includes an entrance gate—not have a gate that opens outward, and\n(d) if it is constructed of metal components—be of low reflective, factory pre-coloured materials, and\n(e) be open for at least 20% of the area of the fence that is more than 400mm above ground level (existing), with any individual solid element of the fence above that height being no more than 350mm wide with a minimum aperture of 25mm, and\n(f) be designed so as not to restrict the flow of any floodwater.\n(4) Despite subclause (2)(a), any fence located in the setback area of a primary or secondary road must not be higher than 1.2m above ground level (existing).\n(5) A fence erected on bush fire prone land must be constructed of non-combustible material.\n(6) A requirement in subclause (2)(f) or (3)(f) is satisfied if a joint report by a professional engineer specialising in hydraulic engineering and a professional engineer specialising in civil engineering states that the requirement is satisfied.\nNote 1.\nBuilding line, primary road, secondary road and setback are defined in clause 1.5.\nNote 2.\nGround level (existing) and heritage item have the same meanings as they have in the Standard Instrument.\nNote 3—\nExempt development standards for fences in certain rural zones, conservation zones and Zone R5 are specified in clause 2.36.",
+   "old_ref_number": "3.29(2)(e)",
+   "new_ref_number": "Section 3.29"
+  },
+  {
+   "id": 17568,
+   "md5": "def0f0517d17c1d7f0ce4c437aa6a432",
+   "rule": "recopy",
+   "kind": "complete_unit_recopy",
+   "epi": "epi-2008-0572",
+   "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_13",
+   "ref_number": "3.29(3)(b)",
+   "unit_id": "sec.3.29-ssec.3",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572#sec.3.29-ssec.3",
+   "law_date": "2026-10-16",
+   "old_text": "A fence erected forward of the building line must not incorporate barbed wire in its construction or be electrified",
+   "new_text": "(3) A fence erected forward of the building line on a lot must—\n(a) not be higher than 1.2m above ground level (existing), and\n(b) not incorporate barbed wire in its construction or be electrified, and\n(c) if it includes an entrance gate—not have a gate that opens outward, and\n(d) if it is constructed of metal components—be of low reflective, factory pre-coloured materials, and\n(e) be open for at least 20% of the area of the fence that is more than 400mm above ground level (existing), with any individual solid element of the fence above that height being no more than 350mm wide with a minimum aperture of 25mm, and\n(f) be designed so as not to restrict the flow of any floodwater.",
+   "old_ref_number": "3.29(3)(b)",
+   "new_ref_number": "Section 3.29(3)"
+  },
+  {
+   "id": 16028,
+   "md5": "f259a5a2f6170ef3e64ef6f4083ab566",
+   "rule": "recopy",
+   "kind": "complete_unit_recopy",
+   "epi": "epi-2021-0714",
+   "document_id": "State_Environmental_Planning_Policy_(Housing)_2021___NSW_Legislation_section_3",
+   "ref_number": "Section 30B",
+   "unit_id": "sec.30B",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714#sec.30B",
+   "law_date": "2026-10-16",
+   "old_text": "Before carrying out development under this division, the Aboriginal Housing Office must consider..., the Land and Housing Corporation must consider..., Landcom must consider...",
+   "new_text": "30B Considerations before carrying out development\n(1) Before carrying out development under this division, the Aboriginal Housing Office must consider the AHO Design Guidelines NSW, published by the Aboriginal Housing Office in January 2020.\n(2) Before carrying out development under this division, the Land and Housing Corporation must consider—\n(a) Good Design for Social Housing, published by the Land and Housing Corporation, in partnership with the Government Architect NSW, in September 2020, and\n(b) the NSW Land and Housing Corporation Design Requirements, published by the Land and Housing Corporation in February 2023.\n(3) Before carrying out development under this division, Landcom must consider the Landcom Affordable Housing Design Guideline, published by Landcom, in partnership with the Government Architect NSW, in November 2023."
+  },
+  {
+   "id": 45999,
+   "md5": "f93880a561c6d973204e6f43d8e70329",
+   "rule": "recopy",
+   "kind": "complete_unit_recopy",
+   "epi": "epi-2021-0732",
+   "document_id": "State_Environmental_Planning_Policy_Transport_and_Infrastructure_2021__NSW_Legislation",
+   "ref_number": "provision_3848",
+   "unit_id": "sch.12-sec.28",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0732#sch.12-sec.28",
+   "law_date": "2026-10-16",
+   "old_text": "(1) Signage (other than advertising structures).   \n(2) A sign must comply with AS 1319—1994, Safety signs for the occupational environment and AS/NZS 4282:2019, Control of the obtrusive ef ects of outdoor lighting.",
+   "new_text": "28 Signage\n(1) Signage other than advertising structures.\n(2) A sign must comply with—\n(a) AS 1319—1994, Safety signs for the occupational environment, and\n(b) AS/NZS 4282:2019, Control of the obtrusive effects of outdoor lighting.",
+   "old_ref_number": "provision_3848",
+   "new_ref_number": "Schedule 12, section 28"
+  }
+ ],
+ "note": "derived: 17566 and 17572 dropped, each re-copies to the same clause as 17562 / 17568; withheld as duplicates"
+}

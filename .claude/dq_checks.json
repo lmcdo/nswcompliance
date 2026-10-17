@@ -1784,9 +1784,9 @@
     "OC-20"
    ],
    "blocks_outreach": true,
-   "passes_when": "exit 0 - (a) a clause number is shown only when a script proved it, else the page (citation-display tests, #1170/#1307); (b) every surface showing an unproven rule's citation renders the 'Citation not yet checked' mark (#1313 tests incl. the badge inventory); (c) DQ-145 is at or below its ceiling (430 on 2026-10-17) and may only fall",
+   "passes_when": "exit 0 - (a) a clause number is shown only when a script proved it, else the page (citation-display tests, #1170/#1307); (b) every surface showing an unproven rule's citation renders the 'Citation not yet checked' mark (#1313 tests incl. the badge inventory); (c) DQ-145 is at or below its ceiling (290 on 2026-10-17) and may only fall",
    "red_when": "the declared state and the check disagree in either direction",
-   "note": "Reworded 2026-10-16. 2026-10-16: 4,071 state-law rows proven verbatim against legislation.nsw.gov.au in force; 244 non-law paraphrases withheld; DQ-145 6,104 -> 1,796. 2026-10-17 (user decision, option 1): the check is three parts, not DQ-145 = 0; unproven rules now carry the mark, and DQ-145 is a ratchet at 1,011; lowered to 911 the same day after 100 council pages were proven (#1316); 860 later on 2026-10-17 after 8 shared-page council proofs (#1320) and 43 state-law rows proven or re-copied verbatim (#1321); 430 later still: 905 Ashfield E1 Part 9 history/inventory rows, 87 Ku-ring-gai map-legend labels and 228 SEPP partial-overlap/paraphrase/fragment rows withheld (user yes), 67 SEPP labels fixed to the law's own clause and 16 rows re-copied without a leaked next heading."
+   "note": "Reworded 2026-10-16. 2026-10-16: 4,071 state-law rows proven verbatim against legislation.nsw.gov.au in force; 244 non-law paraphrases withheld; DQ-145 6,104 -> 1,796. 2026-10-17 (user decision, option 1): the check is three parts, not DQ-145 = 0; unproven rules now carry the mark, and DQ-145 is a ratchet at 1,011; lowered to 911 the same day after 100 council pages were proven (#1316); 860 later on 2026-10-17 after 8 shared-page council proofs (#1320) and 43 state-law rows proven or re-copied verbatim (#1321); 430 later still: 905 Ashfield E1 Part 9 history/inventory rows, 87 Ku-ring-gai map-legend labels and 228 SEPP partial-overlap/paraphrase/fragment rows withheld (user yes), 67 SEPP labels fixed to the law's own clause and 16 rows re-copied without a leaked next heading. 290 later still: 45 + 6 SEPP rows re-copied as the smallest complete clause (6 settled by the row's own or neighbouring labels), 28 Inner West LEP rows proven, 29 Inner West LEP paraphrases + 24 council not-a-rule rows + 8 duplicates withheld."
   },
   "DQ-146": {
    "declared": "fixed",
@@ -1799,6 +1799,18 @@
    "passes_when": "exit 0 - no current, actionable rule sits where no for-property query returns it (condition layer without flood/bushfire condition or heritage marker).",
    "red_when": "a rule written for some houses is shown to none. Read 905 on 2026-10-11; 0 after the gate-rule write the same day (scripts/apply_dq146_gates.sh). REOPENED 2026-10-15 at 2,945: the precinct layer now fails closed, so 2,827 precinct rules with no precinct key (C-B 1,953, Ku-ring-gai 858, Parramatta 16) reach no house instead of every house. Cleared by keying each to its precinct outline.",
    "note": "Proved live on 17 Etham Avenue Darling Point (1 of 64 B2 rules shown). Cleared by gate rules and precinct keys, never by deleting rows. FIXED 2026-10-17 (#1312): KRG 14G outline loaded; unmapped C-B/KRG/Parramatta area rules are listed as not covered. Probe reads 0."
+  },
+  "DQ-147": {
+   "declared": "open",
+   "check": [
+    "python",
+    "scripts/dq_probe_live.py",
+    "--id",
+    "DQ-147"
+   ],
+   "passes_when": "exit 0 - served council rules with an immediately repeated line (>= 3 words, marker-insensitive) number no more than the ceiling in dq_probe_live.CEILINGS (79).",
+   "red_when": "a served council rule reads a line twice in a row. Reads 172 on 2026-10-17 (93 of them Campbelltown rows carrying the PDF's invisible white copy; plan data/campbelltown_visible_text_plan_2026-10-17.json); 79 once that plan is applied.",
+   "note": "Plain repeated-line count, not the visible-page test (too heavy for a probe); it over-counts real repeated table cells (48 rows outside Campbelltown, e.g. Woollahra 240L/100m2 of floor area/day), so it is a ceiling, not a zero. Declared open while the repair is unwritten (red above the ceiling). After scripts/apply_visible_text_repair.py --apply: flip to fixed; lower the ceiling as rows are repaired."
   },
   "OC-21": {
    "kind": "outreach_claim",

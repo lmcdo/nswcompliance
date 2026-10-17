@@ -1,0 +1,34 @@
+id,reason,ref_number,unit_found,detail
+17053,ambiguous_unit,Detached development,sec.3.10;sec.3.21;sec.3B.11;sec.3B.24;sec.3B.36;sec.3B.49,
+17553,ambiguous_unit,Detached development,sec.3.21-ssec.2;sec.3.21-ssec.8;sec.3B.49-ssec.8;sec.3C.24-ssec.2;sec.3C.24-ssec.8;sec.3D.44-ssec.8,
+17562,ambiguous_unit,3.29(2)(b),sec.3.29-ssec.2;sec.3.29-ssec.3;sec.3C.32-ssec.2;sec.3C.32-ssec.3;sec.3D.53-ssec.3;sec.3D.53-ssec.4,
+17565,ambiguous_unit,3.29(2)(e),sec.3.29;sec.3C.32;sec.3D.53;sec.3C.32;sec.3D.53,
+17566,ambiguous_unit,3.29(2)(f),sec.3.29-ssec.2;sec.3.29-ssec.3;sec.3C.32-ssec.2;sec.3C.32-ssec.3;sec.3D.53-ssec.3;sec.3D.53-ssec.4,
+17568,ambiguous_unit,3.29(3)(b),sec.3.29-ssec.3;sec.3C.32-ssec.3;sec.3D.53-ssec.4;sec.3C.32-ssec.3;sec.3D.53-ssec.4,
+17572,ambiguous_unit,3.29(3)(f),sec.3.29-ssec.2;sec.3.29-ssec.3;sec.3C.32-ssec.2;sec.3C.32-ssec.3;sec.3D.53-ssec.3;sec.3D.53-ssec.4,
+18595,ambiguous_unit,"2.4 (Aerial, Antenna, Communication Dish Standards)",sec.2.4-ssec.1-para1.b;sec.2.4-ssec.1-para1.c;sec.2.4-ssec.1-para1.c,
+18609,ambiguous_unit,Unspecified Development (2.14),sec.2.107B;sec.2.118;sec.2.120;sec.2.14;sec.2.28;sec.2.32O,
+18610,ambiguous_unit,Unspecified Development (2.14),sec.2.12;sec.2.14;sec.2.16B;sec.2.30B;sec.2.34;sec.2.36,
+18613,ambiguous_unit,Bollards (2.16B),sec.2.12-ssec.1;sec.2.16B;sec.2.16B,
+18616,ambiguous_unit,"Cabanas, etc. (2.18)",sec.2.103;sec.2.105;sec.2.12-ssec.1;sec.2.14;sec.2.16B;sec.2.18-ssec.1,
+36413,ambiguous_unit,provision_718,sec.2.32-ssec.1;sec.2.32E-ssec.1;sec.2.32E;sec.2.32E-ssec.1,
+37106,ambiguous_unit,provision_1886,sec.3.13;sec.3.27;sec.3C.15;sec.3C.30;sec.3D.24;sec.3.27,
+37250,ambiguous_unit,provision_2118,sec.3.13;sec.3.27;sec.3B.40;sec.3C.15;sec.3C.30;sec.3D.24,
+38637,unit_text_not_verbatim_in_law,provision_4279,sec.3D.38,
+38702,ambiguous_unit,provision_4387,sec.3C.26;sec.3D.46;sec.3D.46,
+38717,unit_over_600_words,provision_4413,sec.3D.48,716
+39482,ambiguous_unit,provision_5613,sch.3-pt.3-sec.3;sch.3-pt.4-sec.3;sch.3-pt.4-sec.3,
+39528,unit_not_a_clause,provision_5692,sch.3-pt.4-sec.3,
+39534,ambiguous_unit,provision_5701,sch.3-pt.3-sec.3;sch.3-pt.4-sec.3;sch.3-pt.4-sec.3,
+16028,ambiguous_unit,Section 30B,sec.108CB;sec.30B;sec.44;sec.30B;sec.44,
+16251,ambiguous_unit,Section 20 & 21,sec.138-ssec.2;sec.141K-ssec.1;sec.147-ssec.1;sec.160;sec.161;sec.177-ssec.2,
+16298,ambiguous_unit,Secondary Dwelling,sch.1-sec.2;sec.54;sec.54,
+12712,ambiguous_unit,Development within coastal use area and coastal zone,sec.2.10-ssec.1;sec.2.10-ssec.2;sec.2.11-ssec.1;sec.2.12;sec.2.8-ssec.1;sec.2.9,
+43321,unit_over_600_words,provision_69,sec.2.3-ssec.2,1101
+43907,unit_over_600_words,provision_869,sec.2.82,1398
+43931,unit_over_600_words,provision_908,sec.2.83-ssec.1,785
+43939,unit_over_600_words,provision_922,sec.2.83-ssec.1,785
+44365,unit_over_600_words,provision_1504,sec.2.140,843
+45442,unit_not_a_clause,provision_3031,sch.1-tbl,
+45446,unit_not_a_clause,provision_3038,sch.1-tbl,
+45452,unit_not_a_clause,provision_3048,sch.1-tbl,

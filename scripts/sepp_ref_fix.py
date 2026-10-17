@@ -42,15 +42,18 @@ _UNIT = re.compile(
     r"(?:-para1\.(?P<p1>[a-z]{1,2})(?:-para2\.(?P<p2>[ivxlc]{1,6})(?:-para3\.(?P<p3>[A-Z]{1,2}))?)?)?$")
 
 
-def unit_label(uid: str | None) -> str | None:
-    """'sch.11-sec.4' -> 'Schedule 11, section 4'; 'sec.3.4-ssec.2-para1.e' -> 'Section 3.4(2)(e)'; else None."""
+def unit_label(uid: str | None, scope: str | None = None) -> str | None:
+    """'sch.11-sec.4' -> 'Schedule 11, section 4'; 'sec.3.4-ssec.2-para1.e' -> 'Section 3.4(2)(e)'; else None.
+    scope 'registry_lep' (Inner West LEP rows, scripts/sepp_lep_proof.py): 'Clause 4.4(2)(a)', 'Schedule 1, clause 32(3)' --
+    the shape the already-proven Inner West LEP rows carry ('Clause 4.4', 'Clause 32(3)')."""
     m = _UNIT.match(uid or "")
     if not m:
         return None
     tail = "".join(f"({m.group(k)})" for k in ("ssec", "p1", "p2", "p3") if m.group(k))
+    lep = scope == "registry_lep"
     if m.group("sch"):
-        return f"Schedule {m.group('sch')}, section {m.group('sec')}{tail}"
-    return f"Section {m.group('sec')}{tail}"
+        return f"Schedule {m.group('sch')}, {'clause' if lep else 'section'} {m.group('sec')}{tail}"
+    return f"{'Clause' if lep else 'Section'} {m.group('sec')}{tail}"
 
 
 # ------------------------------------------------------------- port of stateClauseLabel (citation-display.ts)
@@ -98,12 +101,12 @@ def find_unit(old: str, snap: mb.Snapshot) -> dict:
     return {"unit": d["unit"], "how": "ordered_" + d["reason"]}
 
 
-def fix_row(old: str, snap: mb.Snapshot) -> dict:
+def fix_row(old: str, snap: mb.Snapshot, scope: str | None = None) -> dict:
     """-> {verdict: accept|recopy|refuse, reason, unit, new_ref, how, ...decide() evidence fields}"""
     f = find_unit(old, snap)
     if "how" not in f:
         return dict(f, verdict="refuse")
-    label = unit_label(f["unit"])
+    label = unit_label(f["unit"], scope)
     if label is None:
         return {"verdict": "refuse", "reason": "unit_not_a_clause", "unit": f["unit"]}
     if state_clause_label(label) != label:
