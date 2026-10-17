@@ -178,3 +178,37 @@ def test_verifier_fails_when_the_unit_was_ambiguous(snap, tmp_path):
     plan, ev = build(snap, tmp_path, A, "Earthworks")
     plan["rows"][0]["old_text"] = C
     assert ver.verify(plan, ev, tmp_path)[1]
+
+
+# --- cross-review 2026-10-17 ------------------------------------------------------------------------------------
+S = "the consent authority may grant consent if it is satisfied that the plan applied to the land"
+L = "before the plan was made the council held a hearing and " + S + " and then published notice widely"
+HTML2 = f"""<html><body>
+<div class="frag-clause" id="sec.2.18"><h3>2.18 Plans</h3><p>{S}.</p></div>
+<h2>Part 2.4 Principal development standards</h2>
+<div class="frag-clause" id="sec.2.19"><h3>2.19 Height</h3><p>the height of a building must not exceed the maximum shown.</p></div>
+<div class="frag-clause" id="sec.9.1"><h3>9.1 Notices</h3><p>{L}.</p></div>
+</body></html>"""
+
+
+@pytest.fixture()
+def snap2(tmp_path):
+    f = tmp_path / f"{EPI}_2026-10-17.html"
+    f.write_text(HTML2, encoding="utf8")
+    return mb.Snapshot(f)
+
+
+def test_heading_printed_in_law_and_not_in_unit_is_left_out(snap2):
+    old = S + ".\nPart 2.4 Principal development standards"
+    assert "2.4" not in mb.numbers_for_check(old, snap2, "sec.2.18")
+
+
+def test_heading_not_printed_in_law_keeps_its_numbers(snap2):
+    old = S + ".\nPart 7.9 Something the law does not have"
+    assert "7.9" in mb.numbers_for_check(old, snap2, "sec.2.18")
+
+
+def test_words_also_inside_an_unrelated_longer_unit_are_ambiguous(snap2):
+    # S fills sec.2.18 but also sits verbatim inside sec.9.1: the unit is not decided
+    d = rf.find_unit(S, snap2)
+    assert d.get("reason") == "ambiguous_unit" and "sec.9.1" in d["candidates"]

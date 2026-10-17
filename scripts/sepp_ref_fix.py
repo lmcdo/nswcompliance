@@ -85,6 +85,11 @@ def find_unit(old: str, snap: mb.Snapshot) -> dict:
         uid, how = mb.pick_exact(snap, filled or sorted(hits), None)
         if uid is None:
             return {"reason": "ambiguous_unit", "candidates": sorted(hits)[:6]}
+        # The words also sitting in an unrelated branch (e.g. inside a longer section elsewhere) leaves the unit
+        # undecided even when only one hit is filled: refuse (cross-review 2026-10-17).
+        unrelated = [u for u in sorted(hits) if not mb._related(snap, u, uid)]
+        if unrelated:
+            return {"reason": "ambiguous_unit", "candidates": [uid] + unrelated[:5]}
         return {"unit": uid, "how": "contiguous_" + how}
     d = mb.decide_recopy(old, row, None, snap, ignore_ref=True)
     if d["verdict"] != "recopy":

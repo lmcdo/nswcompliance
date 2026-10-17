@@ -92,6 +92,14 @@ class Snapshot:
         self.tokens = {u: norm_tokens(x.text) for u, x in self.units.items()}
         self.joined = {u: " " + " ".join(t) + " " for u, t in self.tokens.items()}
         self._inst = None
+        self._law_text = None
+
+    @property
+    def law_text(self) -> str:
+        """The instrument's page as plain text, whitespace collapsed (for heading-label lookups)."""
+        if self._law_text is None:
+            self._law_text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", self.page))
+        return self._law_text
 
     @property
     def inst(self) -> "rc.Instrument":
@@ -273,8 +281,26 @@ _TRAILING_HEADING = re.compile(
 
 def strip_trailing_headings(text: str) -> str:
     """The row minus heading lines of the NEXT unit that the extractor ran on into ('...\\nPart 2.4 Principal development
-    standards'). Used only for the number check: those numbers are the next heading's, and a recopy drops them."""
+    standards'). Shape only; numbers_for_check adds the structural proof before it is used."""
     return _TRAILING_HEADING.sub("", text or "")
+
+
+_HEADING_LABEL = re.compile(r"\b(Part|Division|Subdivision|Chapter|Schedule)\s+(\d+[A-Z]{0,2}(?:\.\d+[A-Z]{0,2})*)\b")
+
+
+def numbers_for_check(old: str, snap: "Snapshot", uid: str) -> set[str]:
+    """Numbers of the row that the chosen unit must hold. A trailing heading is left out only when every heading label
+    in it ('Division 12') is printed in the law AND is not in the unit's own text -- i.e. it is a real heading of the
+    instrument that the unit does not contain. Otherwise the whole row counts (cross-review 2026-10-17)."""
+    body = strip_trailing_headings(old)
+    tail = (old or "")[len(body):]
+    if tail:
+        labels = [f"{k} {n}" for k, n in _HEADING_LABEL.findall(tail)]
+        unit_text = re.sub(r"\s+", " ", snap.units[uid].text)
+        if not labels or any(not re.search(re.escape(lab) + r"(?![\d.A-Z])", snap.law_text) or re.search(re.escape(lab) + r"(?![\d.A-Z])", unit_text)
+                             for lab in labels):
+            body = old
+    return rc.numbers(body)
 
 
 def decide_recopy(old: str, row: list[str], rf: str | None, snap: Snapshot, ignore_ref: bool = False) -> dict:
@@ -305,9 +331,8 @@ def decide_recopy(old: str, row: list[str], rf: str | None, snap: Snapshot, igno
     # numbers: every number in the row must be in the unit; a unit that lacks one is not a candidate
     lost_all = {}
     ok = []
-    row_nums = rc.numbers(strip_trailing_headings(old))
     for uid, n, cov in scored:
-        lost = sorted(row_nums - rc.numbers(snap.units[uid].text))
+        lost = sorted(numbers_for_check(old, snap, uid) - rc.numbers(snap.units[uid].text))
         if lost:
             lost_all[uid] = lost
         else:

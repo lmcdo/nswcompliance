@@ -113,7 +113,7 @@ def verify(plan: dict, evidence: list[dict], cache_dir: Path | None = None) -> t
             if e["coverage"] < mb.COVERAGE_MIN or len(ut) > mb.SIZE_MAX * len(row):
                 bad.append(f"{rid}: coverage/size outside the rule")
                 continue
-            if mb.rc.numbers(mb.strip_trailing_headings(r["old_text"])) - mb.rc.numbers(new):
+            if mb.numbers_for_check(r["old_text"], snap, uid) - mb.rc.numbers(new):
                 bad.append(f"{rid}: a number of the old text is missing from the new text")
                 continue
         ok += 1

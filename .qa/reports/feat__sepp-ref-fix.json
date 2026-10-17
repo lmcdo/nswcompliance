@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Deterministic SEPP clause-label fix (67 rows: label := the law unit the row's words sit in, 64 re-copied verbatim) plus a trailing-next-heading rule for the number check (16 rows re-copied), applied live 2026-10-17 with backups; also the not-a-rule withhold lists (Ashfield E1 Part 9 905, Ku-ring-gai legend 87, SEPP overlap/paraphrase/fragment 228, user yes). DQ-145 measured 860 -> 430 by python scripts/dq_probe_live.py --id DQ-145; ceiling lowered to 430.",
-  "commit_hash": "2bdebaec",
+  "commit_hash": "e21ae612",
   "files": [
     "scripts/sepp_ref_fix.py",
     "scripts/sepp_marker_blind.py",
@@ -81,10 +81,24 @@
       "mitigated": true,
       "how": "md5(provision_text) and ref_number IS NOT DISTINCT FROM the planned old values",
       "repro": "edit one row's text then run the apply"
+    },
+    {
+      "scenario": "a row ends with a heading-shaped line that is not a heading of the law, or names a part the unit itself contains",
+      "what_happens": "its numbers stay in the check; a unit lacking them is refused number_missing",
+      "mitigated": true,
+      "how": "numbers_for_check leaves a tail out only when every 'Part/Division N' label in it is printed in the law and absent from the unit (cross-review 2026-10-17)",
+      "repro": "test_heading_not_printed_in_law_keeps_its_numbers"
+    },
+    {
+      "scenario": "the row's words fill one short section and also sit verbatim inside an unrelated longer section",
+      "what_happens": "refused ambiguous_unit; no label is written",
+      "mitigated": true,
+      "how": "find_unit refuses when any contiguous hit is outside the chosen unit's branch (cross-review 2026-10-17)",
+      "repro": "test_words_also_inside_an_unrelated_longer_unit_are_ambiguous"
     }
   ],
   "mutation_analysis": "Not executed. By reading: strip_trailing_headings -> identity would break test_trailing_part_heading_is_stripped_for_numbers and test_two_trailing_headings_are_stripped (both assert the stripped string); the verifier re-derives every label from its unit id, so a wrong grammar label fails verification.",
-  "residual_risk": "110 ref_mismatch rows stay unproven (69 ambiguous). 81 unit_too_big rows stay unproven with the mark. The Ashfield E1 Part 9 history text is withheld from every Ashfield address; a heritage-area statement of significance is not shown anywhere until it is keyed to its area.",
+  "residual_risk": "110 ref_mismatch rows stay unproven (69 ambiguous). 81 unit_too_big rows stay unproven with the mark. The Ashfield E1 Part 9 history text is withheld from every Ashfield address; a heritage-area statement of significance is not shown anywhere until it is keyed to its area. Cross-review (Sol, code-only staged diff, 2026-10-17) raised both; checked on the 83 written rows: 0 unrelated-branch hits, 16/16 stripped headings are the law's next heading (22518's was renamed in 2025).",
   "post_merge": {
     "db_reset": "No",
     "secrets": "None",
