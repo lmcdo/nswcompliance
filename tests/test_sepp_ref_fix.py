@@ -220,3 +220,10 @@ def test_heading_printed_elsewhere_in_law_keeps_its_numbers(snap2):
     old = S + ".\nPart 3.1 Standards for 9 metre buildings"
     nums = mb.numbers_for_check(old, snap2, "sec.2.18")
     assert "3.1" in nums and "9" in nums
+
+
+def test_number_in_an_adjacent_headings_title_still_counts(snap2):
+    # 'Part 2.4' IS the heading after sec.2.18, but its title here carries a 9: only the label's 2.4 leaves the check
+    old = S + ".\nPart 2.4 Standards for 9 metre buildings"
+    nums = mb.numbers_for_check(old, snap2, "sec.2.18")
+    assert "2.4" not in nums and "9" in nums

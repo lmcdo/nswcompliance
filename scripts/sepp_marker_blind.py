@@ -293,19 +293,27 @@ _HEADING_LABEL = re.compile(r"\b(Part|Division|Subdivision|Chapter|Schedule)\s+(
 
 
 def numbers_for_check(old: str, snap: "Snapshot", uid: str) -> set[str]:
-    """Numbers of the row that the chosen unit must hold. A trailing heading is left out only when every heading label
-    in it ('Division 12') is printed in the page between this unit and the next clause AND is not in the unit's own
-    text -- i.e. it is the heading the law prints right after this unit. Otherwise the whole row counts (cross-review 2026-10-17)."""
+    """Numbers of the row that the chosen unit must hold. When the row ends with heading lines whose every label
+    ('Division 12') is printed in the page between this unit and the next clause and not in the unit's own text --
+    the heading the law prints right after this unit -- those LABEL numbers are left out. Every other number,
+    including one in a heading's title, still counts (cross-review 2026-10-17)."""
+    nums = rc.numbers(old)
     body = strip_trailing_headings(old)
     tail = (old or "")[len(body):]
-    if tail:
-        labels = [f"{k} {n}" for k, n in _HEADING_LABEL.findall(tail)]
-        unit_text = re.sub(r"\s+", " ", snap.units[uid].text)
-        gap = snap.gap_after(uid)
-        pat = lambda lab: re.escape(lab) + r"(?![\d.A-Z])"   # noqa: E731
-        if not labels or any(not re.search(pat(lab), gap) or re.search(pat(lab), unit_text) for lab in labels):
-            body = old
-    return rc.numbers(body)
+    if not tail:
+        return nums
+    labels = _HEADING_LABEL.findall(tail)
+    unit_text = re.sub(r"\s+", " ", snap.units[uid].text)
+    gap = snap.gap_after(uid)
+    pat = lambda lab: re.escape(lab) + r"(?![\d.A-Z])"   # noqa: E731
+    if not labels or any(not re.search(pat(f"{k} {n}"), gap) or re.search(pat(f"{k} {n}"), unit_text)
+                         for k, n in labels):
+        return nums
+    # Only the heading LABELS' numbers leave the check; a number in a heading's title (or anywhere else) stays, and
+    # a label number that also occurs in the row's body stays (cross-review 2026-10-17, third pass).
+    body_nums = rc.numbers(body)
+    label_nums = {x for _, n in labels for x in rc.numbers(n)}   # read like the row's numbers ('18A' -> '18')
+    return nums - (label_nums - body_nums)
 
 
 def decide_recopy(old: str, row: list[str], rf: str | None, snap: Snapshot, ignore_ref: bool = False) -> dict:
