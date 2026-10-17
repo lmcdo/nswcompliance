@@ -1801,7 +1801,7 @@
    "note": "Proved live on 17 Etham Avenue Darling Point (1 of 64 B2 rules shown). Cleared by gate rules and precinct keys, never by deleting rows. FIXED 2026-10-17 (#1312): KRG 14G outline loaded; unmapped C-B/KRG/Parramatta area rules are listed as not covered. Probe reads 0."
   },
   "DQ-147": {
-   "declared": "open",
+   "declared": "fixed",
    "check": [
     "python",
     "scripts/dq_probe_live.py",
@@ -1810,7 +1810,7 @@
    ],
    "passes_when": "exit 0 - served council rules with an immediately repeated line (>= 3 words, marker-insensitive) number no more than the ceiling in dq_probe_live.CEILINGS (79).",
    "red_when": "a served council rule reads a line twice in a row. Reads 172 on 2026-10-17 (93 of them Campbelltown rows carrying the PDF's invisible white copy; plan data/campbelltown_visible_text_plan_2026-10-17.json); 79 once that plan is applied.",
-   "note": "Plain repeated-line count, not the visible-page test (too heavy for a probe); it over-counts real repeated table cells (48 rows outside Campbelltown, e.g. Woollahra 240L/100m2 of floor area/day), so it is a ceiling, not a zero. Declared open while the repair is unwritten (red above the ceiling). After scripts/apply_visible_text_repair.py --apply: flip to fixed; lower the ceiling as rows are repaired."
+   "note": "Plain repeated-line count, not the visible-page test (too heavy for a probe); it over-counts real repeated table cells (48 rows outside Campbelltown, e.g. Woollahra 240L/100m2 of floor area/day), so it is a ceiling, not a zero. Applied 2026-10-17: 94 Campbelltown rows rebuilt from the visible text and page-proven (scripts/apply_visible_text_repair.py); measured 79 = ceiling, so declared fixed as a ratchet. Lower the ceiling as rows are repaired; never raise it."
   },
   "OC-21": {
    "kind": "outreach_claim",
