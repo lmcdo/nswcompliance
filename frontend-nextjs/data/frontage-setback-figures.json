@@ -1,0 +1,240 @@
+{
+  "generated": "2026-10-17",
+  "source": "scripts/frontage_setback_figures.py",
+  "council": "ku_ring_gai",
+  "chapters": [
+    {
+      "chapter_key": "section-b-part-14a-st-ives-local-centre",
+      "r2_path": "source-pdfs/dcps/ku_ring_gai/v1.0-baseline/section-b-part-14a-st-ives-local-centre.pdf",
+      "pdf_sha256": "db616271d83b0acc6d3f667f4634cd09f1bcdd187780134712f53bff6e09ed12",
+      "pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/ku_ring_gai/v1.0-baseline/section-b-part-14a-st-ives-local-centre.pdf",
+      "figures": [
+        {
+          "precinct_id": "14A_S1",
+          "page": 10,
+          "figure": "14A.7-2"
+        },
+        {
+          "precinct_id": "14A_S1",
+          "page": 11,
+          "figure": "14A.7-3"
+        },
+        {
+          "precinct_id": "14A_S1",
+          "page": 13,
+          "figure": null
+        },
+        {
+          "precinct_id": "14A_S2",
+          "page": 18,
+          "figure": "14A.8-5"
+        }
+      ]
+    },
+    {
+      "chapter_key": "section-b-part-14b-turramurra-local-centre",
+      "r2_path": "source-pdfs/dcps/ku_ring_gai/v1.0-baseline/section-b-part-14b-turramurra-local-centre.pdf",
+      "pdf_sha256": "016678eb735be916773ef2b10d520213aadc26c6570fa038bd9931fb2a3be95a",
+      "pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/ku_ring_gai/v1.0-baseline/section-b-part-14b-turramurra-local-centre.pdf",
+      "figures": [
+        {
+          "precinct_id": "14B",
+          "page": 7,
+          "figure": "14B.5-1"
+        },
+        {
+          "precinct_id": "14B_T2",
+          "page": 22,
+          "figure": "14B.9-2"
+        },
+        {
+          "precinct_id": "14B_T2",
+          "page": 25,
+          "figure": "14B.9-5"
+        },
+        {
+          "precinct_id": "14B_T2",
+          "page": 26,
+          "figure": "14B.9-6"
+        },
+        {
+          "precinct_id": "14B_T3",
+          "page": 27,
+          "figure": null
+        },
+        {
+          "precinct_id": "14B_T3",
+          "page": 28,
+          "figure": "14B.10-2"
+        },
+        {
+          "precinct_id": "14B_T4",
+          "page": 38,
+          "figure": "14B.11-6"
+        }
+      ]
+    },
+    {
+      "chapter_key": "section-b-part-14c-pymble-local-centre",
+      "r2_path": "source-pdfs/dcps/ku_ring_gai/v1.0-baseline/section-b-part-14c-pymble-local-centre.pdf",
+      "pdf_sha256": "f1ba01f3074b79433a63920c3ce8a07546b331a30bc942ff4e569c5204331fb8",
+      "pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/ku_ring_gai/v1.0-baseline/section-b-part-14c-pymble-local-centre.pdf",
+      "figures": [
+        {
+          "precinct_id": null,
+          "page": 13,
+          "figure": "14C.7-5"
+        }
+      ]
+    },
+    {
+      "chapter_key": "section-b-part-14d-gordon-local-centre",
+      "r2_path": "source-pdfs/dcps/ku_ring_gai/v1.0-baseline/section-b-part-14d-gordon-local-centre.pdf",
+      "pdf_sha256": "a07977d2c4e6b9a029377270635703173080d21089f5306b1d8b92b97d98677b",
+      "pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/ku_ring_gai/v1.0-baseline/section-b-part-14d-gordon-local-centre.pdf",
+      "figures": [
+        {
+          "precinct_id": "14D_G1",
+          "page": 14,
+          "figure": "14D.7-5"
+        },
+        {
+          "precinct_id": "14D_G2",
+          "page": 17,
+          "figure": "14D.8-2"
+        },
+        {
+          "precinct_id": "14D_G3",
+          "page": 23,
+          "figure": "14D.9-2"
+        },
+        {
+          "precinct_id": "14D_G3",
+          "page": 24,
+          "figure": "14D.9-3"
+        },
+        {
+          "precinct_id": "14D_G4",
+          "page": 29,
+          "figure": "14D.10-2"
+        },
+        {
+          "precinct_id": "14D_G5",
+          "page": 35,
+          "figure": null
+        }
+      ]
+    },
+    {
+      "chapter_key": "section-b-part-14e-lindfield-local-centre",
+      "r2_path": "source-pdfs/dcps/ku_ring_gai/v1.0-baseline/section-b-part-14e-lindfield-local-centre.pdf",
+      "pdf_sha256": "94852335b51195327159e6007dc6b2286094e5d63caba23a017aa894735fbf23",
+      "pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/ku_ring_gai/v1.0-baseline/section-b-part-14e-lindfield-local-centre.pdf",
+      "figures": [
+        {
+          "precinct_id": "14E",
+          "page": 7,
+          "figure": null
+        },
+        {
+          "precinct_id": "14E",
+          "page": 9,
+          "figure": "14E.5-1"
+        },
+        {
+          "precinct_id": "14E_L1",
+          "page": 12,
+          "figure": "14E.7-2"
+        },
+        {
+          "precinct_id": "14E_L1",
+          "page": 13,
+          "figure": "14E.7-3"
+        },
+        {
+          "precinct_id": "14E_L1",
+          "page": 15,
+          "figure": "14E.7-5"
+        },
+        {
+          "precinct_id": "14E_L2",
+          "page": 23,
+          "figure": "14E.8-6"
+        },
+        {
+          "precinct_id": "14E_L3",
+          "page": 28,
+          "figure": "14E.9-6"
+        },
+        {
+          "precinct_id": "14E_L4",
+          "page": 34,
+          "figure": null
+        },
+        {
+          "precinct_id": "14E_L6",
+          "page": 56,
+          "figure": null
+        },
+        {
+          "precinct_id": "14E_L6",
+          "page": 59,
+          "figure": null
+        },
+        {
+          "precinct_id": "14E_L6",
+          "page": 61,
+          "figure": null
+        },
+        {
+          "precinct_id": "14E_L6",
+          "page": 64,
+          "figure": null
+        },
+        {
+          "precinct_id": "14E_L7",
+          "page": 66,
+          "figure": null
+        }
+      ]
+    },
+    {
+      "chapter_key": "section-b-part-14f-roseville-local-centre",
+      "r2_path": "source-pdfs/dcps/ku_ring_gai/v1.0-baseline/section-b-part-14f-roseville-local-centre.pdf",
+      "pdf_sha256": "57b869c354530a85017d2a9c077e950520e53a4ff49e490e04963d545301af0e",
+      "pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/ku_ring_gai/v1.0-baseline/section-b-part-14f-roseville-local-centre.pdf",
+      "figures": [
+        {
+          "precinct_id": null,
+          "page": 9,
+          "figure": "14F.7-1"
+        },
+        {
+          "precinct_id": null,
+          "page": 11,
+          "figure": "14F.7-3"
+        },
+        {
+          "precinct_id": null,
+          "page": 16,
+          "figure": "14F.8-2"
+        },
+        {
+          "precinct_id": null,
+          "page": 17,
+          "figure": "14F.8-3"
+        },
+        {
+          "precinct_id": null,
+          "page": 18,
+          "figure": "14F.8-5"
+        },
+        {
+          "precinct_id": null,
+          "page": 21,
+          "figure": null
+        }
+      ]
+    }
+  ]
+}

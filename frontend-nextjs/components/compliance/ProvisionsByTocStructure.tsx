@@ -37,6 +37,8 @@ import { DCPInterestForm } from './DCPInterestForm';
 import { DcpStructuredControls } from './DcpStructuredControls';
 import { DcpLandApplicationNotice } from './DcpLandApplicationNotice';
 import { DcpNotCoveredNotice } from './DcpNotCoveredNotice';
+import { DcpFrontageFigureNotice } from './DcpFrontageFigureNotice';
+import type { FrontageFigureItem } from '@/lib/frontage-setback-figures';
 import type { NotCovered } from '@/lib/not-covered';
 import { type LandApplicationDecision } from '@/lib/dcp-land-application';
 import { buildForPropertyParams } from '@/lib/dcp-provisions-query';
@@ -397,6 +399,7 @@ export function ProvisionsByTocStructure({
       precinct_warning?: boolean;
       land_application?: LandApplicationDecision;
       not_covered?: NotCovered | null;
+      frontage_setback_figures?: FrontageFigureItem[];
       dcp_currency?: {
         verified_at: string | null;
         amendment_pending: boolean;
@@ -2129,6 +2132,7 @@ export function ProvisionsByTocStructure({
       )}
 
       <DcpNotCoveredNotice notCovered={data?.meta?.not_covered} />
+      <DcpFrontageFigureNotice items={data?.meta?.frontage_setback_figures} />
 
       {landApplication?.status === 'partial' && (
         <DcpLandApplicationNotice decision={landApplication} />
