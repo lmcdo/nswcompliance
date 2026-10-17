@@ -27,6 +27,7 @@ No page -> `not_found`. Fewer than MIN_WORDS words -> `too_short`.
 from __future__ import annotations
 
 import hashlib
+from collections import Counter
 import re
 import unicodedata
 
@@ -312,6 +313,19 @@ def has_label(label: str, texts: dict) -> bool:
     return any(pat.search(t) for t in texts.values())
 
 
+def _number_runs(words: str) -> list:
+    """Every multi-part number of `words`, once per occurrence ('1 5m', '3 2 4')."""
+    out, run = [], []
+    for w in words.split() + [""]:
+        if w[:1].isdigit():
+            run.append(w)
+        else:
+            if len(run) > 1:
+                out.append(" ".join(run))
+            run = []
+    return out
+
+
 def number_phrases(words: str) -> list:
     """Every number of `words` as the phrase normalise() leaves it in: '1.5m' -> '1 5m', '3.2.4' -> '3 2 4'. A bag of
     words loses these ('2.5m' would pass on a page printing '2' and '1.5m'), so each must be printed whole."""
@@ -330,16 +344,47 @@ def phrase_on_page(phrase: str, texts: dict, streams: list) -> bool:
     return any(find_span(t, phrase) for t in texts.values()) or any(find_span(st[3], phrase) for st in streams)
 
 
+def word_counts(texts: dict, streams: list) -> Counter:
+    """How often the page prints each word: the most any one reading of it gives (both reading orders hold the same
+    words, so they are not added), plus words only a table cell reading holds."""
+    best = Counter()
+    for t in texts.values():
+        best |= Counter(t.split())
+    cells = Counter()
+    for st in streams:
+        cells |= Counter(st[3].split())
+    return best | cells
+
+
+def phrase_count(phrase: str, texts: dict) -> int:
+    return max((len(find_span(t, phrase)) for t in texts.values()), default=0)
+
+
 def bag_ok(words: str, texts: dict, streams: list) -> bool:
-    """Every distinct word of `words` is printed on the page, and every multi-part number is printed whole."""
-    return (set(words.split()) <= page_words(texts, streams)
-            and all(phrase_on_page(ph, texts, streams) for ph in number_phrases(words)))
+    """Every word of `words` is printed on the page at least as often as the rule uses it, and every multi-part number
+    is printed whole as often (cross-review 2026-10-18: a set lost '6m' needed twice). Which cell goes with which is
+    NOT checked -- the accepted limit of this fallback (user 2026-10-18)."""
+    have = word_counts(texts, streams)
+    if Counter(words.split()) - have:
+        return False
+    need = Counter(ph for ph in _number_runs(words))
+    return all(max(phrase_count(ph, texts), int(phrase_on_page(ph, {}, streams))) >= n for ph, n in need.items())
 
 
 def bag_pages(words: str, labels: list, pages: dict) -> list:
     """Pages printing every distinct word of `words` (numbers whole) and at least one of `labels`."""
     return sorted(p for p, (texts, streams) in pages.items()
                   if bag_ok(words, texts, streams) and any(has_label(lb, texts) for lb in labels))
+
+
+def pick_page(hits: list, held=None, primary=None):
+    """One page of `hits`, or None: the only hit; else the row's stored page when it is a hit; else the one held hit."""
+    if len(hits) == 1:
+        return hits[0]
+    both = sorted(set(held or ()) & set(hits))
+    if primary in both:
+        return primary
+    return both[0] if len(both) == 1 else None
 
 
 def prove_fallback(provision_text: str | None, pages: dict, held=None, primary=None):
@@ -363,16 +408,9 @@ def prove_fallback(provision_text: str | None, pages: dict, held=None, primary=N
     hits = bag_pages(words, labels, pages)
     if not hits:
         return "not_found", None, {"pages": []}
-    if len(hits) > 1:
-        both = sorted(set(held or ()) & set(hits))
-        if primary in both:
-            pno = primary
-        elif len(both) == 1:
-            pno = both[0]
-        else:
-            return "unresolved", None, {"pages": hits, "reason": "every word and the label on several pages"}
-    else:
-        (pno,) = hits
+    pno = pick_page(hits, held, primary)
+    if pno is None:
+        return "unresolved", None, {"pages": hits, "reason": "every word and the label on several pages"}
     texts = pages[pno][0]
     ev = {"matcher": "all-words+label", "page": pno, "all_pages": hits, "span": words, "start": 0, "end": len(words),
           "labels": [lb for lb in labels if has_label(lb, texts)], "row_labels": labels, "fallback": "all_words_label",

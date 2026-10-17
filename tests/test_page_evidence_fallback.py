@@ -121,3 +121,29 @@ def test_verifier_rejects_a_changed_number(tmp_path):
     bad["span"] = ev["span"].replace("1 5m", "2 5m")
     bad["end"] = len(bad["span"])
     assert any("whole number" in b or "span_sha256" in b for b in vpe.check_evidence(bad, page_of(f, 2)))
+
+
+def test_a_word_needed_twice_must_be_printed_twice(tmp_path):
+    # cross-review 2026-10-18 (Sol, HIGH): a set of words lost multiplicity
+    f = tmp_path / "a.pdf"
+    make_pdf(f, [("text", ["C9 front setback 6m rear setback side boundary garage door width"])])
+    once = "# 4.1 Setbacks\n\nC9 front setback 6m rear setback side boundary garage door width"
+    twice = "# 4.1 Setbacks\n\nC9 front setback 6m rear setback 6m side boundary garage door width"
+    assert pe.prove_fallback(once, read(f))[0] == "proven"
+    assert pe.prove_fallback(twice, read(f))[0] == "not_found"
+
+
+def test_verifier_re_makes_the_page_choice(tmp_path):
+    # cross-review 2026-10-18 (Sol, MEDIUM): with two matching pages the stored page wins, never another held one
+    f = tmp_path / "a.pdf"
+    line = "C9 front setback 6m rear setback side boundary garage door width"
+    jumbled = "width door garage boundary side setback rear 6m setback front C9"   # every word, no span: bag rule only
+    make_pdf(f, [("text", [jumbled]), ("text", [jumbled])])
+    pages = read(f)
+    row = "# 4.1 Setbacks\n\n" + line
+    v, ev, _ = pe.prove_fallback(row, pages, held={1, 2}, primary=1)
+    assert v == "proven" and ev["page"] == 1 and ev["matcher"] == "all-words+label"
+    assert vpe.check_uniqueness(ev, {"pdf_page": 1, "page_range": [1, 2]}, "on_page", pages) == []
+    stale = copy.deepcopy(ev)
+    stale["page"] = 2
+    assert vpe.check_uniqueness(stale, {"pdf_page": 1, "page_range": [1, 2]}, "on_page", pages)

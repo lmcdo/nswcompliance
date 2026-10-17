@@ -109,8 +109,11 @@ def check_uniqueness(ev: dict, old: dict, verdict: str, pages: dict) -> list:
     held = set(old.get("page_range") or []) | {old.get("pdf_page")}
     if ev.get("matcher") == "all-words+label":   # re-derive the candidate pages from the PDF with the row's labels
         hits = pe.bag_pages(ev["span"], ev.get("row_labels") or [], pages)
-        if hits != ev["all_pages"] or ev["page"] not in hits or (len(hits) > 1 and ev["page"] not in held):
+        if hits != ev["all_pages"]:
             return [f"every-word+label pages now {hits}, recorded {ev['all_pages']}"]
+        pick = pe.pick_page(hits, held, old.get("pdf_page"))   # the planner's own choice, re-made (cross-review)
+        if pick != ev["page"]:
+            return [f"every-word+label picks page {pick}, recorded {ev['page']}"]
         return []
     v, ev2, info = pe.prove(ev["span"], pages, held, old.get("pdf_page"), ev.get("by_heading"))
     if v != "proven" or ev2["page"] != ev["page"] or info["pages"] != ev["all_pages"]             or ev2.get("by_heading") != ev.get("by_heading"):
