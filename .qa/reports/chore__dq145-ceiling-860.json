@@ -1,0 +1,70 @@
+{
+  "tier": "standard",
+  "justification": "Lower the OC-20 DQ-145 ratchet ceiling from 911 to 860 after 8 shared-page council proofs (#1320) and 43 state-law rows (#1321) were applied live on 2026-10-17. Measured by python scripts/dq_probe_live.py --id DQ-145 = 860.",
+  "commit_hash": "cbcc880e",
+  "files": [
+    "scripts/outreach_claim_checks.py",
+    ".claude/dq_checks.json"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_outreach_claim_checks_oc20.py && python scripts/outreach_claim_checks.py OC-20",
+    "fails_when": "DQ-145 exceeds 860, any citation test fails (a card stops rendering the mark, the server flag drifts from DQ-145, a clause shows unproven), or the DQ-145 query breaks",
+    "observed_red": "Mutating the ratchet from <= to < made test_at_ceiling_passes fail (1 failed, 6 passed); restored, 7 passed."
+  },
+  "real_layer_exempt": {
+    "scripts/outreach_claim_checks.py": "the ratchet runs the DQ-145 probe SQL unchanged; unit tests use a fake connection and assert the exact SQL and params are passed; the live run read 860 after the #1320/#1321 apply"
+  },
+  "pre_impl": {
+    "existing_data": "DQ-145 probe SQL in scripts/dq_probe_live.PROBES; jest_file and pytest_files helpers already run OC-9's tests",
+    "assumption_mismatch": "none found: the probe SQL and helper signatures matched what the check needs",
+    "new_vs_existing": "reuses the probe SQL and the existing helpers; adds one ratchet function"
+  },
+  "functions": [
+    {
+      "name": "unproven_citations_only_fall",
+      "file_line": "scripts/outreach_claim_checks.py",
+      "input": "a live database connection from dq_db.connect, or None when unreachable",
+      "output": "PASS when DQ-145 <= DQ145_CEILING",
+      "if_none": "UNKNOWN when the DB is unreachable; FAIL when the query errors"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ145_CEILING = 860",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-17 after both applies",
+      "if_missing": "n/a (constant)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "the database cannot be reached from where the gate runs",
+      "what_happens": "the ratchet reports UNKNOWN and the claim is not verified, never PASS",
+      "mitigated": true,
+      "how": "_connect None -> UNKNOWN",
+      "repro": "test_no_database_is_unknown_not_pass"
+    },
+    {
+      "scenario": "probe SQL references a dropped column",
+      "what_happens": "the ratchet reports FAIL with the query error in its detail line",
+      "mitigated": true,
+      "how": "exception -> FAIL",
+      "repro": "test_broken_query_fails"
+    },
+    {
+      "scenario": "a jest path is renamed",
+      "what_happens": "jest exits non-zero (no tests found) -> FAIL",
+      "mitigated": true,
+      "how": "jest_file maps rc != 0 to FAIL",
+      "repro": "rename a listed test file"
+    }
+  ],
+  "mutation_analysis": "Changing <= to < in the ratchet fails test_at_ceiling_passes. Removing the ratchet from CLAIMS fails test_oc20_is_wired_with_all_three_parts.",
+  "residual_risk": "The badge inventory checks each file, not each citation expression: a component with one badge and a second bare citation passes (Sol, 2026-10-17). Hard-wired checked={false} cards always show the mark. The ceiling must be lowered by hand after each proof pass.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "python scripts/dq_check.py --outreach on main prints 21 of 21"
+  }
+}
