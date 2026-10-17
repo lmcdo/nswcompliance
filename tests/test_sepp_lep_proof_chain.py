@@ -38,6 +38,22 @@ def test_excerpt_is_recopied_as_the_whole_clause(snap):
     assert snap.units[d["unit"]].text.strip().endswith("lot boundary.")
 
 
+def test_excerpt_under_another_clauses_label_is_refused_not_moved(snap):
+    # cross-review 2026-10-18: words of 5.21 under the label 4.3 must never be re-copied as 5.21
+    row = " ".join(HEAD.split()[:12])
+    stage, d = lp.decide_chain(row, "4.3", snap)
+    assert d["verdict"] == "refuse"   # marker-blind: ref_mismatch -> ref_fix refuses it (excerpt); never a recopy
+
+
+def test_chosen_clause_outside_the_excerpts_line_is_refused(snap, monkeypatch):
+    # the guard itself: if the words ever pick a clause unrelated to the excerpt's unit, refuse instead of moving the row
+    row = " ".join(HEAD.split()[:12])
+    monkeypatch.setattr(lp.cu, "decide_smallest_unit",
+                        lambda *a, **k: {"verdict": "recopy", "unit": "sec.4.3", "n_words": 12})
+    stage, d = lp.decide_chain(row, "5.21", snap)
+    assert stage == "complete_unit" and d["verdict"] == "refuse" and d["reason"] == "ref_mismatch"
+
+
 def test_row_marker_blind_settles_stays_with_marker_blind(snap):
     # the clause body without its heading words: marker-blind settles it itself (unit within 3x), unchanged path
     stage, d = lp.decide_chain(SHORT, "4.3", snap)
