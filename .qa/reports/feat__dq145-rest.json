@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: deterministic proof/plan code for served law citations (DQ-145), a publish-time DB gate and an extractor fix used for every council. This PR makes no live write; every plan is a dry run checked by its own re-deriving verifier. Not Critical: no production data changes here; the migration and plans are applied separately with backups.",
- "commit_hash": "781802fa",
+ "commit_hash": "05ae0580",
  "files": [
   "scripts/same_place_duplicates.py",
   "scripts/sepp_complete_unit.py",
@@ -88,6 +88,11 @@
   }
  ],
  "values": [
+  {
+   "value": "DQ145_CEILING = 270",
+   "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-17 after the writes (291 -> 270); DQ-108 0; outreach 21 of 21",
+   "if_missing": "n/a (constant)"
+  },
   {
    "value": "MAX_WORDS_WHOLE = 1500",
    "read_at": "largest of the 6 refused clauses is 1,398 words (sec.2.82)",
