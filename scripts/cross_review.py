@@ -643,7 +643,8 @@ def main() -> None:
     fresh = [f for f in findings if finding_key(f) not in known]
     repeats = [f for f in findings if finding_key(f) in known]
 
-    render(fresh, args.model)
+    used = sol_common.LAST_MODEL or args.model   # the model that answered (a fallback says so in the report)
+    render(fresh, used)
     if repeats:
         print(f"\n{len(repeats)} finding(s) already adjudicated on this branch "
               f"(reported, not gating):")
@@ -660,7 +661,7 @@ def main() -> None:
               "being repeated is not evidence either way.")
 
     if args.out:
-        args.out.write_text(json.dumps({"model": args.model, "findings": findings}, indent=2), encoding="utf-8")
+        args.out.write_text(json.dumps({"model": used, "findings": findings}, indent=2), encoding="utf-8")
         print(f"Report written to {args.out}")
 
     # Which findings would gate — computed BEFORE the record is written, because
