@@ -112,7 +112,8 @@ def heading_pages(heading: str, pages: dict, hits: dict) -> list:
     out = []
     for pno in hits:
         texts = pages[pno][0]
-        top = " ".join(texts.get("sorted", texts.get("raw", "")).split()[:HEADING_TOP_WORDS])
+        words = (texts.get("sorted") or texts.get("raw") or "").split()
+        top = " ".join(words[:HEADING_TOP_WORDS])
         if any(not _REFERENCE_WORD.search(top[:h.start()]) for h in pat.finditer(top)):
             out.append(pno)
     return sorted(out)

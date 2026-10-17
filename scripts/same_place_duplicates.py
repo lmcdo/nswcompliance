@@ -31,7 +31,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from state_law_proof import connect  # noqa: E402
 
-SERVED = "is_current AND v2_is_actionable AND (v2_provision_type IS NULL OR v2_provision_type <> 'TOC')"
 PROVEN = ("(COALESCE(citation_status, '') IN ('proven', 'imprecise') "
           "OR COALESCE(page_check, '') IN ('on_page', 'moved'))")
 CLAUSE_SHAPED = re.compile(r"^\s*(clause|section|schedule)?\s*\d", re.I)
@@ -89,7 +88,8 @@ def main() -> int:
     cur.execute(f"""SELECT id, document_id, source_council, ref_number, provision_text, pdf_page, {PROVEN},
         v2_precinct_id, v2_applicable_zones::text, v2_applicable_dev_types::text, v2_site_condition_required::text,
         v2_land_condition::text, v2_heritage_hca, v2_heritage_type, v2_heritage_element
-        FROM regulatory_provisions WHERE {SERVED}""")
+        FROM regulatory_provisions
+        WHERE is_current AND v2_is_actionable AND (v2_provision_type IS NULL OR v2_provision_type <> 'TOC')""")
     rows = [{"id": r[0], "document_id": r[1], "council": r[2], "ref": r[3], "text": r[4], "page": r[5],
              "proven": r[6], "key": tuple(r[7:])} for r in cur.fetchall()]
     groups = same_place_groups(rows)

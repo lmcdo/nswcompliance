@@ -62,8 +62,8 @@ def main() -> int:
             fh.write(json.dumps(rec) + "\n")
             fh.flush()
             tot["pdfs"] += 1
-            tot["with_doubled"] += rec.get("doubled", 0) > 0
-            tot["with_doubled_over_1pct"] += rec.get("doubled", 0) > 0.01 * max(rec.get("chars", 0), 1)
+            tot["with_doubled"] += (rec.get("doubled") or 0) > 0
+            tot["with_doubled_over_1pct"] += (rec.get("doubled") or 0) > 0.01 * max(rec.get("chars") or 0, 1)
             tot["errors"] += "error" in rec
             print(f"{tot['pdfs']}/{len(todo)} {council} {path.rsplit('/', 1)[-1]} "
                   f"chars={rec.get('chars')} doubled={rec.get('doubled')}", flush=True)
