@@ -97,6 +97,8 @@ def judge_pdf(args):
         words = pe.rule_words(r["provision_text"])
         held = set(r["page_range"] or []) | {r["pdf_page"]}
         v, ev, info = pe.prove(words, pages, held, r["pdf_page"], pe.row_heading(r["provision_text"]))
+        if v in ("not_found", "too_short"):   # DQ-145 fallbacks (user 2026-10-18): whole text, or every word + own label
+            v, ev, info = pe.prove_fallback(r["provision_text"], pages, held, r["pdf_page"])
         res = {"id": r["id"], "words": len(words.split()), "pages": info.get("pages")}
         if v != "proven":
             res["verdict"] = v

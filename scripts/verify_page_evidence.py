@@ -45,6 +45,21 @@ def check_evidence(ev: dict, page, words_sha: str | None = None) -> list:
     s, e = ev.get("start"), ev.get("end")
     if not isinstance(s, int) or not isinstance(e, int) or e - s != len(span):
         return bad + ["start/end do not frame the span"]
+    combo = {None: ("text-run", "table-cells"), "full_text": ("text-run", "table-cells"),
+             "all_words_label": ("all-words+label",)}
+    if ev.get("fallback") not in combo or ev.get("matcher") not in combo[ev.get("fallback")]             or (ev.get("matcher") == "all-words+label" and ev.get("fallback") != "all_words_label"):
+        return bad + [f"matcher {ev.get('matcher')!r} does not go with fallback {ev.get('fallback')!r}"]
+    if ev.get("matcher") == "all-words+label":   # fallback (user 2026-10-18): every word + the rule's own label
+        texts = pe.page_texts(page)
+        if len(span.split()) < pe.MIN_WORDS_BAG:
+            bad.append("span shorter than MIN_WORDS_BAG")
+        if not pe.bag_ok(span, texts, pe.prepare(pe.page_tables(page)), ev.get("row_labels") or ()):
+            bad.append("a word or whole number of the span is not printed on the page")
+        if not ev.get("labels") or not all(pe.has_label(lb, texts) for lb in ev["labels"])                 or not set(ev["labels"]) <= set(ev.get("row_labels") or ()):
+            bad.append("the rule's own label is not printed on the page")
+        if not pe.table_or_figure(span, ev.get("row_labels") or [], pe.prepare(pe.page_tables(page))):
+            bad.append("every-word proof used for prose: only tables and figures may use it")
+        return bad
     if ev.get("matcher") == "text-run":
         if ev.get("order") not in pe.ORDERS:
             return bad + ["unknown reading order"]
@@ -98,6 +113,14 @@ def check_uniqueness(ev: dict, old: dict, verdict: str, pages: dict) -> list:
             return [f"span now {v} on pages {info.get('pages')}"]
         return []
     held = set(old.get("page_range") or []) | {old.get("pdf_page")}
+    if ev.get("matcher") == "all-words+label":   # re-derive the candidate pages from the PDF with the row's labels
+        hits = pe.bag_pages(ev["span"], ev.get("row_labels") or [], pages)
+        if hits != ev["all_pages"]:
+            return [f"every-word+label pages now {hits}, recorded {ev['all_pages']}"]
+        pick = pe.pick_page(hits, held, old.get("pdf_page"))   # the planner's own choice, re-made (cross-review)
+        if pick != ev["page"]:
+            return [f"every-word+label picks page {pick}, recorded {ev['page']}"]
+        return []
     v, ev2, info = pe.prove(ev["span"], pages, held, old.get("pdf_page"), ev.get("by_heading"))
     if v != "proven" or ev2["page"] != ev["page"] or info["pages"] != ev["all_pages"]             or ev2.get("by_heading") != ev.get("by_heading"):
         return [f"span now {v} on pages {info.get('pages')}, recorded all_pages {ev['all_pages']}"]
@@ -193,8 +216,16 @@ def main() -> int:
                 m, t = texts.get(rec["id"], (None, None))
                 if m != rec["provision_text_md5"]:
                     bad.append("provision_text changed since the proof (md5)")
+                elif ev.get("fallback") == "full_text":
+                    full, body = pe.full_text_words(t).split(), pe.rule_words(t).split()
+                    k = ev.get("dropped_head_words")
+                    if (not isinstance(k, int) or k < 0 or k > len(full) - len(body)
+                            or " ".join(full[k:]) != ev["span"] or pe.OPERATIVE_WORDS & set(full[:k])):
+                        bad.append("full-text span is not the row's text minus leading heading words")
                 elif pe.rule_words(t) != ev["span"]:
                     bad.append("rule words differ from the evidence span")
+                if ev.get("matcher") == "all-words+label" and pe.row_labels(t) != ev.get("row_labels"):
+                    bad.append("row_labels are not the row's own labels")
                 elif ev.get("by_heading") and pe.row_heading(t) != ev["by_heading"]:
                     bad.append("by_heading is not the row's own section number")
                 if len(ev.get("all_pages") or ()) > 1:

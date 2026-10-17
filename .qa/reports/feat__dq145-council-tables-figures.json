@@ -1,0 +1,92 @@
+{
+  "tier": "standard",
+  "justification": "DQ-145 116 -> 103: 26 unchecked council rows. Two page-proof fallbacks tried only after the exact-span proof fails (user yes 2026-10-18): full_text (whole row text, dropping only leading heading words, exact span on one page) and all_words_label (every word as often as used, whole numbers, values in the same order in one reading, and the rule's own Table/Figure/control label on the page). Applied live 12; Sol passes and the user's table/figure-only decision undid 8 (guarded, backed up): 4 remain (3 exact full_text, 1 figure), verifier 4/4. DQ-145 107. 5 Canterbury-Bankstown figure-label rows withheld.",
+  "commit_hash": "56354f08",
+  "files": [
+    "scripts/page_evidence.py",
+    "scripts/page_proof_council.py",
+    "scripts/verify_page_evidence.py",
+    "scripts/outreach_claim_checks.py",
+    "tests/test_page_evidence_fallback.py",
+    "data/page_evidence_2026-10-18_council_fallback.jsonl",
+    "data/cb_figure_label_rows_withheld_2026-10-18.json"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_page_evidence_fallback.py tests/test_page_evidence.py tests/test_page_proof_gate_dq101.py tests/test_outreach_claim_checks_oc20.py",
+    "fails_when": "a fallback proves a missing label, a changed number, a word used more often than printed, swapped values, a body word dropped, or the verifier accepts another page or a tampered label/number; or DQ-145 exceeds 103",
+    "observed_red": "Each guard disabled in turn failed a test: whole-number, label (planner and verifier), body-word drop, multiplicity, value order, verifier uniqueness, verifier page pick. 'label not required' is an equivalent mutant (any([]) is False). Restored: 52 passed."
+  },
+  "real_layer_exempt": {
+    "scripts/page_evidence.py": "pure over PDF pages; live plan verified 8/8 against pinned PDFs with --db",
+    "scripts/page_proof_council.py": "read-only planner; live run",
+    "scripts/verify_page_evidence.py": "live run 8/8",
+    "scripts/outreach_claim_checks.py": "constant; outreach 21/21 at 103"
+  },
+  "pre_impl": {
+    "existing_data": "26 council DQ-145 rows; prior verdicts unresolved/not_found/too_short from the exact-span and locator checkers",
+    "assumption_mismatch": "Parramatta C.09 rows are distinct items, not duplicates; three Sol passes showed a page-wide word bag needs counts and value order",
+    "new_vs_existing": "extends page_evidence with fallbacks; reuses page_proof_council, verify_page_evidence, apply_page_evidence (migration 079 columns)"
+  },
+  "functions": [
+    {
+      "name": "prove_fallback",
+      "file_line": "scripts/page_evidence.py",
+      "input": "row text, PDF pages, held pages, stored page",
+      "output": "proven evidence (full_text span or all-words+label) on one page, or unresolved / not_found with the reason",
+      "if_none": "no label or under 10 words -> not_found; several pages without the stored one -> unresolved"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ145_CEILING = 107",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-18 after the table/figure limit and reverts",
+      "if_missing": "n/a (constant)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a page prints the same values swapped between two fields",
+      "what_happens": "refused by the value-order check, as Hornsby 247979 was live",
+      "mitigated": true,
+      "how": "numbers_in_order over text and table readings",
+      "repro": "test_swapped_values_are_not_proven"
+    },
+    {
+      "scenario": "a word or number needed more often than the page prints it",
+      "what_happens": "refused by the count check, as Canterbury-Bankstown 58, 61, 62 were live",
+      "mitigated": true,
+      "how": "Counter containment",
+      "repro": "test_a_word_needed_twice_must_be_printed_twice"
+    },
+    {
+      "scenario": "a 'not' or condition placed differently on the page (Sol, third pass)",
+      "what_happens": "NOT detected by the every-word rule; accepted limit of the user-approved fallback, applies to 5 rows",
+      "mitigated": false,
+      "how": "open: user decides whether prose rows may use it",
+      "repro": "Sol report 2026-10-18 third pass"
+    },
+    {
+      "scenario": "the label is not printed on the page",
+      "what_happens": "the planner refuses and the verifier rejects",
+      "mitigated": true,
+      "how": "has_label in planner and verifier",
+      "repro": "test_every_word_without_the_label_is_not_proven"
+    },
+    {
+      "scenario": "the full-text rule drops heading words that say must not",
+      "what_happens": "refused: dropped words may never include an operative word, in planner and verifier",
+      "mitigated": true,
+      "how": "OPERATIVE_WORDS",
+      "repro": "test_full_text_never_drops_a_word_that_changes_the_rule"
+    }
+  ],
+  "mutation_analysis": "Changing <= to < in the ratchet fails test_at_ceiling_passes. Removing the ratchet from CLAIMS fails test_oc20_is_wired_with_all_three_parts.",
+  "residual_risk": "The badge inventory checks each file, not each citation expression: a component with one badge and a second bare citation passes (Sol, 2026-10-17). Hard-wired checked={false} cards always show the mark. The ceiling must be lowered by hand after each proof pass.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "python scripts/dq_check.py --outreach on main prints 21 of 21"
+  }
+}
