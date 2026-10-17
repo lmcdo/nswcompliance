@@ -1,7 +1,7 @@
 {
   "tier": "standard",
-  "justification": "DQ-145 116 -> 103: 26 unchecked council rows. Two page-proof fallbacks tried only after the exact-span proof fails (user yes 2026-10-18): full_text (whole row text, dropping only leading heading words, exact span on one page) and all_words_label (every word as often as used, whole numbers, values in the same order in one reading, and the rule's own Table/Figure/control label on the page). Applied live 12, then three Sol passes tightened the rule (multiplicity, page choice, value order) and 4 proofs that failed the stricter rule were reverted (guarded, backed up): 8 remain (3 full_text, 5 all_words_label), verifier 8/8. 5 Canterbury-Bankstown figure-label rows withheld. Parramatta C.09 items left marked (distinct rules, not duplicates).",
-  "commit_hash": "a9ad4eed",
+  "justification": "DQ-145 116 -> 103: 26 unchecked council rows. Two page-proof fallbacks tried only after the exact-span proof fails (user yes 2026-10-18): full_text (whole row text, dropping only leading heading words, exact span on one page) and all_words_label (every word as often as used, whole numbers, values in the same order in one reading, and the rule's own Table/Figure/control label on the page). Applied live 12; Sol passes and the user's table/figure-only decision undid 8 (guarded, backed up): 4 remain (3 exact full_text, 1 figure), verifier 4/4. DQ-145 107. 5 Canterbury-Bankstown figure-label rows withheld.",
+  "commit_hash": "56354f08",
   "files": [
     "scripts/page_evidence.py",
     "scripts/page_proof_council.py",
@@ -38,8 +38,8 @@
   ],
   "values": [
     {
-      "value": "DQ145_CEILING = 103",
-      "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-18 after the reverts",
+      "value": "DQ145_CEILING = 107",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-18 after the table/figure limit and reverts",
       "if_missing": "n/a (constant)"
     }
   ],
