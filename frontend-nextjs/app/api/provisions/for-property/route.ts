@@ -28,6 +28,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { getNotCovered } from '@/lib/not-covered';
+import frontageData from '@/data/frontage-setback-figures.json';
+import { loadFrontageSetbackFigures, type FrontageFigureData } from '@/lib/frontage-setback-figures';
 import { NOT_HERITAGE_SQL, ZONE_APPLIES_SQL, hcaTagSql } from '@/lib/provision-sql-filters';
 import { councilKey } from '@/lib/council-key';
 import { expandDevTypeHierarchy, expandDevTypeHierarchyMulti } from '@/lib/see/devTypeHierarchy';
@@ -631,6 +633,14 @@ export async function GET(request: NextRequest) {
       } : undefined;
 
       // Cache for 5 minutes on edge, 1 minute stale-while-revalidate
+      // Built-form figures that show upper-level setbacks for this address's centre (KRG); [] on any failure.
+      const frontageFigures = await loadFrontageSetbackFigures(
+        (sql, params) => client.query(sql, params),
+        frontageData as FrontageFigureData,
+        councilKey(filters.former_council),
+        filters.precinct_id,
+      );
+
       const response = NextResponse.json({
         success: true,
         data: {
@@ -664,6 +674,8 @@ export async function GET(request: NextRequest) {
           land_application: landApplication,
           land_conditions: landGate,
           not_covered: getNotCovered(filters.former_council),
+          frontage_setback_figures: frontageFigures.items,
+          frontage_setback_figures_failed: frontageFigures.failed,
         }
       });
       // Temporarily disabled cache for debugging duplicates issue
