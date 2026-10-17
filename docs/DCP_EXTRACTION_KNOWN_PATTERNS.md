@@ -232,6 +232,8 @@ WHERE former_council = 'marrickville'
 
 ### §7b — Different document_id format families (silent parallel datasets)
 
+> **Also for state law (2026-10-18):** every SEPP was stored 2–3 times, all live — see §11.4.
+
 **What it looks like:**
 
 Two extractions of the same DCP exist simultaneously, both `is_current=TRUE`, using completely different `document_id` naming conventions:
@@ -655,3 +657,90 @@ would silently un-key it). As of 2026-07-29:
 **The gate:** a council with boundaries but no rule shows the honest "site-specific rules may
 exist" warning and never serves wrong-area data — but it must not be re-extracted until its
 rule exists, or its keys vanish. Adding the rule is part of onboarding, not an afterthought.
+
+---
+
+## §11 — Lessons from the DQ-145 clean-up, 2026-10-17/18 (unchecked citations 270 → 116)
+
+Every item below was measured on live data. Each ends with what to do on a **new** council or a
+**re-extraction**. DQ-145 = served rules whose clause number or page no script has proven
+(`python scripts/dq_probe_live.py --id DQ-145`).
+
+### §11.1 — Duplicate PDF text ("doubled glyphs": `Thhee`)
+- **What:** some PDFs print every line twice — a hidden second copy under the visible one. The
+  extracted text doubles letters (`Thhee ccoouunncciill`) or repeats whole lines.
+- **Root cause:** in pdfplumber BOTH copies are black fills (only the stroke differs), so a colour
+  filter does nothing. `page.dedupe_chars(tolerance=1)` removes the copy (now in the extractor).
+- **How big (fleet scan 2026-10-18, 236 PDFs):** 58 have some, 19 over 1% — Campbelltown Part 3
+  (30%) and Part 4 (3.3%); Ku-ring-gai Section B Part 14 local centres/sites ×13 (1.0–5.9%);
+  City of Sydney sections 1, 2, 6 and schedules (1.1–2.7%). File: `data/doubled_chars_fleet_2026-10-18.jsonl`.
+- **Do:** run `python scripts/measure_doubled_chars.py` on every new PDF before extraction. Over 1%
+  → re-read that chapter through the pipeline (`--review`) after the dedupe fix. Never page-prove
+  text that still holds doubled lines (Campbelltown's 28 rows were proven on a page, text still bad).
+- **Known blocker:** the reader drops a two-column page (Campbelltown Part 3 p41) and the
+  PageLoss guard refuses the re-read. Do not override the guard; fix the page reading.
+
+### §11.2 — Orphaned old extractions (no council, placeholder labels)
+- **What:** 60 rows from a 2025-10-13 mineru run (`LE9962_1` = Leichhardt App. D, 33;
+  `Chapter_E2_Haberfield_Neighbourhood`, 27) had `source_council` NULL, no precinct and labels
+  `provision_49`. No address route could return them, yet they counted as served, and the
+  state-law tool skipped them (they looked like state law because the council was NULL).
+- **Do on re-extraction:** when a chapter gets a new council-scoped copy, switch the old copy off
+  in the same change (`withhold_state_paraphrase.py --list`, never delete). Check:
+  current + actionable rows whose `source_council` is NULL and whose document is not a state instrument.
+
+### §11.3 — Placeholder labels (`provision_1942`)
+- A row stored with a placeholder label can never show a clause number; the site falls back to a
+  page. Plan the real label (from the law's own numbering) at extraction, not after.
+
+### §11.4 — The same law stored more than once (state SEPPs)
+- **What:** all 9 SEPPs were stored 2–3 times (whole document "plain" name, whole document with
+  brackets, and per-section `_section_N`), every copy live. Address pages read only the plain copy.
+  1,273 rows in the extra copies were switched off 2026-10-18 (`data/sepp_extra_copies_switch_off_2026-10-18.json`).
+- **Not plain duplicates:** 505 of those 1,273 had under 80% of their words in the main copy (e.g.
+  food business, farm stay, archaeology). They are kept (switched off, not deleted).
+- **Do on any update:** ONE live copy per instrument. Before loading a new extraction, decide which
+  copy pages read, list what exists only in the other copy, bring needed rules across, then switch
+  the old copy off. Open job: bring any of the 505 that an address page needs into the main copy.
+
+### §11.5 — Excerpts (a clause cut short)
+- **What:** the extractor stores part of a clause. Fix = re-copy the smallest complete clause from
+  the law text (`scripts/sepp_complete_unit.py`; Inner West via `sepp_lep_proof.py`).
+- **Trap:** the re-copy tool selected rows only by refusal `reason`; excerpts carry the real cause
+  in `detail`, so they were never tried. When feeding a tool from a refusal file, read reason AND detail.
+- **Trap:** a whole clause may already be served as another row → the applier refuses the
+  duplicate; withhold the excerpt instead (Inner West 8590 → 8761, 9347 → 22891).
+
+### §11.6 — OCR damage inside law text
+- Seen: maths junk (`{ \cdot } 50 00 L` for 5,000 L, `\operatorname`), `Om` for `0m`,
+  `Of -street`, a definition with its middle dropped, schedule tables with cells re-ordered.
+- Stripping the junk alone fixed 0 of 17 (measured). Do not edit numbers by hand: re-copy from the
+  law text, and keep the rule that every number in the row must be in the clause.
+- Tables and definitions need a table-aware / definition-aware reader (open job, ~11 rows).
+
+### §11.7 — The same standard printed in several codes
+- The Codes SEPP prints many standards word for word in several codes (Housing 3, Rural 3A, Low
+  Rise 3B, Greenfield 3C, Inland 3D, schedules). Never pick one code.
+- Identical everywhere → cite every place: `Section 3.29(3); same words in 3C.32(3)`.
+- The page shows the row under one code (its `v2_part`) → decide only inside that code
+  (`sepp_complete_unit.py --page-code`); several places must each print the same standard, and the
+  label names them all (`Section 3.16(2); same words in 3.23(1)`). Places that differ → refuse.
+- Only 2 of 89 such rows reached an address; a code-applicability build was deferred for that reason.
+
+### §11.8 — The same rule twice on one page
+- Two rows from different subclauses with the same standard (carport tab: 37145 and 37202) →
+  show it once, citing every place, and withhold the second row.
+
+### §11.9 — Measure what a person can see before fixing
+- DQ-145 counts every switched-on row. At 116: 59 are on address pages (Inner West LEP 33,
+  council plans 26); the 57 state rows reach no address page (not on the SEPP tab, not in the
+  parking cards). Trace the route before fixing: `for-property` serves only rows with a council;
+  `sepp/exempt-complying` reads one SEPP copy by `v2_part` (from a hardcoded zone map — a defect);
+  `/dcp-browse` lists only Marrickville, Ashfield and Leichhardt plans.
+
+### §11.10 — Standards marked stale after a law version change
+- A new version date marks dependent standards stale; the conveyancing report then refuses to print
+  them (fail-closed). After re-checking the values against the new version, clear the flag
+  (4 CDC standards cleared 2026-10-18: zones, 200 m2, 6 m, acid sulfate class 1–2 — all unchanged).
+- Quote matching must ignore spacing (`200 m2` vs `200m2`); a spacing difference is not an amendment.
+
