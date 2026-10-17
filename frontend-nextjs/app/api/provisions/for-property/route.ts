@@ -674,7 +674,8 @@ export async function GET(request: NextRequest) {
           land_application: landApplication,
           land_conditions: landGate,
           not_covered: getNotCovered(filters.former_council),
-          frontage_setback_figures: frontageFigures,
+          frontage_setback_figures: frontageFigures.items,
+          frontage_setback_figures_failed: frontageFigures.failed,
         }
       });
       // Temporarily disabled cache for debugging duplicates issue

@@ -400,6 +400,7 @@ export function ProvisionsByTocStructure({
       land_application?: LandApplicationDecision;
       not_covered?: NotCovered | null;
       frontage_setback_figures?: FrontageFigureItem[];
+      frontage_setback_figures_failed?: boolean;
       dcp_currency?: {
         verified_at: string | null;
         amendment_pending: boolean;
@@ -2132,7 +2133,7 @@ export function ProvisionsByTocStructure({
       )}
 
       <DcpNotCoveredNotice notCovered={data?.meta?.not_covered} />
-      <DcpFrontageFigureNotice items={data?.meta?.frontage_setback_figures} />
+      <DcpFrontageFigureNotice items={data?.meta?.frontage_setback_figures} failed={data?.meta?.frontage_setback_figures_failed} />
 
       {landApplication?.status === 'partial' && (
         <DcpLandApplicationNotice decision={landApplication} />

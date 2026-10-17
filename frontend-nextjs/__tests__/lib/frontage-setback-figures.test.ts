@@ -95,7 +95,7 @@ describe('loadFrontageSetbackFigures', () => {
 
   it('returns [] and does not throw when a lookup fails', async () => {
     const failing = async () => { throw new Error('db down'); };
-    await expect(loadFrontageSetbackFigures(failing, data, 'ku_ring_gai', '14E_L3')).resolves.toEqual([]);
+    await expect(loadFrontageSetbackFigures(failing, data, 'ku_ring_gai', '14E_L3')).resolves.toEqual({ items: [], failed: true });
   });
 
   it('selects the figure for the address precinct through both lookups', async () => {
@@ -103,13 +103,32 @@ describe('loadFrontageSetbackFigures', () => {
       ? { rows: [{ chapter_key: 'c14e', r2_current_path: 'p/14e.pdf' }] }
       : { rows: [{ source_chapter_key: 'c14e' }] });
     const out = await loadFrontageSetbackFigures(query, data, 'ku_ring_gai', ' 14E_L3 , ');
-    expect(out).toEqual([{ chapter_key: 'c14e', page: 28, figure: '14E.9-6', pdf_url: 'https://x/14e.pdf#page=28' }]);
+    expect(out).toEqual({ failed: false, items: [{ chapter_key: 'c14e', page: 28, figure: '14E.9-6', pdf_url: 'https://x/14e.pdf#page=28' }] });
   });
 
   it('makes no query for another council or no precinct', async () => {
     const query = jest.fn();
-    await expect(loadFrontageSetbackFigures(query, data, 'hornsby', '14E_L3')).resolves.toEqual([]);
-    await expect(loadFrontageSetbackFigures(query, data, 'ku_ring_gai', '')).resolves.toEqual([]);
+    await expect(loadFrontageSetbackFigures(query, data, 'hornsby', '14E_L3')).resolves.toEqual({ items: [], failed: false });
+    await expect(loadFrontageSetbackFigures(query, data, 'ku_ring_gai', '')).resolves.toEqual({ items: [], failed: false });
     expect(query).not.toHaveBeenCalled();
+  });
+});
+
+describe('centre-level figures and missing links', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { frontageSetbackFigures } = require('@/lib/frontage-setback-figures');
+  const base = { chapter_key: 'c14e', r2_path: 'p', pdf_url: 'https://x/14e.pdf',
+    figures: [{ precinct_id: '14E', page: 9, figure: '14E.5-1' }, { precinct_id: '14E_L3', page: 28, figure: '14E.9-6' }] };
+  it('a figure keyed to the centre applies to an address in one of its sub-precincts', () => {
+    const out = frontageSetbackFigures({ council: 'k', chapters: [base] }, 'k', ['14E_L3'], { c14e: 'p' }, []);
+    expect(out.map((i: { page: number }) => i.page)).toEqual([9, 28]);
+  });
+  it('does not stretch to a different centre sharing a prefix', () => {
+    const out = frontageSetbackFigures({ council: 'k', chapters: [base] }, 'k', ['14EX_1'], { c14e: 'p' }, []);
+    expect(out).toEqual([]);
+  });
+  it('shows nothing for a chapter without a PDF URL', () => {
+    const out = frontageSetbackFigures({ council: 'k', chapters: [{ ...base, pdf_url: null }] }, 'k', ['14E_L3'], { c14e: 'p' }, []);
+    expect(out).toEqual([]);
   });
 });

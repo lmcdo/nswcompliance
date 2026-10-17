@@ -24,3 +24,10 @@ describe('DcpFrontageFigureNotice', () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+describe('DcpFrontageFigureNotice when the lookup failed', () => {
+  it('says the figures could not be loaded instead of showing nothing', () => {
+    render(<DcpFrontageFigureNotice items={[]} failed />);
+    expect(screen.getByTestId('dcp-frontage-figure-notice')).toHaveTextContent('could not be loaded');
+  });
+});

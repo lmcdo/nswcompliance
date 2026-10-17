@@ -8,7 +8,21 @@
  */
 import type { FrontageFigureItem } from '@/lib/frontage-setback-figures';
 
-export function DcpFrontageFigureNotice({ items }: { items: FrontageFigureItem[] | null | undefined }) {
+export function DcpFrontageFigureNotice({ items, failed }: {
+  items: FrontageFigureItem[] | null | undefined;
+  failed?: boolean | null;
+}) {
+  if (failed) {
+    return (
+      <p
+        data-testid="dcp-frontage-figure-notice"
+        className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5 mb-3"
+      >
+        The built-form figures for this centre could not be loaded. Upper-level setbacks may apply to some
+        street frontages: check the centre&apos;s built-form figures in the council&apos;s plan.
+      </p>
+    );
+  }
   if (!items || items.length === 0) return null;
   return (
     <p

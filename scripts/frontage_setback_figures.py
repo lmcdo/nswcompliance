@@ -64,6 +64,8 @@ def main() -> int:
     chapters: dict[str, dict] = {}
     groups: dict[str, set] = defaultdict(set)
     for _id, ck, pid, page, _t, path, url in kept:
+        if not url:   # a figure without a PDF link is not a pointer anyone can follow
+            raise SystemExit(f"[ABORT] {ck}: active registry row has no r2_public_pdf_url")
         chapters[ck] = {"r2_path": path, "pdf_url": url}
         groups[ck].add((pid, int(page)))
 
