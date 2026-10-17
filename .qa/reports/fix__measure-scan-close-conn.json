@@ -1,0 +1,34 @@
+{
+ "tier": "minor",
+ "justification": "Minor: one line closes the DB connection of a read-only measurement script after its single query; no served output, no data written.",
+ "commit_hash": "accd3673",
+ "files": [
+  "scripts/measure_doubled_chars.py"
+ ],
+ "falsifiable_check": {
+  "command": "python scripts/measure_doubled_chars.py --out /tmp/x.jsonl & then: SELECT count(*) FROM pg_stat_activity WHERE state='idle in transaction'",
+  "fails_when": "the scan keeps an idle-in-transaction connection while it reads PDFs",
+  "observed_red": "2026-10-17 live: before the fix the scan held pid 2342458 idle in transaction for 274s and migration 113 waited on a lock behind it, queueing site reads; after the fix, 20s into a new scan, idle-in-transaction count was 0."
+ },
+ "real_layer_exempt": {
+  "scripts/measure_doubled_chars.py": "run live after the fix: 0 idle-in-transaction connections"
+ },
+ "functions": [],
+ "values": [],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "the scan runs for an hour while someone applies a migration on regulatory_provisions",
+   "what_happens": "the migration no longer waits on the scan's lock, so site reads are not queued behind it",
+   "mitigated": true,
+   "how": "the connection is closed right after the single SELECT",
+   "repro": "pg_stat_activity shows no idle-in-transaction connection during a scan"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "None",
+  "other_repo": "No",
+  "manual_verify": "none"
+ }
+}
