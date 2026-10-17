@@ -230,7 +230,7 @@ def rules_lost(old_rules, new_text: str) -> int:
             rules = json.loads(rules)
         except ValueError:
             return 0
-    items = rules if isinstance(rules, list) else (rules or {}).get("rules", [])
+    items = rules if isinstance(rules, list) else (rules or {}).get("rules") or []
     hay = re.sub(r"\s+", " ", new_text).strip().lower()
     lost = 0
     for r in items or []:

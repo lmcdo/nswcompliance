@@ -143,7 +143,7 @@ def main(argv=None) -> int:
         w.writerows(refused)
     print(f"\nPLAN rows: {len(plan_rows)}  by stage/rule {dict(Counter((e['stage'], e['rule']) for e in evidence))}"
           f"\nREFUSED: {len(refused)}")
-    for k, n in Counter((r.get("stage", ""), r["reason"]) for r in refused).most_common():
+    for k, n in Counter((r.get("stage") or "", r["reason"]) for r in refused).most_common():
         print(f"  {n:5}  {k}")
     print(f"wrote {pp.relative_to(ROOT)}, {ep.relative_to(ROOT)}, {rp.relative_to(ROOT)}")
     return 0
