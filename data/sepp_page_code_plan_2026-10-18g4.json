@@ -1,0 +1,33 @@
+{
+ "generated": "2026-10-18g4",
+ "norm_version": "sl-norm/2",
+ "match_version": "sl-match/1",
+ "manifest": {
+  "epi-2008-0572": {
+   "file": "epi-2008-0572_2026-10-16.html",
+   "sha256": "13b5577ccfd028a6359b2278d28acc924b766678c9d27a1176bb412c1d2b6807",
+   "bytes": 2882206,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572"
+  }
+ },
+ "method": "scripts/sepp_complete_unit.py (docstring has the rules). No model reads or writes text.",
+ "rows": [
+  {
+   "id": 37145,
+   "md5": "a994e0883a540fc2e735bc5daeb3e0ad",
+   "rule": "recopy",
+   "kind": "complete_unit_recopy",
+   "epi": "epi-2008-0572",
+   "document_id": "State_Environmental_Planning_Policy_Exempt_and_Complying_Development_Codes_2008__NSW_Legislation",
+   "ref_number": "provision_1942",
+   "unit_id": "sec.3.16-ssec.2",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572#sec.3.16-ssec.2",
+   "law_date": "2026-10-16",
+   "old_text": "(2) All off-street car parking spaces and vehicle access must comply with AS/NZS 2890.1:2004, Parking facilities, Part 1: Of -street car parking.",
+   "new_text": "(2) All off-street car parking spaces and vehicle access must comply with AS/NZS 2890.1:2004, Parking facilities, Part 1: Off-street car parking.",
+   "old_ref_number": "provision_1942",
+   "new_ref_number": "Section 3.16(2); same words in 3.23(1)",
+   "v2_part": "3"
+  }
+ ]
+}
