@@ -88,8 +88,8 @@ def find_unit(old: str, snap: mb.Snapshot) -> dict:
         return {"unit": uid, "how": "contiguous_" + how}
     d = mb.decide_recopy(old, row, None, snap, ignore_ref=True)
     if d["verdict"] != "recopy":
-        return {"reason": d["reason"], "candidates": d.get("candidates", []), "unit": d.get("unit", ""),
-                "detail": ",".join(d.get("numbers_lost", []))}
+        return {"reason": d["reason"], "candidates": d.get("candidates") or [], "unit": d.get("unit") or "",
+                "detail": ",".join(d.get("numbers_lost") or [])}
     return {"unit": d["unit"], "how": "ordered_" + d["reason"]}
 
 
@@ -153,8 +153,8 @@ def main(argv=None) -> int:
             d = fix_row(old, snap)
             if d["verdict"] == "refuse":
                 refused.append({"id": rid, "reason": d["reason"], "ref_number": ref,
-                                "unit_found": ";".join(d.get("candidates", [])) or d.get("unit", ""),
-                                "detail": d.get("detail", "")})
+                                "unit_found": ";".join(d.get("candidates") or []) or d.get("unit") or "",
+                                "detail": d.get("detail") or ""})
                 continue
             if d["verdict"] == "recopy" and nver:
                 refused.append({"id": rid, "reason": "has_version_history", "ref_number": ref,
