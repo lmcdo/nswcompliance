@@ -63,10 +63,28 @@ _CW = r"(?:clause|cl|section|sec|s)\.?\s*"
 STATE_CLAUSE_RE = re.compile(rf"^(?:{_DIV}(?:\s*,?\s*{_DIV})*(?:\s*,?\s*(?:{_CW})?{_NUM})?|(?:{_CW}){_NUM}|{_NUM})$", re.I)
 
 
+# One standard printed word for word in several codes (DQ-145 step 2, user 2026-10-17: cite every place, pick none):
+# "Section 3.29(3); same words in 3C.32(3), 3D.53(4)". Each place is a full label or a bare number.
+SAME_WORDS = "; same words in "
+_ITEM = rf"(?:{_DIV}(?:\s*,?\s*{_DIV})*\s*,?\s*(?:{_CW})?{_NUM}|(?:{_CW})?{_NUM})"
+SAME_WORDS_RE = re.compile(rf"^(?P<first>.+?){re.escape(SAME_WORDS)}{_ITEM}(?:,\s*{_ITEM})*$", re.I)
+SAME_WORDS_MAX = 200
+
+
+def same_words_label(labels: list[str]) -> str:
+    """['Section 3.29(3)', 'Section 3C.32(3)', 'Schedule 7, section 15(3)'] ->
+    'Section 3.29(3); same words in 3C.32(3), Schedule 7, section 15(3)' (document order, first place first)."""
+    rest = [re.sub(r"^Section\s+", "", lb) for lb in labels[1:]]
+    return labels[0] + SAME_WORDS + ", ".join(rest)
+
+
 def state_clause_label(ref) -> str | None:
     if not isinstance(ref, str):
         return None
     s = ref.strip()
+    m = SAME_WORDS_RE.match(s) if len(s) <= SAME_WORDS_MAX else None
+    if m:
+        return s if state_clause_label(m.group("first")) == m.group("first") else None
     if not s or len(s) > 60:
         return None
     if re.search(r"provision|layout|_|__|~", s, re.I) or re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-", s, re.I):

@@ -100,8 +100,16 @@ const STATE_CLAUSE_RE = new RegExp(
  * still depends on the extractor. A bare integer longer than 3 digits is refused
  * (reads as a row id).
  */
+// One standard printed word for word in several codes: every place is cited, none picked (DQ-145 step 2,
+// 2026-10-17): "Section 3.29(3); same words in 3C.32(3), 3D.53(4)". Mirrors sepp_ref_fix.SAME_WORDS_RE.
+const SAME_WORDS = '; same words in ';
+const PLACE = String.raw`(?:${DIVISION}(?:\s*,?\s*${DIVISION})*\s*,?\s*(?:${CLAUSE_WORD})?${NUM}|(?:${CLAUSE_WORD})?${NUM})`;
+const SAME_WORDS_RE = new RegExp(String.raw`^(.+?); same words in ${PLACE}(?:,\s*${PLACE})*$`, 'i');
+
 export function stateClauseLabel(ref?: unknown): string | null {
   const s = asTrimmedString(ref);
+  const multi = s && s.length <= 200 && s.includes(SAME_WORDS) ? SAME_WORDS_RE.exec(s) : null;
+  if (multi) return stateClauseLabel(multi[1]) === multi[1] ? s : null;
   if (!s || s.length > 60) return null;
   if (/provision|layout|_|__|~/i.test(s)) return null;
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(s)) return null;

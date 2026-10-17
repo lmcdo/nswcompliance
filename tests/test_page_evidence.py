@@ -288,3 +288,40 @@ def test_shared_page_label_or_repeated_cells_stay_unresolved(tmp_path):
     for words in (label, cells):
         v, ev, info = pe.prove(words, pages, {3}, 3)
         assert v == "unresolved" and ev is None and info["pages"] == [1, 3], words
+
+
+# -- DQ-145 step 3: the page that holds both the words and the row's own section number --------------
+def _key_sites(tmp_path):
+    f = tmp_path / "k.pdf"
+    make_pdf(f, [("text", ["6.4 KS4 Compass Centre", LINE]), ("text", ["6.5 KS5 Sports Club", LINE]),
+                 ("text", ["Intro to 6.4 and 6.5", "no rule here"])])
+    return read(f)
+
+
+def test_row_heading_is_the_dotted_section_number():
+    assert pe.row_heading("# 6.4 e) Design principle\n\nWords") == "6 4"
+    assert pe.row_heading("# 10.2 (v) For any\n\nWords") == "10 2"
+    assert pe.row_heading("# Part 6\n\nWords") is None and pe.row_heading("No heading") is None
+    assert pe.row_heading("# 6.45 x\n\nW") == "6 45"   # never a prefix of a longer number
+
+
+def test_heading_picks_the_one_page_with_words_and_heading(tmp_path):
+    pages = _key_sites(tmp_path)
+    v, ev, _ = pe.prove(WORDS, pages, {9}, 9, "6 5")
+    assert v == "proven" and ev["page"] == 2 and ev["by_heading"] == "6 5" and ev["all_pages"] == [1, 2]
+    assert vpe.check_uniqueness(ev, {"pdf_page": 9, "page_range": [9]}, "moved", pages) == []
+    # a tampered heading re-derives to another page (or none) and fails
+    assert vpe.check_uniqueness({**ev, "by_heading": "6 4"}, {"pdf_page": 9, "page_range": [9]}, "moved", pages)
+
+
+def test_heading_absent_or_on_several_word_pages_stays_unresolved(tmp_path):
+    pages = _key_sites(tmp_path)
+    assert pe.prove(WORDS, pages, {9}, 9, "7 1")[0] == "unresolved"      # heading on no word page
+    assert pe.prove(WORDS, pages, {9}, 9, None)[0] == "unresolved"       # no heading: unchanged
+    assert "by_heading" not in pe.prove(WORDS, pages, {1}, 1, "6 5")[1]  # a held page still wins first
+
+
+def test_heading_on_two_word_pages_stays_unresolved(tmp_path):
+    f = tmp_path / "k2.pdf"
+    make_pdf(f, [("text", ["6.4 KS4 Compass Centre", LINE]), ("text", ["6.4 KS4 continued", LINE])])
+    assert pe.prove(WORDS, read(f), {9}, 9, "6 4")[0] == "unresolved"

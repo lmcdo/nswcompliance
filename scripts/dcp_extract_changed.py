@@ -1511,6 +1511,17 @@ def _strip_vertical_margin_label(page: Any) -> Any:
     )
 
 
+def _drop_doubled_chars(page: Any) -> Any:
+    """`page` without characters printed a second time at the same spot in the same font (pdfplumber dedupe_chars,
+    1pt). Measured 2026-10-17: Campbelltown DCP Part 3 prints every line twice over itself (one copy stroked white,
+    so it is invisible on paper), and extraction read 'aanndd' -- 94 served rows were rebuilt by hand, 28 refused.
+    Real text never repeats the same glyph on top of itself, so this runs for every council."""
+    try:
+        return page.dedupe_chars(tolerance=1)
+    except Exception:  # noqa: BLE001 - a page object without chars (tests, fakes) is left as it is
+        return page
+
+
 def _release_page(page: Any) -> None:
     """Drop everything pdfplumber cached for this page, once we are done with it.
 
@@ -1569,6 +1580,7 @@ def _extract_page_text(page: Any, council: str | None) -> str:
     stacked upright glyphs (see _strip_vertical_margin_label) before anything
     else, so it can't corrupt column detection or heading matching downstream.
     """
+    page = _drop_doubled_chars(page)   # every council: a glyph printed twice over itself is read twice otherwise
     page = _strip_vertical_margin_label(page)
 
     if council in MAP_LABEL_COUNCILS:
@@ -1985,7 +1997,7 @@ class DCPExtractor:
                 text = _clean_page_text(text, self.council)
                 # OCR mode: tables arrive inline in the page text (flattened
                 # markup) — pdfplumber's table finder reads the garbled layer.
-                page_tables = [] if self.ocr_pages else (page.extract_tables() or [])
+                page_tables = [] if self.ocr_pages else (_drop_doubled_chars(page).extract_tables() or [])
                 # Everything this loop needs is now in `text` and `page_tables`;
                 # the page object itself is dead weight from here on.
                 _release_page(page)
@@ -2247,7 +2259,7 @@ class DCPExtractor:
                     content += f"\n\n{PAGE_MARK.format(n=page_num)}\n{text}"
                     pages_included.append(page_num)
                     if not self.ocr_pages:
-                        for tbl in page.extract_tables() or []:
+                        for tbl in _drop_doubled_chars(page).extract_tables() or []:
                             html = self._table_to_html(tbl)
                             if html:
                                 tables.append({"html": html, "page": page_num})

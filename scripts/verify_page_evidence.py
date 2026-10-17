@@ -98,13 +98,13 @@ def check_uniqueness(ev: dict, old: dict, verdict: str, pages: dict) -> list:
             return [f"span now {v} on pages {info.get('pages')}"]
         return []
     held = set(old.get("page_range") or []) | {old.get("pdf_page")}
-    v, ev2, info = pe.prove(ev["span"], pages, held, old.get("pdf_page"))
-    if v != "proven" or ev2["page"] != ev["page"] or info["pages"] != ev["all_pages"]:
+    v, ev2, info = pe.prove(ev["span"], pages, held, old.get("pdf_page"), ev.get("by_heading"))
+    if v != "proven" or ev2["page"] != ev["page"] or info["pages"] != ev["all_pages"]             or ev2.get("by_heading") != ev.get("by_heading"):
         return [f"span now {v} on pages {info.get('pages')}, recorded all_pages {ev['all_pages']}"]
     # prove() only picks a page of an ambiguous span from `held`, and the page it picked must be
     # the evidence's, so a pass above already means the stored page is among all_pages; a
     # single-page span may legitimately be 'moved'.
-    if len(ev["all_pages"]) > 1 and verdict != "on_page":
+    if len(ev["all_pages"]) > 1 and verdict != "on_page" and not ev.get("by_heading"):
         return ["span on several pages but verdict is not on_page"]
     return []
 
@@ -195,6 +195,8 @@ def main() -> int:
                     bad.append("provision_text changed since the proof (md5)")
                 elif pe.rule_words(t) != ev["span"]:
                     bad.append("rule words differ from the evidence span")
+                elif ev.get("by_heading") and pe.row_heading(t) != ev["by_heading"]:
+                    bad.append("by_heading is not the row's own section number")
                 if len(ev.get("all_pages") or ()) > 1:
                     # an ambiguous span is anchored ONLY by the row's own stored page, so the
                     # file's claim of what that page is must equal the live row (on_page leaves it)

@@ -87,6 +87,22 @@ def rule_words(provision_text: str | None) -> str:
     return normalise(rule_body(provision_text))
 
 
+_SECTION_NO = re.compile(r"^#+\s*(\d+(?:\.\d+)+)(?![\d.])")
+
+
+def row_heading(provision_text: str | None) -> str | None:
+    """The row's own section number from its '# 6.4 e) Design principle' first line, normalised ('6 4'); None when
+    the first line carries no dotted section number. Used only to choose among pages that ALL hold the words."""
+    m = _SECTION_NO.match((provision_text or "").lstrip())
+    return normalise(m.group(1)) if m else None
+
+
+def heading_pages(heading: str, pages: dict, among) -> list:
+    """Pages of `among` whose text (either reading order) holds the section number as whole words."""
+    pat = re.compile(rf"(?<![a-z0-9]){re.escape(heading)}(?![a-z0-9])")
+    return sorted(p for p in among if any(pat.search(t) for t in pages[p][0].values()))
+
+
 # -- reading a PDF -------------------------------------------------------------------
 
 def page_texts(page) -> dict[str, str]:
@@ -185,7 +201,7 @@ def match_page(words: str, texts: dict, streams: list) -> list:
     return found
 
 
-def prove(words: str, pages: dict, held=None, primary=None):
+def prove(words: str, pages: dict, held=None, primary=None, heading=None):
     """(verdict, evidence-or-None, info) for `words` over every page of a PDF.
 
     pages: page number -> (texts, prepare(grids)). held: pages the row already points at
@@ -193,6 +209,8 @@ def prove(words: str, pages: dict, held=None, primary=None):
     with several held hits and no primary match nothing is picked). Verdict: proven | unresolved | not_found | too_short.
     info always carries the pages that matched, so an `unresolved` says where the rival is.
     A span on several pages is proven only on a page in `held`; evidence.all_pages lists all.
+    heading (row_heading of the row; DQ-145 step 3, user 2026-10-17): when no held page settles it, the ONE page of
+    the hits that also prints the row's own section number is proven (evidence.by_heading); else unresolved.
     """
     if len(words.split()) < MIN_WORDS:
         return "too_short", None, {"pages": []}
@@ -212,6 +230,8 @@ def prove(words: str, pages: dict, held=None, primary=None):
             pno = primary                  # the row's own page; never swapped for a range member
         elif len(both) == 1:
             pno = both[0]
+        elif heading and len(heading_pages(heading, pages, hits)) == 1:
+            (pno,) = heading_pages(heading, pages, hits)   # the one page with both the words and the row's heading
         else:                              # none held, or several range members and no primary: no pick
             return "unresolved", None, {"pages": sorted(hits), "reason": "span printed on several pages"}
     else:
@@ -222,5 +242,7 @@ def prove(words: str, pages: dict, held=None, primary=None):
     ev["page"] = pno
     ev["all_pages"] = sorted(hits)
     ev["matcher_version"] = MATCHER_VERSION
+    if len(hits) > 1 and heading and pno not in set(held or ()):
+        ev["by_heading"] = heading
     ev["span_sha256"] = hashlib.sha256(words.encode()).hexdigest()
     return "proven", ev, {"pages": sorted(hits), "alternatives": len(m)}

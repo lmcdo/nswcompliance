@@ -9,7 +9,7 @@
  * - Figure references
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { parseProvisionText, FormattedElement, getElementClasses, ParseOptions, ProvisionTheme, hasInterleavedMapText, isMapScrambledLine } from '@/lib/provision-text-formatter';
 import { preProcessProvisionText } from '@/lib/dcp-format-configs';
 import { hasProvisionTable, splitProvisionTables, provisionTablesToPlainText, ProvisionTable } from '@/lib/provision-tables';
@@ -360,7 +360,44 @@ function ProvisionTableView({ table }: { table: ProvisionTable }) {
   );
 }
 
+/**
+ * A whole clause is served even when it is long (DQ-145 step 4, 2026-10-17: the 600-word cap was a choice, and
+ * cutting a clause short is worse than a long card). Above FOLD_WORDS the card opens folded; every word stays in
+ * the page (selectable, searchable) and one click shows the full clause.
+ */
+export const FOLD_WORDS = 600;
+
+export function wordCount(text: string | null | undefined): number {
+  return typeof text === 'string' ? (text.match(/\S+/g) ?? []).length : 0;
+}
+
+function FoldableClause({ words, children }: { words: number; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div data-testid="clause-fold">
+      <div className={open ? '' : 'relative max-h-96 overflow-hidden'} data-folded={open ? 'false' : 'true'}>
+        {children}
+        {!open && <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white" />}
+      </div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="mt-1 text-xs font-medium text-blue-700 underline hover:no-underline"
+      >
+        {open ? 'Show less' : `Show full clause (${words} words)`}
+      </button>
+    </div>
+  );
+}
+
 export function FormattedProvisionText(props: FormattedProvisionTextProps) {
+  const words = useMemo(() => wordCount(props.text), [props.text]);
+  const body = <FormattedProvisionTextUnfolded {...props} />;
+  return words > FOLD_WORDS ? <FoldableClause words={words}>{body}</FoldableClause> : body;
+}
+
+function FormattedProvisionTextUnfolded(props: FormattedProvisionTextProps) {
   const segments = useMemo(
     () => (hasProvisionTable(props.text) ? splitProvisionTables(props.text) : null),
     [props.text]

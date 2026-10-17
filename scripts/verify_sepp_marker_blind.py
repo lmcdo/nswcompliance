@@ -10,7 +10,8 @@ Per evidence row:
   - the plan row (old_text md5 == evidence old_md5) is re-decided from the snapshot: verdict, unit, offsets,
     coverage, hashes must equal the evidence
   - accept: unit tokens[word_start:word_end] == the row's tokens (checked directly, not via decide)
-  - mode='smallest_complete_unit' rows: re-decided by sepp_complete_unit.decide_smallest_unit (label derived from the unit)
+  - mode='smallest_complete_unit' / 'same_words_in_codes' rows: re-decided by sepp_complete_unit.decide_smallest_unit
+    (label derived from the unit, or from every place for same-words rows)
   - recopy: new_text == the unit's text in the snapshot, sha256 == evidence, coverage >= 0.9, size <= 3x,
     every number of the old text is in the new text
 Exit 0 all verified; 1 on any mismatch; 2 if nothing was verified.
@@ -34,13 +35,19 @@ CHECKED = ("unit_id", "word_start", "word_end", "n_words", "unit_words", "tokens
 
 def _verify_complete_unit(r: dict, e: dict, snap: mb.Snapshot, scope: str | None = None) -> str:
     """'' when a mode='smallest_complete_unit' row re-derives exactly; else the reason."""
-    if e["mode"] != cu.MODE or e["rule"] != "recopy" or r["rule"] != "recopy":
+    if e["mode"] not in (cu.MODE, cu.MODE_SAME) or e["rule"] != "recopy" or r["rule"] != "recopy":
         return f"unknown mode {e['mode']!r} / rule"
     # context rows: the tie-break is rebuilt from the plan's own ref_number and the recorded neighbour labels
     ctx = cu.tiebreaks(r.get("ref_number"), tuple(e["neighbour_refs"])) if "neighbour_refs" in e else None
-    d = cu.decide_smallest_unit(r["old_text"], snap, scope, ctx)
-    if d["verdict"] != "recopy" or d["unit"] != e["unit_id"]:
-        return f"re-derived {d['verdict']} ({d.get('reason')}) unit {d.get('unit')}, evidence says {e['unit_id']}"
+    mw = e.get("max_words", cu.MAX_WORDS)   # whole-clause rows record the raised cap; never above MAX_WORDS_WHOLE
+    if mw not in (cu.MAX_WORDS, cu.MAX_WORDS_WHOLE):
+        return f"max_words {mw} is not a cap the planner uses"
+    d = cu.decide_smallest_unit(r["old_text"], snap, scope, ctx, mw)
+    if d["verdict"] != "recopy" or d["unit"] != e["unit_id"] or d["reason"] != e["mode"]:
+        return (f"re-derived {d['verdict']} ({d.get('reason')}) unit {d.get('unit')}, evidence says {e['mode']} "
+                f"{e['unit_id']}")
+    if d.get("places") != e.get("places"):   # same-words rows: every place is re-derived, the label lists them all
+        return f"places re-derived {d.get('places')}, evidence says {e.get('places')}"
     if d.get("tiebreak") != e.get("tiebreak"):
         return f"tie-break re-derived {d.get('tiebreak')}, evidence says {e.get('tiebreak')}"
     diff = [k for k in ("n_words", "unit_words", "tokens_sha256", "matched_words", "coverage", "size_ratio", "new_sha256")
@@ -54,8 +61,8 @@ def _verify_complete_unit(r: dict, e: dict, snap: mb.Snapshot, scope: str | None
                 r.get("old_ref_number") != stored or e.get("old_ref_number") != stored))):
         return f"new_ref_number is not the grammar label {label!r} of unit {e['unit_id']} (stored {stored!r})"
     new = snap.units[e["unit_id"]].text
-    if r["new_text"] != new or d["unit_words"] > cu.MAX_WORDS or e["coverage"] < mb.COVERAGE_MIN:
-        return "new_text is not the snapshot unit text / unit over 600 words / coverage outside the rule"
+    if r["new_text"] != new or d["unit_words"] > mw or e["coverage"] < mb.COVERAGE_MIN:
+        return "new_text is not the snapshot unit text / unit over the word cap / coverage outside the rule"
     if mb.numbers_for_check(r["old_text"], snap, e["unit_id"]) - mb.rc.numbers(new):
         return "a number of the old text is missing from the new text"
     return ""
