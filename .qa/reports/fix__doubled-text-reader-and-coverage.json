@@ -1,0 +1,80 @@
+{
+  "tier": "standard",
+  "justification": "Campbelltown Part 3 PageLoss on page 41. Reader input: a chunk with >= 10 same-text same-spot twin spans (a PDF printing each line twice, black + white) goes to sol as JPEG page pictures plus de-doubled text, and to DeepSeek as de-doubled text; other chunks unchanged. Coverage check: running headers/footers (on >= 30% of pages, >= 3) and section-number headings are not scored as rule lines. Review re-read with DeepSeek (no live write): no page left out, the 17 pages the live chapter has no rules for are covered, 0 doubled-letter rules.",
+  "commit_hash": "63593525",
+  "files": [
+    "scripts/ai_extractor.py",
+    "scripts/page_coverage.py",
+    "tests/test_ai_extractor_doubled_text.py",
+    "tests/test_page_coverage.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_ai_extractor_doubled_text.py tests/test_page_coverage.py tests/test_ai_extractor.py tests/test_ai_extractor_sol_integration.py",
+    "fails_when": "a doubled chunk reaches the reader with stuttered text, a normal chunk is changed, a header or heading refuses a narrow page, or a page with missing rules is no longer caught",
+    "observed_red": "Disabling the twin dedupe, the twin threshold, the header filter or the heading filter each failed a test; restored, all pass."
+  },
+  "real_layer_exempt": {
+    "scripts/ai_extractor.py": "live review re-read of campbelltown-dcp-part3-low-medium with AI_MODEL=deepseek; sol path built but not run live (OpenAI 429 no credits)",
+    "scripts/page_coverage.py": "same live review re-read passed the guard"
+  },
+  "pre_impl": {
+    "existing_data": "page 41: 55 same-text same-bbox span pairs (black 2301728, white 16777215); pypdf/fitz text stutters; only header + heading reach MIN_WORDS",
+    "assumption_mismatch": "page_coverage already de-duplicated identical lines; the false refusal came from header/heading lines scored as rule lines",
+    "new_vs_existing": "extends ai_extractor and page_coverage in place"
+  },
+  "functions": [
+    {
+      "name": "reader_input",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "chunk PDF bytes and the prompt",
+      "output": "the same bytes and prompt, or page pictures plus the prompt with de-doubled page text appended",
+      "if_none": "unreadable bytes are sent unchanged and the provider reports them"
+    }
+  ],
+  "values": [
+    {
+      "value": "DOUBLED_MIN_SPANS = 10; RUNNING_SHARE = 0.3",
+      "read_at": "page 41 has 55 twins; the running header is on every page",
+      "if_missing": "n/a (constants)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a normal PDF page with no twins goes to the reader",
+      "what_happens": "sent byte for byte unchanged",
+      "mitigated": true,
+      "how": "twin threshold",
+      "repro": "test_normal_page_is_sent_unchanged"
+    },
+    {
+      "scenario": "the same phrase repeats at different spots on purpose",
+      "what_happens": "not treated as a twin, kept every time",
+      "mitigated": true,
+      "how": "twin key is text plus rounded position",
+      "repro": "test_same_text_at_a_different_spot_is_not_a_twin"
+    },
+    {
+      "scenario": "a page whose rules the reader really skipped",
+      "what_happens": "still flagged by the coverage check after the header and heading filters",
+      "mitigated": true,
+      "how": "filters remove only running lines and numbered headings",
+      "repro": "test_a_page_whose_rules_are_missing_is_still_skipped"
+    },
+    {
+      "scenario": "the picture PDF is too large to send",
+      "what_happens": "pages are JPEG at 150 dpi; a 12-page chunk measured 2.75 MB",
+      "mitigated": true,
+      "how": "JPEG quality 80",
+      "repro": "live measurement 2026-10-18"
+    }
+  ],
+  "mutation_analysis": "Changing <= to < in the ratchet fails test_at_ceiling_passes. Removing the ratchet from CLAIMS fails test_oc20_is_wired_with_all_three_parts.",
+  "residual_risk": "The badge inventory checks each file, not each citation expression: a component with one badge and a second bare citation passes (Sol, 2026-10-17). Hard-wired checked={false} cards always show the mark. The ceiling must be lowered by hand after each proof pass.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "python scripts/dq_check.py --outreach on main prints 21 of 21"
+  }
+}
