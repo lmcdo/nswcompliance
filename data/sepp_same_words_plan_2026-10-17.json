@@ -1,0 +1,146 @@
+{
+ "generated": "2026-10-17",
+ "norm_version": "sl-norm/2",
+ "match_version": "sl-match/1",
+ "manifest": {
+  "epi-2008-0572": {
+   "file": "epi-2008-0572_2026-10-16.html",
+   "sha256": "13b5577ccfd028a6359b2278d28acc924b766678c9d27a1176bb412c1d2b6807",
+   "bytes": 2882206,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572"
+  },
+  "epi-2021-0714": {
+   "file": "epi-2021-0714_2026-10-16.html",
+   "sha256": "fa3f07f0bf4fbd483fa981ca1fa9135e57528d3967c5f7096e0e0cccd6e91ead",
+   "bytes": 887253,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714"
+  },
+  "epi-2021-0730": {
+   "file": "epi-2021-0730_2026-10-16.html",
+   "sha256": "61701898f36e9591d3b9925367f57b35cd10859c381427255590b6d7cde6c5ce",
+   "bytes": 153836,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0730"
+  },
+  "epi-2021-0732": {
+   "file": "epi-2021-0732_2026-10-16.html",
+   "sha256": "e9d581d57eeca8b9991f9ff3f3b7e08fc9c5148ab54dee1a9f9c5c1212afa6d5",
+   "bytes": 2087294,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0732"
+  }
+ },
+ "method": "scripts/sepp_complete_unit.py (docstring has the rules). No model reads or writes text.",
+ "rows": [
+  {
+   "id": 16776,
+   "md5": "7a25d8f855ddaffbb196c437dc327948",
+   "rule": "recopy",
+   "kind": "complete_unit_recopy",
+   "epi": "epi-2008-0572",
+   "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_30",
+   "ref_number": "Complying development on bush fire prone land",
+   "unit_id": "sec.3.4-ssec.2-para1.d",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572#sec.3.4-ssec.2-para1.d",
+   "law_date": "2026-10-16",
+   "old_text": "if reticulated or bottled gas is installed and maintained on the lot—it must be installed and maintained in accordance with AS/NZS 1596:2014, The storage and handling of LP Gas, and the storage and handling of any LP gas on the lot must comply with the requirements of the relevant authorities (including the use of metal piping)",
+   "new_text": "(d) if reticulated or bottled gas is installed and maintained on the lot—\n(i) it must be installed and maintained in accordance with AS/NZS 1596:2014, The storage and handling of LP Gas, and\n(ii) the storage and handling of any LP gas on the lot must comply with the requirements of the relevant authorities (including the use of metal piping),",
+   "old_ref_number": "Complying development on bush fire prone land",
+   "new_ref_number": "Section 3.4(2)(d); same words in 3B.4(2)(d), 3C.5(2)(d), 3D.6(2)(d)"
+  },
+  {
+   "id": 16982,
+   "md5": "51b598ad232d9b990b93e132e3e85965",
+   "rule": "recopy",
+   "kind": "complete_unit_recopy",
+   "epi": "epi-2008-0572",
+   "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_19",
+   "ref_number": "balconies, decks, patios, terraces, verandahs near boundaries or other dwellings",
+   "unit_id": "sec.3B.17-ssec.3",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572#sec.3B.17-ssec.3",
+   "law_date": "2026-10-16",
+   "old_text": "The edge of a balcony, deck, patio, terrace or verandah must have a privacy screen with a height of at least 1.5m above the floor level...",
+   "new_text": "(3) Balconies, decks, patios, terraces or verandahs near boundaries or other dwellings The edge of a balcony, deck, patio, terrace or verandah must have a privacy screen with a height of at least 1.5m above the floor level of a balcony, deck, patio, terrace or verandah in the following cases—\n(a) the floor level of the balcony, deck, patio, terrace or verandah is 1m or more, but not more than 3m, above ground level (existing) and the edge faces a side or rear boundary and is less than 3m from that boundary,\n(b) the floor level of the balcony, deck, patio, terrace or verandah is more than 3m above ground level (existing) and the edge faces a side or rear boundary and is less than 6m from that boundary,\n(c) the floor level of the balcony, deck, patio, terrace or verandah is 1m or more, but not more than 2m, above ground level (existing) and the edge faces a dwelling on the same lot and is less than 6m from that dwelling,\n(d) the floor level of the balcony, deck, patio, terrace or verandah is more than 2m above ground level (existing) and the edge faces a dwelling on the same lot and is less than 12m from that dwelling.",
+   "old_ref_number": "balconies, decks, patios, terraces, verandahs near boundaries or other dwellings",
+   "new_ref_number": "Section 3B.17(3); same words in 3B.29(3), 3B.42(3)"
+  },
+  {
+   "id": 17828,
+   "md5": "113cebc4916c2cb4602a536ba9407c52",
+   "rule": "recopy",
+   "kind": "complete_unit_recopy",
+   "epi": "epi-2008-0572",
+   "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_9",
+   "ref_number": "Tents and Marquees (Private Functions)",
+   "unit_id": "sec.2.118-para1.j",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572#sec.2.118-para1.j",
+   "law_date": "2026-10-16",
+   "old_text": "Each tent or marquee must have a height not exceeding 6m.",
+   "new_text": "(j) each tent or marquee must have a height, as measured from the surface on which the tent or marquee is erected to the highest point of the tent or marquee, not exceeding 6m,",
+   "old_ref_number": "Tents and Marquees (Private Functions)",
+   "new_ref_number": "Section 2.118(j); same words in 2.120(i)"
+  },
+  {
+   "id": 36284,
+   "md5": "1f939faeaddb4528b012921a5883a5f0",
+   "rule": "recopy",
+   "kind": "complete_unit_recopy",
+   "epi": "epi-2008-0572",
+   "document_id": "State_Environmental_Planning_Policy_Exempt_and_Complying_Development_Codes_2008__NSW_Legislation",
+   "ref_number": "provision_494",
+   "unit_id": "sec.2.12-ssec.1-para1.f",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572#sec.2.12-ssec.1-para1.f",
+   "law_date": "2026-10-16",
+   "old_text": "(f) be located at a distance from each lot boundary of at least— (i) for development carried out in Zone RU1, RU2, RU3, RU4, RU6 or R5—5m, or (ii) for development carried out in any other zone— \\cdot 900 mm , and",
+   "new_text": "(f) be located at a distance from each lot boundary of at least—\n(i) for development carried out in Zone RU1, RU2, RU3, RU4, RU6 or R5—5m, or\n(ii) for development carried out in any other zone—900mm, and",
+   "old_ref_number": "provision_494",
+   "new_ref_number": "Section 2.12(1)(f); same words in 2.18(1)(d), 2.20(1)(e)"
+  },
+  {
+   "id": 38541,
+   "md5": "19d1a997c4cacda64332aac0813bb427",
+   "rule": "recopy",
+   "kind": "complete_unit_recopy",
+   "epi": "epi-2008-0572",
+   "document_id": "State_Environmental_Planning_Policy_Exempt_and_Complying_Development_Codes_2008__NSW_Legislation",
+   "ref_number": "provision_4126",
+   "unit_id": "sec.3.16-ssec.1",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572#sec.3.16-ssec.1",
+   "law_date": "2026-10-16",
+   "old_text": "(a) the lot has a width of less than 8m measured at the building line, or   \n(b) the complying development is the alteration of, or an addition to, a dwelling house and the lot does not contain an off-street car parking space, or   \n(c) the complying development is the erection or alteration of, or an addition to, attached development and th lot does not contain an off-street car parking space.",
+   "new_text": "(1) At least 1 off-street car parking space, being an open hard stand space or a carport or garage, must be provided on a lot unless—\n(a) the lot has a width of less than 8m measured at the building line, or\n(b) the complying development is the alteration of, or an addition to, a dwelling house and the lot does not contain an off-street car parking space, or\n(c) the complying development is the erection or alteration of, or an addition to, attached development and the lot does not contain an off-street car parking space.",
+   "old_ref_number": "provision_4126",
+   "new_ref_number": "Section 3.16(1); same words in 3C.19(1), 3D.27(1)"
+  },
+  {
+   "id": 44259,
+   "md5": "2c9b6c97a5a2551f687e7f66f2dc3a9e",
+   "rule": "recopy",
+   "kind": "complete_unit_recopy",
+   "epi": "epi-2021-0732",
+   "document_id": "State_Environmental_Planning_Policy_Transport_and_Infrastructure_2021__NSW_Legislation",
+   "ref_number": "provision_1358",
+   "unit_id": "sec.2.124D-ssec.1-para1.h",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0732#sec.2.124D-ssec.1-para1.h",
+   "law_date": "2026-10-16",
+   "old_text": "(i) is integrated within the frame of the unit, and   \n(ii) does not have a surface area greater than 3 m2 , and   \n(iii) complies with AS/NZS 4282:2019, Control of the obtrusive ef ects of outdoor lighting, and (iv) if illuminated—is not animated, flashing or moving.",
+   "new_text": "(h) for an advertising-enabled EV charging unit—each screen or display of the unit—\n(i) is integrated within the frame of the unit, and\n(ii) does not have a surface area greater than 3m2, and\n(iii) complies with AS/NZS 4282:2019, Control of the obtrusive effects of outdoor lighting, and\n(iv) if illuminated—is not animated, flashing or moving.",
+   "old_ref_number": "provision_1358",
+   "new_ref_number": "Section 2.124D(1)(h); same words in 2.124E(h), 2.124F(i)"
+  },
+  {
+   "id": 45869,
+   "md5": "4bb679152d92afa3d760fe9b14ab98c2",
+   "rule": "recopy",
+   "kind": "complete_unit_recopy",
+   "epi": "epi-2021-0732",
+   "document_id": "State_Environmental_Planning_Policy_Transport_and_Infrastructure_2021__NSW_Legislation",
+   "ref_number": "provision_3660",
+   "unit_id": "sch.6-sec.13-ssec.3",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0732#sch.6-sec.13-ssec.3",
+   "law_date": "2026-10-16",
+   "old_text": "(a) have a minimum floor level no lower than the floor levels set by the council for that lot, and \n(b) have the part of the development at or below the flood planning level constructed of flood compatible material, and \n(c) be able to withstand the forces of floodwater, debris and buoyancy up to the flood planning level (or, if onsite refuge is proposed, the probable maximum flood level), and \n(d) not increase flood affectation elsewhere in the floodplain, and \n(e) have reliable access for pedestrians and vehicles from the development, at a minimum level equal to the lowest floor level of the development, to a safe refuge, and \n(f) have open car parking spaces or carports that are no lower than the 20-year flood level, and \n(g) have driveways between car parking spaces and the connecting public roadway that will not be inundated by a depth of water greater than 0.3 m during a 1:100 ARI (average recurrent interval) flood event.",
+   "new_text": "(3) The development must, to the extent it is within a flood planning area—\n(a) have a minimum floor level no lower than the floor levels set by the council for that lot, and\n(b) have the part of the development at or below the flood planning level constructed of flood compatible material, and\n(c) be able to withstand the forces of floodwater, debris and buoyancy up to the flood planning level (or, if on-site refuge is proposed, the probable maximum flood level), and\n(d) not increase flood affectation elsewhere in the floodplain, and\n(e) have reliable access for pedestrians and vehicles from the development, at a minimum level equal to the lowest floor level of the development, to a safe refuge, and\n(f) have open car parking spaces or carports that are no lower than the 20-year flood level, and\n(g) have driveways between car parking spaces and the connecting public roadway that will not be inundated by a depth of water greater than 0.3m during a 1:100 ARI (average recurrent interval) flood event.",
+   "old_ref_number": "provision_3660",
+   "new_ref_number": "Schedule 6, section 13(3); same words in Schedule 7, section 15(3)"
+  }
+ ]
+}

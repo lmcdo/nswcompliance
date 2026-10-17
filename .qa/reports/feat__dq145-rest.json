@@ -1,0 +1,175 @@
+{
+ "tier": "standard",
+ "justification": "Standard: deterministic proof/plan code for served law citations (DQ-145), a publish-time DB gate and an extractor fix used for every council. This PR makes no live write; every plan is a dry run checked by its own re-deriving verifier. Not Critical: no production data changes here; the migration and plans are applied separately with backups.",
+ "commit_hash": "05ae0580",
+ "files": [
+  "scripts/same_place_duplicates.py",
+  "scripts/sepp_complete_unit.py",
+  "scripts/sepp_ref_fix.py",
+  "scripts/verify_sepp_marker_blind.py",
+  "scripts/page_evidence.py",
+  "scripts/page_proof_council.py",
+  "scripts/verify_page_evidence.py",
+  "scripts/dcp_extract_changed.py",
+  "scripts/measure_doubled_chars.py",
+  "migrations/113_state_law_publish_gate.sql",
+  "frontend-nextjs/lib/citation-display.ts",
+  "frontend-nextjs/components/compliance/FormattedProvisionText.tsx",
+  "frontend-nextjs/__tests__/lib/citation-display.test.ts",
+  "frontend-nextjs/__tests__/components/formatted-provision-fold.test.tsx",
+  "tests/test_same_place_duplicates.py",
+  "tests/test_sepp_complete_unit.py",
+  "tests/test_sepp_ref_fix.py",
+  "tests/test_page_evidence.py",
+  "tests/test_dcp_doubled_chars.py",
+  "tests/test_migration_113_state_law_gate.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest -q -o addopts= tests/test_same_place_duplicates.py tests/test_sepp_complete_unit.py tests/test_sepp_ref_fix.py tests/test_page_evidence.py tests/test_dcp_doubled_chars.py tests/test_sepp_marker_blind.py",
+  "fails_when": "a duplicate at another place or a whole Part is listed; codes whose words differ are cited as one; a dropped place or invented word cap passes the verifier; a heading on two candidate pages picks one; a doubled glyph is read twice; a multi-place label with an internal id is shown; a long clause is cut instead of folded",
+  "observed_red": "Mutations run 2026-10-17: ref match without the whole-Part guard -> test_same_words_elsewhere_are_kept FAILED; identical-text condition removed -> 5 tests FAILED in test_sepp_complete_unit.py; heading '== 1' changed to '>= 1' first SURVIVED (27 passed), so test_heading_on_two_word_pages_stays_unresolved was added and the mutation then FAILED. Verifier tamper checks: dropping a place, a single-code label and a mode swap each reported a mismatch. test_doubled_line_is_read_once asserts the raw defect first (pdfplumber reads the doubled line interleaved)."
+ },
+ "real_layer_exempt": {
+  "scripts/same_place_duplicates.py": "read-only SELECT over the served set, run live 2026-10-17: 15 rows listed (3 unproven)",
+  "scripts/sepp_complete_unit.py": "read-only; --same-words planned 7 and --whole-clause 5 rows live, verifier 7/7 and 5/5",
+  "scripts/page_proof_council.py": "read-only; the heading rule proved 6 Canterbury-Bankstown rows live, verify_page_evidence --db 6/6",
+  "scripts/dcp_extract_changed.py": "ran through the pipeline in --review mode on Campbelltown Part 3 (no DB write); text no longer doubled",
+  "scripts/measure_doubled_chars.py": "read-only fleet measurement, run live",
+  "scripts/verify_page_evidence.py": "its DB read (--db, read-only SELECT of md5/text/pages) ran live on the 6 heading proofs: verified 6/6",
+  "migrations/113_state_law_publish_gate.sql": "not applied to production by this PR; applied to a throwaway local Postgres 17 by tests/test_migration_113_state_law_gate.py (9 cases, PYTEST_REAL_DB=1)"
+ },
+ "pre_impl": {
+  "existing_data": "sepp_complete_unit decide/verify, sepp_ref_fix label grammar, page_evidence prove/verify, withhold_state_paraphrase.py, apply_sepp_marker_blind.py, apply_page_evidence.py, migrations 079/111/112 trigger style",
+  "assumption_mismatch": "The Campbelltown doubled text is not a colour problem in pdfplumber: both copies are black fills (only the stroke differs), so a white-colour filter removed nothing; pdfplumber's own dedupe_chars removes it. The '17 duplicate groups' were 3 groups touching DQ-145 (20 same-place rows fleet-wide). '~30 unresolved council rows' measured 7 (22 are not_found, 3 too_short).",
+  "new_vs_existing": "Adds a same-words mode and a whole-clause cap to the existing decider, a heading tie-break to prove(), dedupe in the extractor and a DB trigger; existing modes unchanged (earlier plans re-verify 45/45 and 4/5 -- the 5th, 17568, now re-derives under the same-words rule, which is the intended drop of the own-label shortcut)."
+ },
+ "functions": [
+  {
+   "name": "same_place_groups",
+   "file_line": "scripts/same_place_duplicates.py",
+   "input": "served rows with doc, text, key, ref, page",
+   "output": "groups of rows that are one rule at one place",
+   "if_none": "no groups -> empty list written"
+  },
+  {
+   "name": "decide_smallest_unit (same-words branch, max_words)",
+   "file_line": "scripts/sepp_complete_unit.py",
+   "input": "row text, law snapshot, context, word cap",
+   "output": "recopy citing every identical place, or a refusal",
+   "if_none": "places differ -> ambiguous_unit as before"
+  },
+  {
+   "name": "same_words_label / state_clause_label / stateClauseLabel",
+   "file_line": "scripts/sepp_ref_fix.py, frontend-nextjs/lib/citation-display.ts",
+   "input": "the clause label of each place holding the same words",
+   "output": "'Section X; same words in Y, Z' accepted only when every part is clause-shaped",
+   "if_none": "null label -> no clause shown"
+  },
+  {
+   "name": "row_heading / heading_pages / prove(heading)",
+   "file_line": "scripts/page_evidence.py",
+   "input": "the row text and every page of its chapter PDF",
+   "output": "the one page holding the words and the row's section number",
+   "if_none": "no heading, or not exactly one page -> unresolved"
+  },
+  {
+   "name": "_drop_doubled_chars",
+   "file_line": "scripts/dcp_extract_changed.py",
+   "input": "one pdfplumber page of a council chapter PDF",
+   "output": "page without glyphs printed twice over themselves",
+   "if_none": "page without chars returned unchanged"
+  },
+  {
+   "name": "FormattedProvisionText fold",
+   "file_line": "frontend-nextjs/components/compliance/FormattedProvisionText.tsx",
+   "input": "the served rule text of one card",
+   "output": "text over 600 words folded with 'Show full clause (N words)'",
+   "if_none": "null text counts 0 words, no fold"
+  }
+ ],
+ "values": [
+  {
+   "value": "DQ145_CEILING = 270",
+   "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-17 after the writes (291 -> 270); DQ-108 0; outreach 21 of 21",
+   "if_missing": "n/a (constant)"
+  },
+  {
+   "value": "MAX_WORDS_WHOLE = 1500",
+   "read_at": "largest of the 6 refused clauses is 1,398 words (sec.2.82)",
+   "if_missing": "n/a (constant)"
+  },
+  {
+   "value": "FOLD_WORDS = 600",
+   "read_at": "the old re-copy cap; 36 served state rows already exceed it",
+   "if_missing": "n/a (constant)"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "served rows for duplicate grouping",
+   "file_line": "scripts/same_place_duplicates.py main",
+   "where_clause": "is_current AND v2_is_actionable AND (v2_provision_type IS NULL OR <> 'TOC')",
+   "if_zero": "no groups, empty list",
+   "if_wrong": "withhold_state_paraphrase.py refuses unless every listed id is current in the named council"
+  },
+  {
+   "purpose": "chapters serving rules, for the fleet measure",
+   "file_line": "scripts/measure_doubled_chars.py main",
+   "where_clause": "reg.is_active AND r2_current_path IS NOT NULL AND EXISTS a served row of the chapter",
+   "if_zero": "TOTAL pdfs 0 printed",
+   "if_wrong": "read-only; counts only"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "the same standard sits in several codes with slightly different words (and vs or)",
+   "what_happens": "refused ambiguous_unit; the row keeps the citation-not-yet-checked mark",
+   "mitigated": true,
+   "how": "every smallest covering unit must have identical normalised tokens",
+   "repro": "test_places_whose_words_differ_stay_ambiguous"
+  },
+  {
+   "scenario": "the same words are on several pages and the section number is on none or several of them",
+   "what_happens": "the row stays unresolved and nothing is written",
+   "mitigated": true,
+   "how": "heading_pages must return exactly one page",
+   "repro": "test_heading_on_two_word_pages_stays_unresolved, test_heading_absent_or_on_several_word_pages_stays_unresolved"
+  },
+  {
+   "scenario": "white text on a dark banner is real text",
+   "what_happens": "kept: dedupe only removes a glyph repeated at the same spot in the same font",
+   "mitigated": true,
+   "how": "pdfplumber dedupe_chars, not a colour filter",
+   "repro": "test_ordinary_page_is_unchanged"
+  },
+  {
+   "scenario": "a script inserts an unproven state-law row as served",
+   "what_happens": "the INSERT fails with a check_violation error",
+   "mitigated": true,
+   "how": "migration 113 trigger",
+   "repro": "post_merge manual_verify"
+  },
+  {
+   "scenario": "one of the chapters serving rules cannot be downloaded or opened during the fleet measure",
+   "what_happens": "that PDF is recorded with an error and the run continues",
+   "mitigated": true,
+   "how": "per-PDF try/except writes an error field and counts errors in the TOTAL line",
+   "repro": "TOTAL line of scripts/measure_doubled_chars.py prints errors=N"
+  },
+  {
+   "scenario": "two rows re-copy to the same clause (43931/43939)",
+   "what_happens": "43939 refused number_missing; the apply duplicate guard refuses any such pair",
+   "mitigated": true,
+   "how": "apply_sepp_marker_blind.duplicate_problems",
+   "repro": "duplicate_problems on the whole-clause plan returns []"
+  }
+ ],
+ "mutation_analysis": "Executed for three rules (see falsifiable_check.observed_red); one survivor found and closed with a new test.",
+ "residual_risk": "Cross-review (pre-push skips diffs over 512 KB because of data files) was run by hand twice on a code-only staged diff in a fresh detached worktree at origin/main, gpt-5.6-sol. Round 1, 5 findings, all ACCEPTED and fixed: empty labels counted as one place; heading number anywhere on the page; gate missed text changes on served rows and council-to-state flips (now a deferred constraint trigger); case-sensitive same-words check in TS; every dedupe error swallowed (now AttributeError only). Round 2, 3 findings, all ACCEPTED and fixed: same page alone treated as same place (dropped: 20 -> 15 rows); prose like Control 6.5 taken as heading (now top 40 words + more reference words); timestamp refresh kept a stale proof (now needs new time AND new evidence path). Round 3 (pre-push, advisory), 4 findings: empty-text rows grouped ACCEPTED (skipped); two councils sharing a document id ACCEPTED (council in the key); 'Chapter 6.5 overview' at a page top REJECTED -- a page whose top names the section and that holds the rule's words is the intended evidence, and the 6 live proofs were checked by hand (key-site headers); AttributeError inside dedupe swallowed ACCEPTED (hasattr check, real failures propagate). Round 4 (pre-push), 1 finding: a proven council row turned into state law kept its council proof ACCEPTED (proof voided on that flip). Round 5 (pre-push), 3 findings: text change that blanks both evidence fields kept the proof ACCEPTED (both must be non-null and new; 9/9 on Postgres 17); stale Ashfield duplicate list still committed after the rule was tightened ACCEPTED (file removed; Ashfield has no same-place duplicates now); 'Chapter 6.5' heading REJECTED again, same reason as round 3. Round 6 (pre-push), 2 findings: normalising dropped comparison symbols so '>= 3m' and '<= 3m' compared equal, in both the duplicate list and the same-words rule ACCEPTED (symbols >= <= < > = +- % $ now kept; whitespace-only comparison was tried first and wrongly split real duplicates that differ only by case or a trailing '...'; lists unchanged at 15 and 7). Round 7 (pre-push), 1 new finding: a bare 4+ digit number in the same-words list shown as a citation ACCEPTED (rejected in Python and TS, tested). Its 3 re-reported items: ASCII + and - are deliberately not kept (hyphens would split real duplicates; +- in the comment means the plus-minus sign) -- NO CHANGE; status-only proof already adjudicated. The fold sits in the shared rule-text renderer; a card that renders state-law text another way is not folded. The Campbelltown Part 3 re-read through the pipeline is refused by its own page-loss guard (page 41 left out by the reader, twice), so its 28 rows stay marked. Wollongong 137988 stays unresolved (heading 10.2 is on page 8 only). Migration 113 will refuse sync or one-off scripts that insert unproven served state rows -- intended.",
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "None",
+  "other_repo": "No",
+  "manual_verify": "After applying migration 113: BEGIN; INSERT INTO regulatory_provisions (document_id, ref_number, provision_text, is_current, v2_is_actionable) VALUES ('X','1','t',true,true); -- expect check_violation; ROLLBACK. Then python scripts/dq_check.py --outreach prints 21 of 21."
+ }
+}

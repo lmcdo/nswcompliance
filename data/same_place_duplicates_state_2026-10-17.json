@@ -1,0 +1,29 @@
+[
+ {
+  "id": 18399,
+  "council": null,
+  "kept": 18481,
+  "ref": "2.34",
+  "kept_ref": "Clause 2.34",
+  "proven": false,
+  "reason": "duplicate: same words, same place and same applicability as 18481"
+ },
+ {
+  "id": 16832,
+  "council": null,
+  "kept": 16827,
+  "ref": "5A.6M",
+  "kept_ref": "5A.6M",
+  "proven": true,
+  "reason": "duplicate: same words, same place and same applicability as 16827"
+ },
+ {
+  "id": 13484,
+  "council": null,
+  "kept": 13394,
+  "ref": "2.17(4)",
+  "kept_ref": "2.17(4)",
+  "proven": false,
+  "reason": "duplicate: same words, same place and same applicability as 13394"
+ }
+]

@@ -1,0 +1,137 @@
+[
+ {
+  "id": 244782,
+  "council": "hornsby",
+  "kept": 244774,
+  "ref": "Hornsby_DCP_2024__part_1_general__1_3_2_1~24",
+  "kept_ref": "Hornsby_DCP_2024__part_1_general__1_3_2_1~17",
+  "proven": true,
+  "reason": "duplicate: same words, same place and same applicability as 244774"
+ },
+ {
+  "id": 154263,
+  "council": "leichhardt",
+  "kept": 154261,
+  "ref": "Leichhardt_DCP_2013__part_c_s2_urban_character__C2_2_1_3 O1~3",
+  "kept_ref": "Leichhardt_DCP_2013__part_c_s2_urban_character__C2_2_1_3 O1",
+  "proven": true,
+  "reason": "duplicate: same words, same place and same applicability as 154261"
+ },
+ {
+  "id": 248846,
+  "council": "penrith",
+  "kept": 248828,
+  "ref": "Penrith_DCP_2014__c10_transport_access_parking__10_5_1 C10~8",
+  "kept_ref": "Penrith_DCP_2014__c10_transport_access_parking__10_5_1 C10~10",
+  "proven": true,
+  "reason": "duplicate: same words, same place and same applicability as 248828"
+ },
+ {
+  "id": 154480,
+  "council": "leichhardt",
+  "kept": 154479,
+  "ref": "Leichhardt_DCP_2013__part_c_s2_urban_character__C2_2_2_2 O1~2",
+  "kept_ref": "Leichhardt_DCP_2013__part_c_s2_urban_character__C2_2_2_2 O1",
+  "proven": true,
+  "reason": "duplicate: same words, same place and same applicability as 154479"
+ },
+ {
+  "id": 154579,
+  "council": "leichhardt",
+  "kept": 154578,
+  "ref": "Leichhardt_DCP_2013__part_c_s2_urban_character__C2_2_2_5 C1~3",
+  "kept_ref": "Leichhardt_DCP_2013__part_c_s2_urban_character__C2_2_2_5 C1~2",
+  "proven": true,
+  "reason": "duplicate: same words, same place and same applicability as 154578"
+ },
+ {
+  "id": 155038,
+  "council": "leichhardt",
+  "kept": 155037,
+  "ref": "Leichhardt_DCP_2013__part_c_s2_urban_character__C2_2_4_3 C3~3",
+  "kept_ref": "Leichhardt_DCP_2013__part_c_s2_urban_character__C2_2_4_3 C3~2",
+  "proven": true,
+  "reason": "duplicate: same words, same place and same applicability as 155037"
+ },
+ {
+  "id": 154775,
+  "council": "leichhardt",
+  "kept": 154774,
+  "ref": "Leichhardt_DCP_2013__part_c_s2_urban_character__C2_2_3_4 C4~3",
+  "kept_ref": "Leichhardt_DCP_2013__part_c_s2_urban_character__C2_2_3_4 C4~2",
+  "proven": true,
+  "reason": "duplicate: same words, same place and same applicability as 154774"
+ },
+ {
+  "id": 154701,
+  "council": "leichhardt",
+  "kept": 154700,
+  "ref": "Leichhardt_DCP_2013__part_c_s2_urban_character__C2_2_3_2 C5~4",
+  "kept_ref": "Leichhardt_DCP_2013__part_c_s2_urban_character__C2_2_3_2 C5~3",
+  "proven": true,
+  "reason": "duplicate: same words, same place and same applicability as 154700"
+ },
+ {
+  "id": 186503,
+  "council": "leichhardt",
+  "kept": 186501,
+  "ref": "Leichhardt_DCP_2013__part_c_s1_general__C1_18 b~2",
+  "kept_ref": "Leichhardt_DCP_2013__part_c_s1_general__C1_18 b",
+  "proven": true,
+  "reason": "duplicate: same words, same place and same applicability as 186501"
+ },
+ {
+  "id": 184683,
+  "council": "canterbury_bankstown",
+  "kept": 184679,
+  "ref": "Canterbury-Bankstown_DCP_2023__chapter_2_2_flood_risk_management__2_2~32",
+  "kept_ref": "Canterbury-Bankstown_DCP_2023__chapter_2_2_flood_risk_management__2_2~31",
+  "proven": true,
+  "reason": "duplicate: same words, same place and same applicability as 184679"
+ },
+ {
+  "id": 197972,
+  "council": "marrickville",
+  "kept": 197971,
+  "ref": "Marrickville_DCP_2011__part9_p06_petersham_south__9_6_5_1 C20",
+  "kept_ref": "Marrickville_DCP_2011__part9_p06_petersham_south__9_6_5_1 C20",
+  "proven": true,
+  "reason": "duplicate: same words, same place and same applicability as 197971"
+ },
+ {
+  "id": 8739,
+  "council": "inner_west",
+  "kept": 8549,
+  "ref": "Clause 6.6",
+  "kept_ref": "6.6",
+  "proven": false,
+  "reason": "duplicate: same words, same place and same applicability as 8549"
+ },
+ {
+  "id": 18399,
+  "council": null,
+  "kept": 18481,
+  "ref": "2.34",
+  "kept_ref": "Clause 2.34",
+  "proven": false,
+  "reason": "duplicate: same words, same place and same applicability as 18481"
+ },
+ {
+  "id": 16832,
+  "council": null,
+  "kept": 16827,
+  "ref": "5A.6M",
+  "kept_ref": "5A.6M",
+  "proven": true,
+  "reason": "duplicate: same words, same place and same applicability as 16827"
+ },
+ {
+  "id": 13484,
+  "council": null,
+  "kept": 13394,
+  "ref": "2.17(4)",
+  "kept_ref": "2.17(4)",
+  "proven": false,
+  "reason": "duplicate: same words, same place and same applicability as 13394"
+ }
+]

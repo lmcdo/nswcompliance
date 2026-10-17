@@ -38,7 +38,11 @@ import sepp_ref_fix as rf  # noqa: E402
 p1 = mb.p1
 ROOT = mb.ROOT
 MODE = "smallest_complete_unit"
+MODE_SAME = "same_words_in_codes"   # one standard printed word for word in several codes: cite every place
 MAX_WORDS = 600
+# DQ-145 step 4 (user 2026-10-17): the 600 cap was a choice, not a rule (36 served state rows already exceed it). The
+# rows refused unit_over_600_words get the whole clause, up to this ceiling; the card folds long text ("show full clause").
+MAX_WORDS_WHOLE = 1500
 
 
 def covering_units(row: list[str], snap: mb.Snapshot) -> dict[str, tuple[int, float]]:
@@ -78,7 +82,7 @@ def tiebreaks(ref: str | None, neighbour_refs: tuple[str | None, str | None]) ->
 
 
 def decide_smallest_unit(old: str, snap: mb.Snapshot, scope: str | None = None,
-                         context: list[tuple[str, str]] | None = None) -> dict:
+                         context: list[tuple[str, str]] | None = None, max_words: int = MAX_WORDS) -> dict:
     """-> {verdict: recopy|refuse, reason, unit, new_ref (label) ...evidence fields}. The words alone choose the unit;
     only when they fit several places is `context` (tiebreaks()) used, and it must leave exactly ONE (user 2026-10-17)."""
     row = mb.norm_tokens(old)
@@ -90,25 +94,44 @@ def decide_smallest_unit(old: str, snap: mb.Snapshot, scope: str | None = None,
     smallest = sorted(u for u in cover if not any(u in snap.ancestors(o) for o in cover if o != u))
     outside = [u for u in cover if not mb._related(snap, u, smallest[0])]
     tiebreak = None
+    places = None
     if len(smallest) != 1 or outside:
-        for by, br in context or []:
-            if by == "own_label_unit":   # in the labelled clause's own line: the clause, inside it, or above it
-                same = (lambda u, br=br: br in snap.units and mb._related(snap, u, br))
+        # DQ-145 step 2 (user 2026-10-17): the same standard printed word for word in several codes is ONE rule cited at
+        # every place -- tried before the own-label tie-break, which would pick a single code. Only when every covering
+        # unit is a smallest unit or above one, and every smallest unit's words are identical after normalising.
+        if (len(smallest) > 1 and all(any(u == s_ or u in snap.ancestors(s_) for s_ in smallest) for u in cover)
+                and len({tuple(snap.tokens[u]) for u in smallest}) == 1
+                # the tokens drop comparison symbols (>=, <=): those must match too (cross-review 2026-10-17)
+                and len({re.sub(r"[^≥≤<>=±%$]", "", snap.units[u].text) for u in smallest}) == 1):
+            order = list(snap.units)
+            places = sorted(smallest, key=order.index)
+            smallest = places[:1]
+        if places is None:
+            for by, br in context or []:
+                if by == "own_label_unit":   # in the labelled clause's own line: the clause, inside it, or above it
+                    same = (lambda u, br=br: br in snap.units and mb._related(snap, u, br))
+                else:
+                    same = (lambda u, br=br: branch(u) == br)
+                inb = [u for u in smallest if same(u)]
+                if len(inb) == 1 and not [u for u in cover if same(u) and not mb._related(snap, u, inb[0])]:
+                    smallest, tiebreak = inb, {"by": by, "branch": br}
+                    break
             else:
-                same = (lambda u, br=br: branch(u) == br)
-            inb = [u for u in smallest if same(u)]
-            if len(inb) == 1 and not [u for u in cover if same(u) and not mb._related(snap, u, inb[0])]:
-                smallest, tiebreak = inb, {"by": by, "branch": br}
-                break
-        else:
-            return {"verdict": "refuse", "reason": "ambiguous_unit", "candidates": (smallest + outside)[:6],
-                    "n_words": len(row)}
+                return {"verdict": "refuse", "reason": "ambiguous_unit", "candidates": (smallest + outside)[:6],
+                        "n_words": len(row)}
     uid = smallest[0]
+    for u in places or [uid]:
+        lb = rf.unit_label(u, scope)
+        if lb is None or rf.state_clause_label(lb) != lb or mb.ref_full(lb)[0] != u:
+            return {"verdict": "refuse", "reason": "unit_not_a_clause", "unit": u, "n_words": len(row)}
     label = rf.unit_label(uid, scope)
-    if label is None or rf.state_clause_label(label) != label or mb.ref_full(label)[0] != uid:
-        return {"verdict": "refuse", "reason": "unit_not_a_clause", "unit": uid, "n_words": len(row)}
+    if places:
+        label = rf.same_words_label([rf.unit_label(u, scope) for u in places])
+        if rf.state_clause_label(label) != label:
+            return {"verdict": "refuse", "reason": "unit_not_a_clause", "unit": uid, "n_words": len(row),
+                    "detail": "same-words label fails the display check"}
     ut = snap.tokens[uid]
-    if len(ut) > MAX_WORDS:
+    if len(ut) > min(max_words, MAX_WORDS_WHOLE):
         return {"verdict": "refuse", "reason": "unit_over_600_words", "unit": uid, "n_words": len(row),
                 "unit_words": len(ut), "detail": str(len(ut))}
     lost = sorted(mb.numbers_for_check(old, snap, uid) - mb.rc.numbers(snap.units[uid].text))
@@ -120,7 +143,8 @@ def decide_smallest_unit(old: str, snap: mb.Snapshot, scope: str | None = None,
     if mb.md5(new) == mb.md5(old):
         return {"verdict": "refuse", "reason": "already_identical", "unit": uid, "n_words": len(row)}
     n, cov = cover[uid]
-    return {"verdict": "recopy", "reason": MODE, "unit": uid, "new_ref": label, "n_words": len(row), "matched_words": n,
+    return {"verdict": "recopy", "reason": MODE_SAME if places else MODE, "unit": uid, "new_ref": label,
+            "places": places, "n_words": len(row), "matched_words": n,
             "coverage": round(cov, 4), "unit_words": len(ut), "size_ratio": round(len(ut) / len(row), 3),
             "new_sha256": mb.sha256(new), "tokens_sha256": mb.tokens_sha(row), "tiebreak": tiebreak}
 
@@ -133,9 +157,24 @@ def main(argv=None) -> int:
                     help="re-run the ambiguous_unit rows of data/sepp_complete_unit_refused_<date>.csv and "
                          "data/sepp_ref_fix_refused_<date>.csv with the own-label / neighbour-label tie-break; "
                          "outputs are named sepp_context_unit_*")
+    ap.add_argument("--whole-clause", action="store_true",
+                    help="re-run the unit_over_600_words rows of data/sepp_complete_unit_refused_<date>.csv with the cap "
+                         "raised to MAX_WORDS_WHOLE; outputs are named sepp_whole_clause_*")
+    ap.add_argument("--same-words", action="store_true",
+                    help="re-run the ambiguous_unit rows of data/sepp_context_unit_refused_<date>.csv (context on): a standard "
+                         "printed word for word in several codes is cited at every place; outputs are named sepp_same_words_*")
     args = ap.parse_args(argv)
     stamp = args.date
-    if args.context:
+    max_words = MAX_WORDS
+    if args.whole_clause:
+        max_words = MAX_WORDS_WHOLE
+        ids = sorted({int(r["id"]) for r in csv.DictReader(open(ROOT / "data" / f"sepp_complete_unit_refused_{stamp}.csv",
+                                                                   encoding="utf8")) if r["reason"] == "unit_over_600_words"})
+    elif args.same_words:
+        args.context = True
+        ids = sorted({int(r["id"]) for r in csv.DictReader(open(ROOT / "data" / f"sepp_context_unit_refused_{stamp}.csv",
+                                                                   encoding="utf8")) if r["reason"] == "ambiguous_unit"})
+    elif args.context:
         srcs = [ROOT / "data" / f"sepp_complete_unit_refused_{stamp}.csv", ROOT / "data" / f"sepp_ref_fix_refused_{stamp}.csv"]
         ids = sorted({int(r["id"]) for s in srcs for r in csv.DictReader(open(s, encoding="utf8"))
                       if r["reason"] == "ambiguous_unit"})
@@ -189,7 +228,7 @@ def main(argv=None) -> int:
         print(f"{epi}: {len(snap.units)} units, {len(by_epi[epi])} rows", flush=True)
         for rid, doc, ref, old, om5, _cs, _cur, _sc, nver in by_epi[epi]:
             nb = neighbours.get(rid, (None, None))
-            d = decide_smallest_unit(old, snap, None, tiebreaks(ref, nb) if args.context else None)
+            d = decide_smallest_unit(old, snap, None, tiebreaks(ref, nb) if args.context else None, max_words)
             if d["verdict"] == "refuse":
                 refused.append({"id": rid, "reason": d["reason"], "ref_number": ref,
                                 "unit_found": ";".join(d.get("candidates") or []) or d.get("unit") or "",
@@ -201,9 +240,13 @@ def main(argv=None) -> int:
                 continue
             uid, label = d["unit"], d["new_ref"]
             new_ref = label if label != ref else None
-            ev = {"id": rid, "rule": "recopy", "mode": MODE, "epi": epi, "snapshot_file": f.name,
+            ev = {"id": rid, "rule": "recopy", "mode": d["reason"], "epi": epi, "snapshot_file": f.name,
                   "snapshot_sha256": snap.sha256, "law_date": law_date, "unit_id": uid, "norm_version": mb.NORM_VERSION,
-                  "match_version": mb.MATCH_VERSION, "old_md5": om5, "ref_number": new_ref or ref, "pick": MODE}
+                  "match_version": mb.MATCH_VERSION, "old_md5": om5, "ref_number": new_ref or ref, "pick": d["reason"]}
+            if d.get("places"):
+                ev["places"] = d["places"]
+            if max_words != MAX_WORDS:
+                ev["max_words"] = max_words
             if new_ref:
                 ev.update({"old_ref_number": ref, "new_ref_number": new_ref})
             ev.update({k: d[k] for k in ("n_words", "unit_words", "tokens_sha256", "matched_words", "coverage",
@@ -221,7 +264,7 @@ def main(argv=None) -> int:
     plan = {"generated": stamp, "norm_version": mb.NORM_VERSION, "match_version": mb.MATCH_VERSION, "manifest": manifest,
             "method": "scripts/sepp_complete_unit.py (docstring has the rules). No model reads or writes text.",
             "rows": plan_rows}
-    name = "sepp_context_unit" if args.context else "sepp_complete_unit"
+    name = "sepp_whole_clause" if args.whole_clause else "sepp_same_words" if args.same_words else "sepp_context_unit" if args.context else "sepp_complete_unit"
     pp = ROOT / "data" / f"{name}_plan_{stamp}.json"
     pp.write_text(json.dumps(plan, indent=1, ensure_ascii=False) + "\n", encoding="utf8")
     ep = ROOT / "data" / f"{name}_evidence_{stamp}.jsonl"
@@ -231,7 +274,7 @@ def main(argv=None) -> int:
         w = csv.DictWriter(fh, fieldnames=["id", "reason", "ref_number", "unit_found", "detail"], restval="")
         w.writeheader()
         w.writerows(refused)
-    print(f"\nRECOPY (smallest complete unit): {len(evidence)}\nREFUSED: {len(refused)}")
+    print(f"\nRECOPY: {dict(Counter(e['mode'] for e in evidence))}\nREFUSED: {len(refused)}")
     for k, n in Counter(r["reason"] for r in refused).most_common():
         print(f"  {n:5}  {k}")
     print(f"wrote {pp.relative_to(ROOT)}, {ep.relative_to(ROOT)}, {rp.relative_to(ROOT)}")

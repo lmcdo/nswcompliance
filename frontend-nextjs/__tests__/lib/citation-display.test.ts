@@ -115,6 +115,19 @@ describe('a state-law reference is shown only if it looks like a real NSW clause
       expect(stateClauseLabel(ok)).toBe(ok);
     }
   });
+  it('one standard in several codes: every place is cited (scripts/sepp_ref_fix.same_words_label)', () => {
+    for (const ok of ['Section 3.29(3); same words in 3C.32(3), 3D.53(4)',
+      'Section 3.4(2)(d); same words in 3B.4(2)(d), 3C.5(2)(d), 3D.6(2)(d)',
+      'Schedule 6, section 13(3); same words in Schedule 7, section 15(3)',
+      'Section 3.1; Same words in 3.2']) {
+      expect(stateClauseLabel(ok)).toBe(ok);
+    }
+    for (const bad of ['provision_12; same words in 3.1', 'Section 3.1; same words in banana',
+      'Section 3.1; same words in ', 'Section 3.1; same words in 3.2, provision_9',
+      'Section 3.1; same words in 2344', 'Section 3.1; same words in 3.2, 2344']) {
+      expect(stateClauseLabel(bad)).toBeNull();
+    }
+  });
   it('never shows internal ids', () => {
     for (const bad of ['provision_2344', 'layout_no', 'Provision 12', '2344', '3f2b8c1e-1234-4abc-9def-0123456789ab', 'SEPP__part_3__3_1', '', '   ', null, undefined, 42]) {
       expect(stateClauseLabel(bad)).toBeNull();

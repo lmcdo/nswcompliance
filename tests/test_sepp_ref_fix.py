@@ -227,3 +227,14 @@ def test_number_in_an_adjacent_headings_title_still_counts(snap2):
     old = S + ".\nPart 2.4 Standards for 9 metre buildings"
     nums = mb.numbers_for_check(old, snap2, "sec.2.18")
     assert "2.4" not in nums and "9" in nums
+
+
+def test_same_words_label_passes_the_display_check():
+    lab = rf.same_words_label(["Section 3.29(3)", "Section 3C.32(3)", "Section 3D.53(4)"])
+    assert lab == "Section 3.29(3); same words in 3C.32(3), 3D.53(4)" and rf.state_clause_label(lab) == lab
+    sch = rf.same_words_label(["Schedule 6, section 13(3)", "Schedule 7, section 15(3)"])
+    assert rf.state_clause_label(sch) == sch
+    for bad in ["provision_12; same words in 3.1", "Section 3.1; same words in banana",
+                "Section 3.1; same words in 3.2, provision_9", "Section 3.1; same words in ",
+                "Section 3.1; same words in 2344", "Section 3.1; same words in 3.2, 2344"]:
+        assert rf.state_clause_label(bad) is None

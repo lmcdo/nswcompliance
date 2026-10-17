@@ -14,6 +14,8 @@ S1 = "the owner of the land must keep every drain and gutter clear of debris and
 S2 = "a council may require the owner to repair any damaged drain within 28 days of written notice"
 T1 = "the occupier must not store flammable liquids within 3 metres of the boundary fence of the lot"
 T2 = "a retaining wall on the lot must be built by a qualified person and inspected before backfilling"
+T4 = "the height of the fence must be {} 1.8 metres measured from the ground level of the lot"
+T3 = "a garbage receptacle must be provided in an accessible location behind the building line of the lot"
 NOTE = "this note explains how the certifier may inspect a drain and gutter before the certificate issues"
 LONG = " ".join(f"word{i}" for i in range(700))
 
@@ -22,7 +24,11 @@ HTML = f"""<html><body>
  <div class="frag-subclause" id="sec.7-ssec.1"><p>(1) {S1}.</p></div>
  <div class="frag-subclause" id="sec.7-ssec.2"><p>(2) {S2}.</p></div></div>
 <div class="frag-clause" id="sch.1-sec.9"><h3>9 Fences</h3><p>{T1}.</p></div>
-<div class="frag-clause" id="sch.2-sec.9"><h3>9 Fences</h3><p>{T1}.</p></div>
+<div class="frag-clause" id="sch.2-sec.9"><h3>9 Fences</h3><p>{T1} or site.</p></div>
+<div class="frag-clause" id="sch.5-sec.11"><h3>11 Garbage</h3><p>{T3}.</p></div>
+<div class="frag-clause" id="sch.6-sec.11"><h3>11 Garbage</h3><p>{T3}.</p></div>
+<div class="frag-clause" id="sch.7-sec.12"><h3>12 Fence</h3><p>{T4.format("≤")}.</p></div>
+<div class="frag-clause" id="sch.8-sec.12"><h3>12 Fence</h3><p>{T4.format("≥")}.</p></div>
 <div class="frag-note" id="sch.4-note"><p>{NOTE}.</p></div>
 <div class="frag-clause" id="sec.20"><h3>20 Long</h3>
  <div class="frag-subclause" id="sec.20-ssec.1"><p>(1) {LONG}.</p></div></div>
@@ -143,3 +149,61 @@ def test_neighbour_labels_are_not_used(snap):
 
 def test_no_context_still_refuses(snap):
     assert cu.decide_smallest_unit(drop(T1, 2), snap, None, cu.tiebreaks("Fences", (None, None)))["reason"] == "ambiguous_unit"
+
+
+def test_same_words_in_several_codes_cites_every_place(snap):
+    # DQ-145 step 2: T3 is printed word for word in Schedules 5 and 6 -- one rule, both places cited, none picked
+    d = cu.decide_smallest_unit(drop(T3, 2), snap)
+    assert d["verdict"] == "recopy" and d["reason"] == cu.MODE_SAME
+    assert d["places"] == ["sch.5-sec.11", "sch.6-sec.11"] and d["unit"] == "sch.5-sec.11"
+    assert d["new_ref"] == "Schedule 5, section 11; same words in Schedule 6, section 11"
+
+
+def test_same_words_rule_comes_before_the_own_label(snap):
+    # a label naming Schedule 6 does not pick one code when the words are identical in both
+    d = cu.decide_smallest_unit(drop(T3, 2), snap, None, cu.tiebreaks("Schedule 6, section 11", (None, None)))
+    assert d["reason"] == cu.MODE_SAME and d["tiebreak"] is None
+
+
+def test_places_whose_words_differ_stay_ambiguous(snap):
+    # T1 in Schedule 2 has two more words: not the same standard, so no place is cited
+    assert cu.decide_smallest_unit(drop(T1, 2), snap)["reason"] == "ambiguous_unit"
+
+
+def test_verifier_catches_a_dropped_place(snap, tmp_path):
+    d = cu.decide_smallest_unit(drop(T3, 2), snap)
+    e = {"mode": d["reason"], "rule": "recopy", "unit_id": d["unit"], "places": d["places"][:1], "tiebreak": None,
+         **{k: d[k] for k in ("n_words", "unit_words", "tokens_sha256", "matched_words", "coverage", "size_ratio",
+                              "new_sha256")}}
+    r = {"rule": "recopy", "old_text": drop(T3, 2), "ref_number": "Garbage", "new_ref_number": d["new_ref"],
+         "new_text": snap.units[d["unit"]].text}
+    assert "places re-derived" in ver._verify_complete_unit(r, e, snap)
+    e["places"] = d["places"]
+    e.update({"ref_number": d["new_ref"], "new_ref_number": d["new_ref"], "old_ref_number": "Garbage"})
+    r["old_ref_number"] = "Garbage"
+    assert ver._verify_complete_unit(r, e, snap) == ""
+
+
+def test_whole_clause_mode_lifts_the_600_cap_only_to_the_ceiling(snap):
+    row = drop(LONG, 2)
+    assert cu.decide_smallest_unit(row, snap)["reason"] == "unit_over_600_words"
+    d = cu.decide_smallest_unit(row, snap, None, None, cu.MAX_WORDS_WHOLE)
+    assert d["verdict"] == "recopy" and d["unit"] == "sec.20-ssec.1" and d["unit_words"] > cu.MAX_WORDS
+    assert cu.decide_smallest_unit(row, snap, None, None, 10_000)["unit_words"] <= cu.MAX_WORDS_WHOLE  # ceiling holds
+
+
+def test_verifier_rejects_an_invented_word_cap(snap):
+    d = cu.decide_smallest_unit(drop(LONG, 2), snap, None, None, cu.MAX_WORDS_WHOLE)
+    e = {"mode": d["reason"], "rule": "recopy", "unit_id": d["unit"], "tiebreak": None, "max_words": 99_999,
+         "ref_number": "Section 20(1)",
+         **{k: d[k] for k in ("n_words", "unit_words", "tokens_sha256", "matched_words", "coverage", "size_ratio",
+                              "new_sha256")}}
+    r = {"rule": "recopy", "old_text": drop(LONG, 2), "ref_number": "Section 20(1)", "new_text": snap.units[d["unit"]].text}
+    assert "not a cap" in ver._verify_complete_unit(r, e, snap)
+    e["max_words"] = cu.MAX_WORDS_WHOLE
+    assert ver._verify_complete_unit(r, e, snap) == ""
+
+
+def test_codes_differing_only_by_a_comparison_symbol_are_not_the_same_words(snap):
+    d = cu.decide_smallest_unit(drop(T4.format("≤"), 2), snap)
+    assert d["reason"] == "ambiguous_unit"
