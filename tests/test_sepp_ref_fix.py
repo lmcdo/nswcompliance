@@ -187,6 +187,7 @@ HTML2 = f"""<html><body>
 <div class="frag-clause" id="sec.2.18"><h3>2.18 Plans</h3><p>{S}.</p></div>
 <h2>Part 2.4 Principal development standards</h2>
 <div class="frag-clause" id="sec.2.19"><h3>2.19 Height</h3><p>the height of a building must not exceed the maximum shown.</p></div>
+<h2>Part 3.1 Other matters</h2>
 <div class="frag-clause" id="sec.9.1"><h3>9.1 Notices</h3><p>{L}.</p></div>
 </body></html>"""
 
@@ -212,3 +213,10 @@ def test_words_also_inside_an_unrelated_longer_unit_are_ambiguous(snap2):
     # S fills sec.2.18 but also sits verbatim inside sec.9.1: the unit is not decided
     d = rf.find_unit(S, snap2)
     assert d.get("reason") == "ambiguous_unit" and "sec.9.1" in d["candidates"]
+
+
+def test_heading_printed_elsewhere_in_law_keeps_its_numbers(snap2):
+    # 'Part 3.1' is a real heading, but not the one right after sec.2.18
+    old = S + ".\nPart 3.1 Standards for 9 metre buildings"
+    nums = mb.numbers_for_check(old, snap2, "sec.2.18")
+    assert "3.1" in nums and "9" in nums

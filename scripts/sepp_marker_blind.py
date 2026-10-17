@@ -92,14 +92,18 @@ class Snapshot:
         self.tokens = {u: norm_tokens(x.text) for u, x in self.units.items()}
         self.joined = {u: " " + " ".join(t) + " " for u, t in self.tokens.items()}
         self._inst = None
-        self._law_text = None
 
-    @property
-    def law_text(self) -> str:
-        """The instrument's page as plain text, whitespace collapsed (for heading-label lookups)."""
-        if self._law_text is None:
-            self._law_text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", self.page))
-        return self._law_text
+    def gap_after(self, uid: str) -> str:
+        """Plain text of the page from unit `uid` to the next unit that is not inside it: the unit plus any headings
+        printed between it and the next clause. '' when the unit's id is not found in the page."""
+        start = self.page.find(f'id="{uid}"')
+        if start == -1:
+            return ""
+        ids = list(self.units)
+        later = [u for u in ids[ids.index(uid) + 1:] if uid not in self.ancestors(u)]
+        end = self.page.find(f'id="{later[0]}"', start) if later else -1
+        seg = self.page[start:end if end != -1 else len(self.page)]
+        return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", seg))
 
     @property
     def inst(self) -> "rc.Instrument":
@@ -290,15 +294,16 @@ _HEADING_LABEL = re.compile(r"\b(Part|Division|Subdivision|Chapter|Schedule)\s+(
 
 def numbers_for_check(old: str, snap: "Snapshot", uid: str) -> set[str]:
     """Numbers of the row that the chosen unit must hold. A trailing heading is left out only when every heading label
-    in it ('Division 12') is printed in the law AND is not in the unit's own text -- i.e. it is a real heading of the
-    instrument that the unit does not contain. Otherwise the whole row counts (cross-review 2026-10-17)."""
+    in it ('Division 12') is printed in the page between this unit and the next clause AND is not in the unit's own
+    text -- i.e. it is the heading the law prints right after this unit. Otherwise the whole row counts (cross-review 2026-10-17)."""
     body = strip_trailing_headings(old)
     tail = (old or "")[len(body):]
     if tail:
         labels = [f"{k} {n}" for k, n in _HEADING_LABEL.findall(tail)]
         unit_text = re.sub(r"\s+", " ", snap.units[uid].text)
-        if not labels or any(not re.search(re.escape(lab) + r"(?![\d.A-Z])", snap.law_text) or re.search(re.escape(lab) + r"(?![\d.A-Z])", unit_text)
-                             for lab in labels):
+        gap = snap.gap_after(uid)
+        pat = lambda lab: re.escape(lab) + r"(?![\d.A-Z])"   # noqa: E731
+        if not labels or any(not re.search(pat(lab), gap) or re.search(pat(lab), unit_text) for lab in labels):
             body = old
     return rc.numbers(body)
 

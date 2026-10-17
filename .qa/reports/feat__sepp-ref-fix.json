@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Deterministic SEPP clause-label fix (67 rows: label := the law unit the row's words sit in, 64 re-copied verbatim) plus a trailing-next-heading rule for the number check (16 rows re-copied), applied live 2026-10-17 with backups; also the not-a-rule withhold lists (Ashfield E1 Part 9 905, Ku-ring-gai legend 87, SEPP overlap/paraphrase/fragment 228, user yes). DQ-145 measured 860 -> 430 by python scripts/dq_probe_live.py --id DQ-145; ceiling lowered to 430.",
-  "commit_hash": "8209eb5f",
+  "commit_hash": "b56694b3",
   "files": [
     "scripts/sepp_ref_fix.py",
     "scripts/sepp_marker_blind.py",
@@ -86,8 +86,8 @@
       "scenario": "a row ends with a heading-shaped line that is not a heading of the law, or names a part the unit itself contains",
       "what_happens": "its numbers stay in the check; a unit lacking them is refused number_missing",
       "mitigated": true,
-      "how": "numbers_for_check leaves a tail out only when every 'Part/Division N' label in it is printed in the law and absent from the unit (cross-review 2026-10-17)",
-      "repro": "test_heading_not_printed_in_law_keeps_its_numbers"
+      "how": "numbers_for_check leaves a tail out only when every 'Part/Division N' label in it is printed in the page between the chosen unit and the next clause (Snapshot.gap_after) and is absent from the unit's own text (cross-review 2026-10-17, twice)",
+      "repro": "test_heading_not_printed_in_law_keeps_its_numbers, test_heading_printed_elsewhere_in_law_keeps_its_numbers"
     },
     {
       "scenario": "the row's words fill one short section and also sit verbatim inside an unrelated longer section",
