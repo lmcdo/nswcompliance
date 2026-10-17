@@ -1,0 +1,108 @@
+{
+ "tier": "standard",
+ "justification": "Standard: a new read-only notice on the main provisions route (meta field + amber line) pointing Ku-ring-gai centre addresses at the built-form figures whose legend labels were withheld on 2026-10-17. No data written; the route part fails to an empty list. Not Critical: no rule text or verdict changes.",
+ "commit_hash": "a993e012",
+ "files": [
+  "scripts/frontage_setback_figures.py",
+  "tests/test_frontage_setback_figures.py",
+  "frontend-nextjs/data/frontage-setback-figures.json",
+  "frontend-nextjs/lib/frontage-setback-figures.ts",
+  "frontend-nextjs/components/compliance/DcpFrontageFigureNotice.tsx",
+  "frontend-nextjs/app/api/provisions/for-property/route.ts",
+  "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+  "frontend-nextjs/__tests__/lib/frontage-setback-figures.test.ts",
+  "frontend-nextjs/__tests__/components/dcp-frontage-figure-notice.test.tsx"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest -q -o addopts= tests/test_frontage_setback_figures.py && cd frontend-nextjs && npx jest __tests__/lib/frontage-setback-figures.test.ts __tests__/components/dcp-frontage-figure-notice.test.tsx",
+  "fails_when": "a figure from another precinct or council is shown, a chapter whose PDF changed still contributes, a prose mention without a colon is taken as the caption, two captions on a page pick one, or the notice renders with no items",
+  "observed_red": "Not mutation-tested. By reading: dropping the r2_path equality fails the stale-PDF test; dropping the colon from the caption pattern fails the prose-mention test in test_frontage_setback_figures.py."
+ },
+ "real_layer_exempt": {
+  "scripts/frontage_setback_figures.py": "read-only SELECT run live 2026-10-17: 87 rows, 6 chapters, 37 figure entries (11 without a single caption)",
+  "frontend-nextjs/app/api/provisions/for-property/route.ts": "two read-only SELECTs inside try/catch that yields []; the pure selection is covered by jest; not run against a live server"
+ },
+ "pre_impl": {
+  "existing_data": "data/not_a_rule_krg_map_legend_2026-10-17.json (87 withheld legend rows), dcp_chapter_registry, DcpNotCoveredNotice pattern, meta.not_covered",
+  "assumption_mismatch": "11 figure pages carry no single 'Figure N:' caption (e.g. 14E p7 prints 'Figure 1E.4-1', a typo, and only a prose mention); those say 'see page P' instead of naming a figure",
+  "new_vs_existing": "adds one meta field and one notice; nothing existing changes"
+ },
+ "functions": [
+  {
+   "name": "frontageSetbackFigures",
+   "file_line": "frontend-nextjs/lib/frontage-setback-figures.ts",
+   "input": "figure data, the address council, its precinct ids, current chapter PDF paths and chapters of those precincts",
+   "output": "figures to show, deduped and sorted",
+   "if_none": "no council match or no current PDF match -> []"
+  },
+  {
+   "name": "frontageSetbackNote",
+   "file_line": "frontend-nextjs/lib/frontage-setback-figures.ts",
+   "input": "the list of figure items selected for one address",
+   "output": "one sentence naming each figure and page",
+   "if_none": "null for an empty list"
+  },
+  {
+   "name": "pick_caption",
+   "file_line": "scripts/frontage_setback_figures.py",
+   "input": "the plain text of one figure page of the chapter PDF",
+   "output": "the figure id when exactly one 'Figure N:' caption is printed",
+   "if_none": "None for zero or several captions"
+  }
+ ],
+ "values": [],
+ "queries": [
+  {
+   "purpose": "current chapter PDF paths for the figure data",
+   "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts",
+   "where_clause": "is_active AND council = $1 AND chapter_key = ANY($2)",
+   "if_zero": "no chapter matches its recorded PDF -> no notice",
+   "if_wrong": "a changed PDF never matches the recorded r2_path, so nothing is shown"
+  },
+  {
+   "purpose": "chapters holding the address's precincts",
+   "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts",
+   "where_clause": "source_council = $1 AND is_current AND v2_precinct_id = ANY($2)",
+   "if_zero": "centre-wide (null precinct) figures are not shown",
+   "if_wrong": "only figures of chapters that hold the address's own precincts can appear"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "the council republishes a centre chapter and the figure pages move",
+   "what_happens": "the chapter's current PDF path differs from the recorded one and its figures are not shown",
+   "mitigated": true,
+   "how": "r2_path equality per chapter",
+   "repro": "stale PDF test in frontage-setback-figures.test.ts"
+  },
+  {
+   "scenario": "a page mentions a figure in prose and prints no caption",
+   "what_happens": "no figure name is invented; the notice says see page P",
+   "mitigated": true,
+   "how": "caption pattern needs the trailing colon and exactly one match",
+   "repro": "tests/test_frontage_setback_figures.py"
+  },
+  {
+   "scenario": "the chapters or current paths query fails at request time",
+   "what_happens": "the notice list is empty and the rules response is unchanged",
+   "mitigated": true,
+   "how": "try/catch around both queries, logged",
+   "repro": "by reading route.ts"
+  },
+  {
+   "scenario": "an address carries only a sub-precinct id while some figures are keyed to the centre id (14B, 14E)",
+   "what_happens": "those centre-level figures are not shown for that address",
+   "mitigated": false,
+   "how": "open: depends on which precinct ids the client sends; fails toward showing less",
+   "repro": "frontage-setback-figures.json entries with precinct_id 14B / 14E"
+  }
+ ],
+ "mutation_analysis": "Not executed; see falsifiable_check.observed_red.",
+ "residual_risk": "Centre-level figures (precinct 14B, 14E) appear only if the address request carries that centre id. 11 figure pages have no single caption and are shown as page numbers. Cross-review: run by pre-push on this diff (under 512 KB); verdicts are recorded here after the push.",
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "None",
+  "other_repo": "No",
+  "manual_verify": "Open the DCP tab for an address in Lindfield centre precinct 14E_L3: the amber line names Figure 14E.9-6, page 28, linked to the PDF."
+ }
+}
