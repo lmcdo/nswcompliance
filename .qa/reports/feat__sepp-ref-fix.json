@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Deterministic SEPP clause-label fix (67 rows: label := the law unit the row's words sit in, 64 re-copied verbatim) plus a trailing-next-heading rule for the number check (16 rows re-copied), applied live 2026-10-17 with backups; also the not-a-rule withhold lists (Ashfield E1 Part 9 905, Ku-ring-gai legend 87, SEPP overlap/paraphrase/fragment 228, user yes). DQ-145 measured 860 -> 430 by python scripts/dq_probe_live.py --id DQ-145; ceiling lowered to 430.",
-  "commit_hash": "b56694b3",
+  "commit_hash": "2ea5f326",
   "files": [
     "scripts/sepp_ref_fix.py",
     "scripts/sepp_marker_blind.py",
