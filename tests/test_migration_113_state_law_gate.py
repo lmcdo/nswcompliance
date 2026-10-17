@@ -2,7 +2,7 @@
 
 Needs PostgreSQL server binaries (initdb, pg_ctl): found on PATH, in $PG_BIN, or under C:/Program Files/PostgreSQL/*/bin.
 Skips with that reason otherwise, and without PYTEST_REAL_DB=1 (conftest_mocks stubs psycopg2). Never touches
-DATABASE_URL:  PYTEST_REAL_DB=1 python -m pytest tests/test_migration_113_state_law_gate.py -o addopts=
+DATABASE_URL:  PYTEST_REAL_DB=1 python -m pytest -m database tests/test_migration_113_state_law_gate.py -o addopts=
 """
 import glob
 import os
@@ -15,6 +15,8 @@ from pathlib import Path
 import pytest
 
 psycopg2 = pytest.importorskip("psycopg2")
+# deselected by default like every real-database test; it uses a throwaway local server, never DATABASE_URL
+pytestmark = pytest.mark.database
 MIGRATION = Path(__file__).resolve().parents[1] / "migrations" / "113_state_law_publish_gate.sql"
 
 
