@@ -177,3 +177,37 @@ def test_a_table_of_measurements_holds_rules_without_rule_words():
 def test_are_not_to_counts_as_an_obligation():
     from page_coverage import holds_rules
     assert holds_rules(["Fences are not to exceed 1.2m.", "Garages are not to dominate the frontage."])
+
+
+# -- running headers and section headings (Campbelltown Part 3 page 41, 2026-10-18) ----------------------------------
+HEADER = "Campbelltown (Sustainable City) Development Control Plan 2015 Effective 11/03/16"
+
+
+def _narrow_page():
+    # narrow columns: the rule text is split into short lines; only the header and a heading reach MIN_WORDS
+    return [HEADER, "3.7.1.6 Requirements for the Use", "Council may consider the use of",
+            "the roof space for a habitable", "room but only if it is", "appropriately designed and part of the",
+            "overall design of the building today"]
+
+
+def test_running_header_and_heading_do_not_refuse_a_narrow_page():
+    pages = {n: [HEADER, f"Filler text line number {n} about something general here"] for n in range(1, 8)}
+    pages[8] = _narrow_page()
+    out = ["Council may consider the use of the roof space for a habitable room but only if it is appropriately "
+           "designed and part of the overall design of the building today"]
+    assert pc.running_lines(pages)
+    assert 8 not in pc.skipped_pages(pages, out)
+
+
+def test_a_page_whose_rules_are_missing_is_still_skipped():
+    rules = [f"C{i} The building must be set back at least {i} metres from the side boundary of the lot."
+             for i in range(1, 8)]
+    pages = {n: [HEADER, f"Filler text line number {n} about something general here"] for n in range(1, 8)}
+    pages[8] = [HEADER] + rules
+    assert 8 in pc.skipped_pages(pages, [])
+    assert 8 not in pc.skipped_pages(pages, rules)
+
+
+def test_is_heading():
+    assert pc.is_heading("3 7 1 6 requirements for the use".split())
+    assert not pc.is_heading("c1 the building must be set back".split())

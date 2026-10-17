@@ -449,6 +449,72 @@ SOL_CONNECT_TIMEOUT = float(os.getenv("AI_SOL_CONNECT_TIMEOUT", "20"))
 SOL_READ_TIMEOUT = float(os.getenv("AI_SOL_READ_TIMEOUT", "900"))
 
 
+# ── text printed twice at the same spot (Campbelltown Part 3, 2026-10-18) ─────────────────────────────────────────────
+# Some PDFs print every line twice, a black and a white copy on top of each other. The text layer then stutters
+# ("a) a) Council may consider ... Council may consider ...") and the reader drops rules: Campbelltown Part 3 page 41
+# was refused twice by the PageLoss guard. For a chunk with such twins, the reader gets a clean picture of the pages
+# (no text layer to stutter) plus the page text with each twin kept once, and copies wording from that text.
+DOUBLED_MIN_SPANS = 10      # twins in a chunk before it is treated as doubled
+DOUBLED_DPI = 150
+DOUBLED_NOTE = ("\n\nThe PDF pages are pictures. Their exact text, page by page, is below: copy wording from this text "
+                "word for word.\n\n")
+
+
+def _span_key(span: dict) -> tuple:
+    return span["text"].strip(), tuple(round(v) for v in span["bbox"])
+
+
+def doubled_text(pdf_bytes: bytes) -> tuple[int, list[str]]:
+    """(twin spans in the chunk, page texts with each same-text same-spot twin kept once). Pure over the bytes."""
+    import fitz
+    twins, pages = 0, []
+    with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+        for page in doc:
+            seen, lines = set(), []
+            for block in page.get_text("dict")["blocks"]:
+                for ln in block.get("lines") or []:
+                    parts = []
+                    for sp in ln["spans"]:
+                        if not sp["text"].strip():
+                            continue
+                        k = _span_key(sp)
+                        if k in seen:
+                            twins += 1
+                            continue
+                        seen.add(k)
+                        parts.append(sp["text"].strip())
+                    if parts:
+                        lines.append(" ".join(parts))
+            pages.append("\n".join(lines))
+    return twins, pages
+
+
+def pictures_only(pdf_bytes: bytes, dpi: int = DOUBLED_DPI) -> bytes:
+    """The same pages as pictures: what a person sees, with no text layer."""
+    import fitz
+    out = fitz.open()
+    with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+        for page in doc:
+            pix = page.get_pixmap(dpi=dpi)
+            new = out.new_page(width=page.rect.width, height=page.rect.height)
+            new.insert_image(new.rect, stream=pix.tobytes("jpeg", jpg_quality=80))   # compressed: a chunk is many pages
+    data = out.tobytes()
+    out.close()
+    return data
+
+
+def reader_input(pdf_bytes: bytes, prompt: str) -> tuple[bytes, str]:
+    """(pdf, prompt) for a PDF-reading model: unchanged, or for a doubled chunk pictures + de-doubled text."""
+    try:
+        twins, pages = doubled_text(pdf_bytes)
+    except Exception:  # noqa: BLE001 -- not a readable PDF: sent as before, and the provider reports it
+        return pdf_bytes, prompt
+    if twins < DOUBLED_MIN_SPANS:
+        return pdf_bytes, prompt
+    text = "\n".join(f"=== PAGE {i} ===\n{t}" for i, t in enumerate(pages, 1))
+    return pictures_only(pdf_bytes), prompt + DOUBLED_NOTE + text
+
+
 def _call_sol(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     import httpx
     import openai
@@ -460,6 +526,7 @@ def _call_sol(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
         timeout=httpx.Timeout(SOL_READ_TIMEOUT, connect=SOL_CONNECT_TIMEOUT),
         max_retries=0,
     )
+    pdf_bytes, prompt = reader_input(pdf_bytes, prompt)   # doubled text: pictures + de-doubled text
     data = base64.standard_b64encode(pdf_bytes).decode()
     response = client.chat.completions.create(
         model=os.getenv("AI_MODEL_ID", SOL_MODEL),
@@ -505,6 +572,9 @@ def _call_deepseek(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     pages = [doc[i].get_text() for i in range(doc.page_count)]
     doc.close()
+    twins, clean = doubled_text(pdf_bytes)   # text printed twice at the same spot: keep each line once
+    if twins >= DOUBLED_MIN_SPANS:
+        pages = clean
 
     def read_piece(start: int) -> list[dict]:
         part = pages[start:start + DEEPSEEK_PAGES]

@@ -68,6 +68,29 @@ RULE_WORDS = re.compile(
 # counted as holding rules, so the page-coverage guard could let it be skipped.
 
 
+#: A line printed on at least this share of a document's pages (and on 3 or more) is a running header or footer.
+RUNNING_SHARE = 0.3
+
+
+def running_lines(pages: dict[int, list[str]]) -> set[str]:
+    """Lines printed on many pages of one document: the page header/footer ("Campbelltown (Sustainable City)
+    Development Control Plan 2015 Effective 11/03/16"). Not rules -- and its word 'Control' made it a scored rule line,
+    so Campbelltown Part 3 page 41 (narrow columns: almost no line reaches MIN_WORDS) scored 0 of 2 and refused the
+    chapter although the reader returned every rule on it (2026-10-18). Pure."""
+    count: dict[str, int] = {}
+    for texts in pages.values():
+        for key in {" ".join(_WORD.findall(t.lower())) for t in texts}:
+            if key:
+                count[key] = count.get(key, 0) + 1
+    floor = max(3, RUNNING_SHARE * len(pages))
+    return {k for k, n in count.items() if n >= floor}
+
+
+def is_heading(words: list[str]) -> bool:
+    """A section heading: it opens with a dotted section number ('3 7 1 6 requirements for the use'). Pure."""
+    return len(words) >= 2 and words[0].isdigit() and words[1].isdigit()
+
+
 def rule_lines(lines: list[list[str]]) -> list[list[str]]:
     """The sentence lines that could be carrying a rule, or all of them when none
     is. Pure. The fallback keeps a page of pure narrative scored as before, so the
@@ -111,9 +134,10 @@ def skipped_pages(pages: dict[int, list[str]], output_texts: list[str]) -> list[
     out: set[str] = set()
     for t in output_texts:
         out |= _grams(_WORD.findall((t or "").lower()))
+    running = running_lines(pages) if len(pages) >= 3 else set()
     missing = []
     for pno in sorted(pages):
-        lines = sentence_lines(pages[pno])
+        lines = [w for w in sentence_lines(pages[pno]) if " ".join(w) not in running and not is_heading(w)]
         if len(lines) < MIN_LINES:
             continue
         scored = rule_lines(lines)
