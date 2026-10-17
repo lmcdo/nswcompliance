@@ -1,0 +1,39 @@
+id,stage,reason,ref_number,unit_found,detail
+7672,ref_fix,unit_not_a_clause,Advertisements—bus and taxi rank shelter signs,sch.2-sec,
+7673,ref_fix,unit_not_a_clause,Advertisements—business identification signs in residential zones,sch.2-sec-oc.2,
+7674,ref_fix,unit_not_a_clause,Advertisements—signs not visible from outside site on which they are displayed,sch.2-sec-oc.3,
+7675,ref_fix,unit_not_a_clause,Letterboxes on or in a heritage item or draft heritage item,sch.2-sec-oc.4,
+7676,ref_fix,unit_not_a_clause,External lighting,sch.2-sec-oc.5,
+7677,ref_fix,unit_not_a_clause,Minor routine maintenance of heritage items or on land in heritage conservation areas,sch.2-sec-oc.6-ssec.1,
+7701,ref_fix,unit_not_a_clause,Change of use (restaurant/cafe to small bar or vice versa),sch.3-sec-oc.3-ssec.2,
+7703,ref_fix,unit_not_a_clause,Change of use (restaurant/cafe to small bar or vice versa),sch.3-sec-oc.3-ssec.2,
+8142,ref_fix,unit_not_a_clause,Definition of site area,dict-note-oc.118,
+8457,marker_blind,too_short,Culture water,,
+8470,marker_blind,no_unit_covers_90pct,Building height measurement,,
+8493,marker_blind,no_unit_covers_90pct,Definition of co-living housing,,
+8549,marker_blind,too_short,6.6,,
+8588,marker_blind,ref_more_specific_than_unit,6.24 (4)(a),sec.6.24-ssec.4,sec.6.24-ssec.4-para1.a
+8589,marker_blind,ref_more_specific_than_unit,6.24 (4)(b),sec.6.24-ssec.4,sec.6.24-ssec.4-para1.b
+8590,marker_blind,excerpt,6.24 (5),sec.6.24,unit_too_big
+8597,marker_blind,excerpt,6.34 (2),sec.6.34,ref_mismatch
+8602,marker_blind,excerpt,7.2 (3),sec.7.2,unit_too_big
+8658,ref_fix,ambiguous_unit,"Clauses 6.12, 6.13, 6.14, 6.15",sec.2.8;sec.2.8-ssec.3;sec.6.25;sec.6.25-ssec.6,
+8691,marker_blind,too_short,"Clause 6.13, 6.14, 6.15",,
+8729,complete_unit,ambiguous_unit,Clause 7.2 (2),sec.6.27;sec.7.2-ssec.2;sec.7.2;sec.7.2-ssec.2,
+8736,marker_blind,excerpt,Clause 6.3,sec.6.3,ref_mismatch
+8738,marker_blind,excerpt,Clause 6.5,sec.6.5,ref_mismatch
+8739,marker_blind,too_short,Clause 6.6,,
+8747,marker_blind,ref_more_specific_than_unit,Clause 6.16 (Area 3),sec.6.16-ssec.3-para1.a,unresolved
+9333,ref_fix,ambiguous_unit,Temporary Use of Land (Clause 2.8),sec.2.8;sec.2.8-ssec.3;sec.6.25;sec.6.25-ssec.6,
+9346,marker_blind,excerpt,Clause 5.2,sec.5.2,unit_too_big
+9347,marker_blind,excerpt,Clause 5.3,sec.5.3,unit_too_big
+22832,complete_unit,number_missing,provision_376,sec.4.4,"3,4,5,7,8"
+23302,ref_fix,unit_not_a_clause,provision_648,sec.6.1-ssec.2-tbl,
+23391,ref_fix,number_missing,provision_766,sec.6.15-ssec.2,"00,30"
+23452,ref_fix,number_missing,provision_839,sec.6.24,"16,35"
+23459,ref_fix,number_missing,provision_846,sec.6.25-ssec.3,"00,12,60"
+23531,ref_fix,number_missing,provision_949,sec.7.3-ssec.3,"00,11"
+23714,ref_fix,unit_not_a_clause,provision_1160,sch.2-sec-oc.4,
+30170,marker_blind,no_unit_covers_90pct,table_in_Inner_West_Local_Environmental_Plan_2022__NSW_Legislation_6,,
+30172,marker_blind,no_unit_covers_90pct,table_in_Inner_West_Local_Environmental_Plan_2022__NSW_Legislation_8,,
+30173,marker_blind,no_unit_covers_90pct,table_in_Inner_West_Local_Environmental_Plan_2022__NSW_Legislation_9,,

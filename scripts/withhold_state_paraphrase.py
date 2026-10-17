@@ -60,7 +60,8 @@ def main() -> int:
             print("dry run: nothing written" if not a.apply else "nothing to change")
             return 0
         BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-        bk = BACKUP_DIR / f"withhold_state_paraphrase_pre_{datetime.now():%Y-%m-%dT%H%M%S}.json"
+        # council + microseconds: per-council runs in the same second overwrote each other's backup (2026-10-17)
+        bk = BACKUP_DIR / f"withhold_{a.council or 'state'}_pre_{datetime.now():%Y-%m-%dT%H%M%S_%f}.json"
         bk.write_text(json.dumps([{"id": i, "v2_is_actionable": v} for i, v in served]), encoding="utf-8")
         cur.execute("UPDATE regulatory_provisions SET v2_is_actionable = FALSE WHERE id = ANY(%s) AND is_current"
                     f" AND {who} AND v2_is_actionable", [[r[0] for r in served]] + wp)

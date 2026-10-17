@@ -229,7 +229,7 @@ def backup(rows: list[dict], ids: set[int]) -> Path:
     return out
 
 
-def write(conn, todo: list[dict]) -> int:
+def write(conn, todo: list[dict], commit: bool = True) -> int:
     cur = conn.cursor()
     n = 0
     for i in range(0, len(todo), BATCH):
@@ -252,7 +252,8 @@ def write(conn, todo: list[dict]) -> int:
              [t["printed_page_label"] for t in c], [t["page_check"] for t in c],
              [t["page_source_path"] for t in c]))
         n += cur.rowcount
-        conn.commit()
+        if commit:   # False: the caller commits, e.g. together with the text change it proves
+            conn.commit()
     return n
 
 

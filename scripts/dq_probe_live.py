@@ -255,6 +255,15 @@ _REACHES_NOBODY = (
 _SERVED = ("is_current AND v2_is_actionable"
            " AND (v2_provision_type IS NULL OR v2_provision_type <> 'TOC')")
 
+#: A line of >= 3 words equal (ignoring a leading list marker "a)" / "(a)" / "1.") to the line right after it.
+_REPEATED_LINE = (r"(^|\n)[ \t]*(?:\(?[A-Za-z0-9]{1,4}[.)][ \t]+)?([^\s]+[ \t]+[^\s]+[ \t]+[^\n]*[^\s])[ \t]*\n"
+                  r"[ \t]*(?:\(?[A-Za-z0-9]{1,4}[.)][ \t]+)?\2[ \t]*(\n|$)")
+
+#: Ratchet ceilings: an id here is CLEAN while its count is <= the ceiling, red above it. DQ-147: 172 on 2026-10-17;
+#: 79 once the 93 Campbelltown rows of data/campbelltown_visible_text_plan_2026-10-17.json are repaired (measured on
+#: the plan's new texts). Until that write lands the probe reads red at 172.
+CEILINGS = {"DQ-147": 79}
+
 #: id -> (headline, sql, params, what a non-zero count MEANS)
 PROBES: dict[str, tuple[str, str, tuple, str]] = {
     "DQ-50": (
@@ -2937,6 +2946,20 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "the gate its chapter needs (precinct outline, heritage marker, flood/bushfire "
         "condition) so the houses it covers receive it.",
     ),
+    "DQ-147": (
+        "Served council rules with an immediately repeated line (ratchet: may only fall)",
+        # Found 2026-10-17: the Campbelltown Part 3 PDF carries an invisible WHITE copy of every line, so 116+ served
+        # rows read every line twice. This probe is the PLAIN repeated-line count (a line of >= 3 words equal to the
+        # next line, ignoring a leading list marker), NOT the visible-page test: checking the PDF is too heavy for a
+        # probe. It therefore OVER-COUNTS real repeated table cells (measured 2026-10-17: 48 rows outside Campbelltown,
+        # e.g. Woollahra "240L/100m2 of floor area/day"), so it is a ceiling (DQ147_CEILING), not a zero.
+        # scripts/visible_text_repair.py decides row by row whether a repeat is the invisible copy.
+        "SELECT count(*) FROM regulatory_provisions"
+        f" WHERE {_SERVED} AND source_council IS NOT NULL AND provision_text ~ %s",
+        (_REPEATED_LINE,),
+        "Each count is a served council rule with a line printed twice in a row in its stored text. Some are real "
+        "table repeats; Campbelltown's were the PDF's invisible white copy. Lower DQ147_CEILING when rows are repaired; never raise it.",
+    ),
     "DQ-145": (
         "Served rules whose SHOWN citation is not machine-proven",
         # User ruling 2026-10-11: every served citation complete, correct and machine-proven.
@@ -2980,6 +3003,12 @@ def run(dq_id: str) -> int:
     print(f"  query : {' '.join(sql.split())}")
     if params:
         print(f"  params: {params}")
+    ceiling = CEILINGS.get(dq_id)
+    if ceiling is not None:
+        print(f"  ceiling: {ceiling}")
+        if count <= ceiling:
+            print("  CLEAN (at or below the ceiling)")
+            return 0
     if count:
         print(f"  means : {meaning}")
         return 1

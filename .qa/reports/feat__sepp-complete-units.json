@@ -1,0 +1,126 @@
+{
+  "tier": "standard",
+  "justification": "Second proof pass of 2026-10-17, all applied live with backups: 45 + 6 SEPP rows re-copied as the smallest complete law clause (6 settled by the row's own or neighbouring clause labels), 28 Inner West LEP rows proven with the same tools under an explicit registry_lep scope, 94 Campbelltown rows rebuilt from the PDF's visible text (the PDF carries an invisible white copy of every line) and page-proven on the visible page, 29 Inner West LEP paraphrases + 24 council not-a-rule rows + 8 duplicates withheld. DQ-145 measured 430 -> 291 (python scripts/dq_probe_live.py --id DQ-145); ceiling lowered to 291. New DQ-147 ratchet counts repeated lines (79, all real table repeats).",
+  "commit_hash": "021b849e",
+  "files": [
+    "scripts/sepp_complete_unit.py",
+    "scripts/sepp_lep_proof.py",
+    "scripts/sepp_ref_fix.py",
+    "scripts/verify_sepp_marker_blind.py",
+    "scripts/apply_sepp_marker_blind.py",
+    "scripts/visible_text_repair.py",
+    "scripts/apply_visible_text_repair.py",
+    "scripts/dq_probe_live.py",
+    "scripts/outreach_claim_checks.py",
+    "scripts/withhold_state_paraphrase.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "tests/test_sepp_complete_unit.py",
+    "tests/test_visible_text_repair.py",
+    "tests/test_apply_sepp_duplicate_guard.py",
+    "scripts/revert_row_from_backup.py",
+    "scripts/dcp_page_repair.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_sepp_complete_unit.py tests/test_visible_text_repair.py tests/test_apply_sepp_duplicate_guard.py tests/test_sepp_ref_fix.py tests/test_sepp_marker_blind.py tests/test_outreach_claim_checks_oc20.py tests/test_withhold_state_paraphrase.py",
+    "fails_when": "two unrelated places are picked without context, neighbour labels that disagree still pick a unit, a white span is kept, a real printed repeat is collapsed, two plan rows may end as the same rule, or DQ-145 exceeds 290",
+    "observed_red": "Live: the first complete-unit apply raised UniqueViolation (15072/15073 re-copied to the same clause) and rolled back, which is why the duplicate guard exists; the guard then refused 17562/17566 and 17568/17572 before writing; the first LEP apply tripped the index mid-write on 8759/8760 (same text, different labels), which the same-text rule now refuses (test_same_text_different_labels_refused). Not run: a mutation of each new function."
+  },
+  "real_layer_exempt": {
+    "scripts/sepp_complete_unit.py": "read-only SELECTs (mb.SQL and a neighbour-label query on the same table); decisions run on the cached law HTML whose sha256 the verifier checks against the manifest",
+    "scripts/sepp_lep_proof.py": "read-only; same deciders as the state-law path under scope registry_lep; plan verified 31/31 and applied 28 live",
+    "scripts/apply_visible_text_repair.py": "applied live: 94 rows written through the versioned writer, then 94 page proofs re-recorded through dcp_page_repair.write",
+    "scripts/dq_probe_live.py": "DQ-147 ran live: 79, at its ceiling",
+    "scripts/apply_sepp_marker_blind.py": "the database path ran live on 2026-10-17: 45, 6 and 28 rows written; the duplicate guard refused 3 plans before any write; pure parts unit-tested (test_apply_sepp_duplicate_guard.py)",
+    "scripts/visible_text_repair.py": "read-only SELECT of Campbelltown rows; ran live for the 94-row plan; pure parts (lines, collapse, plan_row) unit-tested",
+    "scripts/withhold_state_paraphrase.py": "change is the backup file name only; the update path ran live on 2026-10-17 (29 + 24 + 8 rows) and is covered by tests/test_withhold_state_paraphrase.py",
+    "scripts/revert_row_from_backup.py": "one-off revert; ran live on 2026-10-17 for row 45999 (dry run, then --apply; backup revert_45999_pre_*.json)",
+    "scripts/dcp_page_repair.py": "only adds commit=False (default unchanged); tests/test_dcp_page_repair.py and test_dcp_page_repair_real_db.py still pass"
+  },
+  "pre_impl": {
+    "existing_data": "sepp_marker_blind/sepp_ref_fix deciders, verify + apply scripts, page_evidence matcher, dcp_page_repair.write, withhold_state_paraphrase.py, probe_108",
+    "assumption_mismatch": "the page_check and quote triggers (migration 079) clear page_check and page_source_path when provision_text changes, so the Campbelltown re-proof takes the PDF path from dcp_chapter_registry",
+    "new_vs_existing": "adds a smallest-complete-unit mode with a context tie-break, a registry_lep scope, a visible-text repair, a duplicate guard and the DQ-147 probe; existing deciders unchanged"
+  },
+  "functions": [
+    {
+      "name": "decide_smallest_unit",
+      "file_line": "scripts/sepp_complete_unit.py",
+      "input": "a row's stored text, a law snapshot, and optional context tie-breaks",
+      "output": "recopy with the smallest complete clause and its label, or a refusal reason",
+      "if_none": "no context given means several places stay refused as ambiguous_unit"
+    },
+    {
+      "name": "duplicate_problems",
+      "file_line": "scripts/apply_sepp_marker_blind.py",
+      "input": "plan rows, their section headers, and existing current rows",
+      "output": "list of clashes: same final key, or same document and same final text",
+      "if_none": "empty list when there are no clashes"
+    },
+    {
+      "name": "reprove",
+      "file_line": "scripts/apply_visible_text_repair.py",
+      "input": "the repaired plan rows and the visible-only page texts",
+      "output": "page_check on_page written for rows proven on their visible page",
+      "if_none": "rows not on the visible page are skipped and listed, never marked"
+    },
+    {
+      "name": "tiebreaks",
+      "file_line": "scripts/sepp_complete_unit.py",
+      "input": "the row's ref_number (neighbour labels are accepted but no longer used)",
+      "output": "ordered list of own_label_unit then own_label hints",
+      "if_none": "empty list when the row's own label does not parse as a clause"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ-147 ceiling 79",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-147 after the Campbelltown repair",
+      "if_missing": "n/a (constant)"
+    },
+    {
+      "value": "DQ145_CEILING = 291",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-17 after row 45999 was reverted",
+      "if_missing": "n/a (constant)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "the same standard is printed word for word in several codes and nothing in the row says which",
+      "what_happens": "refused ambiguous_unit; the row stays shown with the citation-not-yet-checked mark",
+      "mitigated": true,
+      "how": "context must leave exactly one candidate; neighbour labels must agree",
+      "repro": "test_neighbour_labels_break_a_tie_only_when_both_agree, test_no_context_still_refuses"
+    },
+    {
+      "scenario": "two plan rows would end holding the same law text",
+      "what_happens": "the apply refuses before any write and names both ids",
+      "mitigated": true,
+      "how": "duplicate_problems checks final key and same document + same text",
+      "repro": "test_same_text_different_labels_refused"
+    },
+    {
+      "scenario": "a council really printed a line twice (a table cell)",
+      "what_happens": "kept: a pair is collapsed only when the doubled form is NOT on the visible page",
+      "mitigated": true,
+      "how": "collapse(printed_twice) exemption",
+      "repro": "test_real_repeat_printed_twice_on_the_page_stays"
+    },
+    {
+      "scenario": "a re-copy changes text under a structured numeric rule",
+      "what_happens": "the write rolls back if DQ-108 rises",
+      "mitigated": true,
+      "how": "probe_108 before and after in the same transaction (both appliers)",
+      "repro": "DQ-108 measured 0 after every write on 2026-10-17"
+    }
+  ],
+  "mutation_analysis": "Not executed. By reading: removing the 'neighbours must agree' condition fails test_neighbour_labels_break_a_tie_only_when_both_agree; dropping the white-colour filter fails test_white_span_is_dropped_dark_kept; removing the same-text rule fails test_same_text_different_labels_refused.",
+  "residual_risk": "81 SEPP rows remain ambiguous: the same standard sits in up to 6 codes and the row does not say which; the fix is to tie each such rule to its code(s), not to pick one. 28 Campbelltown rows were refused (collapsed text not one run of the visible page). About 30 council rows stay unresolved (words on several pages). Some Campbelltown rows with no repeated line were page-proven on text that includes the invisible copy. Cross-review 2026-10-17 (code-only, by hand): apply_visible_text_repair now re-derives each fix from the stored text and checks the PDF is the registry's file in force (the 94 written rows pass the stricter check against their pre-write backup); neighbour labels are limited to state-law rows (the one neighbour-settled row's document has 0 council rows); the LEP chain now reaches the complete-clause step after a ref-fix unit_too_big (re-run: 0 new rows). rules_lost: all 94 were 0 and the DQ-108 rollback guard covers it. Second cross-review pass: the neighbour-label tie-break is withdrawn (row id order is not document order) and its one row, 45999, reverted to its backup as version 3; the duplicate guard now also refuses same document + same text against SERVED rows outside the plan (9 such twins withheld, all already proven under loose labels); the Campbelltown re-proof fails if any row is skipped and runs automatically after a write. 17 groups of served rows with identical text in one document remain fleet-wide (Ashfield 10, state 3), not yet judged. Third cross-review pass (hardening, 0 live instances): the Campbelltown text fix and its page proofs now commit together; the write and re-proof are scoped to the chapter; a fix that would orphan a numeric rule is refused; the LEP run records a vanished row; the revert re-reads under a lock. Fourth cross-review pass, verdicts: (1) own-label tie-break is not independent proof -- the label was written by the extractor; it only chooses between places holding the same words; 5 rows rely on it (ACCEPTED, user asked for context). (2) rules_lost trusted from the plan -- covered by the DQ-108 rollback in the same transaction (WRONG as a live risk). (3) unreadable v2_extracted_rules counted as 0 -- FIXED, now counts as at risk. (4) DQ-147 ceiling not auto-lowered -- by design, same as DQ-145 (lowered by hand).",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "python scripts/dq_check.py --outreach on main prints 21 of 21"
+  }
+}

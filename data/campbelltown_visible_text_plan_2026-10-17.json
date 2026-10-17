@@ -1,0 +1,2569 @@
+{
+ "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1",
+ "chapter": "campbelltown-dcp-part3-low-medium",
+ "date": "2026-10-17",
+ "rows": [
+  {
+   "id": 202867,
+   "md5": "5d17762386e9fd8eeb27c9738e15ce81",
+   "old_text": "# 3.2 3.2 Desired Future Character for Low Density Residential Neighbourhoods\n\nThe low density residential neighbourhoods shall continue to be characterised by:\n•\t •\none and two storey dwelling houses that are designed to provide a high level of\none and two storey dwelling houses that are designed to provide a high level of\nresidential amenity for their occupants and the occupants of adjoining properties;\nresidential amenity for their occupants and the occupants of adjoining properties;\n•\nstreetscapes where buildings are setback from the primary street frontage to\nprovide opportunities for deep soil planting and landscaping; and\n•\narticulated front facades where garages are setback and do not dominate the\nstreetscapes; and\n•\t •\nlimited stock of multi dwelling housing and attached dwellings that:\nlimited stock of multi dwelling housing and attached dwellings that:\n–\nrespect the existing character of the low density neighbourhoods; and\n–\nare of low scale and density.",
+   "page": 4,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.2 3.2 Desired Future Character for Low Density Residential Neighbourhoods\n\nThe low density residential neighbourhoods shall continue to be characterised by:\n•\t •\none and two storey dwelling houses that are designed to provide a high level of\nresidential amenity for their occupants and the occupants of adjoining properties;\n•\nstreetscapes where buildings are setback from the primary street frontage to\nprovide opportunities for deep soil planting and landscaping; and\n•\narticulated front facades where garages are setback and do not dominate the\nstreetscapes; and\n•\t •\nlimited stock of multi dwelling housing and attached dwellings that:\n–\nrespect the existing character of the low density neighbourhoods; and\n–\nare of low scale and density.",
+   "evidence": {
+    "page": 4,
+    "order": "raw",
+    "start": 12,
+    "end": 655,
+    "span": "the low density residential neighbourhoods shall continue to be characterised by one and two storey dwelling houses that are designed to provide a high level of residential amenity for their occupants and the occupants of adjoining properties streetscapes where buildings are setback from the primary street frontage to provide opportunities for deep soil planting and landscaping and articulated front facades where garages are setback and do not dominate the streetscapes and limited stock of multi dwelling housing and attached dwellings that respect the existing character of the low density neighbourhoods and are of low scale and density",
+    "span_sha256": "d8a57e9bfee7cc3248a0f0a360198466daba0c2d52837e26bcffa5430a876303",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202881,
+   "md5": "c79c643524a0afbdf7797bae9f95ca8c",
+   "old_text": "# 3.3 3.3 Desired Future Character for Medium Density Residential Neighbourhoods\n\nThe medium density residential neighbourhoods shall be characterised by:\n•\t •\nmedium density housing comprising two storey  attached dwellings and multi\nmedium density housing comprising two storey  attached dwellings and multi\ndwelling housing  in a landscaped setting with additional habitable areas provided\ndwelling housing  in a landscaped setting with additional habitable areas provided\nwithin the roof space;\nwithin the roof space;\n•\t •\ndevelopment footprints that are sited to achieve setbacks to boundaries and\ndevelopment footprints that are sited to achieve setbacks to boundaries and\nprovide for  landscaping and private open space;\nprovide for  landscaping and private open space;\n•\t •\narticulated front facades where garages and car parking spaces are setback and\narticulated front facades where garages and car parking spaces are setback and\ndo not dominate the streetscapes;\ndo not dominate the streetscapes;\n•\t •\nactive residential facades with balconies;\nactive residential facades with balconies;\n•\t •\nsoft landscaping along communal driveways and the front boundary;\nsoft landscaping along communal driveways and the front boundary;\n•\t •\na high standard of architectural merit and urban design quality buildings; and\na high standard of architectural merit and urban design quality buildings; and\n•\t •\ndevelopment that incorporates a mix of dwelling sizes to provide housing choice.",
+   "page": 5,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.3 3.3 Desired Future Character for Medium Density Residential Neighbourhoods\n\nThe medium density residential neighbourhoods shall be characterised by:\n•\t •\nmedium density housing comprising two storey  attached dwellings and multi\ndwelling housing  in a landscaped setting with additional habitable areas provided\nwithin the roof space;\n•\t •\ndevelopment footprints that are sited to achieve setbacks to boundaries and\nprovide for  landscaping and private open space;\n•\t •\narticulated front facades where garages and car parking spaces are setback and\ndo not dominate the streetscapes;\n•\t •\nactive residential facades with balconies;\n•\t •\nsoft landscaping along communal driveways and the front boundary;\n•\t •\na high standard of architectural merit and urban design quality buildings; and\n•\t •\ndevelopment that incorporates a mix of dwelling sizes to provide housing choice.",
+   "evidence": {
+    "page": 5,
+    "order": "raw",
+    "start": 12,
+    "end": 761,
+    "span": "the medium density residential neighbourhoods shall be characterised by medium density housing comprising two storey attached dwellings and multi dwelling housing in a landscaped setting with additional habitable areas provided within the roof space development footprints that are sited to achieve setbacks to boundaries and provide for landscaping and private open space articulated front facades where garages and car parking spaces are setback and do not dominate the streetscapes active residential facades with balconies soft landscaping along communal driveways and the front boundary a high standard of architectural merit and urban design quality buildings and development that incorporates a mix of dwelling sizes to provide housing choice",
+    "span_sha256": "d9762bc8cab1e1bb651133e561dd1e212f4df1f6977c9436a39b48818b6a7499",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202885,
+   "md5": "23013951b008f30e783d243cd0341100",
+   "old_text": "# 3.4.1 h 3.4.1 Building Form & Character\n\nh)\t   Multi dwellings and dual occupancies\nshall satisfy the following architectural\nrequirements:\ni)\ni)\t   incorporation of variations in roof\nincorporation of variations in roof\nheights and wall planes to avoid long\nheights and wall planes to avoid long\nunbroken ridge lines\nunbroken ridge lines\nii)\nii)\t   incorporation of façade shifts and\nincorporation of façade shifts and\narticulation, varied materials and\narticulation, varied materials and\ncolours in order to avoid duplication\ncolours in order to avoid duplication\nof the same building elements\nof the same building elements\niii)\niii)\t provision of windows and active\nprovision of windows and active\nspace in the building ends, to\nspace in the building ends, to\nprovide additional security and\nprovide additional security and\nvisual interest\nvisual interest\ni)\ni)\nAll windows facing the street (primary\nAll windows facing the street (primary\nand secondary) must have a balanced\nand secondary) must have a balanced\narchitectural design.",
+   "page": 7,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.4.1 h 3.4.1 Building Form & Character\n\nh)\t   Multi dwellings and dual occupancies\nshall satisfy the following architectural\nrequirements:\ni)\t   incorporation of variations in roof\nheights and wall planes to avoid long\nunbroken ridge lines\nii)\t   incorporation of façade shifts and\narticulation, varied materials and\ncolours in order to avoid duplication\nof the same building elements\niii)\t provision of windows and active\nspace in the building ends, to\nprovide additional security and\nvisual interest\ni)\nAll windows facing the street (primary\nand secondary) must have a balanced\narchitectural design.",
+   "evidence": {
+    "page": 7,
+    "order": "raw",
+    "start": 563,
+    "end": 1103,
+    "span": "h multi dwellings and dual occupancies shall satisfy the following architectural requirements i incorporation of variations in roof heights and wall planes to avoid long unbroken ridge lines ii incorporation of fa ade shifts and articulation varied materials and colours in order to avoid duplication of the same building elements iii provision of windows and active space in the building ends to provide additional security and visual interest i all windows facing the street primary and secondary must have a balanced architectural design",
+    "span_sha256": "12bb0767170f70c18394e86732928721abd799d4bd4da502769a1462359f0654",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202900,
+   "md5": "ec7722540de81f89cc2ce349219dc20a",
+   "old_text": "# 3.4.2 f Design Requirements\n\nf)\nDriveways shall be located a minimum\nDriveways shall be located a minimum\ndistance of 6 metres from the tangent\ndistance of 6 metres from the tangent\npoint of any unsignalled intersection\npoint of any unsignalled intersection\n(refer to Figure 3.4.2.1).\n(refer to Figure 3.4.2.1).\nNote:\nIn\ncircumstances\nwhere\nan\nintersection is controlled by lights, a\nroundabout or the like, applicants are\nrequested to contact Council for specific\nrequirements.",
+   "page": 9,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.4.2 f Design Requirements\n\nf)\nDriveways shall be located a minimum\ndistance of 6 metres from the tangent\npoint of any unsignalled intersection\n(refer to Figure 3.4.2.1).\nNote:\nIn\ncircumstances\nwhere\nan\nintersection is controlled by lights, a\nroundabout or the like, applicants are\nrequested to contact Council for specific\nrequirements.",
+   "evidence": {
+    "page": 9,
+    "order": "raw",
+    "start": 296,
+    "end": 597,
+    "span": "f driveways shall be located a minimum distance of 6 metres from the tangent point of any unsignalled intersection refer to figure 3 4 2 1 note in circumstances where an intersection is controlled by lights a roundabout or the like applicants are requested to contact council for specific requirements",
+    "span_sha256": "5533b6504d629d17009f0e00b00844f86675fdbe4f3c270a9bcec04e8737a549",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202901,
+   "md5": "9d9a6bc50c0ab63f4d809e0363e1fa52",
+   "old_text": "# 3.4.2 g Design Requirements\n\ng)\t   The minimum width of the driveway\nThe minimum width of the driveway\nat the street kerb shall be:\nat the street kerb shall be:\ni)\ni)\t   2.5 metres where the driveway\n2.5 metres where the driveway\nprovides\naccess\nfor\none\n(1)\nprovides\naccess\nfor\none\n(1)\ndwelling; and\ndwelling; and\nii)\nii)\t   5 metres where a single driveway\n5 metres where a single driveway\nprovides access for two (2) or more\nprovides access for two (2) or more\ndwellings\n(excluding\nsecondary\ndwellings\n(excluding\nsecondary\ndwellings).\ndwellings).\nNote: For additional technical specifications\nNote: For additional technical specifications\nrelating to the location, gradient and\nrelating to the location, gradient and\ndriveway\nwidths\nrefer\nto\nCouncil’s\ndriveway\nwidths\nrefer\nto\nCouncil’s\nEngineering\nGuide\nfor\nDevelopment\nEngineering\nGuide\nfor\nDevelopment\navailable at Council’s website at www.\navailable at Council’s website at www.\ncampbeltown.nsw.gov.au",
+   "page": 9,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.4.2 g Design Requirements\n\ng)\t   The minimum width of the driveway\nat the street kerb shall be:\ni)\t   2.5 metres where the driveway\nprovides\naccess\nfor\none\n(1)\ndwelling; and\nii)\t   5 metres where a single driveway\nprovides access for two (2) or more\ndwellings\n(excluding\nsecondary\ndwellings).\nNote: For additional technical specifications\nrelating to the location, gradient and\ndriveway\nwidths\nrefer\nto\nCouncil’s\nEngineering\nGuide\nfor\nDevelopment\navailable at Council’s website at www.\ncampbeltown.nsw.gov.au",
+   "evidence": {
+    "page": 9,
+    "order": "raw",
+    "start": 598,
+    "end": 1055,
+    "span": "g the minimum width of the driveway at the street kerb shall be i 2 5 metres where the driveway provides access for one 1 dwelling and ii 5 metres where a single driveway provides access for two 2 or more dwellings excluding secondary dwellings note for additional technical specifications relating to the location gradient and driveway widths refer to council s engineering guide for development available at council s website at www campbeltown nsw gov au",
+    "span_sha256": "f4fc6ba8bb5e106702c8837c093012593dbef391da7aff667bd0765c75b3354b",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202908,
+   "md5": "cfc7a56b2da26b5cc599ef64309b3acb",
+   "old_text": "# 3.4.3 l 3.4.3 Acoustic & Visual Privacy\n\nl)\nInternal driveways and vehicle access\nInternal driveways and vehicle access\nshall be provided with sufficient widths to\nshall be provided with sufficient widths to\nensure easy access to and from designated\nensure easy access to and from designated\ncar parking areas/garages.",
+   "page": 10,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.4.3 l 3.4.3 Acoustic & Visual Privacy\n\nl)\nInternal driveways and vehicle access\nshall be provided with sufficient widths to\nensure easy access to and from designated\ncar parking areas/garages.",
+   "evidence": {
+    "page": 10,
+    "order": "raw",
+    "start": 1471,
+    "end": 1622,
+    "span": "l internal driveways and vehicle access shall be provided with sufficient widths to ensure easy access to and from designated car parking areas garages",
+    "span_sha256": "756003f7e4b7658f6e41ea40336d47b15be0b6128a518ec247d97725fe007111",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202909,
+   "md5": "8709e05189eaaebedeb6f5ff5ee66f15",
+   "old_text": "# 3.4.3 m 3.4.3 Acoustic & Visual Privacy\n\nm)\t   Internal driveways for multi dwellings\nInternal driveways for multi dwellings\nshall be designed to provide two-way\nshall be designed to provide two-way\nvehicle  access",
+   "page": 10,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.4.3 m 3.4.3 Acoustic & Visual Privacy\n\nm)\t   Internal driveways for multi dwellings\nshall be designed to provide two-way\nvehicle  access",
+   "evidence": {
+    "page": 10,
+    "order": "raw",
+    "start": 1623,
+    "end": 1715,
+    "span": "m internal driveways for multi dwellings shall be designed to provide two way vehicle access",
+    "span_sha256": "31ca601045741f1f5419fcfedf56464b4caa4aee1376d83bb0b8ac1f7cb6a15b",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202910,
+   "md5": "4c356ae7ede7e2c0558bbc1fba0c64b4",
+   "old_text": "# 3.4.3 n 3.4.3 Acoustic & Visual Privacy\n\nn)\t   Electric vehicle charging stations must be\nElectric vehicle charging stations must be\nlocated behind the building line.",
+   "page": 10,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.4.3 n 3.4.3 Acoustic & Visual Privacy\n\nn)\t   Electric vehicle charging stations must be\nlocated behind the building line.",
+   "evidence": {
+    "page": 10,
+    "order": "raw",
+    "start": 1716,
+    "end": 1793,
+    "span": "n electric vehicle charging stations must be located behind the building line",
+    "span_sha256": "8b74d4acf190ae6c6ce759bcb92ea3c0ab5c4f07cf543099d97a4a1059c0387c",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202912,
+   "md5": "b748251a8204691b433753a97ec315ee",
+   "old_text": "# 3.4.3.2 a Design Requirements\n\na)\t   No window of a habitable room or balcony\nNo window of a habitable room or balcony\nshall directly face a window of another\nshall directly face a window of another\nhabitable room, balcony or private open\nhabitable room, balcony or private open\nspace of another dwelling located within 6\nspace of another dwelling located within 6\nmetres of the proposed window or balcony\nmetres of the proposed window or balcony\nunless appropriately screened (refer to\nunless appropriately screened (refer to\nFigure 3.4.3.1).",
+   "page": 11,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.4.3.2 a Design Requirements\n\na)\t   No window of a habitable room or balcony\nshall directly face a window of another\nhabitable room, balcony or private open\nspace of another dwelling located within 6\nmetres of the proposed window or balcony\nunless appropriately screened (refer to\nFigure 3.4.3.1).",
+   "evidence": {
+    "page": 11,
+    "order": "raw",
+    "start": 806,
+    "end": 1065,
+    "span": "a no window of a habitable room or balcony shall directly face a window of another habitable room balcony or private open space of another dwelling located within 6 metres of the proposed window or balcony unless appropriately screened refer to figure 3 4 3 1",
+    "span_sha256": "7bd1dd7ffcf576e58d77382e398700d7f44dea8d62cc703f93a9386c92e0668c",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202913,
+   "md5": "66271d66e1f1f997f93c796e47bfa951",
+   "old_text": "# 3.4.3.2 b Design Requirements\n\nb)\t   Notwithstanding Clause 3.4.3.2a) any\nNotwithstanding Clause 3.4.3.2a) any\nwindow of a living room located on an\nwindow of a living room located on an\nupper level shall:\nupper level shall:\ni)\ni)\t   be offset by 2 metres to limit               views\nbe offset by 2 metres to limit               views\nbetween windows and balconies; or\nbetween windows and balconies; or\nii)\nii)\t   have a sill height 1.7 metres above the\nhave a sill height 1.7 metres above the\nfloor level; or\nfloor level; or\niii)\niii)\t be splayed to avoid direct views\nbe splayed to avoid direct views\nbetween windows; or\nbetween windows; or\niv)\niv)\t have fixed translucent glazing in       any\nhave fixed translucent glazing in       any\npart of the window within 1.7  \t   metres\npart of the window within 1.7  \t   metres\nof the floor level.",
+   "page": 11,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.4.3.2 b Design Requirements\n\nb)\t   Notwithstanding Clause 3.4.3.2a) any\nwindow of a living room located on an\nupper level shall:\ni)\t   be offset by 2 metres to limit               views\nbetween windows and balconies; or\nii)\t   have a sill height 1.7 metres above the\nfloor level; or\niii)\t be splayed to avoid direct views\nbetween windows; or\niv)\t have fixed translucent glazing in       any\npart of the window within 1.7  \t   metres\nof the floor level.",
+   "evidence": {
+    "page": 11,
+    "order": "raw",
+    "start": 1066,
+    "end": 1442,
+    "span": "b notwithstanding clause 3 4 3 2a any window of a living room located on an upper level shall i be offset by 2 metres to limit views between windows and balconies or ii have a sill height 1 7 metres above the floor level or iii be splayed to avoid direct views between windows or iv have fixed translucent glazing in any part of the window within 1 7 metres of the floor level",
+    "span_sha256": "db72695af1385e7df0fb308abb43e8f2fdb312917ac8300a2135caa6f6e165f0",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202927,
+   "md5": "b6a1f41115660b81f853841f85495df8",
+   "old_text": "# 3.4.4\n\nNote: Council may  consider the use\nof deciduous trees at the north and\nof deciduous trees at the north and\nwest elevations to protect against hot\nwest elevations to protect against hot\nsummer temperature and to allow for\nsummer temperature and to allow for\nsolar penetration in winter, where it may\nsolar penetration in winter, where it may\notherwise be inappropriate to plant native\notherwise be inappropriate to plant native\ntrees.",
+   "page": 12,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.4.4\n\nNote: Council may  consider the use\nof deciduous trees at the north and\nwest elevations to protect against hot\nsummer temperature and to allow for\nsolar penetration in winter, where it may\notherwise be inappropriate to plant native\ntrees.",
+   "evidence": {
+    "page": 12,
+    "order": "raw",
+    "start": 919,
+    "end": 1153,
+    "span": "note council may consider the use of deciduous trees at the north and west elevations to protect against hot summer temperature and to allow for solar penetration in winter where it may otherwise be inappropriate to plant native trees",
+    "span_sha256": "2039acbb37b0f0f48256f705f923417c1a9ba7e5946807278c66ccb9f5957a52",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202948,
+   "md5": "6cbb7fe4cc746adc4d7539941781e6ee",
+   "old_text": "# 3.5.2.2 a 3.5.2.2 Maximum Floor Area for Outbuildings\n\na)\t   The combined areas of all  ‘detached’\nThe combined areas of all  ‘detached’\noutbuildings (including carports and\noutbuildings (including carports and\ngarages)  shall be a maximum of 55sqm.",
+   "page": 16,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.5.2.2 a 3.5.2.2 Maximum Floor Area for Outbuildings\n\na)\t   The combined areas of all  ‘detached’\noutbuildings (including carports and\ngarages)  shall be a maximum of 55sqm.",
+   "evidence": {
+    "page": 16,
+    "order": "raw",
+    "start": 664,
+    "end": 772,
+    "span": "a the combined areas of all detached outbuildings including carports and garages shall be a maximum of 55sqm",
+    "span_sha256": "2dd0b1199dfe582dcb27b1f3666a1e74a6bbb5888107a6ac070d489e4c3e9f59",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202956,
+   "md5": "0689e37eec58a77a64489e7e10a90f79",
+   "old_text": "# 3.6.1.1 a 3.6.1.1 Site Requirement\n\na)\t   A dwelling house shall not be erected on\nA dwelling house shall not be erected on\nland with an average width  less than 15\nland with an average width  less than 15\nmetres (measured at the primary street\nmetres (measured at the primary street\nbuilding setback), unless the allotment\nbuilding setback), unless the allotment\nwas in existence at the date upon which\nwas in existence at the date upon which\nthe Plan came into effect.",
+   "page": 20,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.1.1 a 3.6.1.1 Site Requirement\n\na)\t   A dwelling house shall not be erected on\nland with an average width  less than 15\nmetres (measured at the primary street\nbuilding setback), unless the allotment\nwas in existence at the date upon which\nthe Plan came into effect.",
+   "evidence": {
+    "page": 20,
+    "order": "raw",
+    "start": 235,
+    "end": 459,
+    "span": "a a dwelling house shall not be erected on land with an average width less than 15 metres measured at the primary street building setback unless the allotment was in existence at the date upon which the plan came into effect",
+    "span_sha256": "611f083320aeec964449762403ae7a2f5b294554ea736e42ad1b246b08bdf78f",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202958,
+   "md5": "ce29940a14c90e874199ac2fc4fe9a95",
+   "old_text": "# 3.6.1.2 a 3.6.1.2 Deep Soil Planting\n\na)\t   A dwelling house shall satisfy the following\nA dwelling house shall satisfy the following\nprovisions relating to deep soil planting:\nprovisions relating to deep soil planting:\ni)\ni)\t   no more than 30% of the area forward of\nno more than 30% of the area forward of\nany building line shall be surfaced with\nany building line shall be surfaced with\nimpervious materials; and\nimpervious materials; and\nii)\nii)\t   a minimum of 20% of the total site area\na minimum of 20% of the total site area\nshall be available for deep soil planting.",
+   "page": 20,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.1.2 a 3.6.1.2 Deep Soil Planting\n\na)\t   A dwelling house shall satisfy the following\nprovisions relating to deep soil planting:\ni)\t   no more than 30% of the area forward of\nany building line shall be surfaced with\nimpervious materials; and\nii)\t   a minimum of 20% of the total site area\nshall be available for deep soil planting.",
+   "evidence": {
+    "page": 20,
+    "order": "raw",
+    "start": 487,
+    "end": 766,
+    "span": "a a dwelling house shall satisfy the following provisions relating to deep soil planting i no more than 30 of the area forward of any building line shall be surfaced with impervious materials and ii a minimum of 20 of the total site area shall be available for deep soil planting",
+    "span_sha256": "3dceedb8de590c8a794d150bf7b6f32d1e7bde720e19702c0b039d63dfd0634c",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202960,
+   "md5": "7516536343fb70673732651fb448667b",
+   "old_text": "# 3.6.1.3 a 3.6.1.3 Setbacks\n\na\nA dwelling house shall be setback a\nminimum of:\nminimum of:\ni)\ni)\t   5.5 metres from the primary street\n5.5 metres from the primary street\nboundary for the dwelling;\nboundary for the dwelling;\nii)\nii)\t   6.0 metres from the primary street\n6.0 metres from the primary street\nboundary for the garage;\nboundary for the garage;\niii)\niii)\t 2 metres from the secondary                  street\n2 metres from the secondary                  street\nboundary;\nboundary;\niv)\niv)\t 5.5 metres from the secondary street\n5.5 metres from the secondary street\nboundary for the garage, where the\nboundary for the garage, where the\ngarage is accessed directly from the\ngarage is accessed directly from the\nsecondary street;\nsecondary street;\nv)\nv)\t   0.9 metres from any side boundary; and\n0.9 metres from any side boundary; and\nvi)\nvi)\t 3 metres from the rear boundary for\n3 metres from the rear boundary for\nany part of the building that is up to\nany part of the building that is up to\n4.5 metres in height from ground level\n4.5 metres in height from ground level\n(existing); and\n(existing); and\nvii)\nvii)\t 8 metres from the rear boundary for any\n8 metres from the rear boundary for any\npart of the building that is higher than\npart of the building that is higher than\n4.5 metres from ground level (existing).",
+   "page": 20,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.1.3 a 3.6.1.3 Setbacks\n\na\nA dwelling house shall be setback a\nminimum of:\ni)\t   5.5 metres from the primary street\nboundary for the dwelling;\nii)\t   6.0 metres from the primary street\nboundary for the garage;\niii)\t 2 metres from the secondary                  street\nboundary;\niv)\t 5.5 metres from the secondary street\nboundary for the garage, where the\ngarage is accessed directly from the\nsecondary street;\nv)\t   0.9 metres from any side boundary; and\nvi)\t 3 metres from the rear boundary for\nany part of the building that is up to\n4.5 metres in height from ground level\n(existing); and\nvii)\t 8 metres from the rear boundary for any\npart of the building that is higher than\n4.5 metres from ground level (existing).",
+   "evidence": {
+    "page": 20,
+    "order": "raw",
+    "start": 784,
+    "end": 1426,
+    "span": "a a dwelling house shall be setback a minimum of i 5 5 metres from the primary street boundary for the dwelling ii 6 0 metres from the primary street boundary for the garage iii 2 metres from the secondary street boundary iv 5 5 metres from the secondary street boundary for the garage where the garage is accessed directly from the secondary street v 0 9 metres from any side boundary and vi 3 metres from the rear boundary for any part of the building that is up to 4 5 metres in height from ground level existing and vii 8 metres from the rear boundary for any part of the building that is higher than 4 5 metres from ground level existing",
+    "span_sha256": "675f395bcb56ea8594f76fe629027269818381012de531b59482c91506e1197e",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202965,
+   "md5": "a824bd27b4ad2905f4597e31c1429e46",
+   "old_text": "# 3.6.1.5 a 3.6.1.5 Private Open Space\n\na)\t   A dwelling house shall be provided with an\nA dwelling house shall be provided with an\narea of private open space that:\narea of private open space that:\ni)\ni)\t   is located behind the primary\nis located behind the primary\nstreet building setback;\nstreet building setback;\nii)\nii)\t   has a minimum area of 75sqm;\nhas a minimum area of 75sqm;\niii)\niii)\t has a minimum width of 3 metres;\nhas a minimum width of 3 metres;\niv)\niv)\t includes a minimum levelled area of\nincludes a minimum levelled area of\n(5x5)sqm;\n(5x5)sqm;\nv)\nv)\t   has a minimum unfragmented area of\nhas a minimum unfragmented area of\n60sqm;\n60sqm;\nvi)\nvi)\t has an internal living room directly\nhas an internal living room directly\naccessible to the outdoor private open\naccessible to the outdoor private open\nspace areas; and\nspace areas; and\nvii)\nvii)\t satisfies\nsolar\naccess\nrequirements\nsatisfies\nsolar\naccess\nrequirements\ncontained in  section 3.4.4.",
+   "page": 21,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.1.5 a 3.6.1.5 Private Open Space\n\na)\t   A dwelling house shall be provided with an\narea of private open space that:\ni)\t   is located behind the primary\nstreet building setback;\nii)\t   has a minimum area of 75sqm;\niii)\t has a minimum width of 3 metres;\niv)\t includes a minimum levelled area of\n(5x5)sqm;\nv)\t   has a minimum unfragmented area of\n60sqm;\nvi)\t has an internal living room directly\naccessible to the outdoor private open\nspace areas; and\nvii)\t satisfies\nsolar\naccess\nrequirements\ncontained in  section 3.4.4.",
+   "evidence": {
+    "page": 21,
+    "order": "raw",
+    "start": 793,
+    "end": 1244,
+    "span": "a a dwelling house shall be provided with an area of private open space that i is located behind the primary street building setback ii has a minimum area of 75sqm iii has a minimum width of 3 metres iv includes a minimum levelled area of 5x5 sqm v has a minimum unfragmented area of 60sqm vi has an internal living room directly accessible to the outdoor private open space areas and vii satisfies solar access requirements contained in section 3 4 4",
+    "span_sha256": "96c515aea7121e3da53f1ca3b039299e0df07a38d359f3c354551027beee3280",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202970,
+   "md5": "828bd1158175aaac83959d479701e1cb",
+   "old_text": "# 3.6.2.1 3.6.2.1 General Requirements\n\nNote: This area is to be included in the\ncalculation for the requirement of open\ncalculation for the requirement of open\nspace for the principle dwelling, i.e. the",
+   "page": 22,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.2.1 3.6.2.1 General Requirements\n\nNote: This area is to be included in the\ncalculation for the requirement of open\nspace for the principle dwelling, i.e. the",
+   "evidence": {
+    "page": 22,
+    "order": "raw",
+    "start": 718,
+    "end": 838,
+    "span": "note this area is to be included in the calculation for the requirement of open space for the principle dwelling i e the",
+    "span_sha256": "46bd8a8c03d656126cd57b200630bd7740af9801a79bddb416c7caa761ea51a0",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202971,
+   "md5": "c69a1c854d6f295956b30c8b7d8a723b",
+   "old_text": "# 3.6.2.1 a 3.6.2.1 General Requirements\n\na)\t   A secondary dwelling shall incorporate\nA secondary dwelling shall incorporate\nsimilar\nor\ncomplementary\ndesign\nsimilar\nor\ncomplementary\ndesign\nand construction features, finishes,\nand construction features, finishes,\nmaterials and colours to those of the\nmaterials and colours to those of the\nprincipal dwelling house.",
+   "page": 22,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.2.1 a 3.6.2.1 General Requirements\n\na)\t   A secondary dwelling shall incorporate\nsimilar\nor\ncomplementary\ndesign\nand construction features, finishes,\nmaterials and colours to those of the\nprincipal dwelling house.",
+   "evidence": {
+    "page": 22,
+    "order": "raw",
+    "start": 41,
+    "end": 211,
+    "span": "a a secondary dwelling shall incorporate similar or complementary design and construction features finishes materials and colours to those of the principal dwelling house",
+    "span_sha256": "73765a54b8ea959b6158872aea164c4b040b8179cb5723e351bb8a357804212f",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202972,
+   "md5": "65d9fed9ff510272b1b745f9d89e5374",
+   "old_text": "# 3.6.2.1 b 3.6.2.1 General Requirements\n\nb)\t   Any new primary or secondary dwelling\nAny new primary or secondary dwelling\nshall be designed to ensure that a\nshall be designed to ensure that a\nfront door and window are visible from\nfront door and window are visible from\nthe public domain by installing these\nthe public domain by installing these\nelements into the front building wall\nelements into the front building wall\nof any habitable room which faces the\nof any habitable room which faces the\nprimary street.",
+   "page": 22,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.2.1 b 3.6.2.1 General Requirements\n\nb)\t   Any new primary or secondary dwelling\nshall be designed to ensure that a\nfront door and window are visible from\nthe public domain by installing these\nelements into the front building wall\nof any habitable room which faces the\nprimary street.",
+   "evidence": {
+    "page": 22,
+    "order": "raw",
+    "start": 212,
+    "end": 454,
+    "span": "b any new primary or secondary dwelling shall be designed to ensure that a front door and window are visible from the public domain by installing these elements into the front building wall of any habitable room which faces the primary street",
+    "span_sha256": "fe0242b5bd1a31c05066cc944a60156f11328956d3be2fa66cbec5b9d5dc85b7",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202973,
+   "md5": "0a7b982656d7d4d9c6e5254d3c4c5a7f",
+   "old_text": "# 3.6.2.1 c 3.6.2.1 General Requirements\n\nc)\t   A secondary dwelling shall be provided\nA secondary dwelling shall be provided\nwith at a least 12sqm area of private\nwith at a least 12sqm area of private\nopen space for the exclusive use of the\nopen space for the exclusive use of the\noccupants of the secondary dwelling.\noccupants of the secondary dwelling.\nThe area shall be accessible from the\nThe area shall be accessible from the\nliving area, have a minimum width of\nliving area, have a minimum width of\n3sqm and not be steeper than 1:50.",
+   "page": 22,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.2.1 c 3.6.2.1 General Requirements\n\nc)\t   A secondary dwelling shall be provided\nwith at a least 12sqm area of private\nopen space for the exclusive use of the\noccupants of the secondary dwelling.\nThe area shall be accessible from the\nliving area, have a minimum width of\n3sqm and not be steeper than 1:50.",
+   "evidence": {
+    "page": 22,
+    "order": "raw",
+    "start": 455,
+    "end": 717,
+    "span": "c a secondary dwelling shall be provided with at a least 12sqm area of private open space for the exclusive use of the occupants of the secondary dwelling the area shall be accessible from the living area have a minimum width of 3sqm and not be steeper than 1 50",
+    "span_sha256": "e589a3ceeb52ced9b34e8686e4d31a4f3d76b4d51347f5824607b534d59da406",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202974,
+   "md5": "095d7ec9d81c867cbbfa547063fa68a6",
+   "old_text": "# 3.6.2.1 d 3.6.2.1 General Requirements\n\nd)\t   A BASIX certificate shall accompany\nA BASIX certificate shall accompany\na\ndevelopment\napplication\nfor\na\na\ndevelopment\napplication\nfor\na\nsecondary dwelling.",
+   "page": 23,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.2.1 d 3.6.2.1 General Requirements\n\nd)\t   A BASIX certificate shall accompany\na\ndevelopment\napplication\nfor\na\nsecondary dwelling.",
+   "evidence": {
+    "page": 23,
+    "order": "raw",
+    "start": 130,
+    "end": 218,
+    "span": "d a basix certificate shall accompany a development application for a secondary dwelling",
+    "span_sha256": "aeb72da6db77b7d3d88e4836ab62799e267b7543093755dd1e263bce1ab551fe",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202975,
+   "md5": "aff082d631826a563c88e7fbe3e62cb0",
+   "old_text": "# 3.6.2.1 e 3.6.2.1 General Requirements\n\ne)\t   An attached secondary dwelling shall\nAn attached secondary dwelling shall\nbe located under the same roof as the\nbe located under the same roof as the\nmain part of the principal dwelling\nmain part of the principal dwelling\nhouse.",
+   "page": 23,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.2.1 e 3.6.2.1 General Requirements\n\ne)\t   An attached secondary dwelling shall\nbe located under the same roof as the\nmain part of the principal dwelling\nhouse.",
+   "evidence": {
+    "page": 23,
+    "order": "raw",
+    "start": 219,
+    "end": 337,
+    "span": "e an attached secondary dwelling shall be located under the same roof as the main part of the principal dwelling house",
+    "span_sha256": "1a4c9b26c360dc7e313475c1b2e908a32c3b0e5cf53e68b23efc2621bf1bca6e",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202978,
+   "md5": "96fde303c4733c1f9772879500c54698",
+   "old_text": "# 3.6.2.1 f 3.6.2.1 General Requirements\n\nf)\nThe principle dwelling shall continue to\nThe principle dwelling shall continue to\nmeet all the relevant requirements and\nmeet all the relevant requirements and\ndevelopment controls under Part 3 of\ndevelopment controls under Part 3 of\nVolume 1 of the Plan.",
+   "page": 23,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.2.1 f 3.6.2.1 General Requirements\n\nf)\nThe principle dwelling shall continue to\nmeet all the relevant requirements and\ndevelopment controls under Part 3 of\nVolume 1 of the Plan.",
+   "evidence": {
+    "page": 23,
+    "order": "raw",
+    "start": 338,
+    "end": 477,
+    "span": "f the principle dwelling shall continue to meet all the relevant requirements and development controls under part 3 of volume 1 of the plan",
+    "span_sha256": "07c0b3cb6f0526b6d4713205c3ceb168eedf8bb0d1e51a2a436506a13ba370fb",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202979,
+   "md5": "0ab7d8ca8c07d66d6078208a6176e4e1",
+   "old_text": "# 3.6.2.1 3.6.2.1 General Requirements\n\nNote:\nSecondary dwelling (as defined\nunder the CLEP) means a self-\ncontained dwelling that:\na)\na)\t   is\nestablished\nin\nis\nestablished\nin\nconjunction with another\nconjunction with another\ndwelling\n(the\nprincipal\ndwelling\n(the\nprincipal\ndwelling), and\ndwelling), and\nb)\t   is on the same lot of land\nas the principal dwelling,\nand\nc)\t   is located within, or is\nattached to, or is separate\nfrom,\nthe\nprincipal\ndwelling.",
+   "page": 22,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.2.1 3.6.2.1 General Requirements\n\nNote:\nSecondary dwelling (as defined\nunder the CLEP) means a self-\ncontained dwelling that:\na)\t   is\nestablished\nin\nconjunction with another\ndwelling\n(the\nprincipal\ndwelling), and\nb)\t   is on the same lot of land\nas the principal dwelling,\nand\nc)\t   is located within, or is\nattached to, or is separate\nfrom,\nthe\nprincipal\ndwelling.",
+   "evidence": {
+    "page": 22,
+    "order": "raw",
+    "start": 1070,
+    "end": 1376,
+    "span": "note secondary dwelling as defined under the clep means a selfcontained dwelling that a is established in conjunction with another dwelling the principal dwelling and b is on the same lot of land as the principal dwelling and c is located within or is attached to or is separate from the principal dwelling",
+    "span_sha256": "c017289cdb0cf912641cf890e55cadec81452f313d2fec5116c8e0a4480d1d6d",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202980,
+   "md5": "57c913f3db076facbd37588d6a6c0694",
+   "old_text": "# 3.6.2.1 3.6.2.1 General Requirements\n\ncombined area of private open space for\nthe secondary dwelling and the principle\nthe secondary dwelling and the principle\ndwelling shall be a minimum of 75sqm.",
+   "page": 23,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.2.1 3.6.2.1 General Requirements\n\ncombined area of private open space for\nthe secondary dwelling and the principle\ndwelling shall be a minimum of 75sqm.",
+   "evidence": {
+    "page": 23,
+    "order": "raw",
+    "start": 12,
+    "end": 129,
+    "span": "combined area of private open space for the secondary dwelling and the principle dwelling shall be a minimum of 75sqm",
+    "span_sha256": "276afabef8cbb3bf27d6254af33e9521e717abbc92c7125f26945f71fc93825a",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202982,
+   "md5": "f41727e96a70e86ad03cc98644946168",
+   "old_text": "# 3.6.2.2 a 3.6.2.2 Setbacks\n\na)\t   A secondary dwelling land shall be\nA secondary dwelling land shall be\nsetback a minimum of:\nsetback a minimum of:\ni)\ni)\t   5.5 metres from the primary street\n5.5 metres from the primary street\nboundary of the dwelling and  shall\nboundary of the dwelling and  shall\nalign with the existing front building\nalign with the existing front building\nline, alternatively it shall align with\nline, alternatively it shall align with\nthe predominant front building line\nthe predominant front building line\nof the street;\nof the street;\nii)\nii)\t   3 metres from the secondary street\n3 metres from the secondary street\nboundary;\nboundary;\niii)\niii)\t 0.9 metres from any side boundary;\n0.9 metres from any side boundary;\nand\nand\niv)\niv)\t 3 metres from the rear boundary for\n3 metres from the rear boundary for\nany part of the building that is up\nany part of the building that is up\nto 3.8 metres in height from ground\nto 3.8 metres in height from ground\nlevel (existing); and\nlevel (existing); and\nv)\nv)\t   8 metres from the rear boundary for\n8 metres from the rear boundary for\nany part of the building that is higher\nany part of the building that is higher\nthan 3.8 metres from ground level\nthan 3.8 metres from ground level\n(existing)\n(existing)\nvi)\nvi)\t Where a secondary dwelling is\nWhere a secondary dwelling is\nlocated forward of the front building\nlocated forward of the front building\nline consideration shall only be\nline consideration shall only be\ngiven to such a proposal where the\ngiven to such a proposal where the\ndevelopment is integrated with the\ndevelopment is integrated with the\nexisting dwelling and employs the\nexisting dwelling and employs the\nsame building materials and features\nsame building materials and features\nas the existing dwelling including\nas the existing dwelling including\nroof form and features such as\nroof form and features such as\nGables and the like.",
+   "page": 23,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.2.2 a 3.6.2.2 Setbacks\n\na)\t   A secondary dwelling land shall be\nsetback a minimum of:\ni)\t   5.5 metres from the primary street\nboundary of the dwelling and  shall\nalign with the existing front building\nline, alternatively it shall align with\nthe predominant front building line\nof the street;\nii)\t   3 metres from the secondary street\nboundary;\niii)\t 0.9 metres from any side boundary;\nand\niv)\t 3 metres from the rear boundary for\nany part of the building that is up\nto 3.8 metres in height from ground\nlevel (existing); and\nv)\t   8 metres from the rear boundary for\nany part of the building that is higher\nthan 3.8 metres from ground level\n(existing)\nvi)\t Where a secondary dwelling is\nlocated forward of the front building\nline consideration shall only be\ngiven to such a proposal where the\ndevelopment is integrated with the\nexisting dwelling and employs the\nsame building materials and features\nas the existing dwelling including\nroof form and features such as\nGables and the like.",
+   "evidence": {
+    "page": 23,
+    "order": "raw",
+    "start": 495,
+    "end": 1423,
+    "span": "a a secondary dwelling land shall be setback a minimum of i 5 5 metres from the primary street boundary of the dwelling and shall align with the existing front building line alternatively it shall align with the predominant front building line of the street ii 3 metres from the secondary street boundary iii 0 9 metres from any side boundary and iv 3 metres from the rear boundary for any part of the building that is up to 3 8 metres in height from ground level existing and v 8 metres from the rear boundary for any part of the building that is higher than 3 8 metres from ground level existing vi where a secondary dwelling is located forward of the front building line consideration shall only be given to such a proposal where the development is integrated with the existing dwelling and employs the same building materials and features as the existing dwelling including roof form and features such as gables and the like",
+    "span_sha256": "990a0535e8b92f26dba7747b75af54503c439759e58829d69eb4adc1f927a294",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202984,
+   "md5": "feef836a26985f37194311812e4f76db",
+   "old_text": "# 3.6.3 a 3.6.3 Dual Occupancies (Attached or Detached)\n\na)\t   A development application for a dual\nA development application for a dual\noccupancy shall include a detailed\noccupancy shall include a detailed\nlandscape plan prepared by a suitably\nlandscape plan prepared by a suitably\nqualified person.",
+   "page": 26,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.3 a 3.6.3 Dual Occupancies (Attached or Detached)\n\na)\t   A development application for a dual\noccupancy shall include a detailed\nlandscape plan prepared by a suitably\nqualified person.",
+   "evidence": {
+    "page": 26,
+    "order": "raw",
+    "start": 55,
+    "end": 183,
+    "span": "a a development application for a dual occupancy shall include a detailed landscape plan prepared by a suitably qualified person",
+    "span_sha256": "ec6346fab97003042fb671895b81612ab174fdca74d270aa0484e32d8dd9d2c7",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "imprecise"
+  },
+  {
+   "id": 202985,
+   "md5": "eef6cc51a8883e6e149b4be8b291a63c",
+   "old_text": "# 3.6.3 b 3.6.3 Dual Occupancies (Attached or Detached)\n\nb)\t   A dual occupancy shall satisfy the\nA dual occupancy shall satisfy the\nfollowing provisions relating to deep\nfollowing provisions relating to deep\nsoil planting:\nsoil planting:\ni)\ni)\t   no more than 30% of the area forward\nno more than 30% of the area forward\nof any building line shall be surfaced\nof any building line shall be surfaced\nwith impervious materials; and\nwith impervious materials; and\nii)\nii)\t   a minimum of 20% of the total site\na minimum of 20% of the total site\narea shall be available for deep soil\narea shall be available for deep soil\nplanting.",
+   "page": 26,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.3 b 3.6.3 Dual Occupancies (Attached or Detached)\n\nb)\t   A dual occupancy shall satisfy the\nfollowing provisions relating to deep\nsoil planting:\ni)\t   no more than 30% of the area forward\nof any building line shall be surfaced\nwith impervious materials; and\nii)\t   a minimum of 20% of the total site\narea shall be available for deep soil\nplanting.",
+   "evidence": {
+    "page": 26,
+    "order": "raw",
+    "start": 184,
+    "end": 463,
+    "span": "b a dual occupancy shall satisfy the following provisions relating to deep soil planting i no more than 30 of the area forward of any building line shall be surfaced with impervious materials and ii a minimum of 20 of the total site area shall be available for deep soil planting",
+    "span_sha256": "cd8d5898c330fe684ae3b8b82003a8f11e59fca15d5770a984952be1c9c38578",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202995,
+   "md5": "cdcb07c3273aed1aebfa1335f40029aa",
+   "old_text": "# 3.6.4.1 b 3.6.4.1 General Requirements\n\nb)\t   Despite Clause 3.6.4.1 a)  above,  semi-\nDespite Clause 3.6.4.1 a)  above,  semi-\ndetached dwellings shall be permitted\ndetached dwellings shall be permitted\non an allotment having a minimum\non an allotment having a minimum\nwidth less than 7.5 metres where\nwidth less than 7.5 metres where\neach individual lot existed prior to the\neach individual lot existed prior to the\ncommencement of the CLEP.",
+   "page": 27,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.4.1 b 3.6.4.1 General Requirements\n\nb)\t   Despite Clause 3.6.4.1 a)  above,  semi-\ndetached dwellings shall be permitted\non an allotment having a minimum\nwidth less than 7.5 metres where\neach individual lot existed prior to the\ncommencement of the CLEP.",
+   "evidence": {
+    "page": 27,
+    "order": "raw",
+    "start": 208,
+    "end": 414,
+    "span": "b despite clause 3 6 4 1 a above semidetached dwellings shall be permitted on an allotment having a minimum width less than 7 5 metres where each individual lot existed prior to the commencement of the clep",
+    "span_sha256": "95710af1cbb13450a8e70d9a3049b5cd0f9fa11fc173d1711720e2f0a1017a59",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202996,
+   "md5": "a618179c121122d9182abfefbf4ff38f",
+   "old_text": "# 3.6.4.2 a 3.6.4.2 Setbacks\n\na)\t   Semi-detached\ndwellings\nshall\nbe\nSemi-detached\ndwellings\nshall\nbe\nsetback a minimum of:\nsetback a minimum of:\ni)\ni)\t   5.5 metres from the primary street\n5.5 metres from the primary street\nboundary for the semi-detached\nboundary for the semi-detached\ndwellings;\ndwellings;\nii)\nii)\t   6.0 metres from the primary street\n6.0 metres from the primary street\nboundary for the garage or the under\nboundary for the garage or the under\ncover parking space;\ncover parking space;\niii)\niii)\t 3 metres from the secondary street\n3 metres from the secondary street\nboundary;\nboundary;\niv)\niv)\t 5.5 metres from the secondary\n5.5 metres from the secondary\nstreet boundary for the garage or the\nstreet boundary for the garage or the\nundercover parking space, where\nundercover parking space, where\nthe garage is accessed directly from\nthe garage is accessed directly from\nthe secondary street;\nthe secondary street;\nv)\nv)\t   0.9 metres from any side boundary,\n0.9 metres from any side boundary,\nfor the part of the building that is\nfor the part of the building that is\nnot attached to the other dwelling;\nnot attached to the other dwelling;\nand\nand\nvi)\nvi)\t 3 metres from the rear boundary for\n3 metres from the rear boundary for\nany part of the building that is up\nany part of the building that is up\nto 4.5 metres in height from ground\nto 4.5 metres in height from ground\nlevel (existing); and\nlevel (existing); and\nvii)\nvii)\t 8 metres from the rear boundary for\n8 metres from the rear boundary for\nany part of the building that is higher\nany part of the building that is higher\nthan 4.5 metres from ground level\nthan 4.5 metres from ground level\n(existing) (refer to Figure 3.6.4.1).",
+   "page": 27,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.4.2 a 3.6.4.2 Setbacks\n\na)\t   Semi-detached\ndwellings\nshall\nbe\nsetback a minimum of:\ni)\t   5.5 metres from the primary street\nboundary for the semi-detached\ndwellings;\nii)\t   6.0 metres from the primary street\nboundary for the garage or the under\ncover parking space;\niii)\t 3 metres from the secondary street\nboundary;\niv)\t 5.5 metres from the secondary\nstreet boundary for the garage or the\nundercover parking space, where\nthe garage is accessed directly from\nthe secondary street;\nv)\t   0.9 metres from any side boundary,\nfor the part of the building that is\nnot attached to the other dwelling;\nand\nvi)\t 3 metres from the rear boundary for\nany part of the building that is up\nto 4.5 metres in height from ground\nlevel (existing); and\nvii)\t 8 metres from the rear boundary for\nany part of the building that is higher\nthan 4.5 metres from ground level\n(existing) (refer to Figure 3.6.4.1).",
+   "evidence": {
+    "page": 27,
+    "order": "raw",
+    "start": 432,
+    "end": 1257,
+    "span": "a semi detached dwellings shall be setback a minimum of i 5 5 metres from the primary street boundary for the semi detached dwellings ii 6 0 metres from the primary street boundary for the garage or the under cover parking space iii 3 metres from the secondary street boundary iv 5 5 metres from the secondary street boundary for the garage or the undercover parking space where the garage is accessed directly from the secondary street v 0 9 metres from any side boundary for the part of the building that is not attached to the other dwelling and vi 3 metres from the rear boundary for any part of the building that is up to 4 5 metres in height from ground level existing and vii 8 metres from the rear boundary for any part of the building that is higher than 4 5 metres from ground level existing refer to figure 3 6 4 1",
+    "span_sha256": "873f78aa12eb0ad06327cb3267c708fd3a919e00a1c7c33417fbda51daef117d",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202997,
+   "md5": "d9574518356436444b429745d7736a9c",
+   "old_text": "# 3.6.4.3 a 3.6.4.3 Car Parking Rates\n\na)\t   Each dwelling that is part of a semi-\nEach dwelling that is part of a semi-\ndetached dwelling  development shall\ndetached dwelling  development shall\nbe provided with of minimum of one (1)\nbe provided with of minimum of one (1)\nsingle garage.",
+   "page": 28,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.4.3 a 3.6.4.3 Car Parking Rates\n\na)\t   Each dwelling that is part of a semi-\ndetached dwelling  development shall\nbe provided with of minimum of one (1)\nsingle garage.",
+   "evidence": {
+    "page": 28,
+    "order": "raw",
+    "start": 426,
+    "end": 550,
+    "span": "a each dwelling that is part of a semidetached dwelling development shall be provided with of minimum of one 1 single garage",
+    "span_sha256": "501279e634c78701b2b087c69b6a58ea009eb33a11efa1f35a10eacf6b8dfd93",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202998,
+   "md5": "f5ff7d967ba25c6d225d3fd78e5250ef",
+   "old_text": "# 3.6.4.3 b 3.6.4.3 Car Parking Rates\n\nb)\t   Despite Clause 3.6.4.3 a) above and\nDespite Clause 3.6.4.3 a) above and\nClause  3.6.4.2.a)ii) , where an individual\nClause  3.6.4.2.a)ii) , where an individual\nallotment is in existence before the\nallotment is in existence before the\ngazettal date of the CLEP and has a width\ngazettal date of the CLEP and has a width\nless than 7.5 metres, standard garages shall\nless than 7.5 metres, standard garages shall\nnot be permitted on the primary street\nnot be permitted on the primary street\nfrontage unless the garage component is\nfrontage unless the garage component is\nrecessed by at least 2 meters from the\nrecessed by at least 2 meters from the\nmain building line.",
+   "page": 28,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.4.3 b 3.6.4.3 Car Parking Rates\n\nb)\t   Despite Clause 3.6.4.3 a) above and\nClause  3.6.4.2.a)ii) , where an individual\nallotment is in existence before the\ngazettal date of the CLEP and has a width\nless than 7.5 metres, standard garages shall\nnot be permitted on the primary street\nfrontage unless the garage component is\nrecessed by at least 2 meters from the\nmain building line.",
+   "evidence": {
+    "page": 28,
+    "order": "raw",
+    "start": 551,
+    "end": 887,
+    "span": "b despite clause 3 6 4 3 a above and clause 3 6 4 2 a ii where an individual allotment is in existence before the gazettal date of the clep and has a width less than 7 5 metres standard garages shall not be permitted on the primary street frontage unless the garage component is recessed by at least 2 meters from the main building line",
+    "span_sha256": "ca578075e464821641c8f5da7e549d064165143968707f727b9a36c75185da35",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 202999,
+   "md5": "406de0a571d86db44e104f415fe7cc5e",
+   "old_text": "# 3.6.4.3 c 3.6.4.3 Car Parking Rates\n\nc)\t   For the purpose of Clause 3.6.4.3 b) above,\nFor the purpose of Clause 3.6.4.3 b) above,\ncovered car parking spaces fronting the\ncovered car parking spaces fronting the\nprimary street shall only be provided in a\nprimary street shall only be provided in a\nnon-obtrusive open type design so as not\nnon-obtrusive open type design so as not\nto detract from the street facade of the\nto detract from the street facade of the\ndevelopment.",
+   "page": 28,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.4.3 c 3.6.4.3 Car Parking Rates\n\nc)\t   For the purpose of Clause 3.6.4.3 b) above,\ncovered car parking spaces fronting the\nprimary street shall only be provided in a\nnon-obtrusive open type design so as not\nto detract from the street facade of the\ndevelopment.",
+   "evidence": {
+    "page": 28,
+    "order": "raw",
+    "start": 888,
+    "end": 1108,
+    "span": "c for the purpose of clause 3 6 4 3 b above covered car parking spaces fronting the primary street shall only be provided in a non obtrusive open type design so as not to detract from the street facade of the development",
+    "span_sha256": "99168428393773c569060522dbd46c051a57a2260cf18697a400955b2315804c",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203001,
+   "md5": "e3ffbc291519cca3a91eb377dfdf19d2",
+   "old_text": "# 3.6.4.5 a 3.6.4.5 Presentation to Public Streets\n\na)\t   Where\na\ndevelopment\ninvolves\nthe\nWhere\na\ndevelopment\ninvolves\nthe\nconstruction of an additional  dwelling\nconstruction of an additional  dwelling\nto create a semi detached dwelling, the\nto create a semi detached dwelling, the\nexisting dwelling (where it is proposed\nexisting dwelling (where it is proposed\nto be retained)  shall be renovated to\nto be retained)  shall be renovated to\nmatch the colour, material, texture\nmatch the colour, material, texture\nand architectural style of the proposed\nand architectural style of the proposed\nbuilding so as to create a harmonious\nbuilding so as to create a harmonious\ndevelopment.",
+   "page": 29,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.4.5 a 3.6.4.5 Presentation to Public Streets\n\na)\t   Where\na\ndevelopment\ninvolves\nthe\nconstruction of an additional  dwelling\nto create a semi detached dwelling, the\nexisting dwelling (where it is proposed\nto be retained)  shall be renovated to\nmatch the colour, material, texture\nand architectural style of the proposed\nbuilding so as to create a harmonious\ndevelopment.",
+   "evidence": {
+    "page": 29,
+    "order": "raw",
+    "start": 239,
+    "end": 551,
+    "span": "a where a development involves the construction of an additional dwelling to create a semi detached dwelling the existing dwelling where it is proposed to be retained shall be renovated to match the colour material texture and architectural style of the proposed building so as to create a harmonious development",
+    "span_sha256": "c76b4cbc0ab93a41901c3c01ff3801974c4edc969fd99fa278223c60c38ed5e3",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203002,
+   "md5": "d5fa79334541c785744c0aa485b9ceee",
+   "old_text": "# 3.6.4.6 a 3.6.4.6 Landscaping and Deep Soil Planting\n\na)\t   A development application for a semi-\nA development application for a semi-\ndetached\ndwellings\nshall\ninclude\na\ndetached\ndwellings\nshall\ninclude\na\ndetailed landscape plan prepared by a\ndetailed landscape plan prepared by a\nsuitably qualified person.",
+   "page": 29,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.4.6 a 3.6.4.6 Landscaping and Deep Soil Planting\n\na)\t   A development application for a semi-\ndetached\ndwellings\nshall\ninclude\na\ndetailed landscape plan prepared by a\nsuitably qualified person.",
+   "evidence": {
+    "page": 29,
+    "order": "raw",
+    "start": 595,
+    "end": 731,
+    "span": "a a development application for a semidetached dwellings shall include a detailed landscape plan prepared by a suitably qualified person",
+    "span_sha256": "2b4f8d5038f562e6b180658438d1cf1a74a313e9fdbc202d941db69c81db2ae3",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203006,
+   "md5": "94794e646204945950ec1a0906af9e50",
+   "old_text": "# 3.6.5 b 3.6.5 Attached Dwellings\n\nb)\t   For the purpose of this clause, the\nFor the purpose of this clause, the\ntotal number of bedrooms within each\ntotal number of bedrooms within each\ndwelling shall include any room that is\ndwelling shall include any room that is\ncapable of being used as a bedroom (i.e\ncapable of being used as a bedroom (i.e\nstudy room).",
+   "page": 32,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.5 b 3.6.5 Attached Dwellings\n\nb)\t   For the purpose of this clause, the\ntotal number of bedrooms within each\ndwelling shall include any room that is\ncapable of being used as a bedroom (i.e\nstudy room).",
+   "evidence": {
+    "page": 32,
+    "order": "raw",
+    "start": 388,
+    "end": 551,
+    "span": "b for the purpose of this clause the total number of bedrooms within each dwelling shall include any room that is capable of being used as a bedroom i e study room",
+    "span_sha256": "d9c8dde652f905c953752da64d7fa3360c9bf464e05c39c0f782cfb423b8132b",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203007,
+   "md5": "72cbe97f9a6318b2f32953d98748e9d1",
+   "old_text": "# 3.6.5.1 a Design Requirements\n\na)\t   Each lot of land for each attached\nEach lot of land for each attached\ndwelling shall have  a minimum width\ndwelling shall have  a minimum width\nof 7.5 metres measured along the side\nof 7.5 metres measured along the side\nboundaries at a distance of 5.5 metres\nboundaries at a distance of 5.5 metres\nfrom the primary street boundary\nfrom the primary street boundary\nunless each individual allotment is in\nunless each individual allotment is in\nexistence prior to the commencement\nexistence prior to the commencement\ndate of the CLEP.",
+   "page": 30,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.5.1 a Design Requirements\n\na)\t   Each lot of land for each attached\ndwelling shall have  a minimum width\nof 7.5 metres measured along the side\nboundaries at a distance of 5.5 metres\nfrom the primary street boundary\nunless each individual allotment is in\nexistence prior to the commencement\ndate of the CLEP.",
+   "evidence": {
+    "page": 30,
+    "order": "raw",
+    "start": 89,
+    "end": 363,
+    "span": "a each lot of land for each attached dwelling shall have a minimum width of 7 5 metres measured along the side boundaries at a distance of 5 5 metres from the primary street boundary unless each individual allotment is in existence prior to the commencement date of the clep",
+    "span_sha256": "8a77fd955bb03e57a3b84d478c9dcd212e0befbed2fe1016b3171e8d18a154a2",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203008,
+   "md5": "6a46fbc000e221f1891510ee53c6481b",
+   "old_text": "# 3.6.5.1 b Design Requirements\n\nb)\t   Attached dwellings shall not be erected\nAttached dwellings shall not be erected\non an existing battle-axe allotment.",
+   "page": 30,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.5.1 b Design Requirements\n\nb)\t   Attached dwellings shall not be erected\non an existing battle-axe allotment.",
+   "evidence": {
+    "page": 30,
+    "order": "raw",
+    "start": 364,
+    "end": 441,
+    "span": "b attached dwellings shall not be erected on an existing battle axe allotment",
+    "span_sha256": "0294ec3d4696c7065cd0710e8db53ad8a7b43d9c17a5fa8bfdcd3847cc792f9b",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203009,
+   "md5": "e1738c47478959b04266d0669032410c",
+   "old_text": "# 3.6.5.1 d Design Requirements\n\nd)\t   Subject to the satisfaction of other\nSubject to the satisfaction of other\nrequirements within the Plan, the\nrequirements within the Plan, the\nnumber of dwellings permitted within\nnumber of dwellings permitted within\nattached dwelling development shall\nattached dwelling development shall\nnot exceed three (3)  dwellings within\nnot exceed three (3)  dwellings within\nthe R2 zone",
+   "page": 30,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.5.1 d Design Requirements\n\nd)\t   Subject to the satisfaction of other\nrequirements within the Plan, the\nnumber of dwellings permitted within\nattached dwelling development shall\nnot exceed three (3)  dwellings within\nthe R2 zone",
+   "evidence": {
+    "page": 30,
+    "order": "raw",
+    "start": 630,
+    "end": 822,
+    "span": "d subject to the satisfaction of other requirements within the plan the number of dwellings permitted within attached dwelling development shall not exceed three 3 dwellings within the r2 zone",
+    "span_sha256": "51040b2701600e5ea76dc5b5d533a514e46f26dd5f9615a2fa80a6d334decffd",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203010,
+   "md5": "c5e59c37031e478b35fec3c6f3d35cfa",
+   "old_text": "# 3.6.5.1 e b Design Requirements\n\ne)\t   For the purpose of calculating the\nFor the purpose of calculating the\ndevelopable area of an allotment:\ndevelopable area of an allotment:\ni)",
+   "page": 30,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.5.1 e b Design Requirements\n\ne)\t   For the purpose of calculating the\ndevelopable area of an allotment:\ni)",
+   "evidence": {
+    "page": 30,
+    "order": "raw",
+    "start": 823,
+    "end": 894,
+    "span": "e for the purpose of calculating the developable area of an allotment i",
+    "span_sha256": "b9414aa0ec75c633115a02125ff136972e5dc497808caf5def04be8ca4af486b",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203012,
+   "md5": "7d148d6ad8c4194e379857f73f5c3511",
+   "old_text": "# 3.6.5.2 a 3.6.5.2 Setbacks for Attached Dwellings - Zone R2\n\na\nAttached dwellings shall be setback a\nminimum of:\nminimum of:\ni)\ni)\t   5.5 metres from the primary street\n5.5 metres from the primary street\nboundary\nboundary ;\nii)\nii)\t   6.0 metres from the primary street\n6.0 metres from the primary street\nboundary for the garage or the under\nboundary for the garage or the under\ncover parking space;\ncover parking space;\niii)\niii)\t 3 metres from the secondary street\n3 metres from the secondary street\nboundary;\nboundary;\niv)\niv)\t 5.5 metres from the secondary\n5.5 metres from the secondary\nstreet boundary for the garage or the\nstreet boundary for the garage or the\nundercover parking space, where\nundercover parking space, where\nthe garage is accessed directly from\nthe garage is accessed directly from\nthe secondary street;\nthe secondary street;\nv)\nv)\t   0.9 metres from any side boundary\n0.9 metres from any side boundary\nfor the ground level;\nfor the ground level;\nvi)\nvi)\t 1.5\nmetres\nfrom\nany\nside\n1.5\nmetres\nfrom\nany\nside\nboundary\nfor\nall\nlevels\nabove\nboundary\nfor\nall\nlevels\nabove\nthe ground level; and\nthe ground level; and\nvii)\nvii)\t 5 metres from the rear boundary for\n5 metres from the rear boundary for\nany part of the building that is up\nany part of the building that is up\nto 4.5 metres in height from ground\nto 4.5 metres in height from ground\nlevel (existing); and\nlevel (existing); and\nviii)\nviii)\t 10 metres from the rear boundary\n10 metres from the rear boundary\nfor any part of the building that is\nfor any part of the building that is\nhigher than 4.5 metres from ground\nhigher than 4.5 metres from ground\nlevel (existing) (refer to Figure\nlevel (existing) (refer to Figure\n3.6.5.1).",
+   "page": 31,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.5.2 a 3.6.5.2 Setbacks for Attached Dwellings - Zone R2\n\na\nAttached dwellings shall be setback a\nminimum of:\ni)\t   5.5 metres from the primary street\nboundary\nii)\t   6.0 metres from the primary street\nboundary for the garage or the under\ncover parking space;\niii)\t 3 metres from the secondary street\nboundary;\niv)\t 5.5 metres from the secondary\nstreet boundary for the garage or the\nundercover parking space, where\nthe garage is accessed directly from\nthe secondary street;\nv)\t   0.9 metres from any side boundary\nfor the ground level;\nvi)\t 1.5\nmetres\nfrom\nany\nside\nboundary\nfor\nall\nlevels\nabove\nthe ground level; and\nvii)\t 5 metres from the rear boundary for\nany part of the building that is up\nto 4.5 metres in height from ground\nlevel (existing); and\nviii)\t 10 metres from the rear boundary\nfor any part of the building that is\nhigher than 4.5 metres from ground\nlevel (existing) (refer to Figure\n3.6.5.1).",
+   "evidence": {
+    "page": 31,
+    "order": "raw",
+    "start": 441,
+    "end": 1256,
+    "span": "a attached dwellings shall be setback a minimum of i 5 5 metres from the primary street boundary ii 6 0 metres from the primary street boundary for the garage or the under cover parking space iii 3 metres from the secondary street boundary iv 5 5 metres from the secondary street boundary for the garage or the undercover parking space where the garage is accessed directly from the secondary street v 0 9 metres from any side boundary for the ground level vi 1 5 metres from any side boundary for all levels above the ground level and vii 5 metres from the rear boundary for any part of the building that is up to 4 5 metres in height from ground level existing and viii 10 metres from the rear boundary for any part of the building that is higher than 4 5 metres from ground level existing refer to figure 3 6 5 1",
+    "span_sha256": "104c194a1ee4bb1a8a09c5b9b62a267bc4aa3704f576b436dc698dd729197e37",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203014,
+   "md5": "0a7a1585bac8abdf2d7748ac33885e3a",
+   "old_text": "# 3.6.5.4 a\n\na)\t   Where there is no access to a rear\nWhere there is no access to a rear\nlane or rear street  directly available\nlane or rear street  directly available\nfrom the back  of attached dwellings,\nfrom the back  of attached dwellings,\neach dwelling shall be provided with\neach dwelling shall be provided with\na separate and direct access from the\na separate and direct access from the\nbackyard to the front yard that does not\nbackyard to the front yard that does not\npass through any habitable area of the\npass through any habitable area of the\ndwelling (Refer to Figure 3.6.5.2 for a\ndwelling (Refer to Figure 3.6.5.2 for a\nsuggested design solution).",
+   "page": 32,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.5.4 a\n\na)\t   Where there is no access to a rear\nlane or rear street  directly available\nfrom the back  of attached dwellings,\neach dwelling shall be provided with\na separate and direct access from the\nbackyard to the front yard that does not\npass through any habitable area of the\ndwelling (Refer to Figure 3.6.5.2 for a\nsuggested design solution).",
+   "evidence": {
+    "page": 32,
+    "order": "raw",
+    "start": 1188,
+    "end": 1519,
+    "span": "a where there is no access to a rear lane or rear street directly available from the back of attached dwellings each dwelling shall be provided with a separate and direct access from the backyard to the front yard that does not pass through any habitable area of the dwelling refer to figure 3 6 5 2 for a suggested design solution",
+    "span_sha256": "e1d010cd93c953e04e387b9ff61f74dbb3a6d5bd916982d52315cac0b3c28073",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203016,
+   "md5": "a4818dcd7088fc4dbb03df541c650167",
+   "old_text": "# 3.6.5.5 a 3.6.5.5 Car Parking Rates for Attached Dwellings - Zone R2\n\na)\t   Each dwelling that is part of attached\nEach dwelling that is part of attached\ndwellings shall be provided with a\ndwellings shall be provided with a\nminimum of one (1) single garage.",
+   "page": 33,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.5.5 a 3.6.5.5 Car Parking Rates for Attached Dwellings - Zone R2\n\na)\t   Each dwelling that is part of attached\ndwellings shall be provided with a\nminimum of one (1) single garage.",
+   "evidence": {
+    "page": 33,
+    "order": "raw",
+    "start": 373,
+    "end": 479,
+    "span": "a each dwelling that is part of attached dwellings shall be provided with a minimum of one 1 single garage",
+    "span_sha256": "0a7998de47be7c6cc655231b3bd189e6126fe87a738de4300dc9523e32f32f55",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203017,
+   "md5": "158704639c4a7abfbeee31fef7d18f97",
+   "old_text": "# 3.6.5.5 b 3.6.5.5 Car Parking Rates for Attached Dwellings - Zone R2\n\nb)\t   Despite Clause 3.6.5.5 a) above\nDespite Clause 3.6.5.5 a) above\nand Clause 3.6.5.2 a) ii), where an\nand Clause 3.6.5.2 a) ii), where an\nindividual allotment is in existence\nindividual allotment is in existence\nbefore the date of gazettal of the\nbefore the date of gazettal of the\nCLEP and has a width less than 7.5\nCLEP and has a width less than 7.5\nmetres, standard garages shall not\nmetres, standard garages shall not\nbe permitted on the primary street\nbe permitted on the primary street\nfrontage unless the garage component\nfrontage unless the garage component\nis recessed by at least 2 meters from\nis recessed by at least 2 meters from\nthe main building line.",
+   "page": 33,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.5.5 b 3.6.5.5 Car Parking Rates for Attached Dwellings - Zone R2\n\nb)\t   Despite Clause 3.6.5.5 a) above\nand Clause 3.6.5.2 a) ii), where an\nindividual allotment is in existence\nbefore the date of gazettal of the\nCLEP and has a width less than 7.5\nmetres, standard garages shall not\nbe permitted on the primary street\nfrontage unless the garage component\nis recessed by at least 2 meters from\nthe main building line.",
+   "evidence": {
+    "page": 33,
+    "order": "raw",
+    "start": 480,
+    "end": 819,
+    "span": "b despite clause 3 6 5 5 a above and clause 3 6 5 2 a ii where an individual allotment is in existence before the date of gazettal of the clep and has a width less than 7 5 metres standard garages shall not be permitted on the primary street frontage unless the garage component is recessed by at least 2 meters from the main building line",
+    "span_sha256": "d9ad96dde9c4cb53f876322f03cedae5b4706658b67fd5703a8410776e6ba02e",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203018,
+   "md5": "d09d6c14eab3942bd9c1159e9baccdeb",
+   "old_text": "# 3.6.5.5 c 3.6.5.5 Car Parking Rates for Attached Dwellings - Zone R2\n\nc)\t   For the purpose of Clause 3.6.5.5 b)\nFor the purpose of Clause 3.6.5.5 b)\nabove, covered car parking spaces\nabove, covered car parking spaces\nfronting the primary street shall only\nfronting the primary street shall only\nbe provided in a non-obtrusive open\nbe provided in a non-obtrusive open\ntype design so as not to detract from\ntype design so as not to detract from\nthe street facade of the development.",
+   "page": 33,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.5.5 c 3.6.5.5 Car Parking Rates for Attached Dwellings - Zone R2\n\nc)\t   For the purpose of Clause 3.6.5.5 b)\nabove, covered car parking spaces\nfronting the primary street shall only\nbe provided in a non-obtrusive open\ntype design so as not to detract from\nthe street facade of the development.",
+   "evidence": {
+    "page": 33,
+    "order": "raw",
+    "start": 820,
+    "end": 1040,
+    "span": "c for the purpose of clause 3 6 5 5 b above covered car parking spaces fronting the primary street shall only be provided in a non obtrusive open type design so as not to detract from the street facade of the development",
+    "span_sha256": "2addfbc3fe06abd91fbc245841ce2b47067734bb7a8945820be6cee67b81c958",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203021,
+   "md5": "cbb63744dfba34e918aab3c4d59719a0",
+   "old_text": "# 3.6.5.7 b 3.6.5.7 Presentation to Public Streets for Attached Dwellings - Zone R2\n\nb)\t   Where a development involves the\nWhere a development involves the\nconstruction of  additional  dwellings\nconstruction of  additional  dwellings\nto create attached  dwellings, the\nto create attached  dwellings, the\nexisting dwelling  on the site (where\nexisting dwelling  on the site (where\nit is proposed to be retained)  shall\nit is proposed to be retained)  shall\nbe renovated to match the colour,\nbe renovated to match the colour,\nmaterial, texture and architectural\nmaterial, texture and architectural\nstyle of the proposed building so as to\nstyle of the proposed building so as to\ncreate a harmonious building.",
+   "page": 34,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.5.7 b 3.6.5.7 Presentation to Public Streets for Attached Dwellings - Zone R2\n\nb)\t   Where a development involves the\nconstruction of  additional  dwellings\nto create attached  dwellings, the\nexisting dwelling  on the site (where\nit is proposed to be retained)  shall\nbe renovated to match the colour,\nmaterial, texture and architectural\nstyle of the proposed building so as to\ncreate a harmonious building.",
+   "evidence": {
+    "page": 34,
+    "order": "raw",
+    "start": 996,
+    "end": 1309,
+    "span": "b where a development involves the construction of additional dwellings to create attached dwellings the existing dwelling on the site where it is proposed to be retained shall be renovated to match the colour material texture and architectural style of the proposed building so as to create a harmonious building",
+    "span_sha256": "70c6d28237aa9e8f21755127114eb972e4407ef487fadad20f7c01c5ae64e3c8",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203022,
+   "md5": "26f6080a995fe6217501d3129ac6da83",
+   "old_text": "# 3.6.5.8 a Planting for Attached Dwellings - Zone R2\n\na)\t   A development application for an\nA development application for an\nattached dwelling shall include a\nattached dwelling shall include a\ndetailed landscape plan prepared by a\ndetailed landscape plan prepared by a\nsuitably qualified person.",
+   "page": 35,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.6.5.8 a Planting for Attached Dwellings - Zone R2\n\na)\t   A development application for an\nattached dwelling shall include a\ndetailed landscape plan prepared by a\nsuitably qualified person.",
+   "evidence": {
+    "page": 35,
+    "order": "raw",
+    "start": 52,
+    "end": 184,
+    "span": "a a development application for an attached dwelling shall include a detailed landscape plan prepared by a suitably qualified person",
+    "span_sha256": "48b188bad216051bef2d77293e57b23dde65bd5b5b65094ba116ee18bb381090",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203026,
+   "md5": "18933f20bc864445bdb33627e7d27c63",
+   "old_text": "# 3.7.1 b 3.7.1 Attached Dwellings\n\nb)\t   All existing dwellings on site shall\nAll existing dwellings on site shall\nbe demolished, unless the  existing\nbe demolished, unless the  existing\ndwelling is fully renovated to match\ndwelling is fully renovated to match\nthe colour, material, texture and\nthe colour, material, texture and\narchitectural style of the proposed\narchitectural style of the proposed\nbuildings so as to create a harmonious\nbuildings so as to create a harmonious\ndevelopment.",
+   "page": 42,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.1 b 3.7.1 Attached Dwellings\n\nb)\t   All existing dwellings on site shall\nbe demolished, unless the  existing\ndwelling is fully renovated to match\nthe colour, material, texture and\narchitectural style of the proposed\nbuildings so as to create a harmonious\ndevelopment.",
+   "evidence": {
+    "page": 42,
+    "order": "raw",
+    "start": 191,
+    "end": 419,
+    "span": "b all existing dwellings on site shall be demolished unless the existing dwelling is fully renovated to match the colour material texture and architectural style of the proposed buildings so as to create a harmonious development",
+    "span_sha256": "84bb2b8622d7e47fda75c5f547c6d517e263a9734d102349af0644aafda9fc0d",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203033,
+   "md5": "c17146418dcfe9973963535970e8b175",
+   "old_text": "# 3.7.1.2 d 3.7.1.2 Setbacks for Attached Dwellings - Zone R3\n\nd)\t   Where garages are located and accessed\nfrom the back of the site (i.e via a rear\nlane)  they shall not exceed 50% of the\nthey shall not exceed 50% of the\nwidth of the rear elevation.",
+   "page": 39,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.1.2 d 3.7.1.2 Setbacks for Attached Dwellings - Zone R3\n\nd)\t   Where garages are located and accessed\nfrom the back of the site (i.e via a rear\nlane)  they shall not exceed 50% of the\nwidth of the rear elevation.",
+   "evidence": {
+    "page": 39,
+    "order": "raw",
+    "start": 276,
+    "end": 422,
+    "span": "d where garages are located and accessed from the back of the site i e via a rear lane they shall not exceed 50 of the width of the rear elevation",
+    "span_sha256": "c6e6eee7e8fd17e6ed4a2f106484246581eb5bd2f2ea9ef0283a5bc88406e224",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203035,
+   "md5": "58f6d58163145cf618f4c58bb99079e5",
+   "old_text": "# 3.7.1.4 b 3.7.1.4 Rear Access for Attached Dwellings - Zone R3\n\nb)\t   For the purpose of 3.7.1.4 a) above, the\ndirect access from the rear to the front\nof the dwelling shall have a minimum\nwidth of 0.9 metres and shall not be\nobstructed by hot water systems, air\nconditioning units, gardens or anything\nconditioning units, gardens or anything\nthat may result in the obstruction of the\nthat may result in the obstruction of the\naccess way.",
+   "page": 40,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.1.4 b 3.7.1.4 Rear Access for Attached Dwellings - Zone R3\n\nb)\t   For the purpose of 3.7.1.4 a) above, the\ndirect access from the rear to the front\nof the dwelling shall have a minimum\nwidth of 0.9 metres and shall not be\nobstructed by hot water systems, air\nconditioning units, gardens or anything\nthat may result in the obstruction of the\naccess way.",
+   "evidence": {
+    "page": 40,
+    "order": "raw",
+    "start": 571,
+    "end": 854,
+    "span": "b for the purpose of 3 7 1 4 a above the direct access from the rear to the front of the dwelling shall have a minimum width of 0 9 metres and shall not be obstructed by hot water systems air conditioning units gardens or anything that may result in the obstruction of the access way",
+    "span_sha256": "3ad1ac2a050ef4444ba51eb1ee04f8d4ef963caf8e1d6e520b6d2f38a1172bc3",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203036,
+   "md5": "404994959b53adf5fd3f2f5fcf20e193",
+   "old_text": "# 3.7.1.5 a 3.7.1.5 Private Car Parking Requirement for Attached Dwellings - Zone R3\n\na)\t   Each dwelling that is part of attached\nEach dwelling that is part of attached\ndwellings shall be provided with a\ndwellings shall be provided with a\nminimum of one (1) single garage.",
+   "page": 40,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.1.5 a 3.7.1.5 Private Car Parking Requirement for Attached Dwellings - Zone R3\n\na)\t   Each dwelling that is part of attached\ndwellings shall be provided with a\nminimum of one (1) single garage.",
+   "evidence": {
+    "page": 40,
+    "order": "raw",
+    "start": 926,
+    "end": 1032,
+    "span": "a each dwelling that is part of attached dwellings shall be provided with a minimum of one 1 single garage",
+    "span_sha256": "0a7998de47be7c6cc655231b3bd189e6126fe87a738de4300dc9523e32f32f55",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203037,
+   "md5": "bd39550a51ed0860c331d0f3e74d8fa9",
+   "old_text": "# 3.7.1.5 b 3.7.1.5 Private Car Parking Requirement for Attached Dwellings - Zone R3\n\nb)\t   Despite Clause 3.7.1.5 a) above and\nDespite Clause 3.7.1.5 a) above and\nClause  3.7.1.2 b) , where an individual\nClause  3.7.1.2 b) , where an individual\nallotment is in existence before the\nallotment is in existence before the\ngazettal date of the CLEP and has a\ngazettal date of the CLEP and has a\nwidth less than 7.5 metres, standard\nwidth less than 7.5 metres, standard\ngarages shall not be permitted on the\ngarages shall not be permitted on the\nprimary street frontage unless the\nprimary street frontage unless the\ngarage component is recessed by at\ngarage component is recessed by at\nleast 2 meters from the main building\nleast 2 meters from the main building\nline.",
+   "page": 40,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.1.5 b 3.7.1.5 Private Car Parking Requirement for Attached Dwellings - Zone R3\n\nb)\t   Despite Clause 3.7.1.5 a) above and\nClause  3.7.1.2 b) , where an individual\nallotment is in existence before the\ngazettal date of the CLEP and has a\nwidth less than 7.5 metres, standard\ngarages shall not be permitted on the\nprimary street frontage unless the\ngarage component is recessed by at\nleast 2 meters from the main building\nline.",
+   "evidence": {
+    "page": 40,
+    "order": "raw",
+    "start": 1033,
+    "end": 1366,
+    "span": "b despite clause 3 7 1 5 a above and clause 3 7 1 2 b where an individual allotment is in existence before the gazettal date of the clep and has a width less than 7 5 metres standard garages shall not be permitted on the primary street frontage unless the garage component is recessed by at least 2 meters from the main building line",
+    "span_sha256": "f948e019f2765af1891344548e932a3f493e2932283587f21149360e49bb9969",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203041,
+   "md5": "c6cf726201acde2c044d74fc2a45cc79",
+   "old_text": "# 3.7.1.6 a 3.7.1.6 Requirements for the Use of Roof Space for Habitable Areas for Attached Dwellings - Zone R3\n\na)\t   Council may consider the use of\nCouncil may consider the use of\nthe roof space for a habitable\nthe roof space for a habitable\nroom, but only if:\nroom, but only if:\ni)\ni)\t   it is appropriately designed;\nit is appropriately designed;\nii)\nii)\t   it is part of the overall design of\nit is part of the overall design of\nthe building;\nthe building;\niii)\niii)\t appropriate light and ventilation\nappropriate light and ventilation\nis supplied to rooms; and\nis supplied to rooms; and\niv)\niv)\t it does not negatively impact\nit does not negatively impact\non the design quality of the\non the design quality of the\nstreetscape.",
+   "page": 41,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.1.6 a 3.7.1.6 Requirements for the Use of Roof Space for Habitable Areas for Attached Dwellings - Zone R3\n\na)\t   Council may consider the use of\nthe roof space for a habitable\nroom, but only if:\ni)\t   it is appropriately designed;\nii)\t   it is part of the overall design of\nthe building;\niii)\t appropriate light and ventilation\nis supplied to rooms; and\niv)\t it does not negatively impact\non the design quality of the\nstreetscape.",
+   "evidence": {
+    "page": 41,
+    "order": "raw",
+    "start": 253,
+    "end": 554,
+    "span": "a council may consider the use of the roof space for a habitable room but only if i it is appropriately designed ii it is part of the overall design of the building iii appropriate light and ventilation is supplied to rooms and iv it does not negatively impact on the design quality of the streetscape",
+    "span_sha256": "2f8fbf4be922bda1bf6b991c6ce3fa4b4b96df21c89253f51d8737013ad9c16b",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203042,
+   "md5": "faaebc053ec43a85d5a15d75668a7645",
+   "old_text": "# 3.7.1.8 a 3.7.1.8 Private Open Space for Attached Dwellings - Zone R3\n\na)\t   Each dwelling within an attached\nEach dwelling within an attached\ndwelling development shall be provided\ndwelling development shall be provided\nwith a combined area of private open\nwith a combined area of private open\nspace that:\nspace that:\ni)\ni)\t   is located behind the  primary\nis located behind the  primary\nbuilding  line;\nbuilding  line;\nii)\nii)\t   has a combined minimum area of 40\nhas a combined minimum area of 40\nsqm;\nsqm;\niii)\niii)\t has a minimum level area of (3x3)\nhas a minimum level area of (3x3)\nsqm;\nsqm;\niv)\niv)\t satisfies solar access requirements\nsatisfies solar access requirements\ncontained in section 4.4.3;and\ncontained in section 4.4.3;and\nv)\nv)\t   has an internal living room directly\nhas an internal living room directly\naccessible to the outdoor private\naccessible to the outdoor private\nopen space areas.",
+   "page": 42,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.1.8 a 3.7.1.8 Private Open Space for Attached Dwellings - Zone R3\n\na)\t   Each dwelling within an attached\ndwelling development shall be provided\nwith a combined area of private open\nspace that:\ni)\t   is located behind the  primary\nbuilding  line;\nii)\t   has a combined minimum area of 40\nsqm;\niii)\t has a minimum level area of (3x3)\nsqm;\niv)\t satisfies solar access requirements\ncontained in section 4.4.3;and\nv)\t   has an internal living room directly\naccessible to the outdoor private\nopen space areas.",
+   "evidence": {
+    "page": 42,
+    "order": "raw",
+    "start": 478,
+    "end": 886,
+    "span": "a each dwelling within an attached dwelling development shall be provided with a combined area of private open space that i is located behind the primary building line ii has a combined minimum area of 40 sqm iii has a minimum level area of 3x3 sqm iv satisfies solar access requirements contained in section 4 4 3 and v has an internal living room directly accessible to the outdoor private open space areas",
+    "span_sha256": "42910bd0d770b89e9d3e8eb845d7cb1dc00c358778e974c1860e3af487183919",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203043,
+   "md5": "b8501311626f05ac42cae1c9abbe66c6",
+   "old_text": "# 3.7.1.9 a 3.7.1.9 Landscaping Requirement for and deep soil planting for Attached Dwellings - Zone R3\n\na)\t   A detailed landscape design plan\nA detailed landscape design plan\nincorporating vegetation compatible\nincorporating vegetation compatible\nwith the character of the development\nwith the character of the development\nshall be submitted with a development\nshall be submitted with a development\napplication.",
+   "page": 42,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.1.9 a 3.7.1.9 Landscaping Requirement for and deep soil planting for Attached Dwellings - Zone R3\n\na)\t   A detailed landscape design plan\nincorporating vegetation compatible\nwith the character of the development\nshall be submitted with a development\napplication.",
+   "evidence": {
+    "page": 42,
+    "order": "raw",
+    "start": 977,
+    "end": 1135,
+    "span": "a a detailed landscape design plan incorporating vegetation compatible with the character of the development shall be submitted with a development application",
+    "span_sha256": "c87cc6701a73aebf36fe6c9b79ce1ab80eb6e3d752a0da1dd4a597d41b577350",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203055,
+   "md5": "ba9de1e28871c497908a2b5d690912b7",
+   "old_text": "# 3.7.2 b 3.7.2 Multi Dwelling Housing\n\nb)\t   Multi dwelling housing shall satisfy the\nMulti dwelling housing shall satisfy the\nfollowing additional provisions relating\nfollowing additional provisions relating\nto streetscape:\nto streetscape:\ni)\ni)\t   architectural\nfeatures\n(such\nas\narchitectural\nfeatures\n(such\nas\nbalconies,\nopenings,\ncolumns,\nbalconies,\nopenings,\ncolumns,\nporches, colours, materials  etc)\nporches, colours, materials  etc)\nand articulation in walls are  to be\nand articulation in walls are  to be\nincorporated into the front facade of\nincorporated into the front facade of\neach dwelling.",
+   "page": 50,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.2 b 3.7.2 Multi Dwelling Housing\n\nb)\t   Multi dwelling housing shall satisfy the\nfollowing additional provisions relating\nto streetscape:\ni)\t   architectural\nfeatures\n(such\nas\nbalconies,\nopenings,\ncolumns,\nporches, colours, materials  etc)\nand articulation in walls are  to be\nincorporated into the front facade of\neach dwelling.",
+   "evidence": {
+    "page": 50,
+    "order": "raw",
+    "start": 370,
+    "end": 646,
+    "span": "b multi dwelling housing shall satisfy the following additional provisions relating to streetscape i architectural features such as balconies openings columns porches colours materials etc and articulation in walls are to be incorporated into the front facade of each dwelling",
+    "span_sha256": "f8f22ea7769939cbe00a35bc717db828774eed6e5267eb178da509e1d53430f1",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203056,
+   "md5": "ba0c6964466b93462c4f19fdd07820d3",
+   "old_text": "# 3.7.2 c 3.7.2 Multi Dwelling Housing\n\nc)\t   Unless Council can be satisfied that\nUnless Council can be satisfied that\nan existing dwelling located on the\nan existing dwelling located on the\nsite makes a positive contribution to\nsite makes a positive contribution to\nthe character of the streetscape, that\nthe character of the streetscape, that\ndwelling shall be demolished.",
+   "page": 50,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.2 c 3.7.2 Multi Dwelling Housing\n\nc)\t   Unless Council can be satisfied that\nan existing dwelling located on the\nsite makes a positive contribution to\nthe character of the streetscape, that\ndwelling shall be demolished.",
+   "evidence": {
+    "page": 50,
+    "order": "raw",
+    "start": 647,
+    "end": 826,
+    "span": "c unless council can be satisfied that an existing dwelling located on the site makes a positive contribution to the character of the streetscape that dwelling shall be demolished",
+    "span_sha256": "1f653024f735f894fdc8da98d96f7fa92b687f763e3c920d60272094972d52bd",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203080,
+   "md5": "513bc627f655b3d6a3d897af395fc83b",
+   "old_text": "# 3.7.2.5 a 3.7.2.5 Private Car Parking Requirement for Multi Dwelling Housing - Zone R3\n\na)\t   Each multi dwelling housing unit shall\nEach multi dwelling housing unit shall\nbe provided with a minimum of one\nbe provided with a minimum of one\nsingle garage or car parking space.",
+   "page": 48,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.2.5 a 3.7.2.5 Private Car Parking Requirement for Multi Dwelling Housing - Zone R3\n\na)\t   Each multi dwelling housing unit shall\nbe provided with a minimum of one\nsingle garage or car parking space.",
+   "evidence": {
+    "page": 48,
+    "order": "raw",
+    "start": 510,
+    "end": 619,
+    "span": "a each multi dwelling housing unit shall be provided with a minimum of one single garage or car parking space",
+    "span_sha256": "cecc923bf6f89719f2805a7d459419c9d9fcdb3bcdab3fd5e886d7f1ad76a044",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203081,
+   "md5": "9334ad1abfb852c3b1a5322cdcf9492a",
+   "old_text": "# 3.7.2.5 b 3.7.2.5 Private Car Parking Requirement for Multi Dwelling Housing - Zone R3\n\nb)\t   One (1) external additional visitor car\nOne (1) external additional visitor car\nparking space shall be provided for every\nparking space shall be provided for every\nthree (3) units (or part thereof), unless\nthree (3) units (or part thereof), unless\nall dwellings within the development\nall dwellings within the development\nhave direct frontage to a public street.",
+   "page": 48,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.2.5 b 3.7.2.5 Private Car Parking Requirement for Multi Dwelling Housing - Zone R3\n\nb)\t   One (1) external additional visitor car\nparking space shall be provided for every\nthree (3) units (or part thereof), unless\nall dwellings within the development\nhave direct frontage to a public street.",
+   "evidence": {
+    "page": 48,
+    "order": "raw",
+    "start": 620,
+    "end": 815,
+    "span": "b one 1 external additional visitor car parking space shall be provided for every three 3 units or part thereof unless all dwellings within the development have direct frontage to a public street",
+    "span_sha256": "f72649605f44934df6bf467eb1a9a993bcc6bdfab54ce1b50f96ef61d4102e29",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203082,
+   "md5": "8b93be7c507c2b1adad58e5c11de8ea3",
+   "old_text": "# 3.7.2.5 d 3.7.2.5 Private Car Parking Requirement for Multi Dwelling Housing - Zone R3\n\nd)\t   No visitor car parking space shall be in a\nNo visitor car parking space shall be in a\n‘stacked’ configuration.",
+   "page": 48,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.2.5 d 3.7.2.5 Private Car Parking Requirement for Multi Dwelling Housing - Zone R3\n\nd)\t   No visitor car parking space shall be in a\n‘stacked’ configuration.",
+   "evidence": {
+    "page": 48,
+    "order": "raw",
+    "start": 916,
+    "end": 982,
+    "span": "d no visitor car parking space shall be in a stacked configuration",
+    "span_sha256": "309ded7c2c814e4480615b95b25fe1631e1a91098c5e5cbe9ba4f84b9d6878cf",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203083,
+   "md5": "f1e396b9a652152ce0b0b1b2650fafcd",
+   "old_text": "# 3.7.2.6 a 3.7.2.6 Requirements for the Use of Roof Space for Habitable Areas for Multi Dwelling Housing - Zone R3\n\na)\t   Council may consider the use of the roof\nCouncil may consider the use of the roof\nspace for a habitable room, but only if:\nspace for a habitable room, but only if:\ni)\ni)\t   it is appropriately designed;\nit is appropriately designed;\nii)\nii)\t   it is part of the overall design of the\nit is part of the overall design of the\nbuilding;\nbuilding;\niii)\niii)\t appropriate light and ventilation is\nappropriate light and ventilation is\nsupplied to rooms; and\nsupplied to rooms; and\niv)\niv)\t it does not negatively impact on the\nit does not negatively impact on the\ndesign quality of the streetscape.",
+   "page": 48,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.2.6 a 3.7.2.6 Requirements for the Use of Roof Space for Habitable Areas for Multi Dwelling Housing - Zone R3\n\na)\t   Council may consider the use of the roof\nspace for a habitable room, but only if:\ni)\t   it is appropriately designed;\nii)\t   it is part of the overall design of the\nbuilding;\niii)\t appropriate light and ventilation is\nsupplied to rooms; and\niv)\t it does not negatively impact on the\ndesign quality of the streetscape.",
+   "evidence": {
+    "page": 48,
+    "order": "raw",
+    "start": 1163,
+    "end": 1464,
+    "span": "a council may consider the use of the roof space for a habitable room but only if i it is appropriately designed ii it is part of the overall design of the building iii appropriate light and ventilation is supplied to rooms and iv it does not negatively impact on the design quality of the streetscape",
+    "span_sha256": "2f8fbf4be922bda1bf6b991c6ce3fa4b4b96df21c89253f51d8737013ad9c16b",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203084,
+   "md5": "1c9c63e8870a741bef6970111f2401ea",
+   "old_text": "# 3.7.2.7 a 3.7.2.7 Private and Communal Open Space Requirement for Multi Dwelling Housing - Zone R3\n\na)\t   Each  multi dwelling housing unit shall\nEach  multi dwelling housing unit shall\nbe provided with an area or areas  of\nbe provided with an area or areas  of\nprivate open space that:\nprivate open space that:\ni)\ni)\t   are not located within the primary\nare not located within the primary\nstreet setback;\nstreet setback;\nii)\nii)\t   have a minimum area of 40 sqm,\nhave a minimum area of 40 sqm,\niii)\niii)\t have a minimum width of 3 metres;\nhave a minimum width of 3 metres;\niv)\niv)\t include a minimum levelled area of\ninclude a minimum levelled area of\n(3x3) sqm;\n(3x3) sqm;\nv)\nv)\t   have an internal living room directly\nhave an internal living room directly\naccessible to the outdoor private\naccessible to the outdoor private\nopen space areas; and\nopen space areas; and\nvi)\nvi)\t satisfy solar access requirements\nsatisfy solar access requirements\ncontained in  section 3.4.4.",
+   "page": 49,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.2.7 a 3.7.2.7 Private and Communal Open Space Requirement for Multi Dwelling Housing - Zone R3\n\na)\t   Each  multi dwelling housing unit shall\nbe provided with an area or areas  of\nprivate open space that:\ni)\t   are not located within the primary\nstreet setback;\nii)\t   have a minimum area of 40 sqm,\niii)\t have a minimum width of 3 metres;\niv)\t include a minimum levelled area of\n(3x3) sqm;\nv)\t   have an internal living room directly\naccessible to the outdoor private\nopen space areas; and\nvi)\t satisfy solar access requirements\ncontained in  section 3.4.4.",
+   "evidence": {
+    "page": 49,
+    "order": "raw",
+    "start": 168,
+    "end": 596,
+    "span": "a each multi dwelling housing unit shall be provided with an area or areas of private open space that i are not located within the primary street setback ii have a minimum area of 40 sqm iii have a minimum width of 3 metres iv include a minimum levelled area of 3x3 sqm v have an internal living room directly accessible to the outdoor private open space areas and vi satisfy solar access requirements contained in section 3 4 4",
+    "span_sha256": "5759859645690b3e78d76fdeca7d4a2f96d4dafb11d13d10e26202f0c6c095f6",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203085,
+   "md5": "fe828b0fa7440c0315a8beb57b3c5efa",
+   "old_text": "# 3.7.2.7 b 3.7.2.7 Private and Communal Open Space Requirement for Multi Dwelling Housing - Zone R3\n\nb)\t   No part of an outdoor living area is\nNo part of an outdoor living area is\npermitted to be located within the\npermitted to be located within the\nprimary or secondary street setback\nprimary or secondary street setback\narea.",
+   "page": 49,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.2.7 b 3.7.2.7 Private and Communal Open Space Requirement for Multi Dwelling Housing - Zone R3\n\nb)\t   No part of an outdoor living area is\npermitted to be located within the\nprimary or secondary street setback\narea.",
+   "evidence": {
+    "page": 49,
+    "order": "raw",
+    "start": 597,
+    "end": 711,
+    "span": "b no part of an outdoor living area is permitted to be located within the primary or secondary street setback area",
+    "span_sha256": "85fd9707772d17b23a9c39063b0802d14116a1583d991912bc100647cf909301",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203086,
+   "md5": "42314bc0cb76fbc26a89f34252b41f85",
+   "old_text": "# 3.7.2.7 c 3.7.2.7 Private and Communal Open Space Requirement for Multi Dwelling Housing - Zone R3\n\nc)\t   Any\ncommunal\nopen\nspace\nor\nrecreation facility provided as a part\nof a development shall be designed and\nconstructed to:\ni)\ni)\t   ensure safe access by the occupants\nensure safe access by the occupants\nof the development;\nof the development;\nii)\nii)\t   prevent access by members of the\nprevent access by members of the\npublic; and\npublic; and\niii)\niii)\t provide for the safety and well being\nprovide for the safety and well being\nof children in accordance with any\nof children in accordance with any\napplicable Australian Standard.",
+   "page": 49,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.2.7 c 3.7.2.7 Private and Communal Open Space Requirement for Multi Dwelling Housing - Zone R3\n\nc)\t   Any\ncommunal\nopen\nspace\nor\nrecreation facility provided as a part\nof a development shall be designed and\nconstructed to:\ni)\t   ensure safe access by the occupants\nof the development;\nii)\t   prevent access by members of the\npublic; and\niii)\t provide for the safety and well being\nof children in accordance with any\napplicable Australian Standard.",
+   "evidence": {
+    "page": 49,
+    "order": "raw",
+    "start": 712,
+    "end": 1045,
+    "span": "c any communal open space or recreation facility provided as a part of a development shall be designed and constructed to i ensure safe access by the occupants of the development ii prevent access by members of the public and iii provide for the safety and well being of children in accordance with any applicable australian standard",
+    "span_sha256": "fc104c98179dad5879c110c31cddc9b604a0789d341f3c643258a52869e01723",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203097,
+   "md5": "ab5321240cc9f058def9cdfa313e2ac0",
+   "old_text": "# 3.7.3 d 3.7.3 Manor Houses\n\nd)\t   All communication dishes, antennae anthe\nAll communication dishes, antennae anthe\nlike shall be located to in a manner which\nlike shall be located to in a manner which\nminimises any visual impact on neighbouring\nminimises any visual impact on neighbouring\nproperties and/or the public domain. These\nproperties and/or the public domain. These\ntypes of ancillary structures shall be limited\ntypes of ancillary structures shall be limited\nto one per building, if visible from a public\nto one per building, if visible from a public\nplace",
+   "page": 64,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.3 d 3.7.3 Manor Houses\n\nd)\t   All communication dishes, antennae anthe\nlike shall be located to in a manner which\nminimises any visual impact on neighbouring\nproperties and/or the public domain. These\ntypes of ancillary structures shall be limited\nto one per building, if visible from a public\nplace",
+   "evidence": {
+    "page": 64,
+    "order": "raw",
+    "start": 166,
+    "end": 434,
+    "span": "d all communication dishes antennae anthe like shall be located to in a manner which minimises any visual impact on neighbouring properties and or the public domain these types of ancillary structures shall be limited to one per building if visible from a public place",
+    "span_sha256": "34916c2b59f8b1caf896d4c4b2d6a7a4e39b7ea77be1cb5c0c3b649e27edbc50",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203098,
+   "md5": "dde4ad5b299753ed13446394dff7b3cd",
+   "old_text": "# 3.7.3 h 3.7.3 Manor Houses\n\nh)\t   The bin storage room shall have sufficient\nThe bin storage room shall have sufficient\ncapacity to allow for:\ncapacity to allow for:\ni)\ni)\t   Access,\nmanoeuvring,\ncleaning\nand\nAccess,\nmanoeuvring,\ncleaning\nand\nmaintaining all bins by providing an extra\nmaintaining all bins by providing an extra\n30% of the footprint of each waste container\n30% of the footprint of each waste container\nto the overall size of the storage area;\nto the overall size of the storage area;\nii)\nii)\t   Spacing of at least 50cm between all bins\nSpacing of at least 50cm between all bins\nallocated for the development;\nallocated for the development;\niii)\niii)\t All bins to be arranged side by side within\nAll bins to be arranged side by side within\nthe bin storage room (no stacking);\nthe bin storage room (no stacking);\niv)\niv)\t A minimum 1.5m aisle between rows of bins\nA minimum 1.5m aisle between rows of bins\nto minimise potential obstructions; and\nto minimise potential obstructions; and\nv)\nv)\t   Future modifications of services, bin sizes\nFuture modifications of services, bin sizes\nand/or configurations by minimising the\nand/or configurations by minimising the\ninstallation of fixed structures within bin\ninstallation of fixed structures within bin\nstorage areas.",
+   "page": 63,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.3 h 3.7.3 Manor Houses\n\nh)\t   The bin storage room shall have sufficient\ncapacity to allow for:\ni)\t   Access,\nmanoeuvring,\ncleaning\nand\nmaintaining all bins by providing an extra\n30% of the footprint of each waste container\nto the overall size of the storage area;\nii)\t   Spacing of at least 50cm between all bins\nallocated for the development;\niii)\t All bins to be arranged side by side within\nthe bin storage room (no stacking);\niv)\t A minimum 1.5m aisle between rows of bins\nto minimise potential obstructions; and\nv)\t   Future modifications of services, bin sizes\nand/or configurations by minimising the\ninstallation of fixed structures within bin\nstorage areas.",
+   "evidence": {
+    "page": 63,
+    "order": "raw",
+    "start": 405,
+    "end": 1015,
+    "span": "h the bin storage room shall have sufficient capacity to allow for i access manoeuvring cleaning and maintaining all bins by providing an extra 30 of the footprint of each waste container to the overall size of the storage area ii spacing of at least 50cm between all bins allocated for the development iii all bins to be arranged side by side within the bin storage room no stacking iv a minimum 1 5m aisle between rows of bins to minimise potential obstructions and v future modifications of services bin sizes and or configurations by minimising the installation of fixed structures within bin storage areas",
+    "span_sha256": "5a0b9875ad99e8fa1b5212abb7afaaf63a81ffd4ca7968c3fb262749d276bc35",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203099,
+   "md5": "54de96d5934bb05d2a8c21e5a73ef7b5",
+   "old_text": "# 3.7.3 i 3.7.3 Manor Houses\n\ni)\nWhere waste storage is provided in a basement\nWhere waste storage is provided in a basement\ncar park a maximum ramp gradient of 1:8 is to\ncar park a maximum ramp gradient of 1:8 is to\nbe provided to the waste collection point.",
+   "page": 63,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.3 i 3.7.3 Manor Houses\n\ni)\nWhere waste storage is provided in a basement\ncar park a maximum ramp gradient of 1:8 is to\nbe provided to the waste collection point.",
+   "evidence": {
+    "page": 63,
+    "order": "raw",
+    "start": 1016,
+    "end": 1151,
+    "span": "i where waste storage is provided in a basement car park a maximum ramp gradient of 1 8 is to be provided to the waste collection point",
+    "span_sha256": "cd3ce63865a2e70627dac0d21619282e52fa6da89075c4ac7294a09c30e9ac59",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203103,
+   "md5": "80ed781ffa056fd2450b04135c762e76",
+   "old_text": "# 3.7.3.10 a 3.7.3.10 - Manor Houses and Waste Management - Zone R3\n\na)\t   Manor house development shall make provision\nManor house development shall make provision\nfor individual waste storage, allocated behind\nfor individual waste storage, allocated behind\nthe primary and secondary building lines\nthe primary and secondary building lines\nand out of public view, as per the following\nand out of public view, as per the following\nproviding the following bins for each dwelling:\nproviding the following bins for each dwelling:\ni)\ni)\t   One (1) x 140 litre bin; and\nOne (1) x 140 litre bin; and\nii)\nii)\t   two (2) x 240 litre bins",
+   "page": 61,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.3.10 a 3.7.3.10 - Manor Houses and Waste Management - Zone R3\n\na)\t   Manor house development shall make provision\nfor individual waste storage, allocated behind\nthe primary and secondary building lines\nand out of public view, as per the following\nproviding the following bins for each dwelling:\ni)\t   One (1) x 140 litre bin; and\nii)\t   two (2) x 240 litre bins",
+   "evidence": {
+    "page": 61,
+    "order": "raw",
+    "start": 1026,
+    "end": 1304,
+    "span": "a manor house development shall make provision for individual waste storage allocated behind the primary and secondary building lines and out of public view as per the following providing the following bins for each dwelling i one 1 x 140 litre bin and ii two 2 x 240 litre bins",
+    "span_sha256": "7fbd6b9d8a9e6170f66855c44ac5ae9dfb044ac102986815df517e81f0cd47ca",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203136,
+   "md5": "e08aad21a54cc8a6fbbf3bae3a486254",
+   "old_text": "# 3.7.3.3 d 3.7.3.3 - Setbacks for Manor Houses - Zone R3\n\nd)\t   A manor house development shall be set back\na minimum of:\ni)\ni)\t   5.5 metres from the primary street\n5.5 metres from the primary street\nboundary;\nboundary;\nii)\t   2 metres from the secondary street\nboundary;\niii)\t 0.9 metres from any side boundary;\niv)\t 3 metres from the rear boundary for the\nground level;  and\nv)\t   6 metres from the rear boundary for all\nlevels above ground level.",
+   "page": 57,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.3.3 d 3.7.3.3 - Setbacks for Manor Houses - Zone R3\n\nd)\t   A manor house development shall be set back\na minimum of:\ni)\t   5.5 metres from the primary street\nboundary;\nii)\t   2 metres from the secondary street\nboundary;\niii)\t 0.9 metres from any side boundary;\niv)\t 3 metres from the rear boundary for the\nground level;  and\nv)\t   6 metres from the rear boundary for all\nlevels above ground level.",
+   "evidence": {
+    "page": 57,
+    "order": "raw",
+    "start": 587,
+    "end": 904,
+    "span": "d a manor house development shall be set back a minimum of i 5 5 metres from the primary street boundary ii 2 metres from the secondary street boundary iii 0 9 metres from any side boundary iv 3 metres from the rear boundary for the ground level and v 6 metres from the rear boundary for all levels above ground level",
+    "span_sha256": "a0e965417c8d511c63533e80a9d9bfbb52f24ccb03e5021a3c751bfea1e5e2e4",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203137,
+   "md5": "dfe8582779f38323fb9a1c00cfc31a46",
+   "old_text": "# 3.7.3.3 f 3.7.3.3 - Setbacks for Manor Houses - Zone R3\n\nf)\nDespite above, where car parking spaces/\ngarages are located and accessed from the\nback of the site (i.e via a rear lane), all manor\nhouse development shall be permitted to be\nsetback by:\ni)\ni)\t   5.5 metres from the primary street\n5.5 metres from the primary street\nboundary;\nboundary;\nii)\t   2 metres from the secondary street\nboundary;\niii)\t 0.9 metres from any side  boundary;",
+   "page": 57,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.3.3 f 3.7.3.3 - Setbacks for Manor Houses - Zone R3\n\nf)\nDespite above, where car parking spaces/\ngarages are located and accessed from the\nback of the site (i.e via a rear lane), all manor\nhouse development shall be permitted to be\nsetback by:\ni)\t   5.5 metres from the primary street\nboundary;\nii)\t   2 metres from the secondary street\nboundary;\niii)\t 0.9 metres from any side  boundary;",
+   "evidence": {
+    "page": 57,
+    "order": "raw",
+    "start": 1033,
+    "end": 1347,
+    "span": "f despite above where car parking spaces garages are located and accessed from the back of the site i e via a rear lane all manor house development shall be permitted to be setback by i 5 5 metres from the primary street boundary ii 2 metres from the secondary street boundary iii 0 9 metres from any side boundary",
+    "span_sha256": "f6c10058ee5402a4a28ef2e203a2e7a21dfbbd4f7530463bc09bb7c3d8b45b19",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203140,
+   "md5": "67f0e14b9532f1e86301a7355cc9c00c",
+   "old_text": "# 3.7.3.8 a 3.7.3.8 - Presentation to Public Streets for Manor Houses - Zone R3\n\na)\t   A Design Verification Statement shall be\nA Design Verification Statement shall be\nsubmitted with any manor house application\nsubmitted with any manor house application\nwhich comprehensively describes how the\nwhich comprehensively describes how the\nproposed building aesthetics and articulation\nproposed building aesthetics and articulation\nwill contribute to the existing streetscape and\nwill contribute to the existing streetscape and\ncharacter of the local area.",
+   "page": 60,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.3.8 a 3.7.3.8 - Presentation to Public Streets for Manor Houses - Zone R3\n\na)\t   A Design Verification Statement shall be\nsubmitted with any manor house application\nwhich comprehensively describes how the\nproposed building aesthetics and articulation\nwill contribute to the existing streetscape and\ncharacter of the local area.",
+   "evidence": {
+    "page": 60,
+    "order": "raw",
+    "start": 338,
+    "end": 585,
+    "span": "a a design verification statement shall be submitted with any manor house application which comprehensively describes how the proposed building aesthetics and articulation will contribute to the existing streetscape and character of the local area",
+    "span_sha256": "da9ccf52e74d1e7722e8b48cd102151550cbba32fde395d658b647a2d01de1d0",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203154,
+   "md5": "c98f06dae64d653faf28466f739860d0",
+   "old_text": "# 3.7.3.8 d 3.7.3.8 - Presentation to Public Streets for Manor Houses - Zone R3\n\nd)\t   Provide high level activation and passive\nProvide high level activation and passive\nsurveillance to the public streets.",
+   "page": 60,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.3.8 d 3.7.3.8 - Presentation to Public Streets for Manor Houses - Zone R3\n\nd)\t   Provide high level activation and passive\nsurveillance to the public streets.",
+   "evidence": {
+    "page": 60,
+    "order": "raw",
+    "start": 1046,
+    "end": 1124,
+    "span": "d provide high level activation and passive surveillance to the public streets",
+    "span_sha256": "cba3455ad2a6ff3ed152603ad9f126eb57a65a2ad49f98dda1fca4b64d7f65c6",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203160,
+   "md5": "e4a9962a719a4c0938de6dd8c4ea4cfc",
+   "old_text": "# 3.7.3.8 i 3.7.3.8 - Presentation to Public Streets for Manor Houses - Zone R3\n\ni)\nPrivate courtyards within the front setback\nPrivate courtyards within the front setback\nshall be located within the proposed building’s\nshall be located within the proposed building’s\narticulation zone or behind the required front\narticulation zone or behind the required front\nbuilding line.",
+   "page": 61,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.3.8 i 3.7.3.8 - Presentation to Public Streets for Manor Houses - Zone R3\n\ni)\nPrivate courtyards within the front setback\nshall be located within the proposed building’s\narticulation zone or behind the required front\nbuilding line.",
+   "evidence": {
+    "page": 61,
+    "order": "raw",
+    "start": 139,
+    "end": 293,
+    "span": "i private courtyards within the front setback shall be located within the proposed building s articulation zone or behind the required front building line",
+    "span_sha256": "c98c41b89cea64682748868f0869e3ae6a20cb0e6ad416d9f2db3b538ed3e291",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203161,
+   "md5": "981ac3fe3be2781f967fc55fac418ea6",
+   "old_text": "# 3.7.3.8 k 3.7.3.8 - Presentation to Public Streets for Manor Houses - Zone R3\n\nk)\t   Skylights\nand\nventilation\nsystems\nare\nSkylights\nand\nventilation\nsystems\nare\nintegrated into the roof design.",
+   "page": 61,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.3.8 k 3.7.3.8 - Presentation to Public Streets for Manor Houses - Zone R3\n\nk)\t   Skylights\nand\nventilation\nsystems\nare\nintegrated into the roof design.",
+   "evidence": {
+    "page": 61,
+    "order": "raw",
+    "start": 376,
+    "end": 447,
+    "span": "k skylights and ventilation systems are integrated into the roof design",
+    "span_sha256": "46d73400d99c14e4d62471c445993fe531e228c15aac307c0865db9b04d3e7d9",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203168,
+   "md5": "daa567b6e26413fd58ce3cc694796f66",
+   "old_text": "# 3.7.3.9 a 3.7.3.9 - Landscaping and deep soil planting Requirements for Manor Houses - Zone R3\n\na)\t   All manor house proposals  shall satisfy the\nAll manor house proposals  shall satisfy the\nfollowing requirements relating to landscape:\nfollowing requirements relating to landscape:\ni)\ni)\t   a detailed landscape  design plan shall be\na detailed landscape  design plan shall be\nsubmitted by a suitably qualified person\nsubmitted by a suitably qualified person\nwith the development application; and\nwith the development application; and\nii)\nii)\t   a minimum of 20% of the total site area\na minimum of 20% of the total site area\nshall be available for deep soil planting;\nshall be available for deep soil planting;\nand\nand\niii)\niii)\t no more than 30% of the area forward of\nno more than 30% of the area forward of\nany building line, or between the building\nany building line, or between the building\nand a rear lane, shall be surfaced with\nand a rear lane, shall be surfaced with\nimpervious materials.",
+   "page": 61,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.7.3.9 a 3.7.3.9 - Landscaping and deep soil planting Requirements for Manor Houses - Zone R3\n\na)\t   All manor house proposals  shall satisfy the\nfollowing requirements relating to landscape:\ni)\t   a detailed landscape  design plan shall be\nsubmitted by a suitably qualified person\nwith the development application; and\nii)\t   a minimum of 20% of the total site area\nshall be available for deep soil planting;\nand\niii)\t no more than 30% of the area forward of\nany building line, or between the building\nand a rear lane, shall be surfaced with\nimpervious materials.",
+   "evidence": {
+    "page": 61,
+    "order": "raw",
+    "start": 529,
+    "end": 974,
+    "span": "a all manor house proposals shall satisfy the following requirements relating to landscape i a detailed landscape design plan shall be submitted by a suitably qualified person with the development application and ii a minimum of 20 of the total site area shall be available for deep soil planting and iii no more than 30 of the area forward of any building line or between the building and a rear lane shall be surfaced with impervious materials",
+    "span_sha256": "bb2d24e3a561e239effc849242b8825d1484a7c23395b980bd210d6e90498163",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203196,
+   "md5": "3796fca05e5684b65898f0249b5a3e16",
+   "old_text": "# 3.8 d 3.8 Residential Subdivision\n\nd,\nWhere battle-axe lots are proposed,\nthey shall be designed and constructed\nthey shall be designed and constructed\nso that upon completion:\nso that upon completion:\ni)\ni)\t   The width of the access handle\nThe width of the access handle\nmust be sufficient to allow bins and\nmust be sufficient to allow bins and\nkerbside clean up material to be\nkerbside clean up material to be\npresented for collection without\npresented for collection without\nrestricting\nvehicle\naccess\nand\nrestricting\nvehicle\naccess\nand\nmovements; or\nmovements; or\nii)\nii)\t   Where sufficient space cannot be\nWhere sufficient space cannot be\nprovided at the access road, the\nprovided at the access road, the\nneighbouring lot must be able to\nneighbouring lot must be able to\naccommodate sufficient area for the\naccommodate sufficient area for the\npresentation of bins and kerbside\npresentation of bins and kerbside\nclean up material. The applicant\nclean up material. The applicant\nshall demonstrate to Council that\nshall demonstrate to Council that\nan appropriate mechanism (e.g. an\nan appropriate mechanism (e.g. an\neasement) is in place to lawfully\neasement) is in place to lawfully\nfacilitate such an arrangement.",
+   "page": 74,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8 d 3.8 Residential Subdivision\n\nd,\nWhere battle-axe lots are proposed,\nthey shall be designed and constructed\nso that upon completion:\ni)\t   The width of the access handle\nmust be sufficient to allow bins and\nkerbside clean up material to be\npresented for collection without\nrestricting\nvehicle\naccess\nand\nmovements; or\nii)\t   Where sufficient space cannot be\nprovided at the access road, the\nneighbouring lot must be able to\naccommodate sufficient area for the\npresentation of bins and kerbside\nclean up material. The applicant\nshall demonstrate to Council that\nan appropriate mechanism (e.g. an\neasement) is in place to lawfully\nfacilitate such an arrangement.",
+   "evidence": {
+    "page": 74,
+    "order": "raw",
+    "start": 636,
+    "end": 1248,
+    "span": "d where battle axe lots are proposed they shall be designed and constructed so that upon completion i the width of the access handle must be sufficient to allow bins and kerbside clean up material to be presented for collection without restricting vehicle access and movements or ii where sufficient space cannot be provided at the access road the neighbouring lot must be able to accommodate sufficient area for the presentation of bins and kerbside clean up material the applicant shall demonstrate to council that an appropriate mechanism e g an easement is in place to lawfully facilitate such an arrangement",
+    "span_sha256": "c490c0b2ab3857b1f14e98edc114ab54d27fafe67fd9cb683f1c088d98003966",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "not_proven"
+  },
+  {
+   "id": 203203,
+   "md5": "427d152df58ecf6fcadf84849fe382f9",
+   "old_text": "# 3.8.1 a Design Requirements\n\na)\t   Any residential allotment created by\nAny residential allotment created by\nTorrens Title subdivision for the purpose\nTorrens Title subdivision for the purpose\nof a dwelling house development in\nof a dwelling house development in\nareas zoned R2 and R3 shall satisfy the\nareas zoned R2 and R3 shall satisfy the\nfollowing standards:\nfollowing standards:\ni)\ni)\t   a minimum width of 15 metres\na minimum width of 15 metres\nmeasured along the side boundaries\nmeasured along the side boundaries\nat a distance of 5.5 metres from the\nat a distance of 5.5 metres from the\nfront property boundary;\nfront property boundary;\nii)\nii)\t   a minimum width of 7 metres\na minimum width of 7 metres\nmeasured between the extended\nmeasured between the extended\nproperty side boundaries where they\nproperty side boundaries where they\nintersect with the kerb line; and\nintersect with the kerb line; and\niii)\niii)\t a minimum depth of 25 metres.",
+   "page": 67,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.1 a Design Requirements\n\na)\t   Any residential allotment created by\nTorrens Title subdivision for the purpose\nof a dwelling house development in\nareas zoned R2 and R3 shall satisfy the\nfollowing standards:\ni)\t   a minimum width of 15 metres\nmeasured along the side boundaries\nat a distance of 5.5 metres from the\nfront property boundary;\nii)\t   a minimum width of 7 metres\nmeasured between the extended\nproperty side boundaries where they\nintersect with the kerb line; and\niii)\t a minimum depth of 25 metres.",
+   "evidence": {
+    "page": 67,
+    "order": "raw",
+    "start": 504,
+    "end": 969,
+    "span": "a any residential allotment created by torrens title subdivision for the purpose of a dwelling house development in areas zoned r2 and r3 shall satisfy the following standards i a minimum width of 15 metres measured along the side boundaries at a distance of 5 5 metres from the front property boundary ii a minimum width of 7 metres measured between the extended property side boundaries where they intersect with the kerb line and iii a minimum depth of 25 metres",
+    "span_sha256": "7fb19194d34b4afab13a494118b5137b1f8d5b24beb8b30c68c41c47a0c27951",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "not_proven"
+  },
+  {
+   "id": 203241,
+   "md5": "9261102bd14b13f65066e6e5a739d531",
+   "old_text": "# 3.8.1 k Design Requirements\n\nk)\t   Access to residential subdivisions shall\nAccess to residential subdivisions shall\nnot be permitted to any classified road\nnot be permitted to any classified road\nwhere alternative access can be made\nwhere alternative access can be made\navailable via the non–classified road\navailable via the non–classified road\nnetwork.",
+   "page": 67,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.1 k Design Requirements\n\nk)\t   Access to residential subdivisions shall\nnot be permitted to any classified road\nwhere alternative access can be made\navailable via the non–classified road\nnetwork.",
+   "evidence": {
+    "page": 67,
+    "order": "raw",
+    "start": 116,
+    "end": 281,
+    "span": "k access to residential subdivisions shall not be permitted to any classified road where alternative access can be made available via the non classified road network",
+    "span_sha256": "ae93736227bd53ce842ac9113219ae784efbc03da1360b2924c078fafee41b97",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203245,
+   "md5": "9f3c4fe6ef317cad4568563719e53846",
+   "old_text": "# 3.8.1 l Design Requirements\n\nl)\nExtensive use of battleaxe configuration\nExtensive use of battleaxe configuration\nin the subdivision of new areas shall be\nin the subdivision of new areas shall be\navoided, where possible.",
+   "page": 67,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.1 l Design Requirements\n\nl)\nExtensive use of battleaxe configuration\nin the subdivision of new areas shall be\navoided, where possible.",
+   "evidence": {
+    "page": 67,
+    "order": "raw",
+    "start": 282,
+    "end": 388,
+    "span": "l extensive use of battleaxe configuration in the subdivision of new areas shall be avoided where possible",
+    "span_sha256": "41351d83f4190fe78d54d687d1421c51a793179a65a37cf357b183616c165f51",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203250,
+   "md5": "c9d68120a6f34827a9c4b5a2b6802c9b",
+   "old_text": "# 3.8.1 Design Requirements\n\nNote: In the case of an RMS road the size\nof the splay shall be in accordance with the\nof the splay shall be in accordance with the\nRMS’s requirements.",
+   "page": 66,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.1 Design Requirements\n\nNote: In the case of an RMS road the size\nof the splay shall be in accordance with the\nRMS’s requirements.",
+   "evidence": {
+    "page": 66,
+    "order": "raw",
+    "start": 519,
+    "end": 623,
+    "span": "note in the case of an rms road the size of the splay shall be in accordance with the rms s requirements",
+    "span_sha256": "98c1a082120d58fe366fb901d2b8d95bffe5bca8f49c0d9e099fcc29d135461a",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203276,
+   "md5": "f83bed62aa15f5eb3efe62524f217889",
+   "old_text": "# 3.8.4 a Design Requirements\n\na)\t   For the purposes of the subdivision of\nFor the purposes of the subdivision of\ndual occupancies, all allotments to be\ndual occupancies, all allotments to be\ncreated shall be part of a Strata Title\ncreated shall be part of a Strata Title\nscheme.",
+   "page": 69,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.4 a Design Requirements\n\na)\t   For the purposes of the subdivision of\ndual occupancies, all allotments to be\ncreated shall be part of a Strata Title\nscheme.",
+   "evidence": {
+    "page": 69,
+    "order": "raw",
+    "start": 488,
+    "end": 613,
+    "span": "a for the purposes of the subdivision of dual occupancies all allotments to be created shall be part of a strata title scheme",
+    "span_sha256": "3d258a798a0f9b98e65587008be3a42b5cba4becffbed759ac5ab88b06f9798f",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203280,
+   "md5": "48e4fedf7eac1bd7d8867780b19b0319",
+   "old_text": "# 3.8.4 b Design Requirements\n\nb)\t   Council will consider a development\nCouncil will consider a development\napplication\nfor\nTorrens\nTitle\napplication\nfor\nTorrens\nTitle\nsubdivision for the purpose of dual\nsubdivision for the purpose of dual\noccupancies (being the only dwellings\noccupancies (being the only dwellings\nin the development) if the proposed\nin the development) if the proposed\nsubdivision\nsatisfies\nthe\nfollowing\nsubdivision\nsatisfies\nthe\nfollowing\nstandards:\nstandards:\ni)\ni)\t   each allotment has a width of 7.5\neach allotment has a width of 7.5\nmetres\nmeasured\nbetween\nthe\nmetres\nmeasured\nbetween\nthe\nextended property side boundaries\nextended property side boundaries\nwhere they intersect with the kerb\nwhere they intersect with the kerb\nline;\nline;\nii)\nii)\t   both allotments have  access to a\nboth allotments have  access to a\npublic street;\npublic street;\niii)\niii)\t at least 1 allotment has direct\nat least 1 allotment has direct\nfrontage to a public street;\nfrontage to a public street;\niv)\niv)\t a  minimum access handle width of\na  minimum access handle width of\n3.5 metres for the servicing of the\n3.5 metres for the servicing of the\nrear allotment (if proposed); and\nrear allotment (if proposed); and\nv)\nv)\t   where a battleaxe allotment is\nwhere a battleaxe allotment is\ncreated, no right of carriage way is\ncreated, no right of carriage way is\nproposed over the other allotments",
+   "page": 69,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.4 b Design Requirements\n\nb)\t   Council will consider a development\napplication\nfor\nTorrens\nTitle\nsubdivision for the purpose of dual\noccupancies (being the only dwellings\nin the development) if the proposed\nsubdivision\nsatisfies\nthe\nfollowing\nstandards:\ni)\t   each allotment has a width of 7.5\nmetres\nmeasured\nbetween\nthe\nextended property side boundaries\nwhere they intersect with the kerb\nline;\nii)\t   both allotments have  access to a\npublic street;\niii)\t at least 1 allotment has direct\nfrontage to a public street;\niv)\t a  minimum access handle width of\n3.5 metres for the servicing of the\nrear allotment (if proposed); and\nv)\t   where a battleaxe allotment is\ncreated, no right of carriage way is\nproposed over the other allotments",
+   "evidence": {
+    "page": 69,
+    "order": "raw",
+    "start": 614,
+    "end": 1294,
+    "span": "b council will consider a development application for torrens title subdivision for the purpose of dual occupancies being the only dwellings in the development if the proposed subdivision satisfies the following standards i each allotment has a width of 7 5 metres measured between the extended property side boundaries where they intersect with the kerb line ii both allotments have access to a public street iii at least 1 allotment has direct frontage to a public street iv a minimum access handle width of 3 5 metres for the servicing of the rear allotment if proposed and v where a battleaxe allotment is created no right of carriage way is proposed over the other allotments",
+    "span_sha256": "0819486310880136201823877f2ad799c32f63d2cebb6057c3b8350cdc82c097",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203290,
+   "md5": "f6cbb4881b3a454fbe06ceb97d4d5ba9",
+   "old_text": "# 3.8.5 Design Requirements\n\nNote: For the purpose of clause 3.8.4 b) ii),\nan access handle does not constitute direct\nan access handle does not constitute direct\nfrontage to a public street.",
+   "page": 70,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.5 Design Requirements\n\nNote: For the purpose of clause 3.8.4 b) ii),\nan access handle does not constitute direct\nfrontage to a public street.",
+   "evidence": {
+    "page": 70,
+    "order": "raw",
+    "start": 37,
+    "end": 150,
+    "span": "note for the purpose of clause 3 8 4 b ii an access handle does not constitute direct frontage to a public street",
+    "span_sha256": "cb1c6a62c9c078698569992720fde24d03a733d1d30ae9cf810daeff1f7cee96",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203293,
+   "md5": "8ac6524d16f8a4f5bb1de18c12a10f4d",
+   "old_text": "# 3.8.5 a Design Requirements\n\na)\t   Council will consider a development\nCouncil will consider a development\napplication for Torrens Title subdivision\napplication for Torrens Title subdivision\nof a site for the purpose of  semi-\nof a site for the purpose of  semi-\ndetached dwellings (being the only\ndetached dwellings (being the only\ndwellings in the development) if:\ndwellings in the development) if:\ni)\ni)\t   each allotment has a direct frontage\neach allotment has a direct frontage\nto a public street;\nto a public street;\nii)\nii)\t   no common property is created;\nno common property is created;\niii)\niii)\t each allotment has a width of 7.5\neach allotment has a width of 7.5\nmetres\nmeasured\nbetween\nthe\nmetres\nmeasured\nbetween\nthe\nextended property side boundaries\nextended property side boundaries\nwhere they intersect with the kerb\nwhere they intersect with the kerb\nline; and\nline; and\niv)\niv)\t no battleaxe allotments are created",
+   "page": 70,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.5 a Design Requirements\n\na)\t   Council will consider a development\napplication for Torrens Title subdivision\nof a site for the purpose of  semi-\ndetached dwellings (being the only\ndwellings in the development) if:\ni)\t   each allotment has a direct frontage\nto a public street;\nii)\t   no common property is created;\niii)\t each allotment has a width of 7.5\nmetres\nmeasured\nbetween\nthe\nextended property side boundaries\nwhere they intersect with the kerb\nline; and\niv)\t no battleaxe allotments are created",
+   "evidence": {
+    "page": 70,
+    "order": "raw",
+    "start": 546,
+    "end": 998,
+    "span": "a council will consider a development application for torrens title subdivision of a site for the purpose of semidetached dwellings being the only dwellings in the development if i each allotment has a direct frontage to a public street ii no common property is created iii each allotment has a width of 7 5 metres measured between the extended property side boundaries where they intersect with the kerb line and iv no battleaxe allotments are created",
+    "span_sha256": "29b7f6662ddfb3da56f4d6c735c96650ad0b9cf991d2ae9a81b6b42ab1d2080a",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203302,
+   "md5": "cd3349ffb32a6b89680371d2bd7f472d",
+   "old_text": "# 3.8.5 Design Requirements\n\nNote: Council may release a subdivision\ncertificate for dual occupancies prior to the\ncertificate for dual occupancies prior to the\nissuing of the occupation certificate, where\nissuing of the occupation certificate, where\nthe construction of the building  has passed\nthe construction of the building  has passed\nthe frame stage by the relevant PCA and\nthe frame stage by the relevant PCA and\nCouncil is satisfied that the building will be\nCouncil is satisfied that the building will be\nconstructed as per the approved plans.",
+   "page": 70,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.5 Design Requirements\n\nNote: Council may release a subdivision\ncertificate for dual occupancies prior to the\nissuing of the occupation certificate, where\nthe construction of the building  has passed\nthe frame stage by the relevant PCA and\nCouncil is satisfied that the building will be\nconstructed as per the approved plans.",
+   "evidence": {
+    "page": 70,
+    "order": "raw",
+    "start": 151,
+    "end": 448,
+    "span": "note council may release a subdivision certificate for dual occupancies prior to the issuing of the occupation certificate where the construction of the building has passed the frame stage by the relevant pca and council is satisfied that the building will be constructed as per the approved plans",
+    "span_sha256": "0384dc6d374a0da888e4c611acbba18735c23d4b7cf02324e9491612c2572297",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203314,
+   "md5": "4ccb4a57d6cd07dacf2e1e2ecbe268a7",
+   "old_text": "# 3.8.6 3.8.6 Subdivision for the purpose of Attached Dwellings - Zones R2 and R3 Design Requirements\n\nNote: Council may release a subdivision\ncertificate for attached dwellings prior to\ncertificate for attached dwellings prior to\nthe issuing of the occupation certificate,\nthe issuing of the occupation certificate,\nwhere the construction of the building  has\nwhere the construction of the building  has\npassed the frame stage by the relevant PCA\npassed the frame stage by the relevant PCA\nand Council is satisfied that the building will\nand Council is satisfied that the building will\nbe constructed as per the approved plans.",
+   "page": 71,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.6 3.8.6 Subdivision for the purpose of Attached Dwellings - Zones R2 and R3 Design Requirements\n\nNote: Council may release a subdivision\ncertificate for attached dwellings prior to\nthe issuing of the occupation certificate,\nwhere the construction of the building  has\npassed the frame stage by the relevant PCA\nand Council is satisfied that the building will\nbe constructed as per the approved plans.",
+   "evidence": {
+    "page": 71,
+    "order": "raw",
+    "start": 599,
+    "end": 898,
+    "span": "note council may release a subdivision certificate for attached dwellings prior to the issuing of the occupation certificate where the construction of the building has passed the frame stage by the relevant pca and council is satisfied that the building will be constructed as per the approved plans",
+    "span_sha256": "bdc56ecb79a9055d745394bacba2dba82c92acae0fa2ec9536952e7454aee55b",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203323,
+   "md5": "f86e4d6f96415c8594be5f56b7bdbc9a",
+   "old_text": "# 3.8.7 3.8.7 Subdivision of Multi Dwelling Housing - Zone R2 and R3\n\nNote: For the purpose of clause 3.8.7b) ii),\nan access handle does not constitute direct\nan access handle does not constitute direct\nfrontage to a public street.",
+   "page": 72,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.7 3.8.7 Subdivision of Multi Dwelling Housing - Zone R2 and R3\n\nNote: For the purpose of clause 3.8.7b) ii),\nan access handle does not constitute direct\nfrontage to a public street.",
+   "evidence": {
+    "page": 72,
+    "order": "raw",
+    "start": 145,
+    "end": 257,
+    "span": "note for the purpose of clause 3 8 7b ii an access handle does not constitute direct frontage to a public street",
+    "span_sha256": "f692c9f6dff09c0d736fa09c1830dda699391b9ca4c6dcfa6357caf958707d1c",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203326,
+   "md5": "ab5a188f612174c5f4d565f73c8296a0",
+   "old_text": "# 3.8.7 a 3.8.7 Subdivision of Multi Dwelling Housing - Zone R2 and R3\n\na)\t   For the purposes of the subdivision of\nFor the purposes of the subdivision of\nmulti dwelling housing, all allotments\nmulti dwelling housing, all allotments\nto be created shall be part of a Strata\nto be created shall be part of a Strata\nTitle Scheme.",
+   "page": 71,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.7 a 3.8.7 Subdivision of Multi Dwelling Housing - Zone R2 and R3\n\na)\t   For the purposes of the subdivision of\nmulti dwelling housing, all allotments\nto be created shall be part of a Strata\nTitle Scheme.",
+   "evidence": {
+    "page": 71,
+    "order": "raw",
+    "start": 958,
+    "end": 1089,
+    "span": "a for the purposes of the subdivision of multi dwelling housing all allotments to be created shall be part of a strata title scheme",
+    "span_sha256": "73d8cab29d04aeb1c479ef47a20a825ec143ae870cfe9da26beff648a0fd7fad",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203334,
+   "md5": "b0cbd78475eb83ba93bd4df5bfa1a7f9",
+   "old_text": "# 3.8.7 c 3.8.7 Subdivision of Multi Dwelling Housing - Zone R2 and R3\n\nc)\t   All required visitors car parking spaces\nAll required visitors car parking spaces\nwithin a Strata Title subdivision shall be\nwithin a Strata Title subdivision shall be\nwithin common property.",
+   "page": 72,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.7 c 3.8.7 Subdivision of Multi Dwelling Housing - Zone R2 and R3\n\nc)\t   All required visitors car parking spaces\nwithin a Strata Title subdivision shall be\nwithin common property.",
+   "evidence": {
+    "page": 72,
+    "order": "raw",
+    "start": 258,
+    "end": 366,
+    "span": "c all required visitors car parking spaces within a strata title subdivision shall be within common property",
+    "span_sha256": "0c897d1df59568ad3a6897d78b74a61275b4563ab4bfb272baf764118855e003",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203344,
+   "md5": "da953041e27959341fd263f4880f7299",
+   "old_text": "# 3.8.7 3.8.7 Subdivision of Multi Dwelling Housing - Zone R2 and R3\n\nNote: Council shall not release a subdivision\ncertificate for multi dwelling housing until\ncertificate for multi dwelling housing until\nan occupation certificate (under the EP&A\nan occupation certificate (under the EP&A\nAct 1979) has been issued for all dwellings\nAct 1979) has been issued for all dwellings\non the land.",
+   "page": 72,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.7 3.8.7 Subdivision of Multi Dwelling Housing - Zone R2 and R3\n\nNote: Council shall not release a subdivision\ncertificate for multi dwelling housing until\nan occupation certificate (under the EP&A\nAct 1979) has been issued for all dwellings\non the land.",
+   "evidence": {
+    "page": 72,
+    "order": "raw",
+    "start": 367,
+    "end": 552,
+    "span": "note council shall not release a subdivision certificate for multi dwelling housing until an occupation certificate under the ep a act 1979 has been issued for all dwellings on the land",
+    "span_sha256": "0c425b2267bb2646ba791362cb171238ede8feec9fe243ab6f8754fc55c067fe",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203349,
+   "md5": "e6d7afe997886c207f704e884ca68289",
+   "old_text": "# 3.8.8 a Design Requirements\n\na)\t   Council will consider the creation of\nCouncil will consider the creation of\ncommunity title allotments subject to\ncommunity title allotments subject to\nthe Council being satisfied that:\nthe Council being satisfied that:\ni)\ni)\t   the\ndevelopment\nprovides\nfor\nthe\ndevelopment\nprovides\nfor\nsignificant communal open space and\nsignificant communal open space and\nrecreation facilities with convenient\nrecreation facilities with convenient\nand safe access for all occupants;\nand safe access for all occupants;\nii)\nii)\t   the communal open space and\nthe communal open space and\nrecreation\nfacilities\nare\nmade\nrecreation\nfacilities\nare\nmade\navailable for the sole benefit of the\navailable for the sole benefit of the\noccupants of that subdivision;\noccupants of that subdivision;\niii)\niii)\t access to the development does\naccess to the development does\nnot involve the erection of any gate\nnot involve the erection of any gate\nstructure/mechanism; and\nstructure/mechanism; and\niv)\niv)\t all other relevant requirements for\nall other relevant requirements for\neach dwelling type are complied\neach dwelling type are complied\nwith.",
+   "page": 72,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.8 a Design Requirements\n\na)\t   Council will consider the creation of\ncommunity title allotments subject to\nthe Council being satisfied that:\ni)\t   the\ndevelopment\nprovides\nfor\nsignificant communal open space and\nrecreation facilities with convenient\nand safe access for all occupants;\nii)\t   the communal open space and\nrecreation\nfacilities\nare\nmade\navailable for the sole benefit of the\noccupants of that subdivision;\niii)\t access to the development does\nnot involve the erection of any gate\nstructure/mechanism; and\niv)\t all other relevant requirements for\neach dwelling type are complied\nwith.",
+   "evidence": {
+    "page": 72,
+    "order": "raw",
+    "start": 607,
+    "end": 1158,
+    "span": "a council will consider the creation of community title allotments subject to the council being satisfied that i the development provides for significant communal open space and recreation facilities with convenient and safe access for all occupants ii the communal open space and recreation facilities are made available for the sole benefit of the occupants of that subdivision iii access to the development does not involve the erection of any gate structure mechanism and iv all other relevant requirements for each dwelling type are complied with",
+    "span_sha256": "83e5f195be472eb59de30835f5e759ab5759d265972da01f7e87aff471cbc6db",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203381,
+   "md5": "0f18e20a014cd43c3d4d24bc53efe028",
+   "old_text": "# 3.8.9 b\n\nb)\t   Temporary turning areas should be\nTemporary turning areas should be\nconstructed to accommodate heavy\nconstructed to accommodate heavy\nrigid collection vehicles (see indicative\nrigid collection vehicles (see indicative\ndimensions at Table 2.15.2), and\ndimensions at Table 2.15.2), and\nbe removed when a through road is\nbe removed when a through road is\nconnected into the next stage of the\nconnected into the next stage of the\ndevelopment.",
+   "page": 73,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8.9 b\n\nb)\t   Temporary turning areas should be\nconstructed to accommodate heavy\nrigid collection vehicles (see indicative\ndimensions at Table 2.15.2), and\nbe removed when a through road is\nconnected into the next stage of the\ndevelopment.",
+   "evidence": {
+    "page": 73,
+    "order": "raw",
+    "start": 364,
+    "end": 587,
+    "span": "b temporary turning areas should be constructed to accommodate heavy rigid collection vehicles see indicative dimensions at table 2 15 2 and be removed when a through road is connected into the next stage of the development",
+    "span_sha256": "336b804a9954cd8a93aabfd3be509099be158b6cfc909888c1fc3b2934f97987",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203399,
+   "md5": "ca323136b1f8f934aa2edb3403f6a832",
+   "old_text": "# 3.8 3.8 Residential Subdivision\n\nNote: For the purpose of clause 3.8.4 b) ii),\nan access handle does not constitute direct\nan access handle does not constitute direct\nfrontage to a public street.",
+   "page": 70,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8 3.8 Residential Subdivision\n\nNote: For the purpose of clause 3.8.4 b) ii),\nan access handle does not constitute direct\nfrontage to a public street.",
+   "evidence": {
+    "page": 70,
+    "order": "raw",
+    "start": 37,
+    "end": 150,
+    "span": "note for the purpose of clause 3 8 4 b ii an access handle does not constitute direct frontage to a public street",
+    "span_sha256": "cb1c6a62c9c078698569992720fde24d03a733d1d30ae9cf810daeff1f7cee96",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  },
+  {
+   "id": 203402,
+   "md5": "7ca6cb3cefca748ebf261cb6d92c9c3d",
+   "old_text": "# 3.8 3.8 Residential Subdivision\n\nNote: Council may release a subdivision\ncertificate for dual occupancies prior to the\ncertificate for dual occupancies prior to the\nissuing of the occupation certificate, where\nissuing of the occupation certificate, where\nthe construction of the building  has passed\nthe construction of the building  has passed\nthe frame stage by the relevant PCA and\nthe frame stage by the relevant PCA and\nCouncil is satisfied that the building will be\nCouncil is satisfied that the building will be\nconstructed as per the approved plans.",
+   "page": 70,
+   "current_on_visible_page": false,
+   "verdict": "fix",
+   "new_text": "# 3.8 3.8 Residential Subdivision\n\nNote: Council may release a subdivision\ncertificate for dual occupancies prior to the\nissuing of the occupation certificate, where\nthe construction of the building  has passed\nthe frame stage by the relevant PCA and\nCouncil is satisfied that the building will be\nconstructed as per the approved plans.",
+   "evidence": {
+    "page": 70,
+    "order": "raw",
+    "start": 151,
+    "end": 448,
+    "span": "note council may release a subdivision certificate for dual occupancies prior to the issuing of the occupation certificate where the construction of the building has passed the frame stage by the relevant pca and council is satisfied that the building will be constructed as per the approved plans",
+    "span_sha256": "0384dc6d374a0da888e4c611acbba18735c23d4b7cf02324e9491612c2572297",
+    "matcher_version": "page-evidence-v3-shared-page-needs-a-sentence+visible-only",
+    "pdf_sha256": "adf1072837a1cf0a2c7f8df93275c643fc408a1ef50ea69eb064b074f677fce1"
+   },
+   "rules_lost": 0,
+   "page_check": "on_page",
+   "citation_status": "proven"
+  }
+ ],
+ "not_fixed": [
+  {
+   "id": 202866,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "cdb24a6c6583213747cf38320cfb7a72"
+  },
+  {
+   "id": 202882,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "df932e653c4628626354bb9bdb2d6a99"
+  },
+  {
+   "id": 202883,
+   "verdict": "unchanged",
+   "reason": "no repeated line; current text is NOT on the visible page",
+   "md5": "fef367f8c680d2d2d021dd3db916c732"
+  },
+  {
+   "id": 202884,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "adf31c37e3895bd16b447e6bd62ae71c"
+  },
+  {
+   "id": 202886,
+   "verdict": "unchanged",
+   "reason": "no repeated line; current text is NOT on the visible page",
+   "md5": "886fe3cfe7e81f9504166c8dc6383323"
+  },
+  {
+   "id": 202887,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "e705061d26e0360dfe9c655e20588d8c"
+  },
+  {
+   "id": 202899,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "ce165bcc9a215eafe4dbd8076115a0af"
+  },
+  {
+   "id": 202911,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "8dd99561a025db3f0d7882c765bbf45f"
+  },
+  {
+   "id": 202916,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "b30f70be0d43f15d038f2a33d2617790"
+  },
+  {
+   "id": 202928,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "71fbc7698bf79db42589243fc754fc9d"
+  },
+  {
+   "id": 202933,
+   "verdict": "unchanged",
+   "reason": "no repeated line; current text is NOT on the visible page",
+   "md5": "656a32a390e555d3a21e4a06afa6e41d"
+  },
+  {
+   "id": 202939,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "983a5419dab057451ddb54d479775327"
+  },
+  {
+   "id": 202940,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "a5b22970af14c414ac967f397244f92b"
+  },
+  {
+   "id": 202946,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "a5ba9cad5882862460f1d610c6c65f6e"
+  },
+  {
+   "id": 202947,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "3f0c5575a4992e501505d8f7cab60158"
+  },
+  {
+   "id": 202951,
+   "verdict": "unchanged",
+   "reason": "no repeated line; current text is NOT on the visible page",
+   "md5": "bd0578de34a272b2d2862876dd63811b"
+  },
+  {
+   "id": 202952,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "9b3e3e1bcf19845baca5f80d54c2cade"
+  },
+  {
+   "id": 202953,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "e5747194abed766effe87c453065493e"
+  },
+  {
+   "id": 202954,
+   "verdict": "unchanged",
+   "reason": "no repeated line; current text is NOT on the visible page",
+   "md5": "81d2cb5f815325a6697aba0c26ce4bde"
+  },
+  {
+   "id": 202955,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "8ab72c990333062802c95bf080e7bcf4"
+  },
+  {
+   "id": 202959,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "2ed3d22e12fa9d76d1deabd7fe6bdc22"
+  },
+  {
+   "id": 202961,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "998b489e03e036a1d38d6e8a80c0cd8f"
+  },
+  {
+   "id": 202962,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "f18b4199636d2282206e4fd1b684774c"
+  },
+  {
+   "id": 202963,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "247f9fb81c8558292d753544f92874cf"
+  },
+  {
+   "id": 202964,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "e5a7dd50e71c7a9c53a506517f4d84c5"
+  },
+  {
+   "id": 202966,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "15ea0dfbd3afce3c121859a063c06caa"
+  },
+  {
+   "id": 202967,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "b50159f38c622296ea68954ea0a0110d"
+  },
+  {
+   "id": 202981,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "f30e025f450a87d1942a2bc38ea7c6ab"
+  },
+  {
+   "id": 202983,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "9a5a3f780104d6faf7e50a3e18393ff8"
+  },
+  {
+   "id": 202986,
+   "verdict": "refused",
+   "reason": "nothing to collapse after the printed-repeat exemption",
+   "md5": "d2dfabb3e5e8a1c80c18097bc150b19a"
+  },
+  {
+   "id": 202987,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "f37bb15e876dcb0fe8656de2e6757ef8"
+  },
+  {
+   "id": 202988,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "acedd6cf3572aafd9fff485b7e2d5df7"
+  },
+  {
+   "id": 202993,
+   "verdict": "unchanged",
+   "reason": "no repeated line; current text is NOT on the visible page",
+   "md5": "ca716ead4220a8b956a584a8ee91c29f"
+  },
+  {
+   "id": 202994,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "722aa68fabedb9b272bd0a7c894b218a"
+  },
+  {
+   "id": 203000,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "8b8e7a0ef8c567b4e4670398c8e37330"
+  },
+  {
+   "id": 203005,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "dc881b61ede6a08f99ca2b521381a2fc"
+  },
+  {
+   "id": 203011,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "c863abdd62e81a9459f9a31db4a7654d"
+  },
+  {
+   "id": 203013,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "67238e866c4733a08e8592dbb6686d6d"
+  },
+  {
+   "id": 203015,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "82b96bab234ccbacd63efb8dd416678b"
+  },
+  {
+   "id": 203019,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "216510933f86696d02850192fafa2283"
+  },
+  {
+   "id": 203023,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "7b8a7deb8244d2df7f9eaf3b4df9c0cb"
+  },
+  {
+   "id": 203024,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "3c5cb738bcffdd31021d4166882cfd43"
+  },
+  {
+   "id": 203025,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "63c802ea4cf52d464eb4042156b0ede9"
+  },
+  {
+   "id": 203032,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "2dd2639b02afd6141c384e836e6edb04"
+  },
+  {
+   "id": 203034,
+   "verdict": "unchanged",
+   "reason": "no repeated line; current text is NOT on the visible page",
+   "md5": "df1abff0a01e6e5a673998da9e592b2d"
+  },
+  {
+   "id": 203044,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "7592f06641a1756345c6d8631b69f215"
+  },
+  {
+   "id": 203045,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "cfeb835971e13c428f85690a80635406"
+  },
+  {
+   "id": 203046,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "1d592f2846fa1db6e6b995f23d0f040e"
+  },
+  {
+   "id": 203047,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "de10c7327ab1ead26071dc4fd5340815"
+  },
+  {
+   "id": 203053,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "78125ef51fc1d41babb0fe8e95713c8e"
+  },
+  {
+   "id": 203054,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "665d98f1b070f1acd274f5cccc1c0c8b"
+  },
+  {
+   "id": 203073,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "bd0903efb2283f5739d1672f4de1048e"
+  },
+  {
+   "id": 203074,
+   "verdict": "unchanged",
+   "reason": "no repeated line; current text is NOT on the visible page",
+   "md5": "1d759370cf59dc50c6a788c762f234ad"
+  },
+  {
+   "id": 203077,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "ecb4cef9d5ba61949995b53baddfa19d"
+  },
+  {
+   "id": 203078,
+   "verdict": "unchanged",
+   "reason": "no repeated line; current text is NOT on the visible page",
+   "md5": "3e23ecf4e706f17e62ebad401646c413"
+  },
+  {
+   "id": 203079,
+   "verdict": "unchanged",
+   "reason": "no repeated line; current text is NOT on the visible page",
+   "md5": "7d535a8ffa5c806f697e990239daf1e8"
+  },
+  {
+   "id": 203087,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "b1255bcf37615a55a014c763db9d56ec"
+  },
+  {
+   "id": 203096,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "af3286a280489f8ac0eb2ba9d84b639e"
+  },
+  {
+   "id": 203116,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "bcf04785b85b004782087d9a3d74436c"
+  },
+  {
+   "id": 203117,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "c69334bc82a5dfde050692da134fa74b"
+  },
+  {
+   "id": 203135,
+   "verdict": "unchanged",
+   "reason": "no repeated line; current text is NOT on the visible page",
+   "md5": "9f175d8ef425d669a0d7aa04653bd2a8"
+  },
+  {
+   "id": 203138,
+   "verdict": "unchanged",
+   "reason": "no repeated line; current text is NOT on the visible page",
+   "md5": "107d2eff5b25a189acd5b53d12fbc7a4"
+  },
+  {
+   "id": 203139,
+   "verdict": "unchanged",
+   "reason": "no repeated line; current text is NOT on the visible page",
+   "md5": "d83d175ec11244a291b3cff6f1fa8c6a"
+  },
+  {
+   "id": 203175,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "1aee934bf850fc9052d0c8d9be36abc7"
+  },
+  {
+   "id": 203178,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "19939eab8ca6f74b1696f80edd9a01fb"
+  },
+  {
+   "id": 203181,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "8b54eacb8bf75e26ac34716e7a158604"
+  },
+  {
+   "id": 203184,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "e94965244e538a4bf22fdf04c1fb866b"
+  },
+  {
+   "id": 203187,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "9ab676bab5ad0250dc9fbdb4b234ca3c"
+  },
+  {
+   "id": 203193,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "50f2a67563b18734866e90e5bbe2f259"
+  },
+  {
+   "id": 203199,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "2995379ecd1bfa3413de80b13840b0ba"
+  },
+  {
+   "id": 203207,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "c5e128cd1e7ce242bd83feb8d7f0aefc"
+  },
+  {
+   "id": 203212,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "3fbfe9eeaa3783f6c48011d70c2c2291"
+  },
+  {
+   "id": 203216,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "d2992623ee180c0062a308bba5158934"
+  },
+  {
+   "id": 203231,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "bc436340079c321d1872cb593e1b0998"
+  },
+  {
+   "id": 203236,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "8a86d2e3979d5087b2a0f5f09fc45cc1"
+  },
+  {
+   "id": 203253,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "de08a9869e47ec4dad0483ec81f1e300"
+  },
+  {
+   "id": 203311,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "6b974f0f080528c64d8bceb2bfadb80f"
+  },
+  {
+   "id": 203330,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "4d1dc8a226468bbe861c06cce0c80d25"
+  },
+  {
+   "id": 203347,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "2d8a4160490b4979aa318318efabdf34"
+  },
+  {
+   "id": 203385,
+   "verdict": "refused",
+   "reason": "collapsed text is not one run of the visible page",
+   "md5": "71f7f01e348ab6580ebc7a0ace9c7c1e"
+  },
+  {
+   "id": 203405,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "c8dc84414099c98a04d2da8998516c1d"
+  },
+  {
+   "id": 203411,
+   "verdict": "unchanged",
+   "reason": "no repeated line",
+   "md5": "cf8f449932bd4b2835d6536dab832024"
+  }
+ ]
+}
