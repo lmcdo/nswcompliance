@@ -1,0 +1,77 @@
+{
+  "tier": "standard",
+  "justification": "Lower the OC-20 DQ-145 ratchet ceiling from 270 to 210 after 60 orphaned council-DCP rows (LE9962_1 = Leichhardt DCP 2013 Appendix D, 33; Chapter_E2_Haberfield_Neighbourhood, 27; no source_council, no precinct, reachable by no address route, same chapters served from council-scoped copies) were withheld live on 2026-10-17 with scripts/withhold_state_paraphrase.py --list data/dcp_orphan_superseded_copies_2026-10-18.json (dry run 60/60/60, applied 60, backup data/db_rollback_backups/withhold_state_pre_2026-10-17T224146_068352.json). Measured by python scripts/dq_probe_live.py --id DQ-145 = 210; outreach 21/21.",
+  "commit_hash": "d4f8ae90",
+  "files": [
+    "scripts/outreach_claim_checks.py",
+    "data/dcp_orphan_superseded_copies_2026-10-18.json"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_outreach_claim_checks_oc20.py && python scripts/outreach_claim_checks.py OC-20",
+    "fails_when": "DQ-145 exceeds 210, any citation test fails, or the DQ-145 query breaks",
+    "observed_red": "Mutating the ratchet from <= to < made the at-ceiling test fail (1 failed, 6 passed); restored, 7 passed."
+  },
+  "real_layer_exempt": {
+    "scripts/outreach_claim_checks.py": "constant change only; live run of dq_check.py --outreach read DQ-145 210 and 21/21 after the apply"
+  },
+  "pre_impl": {
+    "existing_data": "the 61 'no refusal' rows from ce-dq145-270-breakdown-2026-10-17.csv; newer council copies Leichhardt_DCP_2013__appendix_d_waste_template and Inner_West_Ashfield_DCP_2016__chapter_e2_haberfield",
+    "assumption_mismatch": "the 61 were bucketed 'state' only because source_council IS NULL; 60 are council DCP rows the state-law tool skips by design (instrument_for -> None, pinned in tests/test_state_law_proof.py)",
+    "new_vs_existing": "reuses the reviewed withhold_state_paraphrase.py; adds a data list only"
+  },
+  "functions": [
+    {
+      "name": "unproven_citations_only_fall",
+      "file_line": "scripts/outreach_claim_checks.py",
+      "input": "a live database connection from dq_db.connect, or None when unreachable",
+      "output": "PASS when DQ-145 <= DQ145_CEILING",
+      "if_none": "UNKNOWN when the DB is unreachable; FAIL when the query errors"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ145_CEILING = 210",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-17 after the apply",
+      "if_missing": "n/a (constant)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "the database cannot be reached from where the gate runs",
+      "what_happens": "the ratchet reports UNKNOWN and the claim is not verified, never PASS",
+      "mitigated": true,
+      "how": "_connect None -> UNKNOWN",
+      "repro": "test_no_database_is_unknown_not_pass"
+    },
+    {
+      "scenario": "probe SQL references a dropped column",
+      "what_happens": "the ratchet reports FAIL with the query error in its detail line",
+      "mitigated": true,
+      "how": "exception -> FAIL",
+      "repro": "test_broken_query_fails"
+    },
+    {
+      "scenario": "a jest path is renamed",
+      "what_happens": "jest exits non-zero (no tests found) -> FAIL",
+      "mitigated": true,
+      "how": "jest_file maps rc != 0 to FAIL",
+      "repro": "rename a listed test file"
+    },
+    {
+      "scenario": "an orphan row carried a rule the newer copy lacks",
+      "what_happens": "withholding would drop it; measured 5-word coverage in the newer copy: 58/60 at 0.83-1.0 (shortfall at control joins), 2 OCR-garbled bin/truck tables at 0.06-0.13; spot-checked C27 -> 163574, C105 -> 163716 live",
+      "mitigated": true,
+      "how": "no address route reaches the orphans, so no served answer changes; backup restores v2_is_actionable",
+      "repro": "coverage_in_newer field in data/dcp_orphan_superseded_copies_2026-10-18.json"
+    }
+  ],
+  "mutation_analysis": "Changing <= to < in the ratchet fails test_at_ceiling_passes. Removing the ratchet from CLAIMS fails test_oc20_is_wired_with_all_three_parts.",
+  "residual_risk": "The badge inventory checks each file, not each citation expression: a component with one badge and a second bare citation passes (Sol, 2026-10-17). Hard-wired checked={false} cards always show the mark. The ceiling must be lowered by hand after each proof pass.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "python scripts/dq_check.py --outreach on main prints 21 of 21"
+  }
+}
