@@ -1,0 +1,23 @@
+{
+  "tier": "minor",
+  "justification": "One image reference in the drawdown-verify CI job changes from the AWS ECR Public mirror, which returned toomanyrequests Data limit exceeded on 6 of 6 pulls on 2026-10-17 (main runs 38982626267 and 38984636569, PR run 38984330325 three attempts), to Google's mirror.gcr.io copy of the same official postgres:16 image.",
+  "commit_hash": "4d74cb56",
+  "files": [
+    ".github/workflows/gates.yml"
+  ],
+  "break_it": [
+    {
+      "scenario": "mirror.gcr.io is also unreachable or rate limited from GitHub-hosted runners",
+      "what_happens": "the drawdown-verify job fails at Initialize containers with a pull error, visibly red, never silently green",
+      "mitigated": true,
+      "how": "a failed service container pull fails the job; check_pr_gates.py refuses to merge on a failed run",
+      "repro": "point image at a nonexistent tag and push"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "the gates run on main after merge shows the drawdown-verify job green"
+  }
+}
