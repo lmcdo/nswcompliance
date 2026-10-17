@@ -1516,10 +1516,9 @@ def _drop_doubled_chars(page: Any) -> Any:
     1pt). Measured 2026-10-17: Campbelltown DCP Part 3 prints every line twice over itself (one copy stroked white,
     so it is invisible on paper), and extraction read 'aanndd' -- 94 served rows were rebuilt by hand, 28 refused.
     Real text never repeats the same glyph on top of itself, so this runs for every council."""
-    try:
-        return page.dedupe_chars(tolerance=1)
-    except AttributeError:   # a page object without chars (tests, fakes); a real failure propagates and fails the chapter
+    if not hasattr(page, "dedupe_chars"):   # a fake page object (tests); any real failure propagates and fails the chapter
         return page
+    return page.dedupe_chars(tolerance=1)
 
 
 def _release_page(page: Any) -> None:

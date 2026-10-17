@@ -55,7 +55,9 @@ def same_place_groups(rows: list[dict]) -> list[list[dict]]:
     """Group rows by (doc, text, key), then join rows sharing a clause label (union-find)."""
     by_text: dict[tuple, list[dict]] = defaultdict(list)
     for r in rows:
-        by_text[(r["document_id"], norm_text(r["text"]), r["key"])].append(r)
+        t = norm_text(r["text"])
+        if t:   # an empty row is an extraction failure, not a rule shown twice
+            by_text[(r["document_id"], r.get("council"), t, r["key"])].append(r)
     out = []
     for grp in by_text.values():
         if len(grp) < 2:

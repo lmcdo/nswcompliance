@@ -8,8 +8,8 @@ import same_place_duplicates as spd  # noqa: E402
 KEY = ("p1", "{ALL}", "{ALL}", "none", None, None, None, None)
 
 
-def row(i, ref, page, text="Fences must not exceed 1.2m.", key=KEY, doc="D", proven=True):
-    return {"id": i, "document_id": doc, "council": "x", "ref": ref, "text": text, "page": page,
+def row(i, ref, page, text="Fences must not exceed 1.2m.", key=KEY, doc="D", proven=True, council="x"):
+    return {"id": i, "document_id": doc, "council": council, "ref": ref, "text": text, "page": page,
             "proven": proven, "key": key}
 
 
@@ -41,3 +41,8 @@ def test_rows_without_a_label_are_not_one_place_by_label():
     # cross-review 2026-10-17: two NULL refs normalise to '' and must not count as the same clause
     assert spd.same_place_groups([row(1, None, 4), row(2, None, 9)]) == []
     assert spd.same_place_groups([row(1, None, 4), row(2, "", 4)]) == []              # nor the same page
+
+
+def test_empty_rows_and_other_councils_are_never_grouped():
+    assert spd.same_place_groups([row(1, "C4", 5, text=None), row(2, "C4", 5, text="")]) == []
+    assert spd.same_place_groups([row(1, "C4", 5, council="a"), row(2, "C4", 5, council="b")]) == []

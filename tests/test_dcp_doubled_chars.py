@@ -41,9 +41,14 @@ def test_ordinary_page_is_unchanged(tmp_path):
         assert dx._extract_page_text(page, "campbelltown") == (page.extract_text() or "")
 
 
-def test_a_page_without_chars_is_left_alone():
-    class Fake:
-        def dedupe_chars(self, **_):
-            raise AttributeError("no chars")
-    f = Fake()
+def test_a_page_object_without_dedupe_is_left_alone():
+    f = object()
     assert dx._drop_doubled_chars(f) is f
+
+
+def test_a_real_dedupe_failure_is_not_swallowed():
+    class Broken:
+        def dedupe_chars(self, **_):
+            raise AttributeError("bad char record")
+    with pytest.raises(AttributeError):
+        dx._drop_doubled_chars(Broken())
