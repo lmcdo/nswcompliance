@@ -335,7 +335,14 @@ def test_a_cross_reference_to_the_section_is_not_its_heading(tmp_path):
     assert v == "proven" and ev["page"] == 2
 
 
-def test_a_heading_printed_below_the_words_does_not_count(tmp_path):
+def test_a_number_below_the_top_of_the_page_does_not_count(tmp_path):
     f = tmp_path / "k4.pdf"
-    make_pdf(f, [("text", [LINE, "6.5 next site"]), ("text", ["Intro", LINE])])
+    filler = [" ".join(f"w{i}x{j}" for j in range(10)) for i in range(5)]   # 50 words before the number
+    make_pdf(f, [("text", filler + ["6.5 next site", LINE]), ("text", ["Intro", LINE])])
+    assert pe.prove(WORDS, read(f), {9}, 9, "6 5")[0] == "unresolved"
+
+
+def test_control_reference_is_not_a_heading(tmp_path):
+    f = tmp_path / "k5.pdf"
+    make_pdf(f, [("text", ["Control 6.5 applies", LINE]), ("text", ["Intro", LINE])])
     assert pe.prove(WORDS, read(f), {9}, 9, "6 5")[0] == "unresolved"

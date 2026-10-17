@@ -7,8 +7,9 @@ SEPP rows only; this is the same rule for every served row, written down so it c
 Two served rows are one rule shown twice when ALL hold:
   * same document_id and the same text after lower-casing and collapsing non-word characters;
   * the same applicability key (precinct, zones, dev types, site condition, land condition, heritage fields);
-  * the same place: the same clause label once "Clause"/"Section", spaces and the "~N" suffix are dropped,
-    OR the same non-null pdf_page.
+  * the same place: the same non-empty clause label once "Clause"/"Section", spaces and the "~N" suffix are
+    dropped (not a bare "Part N", which spans many pages). The same PAGE is not enough: two clauses printed on
+    one page are two places (cross-review 2026-10-17).
 Same words at a DIFFERENT place (another code, another page, another precinct) are kept: they are the
 document repeating itself, and each place is its own citation (step 2 handles SEPP codes).
 
@@ -52,7 +53,7 @@ def keep_order(row: dict) -> tuple:
 
 
 def same_place_groups(rows: list[dict]) -> list[list[dict]]:
-    """Group rows by (doc, text, key), then join rows sharing a ref or a page (union-find)."""
+    """Group rows by (doc, text, key), then join rows sharing a clause label (union-find)."""
     by_text: dict[tuple, list[dict]] = defaultdict(list)
     for r in rows:
         by_text[(r["document_id"], norm_text(r["text"]), r["key"])].append(r)
@@ -71,7 +72,7 @@ def same_place_groups(rows: list[dict]) -> list[list[dict]]:
             for j in range(i + 1, len(grp)):
                 a, b = grp[i], grp[j]
                 ra, rb = norm_ref(a["ref"]), norm_ref(b["ref"])
-                if (ra and ra == rb and not WHOLE_PART.search(ra)) or (a["page"] is not None and a["page"] == b["page"]):
+                if ra and ra == rb and not WHOLE_PART.search(ra):
                     parent[find(i)] = find(j)
         comps: dict[int, list[dict]] = defaultdict(list)
         for i, r in enumerate(grp):

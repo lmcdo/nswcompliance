@@ -130,3 +130,16 @@ def test_backlog_row_untouched_or_relabelled_still_serves(db):
     cur.execute("UPDATE regulatory_provisions SET ref_number = 'Section 2' WHERE id = %s", (rid,))
     cur.execute("UPDATE regulatory_provisions SET citation_status = 'partial' WHERE id = %s", (rid,))
     db.commit()                                            # no new text: allowed
+
+
+def test_refreshing_the_timestamp_alone_keeps_no_proof(db):
+    cur = db.cursor()
+    rid = _ins(cur, status="proven")
+    db.commit()
+    cur.execute("UPDATE regulatory_provisions SET provision_text = 'B', citation_checked_at = now() WHERE id = %s", (rid,))
+    assert _commit_fails(db)
+    cur = db.cursor()   # a revert that supplies both a new check time and a new evidence path keeps its proof
+    cur.execute("UPDATE regulatory_provisions SET provision_text = 'C', citation_checked_at = now(), "
+                "citation_source_path = 'https://legislation.nsw.gov.au/x#sec.1', citation_status = 'proven' WHERE id = %s",
+                (rid,))
+    db.commit()
