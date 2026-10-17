@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "The drawdown-verify CI job pulls the official postgres:16 image from Docker Hub again instead of mirror.gcr.io; Docker Hub has pulled fine since the single timeout on 2026-10-10, per the user.",
-  "commit_hash": "",
+  "commit_hash": "17074184",
   "files": [
     ".github/workflows/gates.yml"
   ],
