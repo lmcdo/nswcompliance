@@ -128,7 +128,7 @@ def test_a_word_needed_twice_must_be_printed_twice(tmp_path):
     f = tmp_path / "a.pdf"
     make_pdf(f, [("text", ["C9 front setback 6m rear setback side boundary garage door width"])])
     once = "# 4.1 Setbacks\n\nC9 front setback 6m rear setback side boundary garage door width"
-    twice = "# 4.1 Setbacks\n\nC9 front setback 6m rear setback 6m side boundary garage door width"
+    twice = "# 4.1 Setbacks\n\nC9 front setback 6m rear setback side boundary garage door width door"   # 'door' twice
     assert pe.prove_fallback(once, read(f))[0] == "proven"
     assert pe.prove_fallback(twice, read(f))[0] == "not_found"
 
@@ -147,3 +147,13 @@ def test_verifier_re_makes_the_page_choice(tmp_path):
     stale = copy.deepcopy(ev)
     stale["page"] = 2
     assert vpe.check_uniqueness(stale, {"pdf_page": 1, "page_range": [1, 2]}, "on_page", pages)
+
+
+def test_swapped_values_are_not_proven(tmp_path):
+    # cross-review 2026-10-18 (Sol, HIGH): same words and counts, values swapped between fields
+    f = tmp_path / "a.pdf"
+    make_pdf(f, [("text", ["C9 front setback 3m side setback 6m garage door width rear boundary"])])
+    right = "# 4.1 Setbacks\n\nC9 rear boundary garage door width front setback 3m side setback 6m"
+    swapped = "# 4.1 Setbacks\n\nC9 rear boundary garage door width front setback 6m side setback 3m"
+    assert pe.prove_fallback(right, read(f))[0] == "proven"
+    assert pe.prove_fallback(swapped, read(f))[0] == "not_found"

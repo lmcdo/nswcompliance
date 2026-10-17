@@ -49,7 +49,7 @@ def check_evidence(ev: dict, page, words_sha: str | None = None) -> list:
         texts = pe.page_texts(page)
         if len(span.split()) < pe.MIN_WORDS_BAG:
             bad.append("span shorter than MIN_WORDS_BAG")
-        if not pe.bag_ok(span, texts, pe.prepare(pe.page_tables(page))):
+        if not pe.bag_ok(span, texts, pe.prepare(pe.page_tables(page)), ev.get("row_labels") or ()):
             bad.append("a word or whole number of the span is not printed on the page")
         if not ev.get("labels") or not all(pe.has_label(lb, texts) for lb in ev["labels"])                 or not set(ev["labels"]) <= set(ev.get("row_labels") or ()):
             bad.append("the rule's own label is not printed on the page")

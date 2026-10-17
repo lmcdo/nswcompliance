@@ -313,31 +313,29 @@ def has_label(label: str, texts: dict) -> bool:
     return any(pat.search(t) for t in texts.values())
 
 
-def _number_runs(words: str) -> list:
-    """Every multi-part number of `words`, once per occurrence ('1 5m', '3 2 4')."""
+def _numbers(words: str) -> list:
+    """Every number of `words` in order. normalise() splits '1.5m' into '1 5m' and '3.2.4' into '3 2 4': a number
+    continues only after a BARE digit token, so neighbouring cells '10m 3m' stay two numbers."""
     out, run = [], []
     for w in words.split() + [""]:
-        if w[:1].isdigit():
+        if w[:1].isdigit() and (not run or run[-1].isdigit()):
             run.append(w)
-        else:
-            if len(run) > 1:
-                out.append(" ".join(run))
-            run = []
+            continue
+        if run:
+            out.append(" ".join(run))
+        run = [w] if w[:1].isdigit() else []
     return out
+
+
+def _number_runs(words: str) -> list:
+    """Every multi-part number of `words`, once per occurrence ('1 5m', '3 2 4')."""
+    return [n for n in _numbers(words) if " " in n]
 
 
 def number_phrases(words: str) -> list:
     """Every number of `words` as the phrase normalise() leaves it in: '1.5m' -> '1 5m', '3.2.4' -> '3 2 4'. A bag of
     words loses these ('2.5m' would pass on a page printing '2' and '1.5m'), so each must be printed whole."""
-    out, run = [], []
-    for w in words.split() + [""]:
-        if w[:1].isdigit():
-            run.append(w)
-        else:
-            if len(run) > 1:
-                out.append(" ".join(run))
-            run = []
-    return list(dict.fromkeys(out))
+    return list(dict.fromkeys(_number_runs(words)))
 
 
 def phrase_on_page(phrase: str, texts: dict, streams: list) -> bool:
@@ -360,7 +358,7 @@ def phrase_count(phrase: str, texts: dict) -> int:
     return max((len(find_span(t, phrase)) for t in texts.values()), default=0)
 
 
-def bag_ok(words: str, texts: dict, streams: list) -> bool:
+def bag_ok(words: str, texts: dict, streams: list, labels=()) -> bool:
     """Every word of `words` is printed on the page at least as often as the rule uses it, and every multi-part number
     is printed whole as often (cross-review 2026-10-18: a set lost '6m' needed twice). Which cell goes with which is
     NOT checked -- the accepted limit of this fallback (user 2026-10-18)."""
@@ -368,13 +366,54 @@ def bag_ok(words: str, texts: dict, streams: list) -> bool:
     if Counter(words.split()) - have:
         return False
     need = Counter(ph for ph in _number_runs(words))
-    return all(max(phrase_count(ph, texts), int(phrase_on_page(ph, {}, streams))) >= n for ph, n in need.items())
+    if not all(max(phrase_count(ph, texts), int(phrase_on_page(ph, {}, streams))) >= n for ph, n in need.items()):
+        return False
+    return numbers_in_order(value_words(words, labels), texts, streams)
+
+
+def value_words(words: str, labels=()) -> str:
+    """`words` without the rule's own label phrases ('table 3 2 4 a', 'c9') and without a leading section number
+    ('4 3 3 6 communal ...'): those are checked as labels, and only VALUES must keep their order."""
+    w = f" {words} "
+    for lb in labels:
+        w = w.replace(f" {lb} ", " ", 1)
+    toks = w.split()
+    i = 0
+    while i < len(toks) and toks[i][:1].isdigit():
+        i += 1
+    return " ".join(toks[i:] if i > 1 else toks)
+
+
+def number_seq(words: str) -> list:
+    """The numbers of `words` in order, multi-part numbers whole ('front 6m side 1 5m' -> ['6m', '1 5m'])."""
+    return _numbers(words)
+
+
+def _is_subsequence(need: list, have: list) -> bool:
+    it = iter(have)
+    return all(any(x == y for y in it) for x in need)
+
+
+def numbers_in_order(words: str, texts: dict, streams: list) -> bool:
+    """The rule's numbers appear in the SAME ORDER in at least one reading of the page: either text order, or one table
+    read row by row / column by column. A page printing 'front 3m side 6m' does not prove 'front 6m side 3m'
+    (cross-review 2026-10-18). Cell-to-label pairing beyond order is still not checked."""
+    need = number_seq(words)
+    if len(need) < 2:
+        return True
+    readings = list(texts.values())
+    by_table: dict = {}
+    for ti, kind, _coords, hay, _offs, _parts in streams:
+        if kind in ("row", "col"):
+            by_table.setdefault((ti, kind), []).append(hay)
+    readings += [" ".join(v) for v in by_table.values()]
+    return any(_is_subsequence(need, number_seq(r)) for r in readings)
 
 
 def bag_pages(words: str, labels: list, pages: dict) -> list:
     """Pages printing every distinct word of `words` (numbers whole) and at least one of `labels`."""
     return sorted(p for p, (texts, streams) in pages.items()
-                  if bag_ok(words, texts, streams) and any(has_label(lb, texts) for lb in labels))
+                  if bag_ok(words, texts, streams, labels) and any(has_label(lb, texts) for lb in labels))
 
 
 def pick_page(hits: list, held=None, primary=None):
