@@ -32,7 +32,7 @@ BACKUPS = ROOT / "data" / "db_rollback_backups"
 SELECT = ("SELECT id, md5(provision_text), source_council, is_current, "
           "(SELECT count(*) FROM provision_versions v WHERE v.provision_id = p.id), "
           "provision_text, citation_status, citation_source_path, citation_checked_at, version_count, "
-          "current_version_id, text_hash, text_hash_current, ref_number, document_id, section_header "
+          "current_version_id, text_hash, text_hash_current, ref_number, document_id, section_header, v2_part "
           "FROM regulatory_provisions p WHERE id = ANY(%s)")
 LEP_COUNCIL = "inner_west"   # the only council scope 'registry_lep' may write (scripts/lep_law_proof.py's Inner West LEP)
 
@@ -99,6 +99,8 @@ def check(plan_rows: list[dict], full: dict[int, tuple], scope: str | None = Non
             continue
         if t[13] != r["ref_number"] or t[14] != r["document_id"]:
             bad.append(f"{r['id']}: ref_number or document_id changed since the plan")
+        if "v2_part" in r and (len(t) < 17 or t[16] != r["v2_part"]):   # page-code rows: the code the page shows it under
+            bad.append(f"{r['id']}: v2_part changed since the plan (page-code rows are decided inside that code)")
         if scope == "registry_lep" and r.get("source_council") != LEP_COUNCIL:
             bad.append(f"{r['id']}: plan row source_council {r.get('source_council')!r} is not {LEP_COUNCIL!r}")
         if t[6] == "proven":

@@ -39,6 +39,16 @@ p1 = mb.p1
 ROOT = mb.ROOT
 MODE = "smallest_complete_unit"
 MODE_SAME = "same_words_in_codes"   # one standard printed word for word in several codes: cite every place
+# DQ-145 group 4 (user 2026-10-18): a row the address page shows under one code (its v2_part, e.g. '3' = Housing Code)
+# is decided among that code's places only. Several places -> the smallest is the standard; it must be printed word
+# for word inside every other one, and the row cites them all. Never picks between places; never leaves the code.
+MODE_PAGE = "same_words_in_page_code"
+PAGE_CODE = re.compile(r"\d+[A-Z]{0,2}")
+
+
+def page_code_branch(v2_part: str | None) -> str | None:
+    """The row's own code tag -> the branch its places must sit in: '3' -> 'sec.3', '3B' -> 'sec.3B'; else None."""
+    return f"sec.{v2_part}" if isinstance(v2_part, str) and PAGE_CODE.fullmatch(v2_part) else None
 MAX_WORDS = 600
 # DQ-145 step 4 (user 2026-10-17): the 600 cap was a choice, not a rule (36 served state rows already exceed it). The
 # rows refused unit_over_600_words get the whole clause, up to this ceiling; the card folds long text ("show full clause").
@@ -95,7 +105,25 @@ def decide_smallest_unit(old: str, snap: mb.Snapshot, scope: str | None = None,
     outside = [u for u in cover if not mb._related(snap, u, smallest[0])]
     tiebreak = None
     places = None
-    if len(smallest) != 1 or outside:
+    page = [br for by, br in context or [] if by == "page_code"]
+    if page:
+        # Only the code the page shows the row under counts; the words still choose the places inside it.
+        order = list(snap.units)
+        inb = [u for u in cover if branch(u) == page[0]]
+        small = [u for u in inb if not any(u in snap.ancestors(o) for o in inb if o != u)]
+        if not small:
+            return {"verdict": "refuse", "reason": "ambiguous_unit", "candidates": smallest[:6], "n_words": len(row),
+                    "detail": f"no place in {page[0]}"}
+        std = min(small, key=lambda u: (len(snap.tokens[u]), order.index(u)))
+        pat = snap.joined[std]
+        sym = lambda u: re.sub(r"[^≥≤<>=±%$]", "", snap.units[u].text)   # noqa: E731  comparison symbols must match too
+        if any(pat not in snap.joined[u] or sym(u) != sym(std) for u in small):
+            return {"verdict": "refuse", "reason": "ambiguous_unit", "candidates": small[:6], "n_words": len(row),
+                    "detail": f"places in {page[0]} do not all print the same standard"}
+        smallest, tiebreak = [std], {"by": "page_code", "branch": page[0]}
+        if len(small) > 1:
+            places = [std] + sorted((u for u in small if u != std), key=order.index)
+    elif len(smallest) != 1 or outside:
         # DQ-145 step 2 (user 2026-10-17): the same standard printed word for word in several codes is ONE rule cited at
         # every place -- tried before the own-label tie-break, which would pick a single code. Only when every covering
         # unit is a smallest unit or above one, and every smallest unit's words are identical after normalising.
@@ -143,7 +171,8 @@ def decide_smallest_unit(old: str, snap: mb.Snapshot, scope: str | None = None,
     if mb.md5(new) == mb.md5(old):
         return {"verdict": "refuse", "reason": "already_identical", "unit": uid, "n_words": len(row)}
     n, cov = cover[uid]
-    return {"verdict": "recopy", "reason": MODE_SAME if places else MODE, "unit": uid, "new_ref": label,
+    return {"verdict": "recopy", "reason": MODE_PAGE if page else (MODE_SAME if places else MODE), "unit": uid,
+            "new_ref": label,
             "places": places, "n_words": len(row), "matched_words": n,
             "coverage": round(cov, 4), "unit_words": len(ut), "size_ratio": round(len(ut) / len(row), 3),
             "new_sha256": mb.sha256(new), "tokens_sha256": mb.tokens_sha(row), "tiebreak": tiebreak}
@@ -163,6 +192,9 @@ def main(argv=None) -> int:
     ap.add_argument("--same-words", action="store_true",
                     help="re-run the ambiguous_unit rows of data/sepp_context_unit_refused_<date>.csv (context on): a standard "
                          "printed word for word in several codes is cited at every place; outputs are named sepp_same_words_*")
+    ap.add_argument("--page-code", metavar="IDS_CSV", default=None,
+                    help="rows (CSV column id) decided among the places of the code the address page shows them under "
+                         "(their own v2_part, read from the database); outputs are named sepp_page_code_*")
     args = ap.parse_args(argv)
     stamp = args.date
     max_words = MAX_WORDS
@@ -170,6 +202,8 @@ def main(argv=None) -> int:
         max_words = MAX_WORDS_WHOLE
         ids = sorted({int(r["id"]) for r in csv.DictReader(open(ROOT / "data" / f"sepp_complete_unit_refused_{stamp}.csv",
                                                                    encoding="utf8")) if r["reason"] == "unit_over_600_words"})
+    elif args.page_code:
+        ids = sorted({int(r["id"]) for r in csv.DictReader(open(args.page_code, encoding="utf8"))})
     elif args.same_words:
         args.context = True
         ids = sorted({int(r["id"]) for r in csv.DictReader(open(ROOT / "data" / f"sepp_context_unit_refused_{stamp}.csv",
@@ -186,6 +220,10 @@ def main(argv=None) -> int:
     cur.execute(mb.SQL, (ids,))
     rows = {r[0]: r for r in cur.fetchall()}
     neighbours: dict[int, tuple[str | None, str | None]] = {}
+    parts: dict[int, str | None] = {}
+    if args.page_code:   # same table, same read-only session: the code tag the exempt-complying route serves the row by
+        cur.execute("SELECT id, v2_part FROM regulatory_provisions WHERE id = ANY(%s)", (ids,))
+        parts = dict(cur.fetchall())
     if args.context:
         # prior-art-checked: reuse not viable -- the suggested routes/monitor serve or fetch provisions; none reads the
         # labels of a row's neighbours in its own document. Same table, same read-only session as mb.SQL above.
@@ -228,7 +266,15 @@ def main(argv=None) -> int:
         print(f"{epi}: {len(snap.units)} units, {len(by_epi[epi])} rows", flush=True)
         for rid, doc, ref, old, om5, _cs, _cur, _sc, nver in by_epi[epi]:
             nb = neighbours.get(rid, (None, None))
-            d = decide_smallest_unit(old, snap, None, tiebreaks(ref, nb) if args.context else None, max_words)
+            if args.page_code:
+                br = page_code_branch(parts.get(rid))
+                if br is None:
+                    refused.append({"id": rid, "reason": "no_page_code", "ref_number": ref, "detail": str(parts.get(rid))})
+                    continue
+                ctx = [("page_code", br)]
+            else:
+                ctx = tiebreaks(ref, nb) if args.context else None
+            d = decide_smallest_unit(old, snap, None, ctx, max_words)
             if d["verdict"] == "refuse":
                 refused.append({"id": rid, "reason": d["reason"], "ref_number": ref,
                                 "unit_found": ";".join(d.get("candidates") or []) or d.get("unit") or "",
@@ -253,18 +299,22 @@ def main(argv=None) -> int:
                                          "size_ratio", "new_sha256")})
             if args.context:   # the verifier rebuilds the context from the plan's ref_number + these neighbour labels
                 ev.update({"neighbour_refs": list(nb), "tiebreak": d["tiebreak"]})
+            if args.page_code:   # the verifier rebuilds the context from this; the applier re-reads v2_part before writing
+                ev.update({"page_code": ctx[0][1], "tiebreak": d["tiebreak"]})
             row = {"id": rid, "md5": om5, "rule": "recopy", "kind": "complete_unit_recopy", "epi": epi,
                    "document_id": doc, "ref_number": ref, "unit_id": uid, "source": f"{p1.LAW_URL.format(epi=epi)}#{uid}",
                    "law_date": law_date, "old_text": old, "new_text": snap.units[uid].text}
             if new_ref:
                 row.update({"old_ref_number": ref, "new_ref_number": new_ref})
+            if args.page_code:
+                row["v2_part"] = parts.get(rid)
             plan_rows.append(row)
             evidence.append(ev)
 
     plan = {"generated": stamp, "norm_version": mb.NORM_VERSION, "match_version": mb.MATCH_VERSION, "manifest": manifest,
             "method": "scripts/sepp_complete_unit.py (docstring has the rules). No model reads or writes text.",
             "rows": plan_rows}
-    name = "sepp_whole_clause" if args.whole_clause else "sepp_same_words" if args.same_words else "sepp_context_unit" if args.context else "sepp_complete_unit"
+    name = "sepp_page_code" if args.page_code else "sepp_whole_clause" if args.whole_clause else "sepp_same_words" if args.same_words else "sepp_context_unit" if args.context else "sepp_complete_unit"
     pp = ROOT / "data" / f"{name}_plan_{stamp}.json"
     pp.write_text(json.dumps(plan, indent=1, ensure_ascii=False) + "\n", encoding="utf8")
     ep = ROOT / "data" / f"{name}_evidence_{stamp}.jsonl"

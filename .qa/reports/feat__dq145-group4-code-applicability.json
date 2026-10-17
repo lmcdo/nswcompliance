@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "DQ-145 191 -> 189 (group 4, measured first: only 2 of 89 'same words in several codes' rows reach an address -- the SEPP tab, Housing Code, Carport). New page-code mode in sepp_complete_unit decides a row only among the places of the code the page shows it under (its own v2_part); several places must all print the smallest one word for word, and the row cites every place. Applied live: 37145 -> 'Section 3.16(2); same words in 3.23(1)' (law text, proven, verifier 0 mismatches); 37202 withheld as its duplicate on the same tab. Sol cross-review: 1 MEDIUM (v2_part read without is_current) -- verdict no defect, already guarded twice; pinned by a test.",
+  "commit_hash": "00294108",
+  "files": [
+    "scripts/sepp_complete_unit.py",
+    "scripts/verify_sepp_marker_blind.py",
+    "scripts/apply_sepp_marker_blind.py",
+    "scripts/outreach_claim_checks.py",
+    "tests/test_sepp_page_code.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_sepp_page_code.py tests/test_sepp_complete_unit.py tests/test_apply_sepp_duplicate_guard.py tests/test_outreach_claim_checks_oc20.py",
+    "fails_when": "a page-code row leaves its code, places that do not print the same standard are cited together, the verifier accepts a code other than the row's v2_part, the applier writes after v2_part changed, a non-current row is planned, or DQ-145 exceeds 189",
+    "observed_red": "5 mutations each failed a test: code filter removed (2 failed), same-standard check removed (1), verifier code check off (1), applier v2_part check off (1), current-row guard removed (1); restored, all pass."
+  },
+  "real_layer_exempt": {
+    "scripts/sepp_complete_unit.py": "read-only planner; live run produced data/sepp_page_code_plan_2026-10-18g4.json, re-derived by the verifier (1/1, 0 mismatches)",
+    "scripts/apply_sepp_marker_blind.py": "live dry run then apply wrote 1 row; SELECT gains v2_part as the last column",
+    "scripts/verify_sepp_marker_blind.py": "live verify 1/1",
+    "scripts/outreach_claim_checks.py": "constant; outreach 21/21 at 189"
+  },
+  "pre_impl": {
+    "existing_data": "exempt-complying route serves document_id = whole-document Codes SEPP copy by v2_part '3'/'3A' and topic; 11 places in the law print the AS/NZS 2890.1 sentence; no Part 3 row with it was proven",
+    "assumption_mismatch": "the planned code-applicability build reaches only 2 of 89 rows at an address (87 browse-only); 37202 carries 3.23's heading words, so it is not the same standard as 3.16(2)",
+    "new_vs_existing": "extends decide_smallest_unit with a page_code context; reuses verifier, applier, same_words_label and withhold tool"
+  },
+  "functions": [
+    {
+      "name": "decide_smallest_unit (page_code context)",
+      "file_line": "scripts/sepp_complete_unit.py",
+      "input": "row text, law Snapshot, context [('page_code', 'sec.<v2_part>')]",
+      "output": "recopy with mode same_words_in_page_code, the smallest place as text and every place in the label; or a refusal with its reason",
+      "if_none": "no place in the code -> refuse ambiguous_unit with detail; places printing different standards -> refuse"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ145_CEILING = 189",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-18 after the apply and withhold",
+      "if_missing": "n/a (constant)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "the same sentence is printed in other codes (3B, 3C, 3D)",
+      "what_happens": "the row is never cited at or moved to a place in another code",
+      "mitigated": true,
+      "how": "branch filter",
+      "repro": "test_standard_in_two_places_of_the_page_code_cites_both"
+    },
+    {
+      "scenario": "places in the code hold the words but print different standards",
+      "what_happens": "the row is refused as ambiguous_unit and stays marked, as 37202 did live",
+      "mitigated": true,
+      "how": "smallest place must appear word for word in every other place, comparison symbols equal",
+      "repro": "test_places_that_do_not_print_the_same_standard_are_refused"
+    },
+    {
+      "scenario": "v2_part changes between plan and apply",
+      "what_happens": "the applier refuses the whole plan and writes nothing",
+      "mitigated": true,
+      "how": "SELECT re-reads v2_part",
+      "repro": "test_applier_refuses_when_v2_part_changed_since_the_plan"
+    },
+    {
+      "scenario": "a non-current row is listed (Sol MEDIUM)",
+      "what_happens": "the planner refuses the row before any decision is made",
+      "mitigated": true,
+      "how": "mb.SQL is_current check in the planner; applier current check",
+      "repro": "test_a_non_current_row_never_reaches_the_page_code_decision"
+    }
+  ],
+  "mutation_analysis": "Changing <= to < in the ratchet fails test_at_ceiling_passes. Removing the ratchet from CLAIMS fails test_oc20_is_wired_with_all_three_parts.",
+  "residual_risk": "The badge inventory checks each file, not each citation expression: a component with one badge and a second bare citation passes (Sol, 2026-10-17). Hard-wired checked={false} cards always show the mark. The ceiling must be lowered by hand after each proof pass.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "python scripts/dq_check.py --outreach on main prints 21 of 21"
+  }
+}

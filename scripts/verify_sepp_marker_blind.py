@@ -35,10 +35,16 @@ CHECKED = ("unit_id", "word_start", "word_end", "n_words", "unit_words", "tokens
 
 def _verify_complete_unit(r: dict, e: dict, snap: mb.Snapshot, scope: str | None = None) -> str:
     """'' when a mode='smallest_complete_unit' row re-derives exactly; else the reason."""
-    if e["mode"] not in (cu.MODE, cu.MODE_SAME) or e["rule"] != "recopy" or r["rule"] != "recopy":
+    if e["mode"] not in (cu.MODE, cu.MODE_SAME, cu.MODE_PAGE) or e["rule"] != "recopy" or r["rule"] != "recopy":
         return f"unknown mode {e['mode']!r} / rule"
     # context rows: the tie-break is rebuilt from the plan's own ref_number and the recorded neighbour labels
     ctx = cu.tiebreaks(r.get("ref_number"), tuple(e["neighbour_refs"])) if "neighbour_refs" in e else None
+    if (e["mode"] == cu.MODE_PAGE) != ("page_code" in e):
+        return "page-code mode and page_code evidence must come together"
+    if "page_code" in e:   # rebuilt from the row's own code tag; the applier re-reads v2_part from the database
+        if "neighbour_refs" in e or cu.page_code_branch(r.get("v2_part")) != e["page_code"]:
+            return f"page_code {e['page_code']!r} is not the branch of the plan row's v2_part {r.get('v2_part')!r}"
+        ctx = [("page_code", e["page_code"])]
     mw = e.get("max_words", cu.MAX_WORDS)   # whole-clause rows record the raised cap; never above MAX_WORDS_WHOLE
     if mw not in (cu.MAX_WORDS, cu.MAX_WORDS_WHOLE):
         return f"max_words {mw} is not a cap the planner uses"
