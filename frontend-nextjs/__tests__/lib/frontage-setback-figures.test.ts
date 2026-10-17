@@ -83,3 +83,33 @@ describe('frontageSetbackNote', () => {
     ).toBe(`${head}see page 12; Figure 14E.9-6, page 28`);
   });
 });
+
+describe('loadFrontageSetbackFigures', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { loadFrontageSetbackFigures } = require('@/lib/frontage-setback-figures');
+  const data = {
+    council: 'ku_ring_gai',
+    chapters: [{ chapter_key: 'c14e', r2_path: 'p/14e.pdf', pdf_url: 'https://x/14e.pdf',
+      figures: [{ precinct_id: '14E_L3', page: 28, figure: '14E.9-6' }] }],
+  };
+
+  it('returns [] and does not throw when a lookup fails', async () => {
+    const failing = async () => { throw new Error('db down'); };
+    await expect(loadFrontageSetbackFigures(failing, data, 'ku_ring_gai', '14E_L3')).resolves.toEqual([]);
+  });
+
+  it('selects the figure for the address precinct through both lookups', async () => {
+    const query = async (sql: string) => (sql.includes('dcp_chapter_registry')
+      ? { rows: [{ chapter_key: 'c14e', r2_current_path: 'p/14e.pdf' }] }
+      : { rows: [{ source_chapter_key: 'c14e' }] });
+    const out = await loadFrontageSetbackFigures(query, data, 'ku_ring_gai', ' 14E_L3 , ');
+    expect(out).toEqual([{ chapter_key: 'c14e', page: 28, figure: '14E.9-6', pdf_url: 'https://x/14e.pdf#page=28' }]);
+  });
+
+  it('makes no query for another council or no precinct', async () => {
+    const query = jest.fn();
+    await expect(loadFrontageSetbackFigures(query, data, 'hornsby', '14E_L3')).resolves.toEqual([]);
+    await expect(loadFrontageSetbackFigures(query, data, 'ku_ring_gai', '')).resolves.toEqual([]);
+    expect(query).not.toHaveBeenCalled();
+  });
+});

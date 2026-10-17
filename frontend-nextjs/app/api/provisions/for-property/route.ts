@@ -29,7 +29,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { getNotCovered } from '@/lib/not-covered';
 import frontageData from '@/data/frontage-setback-figures.json';
-import { frontageSetbackFigures, type FrontageFigureData } from '@/lib/frontage-setback-figures';
+import { loadFrontageSetbackFigures, type FrontageFigureData } from '@/lib/frontage-setback-figures';
 import { NOT_HERITAGE_SQL, ZONE_APPLIES_SQL, hcaTagSql } from '@/lib/provision-sql-filters';
 import { councilKey } from '@/lib/council-key';
 import { expandDevTypeHierarchy, expandDevTypeHierarchyMulti } from '@/lib/see/devTypeHierarchy';
@@ -633,33 +633,13 @@ export async function GET(request: NextRequest) {
       } : undefined;
 
       // Cache for 5 minutes on edge, 1 minute stale-while-revalidate
-      // Built-form figures that show upper-level setbacks for this address's centre (KRG).
-      // Fails to [] rather than breaking the response.
-      let frontageFigures: ReturnType<typeof frontageSetbackFigures> = [];
-      try {
-        const fData = frontageData as FrontageFigureData;
-        const precinctList = (filters.precinct_id ?? '').split(',').map(s => s.trim()).filter(Boolean);
-        if (precinctList.length > 0 && councilKey(filters.former_council) === fData.council) {
-          const reg = await client.query(
-            `SELECT chapter_key, r2_current_path FROM dcp_chapter_registry
-             WHERE is_active AND council = $1 AND chapter_key = ANY($2)`,
-            [fData.council, fData.chapters.map(c => c.chapter_key)]
-          );
-          const chs = await client.query(
-            `SELECT DISTINCT source_chapter_key FROM regulatory_provisions
-             WHERE source_council = $1 AND is_current AND v2_precinct_id = ANY($2::text[])`,
-            [fData.council, precinctList]
-          );
-          const currentPaths: Record<string, string | null> = {};
-          for (const r of reg.rows) currentPaths[r.chapter_key] = r.r2_current_path ?? null;
-          frontageFigures = frontageSetbackFigures(
-            fData, fData.council, precinctList, currentPaths,
-            chs.rows.map(r => r.source_chapter_key).filter(Boolean)
-          );
-        }
-      } catch (frontageErr) {
-        console.error('[4-Layer API] frontage figures failed:', frontageErr);
-      }
+      // Built-form figures that show upper-level setbacks for this address's centre (KRG); [] on any failure.
+      const frontageFigures = await loadFrontageSetbackFigures(
+        (sql, params) => client.query(sql, params),
+        frontageData as FrontageFigureData,
+        councilKey(filters.former_council),
+        filters.precinct_id,
+      );
 
       const response = NextResponse.json({
         success: true,

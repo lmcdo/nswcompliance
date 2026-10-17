@@ -8,6 +8,8 @@
  * maps a precinct to a figure page.
  */
 
+import { captureServerException } from '@/lib/posthog-server';
+
 export interface FrontageFigureEntry {
   precinct_id: string | null;
   page: number;
@@ -80,4 +82,40 @@ export function frontageSetbackNote(items: FrontageFigureItem[] | null | undefin
   // "see" appears once at the front: "...centre: see Figure A, page 1; Figure B, page 2"
   const joined = parts.map((p, idx) => (idx === 0 ? p : p.replace(/^see /, ''))).join('; ');
   return `Upper-level setbacks apply to some street frontages in this centre: ${joined}`;
+}
+
+type Query = (sql: string, params: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
+
+/**
+ * The route's two read-only lookups, then frontageSetbackFigures. A notice is extra: any failure is reported
+ * and yields [] so the rules response is unchanged.
+ */
+export async function loadFrontageSetbackFigures(
+  query: Query,
+  data: FrontageFigureData,
+  council: string | null | undefined,
+  precinctIdCsv: string | null | undefined,
+): Promise<FrontageFigureItem[]> {
+  const precinctIds = (precinctIdCsv ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (!council || council !== data.council || precinctIds.length === 0) return [];
+  try {
+    const reg = await query(
+      `SELECT chapter_key, r2_current_path FROM dcp_chapter_registry
+       WHERE is_active AND council = $1 AND chapter_key = ANY($2)`,
+      [data.council, data.chapters.map((c) => c.chapter_key)],
+    );
+    const chs = await query(
+      `SELECT DISTINCT source_chapter_key FROM regulatory_provisions
+       WHERE source_council = $1 AND is_current AND v2_precinct_id = ANY($2::text[])`,
+      [data.council, precinctIds],
+    );
+    const currentPaths: Record<string, string | null> = {};
+    for (const r of reg.rows) currentPaths[String(r.chapter_key)] = (r.r2_current_path as string | null) ?? null;
+    const keys = chs.rows.map((r) => r.source_chapter_key).filter((k): k is string => typeof k === 'string');
+    return frontageSetbackFigures(data, council, precinctIds, currentPaths, keys);
+  } catch (err) {
+    console.error('[frontage figures] lookup failed; notice omitted:', err);
+    captureServerException(err, { endpoint: '/api/provisions/for-property', part: 'frontage_setback_figures' });
+    return [];
+  }
 }
