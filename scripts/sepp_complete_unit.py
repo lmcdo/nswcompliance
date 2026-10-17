@@ -64,17 +64,16 @@ def branch(uid: str | None) -> str | None:
 
 def tiebreaks(ref: str | None, neighbour_refs: tuple[str | None, str | None]) -> list[tuple[str, str]]:
     """Context that can pick ONE of several places holding the same words, in the order it is tried:
-    ('own_label', branch of the row's own ref_number), then ('neighbour_labels', branch) when the nearest earlier AND
-    nearest later row of the same document both carry a clause label in that same branch."""
+    ('own_label_unit', the clause the row's own ref_number names), then ('own_label', that clause's code/schedule).
+    WITHDRAWN 2026-10-17 (cross-review): ('neighbour_labels', ...) from the nearest labelled rows by id. Row id order is
+    not document order (45999's nearest labels were Schedule 12 s 12 then s 2(2), dozens of rows away), so it is not
+    evidence. neighbour_refs is still accepted and recorded, and no longer used."""
     out = []
     if mb.ref_unit(ref):
         out.append(("own_label_unit", mb.ref_unit(ref)))   # the clause the label names (and units inside / above it)
     own = branch(mb.ref_unit(ref))
     if own:
         out.append(("own_label", own))
-    before, after = (branch(mb.ref_unit(x)) for x in neighbour_refs)
-    if before and before == after:
-        out.append(("neighbour_labels", before))
     return out
 
 

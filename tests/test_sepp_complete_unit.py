@@ -135,11 +135,10 @@ def test_own_label_breaks_a_tie_between_schedules(snap):
     assert d["verdict"] == "recopy" and d["unit"] == "sch.2-sec.9" and d["tiebreak"]["by"] == "own_label_unit"
 
 
-def test_neighbour_labels_break_a_tie_only_when_both_agree(snap):
+def test_neighbour_labels_are_not_used(snap):
+    # withdrawn 2026-10-17: row id order is not document order, so agreeing neighbours settle nothing
     agree = cu.tiebreaks("Fences", ("Schedule 1, section 8", "Schedule 1, section 10"))
-    assert cu.decide_smallest_unit(drop(T1, 2), snap, None, agree)["unit"] == "sch.1-sec.9"
-    differ = cu.tiebreaks("Fences", ("Schedule 1, section 8", "Schedule 2, section 10"))
-    assert cu.decide_smallest_unit(drop(T1, 2), snap, None, differ)["reason"] == "ambiguous_unit"
+    assert cu.decide_smallest_unit(drop(T1, 2), snap, None, agree)["reason"] == "ambiguous_unit"
 
 
 def test_no_context_still_refuses(snap):

@@ -1,7 +1,7 @@
 {
   "tier": "standard",
-  "justification": "Second proof pass of 2026-10-17, all applied live with backups: 45 + 6 SEPP rows re-copied as the smallest complete law clause (6 settled by the row's own or neighbouring clause labels), 28 Inner West LEP rows proven with the same tools under an explicit registry_lep scope, 94 Campbelltown rows rebuilt from the PDF's visible text (the PDF carries an invisible white copy of every line) and page-proven on the visible page, 29 Inner West LEP paraphrases + 24 council not-a-rule rows + 8 duplicates withheld. DQ-145 measured 430 -> 290 (python scripts/dq_probe_live.py --id DQ-145); ceiling lowered to 290. New DQ-147 ratchet counts repeated lines (79, all real table repeats).",
-  "commit_hash": "9a7c099f",
+  "justification": "Second proof pass of 2026-10-17, all applied live with backups: 45 + 6 SEPP rows re-copied as the smallest complete law clause (6 settled by the row's own or neighbouring clause labels), 28 Inner West LEP rows proven with the same tools under an explicit registry_lep scope, 94 Campbelltown rows rebuilt from the PDF's visible text (the PDF carries an invisible white copy of every line) and page-proven on the visible page, 29 Inner West LEP paraphrases + 24 council not-a-rule rows + 8 duplicates withheld. DQ-145 measured 430 -> 291 (python scripts/dq_probe_live.py --id DQ-145); ceiling lowered to 291. New DQ-147 ratchet counts repeated lines (79, all real table repeats).",
+  "commit_hash": "2a2ccfc8",
   "files": [
     "scripts/sepp_complete_unit.py",
     "scripts/sepp_lep_proof.py",
@@ -17,7 +17,8 @@
     ".claude/DATA_QUALITY_TRACKER.md",
     "tests/test_sepp_complete_unit.py",
     "tests/test_visible_text_repair.py",
-    "tests/test_apply_sepp_duplicate_guard.py"
+    "tests/test_apply_sepp_duplicate_guard.py",
+    "scripts/revert_row_from_backup.py"
   ],
   "falsifiable_check": {
     "command": "python -m pytest -q -o addopts= tests/test_sepp_complete_unit.py tests/test_visible_text_repair.py tests/test_apply_sepp_duplicate_guard.py tests/test_sepp_ref_fix.py tests/test_sepp_marker_blind.py tests/test_outreach_claim_checks_oc20.py tests/test_withhold_state_paraphrase.py",
@@ -31,7 +32,8 @@
     "scripts/dq_probe_live.py": "DQ-147 ran live: 79, at its ceiling",
     "scripts/apply_sepp_marker_blind.py": "the database path ran live on 2026-10-17: 45, 6 and 28 rows written; the duplicate guard refused 3 plans before any write; pure parts unit-tested (test_apply_sepp_duplicate_guard.py)",
     "scripts/visible_text_repair.py": "read-only SELECT of Campbelltown rows; ran live for the 94-row plan; pure parts (lines, collapse, plan_row) unit-tested",
-    "scripts/withhold_state_paraphrase.py": "change is the backup file name only; the update path ran live on 2026-10-17 (29 + 24 + 8 rows) and is covered by tests/test_withhold_state_paraphrase.py"
+    "scripts/withhold_state_paraphrase.py": "change is the backup file name only; the update path ran live on 2026-10-17 (29 + 24 + 8 rows) and is covered by tests/test_withhold_state_paraphrase.py",
+    "scripts/revert_row_from_backup.py": "one-off revert; ran live on 2026-10-17 for row 45999 (dry run, then --apply; backup revert_45999_pre_*.json)"
   },
   "pre_impl": {
     "existing_data": "sepp_marker_blind/sepp_ref_fix deciders, verify + apply scripts, page_evidence matcher, dcp_page_repair.write, withhold_state_paraphrase.py, probe_108",
@@ -47,13 +49,6 @@
       "if_none": "no context given means several places stay refused as ambiguous_unit"
     },
     {
-      "name": "tiebreaks",
-      "file_line": "scripts/sepp_complete_unit.py",
-      "input": "the row's ref_number and its two neighbour labels in the same document",
-      "output": "ordered list of own_label_unit, own_label and neighbour_labels hints",
-      "if_none": "empty list when no label parses as a clause"
-    },
-    {
       "name": "duplicate_problems",
       "file_line": "scripts/apply_sepp_marker_blind.py",
       "input": "plan rows, their section headers, and existing current rows",
@@ -66,17 +61,24 @@
       "input": "the repaired plan rows and the visible-only page texts",
       "output": "page_check on_page written for rows proven on their visible page",
       "if_none": "rows not on the visible page are skipped and listed, never marked"
+    },
+    {
+      "name": "tiebreaks",
+      "file_line": "scripts/sepp_complete_unit.py",
+      "input": "the row's ref_number (neighbour labels are accepted but no longer used)",
+      "output": "ordered list of own_label_unit then own_label hints",
+      "if_none": "empty list when the row's own label does not parse as a clause"
     }
   ],
   "values": [
     {
-      "value": "DQ145_CEILING = 290",
-      "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-17 after all writes",
+      "value": "DQ-147 ceiling 79",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-147 after the Campbelltown repair",
       "if_missing": "n/a (constant)"
     },
     {
-      "value": "DQ-147 ceiling 79",
-      "read_at": "python scripts/dq_probe_live.py --id DQ-147 after the Campbelltown repair",
+      "value": "DQ145_CEILING = 291",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-17 after row 45999 was reverted",
       "if_missing": "n/a (constant)"
     }
   ],
@@ -112,7 +114,7 @@
     }
   ],
   "mutation_analysis": "Not executed. By reading: removing the 'neighbours must agree' condition fails test_neighbour_labels_break_a_tie_only_when_both_agree; dropping the white-colour filter fails test_white_span_is_dropped_dark_kept; removing the same-text rule fails test_same_text_different_labels_refused.",
-  "residual_risk": "81 SEPP rows remain ambiguous: the same standard sits in up to 6 codes and the row does not say which; the fix is to tie each such rule to its code(s), not to pick one. 28 Campbelltown rows were refused (collapsed text not one run of the visible page). About 30 council rows stay unresolved (words on several pages). Some Campbelltown rows with no repeated line were page-proven on text that includes the invisible copy. Cross-review 2026-10-17 (code-only, by hand): apply_visible_text_repair now re-derives each fix from the stored text and checks the PDF is the registry's file in force (the 94 written rows pass the stricter check against their pre-write backup); neighbour labels are limited to state-law rows (the one neighbour-settled row's document has 0 council rows); the LEP chain now reaches the complete-clause step after a ref-fix unit_too_big (re-run: 0 new rows). rules_lost: all 94 were 0 and the DQ-108 rollback guard covers it.",
+  "residual_risk": "81 SEPP rows remain ambiguous: the same standard sits in up to 6 codes and the row does not say which; the fix is to tie each such rule to its code(s), not to pick one. 28 Campbelltown rows were refused (collapsed text not one run of the visible page). About 30 council rows stay unresolved (words on several pages). Some Campbelltown rows with no repeated line were page-proven on text that includes the invisible copy. Cross-review 2026-10-17 (code-only, by hand): apply_visible_text_repair now re-derives each fix from the stored text and checks the PDF is the registry's file in force (the 94 written rows pass the stricter check against their pre-write backup); neighbour labels are limited to state-law rows (the one neighbour-settled row's document has 0 council rows); the LEP chain now reaches the complete-clause step after a ref-fix unit_too_big (re-run: 0 new rows). rules_lost: all 94 were 0 and the DQ-108 rollback guard covers it. Second cross-review pass: the neighbour-label tie-break is withdrawn (row id order is not document order) and its one row, 45999, reverted to its backup as version 3; the duplicate guard now also refuses same document + same text against SERVED rows outside the plan (9 such twins withheld, all already proven under loose labels); the Campbelltown re-proof fails if any row is skipped and runs automatically after a write. 17 groups of served rows with identical text in one document remain fleet-wide (Ashfield 10, state 3), not yet judged.",
   "post_merge": {
     "db_reset": "No",
     "secrets": "None",

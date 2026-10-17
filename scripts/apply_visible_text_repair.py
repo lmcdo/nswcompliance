@@ -115,6 +115,9 @@ def reprove(conn, rows: list[dict], vis: dict, apply: bool) -> int:
         todo.append({"id": t[0], "pdf_page": ev["page"], "page_range": t[4], "printed_page_label": t[5],
                      "page_check": "on_page", "page_source_path": src})
     print(f"re-prove: {len(todo)} rows on the visible page; skipped {len(skipped)} {skipped[:5]}")
+    if skipped:   # a repaired row left without a page proof is a failure, not a partial success (cross-review)
+        print("REFUSING: every repaired row must re-prove on its visible page")
+        return 1
     if not apply or not todo:
         return 0
     n = dpr.write(conn, todo)
@@ -207,7 +210,9 @@ def main(argv=None) -> int:
         return 1
     conn.commit()
     print(f"WROTE {len(rows)} rows (version history v1/v2); DQ-108 {before} -> {after}.")
-    return 0
+    # migration 079's trigger cleared page_check on every changed row: re-prove them now, not as an optional step
+    conn.autocommit = False
+    return reprove(conn, rows, vis, True)
 
 
 if __name__ == "__main__":

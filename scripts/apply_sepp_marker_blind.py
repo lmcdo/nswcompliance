@@ -46,7 +46,8 @@ def final_key(r: dict, header: str | None) -> tuple[str, str, str, str]:
 def duplicate_problems(plan_rows: list[dict], headers: dict[int, str | None],
                        others: list[tuple]) -> list[str]:
     """Pure. Refusals when two plan rows would end with the same final key, or a plan row's final key equals an
-    existing current row OUTSIDE the plan (others: (id, document_id, ref_number, section_header, md5(text)))."""
+    existing current row OUTSIDE the plan (others: (id, document_id, ref_number, section_header, md5(text)[, v2_is_actionable])); a SERVED outside row with
+    the same document and text under another label is refused too (the same rule shown twice)."""
     bad, seen, same_text = [], {}, {}
     for r in plan_rows:
         k = final_key(r, headers.get(r["id"]))
@@ -62,12 +63,16 @@ def duplicate_problems(plan_rows: list[dict], headers: dict[int, str | None],
             bad.append(f"{same_text[t]} and {r['id']}: would hold the same text in document {k[0]!r} (a duplicate rule)")
         same_text.setdefault(t, r["id"])
     in_plan = {r["id"] for r in plan_rows}
-    for oid, doc, ref, hdr, m5 in others:
+    for oid, doc, ref, hdr, m5, *rest in others:
+        served = rest[0] if rest else True
         if oid in in_plan:
             continue
         k = (doc or "", ref or "", hdr or "", m5)
         if k in seen:
             bad.append(f"{seen[k]}: final key equals existing current row {oid} outside the plan")
+        elif served and (doc or "", m5) in same_text:   # same document, same text, other label: the same rule shown twice
+            bad.append(f"{same_text[(doc or '', m5)]}: would hold the same text as existing current row {oid} "
+                       f"in document {doc!r} (a duplicate rule)")
     return bad
 
 
@@ -75,7 +80,7 @@ def duplicate_guard(cur, plan_rows: list[dict], full: dict[int, tuple]) -> list[
     """Reads the database (no write): existing current rows that share a plan row's document and final text."""
     headers = {i: t[15] for i, t in full.items()}
     keys = {r["id"]: final_key(r, headers.get(r["id"])) for r in plan_rows}
-    cur.execute("SELECT id, document_id, ref_number, section_header, md5(provision_text) FROM regulatory_provisions "
+    cur.execute("SELECT id, document_id, ref_number, section_header, md5(provision_text), v2_is_actionable FROM regulatory_provisions "
                 "WHERE is_current AND document_id = ANY(%s) AND md5(provision_text) = ANY(%s) AND id <> ALL(%s)",
                 (sorted({k[0] for k in keys.values()}), sorted({k[3] for k in keys.values()}), list(keys)))
     return duplicate_problems(plan_rows, headers, cur.fetchall())

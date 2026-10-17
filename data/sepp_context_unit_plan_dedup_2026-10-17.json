@@ -107,23 +107,7 @@
    "law_date": "2026-10-16",
    "old_text": "Before carrying out development under this division, the Aboriginal Housing Office must consider..., the Land and Housing Corporation must consider..., Landcom must consider...",
    "new_text": "30B Considerations before carrying out development\n(1) Before carrying out development under this division, the Aboriginal Housing Office must consider the AHO Design Guidelines NSW, published by the Aboriginal Housing Office in January 2020.\n(2) Before carrying out development under this division, the Land and Housing Corporation must consider—\n(a) Good Design for Social Housing, published by the Land and Housing Corporation, in partnership with the Government Architect NSW, in September 2020, and\n(b) the NSW Land and Housing Corporation Design Requirements, published by the Land and Housing Corporation in February 2023.\n(3) Before carrying out development under this division, Landcom must consider the Landcom Affordable Housing Design Guideline, published by Landcom, in partnership with the Government Architect NSW, in November 2023."
-  },
-  {
-   "id": 45999,
-   "md5": "f93880a561c6d973204e6f43d8e70329",
-   "rule": "recopy",
-   "kind": "complete_unit_recopy",
-   "epi": "epi-2021-0732",
-   "document_id": "State_Environmental_Planning_Policy_Transport_and_Infrastructure_2021__NSW_Legislation",
-   "ref_number": "provision_3848",
-   "unit_id": "sch.12-sec.28",
-   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0732#sch.12-sec.28",
-   "law_date": "2026-10-16",
-   "old_text": "(1) Signage (other than advertising structures).   \n(2) A sign must comply with AS 1319—1994, Safety signs for the occupational environment and AS/NZS 4282:2019, Control of the obtrusive ef ects of outdoor lighting.",
-   "new_text": "28 Signage\n(1) Signage other than advertising structures.\n(2) A sign must comply with—\n(a) AS 1319—1994, Safety signs for the occupational environment, and\n(b) AS/NZS 4282:2019, Control of the obtrusive effects of outdoor lighting.",
-   "old_ref_number": "provision_3848",
-   "new_ref_number": "Schedule 12, section 28"
   }
  ],
- "note": "derived: 17566 and 17572 dropped, each re-copies to the same clause as 17562 / 17568; withheld as duplicates"
+ "note": "derived: 17566 and 17572 dropped, each re-copies to the same clause as 17562 / 17568; withheld as duplicates; 45999 removed: applied, then reverted 2026-10-17 (neighbour-label tie-break withdrawn; scripts/revert_row_from_backup.py)"
 }

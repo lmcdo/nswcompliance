@@ -28,3 +28,15 @@ def test_different_text_passes():
 
 def test_same_text_other_document_passes():
     assert not ap.duplicate_problems([row(1, "Clause 6.24", "x", doc="a"), row(2, "Clause 6.24", "x", doc="b")], {}, [])
+
+
+def test_same_text_as_a_served_row_outside_the_plan_refused():
+    import hashlib
+    m = hashlib.md5("x".encode()).hexdigest()
+    assert ap.duplicate_problems([row(1, "Clause 2", "x")], {}, [(9, "doc", "Clause 1", "", m, True)])
+
+
+def test_same_text_as_a_withheld_row_outside_the_plan_passes():
+    import hashlib
+    m = hashlib.md5("x".encode()).hexdigest()
+    assert not ap.duplicate_problems([row(1, "Clause 2", "x")], {}, [(9, "doc", "Clause 1", "", m, False)])
