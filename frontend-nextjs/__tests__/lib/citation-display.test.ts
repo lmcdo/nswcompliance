@@ -109,7 +109,9 @@ describe('compound structural references and document-id fail-closed', () => {
 
 describe('a state-law reference is shown only if it looks like a real NSW clause', () => {
   it('shows real clause shapes', () => {
-    for (const ok of ['2.30AB', '3A.12', 'cl 5.10', 'Clause 4.1', 'Schedule 2 cl 6', 'Schedule 1', 's 87', '4.6(3)', 'Chapter 3']) {
+    for (const ok of ['2.30AB', '3A.12', 'cl 5.10', 'Clause 4.1', 'Schedule 2 cl 6', 'Schedule 1', 's 87', '4.6(3)', 'Chapter 3',
+      // labels written by scripts/sepp_ref_fix.py from the law's own unit ids
+      'Section 3.4(2)(e)', 'Schedule 11, section 4', 'Schedule 6A, section 19', 'Schedule 2A, section 141R(1)(c)']) {
       expect(stateClauseLabel(ok)).toBe(ok);
     }
   });

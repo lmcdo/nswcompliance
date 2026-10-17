@@ -1,0 +1,115 @@
+{
+  "tier": "standard",
+  "justification": "Deterministic SEPP clause-label fix (67 rows: label := the law unit the row's words sit in, 64 re-copied verbatim) plus a trailing-next-heading rule for the number check (16 rows re-copied), applied live 2026-10-17 with backups; also the not-a-rule withhold lists (Ashfield E1 Part 9 905, Ku-ring-gai legend 87, SEPP overlap/paraphrase/fragment 228, user yes). DQ-145 measured 860 -> 430 by python scripts/dq_probe_live.py --id DQ-145; ceiling lowered to 430.",
+  "commit_hash": "9fe02e4f",
+  "files": [
+    "scripts/sepp_ref_fix.py",
+    "scripts/sepp_marker_blind.py",
+    "scripts/verify_sepp_marker_blind.py",
+    "scripts/apply_sepp_marker_blind.py",
+    "scripts/outreach_claim_checks.py",
+    ".claude/dq_checks.json",
+    "tests/test_sepp_ref_fix.py",
+    "tests/test_sepp_marker_blind.py",
+    "frontend-nextjs/__tests__/lib/citation-display.test.ts",
+    "data/sepp_ref_fix_plan_2026-10-17.json",
+    "data/sepp_ref_fix_evidence_2026-10-17.jsonl",
+    "data/sepp_ref_fix_refused_2026-10-17.csv",
+    "data/sepp_marker_blind_plan_2026-10-17.json",
+    "data/sepp_marker_blind_evidence_2026-10-17.jsonl",
+    "data/sepp_marker_blind_refused_2026-10-17.csv",
+    "data/not_a_rule_ashfield_e1_part9_2026-10-17.json",
+    "data/not_a_rule_krg_map_legend_2026-10-17.json",
+    "data/sepp_withhold_overlap_paraphrase_fragment_2026-10-17.json"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_sepp_ref_fix.py tests/test_sepp_marker_blind.py tests/test_outreach_claim_checks_oc20.py && python scripts/verify_sepp_marker_blind.py data/sepp_ref_fix_plan_2026-10-17.json data/sepp_ref_fix_evidence_2026-10-17.jsonl",
+    "fails_when": "a label is not the grammar label of its unit or fails the site's display check, the label-blind unit search picks a different unit, two schedules holding the same words are not refused, a heading inside a row body is stripped, or DQ-145 exceeds 430",
+    "observed_red": "Before the verifier used the same heading strip as the planner, the live apply refused 3 rows (22346, 12653, 12655: 'a number of the old text is missing from the new text') and wrote nothing; with the strip in both, 16 verified and were written. Not run: a mutation of strip_trailing_headings itself."
+  },
+  "real_layer_exempt": {
+    "scripts/sepp_ref_fix.py": "reads production read-only with the same SQL as sepp_marker_blind.SQL; unit decisions run against the cached legislation HTML whose sha256 the verifier checks against the manifest",
+    "scripts/apply_sepp_marker_blind.py": "the live apply ran: 67 then 16 rows written, every row guarded on md5 and old ref_number at write time, post-write state re-read before commit"
+  },
+  "pre_impl": {
+    "existing_data": "sepp_marker_blind decide/find_seq/decide_recopy, verify and apply scripts from #1321; withhold_state_paraphrase.py --list/--council for the withholds",
+    "assumption_mismatch": "ref_unit mapped 'Schedule 2 cl 6' to the whole schedule; now to sch.2-sec.6. The 43 #1321 rows still verify 43/43.",
+    "new_vs_existing": "reuses decide() unchanged for the final verdict; adds a label-blind search (ignore_ref) and a unit-id -> label grammar; the withholds reuse the existing script with new lists"
+  },
+  "functions": [
+    {
+      "name": "unit_label",
+      "file_line": "scripts/sepp_ref_fix.py",
+      "input": "a law unit id such as sch.11-sec.4 or sec.3.4-ssec.2-para1.e",
+      "output": "'Schedule 11, section 4' / 'Section 3.4(2)(e)'",
+      "if_none": "None for notes, tables, parts or a bare schedule -> the row is refused unit_not_a_clause"
+    },
+    {
+      "name": "strip_trailing_headings",
+      "file_line": "scripts/sepp_marker_blind.py",
+      "input": "one stored row's provision text, possibly None",
+      "output": "the text minus Part/Division/Subdivision/Chapter/Schedule heading lines at its very end",
+      "if_none": "returns an empty string, never raises"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ145_CEILING = 430",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-17 after all five live writes",
+      "if_missing": "n/a (constant)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "the same words appear in several schedules (e.g. 'Clause 5' found in six)",
+      "what_happens": "refused ambiguous_unit; the row stays unproven with its mark",
+      "mitigated": true,
+      "how": "label-blind search keeps the peer check; never picks by sort order",
+      "repro": "tests/test_sepp_ref_fix.py ambiguous case"
+    },
+    {
+      "scenario": "a row's real measurement sits on its last line",
+      "what_happens": "kept in the number check; the row is refused if the law unit lacks it",
+      "mitigated": true,
+      "how": "only lines shaped 'Part|Division|... N Title' are stripped, and only at the end",
+      "repro": "test_body_number_still_counts"
+    },
+    {
+      "scenario": "a row changed between plan and write",
+      "what_happens": "the UPDATE matches 0 rows and the whole apply rolls back",
+      "mitigated": true,
+      "how": "md5(provision_text) and ref_number IS NOT DISTINCT FROM the planned old values",
+      "repro": "edit one row's text then run the apply"
+    },
+    {
+      "scenario": "a row ends with a heading-shaped line that is not a heading of the law, or names a part the unit itself contains",
+      "what_happens": "its numbers stay in the check; a unit lacking them is refused number_missing",
+      "mitigated": true,
+      "how": "numbers_for_check leaves a tail out only when every 'Part/Division N' label in it is printed in the page between the chosen unit and the next clause (Snapshot.gap_after) and is absent from the unit's own text (cross-review 2026-10-17, twice)",
+      "repro": "test_heading_not_printed_in_law_keeps_its_numbers, test_heading_printed_elsewhere_in_law_keeps_its_numbers"
+    },
+    {
+      "scenario": "the row's words fill one short section and also sit verbatim inside an unrelated longer section",
+      "what_happens": "refused ambiguous_unit; no label is written",
+      "mitigated": true,
+      "how": "find_unit refuses when any contiguous hit is outside the chosen unit's branch (cross-review 2026-10-17)",
+      "repro": "test_words_also_inside_an_unrelated_longer_unit_are_ambiguous"
+    },
+    {
+      "scenario": "a re-copy drops the phrase a structured numeric rule on the row quotes",
+      "what_happens": "the write rolls back with the rule ids; nothing is committed",
+      "mitigated": true,
+      "how": "apply runs the existing DQ-108 probe (dq_probe_unchecked_rows.probe_108) before the writes and before commit in the same transaction and refuses if the count rose",
+      "repro": "2026-10-17: rows 16737 ('45% landscap') and 37351 ('3 m wide') went red after the 67-row apply; raw_match set to the law's own phrase with the same value (backup dq108_rule_phrase_pre_2026-10-17T133313.json); DQ-108 back to 0"
+    }
+  ],
+  "mutation_analysis": "Not executed. By reading: strip_trailing_headings -> identity would break test_trailing_part_heading_is_stripped_for_numbers and test_two_trailing_headings_are_stripped (both assert the stripped string); the verifier re-derives every label from its unit id, so a wrong grammar label fails verification.",
+  "residual_risk": "110 ref_mismatch rows stay unproven (69 ambiguous). 81 unit_too_big rows stay unproven with the mark. The Ashfield E1 Part 9 history text is withheld from every Ashfield address; a heritage-area statement of significance is not shown anywhere until it is keyed to its area. Cross-review (Sol, code-only staged diff, 2026-10-17) raised both; checked on the 83 written rows: 0 unrelated-branch hits, 16/16 stripped headings are the law's next heading (22518's was renamed in 2025). The DQ-108 guard in apply runs only on --apply; it has not yet run on a live write.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "python scripts/dq_check.py --outreach on main prints 21 of 21"
+  }
+}

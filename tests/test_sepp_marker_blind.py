@@ -278,3 +278,25 @@ def test_verifier_exit_codes(snap, tmp_path):
     plan, ev = good(snap, tmp_path)
     ok, bad = ver.verify({"manifest": plan["manifest"], "rows": []}, [], tmp_path)
     assert ok == 0 and not bad   # main() turns this into exit 2
+
+
+# --- trailing heading of the next unit (2026-10-17) ------------------------------------------------------------
+def test_trailing_part_heading_is_stripped_for_numbers():
+    t = "the consent authority is satisfied.\nPart 2.4 Principal development standards"
+    assert mb.strip_trailing_headings(t) == "the consent authority is satisfied."
+
+
+def test_two_trailing_headings_are_stripped():
+    t = "purposes of the Act.\nPart 2.5 Sustainable aquaculture\nDivision 1 Preliminary"
+    assert mb.strip_trailing_headings(t) == "purposes of the Act."
+
+
+def test_heading_inside_the_body_is_kept():
+    t = "as set out in\nPart 2.4 Principal development standards\nthe height must not exceed 9m."
+    assert mb.strip_trailing_headings(t) == t
+
+
+def test_body_number_still_counts():
+    # a measurement on the last line is not a heading: '9m' stays in the number check
+    t = "The height must not exceed\n9m above ground level."
+    assert mb.strip_trailing_headings(t) == t

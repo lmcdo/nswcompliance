@@ -93,6 +93,18 @@ class Snapshot:
         self.joined = {u: " " + " ".join(t) + " " for u, t in self.tokens.items()}
         self._inst = None
 
+    def gap_after(self, uid: str) -> str:
+        """Plain text of the page from unit `uid` to the next unit that is not inside it: the unit plus any headings
+        printed between it and the next clause. '' when the unit's id is not found in the page."""
+        start = self.page.find(f'id="{uid}"')
+        if start == -1:
+            return ""
+        ids = list(self.units)
+        later = [u for u in ids[ids.index(uid) + 1:] if uid not in self.ancestors(u)]
+        end = self.page.find(f'id="{later[0]}"', start) if later else -1
+        seg = self.page[start:end if end != -1 else len(self.page)]
+        return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", seg))
+
     @property
     def inst(self) -> "rc.Instrument":
         if self._inst is None:
@@ -107,9 +119,24 @@ class Snapshot:
         return out
 
 
+_SCHED_SEC = re.compile(r"^Schedule\s+(\d+[A-Z]{0,2})\s*,?\s*(?:Section|Clause|Subclause|cl|s)\.?\s*"
+                        r"(\d+[A-Z]{0,3}(?:\.\d+[A-Z]{0,3})?)((?:\s*\([^)]*\))*)\s*$", re.I)
+
+
+def _sched_ref(ref: str) -> tuple[str, list[str]] | None:
+    """'Schedule 2A, section 141R(1)(c)' -> ('sch.2A-sec.141R', ['1', 'c']); anything else None."""
+    m = _SCHED_SEC.match((ref or "").strip())
+    if not m:
+        return None
+    return f"sch.{m.group(1)}-sec.{m.group(2)}", [g.strip() for g in re.findall(r"\(\s*([^)]*?)\s*\)", m.group(3))]
+
+
 def ref_unit(ref: str | None) -> str | None:
     """Unit id a ref_number points at ('Clause 3C.24' -> 'sec.3C.24', 'Section 86(2)' -> 'sec.86-ssec.2'), else None."""
     r = (ref or "").strip()
+    sched = _sched_ref(r)
+    if sched:   # 'Schedule 2A, section 141R(1)(c)' -> the section (or subclause) inside the schedule
+        return sched[0] + (f"-ssec.{sched[1][0]}" if sched[1] and re.fullmatch(r"\d+[A-Z]?", sched[1][0]) else "")
     m = re.match(r"^Schedule\s+(\d+[A-Z]{0,2})\b", r, re.I)
     if m:
         return f"sch.{m.group(1)}"
@@ -170,12 +197,19 @@ def ref_full(ref: str | None) -> tuple[str | None, bool]:
     """(unit id the WHOLE ref names, ref goes below the section/subclause). 'Section 107(2)(d)' ->
     ('sec.107-ssec.2-para1.d', True); 'Clause 5A.20(a)' -> ('sec.5A.20-para1.a', True); a paren group that does not
     parse as the next level gives (None, True): the ref is more specific than anything we can resolve."""
+    sched = _sched_ref(ref or "")
+    if sched:
+        return _walk_groups(sched[0], sched[1])
     m = re.match(r"^(?:Section|Clause|Subclause|cl|s)?\s*(\d+[A-Z]{0,3}(?:\.\d+[A-Z]{0,3})?)((?:\s*\([^)]*\))*)",
                  (ref or "").strip(), re.I)
     if not m:
         return None, False
-    uid, extra, level = f"sec.{m.group(1)}", False, 0
-    for i, g in enumerate(re.findall(r"\(\s*([^)]*?)\s*\)", m.group(2))):
+    return _walk_groups(f"sec.{m.group(1)}", re.findall(r"\(\s*([^)]*?)\s*\)", m.group(2)))
+
+
+def _walk_groups(uid: str | None, groups: list[str]) -> tuple[str | None, bool]:
+    extra, level = False, 0
+    for i, g in enumerate(groups):
         if i == 0 and re.fullmatch(r"\d+[A-Z]?", g):
             uid += f"-ssec.{g}"
             continue
@@ -245,7 +279,45 @@ def _decide(old: str, ref: str | None, snap: Snapshot, allow_recopy: bool = True
     return decide_recopy(old, row, rf, snap)
 
 
-def decide_recopy(old: str, row: list[str], rf: str | None, snap: Snapshot) -> dict:
+_TRAILING_HEADING = re.compile(
+    r"(?:\n[ \t]*(?:Part|Division|Subdivision|Chapter|Schedule)\s+\d+[A-Z]{0,2}(?:\.\d+[A-Z]{0,2})*\s+[A-Z][^\n]{0,100})+\s*$")
+
+
+def strip_trailing_headings(text: str) -> str:
+    """The row minus heading lines of the NEXT unit that the extractor ran on into ('...\\nPart 2.4 Principal development
+    standards'). Shape only; numbers_for_check adds the structural proof before it is used."""
+    return _TRAILING_HEADING.sub("", text or "")
+
+
+_HEADING_LABEL = re.compile(r"\b(Part|Division|Subdivision|Chapter|Schedule)\s+(\d+[A-Z]{0,2}(?:\.\d+[A-Z]{0,2})*)\b")
+
+
+def numbers_for_check(old: str, snap: "Snapshot", uid: str) -> set[str]:
+    """Numbers of the row that the chosen unit must hold. When the row ends with heading lines whose every label
+    ('Division 12') is printed in the page between this unit and the next clause and not in the unit's own text --
+    the heading the law prints right after this unit -- those LABEL numbers are left out. Every other number,
+    including one in a heading's title, still counts (cross-review 2026-10-17)."""
+    nums = rc.numbers(old)
+    body = strip_trailing_headings(old)
+    tail = (old or "")[len(body):]
+    if not tail:
+        return nums
+    labels = _HEADING_LABEL.findall(tail)
+    unit_text = re.sub(r"\s+", " ", snap.units[uid].text)
+    gap = snap.gap_after(uid)
+    pat = lambda lab: re.escape(lab) + r"(?![\d.A-Z])"   # noqa: E731
+    if not labels or any(not re.search(pat(f"{k} {n}"), gap) or re.search(pat(f"{k} {n}"), unit_text)
+                         for k, n in labels):
+        return nums
+    # Only the heading LABELS' numbers leave the check; a number in a heading's title (or anywhere else) stays, and
+    # a label number that also occurs in the row's body stays (cross-review 2026-10-17, third pass).
+    body_nums = rc.numbers(body)
+    label_nums = {x for _, n in labels for x in rc.numbers(n)}   # read like the row's numbers ('18A' -> '18')
+    return nums - (label_nums - body_nums)
+
+
+def decide_recopy(old: str, row: list[str], rf: str | None, snap: Snapshot, ignore_ref: bool = False) -> dict:
+    """ignore_ref=True: every unit counts as related (used only by sepp_ref_fix, which finds the unit without the label)."""
     rset = set(row)
     scored, why = [], Counter()
     for uid, ut in snap.tokens.items():
@@ -264,7 +336,7 @@ def decide_recopy(old: str, row: list[str], rf: str | None, snap: Snapshot) -> d
     if not scored:
         r = "unit_too_big" if why["too_big"] else "no_unit_covers_90pct"
         return {"verdict": "refuse", "reason": r, "n_words": len(row)}
-    related = [t for t in scored if ref_related(snap, rf, t[0])]
+    related = scored if ignore_ref else [t for t in scored if ref_related(snap, rf, t[0])]
     if not related:
         best = max(scored, key=lambda t: t[2])
         return {"verdict": "refuse", "reason": "ref_mismatch", "unit": best[0], "n_words": len(row)}
@@ -272,9 +344,8 @@ def decide_recopy(old: str, row: list[str], rf: str | None, snap: Snapshot) -> d
     # numbers: every number in the row must be in the unit; a unit that lacks one is not a candidate
     lost_all = {}
     ok = []
-    row_nums = rc.numbers(old)
     for uid, n, cov in scored:
-        lost = sorted(row_nums - rc.numbers(snap.units[uid].text))
+        lost = sorted(numbers_for_check(old, snap, uid) - rc.numbers(snap.units[uid].text))
         if lost:
             lost_all[uid] = lost
         else:

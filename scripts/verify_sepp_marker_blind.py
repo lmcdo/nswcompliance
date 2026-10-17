@@ -24,6 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sepp_marker_blind as mb  # noqa: E402
+import sepp_ref_fix as rf  # noqa: E402
 
 CHECKED = ("unit_id", "word_start", "word_end", "n_words", "unit_words", "tokens_sha256", "matched_words",
            "coverage", "size_ratio", "new_sha256")
@@ -77,7 +78,18 @@ def verify(plan: dict, evidence: list[dict], cache_dir: Path | None = None) -> t
             continue
         row = mb.norm_tokens(r["old_text"])
         ut = snap.tokens[uid]
-        d = mb.decide(r["old_text"], r.get("ref_number"), snap)
+        new_ref = r.get("new_ref_number")
+        if new_ref is not None:   # ref-fix row: the label is derived from the unit id, never trusted from the plan
+            if (rf.unit_label(uid) != new_ref or mb.ref_full(new_ref)[0] != uid or rf.state_clause_label(new_ref) != new_ref
+                    or r.get("old_ref_number") != r.get("ref_number") or e.get("new_ref_number") != new_ref
+                    or e.get("old_ref_number") != r.get("old_ref_number") or e.get("ref_number") != new_ref):
+                bad.append(f"{rid}: new_ref_number {new_ref!r} is not the grammar label of unit {uid} / fails display check")
+                continue
+            f = rf.find_unit(r["old_text"], snap)   # the unit found without any label must be this unit
+            if f.get("unit") != uid:
+                bad.append(f"{rid}: label-blind unit search gives {f.get('unit') or f.get('reason')}, plan says {uid}")
+                continue
+        d = mb.decide(r["old_text"], new_ref if new_ref is not None else r.get("ref_number"), snap)
         want_verdict = e["rule"]
         if d["verdict"] != want_verdict:
             bad.append(f"{rid}: re-derived verdict {d['verdict']} ({d.get('reason')}), evidence says {want_verdict}")
@@ -101,7 +113,7 @@ def verify(plan: dict, evidence: list[dict], cache_dir: Path | None = None) -> t
             if e["coverage"] < mb.COVERAGE_MIN or len(ut) > mb.SIZE_MAX * len(row):
                 bad.append(f"{rid}: coverage/size outside the rule")
                 continue
-            if mb.rc.numbers(r["old_text"]) - mb.rc.numbers(new):
+            if mb.numbers_for_check(r["old_text"], snap, uid) - mb.rc.numbers(new):
                 bad.append(f"{rid}: a number of the old text is missing from the new text")
                 continue
         ok += 1

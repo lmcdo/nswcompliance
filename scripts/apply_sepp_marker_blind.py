@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply a sepp_marker_blind plan: rule 1 rows -> citation_status='proven'; rule 2 rows -> text := law unit + proven.
+"""Apply a sepp_marker_blind or sepp_ref_fix plan (rows with new_ref_number also set ref_number): rule 1 -> proven; rule 2 -> text := law unit + proven.
 
 prior-art-checked: combines scripts/apply_state_law_proof.py (status-only write, md5 guard) and
 scripts/apply_state_law_recopy.py (versioned text write via dq88_refresh_2026_10_10.version) because one plan
@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from state_law_proof import ROOT, connect  # noqa: E402
 import apply_state_law_recopy as rcp  # noqa: E402
 import verify_sepp_marker_blind as ver  # noqa: E402
+from dq_probe_unchecked_rows import probe_108  # noqa: E402
 
 BACKUPS = ROOT / "data" / "db_rollback_backups"
 SELECT = ("SELECT id, md5(provision_text), source_council, is_current, "
@@ -86,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
     BACKUPS.mkdir(parents=True, exist_ok=True)
     back = BACKUPS / f"sepp_marker_blind_pre_{datetime.now():%Y-%m-%dT%H%M%S}.json"
     back.write_text(json.dumps(
-        [{"id": t[0], "provision_text": t[5], "citation_status": t[6], "citation_source_path": t[7],
+        [{"id": t[0], "ref_number": t[13], "provision_text": t[5], "citation_status": t[6], "citation_source_path": t[7],
           "citation_checked_at": t[8].isoformat() if t[8] else None, "version_count": t[9],
           "current_version_id": t[10], "text_hash": t[11], "text_hash_current": t[12]}
          for t in sorted(full.values())], indent=1, default=str), encoding="utf8")
@@ -95,6 +96,7 @@ def main(argv: list[str] | None = None) -> int:
     conn.autocommit = True
     cur.execute("SET default_transaction_read_only = off")
     conn.autocommit = False
+    dq108_before = probe_108(cur)[0]   # rules quoting a phrase their text lacks; a re-copy must not add any
     now = datetime.now(timezone.utc)
     for r in rows:
         # prior-art-checked: extends this file's own existing lock query (same table, same guards); adds ref_number and a version recount
@@ -118,23 +120,32 @@ def main(argv: list[str] | None = None) -> int:
                     f"Stored text replaced by the verbatim words of {where} (deterministic, scripts/sepp_marker_blind.py).",
                     now)
             want_md5 = rcp.md5(r["new_text"])
+        new_ref = r.get("new_ref_number")   # ref-fix rows (scripts/sepp_ref_fix.py) also replace the label
         cur.execute("UPDATE regulatory_provisions SET citation_status = 'proven', citation_source_path = %s, "
-                    "citation_checked_at = now() WHERE id = %s AND is_current AND source_council IS NULL AND md5(provision_text) = %s",
-                    (r["source"], r["id"], want_md5))
+                    "citation_checked_at = now(), ref_number = COALESCE(%s, ref_number) "
+                    "WHERE id = %s AND is_current AND source_council IS NULL AND md5(provision_text) = %s AND ref_number IS NOT DISTINCT FROM %s",
+                    (r["source"], new_ref, r["id"], want_md5, r["ref_number"]))
         if cur.rowcount != 1:
             conn.rollback()
             print(f"ROLLED BACK: {r['id']} text is not the planned text after the write")
             return 1
-    cur.execute("SELECT id, md5(provision_text), citation_status FROM regulatory_provisions WHERE id = ANY(%s) AND is_current", (ids,))
-    now_rows = {i: (m, s) for i, m, s in cur.fetchall()}
+    cur.execute("SELECT id, md5(provision_text), citation_status, ref_number FROM regulatory_provisions WHERE id = ANY(%s) AND is_current", (ids,))
+    now_rows = {i: (m, s, rn) for i, m, s, rn in cur.fetchall()}
     wrong = [r["id"] for r in rows
-             if now_rows.get(r["id"]) != ((rcp.md5(r["new_text"]) if r["rule"] == "recopy" else r["md5"]), "proven")]
+             if now_rows.get(r["id"]) != ((rcp.md5(r["new_text"]) if r["rule"] == "recopy" else r["md5"]), "proven",
+                                          r.get("new_ref_number") or r["ref_number"])]
     if wrong or len(now_rows) != len(rows):
         conn.rollback()
         print(f"ROLLED BACK: {len(wrong)} rows not in the planned state (rowcount {len(now_rows)}/{len(rows)})")
         return 1
+    # DQ-108: re-copied text can drop the phrase a structured numeric rule quotes (2026-10-17: 2 rows went red).
+    dq108_after, hits = probe_108(cur)
+    if dq108_after > dq108_before:
+        conn.rollback()
+        print(f"ROLLED BACK: DQ-108 {dq108_before} -> {dq108_after}; fix the rules' raw_match first: {list(hits)[:5]}")
+        return 1
     conn.commit()
-    print(f"WROTE {len(rows)} rows: citation_status='proven'; recopy rows also provision_text = law unit, version v1/v2.")
+    print(f"WROTE {len(rows)} rows: citation_status='proven' (ref-fix rows also ref_number := new label); recopy rows also provision_text = law unit, version v1/v2.")
     return 0
 
 
