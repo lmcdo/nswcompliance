@@ -50,6 +50,9 @@ def main() -> int:
                 "AND rp.v2_is_actionable AND rp.source_council = reg.council AND rp.source_chapter_key = reg.chapter_key) "
                 "ORDER BY 1, 2")
     todo = cur.fetchall()
+    # close now: an open read transaction held for the whole hour-long scan blocked migration 113 and, behind it,
+    # live site reads of regulatory_provisions (2026-10-17)
+    cur.connection.close()
     tot = defaultdict(int)
     with open(a.out, "w", encoding="utf-8") as fh:
         for council, path in todo:
