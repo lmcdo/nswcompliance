@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: a new read-only notice on the main provisions route (meta field + amber line) pointing Ku-ring-gai centre addresses at the built-form figures whose legend labels were withheld on 2026-10-17. No data written; the route part fails to an empty list. Not Critical: no rule text or verdict changes.",
- "commit_hash": "2889a7f0",
+ "commit_hash": "fe07efbb",
  "files": [
   "scripts/frontage_setback_figures.py",
   "tests/test_frontage_setback_figures.py",
@@ -84,21 +84,21 @@
   },
   {
    "scenario": "the chapters or current paths query fails at request time",
-   "what_happens": "the notice list is empty and the rules response is unchanged",
+   "what_happens": "the page says the figures could not be loaded and the rules response is unchanged",
    "mitigated": true,
-   "how": "loadFrontageSetbackFigures catches, reports to captureServerException and returns []",
+   "how": "loadFrontageSetbackFigures catches, reports to captureServerException and returns failed: true; the notice shows a could-not-load line",
    "repro": "jest: returns [] and does not throw when a lookup fails"
   },
   {
    "scenario": "an address carries only a sub-precinct id while some figures are keyed to the centre id (14B, 14E)",
-   "what_happens": "those centre-level figures are not shown for that address",
-   "mitigated": false,
-   "how": "open: depends on which precinct ids the client sends; fails toward showing less",
-   "repro": "frontage-setback-figures.json entries with precinct_id 14B / 14E"
+   "what_happens": "the centre-level figures are shown too, because 14E covers 14E_L3",
+   "mitigated": true,
+   "how": "a figure keyed to P applies to ids equal to P or starting with P_ (pre-push cross-review 2026-10-17)",
+   "repro": "jest: a figure keyed to the centre applies to an address in one of its sub-precincts"
   }
  ],
  "mutation_analysis": "Not executed; see falsifiable_check.observed_red.",
- "residual_risk": "Centre-level figures (precinct 14B, 14E) appear only if the address request carries that centre id. 11 figure pages have no single caption and are shown as page numbers. Cross-review: run by pre-push on this diff (under 512 KB); verdicts are recorded here after the push.",
+ "residual_risk": "11 figure pages have no single caption and are shown as page numbers. Cross-review (pre-push, gpt-5.6-sol), round 1, 3 findings, all ACCEPTED and fixed: centre-level figures missed for sub-precinct addresses; a failed lookup looked like no figures (now failed: true and a could-not-load line); a null PDF URL could make a null#page link (script aborts, selector skips the chapter).",
  "post_merge": {
   "db_reset": "No",
   "secrets": "None",
