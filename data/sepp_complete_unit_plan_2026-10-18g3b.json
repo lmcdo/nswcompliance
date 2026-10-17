@@ -1,0 +1,21 @@
+{
+ "generated": "2026-10-18g3b",
+ "norm_version": "sl-norm/2",
+ "match_version": "sl-match/1",
+ "manifest": {
+  "epi-2008-0572": {
+   "file": "epi-2008-0572_2026-10-16.html",
+   "sha256": "13b5577ccfd028a6359b2278d28acc924b766678c9d27a1176bb412c1d2b6807",
+   "bytes": 2882206,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572"
+  },
+  "epi-2021-0732": {
+   "file": "epi-2021-0732_2026-10-16.html",
+   "sha256": "e9d581d57eeca8b9991f9ff3f3b7e08fc9c5148ab54dee1a9f9c5c1212afa6d5",
+   "bytes": 2087294,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0732"
+  }
+ },
+ "method": "scripts/sepp_complete_unit.py (docstring has the rules). No model reads or writes text.",
+ "rows": []
+}

@@ -1,0 +1,8 @@
+id,reason,ref_number,unit_found,detail
+14289,excerpt,Complying Development Certificate,sec.5A.5,ref_mismatch
+17561,ambiguous_unit,3.29(2)(a),sec.3.29;sec.3.29-ssec.2;sec.3B.57;sec.3B.57-ssec.3;sec.3C.32;sec.3C.32-ssec.2,
+17567,ambiguous_unit,3.29(3)(a),sec.3.29;sec.3.29-ssec.3;sec.3B.57;sec.3B.57-ssec.4;sec.3C.32;sec.3C.32-ssec.3,
+18411,ambiguous_unit,2.36,sec.2.10;sec.2.101;sec.2.103;sec.2.105;sec.2.105-ssec.1;sec.2.107,
+16026,ambiguous_unit,Section 30,sec.108C;sec.108C-ssec.1;sec.108CB;sec.108CB-ssec.1;sec.30;sec.30-ssec.1,
+16027,ambiguous_unit,Section 30A,sec.108CA;sec.108CB;sec.108CB-ssec.4;sec.30A;sec.43B;sec.44,
+43447,excerpt,provision_239,sec.2.20-ssec.2,ref_mismatch
