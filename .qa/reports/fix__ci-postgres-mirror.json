@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "One image reference in the drawdown-verify CI job changes from the AWS ECR Public mirror, which returned toomanyrequests Data limit exceeded on 6 of 6 pulls on 2026-10-17 (main runs 38982626267 and 38984636569, PR run 38984330325 three attempts), to Google's mirror.gcr.io copy of the same official postgres:16 image.",
-  "commit_hash": "",
+  "commit_hash": "4d74cb56",
   "files": [
     ".github/workflows/gates.yml"
   ],
