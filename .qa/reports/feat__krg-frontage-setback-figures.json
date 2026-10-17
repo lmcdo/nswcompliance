@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: a new read-only notice on the main provisions route (meta field + amber line) pointing Ku-ring-gai centre addresses at the built-form figures whose legend labels were withheld on 2026-10-17. No data written; the route part fails to an empty list. Not Critical: no rule text or verdict changes.",
- "commit_hash": "a993e012",
+ "commit_hash": "2889a7f0",
  "files": [
   "scripts/frontage_setback_figures.py",
   "tests/test_frontage_setback_figures.py",
@@ -20,7 +20,7 @@
  },
  "real_layer_exempt": {
   "scripts/frontage_setback_figures.py": "read-only SELECT run live 2026-10-17: 87 rows, 6 chapters, 37 figure entries (11 without a single caption)",
-  "frontend-nextjs/app/api/provisions/for-property/route.ts": "two read-only SELECTs inside try/catch that yields []; the pure selection is covered by jest; not run against a live server"
+  "frontend-nextjs/app/api/provisions/for-property/route.ts": "calls loadFrontageSetbackFigures (lib), whose two read-only SELECTs and failure path are covered by jest with a fake query; not run against a live server"
  },
  "pre_impl": {
   "existing_data": "data/not_a_rule_krg_map_legend_2026-10-17.json (87 withheld legend rows), dcp_chapter_registry, DcpNotCoveredNotice pattern, meta.not_covered",
@@ -86,8 +86,8 @@
    "scenario": "the chapters or current paths query fails at request time",
    "what_happens": "the notice list is empty and the rules response is unchanged",
    "mitigated": true,
-   "how": "try/catch around both queries, logged",
-   "repro": "by reading route.ts"
+   "how": "loadFrontageSetbackFigures catches, reports to captureServerException and returns []",
+   "repro": "jest: returns [] and does not throw when a lookup fails"
   },
   {
    "scenario": "an address carries only a sub-precinct id while some figures are keyed to the centre id (14B, 14E)",
