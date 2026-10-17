@@ -123,7 +123,8 @@ describe('a state-law reference is shown only if it looks like a real NSW clause
       expect(stateClauseLabel(ok)).toBe(ok);
     }
     for (const bad of ['provision_12; same words in 3.1', 'Section 3.1; same words in banana',
-      'Section 3.1; same words in ', 'Section 3.1; same words in 3.2, provision_9']) {
+      'Section 3.1; same words in ', 'Section 3.1; same words in 3.2, provision_9',
+      'Section 3.1; same words in 2344', 'Section 3.1; same words in 3.2, 2344']) {
       expect(stateClauseLabel(bad)).toBeNull();
     }
   });

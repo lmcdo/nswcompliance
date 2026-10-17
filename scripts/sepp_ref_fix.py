@@ -66,7 +66,7 @@ STATE_CLAUSE_RE = re.compile(rf"^(?:{_DIV}(?:\s*,?\s*{_DIV})*(?:\s*,?\s*(?:{_CW}
 # One standard printed word for word in several codes (DQ-145 step 2, user 2026-10-17: cite every place, pick none):
 # "Section 3.29(3); same words in 3C.32(3), 3D.53(4)". Each place is a full label or a bare number.
 SAME_WORDS = "; same words in "
-_ITEM = rf"(?:{_DIV}(?:\s*,?\s*{_DIV})*\s*,?\s*(?:{_CW})?{_NUM}|(?:{_CW})?{_NUM})"
+_ITEM = rf"(?!\d{{4,}}(?:,|$))(?:{_DIV}(?:\s*,?\s*{_DIV})*\s*,?\s*(?:{_CW})?{_NUM}|(?:{_CW})?{_NUM})"   # no bare row ids
 SAME_WORDS_RE = re.compile(rf"^(?P<first>.+?){re.escape(SAME_WORDS)}{_ITEM}(?:,\s*{_ITEM})*$", re.I)
 SAME_WORDS_MAX = 200
 

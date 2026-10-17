@@ -235,5 +235,6 @@ def test_same_words_label_passes_the_display_check():
     sch = rf.same_words_label(["Schedule 6, section 13(3)", "Schedule 7, section 15(3)"])
     assert rf.state_clause_label(sch) == sch
     for bad in ["provision_12; same words in 3.1", "Section 3.1; same words in banana",
-                "Section 3.1; same words in 3.2, provision_9", "Section 3.1; same words in "]:
+                "Section 3.1; same words in 3.2, provision_9", "Section 3.1; same words in ",
+                "Section 3.1; same words in 2344", "Section 3.1; same words in 3.2, 2344"]:
         assert rf.state_clause_label(bad) is None
