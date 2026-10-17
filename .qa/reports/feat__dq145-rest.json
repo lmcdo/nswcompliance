@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: deterministic proof/plan code for served law citations (DQ-145), a publish-time DB gate and an extractor fix used for every council. This PR makes no live write; every plan is a dry run checked by its own re-deriving verifier. Not Critical: no production data changes here; the migration and plans are applied separately with backups.",
- "commit_hash": "ac31bf78",
+ "commit_hash": "50d47298",
  "files": [
   "scripts/same_place_duplicates.py",
   "scripts/sepp_complete_unit.py",
@@ -35,6 +35,7 @@
   "scripts/page_proof_council.py": "read-only; the heading rule proved 6 Canterbury-Bankstown rows live, verify_page_evidence --db 6/6",
   "scripts/dcp_extract_changed.py": "ran through the pipeline in --review mode on Campbelltown Part 3 (no DB write); text no longer doubled",
   "scripts/measure_doubled_chars.py": "read-only fleet measurement, run live",
+  "scripts/verify_page_evidence.py": "its DB read (--db, read-only SELECT of md5/text/pages) ran live on the 6 heading proofs: verified 6/6",
   "migrations/113_state_law_publish_gate.sql": "not applied to production by this PR; applied to a throwaway local Postgres 17 by tests/test_migration_113_state_law_gate.py (7 cases, PYTEST_REAL_DB=1)"
  },
  "pre_impl": {
