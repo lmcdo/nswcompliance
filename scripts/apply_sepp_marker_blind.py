@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from state_law_proof import ROOT, connect  # noqa: E402
 import apply_state_law_recopy as rcp  # noqa: E402
 import verify_sepp_marker_blind as ver  # noqa: E402
+from dq_probe_unchecked_rows import probe_108  # noqa: E402
 
 BACKUPS = ROOT / "data" / "db_rollback_backups"
 SELECT = ("SELECT id, md5(provision_text), source_council, is_current, "
@@ -95,6 +96,7 @@ def main(argv: list[str] | None = None) -> int:
     conn.autocommit = True
     cur.execute("SET default_transaction_read_only = off")
     conn.autocommit = False
+    dq108_before = probe_108(cur)[0]   # rules quoting a phrase their text lacks; a re-copy must not add any
     now = datetime.now(timezone.utc)
     for r in rows:
         # prior-art-checked: extends this file's own existing lock query (same table, same guards); adds ref_number and a version recount
@@ -135,6 +137,12 @@ def main(argv: list[str] | None = None) -> int:
     if wrong or len(now_rows) != len(rows):
         conn.rollback()
         print(f"ROLLED BACK: {len(wrong)} rows not in the planned state (rowcount {len(now_rows)}/{len(rows)})")
+        return 1
+    # DQ-108: re-copied text can drop the phrase a structured numeric rule quotes (2026-10-17: 2 rows went red).
+    dq108_after, hits = probe_108(cur)
+    if dq108_after > dq108_before:
+        conn.rollback()
+        print(f"ROLLED BACK: DQ-108 {dq108_before} -> {dq108_after}; fix the rules' raw_match first: {list(hits)[:5]}")
         return 1
     conn.commit()
     print(f"WROTE {len(rows)} rows: citation_status='proven' (ref-fix rows also ref_number := new label); recopy rows also provision_text = law unit, version v1/v2.")
