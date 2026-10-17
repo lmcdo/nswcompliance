@@ -735,9 +735,11 @@ jobs:
       PGDATABASE_TEST: postgres
     services:
       postgres:
-        # AWS ECR Public mirror of the official image: Docker Hub token requests
-        # from GitHub-hosted runners timed out on 2026-10-10 (3 of 3 pulls).
-        image: public.ecr.aws/docker/library/postgres:16
+        # Google's mirror of the official Docker Hub image. Docker Hub token
+        # requests from GitHub-hosted runners timed out on 2026-10-10 (3 of 3
+        # pulls); the AWS ECR Public mirror then returned "toomanyrequests: Data
+        # limit exceeded" on 2026-10-17 (6 of 6 pulls, main and PRs).
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: postgres
