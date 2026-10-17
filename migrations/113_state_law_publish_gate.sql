@@ -10,6 +10,7 @@
 --    citation_checked_at and citation_source_path change (scripts/revert_row_from_backup.py restoring a proven
 --    version). Refreshing the timestamp alone keeps nothing (cross-review 2026-10-17). The appliers write the text,
 --    then the proof, in two statements of one transaction. A proven label on unchecked words is DQ-111.
+--    A council row turned into state law (source_council set to NULL) also loses its proof: it was a council-PDF proof.
 -- 2. REFUSE, at COMMIT, a transaction that leaves a served state-law row unproven after it was inserted, had its text
 --    changed, started being served, or became state law (source_council set to NULL). The check is DEFERRED and
 --    re-reads the row, so the proof appliers -- which write the text and then the proof in one transaction
@@ -24,10 +25,11 @@
 
 CREATE OR REPLACE FUNCTION regulatory_provisions_state_law_void_proof() RETURNS trigger AS $$
 BEGIN
-    IF NEW.source_council IS NULL
-       AND NEW.provision_text IS DISTINCT FROM OLD.provision_text
-       AND (NEW.citation_checked_at IS NOT DISTINCT FROM OLD.citation_checked_at
-            OR NEW.citation_source_path IS NOT DISTINCT FROM OLD.citation_source_path) THEN
+    IF NEW.source_council IS NULL AND (
+          (OLD.source_council IS NOT NULL)   -- a council proof (its PDF page) says nothing about state law
+       OR (NEW.provision_text IS DISTINCT FROM OLD.provision_text
+           AND (NEW.citation_checked_at IS NOT DISTINCT FROM OLD.citation_checked_at
+                OR NEW.citation_source_path IS NOT DISTINCT FROM OLD.citation_source_path))) THEN
         NEW.citation_status := NULL;
         NEW.citation_source_path := NULL;
     END IF;
@@ -65,7 +67,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_rp_state_law_void_proof ON regulatory_provisions;
 CREATE TRIGGER trg_rp_state_law_void_proof
-    BEFORE UPDATE OF provision_text ON regulatory_provisions
+    BEFORE UPDATE OF provision_text, source_council ON regulatory_provisions
     FOR EACH ROW EXECUTE FUNCTION regulatory_provisions_state_law_void_proof();
 
 DROP TRIGGER IF EXISTS trg_rp_state_law_publish_gate ON regulatory_provisions;

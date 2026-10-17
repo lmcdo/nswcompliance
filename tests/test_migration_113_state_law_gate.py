@@ -143,3 +143,11 @@ def test_refreshing_the_timestamp_alone_keeps_no_proof(db):
                 "citation_source_path = 'https://legislation.nsw.gov.au/x#sec.1', citation_status = 'proven' WHERE id = %s",
                 (rid,))
     db.commit()
+
+
+def test_proven_council_row_turned_state_law_loses_its_proof(db):
+    cur = db.cursor()
+    rid = _ins(cur, council="hornsby", status="proven")
+    db.commit()
+    cur.execute("UPDATE regulatory_provisions SET source_council = NULL WHERE id = %s", (rid,))
+    assert _commit_fails(db)
