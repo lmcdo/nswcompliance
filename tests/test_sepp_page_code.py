@@ -93,3 +93,35 @@ def test_applier_refuses_when_v2_part_changed_since_the_plan():
     assert any("v2_part changed" in b for b in ap.check([r], {7: t}))
     t_same = t[:16] + ("3",)
     assert not any("v2_part" in b for b in ap.check([r], {7: t_same}))
+
+
+def test_a_non_current_row_never_reaches_the_page_code_decision(tmp_path, monkeypatch):
+    # cross-review 2026-10-18 (Sol, MEDIUM): v2_part is read without is_current; the planner must still refuse the row
+    ids = tmp_path / "ids.csv"
+    ids.write_text("id\n9\n", encoding="utf8")
+
+    class Cur:
+        def execute(self, sql, params=None):
+            self.sql = sql
+
+        def fetchall(self):
+            if "v2_part" in self.sql:
+                return [(9, "3")]
+            return [(9, "State_Environmental_Planning_Policy_Exempt_and_Complying_Development_Codes_2008__NSW_Legislation",
+                     "p", "text", "m5", None, False, None, 0)]   # is_current FALSE
+
+    class Conn:
+        def cursor(self):
+            return Cur()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(cu.p1, "connect", lambda: Conn())
+    monkeypatch.setattr(cu, "ROOT", tmp_path)
+    (tmp_path / "data").mkdir()
+    called = []
+    monkeypatch.setattr(cu, "decide_smallest_unit", lambda *a, **k: called.append(1))
+    cu.main(["--page-code", str(ids), "--date", "t"])
+    assert not called
+    assert "row_not_current_or_not_state_law" in (tmp_path / "data" / "sepp_page_code_refused_t.csv").read_text()
