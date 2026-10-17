@@ -41,6 +41,10 @@ EVID_KEYS = ("word_start", "word_end", "n_words", "unit_words", "span_share", "t
 def decide_chain(old: str, ref: str | None, snap: mb.Snapshot) -> tuple[str, dict]:
     """-> (stage, decision). stage in marker_blind | ref_fix | complete_unit; decision.verdict accept|recopy|refuse."""
     d = mb.decide(old, ref, snap)
+    # DQ-145 group 3 (user 2026-10-18): an excerpt (a run of law words that stops short of its clause) is re-copied as
+    # the smallest complete clause, as state rows are; decide_smallest_unit checks every number and refuses ambiguity.
+    if d["verdict"] == "refuse" and d["reason"] == "excerpt":
+        return "complete_unit", cu.decide_smallest_unit(old, snap, SCOPE)
     if d["verdict"] != "refuse" or d["reason"] not in ("ref_mismatch", "unit_too_big"):
         return "marker_blind", d
     if d["reason"] == "ref_mismatch":

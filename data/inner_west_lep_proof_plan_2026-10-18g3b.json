@@ -1,0 +1,53 @@
+{
+ "generated": "2026-10-18g3",
+ "scope": "registry_lep",
+ "norm_version": "sl-norm/2",
+ "match_version": "sl-match/1",
+ "manifest": {
+  "epi-2022-0457": {
+   "file": "epi-2022-0457_2026-10-17.html",
+   "sha256": "d11176642a41431f403f2f8ef0c3199897c44775f8ede70dd1b46fdc60c03d93",
+   "bytes": 2396653,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457"
+  }
+ },
+ "method": "scripts/sepp_lep_proof.py (docstring has the rules). No model reads or writes text.",
+ "rows": [
+  {
+   "id": 8602,
+   "md5": "e1a312be0bcd1d6e73d389006e87ea6c",
+   "rule": "recopy",
+   "epi": "epi-2022-0457",
+   "document_id": "Inner_West_Local_Environmental_Plan_2022___NSW_Legislation_51_100",
+   "ref_number": "7.2 (3)",
+   "unit_id": "sec.7.2-ssec.3",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457#sec.7.2-ssec.3",
+   "law_date": "2026-10-17",
+   "source_council": "inner_west",
+   "old_text": "Development consent must not be granted to development that results in a building on land specified in Column 1 of the following table projecting higher than an incline plane that...",
+   "new_text": "(3) Development consent must not be granted to development that results in a building on land specified in Column 1 of the following table projecting higher than an incline plane that—\n(a) starts along the land’s boundary with Hercules Street at the height above ground level (existing) specified in Column 2, and\n(b) extends upwards in the direction of New Canterbury Road at the angle specified in Column 3.\nColumn 1\nColumn 2\nColumn 3\nPart of Dulwich Grove land\nHeight at which incline plane starts\nAngle of incline plane\nLot 14, Section 4, DP 932\nLot 4, DP 540366\n7.5m\n24°\nLot 2, DP 540366\nLot 7, DP 236603\n15m\n20°\nLots 5 and 6, DP 236603\n20m\n35°",
+   "kind": "complete_unit_recopy",
+   "old_ref_number": "7.2 (3)",
+   "new_ref_number": "Clause 7.2(3)",
+   "stage": "complete_unit"
+  },
+  {
+   "id": 9346,
+   "md5": "cbb93ec684bbfcb8c5e1f60ededb2705",
+   "rule": "recopy",
+   "epi": "epi-2022-0457",
+   "document_id": "Inner_West_Local_Environmental_Plan_2022___NSW_Legislation_1_50",
+   "ref_number": "Clause 5.2",
+   "unit_id": "sec.5.2-ssec.1",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2022-0457#sec.5.2-ssec.1",
+   "law_date": "2026-10-17",
+   "source_council": "inner_west",
+   "old_text": "The objective of this clause is to enable the Council to classify or reclassify public land as “operational land” or “community land”...",
+   "new_text": "(1) The objective of this clause is to enable the Council to classify or reclassify public land as “operational land” or “community land” in accordance with Part 2 of Chapter 6 of the Local Government Act 1993.\nNote—\nUnder the Local Government Act 1993, “public land” is generally land vested in or under the control of a council (other than roads and certain Crown land). The classification or reclassification of public land may also be made by a resolution of the Council under section 31, 32 or 33 of the Local Government Act 1993. Section 30 of that Act enables this Plan to discharge trusts on which public reserves are held if the land is reclassified under this Plan as operational land.",
+   "kind": "complete_unit_recopy",
+   "old_ref_number": "Clause 5.2",
+   "new_ref_number": "Clause 5.2(1)",
+   "stage": "complete_unit"
+  }
+ ]
+}
