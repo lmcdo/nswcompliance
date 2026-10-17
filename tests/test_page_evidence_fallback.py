@@ -126,7 +126,7 @@ def test_verifier_rejects_a_changed_number(tmp_path):
 def test_a_word_needed_twice_must_be_printed_twice(tmp_path):
     # cross-review 2026-10-18 (Sol, HIGH): a set of words lost multiplicity
     f = tmp_path / "a.pdf"
-    make_pdf(f, [("text", ["C9 front setback 6m rear setback side boundary garage door width"])])
+    make_pdf(f, [("text", ["Table 4.1 C9 front setback 6m rear setback side boundary garage door width"])])
     once = "# 4.1 Setbacks\n\nC9 front setback 6m rear setback side boundary garage door width"
     twice = "# 4.1 Setbacks\n\nC9 front setback 6m rear setback side boundary garage door width door"   # 'door' twice
     assert pe.prove_fallback(once, read(f))[0] == "proven"
@@ -137,10 +137,10 @@ def test_verifier_re_makes_the_page_choice(tmp_path):
     # cross-review 2026-10-18 (Sol, MEDIUM): with two matching pages the stored page wins, never another held one
     f = tmp_path / "a.pdf"
     line = "C9 front setback 6m rear setback side boundary garage door width"
-    jumbled = "width door garage boundary side setback rear 6m setback front C9"   # every word, no span: bag rule only
+    jumbled = "Table 4.1 width door garage boundary side setback rear 6m setback front C9"   # every word, no span: bag rule only
     make_pdf(f, [("text", [jumbled]), ("text", [jumbled])])
     pages = read(f)
-    row = "# 4.1 Setbacks\n\n" + line
+    row = "# 4.1 Table 4.1 Setbacks\n\n" + line
     v, ev, _ = pe.prove_fallback(row, pages, held={1, 2}, primary=1)
     assert v == "proven" and ev["page"] == 1 and ev["matcher"] == "all-words+label"
     assert vpe.check_uniqueness(ev, {"pdf_page": 1, "page_range": [1, 2]}, "on_page", pages) == []
@@ -152,9 +152,9 @@ def test_verifier_re_makes_the_page_choice(tmp_path):
 def test_swapped_values_are_not_proven(tmp_path):
     # cross-review 2026-10-18 (Sol, HIGH): same words and counts, values swapped between fields
     f = tmp_path / "a.pdf"
-    make_pdf(f, [("text", ["C9 front setback 3m side setback 6m garage door width rear boundary"])])
-    right = "# 4.1 Setbacks\n\nC9 rear boundary garage door width front setback 3m side setback 6m"
-    swapped = "# 4.1 Setbacks\n\nC9 rear boundary garage door width front setback 6m side setback 3m"
+    make_pdf(f, [("text", ["Table 4.1 C9 front setback 3m side setback 6m garage door width rear boundary"])])
+    right = "# 4.1 Table 4.1 Setbacks\n\nC9 rear boundary garage door width front setback 3m side setback 6m"
+    swapped = "# 4.1 Table 4.1 Setbacks\n\nC9 rear boundary garage door width front setback 6m side setback 3m"
     assert pe.prove_fallback(right, read(f))[0] == "proven"
     assert pe.prove_fallback(swapped, read(f))[0] == "not_found"
 
@@ -174,3 +174,11 @@ def test_verifier_rejects_a_matcher_fallback_mismatch(tmp_path):
     bad = copy.deepcopy(ev)
     bad["fallback"] = "full_text"
     assert any("does not go with" in b for b in vpe.check_evidence(bad, page_of(f, 2)))
+
+
+def test_prose_cannot_use_the_every_word_rule(tmp_path):
+    # user 2026-10-18: every-word proofs only for tables and figures; prose proves by exact words
+    f = tmp_path / "a.pdf"
+    make_pdf(f, [("text", ["width door garage boundary side setback rear 6m setback front C9"])])
+    row = "# 4.1 Setbacks\n\nC9 front setback 6m rear setback side boundary garage door width"
+    assert pe.prove_fallback(row, read(f))[0] == "not_found"

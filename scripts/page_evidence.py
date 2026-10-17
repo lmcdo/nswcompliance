@@ -413,10 +413,24 @@ def numbers_in_order(words: str, texts: dict, streams: list) -> bool:
     return any(_is_subsequence(need, number_seq(r)) for r in readings)
 
 
+def table_or_figure(words: str, labels: list, streams: list) -> bool:
+    """The every-word rule is for TABLES AND FIGURES only (user 2026-10-18): the rule's label is a Table/Figure number,
+    or every word of it sits inside one table on the page. Prose must prove by exact words."""
+    if any(lb.startswith(("table ", "figure ")) for lb in labels):
+        return True
+    need = set(words.split()) - set(" ".join(labels).split())
+    tables: dict = {}
+    for ti, _kind, _coords, hay, _offs, _parts in streams:
+        tables.setdefault(ti, set()).update(hay.split())
+    return any(need <= t for t in tables.values())
+
+
 def bag_pages(words: str, labels: list, pages: dict) -> list:
-    """Pages printing every distinct word of `words` (numbers whole) and at least one of `labels`."""
+    """Pages printing every distinct word of `words` (numbers whole) and at least one of `labels`, where the rule is a
+    table or figure."""
     return sorted(p for p, (texts, streams) in pages.items()
-                  if bag_ok(words, texts, streams, labels) and any(has_label(lb, texts) for lb in labels))
+                  if bag_ok(words, texts, streams, labels) and any(has_label(lb, texts) for lb in labels)
+                  and table_or_figure(words, labels, streams))
 
 
 def pick_page(hits: list, held=None, primary=None):
