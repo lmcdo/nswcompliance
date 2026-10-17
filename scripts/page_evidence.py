@@ -262,3 +262,120 @@ def prove(words: str, pages: dict, held=None, primary=None, heading=None):
         ev["by_heading"] = heading
     ev["span_sha256"] = hashlib.sha256(words.encode()).hexdigest()
     return "proven", ev, {"pages": sorted(hits), "alternatives": len(m)}
+
+
+# -- fallbacks after prove() finds no exact span (DQ-145 council rows, user 2026-10-18) -------------------------------
+# Tried ONLY when prove() returns not_found / too_short. Each keeps the one-page rule of prove().
+#   full_text       the extractor put most of the rule into our '# code title' line ('# preamble ... O1 To Maintain ...'
+#                   with body 'low income'): the row's whole text, dropping leading words of our heading line only and
+#                   never the body, is one exact span on exactly one page. Evidence is an ordinary text-run/table-cells
+#                   proof of that span, so check_evidence re-reads it unchanged.
+#   all_words_label a table or figure prints a rule's words out of order: EVERY distinct word of the rule is on the
+#                   page AND the rule's own label (Table/Figure number, or control code C9 / C.48 / O1) is printed there.
+#                   Weaker than a span, so it needs >= MIN_WORDS_BAG words and a label.
+FALLBACK_VERSION = "page-evidence-fallback-v1"
+MIN_WORDS_FULL = 8
+MIN_WORDS_BAG = 10
+LABEL_WINDOW = 12   # a control code must sit in the heading line or the first words of the body to be the rule's own
+_LABEL_TF = re.compile(r"\b(?:Table|Figure)\s+\d+(?:[.\-]\w+)*", re.I)
+_LABEL_CODE = re.compile(r"(?<![A-Za-z0-9])[CO]\.?\s?\d{1,3}[a-z]?(?![A-Za-z0-9])")
+
+
+def full_text_words(provision_text: str | None) -> str:
+    """Normalised words of the whole row, '#' heading markers removed (rule_body would drop the first line)."""
+    return normalise(re.sub(r"^\s*#+", "", provision_text or ""))
+
+
+def row_labels(provision_text: str | None) -> list:
+    """The rule's own labels, normalised: Table/Figure numbers and control codes (C9, C.48, O1) in its heading line
+    or the first LABEL_WINDOW words of its body. [] when it prints none."""
+    t = (provision_text or "").lstrip()
+    head, _, body = t.partition("\n") if t.startswith("#") else ("", "", t)
+    first = " ".join(body.split()[:LABEL_WINDOW])
+    out = [normalise(m.group(0)) for m in _LABEL_TF.finditer(head + " " + first)]
+    out += [normalise(m.group(0)) for m in _LABEL_CODE.finditer(head + " " + first)]
+    return list(dict.fromkeys(x for x in out if x))
+
+
+def page_words(texts: dict, streams: list) -> set:
+    """Every word printed on a page: both reading orders and every table cell."""
+    words = set()
+    for t in texts.values():
+        words.update(t.split())
+    for _ti, _kind, _coords, hay, _offs, _parts in streams:
+        words.update(hay.split())
+    return words
+
+
+def has_label(label: str, texts: dict) -> bool:
+    pat = re.compile(rf"(?<![a-z0-9]){re.escape(label)}(?![a-z0-9])")
+    return any(pat.search(t) for t in texts.values())
+
+
+def number_phrases(words: str) -> list:
+    """Every number of `words` as the phrase normalise() leaves it in: '1.5m' -> '1 5m', '3.2.4' -> '3 2 4'. A bag of
+    words loses these ('2.5m' would pass on a page printing '2' and '1.5m'), so each must be printed whole."""
+    out, run = [], []
+    for w in words.split() + [""]:
+        if w[:1].isdigit():
+            run.append(w)
+        else:
+            if len(run) > 1:
+                out.append(" ".join(run))
+            run = []
+    return list(dict.fromkeys(out))
+
+
+def phrase_on_page(phrase: str, texts: dict, streams: list) -> bool:
+    return any(find_span(t, phrase) for t in texts.values()) or any(find_span(st[3], phrase) for st in streams)
+
+
+def bag_ok(words: str, texts: dict, streams: list) -> bool:
+    """Every distinct word of `words` is printed on the page, and every multi-part number is printed whole."""
+    return (set(words.split()) <= page_words(texts, streams)
+            and all(phrase_on_page(ph, texts, streams) for ph in number_phrases(words)))
+
+
+def bag_pages(words: str, labels: list, pages: dict) -> list:
+    """Pages printing every distinct word of `words` (numbers whole) and at least one of `labels`."""
+    return sorted(p for p, (texts, streams) in pages.items()
+                  if bag_ok(words, texts, streams) and any(has_label(lb, texts) for lb in labels))
+
+
+def prove_fallback(provision_text: str | None, pages: dict, held=None, primary=None):
+    """(verdict, evidence-or-None, info) using the two fallbacks above, full_text first. Same one-page rule as prove():
+    several pages -> the row's own stored page if it is one of them, else unresolved."""
+    full, body = full_text_words(provision_text).split(), rule_words(provision_text).split()
+    for k in range(0, max(0, len(full) - len(body)) + 1):        # drop heading words only, never the body
+        if len(full) - k < MIN_WORDS_FULL:
+            break
+        cand = " ".join(full[k:])
+        v, ev, info = prove(cand, pages, held, primary)
+        if v == "proven":
+            ev.update(fallback="full_text", dropped_head_words=k, fallback_version=FALLBACK_VERSION)
+            return v, ev, info
+        if v == "unresolved":
+            return v, None, info
+    words = " ".join(body)
+    labels = row_labels(provision_text)
+    if len(body) < MIN_WORDS_BAG or not labels:
+        return "not_found", None, {"pages": [], "reason": "no label or too few words for all_words_label"}
+    hits = bag_pages(words, labels, pages)
+    if not hits:
+        return "not_found", None, {"pages": []}
+    if len(hits) > 1:
+        both = sorted(set(held or ()) & set(hits))
+        if primary in both:
+            pno = primary
+        elif len(both) == 1:
+            pno = both[0]
+        else:
+            return "unresolved", None, {"pages": hits, "reason": "every word and the label on several pages"}
+    else:
+        (pno,) = hits
+    texts = pages[pno][0]
+    ev = {"matcher": "all-words+label", "page": pno, "all_pages": hits, "span": words, "start": 0, "end": len(words),
+          "labels": [lb for lb in labels if has_label(lb, texts)], "row_labels": labels, "fallback": "all_words_label",
+          "fallback_version": FALLBACK_VERSION, "matcher_version": MATCHER_VERSION,
+          "span_sha256": hashlib.sha256(words.encode()).hexdigest()}
+    return "proven", ev, {"pages": hits}
