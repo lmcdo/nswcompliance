@@ -1,0 +1,111 @@
+id,reason,ref_number,unit_found,detail
+14159,excerpt,"Part 1, Division 2, Clause 6",sch.11-sec.6,unit_too_big
+14174,ambiguous_unit,Clause 5,sch.10-sec.4;sch.11-sec.5;sch.6-sec.5;sch.6A-sec.6;sch.8-sec.5;sch.9-sec.5,
+14289,excerpt,Complying Development Certificate,sec.5A.5,ref_mismatch
+14397,ambiguous_unit,Complying development on bush fire prone land,sec.3.4-ssec.2-para1.e;sec.3C.5-ssec.2-para1.e;sec.3D.6-ssec.2-para1.e;sec.3B.4-ssec.2-para1.e,
+14399,ambiguous_unit,Complying development on bush fire prone land (Zone RU5),sec.3.4;sec.3.4-ssec.2;sec.3.4-ssec.2-para1.g;sec.3B.4;sec.3B.4-ssec.2;sec.3B.4-ssec.2-para1.g,
+14522,ambiguous_unit,Floor Space Ratio,sec.5A.20;sec.5A.8,
+14543,unit_not_a_clause,Complying Development under Fire Safety Code,sch.10-note,
+14546,ambiguous_unit,Earthworks,sch.10-sec.8;sch.10-sec.8-ssec.1;sch.10-sec.8-ssec.1-para1.c;sch.6-sec.10;sch.6-sec.10-ssec.1;sch.6-sec.10-ssec.1-para1.c,
+14547,ambiguous_unit,Earthworks,sch.10-sec.8;sch.10-sec.8-ssec.1;sch.10-sec.8-ssec.1-para1.d;sch.6-sec.10;sch.6-sec.10-ssec.1;sch.6-sec.10-ssec.1-para1.d,
+14553,ambiguous_unit,Garbage Receptacle,sch.10-sec.3;sch.6-sec.3;sch.6A-sec.4;sch.7-sec.2;sch.8-sec.3;sch.9-sec.3,
+14745,ambiguous_unit,10 (1) (a),sch.10-sec.8;sch.10-sec.8-ssec.1;sch.6-sec.10;sch.6-sec.10-ssec.1;sch.6A-sec.16;sch.6A-sec.16-ssec.1,
+14746,ambiguous_unit,10 (1) (b),sch.10-sec.8-ssec.1-para1.b;sch.6-sec.10-ssec.1-para1.b;sch.6A-sec.16-ssec.1-para1.b;sch.8-sec.11-ssec.1-para1.b;sec.2.24-ssec.1-para1.f,
+14747,ambiguous_unit,10 (1) (c),sch.6-sec.10-ssec.1-para1.c;sch.6A-sec.16-ssec.1-para1.c;sch.8-sec.11-ssec.1-para1.c,
+14788,ambiguous_unit,Stormwater drainage from development,sec.3B.59;sec.3BA.9;sec.3D.62,
+14792,ambiguous_unit,Support for earthworks,sec.3.30;sec.3.30-ssec.7;sec.3A.29;sec.3A.29-ssec.7;sec.3B.58;sec.3B.58-ssec.8,
+14930,ambiguous_unit,Excavation,sec.3.30;sec.3.30-ssec.1;sec.3A.29;sec.3A.29-ssec.1;sec.3B.58;sec.3B.58-ssec.1,
+14932,ambiguous_unit,Retaining walls,sec.3.30;sec.3.30-ssec.7;sec.3A.29;sec.3A.29-ssec.7;sec.3B.58;sec.3B.58-ssec.8,
+14933,ambiguous_unit,Drainage,sec.3.31;sec.3C.34,
+14934,ambiguous_unit,Adjoining walls,sec.3.32;sec.3B.60;sec.3C.35;sec.3D.63,
+14935,ambiguous_unit,Protected trees,sec.3.33;sec.3.33-ssec.2;sec.3B.61;sec.3B.61-ssec.2;sec.3BA.11;sec.3BA.11-ssec.2,
+14937,ambiguous_unit,garbage receptacle,sch.10-sec.3;sch.6-sec.3;sch.6A-sec.4;sch.7-sec.2,
+15183,unit_not_a_clause,3.10(4A),sch.3-pt.1-tbl-tblr-oc.39-tble2-para1.c-frag-ssec.4A,
+15268,ambiguous_unit,Clause 15,sch.10-sec.9;sch.6-sec.9;sch.6A-sec.15;sch.8-sec.10;sch.9-sec.9,
+15269,ambiguous_unit,Clause 16,sch.6-sec.10-ssec.1;sch.6A-sec.16-ssec.1;sch.8-sec.11-ssec.1;sch.6A-sec.16;sch.8-sec.11;sch.10-sec.8-ssec.1,
+15273,ambiguous_unit,Clause 20,sch.10-sec.11;sch.6-sec.12;sch.6A-sec.20;sch.8-sec.13,
+15274,ambiguous_unit,Clause 21,sch.6-sec.13;sch.6A-sec.21;sch.9-sec.10,
+15525,ambiguous_unit,building,sec.9.13-ssec.1-para1.j;sec.9.13-ssec.1-para1.k,
+15533,ambiguous_unit,"AS/NZS 1170.0:2002, AS/NZS 1170.1:2002, AS/NZS 1170.2:2011",sec.4A.8-para1.d;sec.4A.6-para1.l;sec.2.108-ssec.1-para1.f,
+16240,ambiguous_unit,development (flood control lots),sec.3.5-ssec.2-para1.f;sec.3A.38-ssec.2-para1.f;sec.3C.6-ssec.2-para1.f;sec.3D.7-ssec.2-para1.f,
+16723,ambiguous_unit,Table in clause (5),sec.3.16;sec.3.16-ssec.5;sec.3.16-ssec.5-tbl;sec.3C.19;sec.3C.19-ssec.5;sec.3C.19-ssec.5-tbl,
+16739,ambiguous_unit,Dwelling houses (on lots other than battle-axe lots with setback < 10m from primary road),sec.3D.25-ssec.2;sec.3D.36-ssec.2;sec.3C.16-ssec.2;sec.3.14-ssec.2,
+16740,ambiguous_unit,Dwelling houses (with setback >= 3m from primary road),sec.3.14-ssec.3;sec.3C.16-ssec.3;sec.3D.25-ssec.3;sec.3D.36-ssec.3;sec.3B.28-ssec.1;sec.3B.16-ssec.1,
+16742,ambiguous_unit,Building elements on dwelling house,sec.3.14-ssec.6;sec.3C.16-ssec.6;sec.3D.25-ssec.6;sec.3D.36-ssec.6,
+16743,ambiguous_unit,New dwelling houses on corner lots,sec.3A.21-ssec.5;sec.3D.36-ssec.7,
+16776,ambiguous_unit,Complying development on bush fire prone land,sec.3.4;sec.3.4-ssec.2;sec.3.4-ssec.2-para1.d;sec.3B.4;sec.3B.4-ssec.2;sec.3B.4-ssec.2-para1.d,
+16777,ambiguous_unit,Complying development on bush fire prone land,sec.3.4;sec.3.4-ssec.2;sec.3.4-ssec.2-para1.e;sec.3C.5;sec.3C.5-ssec.2;sec.3C.5-ssec.2-para1.e,
+16982,ambiguous_unit,"balconies, decks, patios, terraces, verandahs near boundaries or other dwellings",sec.3B.17;sec.3B.17-ssec.3;sec.3B.29;sec.3B.29-ssec.3;sec.3B.42;sec.3B.42-ssec.3,
+16985,unit_text_not_verbatim_in_law,following table (Clause 6),sec.3B.18-ssec.6-tbl,
+17351,excerpt,Clause 3D.22 (subclause 7),sec.3D.21-ssec.7,unit_too_big
+17366,ambiguous_unit,walls within 900mm of side boundary,sec.3.10;sec.3.10-ssec.7;sec.3C.11;sec.3C.11-ssec.5;sec.3D.21;sec.3D.21-ssec.11,
+17367,ambiguous_unit,walls within 900mm of side boundary,sec.3.10;sec.3.10-ssec.8;sec.3D.21;sec.3D.21-ssec.12,
+17390,ambiguous_unit,Clause 3.10(10),sec.3.11-ssec.5;sec.3C.12-ssec.5;sec.3D.22-ssec.5;sec.3D.33-ssec.3;sec.3B.52-ssec.6;sec.3B.25-ssec.4,
+17395,ambiguous_unit,Clause 1.5,sec.3.10-note;sec.3B.11-note;sec.3B.24-note;sec.3B.36-note;sec.3C.11-note,
+17555,ambiguous_unit,fence,sec.3.29;sec.3.29-ssec.2;sec.3B.57;sec.3B.57-ssec.3;sec.3C.32;sec.3C.32-ssec.2,
+17556,ambiguous_unit,fence,sec.3.29;sec.3.29-ssec.3;sec.3B.57;sec.3B.57-ssec.4;sec.3C.32;sec.3C.32-ssec.3,
+17582,ambiguous_unit,Fences,sec.3.29;sec.3.29-ssec.1;sec.3C.32;sec.3C.32-ssec.1;sec.3D.53;sec.3D.53-ssec.2,
+17624,ambiguous_unit,driveway,sec.3A.28-ssec.2;sec.3D.15-ssec.2,
+17828,ambiguous_unit,Tents and Marquees (Private Functions),sec.2.118-para1.j;sec.2.120-para1.i,
+17832,ambiguous_unit,stages or platforms for community events,sec.2.122-para1.e;sec.2.124-para1.d,
+17833,ambiguous_unit,stages or platforms for community events,sec.2.122-para1.a;sec.2.124-para1.a,
+18423,ambiguous_unit,Aboriginal heritage significance,sec.2.40F-ssec.2;sec.2.40C-ssec.2,
+22640,number_missing,Schedule 3,sch.3-pt.1-tbl,1.12
+36148,number_missing,provision_279,sec.1.13,1.14
+36183,number_missing,provision_330,sec.1.18,1.19
+36184,excerpt,provision_331,sec.1.19-ssec.1,unit_too_big
+36284,ambiguous_unit,provision_494,sec.2.12-ssec.1-para1.f;sec.2.18-ssec.1-para1.d;sec.2.20-ssec.1-para1.e,
+36816,ambiguous_unit,provision_1408,sec.2.85-para1.h;sec.2.87-para1.j;sec.5.14-ssec.1-para1.f;sec.5.16-para1.h;sec.2.91-para1.h;sec.2.93-para1.g,
+36836,ambiguous_unit,provision_1443,sec.2.91-para1.h;sec.2.93-para1.g;sec.2.85-para1.h;sec.2.87-para1.j;sec.5.14-ssec.1-para1.f;sec.5.16-para1.h,
+37028,ambiguous_unit,provision_1754,sec.3.4-ssec.2-para1.g;sec.3B.4-ssec.2-para1.g;sec.3C.5-ssec.2-para1.g;sec.3D.6-ssec.2-para1.g,
+37145,ambiguous_unit,provision_1942,sec.3.16-ssec.2;sec.3C.19-ssec.2,
+37202,ambiguous_unit,provision_2040,sec.3.23-ssec.1;sec.3B.50-ssec.1;sec.3C.26-ssec.1;sec.3D.46-ssec.1,
+37610,ambiguous_unit,provision_2659,sec.3B.18-ssec.4;sec.3B.30-ssec.4;sec.3B.43-ssec.4;sec.3D.27-ssec.4,
+37689,unit_text_not_verbatim_in_law,provision_2798,sec.3B.30,
+37768,unit_text_not_verbatim_in_law,provision_2942,sec.3B.30,
+37984,ambiguous_unit,provision_3247,sec.3BA.11;sec.3B.61,
+38398,ref_more_specific_than_unit,provision_3905,sec.3D.10-ssec.1,sec.3D.10-ssec.1-para1.a
+38541,ambiguous_unit,provision_4126,sec.3.16-ssec.1;sec.3C.19-ssec.1;sec.3D.27-ssec.1,
+38711,ambiguous_unit,provision_4404,sec.3D.46-ssec.10;sec.3D.38-ssec.10;sec.3D.27-ssec.7,
+39000,ambiguous_unit,provision_4876,sec.5A.6F-ssec.2;sec.5.22B-ssec.4,
+39520,ambiguous_unit,provision_5673,sec.3C.24-ssec.6-tbl;sch.3-pt.3-sec.3-ssec.29-frag-tbl;sch.3-pt.4-sec.3-ssec.26-frag-tbl;sch.3-pt.3-sec.3-ssec.29;sch.3-pt.4-sec.3-ssec.26,
+39568,ambiguous_unit,provision_5756,sec.3C.24-ssec.6-tbl;sch.3-pt.3-sec.3-ssec.29-frag-tbl;sch.3-pt.4-sec.3-ssec.26-frag-tbl;sch.3-pt.3-sec.3-ssec.29;sch.3-pt.4-sec.3-ssec.26;sec.3C.11-ssec.6-tbl,
+39608,ambiguous_unit,provision_5822,sch.6-sec.10;sch.6-sec.10-ssec.1;sch.8-sec.11;sch.8-sec.11-ssec.1,
+39796,ambiguous_unit,provision_6145,sch.8-sec.10;sch.9-sec.9,
+14619,excerpt,Caravan Parks,sec.126-ssec.1,unit_too_big
+14896,excerpt,Site compatibility certificate applications,sec.141-ssec.3,unit_too_big
+15003,ambiguous_unit,Residential flat buildings or shop top housing,sec.83A-ssec.2;sec.177-ssec.2,
+15094,excerpt,residential apartment development in NSW,sec.142-ssec.1,unit_too_big
+40653,ref_more_specific_than_unit,provision_669,sec.87-ssec.2,sec.87-ssec.2-para1.a
+41251,number_missing,provision_1508,sch.2-sec.16,4
+41276,number_missing,provision_1543,sch.2-sec.23-ssec.8,2
+41280,number_missing,provision_1547,sch.2-sec.23-ssec.2,5
+41365,number_missing,provision_1679,sch.4-sec.16,"22,50"
+41382,number_missing,provision_1706,sch.4-sec.19,"15,50"
+10174,excerpt,Advertisement Display Area (Clause 3.17),sec.3.17,unit_too_big
+41690,excerpt,provision_216,sec.2.31,unit_too_big
+18897,excerpt,"Schedule 1, 3",sch.1-sec.3,unit_too_big
+19129,excerpt,Development consent determination,sec.3.8,unit_too_big
+13561,excerpt,Clause 7,sch.5-sec.7-ssec.1,unit_too_big
+12711,excerpt,Development in coastal environment area,sec.2.10-ssec.1,unit_too_big
+22602,number_missing,Schedule 5,sch.5-tbl,"2.5,3.17,3.39,3.49,3.56,30"
+43395,excerpt,provision_166,sec.2.15-ssec.2,unit_too_big
+43447,excerpt,provision_239,sec.2.20-ssec.2,ref_mismatch
+43540,excerpt,provision_366,sec.2.35,unit_too_big
+43658,number_missing,provision_516,sec.2.44A,"00,18"
+43756,number_missing,provision_651,sec.2.61-ssec.2,3
+44139,ref_more_specific_than_unit,provision_1192,sec.2.113-ssec.1,sec.2.113-ssec.1-para1.a
+44259,ambiguous_unit,provision_1358,sec.2.124D-ssec.1-para1.h;sec.2.124E-para1.h;sec.2.124F-para1.i,
+44303,ref_more_specific_than_unit,provision_1415,sec.2.131-ssec.2,sec.2.131-ssec.2-para1.a
+44896,ambiguous_unit,provision_2238,sec.3.44-ssec.1-para1.b;sec.3.51-ssec.1-para1.b;sec.3.51-ssec.1;sec.3.51,
+45047,number_missing,provision_2449,sec.3.51,"0732,2021"
+45792,ambiguous_unit,provision_3549,sch.6-sec.7;sch.7-sec.8,
+45814,ambiguous_unit,provision_3580,sch.6-sec.13;sch.7-sec.15,
+45869,ambiguous_unit,provision_3660,sch.6-sec.13-ssec.3;sch.7-sec.15-ssec.3,
+45957,number_missing,provision_3782,sch.10-sec.12B-ssec.2,"00,50"
+45999,ambiguous_unit,provision_3848,sch.10-sec.30;sch.12-sec.28,
+46030,ambiguous_unit,provision_3906,sch.10-sec.14-ssec.2;sch.11-sec.9,
+46271,ambiguous_unit,provision_4259,sch.10-sec.30;sch.12-sec.28,
+6112,excerpt,Section 5(7-9),sch.1-sec.5,unit_too_big
+6159,excerpt,non-residential development,sec.3.2-ssec.1,unit_too_big
+43153,has_version_history,provision_36,sec.2.1,2 versions
