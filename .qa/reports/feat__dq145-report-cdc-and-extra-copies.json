@@ -1,0 +1,71 @@
+{
+  "tier": "standard",
+  "justification": "DQ-145 189 -> 116: the extra stored copies of 9 SEPPs (bracketed whole-document and per-section copies; 1,273 current actionable rows) switched off with the reviewed withhold tool (dry run 1273/1273/1273, backup kept, nothing deleted). Route trace: address pages read only the plain copy (sepp/exempt-complying, sepp/parking-provisions, conveyancing CDC standards cite plain-copy rows); /dcp-browse lists council plans only; clause/by-ids callers unmounted; sepp/structured-requirements LEFT JOINs 7 extra-copy rows for pdf_page only, unaffected. Full ledger 0 red; outreach 21/21 at 116. Lessons recorded in docs/DCP_EXTRACTION_KNOWN_PATTERNS.md §11.",
+  "commit_hash": "75843cf1",
+  "files": [
+    "scripts/outreach_claim_checks.py",
+    "data/sepp_extra_copies_switch_off_2026-10-18.json",
+    "docs/DCP_EXTRACTION_KNOWN_PATTERNS.md"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_outreach_claim_checks_oc20.py && python scripts/dq_probe_live.py --id DQ-145",
+    "fails_when": "DQ-145 exceeds 116 or the ratchet comparison breaks",
+    "observed_red": "Mutating the ratchet from <= to < failed the at-ceiling test (1 failed); restored, all pass."
+  },
+  "real_layer_exempt": {
+    "scripts/outreach_claim_checks.py": "constant; live outreach 21/21 at 116 and full dq_check 0 red after the switch-off"
+  },
+  "pre_impl": {
+    "existing_data": "9 SEPP families each with 2-3 current generations; 1,273 rows in non-plain generations, 73 unproven, 505 with <80% of their 5-word runs in the plain copy",
+    "assumption_mismatch": "the extra copies are not plain duplicates, so they are switched off (reversible), not merged or deleted",
+    "new_vs_existing": "reuses withhold_state_paraphrase.py; data list only"
+  },
+  "functions": [
+    {
+      "name": "unproven_citations_only_fall",
+      "file_line": "scripts/outreach_claim_checks.py",
+      "input": "a live database connection, or None when unreachable",
+      "output": "PASS when the DQ-145 count is at or below DQ145_CEILING, else FAIL",
+      "if_none": "UNKNOWN when the database is unreachable"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ145_CEILING = 116",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-18 after the switch-off",
+      "if_missing": "n/a (constant)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a page reads an extra copy by document name",
+      "what_happens": "it would lose those rules; traced: no mounted page does (plain-copy ids and names only)",
+      "mitigated": true,
+      "how": "route trace before the write; backup restores in one step",
+      "repro": "data/sepp_extra_copies_switch_off_2026-10-18.json linked_by_sepp_structured_requirements"
+    },
+    {
+      "scenario": "a rule exists only in an extra copy",
+      "what_happens": "it is no longer switched on anywhere, but it is kept in the database for a later merge",
+      "mitigated": true,
+      "how": "share_of_words_in_main_copy recorded per row (505 under 0.8)",
+      "repro": "same file"
+    },
+    {
+      "scenario": "another data-quality check depended on the extra copies being switched on",
+      "what_happens": "it would turn red after the write; the full ledger was run and reads 0 red",
+      "mitigated": true,
+      "how": "python scripts/dq_check.py after the apply (106 checks, 0 red)",
+      "repro": "python scripts/dq_check.py"
+    }
+  ],
+  "mutation_analysis": "Changing <= to < in the ratchet fails test_at_ceiling_passes. Removing the ratchet from CLAIMS fails test_oc20_is_wired_with_all_three_parts.",
+  "residual_risk": "The badge inventory checks each file, not each citation expression: a component with one badge and a second bare citation passes (Sol, 2026-10-17). Hard-wired checked={false} cards always show the mark. The ceiling must be lowered by hand after each proof pass.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "python scripts/dq_check.py --outreach on main prints 21 of 21"
+  }
+}
