@@ -5,7 +5,7 @@ prior-art-checked: the 2026-10-17 duplicate lists (data/sepp_duplicate_withhold_
 SEPP rows only; this is the same rule for every served row, written down so it can be re-run.
 
 Two served rows are one rule shown twice when ALL hold:
-  * same document_id and the same text after lower-casing and collapsing non-word characters;
+  * same document_id and the same text after lower-casing and collapsing punctuation (symbols >= <= < > = +- % $ kept);
   * the same applicability key (precinct, zones, dev types, site condition, land condition, heritage fields);
   * the same place: the same non-empty clause label once "Clause"/"Section", spaces and the "~N" suffix are
     dropped (not a bare "Part N", which spans many pages). The same PAGE is not enough: two clauses printed on
@@ -37,8 +37,13 @@ CLAUSE_SHAPED = re.compile(r"^\s*(clause|section|schedule)?\s*\d", re.I)
 WHOLE_PART = re.compile(r"(^|__)part\d+$")   # "..__Part 8": a whole Part is not one place
 
 
+SYMBOLS = "≥≤<>=±%$"   # >= <= < > = +- % $: they change what a rule says, so they are kept
+
+
 def norm_text(t: str | None) -> str:
-    return re.sub(r"\W+", " ", (t or "").lower()).strip()
+    """Lower-cased, every run of other non-word characters collapsed to one space. Case, punctuation and a trailing
+    '...' do not make a second rule; a comparison symbol does ('>= 3m' vs '<= 3m', cross-review 2026-10-17)."""
+    return re.sub(rf"[^\w{re.escape(SYMBOLS)}]+", " ", (t or "").lower()).strip()
 
 
 def norm_ref(r: str | None) -> str:

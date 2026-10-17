@@ -46,3 +46,8 @@ def test_rows_without_a_label_are_not_one_place_by_label():
 def test_empty_rows_and_other_councils_are_never_grouped():
     assert spd.same_place_groups([row(1, "C4", 5, text=None), row(2, "C4", 5, text="")]) == []
     assert spd.same_place_groups([row(1, "C4", 5, council="a"), row(2, "C4", 5, council="b")]) == []
+
+
+def test_symbols_are_part_of_the_rule():
+    assert spd.same_place_groups([row(1, "C4", 5, text="height must be ≥ 3m"),
+                                  row(2, "C4", 5, text="height must be ≤ 3m")]) == []

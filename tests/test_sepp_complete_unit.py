@@ -14,6 +14,7 @@ S1 = "the owner of the land must keep every drain and gutter clear of debris and
 S2 = "a council may require the owner to repair any damaged drain within 28 days of written notice"
 T1 = "the occupier must not store flammable liquids within 3 metres of the boundary fence of the lot"
 T2 = "a retaining wall on the lot must be built by a qualified person and inspected before backfilling"
+T4 = "the height of the fence must be {} 1.8 metres measured from the ground level of the lot"
 T3 = "a garbage receptacle must be provided in an accessible location behind the building line of the lot"
 NOTE = "this note explains how the certifier may inspect a drain and gutter before the certificate issues"
 LONG = " ".join(f"word{i}" for i in range(700))
@@ -26,6 +27,8 @@ HTML = f"""<html><body>
 <div class="frag-clause" id="sch.2-sec.9"><h3>9 Fences</h3><p>{T1} or site.</p></div>
 <div class="frag-clause" id="sch.5-sec.11"><h3>11 Garbage</h3><p>{T3}.</p></div>
 <div class="frag-clause" id="sch.6-sec.11"><h3>11 Garbage</h3><p>{T3}.</p></div>
+<div class="frag-clause" id="sch.7-sec.12"><h3>12 Fence</h3><p>{T4.format("≤")}.</p></div>
+<div class="frag-clause" id="sch.8-sec.12"><h3>12 Fence</h3><p>{T4.format("≥")}.</p></div>
 <div class="frag-note" id="sch.4-note"><p>{NOTE}.</p></div>
 <div class="frag-clause" id="sec.20"><h3>20 Long</h3>
  <div class="frag-subclause" id="sec.20-ssec.1"><p>(1) {LONG}.</p></div></div>
@@ -199,3 +202,8 @@ def test_verifier_rejects_an_invented_word_cap(snap):
     assert "not a cap" in ver._verify_complete_unit(r, e, snap)
     e["max_words"] = cu.MAX_WORDS_WHOLE
     assert ver._verify_complete_unit(r, e, snap) == ""
+
+
+def test_codes_differing_only_by_a_comparison_symbol_are_not_the_same_words(snap):
+    d = cu.decide_smallest_unit(drop(T4.format("≤"), 2), snap)
+    assert d["reason"] == "ambiguous_unit"

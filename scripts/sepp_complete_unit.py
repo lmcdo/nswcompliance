@@ -100,7 +100,9 @@ def decide_smallest_unit(old: str, snap: mb.Snapshot, scope: str | None = None,
         # every place -- tried before the own-label tie-break, which would pick a single code. Only when every covering
         # unit is a smallest unit or above one, and every smallest unit's words are identical after normalising.
         if (len(smallest) > 1 and all(any(u == s_ or u in snap.ancestors(s_) for s_ in smallest) for u in cover)
-                and len({tuple(snap.tokens[u]) for u in smallest}) == 1):
+                and len({tuple(snap.tokens[u]) for u in smallest}) == 1
+                # the tokens drop comparison symbols (>=, <=): those must match too (cross-review 2026-10-17)
+                and len({re.sub(r"[^≥≤<>=±%$]", "", snap.units[u].text) for u in smallest}) == 1):
             order = list(snap.units)
             places = sorted(smallest, key=order.index)
             smallest = places[:1]
