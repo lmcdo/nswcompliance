@@ -28,7 +28,8 @@ BEGIN
     IF NEW.source_council IS NULL AND (
           (OLD.source_council IS NOT NULL)   -- a council proof (its PDF page) says nothing about state law
        OR (NEW.provision_text IS DISTINCT FROM OLD.provision_text
-           AND (NEW.citation_checked_at IS NOT DISTINCT FROM OLD.citation_checked_at
+           AND (NEW.citation_checked_at IS NULL OR NEW.citation_source_path IS NULL
+                OR NEW.citation_checked_at IS NOT DISTINCT FROM OLD.citation_checked_at
                 OR NEW.citation_source_path IS NOT DISTINCT FROM OLD.citation_source_path))) THEN
         NEW.citation_status := NULL;
         NEW.citation_source_path := NULL;

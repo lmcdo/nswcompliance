@@ -151,3 +151,14 @@ def test_proven_council_row_turned_state_law_loses_its_proof(db):
     db.commit()
     cur.execute("UPDATE regulatory_provisions SET source_council = NULL WHERE id = %s", (rid,))
     assert _commit_fails(db)
+
+
+def test_blanking_the_evidence_with_new_text_keeps_no_proof(db):
+    cur = db.cursor()
+    rid = _ins(cur, status="proven")
+    cur.execute("UPDATE regulatory_provisions SET citation_checked_at = now(), citation_source_path = 'p' WHERE id = %s",
+                (rid,))
+    db.commit()
+    cur.execute("UPDATE regulatory_provisions SET provision_text = 'D', citation_checked_at = NULL, "
+                "citation_source_path = NULL WHERE id = %s", (rid,))
+    assert _commit_fails(db)
