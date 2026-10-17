@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Second proof pass of 2026-10-17, all applied live with backups: 45 + 6 SEPP rows re-copied as the smallest complete law clause (6 settled by the row's own or neighbouring clause labels), 28 Inner West LEP rows proven with the same tools under an explicit registry_lep scope, 94 Campbelltown rows rebuilt from the PDF's visible text (the PDF carries an invisible white copy of every line) and page-proven on the visible page, 29 Inner West LEP paraphrases + 24 council not-a-rule rows + 8 duplicates withheld. DQ-145 measured 430 -> 290 (python scripts/dq_probe_live.py --id DQ-145); ceiling lowered to 290. New DQ-147 ratchet counts repeated lines (79, all real table repeats).",
-  "commit_hash": "ba34937a",
+  "commit_hash": "9a7c099f",
   "files": [
     "scripts/sepp_complete_unit.py",
     "scripts/sepp_lep_proof.py",
