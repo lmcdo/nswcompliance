@@ -152,7 +152,8 @@ def main(argv=None) -> int:
         # prior-art-checked: reuse not viable -- the suggested routes/monitor serve or fetch provisions; none reads the
         # labels of a row's neighbours in its own document. Same table, same read-only session as mb.SQL above.
         docs = sorted({r[1] for r in rows.values()})
-        cur.execute("SELECT id, document_id, ref_number FROM regulatory_provisions WHERE is_current AND document_id = ANY(%s)"
+        cur.execute("SELECT id, document_id, ref_number FROM regulatory_provisions WHERE is_current AND source_council IS NULL "
+                    "AND document_id = ANY(%s)"
                     " ORDER BY document_id, id", (docs,))
         labelled: dict[str, list] = defaultdict(list)
         for i, d, rn in cur.fetchall():

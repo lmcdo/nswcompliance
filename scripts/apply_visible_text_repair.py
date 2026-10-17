@@ -51,10 +51,34 @@ def check(rows: list[dict], full: dict, vis: dict) -> list[str]:
             bad.append(f"{r['id']}: provision_text md5 changed since the plan")
         if t[14]:
             bad.append(f"{r['id']}: already has {t[14]} version rows")
-        held = set(t[7] or []) | ({t[6]} if t[6] else set())
-        if vtr.on_visible(pe.rule_words(r["new_text"]), vis, held, t[6]) is None:
-            bad.append(f"{r['id']}: new text is not on the visible page")
+        # Re-derive the fix from the stored text, never trust the plan's new_text (cross-review 2026-10-17)
+        d = vtr.plan_row({"id": t[0], "provision_text": t[5], "pdf_page": t[6], "page_range": t[7]}, vis)
+        if d.get("verdict") != "fix" or d.get("new_text") != r["new_text"]:
+            bad.append(f"{r['id']}: re-derived {d.get('verdict')} ({d.get('reason')}), not the plan's new text")
     return bad
+
+
+R2 = "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/"
+
+
+def registry_pdf_sha() -> str | None:
+    """sha256 of the chapter PDF dcp_chapter_registry says is in force (is_active, exactly one row), fetched from R2."""
+    import hashlib as _h
+    import urllib.request
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute("SET statement_timeout = 30000")
+        cur.execute("SELECT r2_current_path FROM dcp_chapter_registry WHERE is_active AND council = 'campbelltown' "
+                    "AND chapter_key = %s", (vtr.CHAPTER,))
+        paths = [x[0] for x in cur.fetchall()]
+    finally:
+        conn.close()
+    if len(paths) != 1 or not paths[0]:
+        return None
+    req = urllib.request.Request(R2 + paths[0], headers={"User-Agent": "Mozilla/5.0 (compliance-engine)"})
+    with urllib.request.urlopen(req, timeout=60) as f:
+        return _h.sha256(f.read()).hexdigest()
 
 
 def reprove(conn, rows: list[dict], vis: dict, apply: bool) -> int:
@@ -110,6 +134,10 @@ def main(argv=None) -> int:
     sha = pe.sha256_file(a.pdf)
     if sha != plan["pdf_sha256"]:
         print(f"REFUSING: PDF sha256 {sha[:12]} != plan {plan['pdf_sha256'][:12]}")
+        return 1
+    reg_sha = registry_pdf_sha()
+    if reg_sha != sha:
+        print(f"REFUSING: the PDF is not the chapter's PDF in force (registry file sha256 {str(reg_sha)[:12]}, given {sha[:12]})")
         return 1
     import fitz
     with fitz.open(a.pdf) as doc:

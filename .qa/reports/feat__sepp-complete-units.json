@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Second proof pass of 2026-10-17, all applied live with backups: 45 + 6 SEPP rows re-copied as the smallest complete law clause (6 settled by the row's own or neighbouring clause labels), 28 Inner West LEP rows proven with the same tools under an explicit registry_lep scope, 94 Campbelltown rows rebuilt from the PDF's visible text (the PDF carries an invisible white copy of every line) and page-proven on the visible page, 29 Inner West LEP paraphrases + 24 council not-a-rule rows + 8 duplicates withheld. DQ-145 measured 430 -> 290 (python scripts/dq_probe_live.py --id DQ-145); ceiling lowered to 290. New DQ-147 ratchet counts repeated lines (79, all real table repeats).",
-  "commit_hash": "06539af2",
+  "commit_hash": "ba34937a",
   "files": [
     "scripts/sepp_complete_unit.py",
     "scripts/sepp_lep_proof.py",
@@ -112,7 +112,7 @@
     }
   ],
   "mutation_analysis": "Not executed. By reading: removing the 'neighbours must agree' condition fails test_neighbour_labels_break_a_tie_only_when_both_agree; dropping the white-colour filter fails test_white_span_is_dropped_dark_kept; removing the same-text rule fails test_same_text_different_labels_refused.",
-  "residual_risk": "81 SEPP rows remain ambiguous: the same standard sits in up to 6 codes and the row does not say which; the fix is to tie each such rule to its code(s), not to pick one. 28 Campbelltown rows were refused (collapsed text not one run of the visible page). About 30 council rows stay unresolved (words on several pages). Some Campbelltown rows with no repeated line were page-proven on text that includes the invisible copy.",
+  "residual_risk": "81 SEPP rows remain ambiguous: the same standard sits in up to 6 codes and the row does not say which; the fix is to tie each such rule to its code(s), not to pick one. 28 Campbelltown rows were refused (collapsed text not one run of the visible page). About 30 council rows stay unresolved (words on several pages). Some Campbelltown rows with no repeated line were page-proven on text that includes the invisible copy. Cross-review 2026-10-17 (code-only, by hand): apply_visible_text_repair now re-derives each fix from the stored text and checks the PDF is the registry's file in force (the 94 written rows pass the stricter check against their pre-write backup); neighbour labels are limited to state-law rows (the one neighbour-settled row's document has 0 council rows); the LEP chain now reaches the complete-clause step after a ref-fix unit_too_big (re-run: 0 new rows). rules_lost: all 94 were 0 and the DQ-108 rollback guard covers it.",
   "post_merge": {
     "db_reset": "No",
     "secrets": "None",

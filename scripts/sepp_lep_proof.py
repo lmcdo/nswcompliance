@@ -44,8 +44,10 @@ def decide_chain(old: str, ref: str | None, snap: mb.Snapshot) -> tuple[str, dic
     if d["verdict"] != "refuse" or d["reason"] not in ("ref_mismatch", "unit_too_big"):
         return "marker_blind", d
     if d["reason"] == "ref_mismatch":
-        return "ref_fix", rf.fix_row(old, snap, SCOPE)
-    return "complete_unit", cu.decide_smallest_unit(old, snap, SCOPE)
+        f = rf.fix_row(old, snap, SCOPE)
+        if not (f["verdict"] == "refuse" and f.get("reason") == "unit_too_big"):
+            return "ref_fix", f
+    return "complete_unit", cu.decide_smallest_unit(old, snap, SCOPE)   # unit_too_big from either stage (cross-review)
 
 
 def main(argv=None) -> int:
