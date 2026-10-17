@@ -1,0 +1,23 @@
+{
+  "tier": "minor",
+  "justification": "The drawdown-verify CI job pulls the official postgres:16 image from Docker Hub again instead of mirror.gcr.io; Docker Hub has pulled fine since the single timeout on 2026-10-10, per the user.",
+  "commit_hash": "17074184",
+  "files": [
+    ".github/workflows/gates.yml"
+  ],
+  "break_it": [
+    {
+      "scenario": "Docker Hub times out or rate limits the GitHub-hosted runner again",
+      "what_happens": "the drawdown-verify job fails at Initialize containers with a pull error, visibly red, never silently green",
+      "mitigated": true,
+      "how": "a failed service container pull fails the job; check_pr_gates.py refuses to merge on a failed run; the workflow comment names mirror.gcr.io as the tested fallback",
+      "repro": "point image at a nonexistent tag and push"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "the gates run on main after merge shows the drawdown-verify job green"
+  }
+}
