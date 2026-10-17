@@ -43,3 +43,10 @@ def test_fix_when_the_collapsed_text_is_on_the_visible_page():
     vis = {3: {"raw": "intro " + words + " outro", "sorted": "intro " + words + " outro"}}
     d = vt.plan_row(row, vis)
     assert d["verdict"] == "fix" and d["new_text"] == words and d["evidence"]["page"] == 3
+
+
+def test_unreadable_rules_count_as_at_risk():
+    assert vt.rules_lost('{"rules": [ broken', "any text") == 1
+    assert vt.rules_lost(None, "any text") == 0
+    assert vt.rules_lost([{"compliance_type": "numeric_check", "raw_match": "3m wide"}], "at least 3m wide") == 0
+    assert vt.rules_lost([{"compliance_type": "numeric_check", "raw_match": "3 m wide"}], "at least 3m wide") == 1

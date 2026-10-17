@@ -229,7 +229,7 @@ def rules_lost(old_rules, new_text: str) -> int:
         try:
             rules = json.loads(rules)
         except ValueError:
-            return 0
+            return 1   # unreadable rules are not "no rules": count as at risk so the fix is refused (cross-review)
     items = rules if isinstance(rules, list) else (rules or {}).get("rules") or []
     hay = re.sub(r"\s+", " ", new_text).strip().lower()
     lost = 0
