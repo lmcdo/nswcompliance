@@ -97,10 +97,35 @@ def row_heading(provision_text: str | None) -> str | None:
     return normalise(m.group(1)) if m else None
 
 
-def heading_pages(heading: str, pages: dict, among) -> list:
-    """Pages of `among` whose text (either reading order) holds the section number as whole words."""
+# A number after one of these words is a cross-reference ("see section 6 4"), not the page's own heading.
+_REFERENCE_WORD = re.compile(r"(?:^|\s)(?:see|section|sections|clause|clauses|cl|part|parts|figure|fig|table|"
+                             r"under|in|of|to|and|or|with|per|s)\s+$")
+
+
+def heading_pages(heading: str, pages: dict, hits: dict) -> list:
+    """Pages of `hits` (page -> match_page() results) where the row's section number is printed as a heading
+    ABOVE the matched words: in the same reading order, before a text-run match's start, as whole words, and not
+    right after a referencing word (cross-review 2026-10-17: a page that merely cites 'section 6.4' must not win)."""
     pat = re.compile(rf"(?<![a-z0-9]){re.escape(heading)}(?![a-z0-9])")
-    return sorted(p for p in among if any(pat.search(t) for t in pages[p][0].values()))
+    out = []
+    for pno, ms in hits.items():
+        texts = pages[pno][0]
+        runs = [m for m in ms if m.get("matcher") == "text-run" and m.get("order") in texts]
+        if not runs:
+            continue
+        lead = " ".join(texts[runs[0]["order"]][runs[0]["start"]:runs[0]["end"]].split()[:4])
+        for order, text in texts.items():
+            # where the words start in THIS reading order: the full match, else their first four words (a header
+            # printed at the top of the page comes first in the sorted order even when the words match only raw)
+            starts = [m["start"] for m in runs if m["order"] == order]
+            anchor = starts[0] if starts else text.find(lead)
+            if anchor < 0:
+                continue
+            before = text[:anchor]
+            if any(not _REFERENCE_WORD.search(before[:h.start()]) for h in pat.finditer(before)):
+                out.append(pno)
+                break
+    return sorted(out)
 
 
 # -- reading a PDF -------------------------------------------------------------------

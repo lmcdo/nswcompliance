@@ -1518,7 +1518,7 @@ def _drop_doubled_chars(page: Any) -> Any:
     Real text never repeats the same glyph on top of itself, so this runs for every council."""
     try:
         return page.dedupe_chars(tolerance=1)
-    except Exception:  # noqa: BLE001 - a page object without chars (tests, fakes) is left as it is
+    except AttributeError:   # a page object without chars (tests, fakes); a real failure propagates and fails the chapter
         return page
 
 

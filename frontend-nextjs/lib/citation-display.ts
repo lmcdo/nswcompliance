@@ -108,7 +108,7 @@ const SAME_WORDS_RE = new RegExp(String.raw`^(.+?); same words in ${PLACE}(?:,\s
 
 export function stateClauseLabel(ref?: unknown): string | null {
   const s = asTrimmedString(ref);
-  const multi = s && s.length <= 200 && s.includes(SAME_WORDS) ? SAME_WORDS_RE.exec(s) : null;
+  const multi = s && s.length <= 200 && s.toLowerCase().includes(SAME_WORDS) ? SAME_WORDS_RE.exec(s) : null;
   if (multi) return stateClauseLabel(multi[1]) === multi[1] ? s : null;
   if (!s || s.length > 60) return null;
   if (/provision|layout|_|__|~/i.test(s)) return null;

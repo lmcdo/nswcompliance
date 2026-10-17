@@ -1,4 +1,4 @@
--- 113: publish-time gate for state law (DQ-145 step 7, user plan 2026-10-17): no NEW state-law row is served
+-- 113: publish-time gate for state law (DQ-145 step 7, user plan 2026-10-17): no NEW state-law text is served
 -- until its citation is proven -- the state-law mirror of the council DQ-101 page-proof gate.
 --
 -- prior-art-checked: council rows are gated inside the DCP pipeline (scripts/dcp_fidelity_gate.py, DQ-101). State-law
@@ -6,15 +6,18 @@
 -- scripts/extract_from_documents_table.py), so the only place every writer passes through is the table itself.
 -- Same trigger style as migrations 079 / 111 / 112.
 --
--- 1. REFUSE (raise) an INSERT, or an UPDATE that starts serving a row (v2_is_actionable or is_current turned on),
---    of a state-law row whose citation_status is not 'proven' / 'imprecise'. Rows already served are untouched,
---    so the 2026-10-17 backlog (DQ-145) keeps its "Citation not yet checked" mark and can only shrink.
---    A withheld row comes back only once a proof script has proven it.
--- 2. VOID the proof of a state-law row whose text changes, unless the same write re-checks it (citation_checked_at
---    changes too -- every proof applier sets it). A proven label on words nobody checked is the DQ-111 class.
+-- 1. VOID the proof of a state-law row whose text changes, unless the same statement re-checks it
+--    (citation_checked_at changes too -- every proof applier sets it). A proven label on unchecked words is DQ-111.
+-- 2. REFUSE, at COMMIT, a transaction that leaves a served state-law row unproven after it was inserted, had its text
+--    changed, started being served, or became state law (source_council set to NULL). The check is DEFERRED and
+--    re-reads the row, so the proof appliers -- which write the text and then the proof in one transaction
+--    (scripts/apply_sepp_marker_blind.py) -- still pass. Cross-review 2026-10-17: a flag-transition-only BEFORE trigger
+--    missed a text change on an already-served row and a council row turned into state law.
+--    Untouched rows are not checked: the 2026-10-17 backlog (DQ-145) keeps its "Citation not yet checked" mark and
+--    can only shrink. A proof status lowered by a checker (e.g. to 'partial') is not refused either: that is honest.
 --
--- Rollback: DROP TRIGGER trg_rp_state_law_b_publish_gate ON regulatory_provisions;
---           DROP TRIGGER trg_rp_state_law_a_void_proof ON regulatory_provisions;
+-- Rollback: DROP TRIGGER trg_rp_state_law_publish_gate ON regulatory_provisions;
+--           DROP TRIGGER trg_rp_state_law_void_proof ON regulatory_provisions;
 --           DROP FUNCTION regulatory_provisions_state_law_publish_gate(); DROP FUNCTION regulatory_provisions_state_law_void_proof();
 
 CREATE OR REPLACE FUNCTION regulatory_provisions_state_law_void_proof() RETURNS trigger AS $$
@@ -30,26 +33,40 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION regulatory_provisions_state_law_publish_gate() RETURNS trigger AS $$
+DECLARE
+    now_council text;
+    now_current boolean;
+    now_served boolean;
+    now_status text;
 BEGIN
-    IF NEW.source_council IS NULL
-       AND COALESCE(NEW.is_current, FALSE) AND COALESCE(NEW.v2_is_actionable, FALSE)
-       AND COALESCE(NEW.citation_status, '') NOT IN ('proven', 'imprecise')
-       AND (TG_OP = 'INSERT' OR NOT (COALESCE(OLD.is_current, FALSE) AND COALESCE(OLD.v2_is_actionable, FALSE))) THEN
-        RAISE EXCEPTION 'state-law row % (%, %) would start being served with citation_status %: prove it first '
-                        '(migration 113, DQ-145)', NEW.id, NEW.document_id, NEW.ref_number, NEW.citation_status
+    IF TG_OP = 'UPDATE'
+       AND NEW.provision_text IS NOT DISTINCT FROM OLD.provision_text
+       AND OLD.source_council IS NULL
+       AND COALESCE(OLD.is_current, FALSE) AND COALESCE(OLD.v2_is_actionable, FALSE) THEN
+        RETURN NULL;   -- an already-served state-law row whose words did not change: not new text
+    END IF;
+    -- deferred to COMMIT: judge the row as the transaction leaves it, not as this one statement did
+    SELECT source_council, is_current, v2_is_actionable, citation_status
+      INTO now_council, now_current, now_served, now_status
+      FROM regulatory_provisions WHERE id = NEW.id;
+    IF FOUND AND now_council IS NULL AND COALESCE(now_current, FALSE) AND COALESCE(now_served, FALSE)
+       AND COALESCE(now_status, '') NOT IN ('proven', 'imprecise') THEN
+        RAISE EXCEPTION 'state-law row % (%, %) would be served with new, unproven text (citation_status %): '
+                        'prove it in the same transaction or withhold it (migration 113, DQ-145)',
+                        NEW.id, NEW.document_id, NEW.ref_number, now_status
               USING ERRCODE = 'check_violation';
     END IF;
-    RETURN NEW;
+    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
--- 'a' before 'b': BEFORE triggers fire in name order, so a text change voids the proof before the gate looks.
-DROP TRIGGER IF EXISTS trg_rp_state_law_a_void_proof ON regulatory_provisions;
-CREATE TRIGGER trg_rp_state_law_a_void_proof
+DROP TRIGGER IF EXISTS trg_rp_state_law_void_proof ON regulatory_provisions;
+CREATE TRIGGER trg_rp_state_law_void_proof
     BEFORE UPDATE OF provision_text ON regulatory_provisions
     FOR EACH ROW EXECUTE FUNCTION regulatory_provisions_state_law_void_proof();
 
-DROP TRIGGER IF EXISTS trg_rp_state_law_b_publish_gate ON regulatory_provisions;
-CREATE TRIGGER trg_rp_state_law_b_publish_gate
-    BEFORE INSERT OR UPDATE ON regulatory_provisions
+DROP TRIGGER IF EXISTS trg_rp_state_law_publish_gate ON regulatory_provisions;
+CREATE CONSTRAINT TRIGGER trg_rp_state_law_publish_gate
+    AFTER INSERT OR UPDATE OF provision_text, is_current, v2_is_actionable, source_council ON regulatory_provisions
+    DEFERRABLE INITIALLY DEFERRED
     FOR EACH ROW EXECUTE FUNCTION regulatory_provisions_state_law_publish_gate();

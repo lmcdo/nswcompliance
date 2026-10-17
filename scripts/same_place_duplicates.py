@@ -71,7 +71,7 @@ def same_place_groups(rows: list[dict]) -> list[list[dict]]:
             for j in range(i + 1, len(grp)):
                 a, b = grp[i], grp[j]
                 ra, rb = norm_ref(a["ref"]), norm_ref(b["ref"])
-                if (ra == rb and not WHOLE_PART.search(ra)) or (a["page"] is not None and a["page"] == b["page"]):
+                if (ra and ra == rb and not WHOLE_PART.search(ra)) or (a["page"] is not None and a["page"] == b["page"]):
                     parent[find(i)] = find(j)
         comps: dict[int, list[dict]] = defaultdict(list)
         for i, r in enumerate(grp):

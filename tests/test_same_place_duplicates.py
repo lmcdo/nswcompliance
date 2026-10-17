@@ -35,3 +35,9 @@ def test_kept_row_is_the_proven_clause_labelled_one():
     g = [row(5, "provision_9", 3, proven=True), row(4, "2.34", 3, proven=False), row(7, "Clause 2.34", 3)]
     g.sort(key=spd.keep_order)
     assert g[0]["id"] == 7   # proven, clause-shaped label; lowest id breaks only a full tie
+
+
+def test_rows_without_a_label_are_not_one_place_by_label():
+    # cross-review 2026-10-17: two NULL refs normalise to '' and must not count as the same clause
+    assert spd.same_place_groups([row(1, None, 4), row(2, None, 9)]) == []
+    assert ids(spd.same_place_groups([row(1, None, 4), row(2, "", 4)])) == [[1, 2]]   # same page still is

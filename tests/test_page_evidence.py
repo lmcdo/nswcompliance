@@ -325,3 +325,17 @@ def test_heading_on_two_word_pages_stays_unresolved(tmp_path):
     f = tmp_path / "k2.pdf"
     make_pdf(f, [("text", ["6.4 KS4 Compass Centre", LINE]), ("text", ["6.4 KS4 continued", LINE])])
     assert pe.prove(WORDS, read(f), {9}, 9, "6 4")[0] == "unresolved"
+
+
+def test_a_cross_reference_to_the_section_is_not_its_heading(tmp_path):
+    # cross-review 2026-10-17: page 1 only CITES section 6.5; page 2 prints it as the heading above the words
+    f = tmp_path / "k3.pdf"
+    make_pdf(f, [("text", ["Controls in section 6.5 apply", LINE]), ("text", ["6.5 KS5 Sports Club", LINE])])
+    v, ev, _ = pe.prove(WORDS, read(f), {9}, 9, "6 5")
+    assert v == "proven" and ev["page"] == 2
+
+
+def test_a_heading_printed_below_the_words_does_not_count(tmp_path):
+    f = tmp_path / "k4.pdf"
+    make_pdf(f, [("text", [LINE, "6.5 next site"]), ("text", ["Intro", LINE])])
+    assert pe.prove(WORDS, read(f), {9}, 9, "6 5")[0] == "unresolved"
