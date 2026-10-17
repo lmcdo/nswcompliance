@@ -735,11 +735,11 @@ jobs:
       PGDATABASE_TEST: postgres
     services:
       postgres:
-        # Google's mirror of the official Docker Hub image. Docker Hub token
-        # requests from GitHub-hosted runners timed out on 2026-10-10 (3 of 3
-        # pulls); the AWS ECR Public mirror then returned "toomanyrequests: Data
-        # limit exceeded" on 2026-10-17 (6 of 6 pulls, main and PRs).
-        image: mirror.gcr.io/library/postgres:16
+        # Docker Hub, the official image. Docker Hub timed out once on
+        # 2026-10-10; the ECR Public mirror used after that ran out of
+        # bandwidth on 2026-10-17. If Docker Hub fails again, mirror.gcr.io
+        # serves the same image (passed in #1324).
+        image: postgres:16
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: postgres
