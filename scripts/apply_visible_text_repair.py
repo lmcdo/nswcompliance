@@ -51,6 +51,8 @@ def check(rows: list[dict], full: dict, vis: dict) -> list[str]:
             bad.append(f"{r['id']}: provision_text md5 changed since the plan")
         if t[14]:
             bad.append(f"{r['id']}: already has {t[14]} version rows")
+        if r.get("rules_lost"):
+            bad.append(f"{r['id']}: the plan records {r['rules_lost']} numeric rule(s) that the fix would orphan")
         # Re-derive the fix from the stored text, never trust the plan's new_text (cross-review 2026-10-17)
         d = vtr.plan_row({"id": t[0], "provision_text": t[5], "pdf_page": t[6], "page_range": t[7]}, vis)
         if d.get("verdict") != "fix" or d.get("new_text") != r["new_text"]:
@@ -81,7 +83,7 @@ def registry_pdf_sha() -> str | None:
         return _h.sha256(f.read()).hexdigest()
 
 
-def reprove(conn, rows: list[dict], vis: dict, apply: bool) -> int:
+def reprove(conn, rows: list[dict], vis: dict, apply: bool, commit: bool = True) -> int:
     """After the write: the page_check trigger (migration 079) clears page_check when provision_text changes. Re-record
     'on_page' for each repaired row whose CURRENT text is one run of the visible text of its held page, through
     dcp_page_repair.write (the page proof's own writer, which also checks the PDF is the chapter's current one).
@@ -91,7 +93,7 @@ def reprove(conn, rows: list[dict], vis: dict, apply: bool) -> int:
     cur = conn.cursor()
     cur.execute("SELECT id, provision_text, md5(provision_text), pdf_page, page_range, printed_page_label, "
                 "page_source_path, page_check FROM regulatory_provisions WHERE id = ANY(%s) AND is_current "
-                "AND source_council = 'campbelltown'", ([r["id"] for r in rows],))
+                "AND source_council = 'campbelltown' AND source_chapter_key = %s", ([r["id"] for r in rows], vtr.CHAPTER))
     now = {t[0]: t for t in cur.fetchall()}
     # the trigger clears page_source_path too: the chapter's PDF in force is the registry's (dpr.write re-checks it)
     cur.execute("SELECT r2_current_path FROM dcp_chapter_registry WHERE is_active AND council = 'campbelltown' "
@@ -120,7 +122,7 @@ def reprove(conn, rows: list[dict], vis: dict, apply: bool) -> int:
         return 1
     if not apply or not todo:
         return 0
-    n = dpr.write(conn, todo)
+    n = dpr.write(conn, todo, commit=commit)
     print(f"re-proved {n} of {len(todo)} (page_check = on_page)")
     return 0 if n == len(todo) else 1
 
@@ -134,6 +136,9 @@ def main(argv=None) -> int:
                     help="after the repair: re-record page_check on_page for repaired rows proven on the visible page")
     a = ap.parse_args(argv)
     plan = json.loads(Path(a.plan).read_text(encoding="utf8"))
+    if plan.get("chapter") != vtr.CHAPTER:
+        print(f"REFUSING: plan chapter {plan.get('chapter')!r} is not {vtr.CHAPTER!r}")
+        return 1
     sha = pe.sha256_file(a.pdf)
     if sha != plan["pdf_sha256"]:
         print(f"REFUSING: PDF sha256 {sha[:12]} != plan {plan['pdf_sha256'][:12]}")
@@ -186,8 +191,8 @@ def main(argv=None) -> int:
     src = "campbelltown-dcp-part3-low-medium.pdf sha256 " + sha
     for r in rows:
         cur.execute("SELECT md5(provision_text), (SELECT count(*) FROM provision_versions v WHERE v.provision_id = p.id) "
-                    "FROM regulatory_provisions p WHERE id = %s AND is_current AND v2_is_actionable AND source_council = 'campbelltown' "
-                    "FOR UPDATE", (r["id"],))
+                    "FROM regulatory_provisions p WHERE id = %s AND is_current AND v2_is_actionable AND source_council = 'campbelltown' AND source_chapter_key = %s "
+                    "FOR UPDATE", (r["id"], vtr.CHAPTER))
         got = cur.fetchone()
         if got is None or got[0] != r["md5"] or got[1]:
             conn.rollback()
@@ -208,11 +213,15 @@ def main(argv=None) -> int:
         conn.rollback()
         print(f"ROLLED BACK: DQ-108 {before} -> {after}: {list(hits)[:5]}")
         return 1
+    # migration 079's trigger cleared page_check on every changed row: re-prove them in THIS transaction, and commit
+    # the text only together with every proof (cross-review 2026-10-17)
+    if reprove(conn, rows, vis, True, commit=False):
+        conn.rollback()
+        print("ROLLED BACK: not every repaired row re-proved on its visible page")
+        return 1
     conn.commit()
-    print(f"WROTE {len(rows)} rows (version history v1/v2); DQ-108 {before} -> {after}.")
-    # migration 079's trigger cleared page_check on every changed row: re-prove them now, not as an optional step
-    conn.autocommit = False
-    return reprove(conn, rows, vis, True)
+    print(f"WROTE {len(rows)} rows (version history v1/v2) with their page proofs; DQ-108 {before} -> {after}.")
+    return 0
 
 
 if __name__ == "__main__":

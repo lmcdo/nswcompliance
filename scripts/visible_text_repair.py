@@ -251,6 +251,8 @@ def build(pdf: Path, rows: list[dict]):
     for r in rows:
         p = plan_row(r, vis)
         p["rules_lost"] = rules_lost(r.get("v2_extracted_rules"), p.get("new_text", r["provision_text"] or ""))
+        if p["verdict"] == "fix" and p["rules_lost"]:   # a numeric rule would quote words the fix removes
+            p = {**p, "verdict": "refused", "reason": f"{p['rules_lost']} numeric rule(s) quote words the fix removes"}
         p["page_check"], p["citation_status"] = r.get("page_check"), r.get("citation_status")
         if p["verdict"] == "fix":
             p["evidence"]["pdf_sha256"] = sha

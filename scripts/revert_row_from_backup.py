@@ -62,6 +62,15 @@ def main(argv=None) -> int:
     conn.autocommit = True
     cur.execute("SET default_transaction_read_only = off")
     conn.autocommit = False
+    # re-read under a lock in the write transaction: refuse if anything changed since the read above (cross-review)
+    # prior-art-checked: same row and columns as this script's own read above; nothing to reuse for a one-row lock
+    cur.execute("SELECT provision_text, ref_number, citation_status, version_count FROM regulatory_provisions "
+                "WHERE id = %s AND is_current FOR UPDATE", (a.id,))
+    locked = cur.fetchone()
+    if locked is None or tuple(locked) != (row[0], row[1], row[2], row[4]):
+        conn.rollback()
+        print("REFUSING: the row changed between the read and the lock")
+        return 1
     now = datetime.now(timezone.utc)
     old = b["provision_text"]
     why = ("Reverted: the row's schedule was chosen from neighbouring row labels, and row order is not document "

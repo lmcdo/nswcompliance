@@ -72,7 +72,10 @@ def main(argv=None) -> int:
     refused, plan_rows, evidence, manifest = [], [], [], {}
     by_epi: dict[str, list] = defaultdict(list)
     for i in ids:
-        r = rows[i]
+        r = rows.get(i)
+        if r is None:   # changed between the two SELECTs: record it, do not crash
+            refused.append({"id": i, "stage": "", "reason": "row_missing_or_out_of_scope"})
+            continue
         epi = lp.lep_for(r[1], title_map)
         if not r[6] or r[7] != COUNCIL:
             refused.append({"id": i, "stage": "", "reason": "row_not_current_or_not_inner_west"})
