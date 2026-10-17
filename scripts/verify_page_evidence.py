@@ -45,6 +45,10 @@ def check_evidence(ev: dict, page, words_sha: str | None = None) -> list:
     s, e = ev.get("start"), ev.get("end")
     if not isinstance(s, int) or not isinstance(e, int) or e - s != len(span):
         return bad + ["start/end do not frame the span"]
+    combo = {None: ("text-run", "table-cells"), "full_text": ("text-run", "table-cells"),
+             "all_words_label": ("all-words+label",)}
+    if ev.get("fallback") not in combo or ev.get("matcher") not in combo[ev.get("fallback")]             or (ev.get("matcher") == "all-words+label" and ev.get("fallback") != "all_words_label"):
+        return bad + [f"matcher {ev.get('matcher')!r} does not go with fallback {ev.get('fallback')!r}"]
     if ev.get("matcher") == "all-words+label":   # fallback (user 2026-10-18): every word + the rule's own label
         texts = pe.page_texts(page)
         if len(span.split()) < pe.MIN_WORDS_BAG:
@@ -214,11 +218,11 @@ def main() -> int:
                     full, body = pe.full_text_words(t).split(), pe.rule_words(t).split()
                     k = ev.get("dropped_head_words")
                     if (not isinstance(k, int) or k < 0 or k > len(full) - len(body)
-                            or " ".join(full[k:]) != ev["span"]):
+                            or " ".join(full[k:]) != ev["span"] or pe.OPERATIVE_WORDS & set(full[:k])):
                         bad.append("full-text span is not the row's text minus leading heading words")
                 elif pe.rule_words(t) != ev["span"]:
                     bad.append("rule words differ from the evidence span")
-                elif ev.get("fallback") == "all_words_label" and pe.row_labels(t) != ev.get("row_labels"):
+                if ev.get("matcher") == "all-words+label" and pe.row_labels(t) != ev.get("row_labels"):
                     bad.append("row_labels are not the row's own labels")
                 elif ev.get("by_heading") and pe.row_heading(t) != ev["by_heading"]:
                     bad.append("by_heading is not the row's own section number")

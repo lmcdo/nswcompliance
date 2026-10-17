@@ -275,6 +275,9 @@ def prove(words: str, pages: dict, held=None, primary=None, heading=None):
 #                   page AND the rule's own label (Table/Figure number, or control code C9 / C.48 / O1) is printed there.
 #                   Weaker than a span, so it needs >= MIN_WORDS_BAG words and a label.
 FALLBACK_VERSION = "page-evidence-fallback-v1"
+#: words that change what a rule requires: never among the heading words full_text may drop (cross-review 2026-10-18)
+OPERATIVE_WORDS = frozenset("must not no shall may should only unless except prohibited permitted required "
+                            "cannot can maximum minimum least more less than exceed exceeding".split())
 MIN_WORDS_FULL = 8
 MIN_WORDS_BAG = 10
 LABEL_WINDOW = 12   # a control code must sit in the heading line or the first words of the body to be the rule's own
@@ -433,6 +436,8 @@ def prove_fallback(provision_text: str | None, pages: dict, held=None, primary=N
     for k in range(0, max(0, len(full) - len(body)) + 1):        # drop heading words only, never the body
         if len(full) - k < MIN_WORDS_FULL:
             break
+        if OPERATIVE_WORDS & set(full[:k]):
+            break                                                  # would drop a word that changes the rule
         cand = " ".join(full[k:])
         v, ev, info = prove(cand, pages, held, primary)
         if v == "proven":

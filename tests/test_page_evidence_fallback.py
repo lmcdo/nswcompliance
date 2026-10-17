@@ -157,3 +157,20 @@ def test_swapped_values_are_not_proven(tmp_path):
     swapped = "# 4.1 Setbacks\n\nC9 rear boundary garage door width front setback 6m side setback 3m"
     assert pe.prove_fallback(right, read(f))[0] == "proven"
     assert pe.prove_fallback(swapped, read(f))[0] == "not_found"
+
+
+def test_full_text_never_drops_a_word_that_changes_the_rule(tmp_path):
+    # cross-review 2026-10-18 (Sol, HIGH): dropping 'must not' from the heading line would prove the opposite rule
+    f = tmp_path / "a.pdf"
+    make_pdf(f, [("text", ["be parked within the front setback at any time during construction"])])
+    row = "# Vehicles must not\n\nbe parked within the front setback at any time during construction"
+    assert pe.prove_fallback(row, read(f))[0] != "proven"
+
+
+def test_verifier_rejects_a_matcher_fallback_mismatch(tmp_path):
+    # cross-review 2026-10-18 (Sol, MEDIUM)
+    f = _table_pdf(tmp_path / "t.pdf")
+    v, ev, _ = pe.prove_fallback(TABLE_ROW, read(f))
+    bad = copy.deepcopy(ev)
+    bad["fallback"] = "full_text"
+    assert any("does not go with" in b for b in vpe.check_evidence(bad, page_of(f, 2)))
