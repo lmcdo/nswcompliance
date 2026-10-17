@@ -1,0 +1,72 @@
+{
+  "tier": "standard",
+  "justification": "DQ-145 210 -> 191 (group 3 of ce-NEXT-PROMPT-2026-10-18). Excerpt rows fed to the existing smallest-complete-clause re-copy via new input lists (sepp_complete_unit read only reason=unit_too_big). Applied live with the reviewed applier: 15 state + 2 Inner West re-copies (verifier 0 mismatches, migration 113 gate passed), 2 Inner West excerpts withheld as duplicates of proven rows 8761/22891. sepp_lep_proof.decide_chain routes marker-blind excerpt refusals to decide_smallest_unit, guarded so the chosen clause stays in the excerpt's labelled line (Sol cross-review HIGH, fixed; re-review clean).",
+  "commit_hash": "67e3cbd1",
+  "files": [
+    "scripts/sepp_lep_proof.py",
+    "scripts/outreach_claim_checks.py",
+    "tests/test_sepp_lep_proof_chain.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_sepp_lep_proof_chain.py tests/test_sepp_complete_unit.py tests/test_outreach_claim_checks_oc20.py",
+    "fails_when": "an excerpt is not routed to the whole clause, a chosen clause leaves the excerpt's line, or DQ-145 exceeds 191",
+    "observed_red": "Disabling the excerpt branch failed test_excerpt_is_recopied_as_the_whole_clause; disabling the guard failed test_chosen_clause_outside_the_excerpts_line_is_refused; restored, 25 passed."
+  },
+  "real_layer_exempt": {
+    "scripts/sepp_lep_proof.py": "read-only plan builder; the live run produced data/inner_west_lep_proof_plan_2026-10-18g3.json, re-decided by verify_sepp_marker_blind.py (4/4, 0 mismatches)",
+    "scripts/outreach_claim_checks.py": "constant; live outreach 21/21 at 191"
+  },
+  "pre_impl": {
+    "existing_data": "excerpt refusals in data/sepp_ref_fix_refused_2026-10-17.csv and data/inner_west_lep_proof_refused_2026-10-17.csv (detail unit_too_big / ref_mismatch)",
+    "assumption_mismatch": "complete_unit's default input selects reason=unit_too_big only, so excerpt rows were never tried; applier refused 2 re-copies that would duplicate proven rows",
+    "new_vs_existing": "reuses decide_smallest_unit, verifier and applier; adds one routing branch + guard"
+  },
+  "functions": [
+    {
+      "name": "decide_chain",
+      "file_line": "scripts/sepp_lep_proof.py",
+      "input": "row text, ref_number, law Snapshot",
+      "output": "(stage name, decision dict with verdict accept/recopy/refuse, reason and chosen unit)",
+      "if_none": "refuse verdicts carry a reason; never a silent recopy"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ145_CEILING = 191",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-145 on 2026-10-18 after the applies",
+      "if_missing": "n/a (constant)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "an excerpt's words also appear in an unrelated clause",
+      "what_happens": "decide_smallest_unit refuses ambiguous_unit; the guard refuses ref_mismatch if a recopy ever leaves the line",
+      "mitigated": true,
+      "how": "guard + ambiguity refusal",
+      "repro": "test_chosen_clause_outside_the_excerpts_line_is_refused"
+    },
+    {
+      "scenario": "the whole clause is already served as another row",
+      "what_happens": "applier refuses the duplicate; the excerpt is withheld instead",
+      "mitigated": true,
+      "how": "apply_sepp_marker_blind duplicate-key check",
+      "repro": "data/inner_west_excerpt_duplicates_2026-10-18.json"
+    },
+    {
+      "scenario": "the law prints sub-paragraphs out of order ((b) before (a), Sch 11 s 6(2))",
+      "what_happens": "the copy keeps the law's order",
+      "mitigated": true,
+      "how": "verbatim check against the cached law page",
+      "repro": "row 14159"
+    }
+  ],
+  "mutation_analysis": "Changing <= to < in the ratchet fails test_at_ceiling_passes. Removing the ratchet from CLAIMS fails test_oc20_is_wired_with_all_three_parts.",
+  "residual_risk": "The badge inventory checks each file, not each citation expression: a component with one badge and a second bare citation passes (Sol, 2026-10-17). Hard-wired checked={false} cards always show the mark. The ceiling must be lowered by hand after each proof pass.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "python scripts/dq_check.py --outreach on main prints 21 of 21"
+  }
+}
