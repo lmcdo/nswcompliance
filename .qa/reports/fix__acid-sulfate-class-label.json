@@ -1,0 +1,25 @@
+{
+  "tier": "minor",
+  "justification": "One display label regex fixed; a source scan test added. No data, API or rule change.",
+  "commit_hash": "8b24e059",
+  "files": [
+    "frontend-nextjs/components/compliance/LepControls.tsx",
+    "frontend-nextjs/__tests__/lib/no-control-chars-in-source.test.ts"
+  ],
+  "break_it": [
+    {
+      "scenario": "A script writes an escape like \b as a raw control character into source.",
+      "what_happens": "The new test lists the file and fails in CI.",
+      "mitigated": true,
+      "how": "scan of components, lib, app, hooks for bytes 0x00-0x1f except tab and newlines",
+      "repro": "npx jest __tests__/lib/no-control-chars-in-source.test.ts"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No database change.",
+    "secrets": "No secrets touched.",
+    "other_repo": "No other repository.",
+    "manual_verify": "Yes - 6 Berrigan St Winston Hills Planning tab shows Acid Sulfate Soils Class 5, once."
+  },
+  "residual_risk": "None beyond the label; the API value Class 5 is unchanged."
+}
