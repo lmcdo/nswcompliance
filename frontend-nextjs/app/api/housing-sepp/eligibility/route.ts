@@ -366,7 +366,7 @@ export async function POST(request: NextRequest) {
           description: displayInfo.description,
           isEligible: false,
           assessmentStatus: 'ineligible',
-          eligibilityReason: `Lot width is at most ${widthMax.toFixed(1)}m anywhere on the lot, below the minimum ${minLotWidth.numericValue}m at the front building line (Clause ${minLotWidth.sourceClause})`,
+          eligibilityReason: `The lot measures ${widthMax.toFixed(1)}m at its widest, below the minimum ${minLotWidth.numericValue}m at the front building line (Clause ${minLotWidth.sourceClause})`,
           standards,
           effectiveDate: typeInfo.effectiveDate,
           legislationUrl: typeInfo.legislationUrl

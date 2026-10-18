@@ -137,5 +137,23 @@
     "other_repo": "No.",
     "manual_verify": "Yes - capture 6 Berrigan St Winston Hills on production: card shows '13.4m narrowest in the front half, 22.4m widest', terraces 'not assessed: depends where the front building line sits'; 18 Wyreema Ave Padstow shows a street edge (previously no road)."
   },
-  "residual_risk": "Python services (Site Report, upzoning) still use the rectangle's shorter side: follow-up PR. Front-half range is an assumption, disclosed on the page."
+  "residual_risk": "Python services (Site Report, upzoning) still use the rectangle's shorter side: follow-up PR. Front-half range is an assumption, disclosed on the page.",
+  "cross_review": [
+    {
+      "finding": "'as number' on widthMin/widthMax may be undefined",
+      "verdict": "NOT A DEFECT",
+      "why": "HousingSEPPSchema refine (lib/schemas/index.ts) accepts only lotWidth, or lotWidthMin and lotWidthMax with min <= max, so both are defined at that line."
+    },
+    {
+      "finding": "test description wording reads as a guarantee",
+      "verdict": "NOT A DEFECT",
+      "why": "test-only text, never shown to a user."
+    },
+    {
+      "finding": "'at most X m anywhere on the lot' reads as absolute",
+      "verdict": "REWORDED",
+      "why": "verdict requires a 0.3 m margin so the statement held, but changed to the factual 'The lot measures X m at its widest'."
+    }
+  ],
+  "cross_review_note": "deepseek/deepseek-v3.2 (OpenAI fallback) raised these on the first push run; a second run on the same diff reported no defects."
 }
