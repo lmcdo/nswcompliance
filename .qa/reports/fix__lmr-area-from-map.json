@@ -1,0 +1,117 @@
+{
+  "tier": "critical",
+  "justification": "Changes Housing SEPP eligibility answers and the 'Housing SEPP (LMR): Applicable' badge for every residential lot: whether a lot is in a Low and Mid-Rise housing area now comes from the SEPP map layers (Town Centres 766, TOD 752/759, exclusions 776) via a new Python endpoint, replacing a hardcoded list of 47 council names that put 19 of 23 residential panel lots in a reform area they are not in.",
+  "commit_hash": "0ec24f5e",
+  "files": [
+    "frontend-nextjs/__tests__/api/housing-sepp-lmr-default.test.ts",
+    "frontend-nextjs/__tests__/api/housing-sepp-lmr-gate-states.test.ts",
+    "frontend-nextjs/__tests__/components/compliance/PathwaySummaryCard-lmr.test.tsx",
+    "frontend-nextjs/__tests__/components/compliance/no-invented-lot-width.test.tsx",
+    "frontend-nextjs/__tests__/lib/permitsApartmentDevelopment.test.ts",
+    "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
+    "frontend-nextjs/app/api/housing-sepp/gates/route.ts",
+    "frontend-nextjs/components/compliance/HousingSEPPEligibilityCard.tsx",
+    "frontend-nextjs/components/compliance/PathwaySummaryCard.tsx",
+    "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+    "frontend-nextjs/hooks/useLmrGates.ts",
+    "frontend-nextjs/lib/regulatory-constants.ts",
+    "frontend-nextjs/lib/schemas/index.ts",
+    "services/compliance_api_server.py",
+    "services/housing_sepp_gates_api.py",
+    "tests/test_housing_sepp_gates_api.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_housing_sepp_gates_api.py -q && cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-gate-states.test.ts __tests__/components/compliance/PathwaySummaryCard-lmr.test.tsx --ci",
+    "fails_when": "Mutation measured 2026-10-18: eligibility route treating an unknown area as inside (isLMRArea !== false) -> 4 failed / 10 passed across the two route tests; restored -> pass. Python tests assert None propagates (a layer that does not answer never yields False).",
+    "observed_red": "The mutation above; first full jest run failed 1 (PathwaySummaryCard test matched another line's 'Not applicable') until scoped.",
+    "external_authority": "NSW Planning Portal SEPP layers 766/752/759/776/452 queried live. Parity: the new endpoint agrees with services/housing_sepp_eligibility._gate_inputs on all 28 rules-per-address panel addresses (28 agree, 0 differ, 0 unknown), 2026-10-18; live check 6 Berrigan St Winston Hills in_lmr_area False, near_town_centre False."
+  },
+  "pre_impl": {
+    "existing_data": "services/housing_sepp_eligibility._gate_inputs already derived the area from the map layers for the Site Report; lib/regulatory-constants.ts STAGE2_REGION_LGAS (47 councils) decided it on the website; the code itself flags the TS route as an independent reimplementation (DQ-30).",
+    "assumption_mismatch": "Assumed the two engines agreed on reform areas because both cite the same SEPP; measured: the website said in-area for every residential panel lot, the map says 4 of 23.",
+    "new_vs_existing": "One small Python module reusing the existing portal_constraints fetchers, one Next proxy route and one hook; the TS eligibility route keeps its other logic (full consolidation into Python is a separate follow-up).",
+    "external_source_error": "Each layer is reported true/false/null; a failed or slow layer makes in_lmr_area null, the badge reads 'Not checked: the planning map did not answer' and LMR forms are 'not assessed', never 'not applicable' or eligible.",
+    "frontend_type": "gates {in_lmr_area, in_tod, near_town_centre, town_centre, lmr_excluded, dual_occ_prohibited} each boolean|null; card and route isLMRArea boolean|null; PathwaySummaryCard housingLmrApplicable boolean|null.",
+    "user_failure_mode": "Worst case a lot inside a reform area shown as outside it (false negative) if the map is wrong; the layers are the Planning Portal's own SEPP maps, so this follows the source."
+  },
+  "functions": [
+    {
+      "name": "lmr_gates",
+      "file_line": "services/housing_sepp_gates_api.py",
+      "input": "latitude and longitude of the lot, queried against the SEPP map layers",
+      "output": "true, false or null for each gate and the combined Low and Mid-Rise area answer",
+      "if_none": "in_lmr_area is null whenever the answer depends on a layer that did not answer"
+    },
+    {
+      "name": "POST /api/housing-sepp/eligibility",
+      "file_line": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
+      "input": "zone, lot size, width range and isLMRArea true, false or null from the map gates",
+      "output": "per-form result: LMR forms ineligible outside an area, not assessed when unknown, unchanged inside",
+      "if_none": "an absent or null isLMRArea gives 'not assessed: could not be checked', never eligible"
+    }
+  ],
+  "values": [
+    {
+      "value": "no new numbers; area rule and distances come from the existing portal_constraints fetchers",
+      "read_at": "services/portal_constraints.py fetch_town_centre_catchment default distance, unchanged",
+      "if_missing": "n/a"
+    },
+    {
+      "value": "panel parity 28 agree / 0 differ / 0 unknown",
+      "read_at": "lmr_gates vs _gate_inputs on run8 panel coordinates, 2026-10-18",
+      "if_missing": "without it the two engines could still disagree"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Lot far from any town centre or station in a Greater Sydney council (Winston Hills).",
+      "what_happens": "Badge reads 'Not in a Low and Mid-Rise housing area' and multi-dwelling is not eligible.",
+      "mitigated": true,
+      "how": "Map gates instead of council list; live integration test.",
+      "repro": "python -m pytest tests/test_housing_sepp_gates_api.py -m integration -o addopts="
+    },
+    {
+      "scenario": "Planning Portal town-centre layer times out for the lot.",
+      "what_happens": "Area is null; badge reads 'Not checked'; LMR forms are not assessed, not passed or failed.",
+      "mitigated": true,
+      "how": "None propagation in lmr_gates; route treats null as unknown; tests.",
+      "repro": "python -m pytest tests/test_housing_sepp_gates_api.py -q"
+    },
+    {
+      "scenario": "A caller still sends no isLMRArea at all (AI assistant router).",
+      "what_happens": "Forms that require the area are 'not assessed', never treated as inside the area.",
+      "mitigated": true,
+      "how": "Route reads only isLMRArea === true as inside; mutation to !== false goes red.",
+      "repro": "npx jest __tests__/api/housing-sepp-lmr-gate-states.test.ts"
+    },
+    {
+      "scenario": "Lot inside the exclusion map but next to a town centre.",
+      "what_happens": "Area is false: excluded land is outside the reform area whatever its anchor says.",
+      "mitigated": true,
+      "how": "excluded True forces False in lmr_gates; Python test case.",
+      "repro": "python -m pytest tests/test_housing_sepp_gates_api.py -q"
+    },
+    {
+      "scenario": "Python service restarting (cold start downloads rasters) when the page loads.",
+      "what_happens": "Gates proxy returns 502, hook gives null, page shows 'Not checked' for the area.",
+      "mitigated": true,
+      "how": "Proxy 502 -> null gates; no default to true.",
+      "repro": "n/a (observed cold start 2026-10-18)"
+    },
+    {
+      "scenario": "The TypeScript eligibility route and the Python engine still differ on other standards.",
+      "what_happens": "Height/FSR override display and other form logic remain two implementations that could disagree.",
+      "mitigated": false,
+      "how": "Out of scope; flagged follow-up to consolidate the route into the Python engine (DQ-30).",
+      "repro": "n/a"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No - no database change.",
+    "secrets": "No - uses the existing PYTHON_API_URL.",
+    "other_repo": "No.",
+    "manual_verify": "Yes - after Railway and Vercel deploy: GET /pipeline/housing-sepp/gates for Winston Hills returns in_lmr_area false; the assessment page for 6 Berrigan St Winston Hills shows 'Not in a Low and Mid-Rise housing area' and multi-dwelling not eligible."
+  },
+  "residual_risk": "Two eligibility implementations remain (DQ-30). A map outage shows 'Not checked' rather than an answer."
+}
