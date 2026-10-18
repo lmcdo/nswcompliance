@@ -881,7 +881,8 @@ def _reread_skipped_pages(pdf_path, reader, model: str, collected: list[dict]) -
     lines = pc.pdf_page_lines(pdf_path)
     running = pc.running_lines(lines)   # from every page, so a one-page re-check still knows the page header
     texts = lambda: [str(p.get("text", "")) + " " + str(p.get("title", "")) for p in collected]
-    skipped = pc.skipped_pages(lines, texts(), running)
+    figures = figure_pages_override()     # pages a person named as maps/figures for this run (AI_FIGURE_PAGES)
+    skipped = [p for p in pc.skipped_pages(lines, texts(), running) if p not in figures]
     if not skipped:
         return
     print(f"    [page-coverage] {len(skipped)} page(s) left out, reading again: {skipped}")

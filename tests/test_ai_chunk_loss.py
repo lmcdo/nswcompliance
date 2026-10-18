@@ -286,3 +286,13 @@ def test_figure_pages_named_for_one_run_do_not_count_as_lost(monkeypatch):
     assert ai.figure_pages_override() == set()
     monkeypatch.setenv("AI_FIGURE_PAGES", "x-y, 7")
     assert ai.figure_pages_override() == {7}
+
+
+def test_figure_pages_named_for_one_run_are_not_re_read_or_refused(monkeypatch):
+    """The page-coverage guard must honour AI_FIGURE_PAGES too (CoS s6, 2026-10-19: pages 25-36 maps were re-read
+    and would have been refused after the chunk-loss guard let them through)."""
+    lines = {1: [_sent(i) for i in range(6)], 2: [_sent(i) for i in range(10, 16)]}
+    first = [{"code": "1.1", "title": "A", "text": " ".join(lines[1])}]
+    monkeypatch.setenv("AI_FIGURE_PAGES", "2")
+    out = TestGuardFires()._run(monkeypatch, ["x"] * 2, 12, [first], page_lines=lines)
+    assert len(out) == 1
