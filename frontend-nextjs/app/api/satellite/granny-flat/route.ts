@@ -327,7 +327,7 @@ export async function POST(request: NextRequest) {
   const pathFacts: { frontage_m?: number; battle_axe?: boolean } = {};
   if (lotDims?.battleaxe?.isBattleaxe) {
     pathFacts.battle_axe = true;
-  } else if (lotDims?.lotType === 'rectangular' && lotDims.confidence >= 0.8 && lotDims.frontage > 0) {
+  } else if (lotDims?.lotType === 'rectangular' && lotDims.confidence >= 0.8 && lotDims.frontage != null && lotDims.frontage > 0) {
     pathFacts.battle_axe = false;
     pathFacts.frontage_m = lotDims.frontage;
   }

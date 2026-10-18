@@ -18,8 +18,8 @@ interface BattleaxeInfo {
 
 interface LotDimensions {
  area: number;
- frontage: number;
- depth: number;
+ frontage: number | null;
+ depth: number | null;
  confidence: number;
  notes?: string[];
  lotType?: 'rectangular' | 'battleaxe' | 'irregular';
@@ -116,29 +116,43 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                  <div className="bg-white rounded p-2 text-center border border-amber-100">
                    <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
                      <Ruler className="h-3 w-3" />
-                     <span className="text-xs">Frontage</span>
+                     <span className="text-xs">Width</span>
                    </div>
-                   <span className="text-base font-bold text-gray-900">
-                     {propertyData.lotDimensions.frontage.toFixed(1)}
-                   </span>
-                   <span className="text-xs text-gray-500 ml-0.5">m</span>
+                   {propertyData.lotDimensions.frontage != null ? (
+                     <>
+                       <span className="text-base font-bold text-gray-900">
+                         {propertyData.lotDimensions.frontage.toFixed(1)}
+                       </span>
+                       <span className="text-xs text-gray-500 ml-0.5">m</span>
+                     </>
+                   ) : (
+                     <span className="text-xs text-gray-500">Not measured</span>
+                   )}
                  </div>
                  <div className="bg-white rounded p-2 text-center border border-amber-100">
                    <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
                      <Ruler className="h-3 w-3 rotate-90" />
-                     <span className="text-xs">Depth</span>
+                     <span className="text-xs">Length</span>
                    </div>
-                   <span className="text-base font-bold text-gray-900">
-                     {propertyData.lotDimensions.depth.toFixed(1)}
-                   </span>
-                   <span className="text-xs text-gray-500 ml-0.5">m</span>
+                   {propertyData.lotDimensions.depth != null ? (
+                     <>
+                       <span className="text-base font-bold text-gray-900">
+                         {propertyData.lotDimensions.depth.toFixed(1)}
+                       </span>
+                       <span className="text-xs text-gray-500 ml-0.5">m</span>
+                     </>
+                   ) : (
+                     <span className="text-xs text-gray-500">Not measured</span>
+                   )}
                  </div>
                </>
              )}
            </div>
-           {propertyData.lotDimensions.confidence < 0.8 && (
+           {!propertyData.lotDimensions.battleaxe?.isBattleaxe && (
              <p className="text-xs text-amber-700 mt-2 italic">
-               Note: Irregular lot shape - dimensions are estimates
+               {propertyData.lotDimensions.frontage != null
+                 ? 'Shorter and longer sides of the rectangle that fits the lot. Which side faces the street is not identified.'
+                 : 'Lot shape too irregular for width and length to be measured.'}
              </p>
            )}
          </div>

@@ -59,8 +59,10 @@ export interface PropertyIntelligenceRequest {
 
 export interface LotDimensions {
  area: number;
- frontage: number;
- depth: number;
+ /** Shorter side of the best-fit rectangle; null when the lot is too irregular. */
+ frontage: number | null;
+ /** Longer side of the best-fit rectangle; null with frontage. */
+ depth: number | null;
  boundaries: BoundarySegment[];
  confidence: number;
  notes: string[];

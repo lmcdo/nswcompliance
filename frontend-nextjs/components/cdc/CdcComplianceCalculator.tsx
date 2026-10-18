@@ -248,12 +248,16 @@ export function CdcComplianceCalculator({
                 ) : (
                   <>
                     <div>
-                      <span className="text-gray-500">Frontage</span>{' '}
-                      <span className="font-medium text-gray-900">{lotDimensions.frontage.toFixed(1)}m</span>
+                      <span className="text-gray-500">Width</span>{' '}
+                      <span className="font-medium text-gray-900">
+                        {lotDimensions.frontage != null ? `${lotDimensions.frontage.toFixed(1)}m` : 'not measured'}
+                      </span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Depth</span>{' '}
-                      <span className="font-medium text-gray-900">{lotDimensions.depth.toFixed(1)}m</span>
+                      <span className="text-gray-500">Length</span>{' '}
+                      <span className="font-medium text-gray-900">
+                        {lotDimensions.depth != null ? `${lotDimensions.depth.toFixed(1)}m` : 'not measured'}
+                      </span>
                     </div>
                   </>
                 )}
