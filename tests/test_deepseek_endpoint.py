@@ -32,3 +32,9 @@ def test_no_key_at_all_says_which_keys_it_needs(monkeypatch):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     with pytest.raises(RuntimeError, match="DEEPSEEK_API_KEY or OPENROUTER_API_KEY"):
         ax.deepseek_endpoint()
+
+
+def test_an_empty_model_override_keeps_the_default(monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "ds-key")
+    monkeypatch.setenv("AI_MODEL_ID", "")
+    assert ax.deepseek_endpoint()[2] == "deepseek-chat"

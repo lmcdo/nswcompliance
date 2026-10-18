@@ -591,12 +591,12 @@ def deepseek_endpoint() -> tuple[str, str, str, int]:
     otherwise OpenRouter as before. AI_MODEL_ID still overrides the model on either route."""
     direct = (os.environ.get("DEEPSEEK_API_KEY") or "").strip()
     if direct:
-        return (DEEPSEEK_DIRECT_URL, direct, os.getenv("AI_MODEL_ID", DEEPSEEK_DIRECT_MODEL),
+        return (DEEPSEEK_DIRECT_URL, direct, (os.getenv("AI_MODEL_ID") or DEEPSEEK_DIRECT_MODEL),
                 DEEPSEEK_DIRECT_MAX_TOKENS)
     key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
     if not key:
         raise RuntimeError("AI_MODEL=deepseek needs DEEPSEEK_API_KEY or OPENROUTER_API_KEY in the environment")
-    return ("https://openrouter.ai/api/v1/chat/completions", key, os.getenv("AI_MODEL_ID", DEEPSEEK_MODEL), 16000)
+    return ("https://openrouter.ai/api/v1/chat/completions", key, (os.getenv("AI_MODEL_ID") or DEEPSEEK_MODEL), 16000)
 
 
 def _call_deepseek(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
