@@ -13,6 +13,12 @@ interface LocalProvisionsCardProps {
   localProvisions: LocalProvision[];
 }
 
+/** "30 km" and "30km" are the same value; showing both printed it three times. */
+function sameValue(a?: string, b?: string): boolean {
+  if (!a || !b) return false;
+  return a.replace(/\s+/g, '').toLowerCase() === b.replace(/\s+/g, '').toLowerCase();
+}
+
 interface ProvisionDetail {
   clauseNumber: string;
   clauseTitle: string;
@@ -135,7 +141,7 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
                       {provision.class}
                     </p>
                   )}
-                  {provision.description && (
+                  {provision.description && !sameValue(provision.description, provision.class) && (
                     <p className="text-sm text-muted-foreground mt-1">
                       {provision.description}
                     </p>
@@ -151,7 +157,8 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
                         Page {detail?.pageNumber || provision.pageNumber}
                       </Badge>
                     )}
-                    {provision.class && (
+                    {/* Already shown as the main line when there is no clause number. */}
+                    {provision.class && provision.clauseNumber && (
                       <Badge variant="outline" className="text-xs">
                         {provision.class}
                       </Badge>

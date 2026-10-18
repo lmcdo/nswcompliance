@@ -252,7 +252,10 @@ export function LepControls({
                 <span className="text-xs text-gray-700 truncate">Acid Sulfate Soils</span>
               </div>
               <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.acidSulfateSoils ? 'text-purple-800' : 'text-gray-400'}`}>
-                {constraints?.acidSulfateSoils ? `Class ${constraints.acidSulfateSoils}` : 'No'}
+                {constraints?.acidSulfateSoils
+                  // The portal value can already read "Class 5"; prefixing again printed "Class Class 5".
+                  ? (/^class/i.test(String(constraints.acidSulfateSoils).trim()) ? constraints.acidSulfateSoils : `Class ${constraints.acidSulfateSoils}`)
+                  : 'No'}
               </span>
             </div>
 
