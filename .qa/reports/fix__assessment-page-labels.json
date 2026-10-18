@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Display labels on the assessment page plus the SEPP identifier extraction that feeds the SEPP Requirements card; no eligibility, database or regulatory value changes.",
-  "commit_hash": "e0c2367b",
+  "commit_hash": "5003862b",
   "files": [
     "frontend-nextjs/lib/nsw-planning-portal.ts",
     "frontend-nextjs/components/compliance/LepControls.tsx",
@@ -75,5 +75,17 @@
     "other_repo": "No other repository affected.",
     "manual_verify": "Yes - after Vercel deploy, 6 Berrigan St Winston Hills: no 'SEPP 2022/2021', 'Class Class', triple '30 km', 'city_of_parramatta', or 'Updated Feb 2026' text."
   },
-  "residual_risk": "The overlay title 'SEPP (Western Sydney Aerotropolis) 2020 Wind Turbines Map' is the Planning Portal's own layer name and is shown unchanged; the current instrument name prints beside it."
+  "residual_risk": "The overlay title 'SEPP (Western Sydney Aerotropolis) 2020 Wind Turbines Map' is the Planning Portal's own layer name and is shown unchanged; the current instrument name prints beside it.",
+  "cross_review": [
+    {
+      "finding": "[MEDIUM] nsw-planning-portal.ts applicableSepps may be undefined before push",
+      "verdict": "NOT A DEFECT",
+      "why": "every access uses optional chaining (?.includes / ?.push), so an absent array is a no-op, and the only caller initialises it to an empty array."
+    },
+    {
+      "finding": "[LOW] named[1] may be undefined before trim",
+      "verdict": "NOT A DEFECT",
+      "why": "group 1 is a required capture ([^)]+), so it is always a non-empty string whenever the regex matches."
+    }
+  ]
 }
