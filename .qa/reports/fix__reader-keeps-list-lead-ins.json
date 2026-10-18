@@ -1,0 +1,68 @@
+{
+  "tier": "standard",
+  "justification": "The sentence check counted only text ending '.?!', so list lead-ins ending ':' that the reader dropped while keeping their items were never asked for (KRG 14B bushfire and Blue Gum lead-ins p33, CoS s2 'Development in Botany Road precinct is to:'). It now splits after a colon when a list item follows and counts a 5+ word lead-in. Offline on the saved 14B read both p33 lead-ins are flagged.",
+  "commit_hash": "1b5312eb",
+  "files": [
+    "scripts/ai_extractor.py",
+    "tests/test_ai_extractor_sentence_coverage.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_ai_extractor_sentence_coverage.py",
+    "fails_when": "lead-ins are not counted or a colon inside a sentence splits it",
+    "observed_red": "Turning lead-in counting off fails the lead-in test; restored, all pass."
+  },
+  "real_layer_exempt": {
+    "scripts/ai_extractor.py": "offline on the saved KRG 14B review read: both p33 lead-ins flagged"
+  },
+  "pre_impl": {
+    "existing_data": "held chapters' review rows lack the intro/scope sentences printed on the PDF pages",
+    "assumption_mismatch": "page coverage judges a page by most of its rule lines, so an intro paragraph can be lost on a passed page",
+    "new_vs_existing": "extends the reader after _reread_skipped_pages; reuses page_coverage.running_lines and doubled_text"
+  },
+  "functions": [
+    {
+      "name": "page_sentences",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "one page of printed text, de-doubled and without running headers",
+      "output": "its full sentences and list lead-ins as lower-case word lists",
+      "if_none": "an empty list, so nothing on that page is asked for"
+    }
+  ],
+  "values": [
+    {
+      "value": "LEAD_IN_MIN_WORDS = 5",
+      "read_at": "shortest list lead-in counted as a sentence",
+      "if_missing": "n/a (constant)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a colon inside an ordinary sentence ('is: 5 metres')",
+      "what_happens": "the sentence is not split there",
+      "mitigated": true,
+      "how": "split after ':' only before an item label or a number followed by a capitalised word",
+      "repro": "test_a_colon_inside_a_sentence_or_a_caption_does_not_split_it"
+    },
+    {
+      "scenario": "a list lead-in dropped while its items were copied",
+      "what_happens": "it is named to the model and re-read",
+      "mitigated": true,
+      "how": "lead-in counted as a sentence",
+      "repro": "test_a_list_lead_in_dropped_while_its_items_were_kept_is_found"
+    },
+    {
+      "scenario": "a short label ending in a colon such as 'Objectives:'",
+      "what_happens": "it is not counted as a lead-in",
+      "mitigated": true,
+      "how": "LEAD_IN_MIN_WORDS = 5",
+      "repro": "test_a_short_label_ending_in_a_colon_is_not_a_lead_in"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none: reader and report only",
+    "secrets": "none needed",
+    "other_repo": "none",
+    "manual_verify": "review re-reads of KRG 14G, 14I and Campbelltown Part 4 show 0 lost council sentences in the loss check"
+  }
+}
