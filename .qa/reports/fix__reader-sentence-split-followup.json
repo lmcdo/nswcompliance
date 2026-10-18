@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Follow-up to #1346 (merged one commit early). Campbelltown Part 4 still lost two council sentences the sentence check passed: page 13's continuation of 5.4.8.2 b (glued to copied items ii/iii) and the 4.1C note (a late stray match excused the rest). The check now splits at item labels and excuses only a heading-sized start (HEADING_RUN_MAX=12). Review of #1346: an unmeasured DQ-145 after a page repair write now exits 3.",
-  "commit_hash": "b2faa5a3",
+  "commit_hash": "b0135201",
   "files": [
     "scripts/ai_extractor.py",
     "scripts/dcp_page_repair.py",
