@@ -205,12 +205,21 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/verify_audit_chain.py
 
+      # Re-serves a fixed panel of 28 real addresses from production and flags any whose answer
+      # widened, shrank, picked up a council or chapter it never had, or came back empty with no
+      # reason. Every other check counts rows; on 2026-10-15 every address was being served
+      # 800-2,750 rules and none of them noticed. No secrets: it calls the public endpoint.
+      - name: Rules per address (production, fixed panel)
+        id: rules_per_address
+        if: always()
+        run: python scripts/address_audit/rules_per_address.py
+
       - name: Raise or clear the alarm
         if: always()
         uses: actions/github-script@v9
         env:
           FAILED: >-
-            ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.lga_flags.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }},${{ steps.answer_quality.outcome }},${{ steps.page_maps.outcome }},${{ steps.controls_vs_pdf.outcome }},${{ steps.citations.outcome }},${{ steps.audit_chain.outcome }}
+            ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.lga_flags.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }},${{ steps.answer_quality.outcome }},${{ steps.page_maps.outcome }},${{ steps.controls_vs_pdf.outcome }},${{ steps.citations.outcome }},${{ steps.audit_chain.outcome }},${{ steps.rules_per_address.outcome }}
         with:
           script: |
             const { owner, repo } = context.repo;
@@ -223,7 +232,8 @@ jobs:
                            'DCP page maps vs their PDFs',
                            'control values vs the council PDF',
                            'citation verdicts refresh',
-                           'report audit chain'];
+                           'report audit chain',
+                           'rules per address'];
             const outcomes = (process.env.FAILED || '').split(',');
             const failed = names.filter((_, i) => outcomes[i] === 'failure');
             const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
