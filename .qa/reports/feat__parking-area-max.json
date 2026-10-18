@@ -75,5 +75,8 @@
     "secrets": "None.",
     "other_repo": "No.",
     "manual_verify": "After deploy: run scripts/fixes/parking_area_max_campbelltown_2026_10_19.py --show, then scripts/dcp_setback_citation_status.py --council campbelltown --apply, then open a Campbelltown dwelling-house page and check Parking shows <= 18 m2 / <= 36 m2, p21."
+  },
+  "real_layer_exempt": {
+    "scripts/fixes/parking_area_max_campbelltown_2026_10_19.py": "One-off fix already run once against production (2026-10-19, backup in data/db_rollback_backups). Its only remaining step (--show) writes two production rows; a real-DB test would have to write production. Every write is guarded by id + lga + control_type and asserts rowcount; the dry run re-proves both rows on the PDF page before any write."
   }
 }

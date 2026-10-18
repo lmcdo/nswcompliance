@@ -78,66 +78,69 @@ def main() -> int:
     import dq_probe_section_code_not_in_source as probe
 
     conn = psycopg2.connect(os.environ["DATABASE_URL"], connect_timeout=30)
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("SET statement_timeout = '30000'")
-    cur.execute("SELECT * FROM dcp_setback_controls WHERE id = ANY(%s) AND lga = 'campbelltown' "
-                "AND source_chapter_key = %s AND is_current ORDER BY id", (list(ROWS), CHAPTER))
-    before = cur.fetchall()
-    if len(before) != len(ROWS):
-        print(f"expected {len(ROWS)} rows, found {len(before)} -- nothing written")
-        return 1
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SET statement_timeout = '30000'")
+        cur.execute("SELECT * FROM dcp_setback_controls WHERE id = ANY(%s) AND lga = 'campbelltown' "
+                    "AND source_chapter_key = %s AND is_current ORDER BY id", (list(ROWS), CHAPTER))
+        before = cur.fetchall()
+        if len(before) != len(ROWS):
+            print(f"expected {len(ROWS)} rows, found {len(before)} -- nothing written")
+            return 1
 
-    cur.execute("SELECT r2_current_path FROM dcp_chapter_registry WHERE council = 'campbelltown' "
-                "AND chapter_key = %s AND is_active", (CHAPTER,))
-    r2 = cur.fetchone()["r2_current_path"]
-    s3 = boto3.client(
-        "s3", endpoint_url=f"https://{os.environ['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
-        aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"], region_name="auto")
-    readings = probe.chapter_lines(s3, os.environ["R2_BUCKET_NAME"], r2,
-                                   Path(tempfile.gettempdir()) / "dq111_lines")
-    bad = proof(readings)
-    print("proof:", bad or "both rows proven on p21 with their number")
-    if bad:
-        return 1
-    if args.show:
-        cur.execute("UPDATE dcp_setback_controls SET needs_review = FALSE, reviewed_at = now(), "
-                    "review_reason = %s WHERE id = ANY(%s) AND control_type = 'parking_area_max' "
-                    "AND pdf_page = %s AND section_ref = %s AND is_current",
-                    (REASON, list(ROWS), PAGE, REF))
-        assert cur.rowcount == len(ROWS), cur.rowcount
+        cur.execute("SELECT r2_current_path FROM dcp_chapter_registry WHERE council = 'campbelltown' "
+                    "AND chapter_key = %s AND is_active", (CHAPTER,))
+        r2 = cur.fetchone()["r2_current_path"]
+        s3 = boto3.client(
+            "s3", endpoint_url=f"https://{os.environ['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
+            aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
+            aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"], region_name="auto")
+        readings = probe.chapter_lines(s3, os.environ["R2_BUCKET_NAME"], r2,
+                                       Path(tempfile.gettempdir()) / "dq111_lines")
+        bad = proof(readings)
+        print("proof:", bad or "both rows proven on p21 with their number")
+        if bad:
+            return 1
+        if args.show:
+            cur.execute("UPDATE dcp_setback_controls SET needs_review = FALSE, reviewed_at = now(), "
+                        "review_reason = %s WHERE id = ANY(%s) AND control_type = 'parking_area_max' "
+                        "AND pdf_page = %s AND section_ref = %s AND is_current",
+                        (REASON, list(ROWS), PAGE, REF))
+            assert cur.rowcount == len(ROWS), cur.rowcount
+            conn.commit()
+            print(f"shown {len(ROWS)} rows; now run dcp_setback_citation_status.py --council campbelltown --apply")
+            return 0
+        if not args.apply:
+            print("DRY RUN -- nothing written")
+            return 0
+
+        stamp = datetime.now().strftime("%Y-%m-%dT%H%M%S")
+        backup = ROOT / "data" / "db_rollback_backups" / f"campbelltown_parking_area_pre_{stamp}.json"
+        backup.write_text(json.dumps([dict(r) for r in before], default=str, indent=2), encoding="utf-8")
+        print("backup:", backup)
+
+        cur.execute("SELECT pg_get_constraintdef(oid) d FROM pg_constraint "
+                    "WHERE conname = 'control_type_canonical'")
+        if "'parking_area_max'" not in cur.fetchone()["d"]:
+            cur.execute((ROOT / "migrations" / "115_parking_area_max_control_type.sql")
+                        .read_text(encoding="utf-8").replace("BEGIN;", "").replace("COMMIT;", ""))
+            conn.commit()
+            print("applied migration 115")
+
+        for rid, r in ROWS.items():
+            cur.execute(
+                "UPDATE dcp_setback_controls SET control_type = 'parking_area_max', value_min = %s, "
+                "value_max = NULL, unit = 'm2', condition = %s, source_text = %s, section_ref = %s, "
+                "pdf_page = %s, extraction_method = 'manual_curation' "
+                "WHERE id = %s AND lga = 'campbelltown' AND control_type = 'car_parking' AND is_current",
+                (r["value"], r["condition"], r["text"], REF, PAGE, rid))
+            assert cur.rowcount == 1, rid
         conn.commit()
-        print(f"shown {len(ROWS)} rows; now run dcp_setback_citation_status.py --council campbelltown --apply")
-        return 0
-    if not args.apply:
-        print("DRY RUN -- nothing written")
+        print(f"moved {len(ROWS)} rows, still hidden; after the route is deployed run --show")
         return 0
 
-    stamp = datetime.now().strftime("%Y-%m-%dT%H%M%S")
-    backup = ROOT / "data" / "db_rollback_backups" / f"campbelltown_parking_area_pre_{stamp}.json"
-    backup.write_text(json.dumps([dict(r) for r in before], default=str, indent=2), encoding="utf-8")
-    print("backup:", backup)
-
-    cur.execute("SELECT pg_get_constraintdef(oid) d FROM pg_constraint "
-                "WHERE conname = 'control_type_canonical'")
-    if "'parking_area_max'" not in cur.fetchone()["d"]:
-        cur.execute((ROOT / "migrations" / "115_parking_area_max_control_type.sql")
-                    .read_text(encoding="utf-8").replace("BEGIN;", "").replace("COMMIT;", ""))
-        conn.commit()
-        print("applied migration 115")
-
-    for rid, r in ROWS.items():
-        cur.execute(
-            "UPDATE dcp_setback_controls SET control_type = 'parking_area_max', value_min = %s, "
-            "value_max = NULL, unit = 'm2', condition = %s, source_text = %s, section_ref = %s, "
-            "pdf_page = %s, extraction_method = 'manual_curation' "
-            "WHERE id = %s AND lga = 'campbelltown' AND control_type = 'car_parking' AND is_current",
-            (r["value"], r["condition"], r["text"], REF, PAGE, rid))
-        assert cur.rowcount == 1, rid
-    conn.commit()
-    print(f"moved {len(ROWS)} rows, still hidden; after the route is deployed run --show")
-    return 0
-
+    finally:
+        conn.close()
 
 if __name__ == "__main__":
     sys.exit(main())
