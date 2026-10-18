@@ -175,3 +175,29 @@ def test_for_geometry_measures_when_fetch_succeeds(monkeypatch):
     monkeypatch.setattr(sfm, "fetch_nearby_roads", lambda g: [{"name": "TEST ST", "rings": [rect(-20, -10, 55, 10)]}])
     sf = street_frontage_for_geometry(GEOM)
     assert sf.status == "measured" and sf.roads[0].road == "TEST ST"
+
+
+@pytest.mark.integration
+def test_live_road_layer_finds_berrigan_st_for_the_winston_hills_wedge():
+    """Real HTTP to the NSW road-corridor layer: the query still returns the road and its geometry.
+
+    Run with `pytest -m integration`. Skips (never passes) when the layer is unreachable from this machine.
+    """
+    import importlib
+
+    stub = sys.modules.pop("requests", None)  # conftest_mocks stubs requests; fetch_nearby_roads imports it inside
+    try:
+        try:
+            importlib.import_module("requests")
+        except ImportError:
+            pytest.skip("real requests module not installed")
+        fx = json.loads((FIX / "winston-hills-wedge.json").read_text(encoding="utf-8"))
+        roads = fetch_nearby_roads({"rings": [fx["lotRing"]], "spatialReference": {"wkid": 3857}})
+        if roads is None:
+            pytest.skip("NSW road-corridor layer unreachable")
+        sf = measure_street_frontage(fx["lotRing"], roads)
+        assert [r.road for r in sf.roads] == ["BERRIGAN ST"]
+        assert abs(sf.roads[0].frontage_m - 13.34) <= 0.1
+    finally:
+        if stub is not None:
+            sys.modules["requests"] = stub

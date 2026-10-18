@@ -112,5 +112,8 @@
     "other_repo": "No.",
     "manual_verify": "Yes - Railway redeploys the services; run a Site Report for 6 Berrigan St Winston Hills and confirm the SEPP section streams street_frontage_m 13.34 and terraces 'Depends on where the front building line sits'."
   },
-  "residual_risk": "scripts/capture_brief_golden_fixtures.py still reads the rectangle width via eligibility_lot_width (fixture capture, not served). Front-half range is an assumption, disclosed in the reason text."
+  "residual_risk": "scripts/capture_brief_golden_fixtures.py still reads the rectangle width via eligibility_lot_width (fixture capture, not served). Front-half range is an assumption, disclosed in the reason text.",
+  "real_layer_exempt": {
+    "services/intelligence_brief.py": "its only new outside call is street_frontage_for_geometry -> fetch_nearby_roads, covered by the real-HTTP test in tests/test_street_frontage.py; the brief's own DB and Portal calls are unchanged by this branch"
+  }
 }
