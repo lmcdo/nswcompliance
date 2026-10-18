@@ -115,5 +115,12 @@
   "residual_risk": "scripts/capture_brief_golden_fixtures.py still reads the rectangle width via eligibility_lot_width (fixture capture, not served). Front-half range is an assumption, disclosed in the reason text.",
   "real_layer_exempt": {
     "services/intelligence_brief.py": "its only new outside call is street_frontage_for_geometry -> fetch_nearby_roads, covered by the real-HTTP test in tests/test_street_frontage.py; the brief's own DB and Portal calls are unchanged by this branch"
-  }
+  },
+  "cross_review": [
+    {
+      "finding": "[HIGH] intelligence_brief: _lot_width None when no width range; legacy path depends on lot_width_m",
+      "verdict": "NOT A DEFECT",
+      "why": "evaluate_eligibility with lot_width_m None and no range returns 'Lot width unconfirmed (minimum X m)' with unconfirmed=True (services/housing_sepp_eligibility.py, the unchanged elif branch) -- a stated unconfirmed, never a pass; intended: no width is guessed when the road edge is not found."
+    }
+  ]
 }
