@@ -1,0 +1,68 @@
+{
+  "tier": "standard",
+  "justification": "A table row has no full stop, so the sentence check could not see a dropped table: City of Sydney Schedule 7 Tables S7.1-S7.4 (service bays by GFA, one cell per line) were read as nothing, 19-36% of the numbers on pages 45-47 reached the output. A page with 8+ distinct 3+-digit numbers, under half in the output, is re-read asking for every table row; only provisions bringing a missing number back are kept. Offline on 4 saved reads only those 3 pages crossed the bar.",
+  "commit_hash": "7a2103e3",
+  "files": [
+    "scripts/ai_extractor.py",
+    "tests/test_ai_extractor_sentence_coverage.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_ai_extractor_sentence_coverage.py",
+    "fails_when": "a dropped table is not found, a copied table is flagged, or a few-number page is judged",
+    "observed_red": "Setting TABLE_NUMBERS_HIT to 0 fails the dropped-table test; restored, all pass."
+  },
+  "real_layer_exempt": {
+    "scripts/ai_extractor.py": "offline on saved reads of CoS schedules, KRG 14B, 14F, CoS s2: only schedules p45-47 flagged"
+  },
+  "pre_impl": {
+    "existing_data": "held chapters' review rows lack the intro/scope sentences printed on the PDF pages",
+    "assumption_mismatch": "page coverage judges a page by most of its rule lines, so an intro paragraph can be lost on a passed page",
+    "new_vs_existing": "extends the reader after _reread_skipped_pages; reuses page_coverage.running_lines and doubled_text"
+  },
+  "functions": [
+    {
+      "name": "missing_table_numbers",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "page number to page text, and the texts the reader returned",
+      "output": "page number to the printed numbers the output lacks, for pages whose table was mostly left out",
+      "if_none": "an empty dict, so no page is re-read for a table"
+    }
+  ],
+  "values": [
+    {
+      "value": "TABLE_NUMBERS_MIN = 8; TABLE_NUMBERS_HIT = 0.5",
+      "read_at": "a page is judged when it prints 8+ distinct 3+-digit numbers; flagged under half copied",
+      "if_missing": "n/a (constants; measured on 4 saved reads)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a table copied with its thousands commas removed",
+      "what_happens": "it is not flagged as a dropped table",
+      "mitigated": true,
+      "how": "numbers compared without commas",
+      "repro": "test_a_copied_table_is_not_flagged_and_thousands_commas_do_not_matter"
+    },
+    {
+      "scenario": "a rule page that mentions a few numbers",
+      "what_happens": "it is not judged as a table",
+      "mitigated": true,
+      "how": "TABLE_NUMBERS_MIN = 8",
+      "repro": "test_a_page_with_few_numbers_is_not_judged"
+    },
+    {
+      "scenario": "a table read as nothing",
+      "what_happens": "the page is re-read asking for every table row",
+      "mitigated": true,
+      "how": "missing_table_numbers",
+      "repro": "test_a_dropped_table_is_found_by_its_numbers"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none: reader and report only",
+    "secrets": "none needed",
+    "other_repo": "none",
+    "manual_verify": "review re-reads of KRG 14G, 14I and Campbelltown Part 4 show 0 lost council sentences in the loss check"
+  }
+}
