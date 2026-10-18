@@ -283,7 +283,11 @@ export async function POST(request: NextRequest) {
           // the reason OR in the machine-readable status.
           assessmentStatus: lmrAreaKnown ? 'ineligible' : 'not_assessed',
           eligibilityReason: lmrAreaKnown
-            ? 'Not in a Low and Mid-Rise housing area (no Town Centres Map catchment or TOD catchment at this lot)'
+            // The SEPP's own words for each form's standards: "applies to development ... in a low and mid rise
+            // housing area" (ss 168(1), 172(1), 179(1)). Outside one the form's SEPP standards do not apply at all;
+            // the council's own instruments decide it, which "not eligible" alone does not say.
+            ? 'Not in a Low and Mid-Rise housing area (no Town Centres Map catchment or TOD catchment at this lot), '
+              + 'so these Housing SEPP standards do not apply here; the council\'s own LEP and DCP controls do'
             : 'Whether this lot is in a Low and Mid-Rise housing area could not be checked',
           standards,
           effectiveDate: typeInfo.effectiveDate,

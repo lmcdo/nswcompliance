@@ -18,7 +18,7 @@ import services.upzoning_check as upz
 # Same fake standards shape as tests/test_housing_sepp_eligibility.py GROUPED.
 GROUPED = {
     "dwelling_houses":  {"requires_lmr_area": False, "applicable_zones": ["R1", "R2", "R3", "R4"], "min_lot_size": None,  "min_lot_width": None},
-    "dual_occupancy":   {"requires_lmr_area": False, "applicable_zones": ["R1", "R2", "R3", "R4"], "min_lot_size": 450.0, "min_lot_width": 12.0},
+    "dual_occupancy":   {"requires_lmr_area": True, "applicable_zones": ["R1", "R2", "R3", "R4"], "min_lot_size": 450.0, "min_lot_width": 12.0},  # noqa: zone-codes -- fixture copy of the DB row applicable_zones
     "terraces":         {"requires_lmr_area": True,  "applicable_zones": ["R1", "R2", "R3", "R4"], "min_lot_size": 500.0, "min_lot_width": 18.0},
 }
 
@@ -115,7 +115,11 @@ def test_heritage_lot_suppresses_lmr_forms_but_not_base_forms(client, wire):
     forms = _forms_by_type(data)
     assert forms["terraces"]["eligible"] is False
     assert "heritage" in forms["terraces"]["reason"].lower()
-    assert forms["dual_occupancy"]["eligible"] is True  # base form unaffected
+    # s 168(1) limits duplex standards to a low and mid rise housing area; s 164(1)(d)
+    # excludes heritage land, so dual occupancy is suppressed like the other area forms.
+    assert forms["dual_occupancy"]["eligible"] is False
+    assert "heritage" in forms["dual_occupancy"]["reason"].lower()
+    assert forms["dwelling_houses"]["eligible"] is True  # base form unaffected
 
 
 def test_dual_occ_prohibition_gate_flows_through(client, wire):
