@@ -222,7 +222,7 @@ export function TocSidebar({
         return total > 0 ? (
           <div className="mx-2 mt-3 mb-2 p-2 bg-teal-50 border border-teal-200 rounded">
             <p className="text-xs font-semibold text-teal-900">
-              {total} provisions applicable to your work
+              {total} provisions matched to this property and type of work
             </p>
           </div>
         ) : null;

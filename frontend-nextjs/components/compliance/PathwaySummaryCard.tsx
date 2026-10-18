@@ -61,7 +61,7 @@ export function PathwaySummaryCard({
               <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
               <div>
                 <div className="font-semibold text-green-900 text-base mb-1">
-                  ✓ Fast-Track Available
+                  Faster pathways to check
                 </div>
                 <div className="text-sm text-green-800">
                   {fastestPathway}
@@ -69,7 +69,7 @@ export function PathwaySummaryCard({
                 <div className="text-xs text-green-700 mt-1">
                   {patternBookStatus === 'ELIGIBLE'
                     ? 'Pre-approved designs with 10-day processing'
-                    : `${exemptComplyingCount} work ${exemptComplyingCount === 1 ? 'type' : 'types'} eligible for streamlined approval`
+                    : `${exemptComplyingCount} work ${exemptComplyingCount === 1 ? 'type' : 'types'} to check against the exempt and complying standards`
                   }
                 </div>
               </div>
@@ -143,7 +143,7 @@ export function PathwaySummaryCard({
         {/* Summary */}
         <div className="mt-3 pt-3 border-t border-blue-100">
           <p className="text-xs text-gray-500">
-            PlotDetect analyzed all approval pathways and compliance requirements for this property
+            Screened from the zone and mapped constraints only. Each pathway has further standards to check against the instrument.
           </p>
         </div>
       </CardContent>
