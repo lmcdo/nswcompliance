@@ -1,13 +1,14 @@
 {
   "tier": "standard",
   "justification": "Campbelltown Part 3 went live; one rule (253624, 3.8.2 b) could not be page-proven because the PDF prints a hidden duplicate of every line and the rule runs from page 67 onto 68; DQ-145 went to 108 over the 107 ceiling. page_texts gains a de-doubled clean reading; a page_break fallback proves a rule whose exact words run unbroken across a page break. Applied live, verifier 1/1, DQ-145 107, outreach 21/21.",
-  "commit_hash": "8425d0aa",
+  "commit_hash": "bfb26982",
   "files": [
+    "data/page_evidence_2026-10-18_campbelltown_page_break.jsonl",
     "scripts/page_evidence.py",
     "scripts/page_proof_council.py",
     "scripts/verify_page_evidence.py",
-    "tests/test_page_evidence_fallback.py",
-    "data/page_evidence_2026-10-18_campbelltown_page_break.jsonl"
+    "scripts/visible_text_repair.py",
+    "tests/test_page_evidence_fallback.py"
   ],
   "falsifiable_check": {
     "command": "python -m pytest -q -o addopts= tests/test_page_evidence_fallback.py tests/test_page_evidence.py tests/test_page_proof_gate_dq101.py",
