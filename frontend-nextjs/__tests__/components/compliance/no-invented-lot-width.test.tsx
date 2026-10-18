@@ -180,8 +180,8 @@ describe('StateLevelControls resolves a lot width without inventing one', () => 
   });
 
   it('does not hide the whole LMR section when the width is unknown', () => {
-    expect(src).toMatch(/showHousingSEPPSection = isLMRArea && lotSize;/);
-    expect(src).not.toMatch(/showHousingSEPPSection = isLMRArea && lotSize && lotWidth/);
+    expect(src).toMatch(/showHousingSEPPSection = zone && isLMREligibleZone\(zone\) && lotSize;/);
+    expect(src).not.toMatch(/showHousingSEPPSection = [^;]*lotWidth/);
   });
 
   it('says the width minimums were not checked, rather than rendering nothing', () => {

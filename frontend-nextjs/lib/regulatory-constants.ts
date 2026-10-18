@@ -126,7 +126,7 @@ export const TOD_THRESHOLDS = {
  * Two-stage rollout under SEPP (Housing) 2021 amendments:
  *
  * Stage 1 (effective 1 Jul 2024): Dual occupancy + semi-detached in R2, statewide
- *   except Blue Mountains, Hawkesbury, Wollondilly, Bathurst Regional.
+ *   except four excluded councils.
  *
  * Stage 2 (effective 28 Feb 2025): Full LMR housing types (terraces, MDF, apartments
  *   up to 6 storeys, shop-top) within 800m of 171 nominated stations/town centres.
@@ -138,44 +138,6 @@ export const TOD_THRESHOLDS = {
 export const HOUSING_SEPP_LMR = {
   /** Zones eligible for Stage 2 LMR (full housing types near nominated centres) */
   ELIGIBLE_ZONES: ['R1', 'R2', 'R3', 'R4'] as const,
-
-  /** Zone eligible for Stage 1 (dual occ/semi-detached, statewide R2) */
-  STAGE1_ZONE: 'R2' as const,
-
-  /**
-   * LGAs excluded from Stage 1 statewide dual occupancy provisions.
-   * Lowercase, no punctuation for matching.
-   */
-  STAGE1_EXCLUDED_LGAS: [
-    'blue mountains',
-    'hawkesbury',
-    'wollondilly',
-    'bathurst regional',
-  ] as const,
-
-  /**
-   * LGAs within the four Stage 2 designated regions.
-   * Greater Sydney, Central Coast, Lower Hunter/Newcastle, Illawarra-Shoalhaven.
-   * Lowercase for case-insensitive matching against portal LGA names.
-   */
-  STAGE2_REGION_LGAS: [
-    // Greater Sydney
-    'bayside', 'blacktown', 'blue mountains', 'burwood', 'camden', 'campbelltown',
-    'canada bay', 'canterbury-bankstown', 'canterbury bankstown', 'cumberland',
-    'fairfield', 'georges river', 'the hills', 'hills shire', 'hornsby',
-    "hunter's hill", 'hunters hill', 'inner west', 'ku-ring-gai', 'ku ring gai',
-    'lane cove', 'liverpool', 'mosman', 'north sydney', 'northern beaches',
-    'parramatta', 'city of parramatta', 'penrith', 'randwick', 'ryde',
-    'strathfield', 'sutherland', 'sydney', 'city of sydney', 'waverley',
-    'willoughby', 'wollondilly', 'woollahra',
-    // Central Coast
-    'central coast',
-    // Lower Hunter / Newcastle
-    'newcastle', 'city of newcastle', 'lake macquarie', 'cessnock', 'maitland',
-    'port stephens',
-    // Illawarra-Shoalhaven
-    'wollongong', 'shellharbour', 'shoalhaven', 'kiama',
-  ] as const,
 
   /** Minimum lot width for dual occupancy development (meters) */
   MIN_LOT_WIDTH_DUAL_OCC_M: 12,
@@ -414,42 +376,6 @@ export function isLMREligibleZone(zone: string): boolean {
 }
 
 /**
- * Helper function: Check if LGA is within a Stage 2 designated region
- * (Greater Sydney, Central Coast, Lower Hunter/Newcastle, Illawarra-Shoalhaven)
- */
-export function isLMRStage2Region(lga: string): boolean {
-  const normalised = lga.toLowerCase().replace(/[^a-z0-9 -]/g, '').trim();
-  return (HOUSING_SEPP_LMR.STAGE2_REGION_LGAS as readonly string[]).some(
-    eligible => normalised.includes(eligible) || eligible.includes(normalised)
-  );
-}
-
-/**
- * Helper function: Check if property qualifies for any LMR provisions.
- *
- * Returns true if:
- * - Stage 2: eligible zone (R1–R4) AND LGA is in a designated Stage 2 region, OR
- * - Stage 1: R2 zone AND LGA is not excluded from statewide dual occ provisions
- */
-export function isLMRApplicable(zone: string, lga: string): boolean {
-  const zoneCode = zone.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
-  const normalisedLga = lga.toLowerCase().replace(/[^a-z0-9 -]/g, '').trim();
-
-  // Stage 2: full LMR housing types in designated regions
-  if (isLMREligibleZone(zone) && isLMRStage2Region(lga)) return true;
-
-  // Stage 1: dual occ / semi-detached statewide in R2 (excluding 4 LGAs)
-  if (zoneCode === HOUSING_SEPP_LMR.STAGE1_ZONE) {
-    const excluded = (HOUSING_SEPP_LMR.STAGE1_EXCLUDED_LGAS as readonly string[]).some(
-      ex => normalisedLga.includes(ex)
-    );
-    return !excluded;
-  }
-
-  return false;
-}
-
-/**
  * Low/medium residential zones where a residential flat building (apartments) is
  * permitted ONLY via the Stage-2 LMR mid-rise reforms (designated regions) — not
  * under the base Standard Instrument. Stage-1 LMR in these zones is dual-occupancy
@@ -458,29 +384,27 @@ export function isLMRApplicable(zone: string, lga: string): boolean {
 const LMR_DEPENDENT_APARTMENT_ZONES = ['R1', 'R2', 'R3'] as const;
 
 /**
- * Whether apartment / residential-flat-building development — and therefore the
- * Apartment Design Guide (SEPP Housing 2021 Part 4 / former SEPP 65) — can apply at
- * this address, based on zone and LGA rather than a blanket zone list.
+ * Whether apartment / residential-flat-building development, and therefore the
+ * Apartment Design Guide (SEPP Housing 2021 Part 4 / former SEPP 65), can apply at
+ * this address.
  *
  * - R4 and business / mixed-use / centre zones permit apartments or shop-top housing
  *   under the Standard Instrument, so they qualify anywhere.
- * - R1–R3 qualify only where Stage-2 LMR applies (an eligible zone inside a designated
- *   region). This stops every regional R2/R3 lot (e.g. Bowral/Wingecarribee) from being
- *   treated as apartment-permitting when the mid-rise reforms do not reach it.
+ * - R1-R3 qualify only inside a Low and Mid-Rise housing area, as answered by the
+ *   planning map (GET /pipeline/housing-sepp/gates, in_lmr_area). `lmrArea` is true,
+ *   false, or null when the map did not answer; only true qualifies, so an unanswered
+ *   query never shows the ADG on a lot.
  *
- * Permissibility is LGA-dependent; this is a screening gate, not a substitute for the
+ * Permissibility is LEP-dependent; this is a screening gate, not a substitute for the
  * LEP land-use table.
  */
-export function permitsApartmentDevelopment(zone: string, lga: string): boolean {
+export function permitsApartmentDevelopment(zone: string, lmrArea: boolean | null): boolean {
   const zoneCode = zone.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
   if (!(NSW_STANDARD_ZONES.APARTMENT_PERMITTING as readonly string[]).includes(zoneCode)) {
     return false;
   }
   if ((LMR_DEPENDENT_APARTMENT_ZONES as readonly string[]).includes(zoneCode)) {
-    // Stage-2 applicability is LGA-scoped; without a known LGA we cannot confirm the
-    // designated region, so fail closed rather than showing the ADG on an unknown lot.
-    if (!lga.trim()) return false;
-    return isLMREligibleZone(zone) && isLMRStage2Region(lga);
+    return lmrArea === true;
   }
   return true;
 }

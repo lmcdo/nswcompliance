@@ -91,7 +91,7 @@ interface HousingSEPPEligibilityCardProps {
    */
   lotWidthRange: { min: number; max: number } | null;
   stationDistance?: number;
-  isLMRArea?: boolean;
+  isLMRArea?: boolean | null;
   strataInfo?: StrataInfo;
   lepHeight?: number | null;
   lepFsr?: number | null;

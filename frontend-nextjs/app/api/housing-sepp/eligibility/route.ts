@@ -283,10 +283,8 @@ export async function POST(request: NextRequest) {
           // the reason OR in the machine-readable status.
           assessmentStatus: lmrAreaKnown ? 'ineligible' : 'not_assessed',
           eligibilityReason: lmrAreaKnown
-            ? 'Property is not in an LMR reform area'
-            : 'LMR reform area not assessed for this property — this is not a '
-              + 'finding that the property is outside one. Confirm the LMR area '
-              + 'status to complete this check.',
+            ? 'Not in a Low and Mid-Rise housing area (no Town Centres Map catchment or TOD catchment at this lot)'
+            : 'Whether this lot is in a Low and Mid-Rise housing area could not be checked',
           standards,
           effectiveDate: typeInfo.effectiveDate,
           legislationUrl: typeInfo.legislationUrl
@@ -519,7 +517,7 @@ export async function POST(request: NextRequest) {
           lotWidth,
           lotWidthMax: widthMax,
           stationDistance,
-          isLMRArea: inLMRArea,
+          isLMRArea: lmrAreaKnown ? inLMRArea : null,
           lepHeight,
           lepFsr,
         },
