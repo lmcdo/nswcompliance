@@ -238,6 +238,7 @@ _CONTROL_TYPE_LABELS: dict[str, str] = {
     "side_setback":  "Side setback",
     "rear_setback":  "Rear setback",
     "max_height":    "Maximum building height",
+    "parking_area_max": "Maximum undercover parking area",
     "wall_height":   "Wall height",
 }
 

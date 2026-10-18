@@ -158,6 +158,27 @@ describe('GET /api/dcp/structured-controls', () => {
     expect(data.available_dev_types).toEqual(['secondary_dwelling']);
   });
 
+  test('a parking AREA cap shows as a maximum in m2 under Parking, with its page', async () => {
+    mockFetchDcpControls.mockResolvedValueOnce(proxyResult([
+      proxyRow({
+        semantic_type: 'parking_area_max', value_min: 18, unit: 'm2',
+        notes: '1-2 bedrooms', pdf_page: 21,
+      }),
+    ]));
+    const res = await GET(req('council=waverley&dev_type=dwelling_house'));
+    const data = await res.json();
+    const parking = data.categories.find((c: { category: string }) => c.category === 'Parking');
+    expect(parking.controls).toHaveLength(1);
+    expect(parking.controls[0]).toMatchObject({
+      control_type: 'parking_area_max',
+      control_label: 'Maximum undercover parking area',
+      direction: 'max',
+      value_min: 18,
+      unit: 'm2',
+    });
+    expect(parking.controls[0].pdf_url).toMatch(/#page=21$/);
+  });
+
   test('source-unavailable is a visible 503, never an empty success', async () => {
     mockFetchDcpControls.mockRejectedValueOnce(
       new DcpControlsUnavailableError('down'));
