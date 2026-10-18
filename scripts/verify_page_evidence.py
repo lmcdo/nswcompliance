@@ -46,9 +46,11 @@ def check_evidence(ev: dict, page, words_sha: str | None = None) -> list:
     if not isinstance(s, int) or not isinstance(e, int) or e - s != len(span):
         return bad + ["start/end do not frame the span"]
     combo = {None: ("text-run", "table-cells"), "full_text": ("text-run", "table-cells"),
-             "all_words_label": ("all-words+label",)}
+             "all_words_label": ("all-words+label",), "page_break": ("page-break",)}
     if ev.get("fallback") not in combo or ev.get("matcher") not in combo[ev.get("fallback")]             or (ev.get("matcher") == "all-words+label" and ev.get("fallback") != "all_words_label"):
         return bad + [f"matcher {ev.get('matcher')!r} does not go with fallback {ev.get('fallback')!r}"]
+    if ev.get("matcher") == "page-break":
+        return bad + ["page-break evidence is checked by check_page_break with both pages"]
     if ev.get("matcher") == "all-words+label":   # fallback (user 2026-10-18): every word + the rule's own label
         texts = pe.page_texts(page)
         if len(span.split()) < pe.MIN_WORDS_BAG:
@@ -102,6 +104,27 @@ def check_evidence(ev: dict, page, words_sha: str | None = None) -> list:
     return bad
 
 
+def check_page_break(ev: dict, page_a, page_b) -> list:
+    """Problems re-deriving a page-break proof on its two fitz pages ([] = holds): words[:split] at start_a of page_a
+    in order_a, words[split:] at start_b of page_b in order_b, each at least MIN_PART words."""
+    span = ev.get("span") or ""
+    if hashlib.sha256(span.encode()).hexdigest() != ev.get("span_sha256"):
+        return ["span_sha256 does not match span"]
+    toks, k = span.split(), ev.get("split")
+    if not isinstance(k, int) or k < pe.MIN_PART or len(toks) - k < pe.MIN_PART or ev.get("next_page") != ev.get("page", 0) + 1:
+        return ["split or next_page outside the rule"]
+    bad = []
+    for part, page, order, start in ((" ".join(toks[:k]), page_a, ev.get("order_a"), ev.get("start_a")),
+                                     (" ".join(toks[k:]), page_b, ev.get("order_b"), ev.get("start_b"))):
+        if order not in pe.ORDERS or not isinstance(start, int):
+            bad.append("unknown reading order or start")
+            continue
+        hay = pe.page_texts(page)[order]
+        if hay[start:start + len(part)] != part or not _boundary(hay, start, start + len(part)):
+            bad.append(f"page text at the recorded offset is not the {'first' if page is page_a else 'second'} half")
+    return bad
+
+
 def check_uniqueness(ev: dict, old: dict, verdict: str, pages: dict) -> list:
     """Problems with the 'where else is the span printed' half of a proof. Pure over `pages`
     (page -> (texts, prepared tables)). Evidence with all_pages: the list must be re-derived
@@ -113,6 +136,11 @@ def check_uniqueness(ev: dict, old: dict, verdict: str, pages: dict) -> list:
             return [f"span now {v} on pages {info.get('pages')}"]
         return []
     held = set(old.get("page_range") or []) | {old.get("pdf_page")}
+    if ev.get("matcher") == "page-break":        # every place the rule runs over a page break, re-derived
+        starts = sorted({b[0] for b in pe.page_break_hits(ev["span"], pages)})
+        if starts != ev["all_pages"] or pe.pick_page(starts, held, old.get("pdf_page")) != ev["page"]:
+            return [f"page-break places now {starts}, recorded {ev['all_pages']}"]
+        return []
     if ev.get("matcher") == "all-words+label":   # re-derive the candidate pages from the PDF with the row's labels
         hits = pe.bag_pages(ev["span"], ev.get("row_labels") or [], pages)
         if hits != ev["all_pages"]:
@@ -188,6 +216,9 @@ def main() -> int:
                     pno = ev["page"]
                     if not 1 <= pno <= len(doc):
                         bad.append("page not in pdf")
+                    elif ev.get("matcher") == "page-break":
+                        bad += (["next page not in pdf"] if pno >= len(doc)
+                                else check_page_break(ev, doc[pno - 1], doc[pno]))
                     else:
                         bad += check_evidence(ev, doc[pno - 1])
                 if not bad and not args.no_unique:

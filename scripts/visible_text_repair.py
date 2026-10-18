@@ -182,7 +182,7 @@ def on_visible(words: str, vis: dict, held, primary):
     order = sorted(set(held) & set(vis), key=lambda p: (p != primary, p))
     for pno in order:
         for o in pe.ORDERS:
-            for s in pe.find_span(vis[pno][o], words):
+            for s in pe.find_span(vis[pno].get(o, ""), words):   # visible text has only raw/sorted
                 return {"page": pno, "order": o, "start": s, "end": s + len(words), "span": words,
                         "span_sha256": hashlib.sha256(words.encode()).hexdigest(),
                         "matcher_version": pe.MATCHER_VERSION + "+visible-only"}

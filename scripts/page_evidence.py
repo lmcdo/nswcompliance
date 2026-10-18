@@ -38,7 +38,7 @@ MIN_WORDS = 3
 MIN_WORDS_SHARED = 10
 MIN_DISTINCT_SHARED = 0.5
 MATCHER_VERSION = "page-evidence-v3-shared-page-needs-a-sentence"
-ORDERS = ("raw", "sorted")
+ORDERS = ("raw", "sorted", "clean")
 _WORD = re.compile(r"[a-z0-9]+")
 _BULLETS = re.compile("[•‣▪●◦⁃∙·]")
 _SOFT = re.compile("[­​‌‍⁠﻿]")
@@ -122,10 +122,29 @@ def heading_pages(heading: str, pages: dict, hits: dict) -> list:
 
 # -- reading a PDF -------------------------------------------------------------------
 
+def clean_text(page) -> str:
+    """The page with text printed twice at the same spot kept once (Campbelltown prints a hidden white copy under
+    every line, so the raw text layer stutters; 2026-10-18). Same rule as ai_extractor.doubled_text."""
+    seen, parts = set(), []
+    for block in page.get_text("dict")["blocks"]:
+        for ln in block.get("lines") or []:
+            for sp in ln["spans"]:
+                t = sp["text"].strip()
+                if not t:
+                    continue
+                k = (t, tuple(round(v) for v in sp["bbox"]))
+                if k in seen:
+                    continue
+                seen.add(k)
+                parts.append(t)
+    return " ".join(parts)
+
+
 def page_texts(page) -> dict[str, str]:
     """order -> normalised text of the page."""
     return {"raw": normalise(page.get_text("text")),
-            "sorted": normalise(page.get_text("text", sort=True))}
+            "sorted": normalise(page.get_text("text", sort=True)),
+            "clean": normalise(clean_text(page))}
 
 
 def page_tables(page) -> list:
@@ -205,7 +224,7 @@ def match_page(words: str, texts: dict, streams: list) -> list:
     """Every proof of `words` on one page (before the one-page-only rule is applied)."""
     found = []
     for order in ORDERS:
-        for s in find_span(texts[order], words):
+        for s in find_span(texts.get(order, ""), words):   # a caller may build only raw/sorted
             found.append({"matcher": "text-run", "order": order, "start": s,
                           "end": s + len(words), "span": words})
     for ti, kind, coords, hay, offs, parts in streams:
@@ -443,6 +462,33 @@ def pick_page(hits: list, held=None, primary=None):
     return both[0] if len(both) == 1 else None
 
 
+MIN_PART = 10   # words on each side of a page break
+
+
+def page_break_hits(words: str, pages: dict) -> list:
+    """(page, split, order_a, start_a, order_b, start_b) for every way `words` runs unbroken to the end of a page's
+    text block and on, unbroken, on the next page: words[:split] on page P and words[split:] on page P + 1, each at
+    least MIN_PART words. Only the page footer/header may sit between the two halves."""
+    toks = words.split()
+    out = []
+    for pno in sorted(pages):
+        nxt = pno + 1
+        if nxt not in pages:
+            continue
+        for k in range(MIN_PART, len(toks) - MIN_PART + 1):
+            a, b = " ".join(toks[:k]), " ".join(toks[k:])
+            ha = [(o, find_span(pages[pno][0].get(o, ""), a)) for o in ORDERS]
+            ha = [(o, s[0]) for o, s in ha if s]
+            if not ha:
+                continue
+            hb = [(o, find_span(pages[nxt][0].get(o, ""), b)) for o in ORDERS]
+            hb = [(o, s[0]) for o, s in hb if s]
+            if hb:
+                out.append((pno, k, ha[0][0], ha[0][1], hb[0][0], hb[0][1]))
+                break
+    return out
+
+
 def prove_fallback(provision_text: str | None, pages: dict, held=None, primary=None):
     """(verdict, evidence-or-None, info) using the two fallbacks above, full_text first. Same one-page rule as prove():
     several pages -> the row's own stored page if it is one of them, else unresolved."""
@@ -460,6 +506,19 @@ def prove_fallback(provision_text: str | None, pages: dict, held=None, primary=N
         if v == "unresolved":
             return v, None, info
     words = " ".join(body)
+    if len(body) >= 2 * MIN_PART:   # a rule that runs on over a page break: exact words on each side
+        breaks = page_break_hits(words, pages)
+        starts = sorted({b[0] for b in breaks})
+        pno = pick_page(starts, held, primary) if starts else None
+        if pno is not None:
+            _p, k, oa, sa, ob, sb = next(b for b in breaks if b[0] == pno)
+            ev = {"matcher": "page-break", "page": pno, "next_page": pno + 1, "split": k, "order_a": oa,
+                  "start_a": sa, "order_b": ob, "start_b": sb, "all_pages": starts, "span": words, "start": 0,
+                  "end": len(words), "fallback": "page_break", "fallback_version": FALLBACK_VERSION,
+                  "matcher_version": MATCHER_VERSION, "span_sha256": hashlib.sha256(words.encode()).hexdigest()}
+            return "proven", ev, {"pages": starts}
+        if starts:
+            return "unresolved", None, {"pages": starts, "reason": "runs over a page break at several places"}
     labels = row_labels(provision_text)
     if len(body) < MIN_WORDS_BAG or not labels:
         return "not_found", None, {"pages": [], "reason": "no label or too few words for all_words_label"}

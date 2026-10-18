@@ -182,3 +182,57 @@ def test_prose_cannot_use_the_every_word_rule(tmp_path):
     make_pdf(f, [("text", ["width door garage boundary side setback rear 6m setback front C9"])])
     row = "# 4.1 Setbacks\n\nC9 front setback 6m rear setback side boundary garage door width"
     assert pe.prove_fallback(row, read(f))[0] == "not_found"
+
+
+# -- clean reading and page breaks (Campbelltown Part 3 row 253624, 2026-10-18) -------------------------------------
+FIRST = "Any battle axe shaped allotment created by subdivision for the purpose of a dwelling house shall satisfy"
+SECOND = "the following standards a minimum depth of 25 metres excluding the length of the access handle"
+
+
+def test_a_rule_running_over_a_page_break_is_proven_on_its_first_page(tmp_path):
+    f = tmp_path / "a.pdf"
+    make_pdf(f, [("text", ["Intro page."]), ("text", ["3.8.2 Design Requirements", FIRST]),
+                 ("text", [SECOND, "3.8.3 Other things entirely unrelated here."])])
+    row = f"# 3.8.2 b) Design Requirements\n\n{FIRST} {SECOND}"
+    v, ev, _ = pe.prove_fallback(row, read(f), held={2}, primary=2)
+    assert v == "proven" and ev["matcher"] == "page-break" and ev["page"] == 2 and ev["next_page"] == 3
+    assert vpe.check_page_break(ev, page_of(f, 2), page_of(f, 3)) == []
+    assert vpe.check_uniqueness(ev, {"pdf_page": 2, "page_range": [2]}, "on_page", read(f)) == []
+
+
+def test_a_changed_word_on_the_second_page_is_not_proven(tmp_path):
+    f = tmp_path / "a.pdf"
+    make_pdf(f, [("text", [FIRST]), ("text", [SECOND.replace("25 metres", "30 metres")])])
+    row = f"# 3.8.2 b) Design Requirements\n\n{FIRST} {SECOND}"
+    assert pe.prove_fallback(row, read(f))[0] != "proven"
+
+
+def test_halves_on_pages_that_are_not_next_to_each_other_are_not_proven(tmp_path):
+    f = tmp_path / "a.pdf"
+    make_pdf(f, [("text", [FIRST]), ("text", ["Something else."]), ("text", [SECOND])])
+    row = f"# 3.8.2 b) Design Requirements\n\n{FIRST} {SECOND}"
+    assert pe.prove_fallback(row, read(f))[0] != "proven"
+
+
+def test_verifier_rejects_a_moved_split(tmp_path):
+    f = tmp_path / "a.pdf"
+    make_pdf(f, [("text", [FIRST]), ("text", [SECOND])])
+    row = f"# 3.8.2 b) Design Requirements\n\n{FIRST} {SECOND}"
+    v, ev, _ = pe.prove_fallback(row, read(f))
+    bad = copy.deepcopy(ev)
+    bad["split"] = ev["split"] + 2
+    assert vpe.check_page_break(bad, page_of(f, 1), page_of(f, 2))
+
+
+def test_clean_reading_proves_a_line_printed_twice_at_the_same_spot(tmp_path):
+    line = "Council may consider the use of the roof space for a habitable room but only if it is designed"
+    doc = fitz.open()
+    p = doc.new_page()
+    p.insert_text((72, 80), line, fontsize=10, color=(0, 0, 0))
+    p.insert_text((72, 80), line, fontsize=10, color=(1, 1, 1))     # the hidden copy
+    path = tmp_path / "d.pdf"
+    doc.save(str(path))
+    doc.close()
+    v, ev, _ = pe.prove(pe.normalise(line), read(path))
+    assert v == "proven" and ev["order"] == "clean"
+    assert vpe.check_evidence(ev, page_of(path, 1)) == []

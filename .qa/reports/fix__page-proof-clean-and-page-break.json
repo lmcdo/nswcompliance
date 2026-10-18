@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "Campbelltown Part 3 went live; one rule (253624, 3.8.2 b) could not be page-proven because the PDF prints a hidden duplicate of every line and the rule runs from page 67 onto 68; DQ-145 went to 108 over the 107 ceiling. page_texts gains a de-doubled clean reading; a page_break fallback proves a rule whose exact words run unbroken across a page break. Applied live, verifier 1/1, DQ-145 107, outreach 21/21.",
+  "commit_hash": "bfb26982",
+  "files": [
+    "data/page_evidence_2026-10-18_campbelltown_page_break.jsonl",
+    "scripts/page_evidence.py",
+    "scripts/page_proof_council.py",
+    "scripts/verify_page_evidence.py",
+    "scripts/visible_text_repair.py",
+    "tests/test_page_evidence_fallback.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_page_evidence_fallback.py tests/test_page_evidence.py tests/test_page_proof_gate_dq101.py",
+    "fails_when": "a doubled line is not provable, a rule across a page break is not proven, a changed word or non-adjacent pages are proven, or the verifier accepts a moved split",
+    "observed_red": "Disabling the clean reading, the page-break search, the page-break fallback or the verifier's half check each failed a test; restored, all pass."
+  },
+  "real_layer_exempt": {
+    "scripts/page_evidence.py": "live plan for 253624 verified 1/1 against the pinned PDF with --db",
+    "scripts/page_proof_council.py": "cache key bump only",
+    "scripts/verify_page_evidence.py": "live verify 1/1"
+  },
+  "pre_impl": {
+    "existing_data": "row 253624: words 0-80 unbroken on clean page 67, 81-135 on clean page 68; raw fitz text holds the hidden duplicate",
+    "assumption_mismatch": "the proof tools read the raw text layer, which still carries the doubled copy after the reader fix",
+    "new_vs_existing": "extends page_evidence and its verifier; same applier"
+  },
+  "functions": [
+    {
+      "name": "page_break_hits",
+      "file_line": "scripts/page_evidence.py",
+      "input": "rule words and the PDF pages",
+      "output": "every page where the rule's words run unbroken to the next page, with the split point and offsets",
+      "if_none": "empty list, and the row stays unproven"
+    }
+  ],
+  "values": [
+    {
+      "value": "MIN_PART = 10",
+      "read_at": "each half must be a real run of words, not a stray phrase",
+      "if_missing": "n/a (constant)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "one word changed on the second page",
+      "what_happens": "the rule is not proven by the page-break proof",
+      "mitigated": true,
+      "how": "exact span on each page",
+      "repro": "test_a_changed_word_on_the_second_page_is_not_proven"
+    },
+    {
+      "scenario": "the two halves sit on pages that are not next to each other",
+      "what_happens": "the rule is not proven",
+      "mitigated": true,
+      "how": "next page only",
+      "repro": "test_halves_on_pages_that_are_not_next_to_each_other_are_not_proven"
+    },
+    {
+      "scenario": "a recorded split is moved in the evidence file",
+      "what_happens": "the verifier rejects the evidence and nothing is written",
+      "mitigated": true,
+      "how": "check_page_break re-reads both halves",
+      "repro": "test_verifier_rejects_a_moved_split"
+    },
+    {
+      "scenario": "a PDF prints a hidden copy of every line",
+      "what_happens": "the clean reading proves the line once",
+      "mitigated": true,
+      "how": "same-text same-spot twins kept once",
+      "repro": "test_clean_reading_proves_a_line_printed_twice_at_the_same_spot"
+    }
+  ],
+  "mutation_analysis": "Changing <= to < in the ratchet fails test_at_ceiling_passes. Removing the ratchet from CLAIMS fails test_oc20_is_wired_with_all_three_parts.",
+  "residual_risk": "The badge inventory checks each file, not each citation expression: a component with one badge and a second bare citation passes (Sol, 2026-10-17). Hard-wired checked={false} cards always show the mark. The ceiling must be lowered by hand after each proof pass.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "python scripts/dq_check.py --outreach on main prints 21 of 21"
+  }
+}
