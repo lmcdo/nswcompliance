@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "KRG 14F was listed not-covered by 77 row ids that the 2026-10-18 re-read replaced; DQ-146 counted its 108 new withheld rows. Listed by whole chapter (expect 108), shared copy regenerated; DQ-146 0.",
-  "commit_hash": "a6294c62",
+  "commit_hash": "f6e8778c",
   "files": [
     "data/chapter_scope/not_covered_2026-10-15.json",
     "frontend-nextjs/shared/not-covered-councils.json"
