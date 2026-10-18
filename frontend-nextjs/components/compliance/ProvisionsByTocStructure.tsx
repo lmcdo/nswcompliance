@@ -1906,7 +1906,7 @@ export function ProvisionsByTocStructure({
               </span>
             )}
             <span>·</span>
-            <span>Source PDF checked fortnightly</span>
+            <span>Source PDF checked twice a month</span>
             {verifiedDateLabel && (
               <>
                 <span>·</span>
@@ -1927,11 +1927,11 @@ export function ProvisionsByTocStructure({
           )}
           {isStale && (
             <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-              Currency data overdue — the fortnightly check has not completed recently. Provisions shown are from the last version checked.
+              Currency data overdue — the twice-monthly check has not completed recently. Provisions shown are from the last version checked.
             </div>
           )}
           <p className="text-xs text-gray-400">
-            Provisions sourced from the council&apos;s published DCP. Every fortnight the council&apos;s PDF is compared with our stored copy. This is planning intelligence for due diligence review — not a substitute for a Section 10.7 planning certificate.
+            Provisions sourced from the council&apos;s published DCP. Twice a month (on the 1st and 15th) the council&apos;s PDF is compared with our stored copy. This is planning intelligence for due diligence review — not a substitute for a Section 10.7 planning certificate.
           </p>
         </div>
       )}
