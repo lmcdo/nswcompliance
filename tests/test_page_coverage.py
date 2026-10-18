@@ -211,3 +211,14 @@ def test_a_page_whose_rules_are_missing_is_still_skipped():
 def test_is_heading():
     assert pc.is_heading("3 7 1 6 requirements for the use".split())
     assert not pc.is_heading("c1 the building must be set back".split())
+
+
+def test_a_one_page_recheck_still_knows_the_running_header():
+    # cross-review 2026-10-18: the re-check after a re-read passes only the skipped pages
+    pages = {n: [HEADER, f"Filler text line number {n} about something general here"] for n in range(1, 8)}
+    pages[8] = _narrow_page()
+    out = ["Council may consider the use of the roof space for a habitable room but only if it is appropriately "
+           "designed and part of the overall design of the building today"]
+    running = pc.running_lines(pages)
+    assert 8 not in pc.skipped_pages({8: pages[8]}, out, running)
+    assert 8 in pc.skipped_pages({8: pages[8]}, out)          # without the whole-document headers it would refuse

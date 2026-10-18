@@ -80,6 +80,11 @@ PROMPT = (
     "Copy a TABLE one printed row at a time, as the row's cells in order separated by ' | ', exactly as printed; "
     "never turn a table into sentences or 'label: value' lines. Never leave out a sentence from the middle of a "
     "paragraph or a list, even an explanatory one. "
+    # 2026-10-18, Campbelltown Part 3 re-read: notes and definitions printed with the rules were dropped ("Net frontage
+    # is calculated as ...", "Note: A dwelling house ... means a building containing only one dwelling"); a rule that
+    # uses a defined term cannot be read without them.
+    "Also copy every Note and every definition printed with the rules (e.g. '... means ...', '... is calculated as "
+    "...') as its own provision, word for word. "
     "The \"page\" is the number of the page the text is printed on, counting the first page you "
     "were given as 1. "
     "Output ONLY the JSON object."
@@ -507,7 +512,9 @@ def reader_input(pdf_bytes: bytes, prompt: str) -> tuple[bytes, str]:
     """(pdf, prompt) for a PDF-reading model: unchanged, or for a doubled chunk pictures + de-doubled text."""
     try:
         twins, pages = doubled_text(pdf_bytes)
-    except Exception:  # noqa: BLE001 -- not a readable PDF: sent as before, and the provider reports it
+    except Exception as exc:  # noqa: BLE001 -- not a readable PDF: sent as before, and the provider reports it
+        print(f"    [doubled-text] could not read the chunk to check for doubled text ({type(exc).__name__}); "
+              "sent unchanged", flush=True)
         return pdf_bytes, prompt
     if twins < DOUBLED_MIN_SPANS:
         return pdf_bytes, prompt
@@ -846,8 +853,9 @@ def _reread_skipped_pages(pdf_path, reader, model: str, collected: list[dict]) -
     """
     import page_coverage as pc
     lines = pc.pdf_page_lines(pdf_path)
+    running = pc.running_lines(lines)   # from every page, so a one-page re-check still knows the page header
     texts = lambda: [str(p.get("text", "")) + " " + str(p.get("title", "")) for p in collected]
-    skipped = pc.skipped_pages(lines, texts())
+    skipped = pc.skipped_pages(lines, texts(), running)
     if not skipped:
         return
     print(f"    [page-coverage] {len(skipped)} page(s) left out, reading again: {skipped}")
@@ -856,7 +864,7 @@ def _reread_skipped_pages(pdf_path, reader, model: str, collected: list[dict]) -
             model, _subset_bytes(reader, first - 1, last), _build_prompt(None) + REREAD_NOTE)
         _place_on_pages(found, reader, first, last)
         collected.extend(found)
-    still = pc.skipped_pages({p: lines[p] for p in skipped}, texts())
+    still = pc.skipped_pages({p: lines[p] for p in skipped}, texts(), running)
     ruled = [p for p in still if pc.holds_rules(lines[p])]
     if ruled:
         raise PageLoss(

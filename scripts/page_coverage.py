@@ -100,7 +100,7 @@ def rule_lines(lines: list[list[str]]) -> list[list[str]]:
     return ruled or lines
 
 
-def skipped_pages(pages: dict[int, list[str]], output_texts: list[str]) -> list[int]:
+def skipped_pages(pages: dict[int, list[str]], output_texts: list[str], running: set[str] | None = None) -> list[int]:
     """Page numbers whose RULE-BEARING sentences are mostly absent from the output.
 
     `pages` maps page number -> that page's text lines; `output_texts` is every
@@ -134,7 +134,9 @@ def skipped_pages(pages: dict[int, list[str]], output_texts: list[str]) -> list[
     out: set[str] = set()
     for t in output_texts:
         out |= _grams(_WORD.findall((t or "").lower()))
-    running = running_lines(pages) if len(pages) >= 3 else set()
+    # running headers come from the WHOLE document: a re-check of one or two pages cannot see that a line repeats
+    # (cross-review 2026-10-18). Callers checking a subset pass running_lines(all pages).
+    running = running_lines(pages) if running is None else running
     missing = []
     for pno in sorted(pages):
         lines = [w for w in sentence_lines(pages[pno]) if " ".join(w) not in running and not is_heading(w)]
