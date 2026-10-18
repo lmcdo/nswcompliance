@@ -85,6 +85,14 @@ PROMPT = (
     # uses a defined term cannot be read without them.
     "Also copy every Note and every definition printed with the rules (e.g. '... means ...', '... is calculated as "
     "...') as its own provision, word for word. "
+    # 2026-10-18, doubled-text re-reads: paragraphs with no number were dropped because they did not read as a rule --
+    # Campbelltown Part 4 "This section sets out controls relating to residential flat buildings in areas zoned R4",
+    # Ku-ring-gai 14I "The Killara Golf Clubhouse ... is a locally listed Heritage Item", 14G's introductions. A scope
+    # sentence decides who the rules below it apply to.
+    "Copy EVERY paragraph of council text printed under a heading, even one with no number that does not read like a "
+    "rule: introductions, 'This section applies to ...' / 'This section sets out ...' statements, explanations and "
+    "descriptions of a place, each as its own provision, word for word. Leave out only figure captions, map labels "
+    "and legends. "
     "The \"page\" is the number of the page the text is printed on, counting the first page you "
     "were given as 1. "
     "Output ONLY the JSON object."
@@ -874,6 +882,139 @@ def _reread_skipped_pages(pdf_path, reader, model: str, collected: list[dict]) -
         print(f"    [page-coverage] still left out, no rule words on them: {still}")
 
 
+# ── sentence coverage ────────────────────────────────────────────────────────
+#: A printed sentence shorter than this is a heading, label or caption.
+SENTENCE_MIN_WORDS = 8
+#: A sentence counts as copied when this share of its four-word runs is in the output. Below it, it is missing.
+SENTENCE_HIT = 0.75
+#: How many missing sentences are named to the model in one re-read.
+SENTENCE_NAMED_MAX = 15
+_SENTENCE_END = re.compile(r"(?<=[.?!])\s+(?=[A-Z(\"'‘“•]|\d{1,3}[a-z]?[.)]?\s)")
+_WORDS_RE = re.compile(r"[a-z0-9]+")
+_VERB = re.compile(r"\b(?:is|are|be|was|were|has|have|must|shall|should|will|may|can|provide|ensure|create)\b")
+
+
+def page_sentences(page_text: str) -> list[list[str]]:
+    """The full sentences printed on one page, each as its lower-case words. Pure.
+
+    Only text that ends a sentence counts ('.', '?', '!'), so a heading, a map label or a legend line -- which the
+    brief tells the model to leave out -- is never asked for. A sentence opening 'Figure' is a caption.
+    """
+    flat = " ".join(page_text.split())
+    out = []
+    for chunk in _SENTENCE_END.split(flat):
+        chunk = chunk.strip()
+        if not chunk.endswith((".", "?", "!")):
+            continue
+        words = _WORDS_RE.findall(chunk.lower())
+        if len(words) < SENTENCE_MIN_WORDS or words[0] in ("figure", "fig", "map", "table"):
+            continue
+        if sum(len(w) == 1 for w in words) > len(words) / 3:     # letters read across columns, or spaced out
+            continue
+        if sum(w.isdigit() for w in words) > len(words) / 4:     # lot numbers off a map
+            continue
+        # A caption ran into the heading before it ("... precinct g1 figure 14d 7 2 public domain and pedestrian
+        # access plan"): a figure number and no verb. "Setbacks are to be in accordance with Figure 14D.8-4" is a rule.
+        if (any(w in ("figure", "fig") and n[:1].isdigit() for w, n in zip(words, words[1:]))
+                and not _VERB.search(" ".join(words))):
+            continue
+        out.append(words)
+    return out
+
+
+def _grams4(words: list[str]) -> set[str]:
+    return {" ".join(words[i:i + 4]) for i in range(max(0, len(words) - 3))}
+
+
+def missing_sentences(pages: dict[int, str], output_texts: list[str]) -> dict[int, list[str]]:
+    """page -> the printed sentences the output does not hold. Pure.
+
+    Page coverage (_reread_skipped_pages) passes a page when MOST of its rule lines were read, so a page could keep
+    every numbered control and lose its introduction. Measured on the 2026-10-18 doubled-text re-reads: 3 of 8
+    chapters lost council sentences on pages page coverage passed.
+    """
+    have: set[str] = set()
+    for t in output_texts:
+        have |= _grams4(_WORDS_RE.findall(str(t).lower()))
+    out: dict[int, list[str]] = {}
+    for page, text in pages.items():
+        for words in page_sentences(text):
+            if sentence_share_copied(words, have) < SENTENCE_HIT:
+                out.setdefault(page, []).append(" ".join(words))
+    return out
+
+
+def sentence_share_copied(words: list[str], have: set[str]) -> float:
+    """Share of a printed sentence's four-word runs found in the output, judged from its first copied run. Pure.
+
+    A page header or heading with no full stop runs into the sentence after it ("p 14 245 14g 1 urban precinct ...
+    continued 1 to create a vibrant precinct ..."), and the reader rightly does not copy those words into the rule.
+    Words BEFORE the first copied run are therefore not counted; a sentence with no copied run at all scores 0.
+    """
+    grams = [" ".join(words[i:i + 4]) for i in range(max(0, len(words) - 3))]
+    first = next((i for i, g in enumerate(grams) if g in have), None)
+    if first is None:
+        return 0.0
+    rest = grams[first:]
+    return sum(g in have for g in rest) / len(rest)
+
+
+def _page_texts_for_sentences(pdf_path, running: set[str]) -> dict[int, str]:
+    """Each page's text with the running header/footer lines removed, de-doubled when the PDF prints its text twice
+    (otherwise every doubled sentence reads 'aanndd' and counts as missing)."""
+    import page_coverage as pc
+    with open(pdf_path, "rb") as fh:
+        twins, clean = doubled_text(fh.read())
+    if twins >= DOUBLED_MIN_SPANS:
+        by_page = {i: t.splitlines() for i, t in enumerate(clean, 1)}
+    else:
+        by_page = pc.pdf_page_lines(pdf_path)
+    return {p: "\n".join(ln for ln in lines if " ".join(_WORDS_RE.findall(ln.lower())) not in running)
+            for p, lines in by_page.items()}
+
+
+def _reread_missing_sentences(pdf_path, reader, model: str, collected: list[dict]) -> None:
+    """Read again, on its own, each page whose printed sentences the reading left out, naming the sentences; keep
+    only the provisions that bring a missing sentence back. Anything still missing is reported, not refused: the
+    review loss check decides whether a chapter may go live. Adds to `collected`."""
+    import page_coverage as pc
+    running = pc.running_lines(pc.pdf_page_lines(pdf_path))
+    pages = _page_texts_for_sentences(pdf_path, running)
+    texts = lambda: [str(p.get("text", "")) for p in collected]
+    missing = missing_sentences(pages, texts())
+    if not missing:
+        return
+    print(f"    [sentence-coverage] {sum(map(len, missing.values()))} printed sentence(s) not copied, on pages "
+          f"{sorted(missing)}; reading those pages again")
+    for page in sorted(missing):
+        named = missing[page][:SENTENCE_NAMED_MAX]
+        note = (" A first reading of this page left out these printed sentences (shown in lower case without "
+                "punctuation); copy each of them word for word, exactly as printed, as part of its provision: "
+                + " || ".join(named))
+        found = _call_and_parse_with_empty_retry(model, _subset_bytes(reader, page - 1, page),
+                                                 _build_prompt(None) + note)
+        new = keep_bringing_back(found, named)
+        _place_on_pages(new, reader, page, page)
+        collected.extend(new)
+    still = missing_sentences({p: pages[p] for p in missing}, texts())
+    if still:
+        n = sum(map(len, still.values()))
+        first = next(iter(still.values()))[0]
+        print(f"    [sentence-coverage] still not copied after reading again: {n} sentence(s) on pages "
+              f"{sorted(still)} -- e.g. \"{first[:120]}\"")
+
+
+def keep_bringing_back(found: list[dict], named: list[str]) -> list[dict]:
+    """The re-read provisions that hold at least one of the named missing sentences. Pure. The rest repeat rules the
+    first reading already has, and adding them would serve those rules twice."""
+    wanted = [_grams4(s.split()) for s in named]
+    out = []
+    for p in found:
+        have = _grams4(_WORDS_RE.findall(str(p.get("text", "")).lower()))
+        if any(w and len(w & have) / len(w) >= SENTENCE_HIT for w in wanted):
+            out.append(p)
+    return out
+
 
 def _place_on_pages(provs: list[dict], reader, first: int, last: int) -> None:
     """Set each provision's page to the page its words are on, within the 1-based pages
@@ -950,6 +1091,7 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
                 break
     if not lost:
         _reread_skipped_pages(pdf_path, reader, model, collected)
+        _reread_missing_sentences(pdf_path, reader, model, collected)
     if lost:
         pages = ", ".join(str(x["pages"][0]) + "-" + str(x["pages"][1]) for x in lost)
         chars = sum(x["text_chars"] for x in lost)

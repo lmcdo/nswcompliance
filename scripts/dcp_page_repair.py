@@ -341,11 +341,52 @@ def main() -> int:
             return 0
         saved = backup(rows, {t["id"] for t in todo})
         print(f"backup: {saved}")
+        before = unproven_count(conn)
         print(f"WROTE {write(conn, todo)} rows.")
         print(f"numbering recorded for {write_numbering(conn, stats)} chapter PDFs.")
-        return 0
+        return report_unproven(before, unproven_count(conn), args.council)
     finally:
         conn.close()
+
+
+def unproven_count(conn) -> int | None:
+    """DQ-145 now: served rules whose shown citation no script proved. The probe's own SQL, so it cannot drift."""
+    try:
+        import dq_probe_live
+    except ImportError:          # imported as scripts.dcp_page_repair
+        from scripts import dq_probe_live
+    _headline, sql, params, _meaning = dq_probe_live.PROBES["DQ-145"]
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            return cur.fetchone()[0]
+    except Exception as exc:  # noqa: BLE001 - a failed measurement is reported, never a crash after the write
+        conn.rollback()
+        print(f"  [warn] DQ-145 could not be measured: {exc}")
+        return None
+
+
+def report_unproven(before: int | None, after: int | None, council: str | None) -> int:
+    """Print DQ-145 before and after the write against its ceiling. Exit 3 when it rose. Pure apart from print.
+
+    A whole-council run re-judges rules that were already page-proven: on 2026-10-18 the Ku-ring-gai pass re-judged
+    two older rules (Part 7 p14, Part 24 p38) as unresolved, and only a person re-measuring noticed. The write is
+    kept (a correct page is still correct); the rise is shown at once, with the way to re-prove it.
+    """
+    try:
+        from outreach_claim_checks import DQ145_CEILING
+    except ImportError:
+        from scripts.outreach_claim_checks import DQ145_CEILING
+    if before is None or after is None:
+        print("DQ-145 not measured -- run `python scripts/dq_probe_live.py --id DQ-145` before relying on this run.")
+        return 0
+    print(f"DQ-145 (unproven citations): {before} before, {after} after; ceiling {DQ145_CEILING}.")
+    if after > before:
+        scope = f" --council {council}" if council else ""
+        print(f"  [warn] DQ-145 ROSE by {after - before}: this run re-judged rules that were proven. Re-prove them: "
+              f"`python scripts/page_proof_council.py{scope}`, verify, then apply -- before anything else ships.")
+        return 3
+    return 0
 
 
 if __name__ == "__main__":
