@@ -79,8 +79,8 @@
     {
       "chapter_key": "section-b-part-14c-pymble-local-centre",
       "title": "Part 14C Pymble Local Centre",
-      "reason": "Part 14C Pymble Local Centre -- no outline yet: a zoning outline scored IoU 0.70 against Figure 14C.1-1/14C.7-1 and the vector fit was refused (drawing off the road network). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
-      "count_hint": 48
+      "reason": "Part 14C Pymble Local Centre -- no outline yet: a zoning outline scored IoU 0.70 against Figure 14C.1-1/14C.7-1 and the vector fit was refused (drawing off the road network). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so. Listed by whole chapter from 2026-10-18: the doubled-text re-read replaced the row ids, and every Part 14C rule is about the Pymble centre.",
+      "count_hint": 80
     },
     {
       "chapter_key": "section-b-part-14f-roseville-local-centre",

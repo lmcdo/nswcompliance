@@ -162,3 +162,53 @@ def enforce(cur, council: str, chapter_key: str, before: Linked, allowed: frozen
         return after
     raise AreaLinkLossRefused("REFUSED: " + msg
                               + f" If intended, re-run with --allow-area-link-loss {council}/{chapter_key}")
+
+
+def rederive_after_publish(councils, dry_run: bool = False) -> None:
+    """Re-make the precinct keys (v2_precinct_id) of the councils just published. Both publish paths call this.
+
+    A publish inserts every row with no key; only derive_precinct_keys puts them back. dcp_commit_approved ran it
+    since 2026-09-10 (a commit had nulled four councils' keys); the direct-to-live path (dcp_extract_changed) never
+    did, so on 2026-10-18 the Ku-ring-gai 14A and 14H re-reads went live with 0 of 112 / 0 of 37 rows keyed, and the
+    area-link guard passed them because it checks the rules WILL re-link, not that anything runs them.
+
+    THREE THINGS HERE ARE LOAD-BEARING, not style:
+      1. Call it AFTER the enrichment phases. A derived key also sets v2_dcp_layer='precinct'; run_layer_tagging
+         would overwrite that if it ran last. (It only selects v2_dcp_layer IS NULL rows, so a LATER manual
+         enrichment run leaves a derived key alone -- which is why the direct path may call this when its quality
+         gate skipped enrichment.)
+      2. It is SCOPED PER COUNCIL. run() refuses validate:False rules on a bulk apply and honours them only when a
+         council is named, so a bulk call would leave e.g. Ashfield's chapter-D rows unkeyed.
+      3. It is wrapped. A derivation error must not fail provisions that are already live -- they can be re-derived
+         -- so it degrades to a loud warning. A council with no rule derives nothing and returns 0.
+    """
+    councils = sorted(set(councils or ()))
+    if not councils or dry_run:
+        return
+    print(f"Re-deriving precinct keys for {len(councils)} published council(s)...")
+    # The IMPORT is guarded too, and catches Exception: derive_precinct_keys reads
+    # data/cos_precinct_page_ranges.json at MODULE level, so a missing data file raises FileNotFoundError, which an
+    # `except ImportError` would not catch. Dockerfile.monitors COPYs both the module and that json.
+    try:
+        try:
+            from scripts.derive_precinct_keys import run as derive
+        except ImportError:  # invoked from inside scripts/
+            from derive_precinct_keys import run as derive
+    except Exception as exc:  # noqa: BLE001 - module-level file reads raise anything
+        print(f"  [warn] could not load the precinct derivation: {exc}. Provisions ARE live but unkeyed; check "
+              f"Dockerfile.monitors COPYs scripts/derive_precinct_keys.py AND data/cos_precinct_page_ranges.json.")
+        return
+    for council in councils:
+        try:
+            rc = derive(council=council, apply=True, validate=False)
+        except Exception as exc:  # noqa: BLE001 - never fail a published provision
+            print(f"  [warn] precinct re-derivation failed for {council}: {exc}. Provisions ARE live but unkeyed; "
+                  f"run `python scripts/derive_precinct_keys.py --council {council} --apply`. Until then a "
+                  f"precinct lookup for {council} serves council-wide only.")
+            continue
+        # run() can signal failure by return value; today only the validate path returns 1, which this call cannot
+        # reach. Forward-looking. NOT covered: a page_range rule whose PDF was re-paginated fails closed, writes no
+        # keys and returns 0 -- see scripts/audit_precinct_keying_coverage.py.
+        if rc:
+            print(f"  [warn] precinct re-derivation reported failure (exit {rc}) for {council}. Provisions ARE live "
+                  f"but may be unkeyed; run `python scripts/derive_precinct_keys.py --council {council} --apply`.")
