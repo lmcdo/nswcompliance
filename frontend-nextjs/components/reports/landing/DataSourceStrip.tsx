@@ -18,7 +18,7 @@ export function DataSourceStrip({ sources }: DataSourceStripProps) {
         <div className="mb-8 flex items-center justify-center gap-2 text-center">
           <Shield className="h-4 w-4 text-accent" />
           <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-            Verified Data Sources
+            Data Sources
           </span>
         </div>
 

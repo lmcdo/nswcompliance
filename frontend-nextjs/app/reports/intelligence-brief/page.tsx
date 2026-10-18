@@ -2999,7 +2999,7 @@ function IntelligenceBriefInner() {
                   className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
                 Include satellite analysis
-                <span className="font-normal text-muted-foreground">bushfire · flood · climate · granny flat detection</span>
+                <span className="font-normal text-muted-foreground">bushfire · flood · climate</span>
               </label>
             </div>
           }
@@ -3044,7 +3044,7 @@ function IntelligenceBriefInner() {
               onChange={(e) => setIncludeSatellite(e.target.checked)}
               className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
             />
-            Include satellite analysis (bushfire, flood, climate, granny flat detection)
+            Include satellite analysis (bushfire, flood, climate)
           </label>
 
           <button

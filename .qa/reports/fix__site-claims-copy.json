@@ -1,0 +1,70 @@
+{
+  "tier": "standard",
+  "justification": "Copy-only change to user-facing text in seven files. No logic, query, type or data change; the one import added (COVERAGE_DISPLAY in LandingHero) is an existing constant. Standard rather than minor because seven files changed (minor allows at most 3) and the text is user-facing claim language.",
+  "commit_hash": "723965fc",
+  "files": [
+    "frontend-nextjs/app/assessment/page.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/components/compliance/PathwaySummaryCard.tsx",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/components/compliance/TocSidebar.tsx",
+    "frontend-nextjs/components/reports/landing/DataSourceStrip.tsx",
+    "frontend-nextjs/components/reports/landing/LandingHero.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "bash -c \"git grep -niE 'VERIFIED DATA SOURCES|provisions applicable to your work|Fast-Track Available|Full NSW coverage|granny flat detection|Monitored weekly|Last verified|analyzed all approval pathways' HEAD -- frontend-nextjs/app/assessment/page.tsx frontend-nextjs/app/reports/intelligence-brief/page.tsx frontend-nextjs/components/compliance/PathwaySummaryCard.tsx frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx frontend-nextjs/components/compliance/TocSidebar.tsx frontend-nextjs/components/reports/landing/DataSourceStrip.tsx frontend-nextjs/components/reports/landing/LandingHero.tsx | grep -vE '//|[{]/[*]' | wc -l\"",
+    "fails_when": "Prints a number above 0, meaning one of the old claim phrases is still rendered (code comments excluded) in one of the seven changed files. Result on this branch at HEAD: 0.",
+    "external_authority": "railway.dcp-monitor.toml (cronSchedule 0 2 1,15 * *, twice a month) for the check frequency; the timestamp column in instrument_currency, written by scripts/r2_monitor.py after a clean run (23 councils stamped 2026-10-15) for the last-check date; lib/coverage.ts for the council count (128); the 2026-08-10 detection-layer decision (recall 0.368 against a 0.70 floor on 56 human-labelled lots) for removing the detection wording.",
+    "observed_red": "The same command with HEAD replaced by origin/main printed 10 (2026-10-18), one line per old rendered claim across the seven files; on this branch it prints 0."
+  },
+  "pre_impl": {
+    "existing_data": "Reads instrument_currency timestamps and COVERAGE_DISPLAY.lgasCovered as before; no new read, no write.",
+    "assumption_mismatch": "The old text said Monitored weekly, but the monitor cron runs on the 1st and 15th of each month. The new text says twice a month (1st and 15th) to match railway.dcp-monitor.toml. The 35-day staleness warning threshold is unchanged.",
+    "new_vs_existing": "Text only, applies to every render.",
+    "external_source_error": "Not applicable.",
+    "frontend_type": "No type change.",
+    "user_failure_mode": "If the date of the last check is missing, the page shows Date of last check unavailable, as before in wording terms."
+  },
+  "functions": "N/A: copy-only change, no function body or signature changed; the only code change is one import of the existing COVERAGE_DISPLAY constant.",
+  "values": [
+    {
+      "value": "COVERAGE_DISPLAY.lgasCovered",
+      "read_at": "frontend-nextjs/components/reports/landing/LandingHero.tsx (import from lib/coverage.ts)",
+      "nullable": "no",
+      "guard_at": "N/A, constant in lib/coverage.ts (value 128)",
+      "if_missing": "Not applicable; compile-time constant"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The new copy states something the data does not support.",
+      "what_happens": "Same overclaim problem as the text it replaces.",
+      "mitigated": true,
+      "how": "Each new phrase was tied to a source: twice-a-month check to railway.dcp-monitor.toml; last-check date to the instrument_currency timestamp; 128 councils to lib/coverage.ts; zoning live from the Planning Portal because the DCP layer is a dated extract.",
+      "repro": "grep -n cronSchedule railway.dcp-monitor.toml"
+    },
+    {
+      "scenario": "Old claim wording is re-added in a later edit.",
+      "what_happens": "Applicability, currency or detection overclaim returns.",
+      "mitigated": true,
+      "how": "Falsifiable check command greps added lines for the old phrases and prints 0. Liability word scan of added lines also gave 0 hits.",
+      "repro": "git diff origin/main -U0 | grep '^+' | grep -ciE 'verif[i]ed|applicable to your work|Fast-Track|Full NSW coverage|granny flat detection|Monitored weekly'"
+    },
+    {
+      "scenario": "Layout breaks because the new strings are longer.",
+      "what_happens": "Text wraps or clips in the hero, data source strip or pathway card.",
+      "mitigated": false,
+      "how": "Not checked in a browser in this change; copy is longer in the hero and pathway card. tsc and jest do not cover layout.",
+      "repro": "Open the landing page and an assessment result at phone width and read the changed lines."
+    }
+  ],
+  "mutation_analysis": "Not applicable: no logic changed and no test was added. tsc --noEmit reports 0 errors; full jest 140 suites / 1973 tests pass.",
+  "residual_risk": "The phrase every figure traced to its source is kept on purpose: it was approved in 2026-07 and each run carries a provenance footer (app/reports/intelligence-brief/provenance.ts). Whether to reword it is left for a separate decision. Layout at narrow widths is not checked. The audit of 2026-10-15 measured about 16 severe cases per 100 served rules, so the new wording reduces the claim but does not change the data. Out of scope: components/compliance/ProvisionVersionBadge.tsx still renders 'Last Verified:' inside ProvisionVersionBadge, but that export is imported nowhere (only ProvisionVersionInline is, by ConstraintCard), so it does not reach users. Cross-review 2026-10-18 (deepseek fallback): 'fortnightly' findings accepted and reworded to 'twice a month'; the ?? 128 fallback and the 'eligible for streamlined approval' rewording were rejected (hardcoded count; reintroduces the overclaim).",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

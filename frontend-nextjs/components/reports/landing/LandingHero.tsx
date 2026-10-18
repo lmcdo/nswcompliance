@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Search, Shield, MapPin, Satellite } from "lucide-react"
 import { AddressAutocomplete } from "@/components/reports/AddressAutocomplete"
 import { Button } from "@/components/ui/button"
+import { COVERAGE_DISPLAY } from "@/lib/coverage"
 import type { LucideIcon } from "lucide-react"
 
 interface HeroStat {
@@ -119,7 +120,7 @@ export function LandingHero({ badge, badgeIcon: BadgeIcon, title, subtitle, ctaL
           {/* Helper text */}
           <p className="mt-3 text-center text-sm text-muted-foreground">
             <Shield className="mr-1 inline-block h-4 w-4" />
-            Free instant check · No signup required · Full NSW coverage
+            Free instant check · No signup required · Planning Portal layers for all {COVERAGE_DISPLAY.lgasCovered} NSW councils
           </p>
         </form>
 
