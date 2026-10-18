@@ -138,3 +138,28 @@ def test_a_copied_table_is_not_flagged_and_thousands_commas_do_not_matter():
 
 def test_a_page_with_few_numbers_is_not_judged():
     assert ax.missing_table_numbers({3: "Setbacks of 900 mm and 1,200 mm apply to lots over 450 sqm."}, []) == {}
+
+
+def test_a_short_lead_in_must_be_copied_in_full():
+    """CoS s2 p167, 2026-10-18: 'Development in Botany Road Precinct is to:' was dropped but scored 0.75 against the
+    heading 'Botany Road Precinct', so it passed. A lead-in counts only when every word run is copied."""
+    page = ("Development in Botany Road Precinct is to: Showcase Connecting with Country approaches in line with the "
+            "framework published by the Government Architect NSW.")
+    out = ["Development in Botany Road Precinct is a special area", "Showcase Connecting with Country approaches in line with the "
+           "framework published by the Government Architect NSW."]
+    assert ax.missing_sentences({167: page}, out) == {167: ["development in botany road precinct is to"]}
+
+
+def test_a_lead_in_with_a_heading_run_into_it_passes_when_copied():
+    page = ("p 14-65 PUBLIC DOMAIN The following development is to be designed to support the provision of key "
+            "community infrastructure: 1 A new park is to be provided.")
+    out = ["The following development is to be designed to support the provision of key community infrastructure:",
+           "1 A new park is to be provided."]
+    assert ax.missing_sentences({5: page}, out) == {}
+
+
+def test_a_lead_in_before_an_unlabelled_item_is_still_a_lead_in():
+    lead = set()
+    ax.page_sentences("Development in Botany Road Precinct is to: Showcase the framework published by the "
+                      "Government Architect NSW.", lead)
+    assert lead == {"development in botany road precinct is to"}
