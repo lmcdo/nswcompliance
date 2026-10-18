@@ -887,9 +887,11 @@ def _reread_skipped_pages(pdf_path, reader, model: str, collected: list[dict]) -
 SENTENCE_MIN_WORDS = 8
 #: A sentence counts as copied when this share of its four-word runs is in the output. Below it, it is missing.
 SENTENCE_HIT = 0.75
+#: At most this many unmatched four-word runs at a sentence's start are excused as a heading that ran into it.
+HEADING_RUN_MAX = 12
 #: How many missing sentences are named to the model in one re-read.
 SENTENCE_NAMED_MAX = 15
-_SENTENCE_END = re.compile(r"(?<=[.?!])\s+(?=[A-Z(\"'‘“•]|\d{1,3}[a-z]?[.)]?\s)")
+_SENTENCE_END = re.compile(r"(?<=[.?!])\s+(?=[A-Z(\"'‘“•]|\d{1,3}[a-z]?[.)]?\s|[ivx]{1,4}\)\s|[a-z]\)\s)")
 _WORDS_RE = re.compile(r"[a-z0-9]+")
 _VERB = re.compile(r"\b(?:is|are|be|was|were|has|have|must|shall|should|will|may|can|provide|ensure|create)\b")
 
@@ -955,7 +957,10 @@ def sentence_share_copied(words: list[str], have: set[str]) -> float:
     first = next((i for i, g in enumerate(grams) if g in have), None)
     if first is None:
         return 0.0
-    rest = grams[first:]
+    # Only a heading-sized run of words is excused. Campbelltown Part 4 "Note: Refer to Section 4.1C of the CLEP for the
+    # minimum qualifying site area for residential flat buildings" matched only "... residential flat buildings" at its
+    # end; excusing everything before that let the whole sentence pass as copied.
+    rest = grams[first:] if first <= HEADING_RUN_MAX else grams
     return sum(g in have for g in rest) / len(rest)
 
 
