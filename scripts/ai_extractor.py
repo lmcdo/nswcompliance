@@ -963,12 +963,14 @@ def _page_texts_for_sentences(pdf_path, running: set[str]) -> dict[int, str]:
     """Each page's text with the running header/footer lines removed, de-doubled when the PDF prints its text twice
     (otherwise every doubled sentence reads 'aanndd' and counts as missing)."""
     import page_coverage as pc
-    with open(pdf_path, "rb") as fh:
-        twins, clean = doubled_text(fh.read())
+    by_page = pc.pdf_page_lines(pdf_path)
+    try:
+        with open(pdf_path, "rb") as fh:
+            twins, clean = doubled_text(fh.read())
+    except OSError:              # no file behind the path: judge the lines page coverage read
+        twins, clean = 0, []
     if twins >= DOUBLED_MIN_SPANS:
         by_page = {i: t.splitlines() for i, t in enumerate(clean, 1)}
-    else:
-        by_page = pc.pdf_page_lines(pdf_path)
     return {p: "\n".join(ln for ln in lines if " ".join(_WORDS_RE.findall(ln.lower())) not in running)
             for p, lines in by_page.items()}
 
