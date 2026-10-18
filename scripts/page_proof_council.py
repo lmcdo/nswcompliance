@@ -66,7 +66,7 @@ def local_pdf(r2_path: str, cache: Path) -> Path:
 def read_pages(pdf: Path, sha: str, cache: Path) -> dict:
     """page -> (texts, grids), cached on the PDF's sha256 + the extractor version."""
     import fitz
-    pk = cache / f"{sha[:24]}.pages-v2.pkl"
+    pk = cache / f"{sha[:24]}.pages-v3.pkl"   # v3: adds the de-doubled "clean" reading
     if pk.exists():
         return pickle.loads(pk.read_bytes())
     out = {}
