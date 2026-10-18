@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New nightly alarm: re-serves 28 real addresses from production and goes red when one address's answer widens, shrinks, gains a council or chapter it never had, serves a precinct rule with no precinct key, or comes back empty with no stated reason. On 2026-10-15 every address was being served 800-2,750 rules and no check noticed, because every check counts database rows. Read-only against a public endpoint; no source file of the product is touched. Also carries the page-proof evidence (2 Ku-ring-gai rows, ids 196468 and 182319, proven on their stored pages 14 and 38) written to production on 2026-10-18 by scripts/apply_page_evidence.py, after a council-wide page repair had re-judged them too_short/unresolved.",
-  "commit_hash": "aaaed386",
+  "commit_hash": "d159ded1",
   "files": [
     "scripts/address_audit/rules_per_address.py",
     "scripts/address_audit/rules_per_address_panel.json",
