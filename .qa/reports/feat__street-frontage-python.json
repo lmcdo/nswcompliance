@@ -10,7 +10,10 @@
     "services/upzoning_check.py",
     "tests/test_street_frontage.py",
     "tests/test_sepp_width_range.py",
-    "tests/test_upzoning_check.py"
+    "tests/test_upzoning_check.py",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/app/tools/upzoning-check/page.tsx",
+    "frontend-nextjs/lib/upzoning.ts"
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_street_frontage.py tests/test_sepp_width_range.py tests/test_upzoning_check.py -q",
@@ -121,6 +124,11 @@
       "finding": "[HIGH] intelligence_brief: _lot_width None when no width range; legacy path depends on lot_width_m",
       "verdict": "NOT A DEFECT",
       "why": "evaluate_eligibility with lot_width_m None and no range returns 'Lot width unconfirmed (minimum X m)' with unconfirmed=True (services/housing_sepp_eligibility.py, the unchanged elif branch) -- a stated unconfirmed, never a pass; intended: no width is guessed when the road edge is not found."
+    },
+    {
+      "finding": "[HIGH] upzoning_check.py:226 / street_frontage timeout: lot_width_m None silently",
+      "verdict": "NOT A DEFECT",
+      "why": "None reaches the page as 'Lot width measured from the street: not measured' and the engine answers 'Lot width unconfirmed'; both visible. Checking it found a real label mismatch (upzoning page still said 'shorter side' for the new measured value; Site Report compared the narrowest width with '<' beside an Unconfirmed badge) -- both fixed in this PR."
     }
   ]
 }

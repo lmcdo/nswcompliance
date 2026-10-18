@@ -224,9 +224,9 @@ export default function UpzoningCheckPage() {
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
               <span>Lot area: {result.lot_area_m2 != null ? `${Math.round(result.lot_area_m2)} m²` : 'not mapped'}</span>
               <span>
-                {result.lot_type === 'battleaxe'
-                  ? `Width (main lot, battleaxe): ${result.lot_width_m != null ? `${Math.round(result.lot_width_m)} m` : 'not mapped'}`
-                  : `Lot width (shorter side): ${result.lot_width_m != null ? `${Math.round(result.lot_width_m)} m` : 'not mapped'}`}
+                {`Lot width measured from the street: ${result.lot_width_m != null
+                  ? `${Math.round(result.lot_width_m)} m narrowest in the front half${result.lot_width_max_m != null ? `, ${Math.round(result.lot_width_max_m)} m widest` : ''}`
+                  : 'not measured'}`}
               </span>
             </div>
           </div>
