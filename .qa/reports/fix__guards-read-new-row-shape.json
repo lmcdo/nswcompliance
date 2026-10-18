@@ -1,7 +1,7 @@
 {
   "tier": "standard",
-  "justification": "Both publish guards read only the old row shape. The AI reader puts the clause title in section_header and the number in ref_number, and zones come from the chapter config at enrichment, so the Campbelltown Part 3 re-read (every section and zone kept) was refused by both and needed hand overrides; 18 more chapters would need the same. section-loss now falls back to the code in ref_number; area-link counts precinct/marker links and zone-only links apart and predicts config_specific zones with the tagger enrichment runs. Live read-only: Campbelltown Part 3 105 codes (old 109; 3 lost are line labels) and 547 zoned vs 504 before.",
-  "commit_hash": "2f6e9f80",
+  "justification": "Both publish guards read only the old row shape. The AI reader puts the clause title in section_header and the number in ref_number, and zones come from the chapter config at enrichment, so the Campbelltown Part 3 re-read (every section and zone kept) was refused by both and needed hand overrides; 18 more chapters would need the same. section-loss now falls back to the code in ref_number; area-link counts precinct/marker links and zone-only links apart and predicts config_specific zones with the tagger enrichment runs. Live read-only: Campbelltown Part 3 105 codes (old 109; 3 lost are line labels) and 547 zoned vs 504 before. Also: dcp_extract_changed now re-derives precinct keys after publish via the shared rederive_after_publish (KRG 14A/14H went live with 0 keyed rows on 2026-10-18), and KRG 14C is listed not-covered by whole chapter (expect 80) since the re-read replaced its row ids; DQ-146 0.",
+  "commit_hash": "89bfe32a",
   "files": [
     "scripts/dcp_area_link_guard.py",
     "scripts/dcp_supersede_guard.py",
@@ -10,7 +10,11 @@
     "tests/test_dcp_commit_approved_records_hash.py",
     "tests/test_dcp_commit_refuses_section_loss.py",
     "tests/test_dcp_legibility_guard.py",
-    "tests/test_dcp_supersede_guard.py"
+    "tests/test_dcp_supersede_guard.py",
+    "scripts/dcp_commit_approved.py",
+    "scripts/dcp_extract_changed.py",
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    "frontend-nextjs/shared/not-covered-councils.json"
   ],
   "falsifiable_check": {
     "command": "python -m pytest -q -o addopts= tests/test_dcp_area_link_guard.py tests/test_dcp_supersede_guard.py tests/test_dcp_commit_refuses_section_loss.py tests/test_dcp_legibility_guard.py tests/test_dcp_commit_approved_records_hash.py",
@@ -19,7 +23,9 @@
   },
   "real_layer_exempt": {
     "scripts/dcp_area_link_guard.py": "PYTEST_REAL_DB area-link test passes; live Campbelltown Part 3 Linked(0,504) -> predicted Linked(0,547), read-only",
-    "scripts/dcp_supersede_guard.py": "live Campbelltown Part 3 snapshot 105 codes, read-only"
+    "scripts/dcp_supersede_guard.py": "live Campbelltown Part 3 snapshot 105 codes, read-only",
+    "scripts/dcp_extract_changed.py": "call site only; the derivation it calls was run live for ku_ring_gai (dry run 1,637 rows already keyed)",
+    "scripts/dcp_commit_approved.py": "block moved into the shared function; commit re-derive suite passes unchanged"
   },
   "pre_impl": {
     "existing_data": "Campbelltown Part 3 live rows: section_header is a title or empty, ref_number '<doc>__3_7_1_2 d)'; superseded rows carry '3.7.1.6 iv) ...' in section_header",
@@ -40,6 +46,13 @@
       "input": "cursor plus council and chapter key of the uncommitted version",
       "output": "ids enrichment will give a config_specific zone limit",
       "if_none": "empty set (tagger import failure) -> fewer links predicted -> refuses"
+    },
+    {
+      "name": "rederive_after_publish",
+      "file_line": "scripts/dcp_area_link_guard.py",
+      "input": "the set of councils this run published, and dry_run",
+      "output": "precinct keys re-derived per council; warnings on failure",
+      "if_none": "no council or dry run: nothing runs"
     }
   ],
   "values": [],
@@ -76,6 +89,13 @@
       "mitigated": true,
       "how": "fallback only adds codes it can parse",
       "repro": "test_the_header_code_wins_over_the_ref_and_a_real_loss_is_still_refused"
+    },
+    {
+      "scenario": "the derivation for one published council raises an error",
+      "what_happens": "a warning names the command and the next council still runs",
+      "mitigated": true,
+      "how": "per-council try/except",
+      "repro": "test_one_council_failing_warns_and_the_next_still_runs"
     }
   ],
   "post_merge": {
