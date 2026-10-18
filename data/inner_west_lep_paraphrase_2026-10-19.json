@@ -1,0 +1,11 @@
+[
+ {"id": 7701, "reason": "truncated '...' copy of Schedule 3 oc.3 (the full item is also served as 7703)"},
+ {"id": 8549, "reason": "clause 6.6 heading only, not a rule"},
+ {"id": 8597, "reason": "truncated paraphrase ending '...satisfied...': names no clause (ambiguous_unit)"},
+ {"id": 8658, "reason": "truncated paraphrase 'Development consent must not be granted...unless...' (ambiguous_unit)"},
+ {"id": 8691, "reason": "fragment 'The objective of this clause is to...' (too_short)"},
+ {"id": 8729, "reason": "truncated paraphrase of 7.2(2) with '...' (ambiguous_unit)"},
+ {"id": 8736, "reason": "truncated paraphrase ending '...the development...' (ambiguous_unit)"},
+ {"id": 8738, "reason": "truncated paraphrase ending '...satisfied that...' (ambiguous_unit)"},
+ {"id": 9333, "reason": "truncated paraphrase ending '...satisfied that...' (ambiguous_unit)"}
+]
