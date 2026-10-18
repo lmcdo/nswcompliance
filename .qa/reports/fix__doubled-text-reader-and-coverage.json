@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Campbelltown Part 3 PageLoss on page 41. Reader input: a chunk with >= 10 same-text same-spot twin spans (a PDF printing each line twice, black + white) goes to sol as JPEG page pictures plus de-doubled text, and to DeepSeek as de-doubled text; other chunks unchanged. Coverage check: running headers/footers (on >= 30% of pages, >= 3) and section-number headings are not scored as rule lines. Review re-read with DeepSeek (no live write): no page left out, the 17 pages the live chapter has no rules for are covered, 0 doubled-letter rules.",
-  "commit_hash": "63593525",
+  "commit_hash": "cf2ed793",
   "files": [
     "scripts/ai_extractor.py",
     "scripts/page_coverage.py",
@@ -67,6 +67,13 @@
       "mitigated": true,
       "how": "JPEG quality 80",
       "repro": "live measurement 2026-10-18"
+    },
+    {
+      "scenario": "only one page is re-checked after a re-read",
+      "what_happens": "the running header is still recognised from the whole document, so the page is not wrongly refused",
+      "mitigated": true,
+      "how": "running_lines from every page passed to skipped_pages",
+      "repro": "test_a_one_page_recheck_still_knows_the_running_header"
     }
   ],
   "mutation_analysis": "Changing <= to < in the ratchet fails test_at_ceiling_passes. Removing the ratchet from CLAIMS fails test_oc20_is_wired_with_all_three_parts.",
