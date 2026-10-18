@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The chunk-loss guard counts map legends as rule-bearing, so City of Sydney s6 (pages 25-36 are maps) was refused twice although the reader rightly returned nothing. AI_FIGURE_PAGES lets a person name checked figure pages for one run; off unless set, like --allow-section-loss. The OpenRouter-key test now also unsets DEEPSEEK_API_KEY.",
-  "commit_hash": "7283e89a",
+  "commit_hash": "5f154456",
   "files": [
     "scripts/ai_extractor.py",
     "tests/test_ai_chunk_loss.py",
