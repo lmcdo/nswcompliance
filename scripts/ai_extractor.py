@@ -894,12 +894,12 @@ HEADING_RUN_MAX = 12
 #: How many missing sentences are named to the model in one re-read.
 SENTENCE_NAMED_MAX = 15
 _SENTENCE_END = re.compile(r"(?<=[.?!])\s+(?=[A-Z(\"'\u2018\u201c\u2022]|\d{1,3}[a-z]?[.)]?\s|[ivx]{1,4}\)\s|[a-z]\)\s)"
-                           r"|(?<=:)\s+(?=\d{1,3}[a-z]?[.)]?\s+[A-Z]|[ivx]{1,4}\)\s|[a-z]\)\s|\([a-z0-9]{1,4}\)\s|\u2022)")
+                           r"|(?<=:)\s+(?=[A-Z“]|\d{1,3}[a-z]?[.)]?\s+[A-Z]|[ivx]{1,4}\)\s|[a-z]\)\s|\([a-z0-9]{1,4}\)\s|\u2022)")
 _WORDS_RE = re.compile(r"[a-z0-9]+")
 _VERB = re.compile(r"\b(?:is|are|be|was|were|has|have|must|shall|should|will|may|can|provide|ensure|create)\b")
 
 
-def page_sentences(page_text: str) -> list[list[str]]:
+def page_sentences(page_text: str, lead_ins: set | None = None) -> list[list[str]]:
     """The full sentences printed on one page, each as its lower-case words. Pure.
 
     Only text that ends a sentence counts ('.', '?', '!'), so a heading, a map label or a legend line -- which the
@@ -929,6 +929,8 @@ def page_sentences(page_text: str) -> list[list[str]]:
         if (any(w in ("figure", "fig") and n[:1].isdigit() for w, n in zip(words, words[1:]))
                 and not _VERB.search(" ".join(words))):
             continue
+        if lead_in and lead_ins is not None:
+            lead_ins.add(" ".join(words))
         out.append(words)
     return out
 
@@ -949,8 +951,16 @@ def missing_sentences(pages: dict[int, str], output_texts: list[str]) -> dict[in
         have |= _grams4(_WORDS_RE.findall(str(t).lower()))
     out: dict[int, list[str]] = {}
     for page, text in pages.items():
-        for words in page_sentences(text):
-            if sentence_share_copied(words, have) < SENTENCE_HIT:
+        lead_ins: set[str] = set()
+        for words in page_sentences(text, lead_ins):
+            # A list lead-in is short and its words recur in the headings and rules around it ("Development in Botany
+            # Road Precinct is to:" scored 0.75 against the heading "Botany Road Precinct"), yet it decides who the
+            # list applies to. So it counts as copied only when every one of its four-word runs is in the output.
+            # 2026-10-18 City of Sydney s2: both lead-ins (p8, p167) were dropped and passed at the general bar.
+            if " ".join(words) in lead_ins:
+                if sentence_share_copied(words, have) < 1.0:     # every run, after a heading-sized start
+                    out.setdefault(page, []).append(" ".join(words))
+            elif sentence_share_copied(words, have) < SENTENCE_HIT:
                 out.setdefault(page, []).append(" ".join(words))
     return out
 
