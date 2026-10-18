@@ -5944,6 +5944,7 @@ def main() -> None:
     succeeded = 0
     failed    = 0
     review_chapters: list[dict] = []
+    published_councils: set[str] = set()   # councils whose rows this run wrote live
 
     for chapter in chapters:
         ok, review_data = extract_chapter(
@@ -5962,6 +5963,8 @@ def main() -> None:
             succeeded += 1
             if review_data is not None:
                 review_chapters.append(review_data)
+            elif not args.review and not args.dry_run:
+                published_councils.add(chapter["council"])
         else:
             failed += 1
 
@@ -6170,6 +6173,11 @@ def main() -> None:
                 print(f"  [warn] could not send the enrichment alert: {exc}")
     else:
         print("\n  Skipping enrichment — quality gate did not pass.")
+
+    # Precinct keys: a publish inserts every row unkeyed. The commit path re-derived them; this path did not, and
+    # on 2026-10-18 Ku-ring-gai 14A/14H went live with no row keyed. Shared with dcp_commit_approved, and run even
+    # when enrichment was skipped above (see rederive_after_publish for why that is safe).
+    area_links.rederive_after_publish(published_councils, dry_run=args.dry_run)
 
     sys.exit(2)
 

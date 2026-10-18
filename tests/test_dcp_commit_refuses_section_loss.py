@@ -57,7 +57,7 @@ class _Cur:
         # deliberate abstention and not a silent pass.
         if "fidelity_status" in self.sql:
             return list(self.db.get("graded", []))
-        return [(h,) for h in self.db["headers"]]
+        return [(h, None) for h in self.db["headers"]]   # (section_header, ref_number)
 
     def fetchone(self):
         return (len(self.db["headers"]),)

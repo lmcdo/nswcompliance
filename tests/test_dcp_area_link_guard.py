@@ -26,11 +26,11 @@ def test_a_chapter_with_few_links_is_not_judged():
 
 
 def test_enforce_raises_and_the_override_lets_one_named_chapter_through(monkeypatch):
-    monkeypatch.setattr(g, "relinkable_count", lambda cur, c, k: 4)
+    monkeypatch.setattr(g, "relinkable_count", lambda cur, c, k: g.Linked(4, 4))
     with pytest.raises(g.AreaLinkLossRefused, match="--allow-area-link-loss waverley/waverley-dcp-2022"):
-        g.enforce(None, "waverley", "waverley-dcp-2022", 89)
-    assert g.enforce(None, "waverley", "waverley-dcp-2022", 89,
-                     frozenset({"waverley/waverley-dcp-2022"})) == 4
+        g.enforce(None, "waverley", "waverley-dcp-2022", g.Linked(89, 0))
+    assert g.enforce(None, "waverley", "waverley-dcp-2022", g.Linked(89, 0),
+                     frozenset({"waverley/waverley-dcp-2022"})) == g.Linked(4, 4)
 
 
 def test_both_publish_paths_run_the_guard_before_they_commit():
@@ -79,3 +79,105 @@ def test_both_publish_paths_fill_the_part_before_the_guard():
         src = (root / name).read_text(encoding="utf-8")
         fill = src.index("area_links.fill_parts(cur, council, chapter_key)")
         assert fill < src.index("area_links.enforce(cur, council, chapter_key"), name
+
+
+class _ZoneTagger:
+    """Stands in for ApplicabilityTagger.tag_with_provenance."""
+
+    def tag_with_provenance(self, text, doc, part=None, pdf_page=None):
+        if "config" in text:
+            return ["R2", "R3"], ["ALL"], {"zone_source": "config_specific"}  # noqa: zone-codes (test fixture)
+        if "prose" in text:
+            return ["R4"], ["ALL"], {"zone_source": "text_regex"}
+        return ["ALL"], ["ALL"], {"zone_source": "config_all"}
+
+
+def test_config_zones_count_and_zones_read_from_prose_do_not():
+    """Campbelltown Part 3, 2026-10-18: enrichment re-applied its zones from the chapter config to all 504 rules, but the
+    guard predicted only precinct/gate links and refused. A zone read from the rule's own words is not counted."""
+    cur = _Cur([(1, "d", "config row", None, 3), (2, "d", "prose row", None, 3), (3, "d", "everywhere", None, 4)])
+    assert g.config_zoned_ids(cur, "campbelltown", "part3", tagger=_ZoneTagger()) == {1}
+
+
+def test_zone_only_links_re_applied_by_config_pass(monkeypatch):
+    monkeypatch.setattr(g, "relinkable_ids", lambda cur, c, k: set())
+    monkeypatch.setattr(g, "config_zoned_ids", lambda cur, c, k: set(range(504)))
+    assert g.enforce(None, "campbelltown", "part3", g.Linked(0, 193)) == g.Linked(0, 504)
+
+
+def test_config_zones_cannot_hide_lost_precinct_links(monkeypatch):
+    """The two kinds are judged apart: a chapter that loses its precinct links is refused even when every row will
+    get config zones, so the zone count can never stand in for the precincts."""
+    monkeypatch.setattr(g, "relinkable_ids", lambda cur, c, k: set(range(10)))
+    monkeypatch.setattr(g, "config_zoned_ids", lambda cur, c, k: set(range(500)))
+    with pytest.raises(g.AreaLinkLossRefused, match="100 rules linked to a precinct or marker"):
+        g.enforce(None, "c", "k", g.Linked(100, 50))
+
+
+def test_lost_zone_only_links_are_still_refused(monkeypatch):
+    monkeypatch.setattr(g, "relinkable_ids", lambda cur, c, k: set())
+    monkeypatch.setattr(g, "config_zoned_ids", lambda cur, c, k: set(range(20)))
+    with pytest.raises(g.AreaLinkLossRefused):
+        g.enforce(None, "c", "k", g.Linked(0, 193))
+
+
+# ---------------------------------------------------------------------------
+# rederive_after_publish: both publish paths re-make the precinct keys
+# ---------------------------------------------------------------------------
+
+def _fake_derive(monkeypatch, behaviour):
+    calls = []
+    mod = type(sys)("derive_precinct_keys")
+
+    def run(council, apply, validate):
+        calls.append((council, apply, validate))
+        return behaviour(council)
+
+    mod.run = run
+    monkeypatch.setitem(sys.modules, "derive_precinct_keys", mod)
+    monkeypatch.setitem(sys.modules, "scripts.derive_precinct_keys", mod)
+    return calls
+
+
+def test_rederive_runs_once_per_council_named_and_applies(monkeypatch):
+    calls = _fake_derive(monkeypatch, lambda c: 0)
+    g.rederive_after_publish(["ku_ring_gai", "campbelltown", "ku_ring_gai"])
+    assert calls == [("campbelltown", True, False), ("ku_ring_gai", True, False)]
+
+
+def test_rederive_does_nothing_on_a_dry_run_or_with_no_council(monkeypatch):
+    calls = _fake_derive(monkeypatch, lambda c: 0)
+    g.rederive_after_publish(["ku_ring_gai"], dry_run=True)
+    g.rederive_after_publish(set())
+    assert calls == []
+
+
+def test_one_council_failing_warns_and_the_next_still_runs(monkeypatch, capsys):
+    def boom(c):
+        if c == "ashfield":
+            raise RuntimeError("fingerprint mismatch")
+        return 0
+    calls = _fake_derive(monkeypatch, boom)
+    g.rederive_after_publish(["ashfield", "ku_ring_gai"])
+    assert [c[0] for c in calls] == ["ashfield", "ku_ring_gai"]
+    assert "derive_precinct_keys.py --council ashfield --apply" in capsys.readouterr().out
+
+
+def test_the_direct_to_live_path_rederives_after_enrichment():
+    """2026-10-18: Ku-ring-gai 14A/14H went live through dcp_extract_changed with 0 of 112 / 0 of 37 rows keyed,
+    because only dcp_commit_approved re-derived. The call must come after enrichment (layer tagging would
+    otherwise overwrite the derived 'precinct' layer) and outside the quality-gate branch."""
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1] / "scripts" / "dcp_extract_changed.py").read_text(encoding="utf-8")
+    call = src.index("area_links.rederive_after_publish(published_councils, dry_run=args.dry_run)")
+    assert src.index("results = run_standard_enrichment(batch_size=500)") < call < src.rindex("sys.exit(2)")
+    line = src[src.rindex("\n", 0, call) + 1:call]
+    assert line == "    ", "must not sit inside the quality-gate branch"
+    # only chapters this run wrote live -- not review or dry-run chapters
+    assert "elif not args.review and not args.dry_run:\n                published_councils.add(chapter[\"council\"])" in src
+
+
+def test_the_commit_path_uses_the_same_rederive():
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1] / "scripts" / "dcp_commit_approved.py").read_text(encoding="utf-8")
+    assert "area_links.rederive_after_publish(committed_councils)" in src

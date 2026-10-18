@@ -642,69 +642,10 @@ def main() -> int:
     # for exactly this class of field -- v2_precinct_id was simply left off its list.
     # Measured 2026-09-10: a commit run nulled the keys for four councils at once and the
     # only thing that put them back was a human remembering to run the derivation by hand.
-    # Ashfield fell to 118 keyed rows of 2,041 and Marrickville to 37 of 2,403, which is
-    # what a precinct lookup returning nothing looks like from the outside.
-    # derive_precinct_keys' own docstring names the cause: keys "were applied to rows BY
-    # HAND, so every re-extraction nulled them and the manual work recurred."
-    #
-    # THREE THINGS HERE ARE LOAD-BEARING, not style:
-    #   1. It runs AFTER the enrichment phases. A derived key also sets
-    #      v2_dcp_layer='precinct'; run_layer_tagging would overwrite that if it ran last.
-    #   2. It is SCOPED PER COUNCIL. run() deliberately refuses validate:False rules on a
-    #      bulk apply and honours them only when a council is named -- so the bulk path
-    #      would silently leave Ashfield's 641 chapter-D rows unkeyed. Committing a
-    #      council IS the deliberate per-council act that guard asks for.
-    #   3. It is wrapped. A derivation error must not fail provisions that are already
-    #      committed -- they can be re-derived -- so it degrades to a loud warning.
-    # A council with no rule derives nothing and returns 0; it is not an error.
+    # The re-derivation is shared with dcp_extract_changed's direct-to-live path, which
+    # lacked it until 2026-10-18; its load-bearing order and guards are documented there.
     if committed_councils and not dry_run:
-        print(f"Re-deriving precinct keys for {len(committed_councils)} committed council(s)...")
-        # The IMPORT is inside the guard too, and catches Exception rather than
-        # ImportError. derive_precinct_keys reads data/cos_precinct_page_ranges.json at
-        # MODULE level, so a missing data file raises FileNotFoundError -- which an
-        # `except ImportError` would not catch, crashing a run whose provisions are
-        # already live. Dockerfile.monitors COPYs both the module and that json; this
-        # guard is what stops a future packaging slip taking the commit down with it.
-        derive_precinct_keys = None
-        try:
-            try:
-                from scripts.derive_precinct_keys import run as derive_precinct_keys
-            except ImportError:  # invoked as `python scripts/dcp_commit_approved.py`
-                from derive_precinct_keys import run as derive_precinct_keys
-        except Exception as exc:  # noqa: BLE001 — module-level file reads raise anything
-            print(f"  [warn] could not load the precinct derivation: {exc}. Provisions ARE "
-                  f"committed but unkeyed; check Dockerfile.monitors COPYs "
-                  f"scripts/derive_precinct_keys.py AND data/cos_precinct_page_ranges.json.")
-        for council in sorted(committed_councils if derive_precinct_keys else ()):
-            try:
-                rc = derive_precinct_keys(council=council, apply=True, validate=False)
-            except Exception as exc:  # noqa: BLE001 — never fail a committed provision
-                print(f"  [warn] precinct re-derivation failed for {council}: {exc}. "
-                      f"Provisions ARE committed but unkeyed; run "
-                      f"`python scripts/derive_precinct_keys.py --council {council} --apply`. "
-                      f"Until then a precinct lookup for {council} serves council-wide only.")
-                continue
-            # run() signals failure by RETURN VALUE as well as by raising, and a
-            # non-zero return would otherwise slide past the except and let the job
-            # print its normal success summary over an unkeyed council. Raised by
-            # cross-review on the pre-push run.
-            #
-            # Verified rather than assumed: today run() returns 1 on exactly one path
-            # (`if validate and validation_failures`), which this call cannot reach
-            # because it passes validate=False. So this branch is forward-looking --
-            # it costs nothing and stops the next non-zero path being silent.
-            #
-            # It is NOT the fix for the genuinely silent case, and saying so here so
-            # nobody reads it as one: a page_range rule whose PDF has been re-paginated
-            # FAILS CLOSED, writes no keys, and returns 0. That is correct behaviour
-            # (better council-wide than confidently wrong-precinct) but it is invisible
-            # from this side. Detecting it needs a coverage assertion over the corpus --
-            # see scripts/audit_precinct_keying_coverage.py, which is itself unwired.
-            if rc:
-                print(f"  [warn] precinct re-derivation reported failure (exit {rc}) for "
-                      f"{council}. Provisions ARE committed but may be unkeyed; run "
-                      f"`python scripts/derive_precinct_keys.py --council {council} --apply` "
-                      f"and read its output.")
+        area_links.rederive_after_publish(committed_councils)
 
     # Citation verdicts: a publish changes clause numbers, and the site shows a number
     # only where regulatory_provisions.citation_status says the page proves it
