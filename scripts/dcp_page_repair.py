@@ -378,8 +378,9 @@ def report_unproven(before: int | None, after: int | None, council: str | None) 
     except ImportError:
         from scripts.outreach_claim_checks import DQ145_CEILING
     if before is None or after is None:
+        # Exit 3 like a rise: the write happened and nobody knows whether it re-judged proven rules (review, #1346).
         print("DQ-145 not measured -- run `python scripts/dq_probe_live.py --id DQ-145` before relying on this run.")
-        return 0
+        return 3
     print(f"DQ-145 (unproven citations): {before} before, {after} after; ceiling {DQ145_CEILING}.")
     if after > before:
         scope = f" --council {council}" if council else ""
