@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a new control type, parking_area_max, to dcp_setback_controls: the DB CHECK (migration 115, applied live), the Python vocabulary, the structured-controls route maps and the report label map. Campbelltown 3.6.1.4 caps the undercover parking AREA at 18/36 m2 and was stored as car_parking 1/2 spaces, numbers the clause never states. The two rows were moved live and are still hidden until this route is deployed.",
-  "commit_hash": "3d15b5de",
+  "commit_hash": "02ca2e91",
   "files": [
     "migrations/115_parking_area_max_control_type.sql",
     "migrations/enforce_control_type_vocabulary.sql",
