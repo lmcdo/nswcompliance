@@ -43,7 +43,7 @@
   "queries": [],
   "break_it": [
     {
-      "scenario": "Today's baseline already contains wrong-area rules (16 per 100 in the 2026-10-15 audit), so the alarm accepts them.",
+      "scenario": "Today's baseline already contains whatever wrong-area rules remain (audit runs 6-8, 2026-10-16: 6 serious in 830, 95% upper bound 1.89 per 100), so the alarm accepts them.",
       "what_happens": "It stays green on a known-wrong answer.",
       "mitigated": false,
       "how": "Stated in the docstring and the baseline reason: green means no worse than accepted, never correct. DQ-143/144 measure the level; when they clear rules, the shrink shows here and the rebaseline reason records why.",

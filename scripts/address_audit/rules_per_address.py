@@ -10,8 +10,9 @@ scores rows through conveyancing_db; check_served_output.py asserts three HTTP c
 no workflow. (4) plans -- meta-southbridge-jev-hankweave-antibrittle-2026-10-18.md section 4 item 1 names
 this check; ce-HANDOFF-2026-10-15.md records that 800-2,750 rules per address went unnoticed.
 
-WHY. The 2026-10-15 address audit found 16 wrong-area rules per 100 served, and that every address was
-served 800-2,750 rules. No check saw either, because every check counted rows in the database. The
+WHY. The 2026-10-15 address audit found 16 wrong-area rules per 100 served (fixed to a 95% upper bound of
+1.89 per 100 by audit runs 6-8, 2026-10-16), and that every address was served 800-2,750 rules. No nightly
+check saw either: the database checks count rows, and the audit is a person reading a sample once a month. The
 for-property route is where a row becomes an answer (the NULL-precinct leak at route.ts:1129 lived there),
 so this measures the route's output for real addresses, every night.
 
