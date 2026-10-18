@@ -118,3 +118,23 @@ def test_a_colon_inside_a_sentence_or_a_caption_does_not_split_it():
 def test_a_short_label_ending_in_a_colon_is_not_a_lead_in():
     assert ax.page_sentences("Objectives: 1 To provide good access to the site.") == [] or all(
         w[0] != "objectives" for w in ax.page_sentences("Objectives: 1 To provide good access to the site."))
+
+
+TABLE_PAGE = ("Table S.7-2 Service bays required for retail premises\nGross Floor Area (sqm)\n200 – 799\n–\n1\n"
+              "800 – 1,399\n1,400 – 1,999\n2,000 – 2,599\n2,600 – 3,199\n3,200 – 3,799\n3,800 – 4,399\n4,400 or more")
+
+
+def test_a_dropped_table_is_found_by_its_numbers():
+    """City of Sydney Schedule 7, 2026-10-18: Tables S7.1-S7.4 (service bays by floor area) were read as nothing."""
+    miss = ax.missing_table_numbers({46: TABLE_PAGE}, ["(h) Retail premises: 1 bay for every 600 sqm GFA."])
+    assert list(miss) == [46] and "1399" in miss[46] and "4400" in miss[46]
+
+
+def test_a_copied_table_is_not_flagged_and_thousands_commas_do_not_matter():
+    rows = ["200 – 799 | – | 1 | –", "800 – 1399 | – | 1 | 1", "1400 – 1999 | – | 1 | 2", "2000 – 2599 | 1 | – | 3",
+            "2600 – 3199 | 1 | 1 | 3", "3200 – 3799 | 1 | 1 | 4", "3800 – 4399 | 1 | 1 | 5", "4400 or more | 1 | 1 | 5"]
+    assert ax.missing_table_numbers({46: TABLE_PAGE}, rows) == {}
+
+
+def test_a_page_with_few_numbers_is_not_judged():
+    assert ax.missing_table_numbers({3: "Setbacks of 900 mm and 1,200 mm apply to lots over 450 sqm."}, []) == {}
