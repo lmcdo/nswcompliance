@@ -1141,6 +1141,26 @@ def _model_page(raw, first: int, last: int) -> int | None:
     n = first + raw - 1
     return n if first <= n <= last else None
 
+def figure_pages_override() -> set[int]:
+    """Pages a person checked are figures (maps, plans, 3D views) for this run only: AI_FIGURE_PAGES="25-36,40". Pure
+    apart from reading the environment. Empty unless set, so scheduled runs never use it.
+
+    The chunk-loss guard counts a page as rule-bearing when it carries rule words or '- ' bullets, which a map legend
+    does ("Setback above the street frontage height", "- Development blocks"). City of Sydney s6 pages 25-36
+    (2026-10-18) are development-block, frontage-height and access maps; the reader rightly returned nothing and the
+    chapter was refused twice. Like --allow-section-loss, this names exactly what a person checked.
+    """
+    out: set[int] = set()
+    for part in (os.environ.get("AI_FIGURE_PAGES") or "").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        lo, _, hi = part.partition("-")
+        if lo.isdigit() and (not hi or hi.isdigit()):
+            out.update(range(int(lo), int(hi or lo) + 1))
+    return out
+
+
 # ── entrypoint ───────────────────────────────────────────────────────────────
 def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None = None) -> list[dict]:
     """Extract a chapter's provisions via an LLM. Returns section dicts matching
@@ -1162,7 +1182,8 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
             # content loss, and accepting it silently is what cost marrickville
             # 94 pages of source document. A genuinely blank chunk has no text
             # and is passed over without complaint.
-            bearing = _rule_bearing_pages(reader, a, b)
+            figures = figure_pages_override()
+            bearing = [(p, n) for p, n in _rule_bearing_pages(reader, a, b) if p not in figures]
             if any(n >= RULE_PAGE_MIN_CHARS for _p, n in bearing):
                 lost.append({"pages": (a + 1, b), "text_chars": sum(n for _p, n in bearing)})
         _place_on_pages(chunk_provs, reader, a + 1, b)

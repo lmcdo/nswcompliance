@@ -1151,6 +1151,7 @@ class TestDeepseekProvider:
         import pytest
         import ai_extractor as ax
         monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)   # the direct route (#1355) needs its key too
         with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
             ax._call_deepseek(self._pdf(1))
 

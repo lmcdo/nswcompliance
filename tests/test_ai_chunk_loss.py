@@ -274,3 +274,15 @@ def test_a_page_without_rule_words_still_left_out_is_allowed(monkeypatch):
     first = [{"code": "1.1", "title": "A", "text": " ".join(lines[1])}]
     out = TestGuardFires()._run(monkeypatch, ["x"] * 6, 12, [first, []], page_lines=lines)
     assert len(out) == 1
+
+
+def test_figure_pages_named_for_one_run_do_not_count_as_lost(monkeypatch):
+    """City of Sydney s6 pages 25-36, 2026-10-18: maps whose legends carry rule words. A person names them for one
+    run; without the setting the guard still refuses (the marrickville protection is unchanged)."""
+    import ai_extractor as ai
+    monkeypatch.setenv("AI_FIGURE_PAGES", "25-36, 40")
+    assert ai.figure_pages_override() == set(range(25, 37)) | {40}
+    monkeypatch.setenv("AI_FIGURE_PAGES", "")
+    assert ai.figure_pages_override() == set()
+    monkeypatch.setenv("AI_FIGURE_PAGES", "x-y, 7")
+    assert ai.figure_pages_override() == {7}

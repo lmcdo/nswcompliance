@@ -1,0 +1,69 @@
+{
+  "tier": "standard",
+  "justification": "The chunk-loss guard counts map legends as rule-bearing, so City of Sydney s6 (pages 25-36 are maps) was refused twice although the reader rightly returned nothing. AI_FIGURE_PAGES lets a person name checked figure pages for one run; off unless set, like --allow-section-loss. The OpenRouter-key test now also unsets DEEPSEEK_API_KEY.",
+  "commit_hash": "5f154456",
+  "files": [
+    "scripts/ai_extractor.py",
+    "tests/test_ai_chunk_loss.py",
+    "tests/test_ai_extractor.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_ai_chunk_loss.py",
+    "fails_when": "named pages are not skipped or empty input is not empty",
+    "observed_red": "Ignoring the parsed ranges fails the new test; restored, all pass."
+  },
+  "real_layer_exempt": {
+    "scripts/ai_extractor.py": "used live for CoS s6 review read with AI_FIGURE_PAGES=25-36 on 2026-10-19"
+  },
+  "pre_impl": {
+    "existing_data": "held chapters' review rows lack the intro/scope sentences printed on the PDF pages",
+    "assumption_mismatch": "page coverage judges a page by most of its rule lines, so an intro paragraph can be lost on a passed page",
+    "new_vs_existing": "extends the reader after _reread_skipped_pages; reuses page_coverage.running_lines and doubled_text"
+  },
+  "functions": [
+    {
+      "name": "figure_pages_override",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "the AI_FIGURE_PAGES value from the process environment",
+      "output": "set of page numbers the chunk-loss guard skips",
+      "if_none": "an empty set, so the guard behaves exactly as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "AI_FIGURE_PAGES (env, e.g. 25-36,40)",
+      "read_at": "ai_extract_chapter chunk-loss check",
+      "if_missing": "empty set: guard unchanged"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "the setting is not present in the environment",
+      "what_happens": "the guard refuses a lost chunk as before",
+      "mitigated": true,
+      "how": "empty set",
+      "repro": "test_figure_pages_named_for_one_run_do_not_count_as_lost"
+    },
+    {
+      "scenario": "a malformed range like x-y in the setting",
+      "what_happens": "it is ignored and valid pages still apply",
+      "mitigated": true,
+      "how": "digit checks",
+      "repro": "test_figure_pages_named_for_one_run_do_not_count_as_lost"
+    },
+    {
+      "scenario": "both DeepSeek keys are removed in the key test",
+      "what_happens": "the missing-key error is raised as intended",
+      "mitigated": true,
+      "how": "test unsets both",
+      "repro": "test_it_needs_its_key"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none",
+    "secrets": "none",
+    "other_repo": "none",
+    "manual_verify": "CoS s6 review read passes the chunk guard with AI_FIGURE_PAGES=25-36"
+  }
+}
