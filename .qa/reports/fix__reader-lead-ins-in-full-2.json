@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "CoS s2 dropped two list lead-ins that passed the 75% sentence bar because their words recur in nearby headings ('Development in Botany Road Precinct is to:' p167; the Special Character Area objectives lead-in p8). A lead-in now counts as copied only when every word run after a heading-sized start is in the output, and a colon before a capitalised word also ends a lead-in. On the saved CoS s2 read both are flagged; nothing else new there.",
-  "commit_hash": "25079f05",
+  "commit_hash": "ac5391b0",
   "files": [
     "scripts/ai_extractor.py",
     "tests/test_ai_extractor_sentence_coverage.py"
