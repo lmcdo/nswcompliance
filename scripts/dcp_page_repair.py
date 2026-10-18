@@ -367,7 +367,7 @@ def unproven_count(conn) -> int | None:
 
 
 def report_unproven(before: int | None, after: int | None, council: str | None) -> int:
-    """Print DQ-145 before and after the write against its ceiling. Exit 3 when it rose. Pure apart from print.
+    """Print DQ-145 before and after the write against its ceiling. Exit 3 when it rose, 4 when unmeasured. Pure apart from print.
 
     A whole-council run re-judges rules that were already page-proven: on 2026-10-18 the Ku-ring-gai pass re-judged
     two older rules (Part 7 p14, Part 24 p38) as unresolved, and only a person re-measuring noticed. The write is
@@ -378,9 +378,10 @@ def report_unproven(before: int | None, after: int | None, council: str | None) 
     except ImportError:
         from scripts.outreach_claim_checks import DQ145_CEILING
     if before is None or after is None:
-        # Exit 3 like a rise: the write happened and nobody knows whether it re-judged proven rules (review, #1346).
+        # Exit 4, not 0: the write happened and nobody knows whether it re-judged proven rules (review, #1346).
+        # A distinct code from a measured rise (3), so the two can be told apart (review, #1348).
         print("DQ-145 not measured -- run `python scripts/dq_probe_live.py --id DQ-145` before relying on this run.")
-        return 3
+        return 4
     print(f"DQ-145 (unproven citations): {before} before, {after} after; ceiling {DQ145_CEILING}.")
     if after > before:
         scope = f" --council {council}" if council else ""
