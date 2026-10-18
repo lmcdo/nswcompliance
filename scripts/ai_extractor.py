@@ -980,7 +980,7 @@ def _reread_missing_sentences(pdf_path, reader, model: str, collected: list[dict
     import page_coverage as pc
     running = pc.running_lines(pc.pdf_page_lines(pdf_path))
     pages = _page_texts_for_sentences(pdf_path, running)
-    texts = lambda: [str(p.get("text", "")) for p in collected]
+    texts = lambda: [str(p.get("text") or "") for p in collected]
     missing = missing_sentences(pages, texts())
     if not missing:
         return
@@ -1010,7 +1010,7 @@ def keep_bringing_back(found: list[dict], named: list[str]) -> list[dict]:
     wanted = [_grams4(s.split()) for s in named]
     out = []
     for p in found:
-        have = _grams4(_WORDS_RE.findall(str(p.get("text", "")).lower()))
+        have = _grams4(_WORDS_RE.findall(str(p.get("text") or "").lower()))
         if any(w and len(w & have) / len(w) >= SENTENCE_HIT for w in wanted):
             out.append(p)
     return out
