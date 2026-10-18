@@ -1,0 +1,119 @@
+{
+  "tier": "standard",
+  "justification": "Changes a displayed lot measurement and one input to the granny-flat eligibility request, but touches no database, no stored data and no auth. Above minor because a wrong number reaches users and a rule input; below critical because the new value is never larger than the true frontage and null is handled by every consumer.",
+  "commit_hash": "afbffae7",
+  "files": [
+    "frontend-nextjs/lib/geometry/lot-dimensions.ts",
+    "frontend-nextjs/lib/geometry/__tests__/lot-dimensions-rect.test.ts",
+    "frontend-nextjs/types/property.ts",
+    "frontend-nextjs/components/property-details-comprehensive.tsx",
+    "frontend-nextjs/components/cdc/CdcComplianceCalculator.tsx",
+    "frontend-nextjs/app/api/satellite/granny-flat/route.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest lib/geometry/__tests__/lot-dimensions-rect.test.ts --ci",
+    "observed_red": "5 failed / 5 when the new test file was run against origin/main's lot-dimensions.ts (MUTATION, measured 2026-10-18); with the change all 5 pass.",
+    "fails_when": "The one-segment-per-side logic returns. MUTATION: the 5 new tests were run against origin/main's lot-dimensions.ts: 5 failed / 5. With the change: geometry suites 4/4, 96 tests pass. Full jest 141 suites / 1978 tests pass. tsc --noEmit 0 errors.",
+    "external_authority": "The real boundary ring of 6 Berrigan Street, Winston Hills (Lot 23 DP217713, 688 m2), returned by the live /api/property on 2026-10-18, and the Python implementation in services/lot_dimensions.py (PR #499), which gives frontage 22.4 and depth 39.7 on the same ring."
+  },
+  "pre_impl": {
+    "existing_data": "Boundary segments from /api/property (12 segments for Lot 23 DP217713). One side of that lot is a curve stored as eight 1.67 m pieces. No table or column is written.",
+    "assumption_mismatch": "The old calculateLotDimensions took one segment per side with boundaries.find(), assuming one segment per side. A curved side is many segments, so depth came out as (1.67 + 6.14)/2 = 3.9 m and Site Controls showed frontage 38.4 m x depth 3.9 m for a 688 m2 lot. The new code works from the whole ring and does not rely on segment count.",
+    "new_vs_existing": "Applies to every lot at render time. Nothing is stored, so existing lots get the new numbers on next view.",
+    "external_source_error": "Not applicable: no external call was added. If the ring is missing or has fewer than three distinct points, the function returns null for frontage and depth.",
+    "frontend_type": "Yes. frontage and depth in types/property.ts are now number | null. Consumers checked: effective-lot-width.ts (positiveFiniteOrNull), LepControls (?? null), StateLevelControls (|| null), see/propertyContext (sanitizeNumber), assessment/full route (lotWidth optional). All already handle null.",
+    "user_failure_mode": "Where the polygon fills under 60% of its minimum bounding rectangle (L-shapes, strong curves), the display reads Not measured instead of a number. The granny-flat route omits frontage_m when the value is null or not above zero."
+  },
+  "functions": [
+    {
+      "name": "frontageDepthFromRect",
+      "file_line": "frontend-nextjs/lib/geometry/lot-dimensions.ts",
+      "input": "closed boundary ring (array of points) from the property boundary data",
+      "output": "{ frontage, depth } in metres: shorter side of the minimum-area rectangle is frontage, longer side is depth",
+      "if_none": "returns null for both when the ring has too few points or the polygon fills less than MIN_RECT_FILL (0.6) of the rectangle"
+    },
+    {
+      "name": "minAreaRect",
+      "file_line": "frontend-nextjs/lib/geometry/lot-dimensions.ts",
+      "input": "convex hull points computed from the boundary ring",
+      "output": "smallest-area rotated rectangle found by rotating calipers",
+      "if_none": "returns null for an empty or degenerate hull"
+    },
+    {
+      "name": "convexHull",
+      "file_line": "frontend-nextjs/lib/geometry/lot-dimensions.ts",
+      "input": "array of x/y points from the boundary ring",
+      "output": "array of hull points in order",
+      "if_none": "returns the input unchanged when under three points"
+    },
+    {
+      "name": "calculateLotDimensions",
+      "file_line": "frontend-nextjs/lib/geometry/lot-dimensions.ts",
+      "input": "boundary data from the property object",
+      "output": "frontage and depth (number | null) to the Site Controls display and the CDC calculator",
+      "if_none": "frontage and depth are null; display shows Not measured"
+    }
+  ],
+  "values": [
+    {
+      "value": "frontage",
+      "read_at": "frontend-nextjs/components/property-details-comprehensive.tsx",
+      "nullable": "yes",
+      "guard_at": "same file, display branch",
+      "if_missing": "Shows Not measured with a note that the street-facing side is not identified"
+    },
+    {
+      "value": "depth",
+      "read_at": "frontend-nextjs/components/property-details-comprehensive.tsx",
+      "nullable": "yes",
+      "guard_at": "same file, display branch",
+      "if_missing": "Shows Not measured"
+    },
+    {
+      "value": "frontage_m (granny-flat request body)",
+      "read_at": "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+      "nullable": "yes",
+      "guard_at": "same file, sent only when non-null and above zero for rectangular lots",
+      "if_missing": "Field is left out of the request; the downstream eligibility step runs without a frontage input"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A rotated lot, or a ring that starts at an arbitrary vertex, gives a different answer depending on the start point.",
+      "what_happens": "Frontage and depth would change between page loads for the same lot.",
+      "mitigated": true,
+      "how": "lot-dimensions-rect.test.ts: rotated 15x40 rectangle returns the same result from every start vertex.",
+      "repro": "cd frontend-nextjs && npx jest lib/geometry/__tests__/lot-dimensions-rect.test.ts --ci"
+    },
+    {
+      "scenario": "A side is split into many small segments (the Winston Hills curve).",
+      "what_happens": "Old code returned depth 3.9 m for a lot that is 39.7 m long.",
+      "mitigated": true,
+      "how": "Test cuts one side into 10 pieces and checks the result equals the unsplit rectangle; the real Winston Hills ring returns 22.4 / 39.7.",
+      "repro": "npx jest lib/geometry/__tests__/lot-dimensions-rect.test.ts --ci"
+    },
+    {
+      "scenario": "An L-shaped or heavily curved lot is forced into a rectangle.",
+      "what_happens": "A confident but meaningless width and length would be shown.",
+      "mitigated": true,
+      "how": "lot-dimensions.ts returns null when the polygon fills under 60% of the rectangle; the UI shows Not measured. Test: L-shape returns null.",
+      "repro": "npx jest lib/geometry/__tests__/lot-dimensions-rect.test.ts --ci"
+    },
+    {
+      "scenario": "A wide lot, where the street side is the longer side.",
+      "what_happens": "The shorter side is labelled Width, which is not the street frontage.",
+      "mitigated": true,
+      "how": "Labels changed to Width / Length with a note that the street-facing side is not identified. For the granny-flat minimum-frontage test the shorter side is never more than the true frontage, so the test cannot pass wrongly on it. Test: wide 30x15 lot gives width 15.",
+      "repro": "npx jest lib/geometry/__tests__/lot-dimensions-rect.test.ts --ci"
+    }
+  ],
+  "mutation_analysis": "The 5 new tests were run against origin/main's lot-dimensions.ts: 5 failed / 5, so each test depends on the new logic. With the change: geometry suites 4/4 (96 tests) pass; full jest 141 suites / 1978 tests pass; tsc --noEmit reports 0 errors.",
+  "residual_risk": "The street-facing side is still not identified (a planned upgrade named in the PR #499 docstring), so Width is the shorter side and not always the frontage. Battleaxe lot display is unchanged. Lots that fail the 60% fill test show Not measured rather than a number.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes, one check: open 6 Berrigan Street, Winston Hills after deploy and read Site Controls; expect width 22.4 m and length 39.7 m."
+  }
+}
