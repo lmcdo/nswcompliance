@@ -171,7 +171,8 @@ export function measureStreetFrontage(lotRing: unknown, roads: RoadShape[]): Str
   for (const [a, b] of lotEdges) area += a[0] * b[1] - b[0] * a[1];
   area = Math.abs(area) / 2;
 
-  const byRoad = new Map<string, Seg[]>();
+  // A Set: one road can arrive as several parcels with the same name (Nicholls Ave, Haberfield).
+  const byRoad = new Map<string, Set<Seg>>();
   let unnamed = 0;
   for (const road of roads) {
     const roadSegs = (road.rings || []).flatMap((r) => {
@@ -183,14 +184,15 @@ export function measureStreetFrontage(lotRing: unknown, roads: RoadShape[]): Str
     for (const edge of lotEdges) {
       if (!edgeRunsAlong(edge, roadSegs)) continue;
       if (!name) { unnamed += Math.hypot(edge[1][0] - edge[0][0], edge[1][1] - edge[0][1]); continue; }
-      const list = byRoad.get(name) ?? [];
-      if (!list.includes(edge)) list.push(edge);
-      byRoad.set(name, list);
+      const set = byRoad.get(name) ?? new Set<Seg>();
+      set.add(edge);
+      byRoad.set(name, set);
     }
   }
 
   const out: RoadWidthRange[] = [];
-  for (const [road, edges] of [...byRoad.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [road, edgeSet] of [...byRoad.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const edges = [...edgeSet];
     const prof = widthProfile(ring, edges, area);
     if (!prof.length) continue;
     const depth = prof[prof.length - 1].d + PROFILE_STEP_M;
