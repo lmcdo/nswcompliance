@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "_JUNK_REF auto-rejected every ref starting 'table'; the AI reader copies printed table numbers, so 'Table 6.1' (CoS s6) and numbered signage tables were auto-rejected and blocked commits. Now only a bare 'table' (no number) is junk.",
-  "commit_hash": "052d6b38",
+  "commit_hash": "5e0a4fa1",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_extraction_fidelity.py"
