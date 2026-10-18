@@ -579,11 +579,29 @@ def _holds_rules(text: str) -> bool:
             and bool(_RULE_WORDS.search(text) or _ITEM_LABEL.search(text)))
 
 
-def _call_deepseek(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
-    import fitz
+#: DeepSeek's own API. OpenRouter stalled reads for ~15 minutes twice on 2026-10-18; going direct removes that hop.
+DEEPSEEK_DIRECT_URL = "https://api.deepseek.com/chat/completions"
+DEEPSEEK_DIRECT_MODEL = "deepseek-chat"
+#: deepseek-chat accepts at most 8,192 output tokens; a 4-page piece returns about 3,000.
+DEEPSEEK_DIRECT_MAX_TOKENS = 8192
+
+
+def deepseek_endpoint() -> tuple[str, str, str, int]:
+    """(url, key, model, max_tokens) for the DeepSeek reader: DeepSeek's own API when DEEPSEEK_API_KEY is set,
+    otherwise OpenRouter as before. AI_MODEL_ID still overrides the model on either route."""
+    direct = (os.environ.get("DEEPSEEK_API_KEY") or "").strip()
+    if direct:
+        return (DEEPSEEK_DIRECT_URL, direct, (os.getenv("AI_MODEL_ID") or DEEPSEEK_DIRECT_MODEL),
+                DEEPSEEK_DIRECT_MAX_TOKENS)
     key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
     if not key:
-        raise RuntimeError("AI_MODEL=deepseek needs OPENROUTER_API_KEY in the environment")
+        raise RuntimeError("AI_MODEL=deepseek needs DEEPSEEK_API_KEY or OPENROUTER_API_KEY in the environment")
+    return ("https://openrouter.ai/api/v1/chat/completions", key, (os.getenv("AI_MODEL_ID") or DEEPSEEK_MODEL), 16000)
+
+
+def _call_deepseek(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
+    import fitz
+    url, key, model_id, max_tokens = deepseek_endpoint()
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     pages = [doc[i].get_text() for i in range(doc.page_count)]
     doc.close()
@@ -594,12 +612,12 @@ def _call_deepseek(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     def read_piece(start: int) -> list[dict]:
         part = pages[start:start + DEEPSEEK_PAGES]
         text = "\n".join(f"=== PAGE {i} ===\n{t}" for i, t in enumerate(part, 1))
-        body = {"model": os.getenv("AI_MODEL_ID", DEEPSEEK_MODEL), "temperature": 0, "max_tokens": 16000,
+        body = {"model": model_id, "temperature": 0, "max_tokens": max_tokens,
                 "response_format": {"type": "json_object"},
                 "messages": [{"role": "user", "content": prompt + DEEPSEEK_TEXT_NOTE + "\n\n" + text}]}
         for _attempt in range(2):
             req = urllib.request.Request(
-                "https://openrouter.ai/api/v1/chat/completions", data=json.dumps(body).encode(),
+                url, data=json.dumps(body).encode(),
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
             with urllib.request.urlopen(req, timeout=600) as r:
                 reply = json.load(r)
