@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Row 255 (Campbelltown 3.6.1.4) was moved live from car_parking 2 spaces to parking_area_max 36 m2, a value its own quote now states. The validator therefore counts it as explained, and the shrink-only baseline must drop it or the gates job fails on every PR. One line removed from scripts/control_source_values_baseline.json; count 35 -> 34.",
-  "commit_hash": "pending",
+  "commit_hash": "59fad4fd",
   "files": [
     "scripts/control_source_values_baseline.json"
   ],
