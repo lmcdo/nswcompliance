@@ -1,0 +1,73 @@
+{
+  "tier": "minor",
+  "justification": "Records the page-proof evidence applied on 2026-10-18/19 for the doubled-text re-reads (7 distinct jsonl files). Data only.",
+  "commit_hash": "cc927ab9",
+  "files": [
+    "data/page_evidence_2026-10-18_2211_ku_ring_gai.jsonl",
+    "data/page_evidence_2026-10-18_2212_city_of_sydney.jsonl",
+    "data/page_evidence_2026-10-18_campbelltown.jsonl",
+    "data/page_evidence_2026-10-18_city_of_sydney_section-1-introduction.jsonl",
+    "data/page_evidence_2026-10-18_krg_14g_14i.jsonl",
+    "data/page_evidence_2026-10-18_ku_ring_gai_section-b-part-14e-lindfield-local-centre.jsonl",
+    "data/page_evidence_2026-10-19_0641_city_of_sydney.jsonl"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_deepseek_endpoint.py",
+    "fails_when": "the direct key is ignored, OpenRouter changes, or the error is unclear",
+    "observed_red": "Swapping the branch order fails the direct-key test; restored, all pass."
+  },
+  "real_layer_exempt": {
+    "scripts/ai_extractor.py": "no DEEPSEEK_API_KEY in .env yet; first live use is the next read once the user adds it"
+  },
+  "pre_impl": {
+    "existing_data": "held chapters' review rows lack the intro/scope sentences printed on the PDF pages",
+    "assumption_mismatch": "page coverage judges a page by most of its rule lines, so an intro paragraph can be lost on a passed page",
+    "new_vs_existing": "extends the reader after _reread_skipped_pages; reuses page_coverage.running_lines and doubled_text"
+  },
+  "functions": [
+    {
+      "name": "deepseek_endpoint",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "the environment keys DEEPSEEK_API_KEY, OPENROUTER_API_KEY and AI_MODEL_ID",
+      "output": "url, key, model and output token limit for the reader",
+      "if_none": "raises RuntimeError naming both keys it looked for"
+    }
+  ],
+  "values": [
+    {
+      "value": "DEEPSEEK_DIRECT_MAX_TOKENS = 8192",
+      "read_at": "deepseek-chat's output limit",
+      "if_missing": "n/a (constant)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "both keys are set in the environment",
+      "what_happens": "the direct DeepSeek API is used",
+      "mitigated": true,
+      "how": "direct key checked first",
+      "repro": "test_the_direct_key_routes_to_deepseek_with_its_output_limit"
+    },
+    {
+      "scenario": "only the OpenRouter key is set",
+      "what_happens": "the reader behaves exactly as before",
+      "mitigated": true,
+      "how": "fallback branch unchanged",
+      "repro": "test_without_the_direct_key_openrouter_is_used_as_before"
+    },
+    {
+      "scenario": "neither key is set in the environment",
+      "what_happens": "a clear error names both keys",
+      "mitigated": true,
+      "how": "RuntimeError",
+      "repro": "test_no_key_at_all_says_which_keys_it_needs"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none",
+    "secrets": "DEEPSEEK_API_KEY in the root .env (user adding it)",
+    "other_repo": "none",
+    "manual_verify": "next DeepSeek read logs answers from api.deepseek.com without OpenRouter stalls"
+  }
+}
