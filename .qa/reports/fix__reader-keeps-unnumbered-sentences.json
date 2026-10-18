@@ -1,0 +1,84 @@
+{
+  "tier": "standard",
+  "justification": "The AI reader dropped un-numbered council paragraphs (intros, 'This section applies to ...' scope sentences, place descriptions) because its brief said 'paragraph of rule text'; 3 of 8 doubled-text re-reads lost such sentences on pages page coverage passed (KRG 14G p5/p11, 14I p13, Campbelltown Part 4 5.5/5.7). Prompt now asks for every paragraph under a heading; a sentence check after page coverage re-reads pages with missing printed sentences, naming them, and keeps only provisions that bring one back. dcp_page_repair --apply now prints DQ-145 before/after and exits 3 on a rise (a whole-council pass re-judged 2 proven KRG rules on 2026-10-18).",
+  "commit_hash": "c08dc8bd",
+  "files": [
+    "scripts/ai_extractor.py",
+    "scripts/dcp_page_repair.py",
+    "tests/test_ai_extractor_sentence_coverage.py",
+    "tests/test_dcp_page_repair_reports_dq145.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_ai_extractor_sentence_coverage.py tests/test_dcp_page_repair_reports_dq145.py tests/test_ai_extractor.py",
+    "fails_when": "a missing sentence scores as copied, a sentence with no copied run scores as copied, every re-read provision is kept, every figure-citing rule is dropped, or a DQ-145 rise is not reported",
+    "observed_red": "Each of those five mutations failed a test; restored, all pass."
+  },
+  "real_layer_exempt": {
+    "scripts/ai_extractor.py": "offline measure on saved review reads of 5 chapters (no AI call): flags 14G p5/p11, 14I p13, CB Part 4 p20 and 14D 'planned future character' paragraphs; 0 on 14J. Live review reads of the 3 held chapters run next.",
+    "scripts/dcp_page_repair.py": "unproven_count measured live: 107, the same as dq_probe_live --id DQ-145"
+  },
+  "pre_impl": {
+    "existing_data": "held chapters' review rows lack the intro/scope sentences printed on the PDF pages",
+    "assumption_mismatch": "page coverage judges a page by most of its rule lines, so an intro paragraph can be lost on a passed page",
+    "new_vs_existing": "extends the reader after _reread_skipped_pages; reuses page_coverage.running_lines and doubled_text"
+  },
+  "functions": [
+    {
+      "name": "missing_sentences",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "page number to page text, and the texts the reader returned",
+      "output": "page number to printed sentences the output does not hold",
+      "if_none": "empty dict, and no re-read happens"
+    },
+    {
+      "name": "report_unproven",
+      "file_line": "scripts/dcp_page_repair.py",
+      "input": "DQ-145 before and after the write, and the council",
+      "output": "printed comparison; exit 3 when it rose",
+      "if_none": "says not measured and exits 0"
+    }
+  ],
+  "values": [
+    {
+      "value": "SENTENCE_HIT = 0.75",
+      "read_at": "share of a sentence's four-word runs that must be in the output, from its first copied run",
+      "if_missing": "n/a (constant; 0.5 missed the Campbelltown scope sentences, measured)"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "count served rules with unproven citations before and after the page repair write",
+      "file_line": "scripts/dcp_page_repair.py unproven_count (dq_probe_live DQ-145 SQL)",
+      "where_clause": "the DQ-145 probe's own WHERE (is_current AND v2_is_actionable ...)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "a heading with no full stop runs into the first sentence of a page",
+      "what_happens": "the heading words are not counted against it",
+      "mitigated": true,
+      "how": "judged from the first copied four-word run",
+      "repro": "test_a_heading_run_into_a_sentence_does_not_make_it_missing"
+    },
+    {
+      "scenario": "the re-read returns the whole page again",
+      "what_happens": "only provisions holding a named missing sentence are added",
+      "mitigated": true,
+      "how": "keep_bringing_back",
+      "repro": "test_only_reread_provisions_that_bring_a_missing_sentence_back_are_kept"
+    },
+    {
+      "scenario": "a map legend or caption ends with a full stop",
+      "what_happens": "it is not asked for unless it carries a verb",
+      "mitigated": true,
+      "how": "number-share, spaced-letter and figure-without-verb filters",
+      "repro": "test_captions_legends_map_numbers_and_headings_are_never_asked_for"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none: reader and report only",
+    "secrets": "none needed",
+    "other_repo": "none",
+    "manual_verify": "review re-reads of KRG 14G, 14I and Campbelltown Part 4 show 0 lost council sentences in the loss check"
+  }
+}
