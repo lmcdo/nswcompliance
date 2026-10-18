@@ -1,6 +1,6 @@
 {
   "note": "Controls whose stored value no named rule derives from their own source_text. Keyed id -> digest of the value, unit and quote, so editing an accepted row to a DIFFERENT unsupported value makes it a new finding rather than leaving it accepted. Shrink-only: a row that becomes explained must be removed, and --write-baseline refuses to add ids without --allow-growth.",
-  "count": 35,
+  "count": 34,
   "accepted": {
     "1": "ab13fe41afaa2e68",
     "2": "54981fba5f0bcfbb",
@@ -13,7 +13,6 @@
     "31": "edcf25770332a2aa",
     "32": "71ca1999b90076b6",
     "229": "1d7e08aad265e005",
-    "255": "156a4c2315508735",
     "606": "eb34949a65637a9d",
     "631": "54e23abc21ac73b8",
     "632": "54e23abc21ac73b8",
