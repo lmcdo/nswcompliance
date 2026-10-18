@@ -73,3 +73,23 @@ def test_the_chapter_reader_runs_the_sentence_check_after_page_coverage():
     src = (Path(__file__).resolve().parents[1] / "scripts" / "ai_extractor.py").read_text(encoding="utf-8")
     pages_at = src.index("        _reread_skipped_pages(pdf_path, reader, model, collected)\n")
     assert src.index("        _reread_missing_sentences(pdf_path, reader, model, collected)\n") > pages_at
+
+
+def test_the_top_of_a_page_continuing_a_clause_is_its_own_sentence():
+    """Campbelltown Part 4 5.4.8.2 b runs over a page break: page 13 opens 'or living rooms unless they are outside the
+    sound transmission barrier surrounding each unit.' then 'ii) Not open ...'. Glued to the copied items it passed."""
+    page = ("or living rooms unless they are outside the sound transmission barrier surrounding each unit. "
+            "ii) Not open into any habitable or public space and doors must have an effective self-sealing system; "
+            "iii) Feed into appropriately sized bins located in the bin storage room.")
+    copied = ["ii) Not open into any habitable or public space and doors must have an effective self-sealing system; "
+              "iii) Feed into appropriately sized bins located in the bin storage room."]
+    miss = ax.missing_sentences({13: page}, copied)
+    assert miss and "living rooms unless" in miss[13][0]
+
+
+def test_a_late_stray_match_does_not_excuse_a_whole_sentence():
+    """'Note: Refer to Section 4.1C of the CLEP for the minimum qualifying site area for residential flat buildings.'
+    matched only its last words, elsewhere in the output."""
+    page = "Note: Refer to Section 4.1C of the CLEP for the minimum qualifying site area for residential flat buildings."
+    other = ["This section sets out controls for residential flat buildings in areas zoned for them."]
+    assert ax.missing_sentences({20: page}, other)

@@ -23,8 +23,9 @@ def test_no_rise_exits_0():
     assert r.report_unproven(107, 100, None) == 0
 
 
-def test_an_unmeasured_run_says_so_and_does_not_claim_a_number(capsys):
-    assert r.report_unproven(None, 107, None) == 0
+def test_an_unmeasured_run_says_so_and_fails_loudly(capsys):
+    assert r.report_unproven(None, 107, None) == 4
+    assert r.report_unproven(107, None, None) == 4
     assert "not measured" in capsys.readouterr().out
 
 
