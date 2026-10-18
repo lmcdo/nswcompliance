@@ -48,10 +48,10 @@ describe('housing-sepp eligibility — absent LMR input (DQ-31)', () => {
     // Both are ineligible, but they are different statements and a user acts on
     // them differently.
     expect(ROUTE).toMatch(/lmrAreaKnown/);
-    expect(ROUTE).toMatch(/not assessed for this property/);
+    expect(ROUTE).toMatch(/could not be checked/);
     // Matched within a SINGLE string literal: the sentence is built by TS
     // concatenation, so a phrase spanning the `+` never appears in the source.
-    expect(ROUTE).toMatch(/finding that the property is outside/);
+    expect(ROUTE).toMatch(/no Town Centres Map catchment or TOD catchment at this lot/);
   });
 });
 

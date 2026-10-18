@@ -17,7 +17,8 @@ interface PathwaySummaryCardProps {
   propertyData: any;
   patternBookStatus?: 'ELIGIBLE' | 'INELIGIBLE' | 'CONDITIONAL';
   exemptComplyingCount?: number;
-  housingLmrApplicable?: boolean;
+  /** true / false from the planning map; null = the map did not answer. */
+  housingLmrApplicable?: boolean | null;
   zoneCode?: string;
 }
 
@@ -25,7 +26,7 @@ export function PathwaySummaryCard({
   propertyData,
   patternBookStatus,
   exemptComplyingCount = 0,
-  housingLmrApplicable = false,
+  housingLmrApplicable = null,
   zoneCode
 }: PathwaySummaryCardProps) {
 
@@ -37,7 +38,7 @@ export function PathwaySummaryCard({
     if (exemptComplyingCount > 0) {
       return `Exempt & Complying Development (${exemptComplyingCount} work types available)`;
     }
-    if (housingLmrApplicable) {
+    if (housingLmrApplicable === true) {
       return 'Housing SEPP (Low-Mid Rise) streamlined assessment';
     }
     return 'Standard Development Application (50+ days)';
@@ -115,16 +116,20 @@ export function PathwaySummaryCard({
 
           {/* Housing SEPP (LMR) */}
           <div className="flex items-center gap-2">
-            {housingLmrApplicable ? (
+            {housingLmrApplicable === true ? (
               <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
             ) : (
               <XCircle className="h-4 w-4 text-gray-400 flex-shrink-0" />
             )}
             <span>
               Housing SEPP (LMR): <strong>
-                {housingLmrApplicable ? 'Applicable' : 'Not applicable'}
+                {housingLmrApplicable === true
+                  ? 'Applicable'
+                  : housingLmrApplicable === false
+                    ? 'Not in a Low and Mid-Rise housing area'
+                    : 'Not checked: the planning map did not answer'}
               </strong>
-              {!housingLmrApplicable && zoneCode && (
+              {housingLmrApplicable !== true && zoneCode && (
                 <span className="text-xs text-gray-500 ml-1"> ({zoneCode} zone)</span>
               )}
             </span>

@@ -24,12 +24,13 @@ import { NearbyTransportCard } from '../tod/NearbyTransportCard';
 import { NotApplicableCard } from './NotApplicableCard';
 import { ExemptComplyingProvisions } from './ExemptComplyingProvisions';
 import { PathwaySummaryCard } from './PathwaySummaryCard';
-import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone, isLMRApplicable, permitsApartmentDevelopment } from '@/lib/regulatory-constants';
+import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone, isLMREligibleZone, permitsApartmentDevelopment } from '@/lib/regulatory-constants';
 import { getAdgPdfUrl } from '@/lib/pdf-url-builder';
 import { CitationUncheckedBadge } from './CitationUncheckedBadge';
 import { SeppCitationLink,SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL, seppHousingProvisionUrl } from './SeppCitationLink';
 import { tryGetLGAConfig } from '@/lib/lga-configs';
 import { widthRange } from '@/lib/geometry/street-frontage';
+import { useLmrGates } from '@/hooks/useLmrGates';
 
 interface StrataInfo {
   isStrata: boolean;
@@ -107,6 +108,37 @@ export function StateLevelControls({
   // Extract LGA from property data (provided by NSW Planning Portal)
   const lga = propertyData?.constraints?.lga;
 
+  // Extract property coordinates for transport proximity
+  // Convert Web Mercator (x, y) to WGS84 (lat, lng) if needed
+  const getCoordinates = () => {
+    // Try WGS84 coordinates first
+    if (propertyData?.geometry?.centroid?.lat) {
+      return { lat: propertyData.geometry.centroid.lat, lng: propertyData.geometry.centroid.lng };
+    }
+    if (propertyData?.centroid?.lat) {
+      return { lat: propertyData.centroid.lat, lng: propertyData.centroid.lng };
+    }
+    if (propertyData?.location?.lat) {
+      return { lat: propertyData.location.lat, lng: propertyData.location.lng };
+    }
+    // Convert from Web Mercator if we have x/y
+    if (propertyData?.geometry?.x && propertyData?.geometry?.y) {
+      const x = propertyData.geometry.x;
+      const y = propertyData.geometry.y;
+      const lng = (x / 20037508.34) * 180;
+      const lat = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+      return { lat, lng };
+    }
+    return { lat: undefined, lng: undefined };
+  };
+  const { lat: propertyLat, lng: propertyLng } = getCoordinates();
+
+  // Low and Mid-Rise housing area, answered by the planning map (null while loading or when it did not answer).
+  const { gates: lmrGates } = useLmrGates(
+    propertyLat != null && propertyLng != null ? { lat: propertyLat, lng: propertyLng } : null,
+  );
+  const isLMRArea: boolean | null = lmrGates?.in_lmr_area ?? null;
+
   // Try to load LGA config. If LGA is not configured yet (returns null),
   // the component will fall back to NSW-wide defaults.
   // Currently configured LGAs: Inner West
@@ -147,13 +179,10 @@ export function StateLevelControls({
 
   // Load ADG requirements only where an apartment / residential flat building is
   // actually permitted — R4 and business/mixed-use zones under the Standard Instrument,
-  // or R1–R3 where the Stage-2 LMR mid-rise reforms reach the LGA. R1–R3 outside a
-  // designated region (e.g. regional R3 in Wingecarribee) do not engage the ADG.
+  // or R1–R3 inside a Low and Mid-Rise housing area, as answered by the planning map.
+  // R1–R3 outside one, or where the map did not answer, do not engage the ADG.
   const loadADGRequirements = useCallback(async () => {
-    if (!permitsApartmentDevelopment(
-      propertyData?.constraints?.zone || '',
-      propertyData?.constraints?.lga || '',
-    )) {
+    if (!permitsApartmentDevelopment(propertyData?.constraints?.zone || '', isLMRArea)) {
       setAdgRequirements([]);
       return;
     }
@@ -207,7 +236,7 @@ export function StateLevelControls({
     }
 
     }
-  }, [developmentType, propertyData]);
+  }, [developmentType, propertyData, isLMRArea]);
 
   // Load structured SEPP requirements (dynamic based on portal detection)
   const loadStructuredRequirements = useCallback(async () => {
@@ -305,30 +334,6 @@ export function StateLevelControls({
   }, [loadADGRequirements]);
 
 
-  // Extract property coordinates for transport proximity
-  // Convert Web Mercator (x, y) to WGS84 (lat, lng) if needed
-  const getCoordinates = () => {
-    // Try WGS84 coordinates first
-    if (propertyData?.geometry?.centroid?.lat) {
-      return { lat: propertyData.geometry.centroid.lat, lng: propertyData.geometry.centroid.lng };
-    }
-    if (propertyData?.centroid?.lat) {
-      return { lat: propertyData.centroid.lat, lng: propertyData.centroid.lng };
-    }
-    if (propertyData?.location?.lat) {
-      return { lat: propertyData.location.lat, lng: propertyData.location.lng };
-    }
-    // Convert from Web Mercator if we have x/y
-    if (propertyData?.geometry?.x && propertyData?.geometry?.y) {
-      const x = propertyData.geometry.x;
-      const y = propertyData.geometry.y;
-      const lng = (x / 20037508.34) * 180;
-      const lat = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
-      return { lat, lng };
-    }
-    return { lat: undefined, lng: undefined };
-  };
-  const { lat: propertyLat, lng: propertyLng } = getCoordinates();
 
   // Fetch nearby transport data
   useEffect(() => {
@@ -498,8 +503,6 @@ export function StateLevelControls({
 
   // Zone may include colon (e.g., "R2: Low Density") - strip non-alphanumeric chars
   const zoneCode = zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
-  // LMR applicability: Stage 2 (R1–R4 within designated regions) OR Stage 1 (R2 statewide, excl. 4 LGAs)
-  const isLMRArea = zone && lga ? isLMRApplicable(zone, lga) : false;
 
   // Extract LEP height and FSR from Planning Portal layers for SEPP-LEP override comparison
   const heightLayer = propertyData?.planningLayers?.find(
@@ -526,7 +529,7 @@ export function StateLevelControls({
   // that condition always true, so gating on a real width would newly HIDE the
   // whole section for every property whose frontage we do not hold — trading a
   // false answer for a silent one. The card inside asks for the frontage instead.
-  const showHousingSEPPSection = isLMRArea && lotSize;
+  const showHousingSEPPSection = zone && isLMREligibleZone(zone) && lotSize;
 
   // Show ADG based on SEPP Housing 2021 detection (dynamic from planning portal)
   const applicableSepps = propertyData?.constraints?.applicableSepps || [];
@@ -540,7 +543,7 @@ export function StateLevelControls({
   // so it wrongly showed the ADG panel on regional low/medium-density lots (e.g. R3 Bowral)
   // even where the Housing SEPP LMR reforms are correctly reported as not applicable.
   const showADGSection =
-    permitsApartmentDevelopment(propertyData?.constraints?.zone || '', lga || '') ||
+    permitsApartmentDevelopment(propertyData?.constraints?.zone || '', isLMRArea) ||
     adgRequirements.length > 0;
 
   // Get land zoning layer data

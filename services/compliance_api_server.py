@@ -26,6 +26,7 @@ try:
     from services.constraint_arithmetic import router as constraint_arithmetic_router
     from services.lot_search import router as lot_search_router
     from services.upzoning_check import router as upzoning_router
+    from services.housing_sepp_gates_api import router as housing_sepp_gates_router
     from services.brief_overlay_api import router as brief_overlay_router
     from services.cdc_screen_api import router as cdc_screen_router
     from services.cdc_lot_requirements_api import router as cdc_lot_requirements_router
@@ -48,6 +49,7 @@ except ImportError:
     from constraint_arithmetic import router as constraint_arithmetic_router
     from lot_search import router as lot_search_router
     from upzoning_check import router as upzoning_router
+    from housing_sepp_gates_api import router as housing_sepp_gates_router
     from brief_overlay_api import router as brief_overlay_router
     from cdc_screen_api import router as cdc_screen_router
     from cdc_lot_requirements_api import router as cdc_lot_requirements_router
@@ -89,6 +91,7 @@ app.include_router(intelligence_brief_router)
 app.include_router(terrain_router)
 app.include_router(constraint_arithmetic_router)
 app.include_router(lot_search_router)
+app.include_router(housing_sepp_gates_router)
 app.include_router(upzoning_router)
 app.include_router(brief_overlay_router)
 app.include_router(cdc_screen_router)
