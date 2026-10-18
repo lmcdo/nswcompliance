@@ -1,0 +1,99 @@
+{
+  "tier": "critical",
+  "justification": "Changes Housing SEPP eligibility answers served on the assessment page and by both eligibility engines: dual occupancy now needs a Low and Mid-Rise housing area (s 168(1), s 169(1)), and every SEPP citation page in housing_sepp_standards is corrected.",
+  "commit_hash": "740c5f23",
+  "files": [
+    "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
+    "frontend-nextjs/__tests__/api/housing-sepp-lmr-gate-states.test.ts",
+    "tests/test_housing_sepp_eligibility.py",
+    "tests/test_upzoning_check.py",
+    "migrations/114_housing_sepp_dual_occ_lmr_area_and_pages.sql"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_housing_sepp_eligibility.py tests/test_upzoning_check.py -q && cd frontend-nextjs && npx jest __tests__/api/housing-sepp",
+    "fails_when": "Mutation measured 2026-10-19: dual_occupancy fixture requires_lmr_area set back to False -> test_dual_occupancy_outside_lmr_area_is_not_eligible fails (duplex eligible True).",
+    "observed_red": "Before the fix: live POST /api/housing-sepp/eligibility for 6 Berrigan St (R2, 685 m2, isLMRArea false) returned dual_occupancy eligible with overrides FSR 0.65 vs 0.5 and height 9.5 vs 9; standards cited pdfPage 72 (s 147).",
+    "external_authority": "SEPP (Housing) 2021 PDF at the rows' r2_pdf_url (131 pages, printed 30 Mar 2026): s 168(1) and s 169(1) text read on pp 80-81; each clause and value located with PyMuPDF (s 108 p49, 168 p80, 169(3) p81, 172 p82, 173 p82, 175/176 p83, 179/180 p84)."
+  },
+  "pre_impl": {
+    "existing_data": "housing_sepp_standards 67 rows; ids 1-7 dual_occupancy requires_lmr_area false; no triggers, no FK references.",
+    "assumption_mismatch": "Assumed duplex SEPP standards apply to all R2 land; the in-force text limits them to a low and mid rise housing area.",
+    "new_vs_existing": "No new code path: both readers already gate on requires_lmr_area; data fix plus one reason string.",
+    "external_source_error": "Not applicable: this change adds no external query; the area answer still comes from the existing map gates.",
+    "frontend_type": "eligibilityReason stays a plain string and assessmentStatus keeps its three values, so no consumer type changes.",
+    "user_failure_mode": "Worst case a lot inside a reform area is unaffected (flag true passes it to its lot tests); outside one, duplex now reads not eligible under the SEPP, with the council controls named."
+  },
+  "functions": [
+    {
+      "name": "POST /api/housing-sepp/eligibility",
+      "file_line": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
+      "input": "zone code, lot size, lot width range from the street, isLMRArea true/false/null, optional LEP height and FSR",
+      "output": "one status per housing form (eligible, ineligible, not_assessed) with a reason and its cited standards, plus SEPP-over-LEP lines",
+      "if_none": "isLMRArea null or absent gives not_assessed for every area form, now including dual occupancy"
+    }
+  ],
+  "values": [
+    {
+      "value": "requires_lmr_area and pdf_page from housing_sepp_standards",
+      "read_at": "migration 114",
+      "if_missing": "migration raises and commits nothing"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "R2 lot outside any Low and Mid-Rise area (Winston Hills).",
+      "what_happens": "Duplex not eligible under the SEPP, no SEPP-beats-LEP lines.",
+      "mitigated": true,
+      "how": "Flag true; overrides only for eligible forms.",
+      "repro": "npx jest __tests__/api/housing-sepp-lmr-gate-states.test.ts"
+    },
+    {
+      "scenario": "Lot on heritage land, inside or outside a Low and Mid-Rise area.",
+      "what_happens": "Duplex suppressed like the other area forms (s 164(1)(d)); dwelling houses unaffected.",
+      "mitigated": true,
+      "how": "Existing heritage gate keyed on the flag.",
+      "repro": "python -m pytest tests/test_housing_sepp_eligibility.py -k heritage"
+    },
+    {
+      "scenario": "Migration re-run or rows changed since the check.",
+      "what_happens": "The migration raises an exception and nothing is committed to the table.",
+      "mitigated": true,
+      "how": "Every UPDATE matches id + clause + old value and checks ROW_COUNT.",
+      "repro": "re-run migration 114: '114: expected 7 ... matched 0'"
+    },
+    {
+      "scenario": "R2 lot inside a Low and Mid-Rise area, 685 m2, width 13.38-22.4 m.",
+      "what_happens": "Duplex passes the area gate and is decided on its lot size and width as before.",
+      "mitigated": true,
+      "how": "Flag only gates; lot tests unchanged (tests run with in_lmr_area True).",
+      "repro": "python -m pytest tests/test_housing_sepp_eligibility.py -k lot_minimum"
+    },
+    {
+      "scenario": "The Low and Mid-Rise area answer is unknown because a map layer did not answer.",
+      "what_happens": "Duplex reads not assessed, never eligible or ineligible.",
+      "mitigated": true,
+      "how": "Existing null handling now covers duplex too.",
+      "repro": "npx jest __tests__/api/housing-sepp-lmr-gate-states.test.ts -t null"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No - migration 114 already applied to production 2026-10-19 (backup data/db_rollback_backups/housing_sepp_standards_pre_114_2026-10-19.json).",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes - after Vercel deploy, 6 Berrigan St Winston Hills: duplex reason ends 'the council's own LEP and DCP controls do'; no 'SEPP standards exceed LEP controls' box."
+  },
+  "residual_risk": "Two eligibility implementations remain (DQ-30). Clause 166 (duplex permitted with consent in R2 statewide) is not shown as a separate line.",
+  "cross_review": [
+    {
+      "finding": "[MEDIUM] route.ts:283 reason says SEPP standards do not apply without citing s 168(1)",
+      "verdict": "NOT A DEFECT",
+      "why": "one reason string serves ss 168, 172 and 179 forms; each form's standards, with their own clause and page, print beside it on the card."
+    },
+    {
+      "finding": "[MEDIUM] migration 114 dual occupancy UPDATE lacks a development_type filter",
+      "verdict": "NOT A DEFECT",
+      "why": "the WHERE has development_type = 'dual_occupancy' AND approval_pathway IS NULL; applied 2026-10-19 matching exactly 7 rows, ROW_COUNT checked."
+    }
+  ]
+}

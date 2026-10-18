@@ -60,8 +60,32 @@ describe('housing-sepp eligibility - Low and Mid-Rise area answer', () => {
     expect(f.isEligible).toBe(false);
     expect(f.assessmentStatus).toBe('ineligible');
     expect(f.eligibilityReason).toBe(
-      'Not in a Low and Mid-Rise housing area (no Town Centres Map catchment or TOD catchment at this lot)',
+      'Not in a Low and Mid-Rise housing area (no Town Centres Map catchment or TOD catchment at this lot), '
+        + 'so these Housing SEPP standards do not apply here; the council\'s own LEP and DCP controls do',
     );
+  });
+
+  // 6 Berrigan St Winston Hills, 2026-10-19: dual occupancy rows carried requires_lmr_area = false although
+  // s 168(1) limits them to "a low and mid rise housing area", so a lot outside one read "Eligible" with the
+  // SEPP's 0.65:1 / 9.5 m shown as beating the council's 0.5:1 / 9 m. Migration 114 sets the flag; this pins
+  // what the route does with it.
+  it('false: dual occupancy flagged as area-only is not eligible and shows no SEPP-beats-LEP line', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [
+        row('dual_occupancy', 'min_lot_size', '450', RESIDENTIAL, true),
+        row('dual_occupancy', 'max_fsr', '0.65', RESIDENTIAL, true),
+      ],
+    });
+    const res = await POST(new NextRequest('http://localhost/api/housing-sepp/eligibility', {
+      method: 'POST',
+      body: JSON.stringify({ ...LOT, isLMRArea: false, lepFsr: 0.5 }),
+    }));
+    const json = await res.json();
+    const f = json.data.eligibleTypes.find((r: { developmentType: string }) => r.developmentType === 'dual_occupancy');
+    expect(f.isEligible).toBe(false);
+    expect(f.assessmentStatus).toBe('ineligible');
+    expect(f.eligibilityReason).toMatch(/council's own LEP and DCP controls do$/);
+    expect(json.data.overrides).toBeNull();
   });
 
   it('null: a form that requires the area is not assessed, never ineligible', async () => {

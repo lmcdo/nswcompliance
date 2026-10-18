@@ -22,7 +22,7 @@ _REAL_FETCH_STANDARDS_GROUPED = hse._fetch_standards_grouped
 # Fake housing_sepp_standards (mirrors the real shape).
 GROUPED = {
     "dwelling_houses":      {"requires_lmr_area": False, "applicable_zones": ["R1", "R2", "R3", "R4"], "min_lot_size": None,  "min_lot_width": None},
-    "dual_occupancy":       {"requires_lmr_area": False, "applicable_zones": ["R1", "R2", "R3", "R4"], "min_lot_size": 450.0, "min_lot_width": 12.0},
+    "dual_occupancy":       {"requires_lmr_area": True, "applicable_zones": ["R1", "R2", "R3", "R4"], "min_lot_size": 450.0, "min_lot_width": 12.0},  # noqa: zone-codes -- fixture copy of the DB row applicable_zones
     "terraces":             {"requires_lmr_area": True,  "applicable_zones": ["R1", "R2", "R3", "R4"], "min_lot_size": 500.0, "min_lot_width": 18.0},
     "residential_flat_r1r2": {"requires_lmr_area": True, "applicable_zones": ["R1", "R2"],             "min_lot_size": 500.0, "min_lot_width": 12.0},
     "residential_flat_r3r4_inner": {"requires_lmr_area": True, "applicable_zones": ["R3", "R4"],       "min_lot_size": None,  "min_lot_width": None},
@@ -112,12 +112,21 @@ def test_all_residential_flats_require_tod_catchment():
 
 
 def test_dual_occ_prohibition_blocks_dual_occ():
-    gates = {**ALL_FALSE, "dual_occ_prohibited": True}
+    in_area = {**ALL_FALSE, "in_lmr_area": True}  # dual occupancy needs the LMR area (s 168(1))
+    gates = {**in_area, "dual_occ_prohibited": True}
     r = _by_type(evaluate_eligibility("R2", 600, 20, -33.8, 151.1, gate_inputs=gates))
     assert r["dual_occupancy"].eligible is False
     assert "prohibited" in r["dual_occupancy"].reason
-    r2 = _by_type(evaluate_eligibility("R2", 600, 20, -33.8, 151.1, gate_inputs=ALL_FALSE))
+    r2 = _by_type(evaluate_eligibility("R2", 600, 20, -33.8, 151.1, gate_inputs=in_area))
     assert r2["dual_occupancy"].eligible is True
+
+
+def test_dual_occupancy_outside_lmr_area_is_not_eligible():
+    # 6 Berrigan St Winston Hills, 2026-10-19: s 168(1) limits duplex standards to a low and mid rise housing area.
+    r = _by_type(evaluate_eligibility(
+        "R2", 685, 13.38, -33.8, 151.1, gate_inputs=ALL_FALSE, lot_width_range=(13.38, 22.4)))
+    assert r["dual_occupancy"].eligible is False
+    assert "Low and Mid-Rise" in r["dual_occupancy"].reason
 
 
 def test_zone_filter_drops_inapplicable_forms():
@@ -132,7 +141,10 @@ def test_heritage_suppresses_lmr_forms_but_not_base_forms():
     assert r["terraces"].eligible is False  # LMR form suppressed on heritage
     assert "heritage" in r["terraces"].reason.lower()
     assert r["residential_flat_r1r2"].eligible is False
-    assert r["dual_occupancy"].eligible is True  # base form unaffected by heritage
+    # s 168(1) + s 164(1)(d): duplex standards need the LMR area and exclude heritage land.
+    assert r["dual_occupancy"].eligible is False
+    assert "heritage" in r["dual_occupancy"].reason.lower()
+    assert r["dwelling_houses"].eligible is True  # base form unaffected by heritage
 
 
 def test_form_missing_lot_standard_is_conservatively_ineligible():
@@ -152,7 +164,7 @@ def test_dual_occupancy_missing_its_lot_row_is_not_passed(monkeypatch):
     # missing one is a data gap. Dwelling houses stay exempt (no SEPP lot minimum).
     no_dual_lot = {**GROUPED, "dual_occupancy": {**GROUPED["dual_occupancy"], "min_lot_size": None}}
     monkeypatch.setattr(hse, "_fetch_standards_grouped", lambda: no_dual_lot)
-    r = _by_type(evaluate_eligibility("R2", 900, 25, -33.8, 151.1, gate_inputs=ALL_FALSE))
+    r = _by_type(evaluate_eligibility("R2", 900, 25, -33.8, 151.1, gate_inputs={**ALL_FALSE, "in_lmr_area": True}))
     assert r["dual_occupancy"].eligible is False
     assert r["dual_occupancy"].unconfirmed is True
     assert "dataset" in r["dual_occupancy"].reason
@@ -391,5 +403,6 @@ def test_secondary_dwelling_rules_unavailable_is_unconfirmed_never_eligible(monk
 
 
 def test_other_forms_still_use_their_lot_minimum(_sd_rules):
-    r = _by_type(evaluate_eligibility("R2", 300, 8, -33.8, 151.1, gate_inputs=ALL_FALSE))["dual_occupancy"]
+    in_area = {**ALL_FALSE, "in_lmr_area": True}
+    r = _by_type(evaluate_eligibility("R2", 300, 8, -33.8, 151.1, gate_inputs=in_area))["dual_occupancy"]
     assert r.eligible is False and "below the minimum 450" in r.reason
