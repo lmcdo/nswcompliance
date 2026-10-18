@@ -14,10 +14,16 @@ import { scaleFactorForRing, usableRing } from './mercator';
 export interface LotDimensions {
   /** Lot area in square meters */
   area: number;
-  /** Primary frontage width in meters */
-  frontage: number;
-  /** Average depth (side boundary length) in meters */
-  depth: number;
+  /**
+   * Shorter side of the lot's minimum-area bounding rectangle, in metres, or
+   * null when the lot is too irregular for a rectangle to describe it. NOT the
+   * road-facing edge: nothing here knows where the road is. The shorter side is
+   * never more than the true frontage, so a minimum-frontage test cannot pass on it
+   * wrongly. Same method as services/lot_dimensions.py (#499).
+   */
+  frontage: number | null;
+  /** Longer side of the same rectangle, in metres, or null with frontage. */
+  depth: number | null;
   /** All boundary segments with classification */
   boundaries: BoundarySegment[];
   /** Confidence in measurements (0-1) */
@@ -84,29 +90,16 @@ export function calculateLotDimensions(geometry: LotGeometry): LotDimensions | n
   // Classify boundaries based on position and bearing
   classifyBoundaries(boundaries);
 
-  // Extract key dimensions
-  const frontBoundary = boundaries.find((b) => b.type === 'front');
-  const rearBoundary = boundaries.find((b) => b.type === 'rear');
-  const leftSide = boundaries.find((b) => b.type === 'side_left');
-  const rightSide = boundaries.find((b) => b.type === 'side_right');
+  // Frontage/depth from the minimum-area bounding rectangle, not from boundary
+  // classification. The classifier picked ONE segment per side, so a curved side
+  // stored as eight 1.67 m pieces made 6 Berrigan St Winston Hills (688 m2) read
+  // 38.4 m x 3.9 m. The rectangle does not care how a side is cut up.
+  const { frontage, depth } = frontageDepthFromRect(points, area);
 
-  // Frontage is the front boundary length
-  const frontage = frontBoundary?.length || 0;
-
-  // Depth is average of side boundaries
-  const sideLeft = leftSide?.length || 0;
-  const sideRight = rightSide?.length || 0;
-  const depth = sideLeft && sideRight ? (sideLeft + sideRight) / 2 : sideLeft || sideRight;
-
-  // Confidence based on how well we could classify boundaries
   let confidence = 0.9;
-  if (!frontBoundary) {
+  if (frontage == null) {
     confidence -= 0.2;
-    notes.push('Could not identify front boundary');
-  }
-  if (!leftSide || !rightSide) {
-    confidence -= 0.1;
-    notes.push('Could not identify both side boundaries');
+    notes.push('Lot too irregular for frontage and depth to be measured');
   }
   if (boundaries.length !== 4) {
     confidence -= 0.1;
@@ -127,14 +120,94 @@ export function calculateLotDimensions(geometry: LotGeometry): LotDimensions | n
 
   return {
     area: Math.round(area * 100) / 100,
-    frontage: Math.round(frontage * 100) / 100,
-    depth: Math.round(depth * 100) / 100,
+    frontage: frontage == null ? null : Math.round(frontage * 100) / 100,
+    depth: depth == null ? null : Math.round(depth * 100) / 100,
     boundaries,
     confidence: Math.max(0.5, confidence),
     notes,
     lotType,
     battleaxe,
   };
+}
+
+/** Below this share of its bounding rectangle a lot is not rectangle-shaped. */
+const MIN_RECT_FILL = 0.6;
+
+/**
+ * Shorter and longer side of the minimum-area bounding rectangle, or nulls when
+ * the polygon fills less than 60% of it (L-shapes, battleaxe handles). Port of
+ * _frontage_depth_obb in services/lot_dimensions.py, so both stacks agree.
+ */
+function frontageDepthFromRect(
+  points: { x: number; y: number }[],
+  polygonArea: number
+): { frontage: number | null; depth: number | null } {
+  const rect = minAreaRect(points);
+  if (!rect) return { frontage: null, depth: null };
+  const [a, b] = rect;
+  if (!(a > 0) || !(b > 0)) return { frontage: null, depth: null };
+  if (polygonArea / (a * b) < MIN_RECT_FILL) return { frontage: null, depth: null };
+  return { frontage: Math.min(a, b), depth: Math.max(a, b) };
+}
+
+/** Andrew's monotone-chain convex hull (counter-clockwise, no repeated point). */
+function convexHull(points: { x: number; y: number }[]): { x: number; y: number }[] {
+  const seen = new Set<string>();
+  const pts = points
+    .filter((p) => {
+      const k = `${p.x},${p.y}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .sort((p, q) => p.x - q.x || p.y - q.y);
+  if (pts.length <= 2) return pts;
+  const cross = (o: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) =>
+    (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const lower: { x: number; y: number }[] = [];
+  for (const p of pts) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+    lower.push(p);
+  }
+  const upper: { x: number; y: number }[] = [];
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const p = pts[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  return lower.slice(0, -1).concat(upper.slice(0, -1));
+}
+
+/**
+ * Side lengths of the minimum-area bounding rectangle (rotating calipers): the
+ * best rectangle always has one side along a hull edge, so try each edge.
+ */
+function minAreaRect(points: { x: number; y: number }[]): [number, number] | null {
+  const hull = convexHull(points);
+  const n = hull.length;
+  if (n < 3) return null;
+  let best: [number, number, number] | null = null; // [area, w, h]
+  for (let i = 0; i < n; i++) {
+    const a = hull[i];
+    const b = hull[(i + 1) % n];
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len === 0) continue;
+    const ux = (b.x - a.x) / len;
+    const uy = (b.y - a.y) / len;
+    const vx = -uy;
+    const vy = ux;
+    let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+    for (const p of hull) {
+      const du = p.x * ux + p.y * uy;
+      const dv = p.x * vx + p.y * vy;
+      minU = Math.min(minU, du); maxU = Math.max(maxU, du);
+      minV = Math.min(minV, dv); maxV = Math.max(maxV, dv);
+    }
+    const w = maxU - minU;
+    const h = maxV - minV;
+    if (best == null || w * h < best[0]) best = [w * h, w, h];
+  }
+  return best ? [best[1], best[2]] : null;
 }
 
 /**
@@ -249,7 +322,7 @@ function classifyBoundaries(boundaries: BoundarySegment[]): void {
  */
 export function getLotFrontageAndDepth(
   geometry: LotGeometry
-): { frontage: number; depth: number } | null {
+): { frontage: number | null; depth: number | null } | null {
   const dims = calculateLotDimensions(geometry);
   if (!dims) return null;
   return {
