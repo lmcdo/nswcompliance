@@ -1,0 +1,68 @@
+{
+  "tier": "standard",
+  "justification": "CoS s2 dropped two list lead-ins that passed the 75% sentence bar because their words recur in nearby headings ('Development in Botany Road Precinct is to:' p167; the Special Character Area objectives lead-in p8). A lead-in now counts as copied only when every word run after a heading-sized start is in the output, and a colon before a capitalised word also ends a lead-in. On the saved CoS s2 read both are flagged; nothing else new there.",
+  "commit_hash": "25079f05",
+  "files": [
+    "scripts/ai_extractor.py",
+    "tests/test_ai_extractor_sentence_coverage.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_ai_extractor_sentence_coverage.py",
+    "fails_when": "lead-ins are scored at the general bar or not split before an unlabelled item",
+    "observed_red": "Scoring lead-ins at 0.75 fails the Botany Road test; restored, all pass."
+  },
+  "real_layer_exempt": {
+    "scripts/ai_extractor.py": "offline on the saved CoS s2 read: p8 and p167 lead-ins flagged"
+  },
+  "pre_impl": {
+    "existing_data": "held chapters' review rows lack the intro/scope sentences printed on the PDF pages",
+    "assumption_mismatch": "page coverage judges a page by most of its rule lines, so an intro paragraph can be lost on a passed page",
+    "new_vs_existing": "extends the reader after _reread_skipped_pages; reuses page_coverage.running_lines and doubled_text"
+  },
+  "functions": [
+    {
+      "name": "missing_sentences",
+      "file_line": "scripts/ai_extractor.py",
+      "input": "page number to page text, and the texts the reader returned",
+      "output": "page number to printed sentences and list lead-ins the output does not hold",
+      "if_none": "an empty dict, so no page is re-read"
+    }
+  ],
+  "values": [
+    {
+      "value": "lead-in bar = 1.0 (all runs)",
+      "read_at": "missing_sentences, for text ending ':'",
+      "if_missing": "n/a"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a short lead-in whose words recur in a heading",
+      "what_happens": "it is still flagged as missing",
+      "mitigated": true,
+      "how": "lead-ins need every run",
+      "repro": "test_a_short_lead_in_must_be_copied_in_full"
+    },
+    {
+      "scenario": "a heading glued in front of a copied lead-in",
+      "what_happens": "the lead-in passes as copied",
+      "mitigated": true,
+      "how": "heading-sized start excused",
+      "repro": "test_a_lead_in_with_a_heading_run_into_it_passes_when_copied"
+    },
+    {
+      "scenario": "list items printed without labels after the colon",
+      "what_happens": "the lead-in is still split off and judged",
+      "mitigated": true,
+      "how": "colon before a capital ends a lead-in",
+      "repro": "test_a_lead_in_before_an_unlabelled_item_is_still_a_lead_in"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none: reader and report only",
+    "secrets": "none needed",
+    "other_repo": "none",
+    "manual_verify": "review re-reads of KRG 14G, 14I and Campbelltown Part 4 show 0 lost council sentences in the loss check"
+  }
+}

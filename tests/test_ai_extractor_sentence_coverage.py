@@ -145,7 +145,7 @@ def test_a_short_lead_in_must_be_copied_in_full():
     heading 'Botany Road Precinct', so it passed. A lead-in counts only when every word run is copied."""
     page = ("Development in Botany Road Precinct is to: Showcase Connecting with Country approaches in line with the "
             "framework published by the Government Architect NSW.")
-    out = ["Botany Road Precinct is a special area", "Showcase Connecting with Country approaches in line with the "
+    out = ["Development in Botany Road Precinct is a special area", "Showcase Connecting with Country approaches in line with the "
            "framework published by the Government Architect NSW."]
     assert ax.missing_sentences({167: page}, out) == {167: ["development in botany road precinct is to"]}
 
