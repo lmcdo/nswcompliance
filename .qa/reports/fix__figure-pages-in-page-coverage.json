@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "#1357's AI_FIGURE_PAGES covered only the chunk-loss guard; the page-coverage guard then re-read CoS s6 pages 25-36 (maps) and would refuse them. Named pages are now dropped from the skipped list too; unset, behaviour is unchanged.",
-  "commit_hash": "f26698ce",
+  "commit_hash": "64112e31",
   "files": [
     "scripts/ai_extractor.py",
     "tests/test_ai_chunk_loss.py"
