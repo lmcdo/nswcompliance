@@ -388,7 +388,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           if (key === 'lot_dimensions' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
             const ld = df.value as Record<string, unknown>;
             const bits: string[] = [];
-            if (typeof ld.frontage_m === 'number') bits.push(`${(ld.frontage_m as number).toFixed(1)} m frontage`);
+            if (typeof ld.frontage_m === 'number') bits.push(`${(ld.frontage_m as number).toFixed(1)} m lot width (shorter side)`);
             if (typeof ld.depth_m === 'number') bits.push(`${(ld.depth_m as number).toFixed(1)} m depth`);
             if (ld.is_corner === true) bits.push('corner lot');
             if (typeof ld.lot_type === 'string' && ld.lot_type && ld.lot_type !== 'standard') bits.push(formatKey(String(ld.lot_type)).toLowerCase());

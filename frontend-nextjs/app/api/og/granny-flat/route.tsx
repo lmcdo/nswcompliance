@@ -408,7 +408,7 @@ export async function GET(request: NextRequest) {
                 {result.frontage != null && result.depth != null && (
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                      Dimensions
+                      Lot width (shorter side) × length
                     </span>
                     <span style={{ color: '#e2e8f0', fontSize: '18px', fontWeight: 600 }}>
                       {result.frontage.toFixed(1)}m × {result.depth.toFixed(1)}m
@@ -561,7 +561,7 @@ export async function GET(request: NextRequest) {
             )}
             {result.frontage != null && result.depth != null && (
               <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '8px', padding: '8px 16px', fontSize: '16px', fontWeight: 600 }}>
-                {result.frontage.toFixed(1)}m × {result.depth.toFixed(1)}m
+                Lot width (shorter side) {result.frontage.toFixed(1)}m × length {result.depth.toFixed(1)}m
               </div>
             )}
           </div>

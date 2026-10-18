@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { streetFrontageText, type StreetFrontage } from "@/lib/geometry/street-frontage"
 import { ChevronDown, ChevronRight, MapPin, Ruler, Square, Plane, Flag, AlertTriangle, Crosshair } from "lucide-react"
 
 interface BattleaxeInfo {
@@ -47,6 +48,7 @@ interface CornerLotInfo {
   roadCount: number;
   confidence: number;
   error?: string;
+  streetFrontage?: StreetFrontage;
 }
 
 interface PropertyData {
@@ -116,7 +118,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                  <div className="bg-white rounded p-2 text-center border border-amber-100">
                    <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
                      <Ruler className="h-3 w-3" />
-                     <span className="text-xs">Width</span>
+                     <span className="text-xs">Lot width (shorter side)</span>
                    </div>
                    {propertyData.lotDimensions.frontage != null ? (
                      <>
@@ -149,9 +151,15 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
              )}
            </div>
            {!propertyData.lotDimensions.battleaxe?.isBattleaxe && (
+             <p className="text-xs text-amber-900 mt-2" data-testid="street-frontage-row">
+               <span className="font-medium">Street frontage: </span>
+               {streetFrontageText(propertyData.cornerLot?.streetFrontage) ?? 'not measured'}
+             </p>
+           )}
+           {!propertyData.lotDimensions.battleaxe?.isBattleaxe && (
              <p className="text-xs text-amber-700 mt-2 italic">
                {propertyData.lotDimensions.frontage != null
-                 ? 'Shorter and longer sides of the rectangle that fits the lot. Which side faces the street is not identified.'
+                 ? 'Lot width is the shorter side, and length the longer side, of the rectangle that fits the lot. Neither is the street frontage.'
                  : 'Lot shape too irregular for width and length to be measured.'}
              </p>
            )}

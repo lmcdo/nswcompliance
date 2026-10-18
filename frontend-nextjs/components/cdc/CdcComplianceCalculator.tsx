@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useCdcComplianceCalculator } from '@/hooks/useCdcComplianceCalculator';
 import { useCdcEligibility, type CdcCheckResult } from '@/hooks/useCdcEligibility';
+import { streetFrontageText, type StreetFrontage } from '@/lib/geometry/street-frontage';
 import { battleaxeAwareLotWidth, battleaxeAwareLotDepth } from '@/lib/geometry/effective-lot-width';
 import { CdcDevelopmentForm } from './CdcDevelopmentForm';
 import { CdcComplianceResults } from './CdcComplianceResults';
@@ -42,6 +43,8 @@ interface CdcComplianceCalculatorProps {
   initialCollapsed?: boolean;
   lotDimensions?: LotDimensions | null;
   lotSize?: number | null;
+  /** Measured street edge (cornerLot.streetFrontage); null/undefined prints "not measured". */
+  streetFrontage?: StreetFrontage | null;
 }
 
 /**
@@ -99,6 +102,7 @@ export function CdcComplianceCalculator({
   initialCollapsed = true,
   lotDimensions,
   lotSize,
+  streetFrontage,
 }: CdcComplianceCalculatorProps) {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
   const [showResults, setShowResults] = useState(false);
@@ -116,10 +120,12 @@ export function CdcComplianceCalculator({
     // the buildable-footprint estimate must use the head (mainLotWidth and the
     // derived head depth), or coverage is badly understated. Non-battleaxe lots
     // return the raw frontage/depth unchanged.
-    const frontage = battleaxeAwareLotWidth(lotDimensions) ?? 0;
+    // This is the lot WIDTH (shorter side of the bounding rectangle, or the battleaxe head),
+    // not the street frontage.
+    const lotWidth = battleaxeAwareLotWidth(lotDimensions) ?? 0;
     const depth = battleaxeAwareLotDepth(lotDimensions) ?? 0;
 
-    const usableWidth = Math.max(0, frontage - 1.8);
+    const usableWidth = Math.max(0, lotWidth - 1.8);
     const usableDepth = Math.max(0, depth - 9);
     const maxFootprint = usableWidth * usableDepth;
     const estimatedCoverage = area > 0 ? Math.min(50, Math.round((maxFootprint / area) * 100)) : 45;
@@ -248,7 +254,7 @@ export function CdcComplianceCalculator({
                 ) : (
                   <>
                     <div>
-                      <span className="text-gray-500">Width</span>{' '}
+                      <span className="text-gray-500">Lot width (shorter side)</span>{' '}
                       <span className="font-medium text-gray-900">
                         {lotDimensions.frontage != null ? `${lotDimensions.frontage.toFixed(1)}m` : 'not measured'}
                       </span>
@@ -261,6 +267,10 @@ export function CdcComplianceCalculator({
                     </div>
                   </>
                 )}
+              </div>
+              <div className="text-sm mt-1" data-testid="cdc-street-frontage">
+                <span className="text-gray-500">Street frontage</span>{' '}
+                <span className="font-medium text-gray-900">{streetFrontageText(streetFrontage) ?? 'not measured'}</span>
               </div>
               {lotDimensions.lotType === 'battleaxe' && (
                 <p className="text-xs text-gray-400 mt-1 italic">

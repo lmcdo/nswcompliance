@@ -147,39 +147,6 @@ export function deriveAnefBuildingAcceptability(
   ];
 }
 
-// ── X4: LMR frontage check ────────────────────────────────────────────────────
-
-/** SEPP Housing 2021 minimum frontage for LMR development types. */
-export const LMR_FRONTAGE_MINIMUMS = {
-  dual_occupancy: { minM: 12, label: 'Dual Occupancy' },
-  manor_house: { minM: 12, label: 'Manor House' },
-  multi_dwelling: { minM: 15, label: 'Multi Dwelling Housing' },
-} as const;
-
-export interface LmrFrontageStatus {
-  /** Development types excluded by this frontage */
-  excluded: Array<{ devType: string; label: string; minimumM: number }>;
-  /** Development types that meet the frontage requirement */
-  eligible: Array<{ devType: string; label: string; minimumM: number }>;
-}
-
-/**
- * Check which LMR development types are excluded by the lot frontage.
- * Returns lists of excluded and eligible types.
- */
-export function lmrFrontageStatus(frontageM: number): LmrFrontageStatus {
-  const excluded: LmrFrontageStatus['excluded'] = [];
-  const eligible: LmrFrontageStatus['eligible'] = [];
-  for (const [devType, { minM, label }] of Object.entries(LMR_FRONTAGE_MINIMUMS)) {
-    if (frontageM < minM) {
-      excluded.push({ devType, label, minimumM: minM });
-    } else {
-      eligible.push({ devType, label, minimumM: minM });
-    }
-  }
-  return { excluded, eligible };
-}
-
 // ── X7: Road classification alert ────────────────────────────────────────────
 
 export interface RoadImpactInfo {

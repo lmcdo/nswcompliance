@@ -458,6 +458,7 @@ export function PatternBookEligibilityCard({
                     initialCollapsed={false}
                     lotDimensions={lotDimensions || null}
                     lotSize={lotSize || null}
+                    streetFrontage={propertyData?.cornerLot?.streetFrontage ?? null}
                   />
                 </div>
               </div>

@@ -85,14 +85,11 @@ interface HousingSEPPEligibilityCardProps {
   zoneCode: string;
   lotSize: number;
   /**
-   * Null when the frontage is not held for this property.
-   *
-   * The `!lotWidth` guards below already did the right thing with a missing
-   * width — skip the eligibility fetch and ask for one. They simply never ran,
-   * because the caller substituted a default of 15 metres. Typed as nullable so
-   * the compiler keeps it that way.
+   * Lot width at the front building line, measured from the road edge (lib/geometry/street-frontage.ts):
+   * `min` is the narrowest width in the front half of the lot, `max` the widest anywhere. Null when no road
+   * edge was identified; the `!lotWidthRange` guards below then skip the fetch and ask for the width.
    */
-  lotWidth: number | null;
+  lotWidthRange: { min: number; max: number } | null;
   stationDistance?: number;
   isLMRArea?: boolean;
   strataInfo?: StrataInfo;
@@ -322,7 +319,7 @@ function EligibilityRow({ result, lotSize }: { result: EligibilityResult; lotSiz
 export function HousingSEPPEligibilityCard({
   zoneCode,
   lotSize,
-  lotWidth,
+  lotWidthRange,
   stationDistance,
   isLMRArea,
   strataInfo,
@@ -343,7 +340,7 @@ export function HousingSEPPEligibilityCard({
   useEffect(() => {
     const fetchEligibility = async () => {
       // Skip if missing required data
-      if (!zoneCode || !lotSize || !lotWidth) {
+      if (!zoneCode || !lotSize || !lotWidthRange) {
         return;
       }
 
@@ -357,7 +354,8 @@ export function HousingSEPPEligibilityCard({
           body: JSON.stringify({
             zoneCode,
             lotSize,
-            lotWidth,
+            lotWidthMin: lotWidthRange.min,
+            lotWidthMax: lotWidthRange.max,
             stationDistance,
             isLMRArea,
             lepHeight: lepHeight ?? undefined,
@@ -383,7 +381,7 @@ export function HousingSEPPEligibilityCard({
     };
 
     fetchEligibility();
-  }, [zoneCode, lotSize, lotWidth, stationDistance, isLMRArea, lepHeight, lepFsr]);
+  }, [zoneCode, lotSize, lotWidthRange?.min, lotWidthRange?.max, stationDistance, isLMRArea, lepHeight, lepFsr]);
 
   // Loading state
   if (loading) {
@@ -433,8 +431,8 @@ export function HousingSEPPEligibilityCard({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-gray-500">
-            {!zoneCode || !lotSize || !lotWidth
-              ? 'Lot size and frontage width are needed to check what housing types your property may be eligible for'
+            {!zoneCode || !lotSize || !lotWidthRange
+              ? 'Lot size and lot width at the front building line are needed to check what housing types your property may be eligible for'
               : 'No multiple occupancy housing types are available in this zone under current NSW reforms'}
           </p>
         </CardContent>
@@ -488,9 +486,11 @@ export function HousingSEPPEligibilityCard({
             <span>Your zone: <strong className="text-gray-900">{zoneCode}</strong></span>
             <span>Lot area: <strong className="text-gray-900">{lotSize}m²</strong></span>
             <span>
-              Frontage:{' '}
+              Lot width measured from the street:{' '}
               <strong className="text-gray-900">
-                {lotWidth != null ? `${lotWidth}m` : 'Not available'}
+                {lotWidthRange != null
+                  ? `${lotWidthRange.min.toFixed(1)}m narrowest in the front half, ${lotWidthRange.max.toFixed(1)}m widest`
+                  : 'Not available'}
               </strong>
             </span>
             {stationDistance && (
