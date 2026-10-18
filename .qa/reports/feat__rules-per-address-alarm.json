@@ -1,0 +1,74 @@
+{
+  "tier": "standard",
+  "justification": "New nightly alarm: re-serves 28 real addresses from production and goes red when one address's answer widens, shrinks, gains a council or chapter it never had, serves a precinct rule with no precinct key, or comes back empty with no stated reason. On 2026-10-15 every address was being served 800-2,750 rules and no check noticed, because every check counts database rows. Read-only against a public endpoint; no source file of the product is touched.",
+  "commit_hash": "aaaed386",
+  "files": [
+    "scripts/address_audit/rules_per_address.py",
+    "scripts/address_audit/rules_per_address_panel.json",
+    "tests/test_rules_per_address.py",
+    ".github/workflows/data-watch.yml"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_rules_per_address.py -q -o addopts= && python scripts/address_audit/rules_per_address.py",
+    "fails_when": "Mutations measured 2026-10-18: judge() returning [] always -> 7 failed / 4 passed; the precinct-key test disabled in shape() -> 1 failed / 10 passed; clean -> 11 passed. Live: exit 1 when any panel address moves outside its box (first baseline run went red on 019 Seaforth, 0 rules, until its reason was recorded).",
+    "external_authority": "Production /api/provisions/for-property, called with the exact query the assessment page sent for each address in the 2026-10-16 audit (run 8). The baseline is that endpoint's own answer, accepted with a written reason.",
+    "observed_red": "First baseline run 2026-10-18 went red on 019 9 Benelong St Seaforth: 'served 0 rules -- an empty answer with no stated reason', exit 1. Unreachable production (--base-url http://127.0.0.1:9): 'UNKNOWN -- 28/28 unreachable', exit 2."
+  },
+  "pre_impl": {
+    "existing_data": "DQ-143/144/146 (scripts/dq_probe_live.py) count known wrong-area defect classes in the database; check_served_answer_quality.py scores rows through conveyancing_db; check_served_output.py asserts HTTP contracts and is wired into no workflow; build_packets.py samples 10 rules per address for a person and keeps no baseline. The panel and its queries come from build_packets run 8.",
+    "assumption_mismatch": "Assumed a ceiling on rules per address would separate bad addresses from good ones. Measured: every address receives 96-99% of its council's 'generic' layer by design (Parramatta 2,111-2,179 of 2,195), and the cleanest audited address (Winston Hills) is served 1,995. A count ceiling would be red everywhere and invented, so the alarm detects CHANGE plus three plainly-broken shapes, and says it cannot judge today's level (that is DQ-143/144).",
+    "new_vs_existing": "One script, one committed panel, one test file, one data-watch step added to the existing issue logic. No new tracker: a red run raises the existing data-watch issue."
+  },
+  "functions": [
+    {
+      "name": "judge",
+      "file_line": "scripts/address_audit/rules_per_address.py:90",
+      "input": "a panel entry (baseline, optional expected_empty) and today's shape()",
+      "output": "list of reasons the address is outside its box; empty = inside",
+      "if_none": "a missing baseline is itself a reason (red), never a pass"
+    }
+  ],
+  "values": [
+    {
+      "value": "WIDEN 10% / SHRINK 30% / MIN_DELTA 5",
+      "read_at": "run 8 (2026-10-16 23:04) vs production 2026-10-18 on the same 28 queries: largest movement +2.4% (008 Haberfield, 1,971 -> 2,018) and -3.3% (018 Northern Beaches, 637 -> 616)",
+      "if_missing": "change-detection tolerances, not regulatory values; set at three times observed drift"
+    },
+    {
+      "value": "first live check after baseline: 28/28 inside, exit 0",
+      "read_at": "python scripts/address_audit/rules_per_address.py, 2026-10-18",
+      "if_missing": "without it the alarm could be red on day one from noise"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Today's baseline already contains wrong-area rules (16 per 100 in the 2026-10-15 audit), so the alarm accepts them.",
+      "what_happens": "It stays green on a known-wrong answer.",
+      "mitigated": false,
+      "how": "Stated in the docstring and the baseline reason: green means no worse than accepted, never correct. DQ-143/144 measure the level; when they clear rules, the shrink shows here and the rebaseline reason records why.",
+      "repro": "grep -n \"never \\\"correct\\\"\" scripts/address_audit/rules_per_address.py"
+    },
+    {
+      "scenario": "Production is down or slow at 20:00 UTC.",
+      "what_happens": "Addresses are reported as could-not-measure; above a fifth of the panel the run exits 2, which fails the step.",
+      "mitigated": true,
+      "how": "UNKNOWN is never a pass; below the fifth the unmeasured count is printed.",
+      "repro": "python scripts/address_audit/rules_per_address.py --base-url http://127.0.0.1:9"
+    },
+    {
+      "scenario": "Frozen queries go stale when the Planning Portal changes a property's facts.",
+      "what_happens": "The alarm keeps testing the old query; it does not see geocoder or /api/property changes.",
+      "mitigated": false,
+      "how": "Deliberate: frozen inputs make a change attributable to the route or the data. /api/property is out of scope here.",
+      "repro": "n/a"
+    }
+  ],
+  "residual_risk": "Detects change, not correctness. Panel is 28 addresses in 13 councils; councils outside the panel are not watched.",
+  "post_merge": {
+    "db_reset": "No - read-only; calls the public for-property endpoint, writes nothing to the database.",
+    "secrets": "No - the data-watch step needs no secret.",
+    "other_repo": "No.",
+    "manual_verify": "Yes - after merge, run data-watch by workflow_dispatch once and confirm the 'Rules per address' step prints PASSED -- 28 addresses."
+  }
+}
