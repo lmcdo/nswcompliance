@@ -200,7 +200,10 @@ export function buildSEEData(data: SEEDocumentData): SEEComputedData {
   const siteSuitabilitySentences: string[] = [];
   if (lot_dimensions?.area) {
     const dimParts = [`a total area of ${Math.round(lot_dimensions.area).toLocaleString()} m²`];
-    if (lot_dimensions.frontage) dimParts.push(`a ${lot_dimensions.frontage.toFixed(1)} m frontage`);
+    dimParts.push(lot_dimensions.street_frontage_text
+      ? `a street frontage of ${lot_dimensions.street_frontage_text}`
+      : 'a street frontage that has not been measured');
+    if (lot_dimensions.frontage) dimParts.push(`a lot width (shorter side) of ${lot_dimensions.frontage.toFixed(1)} m`);
     if (lot_dimensions.depth)    dimParts.push(`a depth of ${lot_dimensions.depth.toFixed(1)} m`);
     siteSuitabilitySentences.push(`The site at ${property.address} has ${dimParts.join(', ')}.`);
     if (lot_dimensions.is_corner && lot_dimensions.corner_roads?.length) {

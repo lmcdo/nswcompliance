@@ -19,6 +19,7 @@
  * - timing: how long each fetch took (for debugging)
  */
 
+import { widthRange } from '@/lib/geometry/street-frontage';
 import { NextRequest, NextResponse } from 'next/server';
 import { FullAssessmentSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 import { searchRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
@@ -155,10 +156,16 @@ export async function POST(request: NextRequest) {
     const landFactsParam = encodeLandFacts(property.constraints?.landFacts);
     if (landFactsParam) dcpParams.set('land_facts', landFactsParam);
 
+    // Width at the front building line as a measured range (lib/geometry/street-frontage.ts). Until 2026-10-18
+    // this sent lotDimensions.frontage, the shorter side of the lot's bounding rectangle -- 22.4 m at a wedge lot
+    // whose street edge is 13.3 m. Absent when no road edge was found; the SEPP check then rejects the request
+    // rather than test an invented width.
+    const seppWidth = widthRange(property.cornerLot?.streetFrontage);
     const seppBody = {
       zoneCode: zone,
       lotSize: lotArea,
-      lotWidth: property.lotDimensions?.frontage,
+      lotWidthMin: seppWidth?.min,
+      lotWidthMax: seppWidth?.max,
       developmentType,
       lga
     };

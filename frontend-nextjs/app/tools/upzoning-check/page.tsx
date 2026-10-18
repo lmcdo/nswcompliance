@@ -226,7 +226,7 @@ export default function UpzoningCheckPage() {
               <span>
                 {result.lot_type === 'battleaxe'
                   ? `Width (main lot, battleaxe): ${result.lot_width_m != null ? `${Math.round(result.lot_width_m)} m` : 'not mapped'}`
-                  : `Frontage: ${result.lot_width_m != null ? `${Math.round(result.lot_width_m)} m` : 'not mapped'}`}
+                  : `Lot width (shorter side): ${result.lot_width_m != null ? `${Math.round(result.lot_width_m)} m` : 'not mapped'}`}
               </span>
             </div>
           </div>

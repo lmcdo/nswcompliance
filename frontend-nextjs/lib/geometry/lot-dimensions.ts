@@ -17,9 +17,10 @@ export interface LotDimensions {
   /**
    * Shorter side of the lot's minimum-area bounding rectangle, in metres, or
    * null when the lot is too irregular for a rectangle to describe it. NOT the
-   * road-facing edge: nothing here knows where the road is. The shorter side is
-   * never more than the true frontage, so a minimum-frontage test cannot pass on it
-   * wrongly. Same method as services/lot_dimensions.py (#499).
+   * road-facing edge: nothing here knows where the road is, and it can be MORE than
+   * the street edge (6 Berrigan St Winston Hills, a wedge: 22.4 m against 13.3 m), so
+   * it must never feed a minimum-width test. Street edge and width at the front
+   * building line: street-frontage.ts. Same method as services/lot_dimensions.py (#499).
    */
   frontage: number | null;
   /** Longer side of the same rectangle, in metres, or null with frontage. */

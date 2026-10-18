@@ -3,6 +3,7 @@
 // Extracted from ProvisionsByTocStructure.tsx (W3-1, W3-2).
 
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
+import { streetFrontageText } from '@/lib/geometry/street-frontage';
 
 export function sanitizeText(text: string | undefined | null): string {
   if (!text) return '';
@@ -113,11 +114,13 @@ export function buildPropertyContext(
   const areaNum = sanitizeNumber(propertyData?.lotDimensions?.area);
   const frontageNum = sanitizeNumber(propertyData?.lotDimensions?.frontage);
   const depthNum = sanitizeNumber(propertyData?.lotDimensions?.depth);
+  const frontageText = streetFrontageText(propertyData?.cornerLot?.streetFrontage);
   const lotDimensions =
-    areaNum !== undefined || frontageNum !== undefined || depthNum !== undefined
+    areaNum !== undefined || frontageNum !== undefined || depthNum !== undefined || frontageText !== null
       ? {
           area: areaNum,
           frontage: frontageNum,
+          street_frontage_text: frontageText,
           depth: depthNum,
           is_corner: isCornerLot,
           corner_roads: isCornerLot ? nearbyRoads.slice(0, 2).map((r) => r.road_name) : [],

@@ -10,7 +10,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronRight, Scale, Building2, Car, FileImage, Clock, Shield, AlertTriangle, Info } from 'lucide-react';
-import { lmrFrontageStatus, roadHierarchyAnnotation } from '@/lib/see/propertyUtils';
+import { roadHierarchyAnnotation } from '@/lib/see/propertyUtils';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { AuthorityColors } from '@/lib/design-tokens';
 import { StructuredSeppRequirements } from './StructuredSeppRequirements';
@@ -29,7 +29,7 @@ import { getAdgPdfUrl } from '@/lib/pdf-url-builder';
 import { CitationUncheckedBadge } from './CitationUncheckedBadge';
 import { SeppCitationLink,SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL, seppHousingProvisionUrl } from './SeppCitationLink';
 import { tryGetLGAConfig } from '@/lib/lga-configs';
-import { battleaxeAwareLotWidth, firstMeasuredWidth } from '@/lib/geometry/effective-lot-width';
+import { widthRange } from '@/lib/geometry/street-frontage';
 
 interface StrataInfo {
   isStrata: boolean;
@@ -480,35 +480,14 @@ export function StateLevelControls({
     ?? (propertyAreaStr ? parseFloat(propertyAreaStr.replace(/[^0-9.]/g, '')) || null : null)
     ?? propertyData?.geometry?.area;
 
-  // Lot width - from calculated geometry (cadastre), then fallbacks.
-  // battleaxeAwareLotWidth returns the head width for a battleaxe (the cadastral
-  // "frontage" there is the access handle, which would understate width-based
-  // SEPP/LMR eligibility), otherwise the frontage.
-  // There is NO default. `DEFAULT_LOT_WIDTH_M: 15` stood at the end of this chain
-  // until 2026-10-06, and 15 is the single most permissive value that still reads
-  // as a real suburban frontage: the LMR minimums are 12m (dual occupancy), 12m
-  // (manor house) and 15m (multi dwelling), so an invented 15 cleared all three.
-  // Two consequences, both measured:
-  //   - the amber "below minimum" panel below renders only when something is
-  //     EXCLUDED, so a 15 emptied that list and the panel vanished — the reader
-  //     saw no frontage caveat at all, which reads as "frontage is fine";
-  //   - HousingSEPPEligibilityCard printed "Frontage: 15m" as this property's
-  //     frontage and ran its eligibility on it, even though that card ALREADY
-  //     handles a missing width by asking for one. The constant was defeating a
-  //     guard that was already there.
-  //
-  // firstMeasuredWidth normalises EACH candidate before comparing, which `??`
-  // cannot do: `??` falls through only on null and undefined, so an upstream 0 or
-  // NaN in an earlier candidate wins and the later ones are never consulted.
-  // Normalising the finished chain instead — the first version of this fix — then
-  // turned that winner into null and discarded a valid later frontage, trading a
-  // false number for a false "unavailable". Two cross-review rounds, 2026-10-06.
-  const lotWidth: number | null = firstMeasuredWidth(
-    battleaxeAwareLotWidth(propertyData?.lotDimensions),
-    propertyData?.geometry?.frontageWidth,
-    propertyData?.geometry?.estimatedWidth,
-    propertyData?.constraints?.lotWidth,
-  );
+  // Lot width at the front building line, measured from the road edge (lib/geometry/street-frontage.ts):
+  // the narrowest width in the front half of the lot and the widest anywhere. The Housing SEPP minimums are
+  // "a minimum lot width at the front building line" (e.g. cl 168(2)(b)), and where that line sits depends on the
+  // design, so the eligibility check gets a range, never a single number. Null when no named road edge was found:
+  // the card then asks for the width instead of guessing. Until 2026-10-18 this was the shorter side of the lot's
+  // bounding rectangle, which at 6 Berrigan St Winston Hills (a wedge) read 22.4 m against a 13.3 m street edge.
+  const lotWidthRange = widthRange(propertyData?.cornerLot?.streetFrontage);
+
 
   // Lot depth - from calculated geometry
   const lotDepth = propertyData?.lotDimensions?.depth || null;
@@ -1036,42 +1015,18 @@ export function StateLevelControls({
           </CardHeader>
           {!collapsedSections.lmr && (
             <CardContent className="pt-0 space-y-3">
-              {/* X4: Frontage check against LMR minimums */}
-              {lotWidth == null && (
+              {/* X4: the width minimums are checked by HousingSEPPEligibilityCard against the database standards. */}
+              {lotWidthRange == null && (
                 <div className="bg-gray-50 border border-gray-200 rounded p-2">
                   <div className="flex items-start gap-1.5">
                     <Info className="h-3.5 w-3.5 text-gray-500 flex-shrink-0 mt-0.5" />
                     <span className="text-xs text-gray-700">
-                      Frontage width not available for this property, so the frontage
-                      minimums for dual occupancy, manor houses and multi dwelling
-                      housing have not been checked.
+                      The street edge of this lot could not be identified, so its width at the front building
+                      line has not been measured and the lot width minimums have not been checked.
                     </span>
                   </div>
                 </div>
               )}
-              {lotWidth && (() => {
-                const status = lmrFrontageStatus(lotWidth);
-                if (!status.excluded.length) return null;
-                return (
-                  <div className="bg-amber-50 border border-amber-200 rounded p-2">
-                    <div className="flex items-start gap-1.5">
-                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <span className="text-xs font-semibold text-amber-800">
-                          Frontage {lotWidth.toFixed(1)}m
-                        </span>
-                        <span className="text-xs text-amber-700">
-                          {' '}— below {status.excluded[0].minimumM}m minimum:
-                          {' '}{status.excluded.map(e => e.label).join(', ')} not available
-                        </span>
-                        <span className="text-xs text-amber-600 block mt-0.5">
-                          SEPP (Housing) 2021
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
 
               {/* X3: Battleaxe lot SEPP compliance */}
               {propertyData?.lotDimensions?.lotType === 'battleaxe' &&
@@ -1119,7 +1074,7 @@ export function StateLevelControls({
               <HousingSEPPEligibilityCard
                 zoneCode={zone}
                 lotSize={lotSize}
-                lotWidth={lotWidth}
+                lotWidthRange={lotWidthRange}
                 stationDistance={stationDistance}
                 isLMRArea={isLMRArea}
                 strataInfo={strataInfo}

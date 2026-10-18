@@ -136,9 +136,13 @@ export function ContextSection({
                 <Text style={styles.tableCellLabel}>Lot Area:</Text>
                 <Text style={styles.tableCellValue}>{lot_dimensions.area}m²</Text>
               </View>
+              <View style={styles.contextTableRow}>
+                <Text style={styles.tableCellLabel}>Street frontage:</Text>
+                <Text style={styles.tableCellValue}>{lot_dimensions.street_frontage_text ?? 'not measured'}</Text>
+              </View>
               {lot_dimensions.frontage && (
                 <View style={styles.contextTableRow}>
-                  <Text style={styles.tableCellLabel}>Frontage:</Text>
+                  <Text style={styles.tableCellLabel}>Lot width (shorter side):</Text>
                   <Text style={styles.tableCellValue}>{lot_dimensions.frontage}m</Text>
                 </View>
               )}

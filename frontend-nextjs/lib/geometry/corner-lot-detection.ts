@@ -8,11 +8,13 @@
  * that intersect at an angle of 135 degrees or less"
  *
  * API: NSW Land Parcel Property Theme - RoadCorridor layer
- * Queries using the actual lot polygon so only roads genuinely touching
- * the boundary are returned (envelope queries cause false positives).
+ * Queries an envelope around the lot and keeps only roads whose boundary runs
+ * along a lot edge (street-frontage.ts) -- the geometry, not the query, decides.
  */
 
 import type { LotGeometry } from '@/types/property';
+import { scaleFactorForRing, usableRing } from './mercator';
+import { measureStreetFrontage, type RoadShape, type StreetFrontage } from './street-frontage';
 
 // NSW Spatial Services Feature Server
 const NSW_SPATIAL_BASE = 'https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Land_Parcel_Property_Theme_multiCRS/FeatureServer';
@@ -32,6 +34,8 @@ export interface CornerLotResult {
   confidence: number;
   /** Error message if detection failed */
   error?: string;
+  /** Street edges per named road and the lot's width range back from each (street-frontage.ts). */
+  streetFrontage?: StreetFrontage;
 }
 
 interface RoadFeature {
@@ -41,6 +45,7 @@ interface RoadFeature {
     roadtype?: string;
     objectid?: number;
   };
+  geometry?: { rings: number[][][] };
 }
 
 interface FeatureQueryResponse {
@@ -52,46 +57,58 @@ interface FeatureQueryResponse {
 }
 
 /**
- * Serialize the lot polygon for spatial query.
- * Uses the actual polygon shape (not a bounding box envelope) so that only
- * roads genuinely touching the lot boundary are returned.
+ * Envelope around the lot, padded by ROAD_SEARCH_PAD_M. A "touches" query on the lot polygon itself missed the road
+ * entirely wherever the cadastre's lot and road-corridor layers are not coincident: measured gaps of 1.2-1.5 m at
+ * 18 Wyreema Ave Padstow, 39A Neirbo Ave Hurstville and 390 Caddens Rd Claremont Meadows (roadCount 0 for lots that
+ * plainly front a street; 1 Logan Ave Haberfield, on Logan Ave and Nicholls Ave, read "not a corner"). Which road
+ * edges actually bound the lot is then decided by geometry in street-frontage.ts, not by the query.
  */
-function createPolygonGeometry(geometry: LotGeometry): string {
-  return JSON.stringify({
-    rings: geometry.rings,
-    spatialReference: {
-      wkid: geometry.spatialReference.wkid
-    }
-  });
+const ROAD_SEARCH_PAD_M = 20;
+
+function paddedEnvelope(ring: number[][]): string | null {
+  const ok = usableRing(ring);
+  if (!ok) return null;
+  const pad = ROAD_SEARCH_PAD_M * scaleFactorForRing(ok);
+  const xs = ok.map((p) => p[0]);
+  const ys = ok.map((p) => p[1]);
+  return `${Math.min(...xs) - pad},${Math.min(...ys) - pad},${Math.max(...xs) + pad},${Math.max(...ys) + pad}`;
+}
+
+function unavailable(error: string): CornerLotResult {
+  return {
+    isCornerLot: false,
+    adjacentRoads: [],
+    roadCount: 0,
+    confidence: 0,
+    error,
+    streetFrontage: { status: 'unavailable', roads: [], unnamedRoadEdge_m: 0, error },
+  };
 }
 
 /**
- * Detect if a lot is a corner lot by querying adjacent road parcels
+ * Detect corner lot and measure street frontage from the road parcels around the lot.
+ * A corner lot has street frontage on 2+ named roads.
  */
 export async function detectCornerLot(geometry: LotGeometry): Promise<CornerLotResult> {
   if (!geometry?.rings?.length || !geometry.rings[0]?.length) {
-    return {
-      isCornerLot: false,
-      adjacentRoads: [],
-      roadCount: 0,
-      confidence: 0,
-      error: 'Invalid lot geometry'
-    };
+    return unavailable('Invalid lot geometry');
   }
+  const wkid = geometry.spatialReference?.wkid;
+  if (wkid !== 3857 && wkid !== 102100) {
+    return unavailable(`Lot geometry is in wkid ${wkid}; street frontage needs EPSG:3857`);
+  }
+  const envelope = paddedEnvelope(geometry.rings[0]);
+  if (!envelope) return unavailable('Invalid lot geometry');
 
   try {
-    // Build the spatial query URL using the actual lot polygon.
-    // Using the real polygon (not a bounding box envelope) ensures only roads
-    // genuinely touching the lot boundary are returned — envelope queries
-    // capture roads on the far side of the street and cause false positives.
-    const polygonJson = createPolygonGeometry(geometry);
-
     const queryParams = new URLSearchParams({
-      geometry: polygonJson,
-      geometryType: 'esriGeometryPolygon',
+      geometry: envelope,
+      geometryType: 'esriGeometryEnvelope',
+      inSR: '3857',
+      outSR: '3857',
       spatialRel: 'esriSpatialRelIntersects',
       outFields: 'roadnamelabel,roadtype,cadid',
-      returnGeometry: 'false',
+      returnGeometry: 'true',
       f: 'json'
     });
 
@@ -111,66 +128,37 @@ export async function detectCornerLot(geometry: LotGeometry): Promise<CornerLotR
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      return {
-        isCornerLot: false,
-        adjacentRoads: [],
-        roadCount: 0,
-        confidence: 0,
-        error: `API returned ${response.status}: ${response.statusText}`
-      };
+      return unavailable(`API returned ${response.status}: ${response.statusText}`);
     }
 
     const data: FeatureQueryResponse = await response.json();
 
     if (data.error) {
-      return {
-        isCornerLot: false,
-        adjacentRoads: [],
-        roadCount: 0,
-        confidence: 0,
-        error: `API error ${data.error.code}: ${data.error.message}`
-      };
+      return unavailable(`API error ${data.error.code}: ${data.error.message}`);
     }
 
     if (!data.features) {
-      return {
-        isCornerLot: false,
-        adjacentRoads: [],
-        roadCount: 0,
-        confidence: 0,
-        error: 'No features returned from API'
-      };
+      return unavailable('No features returned from API');
     }
 
-    // Extract unique road names
-    const roadNames = new Set<string>();
+    const roads: RoadShape[] = data.features
+      .filter((f) => Array.isArray(f.geometry?.rings))
+      .map((f) => ({ name: f.attributes?.roadnamelabel ?? null, rings: f.geometry!.rings }));
+    const streetFrontage = measureStreetFrontage(geometry.rings[0], roads);
 
-    for (const feature of data.features) {
-      const roadName = feature.attributes?.roadnamelabel;
-      if (roadName && roadName.trim()) {
-        roadNames.add(roadName.trim());
-      }
-    }
-
-    const adjacentRoads = Array.from(roadNames).sort();
+    const adjacentRoads = streetFrontage.roads.map((r) => r.road);
     const roadCount = adjacentRoads.length;
-    const isCornerLot = roadCount >= 2;
 
     return {
-      isCornerLot,
+      isCornerLot: roadCount >= 2,
       adjacentRoads,
       roadCount,
-      confidence: 1.0
+      confidence: 1.0,
+      streetFrontage,
     };
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return {
-      isCornerLot: false,
-      adjacentRoads: [],
-      roadCount: 0,
-      confidence: 0,
-      error: `Failed to query road data: ${errorMessage}`
-    };
+    return unavailable(`Failed to query road data: ${errorMessage}`);
   }
 }

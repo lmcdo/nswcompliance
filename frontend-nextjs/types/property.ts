@@ -87,6 +87,8 @@ export interface CornerLotInfo {
   confidence: number;
   /** Error message if detection failed */
   error?: string;
+  /** Street edges per named road and the lot's width range back from each (lib/geometry/street-frontage.ts). */
+  streetFrontage?: import('@/lib/geometry/street-frontage').StreetFrontage;
 }
 
 export interface PropertyIntelligenceResponse {

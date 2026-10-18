@@ -1,0 +1,159 @@
+{
+  "tier": "critical",
+  "justification": "Changes the Housing SEPP eligibility answers shown on the assessment page and returned by /api/housing-sepp/eligibility and /api/assessment/full. Lot width now comes from the measured road edge (NSW road-corridor layer) as a range at the front building line, replacing the shorter side of the lot's bounding rectangle, which at 6 Berrigan St Winston Hills (a wedge) read 22.4 m against a 13.3 m street edge and passed every width minimum. Also removes a hardcoded 12/12/15 m LMR table and relabels every printed 'Frontage'.",
+  "commit_hash": "3217ea04",
+  "files": [
+    "frontend-nextjs/lib/geometry/street-frontage.ts",
+    "frontend-nextjs/lib/geometry/corner-lot-detection.ts",
+    "frontend-nextjs/lib/geometry/lot-dimensions.ts",
+    "frontend-nextjs/types/property.ts",
+    "frontend-nextjs/lib/schemas/index.ts",
+    "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
+    "frontend-nextjs/app/api/assessment/full/route.ts",
+    "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+    "frontend-nextjs/components/compliance/HousingSEPPEligibilityCard.tsx",
+    "frontend-nextjs/components/compliance/PatternBookEligibilityCard.tsx",
+    "frontend-nextjs/components/cdc/CdcComplianceCalculator.tsx",
+    "frontend-nextjs/components/property-details-comprehensive.tsx",
+    "frontend-nextjs/components/pdf/ContextSection.tsx",
+    "frontend-nextjs/components/pdf/see-pages/Page2SiteContext.tsx",
+    "frontend-nextjs/lib/pdf/types.ts",
+    "frontend-nextjs/lib/see/propertyContext.ts",
+    "frontend-nextjs/lib/see/propertyUtils.ts",
+    "frontend-nextjs/lib/see/section-aggregation.ts",
+    "frontend-nextjs/app/api/og/granny-flat/route.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/app/tools/upzoning-check/page.tsx",
+    "frontend-nextjs/__tests__/lib/geometry/street-frontage.test.ts",
+    "frontend-nextjs/__tests__/fixtures/street-frontage/winston-hills-wedge.json",
+    "frontend-nextjs/__tests__/fixtures/street-frontage/padstow-gap.json",
+    "frontend-nextjs/__tests__/fixtures/street-frontage/haberfield-corner-lane.json",
+    "frontend-nextjs/__tests__/fixtures/street-frontage/vaucluse-battleaxe.json",
+    "frontend-nextjs/__tests__/fixtures/street-frontage/mortdale-narrow.json",
+    "frontend-nextjs/__tests__/lib/see/street-frontage-copy.test.ts",
+    "frontend-nextjs/__tests__/components/pdf/street-frontage-pdf.test.tsx",
+    "frontend-nextjs/__tests__/components/cdc/street-frontage-cdc.test.tsx",
+    "frontend-nextjs/__tests__/components/compliance/no-invented-lot-width.test.tsx",
+    "frontend-nextjs/__tests__/lib/see/propertyUtils.test.ts",
+    "frontend-nextjs/__tests__/integration/battleaxe-lmr-eligibility.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/geometry/street-frontage.test.ts --ci",
+    "fails_when": "Mutations measured 2026-10-18, each restored after: road tolerance 2.5 -> 0.05 m (no cadastre-gap handling) 5 failed / 9 passed; parallel rule off (EDGE_MAX_ANGLE_DEG 180) 1 failed / 15; half-the-edge rule off (EDGE_MIN_FRACTION 0.01) 1 failed / 15; both off 6 failed; widthVerdict reading the widest width instead of the narrowest front-half width 2 failed; clean 16 passed. Grid aliasing (0.2 m grid on 0.5 m steps read a uniform 15 m rectangle as 12-18 m) was caught by the synthetic rectangle test before commit and fixed.",
+    "observed_red": "Synthetic 15 x 40 m rectangle first read minFrontHalf 12, maxAll 18 (2 failed) until the grid was made to divide the step; mutations above each turned the suite red.",
+    "external_authority": "Real NSW cadastre: lot rings from production /api/property and road-corridor polygons from NSW_Land_Parcel_Property_Theme FeatureServer layer 5, captured 2026-10-18 into fixtures. Expected values measured independently in a Python prototype on 14 real lots (Winston Hills 13.34 m street edge, identical at tolerances 0.5-2.0 m)."
+  },
+  "pre_impl": {
+    "existing_data": "housing_sepp_standards.min_lot_width rows quote the SEPP: 'a minimum lot width at the front building line of 12m' (cl 168(2)(b), 172(2)(b), 179(2)(b); 18 m at 172(3)(b)). PR #499 noted road-frontage detection as the planned follow-up. corner-lot-detection.ts already queried road layer 5 but kept only names.",
+    "assumption_mismatch": "#1342 assumed the rectangle's shorter side is never more than the true frontage; Winston Hills disproves it (22.4 vs 13.3 m). Also assumed the corner-lot polygon 'touches' query finds adjacent roads; measured 1.2-1.5 m cadastre gaps at Padstow, Hurstville and Claremont Meadows return no road at all.",
+    "new_vs_existing": "One new pure module (street-frontage.ts); corner-lot-detection.ts reuses its existing road-layer call with geometry and an envelope; no new fetch. The eligibility route keeps its legacy lotWidth input and reads the range when given.",
+    "external_source_error": "If the NSW road layer is unreachable or returns an error, detectCornerLot returns streetFrontage status 'unavailable', the width range is null, the card asks for the width and the eligibility route is not called with an invented value.",
+    "frontend_type": "StreetFrontage {status, roads[{road, frontage_m, minFrontHalf_m, maxAll_m, depth_m}], unnamedRoadEdge_m}; card prop lotWidthRange {min,max}|null; zod schema refines lotWidth OR lotWidthMin<=lotWidthMax.",
+    "user_failure_mode": "Worst case is a wrong 'meets' at a minimum width. Guarded by: pass only when the narrowest width over the whole front half clears the minimum by 0.3 m; corner lots must agree from every road; unnamed road parcels never count as the front; no road found means no verdict."
+  },
+  "functions": [
+    {
+      "name": "measureStreetFrontage",
+      "file_line": "frontend-nextjs/lib/geometry/street-frontage.ts",
+      "input": "lot outer ring (EPSG:3857) and road-corridor polygons near the lot",
+      "output": "street edge per named road plus the lot width range back from each",
+      "if_none": "status unavailable / not_identified with empty roads; never a substitute width"
+    },
+    {
+      "name": "widthVerdict",
+      "file_line": "frontend-nextjs/lib/geometry/street-frontage.ts",
+      "input": "a measured StreetFrontage for the lot and one minimum width in metres from housing_sepp_standards",
+      "output": "'meets', 'below' or 'depends', the same answer required from every named road the lot fronts",
+      "if_none": "'depends' whenever no named road edge was measured, so no verdict is ever given on a guessed width"
+    }
+  ],
+  "values": [
+    {
+      "value": "EDGE_TOLERANCE_M 2.5, EDGE_MAX_ANGLE_DEG 30, EDGE_MIN_FRACTION 0.5",
+      "read_at": "Python prototype 2026-10-18 on 14 real lots; cadastre gaps measured 1.24-1.48 m; Winston Hills result identical for tolerances 0.5-2.0 m",
+      "if_missing": "gapped lots would read no road; looser values let side boundaries count as frontage (mutation-tested)"
+    },
+    {
+      "value": "WIDTH_MARGIN_M 0.3 and 'front half' range",
+      "read_at": "grid-counting noise of a few tenths of a metre on the synthetic rectangle; front half is the one stated assumption, printed on the card",
+      "if_missing": "a lot within noise of a minimum could flip between meets and below"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Wedge lot narrow at the street, wide at the back (Winston Hills).",
+      "what_happens": "Street edge 13.3 m; 12 m minimums meet, 18 m terraces 'depends'.",
+      "mitigated": true,
+      "how": "Width measured from the road edge, not the bounding rectangle; fixture test.",
+      "repro": "npx jest __tests__/lib/geometry/street-frontage.test.ts -t winston"
+    },
+    {
+      "scenario": "Lot and road polygons do not touch in the cadastre (1.3 m gap, Padstow).",
+      "what_happens": "Road still found by the envelope query and the 2.5 m tolerance.",
+      "mitigated": true,
+      "how": "Envelope + geometry test instead of a 'touches' query; fixture test; mutation to 0.05 m goes red.",
+      "repro": "npx jest __tests__/lib/geometry/street-frontage.test.ts -t padstow"
+    },
+    {
+      "scenario": "Corner lot where the two streets give different answers.",
+      "what_happens": "The verdict is 'depends' and the card never shows the more generous of the two answers.",
+      "mitigated": true,
+      "how": "widthVerdict requires agreement across named roads; fixture test on 1 Logan Ave Haberfield.",
+      "repro": "npx jest __tests__/lib/geometry/street-frontage.test.ts -t haberfield"
+    },
+    {
+      "scenario": "Rear lane or unnamed road parcel along the back of the lot.",
+      "what_happens": "Counted in unnamedRoadEdge_m, never treated as the front.",
+      "mitigated": true,
+      "how": "Named roads only in roads[]; Haberfield fixture asserts the 14 m lane is separate.",
+      "repro": "npx jest __tests__/lib/geometry/street-frontage.test.ts -t lane"
+    },
+    {
+      "scenario": "Battleaxe lot: street edge is the access handle.",
+      "what_happens": "Narrow front half, wide head: 'depends', not 'below' or 'meets'.",
+      "mitigated": true,
+      "how": "Range verdict; Vaucluse fixture.",
+      "repro": "npx jest __tests__/lib/geometry/street-frontage.test.ts -t vaucluse"
+    },
+    {
+      "scenario": "The NSW road-corridor layer is down, slow or returns an error for the lot.",
+      "what_happens": "status unavailable, card asks for the width, no eligibility call with a guessed width.",
+      "mitigated": true,
+      "how": "unavailable() result; card guard on lotWidthRange; no-invented-lot-width test.",
+      "repro": "npx jest __tests__/components/compliance/no-invented-lot-width.test.tsx"
+    },
+    {
+      "scenario": "Building line sits further back than the front half on a lot that narrows behind it.",
+      "what_happens": "A 'meets' answer could be wrong for a design whose front wall sits behind the front half.",
+      "mitigated": false,
+      "how": "Stated assumption printed on the card ('narrowest in the front half'); the Python Site Report path still uses the rectangle side and is a separate PR.",
+      "repro": "n/a"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No - no database change.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes - capture 6 Berrigan St Winston Hills on production: card shows '13.4m narrowest in the front half, 22.4m widest', terraces 'not assessed: depends where the front building line sits'; 18 Wyreema Ave Padstow shows a street edge (previously no road)."
+  },
+  "residual_risk": "Python services (Site Report, upzoning) still use the rectangle's shorter side: follow-up PR. Front-half range is an assumption, disclosed on the page.",
+  "cross_review": [
+    {
+      "finding": "'as number' on widthMin/widthMax may be undefined",
+      "verdict": "NOT A DEFECT",
+      "why": "HousingSEPPSchema refine (lib/schemas/index.ts) accepts only lotWidth, or lotWidthMin and lotWidthMax with min <= max, so both are defined at that line."
+    },
+    {
+      "finding": "test description wording reads as a guarantee",
+      "verdict": "NOT A DEFECT",
+      "why": "test-only text, never shown to a user."
+    },
+    {
+      "finding": "'at most X m anywhere on the lot' reads as absolute",
+      "verdict": "REWORDED",
+      "why": "verdict requires a 0.3 m margin so the statement held, but changed to the factual 'The lot measures X m at its widest'."
+    }
+  ],
+  "cross_review_note": "deepseek/deepseek-v3.2 (OpenAI fallback) raised these on the first push run; a second run on the same diff reported no defects."
+}

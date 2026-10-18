@@ -215,12 +215,19 @@ export const ProvisionLookupSchema = z.object({
 export const HousingSEPPSchema = z.object({
   zoneCode: ZoneCodeSchema,
   lotSize: z.number().positive('Lot size must be positive'),
-  lotWidth: z.number().positive('Lot width must be positive'),
+  /** Legacy single width. Read as both ends of the range when lotWidthMin/Max are absent. */
+  lotWidth: z.number().positive('Lot width must be positive').optional(),
+  /** Narrowest lot width in the front half, measured from the road edge (lib/geometry/street-frontage.ts). */
+  lotWidthMin: z.number().positive('Lot width must be positive').optional(),
+  /** Widest lot width anywhere, measured from the road edge. */
+  lotWidthMax: z.number().positive('Lot width must be positive').optional(),
   stationDistance: z.number().positive('Station distance must be positive').optional(),
   isLMRArea: z.boolean().optional(),
   address: AddressStringSchema.optional(),
   lga: LGASchema.optional(),
   coordinates: CoordinatesSchema.optional(),
+}).refine((b) => b.lotWidth != null || (b.lotWidthMin != null && b.lotWidthMax != null && b.lotWidthMin <= b.lotWidthMax), {
+  message: 'lotWidth, or lotWidthMin <= lotWidthMax, is required',
 });
 
 /**

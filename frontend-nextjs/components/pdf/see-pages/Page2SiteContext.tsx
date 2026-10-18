@@ -33,8 +33,9 @@ export function Page2SiteContext({ computed }: { computed: SEEComputedData }) {
               {lot_dimensions.area !== undefined && (
                 <DataRow label="Lot Area:" value={`${lot_dimensions.area}m²`} />
               )}
-              {lot_dimensions.frontage !== undefined && (
-                <DataRow label="Frontage:" value={`${lot_dimensions.frontage}m`} />
+              <DataRow label="Street Frontage:" value={lot_dimensions.street_frontage_text ?? 'not measured'} />
+              {typeof lot_dimensions.frontage === 'number' && (
+                <DataRow label="Lot Width (shorter side):" value={`${lot_dimensions.frontage}m`} />
               )}
               {lot_dimensions.depth !== undefined && (
                 <DataRow label="Depth:" value={`${lot_dimensions.depth}m`} />
@@ -231,8 +232,11 @@ export function Page2SiteContext({ computed }: { computed: SEEComputedData }) {
           {lot_dimensions?.area && (
             <DataRow label="Lot Area:" value={`${Math.round(lot_dimensions.area).toLocaleString()} m²`} />
           )}
+          {lot_dimensions && (
+            <DataRow label="Street Frontage:" value={lot_dimensions.street_frontage_text ?? 'not measured'} />
+          )}
           {lot_dimensions?.frontage && (
-            <DataRow label="Lot Frontage:" value={`${lot_dimensions.frontage.toFixed(1)} m`} />
+            <DataRow label="Lot Width (shorter side):" value={`${lot_dimensions.frontage.toFixed(1)} m`} />
           )}
           {lot_dimensions?.depth && (
             <DataRow label="Lot Depth:" value={`${lot_dimensions.depth.toFixed(1)} m`} />

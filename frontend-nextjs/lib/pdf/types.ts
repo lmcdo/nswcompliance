@@ -34,7 +34,10 @@ export interface PropertyContext {
   // Lot Dimensions
   lot_dimensions?: {
     area?: number;            // m²
-    frontage?: number;        // m
+    /** Shorter side of the lot's bounding rectangle, m. NOT the street frontage; print only as "Lot width (shorter side)". */
+    frontage?: number;
+    /** Measured street frontage as printed text (streetFrontageText in lib/geometry/street-frontage.ts); null when not measured. */
+    street_frontage_text?: string | null;
     depth?: number;           // m
     is_corner?: boolean;
     corner_roads?: string[];  // e.g., ["SHELLEYS LANE", "VICTORIA RD"]

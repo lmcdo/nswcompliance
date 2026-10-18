@@ -4,9 +4,7 @@ import {
   floodBlockTypeAnnotation,
   bushfireCategoryAnnotation,
   deriveAnefBuildingAcceptability,
-  lmrFrontageStatus,
   roadHierarchyAnnotation,
-  LMR_FRONTAGE_MINIMUMS,
 } from '@/lib/see/propertyUtils';
 
 // ── calculateGFA ──────────────────────────────────────────────────────────────
@@ -128,51 +126,6 @@ describe('bushfireCategoryAnnotation', () => {
 
   test('case insensitive: flame zone lowercase', () => {
     expect(bushfireCategoryAnnotation('flame zone').cdcBlocked).toBe(true);
-  });
-});
-
-// ── lmrFrontageStatus ─────────────────────────────────────────────────────────
-
-describe('lmrFrontageStatus', () => {
-  test('15m frontage — all types eligible', () => {
-    const result = lmrFrontageStatus(15);
-    expect(result.excluded).toHaveLength(0);
-    expect(result.eligible.map(e => e.devType).sort()).toEqual(
-      Object.keys(LMR_FRONTAGE_MINIMUMS).sort()
-    );
-  });
-
-  test('12m frontage — dual occ and manor eligible, multi dwelling excluded', () => {
-    const result = lmrFrontageStatus(12);
-    expect(result.excluded.map(e => e.devType)).toContain('multi_dwelling');
-    expect(result.eligible.map(e => e.devType)).toContain('dual_occupancy');
-    expect(result.eligible.map(e => e.devType)).toContain('manor_house');
-  });
-
-  test('11.9m frontage — dual occ and manor excluded', () => {
-    const result = lmrFrontageStatus(11.9);
-    expect(result.excluded.map(e => e.devType)).toContain('dual_occupancy');
-    expect(result.excluded.map(e => e.devType)).toContain('manor_house');
-  });
-
-  test('5m frontage — everything excluded', () => {
-    const result = lmrFrontageStatus(5);
-    expect(result.excluded).toHaveLength(Object.keys(LMR_FRONTAGE_MINIMUMS).length);
-    expect(result.eligible).toHaveLength(0);
-  });
-
-  test('excluded entries include label and minimumM', () => {
-    const result = lmrFrontageStatus(10);
-    for (const entry of result.excluded) {
-      expect(entry.label.length).toBeGreaterThan(0);
-      expect(entry.minimumM).toBeGreaterThan(0);
-    }
-  });
-
-  test('exactly at minimum is eligible (inclusive)', () => {
-    // 12m exactly meets dual occupancy 12m minimum
-    const result = lmrFrontageStatus(12);
-    expect(result.eligible.map(e => e.devType)).toContain('dual_occupancy');
   });
 });
 

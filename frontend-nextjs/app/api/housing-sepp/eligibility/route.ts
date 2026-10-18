@@ -1,3 +1,4 @@
+import { WIDTH_MARGIN_M } from '@/lib/geometry/street-frontage';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { HousingSEPPSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
@@ -133,7 +134,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { zoneCode, lotSize, lotWidth, stationDistance, isLMRArea, address, lga, coordinates } = validation.data;
+    const { zoneCode, lotSize, stationDistance, isLMRArea, address, lga, coordinates } = validation.data;
+    // Width at the front building line, as a range (lib/geometry/street-frontage.ts): the SEPP minimums are "a
+    // minimum lot width at the front building line", and where that line sits depends on the design. A legacy
+    // single lotWidth is read as both ends.
+    const widthMin = (validation.data.lotWidthMin ?? validation.data.lotWidth) as number;
+    const widthMax = (validation.data.lotWidthMax ?? validation.data.lotWidth) as number;
+    const lotWidth = widthMin;
 
     // Optional LEP values for SEPP-LEP override detection
     const lepHeight: number | null = typeof body.lepHeight === 'number' ? body.lepHeight : null;
@@ -156,7 +163,7 @@ export async function POST(request: NextRequest) {
         data: {
           eligibleTypes: [],
           message: `Zone ${zone} is not a residential zone. Housing SEPP LMR reforms apply to R1, R2, R3, and R4 zones only.`,
-          propertyInfo: { zoneCode: zone, lotSize, lotWidth, stationDistance, isLMRArea }
+          propertyInfo: { zoneCode: zone, lotSize, lotWidth, lotWidthMax: widthMax, stationDistance, isLMRArea }
         },
         metadata: {
           processingTimeMs: Date.now() - startTime,
@@ -352,14 +359,28 @@ export async function POST(request: NextRequest) {
 
       // Check lot width
       const minLotWidth = standards.find(s => s.standardType === 'min_lot_width');
-      if (minLotWidth && lotWidth < minLotWidth.numericValue) {
+      if (minLotWidth && widthMax < minLotWidth.numericValue - WIDTH_MARGIN_M) {
         eligibilityResults.push({
           developmentType: devType,
           displayName: displayInfo.name,
           description: displayInfo.description,
           isEligible: false,
           assessmentStatus: 'ineligible',
-          eligibilityReason: `Lot width ${lotWidth}m is below minimum ${minLotWidth.numericValue}m (Clause ${minLotWidth.sourceClause})`,
+          eligibilityReason: `The lot measures ${widthMax.toFixed(1)}m at its widest, below the minimum ${minLotWidth.numericValue}m at the front building line (Clause ${minLotWidth.sourceClause})`,
+          standards,
+          effectiveDate: typeInfo.effectiveDate,
+          legislationUrl: typeInfo.legislationUrl
+        });
+        continue;
+      }
+      if (minLotWidth && widthMin < minLotWidth.numericValue + WIDTH_MARGIN_M) {
+        eligibilityResults.push({
+          developmentType: devType,
+          displayName: displayInfo.name,
+          description: displayInfo.description,
+          isEligible: false,
+          assessmentStatus: 'not_assessed',
+          eligibilityReason: `Depends on where the front building line sits: the lot is ${widthMin.toFixed(1)}m wide at its narrowest in the front half and ${widthMax.toFixed(1)}m at its widest, against a minimum ${minLotWidth.numericValue}m at the front building line (Clause ${minLotWidth.sourceClause})`,
           standards,
           effectiveDate: typeInfo.effectiveDate,
           legislationUrl: typeInfo.legislationUrl
@@ -496,6 +517,7 @@ export async function POST(request: NextRequest) {
           zoneCode: zone,
           lotSize,
           lotWidth,
+          lotWidthMax: widthMax,
           stationDistance,
           isLMRArea: inLMRArea,
           lepHeight,
