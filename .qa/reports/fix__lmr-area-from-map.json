@@ -113,5 +113,42 @@
     "other_repo": "No.",
     "manual_verify": "Yes - after Railway and Vercel deploy: GET /pipeline/housing-sepp/gates for Winston Hills returns in_lmr_area false; the assessment page for 6 Berrigan St Winston Hills shows 'Not in a Low and Mid-Rise housing area' and multi-dwelling not eligible."
   },
-  "residual_risk": "Two eligibility implementations remain (DQ-30). A map outage shows 'Not checked' rather than an answer."
+  "residual_risk": "Two eligibility implementations remain (DQ-30). A map outage shows 'Not checked' rather than an answer.",
+  "cross_review": [
+    {
+      "finding": "[HIGH] gates_api:54 missing low_mid_rise key read as not excluded",
+      "verdict": "NOT A DEFECT",
+      "why": "a missing key gave None -> excluded None (unknown), not False; now explicit via _tri()."
+    },
+    {
+      "finding": "[HIGH] gates proxy forwards coordinates outside NSW",
+      "verdict": "NOT A DEFECT",
+      "why": "Python returns 422, proxy returns 502, hook gives null, page reads 'Not checked' -- visible, not wrong data."
+    },
+    {
+      "finding": "[MEDIUM] eligibility route stationDistance undefined",
+      "verdict": "NOT A DEFECT",
+      "why": "optional in the schema and unused by the width logic it names."
+    },
+    {
+      "finding": "[MEDIUM] StateLevelControls:114 centroid null guard",
+      "verdict": "NOT A DEFECT",
+      "why": "existing code moved up; every access already uses optional chaining."
+    },
+    {
+      "finding": "[MEDIUM] gates_api:56 in_tod non-boolean",
+      "verdict": "FIXED",
+      "why": "_tri() keeps only real bools; a missing key or other type is None, never False."
+    },
+    {
+      "finding": "[LOW] permitsApartmentDevelopment zone undefined",
+      "verdict": "NOT A DEFECT",
+      "why": "no zone returns false, as before this change."
+    },
+    {
+      "finding": "[LOW] Mercator conversion with non-numbers",
+      "verdict": "NOT A DEFECT",
+      "why": "useLmrGates rejects non-finite lat/lng; gates stay null -> 'Not checked'."
+    }
+  ]
 }

@@ -45,6 +45,11 @@ def _safe(fn, *args):
         return None
 
 
+def _tri(value: object) -> Optional[bool]:
+    """True / False only for a real bool; anything else (missing key, None, a string) is None, never False."""
+    return value if isinstance(value, bool) else None
+
+
 def lmr_gates(lat: float, lng: float) -> dict:
     """True / False / None (not answered) for each gate, and the combined Low and Mid-Rise area answer."""
     excl = _safe(fetch_sepp_exclusions, lat, lng)
@@ -52,11 +57,10 @@ def lmr_gates(lat: float, lng: float) -> dict:
     tc = _safe(fetch_town_centre_catchment, lat, lng)
     dop = _safe(fetch_dual_occ_prohibition, lat, lng)
 
-    lmr_flag = (excl or {}).get("low_mid_rise")
-    excluded: Optional[bool] = None if lmr_flag is None else bool(lmr_flag)
-    in_tod: Optional[bool] = None if tod is None else bool(tod.get("in_tod"))
-    near_tc: Optional[bool] = None if tc is None else bool(tc.get("within_catchment"))
-    dual_occ_prohibited: Optional[bool] = None if dop is None else bool(dop.get("prohibited"))
+    excluded = _tri((excl or {}).get("low_mid_rise"))
+    in_tod = _tri((tod or {}).get("in_tod"))
+    near_tc = _tri((tc or {}).get("within_catchment"))
+    dual_occ_prohibited = _tri((dop or {}).get("prohibited"))
 
     if in_tod is True or near_tc is True:
         anchored: Optional[bool] = True
