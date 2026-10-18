@@ -59,6 +59,15 @@ interface TocSidebarProps {
   daDevTypeRole?: 'chapter_selector' | 'subpart_selector' | 'sort_only';
 }
 
+/** "city_of_parramatta" (a council slug) reads as "City of Parramatta"; a name already in words is left alone. */
+function councilLabel(council: string): string {
+  if (!/^[a-z0-9_-]+$/.test(council)) return council;
+  return council
+    .split(/[_-]+/)
+    .map((w, i) => (i > 0 && w === 'of' ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(' ');
+}
+
 export function TocSidebar({
   tocStructure,
   filteredTocStructure,
@@ -147,7 +156,7 @@ export function TocSidebar({
             : formerCouncil === 'Woollahra' ? 'Woollahra DCP 2015'
             : formerCouncil === 'City of Sydney' ? 'Sydney DCP 2012'
             : formerCouncil === 'Ku-ring-gai' ? 'Ku-ring-gai DCP 2024'
-            : formerCouncil ? `${formerCouncil} DCP`
+            : formerCouncil ? `${councilLabel(formerCouncil)} DCP`
             : 'DCP'}
         </h3>
         <p className="text-xs text-gray-400 mt-0.5">
@@ -222,7 +231,7 @@ export function TocSidebar({
         return total > 0 ? (
           <div className="mx-2 mt-3 mb-2 p-2 bg-teal-50 border border-teal-200 rounded">
             <p className="text-xs font-semibold text-teal-900">
-              {total} provisions matched to this property and type of work
+              {total.toLocaleString('en-AU')} provisions matched to this property and type of work
             </p>
           </div>
         ) : null;

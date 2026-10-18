@@ -1,0 +1,91 @@
+{
+  "tier": "standard",
+  "justification": "Display labels on the assessment page plus the SEPP identifier extraction that feeds the SEPP Requirements card; no eligibility, database or regulatory value changes.",
+  "commit_hash": "5003862b",
+  "files": [
+    "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "frontend-nextjs/components/compliance/LepControls.tsx",
+    "frontend-nextjs/components/compliance/LocalProvisionsCard.tsx",
+    "frontend-nextjs/components/compliance/TocSidebar.tsx",
+    "frontend-nextjs/components/compliance/PatternBookEligibilityCard.tsx",
+    "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+    "frontend-nextjs/components/compliance/ExemptComplyingProvisions.tsx",
+    "frontend-nextjs/__tests__/lib/sepp-identifier-labels.test.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "Planning Portal 'Class' attribute already reads 'Class 5'; EPI Name carries the full instrument name with its year.",
+    "assumption_mismatch": "Old regex assumed the first number after SEPP is a policy number; for named instruments it is the year.",
+    "new_vs_existing": "No new surface; the existing card components and extractor are corrected in place."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/sepp-identifier-labels.test.ts",
+    "fails_when": "Measured 2026-10-19: with nsw-planning-portal.ts restored from fb4150e5 (the old year-as-number regex), 4 of the 5 tests fail.",
+    "observed_red": "Live page for 6 Berrigan St Winston Hills on 2026-10-19 listed 'SEPP 2022' and 'SEPP 2021' under Assess manually."
+  },
+  "functions": [
+    {
+      "name": "NSWPlanningPortalService.extractApplicableSepps",
+      "file_line": "frontend-nextjs/lib/nsw-planning-portal.ts",
+      "input": "one Planning Portal layer result with EPI Name, Map Type and other text fields",
+      "output": "identifiers pushed onto constraints.applicableSepps: known keys, full instrument names, or SEPP_<number> for numbered policies",
+      "if_none": "no identifier is pushed and the card shows no unstructured SEPP line"
+    }
+  ],
+  "values": [
+    {
+      "value": "acid sulfate soils class text",
+      "read_at": "Planning Portal layer attribute 'Class'",
+      "if_missing": "the row shows No, as before"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A named SEPP arrives in the EPI Name field with its year.",
+      "what_happens": "Card shows the instrument name, never a bare year.",
+      "mitigated": true,
+      "how": "named-instrument regex keeps the parenthesised name and year together",
+      "repro": "npx jest __tests__/lib/sepp-identifier-labels.test.ts"
+    },
+    {
+      "scenario": "A map title names a repealed instrument, the Aerotropolis Wind Turbines Map.",
+      "what_happens": "No identifier is added from the map title, so no stale instrument is listed.",
+      "mitigated": true,
+      "how": "named instruments are taken only from the EPI Name field",
+      "repro": "npx jest __tests__/lib/sepp-identifier-labels.test.ts"
+    },
+    {
+      "scenario": "Portal acid sulfate class arrives as a bare number like 5.",
+      "what_happens": "Row reads Class 5, prefix still added when the value lacks it.",
+      "mitigated": true,
+      "how": "prefix added only when the value does not already start with Class",
+      "repro": "read LepControls.tsx acid sulfate row"
+    },
+    {
+      "scenario": "Overlay description differs from its class value.",
+      "what_happens": "Both are still shown because only equal values after removing spaces are hidden.",
+      "mitigated": true,
+      "how": "sameValue compares with whitespace removed and case ignored",
+      "repro": "read LocalProvisionsCard.tsx sameValue"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No database change in this branch.",
+    "secrets": "No secrets touched.",
+    "other_repo": "No other repository affected.",
+    "manual_verify": "Yes - after Vercel deploy, 6 Berrigan St Winston Hills: no 'SEPP 2022/2021', 'Class Class', triple '30 km', 'city_of_parramatta', or 'Updated Feb 2026' text."
+  },
+  "residual_risk": "The overlay title 'SEPP (Western Sydney Aerotropolis) 2020 Wind Turbines Map' is the Planning Portal's own layer name and is shown unchanged; the current instrument name prints beside it.",
+  "cross_review": [
+    {
+      "finding": "[MEDIUM] nsw-planning-portal.ts applicableSepps may be undefined before push",
+      "verdict": "NOT A DEFECT",
+      "why": "every access uses optional chaining (?.includes / ?.push), so an absent array is a no-op, and the only caller initialises it to an empty array."
+    },
+    {
+      "finding": "[LOW] named[1] may be undefined before trim",
+      "verdict": "NOT A DEFECT",
+      "why": "group 1 is a required capture ([^)]+), so it is always a non-empty string whenever the regex matches."
+    }
+  ]
+}

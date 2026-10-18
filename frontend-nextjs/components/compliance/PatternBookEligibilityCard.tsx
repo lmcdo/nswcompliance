@@ -19,18 +19,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  ChevronDown,
-  ChevronRight,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  FileImage,
-  FileText,
-  Shield,
-  ArrowRight,
-  Clock
-} from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, FileImage, FileText, Shield, ArrowRight } from 'lucide-react';
 import { AuthorityColors } from '@/lib/design-tokens';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { CdcComplianceCalculator } from '../cdc/CdcComplianceCalculator';
@@ -321,10 +310,6 @@ export function PatternBookEligibilityCard({
               <Badge variant="outline" className="text-xs">
                 Pattern Book CDC Pathway
               </Badge>
-              <Badge variant="outline" className="text-xs text-gray-500 flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Updated Feb 2026
-              </Badge>
             </div>
 
             <div className="flex items-center gap-3">
@@ -359,7 +344,9 @@ export function PatternBookEligibilityCard({
                 <span className="font-medium">Reason:</span>
                 <span>{eligibility.reasons[0]}</span>
                 {eligibility.reasons.length > 1 && (
-                  <span className="text-red-600">+{eligibility.reasons.length - 1} more</span>
+                  <span className="text-red-600">
+                    and {eligibility.reasons.length - 1} more {eligibility.reasons.length - 1 === 1 ? 'reason' : 'reasons'} (open the card to see {eligibility.reasons.length - 1 === 1 ? 'it' : 'them'})
+                  </span>
                 )}
               </div>
             )}

@@ -14,7 +14,7 @@
 
 import { useState, useEffect } from 'react';
 import { CDC_HOUSING_CODE_ZONES } from '@/lib/regulatory-constants';
-import { ChevronDown, ChevronRight, ChevronUp, ExternalLink, FileText, FileImage, Clock, Shield } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, ExternalLink, FileText, FileImage, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getPdfImageUrl } from '@/lib/pdf-image-url';
@@ -123,10 +123,6 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
           <span className="text-xs text-purple-600">
             Applies to {zoneCode} zone
           </span>
-          <Badge variant="outline" className="text-xs text-gray-500 flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            Updated Feb 2026
-          </Badge>
           {!expanded && totalCount > 0 && (
             <span className="text-xs text-purple-600">
               · {totalCount} actionable standards across {Object.keys(counts).length} work types

@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronRight, Scale, Building2, Car, FileImage, Clock, Shield, AlertTriangle, Info } from 'lucide-react';
+import { ChevronDown, ChevronRight, Scale, Building2, Car, FileImage, Shield, AlertTriangle, Info } from 'lucide-react';
 import { roadHierarchyAnnotation } from '@/lib/see/propertyUtils';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { AuthorityColors } from '@/lib/design-tokens';
@@ -732,10 +732,6 @@ export function StateLevelControls({
             </div>
             <div className="flex items-center gap-2">
               <Badge className={`${AuthorityColors.SEPP.bg.replace('50', '100')} ${AuthorityColors.SEPP.text.replace('700', '800')}`}>State Policy</Badge>
-              <Badge variant="outline" className="text-xs text-gray-500 flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Updated Feb 2026
-              </Badge>
             </div>
           </div>
           <p className={`text-sm ${AuthorityColors.SEPP.text} mt-1 ml-7`}>

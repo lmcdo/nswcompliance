@@ -1064,15 +1064,29 @@ export class NSWPlanningPortalService {
  
  // Check if this field mentions any SEPP
  if (seppKeywords.some(keyword => lowerValue.includes(keyword))) {
- // Extract SEPP number/identifier
- const seppMatch = value.match(/sepp[^\d]*(\d+)/i) || value.match(/state environmental planning policy[^\d]*(\d+)/i);
- if (seppMatch) {
- const seppNumber = seppMatch[1];
- const seppIdentifier = `SEPP_${seppNumber}`;
- 
- if (!constraints.applicableSepps?.includes(seppIdentifier)) {
- constraints.applicableSepps?.push(seppIdentifier);
+ // A named instrument, "SEPP (Sustainable Buildings) 2022": its digits are the YEAR, not a number.
+ // Taking them as one turned every named SEPP into "SEPP 2022" / "SEPP 2021" on the page.
+ const named = value.match(/(?:state environmental planning policy|sepp)\s*\(([^)]+)\)\s*(\d{4})/i);
+ // Words the keyword checks below turn into a known identifier themselves.
+ const knownByKeyword = /housing|planning\s+systems|resilience|hazards|sustainable\s+buildings/i;
+ let seppIdentifier: string | null = null;
+ if (named) {
+   // Only the 'EPI Name' field names the instrument in force. A map title can carry a repealed
+   // one ("SEPP (Western Sydney Aerotropolis) 2020 Wind Turbines Map").
+   if (field === 'EPI Name' && !knownByKeyword.test(named[1])) seppIdentifier = `SEPP (${named[1].trim()}) ${named[2]}`;
+ } else {
+   // A numbered policy, "SEPP 65" / "SEPP No 19".
+   const numbered = value.match(/(?:sepp|state environmental planning policy)\s*(?:no\.?\s*)?(\d+)/i);
+   if (numbered) seppIdentifier = `SEPP_${numbered[1]}`;
  }
+ if (seppIdentifier && !constraints.applicableSepps?.includes(seppIdentifier)) {
+   constraints.applicableSepps?.push(seppIdentifier);
+ }
+
+ if (/sustainable\s+buildings/i.test(value)) {
+   if (!constraints.applicableSepps?.includes('SEPP_SUSTAINABLE_BUILDINGS_2022')) {
+     constraints.applicableSepps?.push('SEPP_SUSTAINABLE_BUILDINGS_2022');
+   }
  }
  
  // Also check for specific known SEPPs
