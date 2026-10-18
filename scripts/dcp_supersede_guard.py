@@ -164,17 +164,34 @@ class Verdict:
         return head + f"not judged -- {self.before} rules before is too few to measure"
 
 
+def ref_code(ref_number: str | None) -> str | None:
+    """The section code inside an AI-reader ref_number, or None.
+
+    The AI reader stores the clause TITLE in section_header ("Setbacks for Attached Dwellings
+    - Zone R3", or nothing) and the number in ref_number: "<doc>__3_7_1_2 d)" is 3.7.1.2.
+    Reading section_header alone, Campbelltown Part 3 went from 160+ codes to almost none on
+    2026-10-18 and the guard refused a re-read that kept every section (each old code was
+    checked present in the new refs before overriding). Only consulted when the header gives
+    no code, so an old-shape row is read exactly as before.
+    """
+    if not ref_number or "__" not in ref_number:
+        return None
+    head = ref_number.rsplit("__", 1)[1].split(" ", 1)[0].split("~", 1)[0]
+    return leading_code(head.replace("_", "."))
+
+
 def snapshot(cur, council: str, chapter_key: str) -> Snapshot:
     """The live section codes and rule count of one chapter, as this cursor sees it."""
     cur.execute(
         """
-        SELECT section_header FROM regulatory_provisions
+        SELECT section_header, ref_number FROM regulatory_provisions
         WHERE source_council = %s AND source_chapter_key = %s AND is_current = TRUE
         """,
         (council, chapter_key),
     )
-    headers = [r[0] for r in cur.fetchall()]
-    codes = frozenset(c for c in (leading_code(h) for h in headers) if c)
+    rows = cur.fetchall()
+    headers = [r[0] for r in rows]
+    codes = frozenset(c for c in (leading_code(h) or ref_code(r) for h, r in rows) if c)
 
     # DQ-78's signature, in SQL so a chapter's whole text never crosses the wire.
     #

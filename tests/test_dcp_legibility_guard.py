@@ -214,4 +214,4 @@ class _Cur:
         if "singles" in (self.sql or ""):
             # (identity, shown ref, ratio) — a bare string means the default 0.30
             return [(r, r, 0.30) if isinstance(r, str) else r for r in self.scrambled]
-        return [(h,) for h in self.headers]
+        return [(h, None) for h in self.headers]   # (section_header, ref_number)

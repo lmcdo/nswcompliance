@@ -135,7 +135,8 @@ class _Cur:
     def fetchall(self):
         if "singles" in (self.sql or ""):
             return [(r,) for r in self.scrambled]
-        return [(h,) for h in self.headers]
+        # a bare header is an old-shape row (no ref); a (header, ref) pair is passed through
+        return [h if isinstance(h, tuple) else (h, None) for h in self.headers]
 
     def header_call(self):
         return next(c for c in self.calls if "SELECT section_header" in c[0])
@@ -167,3 +168,42 @@ def test_the_override_lets_through_the_named_chapter_and_no_other():
     with pytest.raises(g.SectionLossRefused):
         g.enforce(_after_the_bad_swap(), "marrickville", "part4-s1-low-density", before,
                   allowed=frozenset({"marrickville/part5-commercial-mixed-use"}))
+
+
+# ---------------------------------------------------------------------------
+# 5. The AI reader's row shape: title in section_header, number in ref_number
+# ---------------------------------------------------------------------------
+
+def test_ref_code_reads_the_number_out_of_an_ai_reader_ref():
+    assert g.ref_code("Campbelltown_DCP__campbelltown_dcp_part3_low_medium__3_7_1_2 d)") == "3.7.1.2"
+    assert g.ref_code("Ku-ring-gai_DCP__section_b_part_14h_screen_australia_site__14H_2 2~2") == "14H.2"
+    assert g.ref_code("x__3_4_2 Note") == "3.4.2"
+    assert g.ref_code("x__3_7_1_6") == "3.7.1.6"
+
+
+def test_ref_code_gives_none_when_there_is_no_code():
+    assert g.ref_code(None) is None
+    assert g.ref_code("") is None
+    assert g.ref_code("no double underscore 3.1") is None
+    assert g.ref_code("x__Introduction") is None
+
+
+def test_a_re_read_that_moves_the_number_into_ref_number_keeps_its_sections():
+    """2026-10-18 Campbelltown Part 3: old rows carried '3.7.1.6 iv) Requirements...' in
+    section_header; the AI re-read put the title there and the number in ref_number. Read
+    from the header alone the new version had no codes and was refused as a loss."""
+    old = [f"3.7.1.{i} a) Heading" for i in range(1, 9)]
+    new = [("Setbacks - Zone R3", f"Campbelltown_DCP__part3__3_7_1_{i} a)") for i in range(1, 9)]
+    before = g.snapshot(_Cur(old), "campbelltown", "part3")
+    after = g.snapshot(_Cur(new), "campbelltown", "part3")
+    assert after.codes == before.codes
+    assert not g.judge(before, after).refused
+
+
+def test_the_header_code_wins_over_the_ref_and_a_real_loss_is_still_refused():
+    # header code present: the ref is not consulted
+    assert g.snapshot(_Cur([("4.1.1 Heading", "x__9_9_9 a)")]), "c", "k").codes == frozenset({"4.1.1"})
+    # a new version whose refs carry no codes either is still a loss
+    before = Snapshot(codes("4.1", 38), 215)
+    after = g.snapshot(_Cur([("Title", "x__Intro")] * 200), "c", "k")
+    assert g.judge(before, after).refused

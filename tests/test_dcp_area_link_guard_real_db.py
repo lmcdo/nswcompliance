@@ -31,5 +31,5 @@ def test_a_rule_keyed_live_chapter_passes_its_own_guard(ro_cursor):
     import dcp_area_link_guard as g
     before = g.linked_count(ro_cursor, "marrickville", "part9-p08-enmore-north")
     after = g.relinkable_count(ro_cursor, "marrickville", "part9-p08-enmore-north")
-    assert before >= 5
-    assert g.judge(before, after)
+    assert before.area >= 5
+    assert g.judge(before.area, after.area) and g.judge(before.zone, after.zone)
