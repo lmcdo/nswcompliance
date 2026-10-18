@@ -227,7 +227,7 @@ def width_range(sf: Optional[StreetFrontage]) -> Optional[tuple[float, float]]:
 
 
 def fetch_nearby_roads(geometry: dict) -> Optional[list[dict]]:
-    """Road-corridor polygons within 20 m of the lot (EPSG:3857), or None on any failure."""
+    """Road-corridor polygons within ROAD_SEARCH_PAD_M of the lot (EPSG:3857), or None on any failure."""
     import requests
 
     try:
