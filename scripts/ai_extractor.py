@@ -990,26 +990,33 @@ def _page_texts_for_sentences(pdf_path, running: set[str]) -> dict[int, str]:
 
 
 def _reread_missing_sentences(pdf_path, reader, model: str, collected: list[dict]) -> None:
-    """Read again, on its own, each page whose printed sentences the reading left out, naming the sentences; keep
-    only the provisions that bring a missing sentence back. Anything still missing is reported, not refused: the
+    """Read again, on its own, each page whose printed sentences or table numbers the reading left out, naming what
+    is missing; keep only the provisions that bring it back. Anything still missing is reported, not refused: the
     review loss check decides whether a chapter may go live. Adds to `collected`."""
     import page_coverage as pc
     running = pc.running_lines(pc.pdf_page_lines(pdf_path))
     pages = _page_texts_for_sentences(pdf_path, running)
     texts = lambda: [str(p.get("text") or "") for p in collected]
     missing = missing_sentences(pages, texts())
-    if not missing:
+    numbers = missing_table_numbers(pages, texts())
+    if not missing and not numbers:
         return
     print(f"    [sentence-coverage] {sum(map(len, missing.values()))} printed sentence(s) not copied, on pages "
-          f"{sorted(missing)}; reading those pages again")
-    for page in sorted(missing):
-        named = missing[page][:SENTENCE_NAMED_MAX]
-        note = (" A first reading of this page left out these printed sentences (shown in lower case without "
-                "punctuation); copy each of them word for word, exactly as printed, as part of its provision: "
-                + " || ".join(named))
+          f"{sorted(missing)}; table numbers not copied on pages {sorted(numbers)}; reading those pages again")
+    for page in sorted(set(missing) | set(numbers)):
+        named = missing.get(page, [])[:SENTENCE_NAMED_MAX]
+        note = ""
+        if named:
+            note += (" A first reading of this page left out these printed sentences (shown in lower case without "
+                     "punctuation); copy each of them word for word, exactly as printed, as part of its provision: "
+                     + " || ".join(named) + ".")
+        if page in numbers:
+            note += (" A first reading of this page left out its TABLE: copy every row of every table on this page, "
+                     "one provision per printed row, its cells in order separated by ' | ', with the table's title.")
         found = _call_and_parse_with_empty_retry(model, _subset_bytes(reader, page - 1, page),
                                                  _build_prompt(None) + note)
-        new = keep_bringing_back(found, named)
+        new = [p for p in found if p in keep_bringing_back(found, named)
+               or _numbers(str(p.get("text") or "")) & set(numbers.get(page, ()))]
         _place_on_pages(new, reader, page, page)
         collected.extend(new)
     still = missing_sentences({p: pages[p] for p in missing}, texts())
@@ -1018,6 +1025,40 @@ def _reread_missing_sentences(pdf_path, reader, model: str, collected: list[dict
         first = next(iter(still.values()))[0]
         print(f"    [sentence-coverage] still not copied after reading again: {n} sentence(s) on pages "
               f"{sorted(still)} -- e.g. \"{first[:120]}\"")
+    still_n = missing_table_numbers({p: pages[p] for p in numbers}, texts())
+    if still_n:
+        print(f"    [table-coverage] table numbers still not copied after reading again on pages {sorted(still_n)}")
+
+
+#: A page prints a table worth checking when it carries at least this many distinct numbers of 3+ digits.
+TABLE_NUMBERS_MIN = 8
+#: Below this share of those numbers in the output, the page's table was left out.
+TABLE_NUMBERS_HIT = 0.5
+_NUMBER = re.compile(r"(?<![\d.,])\d{1,3}(?:,\d{3})+(?![\d,])|(?<![\d.,])\d{3,}(?![\d,])")
+
+
+def _numbers(text: str) -> set[str]:
+    """Numbers of 3+ digits, thousands commas removed ('7,500' and '7500' are one number). Pure."""
+    return {n.replace(",", "") for n in _NUMBER.findall(text or "")}
+
+
+def missing_table_numbers(pages: dict[int, str], output_texts: list[str]) -> dict[int, list[str]]:
+    """page -> the printed numbers the output does not hold, for pages whose table was mostly left out. Pure.
+
+    A table row has no full stop, so the sentence check cannot see a dropped table. City of Sydney Schedule 7
+    (2026-10-18): Tables S7.1-S7.4, the service bays required by floor area, printed one cell per line, were read as
+    nothing; 19-36% of the numbers on pages 45-47 were in the output. Measured on the saved reads of 4 chapters, only
+    those 3 pages crossed this bar.
+    """
+    have: set[str] = set()
+    for t in output_texts:
+        have |= _numbers(str(t))
+    out: dict[int, list[str]] = {}
+    for page, text in pages.items():
+        printed = _numbers(text)
+        if len(printed) >= TABLE_NUMBERS_MIN and len(printed & have) / len(printed) < TABLE_NUMBERS_HIT:
+            out[page] = sorted(printed - have)
+    return out
 
 
 def keep_bringing_back(found: list[dict], named: list[str]) -> list[dict]:
