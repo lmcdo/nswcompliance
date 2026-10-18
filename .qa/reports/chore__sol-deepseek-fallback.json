@@ -1,0 +1,72 @@
+{
+  "tier": "standard",
+  "justification": "OpenAI credits exhausted (429) stopped the pre-push cross-review. sol_common.chat retries once on DeepSeek via OpenRouter only for a no-credit error, says so, and the report names the model that answered. Live: reviewed PR #1339 on DeepSeek (5 findings, 1 real bug fixed there).",
+  "commit_hash": "1e016d4f",
+  "files": [
+    "scripts/sol_common.py",
+    "scripts/cross_review.py",
+    "tests/test_sol_common_fallback.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_sol_common_fallback.py tests/test_sol_adjudicated_findings.py tests/test_sol_review_base.py",
+    "fails_when": "a no-credit error does not fall back, another error falls back, or the report names the wrong model",
+    "observed_red": "Making the fallback fire on any error failed test_other_errors_do_not_fall_back; restored, all pass."
+  },
+  "real_layer_exempt": {
+    "scripts/sol_common.py": "live run: cross_review --pr 1339 answered by DeepSeek via OpenRouter",
+    "scripts/cross_review.py": "same live run"
+  },
+  "pre_impl": {
+    "existing_data": "OPENROUTER_API_KEY in .env (used by the DeepSeek reader)",
+    "assumption_mismatch": "the report labelled the requested model even when another one answered",
+    "new_vs_existing": "extends sol_common.chat; no new client library"
+  },
+  "functions": [
+    {
+      "name": "chat",
+      "file_line": "scripts/sol_common.py",
+      "input": "messages, model id, OpenAI key, json flag",
+      "output": "the model's text; on an OpenAI no-credit error, DeepSeek's text via OpenRouter",
+      "if_none": "no OpenRouter key -> the original OpenAI error exits as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "FALLBACK_MODEL = deepseek/deepseek-v3.2",
+      "read_at": "same model id as ai_extractor.DEEPSEEK_MODEL",
+      "if_missing": "n/a (constant)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "OpenAI rejects the key (not a credit problem)",
+      "what_happens": "no fallback; exits with the key hint as before",
+      "mitigated": true,
+      "how": "_NO_CREDIT match only",
+      "repro": "test_other_errors_do_not_fall_back"
+    },
+    {
+      "scenario": "OpenRouter key missing when credits run out",
+      "what_happens": "no fallback; the original error exits",
+      "mitigated": true,
+      "how": "env_value check before retry",
+      "repro": "code path"
+    },
+    {
+      "scenario": "a report claims gpt-5.6-sol reviewed when DeepSeek did",
+      "what_happens": "the report names the model that answered",
+      "mitigated": true,
+      "how": "LAST_MODEL",
+      "repro": "test_last_model_names_the_model_that_answered"
+    }
+  ],
+  "mutation_analysis": "Changing <= to < in the ratchet fails test_at_ceiling_passes. Removing the ratchet from CLAIMS fails test_oc20_is_wired_with_all_three_parts.",
+  "residual_risk": "The badge inventory checks each file, not each citation expression: a component with one badge and a second bare citation passes (Sol, 2026-10-17). Hard-wired checked={false} cards always show the mark. The ceiling must be lowered by hand after each proof pass.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "None",
+    "other_repo": "No",
+    "manual_verify": "python scripts/dq_check.py --outreach on main prints 21 of 21"
+  }
+}

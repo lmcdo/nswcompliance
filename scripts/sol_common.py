@@ -57,6 +57,30 @@ def candidate_env_paths(repo_root: Path) -> list[Path]:
     return paths
 
 
+#: Used when OpenAI has no credits (user 2026-10-18): another model family, through OpenRouter.
+FALLBACK_MODEL = "deepseek/deepseek-v3.2"
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+_NO_CREDIT = ("insufficient_quota", "credit_balance_exhausted")
+#: The model that actually answered the last chat() call (differs from the one asked for after a fallback).
+LAST_MODEL: str | None = None
+
+
+def env_value(name: str, repo_root: Path | None = None) -> str | None:
+    """`name` from the environment, else from the repo .env files (same search as load_api_key)."""
+    val = (os.environ.get(name) or "").strip()
+    if val:
+        return val
+    root = repo_root or Path(__file__).resolve().parents[1]
+    for env_path in candidate_env_paths(root):
+        if not env_path.exists():
+            continue
+        for raw in env_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+            k, _, v = raw.strip().partition("=")
+            if k.strip() == name and v.strip().strip('"').strip("'"):
+                return v.strip().strip('"').strip("'")
+    return None
+
+
 def load_api_key(repo_root: Path) -> str:
     """Return the OpenAI key from the environment, else a repo .env-style file.
 
@@ -129,13 +153,22 @@ def chat(messages: list[dict], model: str, api_key: str, json_mode: bool = False
     print(f"  calling {model} (timeout {timeout_s:.0f}s, no retries)...",
           file=sys.stderr, flush=True)
 
-    client = openai.OpenAI(api_key=api_key, timeout=timeout_s, max_retries=0)
+    routed = "/" in model   # an OpenRouter model id ("deepseek/deepseek-v3.2")
+    if routed:
+        api_key = env_value("OPENROUTER_API_KEY") or sys.exit("OPENROUTER_API_KEY is not set for model " + model)
+    client = openai.OpenAI(api_key=api_key, timeout=timeout_s, max_retries=0,
+                           **({"base_url": OPENROUTER_BASE_URL} if routed else {}))
     kwargs: dict = {"model": model, "messages": messages}
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
     try:
         response = client.chat.completions.create(**kwargs)
     except Exception as exc:  # network / auth / model-name / timeout
+        if not routed and any(m in str(exc) for m in _NO_CREDIT) and env_value("OPENROUTER_API_KEY"):
+            # Said loudly: the review is still from another model family, but not the one named.
+            print(f"  OpenAI has no credits -- falling back to {FALLBACK_MODEL} via OpenRouter.",
+                  file=sys.stderr, flush=True)
+            return chat(messages, FALLBACK_MODEL, api_key, json_mode)
         name = type(exc).__name__
         hint = ""
         if "Authentication" in name or "PermissionDenied" in name:
@@ -146,4 +179,6 @@ def chat(messages: list[dict], model: str, api_key: str, json_mode: bool = False
             hint = (f"\nNo response within {timeout_s:.0f}s. Raise it with "
                     f"SOL_TIMEOUT_SECONDS=600, or check network access to the API.")
         sys.exit(f"OpenAI API call failed ({name}): {exc}{hint}")
+    global LAST_MODEL
+    LAST_MODEL = model
     return (response.choices[0].message.content or "").strip()
