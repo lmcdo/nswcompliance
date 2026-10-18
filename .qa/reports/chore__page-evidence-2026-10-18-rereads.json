@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Records the page-proof evidence applied on 2026-10-18/19 for the doubled-text re-reads (7 distinct jsonl files). Data only.",
-  "commit_hash": "cc927ab9",
+  "commit_hash": "e058364b",
   "files": [
     "data/page_evidence_2026-10-18_2211_ku_ring_gai.jsonl",
     "data/page_evidence_2026-10-18_2212_city_of_sydney.jsonl",
