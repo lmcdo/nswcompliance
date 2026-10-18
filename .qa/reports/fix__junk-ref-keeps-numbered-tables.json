@@ -1,0 +1,68 @@
+{
+  "tier": "standard",
+  "justification": "_JUNK_REF auto-rejected every ref starting 'table'; the AI reader copies printed table numbers, so 'Table 6.1' (CoS s6) and numbered signage tables were auto-rejected and blocked commits. Now only a bare 'table' (no number) is junk.",
+  "commit_hash": "5e0a4fa1",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_dcp_extraction_fidelity.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_dcp_extraction_fidelity.py",
+    "fails_when": "numbered tables are rejected or bare junk refs pass",
+    "observed_red": "Restoring the old '^table' alternative fails the new test; restored fix, all pass."
+  },
+  "real_layer_exempt": {
+    "scripts/dcp_extract_changed.py": "the 12 CoS s6 table rows it rejected were approved by hand and are live (2026-10-19)"
+  },
+  "pre_impl": {
+    "existing_data": "held chapters' review rows lack the intro/scope sentences printed on the PDF pages",
+    "assumption_mismatch": "page coverage judges a page by most of its rule lines, so an intro paragraph can be lost on a passed page",
+    "new_vs_existing": "extends the reader after _reread_skipped_pages; reuses page_coverage.running_lines and doubled_text"
+  },
+  "functions": [
+    {
+      "name": "classify_row_fidelity",
+      "file_line": "scripts/dcp_extract_changed.py",
+      "input": "one queue row's ref, old text, new text and change type",
+      "output": "ok or failed with reasons; junk_ref no longer fires on numbered tables",
+      "if_none": "ok, with no reason recorded"
+    }
+  ],
+  "values": [
+    {
+      "value": "_JUNK_REF ^table(?!...number)",
+      "read_at": "classify_row_fidelity at enqueue",
+      "if_missing": "n/a"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a bare 'table' ref from the old reader",
+      "what_happens": "it is still rejected as junk",
+      "mitigated": true,
+      "how": "lookahead requires a number",
+      "repro": "test_a_numbered_table_is_not_a_junk_ref_but_a_bare_table_still_is"
+    },
+    {
+      "scenario": "a long numbered table title with an en dash",
+      "what_happens": "it is kept for review",
+      "mitigated": true,
+      "how": "dash and spaces allowed before the number",
+      "repro": "test_a_numbered_table_is_not_a_junk_ref_but_a_bare_table_still_is"
+    },
+    {
+      "scenario": "a bare year or zone code as a ref",
+      "what_happens": "it is still rejected as junk",
+      "mitigated": true,
+      "how": "other alternatives unchanged",
+      "repro": "test_a_numbered_table_is_not_a_junk_ref_but_a_bare_table_still_is"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none",
+    "secrets": "none",
+    "other_repo": "none",
+    "manual_verify": "next review read with numbered tables shows them pending, not rejected"
+  }
+}

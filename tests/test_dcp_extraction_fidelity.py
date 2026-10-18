@@ -492,3 +492,13 @@ class TestWatchdogRunbook:
         block = src[src.index("Check 6"):src.index("pending_by_chapter = ")]
         assert "'pending', 'in_progress', 'needs_info'" in block
         assert "q.source_content_hash = r.content_hash" in block
+
+
+def test_a_numbered_table_is_not_a_junk_ref_but_a_bare_table_still_is():
+    """2026-10-19: 'Table 6.1' (CoS s6 noise criteria) and 'TABLE 2 - Requirements for different types of signs' were
+    auto-rejected as junk_ref, hiding real council tables and blocking the chapter's commit."""
+    dce = _extract
+    for ref in ("x__Table 6.1", "x__TABLE 2 – REQUIREMENTS FOR SIGNS Blinds", "x__Table S.7-1", "x__Table_S7_2"):
+        assert dce.classify_row_fidelity(ref, None, "Some council table row text here.", "added")[1] != "junk_ref", ref
+    for ref in ("x__table", "x__TABLE", "x__2012", "x__R2"):
+        assert "junk_ref" in (dce.classify_row_fidelity(ref, None, "Some text here.", "added")[1] or ""), ref
