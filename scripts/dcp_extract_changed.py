@@ -2740,7 +2740,10 @@ def is_schema_fail(total_provisions: int, serious_flagged: int) -> bool:
 # waiting for a human to notice.
 
 _GARBLE_RUN = re.compile(r"(?:([A-Za-z])\1){3,}")
-_JUNK_REF = re.compile(r"^(?:19|20)\d{2}$|^R\d$|^table", re.IGNORECASE)
+# 'table' alone (the old reader keyed rows off a bare TABLE heading) is junk; a printed table number is not.
+# 2026-10-19: "Table 6.1" (CoS s6 noise criteria) and "TABLE 2 - Requirements for different types of signs" were
+# auto-rejected as junk, which hid real council tables and blocked the chapter's commit.
+_JUNK_REF = re.compile(r"^(?:19|20)\d{2}$|^R\d$|^table(?![\s_.:\-–]*[A-Z]?[\s_.\-]*\d)", re.IGNORECASE)
 
 # DQ-97 cause 5 (ku_ring_gai/section-a-part-6-multi-dwelling, found live 2026-09-07):
 # a diagram/figure-label bleed ("PPeedddeess)ttrriiaann PPaatthhwwaayy", "Pedestrian
