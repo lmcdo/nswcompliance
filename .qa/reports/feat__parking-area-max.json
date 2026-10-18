@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a new control type, parking_area_max, to dcp_setback_controls: the DB CHECK (migration 115, applied live), the Python vocabulary, the structured-controls route maps and the report label map. Campbelltown 3.6.1.4 caps the undercover parking AREA at 18/36 m2 and was stored as car_parking 1/2 spaces, numbers the clause never states. The two rows were moved live and are still hidden until this route is deployed.",
-  "commit_hash": "a1dcce7f",
+  "commit_hash": "705277d1",
   "files": [
     "migrations/115_parking_area_max_control_type.sql",
     "migrations/enforce_control_type_vocabulary.sql",
@@ -10,7 +10,9 @@
     "scripts/conveyancing_db.py",
     "scripts/fixes/parking_area_max_campbelltown_2026_10_19.py",
     "tests/test_constraint_arithmetic.py",
-    "frontend-nextjs/__tests__/api/dcp-structured-controls.test.ts"
+    "frontend-nextjs/__tests__/api/dcp-structured-controls.test.ts",
+    "scripts/outreach_claim_checks.py",
+    "data/inner_west_lep_paraphrase_2026-10-19.json"
   ],
   "falsifiable_check": {
     "command": "npx jest __tests__/api/dcp-structured-controls.test.ts && python -m pytest tests/test_constraint_arithmetic.py tests/enrichment/test_control_type_vocabulary.py -q",
@@ -23,7 +25,7 @@
     "assumption_mismatch": "071 (flood_freeboard_min) was never applied, so 114 extends the live 22-type list, not 071's 23. The deployed route would show an unknown type under Other as a minimum (>= 18 m2), so the rows stay hidden until deploy.",
     "new_vs_existing": "One new type in existing maps; one one-off fix script with dry run, backup, guarded updates and a separate --show step."
   },
-  "residual_risk": "Rows 254/255 stay hidden until the fix script's --show is run after deploy. Ku-ring-gai's 31 sqm caps are shown as text only; no structured rows were added.",
+  "residual_risk": "Rows 254/255 stay hidden until the fix script's --show is run after deploy. Ku-ring-gai's 31 sqm caps are shown as text only; no structured rows were added. DQ-145 ceiling lowered to 98 after 9 Inner West LEP paraphrase rows were withheld live (backup committed); a live write by another session can raise DQ-145 for minutes and turn the OC-20 gate red until it settles.",
   "functions": [
     {
       "name": "GET /api/dcp/structured-controls",
