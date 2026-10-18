@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The AI reader dropped un-numbered council paragraphs (intros, 'This section applies to ...' scope sentences, place descriptions) because its brief said 'paragraph of rule text'; 3 of 8 doubled-text re-reads lost such sentences on pages page coverage passed (KRG 14G p5/p11, 14I p13, Campbelltown Part 4 5.5/5.7). Prompt now asks for every paragraph under a heading; a sentence check after page coverage re-reads pages with missing printed sentences, naming them, and keeps only provisions that bring one back. dcp_page_repair --apply now prints DQ-145 before/after and exits 3 on a rise (a whole-council pass re-judged 2 proven KRG rules on 2026-10-18).",
-  "commit_hash": "80cac903",
+  "commit_hash": "65f1280b",
   "files": [
     "scripts/ai_extractor.py",
     "scripts/dcp_page_repair.py",
