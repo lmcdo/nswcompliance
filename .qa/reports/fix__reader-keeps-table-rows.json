@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "A table row has no full stop, so the sentence check could not see a dropped table: City of Sydney Schedule 7 Tables S7.1-S7.4 (service bays by GFA, one cell per line) were read as nothing, 19-36% of the numbers on pages 45-47 reached the output. A page with 8+ distinct 3+-digit numbers, under half in the output, is re-read asking for every table row; only provisions bringing a missing number back are kept. Offline on 4 saved reads only those 3 pages crossed the bar.",
-  "commit_hash": "7a2103e3",
+  "commit_hash": "5dbd36af",
   "files": [
     "scripts/ai_extractor.py",
     "tests/test_ai_extractor_sentence_coverage.py"
