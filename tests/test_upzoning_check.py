@@ -53,6 +53,11 @@ class _Dims:
         self.battleaxe_main_lot_area_m2 = None
 
 
+def _sf(frontage, wide_min, wide_max):
+    from services.street_frontage import RoadWidthRange, StreetFrontage
+    return StreetFrontage("measured", [RoadWidthRange("TEST ST", frontage, wide_min, wide_max, 35.0)])
+
+
 @pytest.fixture
 def client():
     app = FastAPI()
@@ -67,6 +72,7 @@ def wire(monkeypatch):
         "resolved": (1304911, -33.886142, 151.143860, None),
         "controls": CONTROLS_CLEAN,
         "dims": _Dims(700.0, 20.0),
+        "sf": _sf(20.0, 20.4, 20.0),
         "gates": dict(GATES_LMR),
     }
     monkeypatch.setattr(upz, "resolve_address", lambda addr: state["resolved"])
@@ -74,6 +80,7 @@ def wire(monkeypatch):
     monkeypatch.setattr(upz, "parse_controls", lambda raw: state["controls"])
     monkeypatch.setattr(upz, "fetch_lot_geometry", lambda pid: {"rings": [[0, 0]]})
     monkeypatch.setattr(upz, "calculate_lot_dimensions", lambda geom: state["dims"])
+    monkeypatch.setattr(upz, "street_frontage_for_geometry", lambda geom: state["sf"])
     monkeypatch.setattr(hse, "_fetch_standards_grouped", lambda: GROUPED)
     monkeypatch.setattr(hse, "_gate_inputs", lambda lat, lng: state["gates"])
     return state
@@ -122,6 +129,7 @@ def test_dual_occ_prohibition_gate_flows_through(client, wire):
 
 def test_missing_lot_dimensions_yields_unconfirmed_not_eligible(client, wire):
     wire["dims"] = None  # geometry unavailable → area/width None
+    wire["sf"] = _sf(20.0, 20.0, 20.0)  # must not matter: no lot, no result
     data = client.post("/pipeline/upzoning", json={"address": "x"}).json()
     assert data["lot_area_m2"] is None and data["lot_width_m"] is None
     forms = _forms_by_type(data)
@@ -129,18 +137,30 @@ def test_missing_lot_dimensions_yields_unconfirmed_not_eligible(client, wire):
     assert forms["dual_occupancy"]["unconfirmed"] is True
 
 
-def test_battleaxe_lot_uses_head_width_for_eligibility(client, wire):
-    """Bowral-class regression at route level: a flag lot with a 16 m handle and
-    a 70 m head must feed the HEAD width into the engine — width-gated forms
-    resolve on their merits instead of collapsing to 'unconfirmed'."""
-    wire["dims"] = _Dims(4189.0, None, lot_type="battleaxe", main_lot_width=70.09)
+def test_width_comes_from_the_road_not_the_rectangle_side(client, wire):
+    """Wedge lot (6 Berrigan St): rectangle side 22.4 m, street range 13.4-22.4 m.
+    The 12 m form passes; the 18 m form depends on the building line."""
+    wire["dims"] = _Dims(700.0, 22.4)
+    wire["sf"] = _sf(13.34, 13.38, 22.4)
     data = client.post("/pipeline/upzoning", json={"address": "x"}).json()
-    assert data["lot_width_m"] == pytest.approx(70.09)
-    assert data["lot_type"] == "battleaxe"
+    assert data["lot_width_m"] == pytest.approx(13.38)
+    assert data["lot_width_max_m"] == pytest.approx(22.4)
+    assert data["street_frontage_m"] == pytest.approx(13.34)
     forms = _forms_by_type(data)
-    # 4,189 m² x 70 m head passes dual-occ (450 m² / 12 m) and terrace width (18 m)
     assert forms["dual_occupancy"]["eligible"] is True
-    assert forms["terraces"]["eligible"] is True  # in-LMR fixture gates
+    assert forms["terraces"]["eligible"] is False
+    assert forms["terraces"]["unconfirmed"] is True
+    assert "Depends on where the front building line sits" in forms["terraces"]["reason"]
+
+
+def test_no_measured_road_leaves_width_forms_unconfirmed(client, wire):
+    from services.street_frontage import StreetFrontage
+    wire["sf"] = StreetFrontage("unavailable", error="road data unavailable")
+    data = client.post("/pipeline/upzoning", json={"address": "x"}).json()
+    assert data["lot_width_m"] is None and data["street_frontage_m"] is None
+    assert data["lot_type"] == "rectangular"
+    forms = _forms_by_type(data)
+    assert forms["dual_occupancy"]["unconfirmed"] is True
 
 
 def test_non_residential_zone_is_labelled_not_unavailable(client, wire):
