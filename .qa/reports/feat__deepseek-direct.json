@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "OpenRouter stalled DeepSeek reads for ~15 minutes twice on 2026-10-18; the user asked to call DeepSeek directly. With DEEPSEEK_API_KEY set, the reader calls api.deepseek.com (deepseek-chat, 8,192 output tokens, ample for a 4-page piece of ~3,000); without it, OpenRouter exactly as before.",
-  "commit_hash": "8d444f18",
+  "commit_hash": "558f7283",
   "files": [
     "scripts/ai_extractor.py",
     "tests/test_deepseek_endpoint.py"
