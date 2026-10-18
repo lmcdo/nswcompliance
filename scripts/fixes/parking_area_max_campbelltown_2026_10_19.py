@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # prior-art-checked: one-off move of two rows; no existing script writes parking_area_max
-# (the type is new in migration 114).
+# (the type is new in migration 115).
 """Move Campbelltown 3.6.1.4 (rows 254/255) from car_parking to parking_area_max.
 
 The clause (Part 3 p21) caps the UNDERCOVER PARKING AREA of a dwelling house at 18 m2
@@ -9,7 +9,7 @@ numbers the clause never states, so they were hidden (needs_review).
 
 Steps, all guarded:
   1. back up both rows to data/db_rollback_backups/;
-  2. apply migrations/114 if the CHECK does not yet name parking_area_max;
+  2. apply migrations/115 if the CHECK does not yet name parking_area_max;
   3. rewrite the rows in the council's own words, label 3.6.1.4, page 21 (still hidden);
   4. prove each on the PDF page (citation_proof.prove_label) AND find its number on a p21
      line that also names its bedroom count; only then clear needs_review.
@@ -45,7 +45,7 @@ ROWS = {
 }
 PAGE = 21
 REF = "3.6.1.4"
-REASON = ("2026-10-19: moved car_parking -> parking_area_max (migration 114). PDF p21 3.6.1.4 caps "
+REASON = ("2026-10-19: moved car_parking -> parking_area_max (migration 115). PDF p21 3.6.1.4 caps "
           "the undercover parking AREA; it states no number of spaces. Number re-found on p21 and "
           "label proven before needs_review was cleared.")
 
@@ -121,10 +121,10 @@ def main() -> int:
     cur.execute("SELECT pg_get_constraintdef(oid) d FROM pg_constraint "
                 "WHERE conname = 'control_type_canonical'")
     if "'parking_area_max'" not in cur.fetchone()["d"]:
-        cur.execute((ROOT / "migrations" / "114_parking_area_max_control_type.sql")
+        cur.execute((ROOT / "migrations" / "115_parking_area_max_control_type.sql")
                     .read_text(encoding="utf-8").replace("BEGIN;", "").replace("COMMIT;", ""))
         conn.commit()
-        print("applied migration 114")
+        print("applied migration 115")
 
     for rid, r in ROWS.items():
         cur.execute(

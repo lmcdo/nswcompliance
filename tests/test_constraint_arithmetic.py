@@ -128,7 +128,7 @@ class TestGetDcpValue:
 
     def test_parking_area_cap_is_never_read_as_spaces(self):
         # Campbelltown 3.6.1.4 caps the undercover parking AREA at 18 m2; it states no
-        # number of spaces. Stored as parking_area_max (migration 114), it must not
+        # number of spaces. Stored as parking_area_max (migration 115), it must not
         # become a parking rate.
         controls = [_make_dcp("parking_area_max", 18.0, unit="m2")]
         assert _get_dcp_value(controls, "car_parking", "dwelling_house") is None

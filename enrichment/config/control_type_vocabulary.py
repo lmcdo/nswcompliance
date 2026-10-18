@@ -39,7 +39,7 @@ CANONICAL_CONTROL_TYPES: dict[str, tuple[str, str]] = {
     "driveway_width": ("Parking", "Minimum driveway width"),
     "driveway_gradient": ("Parking", "Maximum driveway gradient"),
     # An AREA cap (m2) on garage/carport/undercover parking -- never a number of spaces,
-    # so it is a separate type that the car_parking readers do not pick up (migration 114).
+    # so it is a separate type that the car_parking readers do not pick up (migration 115).
     "parking_area_max": ("Parking", "Maximum undercover parking area"),
     # Bulk / envelope
     "max_site_coverage": ("Site Coverage", "Maximum site coverage"),

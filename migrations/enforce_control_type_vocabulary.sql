@@ -34,7 +34,7 @@ ALTER TABLE dcp_setback_controls
             'bicycle_parking',
             'driveway_width',
             'driveway_gradient',
-            -- Parking AREA cap in m2, never spaces; added by migration 114
+            -- Parking AREA cap in m2, never spaces; added by migration 115
             -- (2026-10-19) for Campbelltown 3.6.1.4 and Ku-ring-gai L315/L451.
             'parking_area_max',
             'max_site_coverage',

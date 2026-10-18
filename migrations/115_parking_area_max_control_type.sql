@@ -1,4 +1,4 @@
--- 114: add `parking_area_max` to the control_type vocabulary.
+-- 115: add `parking_area_max` to the control_type vocabulary.
 --
 -- WHAT THE CONTROL IS
 -- -------------------

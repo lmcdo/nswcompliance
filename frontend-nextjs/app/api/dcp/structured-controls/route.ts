@@ -119,7 +119,7 @@ const CONTROL_TYPE_LABELS: Record<string, string> = {
   bicycle_parking: 'Bicycle parking',
   driveway_width: 'Minimum driveway width',
   driveway_gradient: 'Maximum driveway gradient',
-  // An area cap in m2, not spaces (migration 114).
+  // An area cap in m2, not spaces (migration 115).
   parking_area_max: 'Maximum undercover parking area',
   max_site_coverage: 'Maximum site coverage',
   max_height: 'Maximum height',
