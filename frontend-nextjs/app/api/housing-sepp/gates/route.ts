@@ -16,10 +16,10 @@ const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const latRaw = searchParams.get('lat');
-  const lngRaw = searchParams.get('lng');
-  const lat = latRaw === null || latRaw.trim() === '' ? NaN : Number(latRaw);
-  const lng = lngRaw === null || lngRaw.trim() === '' ? NaN : Number(lngRaw);
+  const toNumber = (raw: unknown): number =>
+    typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : NaN;
+  const lat = toNumber(searchParams.get('lat'));
+  const lng = toNumber(searchParams.get('lng'));
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     return NextResponse.json({ error: 'lat and lng must be numbers' }, { status: 400 });
   }
