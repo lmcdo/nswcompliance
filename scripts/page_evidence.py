@@ -224,7 +224,7 @@ def match_page(words: str, texts: dict, streams: list) -> list:
     """Every proof of `words` on one page (before the one-page-only rule is applied)."""
     found = []
     for order in ORDERS:
-        for s in find_span(texts[order], words):
+        for s in find_span(texts.get(order, ""), words):   # a caller may build only raw/sorted
             found.append({"matcher": "text-run", "order": order, "start": s,
                           "end": s + len(words), "span": words})
     for ti, kind, coords, hay, offs, parts in streams:
@@ -477,11 +477,11 @@ def page_break_hits(words: str, pages: dict) -> list:
             continue
         for k in range(MIN_PART, len(toks) - MIN_PART + 1):
             a, b = " ".join(toks[:k]), " ".join(toks[k:])
-            ha = [(o, find_span(pages[pno][0][o], a)) for o in ORDERS]
+            ha = [(o, find_span(pages[pno][0].get(o, ""), a)) for o in ORDERS]
             ha = [(o, s[0]) for o, s in ha if s]
             if not ha:
                 continue
-            hb = [(o, find_span(pages[nxt][0][o], b)) for o in ORDERS]
+            hb = [(o, find_span(pages[nxt][0].get(o, ""), b)) for o in ORDERS]
             hb = [(o, s[0]) for o, s in hb if s]
             if hb:
                 out.append((pno, k, ha[0][0], ha[0][1], hb[0][0], hb[0][1]))
