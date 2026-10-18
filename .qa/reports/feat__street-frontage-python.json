@@ -1,0 +1,116 @@
+{
+  "tier": "critical",
+  "justification": "Python half of #1347. Changes the Housing SEPP eligibility answers in the Site Report (services/intelligence_brief.py) and the upzoning check (services/upzoning_check.py): lot width now comes from the measured road edge as a range at the front building line, replacing the shorter side of the lot's bounding rectangle (22.4 m at a Winston Hills wedge whose street edge is 13.3 m).",
+  "commit_hash": "8aa1d4c7",
+  "files": [
+    "services/street_frontage.py",
+    "services/housing_sepp_eligibility.py",
+    "services/intelligence_brief.py",
+    "services/lot_dimensions.py",
+    "services/upzoning_check.py",
+    "tests/test_street_frontage.py",
+    "tests/test_sepp_width_range.py",
+    "tests/test_upzoning_check.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_street_frontage.py tests/test_sepp_width_range.py tests/test_upzoning_check.py -q",
+    "fails_when": "Mutations measured 2026-10-18, each restored after: road tolerance 2.5 -> 0.05 m 5 failed / 8 passed (test_street_frontage); evaluate_eligibility reading the widest width instead of the narrowest front-half width 1 failed / 3 passed (test_sepp_width_range); clean 82 passed across the four touched test files.",
+    "observed_red": "Both mutations above turned the suite red; parity asserted against the TypeScript results on the same five fixtures (Winston Hills 13.34 / 13.38 / 22.4, Padstow 15.27, Mortdale 6.19, Vaucluse 5.99, Haberfield 26.25 + 46.14, lane 14.0) — all equal.",
+    "external_authority": "Real NSW cadastre fixtures captured 2026-10-18 (frontend-nextjs/__tests__/fixtures/street-frontage/), shared with the TypeScript tests; NSW road-corridor layer 5 for the live fetch."
+  },
+  "pre_impl": {
+    "existing_data": "housing_sepp_standards.min_lot_width rows quote the SEPP: 'a minimum lot width at the front building line of 12m' (cl 168(2)(b), 172(2)(b), 179(2)(b); 18 m at 172(3)(b)). PR #499 noted road-frontage detection as the planned follow-up. corner-lot-detection.ts already queried road layer 5 but kept only names.",
+    "assumption_mismatch": "#1342 assumed the rectangle's shorter side is never more than the true frontage; Winston Hills disproves it (22.4 vs 13.3 m). Also assumed the corner-lot polygon 'touches' query finds adjacent roads; measured 1.2-1.5 m cadastre gaps at Padstow, Hurstville and Claremont Meadows return no road at all.",
+    "new_vs_existing": "One new module (services/street_frontage.py) reusing lot_dimensions' ring validation and per-ring Mercator scale; the brief and upzoning reuse the lot geometry they already fetch, one extra ArcGIS road query (10 s timeout). evaluate_eligibility keeps its lot_width_m path for other callers.",
+    "external_source_error": "If the NSW road layer is unreachable or returns an error, detectCornerLot returns streetFrontage status 'unavailable', the width range is null, the card asks for the width and the eligibility route is not called with an invented value.",
+    "frontend_type": "Streamed brief section and upzoning response add lot_width_max_m and street_frontage_m beside lot_width_m (now the narrowest front-half width, or null).",
+    "user_failure_mode": "Worst case is a wrong 'meets' at a minimum width. Guarded by: pass only when the narrowest width over the whole front half clears the minimum by 0.3 m; corner lots must agree from every road; unnamed road parcels never count as the front; no road found means no verdict."
+  },
+  "functions": [
+    {
+      "name": "measure_street_frontage",
+      "file_line": "services/street_frontage.py",
+      "input": "lot outer ring in EPSG:3857 and the road-corridor polygons fetched around the lot",
+      "output": "street edge per named road with the narrowest front-half and widest lot width back from each",
+      "if_none": "status unavailable or not_identified with no roads, so no width minimum is ever tested on a guess"
+    },
+    {
+      "name": "evaluate_eligibility",
+      "file_line": "services/housing_sepp_eligibility.py",
+      "input": "zone, lot area and the measured lot width range at the front building line",
+      "output": "per-form eligibility: meets the width test, ineligible below it, or unconfirmed when it depends on the building line",
+      "if_none": "with no range and no width the existing path returns 'Lot width unconfirmed', never a pass"
+    }
+  ],
+  "values": [
+    {
+      "value": "EDGE_TOLERANCE_M 2.5, EDGE_MAX_ANGLE_DEG 30, EDGE_MIN_FRACTION 0.5",
+      "read_at": "Python prototype 2026-10-18 on 14 real lots; cadastre gaps measured 1.24-1.48 m; Winston Hills result identical for tolerances 0.5-2.0 m",
+      "if_missing": "gapped lots would read no road; looser values let side boundaries count as frontage (mutation-tested)"
+    },
+    {
+      "value": "WIDTH_MARGIN_M 0.3 and 'front half' range",
+      "read_at": "grid-counting noise of a few tenths of a metre on the synthetic rectangle; front half is the one stated assumption, printed on the card",
+      "if_missing": "a lot within noise of a minimum could flip between meets and below"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Wedge lot narrow at the street, wide at the back (Winston Hills).",
+      "what_happens": "Street edge 13.3 m; 12 m minimums meet, 18 m terraces 'depends'.",
+      "mitigated": true,
+      "how": "Width measured from the road edge, not the bounding rectangle; fixture test.",
+      "repro": "python -m pytest tests/test_street_frontage.py -q"
+    },
+    {
+      "scenario": "Lot and road polygons do not touch in the cadastre (1.3 m gap, Padstow).",
+      "what_happens": "Road still found by the envelope query and the 2.5 m tolerance.",
+      "mitigated": true,
+      "how": "Envelope + geometry test instead of a 'touches' query; fixture test; mutation to 0.05 m goes red.",
+      "repro": "python -m pytest tests/test_street_frontage.py -q"
+    },
+    {
+      "scenario": "Corner lot where the two streets give different answers.",
+      "what_happens": "The verdict is 'depends' and the report never shows the more generous of the two answers.",
+      "mitigated": true,
+      "how": "widthVerdict requires agreement across named roads; fixture test on 1 Logan Ave Haberfield.",
+      "repro": "python -m pytest tests/test_street_frontage.py -q"
+    },
+    {
+      "scenario": "Rear lane or unnamed road parcel along the back of the lot.",
+      "what_happens": "Counted in unnamedRoadEdge_m, never treated as the front.",
+      "mitigated": true,
+      "how": "Named roads only in roads[]; Haberfield fixture asserts the 14 m lane is separate.",
+      "repro": "python -m pytest tests/test_street_frontage.py -q"
+    },
+    {
+      "scenario": "Battleaxe lot: street edge is the access handle.",
+      "what_happens": "Narrow front half, wide head: 'depends', not 'below' or 'meets'.",
+      "mitigated": true,
+      "how": "Range verdict; Vaucluse fixture.",
+      "repro": "python -m pytest tests/test_street_frontage.py -q"
+    },
+    {
+      "scenario": "The NSW road-corridor layer is down, slow or returns an error for the lot.",
+      "what_happens": "status unavailable, card asks for the width, no eligibility call with a guessed width.",
+      "mitigated": true,
+      "how": "fetch_nearby_roads returns None on any failure; street_frontage_for_geometry gives status 'unavailable'; the brief passes no range and lot_width_m None, so the engine answers 'Lot width unconfirmed'. Test with requests mocked.",
+      "repro": "python -m pytest tests/test_street_frontage.py -q -k fetch"
+    },
+    {
+      "scenario": "Building line sits further back than the front half on a lot that narrows behind it.",
+      "what_happens": "A 'meets' answer could be wrong for a design whose front wall sits behind the front half.",
+      "mitigated": false,
+      "how": "Stated in the reason text ('narrowest in the front half'); same assumption as #1347.",
+      "repro": "n/a"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No - no database change.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes - Railway redeploys the services; run a Site Report for 6 Berrigan St Winston Hills and confirm the SEPP section streams street_frontage_m 13.34 and terraces 'Depends on where the front building line sits'."
+  },
+  "residual_risk": "scripts/capture_brief_golden_fixtures.py still reads the rectangle width via eligibility_lot_width (fixture capture, not served). Front-half range is an assumption, disclosed in the reason text."
+}
