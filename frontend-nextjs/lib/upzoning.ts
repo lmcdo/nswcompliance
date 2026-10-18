@@ -31,7 +31,12 @@ export interface UpzoningResult {
   zone_epi: string | null;
   legislation_url: string | null;
   lot_area_m2: number | null;
+  /** Narrowest lot width in the front half, measured from the road (services/street_frontage.py). */
   lot_width_m: number | null;
+  /** Widest lot width, measured from the road; optional for older responses. */
+  lot_width_max_m?: number | null;
+  /** Total street frontage in metres; optional for older responses. */
+  street_frontage_m?: number | null;
   lot_type: 'rectangular' | 'battleaxe' | 'irregular' | null;
   lga_name: string | null;
   /** dcp_setback_controls slug (Inner West → its former council); optional so

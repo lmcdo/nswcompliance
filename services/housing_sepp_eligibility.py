@@ -26,6 +26,8 @@ from services.portal_constraints import (
     fetch_town_centre_catchment,
 )
 
+from services.street_frontage import WIDTH_MARGIN_M
+
 logger = logging.getLogger(__name__)
 
 # DQ-30 (.claude/DATA_QUALITY_TRACKER.md): confirmed R1-R4 (no R5, no RU5) is
@@ -276,6 +278,7 @@ def evaluate_eligibility(
     *,
     heritage: bool = False,
     gate_inputs: Optional[dict] = None,
+    lot_width_range: Optional[tuple[float, float]] = None,
 ) -> list[FormEligibility]:
     """Per-development-type Housing-SEPP eligibility for a lot.
 
@@ -284,6 +287,12 @@ def evaluate_eligibility(
     heritage). ``gate_inputs`` may be supplied to reuse already-fetched gate results (avoids
     repeat ArcGIS calls); otherwise they are fetched here. Returns [] for non-residential
     zones or if the standards table is unavailable (fail-safe — caller keeps base controls).
+
+    ``lot_width_range`` is (narrowest front-half width, widest width) measured back from
+    the road edge (services/street_frontage.py). When given it replaces ``lot_width_m``
+    for the width test, because the SEPP minimum is a width at the front building line,
+    whose position is a design choice: widest below the minimum -> ineligible; narrowest
+    meets it -> passes; otherwise unconfirmed. When None, ``lot_width_m`` is used as before.
     """
     zone = normalize_zone(zone_code)
     if zone not in RESIDENTIAL_ZONES:
@@ -356,7 +365,21 @@ def evaluate_eligibility(
             )
             results.append(_result(False, reason, unconfirmed=lot_area_m2 is None))
             continue
-        if min_width is not None and (lot_width_m is None or lot_width_m < min_width):
+        if min_width is not None and lot_width_range is not None:
+            w_min, w_max = lot_width_range
+            if w_max < min_width - WIDTH_MARGIN_M:
+                results.append(_result(False, (
+                    f"The lot measures {w_max:.1f} m at its widest, below the minimum "
+                    f"{min_width:.0f} m at the front building line")))
+                continue
+            if w_min < min_width + WIDTH_MARGIN_M:
+                results.append(_result(False, (
+                    "Depends on where the front building line sits: the lot is "
+                    f"{w_min:.1f} m wide at its narrowest in the front half and {w_max:.1f} m "
+                    f"at its widest, against a minimum {min_width:.0f} m at the front building line"),
+                    unconfirmed=True))
+                continue
+        elif min_width is not None and (lot_width_m is None or lot_width_m < min_width):
             reason = (
                 f"Lot width unconfirmed (minimum {min_width:.0f} m)" if lot_width_m is None
                 else f"Lot width {lot_width_m:.0f} m is below the minimum {min_width:.0f} m"

@@ -1527,6 +1527,7 @@ _SEPP_FORM_TO_ENGINE = {
 def _sepp_eligibility_results(
     zone_code: Optional[str], lat: Optional[float], lng: Optional[float],
     lot_area_m2: Optional[float], lot_width_m: Optional[float], heritage: bool,
+    lot_width_range: Optional[tuple[float, float]] = None,
 ) -> Optional[list]:
     """Run the Housing-SEPP eligibility engine ONCE per brief, fail-safe.
 
@@ -1543,7 +1544,8 @@ def _sepp_eligibility_results(
     try:
         from services.housing_sepp_eligibility import evaluate_eligibility
         return evaluate_eligibility(
-            zone_code, lot_area_m2, lot_width_m, lat, lng, heritage=heritage
+            zone_code, lot_area_m2, lot_width_m, lat, lng, heritage=heritage,
+            lot_width_range=lot_width_range,
         )
     except Exception as e:  # fail-safe — never block the brief on the eligibility engine
         logger.warning("SEPP eligibility evaluation failed: %s", e)
@@ -1587,6 +1589,7 @@ def _lmr_uplift_form(
     zone_code: Optional[str], lat: Optional[float], lng: Optional[float],
     lot_area_m2: Optional[float], lot_width_m: Optional[float], heritage: bool,
     results: Optional[list] = None,
+    lot_width_range: Optional[tuple[float, float]] = None,
 ) -> tuple[Optional[str], Optional[dict]]:
     """Densest engine form ELIGIBLE under the Housing-SEPP / LMR engine (the catchment/area
     uplift, subject to a DA), plus the CITATION of the standard that grants it, or (None, None).
@@ -1602,6 +1605,7 @@ def _lmr_uplift_form(
     if results is None:
         results = _sepp_eligibility_results(
             zone_code, lat, lng, lot_area_m2, lot_width_m, heritage,
+            lot_width_range=lot_width_range,
         )
     if results is None:  # engine errored — no uplift; base tier stands
         return None, None
@@ -2118,8 +2122,8 @@ from services.portal_constraints import (
 from services.lot_dimensions import (
     fetch_lot_geometry,
     calculate_lot_dimensions,
-    eligibility_lot_width,
 )
+from services.street_frontage import street_frontage_for_geometry, width_range
 
 
 # ---------------------------------------------------------------------------
@@ -3986,12 +3990,21 @@ def _generate_brief_sse(
 
             # Per-form eligibility with citations — the ONE engine run this
             # brief makes; the capacity ceiling below reuses the same results.
-            # Width is battleaxe-aware: on a flag lot the SEPP width tests need
-            # the developable HEAD width, not the access-handle frontage.
+            # Width is measured from the road on the lot geometry already fetched
+            # (the SEPP minimum is a width at the front building line), never the
+            # bounding-rectangle side.
             lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
-            _lot_width = eligibility_lot_width(lot_dims_for_ca)
+            _street_frontage = street_frontage_for_geometry(lot_geometry_raw)
+            _width_range = width_range(_street_frontage)
+            _lot_width = _width_range[0] if _width_range else None
+            _lot_width_max = _width_range[1] if _width_range else None
+            _street_frontage_m = (
+                round(sum(r.frontage_m for r in _street_frontage.roads), 2)
+                if _street_frontage.status == "measured" else None
+            )
             eligibility_results = _sepp_eligibility_results(
-                zone_code, lat, lng, lot_area_m2, _lot_width, _heritage_lmr,
+                zone_code, lat, lng, lot_area_m2, None, _heritage_lmr,
+                lot_width_range=_width_range,
             )
             sepp_eligibility_field = _build_sepp_eligibility_field(eligibility_results)
 
@@ -4006,6 +4019,8 @@ def _generate_brief_sse(
                 "eligibility_forms": sepp_eligibility_field.model_dump(),
                 "lot_area_m2": lot_area_m2,
                 "lot_width_m": _lot_width,
+                "lot_width_max_m": _lot_width_max,
+                "street_frontage_m": _street_frontage_m,
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
@@ -4020,8 +4035,9 @@ def _generate_brief_sse(
                     # Reuse the eligibility run from the SEPP card above — the
                     # engine is never invoked twice per brief.
                     _uplift_form, _uplift_citation = _lmr_uplift_form(
-                        controls.get("zone"), lat, lng, lot_area_m2, _lot_width,
+                        controls.get("zone"), lat, lng, lot_area_m2, None,
                         _heritage_lmr, results=eligibility_results,
+                        lot_width_range=_width_range,
                     )
                     _floor_form, _ceiling_form, _ceiling_from_lmr = _realistic_forms(
                         controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name,

@@ -17,7 +17,8 @@ Response contract:
   "run_date": str,
   "zone": str | null, "zone_full": str | null, "zone_epi": str | null,
   "legislation_url": str | null,
-  "lot_area_m2": float | null, "lot_width_m": float | null,
+  "lot_area_m2": float | null, "lot_width_m": float | null,  # narrowest front-half width
+  "lot_width_max_m": float | null, "street_frontage_m": float | null,
   "heritage": {"flag": bool, "items": list[str], "hca": list[str]},
   "gates": {"in_lmr_area": bool, "in_tod": bool, "dual_occ_prohibited": bool},
   "status": "ok" | "not_residential" | "unavailable",
@@ -61,16 +62,16 @@ try:  # Docker (PYTHONPATH=/app)
     import services.housing_sepp_eligibility as hse
     from services.lot_dimensions import (
         calculate_lot_dimensions,
-        eligibility_lot_width,
         fetch_lot_geometry,
     )
+    from services.street_frontage import street_frontage_for_geometry, width_range
 except ImportError:  # local (run from services/)
     import housing_sepp_eligibility as hse
     from lot_dimensions import (
         calculate_lot_dimensions,
-        eligibility_lot_width,
         fetch_lot_geometry,
     )
+    from street_frontage import street_frontage_for_geometry, width_range
 
 router = APIRouter(prefix="/pipeline", tags=["upzoning"])
 
@@ -107,23 +108,30 @@ def _controls_for(prop_id: Optional[int]) -> dict:
         return parse_controls([])
 
 
-def _lot_dims(prop_id: Optional[int]) -> tuple[Optional[float], Optional[float], Optional[str]]:
-    """(area_m2, eligibility_width_m, lot_type) from Portal lot geometry.
+def _lot_dims(prop_id: Optional[int]) -> tuple[
+    Optional[float], Optional[str], Optional[tuple[float, float]], Optional[float]
+]:
+    """(area_m2, lot_type, width_range, street_frontage_m) from Portal lot geometry.
 
-    Width is battleaxe-aware (developable head width on a flag lot, cadastral
-    frontage otherwise) — the value the SEPP minimum-lot-width tests need.
-    (None, None, None) on any gap.
+    The width range is measured from the road on the SAME geometry (the SEPP
+    minimums are a width at the front building line); it is None when no named
+    road edge was measured. (None, None, None, None) on any gap.
     """
     if not prop_id:
-        return None, None, None
+        return None, None, None, None
     try:
-        dims = calculate_lot_dimensions(fetch_lot_geometry(str(prop_id)))
+        geometry = fetch_lot_geometry(str(prop_id))
+        dims = calculate_lot_dimensions(geometry)
+        if dims is None:
+            return None, None, None, None
+        sf = street_frontage_for_geometry(geometry)
     except Exception as e:
         logger.warning("upzoning: lot dimensions failed for prop %s: %s", prop_id, e)
-        return None, None, None
-    if dims is None:
-        return None, None, None
-    return dims.area_m2, eligibility_lot_width(dims), dims.lot_type
+        return None, None, None, None
+    street_m = (
+        round(sum(r.frontage_m for r in sf.roads), 2) if sf.status == "measured" else None
+    )
+    return dims.area_m2, dims.lot_type, width_range(sf), street_m
 
 
 @router.post("/upzoning")
@@ -152,7 +160,7 @@ def run_upzoning_check(req: UpzoningRequest):
         f_dims = pool.submit(_lot_dims, prop_id)
         f_gates = pool.submit(hse._gate_inputs, lat, lng)
         controls = f_controls.result(timeout=50)
-        lot_area_m2, lot_width_m, lot_type = f_dims.result(timeout=50)
+        lot_area_m2, lot_type, lot_width_range, street_frontage_m = f_dims.result(timeout=50)
         gates = f_gates.result(timeout=50)
 
     heritage_items = controls.get("heritage_items") or []
@@ -183,11 +191,12 @@ def run_upzoning_check(req: UpzoningRequest):
     forms = hse.evaluate_eligibility(
         zone_code_src,
         lot_area_m2,
-        lot_width_m,
+        None,
         lat,
         lng,
         heritage=heritage,
         gate_inputs=gates,
+        lot_width_range=lot_width_range,
     )
 
     # [] is ambiguous (non-residential OR standards outage) — disambiguate so the
@@ -215,10 +224,11 @@ def run_upzoning_check(req: UpzoningRequest):
         "former_council": _former_council_safe(req.address, zone_epi),
         "legislation_url": controls.get("legislation_url"),
         "lot_area_m2": lot_area_m2,
-        # Battleaxe-aware: on a flag lot this is the developable HEAD width (what
-        # the SEPP width tests use), not the access-handle frontage. lot_type
-        # tells the UI which label to render.
-        "lot_width_m": lot_width_m,
+        # Narrowest lot width in the front half, measured from the road; the
+        # widest is lot_width_max_m. None when no road edge was measured.
+        "lot_width_m": lot_width_range[0] if lot_width_range else None,
+        "lot_width_max_m": lot_width_range[1] if lot_width_range else None,
+        "street_frontage_m": street_frontage_m,
         "lot_type": lot_type,
         "heritage": {"flag": heritage, "items": heritage_items, "hca": heritage_hca},
         "gates": gates,

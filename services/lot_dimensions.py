@@ -209,13 +209,14 @@ def calculate_lot_dimensions(geometry: Optional[dict]) -> Optional[LotDimensions
 
 
 def eligibility_lot_width(dims: Optional["LotDimensions"]) -> Optional[float]:
-    """Battleaxe-aware lot width for SEPP/LMR eligibility tests.
+    """Bounding-rectangle side (battleaxe head width, else frontage_m). NOT a lot width.
 
     prior-art-checked: Python port of lib/geometry/effective-lot-width.ts
-    battleaxeAwareLotWidth — for a battleaxe (flag) lot the cadastral frontage
-    is the access HANDLE; width-based minimum-lot-width tests must use the
-    developable width of the head (main lot). Falls back to frontage_m; None
-    when nothing usable is present (callers keep the engine's unconfirmed path).
+    battleaxeAwareLotWidth. This returns a side of the minimum-area rectangle, which
+    overstates the street edge on a wedge lot (6 Berrigan St Winston Hills: 22.4 m vs
+    13.3 m measured). It must NOT feed a SEPP minimum-lot-width test: those are a
+    width at the front building line, measured from the road by
+    services/street_frontage.py. Kept only for the golden-fixture capture script.
     """
     if dims is None:
         return None

@@ -1905,8 +1905,20 @@ function lotVsMin(actual: number | null | undefined, min: number | null | undefi
   return `${Math.round(actual).toLocaleString()} ${unit} ${cmp} ${min.toLocaleString()} ${unit} min`;
 }
 
-function EligibilityRows({ forms, lotAreaM2, lotWidthM }: {
-  forms: EligibilityForm[]; lotAreaM2?: number | null; lotWidthM?: number | null;
+/**
+ * Lot width measured from the street (services/street_frontage.py) against a minimum at the front building line.
+ * Printed as the range, never one number compared with '<', because where the building line falls is a design
+ * choice: the engine's own verdict (Eligible / Unconfirmed / Not eligible) carries the answer.
+ */
+function widthVsMin(minW: number | null | undefined, maxW: number | null | undefined, req: number | null | undefined): string | null {
+  if (req == null) return null;
+  if (minW == null) return `${req.toLocaleString()} m min at the front building line; lot width from the street not measured`;
+  const range = maxW != null && Math.round(maxW) !== Math.round(minW) ? `${Math.round(minW)}–${Math.round(maxW)} m` : `${Math.round(minW)} m`;
+  return `lot ${range} wide from the street; ${req.toLocaleString()} m min at the front building line`;
+}
+
+function EligibilityRows({ forms, lotAreaM2, lotWidthM, lotWidthMaxM }: {
+  forms: EligibilityForm[]; lotAreaM2?: number | null; lotWidthM?: number | null; lotWidthMaxM?: number | null;
 }) {
   return (
     <div className="border-t border-slate-100 pt-3 mt-1">
@@ -1919,7 +1931,7 @@ function EligibilityRows({ forms, lotAreaM2, lotWidthM }: {
       <ul className="space-y-2 text-sm">
         {forms.map((f, i) => {
           const area = lotVsMin(lotAreaM2, f.min_lot_size_m2, 'm²');
-          const width = lotVsMin(lotWidthM, f.min_lot_width_m, 'm');
+          const width = widthVsMin(lotWidthM, lotWidthMaxM, f.min_lot_width_m);
           return (
             <li key={f.development_type ?? i} className="flex flex-col gap-0.5">
               <div className="flex items-baseline gap-2 flex-wrap">
@@ -1955,11 +1967,12 @@ function EligibilityRows({ forms, lotAreaM2, lotWidthM }: {
   );
 }
 
-function SeppHousingCard({ standards, eligibility, lotAreaM2, lotWidthM }: {
+function SeppHousingCard({ standards, eligibility, lotAreaM2, lotWidthM, lotWidthMaxM }: {
   standards: SeppStandard[];
   eligibility?: EligibilityField | null;
   lotAreaM2?: number | null;
   lotWidthM?: number | null;
+  lotWidthMaxM?: number | null;
 }) {
   const forms = eligibility?.value ?? null;
   return (
@@ -2009,7 +2022,7 @@ function SeppHousingCard({ standards, eligibility, lotAreaM2, lotWidthM }: {
           </tbody>
         </table>
         {forms && forms.length > 0 && (
-          <EligibilityRows forms={forms} lotAreaM2={lotAreaM2} lotWidthM={lotWidthM} />
+          <EligibilityRows forms={forms} lotAreaM2={lotAreaM2} lotWidthM={lotWidthM} lotWidthMaxM={lotWidthMaxM} />
         )}
         {eligibility && eligibility.value == null && eligibility.confidence === 'not_available' && (
           <p className="text-xs text-slate-400 mt-3 border-t border-slate-100 pt-3">
@@ -3194,6 +3207,7 @@ function IntelligenceBriefInner() {
                   eligibility_forms?: EligibilityField | null;
                   lot_area_m2?: number | null;
                   lot_width_m?: number | null;
+                  lot_width_max_m?: number | null;
                 };
                 if (standards && standards.length) {
                   card = (
@@ -3202,6 +3216,7 @@ function IntelligenceBriefInner() {
                       eligibility={evData.eligibility_forms}
                       lotAreaM2={evData.lot_area_m2}
                       lotWidthM={evData.lot_width_m}
+                      lotWidthMaxM={evData.lot_width_max_m}
                     />
                   );
                 } else {
