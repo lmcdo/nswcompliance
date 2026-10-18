@@ -93,3 +93,28 @@ def test_a_late_stray_match_does_not_excuse_a_whole_sentence():
     page = "Note: Refer to Section 4.1C of the CLEP for the minimum qualifying site area for residential flat buildings."
     other = ["This section sets out controls for residential flat buildings in areas zoned for them."]
     assert ax.missing_sentences({20: page}, other)
+
+
+def test_a_list_lead_in_dropped_while_its_items_were_kept_is_found():
+    """KRG 14B p33 (2026-10-18): 'Consideration must be given to the following to address bushfire protection
+    including:' was dropped and items 11 and 12 kept, so the items lost what they are for."""
+    page = ("Consideration must be given to the following to address bushfire protection including: "
+            "11 Asset protection zones are to be provided within the site. "
+            "12 Access for fire fighting vehicles is to be provided to the building.")
+    copied = ["11 Asset protection zones are to be provided within the site.",
+              "12 Access for fire fighting vehicles is to be provided to the building."]
+    miss = ax.missing_sentences({33: page}, copied)
+    assert miss and miss[33] == ["consideration must be given to the following to address bushfire protection "
+                                 "including"]
+
+
+def test_a_colon_inside_a_sentence_or_a_caption_does_not_split_it():
+    assert [" ".join(w) for w in ax.page_sentences(
+        "The minimum setback is: 5 metres from the boundary of the site to the building.")] == [
+        "the minimum setback is 5 metres from the boundary of the site to the building"]
+    assert ax.page_sentences("Figure 14I.2-1: Internal road footpaths, verges and tree planting.") == []
+
+
+def test_a_short_label_ending_in_a_colon_is_not_a_lead_in():
+    assert ax.page_sentences("Objectives: 1 To provide good access to the site.") == [] or all(
+        w[0] != "objectives" for w in ax.page_sentences("Objectives: 1 To provide good access to the site."))

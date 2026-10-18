@@ -885,13 +885,16 @@ def _reread_skipped_pages(pdf_path, reader, model: str, collected: list[dict]) -
 # ── sentence coverage ────────────────────────────────────────────────────────
 #: A printed sentence shorter than this is a heading, label or caption.
 SENTENCE_MIN_WORDS = 8
+#: A list lead-in ('... is to:') is often shorter; below this it is a label ('Objectives:').
+LEAD_IN_MIN_WORDS = 5
 #: A sentence counts as copied when this share of its four-word runs is in the output. Below it, it is missing.
 SENTENCE_HIT = 0.75
 #: At most this many unmatched four-word runs at a sentence's start are excused as a heading that ran into it.
 HEADING_RUN_MAX = 12
 #: How many missing sentences are named to the model in one re-read.
 SENTENCE_NAMED_MAX = 15
-_SENTENCE_END = re.compile(r"(?<=[.?!])\s+(?=[A-Z(\"'‘“•]|\d{1,3}[a-z]?[.)]?\s|[ivx]{1,4}\)\s|[a-z]\)\s)")
+_SENTENCE_END = re.compile(r"(?<=[.?!])\s+(?=[A-Z(\"'\u2018\u201c\u2022]|\d{1,3}[a-z]?[.)]?\s|[ivx]{1,4}\)\s|[a-z]\)\s)"
+                           r"|(?<=:)\s+(?=\d{1,3}[a-z]?[.)]?\s+[A-Z]|[ivx]{1,4}\)\s|[a-z]\)\s|\([a-z0-9]{1,4}\)\s|\u2022)")
 _WORDS_RE = re.compile(r"[a-z0-9]+")
 _VERB = re.compile(r"\b(?:is|are|be|was|were|has|have|must|shall|should|will|may|can|provide|ensure|create)\b")
 
@@ -901,15 +904,21 @@ def page_sentences(page_text: str) -> list[list[str]]:
 
     Only text that ends a sentence counts ('.', '?', '!'), so a heading, a map label or a legend line -- which the
     brief tells the model to leave out -- is never asked for. A sentence opening 'Figure' is a caption.
+
+    A list's lead-in ending in ':' counts too when a list item follows it: "Consideration must be given to the
+    following to address bushfire protection including:" (KRG 14B), "Development in Botany Road precinct is to:"
+    (City of Sydney s2) were dropped while their items were kept, so the items lost who they apply to (2026-10-18).
     """
     flat = " ".join(page_text.split())
     out = []
     for chunk in _SENTENCE_END.split(flat):
         chunk = chunk.strip()
-        if not chunk.endswith((".", "?", "!")):
+        lead_in = chunk.endswith(":")
+        if not (lead_in or chunk.endswith((".", "?", "!"))):
             continue
         words = _WORDS_RE.findall(chunk.lower())
-        if len(words) < SENTENCE_MIN_WORDS or words[0] in ("figure", "fig", "map", "table"):
+        if len(words) < (LEAD_IN_MIN_WORDS if lead_in else SENTENCE_MIN_WORDS) or words[0] in ("figure", "fig", "map",
+                                                                                              "table"):
             continue
         if sum(len(w) == 1 for w in words) > len(words) / 3:     # letters read across columns, or spaced out
             continue
