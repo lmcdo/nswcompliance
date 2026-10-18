@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The sentence check counted only text ending '.?!', so list lead-ins ending ':' that the reader dropped while keeping their items were never asked for (KRG 14B bushfire and Blue Gum lead-ins p33, CoS s2 'Development in Botany Road precinct is to:'). It now splits after a colon when a list item follows and counts a 5+ word lead-in. Offline on the saved 14B read both p33 lead-ins are flagged.",
-  "commit_hash": "1b5312eb",
+  "commit_hash": "a66ad072",
   "files": [
     "scripts/ai_extractor.py",
     "tests/test_ai_extractor_sentence_coverage.py"
