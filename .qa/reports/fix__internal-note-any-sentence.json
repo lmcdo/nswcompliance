@@ -1,0 +1,74 @@
+{
+  "tier": "standard",
+  "justification": "Display text on the DCP tab and one page-check rule",
+  "commit_hash": "f96a2901",
+  "files": [
+    "frontend-nextjs/lib/dcp/public-condition.ts",
+    "frontend-nextjs/__tests__/lib/dcp/public-condition.test.ts",
+    "scripts/page_integrity/checks_data.py",
+    "tests/test_page_integrity_checks_data.py"
+  ],
+  "pre_impl": {
+    "existing_data": "condition and notes text in dcp_setback_controls, served by the structured-controls route",
+    "assumption_mismatch": "a council sentence containing 'NOT yet stored' would be dropped; the phrase is our marker only",
+    "new_vs_existing": "every DCP tab render after deploy",
+    "falsifiable_check": {
+      "command": "jest __tests__/lib/dcp/public-condition.test.ts; pytest tests/test_page_integrity_checks_data.py; check.py on fresh captures",
+      "fails_when": "an internal note sentence reaches the rendered DCP tab (C5 internal-note > 0) or a terrace row under dwelling houses stops being flagged (test_c4_winston_red)",
+      "observed_red": "Live capture 2026-10-19 10:39 (origin/main): Mount Annan DCP tab shows '... are NOT yet stored.' (C5 internal-note=1); check.py gave C4=2 on Strathfield p.11 and Tempe p.8, both rows that cover dwelling houses. With this branch's check over the same capture: C4=0."
+    }
+  },
+  "functions": [
+    {
+      "name": "publicCondition",
+      "file_line": "frontend-nextjs/lib/dcp/public-condition.ts:18",
+      "input": "stored DCP row condition text from the structured-controls API",
+      "output": "the condition without our extraction notes, or null",
+      "if_none": "null or note-only text returns null and no condition is shown"
+    }
+  ],
+  "values": [
+    {
+      "value": "_OWN_TYPE",
+      "read_at": "scripts/page_integrity/checks_data.py:247",
+      "nullable": "no",
+      "guard_at": "_OWN_TYPE.get(dev)",
+      "if_missing": "no own-type exemption for other project types; their rows are judged as before"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a decimal like 6.5m inside the note's sentence",
+      "what_happens": "splitting at every full stop would leave '6.' behind on the page",
+      "mitigated": true,
+      "how": "split only at '. ' followed by a capital",
+      "repro": "jest public-condition.test.ts Mount Annan case"
+    },
+    {
+      "scenario": "'including deep soil zone' read as including other housing",
+      "what_happens": "a terrace row would pass the check on a house project",
+      "mitigated": true,
+      "how": "'including' must be followed by a housing type word",
+      "repro": "pytest tests/test_page_integrity_checks_data.py::test_c4_winston_red"
+    },
+    {
+      "scenario": "a row for terraces also says 'dwelling house' in passing",
+      "what_happens": "the check would treat a terrace rule as a house rule",
+      "mitigated": false,
+      "how": "accepted: rows naming the house type are taken as covering it",
+      "repro": "synthetic row 'terraces, not dwelling houses'"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  },
+  "falsifiable_check": {
+    "command": "jest __tests__/lib/dcp/public-condition.test.ts; pytest tests/test_page_integrity_checks_data.py; check.py on fresh captures",
+    "fails_when": "an internal note sentence reaches the rendered DCP tab (C5 internal-note > 0) or a terrace row under dwelling houses stops being flagged (test_c4_winston_red)",
+    "observed_red": "Live capture 2026-10-19 10:39 (origin/main): Mount Annan DCP tab shows '... are NOT yet stored.' (C5 internal-note=1); check.py gave C4=2 on Strathfield p.11 and Tempe p.8, both rows that cover dwelling houses. With this branch's check over the same capture: C4=0."
+  }
+}

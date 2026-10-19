@@ -244,6 +244,7 @@ _BASE = re.compile(r"single storey|ground (level|floor)", re.I)
 _CORNER = re.compile(r"corner", re.I)
 # The DCP tab hides an extraction note from the reader (DcpStructuredControls / publicCondition),
 # so the check judges only the words the reader sees.
+_OWN_TYPE = {"dwelling_house": r"dwelling house"}
 _INTERNAL_TAIL = re.compile(r"NOT yet stored:.*$", re.I | re.S)
 _EXCLUDED = re.compile(r"\b(?:excludes?|excluding|except|other than|not for)\b[^.;]*", re.I)
 
@@ -268,8 +269,14 @@ def row_fits_lot(cap: Capture) -> list[Flag]:
     for c in ctl:  # (a)
         # "excludes outbuildings and secondary dwellings" names a type the row is NOT for: a
         # house rule, not a secondary-dwelling one (false positive on 9 Concord pages, 2026-10-19).
-        m = _HOUSING.search(_EXCLUDED.sub(" ", _INTERNAL_TAIL.sub("", _row_text(c))))
+        text = _EXCLUDED.sub(" ", _INTERNAL_TAIL.sub("", _row_text(c)))
+        m = _HOUSING.search(text)
         if not m:
+            continue
+        # A row that also names the project's own type ("applies to dwelling houses, secondary
+        # dwellings and dual occupancies") or adds types to it ("including attached, semi-detached
+        # ... combined") covers this project too (Strathfield p.11, Tempe p.8, 2026-10-19).
+        if (_OWN_TYPE.get(dev) and re.search(_OWN_TYPE[dev], text, re.I)) or re.search(r"\bincluding\s+(?:attached|semi|secondary|dual|terrace|multi|townhouse)", text, re.I):
             continue
         g = _group(m.group(0))
         if g and g not in dev:
