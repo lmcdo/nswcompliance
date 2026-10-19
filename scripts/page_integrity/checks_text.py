@@ -160,6 +160,12 @@ def check_derivations(cap: Capture) -> list[Flag]:
                         out.append(Flag("C6", "fsr-gfa",
                                         f"{key} {v} != FSR {fsr} x lot {lot} = {expect:.1f} (>2%)",
                                         {"field": key, "value": v, "expected": expect}))
+    # A strata lot: a whole-lot home count is not something one unit owner can build.
+    prop = cap.data("/api/property")
+    strata = isinstance(prop, dict) and isinstance(prop.get("strataInfo"), dict) and prop["strataInfo"].get("isStrata") is True
+    if strata and "Homes you could build" in (cap.rendered.get("planning") or ""):
+        out.append(Flag("C6", "strata-yield", "strata lot shows a whole-lot 'Homes you could build' figure",
+                        {"strataInfo": prop.get("strataInfo")}))
     return out
 
 
