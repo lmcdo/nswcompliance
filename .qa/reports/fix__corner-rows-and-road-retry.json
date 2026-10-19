@@ -1,0 +1,85 @@
+{
+  "tier": "standard",
+  "justification": "Changes what the DCP tab and property summary show users about corner lots; frontend only plus the page check",
+  "commit_hash": "434c3eb8",
+  "files": [
+    "frontend-nextjs/lib/geometry/corner-status.ts",
+    "frontend-nextjs/__tests__/lib/geometry/corner-status.test.ts",
+    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/lib/geometry/corner-lot-detection.ts",
+    "frontend-nextjs/components/property-details-comprehensive.tsx",
+    "scripts/page_integrity/checks_data.py",
+    "tests/test_page_integrity_checks_data.py"
+  ],
+  "falsifiable_check": {
+    "command": "jest __tests__/lib/geometry/corner-status.test.ts; pytest tests/test_page_integrity_checks_data.py -k corner; page check C4 corner_lot on fresh captures",
+    "fails_when": "a corner-only row is shown on a measured non-corner lot without the note (C4 corner_lot > 0), or a failed road check is shown as 'not a corner'",
+    "observed_red": "On origin/main the live DCP tab at 57 Edward St Bankstown (measured not a corner) lists 'secondary_street_setback 3.0 [secondary street or corner allotment]' with no note: page check C4 corner_lot = 11 of 20 pages (live capture 2026-10-19). The new C4 tests: unmarked row red, marked row green, failed road check green."
+  },
+  "pre_impl": {
+    "existing_data": "propertyData.cornerLot from the road corridor query; DCP rows from /api/dcp/structured-controls",
+    "assumption_mismatch": "a corner-only row whose condition does not mention corner or secondary street stays unmarked (as today)",
+    "new_vs_existing": "every assessment page after deploy",
+    "falsifiable_check": {
+      "command": "jest __tests__/lib/geometry/corner-status.test.ts; pytest tests/test_page_integrity_checks_data.py -k corner; page check C4 corner_lot on fresh captures",
+      "fails_when": "a corner-only row is shown on a measured non-corner lot without the note (C4 corner_lot > 0), or a failed road check is shown as 'not a corner'",
+      "observed_red": "On origin/main the live DCP tab at 57 Edward St Bankstown (measured not a corner) lists 'secondary_street_setback 3.0 [secondary street or corner allotment]' with no note: page check C4 corner_lot = 11 of 20 pages (live capture 2026-10-19). The new C4 tests: unmarked row red, marked row green, failed road check green."
+    }
+  },
+  "functions": [
+    {
+      "name": "cornerStatus",
+      "file_line": "frontend-nextjs/lib/geometry/corner-status.ts:10",
+      "input": "CornerLotResult from the road corridor query",
+      "output": "corner, not_corner or unknown for the DCP tab and summary",
+      "if_none": "null, an error or confidence below 1 all return unknown"
+    },
+    {
+      "name": "row_fits_lot",
+      "file_line": "scripts/page_integrity/checks_data.py:255",
+      "input": "one captured assessment page with its API calls",
+      "output": "C4 flags for rows that do not fit this lot",
+      "if_none": "missing property route means corner rows are not examined"
+    }
+  ],
+  "values": [
+    {
+      "value": "marked",
+      "read_at": "scripts/page_integrity/checks_data.py:",
+      "nullable": "no",
+      "guard_at": "cap.rendered.get('dcp') or ''",
+      "if_missing": "no rendered DCP text means rows are judged unmarked (red)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "road check fails and the lot is really a corner",
+      "what_happens": "corner rows would be marked as not applying to a corner lot",
+      "mitigated": true,
+      "how": "only a measured not_corner marks rows; error or confidence 0 is unknown",
+      "repro": "jest corner-status.test.ts 'a failed road query is unknown'"
+    },
+    {
+      "scenario": "state-road row matched as a corner row",
+      "what_happens": "a real 10 m state-road rule would be marked as not applying",
+      "mitigated": true,
+      "how": "pattern needs corner or secondary street/road/frontage",
+      "repro": "jest corner-status.test.ts state and regional roads -> false"
+    },
+    {
+      "scenario": "road map slow on every try",
+      "what_happens": "the page waits up to 45 s for the corner answer",
+      "mitigated": false,
+      "how": "accepted: three tries 10/15/20 s, then the plain-words 'could not reach' sentence",
+      "repro": "block portal.spatial.nsw.gov.au and load an address"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 57 Edward St Bankstown DCP tab shows the corner note on the secondary street row"
+  }
+}
