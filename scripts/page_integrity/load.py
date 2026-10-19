@@ -38,7 +38,10 @@ class Capture:
         if c is None or c["json"] is None:
             return None
         j = c["json"]
-        return j["data"] if isinstance(j, dict) and "data" in j and "success" in j else j
+        d = j["data"] if isinstance(j, dict) and "data" in j and "success" in j else j
+        # An empty body is no answer: treating {} as present made checks flag facts the route never
+        # sent and report them as examined.
+        return None if d in ({}, []) else d
 
 
 def load(folder: Path | str) -> Capture:

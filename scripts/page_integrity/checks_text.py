@@ -60,7 +60,9 @@ def check_engines_agree(cap: Capture) -> list[Flag]:
     perm = cap.data("/api/lep/permissibility")
     if not isinstance(ca, dict) or not isinstance(perm, dict) or not perm.get("covered"):
         return []
-    if ca.get("max_permitted_form") is not None:
+    # A form at house density (e.g. 'dwelling_house') disagrees just as much as None does.
+    shown = ca.get("max_permitted_form")
+    if shown is not None and _norm(str(shown)).startswith(DENSER_FORMS):
         return []
     rows = [e for e in perm.get("entries") or []
             if isinstance(e, dict) and _norm(e.get("permissibility") or "") == "permitted"
@@ -69,7 +71,7 @@ def check_engines_agree(cap: Capture) -> list[Flag]:
         return []
     forms = ", ".join(str(r.get("development_type") or "") for r in rows)
     return [Flag("C2", "engines-agree",
-                 f"yield box shows a single-number yield (max_permitted_form None, as_of_right_form="
+                 f"yield box shows a single-number yield (max_permitted_form {shown!r}, as_of_right_form="
                  f"{ca.get('as_of_right_form')!r}) but the permissibility table lists as permitted in "
                  f"zone {perm.get('zone')}: {forms}",
                  {"permissibility_rows": rows, "as_of_right_form": ca.get("as_of_right_form"),
