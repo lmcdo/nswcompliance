@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which DCP rows reach the served yield box; read-only queries unchanged, only their key",
-  "commit_hash": "6c5b5694",
+  "commit_hash": "fc24da5a",
   "files": [
     "frontend-nextjs/lib/lga-slug-renames.json",
     "frontend-nextjs/lib/lga-slug.ts",
@@ -34,7 +34,7 @@
     },
     {
       "name": "_fetch_dcp_coverage",
-      "file_line": "services/constraint_arithmetic.py:1389",
+      "file_line": "services/constraint_arithmetic.py:1501",
       "input": "raw council name and housing type",
       "output": "coverage findings for the council, or None",
       "if_none": "a None key returns None before any query runs"
@@ -43,7 +43,7 @@
   "values": [
     {
       "value": "lga",
-      "read_at": "services/constraint_arithmetic.py:1356",
+      "read_at": "services/constraint_arithmetic.py:1468",
       "nullable": "yes",
       "guard_at": "if lga: before fetch_dcp_setbacks",
       "if_missing": "no DCP rows fetched, footprint withheld with the existing message"
