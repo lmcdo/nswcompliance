@@ -1,0 +1,71 @@
+{
+  "tier": "standard",
+  "justification": "Adds a one-letter OCR repair to scripts/state_law_recopy.py words_dropped, so a state-law row that is the law's own words with one misread letter ('parkin' for 'parking') can be re-copied. Measured over the 57 unproven state rows: clears exactly 1 (38711, Codes SEPP 3D.46(10), served on the address check page by app/api/sepp/exempt-complying). Re-copied live with the existing guarded apply script; DQ-145 98 -> 97, ceiling lowered.",
+  "commit_hash": "87eb14f6",
+  "files": [
+    "scripts/state_law_recopy.py",
+    "tests/test_state_law_recopy.py",
+    "scripts/outreach_claim_checks.py",
+    "data/state_law_recopy_plan_2026-10-19-one-letter.json"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_state_law_recopy.py -q",
+    "fails_when": "Replacing the new branch's condition with False: 1 failed / 23 passed (test_one_letter_ocr_slip_is_a_repair_not_a_dropped_word). Clean: 24 passed.",
+    "observed_red": "Measured 2026-10-19 by sed-ing the condition to `if False:` and running the file: 1 failed, 23 passed.",
+    "external_authority": "The in-force Codes SEPP (epi-2008-0572 snapshot 2026-10-16): the new text of 38711 is unit sec.3D.46-ssec.10, verbatim in the law by both provers (check a)."
+  },
+  "pre_impl": {
+    "existing_data": "words_dropped already forgave ligature losses and a row cut off mid-word at its end; test_cut_off_word_in_the_middle_is_not_forgiven ('Poo' for 'Pools') must still fail, and does (two letters).",
+    "assumption_mismatch": "Expected the rule to clear several state rows; measured it clears 1 of 57. The 4 rows failing only on dropped words hold real extra words ('and', 'an', 'zone', 'or 2'), not slips, and stay refused.",
+    "new_vs_existing": "One helper (one_letter_slip) and one branch in the existing replace handling. No new query; apply path unchanged."
+  },
+  "functions": [
+    {
+      "name": "one_letter_slip",
+      "file_line": "scripts/state_law_recopy.py:290",
+      "input": "a row word and the law word it replaces, one-for-one",
+      "output": "True only for exactly one letter added, dropped or changed, law word 4+ letters, no digits",
+      "if_none": "not applicable: returns bool; False keeps the old behaviour (word counted as dropped, row refused)"
+    },
+    {
+      "name": "words_dropped",
+      "file_line": "scripts/state_law_recopy.py:301",
+      "input": "the row text and the unit's words",
+      "output": "words of the row not in the unit; one-letter slips now listed in repairs instead",
+      "if_none": "empty list means every row word is explained"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A changed number passes as a one-letter slip (1.8 vs 1.9).",
+      "what_happens": "A different rule would be treated as the same.",
+      "mitigated": true,
+      "how": "Words with any digit never match; check d also requires every old number in the new text.",
+      "repro": "pytest tests/test_state_law_recopy.py -k short_word"
+    },
+    {
+      "scenario": "Short words with different meaning (of/or, may/many).",
+      "what_happens": "The row could be matched to the wrong unit.",
+      "mitigated": true,
+      "how": "Law word must be 4+ letters; the written text is always the law's unit, never the row's words.",
+      "repro": "python -c \"import sys; sys.path.insert(0,'scripts'); import state_law_recopy as R; print(R.one_letter_slip('of','or'))\""
+    },
+    {
+      "scenario": "A two-letter loss in the middle of the row is forgiven.",
+      "what_happens": "A row missing words would be re-copied as if whole.",
+      "mitigated": true,
+      "how": "Only a one-for-one swap at edit distance 1; the existing 'Poo'/'Pools' test still fails as intended.",
+      "repro": "pytest tests/test_state_law_recopy.py -k cut_off_word_in_the_middle"
+    }
+  ],
+  "real_layer_exempt": {
+    "scripts/state_law_recopy.py": "The changed functions are pure text matching; no database or HTTP call was added. The live write used the existing apply_state_law_recopy.py (md5, current, version-history and rowcount guards, backup committed)."
+  },
+  "residual_risk": "A one-letter plural change (storey/storeys) now counts as a slip for UNIT CHOICE only; the stored text becomes the law's own words, so no wrong wording can be served. 56 state rows remain unproven.",
+  "post_merge": {
+    "db_reset": "No. The single live re-copy (38711) is already applied; backup data/db_rollback_backups/state_law_recopy_pre_2026-10-19T110955.json.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "python scripts/dq_probe_live.py --id DQ-145 prints 97 or lower."
+  }
+}
