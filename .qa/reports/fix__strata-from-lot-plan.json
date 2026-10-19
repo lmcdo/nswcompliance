@@ -1,0 +1,75 @@
+{
+  "tier": "standard",
+  "justification": "Changes a served property fact (strata) on the assessment page; reads data the page already fetches",
+  "commit_hash": "a48a27b5",
+  "files": [
+    "frontend-nextjs/lib/property/strata-plan.ts",
+    "frontend-nextjs/__tests__/lib/property/strata-plan.test.ts",
+    "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "frontend-nextjs/hooks/usePropertyAssessment.ts",
+    "frontend-nextjs/app/assessment/page.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "jest __tests__/lib/property/strata-plan.test.ts; page check R on the Concord reference capture",
+    "fails_when": "strataPlanFromLots stops reading SP9807 from the Concord lot records, or the reference check R still reports strata=False for Concord",
+    "observed_red": "On origin/main the new Jest file fails (no lib/property/strata-plan module) and the live page for 14 Gale St Concord shows strataInfo isStrata=false source=null while the Portal /lot?propId=1452238 returns CP/-/SP9807 + 1..4/-/SP9807 (fetched 2026-10-19)."
+  },
+  "pre_impl": {
+    "existing_data": "Planning Portal /lot?propId= response, already fetched by getLotGeometry",
+    "assumption_mismatch": "a parcel mixing DP and SP lots is not called strata (all lots must share one plan)",
+    "new_vs_existing": "every assessment page load after deploy",
+    "falsifiable_check": {
+      "command": "jest __tests__/lib/property/strata-plan.test.ts; page check R on the Concord reference capture",
+      "fails_when": "strataPlanFromLots stops reading SP9807 from the Concord lot records, or the reference check R still reports strata=False for Concord",
+      "observed_red": "On origin/main the new Jest file fails (no lib/property/strata-plan module) and the live page for 14 Gale St Concord shows strataInfo isStrata=false source=null while the Portal /lot?propId=1452238 returns CP/-/SP9807 + 1..4/-/SP9807 (fetched 2026-10-19)."
+    }
+  },
+  "functions": [
+    {
+      "name": "strataPlanFromLots",
+      "file_line": "frontend-nextjs/lib/property/strata-plan.ts:21",
+      "input": "array of Portal LotDescription strings for one property",
+      "output": "strata plan id and unit count, or null when not one strata scheme",
+      "if_none": "null or blank entries make the whole result null, never strata"
+    }
+  ],
+  "values": [
+    {
+      "value": "lotPlan",
+      "read_at": "frontend-nextjs/lib/nsw-planning-portal.ts:1210",
+      "nullable": "yes",
+      "guard_at": "lotGeometry?.lotDescriptions ?? []",
+      "if_missing": "falls back to the existing valuation and address signals"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "one stray SP record on a normal lot",
+      "what_happens": "a house would be wrongly called a strata unit and its yield stopped",
+      "mitigated": true,
+      "how": "every lot description must match the same strata plan",
+      "repro": "jest strata-plan.test.ts 'a mixed parcel is not called strata'"
+    },
+    {
+      "scenario": "lot fetch fails or times out",
+      "what_happens": "strata falls back to the old signals instead of the plan",
+      "mitigated": true,
+      "how": "lotDescriptions ?? [] gives null, old signals still apply",
+      "repro": "jest strata-plan.test.ts 'no records'"
+    },
+    {
+      "scenario": "two different strata plans on one parcel",
+      "what_happens": "the banner would name one plan for a site that has two",
+      "mitigated": true,
+      "how": "plans set size must be exactly one",
+      "repro": "jest strata-plan.test.ts 'two different plans'"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 14 Gale St Concord shows 'This lot is part of strata plan SP9807 (4 units)'"
+  }
+}

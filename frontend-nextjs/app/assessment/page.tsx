@@ -295,7 +295,13 @@ export default function AssessmentPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                       </svg>
                       <div>
-                        <p className="text-xs font-semibold text-orange-800">Strata unit detected</p>
+                        <p className="text-xs font-semibold text-orange-800">
+                          {(selectedProperty as any).strataInfo?.strataPlan
+                            ? `This lot is part of strata plan ${(selectedProperty as any).strataInfo.strataPlan}`
+                              + ((selectedProperty as any).strataInfo.strataUnits
+                                ? ` (${(selectedProperty as any).strataInfo.strataUnits} units)` : '')
+                            : 'This address looks like a strata unit'}
+                        </p>
                         <p className="text-xs text-orange-700 mt-0.5">
                           Controls below apply to the building/scheme. Unit alterations are governed by strata by-laws and owners corporation consent.
                         </p>
