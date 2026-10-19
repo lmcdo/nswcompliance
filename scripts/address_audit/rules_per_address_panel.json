@@ -182,12 +182,12 @@
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 2260,
+    "total": 2552,
     "layers": {
-     "generic": 1161,
+     "generic": 1473,
      "use_specific": 695,
      "condition": 0,
-     "precinct": 404
+     "precinct": 384
     },
     "councils": [
      "city_of_sydney"
@@ -218,12 +218,12 @@
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 2024,
+    "total": 2338,
     "layers": {
-     "generic": 1285,
+     "generic": 1598,
      "use_specific": 728,
      "condition": 0,
-     "precinct": 11
+     "precinct": 12
     },
     "councils": [
      "city_of_sydney"
@@ -1033,6 +1033,10 @@
   {
    "date": "2026-10-18",
    "reason": "First baseline 2026-10-18: production after #1342/#1343 (cc1ab09c). Records today's answers, not a claim they are right; DQ-143/144 measure that."
+  },
+  {
+   "date": "2026-10-19",
+   "reason": "City of Sydney schedules + section 1 re-read went live 2026-10-18 (doubled-text fix). Measured: schedules served rows 252 -> 541 (text 135k -> 158k chars: rules the doubled-glyph read had dropped), section 1 49 -> 73 (same text, 18.6k -> 17.6k chars, list items split). Explains +304 of 004's +312 and 005's +314; section 3 unchanged since 2026-10-14. Duplicates checked: 18-20 identical-text copies, all different clause refs (Schedule 6 Rocks signage repeated per clause by the council), none same-ref."
   }
  ]
 }

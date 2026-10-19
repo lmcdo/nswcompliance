@@ -1,0 +1,30 @@
+{
+  "tier": "minor",
+  "justification": "Row 255 (Campbelltown 3.6.1.4) was moved live from car_parking 2 spaces to parking_area_max 36 m2, a value its own quote now states. The validator therefore counts it as explained, and the shrink-only baseline must drop it or the gates job fails on every PR. One line removed from scripts/control_source_values_baseline.json; count 35 -> 34. Also rebaselines the rules-per-address panel: 004/005 (City of Sydney) rose 13-15% because the schedules (252 -> 541 rows, +23k chars) and section 1 (49 -> 73, same text) re-reads went live 2026-10-18; duplicates checked, all distinct clause refs.",
+  "commit_hash": "54c0568d",
+  "files": [
+    "scripts/control_source_values_baseline.json",
+    "scripts/address_audit/rules_per_address_panel.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/validate_control_source_values.py",
+    "fails_when": "With 255 still listed it exits non-zero: '1 rows in the baseline are now explained and must be removed from it -- [255]' (PR #1364 run 39174266471). Without it: exit 0, measured against the live table 2026-10-19.",
+    "observed_red": "PR #1364 gates run 39174266471 failed with that message after the live move.",
+    "external_authority": "The live dcp_setback_controls row 255 and the validator's own derivation rules."
+  },
+  "residual_risk": "None beyond the live move it records.",
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "gates passes on main."
+  },
+  "break_it": [
+    {
+      "scenario": "Dropping 255 hides a row whose value is still unsupported.",
+      "what_happens": "The validator re-derives every current row from its own quote; an unsupported 255 would show as a NEW finding and fail.",
+      "mitigated": true,
+      "how": "Ran against live: exit 0, so 36 m2 is derived from its quote."
+    }
+  ]
+}
