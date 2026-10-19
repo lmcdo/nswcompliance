@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Access control on a paid product route; money and abuse exposure",
-  "commit_hash": "068f2e9c",
+  "commit_hash": "b6b625f8",
   "files": [
     "frontend-nextjs/app/api/reports/conveyancing/generate/route.ts",
     "frontend-nextjs/app/api/stripe/webhook/route.ts",
