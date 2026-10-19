@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes the served yield-box answer and the Site Report call path; read-only lookups, no writes, no schema change",
-  "commit_hash": "b0e99efb",
+  "commit_hash": "92a988c0",
   "files": [
     "services/intelligence_brief.py",
     "services/constraint_arithmetic.py",
