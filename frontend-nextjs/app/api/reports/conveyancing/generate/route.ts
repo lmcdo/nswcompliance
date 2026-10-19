@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     // An unknown session id is a refusal; Stripe being unreachable is an outage, not a refusal.
     const code = (err as { code?: string; type?: string } | null);
-    if (code?.code === 'resource_missing' || code?.type === 'StripeInvalidRequestError') {
+    if (code?.code === 'resource_missing') {
       return NextResponse.json({ error: 'No paid order for this report' }, { status: 403 });
     }
     console.error('[conveyancing/generate] Stripe session lookup failed:', err);
