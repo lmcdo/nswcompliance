@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LandUseZoningCard } from './LandUseZoningCard';
 import { ConstraintArithmeticCard } from './ConstraintArithmeticCard';
+import { councilDisplayName } from '@/lib/council-display-name';
 import { widthRange } from '@/lib/geometry/street-frontage';
 import { LocalProvisionsCard } from './LocalProvisionsCard';
 import { HeritageProvisionsCard } from './HeritageProvisionsCard';
@@ -76,7 +77,9 @@ export function LepControls({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            The LEP sets the framework for how land can be used and developed in the {constraints?.lga || 'local'} area.
+            {councilDisplayName(constraints?.lga)
+              ? <>The local environmental plan for {councilDisplayName(constraints?.lga)} sets how land can be used and developed.</>
+              : <>The council&apos;s local environmental plan sets how land can be used and developed.</>}
           </p>
         </CardContent>
       </Card>
