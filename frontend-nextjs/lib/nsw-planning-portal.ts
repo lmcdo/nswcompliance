@@ -8,6 +8,7 @@ import { getClauseNumbersForMapType } from './lep-local-provisions-mapping';
 import { getKeySitesProvision } from './key-sites-map-provisions';
 import { filterToAskedProperty } from './address-number-match';
 import { strataPlanFromLots } from './property/strata-plan';
+import { floodMapStatus } from './flood/flood-map';
 import { landFactsFromLayers, type LandFacts } from './lep-land-condition';
 
 export const ADDRESS_SEARCH_UNAVAILABLE = 'Address search unavailable';
@@ -59,7 +60,10 @@ export interface PlanningConstraints {
  heritageLegislativeClause?: string;
  heritageSignificance?: string;
  heritageLegislationUrl?: string;
- floodProne: boolean;
+ /** On the council's Flood Planning Map: true / false (council publishes a map, lot not on it) / null (cannot tell). */
+ floodProne: boolean | null;
+ /** The plain-words flood sentence for the page (see lib/flood/flood-map.ts). */
+ floodMapNote?: string;
  floodInfo?: {
    name?: string;
    blockType?: string;
@@ -750,7 +754,7 @@ export class NSWPlanningPortalService {
  zoneDescription: null,
  lga: null,
  heritage: false,
- floodProne: false,
+ floodProne: null,
  bushfireProne: false,
  basixClimate: null,
  basixWater: null,
@@ -1382,6 +1386,15 @@ export class NSWPlanningPortalService {
  }
  if (dualOccData) {
    constraints.dualOccProhibited = dualOccData;
+ }
+
+ // Flood: from the council's published Flood Planning Map, never a constant.
+ if (propertyData) {
+   const fLon = (propertyData.geometry.x / 20037508.34) * 180;
+   const fLat = (Math.atan(Math.exp((propertyData.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+   const flood = await floodMapStatus(fLon, fLat, (constraints.landApplicationInstruments ?? []).map((i) => i.name));
+   constraints.floodProne = flood.floodProne;
+   constraints.floodMapNote = flood.note;
  }
 
  // Step 4: Clean up the address from search result

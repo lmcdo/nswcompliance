@@ -1,0 +1,99 @@
+{
+  "tier": "standard",
+  "justification": "Changes a served hazard fact (flood) on the page, DA intake and SEE PDF",
+  "commit_hash": "ddc43871",
+  "files": [
+    "frontend-nextjs/lib/flood/flood-map.ts",
+    "frontend-nextjs/__tests__/lib/flood/flood-map.test.ts",
+    "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "frontend-nextjs/lib/property-data.ts",
+    "frontend-nextjs/components/compliance/ComplianceDashboard.tsx",
+    "frontend-nextjs/lib/see/propertyContext.ts",
+    "frontend-nextjs/lib/pdf/types.ts",
+    "frontend-nextjs/components/pdf/ContextSection.tsx",
+    "frontend-nextjs/components/pdf/see-pages/Page2SiteContext.tsx",
+    "frontend-nextjs/components/property-card.tsx",
+    "frontend-nextjs/app/api/property/profile/route.ts",
+    "frontend-nextjs/components/home/PropertyProfile.tsx",
+    "frontend-nextjs/lib/pattern-book-eligibility/check-exclusions.ts",
+    "frontend-nextjs/app/api/compliance/dashboard/route.ts",
+    "tests/test_page_integrity_reference_xprod.py"
+  ],
+  "falsifiable_check": {
+    "command": "jest __tests__/lib/flood/flood-map.test.ts; pytest tests/test_page_integrity_reference_xprod.py; check.py R on fresh captures",
+    "fails_when": "the page shows flood No on a council with no published flood map (R reference:flood_lep_map), or decideFloodMap returns false without a published map",
+    "observed_red": "On origin/main nsw-planning-portal.ts sets floodProne: false for every property (line 753) and nothing ever changes it; the 3 stored reference captures show floodProne False on councils with no published flood map, and test_r_catches_the_old_constant_flood_no is red on them (passes only because the page was wrong). Hazard layer 230 checked live: 10 publishing plans; Winston Hills point = 0 features."
+  },
+  "pre_impl": {
+    "existing_data": "NSW Planning Portal ePlanning Hazard layer 230 (Flood Planning Map) polygons and their EPI_NAME, queried live by point",
+    "assumption_mismatch": "a council whose plan name on layer 230 differs from the Land Application Map name is treated as publishing no map (shown as not known, never No)",
+    "new_vs_existing": "every assessment page, profile call and SEE PDF after this deploy",
+    "falsifiable_check": {
+      "command": "jest __tests__/lib/flood/flood-map.test.ts; pytest tests/test_page_integrity_reference_xprod.py; check.py R on fresh captures",
+      "fails_when": "the page shows flood No on a council with no published flood map (R reference:flood_lep_map), or decideFloodMap returns false without a published map",
+      "observed_red": "On origin/main nsw-planning-portal.ts sets floodProne: false for every property (line 753) and nothing ever changes it; the 3 stored reference captures show floodProne False on councils with no published flood map, and test_r_catches_the_old_constant_flood_no is red on them (passes only because the page was wrong). Hazard layer 230 checked live: 10 publishing plans; Winston Hills point = 0 features."
+    }
+  },
+  "functions": [
+    {
+      "name": "decideFloodMap",
+      "file_line": "frontend-nextjs/lib/flood/flood-map.ts:46",
+      "input": "point feature count, the lot's plan names, and the set of plans that publish a flood map",
+      "output": "floodProne true, false or null plus the plain sentence for the page",
+      "if_none": "a null count or a null plan set both return floodProne null, never false"
+    }
+  ],
+  "values": [
+    {
+      "value": "constraints.floodProne",
+      "read_at": "frontend-nextjs/lib/nsw-planning-portal.ts:1395",
+      "nullable": "yes",
+      "guard_at": "three-state renders in every reader",
+      "if_missing": "shown as Not known \u2014 no published flood map"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "the lot is outside the 10 councils that publish a flood planning map",
+      "what_happens": "the page would say Flood: No when nobody checked the land at all",
+      "mitigated": true,
+      "how": "decideFloodMap returns null unless the lot's plan publishes a map",
+      "repro": "jest flood-map.test.ts 'council publishes no map'"
+    },
+    {
+      "scenario": "the ArcGIS layer returns HTTP 200 with an error body",
+      "what_happens": "an error would be read as no polygon here and shown as No",
+      "mitigated": true,
+      "how": "!d.error && Array.isArray(d.features) else null",
+      "repro": "jest flood-map.test.ts 'map unreachable'"
+    },
+    {
+      "scenario": "the distinct-plans request fails on a cold server",
+      "what_happens": "every lot would be shown not known until the list loads",
+      "mitigated": true,
+      "how": "a failure is not cached, the next request retries",
+      "repro": "block mapprod3 once, then load two addresses"
+    },
+    {
+      "scenario": "pattern book eligibility receives null flood",
+      "what_happens": "an unknown flood status is not listed as a potential exclusion",
+      "mitigated": false,
+      "how": "unchanged from before (it was always false); logged for the pattern-book step",
+      "repro": "run check-exclusions with floodProne null"
+    },
+    {
+      "scenario": "extra latency from two more map calls on every page load",
+      "what_happens": "the property lookup could take longer for the reader",
+      "mitigated": true,
+      "how": "point query is one call; plan list cached per server instance",
+      "repro": "time /api/property before and after deploy"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 a Hornsby flood lot shows Yes; Winston Hills shows Not known \u2014 no published flood map"
+  }
+}

@@ -275,7 +275,7 @@ export function ContextSection({
           <View style={styles.dataTable}>
             <View style={styles.contextTableRow}>
               <Text style={styles.tableCellLabel}>Flood Prone Land:</Text>
-              <Text style={styles.tableCellValue}>{environmental_constraints.flood_prone ? 'Yes' : 'No'}</Text>
+              <Text style={styles.tableCellValue}>{environmental_constraints.flood_prone === true ? 'Yes' : environmental_constraints.flood_prone === false ? 'No' : 'Not known — no published flood map'}</Text>
             </View>
             <View style={styles.contextTableRow}>
               <Text style={styles.tableCellLabel}>Bushfire Prone Land:</Text>

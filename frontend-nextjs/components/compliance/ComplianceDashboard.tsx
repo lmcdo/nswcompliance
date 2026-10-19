@@ -1009,9 +1009,9 @@ export function ComplianceDashboard({
     if (propertyData.constraints.maxFsr) items.push(`${propertyData.constraints.maxFsr}:1`);
     if (propertyData.heritage?.isHeritage) items.push('Heritage: Yes');
     else items.push('Heritage: No');
-    if (propertyData.constraints.floodProne !== undefined) {
-      items.push(`Flood: ${propertyData.constraints.floodProne ? 'Yes' : 'No'}`);
-    }
+    if (propertyData.constraints.floodProne === true) items.push('Flood: Yes');
+    else if (propertyData.constraints.floodProne === false) items.push('Flood: No');
+    else items.push('Flood: not known from the map');
     if (propertyData.constraints.basixWater) items.push(`${propertyData.constraints.basixWater} Water SEPP`);
 
     return items.join(' | ');

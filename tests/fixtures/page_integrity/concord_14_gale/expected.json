@@ -29,8 +29,8 @@
    "source": "Portal layerintersect (ePlanningApi, propId 1452238) no Heritage Map layer intersects, checked 2026-10-19"
   },
   "flood_lep_map": {
-   "value": false,
-   "source": "Portal layerintersect (ePlanningApi, propId 1452238) no Flood Planning layer intersects, checked 2026-10-19"
+   "value": null,
+   "source": "ePlanning Hazard layer 230 (Flood Planning Map), checked 2026-10-19: Canada Bay Local Environmental Plan 2013 publishes no flood planning map (10 plans do), so the map cannot answer; shown as not known, never No"
   },
   "bushfire": {
    "value": false,

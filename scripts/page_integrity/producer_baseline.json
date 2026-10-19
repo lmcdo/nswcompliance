@@ -104,11 +104,10 @@
  },
  "flood": {
   "frontend-nextjs/app/api/canibuildit/check/route.ts": 1,
-  "frontend-nextjs/app/api/compliance/dashboard/route.ts": 1,
-  "frontend-nextjs/app/api/property/profile/route.ts": 1,
   "frontend-nextjs/app/api/property/route.ts": 2,
   "frontend-nextjs/components/compliance/ComplianceDashboard.tsx": 2,
   "frontend-nextjs/components/property-card.tsx": 1,
+  "frontend-nextjs/lib/flood/flood-map.ts": 1,
   "frontend-nextjs/lib/nsw-planning-portal.ts": 1,
   "frontend-nextjs/lib/property-data.ts": 1,
   "frontend-nextjs/lib/see/intake.ts": 3,
@@ -119,7 +118,6 @@
  "front": {
   "frontend-nextjs/app/api/dcp/structured-controls/route.ts": 1,
   "frontend-nextjs/app/blog/setback-requirements-nsw/page.tsx": 1,
-  "frontend-nextjs/components/property-details-comprehensive.tsx": 1,
   "frontend-nextjs/hooks/usePropertyAssessment.ts": 1,
   "frontend-nextjs/lib/geometry/corner-lot-detection.ts": 1,
   "frontend-nextjs/lib/geometry/lot-dimensions.ts": 1,
@@ -228,7 +226,7 @@
   "services/intelligence_brief.py": 1
  },
  "strata": {
-  "frontend-nextjs/lib/nsw-planning-portal.ts": 2,
+  "frontend-nextjs/lib/nsw-planning-portal.ts": 1,
   "scripts/generate_conveyancing_report.py": 1,
   "services/intelligence_brief.py": 1,
   "services/strata_lookup.py": 2
