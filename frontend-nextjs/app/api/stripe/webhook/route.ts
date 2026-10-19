@@ -447,7 +447,7 @@ async function handleConveyancingReport(
   session: Stripe.Checkout.Session,
   meta: Record<string, string>
 ) {
-  const { report_id, address, lat, lng, prop_id } = meta;
+  const { report_id, address, lat, lng } = meta;
   const email = session.customer_details?.email || meta.email;
 
   if (!report_id || !address || !email) {
@@ -468,13 +468,8 @@ async function handleConveyancingReport(
     const genRes = await fetch(`${baseUrl}/api/reports/conveyancing/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        report_id,
-        address,
-        lat: parseFloat(lat),
-        lng: parseFloat(lng),
-        prop_id: prop_id || null,
-      }),
+      // The route confirms the paid session with Stripe and reads the address from it.
+      body: JSON.stringify({ report_id, checkout_session_id: session.id }),
     });
 
     if (!genRes.ok) {

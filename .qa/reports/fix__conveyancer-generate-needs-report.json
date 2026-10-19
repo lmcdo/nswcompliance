@@ -1,0 +1,90 @@
+{
+  "tier": "critical",
+  "justification": "Access control on a paid product route; money and abuse exposure",
+  "commit_hash": "8e0ccb1a",
+  "files": [
+    "frontend-nextjs/app/api/reports/conveyancing/generate/route.ts",
+    "frontend-nextjs/app/api/stripe/webhook/route.ts",
+    "frontend-nextjs/__tests__/api/conveyancing-generate-paid-only.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "jest __tests__/api/conveyancing-generate-paid-only.test.ts",
+    "fails_when": "the route forwards a request without a paid conveyancing session for this report_id, or uses an address from the request body",
+    "observed_red": "On origin/main frontend-nextjs/app/api/reports/conveyancing/generate/route.ts has no payment, token or report check (read 2026-10-19): a POST with any report_id/address/lat/lng is forwarded to Railway. The new Jest file's 'refuses a request with no checkout session' case returns 200-path on main (route forwards) and 400 here."
+  },
+  "pre_impl": {
+    "existing_data": "Stripe checkout session metadata set by app/api/stripe/checkout/conveyancing (report_id, address, product, lat, lng, prop_id)",
+    "assumption_mismatch": "a session created before lat/lng were added to metadata returns 422 instead of a PDF",
+    "new_vs_existing": "applies to every conveyancing PDF generation request after this deploy, from the webhook",
+    "falsifiable_check": {
+      "command": "jest __tests__/api/conveyancing-generate-paid-only.test.ts",
+      "fails_when": "the route forwards a request without a paid conveyancing session for this report_id, or uses an address from the request body",
+      "observed_red": "On origin/main frontend-nextjs/app/api/reports/conveyancing/generate/route.ts has no payment, token or report check (read 2026-10-19): a POST with any report_id/address/lat/lng is forwarded to Railway. The new Jest file's 'refuses a request with no checkout session' case returns 200-path on main (route forwards) and 400 here."
+    },
+    "external_source_error": "stripe.checkout.sessions.retrieve throws on an unknown id or network error; caught and answered 403",
+    "frontend_type": "no frontend type change; the webhook is the only caller",
+    "user_failure_mode": "a paying customer whose session lacks lat/lng gets no PDF email; the webhook logs the 422"
+  },
+  "functions": [
+    {
+      "name": "POST",
+      "file_line": "frontend-nextjs/app/api/reports/conveyancing/generate/route.ts:43",
+      "input": "report_id and checkout_session_id sent by the Stripe webhook handler after payment",
+      "output": "Railway PDF URL, or 400/403/422 with no PDF made",
+      "if_none": "a missing session id or report id returns 400 before any Stripe call"
+    }
+  ],
+  "values": [
+    {
+      "value": "meta.address",
+      "read_at": "frontend-nextjs/app/api/reports/conveyancing/generate/route.ts:53",
+      "nullable": "yes",
+      "guard_at": "!address check returns 422",
+      "if_missing": "422 and no PDF"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "attacker replays a real paid session id for another report",
+      "what_happens": "the attacker would receive a second report's paid PDF without paying for it",
+      "mitigated": true,
+      "how": "metadata.report_id must equal the requested report_id",
+      "repro": "jest conveyancing-generate-paid-only 'different report'"
+    },
+    {
+      "scenario": "attacker sends a paid session but their own address",
+      "what_happens": "would get a PDF for an address they did not pay for",
+      "mitigated": true,
+      "how": "address and coordinates are read only from session metadata",
+      "repro": "jest 'paid session generates, using the address from the session'"
+    },
+    {
+      "scenario": "the Stripe API is down or slow while the webhook calls this route",
+      "what_happens": "no PDF is generated even though the customer has already paid",
+      "mitigated": false,
+      "how": "403 returned and logged by the webhook; Stripe retries webhooks on non-2xx only if the webhook itself fails \u2014 needs manual resend",
+      "repro": "block api.stripe.com and replay the webhook"
+    },
+    {
+      "scenario": "someone sends a checkout session id that is unpaid or has expired",
+      "what_happens": "a paid PDF would be made and sent without any payment at all",
+      "mitigated": true,
+      "how": "payment_status must be 'paid'",
+      "repro": "jest 'refuses an unpaid session'"
+    },
+    {
+      "scenario": "a session paid for a cheaper product such as a flood report is sent",
+      "what_happens": "the cheaper purchase would unlock the more expensive conveyancing PDF for free",
+      "mitigated": true,
+      "how": "metadata.product must be 'conveyancing-report'",
+      "repro": "jest 'different report or product'"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 after deploy, a POST without checkout_session_id returns 400"
+  }
+}
