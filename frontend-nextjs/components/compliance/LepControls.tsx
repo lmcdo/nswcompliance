@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LandUseZoningCard } from './LandUseZoningCard';
 import { ConstraintArithmeticCard } from './ConstraintArithmeticCard';
+import { widthRange } from '@/lib/geometry/street-frontage';
 import { LocalProvisionsCard } from './LocalProvisionsCard';
 import { HeritageProvisionsCard } from './HeritageProvisionsCard';
 import { NotApplicableCard } from './NotApplicableCard';
@@ -204,6 +205,10 @@ export function LepControls({
           maxFsr={constraints?.maxFsr}
           frontage={propertyData?.lotDimensions?.frontage ?? null}
           depth={propertyData?.lotDimensions?.depth ?? null}
+          lat={lat ?? propertyData?.coordinates?.lat ?? null}
+          lng={lng ?? propertyData?.coordinates?.lon ?? null}
+          heritage={propertyData?.heritage?.isHeritage ?? null}
+          widthRange={widthRange(propertyData?.cornerLot?.streetFrontage)}
         />
       )}
 

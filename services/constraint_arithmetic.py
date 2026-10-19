@@ -1438,6 +1438,15 @@ class ConstraintArithmeticFullRequest(BaseModel):
     lep_fsr_str: Optional[str] = None
     frontage_m: Optional[float] = None
     depth_m: Optional[float] = None
+    # For the capacity range (one producer with the Site Report: _capacity_ceiling).
+    # lga_name = the Portal "LGA Name" (current LGA) for the LEP land use table; the
+    # `lga` slug above can be a FORMER council and is kept for the DCP lookup only.
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    lga_name: Optional[str] = None
+    heritage: Optional[bool] = None
+    width_min_m: Optional[float] = None
+    width_max_m: Optional[float] = None
 
 
 @router.post(
@@ -1471,9 +1480,12 @@ async def constraint_arithmetic_full(
         lep_fsr_str=req.lep_fsr_str,
     )
 
-    return compute_constraint_arithmetic(
+    ceiling, from_lmr, citation, ceiling_gap = _ceiling_for_request(req)
+
+    result = compute_constraint_arithmetic(
         lot_area_m2=req.lot_area_m2,
         dev_type=req.dev_type,
+        ceiling_dev_type=ceiling,
         lep_height_str=req.lep_height_str,
         lep_fsr_str=req.lep_fsr_str,
         lot_dimensions=lot_dims,
@@ -1482,3 +1494,55 @@ async def constraint_arithmetic_full(
         sepp_lep_overrides=sepp_lep_overrides,
         dcp_coverage=_fetch_dcp_coverage(req.lga, req.dev_type),
     )
+    if result is not None:
+        from services.intelligence_brief import _apply_lmr_attribution
+
+        _apply_lmr_attribution(result, from_lmr, citation)
+        if ceiling_gap:
+            result.gaps.append(ceiling_gap)
+    return result
+
+
+def _ceiling_for_request(
+    req: ConstraintArithmeticFullRequest,
+) -> tuple[Optional[str], bool, Optional[dict], Optional[str]]:
+    """The highest permitted housing form for this lot, from the same producer the Site
+    Report uses. Returns (ceiling_form, from_lmr, lmr_citation, gap). Anything that stops the
+    check returns ceiling None WITH a gap saying it was not checked, so the yield box never
+    shows a single-house answer as if the denser forms had been ruled out."""
+    if req.lat is None or req.lng is None or not req.zone or not req.lga_name:
+        missing = [n for n, v in (("location", req.lat is not None and req.lng is not None),
+                                  ("zone", bool(req.zone)), ("LGA", bool(req.lga_name))) if not v]
+        return None, False, None, (
+            "Highest permitted housing form not checked: no " + " or ".join(missing) + " for this lot."
+        )
+    try:
+        from services.intelligence_brief import (
+            _capacity_ceiling,
+            _fetch_heritage_postgis,
+            _is_heritage_land,
+        )
+
+        # Heritage exactly as the Site Report decides it (Portal items OR the PostGIS layer):
+        # the page only holds the Portal flag, and the low/mid-rise uplift is barred on
+        # heritage land, so a Portal-only flag could raise the ceiling the report withholds.
+        heritage = _is_heritage_land(
+            {"heritage_items": bool(req.heritage)}, _fetch_heritage_postgis(req.lat, req.lng, None)
+        )
+        width = (
+            (req.width_min_m, req.width_max_m)
+            if req.width_min_m is not None and req.width_max_m is not None
+            else None
+        )
+        _floor, ceiling, from_lmr, citation = _capacity_ceiling(
+            req.zone, req.lga_name, req.lat, req.lng, req.lot_area_m2,
+            heritage, width_range=width,
+        )
+        return ceiling, from_lmr, citation, None
+    except Exception as e:  # noqa: BLE001 — any failure is shown as "not checked", never as one house
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "capacity ceiling failed for %s/%s: %s", req.zone, req.lga_name, e
+        )
+        return None, False, None, "Highest permitted housing form not checked: the lookup failed."

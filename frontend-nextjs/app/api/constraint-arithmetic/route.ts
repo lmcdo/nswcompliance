@@ -23,6 +23,13 @@ interface RequestBody {
   maxFsr?: number | null;
   frontage?: number | null;
   depth?: number | null;
+  // For the capacity range (same producer as the Site Report). Absent -> the yield box
+  // says the highest permitted form was not checked; it never assumes one house.
+  lat?: number | null;
+  lng?: number | null;
+  heritage?: boolean | null;
+  widthMin?: number | null;
+  widthMax?: number | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -54,6 +61,14 @@ export async function POST(request: NextRequest) {
         lep_fsr_str: body.maxFsr != null ? String(body.maxFsr) : null,
         frontage_m: body.frontage ?? null,
         depth_m: body.depth ?? null,
+        lat: body.lat ?? null,
+        lng: body.lng ?? null,
+        // The LEP land use table is keyed by the CURRENT LGA; formerCouncil (sent as `lga`
+        // above, for the DCP) can be a pre-merger council such as 'Ashfield'.
+        lga_name: body.lga ?? null,
+        heritage: body.heritage ?? null,
+        width_min_m: body.widthMin ?? null,
+        width_max_m: body.widthMax ?? null,
       }),
     });
 
