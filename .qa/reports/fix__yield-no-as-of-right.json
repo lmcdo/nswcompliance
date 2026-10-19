@@ -1,0 +1,30 @@
+{
+  "tier": "minor",
+  "justification": "User-facing wording only plus one liability regex term; no data, query or calculation changes",
+  "commit_hash": "cfd84bb5",
+  "files": [
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+    "scripts/generate_conveyancing_report.py",
+    "scripts/liability_language_check.py",
+    "services/brief_templates.py",
+    "tests/test_liability_as_of_right.py"
+  ],
+  "pre_impl": {
+    "existing_data": "none — text and regex only",
+    "assumption_mismatch": "If a template elsewhere still says 'as of right', the brief logs a liability warning (scan_liability logs, never drops a line)",
+    "new_vs_existing": "Applies to every page render after deploy; the diff-scoped liability check only scans new lines, full grep found no other user-facing occurrence"
+  },
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "regex flags the field name as_of_right_form in TSX/Python and blocks unrelated commits",
+      "what_happens": "false liability failure",
+      "mitigated": true,
+      "how": "scripts/liability_language_check.py FLAGGED_TERMS matches hyphen/space only, never underscore",
+      "repro": "pytest tests/test_liability_as_of_right.py::test_identifiers_and_other_words_pass"
+    }
+  ],
+  "post_merge": {"db_reset": "No", "secrets": "No", "other_repo": "No", "manual_verify": "Yes — preview: yield box on an R2 address no longer says as-of-right"}
+}
