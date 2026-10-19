@@ -71,10 +71,13 @@ def _norm(v: Any) -> Any:
     if (n := _num(v)) is not None:
         return round(n, 2)
     s = str(v).strip().lower().removesuffix("m").removesuffix(":1").strip()
+    s = s or None
+    if s is None:
+        return None
     try:
         return round(float(s), 2)
     except ValueError:
-        return s.split(":")[0].strip()  # 'R2: Low Density Residential' -> 'r2'
+        return s.partition(":")[0].strip() or None  # 'R2: Low Density Residential' -> 'r2'
 
 
 def _both(cap: Capture) -> Optional[tuple[dict, dict]]:

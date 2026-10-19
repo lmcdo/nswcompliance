@@ -68,7 +68,7 @@ def _agrees(want: dict, got: Any) -> bool:
         g = _num(got)
         if g is None:
             return False
-        tol = abs(v) * want.get("tolerance_pct", 0) / 100 or 1e-6
+        tol = abs(v) * (want.get("tolerance_pct") or 0) / 100 or 1e-6
         return abs(g - v) <= tol
     if isinstance(v, str):
         return isinstance(got, str) and got.strip().upper().startswith(v.upper())
