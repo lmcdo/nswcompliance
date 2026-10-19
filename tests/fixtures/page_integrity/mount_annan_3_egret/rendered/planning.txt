@@ -1,0 +1,260 @@
+⚠️
+
+Important: Provisions are shown as published and may be superseded. Check legislation.nsw.gov.au for current SEPPs/LEPs before relying on them.
+
+Dismiss
+PlotDetect
+Site Controls
+
+Every control cited to its clause — zoning live from the NSW Planning Portal
+
+Quick Guide
+CAMDEN
+Property Address
+
+Enter a property address to analyze
+
+Analyze Property
+
+Disclaimer: PlotDetect presents DCP provisions and state/local planning data (from NSW Planning Portal and SEPP sources) as published by relevant authorities. It does not constitute planning advice. Users should verify provisions against current council instruments and seek professional advice for development applications.
+
+THE PROPERTY
+
+Property Summary
+Address
+
+3 EGRET WAY MOUNT ANNAN 2567
+
+ZoneR2: Low Density Residential
+Area
+
+641m²
+
+LGA
+
+CAMDEN
+
+Heritage
+
+No
+
+NSW SIX Maps aerial imagery · © NSW Government CC BY 4.0
+
+Property Details
+
+3 EGRET WAY MOUNT ANNAN 2567
+
+CAMDEN LGA
+
+Lot Dimensions
+Cadastre
+Area
+641m²
+Lot width (shorter side)
+24.6m
+Length
+39.8m
+
+Street frontage: 14.0 m along Egret Way
+
+Lot width is the shorter side, and length the longer side, of the rectangle that fits the lot. Neither is the street frontage.
+
+Not a Corner Lot
+
+Adjacent road: EGRET WAY
+
+Data currency
+▼
+SEPP
+State Planning Policies
+Planning Controls
+Zone & Development Standards
+DCP
+Council Controls
+
+Get notified when we add more councils and export features
+
+We're expanding DCP coverage across NSW. Register to hear first.
+
+Your role (optional)
+Town Planner
+Certifier
+Architect
+Conveyancer
+Buyers Agent
+Developer
+Other
+Register
+Camden Local Environmental Plan 2010
+·
+Sourced live — NSW Planning Portal
+Local Environmental Plan
+Camden Local Environmental Plan 2010
+
+The LEP sets the framework for how land can be used and developed in the CAMDEN area.
+
+Land Use Zoning:R2 - Low Density Residential
+Camden Local Environmental Plan 2010
+Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+Map Amendment No 1
+Permitted Uses (20)
+Without consent
+•
+Home occupations
+With consent
+•
+Any other development not specified in item 2 or 4
+•
+Bed and breakfast accommodation
+•
+Centre based child care facilities
+•
+Dual occupancies
+•
+Dwelling houses
+•
+Group homes
+•
+Health consulting rooms
+Show all 20 permitted
+Prohibited Uses (53)
+•
+Advertising structures
+•
+Agriculture
+•
+Air transport facilities
+•
+Amusement centres
+•
+Animal boarding or training establishments
+•
+Boat building and repair facilities
+•
+Boat sheds
+•
+Camping grounds
+Show all 53 prohibited
+View Full Land Use Table for R2
+
+Sourced from Camden Local Environmental Plan 2010 Land Use Table via legislation.nsw.gov.au · 13 May 2026 — data may be stale, re-scrape recommended
+
+Development Standards
+LEP Part 4
+
+Numerical controls that limit the size and height of development on this property.
+
+Maximum Height
+9.5m
+LEP Clause 4.3 Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+Minimum Lot Size
+450m²
+LEP Clause 4.1 Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+View full LEP Part 4 on NSW Legislation
+Development Yield Estimate
+Calculated from 4 of 6 planning controls
+
+This estimate is computed from the height of buildings, front setback, rear setback and side setback. No floor space ratio and SEPP standards are mapped for this lot, so those controls could not narrow the estimate.
+
+Maximum GFA
+1,923m²
+LEP envelope (FSR / height)
+After council DCP
+1,286m²
+indicative — after setbacks & landscaping
+Homes you could build
+1
+dwelling house — as-of-right yield, subject to a development application.
+Binding Constraint
+Height limit is the binding control on maximum GFA
+Max Storeys
+3
+9.5m height limit
+DCP Setbacks Applied
+Front: 4.5m
+Side: 0.9m
+Rear: 6m
+Buildable footprint: 669m² (104% of lot)
+Data gaps
+- LEP FSR not available — cannot compute FSR envelope
+- DCP rear setback has 2 differing values (4m, 6m); used the most conservative (6m). Verify the control that applies to this lot against the DCP.
+Show computation chain (4 steps)
+
+Constraint arithmetic is a preliminary computational estimate only. It does not account for merit-based assessment, clause variations, or council-specific interpretation. Engage a qualified town planner for site-specific assessment.
+
+Environmental Constraints
+LEP Part 5
+Flood Mapping
+No
+Bushfire Prone
+No
+Acid Sulfate Soils
+No
+Aircraft Noise
+No
+Mine Subsidence
+No
+Landslide Risk
+No
+Contaminated Land
+No
+Drinking Water
+No
+Water/Sewer Servicing
+Section 73
+Biodiversity
+No
+Coastal
+No
+Additional Uses
+No
+Foreshore Line
+No
+Land Reservation
+No
+Riparian Land
+No
+Wetlands
+No
+Key Site
+No
+Active Frontage
+No
+View all environmental layers on NSW Planning Portal
+Planning Overlays
+1 overlay
+
+Additional planning overlays that apply to this property — may include LEP local provisions, SEPP overlays, or other instruments.
+
+SEPP (Western Sydney Aerotropolis) 2020 Wind Turbines Map
+
+30 km
+
+State Environmental Planning Policy (Precincts—Western Parkland City) 2021
+View legislation
+
+Note: Planning overlays may include LEP Part 6 local provisions, SEPP spatial overlays, or other instruments. Each overlay imposes specific requirements — verify against the current legislation before issuing approvals.
+
+Heritage Conservation
+Not applicable to this address
+
+This property is not in a Heritage Conservation Area and is not listed as a heritage item.
+
+Planning Instruments
+Land Application Map
+
+All instruments whose maps apply to this property.
+
+Camden Local Environmental Plan 2010
+Included
+Feedback
+
+Need help using PlotDetect?
+
+Guides with worked examples and workflows
+
+Quick Reference
+Complete User Guide

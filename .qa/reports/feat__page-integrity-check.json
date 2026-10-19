@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "New read-only tooling: it captures the live assessment page and checks it; it changes no served code path and writes nothing to the database. Not Minor: it is a gate meant to go red on wrong answers, so a check that cannot fail would be worse than none. Not Critical: no production data or user-facing behaviour changes.",
- "commit_hash": "7a4b0bc7",
+ "commit_hash": "d5626a78",
  "files": [
   ".gitignore",
   ".qa/reports/feat__page-integrity-check.json",

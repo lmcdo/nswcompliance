@@ -138,15 +138,23 @@ def capture(outdir: Path, address: str, number: str, street: str, suburb: str) -
             page.goto(f"{BASE_URL}/assessment", wait_until="domcontentloaded", timeout=60000)
             inp = page.get_by_placeholder("Start typing an address...")
             inp.wait_for(timeout=30000)
-            inp.click()
-            inp.type(address, delay=60)
-            page.wait_for_timeout(4000)
+            # The box can reset while the page is still hydrating and drop the start of what was
+            # typed ("6 Berrigan Str" lost, "eet, Winston Hills" searched) — retype until it holds.
+            for _attempt in range(4):
+                inp.click()
+                inp.fill("")
+                inp.type(address, delay=60)
+                page.wait_for_timeout(4000)
+                if inp.input_value() == address:
+                    break
+            else:
+                raise RuntimeError(f"search box did not keep the typed address: {inp.input_value()!r}")
             # Google's first suggestion is sometimes the STREET, not the house — choose the first
             # suggestion that starts with the house number, by position in the list.
             items = page.locator(".pac-item")
             texts = [items.nth(i).inner_text().replace("\n", " ") for i in range(items.count())]
             meta["suggestions"] = texts
-            pick = next((i for i, t in enumerate(texts) if t.strip().startswith(f"{number} ")), None)
+            pick = next((i for i, t in enumerate(texts) if _number_matches(number, t.strip().split(",")[0].upper())), None)
             if pick is None:
                 raise RuntimeError(f"no suggestion starts with house number {number!r}: {texts}")
             for _ in range(pick + 1):
