@@ -52,7 +52,7 @@ def test_missing_input_says_not_checked(offline, missing, word):
     assert offline == []
 
 
-def test_lookup_failure_says_not_checked(offline, monkeypatch):
+def test_lookup_failure_says_not_checked(offline, monkeypatch, caplog):
     def boom(*a, **k):
         raise TimeoutError("arcgis")
 
@@ -60,6 +60,9 @@ def test_lookup_failure_says_not_checked(offline, monkeypatch):
     r = asyncio.run(ca.constraint_arithmetic_full(_req()))
     assert r.max_permitted_form is None
     assert "Highest permitted housing form not checked: the lookup failed." in r.gaps
+    # a coding error must not hide behind the reader's "not checked": ERROR + traceback
+    rec = [x for x in caplog.records if "capacity ceiling failed" in x.getMessage()]
+    assert rec and rec[0].levelname == "ERROR" and rec[0].exc_info is not None
 
 
 def test_heritage_from_postgis_reaches_the_producer(offline, monkeypatch):

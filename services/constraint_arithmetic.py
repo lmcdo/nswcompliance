@@ -1539,10 +1539,12 @@ def _ceiling_for_request(
             heritage, width_range=width,
         )
         return ceiling, from_lmr, citation, None
-    except Exception as e:  # noqa: BLE001 — any failure is shown as "not checked", never as one house
+    except Exception:  # noqa: BLE001 — the reader sees "not checked", never one house
         import logging
 
-        logging.getLogger(__name__).warning(
-            "capacity ceiling failed for %s/%s: %s", req.zone, req.lga_name, e
+        # ERROR with the full traceback: a coding error here must reach the logs as loudly
+        # as an outage does, not hide behind the reader-facing "not checked" (Sol, 2026-10-19).
+        logging.getLogger(__name__).exception(
+            "capacity ceiling failed for %s/%s", req.zone, req.lga_name
         )
         return None, False, None, "Highest permitted housing form not checked: the lookup failed."
