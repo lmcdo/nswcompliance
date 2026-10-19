@@ -29,7 +29,11 @@ FLAGGED_TERMS = re.compile(
     r'\b('
     r'safe|feasible|compliant|(?<!should_)should(?!_)|recommend|suitable|'
     r'adequate|sufficient|approved|guaranteed|certified|confirmed|verified|'
-    r'ensure|assure|accurate|definitive|comprehensive|reliable'
+    r'ensure|assure|accurate|definitive|comprehensive|reliable|'
+    # "as-of-right" is a verdict: it tells the reader no approval is needed, and
+    # every house here still needs a DA or a CDC (page check C5, 2026-10-19).
+    # Hyphen or space only, so the field name as_of_right_form is not prose.
+    r'as[-\s]of[-\s]right'
     r')\b',
     re.IGNORECASE,
 )
