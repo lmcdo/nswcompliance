@@ -272,3 +272,13 @@ def test_c4_row_naming_a_type_it_excludes_is_not_for_that_type():
 def test_c4_row_for_another_type_still_red():
     cap = mk(sc([row("deep_soil_min", 30.0, "terraces; 50% at rear")]))
     assert "row_dev_type" in facts(cd.row_fits_lot(cap))
+
+
+def test_c4_row_that_also_names_dwelling_houses_is_for_this_project():
+    cap = mk(sc([row("front_setback", None, "Section 3 applies to dwelling houses, secondary dwellings and dual occupancies")]))
+    assert "row_dev_type" not in facts(cd.row_fits_lot(cap))
+
+
+def test_c4_row_including_other_types_is_for_this_project():
+    cap = mk(sc([row("car_parking", 1.0, "including attached, semi-detached and secondary dwellings combined")]))
+    assert "row_dev_type" not in facts(cd.row_fits_lot(cap))
