@@ -9,6 +9,7 @@
  */
 
 import { type CornerStatus, isCornerOnlyRow, NOT_CORNER_ROW_NOTE } from '@/lib/geometry/corner-status';
+import { publicCondition } from '@/lib/dcp/public-condition';
 import React, { useState } from 'react';
 import useSWR from 'swr';
 import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
@@ -328,7 +329,7 @@ export function DcpStructuredControls({
                           <div className={`text-xs px-3 flex-1 min-w-0 ${
                             status === 'not_applicable' ? 'text-gray-600 italic' : 'text-gray-500'
                           }`}>
-                            {control.condition}
+                            {publicCondition(control.condition)}
                             {cornerStatus === 'not_corner' && isCornerOnlyRow(control) && (
                               <div className="text-gray-700 not-italic font-medium">{NOT_CORNER_ROW_NOTE}</div>
                             )}
