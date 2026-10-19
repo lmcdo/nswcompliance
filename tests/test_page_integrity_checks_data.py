@@ -236,3 +236,28 @@ def test_c3_all_sides_listed_is_not_absent():
     cap = mk((cd.P_CA, ca, None, None),
              sc([row("front_setback", 6), row("front_setback", 10), row("side_setback", 0.9), row("side_setback", 1.5)]))
     assert "setbacks_absent" not in facts(cd.honest_absence(cap))
+
+
+# ---- corner rows: marked on the page = shown honestly; failed road check = not measured
+def _corner_cap(rendered_dcp="", error=None):
+    cl = {"isCornerLot": False, "confidence": 0 if error else 1}
+    if error:
+        cl["error"] = error
+    cap = mk((cd.P_PROP, {"cornerLot": cl}, None, None),
+             sc([row("secondary_street_setback", 3.0, "secondary street or corner allotment")]))
+    cap.rendered = {"dcp": rendered_dcp}
+    return cap
+
+
+def test_c4_corner_row_unmarked_is_red():
+    assert "corner_lot" in facts(cd.row_fits_lot(_corner_cap()))
+
+
+def test_c4_corner_row_marked_on_page_is_green():
+    cap = _corner_cap("Secondary street setback 3.0 m\nApplies only to corner lots — this lot is not on a corner.")
+    assert "corner_lot" not in facts(cd.row_fits_lot(cap))
+
+
+def test_c4_failed_road_check_is_not_a_measured_no():
+    cap = _corner_cap(error="Failed to query road data: This operation was aborted")
+    assert "corner_lot" not in facts(cd.row_fits_lot(cap))
