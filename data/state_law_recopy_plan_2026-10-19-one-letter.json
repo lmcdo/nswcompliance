@@ -1,0 +1,44 @@
+{
+ "generated": "2026-10-19-one-letter",
+ "manifest": {
+  "epi-2008-0572": {
+   "file": "epi-2008-0572_2026-10-16.html",
+   "sha256": "13b5577ccfd028a6359b2278d28acc924b766678c9d27a1176bb412c1d2b6807",
+   "bytes": 2882206,
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572"
+  }
+ },
+ "method": "scripts/state_law_recopy.py pick_unit + judge (checks a-d); merged sub-clauses tried at their parent unit. No model reads or writes text.",
+ "rows": [
+  {
+   "id": 38711,
+   "md5": "33171786d07346963718b3c87ab259fa",
+   "kind": "partial",
+   "pass2_status": "carport_2026-10-19",
+   "epi": "epi-2008-0572",
+   "document_id": "State_Environmental_Planning_Policy_Exempt_and_Complying_Development_Codes_2008__NSW_Legislation",
+   "unit_id": "sec.3D.46-ssec.10",
+   "unit_class": "frag-subclause",
+   "unit_parent": "sec.3D.46",
+   "source": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2008-0572#sec.3D.46-ssec.10",
+   "law_date": "2026-10-16",
+   "pit_date": null,
+   "old_text": "(a) the entry to 1 of the car parking spaces is set back at least 1 metre behind the entry to the other car parkin spaces, and   \n(b) the width of the driveway associated with access to the car parking spaces does not exceed 6m at the property boundary, and   \n(c) the width of a driveway that is more than 6m wide at the garage door openings tapers gradually to a maximum width of 6m at the property boundary.",
+   "new_text": "(10) Subject to subclause (9), a detached garage that is designed to contain 3 parallel car parking spaces may be erected on a lot that has a width greater than 24m if—\n(a) the entry to 1 of the car parking spaces is set back at least 1 metre behind the entry to the other car parking spaces, and\n(b) the width of the driveway associated with access to the car parking spaces does not exceed 6m at the property boundary, and\n(c) the width of a driveway that is more than 6m wide at the garage door openings tapers gradually to a maximum width of 6m at the property boundary.",
+   "checks": {
+    "a_verbatim_in_law": true,
+    "b_no_content_word_dropped": true,
+    "c_length_ratio": true,
+    "d_numbers_kept": true
+   },
+   "ratio": 1.421,
+   "words_dropped": [],
+   "repairs": [
+    "parkin -> parking (one letter)"
+   ],
+   "words_added": [],
+   "numbers_lost": [],
+   "same_provision_share": null
+  }
+ ]
+}
