@@ -2012,8 +2012,8 @@ export function ProvisionsByTocStructure({
               preparedBy={preparedBy}
               onClientRefChange={handleClientRefChange}
               onPreparedByChange={handlePreparedByChange}
-              lepHeight={lepLimits(lepClauseData).height}
-              lepFsr={lepLimits(lepClauseData).fsr}
+              lepHeight={lepLimits(lepClauseData).height != null ? `${lepLimits(lepClauseData).height} m` : undefined}
+              lepFsr={lepLimits(lepClauseData).fsr != null ? `${lepLimits(lepClauseData).fsr}:1` : undefined}
               heritage={heritage}
               hcaName={hcaName}
               precinctName={precinctName}
