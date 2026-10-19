@@ -17,14 +17,29 @@ def facts(flags):
     return {f.fact for f in flags}
 
 
+def fixed_page(n):
+    """The stored captures are of the page BEFORE the flood fix, when floodProne was the
+    constant False. These three councils publish no flood planning map, so the fixed page
+    sends null; apply that so the other reference facts can be tested on their own."""
+    c = load(FX / n)
+    c.data(P_PROP)["constraints"]["floodProne"] = None
+    return c
+
+
+@pytest.mark.parametrize("n", [WH, MA, CO])
+def test_r_catches_the_old_constant_flood_no(n):
+    """Before the fix the page said 'flood: No' on councils with no flood map."""
+    assert "reference:flood_lep_map" in facts(cr.check_reference(load(FX / n)))
+
+
 # ---- R: real captures
 def test_r_concord_strata_is_caught():
-    assert facts(cr.check_reference(load(FX / CO))) == {"reference:strata"}
+    assert facts(cr.check_reference(fixed_page(CO))) == {"reference:strata"}
 
 
 @pytest.mark.parametrize("n", [WH, MA])
 def test_r_green(n):
-    assert cr.check_reference(load(FX / n)) == []
+    assert cr.check_reference(fixed_page(n)) == []
 
 
 def test_r_no_expected_file_is_not_checked():
@@ -34,19 +49,19 @@ def test_r_no_expected_file_is_not_checked():
 
 # ---- R: planted faults on a green capture
 def test_r_planted_zone():
-    c = load(FX / MA)
+    c = fixed_page(MA)
     c.data(P_PROP)["constraints"]["zone"] = "R3"
     assert facts(cr.check_reference(c)) == {"reference:zone"}
 
 
 def test_r_planted_setback_not_in_dcp():
-    c = load(FX / MA)
+    c = fixed_page(MA)
     c.data(P_CA)["setback_rear_m"] = 5.0  # Camden gives 4 m or 6 m, never 5
     assert facts(cr.check_reference(c)) == {"reference:setback_rear_m"}
 
 
 def test_r_planted_lot_area_beyond_tolerance():
-    c = load(FX / MA)
+    c = fixed_page(MA)
     c.data(P_PROP)["lotDimensions"]["area"] = 700.0
     assert facts(cr.check_reference(c)) == {"reference:lot_area_m2"}
 
