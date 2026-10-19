@@ -61,11 +61,11 @@ def check_engines_agree(cap: Capture) -> list[Flag]:
     if ca.get("max_permitted_form") is not None:
         return []
     rows = [e for e in perm.get("entries") or []
-            if isinstance(e, dict) and _norm(e.get("permissibility", "")) == "permitted"
-            and _norm(e.get("development_type", "")).startswith(DENSER_FORMS)]
+            if isinstance(e, dict) and _norm(e.get("permissibility") or "") == "permitted"
+            and _norm(e.get("development_type") or "").startswith(DENSER_FORMS)]
     if not rows:
         return []
-    forms = ", ".join(r["development_type"] for r in rows)
+    forms = ", ".join(str(r.get("development_type") or "") for r in rows)
     return [Flag("C2", "engines-agree",
                  f"yield box shows a single-number yield (max_permitted_form None, as_of_right_form="
                  f"{ca.get('as_of_right_form')!r}) but the permissibility table lists as permitted in "
