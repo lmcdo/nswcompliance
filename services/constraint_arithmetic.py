@@ -1559,6 +1559,8 @@ class ConstraintArithmeticFullRequest(BaseModel):
     heritage: Optional[bool] = None
     width_min_m: Optional[float] = None
     width_max_m: Optional[float] = None
+    # Measured corner status; None = not measured (rules no corner-lot setback out).
+    is_corner: Optional[bool] = None
 
 
 @router.post(
@@ -1605,6 +1607,7 @@ async def constraint_arithmetic_full(
         sepp_standards=sepp_standards,
         sepp_lep_overrides=sepp_lep_overrides,
         dcp_coverage=_fetch_dcp_coverage(req.lga, req.dev_type),
+        site_is_corner=req.is_corner,
     )
     if result is not None:
         from services.intelligence_brief import _apply_lmr_attribution

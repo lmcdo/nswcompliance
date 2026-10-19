@@ -190,3 +190,23 @@ class TestSiteContext:
         r = self._compute(rows, None)
         assert r.setback_side_m is None and r.setback_side_options == []
         assert any("No current side setback" in g for g in r.gaps)
+
+
+def test_endpoint_passes_measured_corner_status(monkeypatch):
+    import asyncio
+    from services import constraint_arithmetic as ca
+    seen = {}
+    real = ca.compute_constraint_arithmetic
+
+    def spy(**kw):
+        seen["corner"] = kw.get("site_is_corner")
+        return real(**kw)
+
+    monkeypatch.setattr(ca, "compute_constraint_arithmetic", spy)
+    monkeypatch.setattr(ca, "_fetch_constraint_data_from_db", lambda **k: ([], [], []))
+    monkeypatch.setattr(ca, "_fetch_dcp_coverage", lambda *a, **k: None)
+    monkeypatch.setattr(ca, "_ceiling_for_request", lambda req: (None, False, None, None))
+    for val in (False, None):
+        asyncio.run(ca.constraint_arithmetic_full(ca.ConstraintArithmeticFullRequest(
+            lot_area_m2=600.0, zone="R2", lep_height_str="9", is_corner=val)))
+        assert seen["corner"] is val

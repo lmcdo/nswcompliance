@@ -232,6 +232,8 @@ interface ConstraintArithmeticCardProps {
   lng?: number | null;
   heritage?: boolean | null;
   widthRange?: { min: number; max: number } | null;
+  /** Measured corner status; null when the road check failed (never read as "not a corner"). */
+  isCorner?: boolean | null;
 }
 
 export function ConstraintArithmeticCard({
@@ -252,6 +254,7 @@ export function ConstraintArithmeticCard({
   lng,
   heritage,
   widthRange,
+  isCorner,
 }: ConstraintArithmeticCardProps) {
   const [result, setResult] = useState<ConstraintArithmeticResult | null>(briefData ?? null);
   const [loading, setLoading] = useState(false);
@@ -291,6 +294,7 @@ export function ConstraintArithmeticCard({
         heritage: heritage ?? null,
         widthMin: widthRange?.min ?? null,
         widthMax: widthRange?.max ?? null,
+        isCorner: isCorner ?? null,
       }),
     })
       .then(async (resp) => {
@@ -317,7 +321,7 @@ export function ConstraintArithmeticCard({
   // widthRange is a fresh object each render: depend on its two numbers, not the object,
   // or every render refetches.
   }, [lotArea, devType, zone, formerCouncil, lga, maxHeight, maxFsr, frontage, depth, briefData,
-      lat, lng, heritage, widthRange?.min, widthRange?.max]);
+      lat, lng, heritage, widthRange?.min, widthRange?.max, isCorner]);
 
   if (loading) {
     return (
