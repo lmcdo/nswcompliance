@@ -114,18 +114,31 @@ export async function detectCornerLot(geometry: LotGeometry): Promise<CornerLotR
 
     const url = `${NSW_SPATIAL_BASE}/${ROAD_CORRIDOR_LAYER}/query?${queryParams.toString()}`;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      },
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
+    // The NSW road map times out now and then (Winston Hills, 2026-10-19: "This operation was
+    // aborted" after one 10 s try). A lot either is on a corner or is not, so try again with a
+    // longer wait before telling the reader we could not find out.
+    let response: Response | null = null;
+    let lastError: unknown = null;
+    for (const waitMs of [10000, 15000, 20000]) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), waitMs);
+      try {
+        response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          },
+          signal: controller.signal
+        });
+        if (response.ok || response.status < 500) break;
+      } catch (e) {
+        lastError = e;
+        response = null;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+    if (!response) throw lastError ?? new Error('road map did not answer');
 
     if (!response.ok) {
       return unavailable(`API returned ${response.status}: ${response.statusText}`);

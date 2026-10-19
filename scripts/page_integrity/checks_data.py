@@ -294,7 +294,12 @@ def row_fits_lot(cap: Capture) -> list[Flag]:
 
     p = _prop(cap)  # (c)
     corner = _d(_d(p).get("cornerLot")).get("isCornerLot") if p else None
-    if corner is False:
+    # The DCP tab marks a corner-only row on a measured non-corner lot with this sentence; a row
+    # marked that way is shown honestly, so it is not a fault. A failed road check (error set)
+    # is not a measured "no".
+    marked = "Applies only to corner lots — this lot is not on a corner" in (cap.rendered.get("dcp") or "")
+    measured = p is not None and not _d(p.get("cornerLot")).get("error")
+    if corner is False and measured and not marked:
         for c in ctl:
             t = _row_text(c)
             if _CORNER.search(t) and not re.search(r"applies only if", t, re.I):

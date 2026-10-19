@@ -1,5 +1,6 @@
 "use client"
 
+import { cornerStatus, cornerSentence } from '@/lib/geometry/corner-status';
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -221,7 +222,10 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
          </div>
        )}
 
-       {/* Corner Lot Detection */}
+       {/* Corner Lot Detection — when the road map could not be reached, say so in plain words */}
+       {cornerStatus(propertyData.cornerLot) === 'unknown' && (
+         <p className="text-xs text-gray-600 mb-2">{cornerSentence('unknown')}</p>
+       )}
        {propertyData.cornerLot?.confidence === 1 && (
          <div className={`border rounded-lg p-3 mb-2 ${
            propertyData.cornerLot.isCornerLot
@@ -244,9 +248,6 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                <p className="text-amber-800">
                  <span className="font-medium">Adjacent roads:</span>{' '}
                  {propertyData.cornerLot.adjacentRoads.join(', ')}
-               </p>
-               <p className="text-amber-700 italic mt-2">
-                 Secondary street setback: 3m (vs 6m rear for non-corner)
                </p>
              </div>
            )}

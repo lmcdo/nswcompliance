@@ -8,6 +8,7 @@
  * - Right: Provisions for selected part/section
  */
 
+import { cornerStatus } from '@/lib/geometry/corner-status';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import useSWR from 'swr';
 import { TocSidebar, formatPartDisplay } from './TocSidebar';
@@ -1536,6 +1537,7 @@ export function ProvisionsByTocStructure({
       <div className="space-y-4">
         <DcpStructuredControls
           formerCouncil={formerCouncil}
+          cornerStatus={cornerStatus(propertyData?.cornerLot)}
           fallback={
             <DCPInterestForm
               councilName={lga || formerCouncil || 'your council'}
@@ -1937,7 +1939,7 @@ export function ProvisionsByTocStructure({
       )}
 
       {/* Structured DCP controls — extracted numeric values (setbacks, parking, landscaping etc.) */}
-      <DcpStructuredControls formerCouncil={formerCouncil} chapterTextLoaded />
+      <DcpStructuredControls formerCouncil={formerCouncil} chapterTextLoaded cornerStatus={cornerStatus(propertyData?.cornerLot)} />
 
       {/* Intake filtering via ancillary checkboxes in assessment page — no modal needed */}
 

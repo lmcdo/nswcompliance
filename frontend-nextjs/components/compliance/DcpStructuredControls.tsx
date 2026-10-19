@@ -8,6 +8,7 @@
  * landscaping %, site coverage) with formal DCP citations.
  */
 
+import { type CornerStatus, isCornerOnlyRow, NOT_CORNER_ROW_NOTE } from '@/lib/geometry/corner-status';
 import React, { useState } from 'react';
 import useSWR from 'swr';
 import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
@@ -59,6 +60,8 @@ interface StructuredControlsResponse {
 interface DcpStructuredControlsProps {
   formerCouncil: string;
   devType?: string;
+  /** From the road check. 'not_corner' marks corner-only rows as not applying; 'unknown' changes nothing. */
+  cornerStatus?: CornerStatus;
   /**
    * Rendered INSTEAD of this card when the council has no extracted controls.
    *
@@ -167,6 +170,7 @@ export function DcpStructuredControls({
   devType = 'dwelling_house',
   fallback = null,
   chapterTextLoaded = false,
+  cornerStatus = 'unknown',
 }: DcpStructuredControlsProps) {
   const [expanded, setExpanded] = useState(true);
   const [expandedSource, setExpandedSource] = useState<string | null>(null);
@@ -325,6 +329,9 @@ export function DcpStructuredControls({
                             status === 'not_applicable' ? 'text-gray-600 italic' : 'text-gray-500'
                           }`}>
                             {control.condition}
+                            {cornerStatus === 'not_corner' && isCornerOnlyRow(control) && (
+                              <div className="text-gray-700 not-italic font-medium">{NOT_CORNER_ROW_NOTE}</div>
+                            )}
                           </div>
                           {/* Citation + expand source */}
                           <div className="flex items-center gap-1 flex-shrink-0">
