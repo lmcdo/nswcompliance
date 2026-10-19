@@ -1,5 +1,6 @@
 'use client';
 
+import { councilDisplayName } from '@/lib/council-display-name';
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -121,8 +122,8 @@ export function HeritageProvisionsCard({
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-2">
           {isHCA
-            ? `Heritage Conservation Area identified under the ${lga || 'local'} LEP. DCP heritage controls are in ${COUNCIL_DCP_INFO[formerCouncil || '']?.chapter || 'the heritage chapter'} of the ${formerCouncil || lga || ''} DCP ${COUNCIL_DCP_INFO[formerCouncil || '']?.year || ''}.`
-            : `Heritage-listed property identified under the ${lga || 'local'} LEP. General heritage controls apply from ${COUNCIL_DCP_INFO[formerCouncil || '']?.chapter || 'the heritage chapter'} of the ${formerCouncil || lga || ''} DCP ${COUNCIL_DCP_INFO[formerCouncil || '']?.year || ''}.`
+            ? `Heritage Conservation Area identified under the local environmental plan${councilDisplayName(lga) ? ` for ${councilDisplayName(lga)}` : ''}. DCP heritage controls are in ${COUNCIL_DCP_INFO[formerCouncil || '']?.chapter || 'the heritage chapter'} of the ${formerCouncil || lga || ''} DCP ${COUNCIL_DCP_INFO[formerCouncil || '']?.year || ''}.`
+            : `Heritage-listed property identified under the local environmental plan${councilDisplayName(lga) ? ` for ${councilDisplayName(lga)}` : ''}. General heritage controls apply from ${COUNCIL_DCP_INFO[formerCouncil || '']?.chapter || 'the heritage chapter'} of the ${formerCouncil || lga || ''} DCP ${COUNCIL_DCP_INFO[formerCouncil || '']?.year || ''}.`
           }
         </p>
       </CardHeader>
