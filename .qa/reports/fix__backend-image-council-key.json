@@ -1,0 +1,32 @@
+{
+  "tier": "minor",
+  "justification": "One COPY line in the backend Dockerfile plus a guard test; restores a production endpoint",
+  "commit_hash": "2e8be381",
+  "files": [
+    "Dockerfile.python",
+    "tests/test_backend_image_files.py"
+  ],
+  "pre_impl": {
+    "existing_data": "none",
+    "assumption_mismatch": "build context is the repo root (railway.toml dockerfilePath = Dockerfile.python; COPY services/ already works)",
+    "new_vs_existing": "next backend deploy"
+  },
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "the rename file moves or is renamed",
+      "what_happens": "the backend image builds without it and the yield box fails again",
+      "mitigated": true,
+      "how": "tests/test_backend_image_files.py checks the COPY line and the reader path",
+      "repro": "pytest tests/test_backend_image_files.py"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 POST /api/constraint-arithmetic returns 200 after deploy"
+  }
+}

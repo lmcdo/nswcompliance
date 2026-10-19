@@ -28,6 +28,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy service code + startup scripts
 COPY services/ ./services/
+# services/council_key.py reads the council-name list the website also uses (one list, two
+# readers). Without this line the yield box 502'd on 2026-10-19 (#1374).
+COPY frontend-nextjs/lib/lga-slug-renames.json ./frontend-nextjs/lib/lga-slug-renames.json
 COPY scripts/download_hawkesbury_rasters.py ./scripts/download_hawkesbury_rasters.py
 COPY scripts/download_redbank_rasters.py ./scripts/download_redbank_rasters.py
 COPY scripts/download_tweed_wollongong_rasters.py ./scripts/download_tweed_wollongong_rasters.py
