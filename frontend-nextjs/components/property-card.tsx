@@ -27,7 +27,7 @@ interface PropertyData {
    acidSulfateSoils?: string
    basixClimate?: string
    basixWater?: string
-   floodProne: boolean
+   floodProne: boolean | null
    bushfireProne: boolean
  }
  anef?: {
@@ -121,7 +121,7 @@ export function PropertyCard() {
            acidSulfateSoils: data.constraints?.acidSulfateSoils || data.environmental?.acidSulfateSoils,
            basixClimate: data.constraints?.basixClimate || data.environmental?.basixClimate,
            basixWater: data.constraints?.basixWater || data.environmental?.basixWater,
-           floodProne: data.constraints?.floodProne || data.environmental?.floodProne || false,
+           floodProne: data.constraints?.floodProne ?? data.environmental?.floodProne ?? null,
            bushfireProne: data.constraints?.bushfireProne || data.environmental?.bushfireProne || false
          },
          anef: data.anefData ? {

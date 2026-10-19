@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { NSWPlanningPortalService } from '@/lib/nsw-planning-portal';
 import { calculateLotDimensions } from '@/lib/geometry/lot-dimensions';
+import { floodMapStatus } from '@/lib/flood/flood-map';
 import { checkRateLimit, getClientIdentifier, searchRateLimiter, createRateLimitHeaders } from '@/lib/rate-limit';
 
 /**
@@ -81,9 +82,12 @@ export async function GET(request: NextRequest) {
       lotPolygonWgs84 = { type: 'Polygon', coordinates: wgs84Rings };
     }
 
-    // Flood/bushfire from constraints (these come from layerintersect for free)
-    const floodLayer = layers.find(l => l.layerName === 'Flood Planning Area');
-    const floodProne = floodLayer?.results != null && floodLayer.results.length > 0;
+    // Flood from the council's published Flood Planning Map. layerintersect never returns a
+    // 'Flood Planning Area' layer, so the old check answered "No" for every property.
+    const lotPlans = (layers.find(l => l.layerName === 'Land Application Map')?.results ?? [])
+      .map((r: any) => String(r?.['EPI Name'] ?? r?.title ?? '')).filter(Boolean);
+    const flood = await floodMapStatus(lon, lat, lotPlans);
+    const floodProne = flood.floodProne;
 
     return NextResponse.json({
       address: propertyData.address,
@@ -97,6 +101,7 @@ export async function GET(request: NextRequest) {
       heritage,
       heritageItemName,
       floodProne,
+      floodMapNote: flood.note,
       lotArea: lotArea ? Math.round(lotArea) : null,
       lotPolygon: lotPolygonWgs84,
       landValue: propertyData.landValue,

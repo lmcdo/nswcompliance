@@ -164,7 +164,8 @@ export function buildPropertyContext(
   const anef = propertyData?.anefData;
   const environmentalConstraints = envC
     ? {
-        flood_prone: !!envC.floodProne,
+        // null = the council publishes no flood map here; never read it as "No".
+        flood_prone: envC.floodProne ?? null,
         bushfire_prone: !!envC.bushfireProne,
         acid_sulfate_soils: envC.acidSulfateSoils || undefined,
         anef_zone: !!anef?.inAnefZone,

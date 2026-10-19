@@ -68,7 +68,8 @@ export interface PropertyData {
  acidSulfateSoils?: string;
  basixClimate?: string;
  basixWater?: string;
- floodProne: boolean;
+ floodProne: boolean | null;
+ floodMapNote?: string;
  bushfireProne: boolean;
  };
  geometry: {
@@ -224,6 +225,7 @@ export class PropertyDataService {
  basixClimate: constraints.basixClimate || 'Class 5',
  basixWater: constraints.basixWater || '40%',
  floodProne: constraints.floodProne,
+ floodMapNote: constraints.floodMapNote,
  bushfireProne: constraints.bushfireProne
  };
 

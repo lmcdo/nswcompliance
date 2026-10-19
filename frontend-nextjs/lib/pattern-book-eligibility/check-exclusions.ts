@@ -18,7 +18,7 @@ export interface PropertyConstraints {
 
   // From PropertyData.environmental
   environmental?: {
-    floodProne: boolean;
+    floodProne: boolean | null;
     bushfireProne: boolean;
     acidSulfateSoils?: string; // 'Class 1', 'Class 2', etc.
   };

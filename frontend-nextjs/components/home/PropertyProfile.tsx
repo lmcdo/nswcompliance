@@ -26,7 +26,8 @@ interface PropertyData {
   maxFsr: string | null;
   heritage: boolean;
   heritageItemName: string | null;
-  floodProne: boolean;
+  floodProne: boolean | null;
+  floodMapNote?: string;
   lotArea: number | null;
   lotPolygon: { type: 'Polygon'; coordinates: number[][][] } | null;
   landValue: string | null;
@@ -228,8 +229,8 @@ export function PropertyProfile() {
               <PropertyFact
                 icon={Droplets}
                 label="Flood planning"
-                value={data.floodProne ? 'Yes' : 'No'}
-                alert={data.floodProne}
+                value={data.floodProne === true ? 'Yes' : data.floodProne === false ? 'No' : 'Not known — no published flood map'}
+                alert={data.floodProne === true}
               />
             </div>
           </div>

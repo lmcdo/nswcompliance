@@ -62,7 +62,8 @@ export interface PropertyContext {
 
   // Environmental Constraints (from NSW Planning Portal + environmental datasets)
   environmental_constraints?: {
-    flood_prone: boolean;
+    /** null = not known from a published flood map (never shown as "No"). */
+    flood_prone: boolean | null;
     bushfire_prone: boolean;
     acid_sulfate_soils?: string;       // e.g., "Class 5"
     anef_zone: boolean;

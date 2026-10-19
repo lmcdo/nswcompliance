@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       basixWater,
       lga,
       heritage,
-      floodProne: false, // Default values
+      floodProne: null, // not known here: this route queries no flood map
       bushfireProne: false
     };
 
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       basixWater: body.basixWater,
       lga: body.lga,
       heritage: body.heritage || false,
-      floodProne: body.floodProne || false,
+      floodProne: body.floodProne ?? null,
       bushfireProne: body.bushfireProne || false
     };
 
