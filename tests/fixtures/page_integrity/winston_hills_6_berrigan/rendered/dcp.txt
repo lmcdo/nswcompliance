@@ -1,0 +1,1408 @@
+⚠️
+
+Important: Provisions are shown as published and may be superseded. Check legislation.nsw.gov.au for current SEPPs/LEPs before relying on them.
+
+Dismiss
+PlotDetect
+Site Controls
+
+Every control cited to its clause — zoning live from the NSW Planning Portal
+
+Quick Guide
+CITY OF PARRAMATTA
+Property Address
+
+Enter a property address to analyze
+
+Analyze Property
+
+Disclaimer: PlotDetect presents DCP provisions and state/local planning data (from NSW Planning Portal and SEPP sources) as published by relevant authorities. It does not constitute planning advice. Users should verify provisions against current council instruments and seek professional advice for development applications.
+
+THE PROPERTY
+
+Property Summary
+Address
+
+6 BERRIGAN STREET WINSTON HILLS 2153
+
+ZoneR2: Low Density Residential
+Area
+
+688m²
+
+LGA
+
+CITY OF PARRAMATTA
+
+Heritage
+
+No
+
+NSW SIX Maps aerial imagery · © NSW Government CC BY 4.0
+
+Property Details
+
+6 BERRIGAN STREET WINSTON HILLS 2153
+
+CITY OF PARRAMATTA LGA
+
+Lot Dimensions
+Cadastre
+Area
+688m²
+Lot width (shorter side)
+22.4m
+Length
+39.7m
+
+Street frontage: 13.3 m along Berrigan St
+
+Lot width is the shorter side, and length the longer side, of the rectangle that fits the lot. Neither is the street frontage.
+
+Not a Corner Lot
+
+Adjacent road: BERRIGAN ST
+
+Data currency
+▼
+SEPP
+State Planning Policies
+Planning Controls
+Zone & Development Standards
+DCP
+Council Controls
+
+Get notified when we add more councils and export features
+
+We're expanding DCP coverage across NSW. Register to hear first.
+
+Your role (optional)
+Town Planner
+Certifier
+Architect
+Conveyancer
+Buyers Agent
+Developer
+Other
+Register
+Parramatta DCP 2023 (Amendment 4)
+·
+Source PDF checked twice a month
+·
+Last checked for changes 15 Oct 2026
+
+Provisions sourced from the council's published DCP. Twice a month (on the 1st and 15th) the council's PDF is compared with our stored copy. This is planning intelligence for due diligence review — not a substitute for a Section 10.7 planning certificate.
+
+DCP Numeric Controls
+12 controls extracted
+Source: Parramatta DCP
+|
+Development type: dwelling house
+Setbacks
+Front setback
+≥ 6 m
+consistent with prevailing setback along the street
+p. 60
+Front setback
+≥ 10 m
+state and regional roads
+p. 60
+Side setback
+≥ 0.9 m
+p. 60
+Rear setback
+No set number
+NO FIGURE: formula - rear setback equal to 30% of the site length
+p. 60
+Secondary street setback
+≥ 3 m
+corner lot; secondary street setback
+p. 60
+Parking
+Car parking
+≥ 1 spaces/dwelling
+1 or 2 bedrooms
+p. 281
+Car parking
+≥ 2 spaces/dwelling
+3 or more bedrooms
+p. 281
+Site Coverage
+Maximum site coverage
+No set number
+FSR-CONTROLLED: site coverage governed by Floor Space Ratio in the LEP, not a DCP percentage
+Local Environmental Plan — no clause recorded
+Landscaping & Canopy
+Minimum deep soil zone
+≥ 30 %
+50% at rear, 15% at front
+p. 62
+Minimum deep soil zone
+≥ 30 %
+terraces; 50% at rear, 15% at front
+p. 92
+Minimum landscaped area
+≥ 40 %
+including deep soil zone
+p. 62
+Minimum landscaped area
+≥ 40 %
+terraces; including deep soil zone
+p. 92
+
+Structured values extracted from the published DCP. Deterministic — same property, same result every time.
+
+Preparing a DA?
+
+Scope these 1,995 provisions to your works and export a SEE draft.
+
+Enable DA Mode
+
+Precinct data is not available for this property — site-specific precinct controls may not be shown.
+
+Some rules in this council’s plan apply only to particular areas that we have not mapped yet. Those rules are not shown here. Check the council’s plan for: Parramatta DCP 2023 Part 8 section introductions (local centres, neighbourhood precincts, special character areas, specific sites) and the p1537 waste controls.
+
+DCP STRUCTURE
+
+City of Parramatta DCP
+
+Select a part to begin
+
+1,995 provisions matched to this property and type of work
+
+9
+0
+2.0
+17
+2.1
+1
+2.10
+13
+2.11
+4
+2.12
+2
+2.13
+6
+2.14
+17
+2.15
+41
+2.2
+1
+2.3
+2
+2.4
+2
+2.5
+2
+2.6
+11
+2.7
+28
+2.8
+8
+2.9
+15
+5.0
+6
+5.1
+206
+5.2
+50
+5.3
+74
+5.4
+29
+5.4.3.1
+2
+5.4.3.2
+1
+5.4.3.3
+10
+5.4.3.4
+6
+5.4.3.5
+35
+6.0
+4
+6.1
+15
+6.2
+63
+6.3
+15
+6.4
+11
+7.0
+0
+7.1
+0
+7.10
+0
+7.10.1.4
+0
+7.10.1.5
+0
+7.10.10.2
+0
+7.10.10.3
+0
+7.10.10.4
+0
+7.10.11.2
+0
+7.10.11.4
+0
+7.10.11.5
+0
+7.10.12.1
+0
+7.10.12.2
+0
+7.10.12.3
+0
+7.10.12.4
+0
+7.10.12.5
+0
+7.10.2.4
+0
+7.10.2.5
+0
+7.10.3.4
+0
+7.10.3.5
+0
+7.10.3.6
+0
+7.10.4.4
+0
+7.10.4.5
+0
+7.10.5.4
+0
+7.10.6.2
+0
+7.10.8.4
+0
+7.10.9.4
+0
+7.11
+0
+7.2
+0
+7.3
+0
+7.4
+0
+7.5
+0
+7.6
+0
+7.7
+0
+7.8
+0
+7.9
+0
+8.0
+0
+8.1.1
+0
+8.1.1.1.1
+0
+8.1.1.2
+0
+8.1.1.2.1
+0
+8.1.1.2.10
+0
+8.1.1.2.11
+0
+8.1.1.2.12
+0
+8.1.1.2.13
+0
+8.1.1.2.2
+0
+8.1.1.2.3
+0
+8.1.1.2.4
+0
+8.1.1.2.5
+0
+8.1.1.2.6
+0
+8.1.1.2.7
+0
+8.1.1.2.8
+0
+8.1.1.2.9
+0
+8.1.1.3
+0
+8.1.1.3.1
+0
+8.1.1.3.2
+0
+8.1.1.3.3
+0
+8.1.1.3.4
+0
+8.1.1.3.5
+0
+8.1.1.3.6
+0
+8.1.1.3.7
+0
+8.1.1.3.8
+0
+8.1.1.4
+0
+8.1.1.4.1
+0
+8.1.1.4.2
+0
+8.1.1.4.3
+0
+8.1.1.4.4
+0
+8.2
+0
+8.2.1
+0
+8.2.1.1
+0
+8.2.2.1
+0
+8.2.2.10
+0
+8.2.2.10.1
+0
+8.2.2.10.10
+0
+8.2.2.10.2
+0
+8.2.2.10.3
+0
+8.2.2.10.4
+0
+8.2.2.10.5
+0
+8.2.2.10.6
+0
+8.2.2.10.7
+0
+8.2.2.10.8
+0
+8.2.2.10.9
+0
+8.2.2.11
+0
+8.2.2.11.2
+0
+8.2.2.11.3
+0
+8.2.2.11.4
+0
+8.2.2.11.5
+0
+8.2.2.12.1
+0
+8.2.2.12.10
+0
+8.2.2.12.11
+0
+8.2.2.12.12
+0
+8.2.2.12.13
+0
+8.2.2.12.14
+0
+8.2.2.12.15
+0
+8.2.2.12.2
+0
+8.2.2.12.3
+0
+8.2.2.12.4
+0
+8.2.2.12.5
+0
+8.2.2.12.6
+0
+8.2.2.12.7
+0
+8.2.2.12.8
+0
+8.2.2.12.9
+0
+8.2.2.2
+0
+8.2.2.3
+0
+8.2.2.4
+0
+8.2.2.5
+0
+8.2.2.6
+0
+8.2.2.7
+0
+8.2.2.8
+0
+8.2.2.9.1
+0
+8.2.2.9.2
+0
+8.2.2.9.3
+0
+8.2.2.9.4
+0
+8.2.2.9.5
+0
+8.2.3
+0
+8.2.3.1.1
+0
+8.2.4.1
+0
+8.2.4.2
+0
+8.2.4.3
+0
+8.2.4.4
+0
+8.2.4.5
+0
+8.2.4.6
+0
+8.2.4.7
+0
+8.2.4.7.1
+0
+8.2.4.7.2
+0
+8.2.4.7.3
+0
+8.2.5
+0
+8.2.5.1
+0
+8.2.5.2.1
+0
+8.2.5.2.2
+0
+8.2.5.2.3
+0
+8.2.5.3
+0
+8.2.5.3.1
+0
+8.2.5.3.2
+0
+8.2.5.3.3
+0
+8.2.5.3.4
+0
+8.2.5.3.5
+0
+8.2.5.3.6
+0
+8.2.6.1.1
+0
+8.2.6.1.2
+0
+8.2.6.1.3
+0
+8.2.6.2
+0
+8.2.6.2.1
+0
+8.2.6.2.10
+0
+8.2.6.2.11
+0
+8.2.6.2.12
+0
+8.2.6.2.13
+0
+8.2.6.2.14
+0
+8.2.6.2.15
+0
+8.2.6.2.16
+0
+8.2.6.2.17
+0
+8.2.6.2.18
+0
+8.2.6.2.19
+0
+8.2.6.2.2
+0
+8.2.6.2.20
+0
+8.2.6.2.21
+0
+8.2.6.2.3
+0
+8.2.6.2.4
+0
+8.2.6.2.5
+0
+8.2.6.2.6
+0
+8.2.6.2.7
+0
+8.2.6.2.8
+0
+8.2.6.2.9
+0
+8.2.6.3.1
+0
+8.2.6.3.10
+0
+8.2.6.3.2
+0
+8.2.6.3.3
+0
+8.2.6.3.4
+0
+8.2.6.3.5
+0
+8.2.6.3.6
+0
+8.2.6.3.7
+0
+8.2.6.3.8
+0
+8.2.6.3.9
+0
+8.2.6.4.1
+0
+8.2.6.4.2
+0
+8.2.6.4.3
+0
+8.2.6.5.1
+0
+8.2.6.5.10
+0
+8.2.6.5.11
+0
+8.2.6.5.2
+0
+8.2.6.5.3
+0
+8.2.6.5.4
+0
+8.2.6.5.5
+0
+8.2.6.5.6
+0
+8.2.6.5.7
+0
+8.2.6.5.8
+0
+8.2.6.5.9
+0
+8.2.6.6.2
+0
+8.2.6.7.2
+0
+8.2.6.7.3
+0
+8.2.6.7.4
+0
+8.2.6.7.5
+0
+8.2.6.7.7
+0
+8.2.7
+0
+8.2.7.1
+0
+8.2.7.2.1
+0
+8.2.7.2.2
+0
+8.2.7.2.3
+0
+8.2.7.2.4
+0
+8.2.7.3.1
+0
+8.2.7.3.2
+0
+8.2.7.3.3
+0
+8.2.7.4.1
+0
+8.2.7.4.2
+0
+8.2.7.4.3
+0
+8.2.7.5.1
+0
+8.2.7.5.2
+0
+8.2.7.5.3
+0
+8.2.7.5.4
+0
+8.2.7.5.5
+0
+8.2.7.5.6
+0
+8.2.7.5.7
+0
+8.2.7.5.8
+0
+8.2.7.5.9
+0
+8.2.8
+0
+8.2.8.1.1
+0
+8.2.8.1.10
+0
+8.2.8.1.11
+0
+8.2.8.1.12
+0
+8.2.8.1.13
+0
+8.2.8.1.14
+0
+8.2.8.1.15
+0
+8.2.8.1.16
+0
+8.2.8.1.17
+0
+8.2.8.1.18
+0
+8.2.8.1.19
+0
+8.2.8.1.2
+0
+8.2.8.1.2.2
+0
+8.2.8.1.20
+0
+8.2.8.1.21
+0
+8.2.8.1.3
+0
+8.2.8.1.4
+0
+8.2.8.1.5
+0
+8.2.8.1.6
+0
+8.2.8.1.7
+0
+8.2.8.1.8
+0
+8.2.8.1.9
+0
+8.2.8.2.1
+0
+8.2.8.3.1
+0
+8.2.8.4
+0
+8.3
+0
+8.3.1
+0
+8.3.1.1
+0
+8.3.2
+0
+8.3.2.1
+0
+8.3.2.1.1
+0
+8.3.2.2.1
+0
+8.3.2.3.1
+0
+8.3.2.6
+0
+8.3.3.1
+0
+8.3.3.2
+0
+8.3.4.1
+0
+8.3.5.1
+0
+8.3.6.1
+0
+8.3.7.1
+0
+8.3.8.1
+0
+8.3.9
+0
+8.4
+0
+8.4.1.2
+0
+8.4.2.2
+0
+8.4.3.2
+0
+8.4.4.2
+0
+8.4.5.1
+0
+8.4.6.2
+0
+8.4.7.2
+0
+8.4.8
+0
+8.4.8.1
+0
+8.5
+0
+8.5.1.1
+0
+8.5.1.2
+0
+8.5.1.3
+0
+8.5.1.4
+0
+8.5.1.5
+0
+8.5.10.1
+0
+8.5.10.2
+0
+8.5.11.1
+0
+8.5.11.10
+0
+8.5.11.11
+0
+8.5.11.12
+0
+8.5.11.13
+0
+8.5.11.14
+0
+8.5.11.15
+0
+8.5.11.16
+0
+8.5.11.17
+0
+8.5.11.18
+0
+8.5.11.19
+0
+8.5.11.2
+0
+8.5.11.20
+0
+8.5.11.21
+0
+8.5.11.22
+0
+8.5.11.23
+0
+8.5.11.24
+0
+8.5.11.25
+0
+8.5.11.26
+0
+8.5.11.27
+0
+8.5.11.28
+0
+8.5.11.29
+0
+8.5.11.3
+0
+8.5.11.30
+0
+8.5.11.31
+0
+8.5.11.4
+0
+8.5.11.5
+0
+8.5.11.6
+0
+8.5.11.7
+0
+8.5.11.8
+0
+8.5.11.9
+0
+8.5.12
+0
+8.5.2.1
+0
+8.5.2.2
+0
+8.5.2.3
+0
+8.5.3.1
+0
+8.5.3.2
+0
+8.5.3.3
+0
+8.5.3.4
+0
+8.5.4.1
+0
+8.5.4.2
+0
+8.5.4.3
+0
+8.5.4.4
+0
+8.5.4.5
+0
+8.5.4.6
+0
+8.5.4.7
+0
+8.5.4.8
+0
+8.5.5.1
+0
+8.5.6.1
+0
+8.5.6.2
+0
+8.5.6.3
+0
+8.5.6.4
+0
+8.5.6.5
+0
+8.5.6.6
+0
+8.5.7.1
+0
+8.5.7.2
+0
+8.5.7.3
+0
+8.5.7.4
+0
+8.5.7.5
+0
+8.5.7.6
+0
+8.5.7.7
+0
+8.5.7.8
+0
+8.5.8
+0
+8.5.8.1
+0
+8.5.8.10
+0
+8.5.8.11
+0
+8.5.8.12
+0
+8.5.8.13
+0
+8.5.8.14
+0
+8.5.8.2
+0
+8.5.8.3
+0
+8.5.8.4
+0
+8.5.8.5
+0
+8.5.8.6
+0
+8.5.8.7
+0
+8.5.8.8
+0
+8.5.8.9
+0
+8.5.9.10
+0
+8.5.9.11
+0
+8.5.9.12
+0
+8.5.9.2
+0
+8.5.9.3
+0
+8.5.9.4
+0
+8.5.9.5
+0
+8.5.9.6
+0
+8.5.9.7
+0
+8.5.9.8
+0
+8.5.9.9
+0
+9.0
+0
+9.1.1
+0
+9.1.2
+0
+9.10.1
+0
+9.10.1.1
+0
+9.10.1.2
+0
+9.10.1.3
+0
+9.10.1.4
+0
+9.10.1.5
+0
+9.10.1.6
+0
+9.10.1.7
+0
+9.10.1.8
+0
+9.10.10
+0
+9.10.10.1
+0
+9.10.10.2
+0
+9.10.10.3
+0
+9.10.10.4
+0
+9.10.10.5
+0
+9.10.11.1
+0
+9.10.12
+0
+9.10.12.1
+0
+9.10.12.2
+0
+9.10.12.3
+0
+9.10.12.4
+0
+9.10.12.5
+0
+9.10.13.1
+0
+9.10.13.2
+0
+9.10.13.3
+0
+9.10.13.4
+0
+9.10.13.5
+0
+9.10.14.1
+0
+9.10.14.2
+0
+9.10.14.3
+0
+9.10.14.4
+0
+9.10.14.5
+0
+9.10.14.6
+0
+9.10.14.7
+0
+9.10.14.8
+0
+9.10.15.1
+0
+9.10.15.2
+0
+9.10.15.3
+0
+9.10.15.4
+0
+9.10.15.5
+0
+9.10.15.6
+0
+9.10.15.7
+0
+9.10.15.8
+0
+9.10.16.1
+0
+9.10.17.2
+0
+9.10.17.3
+0
+9.10.17.4
+0
+9.10.18.1
+0
+9.10.18.2
+0
+9.10.18.3
+0
+9.10.18.4
+0
+9.10.18.5
+0
+9.10.18.6
+0
+9.10.19.1
+0
+9.10.19.2
+0
+9.10.19.3
+0
+9.10.2
+0
+9.10.2.2
+0
+9.10.2.3
+0
+9.10.2.4
+0
+9.10.2.5
+0
+9.10.2.6
+0
+9.10.20.1
+0
+9.10.20.2
+0
+9.10.20.3
+0
+9.10.20.4
+0
+9.10.3.1
+0
+9.10.4.1
+0
+9.10.5.1
+0
+9.10.6.1
+0
+9.10.6.2
+0
+9.10.7.1
+0
+9.10.8.1
+0
+9.10.9
+0
+9.10.9.1
+0
+9.10.9.2
+0
+9.10.9.3
+0
+9.2
+0
+9.3.2
+0
+9.3.3.1
+0
+9.3.3.2
+0
+9.3.3.3
+0
+9.3.3.4
+0
+9.3.4
+0
+9.3.5.1.1
+0
+9.3.5.1.2
+0
+9.3.5.2
+0
+9.3.5.2.1
+0
+9.3.5.2.2
+0
+9.3.5.2.3
+0
+9.3.5.3
+0
+9.3.5.4
+0
+9.3.6
+0
+9.3.7
+0
+9.3.8
+0
+9.3.9
+0
+9.4
+0
+9.4.1
+0
+9.4.2.1
+0
+9.4.2.2
+0
+9.4.2.3
+0
+9.4.3.1
+0
+9.4.3.2
+0
+9.4.4
+0
+9.4.5
+0
+9.4.6
+0
+9.4.7
+0
+9.5
+0
+9.5.1
+0
+9.5.1.2
+0
+9.5.10
+0
+9.5.11
+0
+9.5.2
+0
+9.5.3
+0
+9.5.4
+0
+9.5.5
+0
+9.5.6
+0
+9.5.7
+0
+9.5.8
+0
+9.5.9
+0
+9.6.1
+0
+9.6.2
+0
+9.6.3
+0
+9.6.4
+0
+9.6.5
+0
+9.6.6
+0
+9.6.7
+0
+9.7
+0
+9.7.1
+0
+9.7.2
+0
+9.7.3
+0
+9.7.4
+0
+9.7.5
+0
+9.7.6
+0
+9.7.7
+0
+9.7.8
+0
+9.8.1
+0
+9.8.2
+0
+9.8.3
+0
+9.8.4
+0
+9.8.5
+0
+9.8.5.1
+0
+9.8.5.2
+0
+9.8.5.3
+0
+9.8.5.4
+0
+9.8.6
+0
+9.8.7
+0
+9.8.8
+0
+9.8.9
+0
+9.8.9.2
+0
+9.9.1
+0
+9.9.2
+0
+9.9.3
+0
+9.9.3.2
+0
+9.9.3.3
+0
+parramatta-dcp-2023-full
+1298
+
+PROVISIONS
+
+2.0
+17
+of 1995 for property
+Export 17 provisions
+
+Showing 17 of 17 provisions
+
+2.0· · page 12-16· 8 provisions
+LGA-wide
+
+2.7 Any contaminated material to be removed from the site shall be disposed of to an EPA licensed land fill.
+
+Wording copied from the council's plan
+
+LGA-wide
+
+2.8 Stockpiles of topsoil, sand, aggregate, soil or other material are not to be located on any drainage line or easement, natural watercourse, footpath or roadway and shall be protected
+
+Wording copied from the council's plan
+
+LGA-wide
+
+2..1 Applicants are required to complete Stages 1 and 2 of Council’s Waste Management Plan Template. This plan must address: • expected volumes and types of waste to be generated; • details of how this waste will be re-used, recycled or disposed of (name and contact details for each receiving waste facility are required); and • details of how waste will be managed on site during demolition and construction so that waste is adequately separated, stored and reused/recycled/disposed of (for example through staff training, requirement in contracts, signage, etc).
+
+Wording copied from the council's plan
+
++ Show more
+LGA-wide
+
+2.2 Applicants are required to submit plans with their application which show: • location of areas where waste will be sorted for disposal or recycling; • location of areas where waste and soil stock piles will be stored on site; and • access path for vehicles removing waste from the site.
+
+Wording copied from the council's plan
+
+LGA-wide
+
+2.3 Documentation (such as receipts) for the transport and disposal of waste and recycling materials from the site must be retained. This documentation must be made available to Council on request to monitor compliance with the approved Waste Management Plan.
+
+Wording copied from the council's plan
+
+LGA-wide
+
+2.4 The removal and transport of asbestos containing materials must be conducted by an Environment Protection Authority (EPA) licensed contractor, and the materials must be disposed of at an appropriately licensed facility. These activities must be conducted in accordance with the requirements of SafeWork NSW, the Protection of the Environment Operations (Waste) Regulation 2014 and EPA Waste Classification Guidelines 2014.
+
+Wording copied from the council's plan
+
++ Show more
+LGA-wide
+
+2.5 The Protection of the Environment Operations (Waste) Regulation 2014 has requirements for waste transporters to record the movement of more than 100kg of asbestos waste or more than 10m² of asbestos sheeting. Transporters must use the online Waste Locate system. For more information see https://wastelocate.epa.nsw.gov.au
+
+Wording copied from the council's plan
+
++ Show more
+LGA-wide
+
+2.6 Hazardous or intractable wastes arising from the demolition process shall be removed and disposed of in accordance with the requirements of SafeWork NSW, the EPA, and the provisions of the Work Health and Safety Act 2011 , NSW Protection of the Environment and Operations Act 1997 (NSW) , and the EPA Waste Classification Guidelines 2014.
+
+Wording copied from the council's plan
+
++ Show more
+2.0· · page 12-51· 7 provisions
+LGA-wide
+
+Solar photovoltaic panels unsuitable locations Solar panels are not to be located on primary street facing verandah or dormer roofs.
+
+Wording copied from the council's plan
+
+LGA-wide
+
+Solar photovoltaic panels visibility Only solar panels and associated fixings and clips are visible from adjacent streets and parks – this means conduit and other equipment like inverters do not protrude from under the panels and that mounting rails are trimmed to the extent of the panels and clips.
+
+Wording copied from the council's plan
+
+LGA-wide
+
+Solar photovoltaic panels roof edges projection Solar panels do not extend over the edges of the roof plane and are not located within 300mm of the ridge(s) of the roof.
+
+Wording copied from the council's plan
+
+LGA-wide
+
+Solar photovoltaic panels maximum height Solar panels are mounted at the same angle as the roof plane and protrude no more than 250mm above the roof plane unless the low visibility of solar panel location would allow up to 1000 mm protrusion over the roof plane (e.g., rear addition skillion roofs with slope of less than 15 degrees).
+
+Wording copied from the council's plan
+
++ Show more
+LGA-wide
+
+Solar photovoltaic panels patterns and arrangements Solar panels are to be arranged in orderly rows with consistent offsets from the roof edges; and solar panels on roof planes containing parapets, dormer windows, skylights and chimneys must be arranged in a symmetrical pattern on the roof plane.
+
+Wording copied from the council's plan
+
+LGA-wide
+
+Solar photovoltaic panels alignment Mount solar panels with one edge parallel to the slope of the roof face (i.e., the panels must not be crooked to the slope of the roof face).
+
+Wording copied from the council's plan
+
+LGA-wide
+
+Solar photovoltaic panels position and minimum setback: If solar panels protrude more than 0.5m from the attached roof plane, they are located at least 1m from any property boundary.
+
+Wording copied from the council's plan
+
+2.0· · page 12-52· 2 provisions
+LGA-wide
+
+Solar energy system equipment location Equipment associated with a solar energy system, may be installed on building walls. Batteries, meters, and inverters: must not be installed on a wall facing the primary street but may be installed on the side walls of a front verandah.
+
+Wording copied from the council's plan
+
+LGA-wide
+
+Solar energy system equipment position Where associated equipment is located on a wall facing the primary street it must not cover building features like windows or decorative elements and must be installed neatly.
+
+Wording copied from the council's plan
+
+Feedback
+
+Need help using PlotDetect?
+
+Guides with worked examples and workflows
+
+Quick Reference
+Complete User Guide

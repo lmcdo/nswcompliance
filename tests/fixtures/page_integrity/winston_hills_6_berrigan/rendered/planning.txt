@@ -1,0 +1,225 @@
+⚠️
+
+Important: Provisions are shown as published and may be superseded. Check legislation.nsw.gov.au for current SEPPs/LEPs before relying on them.
+
+Dismiss
+PlotDetect
+Site Controls
+
+Every control cited to its clause — zoning live from the NSW Planning Portal
+
+Quick Guide
+CITY OF PARRAMATTA
+Property Address
+
+Enter a property address to analyze
+
+Analyze Property
+
+Disclaimer: PlotDetect presents DCP provisions and state/local planning data (from NSW Planning Portal and SEPP sources) as published by relevant authorities. It does not constitute planning advice. Users should verify provisions against current council instruments and seek professional advice for development applications.
+
+THE PROPERTY
+
+Property Summary
+Address
+
+6 BERRIGAN STREET WINSTON HILLS 2153
+
+ZoneR2: Low Density Residential
+Area
+
+688m²
+
+LGA
+
+CITY OF PARRAMATTA
+
+Heritage
+
+No
+
+NSW SIX Maps aerial imagery · © NSW Government CC BY 4.0
+
+Property Details
+
+6 BERRIGAN STREET WINSTON HILLS 2153
+
+CITY OF PARRAMATTA LGA
+
+Lot Dimensions
+Cadastre
+Area
+688m²
+Lot width (shorter side)
+22.4m
+Length
+39.7m
+
+Street frontage: 13.3 m along Berrigan St
+
+Lot width is the shorter side, and length the longer side, of the rectangle that fits the lot. Neither is the street frontage.
+
+Not a Corner Lot
+
+Adjacent road: BERRIGAN ST
+
+Data currency
+▼
+SEPP
+State Planning Policies
+Planning Controls
+Zone & Development Standards
+DCP
+Council Controls
+
+Get notified when we add more councils and export features
+
+We're expanding DCP coverage across NSW. Register to hear first.
+
+Your role (optional)
+Town Planner
+Certifier
+Architect
+Conveyancer
+Buyers Agent
+Developer
+Other
+Register
+Parramatta Local Environmental Plan 2023
+·
+Sourced live — NSW Planning Portal
+Local Environmental Plan
+Parramatta Local Environmental Plan 2023
+
+The LEP sets the framework for how land can be used and developed in the CITY OF PARRAMATTA area.
+
+Land Use Zoning:R2 - Low Density Residential
+Parramatta Local Environmental Plan 2023
+Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+
+Land use data not available for this zone — see full land use table via the link below.
+
+View Full Land Use Table for R2
+Development Standards
+LEP Part 4
+
+Numerical controls that limit the size and height of development on this property.
+
+Maximum Height
+9m
+LEP Clause 4.3 Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+Floor Space Ratio
+0.5:1
+= 344m² GFA
+LEP Clause 4.4 · Lot area 688.05m² Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+Minimum Lot Size
+550m²
+LEP Clause 4.1 Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+View full LEP Part 4 on NSW Legislation
+Development Yield Estimate
+Calculated from 2 of 6 planning controls
+
+This estimate is computed from the height of buildings and floor space ratio. No front setback, rear setback, side setback and SEPP standards are mapped for this lot, so those controls could not narrow the estimate.
+
+Maximum GFA
+344m²
+LEP envelope (FSR / height)
+Homes you could build
+1
+dwelling house — as-of-right yield, subject to a development application.
+Binding Constraint
+FSR is the binding control on maximum GFA
+Max Storeys
+3
+9m height limit
+Data gaps
+- No DCP setback controls available for this development type, so the buildable footprint and the after-DCP figure are not shown.
+Show computation chain (2 steps)
+
+Constraint arithmetic is a preliminary computational estimate only. It does not account for merit-based assessment, clause variations, or council-specific interpretation. Engage a qualified town planner for site-specific assessment.
+
+Environmental Constraints
+LEP Part 5
+Flood Mapping
+No
+Bushfire Prone
+No
+Acid Sulfate Soils
+Class 5
+Aircraft Noise
+No
+Mine Subsidence
+No
+Landslide Risk
+No
+Contaminated Land
+284m
+Drinking Water
+No
+Water/Sewer Servicing
+Section 73
+Biodiversity
+No
+Coastal
+No
+Additional Uses
+No
+Foreshore Line
+No
+Land Reservation
+No
+Riparian Land
+No
+Wetlands
+No
+Key Site
+No
+Active Frontage
+No
+Notified Contaminated Site — 284m
+
+Coles Express Service Station Northmead, 197 Windsor ROAD, NORTHMEAD
+
+Management Class: Regulation under CLM Act not required · Service Station
+
+Contamination assessment may be required — SEPP (Resilience and Hazards) 2021 Chapter 7.
+
+View all environmental layers on NSW Planning Portal
+Planning Overlays
+1 overlay
+
+Additional planning overlays that apply to this property — may include LEP local provisions, SEPP overlays, or other instruments.
+
+SEPP (Western Sydney Aerotropolis) 2020 Wind Turbines Map
+
+30 km
+
+State Environmental Planning Policy (Precincts—Western Parkland City) 2021
+View legislation
+
+Note: Planning overlays may include LEP Part 6 local provisions, SEPP spatial overlays, or other instruments. Each overlay imposes specific requirements — verify against the current legislation before issuing approvals.
+
+Heritage Conservation
+Not applicable to this address
+
+This property is not in a Heritage Conservation Area and is not listed as a heritage item.
+
+Planning Instruments
+Land Application Map
+
+All instruments whose maps apply to this property.
+
+Parramatta Local Environmental Plan 2023
+INCLUDED
+Feedback
+
+Need help using PlotDetect?
+
+Guides with worked examples and workflows
+
+Quick Reference
+Complete User Guide

@@ -1,0 +1,68 @@
+{
+ "address": "3 EGRET WAY MOUNT ANNAN 2567",
+ "checked_on": "2026-10-19",
+ "how": "each fact checked once by hand against the named independent source; scratch inputs: Portal JSON per propId, DCP PDFs in data/dcps/",
+ "facts": {
+  "zone": {
+   "value": "R2",
+   "source": "Portal layerintersect (ePlanningApi, propId 2284140) Land Zoning Map, checked 2026-10-19"
+  },
+  "height_m": {
+   "value": 9.5,
+   "source": "Portal layerintersect (ePlanningApi, propId 2284140) Height of Buildings Map, checked 2026-10-19"
+  },
+  "fsr": {
+   "value": null,
+   "source": "Portal layerintersect (ePlanningApi, propId 2284140) Floor Space Ratio Map, checked 2026-10-19: no FSR map applies"
+  },
+  "min_lot_m2": {
+   "value": 450,
+   "source": "Portal layerintersect (ePlanningApi, propId 2284140) Lot Size Map, checked 2026-10-19"
+  },
+  "lot_area_m2": {
+   "value": 639.4,
+   "tolerance_pct": 0.5,
+   "source": "lot boundary: Portal ePlanningApi/lot polygon, geodesic area (user ruling 2026-10-19: lot area = the boundary)"
+  },
+  "heritage": {
+   "value": false,
+   "source": "Portal layerintersect (ePlanningApi, propId 2284140) no Heritage Map layer intersects, checked 2026-10-19"
+  },
+  "flood_lep_map": {
+   "value": false,
+   "source": "Portal layerintersect (ePlanningApi, propId 2284140) no Flood Planning layer intersects, checked 2026-10-19"
+  },
+  "bushfire": {
+   "value": false,
+   "source": "RFS Bush Fire Prone Land (mapprod3 Fire/BFPL) intersect with the lot polygon: no feature"
+  },
+  "corner": {
+   "value": false,
+   "source": "NSW Transport Theme road segments within 12 m of the lot: EGRET WAY only (nearest other road >30 m)"
+  },
+  "strata": {
+   "value": false,
+   "source": "Portal lot: one lot 1110/-/DP883203"
+  },
+  "setback_front_m": {
+   "allowed": [
+    4.5,
+    3.5
+   ],
+   "source": "Camden DCP 2019 Part 4 Table 4-2 (pdf p11, P4-8): default = average of 2 nearest dwelling houses; 4.5 m (3.5 m fronting open space) only if there are not 2 within 40 m, lot <=900 m2"
+  },
+  "setback_side_m": {
+   "allowed": [
+    0.9
+   ],
+   "source": "Camden DCP 2019 Part 4 Table 4-2 (pdf p11)"
+  },
+  "setback_rear_m": {
+   "allowed": [
+    4.0,
+    6.0
+   ],
+   "source": "Camden DCP 2019 Part 4 Table 4-2 (pdf p11): 4 m single storey / single-storey portion; 6 m two-storey portion"
+  }
+ }
+}

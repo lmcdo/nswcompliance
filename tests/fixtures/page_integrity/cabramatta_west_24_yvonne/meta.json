@@ -1,0 +1,17 @@
+{
+  "requested_address": "24 Yvonne Street, Cabramatta West",
+  "number": "24",
+  "street": "YVONNE STREET",
+  "suburb": "CABRAMATTA WEST",
+  "base_url": "https://verify.plotdetect.com.au",
+  "captured_at": "2026-10-19T01:21:18.730946+00:00",
+  "suggestions": [
+    "24 Yvonne Street, Cabramatta West NSW, Australia"
+  ],
+  "suggestion_picked": "24 Yvonne Street, Cabramatta West NSW, Australia",
+  "resolved_address": "24 YVONNE STREET CABRAMATTA WEST 2166",
+  "identity_ok": true,
+  "calls": 18,
+  "calls_failed": [],
+  "exit": 0
+}

@@ -1,0 +1,135 @@
+⚠️
+
+Important: Provisions are shown as published and may be superseded. Check legislation.nsw.gov.au for current SEPPs/LEPs before relying on them.
+
+Dismiss
+PlotDetect
+Site Controls
+
+Every control cited to its clause — zoning live from the NSW Planning Portal
+
+Quick Guide
+FAIRFIELD
+Property Address
+
+Enter a property address to analyze
+
+Analyze Property
+
+Disclaimer: PlotDetect presents DCP provisions and state/local planning data (from NSW Planning Portal and SEPP sources) as published by relevant authorities. It does not constitute planning advice. Users should verify provisions against current council instruments and seek professional advice for development applications.
+
+THE PROPERTY
+
+Property Summary
+Address
+
+24 YVONNE STREET CABRAMATTA WEST 2166
+
+ZoneR2: Low Density Residential
+Area
+
+589m²
+
+LGA
+
+FAIRFIELD
+
+Heritage
+
+No
+
+NSW SIX Maps aerial imagery · © NSW Government CC BY 4.0
+
+Property Details
+
+24 YVONNE STREET CABRAMATTA WEST 2166
+
+FAIRFIELD LGA
+
+Lot Dimensions
+Cadastre
+Area
+589m²
+Lot width (shorter side)
+22.6m
+Length
+36.0m
+
+Street frontage: 14.7 m along Yvonne St
+
+Lot width is the shorter side, and length the longer side, of the rectangle that fits the lot. Neither is the street frontage.
+
+Not a Corner Lot
+
+Adjacent road: YVONNE ST
+
+Data currency
+▼
+SEPP
+State Planning Policies
+Planning Controls
+Zone & Development Standards
+DCP
+Council Controls
+
+Get notified when we add more councils and export features
+
+We're expanding DCP coverage across NSW. Register to hear first.
+
+Your role (optional)
+Town Planner
+Certifier
+Architect
+Conveyancer
+Buyers Agent
+Developer
+Other
+Register
+DCP Numeric Controls
+7 controls extracted
+Source: Fairfield DCP
+|
+Development type: dwelling house
+Setbacks
+Front setback
+≥ 4.5 m
+p. 153
+Side setback
+≥ 0.9 m
+Ground level
+p. 154
+Side setback
+≥ 4 m
+Upper floor where combined void space exceeds 20m2, to south and west boundaries
+p. 154
+Rear setback
+≥ 0.9 m
+Ground floor walls 0.9 m; upper floor rear walls at least 4 m from rear boundaries where they adjoin residential properties (5A.2.3.2 c)
+p. 154
+Parking
+Car parking
+≥ 3 spaces/dwelling
+2 of 3 spaces behind building line
+p. 160
+Height
+Maximum height
+≤ 9 m
+p. 151
+Landscaping & Canopy
+Minimum landscaped area
+≥ 30 %
+soft soil zone, 50% must be in rear yard
+p. 166
+
+Structured values extracted from the published DCP. Deterministic — same property, same result every time.
+
+These are the measurable controls extracted from the published plan. The full chapter text for this council is not loaded yet.
+
+Feedback
+
+Need help using PlotDetect?
+
+Guides with worked examples and workflows
+
+Quick Reference
+Complete User Guide

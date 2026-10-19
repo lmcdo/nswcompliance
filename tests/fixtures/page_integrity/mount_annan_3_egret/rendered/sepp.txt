@@ -1,0 +1,232 @@
+⚠️
+
+Important: Provisions are shown as published and may be superseded. Check legislation.nsw.gov.au for current SEPPs/LEPs before relying on them.
+
+Dismiss
+PlotDetect
+Site Controls
+
+Every control cited to its clause — zoning live from the NSW Planning Portal
+
+Quick Guide
+CAMDEN
+Property Address
+
+Enter a property address to analyze
+
+Analyze Property
+
+Disclaimer: PlotDetect presents DCP provisions and state/local planning data (from NSW Planning Portal and SEPP sources) as published by relevant authorities. It does not constitute planning advice. Users should verify provisions against current council instruments and seek professional advice for development applications.
+
+THE PROPERTY
+
+Property Summary
+Address
+
+3 EGRET WAY MOUNT ANNAN 2567
+
+ZoneR2: Low Density Residential
+Area
+
+641m²
+
+LGA
+
+CAMDEN
+
+Heritage
+
+No
+
+NSW SIX Maps aerial imagery · © NSW Government CC BY 4.0
+
+Property Details
+
+3 EGRET WAY MOUNT ANNAN 2567
+
+CAMDEN LGA
+
+Lot Dimensions
+Cadastre
+Area
+641m²
+Lot width (shorter side)
+24.6m
+Length
+39.8m
+
+Street frontage: 14.0 m along Egret Way
+
+Lot width is the shorter side, and length the longer side, of the rectangle that fits the lot. Neither is the street frontage.
+
+Not a Corner Lot
+
+Adjacent road: EGRET WAY
+
+Data currency
+▼
+SEPP
+State Planning Policies
+Planning Controls
+Zone & Development Standards
+DCP
+Council Controls
+
+Get notified when we add more councils and export features
+
+We're expanding DCP coverage across NSW. Register to hear first.
+
+Your role (optional)
+Town Planner
+Certifier
+Architect
+Conveyancer
+Buyers Agent
+Developer
+Other
+Register
+NSW State Planning Instruments
+·
+Sourced live — NSW Planning Portal
+State Environmental Planning Policies
+Mandatory state-wide requirements that apply to this property
+Approval Pathways for This Property
+Automated Triage
+Faster pathways to check
+Exempt & Complying Development (4 work types available)
+4 work types to check against the exempt and complying standards
+Pattern Book CDC (10 days): Ineligible
+Exempt & Complying: 4 work types available
+Housing SEPP (LMR): Not in a Low and Mid-Rise housing area (R2 zone)
+Standard DA (50+ days): Available
+
+Screened from the zone and mapped constraints only. Each pathway has further standards to check against the instrument.
+
+Exempt & Complying Development Standards
+Part 3 — Housing Code
+Applies to R2 zone
+
+Standards that apply to development that may proceed as complying development on this property. Click a work type to view the applicable standards.
+
+CDC Eligibility Screener
+Incomplete — enter values below to check
+▼ Show
+Deck / Balcony
+11
+Fence
+7
+Carport
+16
+Pool
+9
+
+✓ How to Use Complying Development
+
+☐
+Review all Part 3 — Housing Code standards above for your work type
+☐
+Check LEP tab confirms your use is permitted in this zone
+☐
+Review DCP tab for additional local height/setback rules
+☐
+Engage a private certifier to lodge CDC application
+
+All three requirements (SEPP + LEP + DCP) must be satisfied for Complying Development.
+
+Showing Part 3 — Housing Code standards only. Other codes may apply — see all provisions for confirmation.
+
+View full SEPP on NSW Legislation
+Provision text extracted from SEPP (Exempt and Complying Development Codes) 2008. Zone eligibility and property-specific constraints must be independently verified before issuing a CDC.
+SEPP Housing 2021
+Pattern Book CDC Pathway
+Pattern Book CDC Eligibility
+INELIGIBLE
+
+Property is not eligible for Pattern Book CDC pathway - Development Application (DA) required
+
+Reason:
+lot size min: minimum 900.0sqm required, 640.98sqm available (259.0sqm short)
+and 1 more reason (open the card to see it)
+SEPP Requirements
+State Policy
+
+State Environmental Planning Policies - Mandatory requirements
+
+Applicable State Policies (from Planning Portal)
+✓ SEPP (Sustainable Buildings) 2022 — structured requirements shown below
+Assess manually — no structured data available:
+⚠ SEPP (Transport and Infrastructure) 2021
+📍 Applied from NSW Planning Portal
+BASIX sustainability requirements determined by location and climate zone
+💧 Water Target: 40%
+Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+40% reduction from baseline water use via efficient fixtures
+🌡️ Climate Zone: 28
+Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+Climate Zone 28 — verify thermal performance targets against Table 3 of SEPP Sustainable Buildings 2022.
+🏠 BASIX: Area 6 (CAMDEN)
+Area 6 (CAMDEN) - specific thermal comfort and energy targets for this LGA
+
+No Housing SEPP structured requirements for this development type
+
+⚡
+BASIX Energy & Thermal Requirements
+Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+
+Energy efficiency and thermal comfort targets for Area 6 (CAMDEN) require detailed calculation through the official BASIX Certificate tool. Targets vary by building type, orientation, and materials.
+
+🔗 Get BASIX Certificate
+👤 Find BASIX Assessor
+Provision text sourced from NSW Planning Portal and SEPP instruments. Zone eligibility, heritage classification, and property-specific constraints require independent verification against current legislation.
+Multiple Occupancy Options
+NSW Reforms
+
+Duplexes, townhouses, apartments and other housing options under Low and Mid-Rise reforms
+
+Multiple Occupancy Options
+0 of 6 options available
+
+Check what housing types you can build under NSW Low and Mid-Rise Housing reforms
+
+Your zone: R2
+Lot area: 640.98m²
+Lot width measured from the street: 14.1m narrowest in the front half, 25.7m widest
+Dual Occupancy (Duplex)
+Two homes on one block — attached side-by-side, or detached (e.g., house + granny flat)
+Not Eligible
+Independent Living Units
+Standards the Housing SEPP sets for independent living units (section 108)
+Not Assessed
+Low-Rise Apartments (R1/R2 Zones)
+Apartment buildings now permitted in low density residential zones under LMR reforms
+Not Eligible
+Multi-Dwelling Housing (Townhouses/Villas)
+Multiple occupancy with 3 or more homes — includes townhouses, villas, and villa units
+Not Eligible
+Show 2 More
+
+These options are based on NSW Low and Mid-Rise Housing reforms (July 2024 & Feb 2025). Development standards override local council controls for eligible properties.
+
+Source: SEPP (Housing) 2021
+View official legislation
+Apartment Design Guide (ADG)
+Not applicable to this address
+
+Not applicable to this address. Property zone does not permit apartments and development type is not apartment-related.
+
+Transit Oriented Development (TOD) Parking
+Not applicable to this address
+
+Not applicable to this address. Property is not in a designated TOD precinct and has no qualifying public transport within regulatory thresholds (800m rail, 600m light rail, 400m frequent bus).
+
+Feedback
+
+Need help using PlotDetect?
+
+Guides with worked examples and workflows
+
+Quick Reference
+Complete User Guide

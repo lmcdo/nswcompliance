@@ -1,0 +1,68 @@
+{
+ "address": "14 GALE STREET CONCORD 2137",
+ "checked_on": "2026-10-19",
+ "how": "each fact checked once by hand against the named independent source; scratch inputs: Portal JSON per propId, DCP PDFs in data/dcps/",
+ "facts": {
+  "zone": {
+   "value": "R3",
+   "source": "Portal layerintersect (ePlanningApi, propId 1452238) Land Zoning Map, checked 2026-10-19"
+  },
+  "height_m": {
+   "value": 8.5,
+   "source": "Portal layerintersect (ePlanningApi, propId 1452238) Height of Buildings Map, checked 2026-10-19"
+  },
+  "fsr": {
+   "value": 0.5,
+   "source": "Portal layerintersect (ePlanningApi, propId 1452238) Floor Space Ratio Map, checked 2026-10-19"
+  },
+  "min_lot_m2": {
+   "value": 450,
+   "source": "Portal layerintersect (ePlanningApi, propId 1452238) Lot Size Map, checked 2026-10-19"
+  },
+  "lot_area_m2": {
+   "value": 846.2,
+   "tolerance_pct": 0.5,
+   "source": "lot boundary: Portal ePlanningApi/lot polygon, geodesic area (user ruling 2026-10-19: lot area = the boundary)"
+  },
+  "heritage": {
+   "value": false,
+   "source": "Portal layerintersect (ePlanningApi, propId 1452238) no Heritage Map layer intersects, checked 2026-10-19"
+  },
+  "flood_lep_map": {
+   "value": false,
+   "source": "Portal layerintersect (ePlanningApi, propId 1452238) no Flood Planning layer intersects, checked 2026-10-19"
+  },
+  "bushfire": {
+   "value": false,
+   "source": "RFS Bush Fire Prone Land (mapprod3 Fire/BFPL) intersect with the lot polygon: no feature"
+  },
+  "corner": {
+   "value": true,
+   "source": "NSW Transport Theme road segments within 12 m of the lot: GALE STREET and WATKIN STREET"
+  },
+  "strata": {
+   "value": true,
+   "source": "Portal lot: strata plan SP9807 (CP + lots 1-4)"
+  },
+  "setback_front_m": {
+   "allowed": [
+    4.5
+   ],
+   "source": "Canada Bay DCP Part E s4.2 C1 (pdf p11, E-11): 4.5 m or the Prevailing Street Setback, whichever is greater (4.5 m is a floor)"
+  },
+  "setback_side_m": {
+   "allowed": [
+    0.9,
+    1.5
+   ],
+   "source": "Canada Bay DCP Part E C6 (pdf p12, E-12): 900mm single storey; 1500mm second storey"
+  },
+  "setback_rear_m": {
+   "allowed": [
+    6.0,
+    9.0
+   ],
+   "source": "Canada Bay DCP Part E C9/C10 (pdf p15, E-15): 6.0 m; 9.0 m to an upper-floor living room"
+  }
+ }
+}

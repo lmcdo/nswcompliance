@@ -1,0 +1,286 @@
+⚠️
+
+Important: Provisions are shown as published and may be superseded. Check legislation.nsw.gov.au for current SEPPs/LEPs before relying on them.
+
+Dismiss
+PlotDetect
+Site Controls
+
+Every control cited to its clause — zoning live from the NSW Planning Portal
+
+Quick Guide
+CANADA BAY
+Property Address
+
+Enter a property address to analyze
+
+Analyze Property
+
+Disclaimer: PlotDetect presents DCP provisions and state/local planning data (from NSW Planning Portal and SEPP sources) as published by relevant authorities. It does not constitute planning advice. Users should verify provisions against current council instruments and seek professional advice for development applications.
+
+THE PROPERTY
+
+Property Summary
+Address
+
+14 GALE STREET CONCORD 2137
+
+ZoneR3: Medium Density Residential
+Area
+
+848m²
+
+LGA
+
+CANADA BAY
+
+Heritage
+
+No
+
+NSW SIX Maps aerial imagery · © NSW Government CC BY 4.0
+
+Property Details
+
+14 GALE STREET CONCORD 2137
+
+CANADA BAY LGA
+
+Lot Dimensions
+Cadastre
+Area
+848m²
+Lot width (shorter side)
+18.6m
+Length
+46.4m
+
+Street frontage: 18.6 m along Gale St and 18.1 m along Watkin St
+
+Lot width is the shorter side, and length the longer side, of the rectangle that fits the lot. Neither is the street frontage.
+
+Corner Lot
+2 Roads
+
+Adjacent roads: GALE ST, WATKIN ST
+
+Secondary street setback: 3m (vs 6m rear for non-corner)
+
+Data currency
+▼
+SEPP
+State Planning Policies
+Planning Controls
+Zone & Development Standards
+DCP
+Council Controls
+
+Get notified when we add more councils and export features
+
+We're expanding DCP coverage across NSW. Register to hear first.
+
+Your role (optional)
+Town Planner
+Certifier
+Architect
+Conveyancer
+Buyers Agent
+Developer
+Other
+Register
+NSW State Planning Instruments
+·
+Sourced live — NSW Planning Portal
+State Environmental Planning Policies
+Mandatory state-wide requirements that apply to this property
+Approval Pathways for This Property
+Automated Triage
+Faster pathways to check
+Exempt & Complying Development (4 work types available)
+4 work types to check against the exempt and complying standards
+Pattern Book CDC (10 days): Ineligible
+Exempt & Complying: 4 work types available
+Housing SEPP (LMR): Applicable
+Standard DA (50+ days): Available
+
+Screened from the zone and mapped constraints only. Each pathway has further standards to check against the instrument.
+
+Exempt & Complying Development Standards
+Part 3 — Housing Code
+Applies to R3 zone
+
+Standards that apply to development that may proceed as complying development on this property. Click a work type to view the applicable standards.
+
+CDC Eligibility Screener
+Incomplete — enter values below to check
+▼ Show
+Deck / Balcony
+11
+Fence
+7
+Carport
+16
+Pool
+9
+
+✓ How to Use Complying Development
+
+☐
+Review all Part 3 — Housing Code standards above for your work type
+☐
+Check LEP tab confirms your use is permitted in this zone
+☐
+Review DCP tab for additional local height/setback rules
+☐
+Engage a private certifier to lodge CDC application
+
+All three requirements (SEPP + LEP + DCP) must be satisfied for Complying Development.
+
+Showing Part 3 — Housing Code standards only. Other codes may apply — see all provisions for confirmation.
+
+View full SEPP on NSW Legislation
+Provision text extracted from SEPP (Exempt and Complying Development Codes) 2008. Zone eligibility and property-specific constraints must be independently verified before issuing a CDC.
+SEPP Housing 2021
+Pattern Book CDC Pathway
+Pattern Book CDC Eligibility
+INELIGIBLE
+
+Property is not eligible for Pattern Book CDC pathway - Development Application (DA) required
+
+Reason:
+lot size min: minimum 900.0sqm required, 848.36sqm available (51.6sqm short)
+and 1 more reason (open the card to see it)
+SEPP Requirements
+State Policy
+
+State Environmental Planning Policies - Mandatory requirements
+
+Applicable State Policies (from Planning Portal)
+✓ SEPP (Sustainable Buildings) 2022 — structured requirements shown below
+Assess manually — no structured data available:
+⚠ SEPP (Transport and Infrastructure) 2021
+📍 Applied from NSW Planning Portal
+BASIX sustainability requirements determined by location and climate zone
+💧 Water Target: 40%
+Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+40% reduction from baseline water use via efficient fixtures
+🌡️ Climate Zone: 56
+Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+Climate Zone 56 — verify thermal performance targets against Table 3 of SEPP Sustainable Buildings 2022.
+🏠 BASIX: Area 5 (CANADA BAY)
+Area 5 (CANADA BAY) - specific thermal comfort and energy targets for this LGA
+
+No Housing SEPP structured requirements for this development type
+
+⚡
+BASIX Energy & Thermal Requirements
+Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+
+Energy efficiency and thermal comfort targets for Area 5 (CANADA BAY) require detailed calculation through the official BASIX Certificate tool. Targets vary by building type, orientation, and materials.
+
+🔗 Get BASIX Certificate
+👤 Find BASIX Assessor
+Provision text sourced from NSW Planning Portal and SEPP instruments. Zone eligibility, heritage classification, and property-specific constraints require independent verification against current legislation.
+Multiple Occupancy Options
+NSW Reforms
+
+Duplexes, townhouses, apartments and other housing options under Low and Mid-Rise reforms
+
+Multiple Occupancy Options
+2 of 7 options available
+
+Check what housing types you can build under NSW Low and Mid-Rise Housing reforms
+
+Your zone: R3
+Lot area: 848.36m²
+Lot width measured from the street: 18.1m narrowest in the front half, 18.7m widest
+Dual Occupancy (Duplex)
+Two homes on one block — attached side-by-side, or detached (e.g., house + granny flat)
+Eligible
+Multi-Dwelling Housing (Townhouses/Villas)
+Multiple occupancy with 3 or more homes — includes townhouses, villas, and villa units
+Eligible
+Independent Living Units
+Standards the Housing SEPP sets for independent living units (section 108)
+Not Assessed
+Mid-Rise Apartments (Near Station)
+Up to 6-storey apartments within 400m of a train station — Transit Oriented Development
+Not Assessed
+Show 3 More
+SEPP standards exceed LEP controls
+
+Where a Housing SEPP standard is more generous than the LEP, the SEPP standard applies (derived comparison — verify with a planning professional).
+
+Dual Occupancy (Duplex)—FSR
+LEP 0.5:1
+SEPP 0.65:1
+§168(2)(d)
+Dual Occupancy (Duplex)—Height
+LEP 8.5m
+SEPP 9.5m
+§168(2)(e)
+Multi-Dwelling Housing (Townhouses/Villas)—FSR
+LEP 0.5:1
+SEPP 0.7:1
+§172(2)(d)
+Multi-Dwelling Housing (Townhouses/Villas)—Height
+LEP 8.5m
+SEPP 9.5m
+§172(2)(e)
+
+These options are based on NSW Low and Mid-Rise Housing reforms (July 2024 & Feb 2025). Development standards override local council controls for eligible properties.
+
+Source: SEPP (Housing) 2021
+View official legislation
+Apartment Design Guide
+SEPP (Housing) 2021
+
+Statutory Design Criteria for apartment developments
+
+NSW Apartment Design Guide
+STATUTORY
+
+March 2023 | Authority: SEPP (Housing) 2021
+
+Solar Access
+70% @ 2hrs
+4A-1
+Natural Ventilation
+60% / 9storeys
+4B-1
+Building Separation
+6m @ 12m
+3F-1
+Communal Open Space
+25%
+3D-1
+Deep Soil
+7%
+3E-1
+Show 3 More
+Side/Rear Setbacks to Boundaries (3F-1)
+p.63
+
+Min distance from windows/balconies to boundary
+
+Building	Living/Bed	Bath/Store
+Up to 12m (4 storeys)	6m	3m
+12-25m (5-8 storeys)	9m	4.5m
+Over 25m (9+ storeys)	12m	6m
+23 Design Criteria | ADG March 2023
+Transit Oriented Development (TOD) Parking
+Not applicable to this address
+
+Not applicable to this address. Property is not in a designated TOD precinct and has no qualifying public transport within regulatory thresholds (800m rail, 600m light rail, 400m frequent bus).
+
+Feedback
+
+Need help using PlotDetect?
+
+Guides with worked examples and workflows
+
+Quick Reference
+Complete User Guide

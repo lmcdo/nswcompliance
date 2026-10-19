@@ -1,0 +1,128 @@
+{
+ "tier": "standard",
+ "justification": "New read-only tooling: it captures the live assessment page and checks it; it changes no served code path and writes nothing to the database. Not Minor: it is a gate meant to go red on wrong answers, so a check that cannot fail would be worse than none. Not Critical: no production data or user-facing behaviour changes.",
+ "commit_hash": "97bfb902",
+ "files": [
+  ".gitignore",
+  ".qa/reports/feat__page-integrity-check.json",
+  "docs/page_integrity/ASSESSMENT_PAGE_INVENTORY.md",
+  "docs/page_integrity/PRODUCER_MAP.md",
+  "docs/page_integrity/review/pdf_quotes_fairfield_camden.md",
+  "docs/page_integrity/review/review_R2_R5.csv",
+  "docs/page_integrity/review/review_R2_R5_queries.md",
+  "docs/page_integrity/review/review_R3_R6.csv",
+  "docs/page_integrity/review/review_R7_R9.csv",
+  "scripts/page_integrity/capture.py",
+  "scripts/page_integrity/check.py",
+  "scripts/page_integrity/checks_data.py",
+  "scripts/page_integrity/checks_text.py",
+  "scripts/page_integrity/lint_producers.py",
+  "scripts/page_integrity/load.py",
+  "scripts/page_integrity/producer_baseline.json",
+  "scripts/page_integrity/producer_patterns.json",
+  "tests/fixtures/page_integrity/cabramatta_west_24_yvonne/errors.json",
+  "tests/fixtures/page_integrity/cabramatta_west_24_yvonne/meta.json",
+  "tests/fixtures/page_integrity/mount_annan_3_egret/errors.json",
+  "tests/fixtures/page_integrity/mount_annan_3_egret/meta.json",
+  "tests/fixtures/page_integrity/winston_hills_6_berrigan/errors.json",
+  "tests/fixtures/page_integrity/winston_hills_6_berrigan/meta.json",
+  "tests/test_lint_producers.py",
+  "tests/test_page_integrity_checks_data.py",
+  "tests/test_page_integrity_checks_text.py"
+ ],
+ "pre_impl": {
+  "existing_data": "No new queries on served paths. check.py --db calls the product's own services.intelligence_brief._permitted_engine_forms (SELECT on lep_land_use_table) to re-ask an absence; capture.py only reads the live site over HTTP.",
+  "assumption_mismatch": "Assumed Google's first suggestion is the house; it was the street (page 404). capture.py now picks the suggestion that starts with the house number and fails (exit 2) if the page resolves a different address.",
+  "new_vs_existing": "No existing check compared two surfaces of one page (docs/page_integrity review R7/R9). Reuses dq_probe_app_defects._number_matches for address identity and follows check_test_quarantine.py's ratchet pattern for the producer lint."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_lint_producers.py tests/test_page_integrity_checks_data.py tests/test_page_integrity_checks_text.py -q -o addopts=",
+  "fails_when": "any check stops flagging its known-wrong fixture (Winston Hills setbacks/terraces/as-of-right; Mount Annan 104% footprint; Fairfield conditional side setback), or the producer lint stops failing on a new copy, or a missing route is reported as a pass.",
+  "observed_red": "YES: the lint tests inject a new council-key producer and assert exit 1; each check has a mutation test that stubs it to [] and fails; capture exit 2 observed live when the page resolved the street instead of the house."
+ },
+ "functions": [
+  {
+   "name": "capture",
+   "file_line": "scripts/page_integrity/capture.py",
+   "input": "an address with house number, street, suburb",
+   "output": "a folder with the page's own /api/ calls (gzip) and the text of 3 tabs",
+   "if_none": "exit 2 with errors.json; never a usable capture"
+  },
+  {
+   "name": "load",
+   "file_line": "scripts/page_integrity/load.py",
+   "input": "a capture folder written by capture.py",
+   "output": "a Capture object with meta, calls and the three tab texts",
+   "if_none": "raises CaptureUnusable -> runner exit 2"
+  },
+  {
+   "name": "main",
+   "file_line": "scripts/page_integrity/check.py",
+   "input": "one or more capture folders, optionally --db for the re-ask",
+   "output": "counts per check C1-C6, exit 0/1/2",
+   "if_none": "unusable capture -> exit 2"
+  },
+  {
+   "name": "main",
+   "file_line": "scripts/page_integrity/lint_producers.py",
+   "input": "the source tree plus the committed per-file baseline",
+   "output": "exit 1 if any file gains a producer copy",
+   "if_none": "missing scope dir -> exit 2"
+  }
+ ],
+ "values": [
+  {
+   "value": "3 of 3 captured pages have >=1 defect: C1=2 C2=2 C3=2 C4=5 C5=6 C6=2",
+   "read_at": "live verify.plotdetect.com.au captures 2026-10-19 (tests/fixtures/page_integrity)",
+   "if_missing": "a capture that fails is exit 2, never counted as clean"
+  },
+  {
+   "value": "390 producer lines / 220 files / 23 facts",
+   "read_at": "lint_producers.py on origin/main 97110bc0",
+   "if_missing": "n/a"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "C3 re-ask: does the LEP land-use table cover this zone/council when the page says it does not",
+   "file_line": "services/intelligence_brief.py _permitted_engine_forms (existing, unchanged)",
+   "where_clause": "WHERE zone = %s AND permissibility = 'permitted', LGA matched via _norm_lga"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The page's first suggestion is a different property",
+   "what_happens": "the checks would judge the wrong house",
+   "mitigated": true,
+   "how": "identity check against the requested number/street/suburb; mismatch = exit 2",
+   "repro": "python scripts/page_integrity/capture.py /tmp/x '43 McCrae Drive, Camden South' --number 43 --street 'MCCRAE DRIVE' --suburb 'CAMDEN SOUTH' -> exit 2 (no house-level suggestion)"
+  },
+  {
+   "scenario": "A route is missing from a capture",
+   "what_happens": "a check could report clean on a fact it never saw",
+   "mitigated": true,
+   "how": "facts_checked() reports it as not checked; no flag and no pass claim",
+   "repro": "python -m pytest tests/test_page_integrity_checks_data.py -q -o addopts= -k missing"
+  },
+  {
+   "scenario": "Regex-based checks miss new wording",
+   "what_happens": "C4 and the producer lint can be evaded by different words or names",
+   "mitigated": false,
+   "how": "documented limit; the structural fix (scope as data, one producer) is in ~/.claude/plans/ce-ui-pipelines-NEXT-PROMPT-2026-10-19.md",
+   "repro": "add a row whose condition says 'on the level above ground' (no 'upper floor' wording) to a fixture; C4 does not flag it"
+  },
+  {
+   "scenario": "C3 re-ask of the LEP land-use table fails or the DB is unreachable",
+   "what_happens": "the re-ask could silently find nothing and the page's 'not covered' would look honest",
+   "mitigated": false,
+   "how": "_permitted_engine_forms returns an empty set on any error, so a DB outage reads as 'no data'; the re-ask only ever ADDS flags, so a failure under-reports C3 rather than inventing one. Recorded as a limit; the producer itself is in scope of the fail-closed step of the next plan.",
+   "repro": "run check.py --db with DATABASE_URL unset: the C3 permissibility flag on Winston Hills disappears"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "none",
+  "secrets": "none",
+  "other_repo": "none",
+  "manual_verify": "run python scripts/page_integrity/check.py tests/fixtures/page_integrity/* and expect exit 1 with the counts above"
+ }
+}

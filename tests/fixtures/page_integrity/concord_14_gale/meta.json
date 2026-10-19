@@ -1,0 +1,17 @@
+{
+  "requested_address": "14 Gale Street, Concord",
+  "number": "14",
+  "street": "GALE STREET",
+  "suburb": "CONCORD",
+  "base_url": "https://verify.plotdetect.com.au",
+  "captured_at": "2026-10-19T03:26:27.638842+00:00",
+  "suggestions": [
+    "14 Gale Street, Concord NSW, Australia"
+  ],
+  "suggestion_picked": "14 Gale Street, Concord NSW, Australia",
+  "resolved_address": "14 GALE STREET CONCORD 2137",
+  "identity_ok": true,
+  "calls": 26,
+  "calls_failed": [],
+  "exit": 0
+}

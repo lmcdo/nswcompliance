@@ -1,0 +1,142 @@
+⚠️
+
+Important: Provisions are shown as published and may be superseded. Check legislation.nsw.gov.au for current SEPPs/LEPs before relying on them.
+
+Dismiss
+PlotDetect
+Site Controls
+
+Every control cited to its clause — zoning live from the NSW Planning Portal
+
+Quick Guide
+CAMDEN
+Property Address
+
+Enter a property address to analyze
+
+Analyze Property
+
+Disclaimer: PlotDetect presents DCP provisions and state/local planning data (from NSW Planning Portal and SEPP sources) as published by relevant authorities. It does not constitute planning advice. Users should verify provisions against current council instruments and seek professional advice for development applications.
+
+THE PROPERTY
+
+Property Summary
+Address
+
+3 EGRET WAY MOUNT ANNAN 2567
+
+ZoneR2: Low Density Residential
+Area
+
+641m²
+
+LGA
+
+CAMDEN
+
+Heritage
+
+No
+
+NSW SIX Maps aerial imagery · © NSW Government CC BY 4.0
+
+Property Details
+
+3 EGRET WAY MOUNT ANNAN 2567
+
+CAMDEN LGA
+
+Lot Dimensions
+Cadastre
+Area
+641m²
+Lot width (shorter side)
+24.6m
+Length
+39.8m
+
+Street frontage: 14.0 m along Egret Way
+
+Lot width is the shorter side, and length the longer side, of the rectangle that fits the lot. Neither is the street frontage.
+
+Not a Corner Lot
+
+Adjacent road: EGRET WAY
+
+Data currency
+▼
+SEPP
+State Planning Policies
+Planning Controls
+Zone & Development Standards
+DCP
+Council Controls
+
+Get notified when we add more councils and export features
+
+We're expanding DCP coverage across NSW. Register to hear first.
+
+Your role (optional)
+Town Planner
+Certifier
+Architect
+Conveyancer
+Buyers Agent
+Developer
+Other
+Register
+DCP Numeric Controls
+9 controls extracted
+Source: Camden DCP
+|
+Development type: dwelling house
+Setbacks
+Front setback
+≥ 4.5 m
+Lot <= 900m2 (Table 4-2). Applies where there are not 2 dwelling houses within 40m on the same side of the primary road; otherwise the setback is the average of those 2. A reduced 3.5m applies only where the development fronts open space. Tiers >900-1500m2 = 6.5m and >1500m2 = 10m are NOT yet stored.
+p. 11
+Side setback
+≥ 0.9 m
+p. 11
+Rear setback
+≥ 4 m
+Single storey: 4m rear setback
+p. 11
+Rear setback
+≥ 6 m
+Two storey (two-storey component): 6m rear setback
+p. 11
+Parking
+Car parking
+≥ 1 spaces/dwelling
+1-2 bedroom dwelling: minimum 1 car space
+p. 21
+Car parking
+≥ 2 spaces/dwelling
+3+ bedroom dwelling: minimum 2 car spaces
+p. 21
+Landscaping & Canopy
+Minimum landscaped area
+≥ 30 %
+Minimum 30% of site area as landscaped area; areas <1.5m wide excluded; min 40% of front setback landscaped
+p. 17
+Minimum landscaped area
+≥ 30 %
+p. 17
+Minimum deep soil zone
+No set number
+No separate deep soil control; DCP uses 'landscaped area' (30% of site). Deep soil planting areas must be provided within landscaped area but no separate numeric minimum
+p. 17
+
+Structured values extracted from the published DCP. Deterministic — same property, same result every time.
+
+These are the measurable controls extracted from the published plan. The full chapter text for this council is not loaded yet.
+
+Feedback
+
+Need help using PlotDetect?
+
+Guides with worked examples and workflows
+
+Quick Reference
+Complete User Guide
