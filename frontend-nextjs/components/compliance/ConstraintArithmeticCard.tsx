@@ -419,8 +419,8 @@ export function ConstraintArithmeticCard({
                     {floorDwellings}&ndash;{ceilingDwellings}
                   </div>
                   <div className="text-xs text-gray-600 mt-1 leading-relaxed">
-                    <span className="font-medium text-gray-900">{floorDwellings}</span> as-of-right (subject to a DA),
-                    {' '}up to <span className="font-medium text-gray-900">{ceilingDwellings}</span>{' '}
+                    <span className="font-medium text-gray-900">{floorDwellings}</span>{' '}
+                    ({humanizeForm(result.as_of_right_form)}), up to <span className="font-medium text-gray-900">{ceilingDwellings}</span>{' '}
                     ({humanizeForm(result.max_permitted_form)}) with council approval.
                   </div>
                   {/* #745 D6: the two ceilings rest on different legal pathways.
@@ -457,7 +457,7 @@ export function ConstraintArithmeticCard({
                 <>
                   <div className="text-xl font-bold text-gray-900">{floorDwellings}</div>
                   <div className="text-xs text-gray-600 mt-1 leading-relaxed">
-                    {humanizeForm(result.as_of_right_form)} — as-of-right yield, subject to a development application.
+                    {humanizeForm(result.as_of_right_form)} — subject to a development application.
                   </div>
                 </>
               )}

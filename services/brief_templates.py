@@ -40,7 +40,8 @@ FLAGGED_TERMS = re.compile(
     r'\b('
     r'safe|feasible|compliant|(?<!should_)should(?!_)|recommend|suitable|'
     r'adequate|sufficient|approved|guaranteed|certified|confirmed|verified|'
-    r'ensure|assure|accurate|definitive|comprehensive|reliable'
+    r'ensure|assure|accurate|definitive|comprehensive|reliable|'
+    r'as[-\s]of[-\s]right'
     r')\b',
     re.IGNORECASE,
 )
@@ -284,7 +285,7 @@ _LABEL_OVERRIDES = {
 _LEAF_LABEL_OVERRIDES = {
     "lep_envelope_gfa_m2": "the maximum floor area under the LEP envelope",
     "dcp_envelope_gfa_m2": "the floor area after council DCP controls",
-    "as_of_right_dwellings": "dwellings as of right",
+    "as_of_right_dwellings": "dwellings for the base housing form",
     "realistic_dwellings": "the realistic dwelling count",
     "setback_front_m": "the front setback",
     "setback_side_m": "the side setback",

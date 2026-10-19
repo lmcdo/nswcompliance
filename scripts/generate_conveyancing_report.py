@@ -3125,12 +3125,12 @@ def build_tod_uplift_lines(
     if dwellings is not None:
         _dw = f"{dwellings} dwelling" + ("s" if dwellings != 1 else "")
         baseline = (
-            f"The as-of-right residential baseline from the mapped controls is "
+            f"The base residential form from the mapped controls is "
             f"{_dw} ({form_label}), subject to a development application."
         )
     else:
         baseline = (
-            f"The as-of-right residential baseline from the mapped controls is a "
+            f"The base residential form from the mapped controls is a "
             f"{form_label}, subject to a development application."
         )
     if gfa is not None:
