@@ -19,15 +19,14 @@
  * the genuine renames need a table entry.
  */
 
-/** LGA display names whose slug is NOT just the lower-cased, underscored name. */
-const LGA_NAME_TO_SLUG: Record<string, string> = {
-  city_of_parramatta: 'parramatta',
-  sydney: 'city_of_sydney',
-  the_hills_shire: 'the_hills',
-  city_of_canada_bay: 'canada_bay',
-  city_of_ryde: 'ryde',
-  strathfield_municipal: 'strathfield',
-};
+import renames from './lga-slug-renames.json';
+
+/** LGA display names whose slug is NOT just the lower-cased, underscored name. The list lives in
+ * lga-slug-renames.json so the Python side (services/council_key.py) reads the SAME list: two
+ * copies drifted once already, and the yield box queried 'city_of_parramatta' (0 rows). */
+const LGA_NAME_TO_SLUG: Record<string, string> = Object.fromEntries(
+  Object.entries(renames as Record<string, string>).filter(([k]) => !k.startsWith('_')),
+);
 
 /**
  * Normalise an LGA display name or slug to the `dcp_setback_controls.lga` value.

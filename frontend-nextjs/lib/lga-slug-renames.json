@@ -1,0 +1,9 @@
+{
+  "_comment": "Planning Portal LGA display name (lower-cased, separators -> _) -> the council key stored in dcp_setback_controls.lga and dcp_dev_type_coverage.council, for names whose key is NOT just that normalised form. Read by frontend-nextjs/lib/lga-slug.ts AND services/council_key.py: one list, two readers.",
+  "city_of_parramatta": "parramatta",
+  "sydney": "city_of_sydney",
+  "the_hills_shire": "the_hills",
+  "city_of_canada_bay": "canada_bay",
+  "city_of_ryde": "ryde",
+  "strathfield_municipal": "strathfield"
+}

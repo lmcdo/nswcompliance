@@ -1461,7 +1461,11 @@ def _fetch_constraint_data_from_db(
         conn = psycopg2.connect(db_url, options="-c statement_timeout=5000")
         conn.autocommit = True
 
-        # 1. Fetch DCP controls
+        # 1. Fetch DCP controls. The table is keyed by council key ('parramatta'), not the
+        # Portal name or former-council slug the caller holds ('city_of_parramatta').
+        from services.council_key import to_council_key
+
+        lga = to_council_key(lga)
         if lga:
             dcp_raw = fetch_dcp_setbacks(conn, lga, zone)
             if dcp_raw:
@@ -1507,6 +1511,9 @@ def _fetch_dcp_coverage(lga: Optional[str], dev_type: Optional[str]) -> Optional
     import logging
     import os
 
+    from services.council_key import to_council_key
+
+    lga = to_council_key(lga)
     db_url = os.getenv("DATABASE_URL")
     if not db_url or not lga or not dev_type:
         return None
