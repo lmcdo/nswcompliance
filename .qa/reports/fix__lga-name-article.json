@@ -1,0 +1,34 @@
+{
+  "tier": "minor",
+  "justification": "User-facing wording on two cards plus one pure display helper; no data or calculation change",
+  "commit_hash": "6300af94",
+  "files": [
+    "frontend-nextjs/lib/council-display-name.ts",
+    "frontend-nextjs/__tests__/lib/council-display-name.test.ts",
+    "frontend-nextjs/components/compliance/LepControls.tsx",
+    "frontend-nextjs/components/compliance/HeritageProvisionsCard.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "constraints.lga from the Planning Portal LGA Name",
+    "assumption_mismatch": "a blank name gives a sentence without the name, never an empty one",
+    "new_vs_existing": "every page render after deploy"
+  },
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "council name starts with THE",
+      "what_happens": "the sentence read 'in the THE HILLS SHIRE area'",
+      "mitigated": true,
+      "how": "sentences no longer put an article before the name",
+      "repro": "jest __tests__/lib/council-display-name.test.ts"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
