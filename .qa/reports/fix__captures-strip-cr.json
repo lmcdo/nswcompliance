@@ -1,0 +1,32 @@
+{
+  "tier": "minor",
+  "justification": "One shell line in an internal capture script plus a .gitattributes rule; no product code",
+  "commit_hash": "270d97cd",
+  "files": [
+    "scripts/page_integrity/run_captures.sh",
+    ".gitattributes"
+  ],
+  "pre_impl": {
+    "existing_data": "none \u2014 reads docs/page_integrity/panel.tsv only",
+    "assumption_mismatch": "a suburb that genuinely ends in CR does not exist; stripping one trailing CR is safe",
+    "new_vs_existing": "applies to the next capture run"
+  },
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "panel.tsv checked out with CRLF line endings on Windows",
+      "what_happens": "every capture's address check fails and the run scores 0 of 0",
+      "mitigated": true,
+      "how": "run_captures.sh strips the trailing CR; .gitattributes keeps *.tsv LF",
+      "repro": "bash scripts/page_integrity/run_captures.sh on a CRLF panel.tsv"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

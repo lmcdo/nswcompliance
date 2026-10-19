@@ -5,6 +5,7 @@
 panel="$1"; out="$2"; mkdir -p "$out"
 n=0
 while IFS=$'\t' read -r slug q num street suburb; do
+  suburb="${suburb%$'\r'}"  # a CRLF checkout of panel.tsv left "WINSTON HILLS\r": no address matched
   [ -z "$slug" ] && continue
   ( python -X utf8 scripts/page_integrity/capture.py "$out/$slug" "$q" --number "$num" --street "$street" --suburb "$suburb" > "$out/$slug.log" 2>&1; echo "$slug exit=$?" ) &
   n=$((n+1)); if [ $((n % 4)) -eq 0 ]; then wait; fi
