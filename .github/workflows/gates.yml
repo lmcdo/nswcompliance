@@ -155,6 +155,14 @@ jobs:
           # hardcoded data checked, so a typed '450 m2 minimum' reached six
           # served surfaces. Shrink-only; the target is 0, served from the DB.
           python scripts/lint_hardcoded_regulatory_numbers.py --baseline
+      # One producer per shared fact (2026-10-19): the yield box and the DCP tab
+      # disagreed on one page because each derived the setback itself. 390 sites
+      # produce 23 shared facts; this stops NEW copies while they are merged.
+      # Exit 1 = a file gained a producer; exit 2 = a scope dir is missing
+      # (could not look). Both fail. Lower counts: --update locks them in.
+      - name: One producer per fact (shrink-only ratchet)
+        if: always()
+        run: python scripts/page_integrity/lint_producers.py
       # Has anybody looked at the DATA lately?
       #
       # Every database check in this file runs on `pull_request` and
