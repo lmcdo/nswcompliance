@@ -1,0 +1,73 @@
+{
+  "tier": "standard",
+  "justification": "Removes a served number (home count) on strata lots and adds a page check",
+  "commit_hash": "c48f8ce5",
+  "files": [
+    "frontend-nextjs/components/compliance/LepControls.tsx",
+    "scripts/page_integrity/checks_text.py",
+    "tests/test_page_integrity_checks_text.py"
+  ],
+  "falsifiable_check": {
+    "command": "pytest tests/test_page_integrity_checks_text.py -k strata; check.py on a fresh Concord capture",
+    "fails_when": "a strata lot's planning tab still shows 'Homes you could build' (C6 strata-yield)",
+    "observed_red": "Stored Concord capture (origin/main page, 2026-10-19): planning tab shows 'Homes you could build' 1-5 on strata plan SP9807; the new C6 strata-yield test is red on it and green once the box is absent."
+  },
+  "pre_impl": {
+    "existing_data": "strataInfo on the property response, set from the Portal lot records since #1375",
+    "assumption_mismatch": "a lot wrongly flagged strata loses its yield box; strata needs every lot record on one SP plan, so a stray record cannot trigger it",
+    "new_vs_existing": "every assessment page render for a strata lot after this deploy",
+    "falsifiable_check": {
+      "command": "pytest tests/test_page_integrity_checks_text.py -k strata; check.py on a fresh Concord capture",
+      "fails_when": "a strata lot's planning tab still shows 'Homes you could build' (C6 strata-yield)",
+      "observed_red": "Stored Concord capture (origin/main page, 2026-10-19): planning tab shows 'Homes you could build' 1-5 on strata plan SP9807; the new C6 strata-yield test is red on it and green once the box is absent."
+    }
+  },
+  "functions": [
+    {
+      "name": "check_derivations",
+      "file_line": "scripts/page_integrity/checks_text.py:136",
+      "input": "one captured assessment page with rendered text and API calls",
+      "output": "C6 flags including strata-yield on a strata lot showing homes",
+      "if_none": "no property route or no strataInfo means the strata rule is not applied"
+    }
+  ],
+  "values": [
+    {
+      "value": "strataInfo.isStrata",
+      "read_at": "frontend-nextjs/components/compliance/LepControls.tsx:207",
+      "nullable": "yes",
+      "guard_at": "optional chaining, undefined treated as not strata",
+      "if_missing": "yield box shown as before"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a strata unit owner sees a whole-parcel home count",
+      "what_happens": "the owner reads that they could build five homes on land they share with three neighbours",
+      "mitigated": true,
+      "how": "yield box not rendered when isStrata (LepControls.tsx:207)",
+      "repro": "pytest tests/test_page_integrity_checks_text.py -k strata"
+    },
+    {
+      "scenario": "a non-strata lot whose valuation is missing is guessed as strata",
+      "what_happens": "the yield box disappears on an ordinary house lot",
+      "mitigated": false,
+      "how": "existing valuation-fallback signal unchanged; lot-plan signal (#1375) is checked first",
+      "repro": "address with no valuation record"
+    },
+    {
+      "scenario": "the check text changes from 'Homes you could build'",
+      "what_happens": "C6 strata-yield silently stops detecting the box",
+      "mitigated": false,
+      "how": "label used verbatim; a wording change needs the check updated",
+      "repro": "rename the label and rerun check.py"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 14 Gale St Concord shows the strata notice and no yield box"
+  }
+}

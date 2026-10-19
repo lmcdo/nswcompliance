@@ -18,6 +18,7 @@ interface StrataInfo {
   isStrata: boolean;
   source: string | null;
   strataUnit: string | null;
+  strataPlan?: string | null;
 }
 
 interface LepControlsProps {
@@ -173,8 +174,13 @@ export function LepControls({
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-start gap-2">
               <Info className="h-4 w-4 text-orange-500 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-orange-800">
-                <span className="font-semibold">Strata unit — </span>
-                Height, FSR, and lot area figures above apply to the parent lot, not the individual unit. GFA capacity shown is the whole-lot entitlement. Subdivision of a strata lot requires owners corporation resolution — Torrens-title subdivision is not applicable.
+                <span className="font-semibold">
+                  {strataInfo?.strataPlan ? `Part of strata plan ${strataInfo.strataPlan} — ` : 'Strata unit — '}
+                </span>
+                The height, floor space ratio and lot area above are for the whole strata lot, not one unit.
+                We don&apos;t estimate how many homes could be built here: rebuilding a strata lot needs the
+                owners corporation (or a collective sale) to agree, so a whole-lot number would not describe
+                what one owner can do.
               </p>
             </div>
           )}
@@ -197,7 +203,8 @@ export function LepControls({
       </Card>
 
       {/* Constraint Arithmetic — development yield estimate */}
-      {lotArea && lotArea > 0 && (constraints?.maxHeight || constraints?.maxFsr) && (
+      {/* Not on a strata lot: a whole-lot yield is not something one unit owner can build. */}
+      {lotArea && lotArea > 0 && (constraints?.maxHeight || constraints?.maxFsr) && !strataInfo?.isStrata && (
         <ConstraintArithmeticCard
           lotArea={lotArea}
           devType={developmentType || 'dwelling_house'}

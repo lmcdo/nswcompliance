@@ -128,3 +128,11 @@ def test_facts_checked_keys(cap):
 def test_internal_note_shown_to_reader_is_flagged():
     f = ct.scan_text("dcp", "Rear setbacks; excludes secondary dwellings. NOT yet stored: upper-floor 9.0m (C10)")
     assert "internal-note" in {x.fact for x in f}
+
+
+def test_c6_strata_lot_showing_whole_lot_homes_is_red():
+    c = load(FIX / "concord_14_gale")
+    c.data("/api/property")["strataInfo"] = {"isStrata": True, "strataPlan": "SP9807"}
+    assert "strata-yield" in facts(ct.check_derivations(c))  # the old capture shows "Homes you could build"
+    c.rendered["planning"] = c.rendered["planning"].replace("Homes you could build", "")
+    assert "strata-yield" not in facts(ct.check_derivations(c))
