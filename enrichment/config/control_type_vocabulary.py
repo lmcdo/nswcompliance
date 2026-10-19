@@ -38,6 +38,9 @@ CANONICAL_CONTROL_TYPES: dict[str, tuple[str, str]] = {
     "bicycle_parking": ("Parking", "Bicycle parking"),
     "driveway_width": ("Parking", "Minimum driveway width"),
     "driveway_gradient": ("Parking", "Maximum driveway gradient"),
+    # An AREA cap (m2) on garage/carport/undercover parking, distinct from a count of spaces,
+    # so it is a separate type the car_parking readers do not pick up (migration 115).
+    "parking_area_max": ("Parking", "Maximum undercover parking area"),
     # Bulk / envelope
     "max_site_coverage": ("Site Coverage", "Maximum site coverage"),
     "max_height": ("Height", "Maximum height"),
@@ -64,6 +67,7 @@ MAXIMUM_CONTROL_TYPES: frozenset[str] = frozenset({
     "max_floor_area",
     "fencing_height_max",
     "driveway_gradient",
+    "parking_area_max",
 })
 
 # Known variant slugs -> canonical. These are the drifts we have observed and

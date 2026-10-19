@@ -179,6 +179,6 @@ class TestVocabulary:
     def test_the_vocabularies_are_not_empty(self):
         # A frozenset() typo would make every proposal fail identically, which
         # reads as "the model is bad" rather than "the gate is broken".
-        assert len(VALID_CONTROL_TYPES) == 22
+        assert len(VALID_CONTROL_TYPES) == 23  # parking_area_max added (migration 115)
         assert len(VALID_APPLICABILITY) == 7
         assert VALID_DEV_TYPES

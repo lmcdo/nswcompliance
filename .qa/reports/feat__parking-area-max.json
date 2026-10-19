@@ -1,0 +1,84 @@
+{
+  "tier": "standard",
+  "justification": "Adds a new control type, parking_area_max, to dcp_setback_controls: the DB CHECK (migration 115, applied live), the Python vocabulary, the structured-controls route maps and the report label map. Campbelltown 3.6.1.4 caps the undercover parking AREA at 18/36 m2 and was stored as car_parking 1/2 spaces, numbers the clause never states. The two rows were moved live and are still hidden until this route is deployed.",
+  "commit_hash": "02ca2e91",
+  "files": [
+    "migrations/115_parking_area_max_control_type.sql",
+    "migrations/enforce_control_type_vocabulary.sql",
+    "enrichment/config/control_type_vocabulary.py",
+    "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
+    "scripts/conveyancing_db.py",
+    "scripts/fixes/parking_area_max_campbelltown_2026_10_19.py",
+    "tests/test_constraint_arithmetic.py",
+    "frontend-nextjs/__tests__/api/dcp-structured-controls.test.ts",
+    "scripts/outreach_claim_checks.py",
+    "data/inner_west_lep_paraphrase_2026-10-19.json"
+  ],
+  "falsifiable_check": {
+    "command": "npx jest __tests__/api/dcp-structured-controls.test.ts && python -m pytest tests/test_constraint_arithmetic.py tests/enrichment/test_control_type_vocabulary.py -q",
+    "fails_when": "Measured 2026-10-19: removing parking_area_max from CONTROL_CATEGORIES -> 1 failed / 6 passed (row filed under Other); removing its label -> 1 failed / 6 passed. Leaving the base vocabulary SQL without the slug -> test_migration_matches_python_vocabulary failed. Clean: 7/7 Jest, 229 Python.",
+    "external_authority": "The live CHECK constraint (tests/test_control_vocabulary_matches_db.py, PYTEST_REAL_DB=1: 3 passed) and the council PDF: citation_proof.prove_label('3.6.1.4', text, readings, 21) = proven for both rows, and each number is on a p21 line with its bedroom count.",
+    "observed_red": "Measured 2026-10-19: CONTROL_CATEGORIES entry removed -> 1 failed / 6 passed; label removed -> 1 failed / 6 passed; base vocabulary SQL without the slug -> test_migration_matches_python_vocabulary failed."
+  },
+  "pre_impl": {
+    "existing_data": "Readers of car_parking measured: parking-rates route filters semantic_type === 'car_parking'; capacity route uses a PARKING_TYPES allowlist; constraint_arithmetic asks _get_dcp_value for 'car_parking'. None pick up a new type. Council words searched for parking area caps: only Campbelltown 3.6.1.4 and Ku-ring-gai L315/L451 (31 sqm).",
+    "assumption_mismatch": "071 (flood_freeboard_min) was never applied, so 114 extends the live 22-type list, not 071's 23. The deployed route would show an unknown type under Other as a minimum (>= 18 m2), so the rows stay hidden until deploy.",
+    "new_vs_existing": "One new type in existing maps; one one-off fix script with dry run, backup, guarded updates and a separate --show step."
+  },
+  "residual_risk": "Rows 254/255 stay hidden until the fix script's --show is run after deploy. Ku-ring-gai's 31 sqm caps are shown as text only; no structured rows were added. DQ-145 ceiling lowered to 98 after 9 Inner West LEP paraphrase rows were withheld live (backup committed); a live write by another session can raise DQ-145 for minutes and turn the OC-20 gate red until it settles.",
+  "functions": [
+    {
+      "name": "GET /api/dcp/structured-controls",
+      "file_line": "frontend-nextjs/app/api/dcp/structured-controls/route.ts:84",
+      "input": "guarded proxy rows incl. semantic_type parking_area_max, value_min 18, unit m2",
+      "output": "category Parking, label 'Maximum undercover parking area', direction max (rendered <= 18 m2)",
+      "if_none": "unknown type would fall to category Other and direction min (>= 18 m2), the inverse of the clause; pinned by the new test"
+    },
+    {
+      "name": "_get_dcp_value",
+      "file_line": "services/constraint_arithmetic.py:157",
+      "input": "controls holding only parking_area_max 18 m2, asked for car_parking",
+      "output": "None: the area cap is never a parking rate",
+      "if_none": "None is the expected result; a non-None would add 18 spaces of parking GFA"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The live route (old code) serves the moved rows before this PR deploys.",
+      "what_happens": "Old route files parking_area_max under Other as '>= 18 m2'.",
+      "mitigated": true,
+      "how": "Rows moved with needs_review TRUE; the fix script's --show step clears it only after deploy.",
+      "repro": "SQL: SELECT id,needs_review FROM dcp_setback_controls WHERE id IN (254,255) -- both TRUE until --show"
+    },
+    {
+      "scenario": "A spaces reader picks up the new type.",
+      "what_happens": "18 or 36 would be read as spaces and inflate parking GFA.",
+      "mitigated": true,
+      "how": "parking-rates filters semantic_type === 'car_parking', capacity uses a PARKING_TYPES allowlist, constraint_arithmetic asks for car_parking; Python test pins it.",
+      "repro": "pytest tests/test_constraint_arithmetic.py -k parking_area_cap"
+    },
+    {
+      "scenario": "The vocabulary and the live CHECK drift.",
+      "what_happens": "Verifier rejects valid proposals or the DB rejects inserts.",
+      "mitigated": true,
+      "how": "tests/test_control_vocabulary_matches_db.py passed against the live constraint (3 passed) after migration 115 was applied.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_control_vocabulary_matches_db.py -o addopts="
+    },
+    {
+      "scenario": "Rewriting source_text loses council words.",
+      "what_happens": "A served clause would read differently from the PDF.",
+      "mitigated": true,
+      "how": "New text is the clause's lead-in plus item i)/ii) as printed; prove_label('3.6.1.4') = proven on p21; the full clause is also served as text (rows 253261-253264).",
+      "repro": "python scripts/fixes/parking_area_max_campbelltown_2026_10_19.py (dry run prints 'both rows proven on p21 with their number')"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. Migration 115 and the 2-row move are already live (backup data/db_rollback_backups/campbelltown_parking_area_pre_2026-10-19T093045.json).",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "After deploy: run scripts/fixes/parking_area_max_campbelltown_2026_10_19.py --show, then scripts/dcp_setback_citation_status.py --council campbelltown --apply, then open a Campbelltown dwelling-house page and check Parking shows <= 18 m2 / <= 36 m2, p21."
+  },
+  "real_layer_exempt": {
+    "scripts/fixes/parking_area_max_campbelltown_2026_10_19.py": "One-off fix already run once against production (2026-10-19, backup in data/db_rollback_backups). Its only remaining step (--show) writes two production rows; a real-DB test would have to write production. Every write is guarded by id + lga + control_type and asserts rowcount; the dry run re-proves both rows on the PDF page before any write."
+  }
+}

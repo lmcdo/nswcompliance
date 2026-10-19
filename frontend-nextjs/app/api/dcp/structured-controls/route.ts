@@ -91,6 +91,7 @@ const CONTROL_CATEGORIES: Record<string, { label: string; order: number }> = {
   bicycle_parking: { label: 'Parking', order: 2 },
   driveway_width: { label: 'Parking', order: 2 },
   driveway_gradient: { label: 'Parking', order: 2 },
+  parking_area_max: { label: 'Parking', order: 2 },
   max_site_coverage: { label: 'Site Coverage', order: 3 },
   max_height: { label: 'Height', order: 4 },
   landscaping_min: { label: 'Landscaping & Canopy', order: 5 },
@@ -118,6 +119,8 @@ const CONTROL_TYPE_LABELS: Record<string, string> = {
   bicycle_parking: 'Bicycle parking',
   driveway_width: 'Minimum driveway width',
   driveway_gradient: 'Maximum driveway gradient',
+  // An area cap in m2, not spaces (migration 115).
+  parking_area_max: 'Maximum undercover parking area',
   max_site_coverage: 'Maximum site coverage',
   max_height: 'Maximum height',
   landscaping_min: 'Minimum landscaped area',
@@ -144,6 +147,7 @@ const MAXIMUM_CONTROL_TYPES = new Set<string>([
   'max_height',
   'fencing_height_max',
   'driveway_gradient',
+  'parking_area_max',
 ]);
 
 /** Whether a control's single value is a maximum (ceiling) or a minimum (floor). */
