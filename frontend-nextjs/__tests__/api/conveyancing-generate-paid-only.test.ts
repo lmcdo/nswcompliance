@@ -59,3 +59,11 @@ it('a paid session generates, using the address from the session', async () => {
   expect(sent.address).toBe('3 Egret Way, Mount Annan');
   expect(sent.lat).toBeCloseTo(-34.05);
 });
+
+it('an unknown session is refused; Stripe being down is reported as an outage', async () => {
+  retrieve.mockRejectedValue({ type: 'StripeInvalidRequestError', code: 'resource_missing' });
+  expect((await POST(req({ report_id: 'r-1', checkout_session_id: 'cs' }))).status).toBe(403);
+  retrieve.mockRejectedValue(new Error('ECONNRESET'));
+  expect((await POST(req({ report_id: 'r-1', checkout_session_id: 'cs' }))).status).toBe(502);
+  expect(fetchMock).not.toHaveBeenCalled();
+});
