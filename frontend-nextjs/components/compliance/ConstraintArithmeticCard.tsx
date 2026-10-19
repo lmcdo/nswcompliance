@@ -194,6 +194,11 @@ interface ConstraintArithmeticCardProps {
   envelopeGap?: EnvelopeGap | null;
   /** Subject address, threaded into the missing-DCP request for alert context. */
   address?: string | null;
+  /** Inputs for the highest permitted housing form (same producer as the Site Report). */
+  lat?: number | null;
+  lng?: number | null;
+  heritage?: boolean | null;
+  widthRange?: { min: number; max: number } | null;
 }
 
 export function ConstraintArithmeticCard({
@@ -210,6 +215,10 @@ export function ConstraintArithmeticCard({
   inputProvenance,
   envelopeGap,
   address,
+  lat,
+  lng,
+  heritage,
+  widthRange,
 }: ConstraintArithmeticCardProps) {
   const [result, setResult] = useState<ConstraintArithmeticResult | null>(briefData ?? null);
   const [loading, setLoading] = useState(false);
@@ -244,6 +253,11 @@ export function ConstraintArithmeticCard({
         maxFsr: maxFsr ?? null,
         frontage: frontage ?? null,
         depth: depth ?? null,
+        lat: lat ?? null,
+        lng: lng ?? null,
+        heritage: heritage ?? null,
+        widthMin: widthRange?.min ?? null,
+        widthMax: widthRange?.max ?? null,
       }),
     })
       .then(async (resp) => {
@@ -267,7 +281,10 @@ export function ConstraintArithmeticCard({
       });
 
     return () => { cancelled = true; };
-  }, [lotArea, devType, zone, formerCouncil, lga, maxHeight, maxFsr, frontage, depth, briefData]);
+  // widthRange is a fresh object each render: depend on its two numbers, not the object,
+  // or every render refetches.
+  }, [lotArea, devType, zone, formerCouncil, lga, maxHeight, maxFsr, frontage, depth, briefData,
+      lat, lng, heritage, widthRange?.min, widthRange?.max]);
 
   if (loading) {
     return (

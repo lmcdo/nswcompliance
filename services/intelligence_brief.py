@@ -1646,6 +1646,37 @@ def _apply_lmr_attribution(result, ceiling_from_lmr: bool, citation: Optional[di
         result.ceiling_from_lmr = False
 
 
+def _capacity_ceiling(
+    zone_code: Optional[str],
+    lga_name: Optional[str],
+    lat: Optional[float],
+    lng: Optional[float],
+    lot_area_m2: Optional[float],
+    heritage: bool,
+    width_range: Optional[tuple[float, float]] = None,
+    results: Optional[list] = None,
+) -> tuple[str, str, bool, Optional[dict]]:
+    """The ONE producer of the capacity range (floor form, ceiling form) for a lot.
+
+    The Site Report and the assessment yield box both call this, so the "homes you could
+    build" range cannot differ between them (page check C2/C7, 2026-10-19: the yield box
+    passed no ceiling and showed one house where the LEP table permits a dual occupancy).
+
+    Returns (floor_form, ceiling_form, ceiling_from_lmr, lmr_citation); apply the last two
+    with _apply_lmr_attribution. ``results`` = an eligibility run already made by the caller
+    (the brief reuses its SEPP card's run); None runs the engine once here.
+    """
+    excluded = _eligibility_excluded_forms(lat, lng)
+    uplift_form, citation = _lmr_uplift_form(
+        zone_code, lat, lng, lot_area_m2, None, heritage,
+        results=results, lot_width_range=width_range,
+    )
+    floor, ceiling, from_lmr = _realistic_forms(
+        zone_code, lga_name, excluded_forms=excluded, uplift_form=uplift_form, return_source=True,
+    )
+    return floor, ceiling, from_lmr, citation
+
+
 def _eligibility_excluded_forms(lat: Optional[float], lng: Optional[float]) -> set[str]:
     """Engine forms to EXCLUDE from the capacity ceiling, from live SEPP eligibility gates.
 
@@ -4031,17 +4062,12 @@ def _generate_brief_sse(
                 try:
                     from services.constraint_arithmetic import _fetch_dcp_coverage, compute_constraint_arithmetic
 
-                    _excluded_forms = _eligibility_excluded_forms(lat, lng)
                     # Reuse the eligibility run from the SEPP card above — the
                     # engine is never invoked twice per brief.
-                    _uplift_form, _uplift_citation = _lmr_uplift_form(
-                        controls.get("zone"), lat, lng, lot_area_m2, None,
-                        _heritage_lmr, results=eligibility_results,
-                        lot_width_range=_width_range,
-                    )
-                    _floor_form, _ceiling_form, _ceiling_from_lmr = _realistic_forms(
+                    _floor_form, _ceiling_form, _ceiling_from_lmr, _uplift_citation = _capacity_ceiling(
                         controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name,
-                        excluded_forms=_excluded_forms, uplift_form=_uplift_form, return_source=True,
+                        lat, lng, lot_area_m2, _heritage_lmr,
+                        width_range=_width_range, results=eligibility_results,
                     )
                     constraint_result = compute_constraint_arithmetic(
                         lot_area_m2=lot_area_m2,
