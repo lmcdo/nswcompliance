@@ -1,0 +1,187 @@
+{
+ "anef": {
+  "py": [
+   "def get_anef_live"
+  ],
+  "ts": [
+   "let anefLevel"
+  ]
+ },
+ "applic_all": {
+  "ts": [
+   "export const ZONE_APPLIES_SQL|export function decideLandCondition|export function decideLandApplication|export function applyLandConditions|hcaTagSql\\(|NOT_HERITAGE_SQL\\s*=|export function assessControlRelevance"
+  ]
+ },
+ "applic": {
+  "py": [
+   "def zone_row_applies|def _lot_band_match|def _resolve_lot_band|_ZONE_CODE\\s*=|_EXCLUSION_WORDING\\s*=|applicability == \"precinct_specific\""
+  ]
+ },
+ "area": {
+  "py": [
+   "def _shoelace_area|def _compute_lot_area_m2|def calculate_lot_dimensions|def _reconcile_lot_area|lot_area_m2 = valuation\\.get|\"lot_area_m2\": _num\\(area\\)"
+  ],
+  "ts": [
+   "(calculatePolygonArea|calculateLotDimensions)\\(|Shoelace area|cosLat\\s*\\*\\s*cosLat|parseFloat\\([A-Za-z.?]*propertyArea|propertyAreaStr\\s*\\?"
+  ]
+ },
+ "ass": {
+  "py": [
+   "out\\[\"ass_class\"\\] = |_ACID_CLASS_RE = "
+  ],
+  "ts": [
+   "constraints\\.acidSulfateSoils = |propertyData\\.constraints\\.acidSulfateSoils = "
+  ]
+ },
+ "bush": {
+  "py": [
+   "def fetch_bushfire_bfpl|def get_bushfire_live|def _query_rfs_bfpl"
+  ],
+  "ts": [
+   "constraints\\.bushfireProne = true|bushfireCategory = "
+  ]
+ },
+ "coord": {
+  "py": [
+   "def geocode_address|def resolve_address|def resolve_propid_by_point"
+  ],
+  "ts": [
+   "getCoordinates = \\(\\)|selectedCoordinates\\?\\.lat|const lotPolygonWgs84"
+  ]
+ },
+ "council": {
+  "py": [
+   "def\\s+(_norm_lga|_normalise_slug|_normalise_council|_slug_from_epi|_council_from_zone_epi|detect_former_council|_bare_lga_from_epi|lookup_lga|_validate_former_council_postgis)\\b",
+   "^(_LGA_NAME_TO_SLUG|ZONE_EPI_TO_LGA_SLUG|SUBURB_TO_FORMER_COUNCIL|_IW_SUBURB_TO_FORMER|DCP_ONBOARDED_SLUGS|_LGA_SLUG_TO_DCP_NAME)\\b",
+   "(lga|council)[A-Za-z_]*\\s*=\\s*\\(?[A-Za-z_.]*\\s*(or\\s*\"\")?\\)?\\.strip\\(\\)\\.lower\\(\\)",
+   "key\\s*=\\s*(lga_name|council_name)\\.strip\\(\\)\\.lower\\(\\)",
+   "re\\.match\\(r\"\\(\\.\\+\\?\\)\\x5Cs\\+Local Environmental Plan",
+   "return f\"\\{lga_name\\.title\\(\\)\\} Local Environmental Plan\""
+  ],
+  "ts": [
+   "(function|const)\\s+(toLgaSlugs?|councilKey|normalizeLgaSlug|normalizeLga|detectCouncil|detectLGAFromName|councilSlugCandidates|determineFormerCouncilArea|getFormerCouncilForPoint|slugToDocPattern)\\b",
+   "\\b(LGA_NAME_TO_SLUG|COUNCIL_KEY_ALIASES|COUNCIL_ALIASES|LGA_ALIASES|COUNCIL_TO_LGA|SLUG_TO_DOC_PATTERN)\\s*[:=]",
+   "(lga|Lga|LGA|council|Council|lgaId|fc|normalized|name|v)\\b[^;\\n]{0,40}\\.replace\\(/(\\[[^\\]]*\\]\\+|\\x5Cs\\+)/g,\\s*'_'\\)",
+   "lga\\.split\\(' '\\)\\.map\\(",
+   "^\\s*\\.replace\\(/\\[[^\\]]*\\]\\+/g,\\s*'_'\\)"
+  ]
+ },
+ "devtype": {
+  "py": [
+   "_ZONE_TIER_CEILING\\s*[:=]|c\\.dev_type == |ovr\\.dev_type == dev_type|std\\.dev_type == dev_type|dev_type\\s*=\\s*['\"]dwelling_house['\"]"
+  ],
+  "ts": [
+   "export function detectDevTypeFromZone|r\\.dev_type === |dev_type=$\\{|devType\\s*=\\s*'dwelling_house'|devType\\??:\\s*string\\s*=\\s*'dwelling_house'|\\.v2_applicable_dev_types|export function filterRequirementsByDevType"
+  ]
+ },
+ "env": {
+  "py": [
+   "def fetch_bushfire_bfpl|def get_bushfire_live|def get_anef_live|out\\[\"ass_class\"\\] = |_ACID_CLASS_RE = |def get_tod_uplift_live|def detect_nearby_transport|def fetch_tod_catchment"
+  ],
+  "ts": [
+   "constraints\\.bushfireProne = true|constraints\\.acidSulfateSoils = |anefLevel = 40|let anefLevel|stationDistance: result\\[|const TRANSPORT_STATIONS|Math\\.sqrt\\(dx \\* dx \\+ dy \\* dy\\)"
+  ]
+ },
+ "flood": {
+  "py": [
+   "def _query_flood_overlay|def _query_epi_overlay|_overlay_state\\(\"flood\"\\)|layer_type = 'flood'|def _query_ses_flood_study"
+  ],
+  "ts": [
+   "layer_type === 'flood'|floodProne:\\s*false|const floodProne = floodLayer|overlayTypes\\.has\\('flood'\\)|dcpFloodMap\\s*=|constraints\\.floodProne"
+  ]
+ },
+ "front": {
+  "py": [
+   "math\\.sqrt\\(lot_area_m2|is_corner=False|def _frontage_depth_obb|def measure_street_frontage|def street_frontage_for_geometry|def rectangle_width_range|def width_range"
+  ],
+  "ts": [
+   "roadCount >= 2|nearbyRoads\\.length >= 2|Math\\.sqrt\\(lotArea\\)|function frontageDepthFromRect|export function measureStreetFrontage|export function widthRange|Secondary street setback"
+  ]
+ },
+ "fsr": {
+  "py": [
+   "out\\[\"(height|fsr|lot_size)\"\\] = |_parse_numeric\\(lep_(height|fsr)_str\\)|controls\\[\"lot_size\"\\] = "
+  ],
+  "ts": [
+   "constraints\\.(maxFsr|maxHeight|minLotSize)\\s*=|propertyData\\.constraints\\.(maxFsr|minLotSize)\\s*=|const (maxHeight|maxFsr)\\s*=\\s*(heightLayer|fsrLayer)|const (lepHeight|lepFsr)\\b|MAX_B_H|MAX_FSR|\\bmaxHeight = parseFloat|\\bmaxFSR = parseFloat|fsr_limit:|return result\\['Maximum Building Height'\\]"
+  ]
+ },
+ "heritage": {
+  "py": [
+   "def fetch_heritage_postgis|def _is_heritage_land|def _check_heritage|def check_heritage_flag|def _query_heritage_overlay|def _check_heritage_overlay|heritage = bool\\(heritage_items|out\\[\"heritage_items\"\\]"
+  ],
+  "ts": [
+   "case 'Heritage Map'|const heritage = heritageLayer|const hasHeritage|const is_heritage|isHeritage: true|const heritage = constraints\\.heritage"
+  ]
+ },
+ "inst": {
+  "py": [
+   "lepName =|zone_epi\"\\] = results|const epiName: string|lga_name\\.title\\(\\)\\}\" Local Environmental|\\$\\{constraints\\.lga\\} Local Environmental Plan|def _bare_lga_from_epi"
+  ],
+  "ts": [
+   "lepName =|zone_epi\"\\] = results|const epiName: string|lga_name\\.title\\(\\)\\}\" Local Environmental|\\$\\{constraints\\.lga\\} Local Environmental Plan|def _bare_lga_from_epi"
+  ]
+ },
+ "lgad": {
+  "py": [
+   "constraints\\.lga = result\\['LGA Name'\\]|const lga = zoneLayer|zoneResult\\?\\.LGA_NAME|lga_info\\[.lga_name.\\]|lga_name = row\\[0\\]\\.strip\\(\\)|lga_name = rows\\[0\\]\\[3\\]|lga_name = lga_row\\[0\\]"
+  ],
+  "ts": [
+   "constraints\\.lga = result\\['LGA Name'\\]|const lga = zoneLayer|zoneResult\\?\\.LGA_NAME|lga_info\\[.lga_name.\\]|lga_name = row\\[0\\]\\.strip\\(\\)|lga_name = rows\\[0\\]\\[3\\]|lga_name = lga_row\\[0\\]"
+  ]
+ },
+ "lmr": {
+  "py": [
+   "def lmr_gates|def _lmr_uplift_form|def fetch_sepp_exclusions|def fetch_tod_catchment|def fetch_town_centre_catchment|def fetch_dual_occ_prohibition|\"lowMidRiseExclusion\"",
+   "def _gate_inputs"
+  ],
+  "ts": [
+   "lowMidRiseExcluded\\s*=|lowMidRiseExclusion:|const inLMRArea|const lmrAreaKnown|requiresLMR:|export function permitsApartmentDevelopment"
+  ]
+ },
+ "perm": {
+  "py": [
+   "FROM lep_land_use_table|def _permitted_engine_forms|def _realistic_forms|def _ceiling_within_tier|def evaluate_eligibility|def _dwelling_house_permissible|FROM housing_sepp_standards"
+  ],
+  "ts": [
+   "FROM lep_land_use_table|export function permitsApartmentDevelopment|export function isLMREligibleZone|FROM housing_sepp_standards|eligibleTypes\\.push|const eligibleTypes"
+  ]
+ },
+ "road": {
+  "ts": [
+   "export async function getRoadClassifications|street_hierarchy"
+  ]
+ },
+ "setback": {
+  "py": [
+   "def fetch_dcp_setbacks|def _get_dcp_value|def _matching_controls|def _fetch_sd_setbacks|def _dcp_controls_from_setback_rows|def _build_dcp_controls|def _dcp_height_metres|FROM dcp_setback_controls"
+  ],
+  "ts": [
+   "fetchDcpControls\\(|async function getSetbacks|FROM dcp_precinct_requirements|FROM dcp_setback_controls"
+  ]
+ },
+ "strata": {
+  "py": [
+   "def query_strata_at_point|def detect_strata|def classify_strata|def classify_dwelling_type"
+  ],
+  "ts": [
+   "const strataInfo: StrataInfo|isStrata: valuationFallback"
+  ]
+ },
+ "tod": {
+  "py": [
+   "def fetch_tod_catchment|def get_tod_uplift_live|def detect_nearby_transport"
+  ],
+  "ts": [
+   "stationDistance: result\\[|const TRANSPORT_STATIONS|const distance = Math\\.sqrt\\(dx \\* dx \\+ dy \\* dy\\)|const stationDistance ="
+  ]
+ },
+ "zone": {
+  "py": [
+   "[zZ]one[A-Za-z_]*\\)?\\.strip\\(\\)\\.split\\(\\)\\[0\\]|_zone_parts\\s*=|_zc_parts\\s*=|_pz_parts\\s*=|_zs_parts\\s*=|def _zone_prefix|def normalize_zone|_zone_parts\\[0\\]"
+  ],
+  "ts": [
+   "[zZ]one[A-Za-z]*\\??\\.(trim\\(\\)\\.)?split\\((' '|/\\[[^\\]]*\\]/)\\)|function extractZoneCode|zoneDescription\\.match\\(/\\^"
+  ]
+ }
+}

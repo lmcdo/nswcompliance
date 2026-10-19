@@ -863,3 +863,6 @@ data/ku_ring_gai_precincts/.pdf_cache/
 
 # state-law proof: cached legislation HTML (sha256 in manifest.json)
 data/law_text_cache/*.html
+
+# page-integrity panel runs (fixtures live in tests/fixtures/page_integrity)
+data/page_integrity/

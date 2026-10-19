@@ -1,0 +1,17 @@
+{
+  "requested_address": "6 Berrigan Street, Winston Hills",
+  "number": "6",
+  "street": "BERRIGAN STREET",
+  "suburb": "WINSTON HILLS",
+  "base_url": "https://verify.plotdetect.com.au",
+  "captured_at": "2026-10-19T01:20:21.170822+00:00",
+  "suggestions": [
+    "6 Berrigan Street, Winston Hills NSW, Australia"
+  ],
+  "suggestion_picked": "6 Berrigan Street, Winston Hills NSW, Australia",
+  "resolved_address": "6 BERRIGAN STREET WINSTON HILLS 2153",
+  "identity_ok": true,
+  "calls": 18,
+  "calls_failed": [],
+  "exit": 0
+}

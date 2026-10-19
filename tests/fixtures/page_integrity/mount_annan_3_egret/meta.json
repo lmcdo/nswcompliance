@@ -1,0 +1,17 @@
+{
+  "requested_address": "3 Egret Way, Mount Annan",
+  "number": "3",
+  "street": "EGRET WAY",
+  "suburb": "MOUNT ANNAN",
+  "base_url": "https://verify.plotdetect.com.au",
+  "captured_at": "2026-10-19T01:22:53.638362+00:00",
+  "suggestions": [
+    "3 Egret Way, Mount Annan NSW, Australia"
+  ],
+  "suggestion_picked": "3 Egret Way, Mount Annan NSW, Australia",
+  "resolved_address": "3 EGRET WAY MOUNT ANNAN 2567",
+  "identity_ok": true,
+  "calls": 18,
+  "calls_failed": [],
+  "exit": 0
+}
