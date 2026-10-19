@@ -1,5 +1,5 @@
 {
-  "tier": "minor",
+  "tier": "standard",
   "justification": "User-facing wording on two cards plus one pure display helper; no data or calculation change",
   "commit_hash": "6300af94",
   "files": [
@@ -11,10 +11,31 @@
   "pre_impl": {
     "existing_data": "constraints.lga from the Planning Portal LGA Name",
     "assumption_mismatch": "a blank name gives a sentence without the name, never an empty one",
-    "new_vs_existing": "every page render after deploy"
+    "new_vs_existing": "every page render after deploy",
+    "falsifiable_check": {
+      "command": "jest __tests__/lib/council-display-name.test.ts; page check C5 render-junk on fresh captures",
+      "fails_when": "a sentence again puts 'the' before a council name that starts with THE (C5 doubled word), or the helper stops writing The Hills Shire",
+      "observed_red": "On origin/main the live planning tab for 10 Excelsior Ave Castle Hill reads 'developed in the THE HILLS SHIRE area' (capture 2026-10-19, page check C5 render-junk); the new Jest file fails on main (no module)."
+    }
   },
-  "functions": [],
-  "values": [],
+  "functions": [
+    {
+      "name": "councilDisplayName",
+      "file_line": "frontend-nextjs/lib/council-display-name.ts:10",
+      "input": "Portal LGA Name string from constraints.lga",
+      "output": "title-cased council name for a sentence, or null",
+      "if_none": "null or blank input returns null and the sentence omits the name"
+    }
+  ],
+  "values": [
+    {
+      "value": "constraints.lga",
+      "read_at": "frontend-nextjs/components/compliance/LepControls.tsx:80",
+      "nullable": "yes",
+      "guard_at": "ternary on councilDisplayName(...)",
+      "if_missing": "generic sentence without a council name"
+    }
+  ],
   "queries": [],
   "break_it": [
     {
@@ -23,6 +44,20 @@
       "mitigated": true,
       "how": "sentences no longer put an article before the name",
       "repro": "jest __tests__/lib/council-display-name.test.ts"
+    },
+    {
+      "scenario": "Portal sends a hyphenated name",
+      "what_happens": "Canterbury-Bankstown would print as Canterbury-bankstown",
+      "mitigated": true,
+      "how": "capitalises after each hyphen",
+      "repro": "jest council-display-name.test.ts CANTERBURY-BANKSTOWN"
+    },
+    {
+      "scenario": "Portal sends no LGA name",
+      "what_happens": "the sentence would read with a gap where the name goes",
+      "mitigated": true,
+      "how": "falls back to a sentence without the name",
+      "repro": "jest council-display-name.test.ts blank"
     }
   ],
   "post_merge": {
@@ -30,5 +65,10 @@
     "secrets": "No",
     "other_repo": "No",
     "manual_verify": "No"
+  },
+  "falsifiable_check": {
+    "command": "jest __tests__/lib/council-display-name.test.ts; page check C5 render-junk on fresh captures",
+    "fails_when": "a sentence again puts 'the' before a council name that starts with THE (C5 doubled word), or the helper stops writing The Hills Shire",
+    "observed_red": "On origin/main the live planning tab for 10 Excelsior Ave Castle Hill reads 'developed in the THE HILLS SHIRE area' (capture 2026-10-19, page check C5 render-junk); the new Jest file fails on main (no module)."
   }
 }
