@@ -1,14 +1,17 @@
 /**
  * POST /api/reports/conveyancing/generate
  *
- * Two call paths:
- *   A) Stripe webhook: { report_id, address, lat, lng, prop_id } — generates paid PDF via Railway
- *   B) Direct:         Not supported — conveyancing PDF is paid-only
+ * One call path: the Stripe webhook, with { checkout_session_id, report_id }.
+ * The PDF is paid-only, so the session is confirmed with Stripe (paid, this product, this
+ * report) and the address and coordinates are taken from the session, never from the request.
+ * Before 2026-10-19 anyone who could POST got the paid PDF for any address: the route checked
+ * nothing (the flood/shadow/bushfire routes check a DB row or a signed token).
  *
  * Calls Railway /pipeline/conveyancing/pdf, returns { pdf_url }.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getStripe } from '@/lib/stripe-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -16,10 +19,7 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   let body: {
     report_id?: string;
-    address?: string;
-    lat?: number;
-    lng?: number;
-    prop_id?: string;
+    checkout_session_id?: string;
   };
 
   try {
@@ -28,14 +28,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { report_id, address, lat, lng, prop_id } = body;
-
-  if (!report_id || !address) {
-    return NextResponse.json({ error: 'report_id and address are required' }, { status: 400 });
+  const report_id = body.report_id?.trim();
+  const sessionId = body.checkout_session_id?.trim();
+  if (!report_id || !sessionId) {
+    return NextResponse.json({ error: 'report_id and checkout_session_id are required' }, { status: 400 });
   }
 
-  if (lat == null || lng == null) {
-    return NextResponse.json({ error: 'lat and lng are required' }, { status: 400 });
+  const stripe = getStripe();
+  if (!stripe) {
+    return NextResponse.json({ error: 'Payment not configured' }, { status: 500 });
+  }
+  let meta: Record<string, string>;
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    meta = (session.metadata ?? {}) as Record<string, string>;
+    if (session.payment_status !== 'paid'
+        || meta.product !== 'conveyancing-report'
+        || meta.report_id !== report_id) {
+      return NextResponse.json({ error: 'No paid order for this report' }, { status: 403 });
+    }
+  } catch {
+    return NextResponse.json({ error: 'No paid order for this report' }, { status: 403 });
+  }
+
+  const address = meta.address;
+  const lat = meta.lat ? parseFloat(meta.lat) : NaN;
+  const lng = meta.lng ? parseFloat(meta.lng) : NaN;
+  const prop_id = meta.prop_id || null;
+  if (!address || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return NextResponse.json({ error: 'The paid order has no address or location' }, { status: 422 });
   }
 
   const pythonUrl = process.env.PYTHON_API_URL;
