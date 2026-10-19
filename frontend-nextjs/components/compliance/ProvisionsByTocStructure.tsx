@@ -8,6 +8,7 @@
  * - Right: Provisions for selected part/section
  */
 
+import { lepLimits } from '@/lib/see/lep-limits';
 import { cornerStatus } from '@/lib/geometry/corner-status';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import useSWR from 'swr';
@@ -2011,8 +2012,8 @@ export function ProvisionsByTocStructure({
               preparedBy={preparedBy}
               onClientRefChange={handleClientRefChange}
               onPreparedByChange={handlePreparedByChange}
-              lepHeight={lepClauseData?.height_limit || undefined}
-              lepFsr={lepClauseData?.fsr || undefined}
+              lepHeight={lepLimits(lepClauseData).height != null ? `${lepLimits(lepClauseData).height} m` : undefined}
+              lepFsr={lepLimits(lepClauseData).fsr != null ? `${lepLimits(lepClauseData).fsr}:1` : undefined}
               heritage={heritage}
               hcaName={hcaName}
               precinctName={precinctName}
