@@ -39,6 +39,8 @@ interface PropertyData {
     isStrata: boolean;
     source: string | null;
     strataUnit: string | null;
+    strataPlan?: string | null;
+    strataUnits?: number | null;
   };
 }
 

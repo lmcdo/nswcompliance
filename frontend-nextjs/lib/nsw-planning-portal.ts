@@ -7,6 +7,7 @@ import { getRoadClassifications, type RoadClassification } from './road-classifi
 import { getClauseNumbersForMapType } from './lep-local-provisions-mapping';
 import { getKeySitesProvision } from './key-sites-map-provisions';
 import { filterToAskedProperty } from './address-number-match';
+import { strataPlanFromLots } from './property/strata-plan';
 import { landFactsFromLayers, type LandFacts } from './lep-land-condition';
 
 export const ADDRESS_SEARCH_UNAVAILABLE = 'Address search unavailable';
@@ -37,6 +38,8 @@ export interface LotGeometryData {
  };
  cadId?: number;
  lotDescription?: string;
+ /** Every lot record on the parcel (a strata scheme has one per unit plus common property). */
+ lotDescriptions?: string[];
 }
 
 export interface PlanningConstraints {
@@ -339,8 +342,12 @@ function isSuburbNearby(userSuburb: string, clauseSuburb: string): boolean {
 
 export interface StrataInfo {
   isStrata: boolean;
-  source: 'valuation_fallback' | 'address_heuristic' | 'combined' | null;
+  source: 'lot_plan' | 'valuation_fallback' | 'address_heuristic' | 'combined' | null;
   strataUnit: string | null;
+  /** Strata plan named by the Portal lot records, e.g. "SP9807" (the strongest signal). */
+  strataPlan?: string | null;
+  /** Unit lots on that plan, not counting common property. */
+  strataUnits?: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -659,7 +666,8 @@ export class NSWPlanningPortalService {
  return {
  geometry: lot.geometry,
  cadId: lot.attributes?.CADID,
- lotDescription: lot.attributes?.LotDescription
+ lotDescription: lot.attributes?.LotDescription,
+ lotDescriptions: data.map((l: any) => l?.attributes?.LotDescription).filter(Boolean),
  };
  }
 
@@ -1198,15 +1206,20 @@ export class NSWPlanningPortalService {
 
  // Detect strata: valuation-null fallback (strata unit propIds return no valuation) combined
  // with address heuristic ("5/12 Smith St", "Unit 3/12 Smith St").
+ // The lot records name the strata plan outright (CP + one lot per unit); use them first.
+ const lotPlan = strataPlanFromLots(lotGeometry?.lotDescriptions ?? []);
  const valuationFallback = !initialPropertyData;
  const unitMatch = address.match(/^(\d+)\//i) ?? address.match(/^(?:unit|apt|apartment|flat)\s+(\d+)/i);
  const strataInfo: StrataInfo = {
-   isStrata: valuationFallback || !!unitMatch,
-   source: (valuationFallback && unitMatch) ? 'combined'
+   isStrata: !!lotPlan || valuationFallback || !!unitMatch,
+   source: lotPlan ? 'lot_plan'
+         : (valuationFallback && unitMatch) ? 'combined'
          : valuationFallback               ? 'valuation_fallback'
          : unitMatch                       ? 'address_heuristic'
          : null,
    strataUnit: unitMatch?.[1] ?? null,
+   strataPlan: lotPlan?.plan ?? null,
+   strataUnits: lotPlan?.units ?? null,
  };
 
  // Stage 2: fan out from single valuation result (needs geometry for coordinate conversion)
