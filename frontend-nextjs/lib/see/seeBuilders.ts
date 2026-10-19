@@ -5,6 +5,7 @@
 // All citations reference the governing instrument and clause.
 // No AI interpretation — only structured data extraction.
 
+import { lepLimits } from './lep-limits';
 import type { PathwayDetermination, SeppAssessableControl, LepAssessableStandard } from './types';
 import type { AmenityData, StreetContextData } from '@/hooks/useSpatialContext';
 import { HOUSING_SEPP_ZONES } from '@/lib/regulatory-constants';
@@ -273,7 +274,7 @@ export function buildLepStandards(
   }
 
   // Height of buildings — Clause 4.3
-  const heightLimit = lepClauseData?.height_limit ?? propertyContext.lep_controls?.height;
+  const heightLimit = lepLimits(lepClauseData).height ?? propertyContext.lep_controls?.height;
   if (heightLimit) {
     const heightVal = typeof heightLimit === 'number' ? `${heightLimit}m` : `${heightLimit}m`;
     const proposedH = proposedValues?.height ? parseFloat(proposedValues.height) : undefined;
@@ -291,7 +292,7 @@ export function buildLepStandards(
   }
 
   // Floor space ratio — Clause 4.4
-  const fsr = lepClauseData?.fsr ?? propertyContext.lep_controls?.fsr;
+  const fsr = lepLimits(lepClauseData).fsr ?? propertyContext.lep_controls?.fsr;
   if (fsr) {
     const proposedGfa = proposedValues?.gfa ? parseFloat(proposedValues.gfa) : undefined;
     const lotArea = proposedValues?.lotArea ?? propertyContext.lot_dimensions?.area;

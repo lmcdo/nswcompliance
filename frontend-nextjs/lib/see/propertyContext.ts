@@ -2,6 +2,7 @@
 // Shared helpers for building PDF/SEE export data from raw propertyData + lepClauseData.
 // Extracted from ProvisionsByTocStructure.tsx (W3-1, W3-2).
 
+import { lepLimits } from './lep-limits';
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
 import { streetFrontageText } from '@/lib/geometry/street-frontage';
 
@@ -130,8 +131,8 @@ export function buildPropertyContext(
   // LEP controls
   const lepControls = lepClauseData
     ? {
-        height: lepClauseData.height_limit || undefined,
-        fsr: lepClauseData.fsr || undefined,
+        height: lepLimits(lepClauseData).height,
+        fsr: lepLimits(lepClauseData).fsr,
         acid_sulfate_soils: lepClauseData.acid_sulfate_soils || undefined,
         permitted_uses: lepClauseData.permitted_uses || [],
         prohibited_uses: lepClauseData.prohibited_uses || [],
