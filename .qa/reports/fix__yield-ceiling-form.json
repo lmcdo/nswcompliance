@@ -1,0 +1,106 @@
+{
+  "tier": "standard",
+  "justification": "Changes the served yield-box answer and the Site Report call path; read-only lookups, no writes, no schema change",
+  "commit_hash": "b0e99efb",
+  "files": [
+    "services/intelligence_brief.py",
+    "services/constraint_arithmetic.py",
+    "frontend-nextjs/app/api/constraint-arithmetic/route.ts",
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+    "frontend-nextjs/components/compliance/LepControls.tsx",
+    "tests/test_capacity_ceiling_one_producer.py",
+    "tests/test_intelligence_brief_capacity_ceiling_live.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_capacity_ceiling_one_producer.py; page check C2 on fresh captures",
+    "fails_when": "the endpoint stops passing a ceiling (test_endpoint_sets_the_ceiling) or a failed lookup is shown as one house (test_lookup_failure_says_not_checked); C2 > 0 on captures",
+    "observed_red": "On a temporary origin/main worktree the new test file gives '1 failed, 7 errors' (no _capacity_ceiling, no lat/lga_name fields); on this branch 8 passed."
+  },
+  "pre_impl": {
+    "existing_data": "lep_land_use_table (via _permitted_engine_forms), housing_sepp_standards + ArcGIS gates (eligibility engine), PostGIS heritage layer \u2014 all reads, unchanged queries",
+    "assumption_mismatch": "Portal LGA Name not matching lep_land_use_table.lga after _norm_lga -> _realistic_forms falls back to dwelling_house (same fail-safe the Site Report already has)",
+    "new_vs_existing": "Every yield-box render after deploy; no stored data changes",
+    "falsifiable_check": {
+      "command": "python -m pytest tests/test_capacity_ceiling_one_producer.py; page check C2 on fresh captures",
+      "fails_when": "the endpoint stops passing a ceiling (test_endpoint_sets_the_ceiling) or a failed lookup is shown as one house (test_lookup_failure_says_not_checked); C2 > 0 on captures",
+      "observed_red": "On a temporary origin/main worktree the new test file gives '1 failed, 7 errors' (no _capacity_ceiling, no lat/lga_name fields); on this branch 8 passed."
+    }
+  },
+  "functions": [
+    {
+      "name": "_capacity_ceiling",
+      "file_line": "services/intelligence_brief.py:1650",
+      "input": "zone, LGA name, lat/lng, lot area, heritage, width range, optional eligibility results",
+      "output": "(floor form, ceiling form, from_lmr, citation) to both callers",
+      "if_none": "None lat/lng gives empty exclusions; _realistic_forms fails safe to dwelling_house"
+    },
+    {
+      "name": "_ceiling_for_request",
+      "file_line": "services/constraint_arithmetic.py:1510",
+      "input": "ConstraintArithmeticFullRequest from the Next route",
+      "output": "(ceiling, from_lmr, citation, gap) into compute_constraint_arithmetic",
+      "if_none": "missing lat, lng, zone or LGA name returns ceiling None plus a not-checked gap"
+    }
+  ],
+  "values": [
+    {
+      "value": "req.lga_name",
+      "read_at": "services/constraint_arithmetic.py:1517",
+      "nullable": "yes",
+      "guard_at": "services/constraint_arithmetic.py:1517",
+      "if_missing": "gap: Highest permitted housing form not checked: no LGA for this lot"
+    },
+    {
+      "value": "widthRange",
+      "read_at": "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx:262",
+      "nullable": "yes",
+      "guard_at": "widthRange?.min ?? null",
+      "if_missing": "engine runs without a width range, as the Site Report does when frontage is unavailable"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "permitted forms for zone in this LGA (existing query, new caller)",
+      "file_line": "services/intelligence_brief.py:1428",
+      "where_clause": "lep_land_use_table by zone, LGA matched via _norm_lga",
+      "if_zero": "ceiling = dwelling_house (existing fail-safe)",
+      "if_wrong": "wrong LGA name -> zero rows -> dwelling_house, never a denser form"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "ArcGIS slow: eligibility chain exceeds the 15 s Next route limit",
+      "what_happens": "the whole yield box request times out and the card shows its error state",
+      "mitigated": false,
+      "how": "measured 1.5-3.6 s on three addresses; not bounded by a timeout in code \u2014 watch on preview",
+      "repro": "time asyncio.run(constraint_arithmetic_full(req)) with live services"
+    },
+    {
+      "scenario": "page sends Portal heritage=false on a lot only the PostGIS layer marks heritage",
+      "what_happens": "LMR uplift would raise the ceiling the Site Report withholds",
+      "mitigated": true,
+      "how": "services/constraint_arithmetic.py _ceiling_for_request ORs _fetch_heritage_postgis like the brief",
+      "repro": "pytest tests/test_capacity_ceiling_one_producer.py::test_heritage_from_postgis_reaches_the_producer"
+    },
+    {
+      "scenario": "lookup raises (DB or ArcGIS down)",
+      "what_happens": "without a guard the card would show one house as if denser forms were ruled out",
+      "mitigated": true,
+      "how": "except -> ceiling None + 'not checked: the lookup failed' gap",
+      "repro": "pytest tests/test_capacity_ceiling_one_producer.py::test_lookup_failure_says_not_checked"
+    },
+    {
+      "scenario": "widthRange object identity changes every render",
+      "what_happens": "effect refetches on every render, hammering the endpoint",
+      "mitigated": true,
+      "how": "deps use widthRange?.min / ?.max numbers",
+      "repro": "React profiler on the assessment page"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 preview: Winston Hills yield box shows 1-2 (dual occupancy); time the request"
+  }
+}
