@@ -242,6 +242,10 @@ _COND = re.compile(r"upper floor|upper level|first floor|two[- ]storey|second st
 # a base-case row (ground / single storey) is a legitimate alternative answer even though it matches _COND
 _BASE = re.compile(r"single storey|ground (level|floor)", re.I)
 _CORNER = re.compile(r"corner", re.I)
+# The DCP tab hides an extraction note from the reader (DcpStructuredControls / publicCondition),
+# so the check judges only the words the reader sees.
+_INTERNAL_TAIL = re.compile(r"NOT yet stored:.*$", re.I | re.S)
+_EXCLUDED = re.compile(r"\b(?:excludes?|excluding|except|other than|not for)\b[^.;]*", re.I)
 
 
 def _group(term: str) -> Optional[str]:
@@ -262,7 +266,9 @@ def row_fits_lot(cap: Capture) -> list[Flag]:
     dev = str(_query(cap, P_SC).get("dev_type") or "").lower()
 
     for c in ctl:  # (a)
-        m = _HOUSING.search(_row_text(c))
+        # "excludes outbuildings and secondary dwellings" names a type the row is NOT for: a
+        # house rule, not a secondary-dwelling one (false positive on 9 Concord pages, 2026-10-19).
+        m = _HOUSING.search(_EXCLUDED.sub(" ", _INTERNAL_TAIL.sub("", _row_text(c))))
         if not m:
             continue
         g = _group(m.group(0))

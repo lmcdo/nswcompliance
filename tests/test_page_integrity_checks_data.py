@@ -261,3 +261,14 @@ def test_c4_corner_row_marked_on_page_is_green():
 def test_c4_failed_road_check_is_not_a_measured_no():
     cap = _corner_cap(error="Failed to query road data: This operation was aborted")
     assert "corner_lot" not in facts(cd.row_fits_lot(cap))
+
+
+def test_c4_row_naming_a_type_it_excludes_is_not_for_that_type():
+    cap = mk(sc([row("rear_setback", 6.0, "single street frontage; excludes outbuildings and secondary dwellings. "
+                                          "NOT yet stored: secondary dwelling 3.0m (C11)")]))
+    assert "row_dev_type" not in facts(cd.row_fits_lot(cap))
+
+
+def test_c4_row_for_another_type_still_red():
+    cap = mk(sc([row("deep_soil_min", 30.0, "terraces; 50% at rear")]))
+    assert "row_dev_type" in facts(cd.row_fits_lot(cap))

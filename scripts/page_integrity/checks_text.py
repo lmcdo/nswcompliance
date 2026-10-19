@@ -82,6 +82,8 @@ def check_engines_agree(cap: Capture) -> list[Flag]:
 _ASOFRIGHT = re.compile(r"as[-\s]of[-\s]right", re.I)
 _DA = re.compile(r"development application|subject to a DA", re.I)
 _JUNK_WORDS = re.compile(r"(?<![\w-])(undefined|NaN|null)(?![\w-])|\[object")
+# An extraction note meant for us, not the reader ("NOT yet stored: upper-floor living room 9.0m").
+_INTERNAL_NOTE = re.compile(r"NOT yet stored|TODO|FIXME", re.I)
 _CLASS = re.compile(r"\bClass Class\b")
 _DOUBLED = re.compile(r"\b(\w{3,})[ \t]+\1\b", re.I)
 _DOUBLE_YEAR = re.compile(r"\b(?:19|20)\d\d/(?:19|20)\d\d\b")
@@ -104,6 +106,8 @@ def scan_text(tab: str, text: str) -> list[Flag]:
         ev = {"tab": tab, "line": ln, "text": line[:240]}
         for m in _JUNK_WORDS.finditer(line):
             out.append(Flag("C5", "render-junk", f"{tab}:{ln} {m.group(0)!r}", ev))
+        for m in _INTERNAL_NOTE.finditer(line):
+            out.append(Flag("C5", "internal-note", f"{tab}:{ln} internal note {m.group(0)!r} shown to the reader", ev))
         for _ in _CLASS.finditer(line):
             out.append(Flag("C5", "render-junk", f"{tab}:{ln} 'Class Class'", ev))
         for m in _DOUBLED.finditer(line):

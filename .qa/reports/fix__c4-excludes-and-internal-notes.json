@@ -1,0 +1,84 @@
+{
+  "tier": "standard",
+  "justification": "Changes DCP-tab text shown to users and two page-check rules",
+  "commit_hash": "3e42cb3d",
+  "files": [
+    "scripts/page_integrity/checks_data.py",
+    "scripts/page_integrity/checks_text.py",
+    "tests/test_page_integrity_checks_data.py",
+    "tests/test_page_integrity_checks_text.py",
+    "frontend-nextjs/lib/dcp/public-condition.ts",
+    "frontend-nextjs/__tests__/lib/dcp/public-condition.test.ts",
+    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "jest __tests__/lib/dcp/public-condition.test.ts; pytest tests/test_page_integrity_checks_data.py tests/test_page_integrity_checks_text.py; check.py on fresh captures",
+    "fails_when": "a 'NOT yet stored' note reaches the rendered DCP tab (C5 internal-note > 0) or a terrace row under dwelling houses stops being flagged",
+    "observed_red": "Live capture 2026-10-19 09:50 (origin/main): Concord DCP tab shows 'NOT yet stored: upper-floor living room 9.0m (C10)...' to readers; check.py over that capture gave C4 row_dev_type=9 (all 'excludes ... secondary dwellings'). With this branch's check: C4=9 -> 3 Concord false flags gone, C5 internal-note=4 found."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls condition/notes text served by /api/dcp/structured-controls",
+    "assumption_mismatch": "a council sentence that itself contains 'NOT yet stored:' would be cut; none exists (it is our extraction marker)",
+    "new_vs_existing": "every DCP tab render after deploy",
+    "falsifiable_check": {
+      "command": "jest __tests__/lib/dcp/public-condition.test.ts; pytest tests/test_page_integrity_checks_data.py tests/test_page_integrity_checks_text.py; check.py on fresh captures",
+      "fails_when": "a 'NOT yet stored' note reaches the rendered DCP tab (C5 internal-note > 0) or a terrace row under dwelling houses stops being flagged",
+      "observed_red": "Live capture 2026-10-19 09:50 (origin/main): Concord DCP tab shows 'NOT yet stored: upper-floor living room 9.0m (C10)...' to readers; check.py over that capture gave C4 row_dev_type=9 (all 'excludes ... secondary dwellings'). With this branch's check: C4=9 -> 3 Concord false flags gone, C5 internal-note=4 found."
+    }
+  },
+  "functions": [
+    {
+      "name": "publicCondition",
+      "file_line": "frontend-nextjs/lib/dcp/public-condition.ts:13",
+      "input": "stored DCP row condition text from the structured-controls API",
+      "output": "the condition without our extraction note, or null",
+      "if_none": "null or note-only text returns null and no condition is shown"
+    },
+    {
+      "name": "row_fits_lot",
+      "file_line": "scripts/page_integrity/checks_data.py:257",
+      "input": "one captured assessment page with its API calls",
+      "output": "C4 flags for rows that do not fit this lot or project",
+      "if_none": "no DCP rows means nothing is examined"
+    }
+  ],
+  "values": [
+    {
+      "value": "_EXCLUDED",
+      "read_at": "scripts/page_integrity/checks_data.py:248",
+      "nullable": "no",
+      "guard_at": "N/A",
+      "if_missing": "N/A"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a real terrace row is phrased 'except dwelling houses, terraces 50%'",
+      "what_happens": "the check would skip a row that is really for terraces",
+      "mitigated": false,
+      "how": "exclusion stops at the next full stop or semicolon; accepted, test keeps the plain terrace row red",
+      "repro": "pytest tests/test_page_integrity_checks_data.py -k another_type"
+    },
+    {
+      "scenario": "the note appears mid-condition, not at the end",
+      "what_happens": "council words after the note would be cut",
+      "mitigated": true,
+      "how": "the extraction always appends the note at the end; cut is from the marker to the end",
+      "repro": "jest public-condition.test.ts"
+    },
+    {
+      "scenario": "note text reaches another surface (PDF report)",
+      "what_happens": "readers of that surface still see it",
+      "mitigated": false,
+      "how": "C5 now flags it on the assessment page; other surfaces not covered here",
+      "repro": "grep 'NOT yet stored' in a generated report"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 14 Gale St Concord DCP tab rear setback row ends at '...secondary dwellings.'"
+  }
+}

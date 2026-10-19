@@ -123,3 +123,8 @@ def test_facts_checked_keys(cap):
     assert set(fc) == {"engines-agree", "as-of-right", "contradiction", "render-junk",
                        "liability-word", "footprint-pct", "fsr-gfa"}
     assert fc["as-of-right"] and fc["render-junk"]
+
+
+def test_internal_note_shown_to_reader_is_flagged():
+    f = ct.scan_text("dcp", "Rear setbacks; excludes secondary dwellings. NOT yet stored: upper-floor 9.0m (C10)")
+    assert "internal-note" in {x.fact for x in f}
