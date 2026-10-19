@@ -16,6 +16,7 @@ Pure arithmetic on structured data already collected by the intelligence brief p
 from __future__ import annotations
 
 import math
+import re
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
@@ -222,6 +223,51 @@ def _setback_options(
         out.append(SetbackOption(value_m=c.value_min, condition=c.condition,
                                  source_ref=c.source_ref, pdf_page=c.pdf_page))
     return out
+
+
+# Housing types a setback condition can name. A row whose condition names a different type
+# from the one being assessed (a terrace row filed under dwelling houses) is not this project's.
+_HOUSING_TYPES = {
+    "dwelling_house": r"dwelling house|detached",
+    "secondary_dwelling": r"secondary dwelling|granny",
+    "dual_occupancy": r"dual occupanc|duplex",
+    "semi_detached_dwelling": r"semi[- ]detached",
+    "attached_dwelling": r"attached dwelling|terrace",
+    "multi_dwelling_housing": r"multi[- ]dwelling|townhouse|villa",
+    "residential_flat_building": r"residential flat|apartment",
+    "manor_house": r"manor house",
+    "boarding_house": r"boarding",
+    "seniors_housing": r"seniors",
+}
+_CORNER_CASE = re.compile(r"corner|secondary (street|road|frontage)", re.I)
+
+
+def _options_for_site(
+    options: list[SetbackOption],
+    dev_type: str,
+    site_is_corner: Optional[bool],
+) -> tuple[list[SetbackOption], list[tuple[SetbackOption, str]]]:
+    """Split listed setbacks into those that can apply to THIS lot and project, and those its
+    own facts rule out (with the reason in plain words).
+
+    Only facts that are actually known rule a row out: a corner-lot row on a lot measured as
+    not a corner, and a row whose condition names a different housing type. An unknown corner
+    status (None) rules nothing out. Road class is never inferred: no classified-road layer is
+    loaded, so "state or regional road" rows stay listed.
+    """
+    own = re.compile(_HOUSING_TYPES.get(dev_type, r"$^"), re.I)
+    others = [re.compile(v, re.I) for k, v in _HOUSING_TYPES.items() if k != dev_type]
+    keep: list[SetbackOption] = []
+    out: list[tuple[SetbackOption, str]] = []
+    for o in options:
+        cond = o.condition or ""
+        if site_is_corner is False and _CORNER_CASE.search(cond):
+            out.append((o, "this lot is not on a corner"))
+        elif not own.search(cond) and any(rx.search(cond) for rx in others):
+            out.append((o, f"it is for a different type of housing, not a {dev_type.replace('_', ' ')}"))
+        else:
+            keep.append(o)
+    return keep, out
 
 
 def _matching_controls(
@@ -479,6 +525,7 @@ def compute_constraint_arithmetic(
     sepp_lep_overrides: Optional[list[SeppLepOverride]] = None,
     shadow_result: Optional[ShadowResult] = None,
     dcp_coverage: Optional[list[dict] | dict] = None,
+    site_is_corner: Optional[bool] = None,
 ) -> ConstraintArithmeticResult:
     """Compute constraint arithmetic chain.
 
@@ -629,12 +676,26 @@ def compute_constraint_arithmetic(
         _ct = f"{_label}_setback"
         _conflict = _dcp_value_conflict(dcp_controls, _ct, dev_type, lot_area_m2=lot_area_m2)
         if _conflict:
+            _apply, _out = _options_for_site(_setback_options(dcp_controls, _ct, dev_type),
+                                             dev_type, site_is_corner)
+            for _o, _why in _out:
+                gaps.append(f"The {_o.value_m:g} m {_label} setback ({_o.condition}) does not "
+                            f"apply here: {_why}.")
+            _vals = sorted({o.value_m for o in _apply})
+            if not _vals:
+                # every row is for another case: for this lot nothing is recorded
+                setback_values[_label] = None
+                continue
+            if len(_vals) == 1:
+                # The lot's own facts leave one rule: that is the setback, not a choice.
+                setback_values[_label] = _vals[0]
+                continue
             setback_values[_label] = None
             conflicted_sides.append(_label)
-            setattr(result, f"setback_{_label}_options", _setback_options(dcp_controls, _ct, dev_type))
+            setattr(result, f"setback_{_label}_options", _apply)
             gaps.append(
-                f"The council's plan gives {len(_conflict)} {_label} setbacks "
-                f"({' and '.join(f'{v:g} m' for v in _conflict)}), each for a different case. "
+                f"The council's plan gives {len(_vals)} {_label} setbacks "
+                f"({' and '.join(f'{v:g} m' for v in _vals)}), each for a different case. "
                 f"All are listed below with their conditions. Which one applies depends on the "
                 f"design and the site."
             )

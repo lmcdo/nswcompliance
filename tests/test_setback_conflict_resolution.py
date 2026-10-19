@@ -133,3 +133,60 @@ class TestComputeIntegration:
         assert r.setback_front_m == 6.0 and r.setback_front_options == []
         assert not any("setbacks (" in g for g in r.gaps)
         assert r.buildable_footprint_m2 is not None
+
+
+def _cc(control_type, value_min, condition):
+    return DCPControl(control_type=control_type, dev_type="dwelling_house",
+                      value_min=value_min, unit="m", condition=condition)
+
+
+class TestSiteContext:
+    """The lot's own known facts settle a setback; unknown facts never do."""
+
+    def _compute(self, controls, corner):
+        return compute_constraint_arithmetic(
+            lot_area_m2=688.0, dev_type="dwelling_house", lep_height_str="9", lep_fsr_str="0.5",
+            lot_dimensions=LotDimensions(area_m2=688.0, frontage_m=22.4, depth_m=39.7, is_corner=False),
+            dcp_controls=controls, site_is_corner=corner,
+        )
+
+    def _rows(self, front):
+        return front + [_c("side_setback", 0.9), _c("rear_setback", 6.0)]
+
+    def test_corner_row_dropped_on_a_measured_non_corner_lot(self):
+        r = self._compute(self._rows([_c("front_setback", 6.0), _cc("front_setback", 3.0, "corner lot; secondary street")]), False)
+        assert r.setback_front_m == 6.0 and r.setback_front_options == []
+        assert any("3 m front setback (corner lot; secondary street) does not apply here: this lot is not on a corner" in g
+                   for g in r.gaps)
+        assert r.buildable_footprint_m2 is not None
+
+    def test_unknown_corner_rules_nothing_out(self):
+        r = self._compute(self._rows([_c("front_setback", 6.0), _cc("front_setback", 3.0, "corner lot")]), None)
+        assert r.setback_front_m is None
+        assert [o.value_m for o in r.setback_front_options] == [3.0, 6.0]
+
+    def test_road_class_is_never_guessed(self):
+        r = self._compute(self._rows([_c("front_setback", 6.0), _cc("front_setback", 10.0, "state and regional roads")]), False)
+        assert r.setback_front_m is None
+        assert [o.value_m for o in r.setback_front_options] == [6.0, 10.0]
+
+    def test_other_housing_type_row_dropped(self):
+        rows = [_c("front_setback", 6.0), _c("side_setback", 0.9), _cc("side_setback", 1.5, "terraces"),
+                _c("rear_setback", 6.0)]
+        r = self._compute(rows, None)
+        assert r.setback_side_m == 0.9
+        assert any("1.5 m side setback (terraces) does not apply here: it is for a different type of housing" in g
+                   for g in r.gaps)
+
+    def test_row_naming_own_type_is_kept(self):
+        rows = [_c("front_setback", 6.0), _c("side_setback", 0.9),
+                _cc("side_setback", 1.5, "dwelling houses and terraces, upper floor"), _c("rear_setback", 6.0)]
+        r = self._compute(rows, None)
+        assert r.setback_side_m is None and [o.value_m for o in r.setback_side_options] == [0.9, 1.5]
+
+    def test_every_row_ruled_out_is_not_a_listing(self):
+        rows = [_c("front_setback", 6.0), _cc("side_setback", 1.2, "terraces"), _cc("side_setback", 1.5, "dual occupancy"),
+                _c("rear_setback", 6.0)]
+        r = self._compute(rows, None)
+        assert r.setback_side_m is None and r.setback_side_options == []
+        assert any("No current side setback" in g for g in r.gaps)
