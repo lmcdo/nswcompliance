@@ -1,0 +1,75 @@
+{
+  "tier": "standard",
+  "justification": "Restores a served DA-mode check (proposed vs LEP limit) and SEE standards rows",
+  "commit_hash": "74b868f3",
+  "files": [
+    "frontend-nextjs/lib/see/lep-limits.ts",
+    "frontend-nextjs/__tests__/lib/see/lep-limits.test.ts",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/lib/see/seeBuilders.ts",
+    "frontend-nextjs/lib/see/propertyContext.ts"
+  ],
+  "falsifiable_check": {
+    "command": "jest __tests__/lib/see/lep-limits.test.ts",
+    "fails_when": "lepLimits stops reading capacity.maxHeight / capacity.maxFSR, or a reader goes back to the missing height_limit field",
+    "observed_red": "On origin/main /api/capacity/calculate/route.ts returns capacity.maxHeight/maxFSR (lines ~158-166) and ProvisionsByTocStructure.tsx passes lepClauseData?.height_limit / ?.fsr (both undefined) to DAModeCard, whose strip renders only when (lepHeight || lepFsr): DA mode shows no limits and no proposed inputs. lepLimits test 'reads the capacity shape' fails on main (module absent)."
+  },
+  "pre_impl": {
+    "existing_data": "the /api/capacity/calculate response stored as lepClauseData by usePropertyAssessment",
+    "assumption_mismatch": "a zero or missing limit is read as undefined, so no limit row is shown rather than a 0 m limit",
+    "new_vs_existing": "every DA mode session and SEE export after this deploy",
+    "falsifiable_check": {
+      "command": "jest __tests__/lib/see/lep-limits.test.ts",
+      "fails_when": "lepLimits stops reading capacity.maxHeight / capacity.maxFSR, or a reader goes back to the missing height_limit field",
+      "observed_red": "On origin/main /api/capacity/calculate/route.ts returns capacity.maxHeight/maxFSR (lines ~158-166) and ProvisionsByTocStructure.tsx passes lepClauseData?.height_limit / ?.fsr (both undefined) to DAModeCard, whose strip renders only when (lepHeight || lepFsr): DA mode shows no limits and no proposed inputs. lepLimits test 'reads the capacity shape' fails on main (module absent)."
+    }
+  },
+  "functions": [
+    {
+      "name": "lepLimits",
+      "file_line": "frontend-nextjs/lib/see/lep-limits.ts:21",
+      "input": "lepClauseData object from the capacity route held in page state",
+      "output": "height and FSR numbers for DA mode and the SEE builders",
+      "if_none": "null data or zero values return undefined for both, never 0"
+    }
+  ],
+  "values": [
+    {
+      "value": "lepClauseData.capacity.maxHeight",
+      "read_at": "frontend-nextjs/lib/see/lep-limits.ts:24",
+      "nullable": "yes",
+      "guard_at": "num() returns undefined unless finite and above zero",
+      "if_missing": "DA mode hides the height row as before"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "capacity route renames maxHeight again",
+      "what_happens": "DA mode silently loses its height check once more",
+      "mitigated": true,
+      "how": "one accessor with a test on the route's shape",
+      "repro": "jest lep-limits.test.ts"
+    },
+    {
+      "scenario": "limit arrives as a string like '8.5'",
+      "what_happens": "a string limit would not compare numerically against the proposed height",
+      "mitigated": true,
+      "how": "num() parses strings",
+      "repro": "jest lep-limits.test.ts 'flat shape'"
+    },
+    {
+      "scenario": "lot has no FSR control (e.g. Camden R2)",
+      "what_happens": "a 0 FSR would make every proposal fail the check",
+      "mitigated": true,
+      "how": "zero or null gives undefined so no FSR row is shown",
+      "repro": "jest lep-limits.test.ts 'nothing held'"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 DA mode on 6 Berrigan St shows Height limit 9 m and FSR 0.5:1 with proposed inputs"
+  }
+}
