@@ -35,7 +35,7 @@ function plansWithAFloodMap(): Promise<Set<string> | null> {
         : null))
       .catch(() => null)
       .then((s) => {
-        if (s === null) publishingPlans = null; // do not cache a failure
+        if (s == null) publishingPlans = null; // do not cache a failure
         return s;
       });
   }
@@ -48,13 +48,13 @@ export function decideFloodMap(
   lotPlans: string[],
   plansWithMap: Set<string> | null,
 ): FloodMapStatus {
-  if (pointFeatures === null) {
+  if (pointFeatures == null) {
     return { floodProne: null, note: "We couldn't reach the NSW flood planning map, so we can't tell yet whether this lot is in a flood planning area." };
   }
   if (pointFeatures > 0) {
     return { floodProne: true, note: "This lot is in a flood planning area on the council's flood planning map." };
   }
-  if (plansWithMap === null) {
+  if (plansWithMap == null) {
     return { floodProne: null, note: "We couldn't check whether this council publishes a flood planning map, so we can't tell from the map whether this lot is flood affected." };
   }
   if (lotPlans.some((p) => plansWithMap.has(p))) {
