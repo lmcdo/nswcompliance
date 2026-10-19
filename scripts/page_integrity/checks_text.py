@@ -39,7 +39,9 @@ def _norm(s: str) -> str:
 
 
 def _num(v: Any) -> Optional[float]:
-    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+    if v is None or isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    return float(v)
 
 
 def _lot_area(cap: Capture) -> Optional[float]:
