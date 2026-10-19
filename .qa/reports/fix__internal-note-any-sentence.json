@@ -1,0 +1,32 @@
+{
+  "tier": "minor",
+  "justification": "One display helper and its test; text only",
+  "commit_hash": "a5f2cf03",
+  "files": [
+    "frontend-nextjs/lib/dcp/public-condition.ts",
+    "frontend-nextjs/__tests__/lib/dcp/public-condition.test.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls condition text",
+    "assumption_mismatch": "a council sentence containing 'NOT yet stored' would be dropped; the phrase is our marker only",
+    "new_vs_existing": "every DCP tab render after deploy"
+  },
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a decimal like 6.5m inside the note's sentence",
+      "what_happens": "splitting at every full stop would leave '6.' behind on the page",
+      "mitigated": true,
+      "how": "split only at '. ' followed by a capital",
+      "repro": "jest public-condition.test.ts Mount Annan case"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
