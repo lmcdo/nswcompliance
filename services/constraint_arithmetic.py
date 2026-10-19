@@ -32,6 +32,7 @@ from services.constraint_models import (
     LotDimensions,
     SEPPStandard,
     SeppLepOverride,
+    SetbackOption,
     ShadowResult,
 )
 
@@ -200,6 +201,29 @@ def _get_dcp_value(
     return max(mins) if mins else None
 
 
+def _setback_options(
+    controls: list[DCPControl],
+    control_type: str,
+    dev_type: str,
+) -> list[SetbackOption]:
+    """Every distinct (figure, condition) for one setback side, in figure order, with the
+    clause and page each came from. One entry per figure+condition, so a row extracted twice
+    is listed once."""
+    seen: set[tuple[float, str]] = set()
+    out: list[SetbackOption] = []
+    for c in sorted(_matching_controls(controls, control_type, dev_type),
+                    key=lambda c: (c.value_min if c.value_min is not None else 0.0)):
+        if c.value_min is None:
+            continue
+        key = (c.value_min, (c.condition or "").strip().lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(SetbackOption(value_m=c.value_min, condition=c.condition,
+                                 source_ref=c.source_ref, pdf_page=c.pdf_page))
+    return out
+
+
 def _matching_controls(
     controls: list[DCPControl],
     control_type: str,
@@ -333,6 +357,7 @@ def _dcp_controls_from_setback_rows(
             unit=s.get("unit", "m"),
             condition=condition,
             source_ref=served_source_ref(s, clause_ref),
+            pdf_page=s.get("pdf_page") if isinstance(s.get("pdf_page"), int) else None,
         ))
     return controls
 
@@ -592,26 +617,36 @@ def compute_constraint_arithmetic(
         and lot_dimensions.depth_m is not None
     )
 
-    front_setback = _get_dcp_value(dcp_controls, "front_setback", dev_type, lot_area_m2=lot_area_m2)
-    rear_setback = _get_dcp_value(dcp_controls, "rear_setback", dev_type, lot_area_m2=lot_area_m2)
-    side_setback = _get_dcp_value(dcp_controls, "side_setback", dev_type, lot_area_m2=lot_area_m2)
+    # A setback is a single figure ONLY when the matching rows agree, or the lot-size band
+    # picks one. When they disagree (ground vs upper floor, a state road, two storeys) the
+    # rule that applies depends on facts this calculation does not hold, so every figure is
+    # LISTED with its condition and page and the side stays unresolved. Taking the largest
+    # put a 10 m state-road setback on an ordinary Winston Hills street (6 m) — page check
+    # 2026-10-19. A listed side is not "missing": the footprint is withheld for it below.
+    setback_values: dict[str, Optional[float]] = {}
+    conflicted_sides: list[str] = []
+    for _label in ("front", "rear", "side"):
+        _ct = f"{_label}_setback"
+        _conflict = _dcp_value_conflict(dcp_controls, _ct, dev_type, lot_area_m2=lot_area_m2)
+        if _conflict:
+            setback_values[_label] = None
+            conflicted_sides.append(_label)
+            setattr(result, f"setback_{_label}_options", _setback_options(dcp_controls, _ct, dev_type))
+            gaps.append(
+                f"The council's plan gives {len(_conflict)} {_label} setbacks "
+                f"({' and '.join(f'{v:g} m' for v in _conflict)}), each for a different case. "
+                f"All are listed below with their conditions. Which one applies depends on the "
+                f"design and the site."
+            )
+        else:
+            setback_values[_label] = _get_dcp_value(dcp_controls, _ct, dev_type, lot_area_m2=lot_area_m2)
+    front_setback = setback_values.get("front")
+    rear_setback = setback_values.get("rear")
+    side_setback = setback_values.get("side")
 
     result.setback_front_m = front_setback
     result.setback_rear_m = rear_setback
     result.setback_side_m = side_setback
-
-    # Conflicting/tiered setback controls (e.g. lot-size or storey bands, or a
-    # duplicate/garbled extraction): _get_dcp_value used the most conservative
-    # value above; surface the conflict so the chosen figure is flagged for
-    # verification rather than read as a single certain control.
-    for _ct, _label in (("front_setback", "front"), ("rear_setback", "rear"), ("side_setback", "side")):
-        _conflict = _dcp_value_conflict(dcp_controls, _ct, dev_type, lot_area_m2=lot_area_m2)
-        if _conflict:
-            gaps.append(
-                f"DCP {_label} setback has {len(_conflict)} differing values "
-                f"({', '.join(f'{v:g}m' for v in _conflict)}); used the most conservative "
-                f"({max(_conflict):g}m). Verify the control that applies to this lot against the DCP."
-            )
 
     # A setback the DCP does not state is NOT zero. Substituting 0.0 erodes
     # nothing, so the footprint and every figure derived from it come out LARGER
@@ -634,7 +669,7 @@ def compute_constraint_arithmetic(
     missing_setbacks = [
         label for value, label in (
             (front_setback, "front"), (rear_setback, "rear"), (side_setback, "side"),
-        ) if value is None
+        ) if value is None and label not in conflicted_sides
     ]
     # Where a council's DCP does not (or only partly) cover this housing type,
     # say so from the recorded finding (dcp_dev_type_coverage) instead of the
@@ -678,7 +713,12 @@ def compute_constraint_arithmetic(
                 f"and the after-DCP figure are not shown. Verify the applicable "
                 f"control against the council's DCP."
             )
-        if not missing_setbacks:
+        if conflicted_sides and not missing_setbacks:
+            gaps.append(
+                f"The buildable area and the floor area after setbacks are not shown, because the "
+                f"{' and '.join(conflicted_sides)} setback depends on which listed case applies."
+            )
+        if not missing_setbacks and not conflicted_sides:
             result.buildable_footprint_m2 = round(buildable_footprint, 1)
 
         if has_battleaxe_head:
@@ -704,22 +744,27 @@ def compute_constraint_arithmetic(
         # caught by cross-review (gpt-5.6-sol, HIGH silent-failure) on this
         # branch. When a required setback is absent the step reports what is
         # recorded and that no footprint was computed, and quotes no zero.
-        if missing_setbacks:
+        if missing_setbacks or conflicted_sides:
+            _why = []
+            if missing_setbacks:
+                _why.append(f"we hold no current {' or '.join(missing_setbacks)} setback for this housing type")
+            if conflicted_sides:
+                _why.append(f"the {' and '.join(conflicted_sides)} setback depends on which listed case applies")
             steps.append(ConstraintStep(
                 constraint=ConstraintType.DCP_SETBACKS,
                 phase="dcp",
-                label="DCP setback erosion — not computed",
+                label="Buildable area after setbacks — not shown",
                 footprint_m2=None,
                 note=(
-                    f"Lot {frontage_m:.1f}m x {depth_m:.1f}m. Recorded: "
-                    + ", ".join(
-                        f"{label} {value:g}m" for value, label in (
+                    f"Lot {frontage_m:.1f} m x {depth_m:.1f} m. Setbacks we have: "
+                    + (", ".join(
+                        f"{label} {value:g} m" for value, label in (
                             (front_setback, "front"), (rear_setback, "rear"),
                             (side_setback, "side"),
                         ) if value is not None
-                    )
-                    + f". No current {' or '.join(missing_setbacks)} setback value, "
-                      f"so no buildable footprint was computed."
+                    ) or "none")
+                    + ". " + "; and ".join(_why).capitalize()
+                    + ", so the buildable area is not shown."
                 ),
             ))
         else:
@@ -742,10 +787,16 @@ def compute_constraint_arithmetic(
         # permissive answer available, not -- as the previous comment here said
         # -- a conservative one. So it is used internally and not published.
         buildable_footprint = lot_area_m2
-        gaps.append(
-            "No DCP setback controls available for this development type, so the "
-            "buildable footprint and the after-DCP figure are not shown."
-        )
+        if conflicted_sides:
+            gaps.append(
+                f"The buildable area and the floor area after setbacks are not shown, because the "
+                f"{' and '.join(conflicted_sides)} setback depends on which listed case applies."
+            )
+        else:
+            gaps.append(
+                "No DCP setback controls available for this development type, so the "
+                "buildable footprint and the after-DCP figure are not shown."
+            )
 
     # -----------------------------------------------------------------------
     # Step 5: DCP site coverage cap

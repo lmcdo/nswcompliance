@@ -118,6 +118,12 @@ def _ca_setback(ca: dict, kind: str) -> Optional[float]:
     return _num(ca.get(f"setback_{kind}_m"))
 
 
+def _ca_options(ca: dict, kind: str) -> list[float]:
+    """Figures the yield box LISTS for a side whose rows disagree (setback_<kind>_options)."""
+    return [v for o in (ca.get(f"setback_{kind}_options") or [])
+            if isinstance(o, dict) and (v := _num(o.get("value_m"))) is not None]
+
+
 def _has_route(cap: Capture, path: str) -> bool:
     return cap.last(path) is not None
 
@@ -152,8 +158,17 @@ def same_fact_agrees(cap: Capture) -> list[Flag]:
 
     if ca is not None and ctl is not None:
         for k in SETBACKS:
-            sc, v = _sc_values(ctl, k), _ca_setback(ca, k)
-            if sc and v is None:
+            sc, v, opts = _sc_values(ctl, k), _ca_setback(ca, k), _ca_options(ca, k)
+            if v is None and opts:
+                # A listed side agrees only if it lists exactly the DCP tab's figures.
+                extra = [o for o in opts if not any(_close(o, s) for s in sc)]
+                left_out = [s for s in sc if not any(_close(s, o) for o in opts)]
+                if extra or left_out:
+                    flags.append(Flag("C1", f"{k}_setback",
+                                      f"yield box lists {k} setbacks {sorted(set(opts))} but the DCP tab lists "
+                                      f"{sorted(set(sc))}",
+                                      f"{P_CA}.setback_{k}_options={opts}; {P_SC} {k}_setback={sc}"))
+            elif sc and v is None:
                 flags.append(Flag("C1", f"{k}_setback",
                                   f"constraint-arithmetic has no {k} setback but the DCP tab lists {sorted(set(sc))}",
                                   f"{P_CA}.setback_{k}_m=None; {P_SC} {k}_setback={sc}"))
@@ -201,7 +216,7 @@ def honest_absence(cap: Capture) -> list[Flag]:
     if ca is not None and ctl is not None:
         gaps = [g for g in (ca.get("gaps") or []) if isinstance(g, str)]
         says_none = any("No DCP setback controls" in g for g in gaps)
-        all_none = all(_ca_setback(ca, k) is None for k in SETBACKS)
+        all_none = all(_ca_setback(ca, k) is None and not _ca_options(ca, k) for k in SETBACKS)
         rows = {k: _sc_values(ctl, k) for k in SETBACKS}
         if (says_none or all_none) and any(rows.values()):
             flags.append(Flag("C3", "setbacks_absent",

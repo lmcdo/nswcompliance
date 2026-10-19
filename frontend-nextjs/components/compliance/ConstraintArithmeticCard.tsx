@@ -38,6 +38,10 @@ export interface ConstraintArithmeticResult {
   setback_front_m: number | null;
   setback_rear_m: number | null;
   setback_side_m: number | null;
+  /** When the plan gives several figures for a side, each is listed (the single value is null). */
+  setback_front_options?: SetbackOption[];
+  setback_rear_options?: SetbackOption[];
+  setback_side_options?: SetbackOption[];
   site_coverage_cap_m2: number | null;
   landscaping_reduction_m2: number | null;
   effective_height_m: number | null;
@@ -67,6 +71,35 @@ export interface ConstraintArithmeticResult {
   gaps: string[];
   confidence: string;
   disclaimer: string;
+}
+
+interface SetbackOption {
+  value_m: number;
+  condition?: string | null;
+  source_ref?: string | null;
+  pdf_page?: number | null;
+}
+
+/** One setback side: the single figure, or every listed figure with the case it is for. */
+function SetbackSide({ label, value, options }: { label: string; value: number | null; options?: SetbackOption[] }) {
+  if (value != null) {
+    return <div className="text-gray-700">{label}: <span className="font-semibold">{value} m</span></div>;
+  }
+  if (!options || options.length === 0) return null;
+  return (
+    <div className="text-gray-700">
+      {label}: <span className="text-xs text-gray-500">depends on the case —</span>
+      <ul className="ml-4 mt-0.5 list-disc text-xs">
+        {options.map((o, i) => (
+          <li key={i}>
+            <span className="font-semibold text-gray-900">{o.value_m} m</span>
+            {o.condition ? <> — {o.condition}</> : <> — no condition stated</>}
+            {o.pdf_page ? <span className="text-gray-500"> (p. {o.pdf_page})</span> : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -549,19 +582,18 @@ export function ConstraintArithmeticCard({
         )}
 
         {/* Setbacks summary — residential DCP controls; suppress on non-residential zones. */}
-        {zoneModelled && (result.setback_front_m != null || result.setback_side_m != null || result.setback_rear_m != null) && (
+        {zoneModelled && (
+          result.setback_front_m != null || result.setback_side_m != null || result.setback_rear_m != null
+          || (result.setback_front_options?.length ?? 0) > 0
+          || (result.setback_side_options?.length ?? 0) > 0
+          || (result.setback_rear_options?.length ?? 0) > 0
+        ) && (
           <div className="bg-white border border-blue-100 rounded-lg p-3">
-            <div className="text-xs font-medium text-blue-600 mb-2">DCP Setbacks Applied</div>
-            <div className="flex gap-4 text-sm">
-              {result.setback_front_m != null && (
-                <span className="text-gray-700">Front: <span className="font-semibold">{result.setback_front_m}m</span></span>
-              )}
-              {result.setback_side_m != null && (
-                <span className="text-gray-700">Side: <span className="font-semibold">{result.setback_side_m}m</span></span>
-              )}
-              {result.setback_rear_m != null && (
-                <span className="text-gray-700">Rear: <span className="font-semibold">{result.setback_rear_m}m</span></span>
-              )}
+            <div className="text-xs font-medium text-blue-600 mb-2">Setbacks from the council&apos;s plan</div>
+            <div className="flex flex-col gap-1 text-sm">
+              <SetbackSide label="Front" value={result.setback_front_m} options={result.setback_front_options} />
+              <SetbackSide label="Side" value={result.setback_side_m} options={result.setback_side_options} />
+              <SetbackSide label="Rear" value={result.setback_rear_m} options={result.setback_rear_options} />
             </div>
             {result.buildable_footprint_m2 != null && (
               <div className="text-xs text-gray-500 mt-1">

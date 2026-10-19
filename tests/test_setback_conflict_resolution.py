@@ -108,21 +108,28 @@ class TestComputeIntegration:
             dcp_controls=controls,
         )
 
-    def test_burwood_conflict_uses_conservative_and_flags_gap(self):
+    def test_burwood_conflict_is_listed_not_picked(self):
         # The real Burwood defect: front_setback 9m AND 15m, no distinguishing condition.
         controls = [
-            _c("front_setback", 9.0), _c("front_setback", 15.0),
+            _c("front_setback", 9.0), _c("front_setback", 15.0), _c("front_setback", 15.0),
             _c("side_setback", 0.9), _c("rear_setback", 3.0),
         ]
         r = self._compute(controls)
-        assert r.setback_front_m == 15.0  # deterministic, conservative
-        gap_text = " ".join(r.gaps).lower()
-        assert "front setback" in gap_text
-        assert "9m" in gap_text and "15m" in gap_text
-        assert "conservative" in gap_text
+        assert r.setback_front_m is None  # not picked: which applies is not known here
+        assert [o.value_m for o in r.setback_front_options] == [9.0, 15.0]  # duplicate listed once
+        assert r.setback_side_m == 0.9 and r.setback_rear_m == 3.0
+        assert r.buildable_footprint_m2 is None
+        gap_text = " ".join(r.gaps)
+        assert "2 front setbacks (9 m and 15 m)" in gap_text
+        assert "conservative" not in gap_text.lower()
+        assert "No current" not in gap_text  # listed is not missing
+        step = next(s for s in r.steps if s.constraint.value == "dcp_setbacks")
+        assert step.footprint_m2 is None and "0.0" not in step.note
+        assert step.label == "Buildable area after setbacks — not shown"
 
     def test_single_setbacks_emit_no_conflict_gap(self):
         controls = [_c("front_setback", 6.0), _c("side_setback", 0.9), _c("rear_setback", 3.0)]
         r = self._compute(controls)
-        assert r.setback_front_m == 6.0
-        assert not any("differing values" in g for g in r.gaps)
+        assert r.setback_front_m == 6.0 and r.setback_front_options == []
+        assert not any("setbacks (" in g for g in r.gaps)
+        assert r.buildable_footprint_m2 is not None

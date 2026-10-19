@@ -50,6 +50,19 @@ class DCPControl(BaseModel):
     unit: Optional[str] = None
     condition: Optional[str] = None
     source_ref: Optional[str] = None
+    pdf_page: Optional[int] = None
+
+
+class SetbackOption(BaseModel):
+    """One DCP setback figure that applies only in some cases (a storey, a road type, a band).
+
+    Listed when the matching rows for a side disagree, instead of picking one of them.
+    """
+
+    value_m: float
+    condition: Optional[str] = None
+    source_ref: Optional[str] = None
+    pdf_page: Optional[int] = None
 
 
 class SEPPStandard(BaseModel):
@@ -185,6 +198,11 @@ class ConstraintArithmeticResult(BaseModel):
     setback_front_m: Optional[float] = None
     setback_rear_m: Optional[float] = None
     setback_side_m: Optional[float] = None
+    # When the DCP rows for a side disagree (storey, road type, ...), setback_*_m stays None
+    # and every figure is listed here with its condition and page — never one picked for it.
+    setback_front_options: list[SetbackOption] = []
+    setback_rear_options: list[SetbackOption] = []
+    setback_side_options: list[SetbackOption] = []
     site_coverage_cap_m2: Optional[float] = None
     landscaping_reduction_m2: Optional[float] = None
 
