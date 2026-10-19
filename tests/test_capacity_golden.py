@@ -107,14 +107,17 @@ def test_gate2b_override_does_not_leak_across_forms():
     assert r.effective_height_m == 8.5
 
 
-def test_conflicting_setbacks_pick_conservative_and_flag():
-    """Two front setbacks (9m, 15m) -> the larger min is chosen and a gap flagged."""
+def test_conflicting_setbacks_are_listed_not_picked():
+    """Two front setbacks (9m, 15m) -> neither is picked: both are listed, the side stays
+    unresolved and no footprint is published (page check 2026-10-19: picking the largest put
+    a 10 m state-road setback on an ordinary street)."""
     kwargs = next(
         s["kwargs"] for s in scenarios()
         if s["name"] == "conflicting_setbacks_conservative"
     )
     r = compute_constraint_arithmetic(**kwargs)
-    assert r.setback_front_m == 15.0
-    assert any("setback" in g.lower() or "conflict" in g.lower() for g in r.gaps), (
-        "A conflicting-setback resolution must surface a data gap for verification."
-    )
+    assert r.setback_front_m is None
+    assert [o.value_m for o in r.setback_front_options] == [9.0, 15.0]
+    assert r.buildable_footprint_m2 is None and r.dcp_adjusted_gfa_m2 is None
+    assert any("2 front setbacks (9 m and 15 m)" in g for g in r.gaps)
+    assert not any("conservative" in g for g in r.gaps)

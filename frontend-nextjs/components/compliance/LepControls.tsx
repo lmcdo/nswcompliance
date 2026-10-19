@@ -209,6 +209,10 @@ export function LepControls({
           lng={lng ?? propertyData?.coordinates?.lon ?? null}
           heritage={propertyData?.heritage?.isHeritage ?? null}
           widthRange={widthRange(propertyData?.cornerLot?.streetFrontage)}
+          // A failed road query returns isCornerLot=false WITH an error: that is "not
+          // measured", so it must not rule corner-lot setbacks out.
+          isCorner={propertyData?.cornerLot && !propertyData.cornerLot.error
+            ? propertyData.cornerLot.isCornerLot : null}
         />
       )}
 

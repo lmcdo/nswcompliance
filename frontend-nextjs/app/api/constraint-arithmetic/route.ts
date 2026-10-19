@@ -30,6 +30,7 @@ interface RequestBody {
   heritage?: boolean | null;
   widthMin?: number | null;
   widthMax?: number | null;
+  isCorner?: boolean | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
         heritage: body.heritage ?? null,
         width_min_m: body.widthMin ?? null,
         width_max_m: body.widthMax ?? null,
+        is_corner: body.isCorner ?? null,
       }),
     });
 

@@ -1,0 +1,108 @@
+{
+  "tier": "standard",
+  "justification": "Changes a served number (setback chosen by max) on the yield box and Site Report; no DB writes",
+  "commit_hash": "bf044d53",
+  "files": [
+    "services/constraint_models.py",
+    "services/constraint_arithmetic.py",
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+    "scripts/page_integrity/checks_data.py",
+    "tests/test_capacity_golden.py",
+    "tests/test_setback_conflict_resolution.py",
+    "tests/golden/capacity_golden.json",
+    "tests/test_page_integrity_checks_data.py",
+    "frontend-nextjs/app/api/constraint-arithmetic/route.ts",
+    "frontend-nextjs/components/compliance/LepControls.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "pytest tests/test_setback_conflict_resolution.py tests/test_capacity_golden.py tests/test_page_integrity_checks_data.py",
+    "fails_when": "a conflicting side is picked again (setback_front_m == 15), the footprint is published with a listed side, or C1 stops checking listed figures against the DCP tab",
+    "observed_red": "On a temporary origin/main worktree the changed tests give '5 failed, 68 passed' (max-wins value, no setback_*_options, C1 flags a listed side); on this branch all pass."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls rows via fetch_dcp_setbacks (read, unchanged query); pdf_page now carried into DCPControl",
+    "assumption_mismatch": "a row without pdf_page lists the figure without a page; a duplicate row is listed once (same value + condition)",
+    "new_vs_existing": "every yield-box and Site Report render after deploy; lot-search index stores NULL for listed sides on its next rebuild",
+    "falsifiable_check": {
+      "command": "pytest tests/test_setback_conflict_resolution.py tests/test_capacity_golden.py tests/test_page_integrity_checks_data.py",
+      "fails_when": "a conflicting side is picked again (setback_front_m == 15), the footprint is published with a listed side, or C1 stops checking listed figures against the DCP tab",
+      "observed_red": "On a temporary origin/main worktree the changed tests give '5 failed, 68 passed' (max-wins value, no setback_*_options, C1 flags a listed side); on this branch all pass."
+    }
+  },
+  "functions": [
+    {
+      "name": "_setback_options",
+      "file_line": "services/constraint_arithmetic.py:204",
+      "input": "DCPControl list, control type, dev type",
+      "output": "list of SetbackOption on the result",
+      "if_none": "rows without value_min are skipped; no rows gives an empty list"
+    },
+    {
+      "name": "same_fact_agrees",
+      "file_line": "scripts/page_integrity/checks_data.py:155",
+      "input": "one captured assessment page with its API calls",
+      "output": "list of C1 flags, one per disagreeing fact",
+      "if_none": "missing route means the fact is not examined, never a pass"
+    }
+  ],
+  "values": [
+    {
+      "value": "conflicted_sides",
+      "read_at": "services/constraint_arithmetic.py:627",
+      "nullable": "no",
+      "guard_at": "N/A",
+      "if_missing": "empty list keeps the old single-value path"
+    },
+    {
+      "value": "setback_front_options",
+      "read_at": "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx:SetbackSide",
+      "nullable": "yes",
+      "guard_at": "options?.length checks",
+      "if_missing": "side not shown, as before"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "internal steps still use 0 for a listed side",
+      "what_happens": "the computation chain would quote a 0 m setback and a too-large footprint",
+      "mitigated": true,
+      "how": "step relabelled 'Buildable area after setbacks \u2014 not shown', footprint_m2 None; test asserts no 0.0 in the note",
+      "repro": "pytest tests/test_setback_conflict_resolution.py::TestComputeIntegration::test_burwood_conflict_is_listed_not_picked"
+    },
+    {
+      "scenario": "a listed side is treated as missing",
+      "what_happens": "the reader is told no setback is recorded when two are",
+      "mitigated": true,
+      "how": "missing_setbacks excludes conflicted_sides; test asserts 'No current' absent",
+      "repro": "same test"
+    },
+    {
+      "scenario": "yield box lists figures the DCP tab does not show",
+      "what_happens": "the yield box and the DCP tab disagree without any check noticing",
+      "mitigated": true,
+      "how": "scripts/page_integrity/checks_data.py:162 C1 flags extra or left-out figures",
+      "repro": "pytest tests/test_page_integrity_checks_data.py -k listed"
+    },
+    {
+      "scenario": "Lot Search filters on ca_setback_* columns",
+      "what_happens": "lots with a listed side get NULL and drop out of a setback filter after the next index rebuild",
+      "mitigated": false,
+      "how": "NULL is the honest value (no single figure); called out in the PR for the user",
+      "repro": "python scripts/build_lot_search_index.py on a council with conflicting rows"
+    },
+    {
+      "scenario": "road query fails and the page reports isCornerLot false",
+      "what_happens": "a corner-lot setback would be wrongly ruled out on a real corner lot",
+      "mitigated": true,
+      "how": "LepControls sends null when cornerLot.error is set; _options_for_site rules nothing out on None",
+      "repro": "pytest tests/test_setback_conflict_resolution.py::TestSiteContext::test_unknown_corner_rules_nothing_out"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 Winston Hills yield box lists Front 6 m / 10 m (state or regional road) with pages, no footprint"
+  }
+}

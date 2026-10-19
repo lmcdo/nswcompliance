@@ -203,3 +203,36 @@ def test_c4c_applies_only_if_and_unknown_corner():
     plain = sc([row("secondary_street_setback", 3, "corner lot")])
     assert cd.row_fits_lot(mk(prop(None), plain)) == []
     assert facts(cd.row_fits_lot(mk(prop({"isCornerLot": False}), plain))) == {"corner_lot"}
+
+
+# ---- listed setbacks (A3): a side whose rows disagree is LISTED, not picked
+def _listed(front_opts, side=0.9):
+    return {"setback_front_m": None, "setback_side_m": side, "setback_rear_m": None,
+            "setback_front_options": [{"value_m": v} for v in front_opts],
+            "setback_rear_options": [], "setback_side_options": [], "gaps": []}
+
+
+def test_c1_listed_side_matching_dcp_tab_is_green():
+    cap = mk((cd.P_CA, _listed([6.0, 10.0]), None, None),
+             sc([row("front_setback", 6), row("front_setback", 10, "state road"), row("side_setback", 0.9)]))
+    assert "front_setback" not in facts(cd.same_fact_agrees(cap))
+
+
+def test_c1_listed_side_missing_a_dcp_value_is_red():
+    cap = mk((cd.P_CA, _listed([6.0]), None, None),
+             sc([row("front_setback", 6), row("front_setback", 10, "state road"), row("side_setback", 0.9)]))
+    assert "front_setback" in facts(cd.same_fact_agrees(cap))
+
+
+def test_c1_listed_side_inventing_a_value_is_red():
+    cap = mk((cd.P_CA, _listed([6.0, 10.0, 12.0]), None, None),
+             sc([row("front_setback", 6), row("front_setback", 10, "state road"), row("side_setback", 0.9)]))
+    assert "front_setback" in facts(cd.same_fact_agrees(cap))
+
+
+def test_c3_all_sides_listed_is_not_absent():
+    ca = _listed([6.0, 10.0], side=None)
+    ca["setback_side_options"] = [{"value_m": 0.9}, {"value_m": 1.5}]
+    cap = mk((cd.P_CA, ca, None, None),
+             sc([row("front_setback", 6), row("front_setback", 10), row("side_setback", 0.9), row("side_setback", 1.5)]))
+    assert "setbacks_absent" not in facts(cd.honest_absence(cap))
