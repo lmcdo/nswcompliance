@@ -141,6 +141,26 @@ def test_cut_off_word_in_the_middle_is_not_forgiven():
     assert R.judge(old, INST, "sec.5-ssec.2")["words_dropped"]
 
 
+def test_one_letter_ocr_slip_is_a_repair_not_a_dropped_word():
+    # 38711 (Codes SEPP 3D.46(10)) read 'parkin' for 'parking'; here 'swimmng' for 'swimming'.
+    old = ("A swimmng pool must be fenced in accordance with the Swimming Pools Act 1992 at all times when it is "
+           "in use by any person")
+    j = R.judge(old, INST, "sec.5-ssec.2")
+    assert j["words_dropped"] == [] and j["ok"], j
+    assert any("(one letter)" in r for r in j["repairs"])
+
+
+def test_one_letter_slip_never_forgives_a_number_or_a_short_word():
+    assert not R.one_letter_slip("1.9", "1.8")
+    assert not R.one_letter_slip("of", "or")
+    assert not R.one_letter_slip("Poo", "Pools")          # two letters
+    assert R.one_letter_slip("parkin", "parking")
+    assert R.one_letter_slip("fenecd", "fenced") is False  # a swap is two changes
+    old = ("The capacity of a water tank must not exceed 10 000 litres for a dwelling on a lot of less than "
+           "5,000 square metres")
+    assert R.judge(old, INST, "sec.8-ssec.1")["checks"]["d_numbers_kept"] is False
+
+
 def test_new_text_is_verbatim_in_the_law_by_both_provers():
     for uid in ("sec.5", "sec.5-ssec.1", "sec.5-ssec.1-para1.b", "sec.8-ssec.1"):
         assert R.verbatim(INST, INST.units[uid].text), uid

@@ -287,6 +287,18 @@ def lig_fold(s: str) -> str:
     return LIGATURE.sub("", s)
 
 
+def one_letter_slip(row_word: str, law_word: str) -> bool:
+    """True when the row's word is the law's word with exactly one letter added, dropped or changed.
+    Words with digits never match (a changed digit is a changed number), nor law words under 4 letters."""
+    a, b = row_word.lower(), law_word.lower()
+    if a == b or len(b) < 4 or any(ch.isdigit() for ch in a + b) or abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) == 1
+    short, long_ = (a, b) if len(a) < len(b) else (b, a)
+    return any(long_[:i] + long_[i + 1:] == short for i in range(len(long_)))
+
+
 def words_dropped(old: str, unit_words: list[str], repairs: list[str] | None = None) -> list[str]:
     """Words of the old text that are not in the unit, in order. Ellipses/markup/markers/furniture are already gone.
     A replaced block is explained (not dropped) when the row's words and the unit's words are the same letters
@@ -305,6 +317,12 @@ def words_dropped(old: str, unit_words: list[str], repairs: list[str] | None = N
                 if lig_fold(ra) == lig_fold(rb):
                     if repairs is not None:
                         repairs.append(f"{' '.join(seg[a1:a2])} -> {' '.join(unit_words[b1:b2])}")
+                    continue
+                # One letter lost, gained or misread in one word ('parkin' for 'parking'): an OCR slip, not a
+                # different word. Never a number, and only for law words of 4+ letters, so 'of'/'or' stay apart.
+                if (a2 - a1) == 1 and (b2 - b1) == 1 and one_letter_slip(ra, rb):
+                    if repairs is not None:
+                        repairs.append(f"{ra} -> {rb} (one letter)")
                     continue
                 # A row cut off mid-word at its end ('the relevant council ha'): its last words are the start
                 # of the unit's words there. Only the final block of the row's final segment may do this.
