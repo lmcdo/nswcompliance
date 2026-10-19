@@ -1,0 +1,90 @@
+{
+  "tier": "standard",
+  "justification": "Changes which DCP rows reach the served yield box; read-only queries unchanged, only their key",
+  "commit_hash": "6c5b5694",
+  "files": [
+    "frontend-nextjs/lib/lga-slug-renames.json",
+    "frontend-nextjs/lib/lga-slug.ts",
+    "services/council_key.py",
+    "services/constraint_arithmetic.py",
+    "tests/test_council_key.py"
+  ],
+  "falsifiable_check": {
+    "command": "pytest tests/test_council_key.py; page check C1/C3 on fresh captures",
+    "fails_when": "the yield-box DCP fetch receives a raw name (test_yield_box_queries_with_the_key) or C1/C3 flag 'no setback while the DCP tab lists' on a fresh capture",
+    "observed_red": "On a temporary origin/main worktree tests/test_council_key.py errors at collection (no services.council_key); on this branch 19 passed. Live DB: 'city_of_parramatta' 0 rows vs 'parramatta' 58."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls.lga and dcp_dev_type_coverage.council (both slugs, listed live)",
+    "assumption_mismatch": "a council whose key differs other than by case/separators needs an entry in lga-slug-renames.json; without one it still gets 0 rows (as today)",
+    "new_vs_existing": "every yield-box and Site Report render after deploy",
+    "falsifiable_check": {
+      "command": "pytest tests/test_council_key.py; page check C1/C3 on fresh captures",
+      "fails_when": "the yield-box DCP fetch receives a raw name (test_yield_box_queries_with_the_key) or C1/C3 flag 'no setback while the DCP tab lists' on a fresh capture",
+      "observed_red": "On a temporary origin/main worktree tests/test_council_key.py errors at collection (no services.council_key); on this branch 19 passed. Live DB: 'city_of_parramatta' 0 rows vs 'parramatta' 58."
+    }
+  },
+  "functions": [
+    {
+      "name": "to_council_key",
+      "file_line": "services/council_key.py:28",
+      "input": "Portal LGA name or former-council slug from the page",
+      "output": "council key string used in the DCP table queries",
+      "if_none": "None or blank input returns None, never an empty string"
+    },
+    {
+      "name": "_fetch_dcp_coverage",
+      "file_line": "services/constraint_arithmetic.py:1389",
+      "input": "raw council name and housing type",
+      "output": "coverage findings for the council, or None",
+      "if_none": "a None key returns None before any query runs"
+    }
+  ],
+  "values": [
+    {
+      "value": "lga",
+      "read_at": "services/constraint_arithmetic.py:1356",
+      "nullable": "yes",
+      "guard_at": "if lga: before fetch_dcp_setbacks",
+      "if_missing": "no DCP rows fetched, footprint withheld with the existing message"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "DCP setback rows for the council (existing query, normalised key)",
+      "file_line": "scripts/conveyancing_db.py:674",
+      "where_clause": "lga = %s AND is_current AND not needs_review",
+      "if_zero": "setbacks absent message, footprint withheld (unchanged)",
+      "if_wrong": "a wrong rename sends another council's rows: guarded by the rename list being one file with a test"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "TS and Python rename lists drift apart again",
+      "what_happens": "the DCP tab and the yield box show different councils' rules",
+      "mitigated": true,
+      "how": "both read lga-slug-renames.json; test fails if the TS file regains an inline map",
+      "repro": "pytest tests/test_council_key.py::test_renames_file_is_the_one_the_ts_reader_imports"
+    },
+    {
+      "scenario": "blank council name normalises to an empty string",
+      "what_happens": "WHERE lga='' reads back as this council has no controls",
+      "mitigated": true,
+      "how": "to_council_key returns None for blank or punctuation-only input",
+      "repro": "pytest tests/test_council_key.py::test_empty_is_none_never_blank"
+    },
+    {
+      "scenario": "Inner West former-council names (Ashfield, Leichhardt) renamed by mistake",
+      "what_happens": "those councils would stop matching their own rows",
+      "mitigated": true,
+      "how": "no rename entry for them; tests assert Ashfield -> ashfield",
+      "repro": "pytest tests/test_council_key.py -k Ashfield"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 Winston Hills / Castle Hill yield box shows setbacks after deploy"
+  }
+}
