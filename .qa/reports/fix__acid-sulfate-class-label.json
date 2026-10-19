@@ -21,5 +21,27 @@
     "other_repo": "No other repository.",
     "manual_verify": "Yes - 6 Berrigan St Winston Hills Planning tab shows Acid Sulfate Soils Class 5, once."
   },
-  "residual_risk": "None beyond the label; the API value Class 5 is unchanged."
+  "residual_risk": "None beyond the label; the API value Class 5 is unchanged.",
+  "cross_review": [
+    {
+      "finding": "[HIGH] LepControls.tsx missing council boundary access check for acid sulfate class",
+      "verdict": "NOT A DEFECT",
+      "why": "the value is the Planning Portal map class for this lot, public data; the diff changes one regex and no data access."
+    },
+    {
+      "finding": "[MEDIUM] 'Class 5' shown without a regulatory citation",
+      "verdict": "NOT A DEFECT",
+      "why": "wording unchanged from before this PR; the fix only stops 'Class' printing twice."
+    },
+    {
+      "finding": "[LOW] trim on a possibly null value",
+      "verdict": "NOT A DEFECT",
+      "why": "the ternary runs only when acidSulfateSoils is truthy, and String() wraps it."
+    },
+    {
+      "finding": "[LOW] test skips missing directories",
+      "verdict": "NOT A DEFECT",
+      "why": "all four directories exist in the repo; a renamed one would be a separate change reviewed on its own."
+    }
+  ]
 }
