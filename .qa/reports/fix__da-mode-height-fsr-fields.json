@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Restores a served DA-mode check (proposed vs LEP limit) and SEE standards rows",
-  "commit_hash": "74b868f3",
+  "commit_hash": "a8d60037",
   "files": [
     "frontend-nextjs/lib/see/lep-limits.ts",
     "frontend-nextjs/__tests__/lib/see/lep-limits.test.ts",
