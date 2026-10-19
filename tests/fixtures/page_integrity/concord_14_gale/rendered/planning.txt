@@ -1,0 +1,247 @@
+⚠️
+
+Important: Provisions are shown as published and may be superseded. Check legislation.nsw.gov.au for current SEPPs/LEPs before relying on them.
+
+Dismiss
+PlotDetect
+Site Controls
+
+Every control cited to its clause — zoning live from the NSW Planning Portal
+
+Quick Guide
+CANADA BAY
+Property Address
+
+Enter a property address to analyze
+
+Analyze Property
+
+Disclaimer: PlotDetect presents DCP provisions and state/local planning data (from NSW Planning Portal and SEPP sources) as published by relevant authorities. It does not constitute planning advice. Users should verify provisions against current council instruments and seek professional advice for development applications.
+
+THE PROPERTY
+
+Property Summary
+Address
+
+14 GALE STREET CONCORD 2137
+
+ZoneR3: Medium Density Residential
+Area
+
+848m²
+
+LGA
+
+CANADA BAY
+
+Heritage
+
+No
+
+NSW SIX Maps aerial imagery · © NSW Government CC BY 4.0
+
+Property Details
+
+14 GALE STREET CONCORD 2137
+
+CANADA BAY LGA
+
+Lot Dimensions
+Cadastre
+Area
+848m²
+Lot width (shorter side)
+18.6m
+Length
+46.4m
+
+Street frontage: 18.6 m along Gale St and 18.1 m along Watkin St
+
+Lot width is the shorter side, and length the longer side, of the rectangle that fits the lot. Neither is the street frontage.
+
+Corner Lot
+2 Roads
+
+Adjacent roads: GALE ST, WATKIN ST
+
+Secondary street setback: 3m (vs 6m rear for non-corner)
+
+Data currency
+▼
+SEPP
+State Planning Policies
+Planning Controls
+Zone & Development Standards
+DCP
+Council Controls
+
+Get notified when we add more councils and export features
+
+We're expanding DCP coverage across NSW. Register to hear first.
+
+Your role (optional)
+Town Planner
+Certifier
+Architect
+Conveyancer
+Buyers Agent
+Developer
+Other
+Register
+Canada Bay Local Environmental Plan 2013
+·
+Sourced live — NSW Planning Portal
+Local Environmental Plan
+Canada Bay Local Environmental Plan 2013
+
+The LEP sets the framework for how land can be used and developed in the CANADA BAY area.
+
+Land Use Zoning:R3 - Medium Density Residential
+Canada Bay Local Environmental Plan 2013
+Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+Map Amendment No 3
+Permitted Uses (26)
+Without consent
+•
+Environmental protection works
+With consent
+•
+Attached dwellings
+•
+Bed and breakfast accommodation
+•
+Boarding houses
+•
+Boat sheds
+•
+Building identification signs
+•
+Business identification signs
+•
+Centre based child care facilities
+Show all 26 permitted
+Prohibited Uses (3)
+•
+Any other development not specified in item 2 or 3
+•
+Rural workers dwellings
+•
+Shop top housing
+View Full Land Use Table for R3
+
+Sourced from Canada Bay Local Environmental Plan 2013 Land Use Table via legislation.nsw.gov.au · 13 May 2026 — data may be stale, re-scrape recommended
+
+Development Standards
+LEP Part 4
+
+Numerical controls that limit the size and height of development on this property.
+
+Maximum Height
+8.5m
+LEP Clause 4.3 Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+Floor Space Ratio
+0.5:1
+= 424m² GFA
+LEP Clause 4.4 · Lot area 848.36m² Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+Minimum Lot Size
+450m²
+LEP Clause 4.1 Citation not yet checked
+No automated page or clause match is recorded for this rule. Compare it with the source document.
+View full LEP Part 4 on NSW Legislation
+Development Yield Estimate
+Calculated from 5 of 6 planning controls
+
+This estimate is computed from the height of buildings, floor space ratio, front setback, rear setback and side setback. No SEPP standards is mapped for this lot, so that control could not narrow the estimate.
+
+Maximum GFA
+424m²
+LEP envelope (FSR / height)
+After council DCP
+424m²
+indicative — after setbacks & landscaping
+Homes you could build
+5
+multi-dwelling housing — as-of-right yield, subject to a development application.
+Binding Constraint
+FSR is the binding control on maximum GFA
+Max Storeys
+2
+8.5m height limit
+DCP Setbacks Applied
+Front: 4.5m
+Side: 1.5m
+Rear: 6m
+Buildable footprint: 561m² (66% of lot)
+Data gaps
+- DCP side setback has 2 differing values (0.9m, 1.5m); used the most conservative (1.5m). Verify the control that applies to this lot against the DCP.
+Show computation chain (5 steps)
+
+Constraint arithmetic is a preliminary computational estimate only. It does not account for merit-based assessment, clause variations, or council-specific interpretation. Engage a qualified town planner for site-specific assessment.
+
+Environmental Constraints
+LEP Part 5
+Flood Mapping
+No
+Bushfire Prone
+No
+Acid Sulfate Soils
+Class 5
+Aircraft Noise
+No
+Mine Subsidence
+No
+Landslide Risk
+No
+Contaminated Land
+No
+Drinking Water
+No
+Water/Sewer Servicing
+Section 73
+Biodiversity
+No
+Coastal
+No
+Additional Uses
+No
+Foreshore Line
+No
+Land Reservation
+No
+Riparian Land
+No
+Wetlands
+No
+Key Site
+No
+Active Frontage
+No
+View all environmental layers on NSW Planning Portal
+Additional Local Provisions
+Not applicable to this address
+
+No site-specific local provisions (LEP Part 6) or key site controls apply to this address.
+
+Heritage Conservation
+Not applicable to this address
+
+This property is not in a Heritage Conservation Area and is not listed as a heritage item.
+
+Planning Instruments
+Land Application Map
+
+All instruments whose maps apply to this property.
+
+Canada Bay Local Environmental Plan 2013
+Included
+Feedback
+
+Need help using PlotDetect?
+
+Guides with worked examples and workflows
+
+Quick Reference
+Complete User Guide

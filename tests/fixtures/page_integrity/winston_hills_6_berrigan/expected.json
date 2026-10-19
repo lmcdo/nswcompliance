@@ -1,0 +1,64 @@
+{
+ "address": "6 BERRIGAN STREET WINSTON HILLS 2153",
+ "checked_on": "2026-10-19",
+ "how": "each fact checked once by hand against the named independent source; scratch inputs: Portal JSON per propId, DCP PDFs in data/dcps/",
+ "facts": {
+  "zone": {
+   "value": "R2",
+   "source": "Portal layerintersect (ePlanningApi, propId 807782) Land Zoning Map, checked 2026-10-19"
+  },
+  "height_m": {
+   "value": 9,
+   "source": "Portal layerintersect (ePlanningApi, propId 807782) Height of Buildings Map, checked 2026-10-19"
+  },
+  "fsr": {
+   "value": 0.5,
+   "source": "Portal layerintersect (ePlanningApi, propId 807782) Floor Space Ratio Map, checked 2026-10-19"
+  },
+  "min_lot_m2": {
+   "value": 550,
+   "source": "Portal layerintersect (ePlanningApi, propId 807782) Lot Size Map, checked 2026-10-19"
+  },
+  "lot_area_m2": {
+   "value": 686.3,
+   "tolerance_pct": 0.5,
+   "source": "lot boundary: Portal ePlanningApi/lot polygon, geodesic area (user ruling 2026-10-19: lot area = the boundary)"
+  },
+  "heritage": {
+   "value": false,
+   "source": "Portal layerintersect (ePlanningApi, propId 807782) no Heritage Map layer intersects, checked 2026-10-19"
+  },
+  "flood_lep_map": {
+   "value": false,
+   "source": "Portal layerintersect (ePlanningApi, propId 807782) no Flood Planning layer intersects, checked 2026-10-19"
+  },
+  "bushfire": {
+   "value": false,
+   "source": "RFS Bush Fire Prone Land (mapprod3 Fire/BFPL) intersect with the lot polygon: no feature"
+  },
+  "corner": {
+   "value": false,
+   "source": "NSW Transport Theme road segments within 12 m of the lot: BERRIGAN STREET only"
+  },
+  "strata": {
+   "value": false,
+   "source": "Portal lot: one lot 23/-/DP217713"
+  },
+  "setback_front_m": {
+   "allowed": [
+    6.0
+   ],
+   "source": "Parramatta DCP 2023 s3.3.1.2 C.05 'a minimum of 6 metres and be consistent with the prevailing setback' (pdf p60, printed 3-12); 10 m only on state/regional roads (C.07)"
+  },
+  "setback_side_m": {
+   "allowed": [
+    0.9
+   ],
+   "source": "Parramatta DCP 2023 s3.3.1.2 C.08 'a minimum of 900mm from side boundaries' (pdf p60)"
+  },
+  "setback_rear_m": {
+   "value": null,
+   "source": "Parramatta DCP 2023 s3.3.1.2 C.10 rear = 30% of the site length (pdf p60): a formula, no single figure; a bare number on the page needs its derivation shown"
+  }
+ }
+}

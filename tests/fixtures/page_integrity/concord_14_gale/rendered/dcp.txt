@@ -1,0 +1,147 @@
+⚠️
+
+Important: Provisions are shown as published and may be superseded. Check legislation.nsw.gov.au for current SEPPs/LEPs before relying on them.
+
+Dismiss
+PlotDetect
+Site Controls
+
+Every control cited to its clause — zoning live from the NSW Planning Portal
+
+Quick Guide
+CANADA BAY
+Property Address
+
+Enter a property address to analyze
+
+Analyze Property
+
+Disclaimer: PlotDetect presents DCP provisions and state/local planning data (from NSW Planning Portal and SEPP sources) as published by relevant authorities. It does not constitute planning advice. Users should verify provisions against current council instruments and seek professional advice for development applications.
+
+THE PROPERTY
+
+Property Summary
+Address
+
+14 GALE STREET CONCORD 2137
+
+ZoneR3: Medium Density Residential
+Area
+
+848m²
+
+LGA
+
+CANADA BAY
+
+Heritage
+
+No
+
+NSW SIX Maps aerial imagery · © NSW Government CC BY 4.0
+
+Property Details
+
+14 GALE STREET CONCORD 2137
+
+CANADA BAY LGA
+
+Lot Dimensions
+Cadastre
+Area
+848m²
+Lot width (shorter side)
+18.6m
+Length
+46.4m
+
+Street frontage: 18.6 m along Gale St and 18.1 m along Watkin St
+
+Lot width is the shorter side, and length the longer side, of the rectangle that fits the lot. Neither is the street frontage.
+
+Corner Lot
+2 Roads
+
+Adjacent roads: GALE ST, WATKIN ST
+
+Secondary street setback: 3m (vs 6m rear for non-corner)
+
+Data currency
+▼
+SEPP
+State Planning Policies
+Planning Controls
+Zone & Development Standards
+DCP
+Council Controls
+
+Get notified when we add more councils and export features
+
+We're expanding DCP coverage across NSW. Register to hear first.
+
+Your role (optional)
+Town Planner
+Certifier
+Architect
+Conveyancer
+Buyers Agent
+Developer
+Other
+Register
+DCP Numeric Controls
+9 controls extracted
+Source: Canada Bay DCP
+|
+Development type: dwelling house
+Setbacks
+Front setback
+≥ 4.5 m
+or the Prevailing Street Setback, whichever is the greater
+p. 11
+Side setback
+≥ 0.9 m
+Single storey dwelling
+p. 12
+Side setback
+≥ 1.5 m
+Second storey of a dwelling
+p. 12
+Rear setback
+≥ 6 m
+Rear setbacks - single street frontage (p.E-15); excludes outbuildings and secondary dwellings. NOT yet stored: upper-floor living room 9.0m (C10), secondary dwelling 3.0m (C11), corner-lot rear 1.5m for the dwelling oriented to the secondary frontage (C12).
+p. 15
+Parking
+Car parking
+1–2 spaces/dwelling
+p. 19
+Site Coverage
+Maximum site coverage
+No set number
+No DCP site coverage control; defers entirely to Canada Bay LEP 2013 clause 4.3A (mapped per lot)
+Source
+Landscaping & Canopy
+Minimum landscaped area
+≥ 35 %
+35% of parent lot site area; 50% of front setback + 50% of rear setback landscaped; areas <1.5mx1.5m excluded
+E4.6-C4, p. 26
+Minimum landscaped area
+≥ 35 %
+of parent lot area; areas <1.5m x 1.5m excluded
+p. 26
+Minimum deep soil zone
+No set number
+Deep soil zones only apply to Part G (Local Centres) and Part K (Special Precincts); not applicable to Part E (Single Dwellings)
+Source
+
+Structured values extracted from the published DCP. Deterministic — same property, same result every time.
+
+These are the measurable controls extracted from the published plan. The full chapter text for this council is not loaded yet.
+
+Feedback
+
+Need help using PlotDetect?
+
+Guides with worked examples and workflows
+
+Quick Reference
+Complete User Guide

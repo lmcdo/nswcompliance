@@ -868,5 +868,6 @@ data/law_text_cache/*.html
 data/page_integrity/
 # page-integrity test fixtures must ship (overrides *.gz and *.txt above)
 !tests/fixtures/page_integrity/*/calls.jsonl.gz
+!tests/fixtures/page_integrity/*/site_report.jsonl.gz
 !tests/fixtures/page_integrity/*/rendered/
 !tests/fixtures/page_integrity/*/rendered/*.txt

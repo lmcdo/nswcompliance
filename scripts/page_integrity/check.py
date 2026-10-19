@@ -27,6 +27,8 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parents[1]))
 
 import checks_data as cd  # noqa: E402
+import checks_reference as cr  # noqa: E402
+import checks_xprod as cx  # noqa: E402
 import checks_text as ct  # noqa: E402
 from load import CaptureUnusable, load  # noqa: E402
 
@@ -37,6 +39,8 @@ CHECKS = (
     ("C4", cd.row_fits_lot),
     ("C5", ct.check_words_on_page),
     ("C6", ct.check_derivations),
+    ("C7", cx.check_cross_product),  # only where site_report.jsonl.gz was captured
+    ("R", cr.check_reference),  # only where tests/fixtures/page_integrity/<slug>/expected.json exists
 )
 INFO_FACTS = {"liability-word"}
 
@@ -71,7 +75,7 @@ def run(folder: Path, db: bool) -> dict:
             flags.append(d)
     if db:
         flags += reask_permissibility(cap)
-    not_checked = sorted(k for m in (cd.facts_checked(cap), ct.facts_checked(cap)) for k, v in m.items() if not v)
+    not_checked = sorted(k for m in (cd.facts_checked(cap), ct.facts_checked(cap), cx.facts_checked(cap), cr.facts_checked(cap)) for k, v in m.items() if not v)
     return {"folder": str(folder), "address": cap.meta.get("resolved_address"), "flags": flags,
             "not_checked": not_checked}
 
@@ -100,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
         for f in real:
             print(f"    {f['check']} {f['fact']}: {f['detail'][:160]}")
     usable = len(results) - len(unusable)
-    print(f"\nHEADLINE: {defect_caps} of {usable} captures have >=1 integrity defect (C1-C6); "
+    print(f"\nHEADLINE: {defect_caps} of {usable} captures have >=1 integrity defect (C1-C7, R); "
           + " ".join(f"{c}={by_check.get(c, 0)}" for c, _ in CHECKS)
           + (f"; {len(unusable)} unusable" if unusable else ""))
     if a.json:
