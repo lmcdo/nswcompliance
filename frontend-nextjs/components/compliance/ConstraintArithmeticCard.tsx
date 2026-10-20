@@ -474,7 +474,8 @@ export function ConstraintArithmeticCard({
                   </div>
                   <div className="text-xs text-gray-600 mt-1 leading-relaxed">
                     <span className="font-medium text-gray-900">{floorDwellings}</span>{' '}
-                    ({humanizeForm(result.as_of_right_form)}), up to <span className="font-medium text-gray-900">{ceilingDwellings}</span>{' '}
+                    ({humanizeForm(result.as_of_right_form)}, if development consent is granted), up to{' '}
+                    <span className="font-medium text-gray-900">{ceilingDwellings}</span>{' '}
                     ({humanizeForm(result.max_permitted_form)}) with council approval.
                   </div>
                   {/* #745 D6: the two ceilings rest on different legal pathways.
