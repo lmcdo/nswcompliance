@@ -100,7 +100,7 @@ def _segments_of(ring: list[Pt]) -> list[Seg]:
 
 
 def _edge_road_fraction(edge: Seg, road: list[Seg]) -> float:
-    """Share of the lot edge (0..1) that runs alongside a road segment, sampled at 40 points."""
+    """Share of the lot edge (0..1) that runs alongside a road segment."""
     hits = _edge_road_hits(edge, road)
     return sum(hits) / len(hits)
 
@@ -121,8 +121,8 @@ def _edge_frontage_share(edge: Seg, road: list[Seg]) -> float:
 
 
 def _edge_road_hits(edge: Seg, road: list[Seg]) -> list[bool]:
-    """For 40 points along the edge, whether each runs alongside a road segment."""
-    n = 40
+    """For points along the edge (at least 40, at most 0.25 m apart), whether each runs alongside a road."""
+    n = max(40, math.ceil(_edge_len(edge) / 0.25))
     hits: list[bool] = []
     for i in range(n):
         t = (i + 0.5) / n

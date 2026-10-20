@@ -115,7 +115,7 @@ function segmentsOf(ring: Pt[]): Seg[] {
 }
 
 /** True when at least EDGE_MIN_FRACTION of the lot edge runs alongside one of the road segments. */
-/** Share of the lot edge (0..1) that runs alongside a road segment, sampled at 40 points. */
+/** Share of the lot edge (0..1) that runs alongside a road segment. */
 function edgeRoadFraction(edge: Seg, road: Seg[]): number {
   const hits = edgeRoadHits(edge, road);
   return hits.filter(Boolean).length / hits.length;
@@ -139,9 +139,9 @@ function edgeFrontageShare(edge: Seg, road: Seg[]): number {
   return Math.min(1, (counted - 1) / hits.length);
 }
 
-/** For 40 points along the edge, whether each runs alongside a road segment. */
+/** For points along the edge (at least 40, at most 0.25 m apart), whether each runs alongside a road segment. */
 function edgeRoadHits(edge: Seg, road: Seg[]): boolean[] {
-  const n = 40;
+  const n = Math.max(40, Math.ceil(Math.hypot(edge[1][0] - edge[0][0], edge[1][1] - edge[0][1]) / 0.25));
   const hits: boolean[] = [];
   for (let i = 0; i < n; i++) {
     const t = (i + 0.5) / n;
