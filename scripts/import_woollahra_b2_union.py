@@ -68,6 +68,21 @@ UNIONS: dict[str, dict] = {
         "members": ("6.2",), "outside": ("7.5", "7.6"),
         "src": "Ch 6.1 applies to the Part 6 strategic centres (Bankstown, Campsie); Campsie 6.3 not yet mapped",
     },
+    "woollahra_d3": {
+        "lga": "Woollahra", "id": "Woollahra D3 centres",
+        "name": "Woollahra DCP 2015 D3 general controls for neighbourhood and mixed use centres (all twelve)",
+        "members": (
+            "Hopetoun Avenue Centre", "South Head Roundabout Centre", "Vaucluse Shopping Village", "Plumer Road Centre",
+            "O'Sullivan Road Centre", "Streatfield Road Centre", "Bellevue Hill Shops", "Manning Road Centre",
+            "Darling Point Road Centre", "New South Head Road Corridor Edgecliff", "Rose Bay North Centre",
+            "Rose Bay South Centre",
+        ),
+        # Centres with chapters of their own that D3 does not name.
+        "outside": ("Double Bay Centre", "Rose Bay Centre"),
+        "src": "Woollahra DCP 2015 D3 p5 'This chapter contains controls for the following centres, as identified on "
+               "Map A' (the nine D1 neighbourhood centres and the three D2 mixed use centres) <- ST_Union of those twelve "
+               "outlines already loaded",
+    },
     "krg_14b": {
         "lga": "Ku-ring-gai", "id": "14B",
         "name": "Ku-ring-gai DCP Part 14B Turramurra Local Centre (precincts T1-T4)",
