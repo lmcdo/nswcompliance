@@ -152,6 +152,7 @@ resume_config*.json
 # Large executables and archives
 *.exe
 *.gz
+!data/krg_greenweb/greenweb_2021.geojson.gz
 *.zip
 
 # Extracted/processed content (regenerated)
