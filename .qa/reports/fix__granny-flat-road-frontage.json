@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes the road frontage the granny-flat CDC test uses, which decides PASS or FAIL on the complying development path",
-  "commit_hash": "ec06068a",
+  "commit_hash": "10208fbf",
   "files": [
     "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
     "services/granny_flat.py",
@@ -43,7 +43,7 @@
   "values": [
     {
       "value": "frontage_range_m",
-      "read_at": "services/granny_flat.py:232",
+      "read_at": "services/granny_flat.py:234",
       "nullable": "yes",
       "guard_at": "len == 2, no None, math.isfinite(hi) and 0 < lo <= hi",
       "if_missing": "falls back to frontage_m, which the route no longer sends; else UNKNOWN"
