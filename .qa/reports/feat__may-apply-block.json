@@ -1,0 +1,90 @@
+{
+ "tier": "standard",
+ "justification": "New display-only component, reason-text map, suburb parser and export script. Nothing is wired into a route yet, so no served answer changes; the data file is empty. Direction: it can only add an amber, collapsed, hedged block.",
+ "commit_hash": "21fcba23",
+ "files": [
+  "frontend-nextjs/components/compliance/DcpMayApplyBlock.tsx",
+  "frontend-nextjs/lib/may-apply-reasons.ts",
+  "scripts/export_may_apply_areas.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_may_apply_areas_drift.py -q",
+  "fails_when": "Fails when build() puts differently spelled suburbs under separate keys, when areas are not ordered by area_id, or when the shared file is not the exact output of the source file.",
+  "external_authority": "The source file data/chapter_scope/suburb_unconfirmed_areas.json is the authority; the test builds a fixture with two spellings of one suburb and expects one grouped, ordered list.",
+  "observed_red": "Observed red: with the suburb normalisation and the area_id sort removed from build(), test_build_groups_by_council_and_normalised_suburb failed; restored, both tests pass."
+ },
+ "pre_impl": {
+  "existing_data": "DcpNotCoveredNotice.tsx and export_not_covered_councils.py are the council-wide equivalents; nothing existed per suburb. The shared JSON is empty because the areas list is empty.",
+  "assumption_mismatch": "localityOf in address-number-match.ts is not exported and that file may not be edited here, so suburbFromAddress rebuilds it from the exported parseStreet.",
+  "new_vs_existing": "New files only, mirroring the not-covered notice and its export script; pageLabel from lib/page-citation.ts is reused for the page text."
+ },
+ "functions": [
+  {
+   "name": "DcpMayApplyBlock",
+   "file_line": "frontend-nextjs/components/compliance/DcpMayApplyBlock.tsx",
+   "what": "Renders one collapsed amber details per area with a hedged explanation and its rules.",
+   "input": "mayApply: array of areas, or null or undefined",
+   "output": "JSX, or null when there are no areas",
+   "if_none": "Returns null and renders nothing at all.",
+   "edge_cases": "Missing provisions array is treated as zero rules; singular rule wording for one.",
+   "failure_mode": "A missing reason_text leaves a gap in the sentence but never claims the property is inside the area."
+  },
+  {
+   "name": "suburbFromAddress",
+   "file_line": "frontend-nextjs/lib/may-apply-reasons.ts",
+   "what": "Reads the normalised suburb from an address with or without a comma.",
+   "input": "An address string, possibly empty or missing.",
+   "output": "uppercase suburb string or empty string",
+   "if_none": "Returns an empty string, so no suburb match is made.",
+   "edge_cases": "Unit prefixes, slash numbers, NSW and postcode removed.",
+   "failure_mode": "An unparseable address yields empty, so no suburb match and no block is shown."
+  },
+  {
+   "name": "build",
+   "file_line": "scripts/export_may_apply_areas.py",
+   "what": "Groups areas by council then normalised suburb, sorted by area_id.",
+   "input": "path to the source JSON",
+   "output": "A nested dict of council, then suburb, then areas.",
+   "if_none": "Empty areas list gives an empty dict.",
+   "edge_cases": "Whitespace and case differences in suburb collapse to one key.",
+   "failure_mode": "A missing suburb or area_id key raises KeyError, visibly."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "An area has no provisions.",
+   "what_happens": "The summary says zero rules, with explanation.",
+   "mitigated": true,
+   "how": "Renders the explanation with an empty list rather than crashing; covered by the optional-chain on provisions.",
+   "repro": "render with provisions: []"
+  },
+  {
+   "scenario": "Suburb spelled differently in the source file.",
+   "what_happens": "Area is filed under two keys and one is never matched.",
+   "mitigated": true,
+   "how": "build() uppercases and collapses spaces; the pytest fixture covers it.",
+   "repro": "python -m pytest tests/test_may_apply_areas_drift.py"
+  },
+  {
+   "scenario": "A reason code arrives that is not in the map.",
+   "what_happens": "No text for the reason.",
+   "mitigated": true,
+   "how": "reasonText returns null for unknown and inherited keys such as toString; the component shows the reason_text it is given.",
+   "repro": "reasonText('toString') returns null"
+  }
+ ],
+ "verified": [
+  "pytest tests/test_may_apply_areas_drift.py: 2 passed.",
+  "tsc --noEmit reports no errors in the new files."
+ ],
+ "gaps": [
+  "Jest was not run locally (no node_modules in the worktree); the two jest files are unexecuted.",
+  "Not wired into the route or the DCP tab; that change is in flight elsewhere."
+ ],
+ "post_merge": {
+  "db_reset": "No database change.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Once the route returns meta.may_apply, view an address in a listed suburb and confirm the block is collapsed and hedged."
+ }
+}
