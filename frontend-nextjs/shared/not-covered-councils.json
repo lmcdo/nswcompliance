@@ -109,6 +109,12 @@
       "title": "Part 2.14 Unique Environmental Features",
       "reason": "Section 2.14 applies to land with identified unique environmental features (e.g. Thornley St scenic protection area) -- no outline; was served across Marrickville (audit run2: Enmore)",
       "count_hint": 20
+    },
+    {
+      "chapter_key": "part2-s22-flood-management",
+      "title": "Part 2.22 Flood Management, for land reached only by the largest Cooks River flood (Appendix 2 map)",
+      "reason": "Section 2.22 applies to the DCP 2011 Flood Planning Area Map (Appendix 1) and Flood Liable Land Map (Appendix 2) (p5). Its rules are shown where the lot is on Inner West's flood planning area; Appendix 2 also takes in land reached only by the Cooks River probable maximum flood (p6), which we have not mapped (gate rule marrickville_2_22_flood, user decision 2026-10-21).",
+      "count_hint": 72
     }
   ],
   "northern_beaches": [

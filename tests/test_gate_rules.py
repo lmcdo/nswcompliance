@@ -187,3 +187,10 @@ def test_marrickville_part8_sections_go_to_their_own_hca():
     for ref, want in cases:
         hits = [r["set"]["v2_heritage_hca"] for r in rules if re.search(pat(r["where"]), ref)]
         assert hits == ([want] if want else []), ref
+
+
+def test_marrickville_2_22_flood_goes_to_the_flood_condition_layer():
+    rule = next(r for r in g.GATE_RULES if r["name"] == "marrickville_2_22_flood")
+    assert rule["council"] == "marrickville"
+    assert rule["where"] == "source_chapter_key = 'part2-s22-flood-management'"
+    assert rule["set"] == {"v2_dcp_layer": "condition", "v2_site_condition_required": "flood"}
