@@ -239,15 +239,26 @@ _HOUSING_TYPES = {
     "boarding_house": r"boarding",
     "seniors_housing": r"seniors",
 }
-_CORNER_CASE = re.compile(r"corner|secondary (street|road|frontage)", re.I)
-# "excluding corner lots" is a rule FOR non-corner lots, not a corner-only rule (Sol, #1377).
-_EXCLUDES_CORNER = re.compile(r"\b(?:exclud\w*|except|other than)\b[^.;]{0,30}(?<!non-)(?<!non )corner|\bnot (?:applicable|apply|applying) (?:to|for) [^.;]{0,20}(?<!non-)(?<!non )corner", re.I)
+# "corner", but not "non-corner"; "excluding non-corner lots" IS a corner-only rule.
+_CORNER_WORD = (r"(?<!non-)(?<!non )corner"
+                r"|\b(?:exclud(?:e|es|ing|ed)|except(?: for)?|other than)\s+(?:(?:the|a|an|any|all|those|that|lots?|allotments?|sites?|properties|land|on|of|which|are)\s+){0,3}?non[- ]corner"
+                r"|\bnot (?:applicable|apply|applying) (?:to|for)\s+(?:(?:the|a|an|any|all|those|that|lots?|allotments?|sites?|properties|land|on|of|which|are)\s+){0,3}?non[- ]corner")
+_CORNER_CASE = re.compile(_CORNER_WORD + r"|secondary (street|road|frontage)", re.I)
+# "excluding corner lots" / "applies to non-corner lots" is a rule FOR non-corner lots, not a
+# corner-only rule (Sol, #1377). The excluded thing must be the corner lot itself: only words
+# like "the", "all", "those on" may sit between, so "Other than garages corner lots must..."
+# stays a corner-only rule (Sol, 2026-10-20).
+_EXCLUDES_CORNER = re.compile(
+    r"\b(?:exclud(?:e|es|ing|ed)|except(?: for)?|other than)\s+(?:(?:the|a|an|any|all|those|that|lots?|allotments?|sites?|properties|land|on|of|which|are)\s+){0,3}?(?<!non-)(?<!non )corner"
+    r"|\bnot (?:applicable|apply|applying) (?:to|for)\s+(?:(?:the|a|an|any|all|those|that|lots?|allotments?|sites?|properties|land|on|of|which|are)\s+){0,3}?(?<!non-)(?<!non )corner"
+    r"|(?<!not )\b(?:appl(?:y|ies|ying|icable)|only)\s+(?:to|for|on)\s+(?:all\s+)?non[- ]corner"
+    r"|^\s*(?:for|on)\s+(?:all\s+)?non[- ]corner", re.I)
 # A condition that limits a rule to one case. When the only rule for a side carries one, it is
 # listed with its case, never used for every lot (Sol, #1371: a lone "upper floor" or "corner"
 # row became the setback for all lots).
 _CASE_ONLY = re.compile(
     r"upper (floor|level)|first floor|second storey|two[- ]storey (portion|part|component)|"
-    r"corner|secondary (street|road|frontage)|state and regional road|classified road|arterial road|"
+    + _CORNER_WORD + r"|secondary (street|road|frontage)|state and regional road|classified road|arterial road|"
     r"where .{0,40}exceed", re.I)
 
 

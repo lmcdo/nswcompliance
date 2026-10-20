@@ -1,0 +1,90 @@
+{
+  "tier": "standard",
+  "justification": "Changes which DCP rows the page marks as corner-only, which setback rows the yield box uses for a lot, and the page check that audits both",
+  "commit_hash": "3c7737e5",
+  "files": [
+    "frontend-nextjs/lib/geometry/corner-status.ts",
+    "frontend-nextjs/__tests__/lib/geometry/corner-status.test.ts",
+    "services/constraint_arithmetic.py",
+    "tests/test_setback_conflict_resolution.py",
+    "scripts/page_integrity/checks_data.py",
+    "tests/test_page_integrity_checks_data.py"
+  ],
+  "falsifiable_check": {
+    "command": "jest __tests__/lib/geometry/corner-status.test.ts && pytest tests/test_setback_conflict_resolution.py tests/test_page_integrity_checks_data.py",
+    "fails_when": "a rule for non-corner lots ('all lots excluding corner lots', 'applies to non-corner lots') is marked corner-only, or a corner-only rule ('Other than garages, corner lots must...', 'not applicable to non-corner lots', 'exclude non-corner lots') is not",
+    "observed_red": "On origin/main corner-status.ts has no exclusion test at all, so isCornerOnlyRow('all lots excluding corner lots') = true and the page tells a non-corner lot that a rule which applies to it does not. services/constraint_arithmetic.py on origin/main: 'Other than garages, corner lots must have a 3 m setback' matches _EXCLUDES_CORNER (True), and 'applies to non-corner lots', 'exclude non-corner lots', 'not applicable to non-corner lots' are all read as plain corner cases (measured by exec of the origin/main regexes 2026-10-20). The new tests in the three test files fail against those regexes."
+  },
+  "pre_impl": {
+    "existing_data": "DCP row condition text from /api/dcp/structured-controls; propertyData.cornerLot from the road corridor query",
+    "assumption_mismatch": "an unrelated noun outside the short linking-word list is never read as excluding corner lots, but a qualifier outside it (e.g. excluding battle-axe and corner lots) is read as corner-only; T2-5 stores scope as data instead",
+    "new_vs_existing": "every assessment page and yield box after deploy",
+    "falsifiable_check": {
+      "command": "jest __tests__/lib/geometry/corner-status.test.ts && pytest tests/test_setback_conflict_resolution.py tests/test_page_integrity_checks_data.py",
+      "fails_when": "a rule for non-corner lots is marked corner-only, or a corner-only rule is not",
+      "observed_red": "See top-level observed_red: origin/main regexes misclassify all six wordings."
+    }
+  },
+  "functions": [
+    {
+      "name": "isCornerOnlyRow",
+      "file_line": "frontend-nextjs/lib/geometry/corner-status.ts:33",
+      "input": "DCP row control_type and condition",
+      "output": "true when the row applies only to corner lots",
+      "if_none": "null condition: corner-only only by control_type secondary_street_setback"
+    },
+    {
+      "name": "_options_for_site",
+      "file_line": "services/constraint_arithmetic.py:265",
+      "input": "setback option conditions and whether the site is a corner",
+      "output": "rows dropped with a plain-words reason, or kept",
+      "if_none": "site_is_corner None: no corner row is dropped"
+    },
+    {
+      "name": "row_fits_lot",
+      "file_line": "scripts/page_integrity/checks_data.py:277",
+      "input": "one captured assessment page with its API calls and rendered DCP tab text",
+      "output": "one C4 corner_lot flag when fewer notes than corner-only rows on a measured non-corner lot",
+      "if_none": "no property route or unmeasured road check: corner rows not examined"
+    }
+  ],
+  "values": [
+    {
+      "value": "cornerLot.confidence",
+      "read_at": "scripts/page_integrity/checks_data.py:332",
+      "nullable": "yes",
+      "guard_at": "cl.get('confidence') == 1",
+      "if_missing": "treated as not measured, as the page does"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "an unrelated exclusion precedes 'corner' ('Other than garages, corner lots...')",
+      "what_happens": "row would be read as excluding corner lots and applied to a non-corner lot",
+      "mitigated": true,
+      "how": "the excluded thing must follow within three plain words with no comma",
+      "repro": "pytest tests/test_setback_conflict_resolution.py -k unrelated_exclusion"
+    },
+    {
+      "scenario": "'not applicable to non-corner lots'",
+      "what_happens": "double negative read as a rule for non-corner lots",
+      "mitigated": true,
+      "how": "the non-corner rule branch needs positive wording (applies/applicable/only) not preceded by 'not', or a condition starting 'for non-corner'",
+      "repro": "pytest tests/test_page_integrity_checks_data.py -k negated_non_corner"
+    },
+    {
+      "scenario": "two corner rows, one note duplicated, one missing",
+      "what_happens": "page check cannot tie a note to its row from flat text",
+      "mitigated": false,
+      "how": "accepted: the capture is flat text; the page renders one note per row from the same predicate, so a duplicated note needs a separate UI bug",
+      "repro": "n/a"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — an address whose DCP has an 'excluding corner lots' setback shows no not-a-corner note on that row"
+  }
+}
