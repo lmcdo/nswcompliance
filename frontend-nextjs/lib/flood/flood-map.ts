@@ -91,32 +91,64 @@ function validRings(rings: unknown): number[][][] | null {
   return ok ? (rings as number[][][]) : null;
 }
 
-/** Flood polygons touching the lot boundary, else the point. The boundary is used in the coordinate
- *  system it says it is in; with no stated system, or malformed rings, only the point is tested. */
-async function queryLot(lon: number, lat: number, boundary: LotBoundary | null | undefined): Promise<FloodHit> {
-  const rings = validRings(boundary?.rings);
-  const wkid = boundary?.spatialReference?.latestWkid ?? boundary?.spatialReference?.wkid ?? null;
-  if (rings && wkid) {
-    const body = new URLSearchParams({
-      geometry: JSON.stringify({ rings, spatialReference: { wkid } }),
-      geometryType: 'esriGeometryPolygon',
-      inSR: String(wkid),
-      spatialRel: 'esriSpatialRelIntersects',
-      outFields: 'LAY_CLASS',
-      returnGeometry: 'false',
-      f: 'json',
-    });
-    const n = await fetch(LAYER_URL, { method: 'POST', body })
-      .then((r) => r.json())
-      .then(countFrom)
-      .catch(() => null);
-    if (n != null) return { features: n, wholeLot: true };
+/** Is the address point inside the boundary, in the boundary's own coordinate system? A mislabelled,
+ *  stale or neighbouring boundary fails this and only the point is tested (Sol, 2026-10-20). Only the
+ *  systems the Portal uses are understood; anything else is not trusted for a "No". */
+export function boundaryMatchesPoint(rings: number[][][], wkid: number, lon: number, lat: number): boolean {
+  let px: number;
+  let py: number;
+  if (wkid === 3857 || wkid === 102100) {
+    px = (lon * 20037508.34) / 180;
+    py = (Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) / (Math.PI / 180)) * (20037508.34 / 180);
+  } else if (wkid === 4326 || wkid === 4283 || wkid === 7844) {
+    px = lon;
+    py = lat;
+  } else {
+    return false;
   }
-  const n = await fetch(`${LAYER_URL}?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=LAY_CLASS&returnGeometry=false&f=json&inSR=4283`)
+  // The address point must lie INSIDE the boundary (even-odd rule over all rings): a neighbour's or a
+  // stale boundary then fails and only the point is tested, which can never answer "No" (Sol, 2026-10-20).
+  let inside = false;
+  for (const ring of rings) {
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i];
+      const [xj, yj] = ring[j];
+      if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/** Flood polygons touching the lot. The address point is ALWAYS tested; the boundary too when it is
+ *  trusted (stated coordinate system, near the point). Yes if either touches a flood polygon; the
+ *  whole lot counts as tested only when both queries answered, so a stale boundary can never hide a
+ *  flooded address point (Sol, 2026-10-20). */
+async function queryLot(lon: number, lat: number, boundary: LotBoundary | null | undefined): Promise<FloodHit> {
+  const point = fetch(`${LAYER_URL}?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=LAY_CLASS&returnGeometry=false&f=json&inSR=4283`)
     .then((r) => r.json())
     .then(countFrom)
     .catch(() => null);
-  return { features: n, wholeLot: false };
+  const rings = validRings(boundary?.rings);
+  const wkid = boundary?.spatialReference?.latestWkid ?? boundary?.spatialReference?.wkid ?? null;
+  const lot = rings && wkid && boundaryMatchesPoint(rings, wkid, lon, lat)
+    ? fetch(LAYER_URL, {
+      method: 'POST',
+      body: new URLSearchParams({
+        geometry: JSON.stringify({ rings, spatialReference: { wkid } }),
+        geometryType: 'esriGeometryPolygon',
+        inSR: String(wkid),
+        spatialRel: 'esriSpatialRelIntersects',
+        outFields: 'LAY_CLASS',
+        returnGeometry: 'false',
+        f: 'json',
+      }),
+    }).then((r) => r.json()).then(countFrom).catch(() => null)
+    : Promise.resolve(null);
+  const [p, l] = await Promise.all([point, lot]);
+  if ((p ?? 0) > 0 || (l ?? 0) > 0) return { features: (p ?? 0) + (l ?? 0), wholeLot: l != null };
+  // Nothing touched: a "No" needs every query that was asked to have answered.
+  if (p == null) return { features: null, wholeLot: false };
+  return { features: 0, wholeLot: l != null };
 }
 
 export async function floodMapStatus(

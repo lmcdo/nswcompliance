@@ -31,3 +31,57 @@ describe('decideFloodMap', () => {
     expect(decideFloodMap(whole(0), [], plans).note).toMatch(/couldn't tell which local environmental plan/);
   });
 });
+
+import { boundaryMatchesPoint } from '@/lib/flood/flood-map';
+
+describe('boundaryMatchesPoint', () => {
+  // 3 Egret Way, Mount Annan: Portal lot ring (EPSG:3857) and its address point
+  const ring = [[16781724.2, -4036617.0], [16781764.5, -4036609.5], [16781767.2, -4036597.3],
+    [16781729.8, -4036596.6], [16781724.2, -4036617.0]];
+  it('the lot boundary around its own address point is trusted', () => {
+    expect(boundaryMatchesPoint([ring], 3857, 150.75298, -34.05807)).toBe(true);
+  });
+  it('a boundary mislabelled or from another lot is not trusted for a "No"', () => {
+    expect(boundaryMatchesPoint([ring], 3857, 151.1047, -33.854)).toBe(false); // Concord
+    expect(boundaryMatchesPoint([ring], 4326, 150.75298, -34.05807)).toBe(false); // wrong label
+    expect(boundaryMatchesPoint([ring], 2056, 150.75298, -34.05807)).toBe(false); // unknown system
+  });
+});
+
+describe('floodMapStatus over a mocked map service', () => {
+  const ring = [[16781724.2, -4036617.0], [16781764.5, -4036609.5], [16781767.2, -4036597.3],
+    [16781729.8, -4036596.6], [16781724.2, -4036617.0]];
+  const boundary = { rings: [ring], spatialReference: { wkid: 3857 } };
+  const plan = ['Camden Local Environmental Plan 2010'];
+  const reply = (body: unknown) => Promise.resolve({ json: () => Promise.resolve(body) });
+  afterEach(() => { (global as any).fetch = undefined; });
+
+  function mock(point: unknown, lot: unknown) {
+    (global as any).fetch = jest.fn((url: string, init?: { method?: string }) => {
+      if (url.includes('returnDistinctValues')) return reply({ features: [{ attributes: { EPI_NAME: plan[0] } }] });
+      if (init?.method === 'POST') return lot instanceof Error ? Promise.reject(lot) : reply(lot);
+      return point instanceof Error ? Promise.reject(point) : reply(point);
+    });
+  }
+
+  it('point query failed, boundary clear -> cannot tell (Sol 2026-10-20)', async () => {
+    jest.resetModules();
+    const { floodMapStatus } = await import('@/lib/flood/flood-map');
+    mock(new Error('timeout'), { features: [] });
+    expect((await floodMapStatus(150.75298, -34.05807, plan, boundary)).floodProne).toBeNull();
+  });
+
+  it('point and whole lot both clear -> no', async () => {
+    jest.resetModules();
+    const { floodMapStatus } = await import('@/lib/flood/flood-map');
+    mock({ features: [] }, { features: [] });
+    expect((await floodMapStatus(150.75298, -34.05807, plan, boundary)).floodProne).toBe(false);
+  });
+
+  it('boundary clear but the address point is flooded -> yes', async () => {
+    jest.resetModules();
+    const { floodMapStatus } = await import('@/lib/flood/flood-map');
+    mock({ features: [{}] }, { features: [] });
+    expect((await floodMapStatus(150.75298, -34.05807, plan, boundary)).floodProne).toBe(true);
+  });
+});
