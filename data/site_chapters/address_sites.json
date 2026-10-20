@@ -248,6 +248,95 @@
    "stated_area_m2": null,
    "figure": null,
    "note": "The plan's Lot 100 DP 1015283 is no longer in the NSW cadastre (checked 2026-10-20), so the site is found by its address."
+  },
+  {
+   "precinct_id": "G8 Narrabeen",
+   "council": "northern_beaches",
+   "source_chapter_key": "warringah-dcp-2011-full",
+   "lga": "Northern Beaches",
+   "former_council": "Northern Beaches",
+   "pdf": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/northern_beaches/v-html-2026-09-18/warringah-dcp-2011-full.pdf",
+   "page": 168,
+   "address_verbatim": "Nos. 1294, 1296, 1298, 1300 Pittwater Road, and Nos. 2 and 4 Albert Street, Narrabeen",
+   "numbers": "1294,1296,1298,1300",
+   "street": "PITTWATER ROAD",
+   "suburb": "NARRABEEN",
+   "also_streets": [
+    {
+     "numbers": "2,4",
+     "street": "ALBERT STREET",
+     "suburb": "NARRABEEN"
+    }
+   ],
+   "stated_area_m2": null,
+   "figure": null
+  },
+  {
+   "precinct_id": "G7 Evergreen",
+   "council": "northern_beaches",
+   "source_chapter_key": "warringah-dcp-2011-full",
+   "lga": "Northern Beaches",
+   "former_council": "Northern Beaches",
+   "pdf": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/northern_beaches/v-html-2026-09-18/warringah-dcp-2011-full.pdf",
+   "page": 158,
+   "address_verbatim": "known as the Evergreen Estate at 26 Campbell Avenue Cromer",
+   "numbers": "26",
+   "street": "CAMPBELL AVENUE",
+   "suburb": "CROMER",
+   "stated_area_m2": null,
+   "register_absent": {
+    "lots": [
+     "1//DP270829",
+     "2//DP270829",
+     "3//DP270829",
+     "4//DP270829",
+     "5//DP270829",
+     "6//DP270829",
+     "7//DP270829",
+     "8//DP270829",
+     "9//DP270829",
+     "10//DP270829",
+     "11//DP270829",
+     "12//DP270829",
+     "13//DP270829",
+     "14//DP270829",
+     "15//DP270829",
+     "16//DP270829",
+     "17//DP270829",
+     "18//DP270829",
+     "19//DP270829",
+     "20//DP270829",
+     "21//DP270829",
+     "22//DP270829",
+     "23//DP270829",
+     "24//DP270829",
+     "25//DP270829",
+     "26//DP270829",
+     "27//DP270829",
+     "28//DP270829",
+     "29//DP270829",
+     "30//DP270829",
+     "31//DP270829",
+     "32//DP270829",
+     "33//DP270829",
+     "34//DP270829",
+     "35//DP270829"
+    ],
+    "why": "The estate (Figure 1: one lot, 'Lot number 101 ... DP Number to be advised') was subdivided as DP270829 (lots 1-35, now 2-36 Evergreen Drive Cromer); 26 Campbell Avenue is no longer in the address register (checked 2026-10-20)."
+   },
+   "figure": {
+    "page": 159,
+    "mode": "raster",
+    "colour": "black-thick",
+    "caption": "FIGURE 1 Location of Evergreen Estate",
+    "dpi": 300,
+    "clip": [
+     91.5,
+     41.2,
+     600.8,
+     397.5
+    ]
+   }
   }
  ]
 }

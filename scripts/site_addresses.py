@@ -81,47 +81,58 @@ def _int(token: str) -> int | None:
     return int(m.group(0)) if m else None
 
 
+def _streets(site: dict) -> list[dict]:
+    """The site's (numbers, street, suburb) parts: the main street plus any listed in 'also_streets', for a site
+    the plan names on more than one street (Warringah G8: 1294-1300 Pittwater Road and 2 and 4 Albert Street).
+    prior-art-checked: extends this file's own address-site prover in place; no other module proves address sites."""
+    return [site] + list(site.get("also_streets") or [])
+
+
 def neighbours_inside(cur, site: dict, wkt: str) -> tuple[int, list[str]]:
     """Register addresses within NEIGHBOUR_SPAN numbers of the site, outside its range, whose point
     lies inside `wkt`. Run again after a map check widens the parcels (cross-review 2026-10-12)."""
-    site_nums, _ = parse_numbers(site["numbers"])
-    ints = [_int(n) for n in site_nums if _int(n) is not None]
-    lo, hi = min(ints) - NEIGHBOUR_SPAN, max(ints) + NEIGHBOUR_SPAN
     checked, inside = 0, []
-    for addr, x, y in register(site["street"], site["suburb"]):
-        nums = _base_numbers(addr, site["street"], site["suburb"])
-        if not nums or any(n in site_nums or (str(_int(n)) in site_nums and not _lettered(site_nums)) for n in nums):
-            continue
-        if not any(lo <= (_int(n) or -1) <= hi for n in nums):
-            continue
-        checked += 1
-        cur.execute("SELECT ST_Contains(ST_GeomFromText(%s, 4326), ST_SetSRID(ST_MakePoint(%s, %s), 4326))",
-                    (wkt, x, y))
-        if cur.fetchone()[0]:
-            inside.append(addr)
+    for part in _streets(site):
+        site_nums, _ = parse_numbers(part["numbers"])
+        ints = [_int(n) for n in site_nums if _int(n) is not None]
+        lo, hi = min(ints) - NEIGHBOUR_SPAN, max(ints) + NEIGHBOUR_SPAN
+        for addr, x, y in register(part["street"], part["suburb"]):
+            nums = _base_numbers(addr, part["street"], part["suburb"])
+            if not nums or any(n in site_nums or (str(_int(n)) in site_nums and not _lettered(site_nums))
+                               for n in nums):
+                continue
+            if not any(lo <= (_int(n) or -1) <= hi for n in nums):
+                continue
+            checked += 1
+            cur.execute("SELECT ST_Contains(ST_GeomFromText(%s, 4326), ST_SetSRID(ST_MakePoint(%s, %s), 4326))",
+                        (wkt, x, y))
+            if cur.fetchone()[0]:
+                inside.append(addr)
     return checked, sorted(set(inside))
 
 
 def prove_address(cur, site: dict) -> dict:
-    site_nums, named = parse_numbers(site["numbers"])
     r: dict = {"precinct_id": site["precinct_id"], "lots_listed": 0, "missing_lots": [], "checks": {}}
     r["checks"]["1_verbatim"] = b.verbatim_on_page({**site, "lots_verbatim": site["address_verbatim"]})
-    points = register(site["street"], site["suburb"])
-    inside, near, found = [], [], set()
-    lo = min(_int(n) for n in site_nums if _int(n) is not None) - NEIGHBOUR_SPAN
-    hi = max(_int(n) for n in site_nums if _int(n) is not None) + NEIGHBOUR_SPAN
-    for addr, x, y in points:
-        nums = _base_numbers(addr, site["street"], site["suburb"])
-        if not nums:
-            continue
-        found.update(nums)
-        # A lettered number (149A, 22B) is a subdivided part of its base number, so it belongs to
-        # the site when the base number does -- unless the chapter names lettered numbers itself.
-        if any(n in site_nums or (str(_int(n)) in site_nums and not _lettered(site_nums)) for n in nums):
-            inside.append((addr, x, y))
-        elif any(lo <= (_int(n) or -1) <= hi for n in nums):
-            near.append((addr, x, y))
-    r["missing_named"] = sorted(named - found)
+    inside, near, missing = [], [], set()
+    for part in _streets(site):
+        site_nums, named = parse_numbers(part["numbers"])
+        found: set = set()
+        lo = min(_int(n) for n in site_nums if _int(n) is not None) - NEIGHBOUR_SPAN
+        hi = max(_int(n) for n in site_nums if _int(n) is not None) + NEIGHBOUR_SPAN
+        for addr, x, y in register(part["street"], part["suburb"]):
+            nums = _base_numbers(addr, part["street"], part["suburb"])
+            if not nums:
+                continue
+            found.update(nums)
+            # A lettered number (149A, 22B) is a subdivided part of its base number, so it belongs to
+            # the site when the base number does -- unless the chapter names lettered numbers itself.
+            if any(n in site_nums or (str(_int(n)) in site_nums and not _lettered(site_nums)) for n in nums):
+                inside.append((addr, x, y))
+            elif any(lo <= (_int(n) or -1) <= hi for n in nums):
+                near.append((addr, x, y))
+        missing |= {f"{n} {part['street']}" for n in named - found}
+    r["missing_named"] = sorted(missing)
     r["checks"]["2_named"] = not r["missing_named"] and bool(inside)
     r["site_addresses"] = sorted({a for a, _, _ in inside})
     pts = [f"POINT({x} {y})" for _, x, y in inside]

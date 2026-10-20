@@ -361,6 +361,22 @@ EXTRA_KEY_RULES += [
     {"name": "warringah_g6_dee_why_rsl", "council": "northern_beaches", "validate": False,
      "where": "source_chapter_key = 'warringah-dcp-2011-full' AND (pdf_page BETWEEN 152 AND 157 OR id IN (192172))",
      "strategy": {"type": "constant", "precinct_id": "G6 Dee Why RSL Club"}},
+    # Warringah DCP 2011 G7 "known as the Evergreen Estate at 26 Campbell Avenue Cromer shown outlined on Figure 1"
+    # (p158). The estate was subdivided as DP270829 (now 2-36 Evergreen Drive); outline = build_site_boundaries.py
+    # --addresses with register_absent, matched to Figure 1 (p159). G7 runs p158-168: on p158 only its Introduction and
+    # 'Applies to Land' rows (the top row is G6); on p168 its plant list and O27 rows (G8 starts lower on that page).
+    {"name": "warringah_g7_evergreen", "council": "northern_beaches", "validate": False,
+     "where": "source_chapter_key = 'warringah-dcp-2011-full' AND (pdf_page BETWEEN 159 AND 167"
+              " OR id IN (192173, 192174, 191326, 192433))",
+     "strategy": {"type": "constant", "precinct_id": "G7 Evergreen"}},
+    # Warringah DCP 2011 G8 "applies to land at Nos. 1294, 1296, 1298, 1300 Pittwater Road, and Nos. 2 and 4 Albert
+    # Street, Narrabeen" (p168). Outline = build_site_boundaries.py --addresses (two streets). G8 runs p168-176; p168
+    # is shared with G7 (its plant list and O27 rows are G7), so only the G8 heading and 'Applies to Land' rows are
+    # listed by id; p177 is G9.
+    {"name": "warringah_g8_narrabeen", "council": "northern_beaches", "validate": False,
+     "where": "source_chapter_key = 'warringah-dcp-2011-full' AND (pdf_page BETWEEN 169 AND 176"
+              " OR id IN (191283, 192176))",
+     "strategy": {"type": "constant", "precinct_id": "G8 Narrabeen"}},
 ]
 EXTRA_KEY_RULES += [
     # Woollahra E1.8.4 "Certain land in Paddington zoned MU1 Mixed Use" (p25) -> Paddington HCA outline + MU1 tag.
