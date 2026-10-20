@@ -173,8 +173,8 @@ def _load(conn, rows: list[dict], commit: bool, former: bool = False, profile: d
     lga = profile["lga"] if profile else LGA
     fc = profile["former_council"] if profile else FORMER_COUNCIL
     envelope = profile["envelope"] if profile else CB_ENVELOPE
-    per_file = profile["files"].get(src_name, {}) if profile else {}
-    outside = per_file.get("outside", {}) if profile else OUTSIDE_ALL
+    per_file = (profile["files"].get(src_name) or {}) if profile else {}
+    outside = (per_file.get("outside") or {}) if profile else OUTSIDE_ALL
     # prior-art-checked: closing this script's own connection; no new data source is added.
     cur = conn.cursor()
     cur.execute("SELECT current_database()")
@@ -234,7 +234,7 @@ def _load(conn, rows: list[dict], commit: bool, former: bool = False, profile: d
         cur.execute(LOOKUP_SQL, (cx, cy, lga))
         if pid not in {r[0] for r in cur.fetchall()}:
             problems.append(f"{pid}: a point inside it is not found by the site's lookup")
-    for label, (x, y) in per_file.get("inside", {}).items():
+    for label, (x, y) in (per_file.get("inside") or {}).items():
         cur.execute(LOOKUP_SQL, (x, y, lga))
         hit = [r[0] for r in cur.fetchall()]
         print(f"  lookup {label}: {hit or 'no precinct'}")
