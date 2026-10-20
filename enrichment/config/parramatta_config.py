@@ -103,7 +103,22 @@ _AREA = {"applicable_zones": ["ALL"], "applicable_dev_types": ["ALL"],
          "is_precinct_specific": True}
 
 
+def _load_part_pages() -> list:
+    """Page ranges per Part, read from the plan's own Part cover pages (parramatta_part_pages.json)."""
+    import json
+    from pathlib import Path
+    with open(Path(__file__).with_name("parramatta_part_pages.json"), encoding="utf-8") as fh:
+        return json.load(fh)["ranges"]
+
+
 PARRAMATTA_CONFIG: dict = {
+    # The row's PDF page names its Part. Unlike Warringah, each Parramatta Part opens on a whole cover page, so a
+    # page never holds two Parts, and the page OUTRANKS a heading code that names another Part: 191 served rows
+    # (2026-10-20) carry a heading from elsewhere -- appendices headed "8.0" / "13.0", glossary rows "10.6". A
+    # heading inside the page's Part ("8.2.3" on a Part 8 page) is used as is, and a row with no heading code keeps
+    # its text reading (the rule below: an ALL entry must not overwrite text-derived types).
+    "part_pages": _load_part_pages(),
+    "part_pages_outrank_heading": True,
     "parts": {
         # Part 2 Design in Context — Part 4 is directed to read it, so it is
         # not a residential-only chapter.

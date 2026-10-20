@@ -608,11 +608,14 @@ class ApplicabilityTagger:
 
         # Whole-DCP councils that declare page ranges per Part (northern_beaches): the row's PDF page names its Part
         # when the row carries none. A page in no range (heading pages, cover) gives None -- never a guess.
-        if not (part and re.fullmatch(r'[A-Z]\d{0,2}(\.\d+)*', part)) and pdf_page and config.get("part_pages"):
+        page_part = None
+        if pdf_page and config.get("part_pages"):
             for rng in config["part_pages"]:
                 if rng["first_page"] <= pdf_page <= rng["last_page"]:
-                    part = rng["part"]
+                    page_part = rng["part"]
                     break
+        if page_part and not (part and re.fullmatch(r'[A-Z]\d{0,2}(\.\d+)*', part)):
+            part = page_part
 
         # chapter_topics path (City of Sydney, Ku-ring-gai, Canterbury-Bankstown)
         if chapter_topics:
@@ -630,6 +633,15 @@ class ApplicabilityTagger:
 
         # parts path (Woollahra, Waverley) — extract section code from heading
         section_code = self._extract_section_code(text)
+        # A plan whose Parts open on whole cover pages (Parramatta): the page outranks a heading code that names
+        # ANOTHER Part. "8.2.3" on a Part 8 page is kept; "8.0" on a Part 12 page (an appendix reusing numbers)
+        # becomes "12" (2026-10-20: 191 rows). A row with NO heading code is left as before (its text reading
+        # stands): a Part entry's ALL would overwrite text-derived types and widen the rule (parramatta_config.py).
+        # Only a real section number ("8.0", "10.6") is corrected; a bare number ("# 3 Metre Wide Lanes") is a known
+        # misread (tests/test_parramatta_numbered_parts_scope.py) and keeps its old handling.
+        if (page_part and section_code and "." in section_code and config.get("part_pages_outrank_heading")
+                and section_code != page_part and not section_code.startswith(page_part + ".")):
+            section_code = page_part
         # The chapter the row's OWN document names, e.g.
         # "Woollahra_DCP_2015__chapter_b1_residential_precincts" -> "B1".
         doc_match = re.search(r'chapter_([a-z]\d+)', doc_lower)
