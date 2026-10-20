@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New CI/pre-commit gate plus a behaviour fix in the audit flagger (more rules flagged for human reading)",
-  "commit_hash": "ac3bb26f",
+  "commit_hash": "527705a9",
   "files": [
     "scripts/lint_control_chars.py",
     "tests/test_lint_control_chars.py",
