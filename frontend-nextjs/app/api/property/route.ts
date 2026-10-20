@@ -213,6 +213,9 @@ export async function GET(req: NextRequest) {
    if (greenweb) propertyData.constraints.greenweb = greenweb;
  } catch (greenwebErr) {
    console.warn('[Property API] Greenweb lot-overlap query failed (non-fatal):', greenwebErr);
+   // Say it, never leave it silent: without the flag the Part 18 rules are not shown.
+   propertyData.constraints.greenwebUnchecked =
+     "We couldn't check the council's Greenweb biodiversity map for this lot, so its biodiversity rules may be missing.";
  }
  }
 
