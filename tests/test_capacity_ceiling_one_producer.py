@@ -116,3 +116,19 @@ def test_endpoint_says_why_when_lep_table_unknown(offline, monkeypatch):
     r = asyncio.run(ca.constraint_arithmetic_full(_req()))
     assert r.max_permitted_form is None
     assert any("not shown: the LEP land use table could not be read" in g for g in r.gaps)
+
+
+def test_zone_not_held_in_a_held_council_is_said(monkeypatch):
+    class Cur:
+        def __init__(self): self.q = None
+        def execute(self, sql, args=None): self.q = sql
+        def fetchall(self):
+            return [("Parramatta", "R2")] if "DISTINCT" in self.q else []
+    class Conn:
+        def cursor(self): return Cur()
+        def close(self): pass
+    monkeypatch.setattr(ib, "_get_db_conn", lambda: Conn())
+    forms, why = ib._permitted_forms_checked("R3", "City of Parramatta")
+    assert forms == set() and why == "we do not hold the land use table for zone R3 in this council"
+    forms, why = ib._permitted_forms_checked("R2", "City of Parramatta")
+    assert why is None

@@ -1447,9 +1447,14 @@ def _permitted_forms_checked(
     try:
         conn = _get_db_conn()
         cur = conn.cursor()
-        cur.execute("SELECT DISTINCT lga FROM lep_land_use_table")
-        if target not in {_norm_lga(l) for (l,) in cur.fetchall() if l}:
+        # Coverage is per council AND zone: a council we hold can still lack a zone (newly
+        # introduced, or not loaded), and an empty answer there is not "only a house".
+        cur.execute("SELECT DISTINCT lga, zone FROM lep_land_use_table")
+        held = [(_norm_lga(l), z) for (l, z) in cur.fetchall() if l]
+        if target not in {l for (l, _z) in held}:
             return set(), "we do not hold this council's LEP land use table yet"
+        if (target, zone_code) not in held:
+            return set(), f"we do not hold the land use table for zone {zone_code} in this council"
         cur.execute(
             "SELECT lga, development_type FROM lep_land_use_table "
             "WHERE zone = %s AND permissibility = 'permitted'",
