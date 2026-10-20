@@ -168,6 +168,7 @@ export function buildPropertyContext(
     ? {
         // null = the council publishes no flood map here; never read it as "No".
         flood_prone: envC.floodProne ?? null,
+        flood_map_note: envC.floodMapNote ?? null,
         bushfire_prone: !!envC.bushfireProne,
         acid_sulfate_soils: envC.acidSulfateSoils || undefined,
         anef_zone: !!anef?.inAnefZone,

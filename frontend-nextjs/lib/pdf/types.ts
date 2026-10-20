@@ -64,6 +64,8 @@ export interface PropertyContext {
   environmental_constraints?: {
     /** null = not known from a published flood map (never shown as "No"). */
     flood_prone: boolean | null;
+    /** Why flood is not known, in plain words (lib/flood/flood-map.ts). */
+    flood_map_note?: string | null;
     bushfire_prone: boolean;
     acid_sulfate_soils?: string;       // e.g., "Class 5"
     anef_zone: boolean;

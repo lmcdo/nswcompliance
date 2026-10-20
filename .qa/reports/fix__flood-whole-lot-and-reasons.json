@@ -1,0 +1,93 @@
+{
+  "tier": "standard",
+  "justification": "Changes a served hazard answer (flood) on the page, profile and SEE PDF",
+  "commit_hash": "d4a0a4f8",
+  "files": [
+    "frontend-nextjs/lib/flood/flood-map.ts",
+    "frontend-nextjs/__tests__/lib/flood/flood-map.test.ts",
+    "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "frontend-nextjs/app/api/property/profile/route.ts",
+    "frontend-nextjs/components/home/PropertyProfile.tsx",
+    "frontend-nextjs/lib/pdf/types.ts",
+    "frontend-nextjs/lib/see/propertyContext.ts",
+    "frontend-nextjs/components/pdf/ContextSection.tsx",
+    "frontend-nextjs/components/pdf/see-pages/Page2SiteContext.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "jest __tests__/lib/flood/flood-map.test.ts; live: a Hornsby lot partly in the flood planning area reads Yes",
+    "fails_when": "a point-only test returns No, or an unknown shows a reason other than its own",
+    "observed_red": "On origin/main floodMapStatus queries one point and decideFloodMap returns floodProne false for 0 point features on a publishing plan (Sol finding on #1383); the new test 'only the centre point tested -> never no' fails there (old signature takes a number and returns false). Live: polygon POST to Hazard layer 230 returns features for a polygon over a mapped area (checked 2026-10-20)."
+  },
+  "pre_impl": {
+    "existing_data": "Planning Portal lot polygon (lotGeometry.geometry with its spatialReference) and ePlanning Hazard layer 230",
+    "assumption_mismatch": "a boundary without a stated coordinate system or with malformed rings falls back to the point, which cannot say No",
+    "new_vs_existing": "every assessment page, profile call and SEE PDF after this deploy",
+    "falsifiable_check": {
+      "command": "jest __tests__/lib/flood/flood-map.test.ts; live: a Hornsby lot partly in the flood planning area reads Yes",
+      "fails_when": "a point-only test returns No, or an unknown shows a reason other than its own",
+      "observed_red": "On origin/main floodMapStatus queries one point and decideFloodMap returns floodProne false for 0 point features on a publishing plan (Sol finding on #1383); the new test 'only the centre point tested -> never no' fails there (old signature takes a number and returns false). Live: polygon POST to Hazard layer 230 returns features for a polygon over a mapped area (checked 2026-10-20)."
+    }
+  },
+  "functions": [
+    {
+      "name": "decideFloodMap",
+      "file_line": "frontend-nextjs/lib/flood/flood-map.ts:65",
+      "input": "flood features found, whether the whole lot was tested, the lot's plans and the publishing plans",
+      "output": "flood yes, no or null with the plain sentence the page shows",
+      "if_none": "a null count, unknown plans or a point-only test all return null with their own reason"
+    },
+    {
+      "name": "queryLot",
+      "file_line": "frontend-nextjs/lib/flood/flood-map.ts:126",
+      "input": "address point and the Portal lot boundary with its coordinate system",
+      "output": "count of flood polygons touching the lot and whether the whole lot was tested",
+      "if_none": "no boundary or a failed polygon query falls back to the point; a failed point query returns null"
+    }
+  ],
+  "values": [
+    {
+      "value": "boundary.spatialReference.wkid",
+      "read_at": "frontend-nextjs/lib/flood/flood-map.ts:132",
+      "nullable": "yes",
+      "guard_at": "rings && wkid",
+      "if_missing": "point-only test, which never answers No"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a lot whose back half is in the flood planning area",
+      "what_happens": "the old point test read No for a partly flooded lot",
+      "mitigated": true,
+      "how": "lot polygon tested; point-only never says No",
+      "repro": "jest 'only the centre point tested -> never no'"
+    },
+    {
+      "scenario": "lot rings arrive in WGS84 but are labelled or assumed Web Mercator",
+      "what_happens": "the polygon lands near Null Island, finds nothing and reads No",
+      "mitigated": true,
+      "how": "uses the boundary's own stated wkid; none stated means point only",
+      "repro": "call floodMapStatus with a boundary lacking spatialReference"
+    },
+    {
+      "scenario": "the map service is down or returns an error body",
+      "what_happens": "the page would say no published flood map, which is untrue",
+      "mitigated": true,
+      "how": "each unknown carries its own sentence (couldn't reach the map)",
+      "repro": "jest 'each unknown says its own reason'"
+    },
+    {
+      "scenario": "the lot's plan name is spelled differently on the two Portal layers",
+      "what_happens": "the page says no map was found for this plan when one exists",
+      "mitigated": false,
+      "how": "both names come from the same Portal; wording now says 'found no map for this plan' rather than 'council has not published'",
+      "repro": "compare Land Application EPI Name with layer 230 EPI_NAME for a publishing council"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 a Hornsby lot partly in the flood planning area reads Yes; Winston Hills shows the 'found no flood planning map' sentence"
+  }
+}

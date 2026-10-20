@@ -229,7 +229,7 @@ export function PropertyProfile() {
               <PropertyFact
                 icon={Droplets}
                 label="Flood planning"
-                value={data.floodProne === true ? 'Yes' : data.floodProne === false ? 'No' : 'Not known — no published flood map'}
+                value={data.floodProne === true ? 'Yes' : data.floodProne === false ? 'No' : (data.floodMapNote ?? 'Not known')}
                 alert={data.floodProne === true}
               />
             </div>

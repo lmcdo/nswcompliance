@@ -103,7 +103,7 @@ export function Page2SiteContext({ computed }: { computed: SEEComputedData }) {
         <View style={{ ...styles.section, marginTop: 8 }}>
           <Text style={styles.sectionTitle}>2.3 Environmental Constraints</Text>
           <View style={styles.dataTable}>
-            <DataRow label="Flood Prone Land:" value={environmental_constraints.flood_prone === true ? 'Yes' : environmental_constraints.flood_prone === false ? 'No' : 'Not known — no published flood map'} />
+            <DataRow label="Flood Prone Land:" value={environmental_constraints.flood_prone === true ? 'Yes' : environmental_constraints.flood_prone === false ? 'No' : (environmental_constraints.flood_map_note ?? 'Not known')} />
             <DataRow label="Bushfire Prone Land:" value={environmental_constraints.bushfire_prone ? 'Yes' : 'No'} />
             <DataRow
               label="Acid Sulfate Soils:"
@@ -251,7 +251,7 @@ export function Page2SiteContext({ computed }: { computed: SEEComputedData }) {
           )}
           {environmental_constraints && (
             <>
-              <DataRow label="Flood Prone:" value={environmental_constraints.flood_prone === true ? 'Yes — refer Section 2.3' : environmental_constraints.flood_prone === false ? 'No' : 'Not known — no published flood map'} />
+              <DataRow label="Flood Prone:" value={environmental_constraints.flood_prone === true ? 'Yes — refer Section 2.3' : environmental_constraints.flood_prone === false ? 'No' : (environmental_constraints.flood_map_note ?? 'Not known')} />
               <DataRow label="Bushfire Prone:" value={environmental_constraints.bushfire_prone ? 'Yes — refer Section 2.3' : 'No'} />
               {environmental_constraints.coastal_management && (
                 <DataRow
