@@ -1,0 +1,4 @@
+{"tier": "minor", "justification": "Filters the sites list to the --only names before proving; unknown names are refused", "commit_hash": "dc4ff5e7",
+ "files": ["scripts/build_site_boundaries.py"],
+ "break_it": [{"scenario": "a typo in an --only name", "what_happens": "nothing would be proved and the run could look clean", "mitigated": true, "how": "an unknown name is refused with a non-zero exit before any proof", "repro": "python scripts/build_site_boundaries.py --only 'nope'"}],
+ "post_merge": {"db_reset": "No", "secrets": "No", "other_repo": "No", "manual_verify": "No — measured: one site proof 34 s"}}
