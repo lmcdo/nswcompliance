@@ -2433,6 +2433,31 @@ class TestApprovalPathFacts:
         p = gf._approval_paths(_RULES, "R2", 600.0, frontage_m=30.0, battle_axe=True)
         assert p["cdc"]["outcome"] == "UNKNOWN"
 
+    # #1342 follow-up: the frontage is measured back from the road edge, as a range.
+    def test_road_measured_range_wins_over_single_frontage(self):
+        # The old bounding-rectangle short side (10 m) would fail; the road edge is 30 m wide.
+        p = gf._approval_paths(_RULES, "R2", 600.0, frontage_m=10.0, battle_axe=False,
+                               dwelling_house_permissible=True, frontage_range_m=(30.0, 30.0))
+        assert p["cdc"]["outcome"] == "PASS"
+
+    def test_range_straddling_the_minimum_depends_on_the_building(self):
+        p = gf._approval_paths(_RULES, "R2", 600.0, battle_axe=False, frontage_range_m=(10.0, 20.0))
+        assert p["cdc"]["outcome"] == "UNKNOWN"
+        assert "where the building sits" in p["cdc"]["reason"]
+        p = gf._approval_paths(_RULES, "R2", 600.0, battle_axe=False, frontage_range_m=(8.0, 10.0))
+        assert p["cdc"]["outcome"] == "FAIL"
+
+    def test_malformed_range_is_not_measured_and_not_repaired(self):
+        for bad in ((20.0, 10.0), (0.0, 20.0), (-1.0, 5.0), (float('inf'), float('inf')), (10.0, float('nan')), (None, 12.0), (12.0,)):
+            p = gf._approval_paths(_RULES, "R2", 600.0, frontage_m=30.0, battle_axe=False, frontage_range_m=bad)
+            assert p["cdc"]["outcome"] == "UNKNOWN", bad
+
+    def test_requests_accept_a_json_range(self):
+        for model in (gf.GrannyFlatDetectRequest, gf.GrannyFlatConfirmRequest):
+            assert "frontage_range_m" in model.model_fields
+        r = gf.GrannyFlatDetectRequest(address="a", prop_id="1", lat=-33.8, lng=151.0, frontage_range_m=[12.5, 14.0])
+        assert r.frontage_range_m == (12.5, 14.0)
+
     def test_dwelling_house_permissible_reads_the_table(self):
         for rows, expect in (([("Cumberland", "permitted")], True), ([("Cumberland", "prohibited")], False),
                              ([("Penrith", "permitted")], None), ([], None),
@@ -2446,3 +2471,15 @@ class TestApprovalPathFacts:
     def test_dwelling_house_permissible_without_zone_or_conn_is_none(self):
         assert gf._dwelling_house_permissible(None, "R2", SYD_LAT, SYD_LNG) is None
         assert gf._dwelling_house_permissible(FakeConn(cursor=FakeCursor()), None, SYD_LAT, SYD_LNG) is None
+
+
+def test_frontage_range_rejects_booleans_and_strings_at_the_request():
+    import pydantic
+    for bad in ([True, True], ["12", "13"]):
+        try:
+            gf.GrannyFlatDetectRequest(address="a", prop_id="1", lat=-33.8, lng=151.0, frontage_range_m=bad)
+        except pydantic.ValidationError:
+            continue
+        raise AssertionError(f"accepted {bad}")
+    assert gf.GrannyFlatConfirmRequest.model_fields["frontage_range_m"].annotation == \
+        gf.GrannyFlatDetectRequest.model_fields["frontage_range_m"].annotation

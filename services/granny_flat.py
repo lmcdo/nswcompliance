@@ -61,7 +61,7 @@ from typing import Literal, Optional
 import psycopg2
 import psycopg2.extras
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, StrictInt, model_validator
+from pydantic import BaseModel, StrictFloat, StrictInt, model_validator
 
 from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 from services.lga_lookup import lookup_lga
@@ -219,9 +219,27 @@ def _dwelling_house_permissible(conn, zone: Optional[str], lat: float, lng: floa
     return None  # absent, exempt or contradictory rows: not established
 
 
+def _frontage_range(frontage_range_m, frontage_m) -> Optional[tuple[float, float]]:
+    """The road frontage as (smallest, largest) width at the building line, or None.
+
+    A measured range wins. A malformed one (non-positive, or narrowest above widest) is
+    not measured, never repaired; the single frontage_m is the fallback for older callers.
+    """
+    if frontage_range_m is not None:
+        if len(frontage_range_m) != 2:
+            return None
+        lo, hi = frontage_range_m
+        if not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in (lo, hi)):
+            return None
+        return (lo, hi) if math.isfinite(hi) and 0 < lo <= hi else None
+    ok = frontage_m is not None and math.isfinite(frontage_m) and frontage_m > 0
+    return (frontage_m, frontage_m) if ok else None
+
+
 def _approval_paths(rules, zone: Optional[str], lot_area_m2: Optional[float], *,
                     frontage_m: Optional[float] = None, battle_axe: Optional[bool] = None,
-                    dwelling_house_permissible: Optional[bool] = None) -> dict:
+                    dwelling_house_permissible: Optional[bool] = None,
+                    frontage_range_m: Optional[tuple[float, float]] = None) -> dict:
     """The CDC and DA answers for this lot, from the one shared engine.
 
     Whether the granny flat is attached or detached is the owner's design choice,
@@ -233,7 +251,7 @@ def _approval_paths(rules, zone: Optional[str], lot_area_m2: Optional[float], *,
         from services.secondary_dwelling_paths import assess, evaluate_da
     except ImportError:
         from secondary_dwelling_paths import assess, evaluate_da
-    frontage = (frontage_m, frontage_m) if frontage_m is not None and frontage_m > 0 else None
+    frontage = _frontage_range(frontage_range_m, frontage_m)
     paths = assess(rules, zone, lot_area_m2, frontage_range_m=frontage, battle_axe=battle_axe,
                    detached=True, dwelling_house_permissible=dwelling_house_permissible)
     paths["da_attached"] = evaluate_da(rules, zone, lot_area_m2, False, dwelling_house_permissible)
@@ -440,6 +458,9 @@ class GrannyFlatDetectRequest(BaseModel):
     # Measured by the verify app from the lot shape (lib/geometry). Optional:
     # absent means that CDC fact is "not determined", never a pass.
     frontage_m: Optional[float] = None   # street frontage of a regular-shaped lot
+    # (narrowest front-half width, widest width) measured back from the road edge; preferred
+    # over frontage_m. The verify app measures it from the NSW road layer (#1342 follow-up).
+    frontage_range_m: Optional[tuple[StrictFloat, StrictFloat]] = None  # true/"12" rejected, not coerced
     battle_axe: Optional[bool] = None
 
 
@@ -551,6 +572,9 @@ class GrannyFlatConfirmRequest(BaseModel):
     # Measured by the verify app from the lot shape (lib/geometry). Optional:
     # absent means that CDC fact is "not determined", never a pass.
     frontage_m: Optional[float] = None   # street frontage of a regular-shaped lot
+    # (narrowest front-half width, widest width) measured back from the road edge; preferred
+    # over frontage_m. The verify app measures it from the NSW road layer (#1342 follow-up).
+    frontage_range_m: Optional[tuple[StrictFloat, StrictFloat]] = None  # true/"12" rejected, not coerced
     battle_axe: Optional[bool] = None
 
 
@@ -1530,7 +1554,8 @@ def detect_structures(req: GrannyFlatDetectRequest):
     # a road frontage by lot-area band on the CDC path and a non-discretionary
     # site area for detached granny flats on the DA path. Both are reported.
     approval_paths = _approval_paths(sepp_rules, req.zone, lot_area_m2, frontage_m=req.frontage_m,
-                                     battle_axe=req.battle_axe, dwelling_house_permissible=dh_permissible)
+                                     battle_axe=req.battle_axe, dwelling_house_permissible=dh_permissible,
+                                     frontage_range_m=req.frontage_range_m)
     sepp_eligible = True
     sepp_ineligible_reason = None
     if _outside_both_paths(approval_paths):
@@ -1914,7 +1939,8 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     # Lot area is reported per approval path, never as one minimum that makes
     # the lot unbuildable -- the SEPP (Housing) 2021 sets no such minimum.
     approval_paths = _approval_paths(sepp_rules, req.zone, lot_area_m2, frontage_m=req.frontage_m,
-                                     battle_axe=req.battle_axe, dwelling_house_permissible=dh_permissible)
+                                     battle_axe=req.battle_axe, dwelling_house_permissible=dh_permissible,
+                                     frontage_range_m=req.frontage_range_m)
     approval_status = _approval_status(approval_paths)
     if _outside_both_paths(approval_paths):
         granny_flat_buildable = False
