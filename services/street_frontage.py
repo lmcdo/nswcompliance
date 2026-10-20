@@ -99,12 +99,6 @@ def _segments_of(ring: list[Pt]) -> list[Seg]:
     return [(ring[i], ring[i + 1]) for i in range(len(ring) - 1)]
 
 
-def _edge_road_fraction(edge: Seg, road: list[Seg]) -> float:
-    """Share of the lot edge (0..1) that runs alongside a road segment."""
-    hits = _edge_road_hits(edge, road)
-    return sum(hits) / len(hits)
-
-
 def _edge_frontage_share(edge: Seg, road: list[Seg]) -> float:
     """Share of the edge that is frontage: beside a road. A gap up to FRONTAGE_GAP_M at either END
     of the edge still counts (the road boundary curving away at a corner); a gap in the middle never
@@ -210,13 +204,13 @@ def measure_street_frontage(lot_ring_3857: object, roads: list[dict]) -> StreetF
             segs_by_road.setdefault(name, []).extend(road_segs)
             continue
         for edge in lot_edges:
-            if _edge_road_fraction(edge, road_segs) >= EDGE_MIN_FRACTION:
+            if _edge_frontage_share(edge, road_segs) >= EDGE_MIN_FRACTION:
                 unnamed += _edge_len(edge) * _edge_frontage_share(edge, road_segs)
     # Ownership is judged against all parcels of a named road together, so a road split into
     # parcels along one edge still owns it (Sol, 2026-10-20).
     for name, segs in segs_by_road.items():
         for edge in lot_edges:
-            if _edge_road_fraction(edge, segs) >= EDGE_MIN_FRACTION:
+            if _edge_frontage_share(edge, segs) >= EDGE_MIN_FRACTION:
                 by_road.setdefault(name, set()).add(edge)
 
     out: list[RoadWidthRange] = []
