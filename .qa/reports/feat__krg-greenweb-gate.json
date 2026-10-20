@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which properties are shown Ku-ring-gai Part 18 biodiversity rules: a new overlay layer, a lot-overlap flag in the property lookup, a new condition in the rules route, and a gate rule",
-  "commit_hash": "265ae9b8",
+  "commit_hash": "9d606e55",
   "files": [
     "data/krg_greenweb/greenweb_2021.geojson.gz",
     "scripts/load_greenweb_overlay.py",
@@ -74,10 +74,10 @@
     },
     {
       "scenario": "the greenweb database query errors during a page view",
-      "what_happens": "flag unset, Part 18 not shown for that page view",
-      "mitigated": false,
-      "how": "accepted: same as the other overlays; logged",
-      "repro": "n/a"
+      "what_happens": "the flag is unset and Part 18 rules are not shown for that view",
+      "mitigated": true,
+      "how": "the property carries a plain-words greenwebUnchecked note saying the check could not run and the rules may be missing",
+      "repro": "force the query to throw; constraints.greenwebUnchecked is set"
     }
   ],
   "post_merge": {
@@ -85,5 +85,8 @@
     "secrets": "No",
     "other_repo": "No",
     "manual_verify": "Yes — after deploy: load_greenweb_overlay.py --commit, then derive_precinct_keys.py --council ku_ring_gai --apply; check a canopy-remnant lot sees Part 18 and a lot off Greenweb does not"
+  },
+  "real_layer_exempt": {
+    "scripts/load_greenweb_overlay.py": "hand-run one-off loader: dry run by default; validates every geometry with PostGIS before writing; backs up and replaces only layer_type='greenweb' for KU-RING-GAI in one transaction"
   }
 }
