@@ -87,11 +87,20 @@ def test_bare_lga_from_epi():
 # --- _realistic_forms over a mocked DB --------------------------------------
 
 class _FakeCursor:
+    """Answers the coverage query (DISTINCT lga, zone) as well as the forms query: every
+    council in ``rows`` is held for every zone the test asks about."""
     def __init__(self, rows):
         self._rows = rows
-    def execute(self, *a, **k):
+        self._sql = ""
+        self._zone = None
+    def execute(self, sql, args=None):
+        self._sql = sql
+        if args:
+            self._zone = args[0]
         return None
     def fetchall(self):
+        if "DISTINCT" in self._sql:
+            return [(lga, z) for lga in {r[0] for r in self._rows} for z in ("R1", "R2", "R3", "R4", "R5")]  # noqa: zone-codes (test fake)
         return self._rows
 
 

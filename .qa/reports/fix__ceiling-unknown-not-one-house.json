@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes a served answer (highest permitted form) on the yield box and Site Report",
-  "commit_hash": "eb9c48b1",
+  "commit_hash": "2fc2035f",
   "files": [
     "services/intelligence_brief.py",
     "services/constraint_arithmetic.py",
