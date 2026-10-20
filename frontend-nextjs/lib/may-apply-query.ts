@@ -35,9 +35,11 @@ export function mayApplyAreasFor(councilSlug: string | null | undefined, suburb:
 }
 
 /**
- * ONE select per area. Current, WITHHELD rows only (v2_is_actionable = FALSE): a row the property is already served
- * appears in the main list, so showing it here too would list it twice (1,585 of the draft's 1,814 rows were served,
- * 2026-10-20). TOC lines and rows with no layer are left out.
+ * ONE select per area. Current rows the address route does NOT serve: switched off (v2_is_actionable = FALSE), or
+ * an area rule with no outline (precinct layer, v2_precinct_id NULL), which the route's precinct layer returns to
+ * nobody. A row the property is already served appears in the main list, so it is not repeated here. TOC lines and
+ * rows with no layer are left out (no layer = no record of why the row was held back).
+ * Measured 2026-10-21 over the 46 areas: 172 rows with the switched-off test alone, 1,427 with both.
  */
 export function buildMayApplySql(selectColumns: string): string {
   return `
@@ -49,7 +51,7 @@ export function buildMayApplySql(selectColumns: string): string {
       AND (rp.pdf_page BETWEEN $3::int AND $4::int OR rp.id = ANY($5::bigint[]))
       AND (rp.v2_provision_type IS NULL OR rp.v2_provision_type != 'TOC')
       AND rp.v2_dcp_layer IS NOT NULL
-      AND rp.v2_is_actionable = FALSE
+      AND (rp.v2_is_actionable = FALSE OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL))
     ORDER BY rp.pdf_page, rp.id
     LIMIT 400`;
 }

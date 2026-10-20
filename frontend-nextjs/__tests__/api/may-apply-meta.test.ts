@@ -49,7 +49,7 @@ describe('meta.may_apply', () => {
     expect(calls).toHaveLength(areas.length);
     expect(calls[0][0]).toContain('LIMIT 400');
     // withheld rows only: a served row is already in the main list (no double listing)
-    expect(calls[0][0]).toContain('rp.v2_is_actionable = FALSE');
+    expect(calls[0][0]).toContain("(rp.v2_is_actionable = FALSE OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL))");
     expect(calls[0][1][0]).toBe(council);
     // never merged into the property's own provisions
     expect(body.data.summary.total_provisions).toBe(0);

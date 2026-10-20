@@ -2437,5 +2437,5 @@
       "shown_to_everyone": true
     }
   ],
-  "note": "An area shows in the may-apply block only once its rows are withheld from the council-wide list (v2_is_actionable = FALSE); withholding an area's rows is the switch that moves it to suburb-only. Areas still served council-wide show nothing here, so no rule is listed twice (2026-10-20)."
+  "note": "The may-apply block shows an area's rows that the address route does not serve: switched off (v2_is_actionable = FALSE) or an area rule with no outline (precinct layer, no v2_precinct_id). Rows already served are not repeated, so an area served council-wide shows nothing here (2026-10-21)."
 }

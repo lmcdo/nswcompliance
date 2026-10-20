@@ -25,7 +25,7 @@ export interface MayApplyArea {
 export function DcpMayApplyBlock({ mayApply }: { mayApply: MayApplyArea[] | null | undefined }) {
   if (!mayApply || mayApply.length === 0) return null;
   return (
-    <div data-testid="dcp-may-apply-block" className="mb-3 space-y-2">
+    <div data-testid="dcp-may-apply-block" className="space-y-2 mb-3">
       {mayApply.map((area) => {
         // A missing list is a loading failure, not "0 rules": say so (Sol, 2026-10-20).
         const loaded = Array.isArray(area.provisions);
