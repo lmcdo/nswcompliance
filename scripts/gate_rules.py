@@ -239,6 +239,11 @@ EXTRA_KEY_RULES: list[dict] = [
     # "This chapter applies to the Woollahra Heritage Conservation Area, which is shown in Map 1." (Woollahra DCP 2015
     # C2, p5). Outline already loaded (precinct 'Woollahra HCA'); 47 of its rows were keyed by hand, so a re-extraction
     # would have unkeyed them -- now a rule.
+    # Woollahra D3 "contains controls for the following centres, as identified on Map A" (p5): the twelve D1 + D2
+    # centres. Outline 'Woollahra D3 centres' = their union (import_woollahra_b2_union.py --union woollahra_d3).
+    {"name": "woollahra_d3_centres", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-d3-general-controls-for-neighbourhood-and-mixed-use-centres'",
+     "strategy": {"type": "constant", "precinct_id": "Woollahra D3 centres"}},
     {"name": "woollahra_c2_woollahra_hca", "council": "woollahra", "validate": False,
      "where": "source_chapter_key = 'chapter-c2-woollahra-hca'",
      "strategy": {"type": "constant", "precinct_id": "Woollahra HCA"}},
