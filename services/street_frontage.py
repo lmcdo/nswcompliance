@@ -30,6 +30,9 @@ logger = logging.getLogger(__name__)
 EDGE_TOLERANCE_M = 2.5
 EDGE_MAX_ANGLE_DEG = 30.0
 EDGE_MIN_FRACTION = 0.5
+# A stretch of a road edge with no road beside it is cut from the frontage only when longer than this; shorter
+# gaps are the road boundary curving away at a corner, not a break in the frontage (Haberfield, Logan Ave).
+FRONTAGE_GAP_M = 3.0
 PROFILE_STEP_M = 0.5
 GRID_M = 0.1  # each grid size MUST divide PROFILE_STEP_M exactly
 GRID_LARGE_M = 0.25
@@ -96,10 +99,31 @@ def _segments_of(ring: list[Pt]) -> list[Seg]:
     return [(ring[i], ring[i + 1]) for i in range(len(ring) - 1)]
 
 
-def _edge_runs_along(edge: Seg, road: list[Seg]) -> bool:
-    """True when at least EDGE_MIN_FRACTION of the lot edge runs alongside a road segment."""
+def _edge_road_fraction(edge: Seg, road: list[Seg]) -> float:
+    """Share of the lot edge (0..1) that runs alongside a road segment, sampled at 40 points."""
+    hits = _edge_road_hits(edge, road)
+    return sum(hits) / len(hits)
+
+
+def _edge_frontage_share(edge: Seg, road: list[Seg]) -> float:
+    """Share of the edge that is frontage: beside a road, with gaps up to FRONTAGE_GAP_M ignored."""
+    hits = _edge_road_hits(edge, road)
+    step = _edge_len(edge) / len(hits)
+    counted, run = 0, 0
+    for h in [*hits, True]:  # a trailing True closes the last run
+        if h:
+            counted += run if run * step <= FRONTAGE_GAP_M else 0
+            run = 0
+            counted += 1
+        else:
+            run += 1
+    return min(1.0, (counted - 1) / len(hits))
+
+
+def _edge_road_hits(edge: Seg, road: list[Seg]) -> list[bool]:
+    """For 40 points along the edge, whether each runs alongside a road segment."""
     n = 40
-    hits = 0
+    hits: list[bool] = []
     for i in range(n):
         t = (i + 0.5) / n
         p = (edge[0][0] + (edge[1][0] - edge[0][0]) * t, edge[0][1] + (edge[1][1] - edge[0][1]) * t)
@@ -109,9 +133,9 @@ def _edge_runs_along(edge: Seg, road: list[Seg]) -> bool:
             d = _seg_dist(p, s[0], s[1])
             if d < best_d:
                 best_d, best = d, s
-        if best is not None and best_d < EDGE_TOLERANCE_M and _angle_between(edge, best) <= EDGE_MAX_ANGLE_DEG:
-            hits += 1
-    return hits / n >= EDGE_MIN_FRACTION
+        hits.append(best is not None and best_d < EDGE_TOLERANCE_M
+                    and _angle_between(edge, best) <= EDGE_MAX_ANGLE_DEG)
+    return hits
 
 
 def _width_profile(ring: list[Pt], road_edges: list[Seg], area_m2: float) -> list[tuple[float, float]]:
@@ -164,7 +188,12 @@ def measure_street_frontage(lot_ring_3857: object, roads: list[dict]) -> StreetF
     lot_edges = _segments_of(ring)
     area = abs(sum(a[0] * b[1] - b[0] * a[1] for a, b in lot_edges)) / 2
 
-    by_road: dict[str, set[Seg]] = {}  # a set: one road can arrive as several parcels
+    # An edge belongs to a road when most of it runs beside that road. Its frontage is the share of
+    # it beside THAT road (all its parcels together): an edge half beside the road is half frontage,
+    # and another road never fills the gap (Sol on #1349). Short gaps, e.g. the road boundary curving
+    # away at a corner, still count (FRONTAGE_GAP_M; Haberfield, Logan Ave, 26.25 m).
+    by_road: dict[str, set[Seg]] = {}
+    segs_by_road: dict[str, list[Seg]] = {}
     unnamed = 0.0
     for road in roads or []:
         road_segs: list[Seg] = []
@@ -175,13 +204,18 @@ def measure_street_frontage(lot_ring_3857: object, roads: list[dict]) -> StreetF
         if not road_segs:
             continue
         name = (road.get("name") or "").strip() or None
+        if name is not None:
+            segs_by_road.setdefault(name, []).extend(road_segs)
+            continue
         for edge in lot_edges:
-            if not _edge_runs_along(edge, road_segs):
-                continue
-            if name is None:
-                unnamed += _edge_len(edge)
-                continue
-            by_road.setdefault(name, set()).add(edge)
+            if _edge_road_fraction(edge, road_segs) >= EDGE_MIN_FRACTION:
+                unnamed += _edge_len(edge) * _edge_frontage_share(edge, road_segs)
+    # Ownership is judged against all parcels of a named road together, so a road split into
+    # parcels along one edge still owns it (Sol, 2026-10-20).
+    for name, segs in segs_by_road.items():
+        for edge in lot_edges:
+            if _edge_road_fraction(edge, segs) >= EDGE_MIN_FRACTION:
+                by_road.setdefault(name, set()).add(edge)
 
     out: list[RoadWidthRange] = []
     for name in sorted(by_road, key=str.lower):
@@ -193,7 +227,7 @@ def measure_street_frontage(lot_ring_3857: object, roads: list[dict]) -> StreetF
         front = [w for d, w in prof if d < depth / 2]
         out.append(RoadWidthRange(
             road=name,
-            frontage_m=round(sum(_edge_len(e) for e in edges), 2),
+            frontage_m=round(sum(_edge_len(e) * _edge_frontage_share(e, segs_by_road[name]) for e in edges), 2),
             min_front_half_m=round(min(front), 2),
             max_all_m=round(max(w for _, w in prof), 2),
             depth_m=round(depth, 2),

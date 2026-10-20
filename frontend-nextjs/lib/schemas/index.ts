@@ -229,8 +229,16 @@ export const HousingSEPPSchema = z.object({
   address: AddressStringSchema.optional(),
   lga: LGASchema.optional(),
   coordinates: CoordinatesSchema.optional(),
-}).refine((b) => b.lotWidth != null || (b.lotWidthMin != null && b.lotWidthMax != null && b.lotWidthMin <= b.lotWidthMax), {
-  message: 'lotWidth, or lotWidthMin <= lotWidthMax, is required',
+}).refine((b) => {
+  // A range is both ends, narrowest first, whether or not lotWidth is also sent: half a range, or
+  // min above max, was accepted next to lotWidth and read as an inverted range (Sol on #1347).
+  const hasMin = b.lotWidthMin != null;
+  const hasMax = b.lotWidthMax != null;
+  if (hasMin !== hasMax) return false;
+  if (hasMin && hasMax && (b.lotWidthMin as number) > (b.lotWidthMax as number)) return false;
+  return b.lotWidth != null || hasMin;
+}, {
+  message: 'lotWidth, or both lotWidthMin and lotWidthMax with lotWidthMin <= lotWidthMax, is required',
 });
 
 /**

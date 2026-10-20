@@ -96,6 +96,36 @@ describe('measureStreetFrontage synthetic rectangle', () => {
     expect(Math.abs(sf.roads[0].minFrontHalf_m - 15)).toBeLessThanOrEqual(0.4);
   });
 
+  // Sol on #1347: a 20 m edge with the road beside only its first 12 m was reported as 20 m of frontage.
+  it('an edge only partly beside the road counts only that part', () => {
+    const part = measureStreetFrontage(rect(0, 0, 20, 40), [{ name: 'TEST ST', rings: [rect(-20, -10, 32, 10)] }]);
+    expect(part.roads[0].frontage_m).toBeGreaterThanOrEqual(11.5);
+    expect(part.roads[0].frontage_m).toBeLessThanOrEqual(12.5);
+  });
+
+  it('another road never fills the gap', () => {
+    const two = measureStreetFrontage(rect(0, 0, 20, 40), [
+      { name: 'ROAD A', rings: [rect(-20, -10, 32, 10)] },
+      { name: 'ROAD B', rings: [rect(12, -10, 30, 10)] },
+    ]);
+    const a = two.roads.find((r) => r.road === 'ROAD A');
+    expect(Math.abs((a?.frontage_m ?? 0) - 12)).toBeLessThanOrEqual(0.6);
+  });
+
+  it('one road split into parcels still owns the edge', () => {
+    const split = measureStreetFrontage(rect(0, 0, 20, 40), [
+      { name: 'TEST ST', rings: [rect(-20, -10, 26, 10)] },
+      { name: 'TEST ST', rings: [rect(14, -10, 30, 10)] },
+    ]);
+    expect(split.status).toBe('measured');
+    expect(split.roads[0].frontage_m).toBeGreaterThan(11);
+  });
+
+  it('a short gap at a corner is still frontage', () => {
+    const gap = measureStreetFrontage(rect(0, 0, 20, 40), [{ name: 'TEST ST', rings: [rect(-20, -10, 38, 10)] }]);
+    expect(Math.abs(gap.roads[0].frontage_m - 20)).toBeLessThanOrEqual(0.4);
+  });
+
   it('verdicts at 12, 15, 20', () => {
     expect(widthVerdict(sf, 12)).toBe('meets');
     expect(widthVerdict(sf, 15)).toBe('depends');
