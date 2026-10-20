@@ -1,0 +1,10 @@
+{
+  "tier": "minor",
+  "justification": "Two site entries, two key rules of the existing shape, a loop over streets in the existing address prover, and an optional dpi/clip on figure entries",
+  "commit_hash": "38e1906a",
+  "files": ["data/site_chapters/address_sites.json", "scripts/gate_rules.py", "scripts/site_addresses.py", "scripts/site_figure_check.py"],
+  "break_it": [
+    {"scenario": "a two-street site whose second street has a neighbour inside the outline", "what_happens": "a neighbouring property would be given the site's rules", "mitigated": true, "how": "neighbours are checked on every listed street, not only the first", "repro": "python scripts/build_site_boundaries.py --addresses --only 'G8 Narrabeen'"}
+  ],
+  "post_merge": {"db_reset": "No", "secrets": "No", "other_repo": "No", "manual_verify": "Yes — 1296 Pittwater Road Narrabeen matches area G8 Narrabeen; Evergreen stays unloaded until its figure check passes"}
+}
