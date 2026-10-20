@@ -1,0 +1,25 @@
+{
+  "tier": "minor",
+  "justification": "Wording only on three user-facing lines; no logic or data change",
+  "commit_hash": "339ddcad",
+  "files": [
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+    "frontend-nextjs/components/compliance/LepControls.tsx",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx"
+  ],
+  "break_it": [
+    {
+      "scenario": "a reader takes the lower yield number as available without consent",
+      "what_happens": "they would plan on dwellings the council has not approved",
+      "mitigated": true,
+      "how": "the line now says 'if development consent is granted'",
+      "repro": "open an R2 assessment page with a yield range"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — the yield box, a strata page and the DCP tab show the new wording"
+  }
+}
