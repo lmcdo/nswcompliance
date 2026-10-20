@@ -30,11 +30,20 @@ def files(staged: bool) -> list[str]:
 
 def main(argv: list[str]) -> int:
     hits = []
-    for f in files("--staged" in argv):
-        try:
-            data = open(f, "rb").read()
-        except OSError:
-            continue
+    staged = "--staged" in argv
+    for f in files(staged):
+        # Staged mode reads the STAGED blob (what will be committed), not the working copy.
+        if staged:
+            r = subprocess.run(["git", "show", f":{f}"], capture_output=True)
+            if r.returncode != 0:
+                hits.append(f"{f}: could not read the staged copy")
+                continue
+            data = r.stdout
+        else:
+            try:
+                data = open(f, "rb").read()
+            except OSError:
+                continue
         for n, line in enumerate(data.split(b"\n"), 1):
             m = BAD.search(line)
             if m:
