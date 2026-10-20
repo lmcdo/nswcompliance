@@ -52,4 +52,17 @@ describe('DcpMayApplyBlock', () => {
     const text = screen.getByTestId('dcp-may-apply-block').textContent ?? '';
     expect(text).not.toMatch(/\b(safe|feasible|compliant|should|recommend|suitable|adequate|sufficient|approved|guaranteed|certified|verified|ensure|accurate|definitive|comprehensive|reliable)\b/i);
   });
+
+  it('says the rules could not be loaded when the list is missing, instead of "0 rules"', () => {
+    render(<DcpMayApplyBlock mayApply={[{ ...area(), provisions: null }]} />);
+    const text = screen.getByTestId('dcp-may-apply-block').textContent ?? '';
+    expect(text).toMatch(/couldn.t load the rules/);
+    expect(text).not.toMatch(/\(0 rules\)/);
+  });
+
+  it('prints no empty page citation when the page is missing', () => {
+    render(<DcpMayApplyBlock mayApply={[{ ...area(), applies_to_page: null }]} />);
+    const text = screen.getByTestId('dcp-may-apply-block').textContent ?? '';
+    expect(text).not.toMatch(/\(page \)/);
+  });
 });

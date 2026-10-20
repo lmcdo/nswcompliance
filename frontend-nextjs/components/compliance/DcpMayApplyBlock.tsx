@@ -14,10 +14,10 @@ export interface MayApplyArea {
   title: string;
   reason_code: string;
   reason_text: string;
-  applies_to_quote: string;
-  applies_to_page: number | string;
+  applies_to_quote?: string | null;
+  applies_to_page?: number | string | null;
   suburb: string;
-  provisions: Provision[];
+  provisions?: Provision[] | null;
 }
 
 export function DcpMayApplyBlock({ mayApply }: { mayApply: MayApplyArea[] | null | undefined }) {
@@ -25,7 +25,9 @@ export function DcpMayApplyBlock({ mayApply }: { mayApply: MayApplyArea[] | null
   return (
     <div data-testid="dcp-may-apply-block" className="mb-3 space-y-2">
       {mayApply.map((area) => {
-        const rules = area.provisions ?? [];
+        // A missing list is a loading failure, not "0 rules": say so (Sol, 2026-10-20).
+        const loaded = Array.isArray(area.provisions);
+        const rules: Provision[] = loaded ? (area.provisions as Provision[]) : [];
         return (
           <details
             key={area.area_id}
@@ -33,13 +35,22 @@ export function DcpMayApplyBlock({ mayApply }: { mayApply: MayApplyArea[] | null
             className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5"
           >
             <summary className="cursor-pointer">
-              Rules for {area.title} may apply to this property ({rules.length} {rules.length === 1 ? 'rule' : 'rules'})
+              Rules for {area.title} may apply to this property
+              {loaded ? ` (${rules.length} ${rules.length === 1 ? 'rule' : 'rules'})` : ''}
             </summary>
             <p className="mt-2">
-              This property is in {area.suburb}. We can’t tell whether it is inside this area. {area.reason_text} The
-              plan says: “{area.applies_to_quote}” (page {area.applies_to_page}). These rules are shown so you can
-              check them; we have not been able to check that they cover this address.
+              This property is in {area.suburb}. We can’t tell whether it is inside this area. {area.reason_text}
+              {area.applies_to_quote ? (
+                <>
+                  {' '}The plan says: “{area.applies_to_quote}”
+                  {area.applies_to_page != null ? ` (page ${area.applies_to_page})` : ''}.
+                </>
+              ) : null}{' '}
+              These rules are shown so you can check them; we have not been able to check that they cover this address.
             </p>
+            {!loaded && (
+              <p className="mt-2 font-medium">We couldn’t load the rules for this area. Please try again later.</p>
+            )}
             <ul className="mt-2 space-y-2">
               {rules.map((p) => {
                 const page = pageLabel(p);
