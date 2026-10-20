@@ -32,11 +32,15 @@ def build(source: Path = SOURCE) -> dict:
     areas = json.loads(source.read_text(encoding="utf-8"))["areas"]
     out: dict[str, dict[str, list[dict]]] = {}
     for a in areas:
-        # An area may name several suburbs ("suburbs": [...]) or one ("suburb"); an area naming none is not exported
-        # (it keeps showing to everyone).
-        for suburb in {canonical_suburb(s) for s in (a.get("suburbs") or [a.get("suburb")]) if s}:
-            if suburb:
-                out.setdefault(a["council"], {}).setdefault(suburb, []).append(a)
+        # An area names several suburbs ("suburbs": [...]) or one ("suburb"). One that names none must say it keeps
+        # showing to everyone ("shown_to_everyone": true); otherwise a typo would drop its rules unnoticed (Sol).
+        suburbs = {canonical_suburb(s) for s in (a.get("suburbs") or [a.get("suburb")]) if s} - {""}
+        if not suburbs:
+            if a.get("shown_to_everyone") is True:
+                continue
+            raise ValueError(f"area {a.get('area_id')!r} names no suburb and is not marked shown_to_everyone")
+        for suburb in suburbs:
+            out.setdefault(a["council"], {}).setdefault(suburb, []).append(a)
     return {
         c: {s: sorted(rows, key=lambda r: r["area_id"]) for s, rows in sorted(subs.items())}
         for c, subs in sorted(out.items())

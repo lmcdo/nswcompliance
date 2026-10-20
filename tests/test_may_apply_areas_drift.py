@@ -30,8 +30,18 @@ def test_exporter_uses_the_frontend_suburb_form_and_fans_out_suburbs(tmp_path):
     src = tmp_path / "s.json"
     src.write_text(json.dumps({"areas": [
         {"area_id": "a", "council": "northern_beaches", "suburbs": ["Freshwater", "Harbord, NSW 2096"]},
-        {"area_id": "b", "council": "northern_beaches", "suburbs": []},
+        {"area_id": "b", "council": "northern_beaches", "suburbs": [], "shown_to_everyone": True},
     ]}), encoding="utf-8")
     out = ex.build(src)
     assert set(out["northern_beaches"]) == {"FRESHWATER", "HARBORD"}
     assert ex.canonical_suburb("Dee Why, NSW 2099") == "DEE WHY"
+
+
+def test_an_area_with_no_suburb_must_say_it_shows_to_everyone(tmp_path):
+    import json
+    import pytest
+    import export_may_apply_areas as ex
+    src = tmp_path / "s.json"
+    src.write_text(json.dumps({"areas": [{"area_id": "typo", "council": "x", "subrub": ["A"]}]}), encoding="utf-8")
+    with pytest.raises(ValueError, match="typo"):
+        ex.build(src)
