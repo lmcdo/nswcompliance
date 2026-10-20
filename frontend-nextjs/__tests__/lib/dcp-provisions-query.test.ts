@@ -47,15 +47,17 @@ describe('site conditions reach the route', () => {
     expect(on.get('flood')).toBe('true');
     expect(on.get('bushfire')).toBe('true');
     for (const v of [false, null, undefined]) {
-      const off = buildForPropertyParams({ formerCouncil: 'Woollahra', flood: v, bushfire: v, acidSulfate: v, riparian: v });
+      const off = buildForPropertyParams({ formerCouncil: 'Woollahra', flood: v, bushfire: v, acidSulfate: v, riparian: v, greenweb: v });
       expect(off.has('flood')).toBe(false);
       expect(off.has('bushfire')).toBe(false);
       expect(off.has('acid_sulfate')).toBe(false);
       expect(off.has('riparian')).toBe(false);
+      expect(off.has('greenweb')).toBe(false);
     }
     const more = buildForPropertyParams({ formerCouncil: 'Marrickville', acidSulfate: true, riparian: true });
     expect(more.get('acid_sulfate')).toBe('true');
     expect(more.get('riparian')).toBe('true');
+    expect(buildForPropertyParams({ formerCouncil: 'ku_ring_gai', greenweb: true }).get('greenweb')).toBe('true');
   });
 });
 

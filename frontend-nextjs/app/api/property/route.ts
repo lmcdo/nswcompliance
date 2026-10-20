@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PropertyDataService } from '../../../lib/property-data';
 import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 import { query } from '@/lib/db';
+import { greenwebConstraints } from '@/lib/greenweb-overlay';
 
 /**
  * General NSW Property Data API Endpoint
@@ -203,6 +204,14 @@ export async function GET(req: NextRequest) {
    }
  } catch (spatialErr) {
    console.warn('[Property API] Spatial overlay query failed (non-fatal):', spatialErr);
+ }
+ // Ku-ring-gai Greenweb is flagged by the LOT, not the address point: Part 18 applies to areas
+ // identified as Greenweb, and a lot that only partly overlaps a patch is still bound. Separate
+ // query so a failure here cannot hide the point-based overlays above, and vice versa.
+ // greenwebConstraints never throws: a failed check comes back as a plain-words greenwebUnchecked note.
+ // Ku-ring-gai only: Greenweb is that council's own DCP map, so no other council gets a Greenweb note (Sol, 2026-10-20).
+ if (/ku-?ring-?gai/i.test(String(propertyData.constraints?.lga ?? ''))) {
+   Object.assign(propertyData.constraints, await greenwebConstraints(query, spatialLon, spatialLat));
  }
  }
 

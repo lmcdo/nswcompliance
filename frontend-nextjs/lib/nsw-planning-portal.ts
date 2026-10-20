@@ -132,6 +132,11 @@ export interface PlanningConstraints {
  foreshoreBuildingLine?: { hasLine: boolean; layClass?: string } | null;
  landReservation?: { hasReservation: boolean; purpose?: string } | null;
  riparianLand?: { inRiparianArea: boolean; category?: string } | null;
+ // Ku-ring-gai DCP Part 18R.1 Greenweb: set when any part of the LOT overlaps a category (basis 'lot'),
+ // or, only when no lot polygon was found, when the address point is inside one (basis 'point').
+ greenweb?: { onGreenweb: boolean; categories: string[]; basis: 'lot' | 'point' } | null;
+ /** Plain-words note when the Greenweb check could not run (Part 18 rules may then be missing). */
+ greenwebUnchecked?: string;
  wetlands?: { inWetlandsArea: boolean } | null;
  keySite?: { isKeySite: boolean; clause?: string } | null;
  activeStreetFrontage?: { required: boolean; clause?: string } | null;

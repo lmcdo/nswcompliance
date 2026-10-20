@@ -1,0 +1,92 @@
+{
+  "tier": "standard",
+  "justification": "Changes which properties are shown Ku-ring-gai Part 18 biodiversity rules: a new overlay layer, a lot-overlap flag in the property lookup, a new condition in the rules route, and a gate rule",
+  "commit_hash": "e8e7e524",
+  "files": [
+    "data/krg_greenweb/greenweb_2021.geojson.gz",
+    "scripts/load_greenweb_overlay.py",
+    "frontend-nextjs/lib/greenweb-overlay.ts",
+    "frontend-nextjs/app/api/property/route.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/lib/dcp-provisions-query.ts",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "scripts/dq_probe_live.py",
+    "scripts/gate_rules.py"
+  ],
+  "falsifiable_check": {
+    "command": "pytest tests/test_greenweb_overlay.py tests/test_gate_rules.py; after release: a Ku-ring-gai lot partly on a Canopy Remnant patch (address point outside it) gets greenweb=true and sees Part 18",
+    "fails_when": "the Greenweb layer disagrees with the council's own Part 18R.1 map sheets registered to the NSW cadastre (category areas within 1% of the registered polygons: core 3,141.6 ha, support 1,321.7, landscape 828.6, corridor 4,048.5, canopy 203.8), or a lot touching Greenweb is not flagged, or Part 18 rows reach a lot that does not touch it",
+    "observed_red": "On origin/main Part 18's 129 served rows are layer 'generic' (shown to every Ku-ring-gai property), and gating them on the LEP biodiversity layer would hide them from ~166 ha of Canopy Remnant (82% of it outside that layer; measured 2026-10-20 by registering the council's 20 Greenweb sheets to the cadastre). No 'greenweb' overlay exists (0 rows)."
+  },
+  "pre_impl": {
+    "existing_data": "spatial_overlays (point-based flags), nsw_cadastre_lots, the council's Greenweb PDF sheets",
+    "assumption_mismatch": "registration error of a few metres can flag a neighbouring lot along a boundary (shown, not hidden); if the greenweb query fails the flag is unset and Part 18 is not shown (logged), as for the other overlays",
+    "new_vs_existing": "Ku-ring-gai only; other councils unchanged",
+    "falsifiable_check": {
+      "command": "see top",
+      "fails_when": "see top",
+      "observed_red": "see top"
+    }
+  },
+  "functions": [
+    {
+      "name": "greenwebForPoint",
+      "file_line": "frontend-nextjs/lib/greenweb-overlay.ts:62",
+      "input": "the address coordinates and a query function for the database",
+      "output": "the Greenweb categories the lot touches and whether the lot or only the point was used, or null",
+      "if_none": "null when not on Greenweb or coordinates are not finite; throws on a database error, which the caller logs"
+    }
+  ],
+  "values": [
+    {
+      "value": "constraints.greenweb",
+      "read_at": "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+      "nullable": "yes",
+      "guard_at": "constraints?.greenweb?.onGreenweb",
+      "if_missing": "greenweb not sent; the condition layer serves no Part 18 rows"
+    }
+  ],
+  "queries": [
+    {
+      "sql": "GREENWEB_LOT_SQL: lots containing the point intersected with spatial_overlays layer_type='greenweb'",
+      "where_clause": "layer_type = 'greenweb' AND ST_Intersects(o.geom, lot.geom)",
+      "null_safe": "COALESCE to an empty array",
+      "returns": "lot_count and categories",
+      "purpose": "find the Greenweb categories that any part of the property's lot overlaps",
+      "file_line": "frontend-nextjs/lib/greenweb-overlay.ts:29"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "a lot only partly on a small canopy patch, address point outside it",
+      "what_happens": "a point test would hide Part 18 from a bound lot",
+      "mitigated": true,
+      "how": "the lot polygon is intersected, not the point",
+      "repro": "jest greenweb-overlay.test.ts"
+    },
+    {
+      "scenario": "the gate rule runs before the new code is deployed",
+      "what_happens": "old code has no greenweb condition, so Part 18 would reach nobody",
+      "mitigated": true,
+      "how": "release order recorded: deploy, load layer, then apply gate",
+      "repro": "n/a"
+    },
+    {
+      "scenario": "the greenweb database query errors during a page view",
+      "what_happens": "the flag is unset and Part 18 rules are not shown for that view",
+      "mitigated": true,
+      "how": "the property carries a plain-words greenwebUnchecked note saying the check could not run and the rules may be missing",
+      "repro": "force the query to throw; constraints.greenwebUnchecked is set"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — after deploy: load_greenweb_overlay.py --commit, then derive_precinct_keys.py --council ku_ring_gai --apply; check a canopy-remnant lot sees Part 18 and a lot off Greenweb does not"
+  },
+  "real_layer_exempt": {
+    "scripts/load_greenweb_overlay.py": "hand-run one-off loader: dry run by default; validates every geometry with PostGIS before writing; backs up and replaces only layer_type='greenweb' for KU-RING-GAI in one transaction"
+  }
+}

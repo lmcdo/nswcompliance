@@ -27,6 +27,8 @@ export interface ForPropertyQueryInput {
   acidSulfate?: boolean | null;
   /** The lot is on the LEP Riparian Lands map. */
   riparian?: boolean | null;
+  /** Any part of the lot overlaps Ku-ring-gai's DCP Part 18R.1 Greenweb maps. */
+  greenweb?: boolean | null;
 }
 
 export function buildForPropertyParams(input: ForPropertyQueryInput): URLSearchParams {
@@ -53,6 +55,7 @@ export function buildForPropertyParams(input: ForPropertyQueryInput): URLSearchP
   if (input.bushfire === true) params.set('bushfire', 'true');
   if (input.acidSulfate === true) params.set('acid_sulfate', 'true');
   if (input.riparian === true) params.set('riparian', 'true');
+  if (input.greenweb === true) params.set('greenweb', 'true');
   // dev_types intentionally excluded -- provisions are property-specific, not dev-type-specific.
   return params;
 }

@@ -90,7 +90,7 @@ def test_all_heritage_pattern_reads_the_chapters_own_sentence():
 def test_dq146_counts_exactly_what_no_route_query_returns():
     sql = probes.PROBES["DQ-146"][1]
     assert "v2_dcp_layer = 'condition'" in sql
-    assert "NOT IN ('flood', 'bushfire', 'acid_sulfate', 'riparian')" in sql
+    assert "NOT IN ('flood', 'bushfire', 'acid_sulfate', 'riparian', 'greenweb')" in sql
     assert "<> 'heritage'" in sql
 
 
