@@ -348,6 +348,19 @@ EXTRA_KEY_RULES += [
      "where": "source_chapter_key = 'warringah-dcp-2011-full' AND (pdf_page BETWEEN 95 AND 104"
               " OR id IN (190884, 191033, 191125, 191195, 192013))",
      "strategy": {"type": "constant", "precinct_id": "G1 Dee Why Town Centre"}},
+    # Warringah DCP 2011 G4 "This Plan applies to Lot 100, DP 1015283, 145 Old Pittwater Road, Brookvale" (p121).
+    # Outline = build_site_boundaries.py --addresses (the lot is no longer in the cadastre). G4 runs p121-137; p121 is
+    # shared with G3, so only its two G4 rows (the 'Applies to Land' and 'Objectives' rows) are listed by id.
+    {"name": "warringah_g4_warringah_mall", "council": "northern_beaches", "validate": False,
+     "where": "source_chapter_key = 'warringah-dcp-2011-full' AND (pdf_page BETWEEN 122 AND 137"
+              " OR id IN (192062, 192063))",
+     "strategy": {"type": "constant", "precinct_id": "G4 Warringah Mall"}},
+    # Warringah DCP 2011 G6 "for future development on Lot 1, DP 706230, 932 Pittwater Road Dee Why" (p152).
+    # Outline = build_site_boundaries.py (lot list). G6 runs p152-157 plus the one G6 row at the top of p158 (G7 starts
+    # lower on that page).
+    {"name": "warringah_g6_dee_why_rsl", "council": "northern_beaches", "validate": False,
+     "where": "source_chapter_key = 'warringah-dcp-2011-full' AND (pdf_page BETWEEN 152 AND 157 OR id IN (192172))",
+     "strategy": {"type": "constant", "precinct_id": "G6 Dee Why RSL Club"}},
 ]
 EXTRA_KEY_RULES += [
     # Woollahra E1.8.4 "Certain land in Paddington zoned MU1 Mixed Use" (p25) -> Paddington HCA outline + MU1 tag.
