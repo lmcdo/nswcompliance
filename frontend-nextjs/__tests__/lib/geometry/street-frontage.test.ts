@@ -121,6 +121,14 @@ describe('measureStreetFrontage synthetic rectangle', () => {
     expect(split.roads[0].frontage_m).toBeGreaterThan(11);
   });
 
+  it('a short gap in the middle of the edge is not frontage', () => {
+    const mid = measureStreetFrontage(rect(0, 0, 20, 40), [
+      { name: 'TEST ST', rings: [rect(-20, -10, 28.75, 10)] },
+      { name: 'TEST ST', rings: [rect(11.25, -10, 30, 10)] },
+    ]);
+    expect(Math.abs(mid.roads[0].frontage_m - 17.5)).toBeLessThanOrEqual(0.5);
+  });
+
   it('a short gap at a corner is still frontage', () => {
     const gap = measureStreetFrontage(rect(0, 0, 20, 40), [{ name: 'TEST ST', rings: [rect(-20, -10, 38, 10)] }]);
     expect(Math.abs(gap.roads[0].frontage_m - 20)).toBeLessThanOrEqual(0.4);

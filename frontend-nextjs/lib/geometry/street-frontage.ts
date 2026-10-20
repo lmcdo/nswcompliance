@@ -121,22 +121,17 @@ function edgeRoadFraction(edge: Seg, road: Seg[]): number {
   return hits.filter(Boolean).length / hits.length;
 }
 
-/** Share of the edge that is frontage: beside a road, with gaps up to FRONTAGE_GAP_M ignored. */
+/** Share of the edge that is frontage: beside a road. A gap up to FRONTAGE_GAP_M at either END of the edge still
+ *  counts (the road boundary curving away at a corner); a gap in the middle never does (Sol, 2026-10-20). */
 function edgeFrontageShare(edge: Seg, road: Seg[]): number {
   const hits = edgeRoadHits(edge, road);
+  const first = hits.indexOf(true);
+  if (first < 0) return 0;
+  const last = hits.lastIndexOf(true);
   const step = Math.hypot(edge[1][0] - edge[0][0], edge[1][1] - edge[0][1]) / hits.length;
-  let counted = 0;
-  let run = 0;
-  for (const h of [...hits, true]) { // a trailing true closes the last run
-    if (h) {
-      if (run * step <= FRONTAGE_GAP_M) counted += run;
-      run = 0;
-      counted += 1;
-    } else {
-      run += 1;
-    }
-  }
-  return Math.min(1, (counted - 1) / hits.length);
+  let counted = hits.filter(Boolean).length;
+  for (const run of [first, hits.length - 1 - last]) if (run * step <= FRONTAGE_GAP_M) counted += run;
+  return counted / hits.length;
 }
 
 /** For points along the edge (at least 40, at most 0.25 m apart), whether each runs alongside a road segment. */

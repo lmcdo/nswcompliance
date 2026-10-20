@@ -232,3 +232,11 @@ def test_one_road_split_into_parcels_still_owns_the_edge():
     p2 = {"name": "TEST ST", "rings": [rect(14, -10, 30, 10)]}
     sf = measure_street_frontage(rect(0, 0, 20, 40), [p1, p2])
     assert sf.status == "measured" and road(sf, "TEST ST").frontage_m > 11
+
+
+def test_short_gap_in_the_middle_is_not_frontage():
+    # Sol 2026-10-20: a 2.5 m break in the middle of the road edge is not a corner curve.
+    p1 = {"name": "TEST ST", "rings": [rect(-20, -10, 28.75, 10)]}
+    p2 = {"name": "TEST ST", "rings": [rect(11.25, -10, 30, 10)]}
+    sf = measure_street_frontage(rect(0, 0, 20, 40), [p1, p2])
+    assert road(sf, "TEST ST").frontage_m == pytest.approx(17.5, abs=0.5)

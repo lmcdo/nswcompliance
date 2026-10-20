@@ -106,18 +106,20 @@ def _edge_road_fraction(edge: Seg, road: list[Seg]) -> float:
 
 
 def _edge_frontage_share(edge: Seg, road: list[Seg]) -> float:
-    """Share of the edge that is frontage: beside a road, with gaps up to FRONTAGE_GAP_M ignored."""
+    """Share of the edge that is frontage: beside a road. A gap up to FRONTAGE_GAP_M at either END
+    of the edge still counts (the road boundary curving away at a corner); a gap in the middle never
+    does, since a corner cannot be there (Sol, 2026-10-20)."""
     hits = _edge_road_hits(edge, road)
+    if not any(hits):
+        return 0.0
     step = _edge_len(edge) / len(hits)
-    counted, run = 0, 0
-    for h in [*hits, True]:  # a trailing True closes the last run
-        if h:
-            counted += run if run * step <= FRONTAGE_GAP_M else 0
-            run = 0
-            counted += 1
-        else:
-            run += 1
-    return min(1.0, (counted - 1) / len(hits))
+    first = hits.index(True)
+    last = len(hits) - 1 - hits[::-1].index(True)
+    counted = sum(hits)
+    for run in (first, len(hits) - 1 - last):
+        if run * step <= FRONTAGE_GAP_M:
+            counted += run
+    return counted / len(hits)
 
 
 def _edge_road_hits(edge: Seg, road: list[Seg]) -> list[bool]:
