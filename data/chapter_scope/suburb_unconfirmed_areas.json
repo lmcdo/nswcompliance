@@ -1,0 +1,4 @@
+{
+  "_about": "Areas of a council plan whose rules may apply to a property because it is in the area's suburb but the area has no outline we can test. Source for frontend-nextjs/shared/may-apply-areas.json (scripts/export_may_apply_areas.py).",
+  "areas": []
+}
