@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which properties are shown Ku-ring-gai Part 18 biodiversity rules: a new overlay layer, a lot-overlap flag in the property lookup, a new condition in the rules route, and a gate rule",
-  "commit_hash": "b6700fa9",
+  "commit_hash": "eb0ff09f",
   "files": [
     "data/krg_greenweb/greenweb_2021.geojson.gz",
     "scripts/load_greenweb_overlay.py",
