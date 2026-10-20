@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which DCP rows the page marks as corner-only, which setback rows the yield box uses for a lot, and the page check that audits both",
-  "commit_hash": "dcc1e0aa",
+  "commit_hash": "3c7737e5",
   "files": [
     "frontend-nextjs/lib/geometry/corner-status.ts",
     "frontend-nextjs/__tests__/lib/geometry/corner-status.test.ts",
@@ -17,7 +17,7 @@
   },
   "pre_impl": {
     "existing_data": "DCP row condition text from /api/dcp/structured-controls; propertyData.cornerLot from the road corridor query",
-    "assumption_mismatch": "wording outside the tested forms (e.g. 'Other than garages corner lots' with no comma) can still be misread; T2-5 stores scope as data instead",
+    "assumption_mismatch": "an unrelated noun outside the short linking-word list is never read as excluding corner lots, but a qualifier outside it (e.g. excluding battle-axe and corner lots) is read as corner-only; T2-5 stores scope as data instead",
     "new_vs_existing": "every assessment page and yield box after deploy",
     "falsifiable_check": {
       "command": "jest __tests__/lib/geometry/corner-status.test.ts && pytest tests/test_setback_conflict_resolution.py tests/test_page_integrity_checks_data.py",
