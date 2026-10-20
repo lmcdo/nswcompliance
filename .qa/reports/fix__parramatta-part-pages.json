@@ -1,0 +1,75 @@
+{
+  "tier": "standard",
+  "justification": "Changes which Part's scope the tagger applies to Parramatta DCP rules, which feeds the zones and project types each rule is served to",
+  "commit_hash": "9cbfc6cd",
+  "files": [
+    "enrichment/config/parramatta_part_pages.json",
+    "enrichment/config/parramatta_config.py",
+    "enrichment/extractors/applicability_tagger.py",
+    "tests/test_parramatta_part_pages.py",
+    ".gitignore"
+  ],
+  "falsifiable_check": {
+    "command": "pytest tests/test_parramatta_part_pages.py tests/test_parramatta_numbered_parts_scope.py tests/test_northern_beaches_part_pages.py tests/test_cumberland_part_pages.py",
+    "fails_when": "a rule's Part disagrees with an external answer: the plan's own cover pages and printed page labels in the Parramatta DCP PDF (cover pages 4,12,46,137,177,269,289,396,1079,1466,1499,1509 read from the PDF; every one of 8,674 printed labels 'n - x' agrees), or a rule is widened to all zones and all project types compared with origin/main",
+    "observed_red": "On origin/main the tagger scopes 191 served Parramatta rules by a heading from another Part (appendix rows on pdf 1509-1563 headed '8.0'/'13.0' take Part 8's area-limited scope); test_a_heading_from_another_part_takes_the_pages_part fails there. Before/after over all 8,887 served rows (tag_with_provenance, live rows, 2026-10-20): 46 change, all Part 12, 0 widened."
+  },
+  "pre_impl": {
+    "existing_data": "regulatory_provisions.pdf_page (100% on served Parramatta rows); the plan PDF's cover pages",
+    "assumption_mismatch": "a row with no heading code, or a bare-number heading, is not re-pointed by the page; existing rows keep their stored tags until the tagger is re-run on them",
+    "new_vs_existing": "rows tagged after merge; existing rows need a re-tag run (separate, user approval)",
+    "falsifiable_check": {
+      "command": "pytest tests/test_parramatta_part_pages.py",
+      "fails_when": "the Part disagrees with the plan's cover pages, or a rule is widened",
+      "observed_red": "See top-level observed_red."
+    }
+  },
+  "functions": [
+    {
+      "name": "_get_config_driven",
+      "file_line": "enrichment/extractors/applicability_tagger.py:589",
+      "input": "a rule's text, its document id, its stored Part and its PDF page",
+      "output": "the scope entry of the Part the rule belongs to, or None when no Part entry applies",
+      "if_none": "no pdf_page or a page outside every range: behaviour unchanged from before"
+    }
+  ],
+  "values": [
+    {
+      "value": "pdf_page",
+      "read_at": "enrichment/extractors/applicability_tagger.py:589",
+      "nullable": "yes",
+      "guard_at": "if pdf_page and config.get('part_pages')",
+      "if_missing": "no page Part; the heading decides as before"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a bare-number heading such as '# 3 Metre Wide Lanes' on a Part 8 page",
+      "what_happens": "re-pointing it to Part 8 would replace its text-derived types with all and widen it",
+      "mitigated": true,
+      "how": "only a dotted section number is corrected by the page",
+      "repro": "pytest tests/test_parramatta_part_pages.py -k bare_number"
+    },
+    {
+      "scenario": "a row with no heading code on a Part 8 page",
+      "what_happens": "a Part entry's all would overwrite 'retail, cafe and restaurant' types and show it for a house",
+      "mitigated": true,
+      "how": "rows with no code keep their text reading",
+      "repro": "pytest tests/test_parramatta_part_pages.py -k no_heading_code"
+    },
+    {
+      "scenario": "a new version of the PDF moves the cover pages",
+      "what_happens": "page ranges would name the wrong Part for the new version",
+      "mitigated": false,
+      "how": "accepted: the file names its source PDF version; a re-extraction from a new version must re-read the cover pages",
+      "repro": "n/a"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — re-tag the 46 Parramatta appendix rows (needs user approval), then check they no longer carry Part 8 scope"
+  }
+}
