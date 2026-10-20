@@ -1,0 +1,86 @@
+{
+  "tier": "standard",
+  "justification": "The for-property route served every council's rules when called without former_council (its only council filter). Live 2026-10-21: lga=Bayside&zone=R2&topic=parking returned 1,980 rules from 12 other councils. The AI router treated lga alone as a council scope and could send that call. Separately the general/use layers were capped at 3,000 rows and the HCA query at 2,000 with no signal when the cap bit.",
+  "commit_hash": "5bef377d",
+  "files": [
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/lib/ai/router.ts",
+    "frontend-nextjs/__tests__/api/not-covered-meta.test.ts",
+    "frontend-nextjs/__tests__/api/for-property-council-and-cap.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/for-property-council-and-cap.test.ts --ci",
+    "fails_when": "Measured: with both guards replaced by if (false), 2 of 4 tests fail (the lga-only 400 and the 3,001-row failure). Restored: 4/4 pass; the 9 route/router suites pass 57/57.",
+    "external_authority": "The live production API: lga-only call returned 1,980 rows from 12 councils; council-scoped widest case (Marrickville, heritage=true, no zone) returned 2,684 general rows, below the 3,000 cap; CB R2 with council 1,677.",
+    "observed_red": "Both guards set to if (false): npx jest on the new file = 2 failed, 2 passed (lga-only returned 200 not 400; 3,001 rows returned 200 not 500). Restored: 4 passed."
+  },
+  "pre_impl": {
+    "existing_data": "All mounted callers checked on origin/main: ProvisionsByTocStructure only fetches when formerCouncil is set; ProvisionsByTopic, useFullPropertyData and useFullAssessment are not mounted; lib/ai/router.ts is mounted via /api/ai/chat and allowed lga-only.",
+    "assumption_mismatch": "The plan assumed the 3,000 cut-off dropped Marrickville rules per house. It does not: the exact 3,000+3,000 seen for CB came from calls without former_council, i.e. the cross-council leak, not a council over the cap.",
+    "new_vs_existing": "One guard at the top of GET, one helper next to the caps, LIMIT cap+1 on the two capped queries, one-line router scope change. One new test file following citation-checked-for-property.test.ts."
+  },
+  "functions": [
+    {
+      "name": "assertWithinCap",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:94",
+      "input": "row count from a query fetched with LIMIT cap+1",
+      "output": "throws when count > cap; GET's catch returns 500 with the message in details",
+      "if_none": "0 rows is within cap and passes through as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "Bayside lga-only parking: 1,980 rows, 12+ councils",
+      "read_at": "curl https://canibuildit.com.au/api/provisions/for-property?lga=Bayside&zone=R2&topic=parking, 2026-10-21",
+      "if_missing": "without it the leak is a code-reading claim only"
+    },
+    {
+      "value": "Marrickville heritage=true no zone: 2,684 general rows",
+      "read_at": "live API 2026-10-21",
+      "if_missing": "without it there is no measure of headroom under the 3,000 cap"
+    }
+  ],
+  "residual_risk": "A client that omits former_council now gets a 400 rather than wrong rules; the address page never does, the unmounted hooks would. Marrickville headroom is ~316 rows; if it grows past 3,000 the page errors instead of dropping rules, which is the intended trade.",
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A caller passes lga but no former_council (AI chat with no formerCouncil).",
+      "test": "refuses an lga-only request before any rule query",
+      "mitigated": true,
+      "how": "Route returns 400 before any rule query; router now refuses first and says the council is not known.",
+      "repro": "curl 'https://canibuildit.com.au/api/provisions/for-property?lga=Bayside&zone=R2&topic=parking'",
+      "what_happens": "Before: 200 with 1,980 rules from 12 other councils, read as this property's rules."
+    },
+    {
+      "scenario": "A council grows past 3,000 live general rules after its filters (Marrickville is at 2,684 widest).",
+      "test": "fails the request when a layer has more rows than the cap",
+      "mitigated": true,
+      "how": "Query fetches 3,001, assertWithinCap throws, GET returns 500 with the reason in details; the page shows an error, not a short list.",
+      "repro": "npx jest __tests__/api/for-property-council-and-cap.test.ts -t 'more rows than the cap'",
+      "what_happens": "Before: the extra rows were dropped silently and the page looked complete."
+    },
+    {
+      "scenario": "Exactly 3,000 rows: off-by-one would refuse a complete answer.",
+      "test": "serves a layer at exactly the cap",
+      "mitigated": true,
+      "how": "Served normally (200, 3,000 rows).",
+      "repro": "npx jest __tests__/api/for-property-council-and-cap.test.ts -t 'exactly the cap'",
+      "what_happens": "An off-by-one guard would refuse a complete 3,000-row answer."
+    },
+    {
+      "scenario": "Someone lowers LIMIT back to the cap, so the extra row never comes back and the guard can never fire.",
+      "test": "asks the database for one row more than the cap",
+      "mitigated": true,
+      "how": "SQL assertion fails: every layer query must say LIMIT 3001.",
+      "repro": "set LIMIT ${LAYER_ROW_CAP} in route.ts, then npx jest __tests__/api/for-property-council-and-cap.test.ts -t 'one row more'",
+      "what_happens": "With LIMIT at the cap the guard can never see the extra row and is dead code."
+    }
+  ],
+  "mutation_analysis": "Run, not described: guards replaced by if (false) -> 2 of 4 fail. The LIMIT 3001 test guards against the guard being made unreachable.",
+  "post_merge": {
+    "db_reset": "No. No database write; read-only route change.",
+    "secrets": "None.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes: after deploy, curl /api/provisions/for-property?lga=Bayside&zone=R2&topic=parking must return 400, and former_council=Marrickville&zone=R2 must still return 1,786 general rules."
+  }
+}

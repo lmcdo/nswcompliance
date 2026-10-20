@@ -85,6 +85,18 @@ interface LayerResult {
  * For Marrickville (chapter 9), convert 9_XX to XX_
  * For other councils (Ashfield, Leichhardt), pass through as-is
  */
+// Row caps per query. A cap that bites drops rules silently, so each query asks for one row
+// more and the request fails when it comes back. Widest real case measured 2026-10-21:
+// Marrickville heritage, no zone = 2,684 general rules.
+const LAYER_ROW_CAP = 3000;
+const HCA_ROW_CAP = 2000;
+
+function assertWithinCap(rowCount: number, cap: number, label: string): void {
+  if (rowCount > cap) {
+    throw new Error(`The ${label} rules for this property exceed ${cap} rows, so some would be left out.`);
+  }
+}
+
 function normalizePrecinctId(precinctId: string): string {
   if (!precinctId) return precinctId;
 
@@ -311,6 +323,16 @@ export async function GET(request: NextRequest) {
     if (filters.former_council && !councilKey(filters.former_council)) {
       return NextResponse.json(
         { success: false, error: `Council "${filters.former_council}" is not recognised, so its rules cannot be looked up.` },
+        { status: 400 }
+      );
+    }
+
+    // No council = no council filter in any layer query, so every council's rules came back
+    // (capped at 3,000 a layer): a Bayside parking lookup was served 1,980 rules from 12 other
+    // councils (live, 2026-10-21). `lga` is not a filter here. Refuse instead.
+    if (!filters.former_council) {
+      return NextResponse.json(
+        { success: false, error: 'No council given, so the rules for this property cannot be looked up.' },
         { status: 400 }
       );
     }
@@ -859,9 +881,10 @@ async function queryHeritageByHca(
     params.push(filters.topic.replace(/ /g, '_'));
   }
 
-  sql += ` ORDER BY rp.v2_dcp_part, rp.id LIMIT 2000`;
+  sql += ` ORDER BY rp.v2_dcp_part, rp.id LIMIT ${HCA_ROW_CAP + 1}`;
 
   const result = await client.query(sql, params);
+  assertWithinCap(result.rows.length, HCA_ROW_CAP, 'heritage-area');
 
   // Strip OCR page-header prefix from all provisions (unconditional).
   // The regex only matches the specific "PART N: ALL CAPS\nPAGE_NUM\n[council name]" pattern —
@@ -1189,7 +1212,7 @@ async function queryLayer(
   // DA shows all provisions (no additional filter)
 
   // Order by relevance (if dev_type provided), then by topic and part
-  // Increased limit to 3000 to accommodate all Leichhardt provisions (2309 generic + 660 precinct)
+  // Capped at LAYER_ROW_CAP; assertWithinCap fails the request rather than drop rules.
   if (filters.dev_type) {
     const devTypeParamIndex = 1; // First parameter in params array
     sql += ` ORDER BY
@@ -1197,12 +1220,13 @@ async function queryLayer(
       WHEN v2_applicable_dev_types && $${devTypeParamIndex}::text[] THEN 1
       WHEN v2_applicable_dev_types IS NULL OR 'ALL' = ANY(v2_applicable_dev_types) THEN 2
       ELSE 3
-    END, v2_topic, v2_dcp_part, id LIMIT 3000`;
+    END, v2_topic, v2_dcp_part, id LIMIT ${LAYER_ROW_CAP + 1}`;
   } else {
-    sql += ` ORDER BY v2_topic, v2_dcp_part, id LIMIT 3000`;
+    sql += ` ORDER BY v2_topic, v2_dcp_part, id LIMIT ${LAYER_ROW_CAP + 1}`;
   }
 
   const result = await client.query(sql, params);
+  assertWithinCap(result.rows.length, LAYER_ROW_CAP, layer);
 
   // Strip OCR page-header prefix from all provisions (unconditional).
   // The regex only matches the specific "PART N: ALL CAPS\nPAGE_NUM\n[council name]" pattern —
