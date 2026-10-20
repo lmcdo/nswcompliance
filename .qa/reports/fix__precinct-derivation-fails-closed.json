@@ -1,0 +1,113 @@
+{
+  "tier": "critical",
+  "justification": "Writes production rows (v2_is_actionable) on the publish path; governs whether precinct-limited rules reach every house in a council",
+  "commit_hash": "f5aa0df6",
+  "files": [
+    "scripts/dcp_area_link_guard.py",
+    "scripts/dcp_extract_changed.py",
+    "scripts/dcp_commit_approved.py",
+    "tests/test_dcp_area_link_guard.py"
+  ],
+  "falsifiable_check": {
+    "command": "pytest tests/test_dcp_area_link_guard.py; read-only unkeyed_precinct_ids per council against production",
+    "fails_when": "a live row that a precinct rule should key stays actionable with no key after a publish, or a check that could not run is not reported",
+    "observed_red": "On origin/main rederive_after_publish only prints a warning on failure and has no check of the result; a read-only run of this branch's unkeyed_precinct_ids against production finds 96 live Canterbury-Bankstown rows a precinct rule should key but that have no key (served council-wide now). test_rows_the_rule_should_have_keyed_are_withheld fails on main (no withhold_unkeyed)."
+  },
+  "pre_impl": {
+    "existing_data": "regulatory_provisions current rows of councils with precinct RULES (derive_precinct_keys); serving gate is is_current AND v2_is_actionable = true",
+    "assumption_mismatch": "a row a rule selects that is legitimately council-wide would be withheld if _derive returns a key for it; _derive is the same function the derivation uses, so this only happens where the derivation itself would key it",
+    "new_vs_existing": "runs after every publish from both paths; existing unkeyed rows (96 Canterbury-Bankstown) are withheld at that council's next publish",
+    "falsifiable_check": {
+      "command": "pytest tests/test_dcp_area_link_guard.py; read-only unkeyed_precinct_ids per council against production",
+      "fails_when": "a live row that a precinct rule should key stays actionable with no key after a publish, or a check that could not run is not reported",
+      "observed_red": "On origin/main rederive_after_publish only prints a warning on failure and has no check of the result; a read-only run of this branch's unkeyed_precinct_ids against production finds 96 live Canterbury-Bankstown rows a precinct rule should key but that have no key (served council-wide now). test_rows_the_rule_should_have_keyed_are_withheld fails on main (no withhold_unkeyed)."
+    },
+    "external_source_error": "database connection or query failure returns None and the run is reported NOT VERIFIED by Telegram",
+    "frontend_type": "none \u2014 the API already serves only v2_is_actionable = true",
+    "user_failure_mode": "a precinct-limited rule disappears from the page until its key is made, instead of appearing on every house"
+  },
+  "functions": [
+    {
+      "name": "withhold_unkeyed",
+      "file_line": "scripts/dcp_area_link_guard.py:299",
+      "input": "the derivation module and one council name after a publish",
+      "output": "number of rules withheld, or None when the check could not run",
+      "if_none": "a connection or query failure returns None, never 0"
+    },
+    {
+      "name": "unkeyed_precinct_ids",
+      "file_line": "scripts/dcp_area_link_guard.py:263",
+      "input": "an open database cursor, the derivation module and one council name",
+      "output": "sorted ids of live or pending rows a precinct rule should key but that have no key",
+      "if_none": "a council with no rules returns an empty list"
+    },
+    {
+      "name": "alert_precinct_keys",
+      "file_line": "scripts/dcp_area_link_guard.py:242",
+      "input": "published councils, dry-run flag and a send function",
+      "output": "Telegram notice of withheld rules or an unverified check",
+      "if_none": "no notices sends nothing; a send failure is printed, not raised"
+    }
+  ],
+  "values": [
+    {
+      "value": "v2_is_actionable",
+      "read_at": "scripts/dcp_area_link_guard.py:294",
+      "nullable": "yes",
+      "guard_at": "TRUE and NULL both withheld; FALSE left alone",
+      "if_missing": "N/A"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "withhold unkeyed precinct-limited rows",
+      "file_line": "scripts/dcp_area_link_guard.py:321",
+      "where_clause": "id = ANY(ids) AND is_current AND v2_precinct_id IS NULL",
+      "if_zero": "nothing changed, nothing reported",
+      "if_wrong": "a row keyed between the read and the update is excluded by v2_precinct_id IS NULL"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "the precinct derivation raises an error for one council after a publish",
+      "what_happens": "precinct rules of that council stay live with no key, shown to every house",
+      "mitigated": true,
+      "how": "withhold runs regardless of the derivation's outcome",
+      "repro": "pytest test_withholding_runs_even_when_derivation_raises_or_succeeds_silently"
+    },
+    {
+      "scenario": "re-paginated PDF fails the page fingerprint and nothing is keyed",
+      "what_happens": "all of that rule's rows would be served council-wide while derive returns 0",
+      "mitigated": true,
+      "how": "broken fingerprint withholds every unkeyed live row of the rule",
+      "repro": "pytest test_rows_on_a_repaginated_pdf_are_withheld_even_when_no_page_derives"
+    },
+    {
+      "scenario": "withheld row set back to NULL and switched on by routine enrichment",
+      "what_happens": "the unkeyed rule reappears for every house after the next enrichment run",
+      "mitigated": true,
+      "how": "withhold writes FALSE, which routine enrichment does not select",
+      "repro": "pytest test_withheld_means_false_which_routine_enrichment_leaves_alone"
+    },
+    {
+      "scenario": "the production database is down while the post-publish check runs",
+      "what_happens": "the run would report success while nothing was checked",
+      "mitigated": true,
+      "how": "returns None; alert says NOT VERIFIED",
+      "repro": "pytest test_database_down_during_the_check_is_none_not_zero"
+    },
+    {
+      "scenario": "rules live during the minutes between publish commit and derivation",
+      "what_happens": "a precinct rule can be shown council-wide briefly, or indefinitely if the worker is killed",
+      "mitigated": false,
+      "how": "known gap: needs withholding inside the publish transaction (follow-up)",
+      "repro": "kill the publish job after commit, before derivation"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 next Canterbury-Bankstown publish reports [WITHHELD] 96 or fewer and DQ-143 falls"
+  }
+}
