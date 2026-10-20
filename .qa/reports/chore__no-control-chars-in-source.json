@@ -1,0 +1,76 @@
+{
+  "tier": "standard",
+  "justification": "New CI/pre-commit gate plus a behaviour fix in the audit flagger (more rules flagged for human reading)",
+  "commit_hash": "ac3bb26f",
+  "files": [
+    "scripts/lint_control_chars.py",
+    "tests/test_lint_control_chars.py",
+    ".githooks/pre-commit",
+    ".github/workflows/gates.yml",
+    "scripts/address_audit/flag_packets.py",
+    "scripts/dcp_extract_changed.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/lint_control_chars.py; pytest tests/test_lint_control_chars.py",
+    "fails_when": "any tracked source file contains a C0 control character other than tab/newline/CR, or IN_PLACE stops matching 'In <Place>'",
+    "observed_red": "On origin/main scripts/address_audit/flag_packets.py:28 IN_PLACE holds two 0x08 bytes and does not match 'In Ashfield, the setback is 3 m' (test_flag_packets_in_place_pattern_matches_again red there); lint_control_chars on main's tree reports 2 files."
+  },
+  "pre_impl": {
+    "existing_data": "none \u2014 reads tracked file bytes only",
+    "assumption_mismatch": "a binary file with a source extension would be flagged; none exist in the tree today (scan clean)",
+    "new_vs_existing": "every commit and every CI run after this merge",
+    "falsifiable_check": {
+      "command": "python scripts/lint_control_chars.py; pytest tests/test_lint_control_chars.py",
+      "fails_when": "any tracked source file contains a C0 control character other than tab/newline/CR, or IN_PLACE stops matching 'In <Place>'",
+      "observed_red": "On origin/main scripts/address_audit/flag_packets.py:28 IN_PLACE holds two 0x08 bytes and does not match 'In Ashfield, the setback is 3 m' (test_flag_packets_in_place_pattern_matches_again red there); lint_control_chars on main's tree reports 2 files."
+    }
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/lint_control_chars.py:34",
+      "input": "tracked or staged file paths with source extensions",
+      "output": "exit 1 with file:line per control character, else exit 0",
+      "if_none": "no files to check returns OK and exit 0"
+    }
+  ],
+  "values": [
+    {
+      "value": "IN_PLACE",
+      "read_at": "scripts/address_audit/flag_packets.py:28",
+      "nullable": "no",
+      "guard_at": "N/A",
+      "if_missing": "N/A"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a fixture or data file legitimately contains a form feed or control byte",
+      "what_happens": "the lint would block an unrelated commit touching that file",
+      "mitigated": false,
+      "how": "none exist today; such a file would need its extension excluded deliberately",
+      "repro": "add \f to a .md file and commit"
+    },
+    {
+      "scenario": "the flagger now flags 'In <Place>' rules it silently skipped",
+      "what_happens": "more rules go to human reading; audit counts move",
+      "mitigated": true,
+      "how": "intended: those are place-limited rules (DQ-143 class)",
+      "repro": "python scripts/address_audit/flag_packets.py on a saved packet"
+    },
+    {
+      "scenario": "a regex escape written through a shell heredoc in future work",
+      "what_happens": "a word boundary turns into a byte that never matches, silently",
+      "mitigated": true,
+      "how": "pre-commit blocks the staged file; gates blocks the PR",
+      "repro": "pytest tests/test_lint_control_chars.py::test_backspace_is_caught"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
