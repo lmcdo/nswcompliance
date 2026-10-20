@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes a served answer (highest permitted form) on the yield box and Site Report",
-  "commit_hash": "1c15f8c7",
+  "commit_hash": "eb9c48b1",
   "files": [
     "services/intelligence_brief.py",
     "services/constraint_arithmetic.py",
@@ -33,7 +33,7 @@
     },
     {
       "name": "_capacity_ceiling",
-      "file_line": "services/intelligence_brief.py:1662",
+      "file_line": "services/intelligence_brief.py:1671",
       "input": "zone, council, location, lot area, heritage and width range",
       "output": "floor, ceiling or None, LMR flag, citation and a reason for both callers",
       "if_none": "an unknown table gives ceiling None plus the reason, or the LMR uplift if eligible"
@@ -51,7 +51,7 @@
   "queries": [
     {
       "purpose": "councils that have an LEP land use table (coverage)",
-      "file_line": "services/intelligence_brief.py:1449",
+      "file_line": "services/intelligence_brief.py:1452",
       "where_clause": "none (SELECT DISTINCT lga over a small reference table)",
       "if_zero": "every council reads as not held: shown as not known, never one house",
       "if_wrong": "a council wrongly treated as not held shows not known instead of its forms"
