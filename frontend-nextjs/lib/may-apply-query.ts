@@ -34,6 +34,16 @@ export function mayApplyAreasFor(councilSlug: string | null | undefined, suburb:
   return Object.prototype.hasOwnProperty.call(bySuburb, sub) ? bySuburb[sub] : [];
 }
 
+/** How many may-apply areas this council's data lists for one chapter (each area counted once over all suburbs). */
+export function areasInChapter(councilSlug: string | null | undefined, chapterKey: string): number {
+  if (!councilSlug || !Object.prototype.hasOwnProperty.call(DATA, councilSlug)) return 0;
+  const ids = new Set<string>();
+  for (const list of Object.values(DATA[councilSlug])) {
+    for (const a of list) if (a.chapter_key === chapterKey) ids.add(a.area_id);
+  }
+  return ids.size;
+}
+
 /**
  * ONE select per area. Current rows the address route does NOT serve: switched off (v2_is_actionable = FALSE), or
  * an area rule with no outline (precinct layer, v2_precinct_id NULL), which the route's precinct layer returns to

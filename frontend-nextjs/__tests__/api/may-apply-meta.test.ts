@@ -5,6 +5,12 @@
  */
 import { NextRequest } from 'next/server';
 import mayApplyData from '@/shared/may-apply-areas.json';
+import notCoveredData from '@/shared/not-covered-councils.json';
+import { areasInChapter } from '@/lib/may-apply-query';
+import { reasonText } from '@/lib/may-apply-reasons';
+
+// The per-area cap in lib/may-apply-query.ts.
+const MAX_ROWS = 400;
 
 const client = { query: jest.fn(), release: jest.fn() };
 jest.mock('@/lib/db', () => ({ getPool: () => ({ connect: async () => client }) }));
@@ -96,26 +102,50 @@ describe('meta.may_apply', () => {
     for (const a of body.meta.may_apply) expect(a.provisions).toBeNull();
   });
 
-  it('drops a chapter from the not-covered notice only when the block shows its rows', async () => {
-    // A council that has both lists; the suburb and chapter come from the data files.
+  it('drops a chapter from the not-covered notice only when its one area is shown in full', async () => {
+    // Suburbs, chapters and counts come from the data files, not from this test.
     const cb = 'canterbury_bankstown';
-    const cbSuburb = Object.keys(DATA[cb]).find((s) => DATA[cb][s].length > 0)!;
-    const shownKeys = new Set(DATA[cb][cbSuburb].map((a) => a.chapter_key));
-    const { GET } = await import('@/app/api/provisions/for-property/route');
-    const shown = await (await GET(req({ former_council: cb, suburb: cbSuburb }))).json();
-    const left = (shown.meta.not_covered?.chapters ?? []).map((c: { chapter_key: string }) => c.chapter_key);
-    for (const k of shownKeys) expect(left).not.toContain(k);
-    const all = await (await GET(req({ former_council: cb }))).json();
-    const allKeys = all.meta.not_covered.chapters.map((c: { chapter_key: string }) => c.chapter_key);
-    expect([...shownKeys].some((k) => allKeys.includes(k))).toBe(true);
-    expect(left.length).toBe(allKeys.filter((k: string) => !shownKeys.has(k)).length);
-    // Lookup failed: the chapter stays in the notice.
+    const NC = notCoveredData as Record<string, Array<{ chapter_key: string; count_hint?: number }>>;
+    const areaCount = (key: string) => areasInChapter(cb, key);
+    const single = NC[cb].find((c) => typeof c.count_hint === 'number' && areaCount(c.chapter_key) === 1)!;
+    const split = NC[cb].find((c) => areaCount(c.chapter_key) > 1)!;
+    const subOf = (key: string) => Object.keys(DATA[cb]).find((s) => DATA[cb][s].some((a) => a.chapter_key === key))!;
+    const rowsN = (n: number) => async (sql: string) => ({
+      rows: isMayApplySql(sql) ? Array.from({ length: n }, (_, k) => ({ ...ROW, id: k + 1 })) : [],
+    });
+    const keysFor = async (suburb: string) => {
+      const { GET } = await import('@/app/api/provisions/for-property/route');
+      const body = await (await GET(req({ former_council: cb, suburb }))).json();
+      return (body.meta.not_covered?.chapters ?? []).map((c: { chapter_key: string }) => c.chapter_key);
+    };
+    // Whole chapter loaded: dropped.
+    client.query.mockImplementation(rowsN(single.count_hint!));
+    expect(await keysFor(subOf(single.chapter_key))).not.toContain(single.chapter_key);
+    // Fewer rows than the chapter holds: kept.
+    client.query.mockImplementation(rowsN(single.count_hint! - 1));
+    expect(await keysFor(subOf(single.chapter_key))).toContain(single.chapter_key);
+    // A chapter split over several areas: kept, however many rows one area shows.
+    client.query.mockImplementation(rowsN(MAX_ROWS));
+    expect(await keysFor(subOf(split.chapter_key))).toContain(split.chapter_key);
+    // Lookup failed: kept.
     client.query.mockImplementation(async (sql: string) => {
       if (isMayApplySql(sql)) throw new Error('boom');
       return { rows: [] };
     });
-    const failed = await (await GET(req({ former_council: cb, suburb: cbSuburb }))).json();
-    expect(failed.meta.not_covered.chapters.map((c: { chapter_key: string }) => c.chapter_key)).toEqual(allKeys);
+    expect(await keysFor(subOf(single.chapter_key))).toContain(single.chapter_key);
+  });
+
+  it('every area in the data has a usable row selector and a known reason', () => {
+    for (const subs of Object.values(DATA)) {
+      for (const list of Object.values(subs)) {
+        for (const a of list as Array<{ area_id: string; reason_code: string; row_selector?: { pdf_page_from?: number; pdf_page_to?: number; ids?: number[] } }>) {
+          const sel = a.row_selector ?? {};
+          const range = Number.isInteger(sel.pdf_page_from) && Number.isInteger(sel.pdf_page_to) && sel.pdf_page_from! <= sel.pdf_page_to!;
+          expect([a.area_id, range || (sel.ids ?? []).length > 0]).toEqual([a.area_id, true]);
+          expect([a.area_id, reasonText(a.reason_code)]).not.toEqual([a.area_id, null]);
+        }
+      }
+    }
   });
 
   it('offers Northern Beaches areas only to land under Warringah LEP 2011', async () => {

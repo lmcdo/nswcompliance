@@ -41,7 +41,7 @@ import { withServedCitation } from '@/lib/citation-display';
 import { quoteColumns, withCouncilWords } from '@/lib/council-quote';
 import { decideLandApplication, decodeLandApplication } from '@/lib/dcp-land-application';
 import { applyLandConditions, decodeLandFacts } from '@/lib/lep-land-condition';
-import { loadMayApply } from '@/lib/may-apply-query';
+import { loadMayApply, areasInChapter } from '@/lib/may-apply-query';
 
 
 export const dynamic = 'force-dynamic';
@@ -693,7 +693,7 @@ export async function GET(request: NextRequest) {
           dcp_currency: dcpCurrency,
           land_application: landApplication,
           land_conditions: landGate,
-          not_covered: withoutShownAreas(getNotCovered(filters.former_council), mayApply),
+          not_covered: withoutShownAreas(getNotCovered(filters.former_council), mayApply, (k) => areasInChapter(councilSlugForMayApply, k)),
           may_apply: mayApply,
           frontage_setback_figures: frontageFigures.items,
           frontage_setback_figures_failed: frontageFigures.failed,

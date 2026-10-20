@@ -33,17 +33,29 @@ export function getNotCovered(formerCouncil: string | null | undefined): NotCove
 }
 
 /**
- * The notice without the chapters the may-apply block already shows for this suburb, so the page does not say
- * "those rules are not shown" beside a block that shows them (cross-review on #1411). An area whose lookup failed
- * (provisions null) or came back empty keeps its chapter in the notice.
+ * The notice without the chapters the may-apply block shows IN FULL for this suburb, so the page does not say "those
+ * rules are not shown" beside a block that shows them (cross-review on #1411). A chapter is dropped only when one area
+ * is the whole chapter: `areasInChapter` says it is the chapter's only area, and it loaded at least the chapter's
+ * withheld count (count_hint). A chapter split over several areas (CB 7.3: 10, Warringah: 18), an area smaller than
+ * its chapter (CB 2.2 flood: 1 of 97), or a failed or empty lookup keeps the chapter in the notice.
  */
 export function withoutShownAreas(
   notCovered: NotCovered | null,
   mayApply: Array<{ chapter_key?: string; provisions?: unknown[] | null }>,
+  areasInChapter: (chapterKey: string) => number,
 ): NotCovered | null {
   if (!notCovered) return null;
-  const shown = new Set(mayApply.filter((a) => a.provisions && a.provisions.length > 0).map((a) => a.chapter_key ?? ''));
-  const chapters = notCovered.chapters.filter((c) => !shown.has(c.chapter_key));
+  const hints = new Map((DATA[notCovered.council] ?? []).map((r) => [r.chapter_key, r.count_hint]));
+  const whole = new Set(
+    mayApply
+      .filter((a) => {
+        const key = a.chapter_key;
+        const hint = key ? hints.get(key) : undefined;
+        return key && a.provisions && typeof hint === 'number' && areasInChapter(key) === 1 && a.provisions.length >= hint;
+      })
+      .map((a) => a.chapter_key as string),
+  );
+  const chapters = notCovered.chapters.filter((c) => !whole.has(c.chapter_key));
   return chapters.length > 0 ? { ...notCovered, chapters } : null;
 }
 
