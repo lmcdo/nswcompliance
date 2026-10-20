@@ -245,6 +245,7 @@ grep -r "from.*HeritageProvisions" app/ components/
 | Topic filter chips | `/assessment` DCP tab | ProvisionsByTocStructure.tsx | TBD |
 | Heritage layer toggle | `/assessment` filters | TBD | TBD |
 | DCP currency status bar (dot + verified date + staleness/amendment badges + disclaimer) | `/assessment` DCP tab | ProvisionsByTocStructure.tsx | ~1825 |
+| May-apply areas (suburb-matched withheld rules, amber collapsed block after the not-covered notice) | `/assessment` DCP tab | DcpMayApplyBlock.tsx (rows from `meta.may_apply`, lib/may-apply-query.ts) | ~2150 |
 | "<DCP> controls are not shown for this property" card / straddle warning (DQ-120 land gate, decided by `lib/dcp-land-application.ts`) | `/assessment` DCP tab | DcpLandApplicationNotice.tsx (rendered by ProvisionsByTocStructure.tsx) | — |
 
 ---
