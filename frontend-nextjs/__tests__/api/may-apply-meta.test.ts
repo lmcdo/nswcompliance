@@ -47,7 +47,7 @@ describe('meta.may_apply', () => {
     }
     const calls = client.query.mock.calls.filter(([sql]: [string]) => isMayApplySql(sql));
     expect(calls).toHaveLength(areas.length);
-    expect(calls[0][0]).toContain('LIMIT 400');
+    expect(calls[0][0]).toContain('LIMIT 401');
     // withheld rows only: a served row is already in the main list (no double listing)
     expect(calls[0][0]).toContain("(rp.v2_is_actionable = FALSE OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL))");
     expect(calls[0][1][0]).toBe(council);
@@ -84,6 +84,38 @@ describe('meta.may_apply', () => {
     const { GET } = await import('@/app/api/provisions/for-property/route');
     const body = await (await GET(req({ former_council: council, land_application: WARRINGAH, suburb }))).json();
     expect(body.meta.may_apply).toEqual([]);
+  });
+
+  it('fails an area visibly when it has more rows than the cap', async () => {
+    client.query.mockImplementation(async (sql: string) => ({
+      rows: isMayApplySql(sql) ? Array.from({ length: 401 }, (_, i) => ({ ...ROW, id: i + 1 })) : [],
+    }));
+    const { GET } = await import('@/app/api/provisions/for-property/route');
+    const body = await (await GET(req({ former_council: council, land_application: WARRINGAH, suburb }))).json();
+    expect(body.meta.may_apply).toHaveLength(areas.length);
+    for (const a of body.meta.may_apply) expect(a.provisions).toBeNull();
+  });
+
+  it('drops a chapter from the not-covered notice only when the block shows its rows', async () => {
+    // A council that has both lists; the suburb and chapter come from the data files.
+    const cb = 'canterbury_bankstown';
+    const cbSuburb = Object.keys(DATA[cb]).find((s) => DATA[cb][s].length > 0)!;
+    const shownKeys = new Set(DATA[cb][cbSuburb].map((a) => a.chapter_key));
+    const { GET } = await import('@/app/api/provisions/for-property/route');
+    const shown = await (await GET(req({ former_council: cb, suburb: cbSuburb }))).json();
+    const left = (shown.meta.not_covered?.chapters ?? []).map((c: { chapter_key: string }) => c.chapter_key);
+    for (const k of shownKeys) expect(left).not.toContain(k);
+    const all = await (await GET(req({ former_council: cb }))).json();
+    const allKeys = all.meta.not_covered.chapters.map((c: { chapter_key: string }) => c.chapter_key);
+    expect([...shownKeys].some((k) => allKeys.includes(k))).toBe(true);
+    expect(left.length).toBe(allKeys.filter((k: string) => !shownKeys.has(k)).length);
+    // Lookup failed: the chapter stays in the notice.
+    client.query.mockImplementation(async (sql: string) => {
+      if (isMayApplySql(sql)) throw new Error('boom');
+      return { rows: [] };
+    });
+    const failed = await (await GET(req({ former_council: cb, suburb: cbSuburb }))).json();
+    expect(failed.meta.not_covered.chapters.map((c: { chapter_key: string }) => c.chapter_key)).toEqual(allKeys);
   });
 
   it('offers Northern Beaches areas only to land under Warringah LEP 2011', async () => {

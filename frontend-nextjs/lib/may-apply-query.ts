@@ -53,8 +53,12 @@ export function buildMayApplySql(selectColumns: string): string {
       AND rp.v2_dcp_layer IS NOT NULL
       AND (rp.v2_is_actionable = FALSE OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL))
     ORDER BY rp.pdf_page, rp.id
-    LIMIT 400`;
+    LIMIT ${MAY_APPLY_ROW_CAP + 1}`;
 }
+
+// One row over the cap is asked for, so an area that outgrows it fails visibly (provisions null, "could not load")
+// instead of showing a shortened list. Largest area measured 2026-10-21: Riverwood, 218.
+const MAY_APPLY_ROW_CAP = 400;
 
 type Query = (sql: string, params: unknown[]) => Promise<{ rows: any[] }>;
 
@@ -78,7 +82,9 @@ export async function loadMayApply(
     const params = [opts.councilSlug, a.chapter_key, hasRange ? sel.pdf_page_from : 1, hasRange ? sel.pdf_page_to : 0, sel.ids ?? []];
     let provisions: any[] | null;
     try {
-      provisions = (await query(sql, params)).rows.map(opts.mapRow);
+      const rows = (await query(sql, params)).rows;
+      if (rows.length > MAY_APPLY_ROW_CAP) throw new Error(`more than ${MAY_APPLY_ROW_CAP} rows`);
+      provisions = rows.map(opts.mapRow);
       // No withheld rows left (e.g. the area has since been outlined and its rows served): nothing may-apply to show.
       if (provisions.length === 0) continue;
     } catch (err) {

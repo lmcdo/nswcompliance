@@ -32,6 +32,21 @@ export function getNotCovered(formerCouncil: string | null | undefined): NotCove
   return { council: slug, chapters: rows.map((r) => ({ chapter_key: r.chapter_key, title: r.title, reason: r.reason })) };
 }
 
+/**
+ * The notice without the chapters the may-apply block already shows for this suburb, so the page does not say
+ * "those rules are not shown" beside a block that shows them (cross-review on #1411). An area whose lookup failed
+ * (provisions null) or came back empty keeps its chapter in the notice.
+ */
+export function withoutShownAreas(
+  notCovered: NotCovered | null,
+  mayApply: Array<{ chapter_key?: string; provisions?: unknown[] | null }>,
+): NotCovered | null {
+  if (!notCovered) return null;
+  const shown = new Set(mayApply.filter((a) => a.provisions && a.provisions.length > 0).map((a) => a.chapter_key ?? ''));
+  const chapters = notCovered.chapters.filter((c) => !shown.has(c.chapter_key));
+  return chapters.length > 0 ? { ...notCovered, chapters } : null;
+}
+
 /** "chapter-2-2-flood-risk-management" -> "Chapter 2 2 flood risk management". */
 export function chapterLabel(key: string): string {
   const words = key.replace(/[-_]+/g, ' ').trim();

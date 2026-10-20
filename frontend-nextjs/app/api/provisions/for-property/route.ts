@@ -27,7 +27,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
-import { getNotCovered } from '@/lib/not-covered';
+import { getNotCovered, withoutShownAreas } from '@/lib/not-covered';
 import frontageData from '@/data/frontage-setback-figures.json';
 import { loadFrontageSetbackFigures, type FrontageFigureData } from '@/lib/frontage-setback-figures';
 import { NOT_HERITAGE_SQL, ZONE_APPLIES_SQL, hcaTagSql } from '@/lib/provision-sql-filters';
@@ -693,7 +693,7 @@ export async function GET(request: NextRequest) {
           dcp_currency: dcpCurrency,
           land_application: landApplication,
           land_conditions: landGate,
-          not_covered: getNotCovered(filters.former_council),
+          not_covered: withoutShownAreas(getNotCovered(filters.former_council), mayApply),
           may_apply: mayApply,
           frontage_setback_figures: frontageFigures.items,
           frontage_setback_figures_failed: frontageFigures.failed,
