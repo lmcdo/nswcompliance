@@ -34,7 +34,7 @@ describe('DcpMayApplyBlock', () => {
     expect(text).toContain('Rules for Winston Hills Precinct may apply to this property (2 rules)');
     expect(text).toContain('This property is in WINSTON HILLS. We can’t tell whether it is inside this area.');
     expect(text).toContain('The plan says: “land bounded by the railway” (page 12).');
-    expect(text).toContain('they are not confirmed for this address.');
+    expect(text).toContain('we have not been able to check that they cover this address.');
     expect(areas[1].textContent).toContain('(1 rule)');
     expect(screen.getAllByTestId('dcp-may-apply-rule')).toHaveLength(3);
   });

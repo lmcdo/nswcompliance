@@ -38,7 +38,7 @@ export function DcpMayApplyBlock({ mayApply }: { mayApply: MayApplyArea[] | null
             <p className="mt-2">
               This property is in {area.suburb}. We can’t tell whether it is inside this area. {area.reason_text} The
               plan says: “{area.applies_to_quote}” (page {area.applies_to_page}). These rules are shown so you can
-              check them; they are not confirmed for this address.
+              check them; we have not been able to check that they cover this address.
             </p>
             <ul className="mt-2 space-y-2">
               {rules.map((p) => {
