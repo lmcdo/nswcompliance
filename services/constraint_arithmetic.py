@@ -241,7 +241,7 @@ _HOUSING_TYPES = {
 }
 _CORNER_CASE = re.compile(r"corner|secondary (street|road|frontage)", re.I)
 # "excluding corner lots" is a rule FOR non-corner lots, not a corner-only rule (Sol, #1377).
-_EXCLUDES_CORNER = re.compile(r"\b(?:exclud\w*|except|other than)\b[^.;]{0,30}corner|\bnot (?:applicable|apply|applying) (?:to|for) [^.;]{0,20}corner", re.I)
+_EXCLUDES_CORNER = re.compile(r"\b(?:exclud\w*|except|other than)\b[^.;]{0,30}(?<!non-)(?<!non )corner|\bnot (?:applicable|apply|applying) (?:to|for) [^.;]{0,20}(?<!non-)(?<!non )corner", re.I)
 # A condition that limits a rule to one case. When the only rule for a side carries one, it is
 # listed with its case, never used for every lot (Sol, #1371: a lone "upper floor" or "corner"
 # row became the setback for all lots).
@@ -276,6 +276,8 @@ def _options_for_site(
             out.append((o, f"it is for lots of a different size (this lot is {lot_area_m2:,.0f} m²)"))
         elif site_is_corner is False and _CORNER_CASE.search(cond) and not _EXCLUDES_CORNER.search(cond):
             out.append((o, "this lot is not on a corner"))
+        elif site_is_corner is True and _EXCLUDES_CORNER.search(cond):
+            out.append((o, "it excludes corner lots, and this lot is on a corner"))
         elif not own.search(cond) and any(rx.search(cond) for rx in others):
             out.append((o, f"it is for a different type of housing, not a {dev_type.replace('_', ' ')}"))
         else:

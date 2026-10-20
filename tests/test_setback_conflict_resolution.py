@@ -260,3 +260,17 @@ class TestSiteContextSolFindings:
         r = TestSiteContextSolFindings()._compute(rows, corner=False)
         assert r.setback_side_m == 0.9
         assert any("3 m side setback" in g and "not on a corner" in g for g in r.gaps)
+
+
+    def test_rule_excluding_corner_lots_is_dropped_on_a_corner_lot(self):
+        rows = [_cc("front_setback", 6.0, "all lots excluding corner lots"), _cc("front_setback", 4.5, "corner lots"),
+                _cc("rear_setback", 6.0, None), _cc("side_setback", 0.9, None)]
+        r = TestSiteContextSolFindings()._compute(rows, corner=True)
+        assert r.setback_front_options == [] or [o.value_m for o in r.setback_front_options] == [4.5]
+        assert any("6 m front setback" in g and "excludes corner lots" in g for g in r.gaps)
+
+    def test_excluding_non_corner_lots_is_a_corner_rule(self):
+        rows = [_cc("front_setback", 6.0, None), _cc("rear_setback", 6.0, None), _cc("side_setback", 0.9, None),
+                _cc("side_setback", 2.0, "excluding non-corner lots")]
+        r = TestSiteContextSolFindings()._compute(rows, corner=False)
+        assert r.setback_side_m == 0.9
