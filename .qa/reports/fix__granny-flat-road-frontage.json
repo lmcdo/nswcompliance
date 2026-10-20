@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes the road frontage the granny-flat CDC test uses, which decides PASS or FAIL on the complying development path",
-  "commit_hash": "10208fbf",
+  "commit_hash": "6764fc01",
   "files": [
     "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
     "services/granny_flat.py",
