@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The for-property route served every council's rules when called without former_council (its only council filter). Live 2026-10-21: lga=Bayside&zone=R2&topic=parking returned 1,980 rules from 12 other councils. The AI router treated lga alone as a council scope and could send that call. Separately the general/use layers were capped at 3,000 rows and the HCA query at 2,000 with no signal when the cap bit.",
-  "commit_hash": "8ec948ee",
+  "commit_hash": "5bef377d",
   "files": [
     "frontend-nextjs/app/api/provisions/for-property/route.ts",
     "frontend-nextjs/lib/ai/router.ts",
