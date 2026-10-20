@@ -1461,7 +1461,11 @@ def _permitted_forms_checked(
             (zone_code,),
         )
         table_forms = {dt for (lga, dt) in cur.fetchall() if _norm_lga(lga) == target}
-        return {engine for (tbl, engine) in _PERMITTED_FORM_DENSITY if tbl in table_forms}, None
+        forms = {engine for (tbl, engine) in _PERMITTED_FORM_DENSITY if tbl in table_forms}
+        if not forms:
+            # Read fine, but no housing form is listed as permitted: not "one house".
+            return set(), f"the land use table lists no housing form as permitted in zone {zone_code}"
+        return forms, None
     except Exception as e:
         logger.warning("permitted form lookup failed (%s/%s): %s", zone_code, lga_name, e)
         return set(), "the LEP land use table could not be read"

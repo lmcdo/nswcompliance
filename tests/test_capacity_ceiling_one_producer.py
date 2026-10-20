@@ -131,4 +131,4 @@ def test_zone_not_held_in_a_held_council_is_said(monkeypatch):
     forms, why = ib._permitted_forms_checked("R3", "City of Parramatta")
     assert forms == set() and why == "we do not hold the land use table for zone R3 in this council"
     forms, why = ib._permitted_forms_checked("R2", "City of Parramatta")
-    assert why is None
+    assert forms == set() and why == "the land use table lists no housing form as permitted in zone R2"
