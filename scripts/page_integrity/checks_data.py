@@ -162,7 +162,11 @@ def same_fact_agrees(cap: Capture) -> list[Flag]:
             if v is None and opts:
                 # A listed side agrees only if it lists exactly the DCP tab's figures.
                 extra = [o for o in opts if not any(_close(o, s) for s in sc)]
-                left_out = [s for s in sc if not any(_close(s, o) for o in opts)]
+                # A DCP-tab figure the yield box names as not applying to this lot ("The 6.5 m
+                # front setback (...) does not apply here: ...") is accounted for, not left out.
+                gaps = " ".join(g for g in (ca.get("gaps") or []) if isinstance(g, str))
+                left_out = [s for s in sc if not any(_close(s, o) for o in opts)
+                            and f"The {s:g} m {k} setback" not in gaps]
                 if extra or left_out:
                     flags.append(Flag("C1", f"{k}_setback",
                                       f"yield box lists {k} setbacks {sorted(set(opts))} but the DCP tab lists "

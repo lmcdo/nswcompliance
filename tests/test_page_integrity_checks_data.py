@@ -282,3 +282,11 @@ def test_c4_row_that_also_names_dwelling_houses_is_for_this_project():
 def test_c4_row_including_other_types_is_for_this_project():
     cap = mk(sc([row("car_parking", 1.0, "including attached, semi-detached and secondary dwellings combined")]))
     assert "row_dev_type" not in facts(cd.row_fits_lot(cap))
+
+
+def test_c1_listed_side_with_a_ruled_out_figure_is_green():
+    ca = _listed([4.5])
+    ca["gaps"] = ["The 6.5 m front setback (lot between 900 m2 and 1,500 m2) does not apply here: it is for lots of a different size (this lot is 640 m²)."]
+    cap = mk((cd.P_CA, ca, None, None),
+             sc([row("front_setback", 4.5), row("front_setback", 6.5, "lot between 900 m2 and 1,500 m2"), row("side_setback", 0.9)]))
+    assert "front_setback" not in facts(cd.same_fact_agrees(cap))
