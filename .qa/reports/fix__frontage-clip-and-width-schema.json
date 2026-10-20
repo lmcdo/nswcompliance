@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes the street frontage length shown on the page and used by the yield and eligibility checks, and which lot widths the Housing SEPP API accepts",
-  "commit_hash": "a2772537",
+  "commit_hash": "8ba7fb4a",
   "files": [
     "services/street_frontage.py",
     "frontend-nextjs/lib/geometry/street-frontage.ts",
