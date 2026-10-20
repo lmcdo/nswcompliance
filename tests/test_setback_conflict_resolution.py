@@ -210,3 +210,67 @@ def test_endpoint_passes_measured_corner_status(monkeypatch):
         asyncio.run(ca.constraint_arithmetic_full(ca.ConstraintArithmeticFullRequest(
             lot_area_m2=600.0, zone="R2", lep_height_str="9", is_corner=val)))
         assert seen["corner"] is val
+
+
+class TestSiteContextSolFindings:
+    """Sol cross-review of #1371/#1377 (2026-10-19): each case below was wrong on main."""
+
+    def _compute(self, controls, corner=None, area=640.0):
+        return compute_constraint_arithmetic(
+            lot_area_m2=area, dev_type="dwelling_house", lep_height_str="9.5", lep_fsr_str=None,
+            lot_dimensions=LotDimensions(area_m2=area, frontage_m=20.0, depth_m=32.0, is_corner=False),
+            dcp_controls=controls, site_is_corner=corner,
+        )
+
+    def test_lone_upper_floor_row_is_listed_not_used_for_every_lot(self):
+        rows = [_cc("front_setback", 6.0, None), _cc("rear_setback", 6.0, None),
+                _cc("side_setback", 1.5, "upper floor walls")]
+        r = self._compute(rows)
+        assert r.setback_side_m is None
+        assert [o.value_m for o in r.setback_side_options] == [1.5]
+        assert r.buildable_footprint_m2 is None
+        assert any("only for one case (upper floor walls)" in g for g in r.gaps)
+
+    def test_lot_size_band_not_containing_the_lot_is_not_listed(self):
+        rows = [_cc("front_setback", 4.5, "lot less than 900 m2"),
+                _cc("front_setback", 6.5, "lot between 900 m2 and 1,500 m2"),
+                _cc("front_setback", 3.5, "fronting open space"),
+                _cc("rear_setback", 4.0, None), _cc("side_setback", 0.9, None)]
+        r = self._compute(rows)
+        assert [o.value_m for o in r.setback_front_options] == [3.5, 4.5]
+        assert any("6.5 m front setback" in g and "different size" in g for g in r.gaps)
+
+    def test_excluding_corner_lots_is_kept_on_a_non_corner_lot(self):
+        rows = [_cc("front_setback", 6.0, "all lots excluding corner lots"),
+                _cc("rear_setback", 6.0, None), _cc("side_setback", 0.9, None)]
+        r = self._compute(rows, corner=False)
+        assert r.setback_front_m == 6.0
+
+    def test_semi_detached_row_is_not_a_dwelling_house_row(self):
+        rows = [_cc("front_setback", 6.0, None), _cc("rear_setback", 6.0, None),
+                _cc("side_setback", 0.9, None), _cc("side_setback", 0.0, "semi-detached party wall")]
+        r = self._compute(rows)
+        assert r.setback_side_m == 0.9
+
+
+    def test_must_not_be_less_than_on_corner_lots_is_still_corner_only(self):
+        rows = [_cc("front_setback", 6.0, None), _cc("rear_setback", 6.0, None),
+                _cc("side_setback", 0.9, None),
+                _cc("side_setback", 3.0, "setback must not be less than 3 m on corner lots")]
+        r = TestSiteContextSolFindings()._compute(rows, corner=False)
+        assert r.setback_side_m == 0.9
+        assert any("3 m side setback" in g and "not on a corner" in g for g in r.gaps)
+
+
+    def test_rule_excluding_corner_lots_is_dropped_on_a_corner_lot(self):
+        rows = [_cc("front_setback", 6.0, "all lots excluding corner lots"), _cc("front_setback", 4.5, "corner lots"),
+                _cc("rear_setback", 6.0, None), _cc("side_setback", 0.9, None)]
+        r = TestSiteContextSolFindings()._compute(rows, corner=True)
+        assert r.setback_front_options == [] or [o.value_m for o in r.setback_front_options] == [4.5]
+        assert any("6 m front setback" in g and "excludes corner lots" in g for g in r.gaps)
+
+    def test_excluding_non_corner_lots_is_a_corner_rule(self):
+        rows = [_cc("front_setback", 6.0, None), _cc("rear_setback", 6.0, None), _cc("side_setback", 0.9, None),
+                _cc("side_setback", 2.0, "excluding non-corner lots")]
+        r = TestSiteContextSolFindings()._compute(rows, corner=False)
+        assert r.setback_side_m == 0.9

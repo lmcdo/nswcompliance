@@ -1,0 +1,74 @@
+{
+  "tier": "standard",
+  "justification": "Changes served setback figures on the yield box and Site Report",
+  "commit_hash": "7f6b06bb",
+  "files": [
+    "services/constraint_arithmetic.py",
+    "tests/test_setback_conflict_resolution.py",
+    "scripts/page_integrity/checks_data.py",
+    "tests/test_page_integrity_checks_data.py"
+  ],
+  "falsifiable_check": {
+    "command": "pytest tests/test_setback_conflict_resolution.py -k SolFindings; pytest tests/test_page_integrity_checks_data.py",
+    "fails_when": "a lone case-only row becomes the setback for every lot, a band excluding this lot is listed, or an 'excluding corner lots' row is dropped on a non-corner lot",
+    "observed_red": "On a temporary origin/main worktree the 4 new TestSiteContextSolFindings tests give '3 failed, 1 passed' (lone upper-floor row used as the side setback; 6.5 m band listed on a 640 m2 lot; 'excluding corner lots' dropped). The 4th (semi-detached) passed on main only because main's pattern held a backspace and matched nothing."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls rows (value_min, condition) already fetched for the yield box",
+    "assumption_mismatch": "a lot-size band in a phrasing _LOT_BAND_RE does not parse is kept and listed, never dropped",
+    "new_vs_existing": "every yield box and Site Report setback after this deploy",
+    "falsifiable_check": {
+      "command": "pytest tests/test_setback_conflict_resolution.py -k SolFindings; pytest tests/test_page_integrity_checks_data.py",
+      "fails_when": "a lone case-only row becomes the setback for every lot, a band excluding this lot is listed, or an 'excluding corner lots' row is dropped on a non-corner lot",
+      "observed_red": "On a temporary origin/main worktree the 4 new TestSiteContextSolFindings tests give '3 failed, 1 passed' (lone upper-floor row used as the side setback; 6.5 m band listed on a 640 m2 lot; 'excluding corner lots' dropped). The 4th (semi-detached) passed on main only because main's pattern held a backspace and matched nothing."
+    }
+  },
+  "functions": [
+    {
+      "name": "_options_for_site",
+      "file_line": "services/constraint_arithmetic.py:254",
+      "input": "listed setback options, housing type, corner status and lot area",
+      "output": "options that can apply here and the ruled-out ones with plain reasons",
+      "if_none": "unknown corner or unknown lot area rules nothing out"
+    }
+  ],
+  "values": [
+    {
+      "value": "_CASE_ONLY",
+      "read_at": "services/constraint_arithmetic.py:248",
+      "nullable": "no",
+      "guard_at": "N/A",
+      "if_missing": "N/A"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a general rule's condition text happens to mention an upper floor",
+      "what_happens": "a lone general rule would be listed instead of used, withholding the buildable area",
+      "mitigated": false,
+      "how": "accepted: listing with its condition is safe; the footprint is withheld rather than overstated",
+      "repro": "row 'all floors including upper floor' as the only side row"
+    },
+    {
+      "scenario": "band phrased '900 to 1500 square metres' which the band parser does not read",
+      "what_happens": "a band for a different lot size stays listed as a possible case",
+      "mitigated": false,
+      "how": "unparsed bands are kept (never dropped on a guess); listing shows its condition",
+      "repro": "pytest with an unparsed band phrase"
+    },
+    {
+      "scenario": "'not applicable to corner lots' style wording on a corner-only rule",
+      "what_happens": "a rule for non-corner lots would be marked as not applying here",
+      "mitigated": true,
+      "how": "_EXCLUDES_CORNER keeps rows that exclude corners",
+      "repro": "pytest test_excluding_corner_lots_is_kept_on_a_non_corner_lot"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 3 Egret Way Mount Annan yield box lists only the bands that fit 640 m2"
+  }
+}
