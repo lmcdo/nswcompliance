@@ -19,7 +19,7 @@ METHOD (deterministic; a person or model only READS street labels into the data 
               the whole network to be unique).
   3 outline   every closed dark line on the map (labels dropped by size, the north arrow by place).
   4 lots      build_cb_centre_boundaries.lots_inside: >= 80% in, 20-80% kept (doubt keeps the rule).
-ACCEPTANCE (all three, else the centre is REFUSED and not written)
+ACCEPTANCE (road mask must cover <= 60% of the figure, else the on-road scores mean nothing; then all three, else the centre is REFUSED and not written)
   named streets' centreline points on map road pixels >= 0.90   (the labels the map itself prints)
   whole road network on road pixels                   >= 0.55
   outline vertices to nearest cadastre lot edge, median <= 5 m   (the land is drawn on lot lines)
@@ -59,6 +59,10 @@ ADDR = "https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Geocoded_Addr
 TYPES = {"St": "STREET", "Rd": "ROAD", "Ave": "AVENUE", "Cres": "CRESCENT", "Dr": "DRIVE", "Parade": "PARADE",
          "Cl": "CLOSE", "Pl": "PLACE", "Hwy": "HIGHWAY", "Cct": "CIRCUIT", "Ln": "LANE"}
 NAMED_MIN, ALL_MIN, LOT_EDGE_MAX = 0.90, 0.55, 5.0
+# The on-road scores mean something only when the road mask is a minority of the figure. Measured 2026-10-20 on the
+# mask actually scored (dilated): accepted C-B 7.2 figures 0.18-0.32, accepted Warringah G9 0.34; Warringah G3 p113
+# (white background, hairline roads) 0.88, where every point is "on road" and a 426 m2 / 0.16 m/px fit passed.
+ROAD_SHARE_MAX = 0.60
 OUTSIDE_MAX_M2 = 1500  # a doubtful lot sticking out further than this is a corridor, not a centre lot
 METHOD = "dcp_raster_map_fitted_to_road_centrelines"
 
@@ -141,6 +145,11 @@ def _road_mask(img: np.ndarray, band: list | None = None) -> np.ndarray:
     centreline inside a carriageway counts."""
     m = (img >= 249) if band is None else ((img >= band[0]) & (img <= band[1]))
     return cv2.dilate(m.astype(np.uint8), np.ones((5, 5), np.uint8))
+
+
+def road_share(img: np.ndarray, band: list | None = None) -> float:
+    """Share of the figure's pixels the road mask (as scored) covers."""
+    return float(_road_mask(img, band).mean())
 
 
 def search(img: np.ndarray, pts: np.ndarray, cx: float, cy: float, scales, down: int = 1,
@@ -270,6 +279,11 @@ def fit_centre(pdf: Path, c: dict) -> dict:
     if rot:
         row["rotation_deg"] = rot
         row["_rot"] = (rot, (sx, sy))
+    row["road_share"] = round(road_share(img, band), 3)
+    if row["road_share"] > ROAD_SHARE_MAX:
+        row["refused"] = (f"road mask covers {row['road_share']:.0%} of the figure; "
+                          "the on-road scores cannot tell a fit from noise")
+        return row
     if s <= 0 or lift <= 0 or np.hypot(ox - sx, oy - sy) > 5000:
         row["refused"] = "no placement found near the seed"
         return row
