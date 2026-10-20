@@ -61,7 +61,7 @@ from typing import Literal, Optional
 import psycopg2
 import psycopg2.extras
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, StrictInt, model_validator
+from pydantic import BaseModel, StrictFloat, StrictInt, model_validator
 
 from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 from services.lga_lookup import lookup_lga
@@ -460,7 +460,7 @@ class GrannyFlatDetectRequest(BaseModel):
     frontage_m: Optional[float] = None   # street frontage of a regular-shaped lot
     # (narrowest front-half width, widest width) measured back from the road edge; preferred
     # over frontage_m. The verify app measures it from the NSW road layer (#1342 follow-up).
-    frontage_range_m: Optional[tuple[float, float]] = None
+    frontage_range_m: Optional[tuple[StrictFloat, StrictFloat]] = None  # true/"12" rejected, not coerced
     battle_axe: Optional[bool] = None
 
 
@@ -574,7 +574,7 @@ class GrannyFlatConfirmRequest(BaseModel):
     frontage_m: Optional[float] = None   # street frontage of a regular-shaped lot
     # (narrowest front-half width, widest width) measured back from the road edge; preferred
     # over frontage_m. The verify app measures it from the NSW road layer (#1342 follow-up).
-    frontage_range_m: Optional[tuple[float, float]] = None
+    frontage_range_m: Optional[tuple[StrictFloat, StrictFloat]] = None  # true/"12" rejected, not coerced
     battle_axe: Optional[bool] = None
 
 

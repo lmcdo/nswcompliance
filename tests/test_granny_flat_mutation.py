@@ -2471,3 +2471,15 @@ class TestApprovalPathFacts:
     def test_dwelling_house_permissible_without_zone_or_conn_is_none(self):
         assert gf._dwelling_house_permissible(None, "R2", SYD_LAT, SYD_LNG) is None
         assert gf._dwelling_house_permissible(FakeConn(cursor=FakeCursor()), None, SYD_LAT, SYD_LNG) is None
+
+
+def test_frontage_range_rejects_booleans_and_strings_at_the_request():
+    import pydantic
+    for bad in ([True, True], ["12", "13"]):
+        try:
+            gf.GrannyFlatDetectRequest(address="a", prop_id="1", lat=-33.8, lng=151.0, frontage_range_m=bad)
+        except pydantic.ValidationError:
+            continue
+        raise AssertionError(f"accepted {bad}")
+    assert gf.GrannyFlatConfirmRequest.model_fields["frontage_range_m"].annotation == \
+        gf.GrannyFlatDetectRequest.model_fields["frontage_range_m"].annotation
