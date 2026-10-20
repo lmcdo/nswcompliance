@@ -381,6 +381,7 @@ export function ProvisionsByTocStructure({
     bushfire: propertyData?.constraints?.bushfireProne === true,
     acidSulfate: Boolean(propertyData?.constraints?.acidSulfateSoils),
     riparian: propertyData?.constraints?.riparianLand?.inRiparianArea === true,
+    greenweb: propertyData?.constraints?.greenweb?.onGreenweb === true,
   });
 
   // If no formerCouncil, council DCP is not processed — skip fetch entirely

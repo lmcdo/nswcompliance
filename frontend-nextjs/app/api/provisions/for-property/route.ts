@@ -54,6 +54,7 @@ interface PropertyFilters {
   bushfire?: boolean;
   acid_sulfate?: boolean;  // lot on the LEP Acid Sulfate Soils Map (any class)
   riparian?: boolean;      // lot on the LEP Riparian Lands / watercourse map
+  greenweb?: boolean;      // any part of the lot overlaps a Ku-ring-gai DCP Part 18R.1 Greenweb category
   precinct_id?: string;
   dev_type?: string;
   topic?: string;
@@ -288,6 +289,7 @@ export async function GET(request: NextRequest) {
       bushfire: searchParams.get('bushfire') === 'true',
       acid_sulfate: searchParams.get('acid_sulfate') === 'true',
       riparian: searchParams.get('riparian') === 'true',
+      greenweb: searchParams.get('greenweb') === 'true',
       precinct_id: searchParams.get('precinct_id') ? normalizePrecinctId(searchParams.get('precinct_id')!) : undefined,
       dev_type: searchParams.get('dev_types') || searchParams.get('dev_type') || undefined,
       topic: searchParams.get('topic') || undefined,
@@ -1121,6 +1123,7 @@ async function queryLayer(
     if (filters.bushfire) conditions.push('bushfire');
     if (filters.acid_sulfate) conditions.push('acid_sulfate');
     if (filters.riparian) conditions.push('riparian');
+    if (filters.greenweb) conditions.push('greenweb');
 
     if (conditions.length === 0) {
       // No conditions apply, skip condition layer
