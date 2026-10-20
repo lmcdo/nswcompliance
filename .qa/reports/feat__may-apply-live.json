@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Wires the may-apply block: 52 reviewed areas loaded, the route returns them in meta.may_apply beside the provisions, the page renders them. Adds a block and removes chapters from the council-wide notice only where the block shows the rules; no property provision, count or TOC changes. Not Critical: no DB write, no regulatory value hand-typed (every suburb and quote is from the draft file).",
-  "commit_hash": "3c91520f",
+  "commit_hash": "c1156585",
   "files": [
     "data/chapter_scope/suburb_unconfirmed_areas.json",
     "frontend-nextjs/COMPONENT_MAP.md",
