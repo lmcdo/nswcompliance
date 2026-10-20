@@ -92,6 +92,14 @@ GATE_RULES: list[dict] = [
     {"name": "marrickville_2_23_acid_sulfate", "council": "marrickville",
      "where": "source_chapter_key = 'part2-s23-acid-sulfate'",
      "set": {"v2_dcp_layer": "condition", "v2_site_condition_required": "acid_sulfate"}},
+    # Marrickville 2.22 "applies to land identified on the DCP 2011 Flood Planning Area Map in Appendix 1 and land
+    # identified as being flood liable land on the DCP 2011 Flood Liable Land Map in Appendix 2" (p5). The page's flood
+    # flag reads Inner West's flood planning area (spatial_overlays 'flood'). Recorded limit (user decision 2026-10-21):
+    # Appendix 2 also takes in land reached only by the Cooks River probable maximum flood (p6), which has no layer
+    # here; those lots are not shown these rules, and the page's not-covered notice names the chapter.
+    {"name": "marrickville_2_22_flood", "council": "marrickville",
+     "where": "source_chapter_key = 'part2-s22-flood-management'",
+     "set": {"v2_dcp_layer": "condition", "v2_site_condition_required": "flood"}},
     # Ku-ring-gai Part 17 "guides development on land identified within the Natural Resource --
     # Riparian Lands Map in the KLEP (see clause 6.4)" (p2) -- the LEP layer the page reads.
     {"name": "krg_17_riparian", "council": "ku_ring_gai",
