@@ -56,13 +56,36 @@ describe('housing-sepp eligibility - Low and Mid-Rise area answer', () => {
   beforeEach(() => mockQuery.mockReset());
 
   it('false: a form that requires the area is ineligible, with the map-based reason', async () => {
-    const f = await formFor({ ...LOT, isLMRArea: false }, 'residential_flat_r1r2');
+    const f = await formFor({ ...LOT, isLMRArea: false, lmrExcluded: false }, 'residential_flat_r1r2');
     expect(f.isEligible).toBe(false);
     expect(f.assessmentStatus).toBe('ineligible');
     expect(f.eligibilityReason).toBe(
       'Not in a Low and Mid-Rise housing area (no Town Centres Map catchment or TOD catchment at this lot), '
         + 'so these Housing SEPP standards do not apply here; the council\'s own LEP and DCP controls do',
     );
+  });
+
+  // Sol on #1352: a lot in a catchment but on the exclusion map was told it had no catchment.
+  it('false because excluded: the reason names the exclusion map, never "no catchment"', async () => {
+    const f = await formFor({ ...LOT, isLMRArea: false, lmrExcluded: true }, 'residential_flat_r1r2');
+    expect(f.eligibilityReason).toContain('this lot is on the Low and Mid-Rise exclusion map');
+    expect(f.eligibilityReason).not.toContain('no Town Centres Map catchment');
+  });
+
+  it('excluded wins over a contradictory isLMRArea: true, and over an unknown area answer', async () => {
+    for (const isLMRArea of [true, null]) {
+      const f = await formFor({ ...LOT, isLMRArea, lmrExcluded: true }, 'residential_flat_r1r2');
+      expect(f.isEligible).toBe(false);
+      expect(f.assessmentStatus).toBe('ineligible');
+      expect(f.eligibilityReason).toContain('exclusion map');
+    }
+  });
+
+  it('false with the exclusion answer unknown: no cause is claimed', async () => {
+    const f = await formFor({ ...LOT, isLMRArea: false }, 'residential_flat_r1r2');
+    expect(f.assessmentStatus).toBe('ineligible');
+    expect(f.eligibilityReason).not.toContain('catchment');
+    expect(f.eligibilityReason).not.toContain('exclusion map');
   });
 
   // 6 Berrigan St Winston Hills, 2026-10-19: dual occupancy rows carried requires_lmr_area = false although

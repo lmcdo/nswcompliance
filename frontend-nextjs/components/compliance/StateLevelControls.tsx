@@ -138,6 +138,7 @@ export function StateLevelControls({
     propertyLat != null && propertyLng != null ? { lat: propertyLat, lng: propertyLng } : null,
   );
   const isLMRArea: boolean | null = lmrGates?.in_lmr_area ?? null;
+  const lmrExcluded: boolean | null = lmrGates?.lmr_excluded ?? null;
 
   // Try to load LGA config. If LGA is not configured yet (returns null),
   // the component will fall back to NSW-wide defaults.
@@ -1076,6 +1077,7 @@ export function StateLevelControls({
                 lotWidthRange={lotWidthRange}
                 stationDistance={stationDistance}
                 isLMRArea={isLMRArea}
+                lmrExcluded={lmrExcluded}
                 strataInfo={strataInfo}
                 lepHeight={lepHeight}
                 lepFsr={lepFsr}

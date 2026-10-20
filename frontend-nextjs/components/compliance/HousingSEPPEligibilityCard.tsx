@@ -92,6 +92,8 @@ interface HousingSEPPEligibilityCardProps {
   lotWidthRange: { min: number; max: number } | null;
   stationDistance?: number;
   isLMRArea?: boolean | null;
+  /** true when the lot is on the Low and Mid-Rise exclusion map; null = not known. */
+  lmrExcluded?: boolean | null;
   strataInfo?: StrataInfo;
   lepHeight?: number | null;
   lepFsr?: number | null;
@@ -322,6 +324,7 @@ export function HousingSEPPEligibilityCard({
   lotWidthRange,
   stationDistance,
   isLMRArea,
+  lmrExcluded,
   strataInfo,
   lepHeight,
   lepFsr,
@@ -358,6 +361,7 @@ export function HousingSEPPEligibilityCard({
             lotWidthMax: lotWidthRange.max,
             stationDistance,
             isLMRArea,
+            lmrExcluded: lmrExcluded ?? null,
             lepHeight: lepHeight ?? undefined,
             lepFsr: lepFsr ?? undefined,
           })
@@ -381,7 +385,7 @@ export function HousingSEPPEligibilityCard({
     };
 
     fetchEligibility();
-  }, [zoneCode, lotSize, lotWidthRange?.min, lotWidthRange?.max, stationDistance, isLMRArea, lepHeight, lepFsr]);
+  }, [zoneCode, lotSize, lotWidthRange?.min, lotWidthRange?.max, stationDistance, isLMRArea, lmrExcluded, lepHeight, lepFsr]);
 
   // Loading state
   if (loading) {

@@ -21,19 +21,38 @@ export interface UseLmrGatesResult {
   failed: boolean;
 }
 
+/** Which lot an answer belongs to. */
+export function gatesKey(lat: number | undefined, lng: number | undefined): string | null {
+  return lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng) ? null : `${lat},${lng}`;
+}
+
+/**
+ * The stored answer, but only if it belongs to the lot asked about. When the coordinates change, the
+ * component renders once before the effect starts the new fetch; without this it would show the previous
+ * lot's answer for the new lot during that render (Sol on #1352).
+ */
+export function gatesForKey(stored: UseLmrGatesResult & { key: string | null }, key: string | null): UseLmrGatesResult {
+  if (key == null) return { gates: null, loading: false, failed: false };
+  if (stored.key !== key) return { gates: null, loading: true, failed: false };
+  return { gates: stored.gates, loading: stored.loading, failed: stored.failed };
+}
+
 /** Fetches the Low and Mid-Rise gates once per coordinate pair. On failure `gates` stays null. */
 export function useLmrGates(coordinates: { lat: number; lng: number } | null): UseLmrGatesResult {
-  const [state, setState] = useState<UseLmrGatesResult>({ gates: null, loading: false, failed: false });
   const lat = coordinates?.lat;
   const lng = coordinates?.lng;
+  const key = gatesKey(lat, lng);
+  const [state, setState] = useState<UseLmrGatesResult & { key: string | null }>({
+    gates: null, loading: false, failed: false, key: null,
+  });
 
   useEffect(() => {
-    if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) {
-      setState({ gates: null, loading: false, failed: false });
+    if (key == null || lat == null || lng == null) {
+      setState({ gates: null, loading: false, failed: false, key: null });
       return;
     }
     const controller = new AbortController();
-    setState({ gates: null, loading: true, failed: false });
+    setState({ gates: null, loading: true, failed: false, key });
     fetch(`/api/housing-sepp/gates?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`, {
       signal: controller.signal,
     })
@@ -41,14 +60,14 @@ export function useLmrGates(coordinates: { lat: number; lng: number } | null): U
         if (!res.ok) throw new Error(`gates ${res.status}`);
         return (await res.json()) as LmrGates;
       })
-      .then((gates) => setState({ gates, loading: false, failed: false }))
+      .then((gates) => setState({ gates, loading: false, failed: false, key }))
       .catch((err) => {
         if (controller.signal.aborted) return;
         console.warn('[useLmrGates] gate check failed:', err);
-        setState({ gates: null, loading: false, failed: true });
+        setState({ gates: null, loading: false, failed: true, key });
       });
     return () => controller.abort();
-  }, [lat, lng]);
+  }, [key, lat, lng]);
 
-  return state;
+  return gatesForKey(state, key);
 }
