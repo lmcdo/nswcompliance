@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes the street frontage length shown on the page and used by the yield and eligibility checks, and which lot widths the Housing SEPP API accepts",
-  "commit_hash": "7022a3d2",
+  "commit_hash": "a2772537",
   "files": [
     "services/street_frontage.py",
     "frontend-nextjs/lib/geometry/street-frontage.ts",
@@ -28,14 +28,14 @@
   "functions": [
     {
       "name": "measure_street_frontage",
-      "file_line": "services/street_frontage.py:168",
+      "file_line": "services/street_frontage.py:164",
       "input": "the lot boundary ring and the road corridor parcels near it",
       "output": "per named road: frontage length, front-half and widest width, depth",
       "if_none": "no usable ring: unavailable; no road owns an edge: not_identified"
     },
     {
       "name": "_edge_frontage_share",
-      "file_line": "services/street_frontage.py:108",
+      "file_line": "services/street_frontage.py:102",
       "input": "one lot edge and the road segments of one road",
       "output": "the share of the edge beside that road, with gaps up to 3 m ignored",
       "if_none": "a zero-length edge contributes 0 m whatever its share"
