@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "New display-only component, reason-text map, suburb parser and export script. Nothing is wired into a route yet, so no served answer changes; the data file is empty. Direction: it can only add an amber, collapsed, hedged block.",
- "commit_hash": "86a4bc59",
+ "commit_hash": "634a5099",
  "files": [
   "frontend-nextjs/components/compliance/DcpMayApplyBlock.tsx",
   "frontend-nextjs/lib/may-apply-reasons.ts",
