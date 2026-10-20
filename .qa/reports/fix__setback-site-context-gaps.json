@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes served setback figures on the yield box and Site Report",
-  "commit_hash": "2b19e0aa",
+  "commit_hash": "7f6b06bb",
   "files": [
     "services/constraint_arithmetic.py",
     "tests/test_setback_conflict_resolution.py",
