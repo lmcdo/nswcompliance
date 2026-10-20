@@ -1,0 +1,92 @@
+{
+  "tier": "standard",
+  "justification": "Wires the may-apply block: 52 reviewed areas loaded, the route returns them in meta.may_apply beside the provisions, the page renders them. Adds a block and removes chapters from the council-wide notice only where the block shows the rules; no property provision, count or TOC changes. Not Critical: no DB write, no regulatory value hand-typed (every suburb and quote is from the draft file).",
+  "commit_hash": "1cda9c3b",
+  "files": [
+    "data/chapter_scope/suburb_unconfirmed_areas.json",
+    "frontend-nextjs/COMPONENT_MAP.md",
+    "frontend-nextjs/__tests__/api/may-apply-meta.test.ts",
+    "frontend-nextjs/__tests__/components/compliance/DcpMayApplyBlock.test.tsx",
+    "frontend-nextjs/__tests__/lib/dcp-provisions-query.test.ts",
+    "frontend-nextjs/__tests__/lib/may-apply-reasons.test.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/components/compliance/DcpMayApplyBlock.tsx",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/lib/dcp-provisions-query.ts",
+    "frontend-nextjs/lib/may-apply-query.ts",
+    "frontend-nextjs/lib/may-apply-reasons.ts",
+    "frontend-nextjs/shared/may-apply-areas.json",
+    "scripts/export_may_apply_areas.py",
+    "tests/test_may_apply_areas_drift.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_may_apply_areas_drift.py -q",
+    "fails_when": "The shared JSON the route reads is not the exact export of the data file (an area or suburb edited in one place only).",
+    "external_authority": "data/chapter_scope/suburb_unconfirmed_areas.json, built from the reviewed draft t2-2-areas-2026-10-20.",
+    "observed_red": "Observed red: changing one area's suburbs in the data file to a test value made test_shared_file_matches_data_file fail; restored, 4 passed."
+  },
+  "pre_impl": {
+    "existing_data": "DcpMayApplyBlock, may-apply-reasons and export_may_apply_areas.py already existed; this wires them. getNotCovered / DcpNotCoveredNotice are the council-wide list that is now filtered.",
+    "assumption_mismatch": "parseStreet returns the street name as string[], but suburbFromAddress called .trim() on it (tsc TS2339, throws for an address without a comma); fixed to use the token count.",
+    "new_vs_existing": "One new lib (may-apply-query.ts) so the 1,600-line route gains only a call; reuses PROVISION_BASE_SELECT, withCouncilWords and withServedCitation so rows look like served rows.",
+    "external_source_error": "N/A",
+    "frontend_type": "MayApplyArea gains optional chapter_key so the notice can drop a chapter shown in the block.",
+    "user_failure_mode": "A reader in a listed suburb sees an amber collapsed block with the withheld rules and why we cannot place the lot, instead of nothing."
+  },
+  "functions": [
+    {
+      "name": "loadMayApply",
+      "file_line": "frontend-nextjs/lib/may-apply-query.ts",
+      "input": "council slug, suburb, select columns",
+      "output": "A list of areas, each with its rule rows or null when that lookup failed",
+      "if_none": "[] when no council, no suburb or no listed area",
+      "failure_mode": "a failed select gives that area provisions: null, never []"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "rows of one area, withheld rows included",
+      "file_line": "frontend-nextjs/lib/may-apply-query.ts buildMayApplySql",
+      "where_clause": "is_current = TRUE AND source_council=$1 AND source_chapter_key=$2 AND (pdf_page BETWEEN $3 AND $4 OR id = ANY($5)) AND v2_provision_type IS DISTINCT FROM 'TOC' AND v2_dcp_layer IS NOT NULL; no v2_is_actionable test on purpose; LIMIT 400"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Lookup for one area throws",
+      "what_happens": "That area returns provisions: null; the block says it could not load; the rest of the page is served",
+      "mitigated": true,
+      "how": "try/catch per area",
+      "repro": "may-apply-meta.test.ts failure case"
+    },
+    {
+      "scenario": "Manly lot in a Northern Beaches suburb",
+      "what_happens": "No Warringah areas are offered",
+      "mitigated": true,
+      "how": "northern_beaches requires land application status covered or partial",
+      "repro": "may-apply-meta.test.ts Warringah case"
+    },
+    {
+      "scenario": "The suburb is sent with a postcode or in lower case",
+      "what_happens": "It is normalised to the same key as the data file, so the area is still found",
+      "mitigated": true,
+      "how": "normaliseSuburb on both sides, matched by the drift test",
+      "repro": "may-apply-meta.test.ts first case sends 'suburb nsw 2000' in lower case"
+    }
+  ],
+  "verified": [
+    "pytest tests/test_may_apply_areas_drift.py: 4 passed.",
+    "tsc --noEmit: no errors in changed files (one pre-existing @react-pdf/renderer missing-module error in ProvisionsByTocStructure.tsx, environment only)."
+  ],
+  "gaps": [
+    "Jest not run locally (jest is not installed in the worktree); 3 jest files unexecuted.",
+    "The SQL was not run against the database."
+  ],
+  "post_merge": {
+    "db_reset": "No database change.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Open an address in a listed suburb and confirm the block, then one outside it and confirm none."
+  },
+  "branch": "feat/may-apply-live"
+}

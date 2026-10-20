@@ -39,6 +39,8 @@ import { DCPInterestForm } from './DCPInterestForm';
 import { DcpStructuredControls } from './DcpStructuredControls';
 import { DcpLandApplicationNotice } from './DcpLandApplicationNotice';
 import { DcpNotCoveredNotice } from './DcpNotCoveredNotice';
+import { DcpMayApplyBlock, type MayApplyArea } from './DcpMayApplyBlock';
+import { suburbFromAddress } from '@/lib/may-apply-reasons';
 import { DcpFrontageFigureNotice } from './DcpFrontageFigureNotice';
 import type { FrontageFigureItem } from '@/lib/frontage-setback-figures';
 import type { NotCovered } from '@/lib/not-covered';
@@ -382,6 +384,7 @@ export function ProvisionsByTocStructure({
     acidSulfate: Boolean(propertyData?.constraints?.acidSulfateSoils),
     riparian: propertyData?.constraints?.riparianLand?.inRiparianArea === true,
     greenweb: propertyData?.constraints?.greenweb?.onGreenweb === true,
+    suburb: suburbFromAddress(address),
   });
 
   // If no formerCouncil, council DCP is not processed — skip fetch entirely
@@ -402,6 +405,7 @@ export function ProvisionsByTocStructure({
       precinct_warning?: boolean;
       land_application?: LandApplicationDecision;
       not_covered?: NotCovered | null;
+      may_apply?: MayApplyArea[] | null;
       frontage_setback_figures?: FrontageFigureItem[];
       frontage_setback_figures_failed?: boolean;
       dcp_currency?: {
@@ -2143,6 +2147,7 @@ export function ProvisionsByTocStructure({
         </p>
       )}
       <DcpNotCoveredNotice notCovered={data?.meta?.not_covered} />
+      <DcpMayApplyBlock mayApply={data?.meta?.may_apply} />
       <DcpFrontageFigureNotice items={data?.meta?.frontage_setback_figures} failed={data?.meta?.frontage_setback_figures_failed} />
 
       {landApplication?.status === 'partial' && (

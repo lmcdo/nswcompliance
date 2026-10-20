@@ -41,6 +41,7 @@ import { withServedCitation } from '@/lib/citation-display';
 import { quoteColumns, withCouncilWords } from '@/lib/council-quote';
 import { decideLandApplication, decodeLandApplication } from '@/lib/dcp-land-application';
 import { applyLandConditions, decodeLandFacts } from '@/lib/lep-land-condition';
+import { loadMayApply } from '@/lib/may-apply-query';
 
 
 export const dynamic = 'force-dynamic';
@@ -643,6 +644,23 @@ export async function GET(request: NextRequest) {
         filters.precinct_id,
       );
 
+      // Areas whose rules may apply to this suburb: separate from the property's provisions, counts and TOC.
+      // Northern Beaches' areas are Warringah DCP 2011's, so only land the Land Application Map puts under
+      // Warringah LEP 2011 (status covered / partial) is offered them -- never a Manly or Pittwater lot.
+      const councilSlugForMayApply = councilKey(filters.former_council);
+      const mayApplyAllowed =
+        councilSlugForMayApply !== 'northern_beaches' ||
+        landApplication.status === 'covered' || landApplication.status === 'partial';
+      const mayApply = mayApplyAllowed
+        ? await loadMayApply((sql, params) => client.query(sql, params), {
+            councilSlug: councilSlugForMayApply,
+            suburb: searchParams.get('suburb'),
+            selectColumns: PROVISION_BASE_SELECT,
+            mapRow: (row: any) =>
+              withServedCitation(withCouncilWords(row, stripOcrHeaderPrefix), parseRefNumber(row.ref_number, row.source_council)),
+          })
+        : [];
+
       const response = NextResponse.json({
         success: true,
         data: {
@@ -676,6 +694,7 @@ export async function GET(request: NextRequest) {
           land_application: landApplication,
           land_conditions: landGate,
           not_covered: getNotCovered(filters.former_council),
+          may_apply: mayApply,
           frontage_setback_figures: frontageFigures.items,
           frontage_setback_figures_failed: frontageFigures.failed,
         }

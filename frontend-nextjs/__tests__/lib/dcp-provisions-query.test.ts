@@ -61,6 +61,15 @@ describe('site conditions reach the route', () => {
   });
 });
 
+describe('suburb reaches the route', () => {
+  it('sends the suburb when there is one and omits it otherwise', () => {
+    expect(buildForPropertyParams({ formerCouncil: 'Leichhardt', suburb: 'WINSTON HILLS' }).get('suburb')).toBe('WINSTON HILLS');
+    for (const v of ['', null, undefined]) {
+      expect(buildForPropertyParams({ formerCouncil: 'Leichhardt', suburb: v }).has('suburb')).toBe(false);
+    }
+  });
+});
+
 describe('the mounted assessment page uses the builder', () => {
   const src = fs.readFileSync(
     path.join(__dirname, '../../components/compliance/ProvisionsByTocStructure.tsx'), 'utf8');
@@ -72,6 +81,11 @@ describe('the mounted assessment page uses the builder', () => {
   it("passes the lot's flood map and bushfire flag", () => {
     expect(src).toMatch(/flood:\s*propertyData\?\.constraints\?\.dcpFloodMap\?\.inFloodArea === true/);
     expect(src).toMatch(/bushfire:\s*propertyData\?\.constraints\?\.bushfireProne === true/);
+  });
+
+  it('passes the address suburb and mounts the may-apply block after the not-covered notice', () => {
+    expect(src).toMatch(/suburb:\s*suburbFromAddress\(address\)/);
+    expect(src).toMatch(/<DcpNotCoveredNotice[^>]*\/>\s*<DcpMayApplyBlock mayApply=\{data\?\.meta\?\.may_apply\}/);
   });
 
   it('the assessment page still mounts ProvisionsByTocStructure', () => {

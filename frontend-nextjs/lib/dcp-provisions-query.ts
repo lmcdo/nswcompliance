@@ -29,6 +29,8 @@ export interface ForPropertyQueryInput {
   riparian?: boolean | null;
   /** Any part of the lot overlaps Ku-ring-gai's DCP Part 18R.1 Greenweb maps. */
   greenweb?: boolean | null;
+  /** The suburb of the address, so the route can offer the areas whose rules may apply to it (lib/may-apply-query.ts). */
+  suburb?: string | null;
 }
 
 export function buildForPropertyParams(input: ForPropertyQueryInput): URLSearchParams {
@@ -56,6 +58,7 @@ export function buildForPropertyParams(input: ForPropertyQueryInput): URLSearchP
   if (input.acidSulfate === true) params.set('acid_sulfate', 'true');
   if (input.riparian === true) params.set('riparian', 'true');
   if (input.greenweb === true) params.set('greenweb', 'true');
+  if (input.suburb) params.set('suburb', input.suburb);
   // dev_types intentionally excluded -- provisions are property-specific, not dev-type-specific.
   return params;
 }
