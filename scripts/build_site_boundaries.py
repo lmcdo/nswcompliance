@@ -180,6 +180,15 @@ def main() -> int:
     args = ap.parse_args()
     src, how = (ADDR_SRC, "addresses") if args.addresses else (SRC, "lot list")
     sites = json.loads(src.read_text(encoding="utf-8"))["sites"]
+    if args.only:
+        # Prove only the named sites: proving every site took ~10 min a run (2026-10-20). A name that matches no
+        # site is still refused below.
+        named = set(args.only.split(","))
+        unknown = sorted(named - {s["precinct_id"] for s in sites})
+        if unknown:
+            print(f"REFUSED: requested site(s) unknown: {unknown}; nothing proved or written.")
+            return 1
+        sites = [s for s in sites if s["precinct_id"] in named]
     if args.addresses:
         from site_addresses import prove_address as check
     else:
