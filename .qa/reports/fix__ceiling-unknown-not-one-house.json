@@ -1,0 +1,89 @@
+{
+  "tier": "standard",
+  "justification": "Changes a served answer (highest permitted form) on the yield box and Site Report",
+  "commit_hash": "3daa38d7",
+  "files": [
+    "services/intelligence_brief.py",
+    "services/constraint_arithmetic.py",
+    "tests/test_capacity_ceiling_one_producer.py",
+    "tests/test_intelligence_brief_capacity_ceiling_live.py"
+  ],
+  "falsifiable_check": {
+    "command": "pytest tests/test_capacity_ceiling_one_producer.py; PYTEST_REAL_DB=1 pytest -m database tests/test_intelligence_brief_capacity_ceiling_live.py",
+    "fails_when": "an unreadable or missing LEP table again yields ceiling dwelling_house with no reason, or the endpoint drops the 'not shown' gap",
+    "observed_red": "On origin/main _permitted_engine_forms returns set() on a DB error or an unknown council and _capacity_ceiling returns ceiling 'dwelling_house' with no reason (Sol finding on #1370); test_unknown_lep_table_is_said_not_one_house fails there (4-tuple, ceiling dwelling_house), passes here."
+  },
+  "pre_impl": {
+    "existing_data": "lep_land_use_table rows (zone, lga, development_type, permissibility) read live; one extra DISTINCT lga read",
+    "assumption_mismatch": "a council spelled differently in the table now reads as not held, shown as not known rather than one house",
+    "new_vs_existing": "every yield-box request and Site Report run after this deploy",
+    "falsifiable_check": {
+      "command": "pytest tests/test_capacity_ceiling_one_producer.py; PYTEST_REAL_DB=1 pytest -m database tests/test_intelligence_brief_capacity_ceiling_live.py",
+      "fails_when": "an unreadable or missing LEP table again yields ceiling dwelling_house with no reason, or the endpoint drops the 'not shown' gap",
+      "observed_red": "On origin/main _permitted_engine_forms returns set() on a DB error or an unknown council and _capacity_ceiling returns ceiling 'dwelling_house' with no reason (Sol finding on #1370); test_unknown_lep_table_is_said_not_one_house fails there (4-tuple, ceiling dwelling_house), passes here."
+    }
+  },
+  "functions": [
+    {
+      "name": "_permitted_forms_checked",
+      "file_line": "services/intelligence_brief.py:1434",
+      "input": "zone code and council name for one lot",
+      "output": "permitted engine forms plus a plain reason when the table was not read",
+      "if_none": "missing zone or council returns an empty set with a reason, never a bare empty set"
+    },
+    {
+      "name": "_capacity_ceiling",
+      "file_line": "services/intelligence_brief.py:1671",
+      "input": "zone, council, location, lot area, heritage and width range",
+      "output": "floor, ceiling or None, LMR flag, citation and a reason for both callers",
+      "if_none": "an unknown table gives ceiling None plus the reason, or the LMR uplift if eligible"
+    }
+  ],
+  "values": [
+    {
+      "value": "why",
+      "read_at": "services/constraint_arithmetic.py:_ceiling_for_request",
+      "nullable": "yes",
+      "guard_at": "if why: gap appended",
+      "if_missing": "no gap; ceiling from the table as before"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "councils that have an LEP land use table (coverage)",
+      "file_line": "services/intelligence_brief.py:1452",
+      "where_clause": "none (SELECT DISTINCT lga over a small reference table)",
+      "if_zero": "every council reads as not held: shown as not known, never one house",
+      "if_wrong": "a council wrongly treated as not held shows not known instead of its forms"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "database blip while reading the land use table",
+      "what_happens": "the reader would see 'only a house is permitted' when nothing was checked",
+      "mitigated": true,
+      "how": "exception returns the reason; gap says not shown",
+      "repro": "pytest test_unknown_lep_table_is_said_not_one_house"
+    },
+    {
+      "scenario": "council not in our land use table (25 councils)",
+      "what_happens": "a single house shown as the most that is permitted, silently",
+      "mitigated": true,
+      "how": "coverage read returns 'we do not hold this council's table yet'",
+      "repro": "live test_live_unknown_lga_says_why_not_one_house"
+    },
+    {
+      "scenario": "council not held but the lot is eligible under low/mid-rise reforms",
+      "what_happens": "the eligible uplift form would be thrown away and nothing shown",
+      "mitigated": true,
+      "how": "ceiling = uplift_form when one applies, with the reason still shown",
+      "repro": "monkeypatch _lmr_uplift_form to return a form with an unknown table"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 an address in a council with no land use table shows 'not shown: we do not hold ...'"
+  }
+}

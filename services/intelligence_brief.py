@@ -1427,29 +1427,48 @@ def _norm_lga(name: Optional[str]) -> str:
 
 def _permitted_engine_forms(zone_code: Optional[str], lga_name: Optional[str]) -> set[str]:
     """Set of engine dev_type forms PERMITTED for this zone + LGA in the LEP Land
-    Use Table. Empty set on missing inputs / no coverage (25 LGAs) / any error —
-    the caller then fails safe to ``dwelling_house``. The LGA is matched via
-    _norm_lga so a council-name suffix mismatch no longer silently empties the set.
-    """
+    Use Table. Empty set when it cannot be read; use _permitted_forms_checked to learn WHY."""
+    return _permitted_forms_checked(zone_code, lga_name)[0]
+
+
+def _permitted_forms_checked(
+    zone_code: Optional[str], lga_name: Optional[str],
+) -> tuple[set[str], Optional[str]]:
+    """(permitted engine forms, why_unknown). why_unknown is None only when the council's
+    LEP land use table was actually read. An empty set used to fail safe to a single house
+    with nothing said, so a failed lookup or a council whose table we do not hold read as
+    'only a house is permitted' (cross-review 2026-10-19)."""
     if not zone_code or not lga_name:
-        return set()
+        return set(), "there is no zone or council for this lot"
     target = _norm_lga(lga_name)
     if not target:
-        return set()
+        return set(), "the council name could not be read"
     conn = None
     try:
         conn = _get_db_conn()
         cur = conn.cursor()
+        # Coverage is per council AND zone: a council we hold can still lack a zone (newly
+        # introduced, or not loaded), and an empty answer there is not "only a house".
+        cur.execute("SELECT DISTINCT lga, zone FROM lep_land_use_table")
+        held = [(_norm_lga(l), z) for (l, z) in cur.fetchall() if l]
+        if target not in {l for (l, _z) in held}:
+            return set(), "we do not hold this council's LEP land use table yet"
+        if (target, zone_code) not in held:
+            return set(), f"we do not hold the land use table for zone {zone_code} in this council"
         cur.execute(
             "SELECT lga, development_type FROM lep_land_use_table "
             "WHERE zone = %s AND permissibility = 'permitted'",
             (zone_code,),
         )
         table_forms = {dt for (lga, dt) in cur.fetchall() if _norm_lga(lga) == target}
-        return {engine for (tbl, engine) in _PERMITTED_FORM_DENSITY if tbl in table_forms}
-    except Exception as e:  # fail-safe: any error -> empty -> caller defaults
+        forms = {engine for (tbl, engine) in _PERMITTED_FORM_DENSITY if tbl in table_forms}
+        if not forms:
+            # Read fine, but no housing form is listed as permitted: not "one house".
+            return set(), f"the land use table lists no housing form as permitted in zone {zone_code}"
+        return forms, None
+    except Exception as e:
         logger.warning("permitted form lookup failed (%s/%s): %s", zone_code, lga_name, e)
-        return set()
+        return set(), "the LEP land use table could not be read"
     finally:
         if conn:
             conn.close()
@@ -1485,6 +1504,7 @@ def _realistic_forms(
     excluded_forms: Optional[set[str]] = None,
     uplift_form: Optional[str] = None,
     return_source: bool = False,
+    permitted: Optional[set[str]] = None,
 ):
     """Return (as_of_right_form, ceiling_form) for the capacity range.
 
@@ -1496,7 +1516,9 @@ def _realistic_forms(
       subject to a DA. Fail-safe to ``dwelling_house``.
     """
     base = _ceiling_within_tier(
-        zone_code, _permitted_engine_forms(zone_code, lga_name), excluded_forms
+        zone_code,
+        permitted if permitted is not None else _permitted_engine_forms(zone_code, lga_name),
+        excluded_forms,
     )
     ceiling = base
     if uplift_form and uplift_form in _ENGINE_FORM_DENSITY and base in _ENGINE_FORM_DENSITY:
@@ -1655,15 +1677,17 @@ def _capacity_ceiling(
     heritage: bool,
     width_range: Optional[tuple[float, float]] = None,
     results: Optional[list] = None,
-) -> tuple[str, str, bool, Optional[dict]]:
+) -> tuple[str, Optional[str], bool, Optional[dict], Optional[str]]:
     """The ONE producer of the capacity range (floor form, ceiling form) for a lot.
 
     The Site Report and the assessment yield box both call this, so the "homes you could
     build" range cannot differ between them (page check C2/C7, 2026-10-19: the yield box
     passed no ceiling and showed one house where the LEP table permits a dual occupancy).
 
-    Returns (floor_form, ceiling_form, ceiling_from_lmr, lmr_citation); apply the last two
-    with _apply_lmr_attribution. ``results`` = an eligibility run already made by the caller
+    Returns (floor_form, ceiling_form, ceiling_from_lmr, lmr_citation, why_unknown); apply
+    ceiling_from_lmr and lmr_citation with _apply_lmr_attribution. When the council's LEP
+    table could not be read, ceiling_form is the low/mid-rise uplift if one applies, else
+    None, and why_unknown says why in plain words: never a silent single house. ``results`` = an eligibility run already made by the caller
     (the brief reuses its SEPP card's run); None runs the engine once here.
     """
     excluded = _eligibility_excluded_forms(lat, lng)
@@ -1671,10 +1695,14 @@ def _capacity_ceiling(
         zone_code, lat, lng, lot_area_m2, None, heritage,
         results=results, lot_width_range=width_range,
     )
+    permitted, why = _permitted_forms_checked(zone_code, lga_name)
+    if why:
+        return "dwelling_house", uplift_form, bool(uplift_form), citation, why
     floor, ceiling, from_lmr = _realistic_forms(
         zone_code, lga_name, excluded_forms=excluded, uplift_form=uplift_form, return_source=True,
+        permitted=permitted,
     )
-    return floor, ceiling, from_lmr, citation
+    return floor, ceiling, from_lmr, citation, None
 
 
 def _eligibility_excluded_forms(lat: Optional[float], lng: Optional[float]) -> set[str]:
@@ -4064,7 +4092,7 @@ def _generate_brief_sse(
 
                     # Reuse the eligibility run from the SEPP card above — the
                     # engine is never invoked twice per brief.
-                    _floor_form, _ceiling_form, _ceiling_from_lmr, _uplift_citation = _capacity_ceiling(
+                    _floor_form, _ceiling_form, _ceiling_from_lmr, _uplift_citation, _ceiling_why = _capacity_ceiling(
                         controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name,
                         lat, lng, lot_area_m2, _heritage_lmr,
                         width_range=_width_range, results=eligibility_results,
@@ -4083,6 +4111,10 @@ def _generate_brief_sse(
                     )
                     if constraint_result is not None:
                         _apply_lmr_attribution(constraint_result, _ceiling_from_lmr, _uplift_citation)
+                        if _ceiling_why:
+                            constraint_result.gaps.append(
+                                f"The highest housing form the council's LEP permits is not shown: {_ceiling_why}."
+                            )
                         constraint_field = DataField(
                             value=constraint_result,
                             confidence=ConfidenceLevel.DERIVED,

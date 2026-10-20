@@ -197,7 +197,7 @@
   "scripts/conveyancing_db.py": 2,
   "services/granny_flat.py": 3,
   "services/housing_sepp_eligibility.py": 2,
-  "services/intelligence_brief.py": 5,
+  "services/intelligence_brief.py": 6,
   "services/secondary_dwelling_paths.py": 1
  },
  "road": {

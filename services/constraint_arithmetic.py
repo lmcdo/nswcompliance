@@ -1656,10 +1656,14 @@ def _ceiling_for_request(
             if req.width_min_m is not None and req.width_max_m is not None
             else None
         )
-        _floor, ceiling, from_lmr, citation = _capacity_ceiling(
+        _floor, ceiling, from_lmr, citation, why = _capacity_ceiling(
             req.zone, req.lga_name, req.lat, req.lng, req.lot_area_m2,
             heritage, width_range=width,
         )
+        if why:
+            return ceiling, from_lmr, citation, (
+                f"The highest housing form the council's LEP permits is not shown: {why}."
+            )
         return ceiling, from_lmr, citation, None
     except Exception:  # noqa: BLE001 — the reader sees "not checked", never one house
         import logging
