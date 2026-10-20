@@ -281,7 +281,7 @@ def evaluate_cdc(rules: Rules, zone: Optional[str], lot_area_m2, frontage_range_
     if hi < band.value:
         return {**out, "outcome": "FAIL", "reason": f"frontage at most {hi:g} m < {band.value:g} m"}
     return {**out, "outcome": "UNKNOWN",
-            "reason": f"frontage between {lo:g} m and {hi:g} m depending on which boundary faces the road"}
+            "reason": f"frontage between {lo:g} m and {hi:g} m, depending on where the building sits on the lot"}
 
 
 def evaluate_da(rules: Rules, zone: Optional[str], lot_area_m2, detached: Optional[bool],

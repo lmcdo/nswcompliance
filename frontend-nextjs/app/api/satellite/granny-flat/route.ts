@@ -3,6 +3,8 @@ import { getResend } from '@/lib/resend-client';
 import { createClient } from '@supabase/supabase-js';
 import { NSW_STANDARD_ZONES } from '@/lib/regulatory-constants';
 import { calculateLotDimensions } from '@/lib/geometry/lot-dimensions';
+import { detectCornerLot } from '@/lib/geometry/corner-lot-detection';
+import { widthRange } from '@/lib/geometry/street-frontage';
 import {
   satelliteRateLimiter,
   getClientIdentifier,
@@ -318,18 +320,21 @@ export async function POST(request: NextRequest) {
   // NSW_STANDARD_ZONES.RESIDENTIAL — was independently declared in 4 files.
   const ELIGIBLE_ZONE_PREFIXES = NSW_STANDARD_ZONES.RESIDENTIAL as readonly string[];
   const zone: string | null = (propData.property as { zone?: string | null })?.zone ?? null;
-  // CDC lot facts from the lot shape (the same lib/geometry the verify app's
-  // property panel uses). The SEPP measures frontage at the building line, which
-  // equals the front boundary only on a regular lot, so a frontage is sent only
-  // for a rectangular lot with a confidently identified front. Anything unsure
-  // is left out and the engine answers "not determined", never a guessed pass.
+  // CDC lot facts. Battle-axe comes from the lot shape. The road frontage is the lot's width
+  // measured back from the road edge (the same street-frontage measurement as the property
+  // panel), sent as (narrowest front-half width, widest width) because the SEPP measures it at
+  // the building line, which depends on the design. It used to be the shorter side of the
+  // lot's bounding rectangle, which is not the street edge: a wide shallow lot facing the road
+  // on its long side read as too narrow (Sol, #1342). Anything unmeasured is left out and the
+  // engine answers "not determined", never a guessed pass.
   const lotDims = lotGeometry?.rings?.[0] ? calculateLotDimensions(lotGeometry) : null;
-  const pathFacts: { frontage_m?: number; battle_axe?: boolean } = {};
+  const pathFacts: { frontage_range_m?: [number, number]; battle_axe?: boolean } = {};
   if (lotDims?.battleaxe?.isBattleaxe) {
     pathFacts.battle_axe = true;
-  } else if (lotDims?.lotType === 'rectangular' && lotDims.confidence >= 0.8 && lotDims.frontage != null && lotDims.frontage > 0) {
-    pathFacts.battle_axe = false;
-    pathFacts.frontage_m = lotDims.frontage;
+  } else {
+    if (lotDims?.lotType === 'rectangular' && lotDims.confidence >= 0.8) pathFacts.battle_axe = false;
+    const width = lotGeometry?.rings?.[0] ? widthRange((await detectCornerLot(lotGeometry)).streetFrontage) : null;
+    if (width && width.min > 0 && width.max >= width.min) pathFacts.frontage_range_m = [width.min, width.max];
   }
   if (zone) {
     const eligible = ELIGIBLE_ZONE_PREFIXES.some((p) => zone.startsWith(p));
