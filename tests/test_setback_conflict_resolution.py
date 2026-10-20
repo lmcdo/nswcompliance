@@ -251,3 +251,12 @@ class TestSiteContextSolFindings:
                 _cc("side_setback", 0.9, None), _cc("side_setback", 0.0, "semi-detached party wall")]
         r = self._compute(rows)
         assert r.setback_side_m == 0.9
+
+
+    def test_must_not_be_less_than_on_corner_lots_is_still_corner_only(self):
+        rows = [_cc("front_setback", 6.0, None), _cc("rear_setback", 6.0, None),
+                _cc("side_setback", 0.9, None),
+                _cc("side_setback", 3.0, "setback must not be less than 3 m on corner lots")]
+        r = TestSiteContextSolFindings()._compute(rows, corner=False)
+        assert r.setback_side_m == 0.9
+        assert any("3 m side setback" in g and "not on a corner" in g for g in r.gaps)

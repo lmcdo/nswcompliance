@@ -241,7 +241,7 @@ _HOUSING_TYPES = {
 }
 _CORNER_CASE = re.compile(r"corner|secondary (street|road|frontage)", re.I)
 # "excluding corner lots" is a rule FOR non-corner lots, not a corner-only rule (Sol, #1377).
-_EXCLUDES_CORNER = re.compile(r"\b(?:exclud\w*|except|other than|not)\b[^.;]{0,30}corner", re.I)
+_EXCLUDES_CORNER = re.compile(r"\b(?:exclud\w*|except|other than)\b[^.;]{0,30}corner|\bnot (?:applicable|apply|applying) (?:to|for) [^.;]{0,20}corner", re.I)
 # A condition that limits a rule to one case. When the only rule for a side carries one, it is
 # listed with its case, never used for every lot (Sol, #1371: a lone "upper floor" or "corner"
 # row became the setback for all lots).
