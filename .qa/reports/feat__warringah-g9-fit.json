@@ -1,0 +1,30 @@
+{
+  "tier": "standard",
+  "justification": "New outline for a 436-rule area from a fitted figure, a loader path for another council, and a key rule; decides which properties see Frenchs Forest rules",
+  "commit_hash": "b279566f",
+  "files": ["scripts/fit_cb_raster_centres.py", "scripts/import_cb_centre_boundaries.py", "scripts/gate_rules.py", "data/warringah_precincts/raster_centres_g9.json", "data/warringah_precincts/centres_g9.geojson", "data/warringah_precincts/fit_report_g9.json"],
+  "falsifiable_check": {
+    "command": "python scripts/import_cb_centre_boundaries.py --council northern_beaches --src data/warringah_precincts/centres_g9.geojson (dry run); --commit proves inside/outside anchors in the transaction",
+    "fails_when": "the outline disagrees with external answers: NSW road centrelines (named streets on the figure's roads below 0.90), NSW cadastre lot edges (median above 5 m), the central block lot 99//DP1241021 or the NSW address register points for 1 Gladys Ave and 5 Hilmer St falling outside, or the hospital lot 1//DP1247544 or 74 Karingal Cres (south side) or 10 Campbell Ave Cromer falling inside",
+    "observed_red": "On origin/main there is no G9 outline: 920 Warringah area rules showed on every Warringah property until withheld on 2026-10-20 (436 of them G9). Before the rotation option the fit was refused three times (named-on-road at most 0.74, lot-edge median 5.5 m or worse); with it: 0.983 / 2.95 m. The first anchor list had a hand-typed hospital point that was wrong; replaced by the cadastre point (151.232883, -33.751053)."
+  },
+  "pre_impl": {
+    "existing_data": "nsw_cadastre_lots, NSW RoadSegment centrelines, NSW address register, the plan PDF Figure 1 p177",
+    "assumption_mismatch": "roads inside the outline (Warringah Rd, Frenchs Forest Rd W) are not added, so an address point on the road surface falls in no area; 4 doubtful lots are kept (doubt keeps the rule)",
+    "new_vs_existing": "Northern Beaches only after the load; Canterbury-Bankstown loader path unchanged",
+    "falsifiable_check": {"command": "see top", "fails_when": "see top", "observed_red": "see top"}
+  },
+  "functions": [
+    {"name": "_load", "file_line": "scripts/import_cb_centre_boundaries.py:155", "input": "the outline rows, the commit flag, and an optional council profile", "output": "rows upserted and proved inside one transaction, or rolled back", "if_none": "no profile: the Canterbury-Bankstown constants as before"}
+  ],
+  "values": [
+    {"value": "profile", "read_at": "scripts/import_cb_centre_boundaries.py:155", "nullable": "yes", "guard_at": "profile[...] if profile else <CB constant>", "if_missing": "Canterbury-Bankstown behaviour unchanged"}
+  ],
+  "queries": [],
+  "break_it": [
+    {"scenario": "the fit slides onto the hospital's east edge", "what_happens": "hospital land would get town-centre rules", "mitigated": true, "how": "the hospital lot point must resolve to no area or the write rolls back", "repro": "import ... --council northern_beaches --commit"},
+    {"scenario": "a revised PDF with the same file name", "what_happens": "the fit would use the old figure while citing the new URL", "mitigated": true, "how": "cache name includes a hash of the full URL", "repro": "change the config pdf URL and rerun"},
+    {"scenario": "an address on a road crossing the outline", "what_happens": "it falls in no area and gets no G9 rules", "mitigated": false, "how": "accepted: road surface is not a property", "repro": "n/a"}
+  ],
+  "post_merge": {"db_reset": "No", "secrets": "No", "other_repo": "No", "manual_verify": "Yes — load with --commit (user runs if auto mode blocks), derive keys, re-show G9 rows; 1 Gladys Ave matches G9 and Cromer does not"}
+}
