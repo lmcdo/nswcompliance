@@ -1,0 +1,11 @@
+{
+  "pdf": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/northern_beaches/v-html-2026-09-18/warringah-dcp-2011-full.pdf",
+  "out_dir": "data/warringah_precincts",
+  "union_id": "G9 Frenchs Forest Town Centre",
+  "union_name": "Frenchs Forest Town Centre (Phase 1 Development)",
+  "centres": [
+    {"section": 1, "page": 177, "name": "Frenchs Forest Town Centre", "suburb": "FRENCHS FOREST", "seed": "street",
+     "streets": ["Karingal Crescent", "Warringah Road", "Wakehurst Parkway", "Hilmer Street", "Gladys Avenue", "Rabbett Street", "Cobb Street", "Holland Crescent", "Akora Street", "Bantry Bay Road", "Forest Way"],
+     "road_band": [222, 236], "outline_mode": "dashed", "scale_range": [0.8, 1.1], "rotation_deg": 8.5}
+  ]
+}
