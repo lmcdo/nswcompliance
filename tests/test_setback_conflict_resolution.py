@@ -301,3 +301,11 @@ class TestSiteContextSolFindings:
             rows = [_cc("front_setback", 6.0, None), _cc("rear_setback", 6.0, None), _cc("side_setback", 0.9, None),
                     _cc("side_setback", 3.0, cond)]
             assert TestSiteContextSolFindings()._compute(rows, corner=False).setback_side_m == 0.9, cond
+
+    def test_unrelated_noun_without_comma_is_still_corner_only(self):
+        rows = [_cc("front_setback", 6.0, None), _cc("rear_setback", 6.0, None), _cc("side_setback", 0.9, None),
+                _cc("side_setback", 3.0, "Other than garages corner lots must have a 3 m setback")]
+        assert TestSiteContextSolFindings()._compute(rows, corner=False).setback_side_m == 0.9
+        keep = [_cc("front_setback", 6.0, "except those on corner allotments"), _cc("rear_setback", 6.0, None),
+                _cc("side_setback", 0.9, None)]
+        assert TestSiteContextSolFindings()._compute(keep, corner=False).setback_front_m == 6.0

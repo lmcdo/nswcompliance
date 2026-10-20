@@ -250,12 +250,12 @@ _BASE = re.compile(r"single storey|ground (level|floor)", re.I)
 # corner lots" / "applies to non-corner lots" is not corner-only; "Other than garages, corner lots..." is.
 _CORNER = re.compile(
     r"(?<!non-)(?<!non )corner"
-    r"|\b(?:exclud(?:e|es|ing|ed)|except(?: for)?|other than)\s+(?:[a-z]+\s+){0,3}?non[- ]corner"
-    r"|\bnot (?:applicable|apply|applying) (?:to|for)\s+(?:[a-z]+\s+){0,2}?non[- ]corner"
+    r"|\b(?:exclud(?:e|es|ing|ed)|except(?: for)?|other than)\s+(?:(?:the|a|an|any|all|those|that|lots?|allotments?|sites?|properties|land|on|of|which|are)\s+){0,3}?non[- ]corner"
+    r"|\bnot (?:applicable|apply|applying) (?:to|for)\s+(?:(?:the|a|an|any|all|those|that|lots?|allotments?|sites?|properties|land|on|of|which|are)\s+){0,3}?non[- ]corner"
     r"|secondary (?:street|road|frontage)", re.I)
 _EXCLUDES_CORNER = re.compile(
-    r"\b(?:exclud(?:e|es|ing|ed)|except(?: for)?|other than)\s+(?:[a-z]+\s+){0,3}?(?<!non-)(?<!non )corner"
-    r"|\bnot (?:applicable|apply|applying) (?:to|for)\s+(?:[a-z]+\s+){0,2}?(?<!non-)(?<!non )corner"
+    r"\b(?:exclud(?:e|es|ing|ed)|except(?: for)?|other than)\s+(?:(?:the|a|an|any|all|those|that|lots?|allotments?|sites?|properties|land|on|of|which|are)\s+){0,3}?(?<!non-)(?<!non )corner"
+    r"|\bnot (?:applicable|apply|applying) (?:to|for)\s+(?:(?:the|a|an|any|all|those|that|lots?|allotments?|sites?|properties|land|on|of|which|are)\s+){0,3}?(?<!non-)(?<!non )corner"
     r"|(?<!not )\b(?:appl(?:y|ies|ying|icable)|only)\s+(?:to|for|on)\s+(?:all\s+)?non[- ]corner"
     r"|^\s*(?:for|on)\s+(?:all\s+)?non[- ]corner", re.I)
 # The DCP tab hides an extraction note from the reader (DcpStructuredControls / publicCondition),

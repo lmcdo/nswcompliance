@@ -27,6 +27,8 @@ describe('isCornerOnlyRow', () => {
     [{ control_type: 'side_setback', condition: 'must not be less than 3 m on corner lots' }, true],
     [{ control_type: 'side_setback', condition: 'excluding non-corner lots' }, true],
     [{ control_type: 'side_setback', condition: 'Other than garages, corner lots must have a 3 m setback' }, true],
+    [{ control_type: 'side_setback', condition: 'Other than garages corner lots must have a 3 m setback' }, true],
+    [{ control_type: 'front_setback', condition: 'except those on corner allotments' }, false],
     // "non-corner" is not a corner row
     [{ control_type: 'front_setback', condition: 'applies to non-corner lots' }, false],
     [{ control_type: 'front_setback', condition: 'except for corner allotments' }, false],
