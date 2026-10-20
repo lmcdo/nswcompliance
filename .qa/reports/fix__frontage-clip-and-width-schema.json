@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes the street frontage length shown on the page and used by the yield and eligibility checks, and which lot widths the Housing SEPP API accepts",
-  "commit_hash": "4438f7d6",
+  "commit_hash": "7022a3d2",
   "files": [
     "services/street_frontage.py",
     "frontend-nextjs/lib/geometry/street-frontage.ts",
@@ -17,7 +17,7 @@
   },
   "pre_impl": {
     "existing_data": "NSW road corridor layer parcels with roadnamelabel; lot boundary rings in EPSG:3857",
-    "assumption_mismatch": "a gap shorter than 3 m inside a road edge is counted as frontage (corner curves); the width profile still starts from the whole edge",
+    "assumption_mismatch": "a gap shorter than 3 m at either end of a road edge is counted as frontage (corner curves); the width profile still starts from the whole edge",
     "new_vs_existing": "every page and report that shows street frontage after deploy",
     "falsifiable_check": {
       "command": "pytest tests/test_street_frontage.py",
@@ -67,11 +67,11 @@
       "repro": "pytest tests/test_street_frontage.py -k never_fills"
     },
     {
-      "scenario": "a real 2.5-3 m gap in the middle of a road edge",
-      "what_happens": "the short gap is counted as frontage even though no road is beside it",
-      "mitigated": false,
-      "how": "accepted: indistinguishable from a corner curve at this sampling; under 3 m",
-      "repro": "n/a"
+      "scenario": "a short real break in the middle of a road edge",
+      "what_happens": "would be filled in as frontage although no road is beside it",
+      "mitigated": true,
+      "how": "only gaps at the two ends of an edge (corner curves) are filled; a middle gap is always cut",
+      "repro": "pytest tests/test_street_frontage.py -k gap_in_the_middle"
     }
   ],
   "post_merge": {
