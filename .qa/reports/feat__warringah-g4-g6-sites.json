@@ -1,0 +1,10 @@
+{
+  "tier": "minor",
+  "justification": "Two site entries in existing data files and two key rules of the same shape as the existing G1 rule; the outlines are proved by the existing build_site_boundaries.py",
+  "commit_hash": "a6f6c161",
+  "files": ["data/site_chapters/lot_sites.json", "data/site_chapters/address_sites.json", "scripts/gate_rules.py"],
+  "break_it": [
+    {"scenario": "a shared page holds the end of one area and the start of the next", "what_happens": "rows from the neighbouring area would get the wrong area key", "mitigated": true, "how": "page 121 and 158 rows are listed by id after reading each row; only whole pages are taken by range", "repro": "python scripts/derive_precinct_keys.py --council northern_beaches (dry run)"}
+  ],
+  "post_merge": {"db_reset": "No", "secrets": "No", "other_repo": "No", "manual_verify": "Yes — after the user approves: load the two outlines, write the 122 keys, re-show the withheld rows of these two areas; a Brookvale address inside Warringah Mall shows the G4 rules, a Cromer address does not"}
+}
