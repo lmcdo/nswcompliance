@@ -38,10 +38,19 @@ export function suburbFromAddress(address: string | null | undefined): string {
   const parts = address.split(',').map((p) => normaliseSuburb(p)).filter(Boolean);
   // With commas the suburb is the LAST part that is not just state/postcode ("Unit 3, 12 Smith St, Winston Hills NSW
   // 2153" -> "WINSTON HILLS"); normaliseSuburb already drops "NSW" and the postcode (Sol, 2026-10-20).
-  if (address.includes(',')) return parts.length > 1 ? parts[parts.length - 1] : '';
-  const street = parseStreet(address);
+  // A last part that still starts with a number or unit word holds the street too ("Unit 3, 12 Smith Street Winston
+  // Hills NSW 2153"): read the suburb from after the street in that part (Sol, 2026-10-21).
+  let rest = address;
+  if (address.includes(',')) {
+    if (parts.length <= 1) return '';
+    const last = parts[parts.length - 1];
+    const first = last.split(' ')[0];
+    if (!/^\d/.test(first) && !UNIT_WORDS.has(first)) return last;
+    rest = last;
+  }
+  const street = parseStreet(rest);
   if (!street) return '';
-  const toks = address.toUpperCase().replace(/\//g, ' ').trim().split(/\s+/);
+  const toks = rest.toUpperCase().replace(/\//g, ' ').trim().split(/\s+/);
   let i = 0;
   while (i < toks.length && (/^\d/.test(toks[i]) || UNIT_WORDS.has(toks[i]))) i++;
   const nameTokens = street.name.length;  // parseStreet returns the name as tokens (Sol: tokens, not characters)
