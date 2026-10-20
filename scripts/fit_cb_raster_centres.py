@@ -279,9 +279,10 @@ def fit_centre(pdf: Path, c: dict) -> dict:
     if rot:
         row["rotation_deg"] = rot
         row["_rot"] = (rot, (sx, sy))
-    row["road_share"] = round(road_share(img, band), 3)
-    if row["road_share"] > ROAD_SHARE_MAX:
-        row["refused"] = (f"road mask covers {row['road_share']:.0%} of the figure; "
+    share = road_share(img, band)  # judged unrounded; rounded only for the report
+    row["road_share"] = round(share, 3)
+    if share > ROAD_SHARE_MAX:
+        row["refused"] = (f"road mask covers {share:.0%} of the figure; "
                           "the on-road scores cannot tell a fit from noise")
         return row
     if s <= 0 or lift <= 0 or np.hypot(ox - sx, oy - sy) > 5000:
