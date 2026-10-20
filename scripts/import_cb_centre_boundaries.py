@@ -58,12 +58,35 @@ OUTSIDE_ALL = {
     "5-9 Clack Rd Chester Hill (671//DP1158597)": (150.990406, -33.870217),
 }
 
+#: Another council's fitted outlines load through the same proof with that council's own facts (--council).
+#: Warringah G9 (2026-10-20): the box around Northern Beaches, addresses that must stay outside (the hospital the
+#: figure's line skirts, a house on the far side of Karingal Crescent, Cromer), and points that must fall inside
+#: (the central block and two addresses inside the figure's line).
+PROFILES = {
+    "northern_beaches": {
+        "lga": "Northern Beaches", "former_council": "Northern Beaches",
+        "ids": {"centres_g9.geojson": {"G9 Frenchs Forest Town Centre"}},
+        "envelope": (151.15, -33.82, 151.35, -33.57),
+        "outside": {
+            # Lot points are ST_PointOnSurface of nsw_cadastre_lots; addresses are NSW address register points.
+            "Northern Beaches Hospital (1//DP1247544)": (151.232883, -33.751053),
+            "74 Karingal Cres Frenchs Forest (south side)": (151.230758, -33.753158),
+            "10 Campbell Ave Cromer": (151.287220, -33.744429),
+        },
+        "inside": {
+            "central block (99//DP1241021)": (151.229781, -33.750295),
+            "1 Gladys Ave Frenchs Forest": (151.232218, -33.748933),
+            "5 Hilmer St Frenchs Forest": (151.232180, -33.752803),
+        },
+    },
+}
+
 LOOKUP_SQL = """SELECT precinct_id FROM dcp_precinct_boundaries
                  WHERE ST_Contains(boundary, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
                    AND LOWER(lga) = LOWER(%s)"""
 
 
-def load_rows(src: Path = SRC) -> list[dict]:
+def load_rows(src: Path = SRC, profile: dict | None = None) -> list[dict]:
     fc = json.loads(src.read_text(encoding="utf-8"))
     rows = []
     for f in fc["features"]:
@@ -75,6 +98,11 @@ def load_rows(src: Path = SRC) -> list[dict]:
             "source_document": p["source"], "boundary_description": p["quote"],
         })
     ids = {r["precinct_id"] for r in rows}
+    if profile is not None:  # another council: the file must hold exactly the ids its profile names
+        expected = profile["ids"].get(src.name)
+        if expected is None or ids != expected:
+            raise SystemExit(f"[ABORT] {src.name} holds {sorted(ids)}, expected {sorted(expected or [])}")
+        return rows
     expected = RASTER_IDS.get(src.name, EXPECTED_IDS)
     # A raster file may lack centres the fit REFUSED (their rules stay unkeyed); it may never hold an unknown id,
     # and it must hold the chapter's union.
@@ -110,19 +138,25 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--commit", action="store_true")
     ap.add_argument("--src", default=str(SRC), help="another outline file in the same shape")
+    ap.add_argument("--council", choices=sorted(PROFILES), help="load another council's outlines with its own proof")
     a = ap.parse_args()
-    rows = load_rows(Path(a.src))
+    profile = PROFILES[a.council] if a.council else None
+    rows = load_rows(Path(a.src), profile)
     for r in rows:
         print(f"  {r['precinct_id']:<4} {r['precinct_name']:<30} {r['area_sqm'] / 1e4:7.1f} ha  "
               f"{r['extraction_method']} ({r['confidence_score']})")
     conn = connect()
     try:
-        return _load(conn, rows, a.commit, former=Path(a.src).name in FORMER_IDS)
+        return _load(conn, rows, a.commit, former=Path(a.src).name in FORMER_IDS, profile=profile)
     finally:
         conn.close()
 
 
-def _load(conn, rows: list[dict], commit: bool, former: bool = False) -> int:
+def _load(conn, rows: list[dict], commit: bool, former: bool = False, profile: dict | None = None) -> int:
+    lga = profile["lga"] if profile else LGA
+    fc = profile["former_council"] if profile else FORMER_COUNCIL
+    envelope = profile["envelope"] if profile else CB_ENVELOPE
+    outside = profile["outside"] if profile else OUTSIDE_ALL
     # prior-art-checked: closing this script's own connection; no new data source is added.
     cur = conn.cursor()
     cur.execute("SELECT current_database()")
@@ -130,15 +164,15 @@ def _load(conn, rows: list[dict], commit: bool, former: bool = False) -> int:
     cur.execute("""SELECT id, precinct_id, precinct_name, lga, former_council, extraction_method,
                           confidence_score, source_document, boundary_description,
                           ST_AsGeoJSON(boundary) FROM dcp_precinct_boundaries WHERE LOWER(lga) = LOWER(%s)""",
-                (LGA,))
+                (lga,))
     existing = cur.fetchall()
-    print(f"existing {LGA} rows: {len(existing)}")
+    print(f"existing {lga} rows: {len(existing)}")
     if not commit:
         print("dry-run: nothing written (pass --commit)")
         return 0
 
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    bpath = BACKUP_DIR / f"cb_precinct_boundaries_before_{datetime.now(timezone.utc):%Y-%m-%dT%H%M%S}.json"
+    bpath = BACKUP_DIR / f"{'cb' if not profile else lga.lower().replace(' ', '_')}_precinct_boundaries_before_{datetime.now(timezone.utc):%Y-%m-%dT%H%M%S}.json"
     bpath.write_text(json.dumps([list(map(str, r)) for r in existing], indent=1), encoding="utf-8")
     print(f"backup: {bpath} ({len(existing)} rows)")
 
@@ -161,7 +195,7 @@ def _load(conn, rows: list[dict], commit: bool, former: bool = False) -> int:
                 confidence_score = EXCLUDED.confidence_score,
                 boundary_description = EXCLUDED.boundary_description,
                 area_sqm = EXCLUDED.area_sqm, perimeter_m = EXCLUDED.perimeter_m, updated_at = now()
-        """, {**r, "lga": LGA, "fc": FORMER_COUNCIL})
+        """, {**r, "lga": lga, "fc": fc})
 
     # Proof, inside the transaction: placed on Earth correctly, found by the SAME lookup the
     # site runs, and the audit addresses still in no precinct. The test point is ST_PointOnSurface,
@@ -171,19 +205,25 @@ def _load(conn, rows: list[dict], commit: bool, former: bool = False) -> int:
     cur.execute("""SELECT precinct_id, ST_XMin(boundary), ST_YMin(boundary), ST_XMax(boundary),
                           ST_YMax(boundary), ST_X(ST_PointOnSurface(boundary)), ST_Y(ST_PointOnSurface(boundary))
                      FROM dcp_precinct_boundaries WHERE lga = %s AND precinct_id = ANY(%s)""",
-                (LGA, [r["precinct_id"] for r in rows]))
+                (lga, [r["precinct_id"] for r in rows]))
     got = cur.fetchall()
     if {g[0] for g in got} != {r["precinct_id"] for r in rows}:
         problems.append(f"rows after write: {sorted(g[0] for g in got)}")
-    x0, y0, x1, y1 = CB_ENVELOPE
+    x0, y0, x1, y1 = envelope
     for pid, a0, b0, a1, b1, cx, cy in got:
         if not (x0 <= a0 and a1 <= x1 and y0 <= b0 and b1 <= y1):
-            problems.append(f"{pid} outside the Canterbury-Bankstown envelope")
-        cur.execute(LOOKUP_SQL, (cx, cy, "CANTERBURY-BANKSTOWN"))
+            problems.append(f"{pid} outside the {lga} envelope")
+        cur.execute(LOOKUP_SQL, (cx, cy, lga))
         if pid not in {r[0] for r in cur.fetchall()}:
             problems.append(f"{pid}: a point inside it is not found by the site's lookup")
-    for label, (x, y) in OUTSIDE_ALL.items():
-        cur.execute(LOOKUP_SQL, (x, y, "CANTERBURY-BANKSTOWN"))
+    for label, (x, y) in (profile or {}).get("inside", {}).items():
+        cur.execute(LOOKUP_SQL, (x, y, lga))
+        hit = [r[0] for r in cur.fetchall()]
+        print(f"  lookup {label}: {hit or 'no precinct'}")
+        if not set(hit) & {r["precinct_id"] for r in rows}:
+            problems.append(f"{label} should be inside the new outline, resolves to {hit}")
+    for label, (x, y) in outside.items():
+        cur.execute(LOOKUP_SQL, (x, y, lga))
         hit = [r[0] for r in cur.fetchall()]
         print(f"  lookup {label}: {hit or 'no precinct'}")
         if former:

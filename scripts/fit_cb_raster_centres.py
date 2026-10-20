@@ -136,17 +136,19 @@ def named(pts: np.ndarray, keys: np.ndarray, names: list[str]) -> tuple[np.ndarr
     return pts[m], {w.replace("|", " ") for w in want - set(keys[m])}
 
 
-def _road_mask(img: np.ndarray) -> np.ndarray:
-    """Map road pixels (white), widened 2 px so a centreline inside a carriageway counts."""
-    return cv2.dilate((img >= 249).astype(np.uint8), np.ones((5, 5), np.uint8))
+def _road_mask(img: np.ndarray, band: list | None = None) -> np.ndarray:
+    """Map road pixels (white; or grey in [lo, hi] when a centre sets road_band), widened 2 px so a
+    centreline inside a carriageway counts."""
+    m = (img >= 249) if band is None else ((img >= band[0]) & (img <= band[1]))
+    return cv2.dilate(m.astype(np.uint8), np.ones((5, 5), np.uint8))
 
 
 def search(img: np.ndarray, pts: np.ndarray, cx: float, cy: float, scales, down: int = 1,
-           near: tuple | None = None) -> tuple[float, float, float, float]:
+           near: tuple | None = None, band: list | None = None) -> tuple[float, float, float, float]:
     """Best (lift, metres/pixel, x of pixel (0,0), y of pixel (0,0)) over the scales, north up.
     down: search the map shrunk this many times (coarse pass, ~down^2 faster). near=(ox, oy, margin_m):
     keep only points near that placement (fine pass) so the correlation grid stays small."""
-    road = _road_mask(img).astype(np.float32)
+    road = _road_mask(img, band).astype(np.float32)
     if down > 1:
         road = cv2.resize(road, (road.shape[1] // down, road.shape[0] // down), interpolation=cv2.INTER_AREA)
         road = (road > 0.25).astype(np.float32)
@@ -180,13 +182,31 @@ def search(img: np.ndarray, pts: np.ndarray, cx: float, cy: float, scales, down:
     return best
 
 
-def on_road_share(img: np.ndarray, fit: dict, pts: np.ndarray) -> float:
+def on_road_share(img: np.ndarray, fit: dict, pts: np.ndarray, band: list | None = None) -> float:
     """Share of the centreline points inside the map that land on its road pixels."""
-    road = _road_mask(img)
+    road = _road_mask(img, band)
     u = ((pts[:, 0] - fit["ox"]) / fit["s"]).astype(int)
     v = (-(pts[:, 1] - fit["oy"]) / fit["s"]).astype(int)
     k = (u >= 0) & (u < img.shape[1]) & (v >= 0) & (v < img.shape[0])
     return float(road[v[k], u[k]].mean()) if k.sum() else 0.0
+
+
+def outline_dashed(img: np.ndarray, fit: dict):
+    """A DASHED black outline: dark pixels (< 70; green and grey lines are lighter), dilated 16x16 to
+    join the dashes, the largest external contour filled, eroded 16x16 back (opt-in: outline_mode)."""
+    k = np.ones((16, 16), np.uint8)
+    dark = cv2.dilate((img < 70).astype(np.uint8) * 255, k)
+    cs, _ = cv2.findContours(dark, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    if not cs:
+        return None
+    filled = np.zeros_like(dark)
+    cv2.drawContours(filled, [max(cs, key=cv2.contourArea)], -1, 255, cv2.FILLED)
+    filled = cv2.erode(filled, k)
+    cs, _ = cv2.findContours(filled, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    if not cs:
+        return None
+    r = max(cs, key=cv2.contourArea)[:, 0, :].astype(float)
+    return Polygon(np.c_[fit["ox"] + r[:, 0] * fit["s"], fit["oy"] - r[:, 1] * fit["s"]]).buffer(0)
 
 
 def outline(img: np.ndarray, fit: dict, min_px2: float = 1500):
@@ -211,39 +231,55 @@ def outline(img: np.ndarray, fit: dict, min_px2: float = 1500):
     return unary_union(polys) if polys else None
 
 
+def _rot(xy: np.ndarray, deg: float, o: tuple) -> np.ndarray:
+    """Points turned deg degrees anticlockwise about o (opt-in rotation_deg: a map not drawn north up)."""
+    t = np.radians(deg)
+    return (xy - o) @ np.array([[np.cos(t), -np.sin(t)], [np.sin(t), np.cos(t)]]).T + o
+
+
 def fit_centre(pdf: Path, c: dict) -> dict:
     """Fit, measure and snap one centre. Returns the report row (with 'lots_geom' when accepted)."""
     img = figure_image(pdf, c["page"])
+    band = c.get("road_band")
     sx, sy = seed(c)
     pts, keys = fetch_roads(sx, sy, 2000)                      # the only road request for this centre
     nm, missing = named(pts, keys, c["streets"])
+    rot = float(c.get("rotation_deg") or 0.0)
+    if rot:                                                    # fit in the map's own (turned) frame
+        pts, nm = _rot(pts, rot, (sx, sy)), _rot(nm, rot, (sx, sy))
     fit_pts = nm if c["seed"] == "street" else pts
-    lo = 0.15 if c["seed"] == "street" else 0.4
+    lo, hi = c.get("scale_range") or (0.15 if c["seed"] == "street" else 0.4, 2.5)
     # Zoomed maps (street seed) lose small streets at 1/4 size and some fit better at 1/2: try both, keep the
     # placement whose WHOLE road network sits best on the map (the named streets are checked again below).
     best = None
     for down in ((2, 4) if c["seed"] == "street" else (4,)):
-        coarse = search(img, fit_pts, sx, sy, np.geomspace(lo, 2.5, 40), down=down)
+        coarse = search(img, fit_pts, sx, sy, np.geomspace(lo, hi, 40), down=down, band=band)
         cand = search(img, fit_pts, sx, sy, np.linspace(coarse[1] * 0.96, coarse[1] * 1.04, 9),
-                      near=(coarse[2], coarse[3], 150))
+                      near=(coarse[2], coarse[3], 150), band=band)
         f = {"s": cand[1], "ox": cand[2], "oy": cand[3]}
-        score = (on_road_share(img, f, nm) >= NAMED_MIN, on_road_share(img, f, pts)) if cand[1] > 0 else (False, -1)
+        score = (on_road_share(img, f, nm, band) >= NAMED_MIN, on_road_share(img, f, pts, band)) if cand[1] > 0 else (False, -1)
         if best is None or score > best[0]:
             best = (score, cand)
     lift, s, ox, oy = best[1]
     fit = {"s": s, "ox": ox, "oy": oy}
     row = {"section": c["section"], "name": c["name"], "lift": round(lift, 3), "m_per_px": round(s, 4),
            "origin_mga": [round(ox, 1), round(oy, 1)], "seed": c["seed"],
-           "named_on_road": round(on_road_share(img, fit, nm), 3),
-           "all_on_road": round(on_road_share(img, fit, pts), 3),
+           "named_on_road": round(on_road_share(img, fit, nm, band), 3),
+           "all_on_road": round(on_road_share(img, fit, pts, band), 3),
            "names_not_in_nsw_roads": sorted(missing), "_pts": pts}
+    if rot:
+        row["rotation_deg"] = rot
+        row["_rot"] = (rot, (sx, sy))
     if s <= 0 or lift <= 0 or np.hypot(ox - sx, oy - sy) > 5000:
         row["refused"] = "no placement found near the seed"
         return row
-    poly = outline(img, fit)
+    poly = outline_dashed(img, fit) if c.get("outline_mode") == "dashed" else outline(img, fit)
     if poly is None:
         row["refused"] = "no closed outline on the map"
         return row
+    if rot:                                                    # back from the map's frame to MGA
+        from shapely.affinity import rotate as _srot
+        poly = _srot(poly, -rot, origin=(sx, sy))
     x0, y0, x1, y1 = poly.bounds
     cad = cb.fetch_cadastre((x0 - 50, y0 - 50, x1 + 50, y1 + 50))
     edges = unary_union([g.boundary for _, g in cad])
@@ -285,6 +321,8 @@ def draw(pdf: Path, c: dict, row: dict, path: Path) -> None:
     o[v[k], u[k]] = (0, 0, 255)
     for g in getattr(row.get("lots_geom"), "geoms", [row.get("lots_geom")] if row.get("lots_geom") else []):
         cc = np.array(g.exterior.coords)
+        if row.get("_rot"):
+            cc = _rot(cc, row["_rot"][0], row["_rot"][1])
         cv2.polylines(o, [np.c_[(cc[:, 0] - ox) / s, -(cc[:, 1] - oy) / s].astype(np.int32)], True, (255, 120, 0), 3)
     cv2.imwrite(str(path), cv2.resize(o, None, fx=0.5, fy=0.5))
 
@@ -296,6 +334,7 @@ def _one(args):
     if do_draw:
         draw(pdf, c, row, path)
     row.pop("_pts", None)
+    row.pop("_rot", None)
     return row
 
 
@@ -307,15 +346,29 @@ def main() -> int:
     a = ap.parse_args()
     cfg = json.loads(Path(a.config).read_text(encoding="utf-8"))
     only = {int(x) for x in a.only.split(",") if x}
-    cache = OUT / ".pdf_cache"
+    out = REPO / cfg["out_dir"] if cfg.get("out_dir") else OUT
+    out.mkdir(parents=True, exist_ok=True)
+    cache = out / ".pdf_cache"
     cache.mkdir(parents=True, exist_ok=True)
-    pdf = cb.fetch_pdf(cfg["pdf"], cache)
+    if cfg["pdf"].startswith(("http://", "https://")):
+        # A full URL: cached under a hash of the WHOLE URL plus its file name, so a revised document with the same
+        # file name (a new version folder) is downloaded, never served from the old copy (Sol, 2026-10-20).
+        import hashlib
+        tag = hashlib.sha256(cfg["pdf"].encode()).hexdigest()[:12]
+        pdf = cache / f"{tag}_{cfg['pdf'].rsplit('/', 1)[-1]}"
+        if not pdf.exists():
+            import requests
+            r = requests.get(cfg["pdf"], timeout=300)
+            r.raise_for_status()
+            pdf.write_bytes(r.content)
+    else:
+        pdf = cb.fetch_pdf(cfg["pdf"], cache)
     stem = Path(a.config).stem.replace("raster_centres_", "")
     feats, report = [], []
     todo = [c for c in cfg["centres"] if not only or c["section"] in only]
     from concurrent.futures import ProcessPoolExecutor
     with ProcessPoolExecutor(max_workers=min(3, len(todo))) as ex:   # centres in parallel
-        rows = list(ex.map(_one, [(pdf, c, a.draw, OUT / f"check_{stem}_{c['section']}.png") for c in todo]))
+        rows = list(ex.map(_one, [(pdf, c, a.draw, out / f"check_{stem}_{c['section']}.png") for c in todo]))
     for c, row in zip(todo, rows):
         geom = row.pop("lots_geom", None)
         report.append(row)
@@ -334,9 +387,9 @@ def main() -> int:
                                 stx(Transformer.from_crs(4326, 28356, always_xy=True).transform, union), {
             "method": METHOD, "source": f"union of {len(feats)} {cfg['pdf']} centre outlines",
             "quote": "Section 1 and Appendix 1 apply to the centres of this chapter.", "proof": {"members": len(feats)}}))
-    (OUT / f"centres_{stem}.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}, indent=1),
+    (out / f"centres_{stem}.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}, indent=1),
                                                  encoding="utf-8")
-    (OUT / f"fit_report_{stem}.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
+    (out / f"fit_report_{stem}.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
     print(f"accepted {len(report) - len(refused)} / {len(report)}; refused: {[r['section'] for r in refused]}")
     return 1 if refused else 0
 

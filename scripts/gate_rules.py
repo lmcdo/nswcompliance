@@ -373,6 +373,14 @@ EXTRA_KEY_RULES += [
     # Street, Narrabeen" (p168). Outline = build_site_boundaries.py --addresses (two streets). G8 runs p168-176; p168
     # is shared with G7 (its plant list and O27 rows are G7), so only the G8 heading and 'Applies to Land' rows are
     # listed by id; p177 is G9.
+    # Warringah DCP 2011 G9 "This section applies to the Frenchs Forest Town Centre (Phase 1 Development), as outlined
+    # in Figure 1" (p177). Outline = fit_cb_raster_centres.py (Figure 1 fitted to NSW roads: named-on-road 0.983,
+    # lot-edge median 2.95 m) loaded by import_cb_centre_boundaries.py --council northern_beaches. G9 runs p177-251; on
+    # p251 only its two section-1.5 waste rows sit above the G10 heading.
+    {"name": "warringah_g9_frenchs_forest", "council": "northern_beaches", "validate": False,
+     "where": "source_chapter_key = 'warringah-dcp-2011-full' AND (pdf_page BETWEEN 177 AND 250"
+              " OR id IN (190797, 190805))",
+     "strategy": {"type": "constant", "precinct_id": "G9 Frenchs Forest Town Centre"}},
     {"name": "warringah_g8_narrabeen", "council": "northern_beaches", "validate": False,
      "where": "source_chapter_key = 'warringah-dcp-2011-full' AND (pdf_page BETWEEN 169 AND 176"
               " OR id IN (191283, 192176))",

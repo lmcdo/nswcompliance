@@ -1,0 +1,23 @@
+[
+ {
+  "section": 1,
+  "name": "Frenchs Forest Town Centre",
+  "lift": 0.64,
+  "m_per_px": 0.9267,
+  "origin_mga": [
+   335370.9,
+   6264497.9
+  ],
+  "seed": "street",
+  "named_on_road": 0.983,
+  "all_on_road": 0.926,
+  "names_not_in_nsw_roads": [],
+  "rotation_deg": 8.5,
+  "parts": 1,
+  "outline_m2": 188287,
+  "lot_edge_median_m": 2.95,
+  "lot_edge_p90_m": 7.45,
+  "lots_in": 107,
+  "lots_uncertain_kept": 4
+ }
+]
