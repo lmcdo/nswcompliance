@@ -202,7 +202,18 @@ def test_c4c_applies_only_if_and_unknown_corner():
     assert cd.row_fits_lot(mk(prop({"isCornerLot": False}), ok)) == []
     plain = sc([row("secondary_street_setback", 3, "corner lot")])
     assert cd.row_fits_lot(mk(prop(None), plain)) == []
-    assert facts(cd.row_fits_lot(mk(prop({"isCornerLot": False}), plain))) == {"corner_lot"}
+    measured = {"isCornerLot": False, "confidence": 1}
+    assert facts(cd.row_fits_lot(mk(prop(measured), plain))) == {"corner_lot"}
+    # A road query that failed (no confidence, or an error) is "could not tell", not "not a corner".
+    assert cd.row_fits_lot(mk(prop({"isCornerLot": False}), plain)) == []
+    assert cd.row_fits_lot(mk(prop({**measured, "error": "aborted"}), plain)) == []
+
+
+def test_c4c_excluding_corner_lots_is_not_a_corner_row():
+    prop = (cd.P_PROP, {"cornerLot": {"isCornerLot": False, "confidence": 1}}, None, None)
+    for cond in ("all lots excluding corner lots", "not applicable to corner allotments"):
+        assert cd.row_fits_lot(mk(prop, sc([row("front_setback", 6, cond)]))) == []
+    assert facts(cd.row_fits_lot(mk(prop, sc([row("side_setback", 3, "excluding non-corner lots")])))) == {"corner_lot"}
 
 
 # ---- listed setbacks (A3): a side whose rows disagree is LISTED, not picked
@@ -290,3 +301,27 @@ def test_c1_listed_side_with_a_ruled_out_figure_is_green():
     cap = mk((cd.P_CA, ca, None, None),
              sc([row("front_setback", 4.5), row("front_setback", 6.5, "lot between 900 m2 and 1,500 m2"), row("side_setback", 0.9)]))
     assert "front_setback" not in facts(cd.same_fact_agrees(cap))
+
+
+def test_c4c_unrelated_exclusion_and_non_corner_wording():
+    prop = (cd.P_PROP, {"cornerLot": {"isCornerLot": False, "confidence": 1}}, None, None)
+    garages = sc([row("side_setback", 3, "Other than garages, corner lots must have a 3 m setback")])
+    assert facts(cd.row_fits_lot(mk(prop, garages))) == {"corner_lot"}
+    assert cd.row_fits_lot(mk(prop, sc([row("front_setback", 6, "applies to non-corner lots")]))) == []
+
+
+def test_c4c_secondary_street_row_counts_and_exclude_verb():
+    prop = (cd.P_PROP, {"cornerLot": {"isCornerLot": False, "confidence": 1}}, None, None)
+    # A secondary-street row with no condition is corner-only by its type, as on the page.
+    assert facts(cd.row_fits_lot(mk(prop, sc([row("secondary_street_setback", 3, None)])))) == {"corner_lot"}
+    assert cd.row_fits_lot(mk(prop, sc([row("front_setback", 6, "exclude corner lots")]))) == []
+    assert facts(cd.row_fits_lot(mk(prop, sc([row("side_setback", 3, "exclude non-corner lots")])))) == {"corner_lot"}
+
+
+def test_c4c_negated_non_corner_is_corner_only_and_one_flag_for_the_shortfall():
+    prop = (cd.P_PROP, {"cornerLot": {"isCornerLot": False, "confidence": 1}}, None, None)
+    for cond in ("not applicable to non-corner lots", "except for non-corner lots"):
+        assert facts(cd.row_fits_lot(mk(prop, sc([row("side_setback", 3, cond)])))) == {"corner_lot"}
+    assert cd.row_fits_lot(mk(prop, sc([row("front_setback", 6, "for non-corner lots")]))) == []
+    two = sc([row("side_setback", 3, "corner lot"), row("secondary_street_setback", 2, None)])
+    assert len(cd.row_fits_lot(mk(prop, two))) == 1

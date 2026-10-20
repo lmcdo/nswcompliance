@@ -19,11 +19,21 @@ export function cornerSentence(status: CornerStatus): string {
   return "We couldn't reach the NSW road map, so we can't tell yet whether this lot is on a corner.";
 }
 
-const CORNER_ROW = /corner|secondary (street|road|frontage)/i;
+// "non-corner lots" is not a corner row, but "excluding non-corner lots" is.
+const CORNER_ROW =
+  /(?<!non-)(?<!non )corner|\b(?:exclud(?:e|es|ing|ed)|except(?: for)?|other than)\s+(?:[a-z]+\s+){0,3}?non[- ]corner|\bnot (?:applicable|apply|applying) (?:to|for)\s+(?:[a-z]+\s+){0,2}?non[- ]corner|secondary (street|road|frontage)/i;
+// "excluding corner lots" / "applies to non-corner lots" is a rule FOR non-corner lots (Sol, #1377).
+// Same wording rules as services/constraint_arithmetic.py _EXCLUDES_CORNER. The excluded thing must be
+// the corner lot itself (at most three plain words between, no comma), so "Other than garages, corner
+// lots must..." stays corner-only (Sol, 2026-10-20).
+const EXCLUDES_CORNER =
+  /\b(?:exclud(?:e|es|ing|ed)|except(?: for)?|other than)\s+(?:[a-z]+\s+){0,3}?(?<!non-)(?<!non )corner|\bnot (?:applicable|apply|applying) (?:to|for)\s+(?:[a-z]+\s+){0,2}?(?<!non-)(?<!non )corner|(?<!not )\b(?:appl(?:y|ies|ying|icable)|only)\s+(?:to|for|on)\s+(?:all\s+)?non[- ]corner|^\s*(?:for|on)\s+(?:all\s+)?non[- ]corner/i;
 
 /** A DCP row that applies only to corner lots, by its control type or its own condition text. */
 export function isCornerOnlyRow(row: { control_type?: string | null; condition?: string | null }): boolean {
-  return row.control_type === 'secondary_street_setback' || CORNER_ROW.test(row.condition ?? '');
+  const cond = row.condition ?? '';
+  if (EXCLUDES_CORNER.test(cond)) return false;
+  return row.control_type === 'secondary_street_setback' || CORNER_ROW.test(cond);
 }
 
 /** Text shown on such a row when the road check found this lot is not on a corner. */

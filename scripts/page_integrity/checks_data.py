@@ -245,7 +245,18 @@ _COND = re.compile(r"upper floor|upper level|first floor|two[- ]storey|second st
                    r"lot.{0,20}(>|greater|over|exceeding)|where .*exceeds", re.I)
 # a base-case row (ground / single storey) is a legitimate alternative answer even though it matches _COND
 _BASE = re.compile(r"single storey|ground (level|floor)", re.I)
-_CORNER = re.compile(r"corner", re.I)
+# Same wording rules as the page (lib/geometry/corner-status.ts) and services/constraint_arithmetic.py:
+# "non-corner" is not "corner", but "excluding non-corner lots" is a corner-only rule; "excluding
+# corner lots" / "applies to non-corner lots" is not corner-only; "Other than garages, corner lots..." is.
+_CORNER = re.compile(
+    r"(?<!non-)(?<!non )corner"
+    r"|\b(?:exclud(?:e|es|ing|ed)|except(?: for)?|other than)\s+(?:[a-z]+\s+){0,3}?non[- ]corner"
+    r"|\bnot (?:applicable|apply|applying) (?:to|for)\s+(?:[a-z]+\s+){0,2}?non[- ]corner", re.I)
+_EXCLUDES_CORNER = re.compile(
+    r"\b(?:exclud(?:e|es|ing|ed)|except(?: for)?|other than)\s+(?:[a-z]+\s+){0,3}?(?<!non-)(?<!non )corner"
+    r"|\bnot (?:applicable|apply|applying) (?:to|for)\s+(?:[a-z]+\s+){0,2}?(?<!non-)(?<!non )corner"
+    r"|(?<!not )\b(?:appl(?:y|ies|ying|icable)|only)\s+(?:to|for|on)\s+(?:all\s+)?non[- ]corner"
+    r"|^\s*(?:for|on)\s+(?:all\s+)?non[- ]corner", re.I)
 # The DCP tab hides an extraction note from the reader (DcpStructuredControls / publicCondition),
 # so the check judges only the words the reader sees.
 _OWN_TYPE = {"dwelling_house": r"dwelling house"}
@@ -314,16 +325,26 @@ def row_fits_lot(cap: Capture) -> list[Flag]:
     # The DCP tab marks a corner-only row on a measured non-corner lot with this sentence; a row
     # marked that way is shown honestly, so it is not a fault. A failed road check (error set)
     # is not a measured "no".
-    marked = "Applies only to corner lots — this lot is not on a corner" in (cap.rendered.get("dcp") or "")
-    measured = p is not None and not _d(p.get("cornerLot")).get("error")
-    if corner is False and measured and not marked:
-        for c in ctl:
-            t = _row_text(c)
-            if _CORNER.search(t) and not re.search(r"applies only if", t, re.I):
-                flags.append(Flag("C4", "corner_lot",
-                                  f"corner-lot row shown but property is not a corner lot: {c.get('control_type')} "
-                                  f"{_ctl_value(c)} p.{c.get('pdf_page')} [{t.strip()[:70]}]",
-                                  f"{P_PROP}.cornerLot.isCornerLot=False; {P_SC} pdf_page={c.get('pdf_page')}"))
+    # Each corner-only row must carry its own note: one note anywhere on the tab used to clear them all.
+    notes = (cap.rendered.get("dcp") or "").count("Applies only to corner lots — this lot is not on a corner")
+    cl = _d(p.get("cornerLot")) if p is not None else {}
+    # Measured the way the page measures it: no error AND full confidence (lib/geometry/corner-status.ts).
+    measured = p is not None and not cl.get("error") and cl.get("confidence") == 1
+    # Same predicate as the page's isCornerOnlyRow: a secondary-street row is corner-only by its type.
+    corner_rows = [c for c in ctl
+                   if (c.get("control_type") == "secondary_street_setback" or _CORNER.search(_row_text(c)))
+                   and not _EXCLUDES_CORNER.search(_row_text(c))
+                   and not re.search(r"applies only if", _row_text(c), re.I)]
+    # The capture is the tab's flat text, so a note cannot be tied to its row: one flag for the
+    # shortfall, listing the candidate rows, rather than one per row (Sol, 2026-10-20).
+    if corner is False and measured and notes < len(corner_rows):
+        listed = "; ".join(f"{c.get('control_type')} {_ctl_value(c)} p.{c.get('pdf_page')} "
+                           f"[{_row_text(c).strip()[:50]}]" for c in corner_rows[:5])
+        flags.append(Flag("C4", "corner_lot",
+                          f"{len(corner_rows) - notes} of {len(corner_rows)} corner-only rows are shown without the "
+                          f"not-a-corner note, but this property is not a corner lot: {listed}",
+                          f"{P_PROP}.cornerLot.isCornerLot=False; {P_SC} "
+                          f"pdf_pages={[c.get('pdf_page') for c in corner_rows]}"))
     return flags
 
 
