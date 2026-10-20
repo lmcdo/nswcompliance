@@ -1,10 +1,11 @@
 {
   "tier": "standard",
   "justification": "The raster fitter accepted a fit when the named streets landed on road pixels. On a figure whose road mask covers most of the image (Warringah G3 p113: white background, hairline roads, mask 0.88 after dilation) every centreline point is on road, so named_on_road is 1.0 whatever the placement, and a 426 m2 / 0.16 m/px fit passed. fit_centre now refuses when the mask covers more than 60% of the figure and records road_share in the report row. One script, one new test file; no DB, no network in the tests.",
-  "commit_hash": "5ef08de2",
+  "commit_hash": "3efb38d4",
   "files": [
     "scripts/fit_cb_raster_centres.py",
-    "tests/test_fit_cb_raster_road_gate.py"
+    "tests/test_fit_cb_raster_road_gate.py",
+    "scripts/raster_road_gate.py"
   ],
   "pre_impl": {
     "existing_data": "data/canterbury_bankstown_precincts/fit_report_7_2.json and data/warringah_precincts/fit_report_g9.json hold the accepted fits; their source figures were re-read from the published PDFs and the mask share measured on each (C-B 7.2 sections 2-13: 0.18-0.32; G9: 0.34; G3 p113: 0.88).",
