@@ -147,6 +147,14 @@ if [ -f "scripts/git-hooks/pre-commit" ]; then
   bash scripts/git-hooks/pre-commit || exit 1
 fi
 
+# ── 5b. Invisible control characters (a \b that became a backspace, 2026-10-19) ──
+echo ""
+echo "🔍 Checking staged files for invisible control characters..."
+if ! python scripts/lint_control_chars.py --staged; then
+  echo "❌ Control-character lint FAILED — write regex escapes as raw strings, not through a shell."
+  exit 1
+fi
+
 # ── 6. Bracket access lint ───────────────────────────────────────────────────
 echo ""
 echo "🔍 Running bracket access lint on staged services/ changes..."

@@ -163,6 +163,11 @@ jobs:
       - name: One producer per fact (shrink-only ratchet)
         if: always()
         run: python scripts/page_integrity/lint_producers.py
+      # A regex \b written through a shell became a backspace twice on 2026-10-19 and matched
+      # nothing, silently. Zero allowed.
+      - name: No invisible control characters in source
+        if: always()
+        run: python scripts/lint_control_chars.py
       # Has anybody looked at the DATA lately?
       #
       # Every database check in this file runs on `pull_request` and

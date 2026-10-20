@@ -25,7 +25,7 @@ PLACE = re.compile(
 )
 HERITAGE = re.compile(r"heritage conservation area|\bHCA\b|contributory|heritage item", re.I)
 NUM = re.compile(r"\d+(?:\.\d+)?")
-IN_PLACE = re.compile(r"In [A-Z][a-z]+(?: [A-Z][a-z]+)?|former [A-Z][a-z]+ Local Government Area", re.I)
+IN_PLACE = re.compile(r"\bIn [A-Z][a-z]+(?: [A-Z][a-z]+)?\b|former [A-Z][a-z]+ Local Government Area", re.I)
 #: The plan's own council -> the ABS 2015 former LGA it covers (only where one council slug is one former LGA).
 ABS_FORMER = {"ashfield": "Ashfield (A)", "leichhardt": "Leichhardt (A)", "marrickville": "Marrickville (A)",
               "northern_beaches": "Warringah (A)"}
