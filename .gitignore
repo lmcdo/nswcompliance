@@ -266,6 +266,7 @@ enrichment/tests/*
 !enrichment/config/cumberland_config.py
 !enrichment/config/cumberland_part_pages.json
 !enrichment/config/northern_beaches_part_pages.json
+!enrichment/config/parramatta_part_pages.json
 !enrichment/config/ashfield_config.py
 !enrichment/config/leichhardt_config.py
 !enrichment/config/marrickville_config.py
