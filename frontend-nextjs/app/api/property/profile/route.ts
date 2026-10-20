@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     // 'Flood Planning Area' layer, so the old check answered "No" for every property.
     const lotPlans = (layers.find(l => l.layerName === 'Land Application Map')?.results ?? [])
       .map((r: any) => String(r?.['EPI Name'] ?? r?.title ?? '')).filter(Boolean);
-    const flood = await floodMapStatus(lon, lat, lotPlans);
+    const flood = await floodMapStatus(lon, lat, lotPlans, lotGeometry?.geometry ?? null);
     const floodProne = flood.floodProne;
 
     return NextResponse.json({

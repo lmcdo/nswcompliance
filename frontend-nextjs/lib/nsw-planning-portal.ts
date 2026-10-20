@@ -1392,7 +1392,8 @@ export class NSWPlanningPortalService {
  if (propertyData) {
    const fLon = (propertyData.geometry.x / 20037508.34) * 180;
    const fLat = (Math.atan(Math.exp((propertyData.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
-   const flood = await floodMapStatus(fLon, fLat, (constraints.landApplicationInstruments ?? []).map((i) => i.name));
+   const flood = await floodMapStatus(fLon, fLat, (constraints.landApplicationInstruments ?? []).map((i) => i.name),
+     lotGeometry?.geometry ?? null);
    constraints.floodProne = flood.floodProne;
    constraints.floodMapNote = flood.note;
  }
