@@ -251,7 +251,8 @@ _BASE = re.compile(r"single storey|ground (level|floor)", re.I)
 _CORNER = re.compile(
     r"(?<!non-)(?<!non )corner"
     r"|\b(?:exclud(?:e|es|ing|ed)|except(?: for)?|other than)\s+(?:[a-z]+\s+){0,3}?non[- ]corner"
-    r"|\bnot (?:applicable|apply|applying) (?:to|for)\s+(?:[a-z]+\s+){0,2}?non[- ]corner", re.I)
+    r"|\bnot (?:applicable|apply|applying) (?:to|for)\s+(?:[a-z]+\s+){0,2}?non[- ]corner"
+    r"|secondary (?:street|road|frontage)", re.I)
 _EXCLUDES_CORNER = re.compile(
     r"\b(?:exclud(?:e|es|ing|ed)|except(?: for)?|other than)\s+(?:[a-z]+\s+){0,3}?(?<!non-)(?<!non )corner"
     r"|\bnot (?:applicable|apply|applying) (?:to|for)\s+(?:[a-z]+\s+){0,2}?(?<!non-)(?<!non )corner"

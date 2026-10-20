@@ -325,3 +325,9 @@ def test_c4c_negated_non_corner_is_corner_only_and_one_flag_for_the_shortfall():
     assert cd.row_fits_lot(mk(prop, sc([row("front_setback", 6, "for non-corner lots")]))) == []
     two = sc([row("side_setback", 3, "corner lot"), row("secondary_street_setback", 2, None)])
     assert len(cd.row_fits_lot(mk(prop, two))) == 1
+
+
+def test_c4c_secondary_street_wording_counts_as_on_the_page():
+    prop = (cd.P_PROP, {"cornerLot": {"isCornerLot": False, "confidence": 1}}, None, None)
+    rows = sc([row("front_setback", 3, "secondary street frontage")])
+    assert facts(cd.row_fits_lot(mk(prop, rows))) == {"corner_lot"}
