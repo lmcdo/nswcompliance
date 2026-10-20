@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes a served hazard answer (flood) on the page, profile and SEE PDF",
-  "commit_hash": "b10adbbc",
+  "commit_hash": "d4a0a4f8",
   "files": [
     "frontend-nextjs/lib/flood/flood-map.ts",
     "frontend-nextjs/__tests__/lib/flood/flood-map.test.ts",
@@ -38,7 +38,7 @@
     },
     {
       "name": "queryLot",
-      "file_line": "frontend-nextjs/lib/flood/flood-map.ts:96",
+      "file_line": "frontend-nextjs/lib/flood/flood-map.ts:126",
       "input": "address point and the Portal lot boundary with its coordinate system",
       "output": "count of flood polygons touching the lot and whether the whole lot was tested",
       "if_none": "no boundary or a failed polygon query falls back to the point; a failed point query returns null"
@@ -47,7 +47,7 @@
   "values": [
     {
       "value": "boundary.spatialReference.wkid",
-      "read_at": "frontend-nextjs/lib/flood/flood-map.ts:98",
+      "read_at": "frontend-nextjs/lib/flood/flood-map.ts:132",
       "nullable": "yes",
       "guard_at": "rings && wkid",
       "if_missing": "point-only test, which never answers No"
