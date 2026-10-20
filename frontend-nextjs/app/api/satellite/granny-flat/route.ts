@@ -334,7 +334,10 @@ export async function POST(request: NextRequest) {
   } else {
     if (lotDims?.lotType === 'rectangular' && lotDims.confidence >= 0.8) pathFacts.battle_axe = false;
     const width = lotGeometry?.rings?.[0] ? widthRange((await detectCornerLot(lotGeometry)).streetFrontage) : null;
-    if (width && width.min > 0 && width.max >= width.min) pathFacts.frontage_range_m = [width.min, width.max];
+    // Infinity would serialise as null and the engine would reject the whole request.
+    if (width && Number.isFinite(width.min) && Number.isFinite(width.max) && width.min > 0 && width.max >= width.min) {
+      pathFacts.frontage_range_m = [width.min, width.max];
+    }
   }
   if (zone) {
     const eligible = ELIGIBLE_ZONE_PREFIXES.some((p) => zone.startsWith(p));
