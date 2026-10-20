@@ -1,0 +1,66 @@
+{
+  "tier": "standard",
+  "justification": "The raster fitter accepted a fit when the named streets landed on road pixels. On a figure whose road mask covers most of the image (Warringah G3 p113: white background, hairline roads, mask 0.88 after dilation) every centreline point is on road, so named_on_road is 1.0 whatever the placement, and a 426 m2 / 0.16 m/px fit passed. fit_centre now refuses when the mask covers more than 60% of the figure and records road_share in the report row. One script, one new test file; no DB, no network in the tests.",
+  "commit_hash": "4441461c",
+  "files": [
+    "scripts/fit_cb_raster_centres.py",
+    "tests/test_fit_cb_raster_road_gate.py"
+  ],
+  "pre_impl": {
+    "existing_data": "data/canterbury_bankstown_precincts/fit_report_7_2.json and data/warringah_precincts/fit_report_g9.json hold the accepted fits; their source figures were re-read from the published PDFs and the mask share measured on each (C-B 7.2 sections 2-13: 0.18-0.32; G9: 0.34; G3 p113: 0.88).",
+    "assumption_mismatch": "Assumed the failing G3 figure would show a high share on the raw >=249 mask; it is 0.68 raw and 0.88 after the 5x5 dilation the scorer uses, so the gate measures the dilated mask, the one the on-road scores are computed on.",
+    "new_vs_existing": "One helper road_share reusing _road_mask, one constant, one refusal branch in the existing refused-row mechanism. No new module."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_fit_cb_raster_road_gate.py -q",
+    "fails_when": "The refusal is removed or the threshold moves outside the measured gap: the test asserts 0.344 < ROAD_SHARE_MAX < 0.884, and that a white-background hairline-road array and a band mask covering the whole image exceed it while a typical grey map does not.",
+    "external_authority": "The published figures themselves: shares were measured on the real PDF pages (chapter-7-2-city-west.pdf, warringah-dcp-2011-full.pdf p113), not on synthetic data.",
+    "observed_red": "Mutation run 2026-10-20: ROAD_SHARE_MAX set to 1.5 (gate disabled) -> 3 failed / 1 passed (white-background, band-mask and threshold-range tests red). Restored to 0.60 -> 4 passed."
+  },
+  "functions": [
+    {
+      "name": "road_share",
+      "file_line": "scripts/fit_cb_raster_centres.py:road_share",
+      "input": "greyscale figure array and optional road_band",
+      "output": "fraction of pixels the dilated road mask covers, 0..1",
+      "if_none": "input is always an array from figure_image; an empty array would raise, loudly, rather than pass"
+    }
+  ],
+  "values": [
+    {
+      "value": "ROAD_SHARE_MAX = 0.60",
+      "read_at": "measured 2026-10-20: accepted max 0.344 (G9), accepted C-B max 0.316, G3 0.884",
+      "if_missing": "without a gate a mostly-white figure scores named_on_road 1.0 for any placement"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A legitimate dense figure with a wide road band exceeds 0.60 and is wrongly refused.",
+      "what_happens": "A good centre is refused, not written; visible in the report row and exit code 1.",
+      "mitigated": true,
+      "how": "Refusal is loud with the share quoted; every currently accepted figure is at most 0.344, leaving 0.26 margin.",
+      "repro": "python /tmp measurement over all 13 accepted figures: max 0.344"
+    },
+    {
+      "scenario": "A hairline-road white figure scores just under the gate.",
+      "what_happens": "The noise fit would pass the on-road check.",
+      "mitigated": true,
+      "how": "G3 is 0.884, 0.28 above the gate; the lot-edge check still applies after the gate.",
+      "repro": "road_share on G3 p113 largest image = 0.884"
+    },
+    {
+      "scenario": "A figure with a road_band whose grey band is also the land fill covers most of the image.",
+      "what_happens": "Refused as ambiguous: on-road scores would hold for any placement.",
+      "mitigated": true,
+      "how": "The gate measures the same band mask the scorer uses, so a band that covers >60% is refused with the share quoted; G9's band figure is 0.344 and passes.",
+      "repro": "road_share(img, [222,236]) on a uniform 230 image exceeds the gate (test_band_mask_counts_only_the_band)"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
