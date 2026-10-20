@@ -45,14 +45,15 @@ export function suburbFromAddress(address: string | null | undefined): string {
     if (parts.length <= 1) return '';
     const last = parts[parts.length - 1];
     const first = last.split(' ')[0];
-    if (!/^\d/.test(first) && !UNIT_WORDS.has(first)) return last;
+    if (!/\d/.test(first) && !UNIT_WORDS.has(first)) return last;
     rest = last;
   }
   const street = parseStreet(rest);
   if (!street) return '';
   const toks = rest.toUpperCase().replace(/\//g, ' ').trim().split(/\s+/);
   let i = 0;
-  while (i < toks.length && (/^\d/.test(toks[i]) || UNIT_WORDS.has(toks[i]))) i++;
+  // Any token with a digit is a unit or house number ("12", "12A", "G03"), never part of a street name.
+  while (i < toks.length && (/\d/.test(toks[i]) || UNIT_WORDS.has(toks[i]))) i++;
   const nameTokens = street.name.length;  // parseStreet returns the name as tokens (Sol: tokens, not characters)
   return normaliseSuburb(toks.slice(i + nameTokens + (street.type ? 1 : 0)).join(' '));
 }
