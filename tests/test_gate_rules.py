@@ -194,3 +194,14 @@ def test_marrickville_2_22_flood_goes_to_the_flood_condition_layer():
     assert rule["council"] == "marrickville"
     assert rule["where"] == "source_chapter_key = 'part2-s22-flood-management'"
     assert rule["set"] == {"v2_dcp_layer": "condition", "v2_site_condition_required": "flood"}
+
+
+def test_cb_11_14_riverwood_keyed_to_its_lep_outline():
+    import json
+    from pathlib import Path
+    rule = next(r for r in dpk.RULES if r["name"] == "cb_11_14_riverwood_stage1")
+    assert rule["where"] == "source_chapter_key = 'chapter-11-14-riverwood-estate'"
+    assert rule["strategy"] == {"type": "constant", "precinct_id": "11.14"}
+    src = Path(__file__).resolve().parent.parent / "data" / "canterbury_bankstown_precincts" / "lep_riverwood_11_14.geojson"
+    ids = {f["properties"]["precinct_id"] for f in json.loads(src.read_text(encoding="utf-8"))["features"]}
+    assert ids == {"11.14"}

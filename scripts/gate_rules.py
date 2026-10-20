@@ -325,6 +325,13 @@ EXTRA_KEY_RULES: list[dict] = [
     {"name": "cb_11_4_croydon_street", "council": "canterbury_bankstown", "validate": False,
      "where": "source_chapter_key = 'chapter-11-4-croydon-street-precinct'",
      "strategy": {"type": "constant", "precinct_id": "11.4"}},
+    # C-B Ch 11.14 Riverwood Estate (Stage 1): "applies to part of the land within the Riverwood Estate, as outlined in
+    # blue ... bound by Washington Avenue to the north, Belmore Road North to the east, and Roosevelt Avenue to the
+    # south" (p5) -- every section. Outline: the LEP FSR 2.2 polygon of the 2024 Riverwood amendment (1.64 ha, the
+    # state's "1.6-hectare" Stage 1), edges on those three streets (lep_riverwood_11_14.geojson).
+    {"name": "cb_11_14_riverwood_stage1", "council": "canterbury_bankstown", "validate": False,
+     "where": "source_chapter_key = 'chapter-11-14-riverwood-estate'",
+     "strategy": {"type": "constant", "precinct_id": "11.14"}},
     # Ku-ring-gai Part 14H: "The site at 101 Eton Road, Lindfield, which is currently occupied by Screen Australia"
     # (p3), drawn as the orange "Site Location" in Figure 14H.1-1 (p2) -- every section is that one site. 101 left the
     # address register when the site was subdivided (DP271066 2019, SP109812 2025); outline = those 12 lots, shape

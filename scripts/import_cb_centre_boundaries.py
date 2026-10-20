@@ -39,13 +39,14 @@ EXPECTED_IDS = {"6.2", "7.5", "7.6"}
 RASTER_IDS = {"centres_7_2.geojson": {"7.2", *(f"7.2.{n}" for n in range(2, 14))}}
 #: Site files: any subset of these ids (refused sites are simply absent; there is no union).
 SITE_IDS = {"site_plans_8_3.geojson": {"8.3.5", "8.3.7", "8.3.8"}, "site_plans_11_4.geojson": {"11.4"},
-            "lep_area1_7_4.geojson": {"7.4"}}  # 7.4: the LEP's own Area 1 polygons (69 centres, one union)
+            "lep_area1_7_4.geojson": {"7.4"},  # 7.4: the LEP's own Area 1 polygons (69 centres, one union)
+            "lep_riverwood_11_14.geojson": {"11.14"}}  # 11.14: the LEP's FSR 2.2 polygon of the 2024 Riverwood amendment
 #: Former-council halves (ABS ASGS 2015, scripts/build in the file's own 'source'). They tile the whole LGA, so the
 #: audit addresses must each land in EXACTLY ONE of them instead of in no precinct.
 FORMER_IDS = {"former_councils_abs2015.geojson": {"C-B former Bankstown", "C-B former Canterbury"}}
 #: The Planning Portal's state outline is the council's legal map layer (1.0). A figure fitted to
 #: the cadastre is positionally ~4 m, and doubtful lots were kept, so it is recorded lower.
-CONFIDENCE = {"cadastre_lot_plan": 0.95, "nsw_planning_local_provisions": 1.0, "dcp_figure_georeferenced_to_cadastre": 0.9,
+CONFIDENCE = {"cadastre_lot_plan": 0.95, "nsw_planning_local_provisions": 1.0, "nsw_planning_epi_layer": 1.0, "dcp_figure_georeferenced_to_cadastre": 0.9,
               "dcp_raster_map_fitted_to_road_centrelines": 0.85, "dcp_site_plan_shape_fitted_to_cadastre": 0.85,
               "abs_asgs_2015_former_lga": 0.95}
 CB_ENVELOPE = (150.95, -33.99, 151.18, -33.85)

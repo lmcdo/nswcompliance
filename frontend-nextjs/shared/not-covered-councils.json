@@ -15,12 +15,6 @@
   ],
   "canterbury_bankstown": [
     {
-      "chapter_key": "chapter-11-14-riverwood-estate",
-      "title": "Chapter 11.14 Riverwood Estate",
-      "reason": "Chapter 11.14 Riverwood Estate -- no outline yet: the 2026-10-17 fit (scripts/fit_area_maps.py) gave shape IoU below 0.85 against the chapter's own figure, or the figure could not be read (data/area_map_checks/). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
-      "count_hint": 218
-    },
-    {
       "chapter_key": "chapter-11-2-undercliffe-bridge-precinct",
       "title": "Chapter 11.2 Undercliffe Bridge Precinct",
       "reason": "Chapter 11.2 Undercliffe Bridge Precinct -- no outline yet: the 2026-10-17 fit (scripts/fit_area_maps.py) gave shape IoU below 0.85 against the chapter's own figure, or the figure could not be read (data/area_map_checks/). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
