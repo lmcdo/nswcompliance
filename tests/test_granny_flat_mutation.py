@@ -2448,7 +2448,7 @@ class TestApprovalPathFacts:
         assert p["cdc"]["outcome"] == "FAIL"
 
     def test_malformed_range_is_not_measured_and_not_repaired(self):
-        for bad in ((20.0, 10.0), (0.0, 20.0), (-1.0, 5.0), (float('inf'), float('inf')), (10.0, float('nan'))):
+        for bad in ((20.0, 10.0), (0.0, 20.0), (-1.0, 5.0), (float('inf'), float('inf')), (10.0, float('nan')), (None, 12.0), (12.0,)):
             p = gf._approval_paths(_RULES, "R2", 600.0, frontage_m=30.0, battle_axe=False, frontage_range_m=bad)
             assert p["cdc"]["outcome"] == "UNKNOWN", bad
 
