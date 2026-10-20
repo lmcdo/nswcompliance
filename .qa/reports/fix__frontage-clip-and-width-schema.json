@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "Changes the street frontage length shown on the page and used by the yield and eligibility checks, and which lot widths the Housing SEPP API accepts",
+  "commit_hash": "688aba81",
+  "files": [
+    "services/street_frontage.py",
+    "frontend-nextjs/lib/geometry/street-frontage.ts",
+    "frontend-nextjs/lib/schemas/index.ts",
+    "tests/test_street_frontage.py",
+    "frontend-nextjs/__tests__/lib/geometry/street-frontage.test.ts",
+    "frontend-nextjs/__tests__/lib/schemas/housing-sepp-width.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "pytest tests/test_street_frontage.py && cd frontend-nextjs && npx jest __tests__/lib/geometry/street-frontage.test.ts __tests__/lib/schemas/housing-sepp-width.test.ts",
+    "fails_when": "the frontage differs from an external answer: the hand-measured street edges of real lots read off the NSW cadastre and road corridor maps on 2026-10-18 (Winston Hills 13.34 m, Padstow 15.27 m, Mortdale 6.19 m, Haberfield 26.25 m), or the known geometric answer of a synthetic lot (road beside 12 m of a 20 m edge = 12 m); or the API accepts half a width range or min above max. Not self-referential: the expected numbers come from the maps and geometry, not from this code.",
+    "observed_red": "On origin/main a 20 m edge with the road beside its first 12 m reports frontage_m = 20 (edge counted whole once 50% qualifies); test_edge_only_partly_beside_the_road_counts_only_that_part fails there. HousingSEPPSchema on origin/main accepts {lotWidth:15, lotWidthMin:20, lotWidthMax:5} because the refine passes as soon as lotWidth is present."
+  },
+  "pre_impl": {
+    "existing_data": "NSW road corridor layer parcels with roadnamelabel; lot boundary rings in EPSG:3857",
+    "assumption_mismatch": "a gap shorter than 3 m inside a road edge is counted as frontage (corner curves); the width profile still starts from the whole edge",
+    "new_vs_existing": "every page and report that shows street frontage after deploy",
+    "falsifiable_check": {
+      "command": "pytest tests/test_street_frontage.py",
+      "fails_when": "the frontage differs from an external answer: the hand-measured street edges of real lots read off the NSW cadastre and road corridor maps on 2026-10-18 (Winston Hills 13.34 m, Padstow 15.27 m, Mortdale 6.19 m, Haberfield 26.25 m), or the known geometric answer of a synthetic lot (road beside 12 m of a 20 m edge = 12 m); or the API accepts half a width range or min above max. Not self-referential: the expected numbers come from the maps and geometry, not from this code.",
+      "observed_red": "See top-level observed_red."
+    }
+  },
+  "functions": [
+    {
+      "name": "measure_street_frontage",
+      "file_line": "services/street_frontage.py:168",
+      "input": "the lot boundary ring and the road corridor parcels near it",
+      "output": "per named road: frontage length, front-half and widest width, depth",
+      "if_none": "no usable ring: unavailable; no road owns an edge: not_identified"
+    },
+    {
+      "name": "_edge_frontage_share",
+      "file_line": "services/street_frontage.py:108",
+      "input": "one lot edge and the road segments of one road",
+      "output": "the share of the edge beside that road, with gaps up to 3 m ignored",
+      "if_none": "a zero-length edge contributes 0 m whatever its share"
+    }
+  ],
+  "values": [
+    {
+      "value": "lotWidthMin / lotWidthMax",
+      "read_at": "frontend-nextjs/lib/schemas/index.ts:233",
+      "nullable": "yes",
+      "guard_at": "refine: both or neither, min <= max",
+      "if_missing": "lotWidth alone is accepted; neither is a 400"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "road beside only part of a lot edge",
+      "what_happens": "frontage overstated by the uncovered part",
+      "mitigated": true,
+      "how": "only the share beside the road counts; gaps over 3 m cut",
+      "repro": "pytest tests/test_street_frontage.py -k partly_beside"
+    },
+    {
+      "scenario": "two roads along one edge",
+      "what_happens": "road B could fill road A's gap",
+      "mitigated": true,
+      "how": "each road measured against its own parcels",
+      "repro": "pytest tests/test_street_frontage.py -k never_fills"
+    },
+    {
+      "scenario": "a real 2.5-3 m gap in the middle of a road edge",
+      "what_happens": "the short gap is counted as frontage even though no road is beside it",
+      "mitigated": false,
+      "how": "accepted: indistinguishable from a corner curve at this sampling; under 3 m",
+      "repro": "n/a"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — Winston Hills still reads 13.3 m along Berrigan St; Haberfield 26.3 m along Logan Ave"
+  }
+}
