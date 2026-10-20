@@ -29,7 +29,7 @@ def offline(monkeypatch):
 
     def fake_ceiling(zone, lga, lat, lng, area, heritage, width_range=None, results=None):
         calls.append(dict(zone=zone, lga=lga, heritage=heritage, width=width_range))
-        return "dwelling_house", "dual_occupancy", False, None
+        return "dwelling_house", "dual_occupancy", False, None, None
 
     monkeypatch.setattr(ib, "_capacity_ceiling", fake_ceiling)
     return calls
@@ -85,14 +85,34 @@ def test_capacity_ceiling_composes_the_three_steps(monkeypatch):
         seen["uplift"] = (heritage, results, lot_width_range)
         return "manor_house", {"source_clause": "cl 1"}
 
-    def forms(zone, lga, excluded_forms=None, uplift_form=None, return_source=False):
+    def forms(zone, lga, excluded_forms=None, uplift_form=None, return_source=False, permitted=None):
         seen["forms"] = (lga, excluded_forms, uplift_form)
         return "dwelling_house", "manor_house", True
 
     monkeypatch.setattr(ib, "_lmr_uplift_form", uplift)
     monkeypatch.setattr(ib, "_realistic_forms", forms)
+    monkeypatch.setattr(ib, "_permitted_forms_checked", lambda z, l: ({"manor_house"}, None))
     out = ib._capacity_ceiling("R2", "Parramatta", -33.7, 150.9, 600.0, True,
                                width_range=(12.0, 15.0), results=["r"])
-    assert out == ("dwelling_house", "manor_house", True, {"source_clause": "cl 1"})
+    assert out == ("dwelling_house", "manor_house", True, {"source_clause": "cl 1"}, None)
     assert seen["uplift"] == (True, ["r"], (12.0, 15.0))
     assert seen["forms"] == ("Parramatta", {"dual_occupancy"}, "manor_house")
+
+
+@pytest.mark.parametrize("why", ["the LEP land use table could not be read",
+                                 "we do not hold this council's LEP land use table yet"])
+def test_unknown_lep_table_is_said_not_one_house(monkeypatch, why):
+    """A failed or missing land use table used to fail safe to a single house, silently."""
+    monkeypatch.setattr(ib, "_eligibility_excluded_forms", lambda lat, lng: set())
+    monkeypatch.setattr(ib, "_lmr_uplift_form", lambda *a, **k: (None, None))
+    monkeypatch.setattr(ib, "_permitted_forms_checked", lambda z, l: (set(), why))
+    floor, ceiling, from_lmr, _c, got = ib._capacity_ceiling("R2", "Somewhere", -33.7, 150.9, 600.0, False)
+    assert ceiling is None and got == why and floor == "dwelling_house"
+
+
+def test_endpoint_says_why_when_lep_table_unknown(offline, monkeypatch):
+    monkeypatch.setattr(ib, "_capacity_ceiling",
+                        lambda *a, **k: ("dwelling_house", None, False, None, "the LEP land use table could not be read"))
+    r = asyncio.run(ca.constraint_arithmetic_full(_req()))
+    assert r.max_permitted_form is None
+    assert any("not shown: the LEP land use table could not be read" in g for g in r.gaps)

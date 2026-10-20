@@ -40,11 +40,11 @@ def _skip_if_no_real_db():
 ])
 def test_live_ceiling(zone, lga, lat, lng, area, ceiling):
     _skip_if_no_real_db()
-    floor, got, from_lmr, _citation = ib._capacity_ceiling(zone, lga, lat, lng, area, False)
-    assert (floor, got, from_lmr) == ("dwelling_house", ceiling, False)
+    floor, got, from_lmr, _citation, why = ib._capacity_ceiling(zone, lga, lat, lng, area, False)
+    assert (floor, got, from_lmr, why) == ("dwelling_house", ceiling, False, None)
 
 
-def test_live_unknown_lga_fails_safe_to_a_house():
+def test_live_unknown_lga_says_why_not_one_house():
     _skip_if_no_real_db()
-    _floor, got, _lmr, _c = ib._capacity_ceiling("R2", "NOT A REAL COUNCIL", -33.7765, 150.9856, 688.05, False)
-    assert got == "dwelling_house"
+    _floor, got, _lmr, _c, why = ib._capacity_ceiling("R2", "NOT A REAL COUNCIL", -33.7765, 150.9856, 688.05, False)
+    assert got is None and why == "we do not hold this council's LEP land use table yet"
