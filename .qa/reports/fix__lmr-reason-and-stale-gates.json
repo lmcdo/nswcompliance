@@ -1,0 +1,84 @@
+{
+  "tier": "standard",
+  "justification": "Changes the reason the Housing SEPP card gives when a lot is outside a Low and Mid-Rise housing area, and which lot's gate answer the page uses",
+  "commit_hash": "528433fd",
+  "files": [
+    "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
+    "frontend-nextjs/lib/schemas/index.ts",
+    "frontend-nextjs/components/compliance/HousingSEPPEligibilityCard.tsx",
+    "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+    "frontend-nextjs/hooks/useLmrGates.ts",
+    "frontend-nextjs/__tests__/hooks/useLmrGates.test.ts",
+    "frontend-nextjs/__tests__/api/housing-sepp-lmr-gate-states.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-gate-states.test.ts __tests__/hooks/useLmrGates.test.ts",
+    "fails_when": "an excluded lot is told it has no Town Centres or TOD catchment, an excluded lot is assessed as in the area, or the hook returns one lot's gate answer for another lot",
+    "observed_red": "On origin/main route.ts line 289 always says 'no Town Centres Map catchment or TOD catchment at this lot' when isLMRArea is false, and the route never receives lmr_excluded, so a lot in a catchment but on exclusion layer 776 reads 'no catchment'. useLmrGates on origin/main returns its stored state unchanged on the render where lat/lng change (state is reset only in the effect). The new tests 'false because excluded' and 'a stored answer for lot A is not returned for lot B' fail on origin/main (no lmrExcluded input; no gatesForKey)."
+  },
+  "pre_impl": {
+    "existing_data": "GET /api/housing-sepp/gates returns in_lmr_area and lmr_excluded per lot (layers 766/752/759/776)",
+    "assumption_mismatch": "callers that do not send lmrExcluded (lib/ai/router.ts) get a reason that names no cause",
+    "new_vs_existing": "every assessment page after deploy",
+    "falsifiable_check": {
+      "command": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-gate-states.test.ts __tests__/hooks/useLmrGates.test.ts",
+      "fails_when": "excluded lot told 'no catchment', or stale gate answer used for a new lot",
+      "observed_red": "See top-level observed_red."
+    }
+  },
+  "functions": [
+    {
+      "name": "POST (eligibility LMR gate)",
+      "file_line": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:259",
+      "input": "isLMRArea and lmrExcluded answers from the planning map, sent by the assessment page",
+      "output": "per housing form: eligible, ineligible with the real cause, or not assessed",
+      "if_none": "lmrExcluded absent: the reason names no cause; isLMRArea absent and not excluded: not assessed"
+    },
+    {
+      "name": "gatesForKey",
+      "file_line": "frontend-nextjs/hooks/useLmrGates.ts:34",
+      "input": "the stored gate answer with the lot key it was fetched for, and the current lot key",
+      "output": "the answer only when the keys match, else null and loading",
+      "if_none": "no coordinates: no answer, not loading"
+    }
+  ],
+  "values": [
+    {
+      "value": "lmrExcluded",
+      "read_at": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:264",
+      "nullable": "yes",
+      "guard_at": "lmrExcluded === true / === false comparisons",
+      "if_missing": "treated as unknown: no cause claimed, area answer decides"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "caller sends isLMRArea true and lmrExcluded true",
+      "what_happens": "an excluded lot could be assessed as in the area",
+      "mitigated": true,
+      "how": "inLMRArea requires lmrExcluded !== true",
+      "repro": "jest housing-sepp-lmr-gate-states -t 'excluded wins'"
+    },
+    {
+      "scenario": "user switches lot while the previous lot's answer is stored",
+      "what_happens": "the new lot briefly shows the old lot's area answer",
+      "mitigated": true,
+      "how": "answer keyed by lat,lng; mismatch returns null and loading",
+      "repro": "jest useLmrGates -t 'not returned for lot B'"
+    },
+    {
+      "scenario": "the AI router calls eligibility without lmrExcluded",
+      "what_happens": "reason says only 'from the planning map'",
+      "mitigated": false,
+      "how": "accepted: true but less specific; the page passes the answer",
+      "repro": "n/a"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — a lot on the Low and Mid-Rise exclusion map shows the exclusion-map reason on the Housing SEPP card"
+  }
+}
