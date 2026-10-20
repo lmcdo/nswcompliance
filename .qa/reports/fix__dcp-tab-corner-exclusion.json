@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which DCP rows the page marks as corner-only, which setback rows the yield box uses for a lot, and the page check that audits both",
-  "commit_hash": "4b4d630c",
+  "commit_hash": "dcc1e0aa",
   "files": [
     "frontend-nextjs/lib/geometry/corner-status.ts",
     "frontend-nextjs/__tests__/lib/geometry/corner-status.test.ts",
@@ -11,7 +11,7 @@
     "tests/test_page_integrity_checks_data.py"
   ],
   "falsifiable_check": {
-    "command": "jest __tests__/lib/geometry/corner-status.test.ts; pytest tests/test_setback_conflict_resolution.py tests/test_page_integrity_checks_data.py",
+    "command": "jest __tests__/lib/geometry/corner-status.test.ts && pytest tests/test_setback_conflict_resolution.py tests/test_page_integrity_checks_data.py",
     "fails_when": "a rule for non-corner lots ('all lots excluding corner lots', 'applies to non-corner lots') is marked corner-only, or a corner-only rule ('Other than garages, corner lots must...', 'not applicable to non-corner lots', 'exclude non-corner lots') is not",
     "observed_red": "On origin/main corner-status.ts has no exclusion test at all, so isCornerOnlyRow('all lots excluding corner lots') = true and the page tells a non-corner lot that a rule which applies to it does not. services/constraint_arithmetic.py on origin/main: 'Other than garages, corner lots must have a 3 m setback' matches _EXCLUDES_CORNER (True), and 'applies to non-corner lots', 'exclude non-corner lots', 'not applicable to non-corner lots' are all read as plain corner cases (measured by exec of the origin/main regexes 2026-10-20). The new tests in the three test files fail against those regexes."
   },
@@ -20,7 +20,7 @@
     "assumption_mismatch": "wording outside the tested forms (e.g. 'Other than garages corner lots' with no comma) can still be misread; T2-5 stores scope as data instead",
     "new_vs_existing": "every assessment page and yield box after deploy",
     "falsifiable_check": {
-      "command": "jest __tests__/lib/geometry/corner-status.test.ts; pytest tests/test_setback_conflict_resolution.py tests/test_page_integrity_checks_data.py",
+      "command": "jest __tests__/lib/geometry/corner-status.test.ts && pytest tests/test_setback_conflict_resolution.py tests/test_page_integrity_checks_data.py",
       "fails_when": "a rule for non-corner lots is marked corner-only, or a corner-only rule is not",
       "observed_red": "See top-level observed_red: origin/main regexes misclassify all six wordings."
     }
