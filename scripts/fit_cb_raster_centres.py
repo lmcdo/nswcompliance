@@ -42,6 +42,7 @@ import urllib.request
 from pathlib import Path
 
 import cv2
+from raster_road_gate import ROAD_SHARE_MAX, road_mask, road_share  # noqa: F401  (numpy-only gate; testable without OpenCV)
 import fitz  # PyMuPDF
 import numpy as np
 from PIL import Image
@@ -62,7 +63,6 @@ NAMED_MIN, ALL_MIN, LOT_EDGE_MAX = 0.90, 0.55, 5.0
 # The on-road scores mean something only when the road mask is a minority of the figure. Measured 2026-10-20 on the
 # mask actually scored (dilated): accepted C-B 7.2 figures 0.18-0.32, accepted Warringah G9 0.34; Warringah G3 p113
 # (white background, hairline roads) 0.88, where every point is "on road" and a 426 m2 / 0.16 m/px fit passed.
-ROAD_SHARE_MAX = 0.60
 OUTSIDE_MAX_M2 = 1500  # a doubtful lot sticking out further than this is a corridor, not a centre lot
 METHOD = "dcp_raster_map_fitted_to_road_centrelines"
 
@@ -141,15 +141,8 @@ def named(pts: np.ndarray, keys: np.ndarray, names: list[str]) -> tuple[np.ndarr
 
 
 def _road_mask(img: np.ndarray, band: list | None = None) -> np.ndarray:
-    """Map road pixels (white; or grey in [lo, hi] when a centre sets road_band), widened 2 px so a
-    centreline inside a carriageway counts."""
-    m = (img >= 249) if band is None else ((img >= band[0]) & (img <= band[1]))
-    return cv2.dilate(m.astype(np.uint8), np.ones((5, 5), np.uint8))
-
-
-def road_share(img: np.ndarray, band: list | None = None) -> float:
-    """Share of the figure's pixels the road mask (as scored) covers."""
-    return float(_road_mask(img, band).mean())
+    """Map road pixels, widened 2 px (raster_road_gate.road_mask; kept here under its old name for callers)."""
+    return road_mask(img, band)
 
 
 def search(img: np.ndarray, pts: np.ndarray, cx: float, cy: float, scales, down: int = 1,

@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-import fit_cb_raster_centres as f  # noqa: E402
+import raster_road_gate as f  # noqa: E402  (numpy only: CI's test job has no OpenCV)
 
 
 def _map(road_frac_rows: int) -> np.ndarray:
