@@ -1,0 +1,10 @@
+{
+  "tier": "minor",
+  "justification": "One regex in the review-queue fidelity gate plus its tests; no served output changes directly",
+  "commit_hash": "770de409",
+  "files": ["scripts/dcp_extract_changed.py", "tests/test_dcp_extraction_fidelity.py"],
+  "break_it": [
+    {"scenario": "the old reader keys a row off a bare TABLE heading", "what_happens": "a junk row would reach the review queue as a real provision", "mitigated": true, "how": "a bare 'table' (with only punctuation after it) is still junk_ref", "repro": "pytest tests/test_dcp_extraction_fidelity.py -k bare_table"}
+  ],
+  "post_merge": {"db_reset": "No", "secrets": "No", "other_repo": "No", "manual_verify": "No — covered by the fidelity tests; next extraction run shows no junk_ref on named tables"}
+}

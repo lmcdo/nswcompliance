@@ -273,6 +273,17 @@ class TestClassifyRowFidelity:
                 "old", "a substantial body of new text " * 40, change_type=change)
             assert status == "failed" and "junk_ref" in reason, change
 
+    def test_only_a_bare_table_ref_is_junk(self):
+        """Sol on #1360: named and lettered tables are real council tables, not junk."""
+        body = "a substantial body of new text " * 40
+        for tail in ("table", "TABLE", "table_", "table -", "TABLE —"):
+            status, reason = classify_row_fidelity(f"Doc__{tail}", "old", body, change_type="changed")
+            assert "junk_ref" in reason, tail
+        for tail in ("Table DA1", "Table A – Landscaping controls", "Table 6.1", "Table in 7.2",
+                     "table to this clause (Clause 5.1A)", "table_in_LE9962_1_0"):
+            status, reason = classify_row_fidelity(f"Doc__{tail}", "old", body, change_type="changed")
+            assert "junk_ref" not in (reason or ""), tail
+
     def test_a_removal_carrying_garbled_text_is_still_caught(self):
         """Exempting junk_ref must not exempt the row wholesale: a removal whose text is
         doubled-glyph garbage is still a defect."""
