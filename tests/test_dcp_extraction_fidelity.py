@@ -276,7 +276,7 @@ class TestClassifyRowFidelity:
     def test_only_a_bare_table_ref_is_junk(self):
         """Sol on #1360: named and lettered tables are real council tables, not junk."""
         body = "a substantial body of new text " * 40
-        for tail in ("table", "TABLE", "table_", "table -"):
+        for tail in ("table", "TABLE", "table_", "table -", "TABLE —"):
             status, reason = classify_row_fidelity(f"Doc__{tail}", "old", body, change_type="changed")
             assert "junk_ref" in reason, tail
         for tail in ("Table DA1", "Table A – Landscaping controls", "Table 6.1", "Table in 7.2",

@@ -2746,7 +2746,7 @@ _GARBLE_RUN = re.compile(r"(?:([A-Za-z])\1){3,}")
 # 2026-10-20 (Sol on #1360): only a BARE "table" is junk. The old test also rejected "Table DA1", "Table A –
 # Landscaping" and 19 live refs such as "Table in 7.2" / "table to this clause (Clause 5.1A)"; none of the
 # live refs is a bare "table" (read-only count of regulatory_provisions, 2026-10-20).
-_JUNK_REF = re.compile(r"^(?:19|20)\d{2}$|^R\d$|^table[\s_.:\-–]*$", re.IGNORECASE)
+_JUNK_REF = re.compile(r"^(?:19|20)\d{2}$|^R\d$|^table[\s_.:\-–—]*$", re.IGNORECASE)
 
 # DQ-97 cause 5 (ku_ring_gai/section-a-part-6-multi-dwelling, found live 2026-09-07):
 # a diagram/figure-label bleed ("PPeedddeess)ttrriiaann PPaatthhwwaayy", "Pedestrian
