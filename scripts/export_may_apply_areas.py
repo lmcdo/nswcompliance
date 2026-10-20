@@ -21,12 +21,22 @@ SOURCE = ROOT / "data" / "chapter_scope" / "suburb_unconfirmed_areas.json"
 TARGET = ROOT / "frontend-nextjs" / "shared" / "may-apply-areas.json"
 
 
+def canonical_suburb(s: object) -> str:
+    """The frontend's normaliseSuburb (lib/may-apply-reasons.ts): uppercase, commas to spaces, drop NSW, AUSTRALIA and
+    a 4-digit postcode, collapse spaces. One form on both sides, or a lookup silently misses (Sol, 2026-10-20)."""
+    toks = str(s or "").upper().replace(",", " ").split()
+    return " ".join(t for t in toks if t not in ("NSW", "AUSTRALIA") and not (len(t) == 4 and t.isdigit()))
+
+
 def build(source: Path = SOURCE) -> dict:
     areas = json.loads(source.read_text(encoding="utf-8"))["areas"]
     out: dict[str, dict[str, list[dict]]] = {}
     for a in areas:
-        suburb = " ".join(str(a["suburb"]).upper().split())
-        out.setdefault(a["council"], {}).setdefault(suburb, []).append(a)
+        # An area may name several suburbs ("suburbs": [...]) or one ("suburb"); an area naming none is not exported
+        # (it keeps showing to everyone).
+        for suburb in {canonical_suburb(s) for s in (a.get("suburbs") or [a.get("suburb")]) if s}:
+            if suburb:
+                out.setdefault(a["council"], {}).setdefault(suburb, []).append(a)
     return {
         c: {s: sorted(rows, key=lambda r: r["area_id"]) for s, rows in sorted(subs.items())}
         for c, subs in sorted(out.items())

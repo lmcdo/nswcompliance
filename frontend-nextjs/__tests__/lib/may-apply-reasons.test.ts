@@ -20,6 +20,10 @@ describe('may-apply-reasons', () => {
   it('suburbFromAddress reads comma and no-comma forms', () => {
     expect(suburbFromAddress('12 Smith Street, Winston Hills NSW 2153')).toBe('WINSTON HILLS');
     expect(suburbFromAddress('12 Smith St Winston Hills NSW 2153')).toBe('WINSTON HILLS');
+    // Sol 2026-10-20: a unit address with commas, and a multi-word street name without commas
+    expect(suburbFromAddress('Unit 3, 12 Smith Street, Winston Hills NSW 2153')).toBe('WINSTON HILLS');
+    expect(suburbFromAddress('12 Old Pittwater Road Brookvale NSW 2100')).toBe('BROOKVALE');
+    expect(suburbFromAddress('12 Smith Street, NSW 2153')).toBe('');
     expect(suburbFromAddress('3/12 Smith Street, Summer Hill')).toBe('SUMMER HILL');
     expect(suburbFromAddress('')).toBe('');
     expect(suburbFromAddress(undefined)).toBe('');

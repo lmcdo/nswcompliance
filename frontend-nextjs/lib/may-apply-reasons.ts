@@ -35,12 +35,15 @@ const UNIT_WORDS = new Set(['UNIT', 'APT', 'APARTMENT', 'SHOP', 'LEVEL', 'SUITE'
 /** The suburb of an address ("12 Smith St, Winston Hills NSW 2153" -> "WINSTON HILLS"), or '' when none can be read. */
 export function suburbFromAddress(address: string | null | undefined): string {
   if (!address) return '';
-  const parts = address.split(',');
-  if (parts.length > 1) return normaliseSuburb(parts.slice(1).join(' '));
+  const parts = address.split(',').map((p) => normaliseSuburb(p)).filter(Boolean);
+  // With commas the suburb is the LAST part that is not just state/postcode ("Unit 3, 12 Smith St, Winston Hills NSW
+  // 2153" -> "WINSTON HILLS"); normaliseSuburb already drops "NSW" and the postcode (Sol, 2026-10-20).
+  if (address.includes(',')) return parts.length > 1 ? parts[parts.length - 1] : '';
   const street = parseStreet(address);
   if (!street) return '';
   const toks = address.toUpperCase().replace(/\//g, ' ').trim().split(/\s+/);
   let i = 0;
   while (i < toks.length && (/^\d/.test(toks[i]) || UNIT_WORDS.has(toks[i]))) i++;
-  return normaliseSuburb(toks.slice(i + street.name.length + (street.type ? 1 : 0)).join(' '));
+  const nameTokens = street.name.trim().split(/\s+/).filter(Boolean).length;  // tokens, not characters (Sol)
+  return normaliseSuburb(toks.slice(i + nameTokens + (street.type ? 1 : 0)).join(' '));
 }
