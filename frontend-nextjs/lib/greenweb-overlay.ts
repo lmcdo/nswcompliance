@@ -80,7 +80,17 @@ export async function greenwebForPoint(
 
   const pointResult = await query(GREENWEB_POINT_SQL, [lon, lat]);
   const categories = toCategories(pointResult.rows[0]?.categories);
-  return categories.length > 0 ? { onGreenweb: true, categories, basis: 'point' } : null;
+  if (categories.length > 0) return { onGreenweb: true, categories, basis: 'point' };
+  // No lot found and the point is off Greenweb: the lot itself was never checked, so this is not a "no".
+  throw new GreenwebLotNotFound();
+}
+
+/** The cadastre had no lot for the point, so only the point could be tested, and it was negative. */
+export class GreenwebLotNotFound extends Error {
+  constructor() {
+    super('no cadastre lot contains the address point');
+    this.name = 'GreenwebLotNotFound';
+  }
 }
 
 /** What the property lookup records: the Greenweb flag, or a plain-words note when the check could not run
@@ -94,6 +104,12 @@ export async function greenwebConstraints(
     const greenweb = await greenwebForPoint(query, lon, lat);
     return greenweb ? { greenweb } : {};
   } catch (err) {
+    if (err instanceof GreenwebLotNotFound) {
+      return {
+        greenwebUnchecked:
+          "We couldn't find this property's lot on the NSW lot map, so we could only check the address point against the council's Greenweb biodiversity map; part of the lot may still be on it.",
+      };
+    }
     console.warn('[greenweb] lot-overlap query failed:', err);
     return {
       greenwebUnchecked:

@@ -47,9 +47,10 @@ describe('greenwebForPoint', () => {
     expect(q.calls).toEqual([GREENWEB_LOT_SQL, GREENWEB_POINT_SQL]);
   });
 
-  it('returns null with no lot and a point outside Greenweb', async () => {
+  it('reports no lot and a point outside Greenweb as not checked', async () => {
     const q = fakeQuery({ lot: { lot_count: 0, categories: [] }, point: { categories: [] } });
-    await expect(greenwebForPoint(q.fn, 151.15, -33.75)).resolves.toBeNull();
+    // The lot was never checked, so this is not a "no": it is reported as unchecked (Sol, 2026-10-20).
+    await expect(greenwebForPoint(q.fn, 151.15, -33.75)).rejects.toThrow('no cadastre lot');
   });
 
   it('returns null, without querying, for coordinates that are not finite', async () => {
@@ -79,5 +80,17 @@ describe('greenwebConstraints', () => {
     const out = await greenwebConstraints(failing, 151.15, -33.75);
     expect(out.greenweb).toBeUndefined();
     expect(out.greenwebUnchecked).toMatch(/couldn't check the council's Greenweb/);
+  });
+});
+
+describe('greenwebConstraints when no lot is found', () => {
+  it('says the lot could not be checked instead of answering "not on Greenweb"', async () => {
+    const { greenwebConstraints } = await import('@/lib/greenweb-overlay');
+    const q = async (sql: string) => (sql.includes('lot_count')
+      ? { rows: [{ lot_count: 0, categories: [] }] }
+      : { rows: [{ categories: [] }] });
+    const out = await greenwebConstraints(q, 151.15, -33.75);
+    expect(out.greenweb).toBeUndefined();
+    expect(out.greenwebUnchecked).toMatch(/couldn't find this property's lot/);
   });
 });
