@@ -226,9 +226,11 @@ def _frontage_range(frontage_range_m, frontage_m) -> Optional[tuple[float, float
     not measured, never repaired; the single frontage_m is the fallback for older callers.
     """
     if frontage_range_m is not None:
-        if len(frontage_range_m) != 2 or any(v is None for v in frontage_range_m):
+        if len(frontage_range_m) != 2:
             return None
-        lo, hi = (float(v) for v in frontage_range_m)
+        lo, hi = frontage_range_m
+        if not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in (lo, hi)):
+            return None
         return (lo, hi) if math.isfinite(hi) and 0 < lo <= hi else None
     ok = frontage_m is not None and math.isfinite(frontage_m) and frontage_m > 0
     return (frontage_m, frontage_m) if ok else None
