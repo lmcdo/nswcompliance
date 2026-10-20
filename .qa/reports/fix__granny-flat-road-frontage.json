@@ -1,0 +1,82 @@
+{
+  "tier": "standard",
+  "justification": "Changes the road frontage the granny-flat CDC test uses, which decides PASS or FAIL on the complying development path",
+  "commit_hash": "97d60c1e",
+  "files": [
+    "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+    "services/granny_flat.py",
+    "services/secondary_dwelling_paths.py",
+    "deploy/flyio-legislation-monitor/secondary_dwelling_paths.py",
+    "tests/test_granny_flat_mutation.py"
+  ],
+  "falsifiable_check": {
+    "command": "pytest tests/test_granny_flat_mutation.py -k Approval && pytest tests/test_housing_sepp_standards_readers.py",
+    "fails_when": "the CDC frontage test uses the bounding rectangle's short side instead of the road-measured width, a malformed or non-finite range is used, or the deployed engine copy drifts",
+    "observed_red": "On origin/main route.ts sends frontage_m = calculateLotDimensions().frontage, the shorter side of the minimum-area rectangle. At 6 Berrigan St Winston Hills that is 22.4 m while the edge on the road measures 13.34 m (street-frontage.ts header, measured 2026-10-18), so a 15 m CDC minimum would PASS on a lot whose road frontage is below it. test_road_measured_range_wins_over_single_frontage fails on origin/main (no frontage_range_m parameter)."
+  },
+  "pre_impl": {
+    "existing_data": "propData.lotGeometry (EPSG:3857) from /api/property; NSW road-corridor layer via detectCornerLot; secondary_dwelling_paths.evaluate_cdc already takes a (min, max) range",
+    "assumption_mismatch": "a lot whose geometry is not EPSG:3857, or whose road map query fails three times, gets no frontage and the CDC answer is 'not determined'",
+    "new_vs_existing": "every granny-flat request after deploy",
+    "falsifiable_check": {
+      "command": "pytest tests/test_granny_flat_mutation.py -k Approval && pytest tests/test_housing_sepp_standards_readers.py",
+      "fails_when": "the CDC frontage test uses the rectangle short side, or a malformed range is used",
+      "observed_red": "See top-level observed_red: 22.4 m rectangle side vs 13.34 m road edge at Winston Hills."
+    }
+  },
+  "functions": [
+    {
+      "name": "_frontage_range",
+      "file_line": "services/granny_flat.py:222",
+      "input": "frontage_range_m from the request, or the older single frontage_m",
+      "output": "(smallest, largest) width at the building line for the CDC test, or None",
+      "if_none": "None means the CDC road frontage test answers UNKNOWN, never a pass"
+    },
+    {
+      "name": "POST (pathFacts)",
+      "file_line": "frontend-nextjs/app/api/satellite/granny-flat/route.ts:331",
+      "input": "the lot boundary from the property lookup and the road corridors near it",
+      "output": "battle_axe and frontage_range_m sent to the detect and confirm engine calls",
+      "if_none": "no geometry or no measured road edge: frontage_range_m is left out"
+    }
+  ],
+  "values": [
+    {
+      "value": "frontage_range_m",
+      "read_at": "services/granny_flat.py:230",
+      "nullable": "yes",
+      "guard_at": "math.isfinite(hi) and 0 < lo <= hi",
+      "if_missing": "falls back to frontage_m, which the route no longer sends; else UNKNOWN"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a wide shallow lot faces the road on its long side",
+      "what_happens": "rectangle short side understated the frontage and failed the CDC test",
+      "mitigated": true,
+      "how": "width is measured back from the road edge",
+      "repro": "pytest tests/test_granny_flat_mutation.py -k road_measured_range_wins"
+    },
+    {
+      "scenario": "caller sends an inverted, zero or infinite range",
+      "what_happens": "could pass the CDC test on a nonsense width",
+      "mitigated": true,
+      "how": "_frontage_range returns None; it never repairs the range",
+      "repro": "pytest tests/test_granny_flat_mutation.py -k malformed_range"
+    },
+    {
+      "scenario": "road map slow on every try",
+      "what_happens": "the granny-flat request waits up to 45 s before the engine call",
+      "mitigated": false,
+      "how": "accepted: same three tries as the property panel; then no frontage and the CDC answer is not determined",
+      "repro": "block portal.spatial.nsw.gov.au and request a granny-flat report"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — a granny-flat report for 6 Berrigan St Winston Hills shows the CDC frontage as a range near 13 m, not 22.4 m"
+  }
+}
