@@ -1,0 +1,75 @@
+{
+  "tier": "standard",
+  "justification": "Marrickville DCP 2.22 applies only to land on its flood maps (p5), but its 72 served rules reached every Marrickville house (DQ-143). A gate rule moves them to the flood condition layer; a not-covered entry tells lots on Cooks River PMF-only land (no layer) to check the plan.",
+  "commit_hash": "328ca982",
+  "files": [
+    "scripts/gate_rules.py",
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    "frontend-nextjs/shared/not-covered-councils.json",
+    "tests/test_gate_rules.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q tests/test_gate_rules.py tests/test_not_covered_councils_drift.py",
+    "fails_when": "The rule is removed or sends the chapter anywhere but condition/flood; or the shared notice file drifts from its source.",
+    "observed_red": "Before the rule: dry run of derive_precinct_keys --only marrickville_2_22_flood did not exist; live DB had 72 generic rows (51 tagged flood, 21 'none') served to every Marrickville house.",
+    "external_authority": "Marrickville DCP 2011 s2.22.2 Land affected (p5) quoted from provision 246988; PMF wording s2.22.2.2 (p6), provision 246992."
+  },
+  "pre_impl": {
+    "existing_data": "Same contract as woollahra_e2_3_flood and krg_16_bushfire_condition in scripts/gate_rules.py; the page's flood flag is dcpFloodMap from spatial_overlays layer_type 'flood' (Inner West flood planning area, 115 shapes).",
+    "assumption_mismatch": "The chapter's Appendix 2 map is wider than the flood planning area (adds Cooks River PMF land). Recorded as a limit, with a page notice, per user decision 2026-10-21.",
+    "new_vs_existing": "One gate rule, one not-covered entry, one test. No new code path."
+  },
+  "functions": [
+    {
+      "name": "apply_gate_rules",
+      "file_line": "scripts/gate_rules.py:423",
+      "input": "the GATE_RULES entry marrickville_2_22_flood and the marrickville council slug",
+      "output": "80 rows set to condition/flood (dry run)",
+      "if_none": "zero matching rows means nothing is written and no backup rows"
+    }
+  ],
+  "values": [
+    {
+      "value": "72 served rows (51 flood + 21 none, generic)",
+      "read_at": "live DB 2026-10-21",
+      "if_missing": "no baseline for DQ-143 drop"
+    },
+    {
+      "value": "dry run rows=80 to-change=80",
+      "read_at": "derive_precinct_keys.py --council marrickville --only marrickville_2_22_flood",
+      "if_missing": "write size unknown"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A flooded Marrickville lot loses the rules.",
+      "what_happens": "Would hide rules from the houses they are for.",
+      "mitigated": true,
+      "how": "The condition layer serves flood rows when the page sends flood=true from dcpFloodMap; checked live on a flooded lot after the write.",
+      "repro": "curl live for-property?former_council=marrickville&zone=R2&flood=true and count part2-s22 rows"
+    },
+    {
+      "scenario": "A lot on Cooks River PMF-only land.",
+      "what_happens": "Not shown the rules; no layer for that land.",
+      "mitigated": true,
+      "how": "Not-covered notice names Part 2.22 for that land.",
+      "repro": "curl live for-property?former_council=marrickville&zone=R2 and read meta.not_covered"
+    },
+    {
+      "scenario": "A re-extraction resets the layer to generic.",
+      "what_happens": "Rules reach every house again.",
+      "mitigated": true,
+      "how": "dcp_commit_approved.py re-runs GATE_RULES after every publish.",
+      "repro": "python scripts/derive_precinct_keys.py --council marrickville --only marrickville_2_22_flood (dry run shows to-change>0 if reset)"
+    }
+  ],
+  "mutation_analysis": "Changing the rule's set to generic fails the new test.",
+  "post_merge": {
+    "db_reset": "Yes: python scripts/derive_precinct_keys.py --council marrickville --only marrickville_2_22_flood --apply (writes its own backup CSV).",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Live: a flooded and a dry Marrickville lot; DQ-143 re-measured."
+  },
+  "residual_risk": "Lots on PMF-only land see a notice, not the rules."
+}
