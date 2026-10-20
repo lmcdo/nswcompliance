@@ -66,10 +66,13 @@ describe('greenwebForPoint', () => {
     await expect(greenwebForPoint(boom, 151.15, -33.75)).rejects.toThrow('db down');
   });
 
-  it('tests the lot polygon by intersection, and the point by containment', () => {
+  it('tests the lot polygon by intersection, covers the point (boundary counts), and reads only Ku-ring-gai', () => {
     expect(GREENWEB_LOT_SQL).toMatch(/ST_Intersects\(o\.geom, lot\.geom\)/);
+    expect(GREENWEB_LOT_SQL).toMatch(/ST_Covers\(l\.geom, pt\.g\)/);
     expect(GREENWEB_LOT_SQL).toMatch(/layer_type = 'greenweb'/);
-    expect(GREENWEB_POINT_SQL).toMatch(/ST_Contains\(o\.geom/);
+    expect(GREENWEB_LOT_SQL).toMatch(/lga_name = 'KU-RING-GAI'/);
+    expect(GREENWEB_POINT_SQL).toMatch(/ST_Covers\(o\.geom/);
+    expect(GREENWEB_POINT_SQL).toMatch(/lga_name = 'KU-RING-GAI'/);
   });
 });
 
