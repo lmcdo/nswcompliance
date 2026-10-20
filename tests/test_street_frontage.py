@@ -201,3 +201,42 @@ def test_live_road_layer_finds_berrigan_st_for_the_winston_hills_wedge():
     finally:
         if stub is not None:
             sys.modules["requests"] = stub
+
+
+def test_edge_only_partly_beside_the_road_counts_only_that_part():
+    # Sol on #1349: a 20 m edge with the road beside its first 12 m was reported as 20 m of frontage.
+    sf = measure_street_frontage(rect(0, 0, 20, 40), [{"name": "TEST ST", "rings": [rect(-20, -10, 32, 10)]}])
+    f = sf.roads[0].frontage_m
+    assert 11.5 <= f <= 12.5
+    full = measure_street_frontage(rect(0, 0, 20, 40), [{"name": "TEST ST", "rings": [rect(-20, -10, 60, 10)]}])
+    assert full.roads[0].frontage_m == pytest.approx(20, abs=0.4)
+
+
+def test_short_gap_at_a_corner_is_still_frontage():
+    # Road beside the edge except its last 2 m (a corner splay): the whole edge is frontage.
+    sf = measure_street_frontage(rect(0, 0, 20, 40), [{"name": "TEST ST", "rings": [rect(-20, -10, 38, 10)]}])
+    assert sf.roads[0].frontage_m == pytest.approx(20, abs=0.4)
+
+
+def test_another_road_never_fills_the_gap():
+    # Sol 2026-10-20: ROAD A beside the first 12 m, ROAD B beside the rest -> ROAD A is about 12 m, not 20 m.
+    a = {"name": "ROAD A", "rings": [rect(-20, -10, 32, 10)]}
+    b = {"name": "ROAD B", "rings": [rect(12, -10, 30, 10)]}
+    sf = measure_street_frontage(rect(0, 0, 20, 40), [a, b])
+    assert road(sf, "ROAD A").frontage_m == pytest.approx(12, abs=0.6)
+
+
+def test_one_road_split_into_parcels_still_owns_the_edge():
+    # Two TEST ST parcels, each beside 6 m of a 20 m edge (30% each, 60% together).
+    p1 = {"name": "TEST ST", "rings": [rect(-20, -10, 26, 10)]}
+    p2 = {"name": "TEST ST", "rings": [rect(14, -10, 30, 10)]}
+    sf = measure_street_frontage(rect(0, 0, 20, 40), [p1, p2])
+    assert sf.status == "measured" and road(sf, "TEST ST").frontage_m > 11
+
+
+def test_short_gap_in_the_middle_is_not_frontage():
+    # Sol 2026-10-20: a 2.5 m break in the middle of the road edge is not a corner curve.
+    p1 = {"name": "TEST ST", "rings": [rect(-20, -10, 28.75, 10)]}
+    p2 = {"name": "TEST ST", "rings": [rect(11.25, -10, 30, 10)]}
+    sf = measure_street_frontage(rect(0, 0, 20, 40), [p1, p2])
+    assert road(sf, "TEST ST").frontage_m == pytest.approx(17.5, abs=0.5)

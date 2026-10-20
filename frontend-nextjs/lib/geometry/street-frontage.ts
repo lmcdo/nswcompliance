@@ -34,6 +34,9 @@ import { scaleFactorForRing, usableRing } from './mercator';
 export const EDGE_TOLERANCE_M = 2.5;
 export const EDGE_MAX_ANGLE_DEG = 30;
 export const EDGE_MIN_FRACTION = 0.5;
+/** A stretch of a road edge with no road beside it is cut from the frontage only when longer than this; shorter
+ *  gaps are the road boundary curving away at a corner, not a break in the frontage (Haberfield, Logan Ave). */
+export const FRONTAGE_GAP_M = 3.0;
 /** Width readings are this far apart, measured back from the road edge. */
 export const PROFILE_STEP_M = 0.5;
 /**
@@ -112,9 +115,23 @@ function segmentsOf(ring: Pt[]): Seg[] {
 }
 
 /** True when at least EDGE_MIN_FRACTION of the lot edge runs alongside one of the road segments. */
-function edgeRunsAlong(edge: Seg, road: Seg[]): boolean {
-  const n = 40;
-  let hits = 0;
+/** Share of the edge that is frontage: beside a road. A gap up to FRONTAGE_GAP_M at either END of the edge still
+ *  counts (the road boundary curving away at a corner); a gap in the middle never does (Sol, 2026-10-20). */
+function edgeFrontageShare(edge: Seg, road: Seg[]): number {
+  const hits = edgeRoadHits(edge, road);
+  const first = hits.indexOf(true);
+  if (first < 0) return 0;
+  const last = hits.lastIndexOf(true);
+  const step = Math.hypot(edge[1][0] - edge[0][0], edge[1][1] - edge[0][1]) / hits.length;
+  let counted = hits.filter(Boolean).length;
+  for (const run of [first, hits.length - 1 - last]) if (run * step <= FRONTAGE_GAP_M) counted += run;
+  return counted / hits.length;
+}
+
+/** For points along the edge (at least 40, at most 0.25 m apart), whether each runs alongside a road segment. */
+function edgeRoadHits(edge: Seg, road: Seg[]): boolean[] {
+  const n = Math.max(40, Math.ceil(Math.hypot(edge[1][0] - edge[0][0], edge[1][1] - edge[0][1]) / 0.25));
+  const hits: boolean[] = [];
   for (let i = 0; i < n; i++) {
     const t = (i + 0.5) / n;
     const p: Pt = [edge[0][0] + (edge[1][0] - edge[0][0]) * t, edge[0][1] + (edge[1][1] - edge[0][1]) * t];
@@ -124,9 +141,9 @@ function edgeRunsAlong(edge: Seg, road: Seg[]): boolean {
       const d = segDist(p, s[0], s[1]);
       if (d < bestD) { bestD = d; best = s; }
     }
-    if (best && bestD < EDGE_TOLERANCE_M && angleBetween(edge, best) <= EDGE_MAX_ANGLE_DEG) hits++;
+    hits.push(!!best && bestD < EDGE_TOLERANCE_M && angleBetween(edge, best) <= EDGE_MAX_ANGLE_DEG);
   }
-  return hits / n >= EDGE_MIN_FRACTION;
+  return hits;
 }
 
 /**
@@ -172,7 +189,11 @@ export function measureStreetFrontage(lotRing: unknown, roads: RoadShape[]): Str
   area = Math.abs(area) / 2;
 
   // A Set: one road can arrive as several parcels with the same name (Nicholls Ave, Haberfield).
+  // An edge belongs to a road when most of it runs beside that road. Its frontage is the share of it beside THAT road
+  // (all its parcels together): an edge half beside the road is half frontage, and another road never fills the gap
+  // (Sol on #1347). Short gaps, e.g. the road boundary curving away at a corner, still count (FRONTAGE_GAP_M).
   const byRoad = new Map<string, Set<Seg>>();
+  const segsByRoad = new Map<string, Seg[]>();
   let unnamed = 0;
   for (const road of roads) {
     const roadSegs = (road.rings || []).flatMap((r) => {
@@ -181,9 +202,20 @@ export function measureStreetFrontage(lotRing: unknown, roads: RoadShape[]): Str
     });
     if (!roadSegs.length) continue;
     const name = road.name?.trim() || null;
+    if (name) {
+      segsByRoad.set(name, [...(segsByRoad.get(name) ?? []), ...roadSegs]);
+      continue;
+    }
     for (const edge of lotEdges) {
-      if (!edgeRunsAlong(edge, roadSegs)) continue;
-      if (!name) { unnamed += Math.hypot(edge[1][0] - edge[0][0], edge[1][1] - edge[0][1]); continue; }
+      if (edgeFrontageShare(edge, roadSegs) < EDGE_MIN_FRACTION) continue;
+      unnamed += Math.hypot(edge[1][0] - edge[0][0], edge[1][1] - edge[0][1]) * edgeFrontageShare(edge, roadSegs);
+    }
+  }
+  // Ownership is judged against all parcels of a named road together, so a road split into parcels along one edge
+  // still owns it (Sol, 2026-10-20).
+  for (const [name, segs] of segsByRoad) {
+    for (const edge of lotEdges) {
+      if (edgeFrontageShare(edge, segs) < EDGE_MIN_FRACTION) continue;
       const set = byRoad.get(name) ?? new Set<Seg>();
       set.add(edge);
       byRoad.set(name, set);
@@ -199,7 +231,7 @@ export function measureStreetFrontage(lotRing: unknown, roads: RoadShape[]): Str
     const front = prof.filter((p) => p.d < depth / 2);
     out.push({
       road,
-      frontage_m: round2(edges.reduce((s, e) => s + Math.hypot(e[1][0] - e[0][0], e[1][1] - e[0][1]), 0)),
+      frontage_m: round2(edges.reduce((s, e) => s + Math.hypot(e[1][0] - e[0][0], e[1][1] - e[0][1]) * edgeFrontageShare(e, segsByRoad.get(road) ?? []), 0)),
       minFrontHalf_m: round2(Math.min(...front.map((p) => p.width))),
       maxAll_m: round2(Math.max(...prof.map((p) => p.width))),
       depth_m: round2(depth),
