@@ -645,7 +645,7 @@ def main() -> int:
     # The re-derivation is shared with dcp_extract_changed's direct-to-live path, which
     # lacked it until 2026-10-18; its load-bearing order and guards are documented there.
     if committed_councils and not dry_run:
-        area_links.rederive_after_publish(committed_councils)
+        area_links.alert_precinct_keys(committed_councils, False, _precinct_alert_sender())
 
     # Citation verdicts: a publish changes clause numbers, and the site shows a number
     # only where regulatory_provisions.citation_status says the page proves it
@@ -786,6 +786,18 @@ def main() -> int:
     # exit 0.
     return 2 if (committed or completeness_rc == 2) else 0
 
+
+
+def _precinct_alert_sender():
+    """send_telegram if available (same import fallback as the completeness alert), else None."""
+    try:
+        from scripts.check_council_completeness import send_telegram
+    except ImportError:
+        try:
+            from check_council_completeness import send_telegram
+        except ImportError:
+            return None
+    return send_telegram
 
 if __name__ == "__main__":
     sys.exit(main())

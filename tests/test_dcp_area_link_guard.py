@@ -134,6 +134,10 @@ def _fake_derive(monkeypatch, behaviour):
         return behaviour(council)
 
     mod.run = run
+    mod.RULES = []
+    mod.DATABASE_URL = None
+    mod._derive = lambda strategy, row: None
+    monkeypatch.setattr(g, "withhold_unkeyed", lambda dpk, council: 0)
     monkeypatch.setitem(sys.modules, "derive_precinct_keys", mod)
     monkeypatch.setitem(sys.modules, "scripts.derive_precinct_keys", mod)
     return calls
@@ -169,7 +173,7 @@ def test_the_direct_to_live_path_rederives_after_enrichment():
     otherwise overwrite the derived 'precinct' layer) and outside the quality-gate branch."""
     from pathlib import Path
     src = (Path(__file__).resolve().parents[1] / "scripts" / "dcp_extract_changed.py").read_text(encoding="utf-8")
-    call = src.index("area_links.rederive_after_publish(published_councils, dry_run=args.dry_run)")
+    call = src.index("area_links.alert_precinct_keys(published_councils, args.dry_run, _precinct_alert_sender())")
     assert src.index("results = run_standard_enrichment(batch_size=500)") < call < src.rindex("sys.exit(2)")
     line = src[src.rindex("\n", 0, call) + 1:call]
     assert line == "    ", "must not sit inside the quality-gate branch"
@@ -180,4 +184,191 @@ def test_the_direct_to_live_path_rederives_after_enrichment():
 def test_the_commit_path_uses_the_same_rederive():
     from pathlib import Path
     src = (Path(__file__).resolve().parents[1] / "scripts" / "dcp_commit_approved.py").read_text(encoding="utf-8")
-    assert "area_links.rederive_after_publish(committed_councils)" in src
+    assert "area_links.alert_precinct_keys(committed_councils, False, _precinct_alert_sender())" in src
+
+
+
+# ---------------------------------------------------------------------------
+# Fails closed: a rule a precinct rule should have keyed is withheld, not served council-wide
+# (Sol back-review of #1344, 2026-10-20)
+# ---------------------------------------------------------------------------
+
+class _WCur:
+    """Rows of the rule: `unkeyed` ids are live with no key; `keyed` ids already carry a key."""
+    def __init__(self, unkeyed, keyed=()):
+        self.unkeyed, self.keyed, self.sql, self.description, self.rowcount = unkeyed, keyed, [], None, 0
+    def execute(self, sql, args=None):
+        self.sql.append((sql, args))
+        if sql.lstrip().startswith("SELECT"):
+            self.description = [("id",), ("document_id",), ("ref_number",), ("pdf_page",), ("source_chapter_key",),
+                                ("v2_precinct_id",), ("v2_dcp_layer",), ("v2_dcp_part",), ("provision_text",),
+                                ("v2_is_actionable",)]
+        else:
+            self.rowcount = len(args[0])
+    def fetchall(self):
+        return ([(i, "d", "r", 1, "k", None, None, None, "t", True) for i in self.unkeyed]
+                + [(i, "d", "r", 1, "k", "P1", "precinct", None, "t", True) for i in self.keyed])
+
+
+class _WConn:
+    def __init__(self, cur):
+        self.cur, self.committed = cur, False
+    def cursor(self): return self.cur
+    def commit(self): self.committed = True
+    def rollback(self): pass
+    def close(self): pass
+
+
+def _dpk(rules):
+    mod = type(sys)("dpk")
+    mod.RULES, mod.DATABASE_URL = rules, "postgres://x"
+    mod._derive = lambda strategy, row: "P1"
+    return mod
+
+
+def test_rows_the_rule_should_have_keyed_are_withheld(monkeypatch, capsys):
+    import psycopg2
+    cur = _WCur([11, 12]); conn = _WConn(cur)
+    monkeypatch.setattr(psycopg2, "connect", lambda *a, **k: conn)
+    n = g.withhold_unkeyed(_dpk([{"council": "ku_ring_gai", "where": "true", "strategy": "s"}]), "ku_ring_gai")
+    assert n == 2 and conn.committed
+    upd = [q for q in cur.sql if q[0].startswith("UPDATE")][0]
+    assert "v2_is_actionable = FALSE" in upd[0] and "v2_precinct_id IS NULL" in upd[0] and upd[1] == ([11, 12],)
+    assert "[WITHHELD] 2 ku_ring_gai" in capsys.readouterr().out
+
+
+def test_nothing_unkeyed_writes_nothing(monkeypatch):
+    import psycopg2
+    cur = _WCur([]); conn = _WConn(cur)
+    monkeypatch.setattr(psycopg2, "connect", lambda *a, **k: conn)
+    assert g.withhold_unkeyed(_dpk([{"council": "c", "where": "true", "strategy": "s"}]), "c") == 0
+    assert not any(q[0].startswith("UPDATE") for q in cur.sql) and not conn.committed
+
+
+def test_other_councils_rules_are_not_used(monkeypatch):
+    import psycopg2
+    cur = _WCur([11]); conn = _WConn(cur)
+    monkeypatch.setattr(psycopg2, "connect", lambda *a, **k: conn)
+    assert g.withhold_unkeyed(_dpk([{"council": "other", "where": "true", "strategy": "s"}]), "c") == 0
+
+
+def test_withholding_runs_even_when_derivation_raises_or_succeeds_silently(monkeypatch):
+    seen = []
+    def boom(c):
+        if c == "ashfield":
+            raise RuntimeError("fingerprint mismatch")
+        return 0
+    _fake_derive(monkeypatch, boom)
+    monkeypatch.setattr(g, "withhold_unkeyed", lambda dpk, council: seen.append(council) or 0)
+    g.rederive_after_publish(["ashfield", "ku_ring_gai"])
+    assert seen == ["ashfield", "ku_ring_gai"]
+
+
+
+def test_a_check_that_cannot_run_fails_the_run(monkeypatch):
+    _fake_derive(monkeypatch, lambda c: 0)
+    monkeypatch.setattr(g, "withhold_unkeyed", lambda dpk, council: None if council == "ashfield" else 0)
+    with pytest.raises(g.PrecinctKeysUnverified, match="ashfield"):
+        g.rederive_after_publish(["ashfield", "ku_ring_gai"])
+
+
+def test_derivation_that_cannot_load_fails_the_run(monkeypatch):
+    monkeypatch.setitem(sys.modules, "scripts.derive_precinct_keys", None)
+    monkeypatch.setitem(sys.modules, "derive_precinct_keys", None)
+    with pytest.raises(g.PrecinctKeysUnverified, match="could not load"):
+        g.rederive_after_publish(["ashfield"])
+
+
+def test_database_down_during_the_check_is_none_not_zero(monkeypatch):
+    import psycopg2
+    def down(*a, **k):
+        raise psycopg2.OperationalError("down")
+    monkeypatch.setattr(psycopg2, "connect", down)
+    assert g.withhold_unkeyed(_dpk([{"council": "c", "where": "true", "strategy": "s"}]), "c") is None
+
+
+
+def test_alert_sends_withheld_rules_and_never_raises(monkeypatch):
+    sent = []
+    monkeypatch.setattr(g, "rederive_after_publish", lambda c, dry_run: ["ku_ring_gai: 3 precinct-limited rule(s) withheld"])
+    g.alert_precinct_keys(["ku_ring_gai"], False, sent.append)
+    assert len(sent) == 1 and "3 precinct-limited rule(s) withheld" in sent[0]
+
+
+def test_alert_reports_a_check_that_could_not_run(monkeypatch):
+    sent = []
+    def boom(c, dry_run):
+        raise g.PrecinctKeysUnverified("could not check ashfield")
+    monkeypatch.setattr(g, "rederive_after_publish", boom)
+    g.alert_precinct_keys(["ashfield"], False, sent.append)
+    assert sent and "NOT VERIFIED: could not check ashfield" in sent[0]
+
+
+def test_alert_quiet_when_nothing_needs_attention(monkeypatch):
+    sent = []
+    monkeypatch.setattr(g, "rederive_after_publish", lambda c, dry_run: [])
+    g.alert_precinct_keys(["c"], False, sent.append)
+    assert sent == []
+
+
+def test_rows_on_a_repaginated_pdf_are_withheld_even_when_no_page_derives(monkeypatch):
+    """Sol 2026-10-20: a re-paginated PDF fails the page-range fingerprint, the derivation writes no key and
+    _derive returns None for the shifted pages, so a check based on _derive alone missed every such row."""
+    import psycopg2
+    cur = _WCur([21, 22], keyed=[23]); conn = _WConn(cur)
+    monkeypatch.setattr(psycopg2, "connect", lambda *a, **k: conn)
+    dpk = _dpk([{"council": "city_of_sydney", "where": "true", "strategy": "page_range", "fingerprint": {"x": 1}}])
+    dpk._derive = lambda strategy, row: None
+    dpk._fingerprint_reasons = lambda fp, pages, n_none, n_total: ["last keyed page moved"]
+    assert g.withhold_unkeyed(dpk, "city_of_sydney") == 2
+    upd = [q for q in cur.sql if q[0].startswith("UPDATE")][0]
+    assert upd[1] == ([21, 22],)
+
+
+def test_unbroken_fingerprint_and_no_derivation_withholds_nothing(monkeypatch):
+    import psycopg2
+    cur = _WCur([21]); conn = _WConn(cur)
+    monkeypatch.setattr(psycopg2, "connect", lambda *a, **k: conn)
+    dpk = _dpk([{"council": "c", "where": "true", "strategy": "page_range", "fingerprint": {"x": 1}}])
+    dpk._derive = lambda strategy, row: None
+    dpk._fingerprint_reasons = lambda fp, pages, n_none, n_total: []
+    assert g.withhold_unkeyed(dpk, "c") == 0
+
+
+def test_an_alert_that_cannot_be_sent_does_not_abort_the_run(monkeypatch, capsys):
+    monkeypatch.setattr(g, "rederive_after_publish", lambda c, dry_run: ["c: 1 withheld"])
+    def down(msg):
+        raise ConnectionError("telegram down")
+    g.alert_precinct_keys(["c"], False, down)
+    assert "could not send the precinct-key alert" in capsys.readouterr().out
+
+
+def test_a_row_whose_key_cannot_be_worked_out_is_withheld(monkeypatch):
+    import psycopg2
+    cur = _WCur([31, 32]); conn = _WConn(cur)
+    monkeypatch.setattr(psycopg2, "connect", lambda *a, **k: conn)
+    dpk = _dpk([{"council": "c", "where": "true", "strategy": "s"}])
+    def derive(strategy, row):
+        if row["id"] == 32:
+            raise ValueError("malformed row")
+        return "P1"
+    dpk._derive = derive
+    assert g.withhold_unkeyed(dpk, "c") == 2
+
+
+
+def test_a_not_yet_switched_on_row_is_withheld_too(monkeypatch):
+    """Sol 2026-10-20: a NULL row is switched on by the next routine enrichment run, unkeyed."""
+    import psycopg2
+    class Cur(_WCur):
+        def fetchall(self):
+            return [(41, "d", "r", 1, "k", None, None, None, "t", None)]
+    cur = Cur([]); conn = _WConn(cur)
+    monkeypatch.setattr(psycopg2, "connect", lambda *a, **k: conn)
+    assert g.withhold_unkeyed(_dpk([{"council": "c", "where": "true", "strategy": "s"}]), "c") == 1
+
+
+def test_withheld_means_false_which_routine_enrichment_leaves_alone():
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1] / "enrichment" / "pipeline.py").read_text(encoding="utf-8")
+    assert "WHERE v2_is_actionable IS NULL" in src  # the routine selector: FALSE rows are not picked up
