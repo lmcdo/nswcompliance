@@ -36,9 +36,9 @@ describe('meta.not_covered', () => {
     expect(body.meta.not_covered).toBeNull();
   });
 
-  it('is null when no council is given', async () => {
+  it('refuses the request when no council is given', async () => {
     const { GET } = await import('@/app/api/provisions/for-property/route');
-    const body = await (await GET(req({ zone: 'R2' }))).json();
-    expect(body.meta.not_covered).toBeNull();
+    const res = await GET(req({ zone: 'R2' }));
+    expect(res.status).toBe(400);
   });
 });

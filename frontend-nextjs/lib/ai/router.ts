@@ -506,7 +506,9 @@ async function handleDcpProvisionLookup(
     //
     // Written as explicit guards rather than a collected list so TypeScript
     // narrows `context.zone` to a string below.
-    const hasCouncil = Boolean(context.lga || context.formerCouncil);
+    // `lga` alone is not a council scope: the endpoint filters on former_council only, so an
+    // lga-only call returned every council's rules (2026-10-21) and now gets a 400.
+    const hasCouncil = Boolean(context.formerCouncil);
     if (!context.zone || !hasCouncil) {
       const missingScope = [!context.zone && 'zone', !hasCouncil && 'council']
         .filter(Boolean).join(' and ');
