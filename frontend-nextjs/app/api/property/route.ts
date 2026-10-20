@@ -209,7 +209,10 @@ export async function GET(req: NextRequest) {
  // identified as Greenweb, and a lot that only partly overlaps a patch is still bound. Separate
  // query so a failure here cannot hide the point-based overlays above, and vice versa.
  // greenwebConstraints never throws: a failed check comes back as a plain-words greenwebUnchecked note.
- Object.assign(propertyData.constraints, await greenwebConstraints(query, spatialLon, spatialLat));
+ // Ku-ring-gai only: Greenweb is that council's own DCP map, so no other council gets a Greenweb note (Sol, 2026-10-20).
+ if (/ku-?ring-?gai/i.test(String(propertyData.constraints?.lga ?? ''))) {
+   Object.assign(propertyData.constraints, await greenwebConstraints(query, spatialLon, spatialLat));
+ }
  }
 
  return NextResponse.json({
