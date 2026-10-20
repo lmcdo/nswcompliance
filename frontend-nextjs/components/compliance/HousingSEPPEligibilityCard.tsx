@@ -92,6 +92,8 @@ interface HousingSEPPEligibilityCardProps {
   lotWidthRange: { min: number; max: number } | null;
   stationDistance?: number;
   isLMRArea?: boolean | null;
+  /** true when the lot is on the Low and Mid-Rise exclusion map; null = not known. */
+  lmrExcluded?: boolean | null;
   strataInfo?: StrataInfo;
   lepHeight?: number | null;
   lepFsr?: number | null;
@@ -322,6 +324,7 @@ export function HousingSEPPEligibilityCard({
   lotWidthRange,
   stationDistance,
   isLMRArea,
+  lmrExcluded,
   strataInfo,
   lepHeight,
   lepFsr,
@@ -338,6 +341,8 @@ export function HousingSEPPEligibilityCard({
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
+    // A slower answer for the previous lot must never overwrite this lot's (Sol, 2026-10-20).
+    const controller = new AbortController();
     const fetchEligibility = async () => {
       // Skip if missing required data
       if (!zoneCode || !lotSize || !lotWidthRange) {
@@ -349,6 +354,7 @@ export function HousingSEPPEligibilityCard({
 
       try {
         const response = await fetch('/api/housing-sepp/eligibility', {
+          signal: controller.signal,
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -358,6 +364,7 @@ export function HousingSEPPEligibilityCard({
             lotWidthMax: lotWidthRange.max,
             stationDistance,
             isLMRArea,
+            lmrExcluded: lmrExcluded ?? null,
             lepHeight: lepHeight ?? undefined,
             lepFsr: lepFsr ?? undefined,
           })
@@ -368,20 +375,23 @@ export function HousingSEPPEligibilityCard({
         }
 
         const result = await response.json();
+        if (controller.signal.aborted) return;
         if (result.success) {
           setData(result.data);
         } else {
           throw new Error(result.error || 'Unknown error');
         }
       } catch (err) {
+        if (controller.signal.aborted) return;
         setError(err instanceof Error ? err.message : 'Failed to check eligibility');
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     fetchEligibility();
-  }, [zoneCode, lotSize, lotWidthRange?.min, lotWidthRange?.max, stationDistance, isLMRArea, lepHeight, lepFsr]);
+    return () => controller.abort();
+  }, [zoneCode, lotSize, lotWidthRange?.min, lotWidthRange?.max, stationDistance, isLMRArea, lmrExcluded, lepHeight, lepFsr]);
 
   // Loading state
   if (loading) {

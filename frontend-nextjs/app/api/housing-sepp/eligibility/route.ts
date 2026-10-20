@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { zoneCode, lotSize, stationDistance, isLMRArea, address, lga, coordinates } = validation.data;
+    const { zoneCode, lotSize, stationDistance, isLMRArea, lmrExcluded, address, lga, coordinates } = validation.data;
     // Width at the front building line, as a range (lib/geometry/street-frontage.ts): the SEPP minimums are "a
     // minimum lot width at the front building line", and where that line sits depends on the design. A legacy
     // single lotWidth is read as both ends.
@@ -256,8 +256,16 @@ export async function POST(request: NextRequest) {
     // An unassessed gate now yields "cannot confirm" for the forms that depend on
     // it, never "eligible". Telling someone they can build when they cannot is
     // the expensive direction of this error.
-    const lmrAreaKnown = typeof isLMRArea === 'boolean';
-    const inLMRArea = isLMRArea === true;
+    const lmrAreaKnown = typeof isLMRArea === 'boolean' || lmrExcluded === true;
+    // On the exclusion map = outside the area, even if a caller also sent isLMRArea: true (Sol, 2026-10-20).
+    const inLMRArea = isLMRArea === true && lmrExcluded !== true;
+    // Why the lot is outside the area. A lot inside a Town Centres or TOD catchment can still be on the exclusion
+    // map, so "no catchment" is said only when the caller told us the lot is not excluded (Sol on #1352).
+    const outsideAreaCause = lmrExcluded === true
+      ? 'this lot is on the Low and Mid-Rise exclusion map'
+      : lmrExcluded === false
+        ? 'no Town Centres Map catchment or TOD catchment at this lot'
+        : 'from the planning map';
 
     for (const [devType, standards] of Object.entries(standardsByType)) {
       const typeInfo = developmentTypeInfo[devType];
@@ -286,7 +294,7 @@ export async function POST(request: NextRequest) {
             // The SEPP's own words for each form's standards: "applies to development ... in a low and mid rise
             // housing area" (ss 168(1), 172(1), 179(1)). Outside one the form's SEPP standards do not apply at all;
             // the council's own instruments decide it, which "not eligible" alone does not say.
-            ? 'Not in a Low and Mid-Rise housing area (no Town Centres Map catchment or TOD catchment at this lot), '
+            ? `Not in a Low and Mid-Rise housing area (${outsideAreaCause}), `
               + 'so these Housing SEPP standards do not apply here; the council\'s own LEP and DCP controls do'
             : 'Whether this lot is in a Low and Mid-Rise housing area could not be checked',
           standards,

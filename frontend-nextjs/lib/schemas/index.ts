@@ -224,6 +224,8 @@ export const HousingSEPPSchema = z.object({
   stationDistance: z.number().positive('Station distance must be positive').optional(),
   /** true / false from the planning map; null or absent = the map did not answer (never read as true). */
   isLMRArea: z.boolean().nullable().optional(),
+  /** true when the lot is on the Low and Mid-Rise exclusion map (layer 776); null or absent = not known. */
+  lmrExcluded: z.boolean().nullable().optional(),
   address: AddressStringSchema.optional(),
   lga: LGASchema.optional(),
   coordinates: CoordinatesSchema.optional(),
