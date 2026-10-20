@@ -31,6 +31,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 REPO = Path(__file__).resolve().parents[1]
+#: Hectares of each category in the registered polygons (simplified at 1 m), measured 2026-10-20.
+EXPECTED_HA = {"core": 3140.9, "support": 1320.3, "landscape (remnant)": 827.8,
+               "corridor (and buffer)": 4046.9, "canopy (remnant)": 202.8}
+AREA_TOLERANCE = 0.02
 GEOJSON = REPO / "data" / "krg_greenweb" / "greenweb_2021.geojson.gz"  # gzip: the repo caps files at 2 MB
 BACKUP_DIR = REPO / "data" / "db_rollback_backups"
 
@@ -81,8 +85,8 @@ def _connect(readonly: bool):
 def existing_rows(cur) -> list[tuple]:
     cur.execute(
         "SELECT id, instrument_key, lga_name, layer_type, value, value_numeric, currency_date, synced_at,"
-        " source_oid, ST_AsGeoJSON(geom) FROM spatial_overlays WHERE layer_type = %s",
-        (LAYER_TYPE,),
+        " source_oid, ST_AsGeoJSON(geom) FROM spatial_overlays WHERE layer_type = %s AND lga_name = %s",
+        (LAYER_TYPE, LGA_NAME),
     )
     return cur.fetchall()
 
@@ -94,7 +98,7 @@ def backup_existing(rows: list[tuple], stamp: str) -> Path:
     cols = ["id", "instrument_key", "lga_name", "layer_type", "value", "value_numeric",
             "currency_date", "synced_at", "source_oid", "geom_geojson"]
     path.write_text(
-        json.dumps({"table": "spatial_overlays", "where": f"layer_type = '{LAYER_TYPE}'",
+        json.dumps({"table": "spatial_overlays", "where": f"layer_type = '{LAYER_TYPE}' AND lga_name = '{LGA_NAME}'",
                     "rows": [dict(zip(cols, r)) for r in rows]}, default=str),
         encoding="utf-8",
     )
@@ -130,6 +134,24 @@ def run(commit: bool) -> int:
         if not all(r[1] for r in report):
             print("ABORT: an invalid geometry would be loaded")
             return 1
+        # Each category's area must match the registered polygons (within AREA_TOLERANCE), and every shape
+        # must lie inside Ku-ring-gai (the LGA's LEP biodiversity extent, grown by ~1 km): a valid but
+        # truncated or misplaced polygon must never replace the layer (Sol, 2026-10-20).
+        bad = [(c, ha) for c, _, _, ha in report
+               if c not in EXPECTED_HA or abs(ha - EXPECTED_HA[c]) > AREA_TOLERANCE * EXPECTED_HA[c]]
+        if bad:
+            print(f"ABORT: category areas differ from the registered polygons: {bad}")
+            return 1
+        for f in feats:
+            cur.execute(
+                "SELECT ST_Within(ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326),"
+                " (SELECT ST_SetSRID(ST_Expand(ST_Extent(geom)::geometry, 0.01), 4326) FROM spatial_overlays"
+                "  WHERE layer_type = 'biodiversity' AND lga_name = %s))",
+                (json.dumps(f["geometry"]), LGA_NAME),
+            )
+            if not cur.fetchone()[0]:
+                print(f"ABORT: {f['properties']['category']} lies outside Ku-ring-gai")
+                return 1
 
         rows = existing_rows(cur)
         print(f"existing layer_type='{LAYER_TYPE}' rows: {len(rows)}")

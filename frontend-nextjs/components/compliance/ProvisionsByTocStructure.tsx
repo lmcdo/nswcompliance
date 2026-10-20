@@ -2136,6 +2136,12 @@ export function ProvisionsByTocStructure({
         </p>
       )}
 
+      {propertyData?.constraints?.greenwebUnchecked && (
+        // Without the Greenweb flag the Part 18 biodiversity rules are not shown, so say why (Sol, 2026-10-20).
+        <p className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {propertyData.constraints.greenwebUnchecked}
+        </p>
+      )}
       <DcpNotCoveredNotice notCovered={data?.meta?.not_covered} />
       <DcpFrontageFigureNotice items={data?.meta?.frontage_setback_figures} failed={data?.meta?.frontage_setback_figures_failed} />
 

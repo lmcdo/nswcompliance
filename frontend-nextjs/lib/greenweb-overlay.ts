@@ -30,14 +30,16 @@ export const GREENWEB_LOT_SQL = `
   WITH pt AS (SELECT ST_SetSRID(ST_Point($1, $2), 4326) AS g),
   lot AS (
     SELECT l.geom FROM nsw_cadastre_lots l, pt
-    WHERE ST_Contains(l.geom, pt.g)
+    WHERE ST_Covers(l.geom, pt.g)
   )
   SELECT
     (SELECT count(*) FROM lot)::int AS lot_count,
     COALESCE(
       (SELECT array_agg(DISTINCT o.value ORDER BY o.value)
        FROM spatial_overlays o, lot
-       WHERE o.layer_type = 'greenweb' AND ST_Intersects(o.geom, lot.geom)),
+       WHERE o.layer_type = 'greenweb' AND o.lga_name = 'KU-RING-GAI'
+         AND o.instrument_key = 'Ku-ring-gai DCP Part 18R.1 Greenweb maps'
+         AND ST_Intersects(o.geom, lot.geom)),
       ARRAY[]::text[]
     ) AS categories
 `;
@@ -46,8 +48,9 @@ export const GREENWEB_LOT_SQL = `
 export const GREENWEB_POINT_SQL = `
   SELECT COALESCE(array_agg(DISTINCT o.value ORDER BY o.value), ARRAY[]::text[]) AS categories
   FROM spatial_overlays o
-  WHERE o.layer_type = 'greenweb'
-    AND ST_Contains(o.geom, ST_SetSRID(ST_Point($1, $2), 4326))
+  WHERE o.layer_type = 'greenweb' AND o.lga_name = 'KU-RING-GAI'
+    AND o.instrument_key = 'Ku-ring-gai DCP Part 18R.1 Greenweb maps'
+    AND ST_Covers(o.geom, ST_SetSRID(ST_Point($1, $2), 4326))
 `;
 
 function toCategories(raw: unknown): string[] {
