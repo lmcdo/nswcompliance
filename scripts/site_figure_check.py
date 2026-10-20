@@ -156,7 +156,10 @@ def figure_outline(pdf_bytes: bytes, fig: dict):
     import fitz
     page = fitz.open(stream=pdf_bytes, filetype="pdf")[fig["page"] - 1]
     if fig["mode"] == "raster":
-        return raster_outline(page, fig["colour"])
+        # A figure entry may name the dpi and the figure's own box on the page: a thin dashed or thick black outline
+        # is lost at 200 dpi, and page text outside the figure merges into it (Warringah G7/G9, 2026-10-20).
+        clip = fitz.Rect(*fig["clip"]) if fig.get("clip") else None
+        return raster_outline(page, fig["colour"], dpi=fig.get("dpi", 200), clip=clip)
     return vector_outline(page, tuple(fig["stroke"]), dashed=fig.get("dashed"), min_width=fig.get("min_width", 0.0))
 
 
