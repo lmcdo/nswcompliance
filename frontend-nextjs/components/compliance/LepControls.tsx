@@ -177,10 +177,10 @@ export function LepControls({
                 <span className="font-semibold">
                   {strataInfo?.strataPlan ? `Part of strata plan ${strataInfo.strataPlan} — ` : 'Strata unit — '}
                 </span>
-                The height, floor space ratio and lot area above are for the whole strata lot, not one unit.
-                We don&apos;t estimate how many homes could be built here: rebuilding a strata lot needs the
-                owners corporation (or a collective sale) to agree, so a whole-lot number would not describe
-                what one owner can do.
+                The height, floor space ratio and lot area above are for the whole site of the strata scheme
+                (the parent parcel), not one unit. We don&apos;t estimate how many homes could be built here:
+                redeveloping a strata scheme needs the owners corporation (or a collective sale) to agree, so a
+                whole-site number would not describe what one owner can do.
               </p>
             </div>
           )}

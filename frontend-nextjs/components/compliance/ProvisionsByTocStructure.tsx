@@ -1909,7 +1909,7 @@ export function ProvisionsByTocStructure({
               </span>
             )}
             <span>·</span>
-            <span>Source PDF checked twice a month</span>
+            <span>Source PDF check scheduled on the 1st and 15th of each month</span>
             {verifiedDateLabel && (
               <>
                 <span>·</span>
@@ -1934,7 +1934,7 @@ export function ProvisionsByTocStructure({
             </div>
           )}
           <p className="text-xs text-gray-400">
-            Provisions sourced from the council&apos;s published DCP. Twice a month (on the 1st and 15th) the council&apos;s PDF is compared with our stored copy. This is planning intelligence for due diligence review — not a substitute for a Section 10.7 planning certificate.
+            Provisions sourced from the council&apos;s published DCP. A check comparing the council&apos;s PDF with our stored copy is scheduled for the 1st and 15th of each month; the date above, when shown, is the last check that completed. This is planning intelligence for due diligence review — not a substitute for a Section 10.7 planning certificate.
           </p>
         </div>
       )}
