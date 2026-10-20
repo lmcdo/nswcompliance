@@ -1,0 +1,4 @@
+{"tier": "minor", "justification": "One union entry of existing outlines and one constant key rule, both in existing shapes", "commit_hash": "cf17d051",
+ "files": ["scripts/import_woollahra_b2_union.py", "scripts/gate_rules.py"],
+ "break_it": [{"scenario": "the union reaches a centre with its own chapter", "what_happens": "Double Bay or Rose Bay Centre lots would get D3 rules as well", "mitigated": true, "how": "the union is proved with those two outlines' interior points outside", "repro": "python scripts/import_woollahra_b2_union.py --union woollahra_d3"}],
+ "post_merge": {"db_reset": "No", "secrets": "No", "other_repo": "No", "manual_verify": "No — loaded and proved 2026-10-20; DQ-143 945 -> 725"}}
