@@ -1,0 +1,76 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "precinct_id": "11.14",
+    "precinct_name": "Riverwood Estate Stage 1",
+    "area_sqm": 16364,
+    "perimeter_m": 514,
+    "method": "nsw_planning_epi_layer",
+    "source": "NSW Planning Portal, Canterbury-Bankstown LEP 2023 Floor Space Ratio Map (EPI_Primary_Planning_Layers MapServer/1), the FSR 2.2 polygon of 'State Environmental Planning Policy Amendment (Riverwood) 2024' (OBJECTID 242318); its edges run along Washington Avenue, Belmore Road North and Roosevelt Avenue (NSW road centrelines, 2026-10-21)",
+    "quote": "C-B DCP 2023 Chapter 11.14 p5: 'This section of the DCP applies to part of the land within the Riverwood Estate, as outlined in blue and illustrated in Figure 1. The proposed first stage of development is located to the north east of the Riverwood Estate bound by Washington Avenue to the north, Belmore Road North to the east, and Roosevelt Avenue to the south.'"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       151.05292067447886,
+       -33.94717573253181
+      ],
+      [
+       151.05300698873464,
+       -33.946747567729446
+      ],
+      [
+       151.0531861781867,
+       -33.94585870898986
+      ],
+      [
+       151.0531544285259,
+       -33.94581800432739
+      ],
+      [
+       151.0525932830958,
+       -33.94569775182878
+      ],
+      [
+       151.0522710006045,
+       -33.945640087345794
+      ],
+      [
+       151.05203061873294,
+       -33.94560654432955
+      ],
+      [
+       151.05191952683424,
+       -33.94615855644104
+      ],
+      [
+       151.05177651195254,
+       -33.94685270067723
+      ],
+      [
+       151.05180485647713,
+       -33.946861535180396
+      ],
+      [
+       151.05200767534143,
+       -33.94692521496078
+      ],
+      [
+       151.05287711963308,
+       -33.94719666172751
+      ],
+      [
+       151.05292067447886,
+       -33.94717573253181
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}
