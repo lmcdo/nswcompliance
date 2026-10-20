@@ -45,7 +45,7 @@ SITE_IDS = {"site_plans_8_3.geojson": {"8.3.5", "8.3.7", "8.3.8"}, "site_plans_1
 FORMER_IDS = {"former_councils_abs2015.geojson": {"C-B former Bankstown", "C-B former Canterbury"}}
 #: The Planning Portal's state outline is the council's legal map layer (1.0). A figure fitted to
 #: the cadastre is positionally ~4 m, and doubtful lots were kept, so it is recorded lower.
-CONFIDENCE = {"nsw_planning_local_provisions": 1.0, "dcp_figure_georeferenced_to_cadastre": 0.9,
+CONFIDENCE = {"cadastre_lot_plan": 0.95, "nsw_planning_local_provisions": 1.0, "dcp_figure_georeferenced_to_cadastre": 0.9,
               "dcp_raster_map_fitted_to_road_centrelines": 0.85, "dcp_site_plan_shape_fitted_to_cadastre": 0.85,
               "abs_asgs_2015_former_lga": 0.95}
 CB_ENVELOPE = (150.95, -33.99, 151.18, -33.85)
@@ -65,18 +65,33 @@ OUTSIDE_ALL = {
 PROFILES = {
     "northern_beaches": {
         "lga": "Northern Beaches", "former_council": "Northern Beaches",
-        "ids": {"centres_g9.geojson": {"G9 Frenchs Forest Town Centre"}},
         "envelope": (151.15, -33.82, 151.35, -33.57),
-        "outside": {
-            # Lot points are ST_PointOnSurface of nsw_cadastre_lots; addresses are NSW address register points.
-            "Northern Beaches Hospital (1//DP1247544)": (151.232883, -33.751053),
-            "74 Karingal Cres Frenchs Forest (south side)": (151.230758, -33.753158),
-            "10 Campbell Ave Cromer": (151.287220, -33.744429),
-        },
-        "inside": {
-            "central block (99//DP1241021)": (151.229781, -33.750295),
-            "1 Gladys Ave Frenchs Forest": (151.232218, -33.748933),
-            "5 Hilmer St Frenchs Forest": (151.232180, -33.752803),
+        # Each outline file names its ids and its own anchors. Lot points are ST_PointOnSurface of nsw_cadastre_lots;
+        # addresses are NSW address register points.
+        "files": {
+            "centres_g9.geojson": {
+                "ids": {"G9 Frenchs Forest Town Centre"},
+                "outside": {
+                    "Northern Beaches Hospital (1//DP1247544)": (151.232883, -33.751053),
+                    "74 Karingal Cres Frenchs Forest (south side)": (151.230758, -33.753158),
+                    "10 Campbell Ave Cromer": (151.287220, -33.744429),
+                },
+                "inside": {
+                    "central block (99//DP1241021)": (151.229781, -33.750295),
+                    "1 Gladys Ave Frenchs Forest": (151.232218, -33.748933),
+                    "5 Hilmer St Frenchs Forest": (151.232180, -33.752803),
+                },
+            },
+            # G7 Evergreen = DP270829 lots 1-35 (the estate's Lot 101 subdivided), loaded on the user's decision
+            # (2026-10-20) without a figure match: Figure 1 has no streets to fit.
+            "centres_g7.geojson": {
+                "ids": {"G7 Evergreen"},
+                "outside": {
+                    "10 Campbell Ave Cromer": (151.287220, -33.744429),
+                    "Northern Beaches Hospital (1//DP1247544)": (151.232883, -33.751053),
+                },
+                "inside": {"20 Evergreen Drive Cromer": (151.286697, -33.742673)},
+            },
         },
     },
 }
@@ -99,7 +114,7 @@ def load_rows(src: Path = SRC, profile: dict | None = None) -> list[dict]:
         })
     ids = {r["precinct_id"] for r in rows}
     if profile is not None:  # another council: the file must hold exactly the ids its profile names
-        expected = profile["ids"].get(src.name)
+        expected = (profile["files"].get(src.name) or {}).get("ids")
         if expected is None or ids != expected:
             raise SystemExit(f"[ABORT] {src.name} holds {sorted(ids)}, expected {sorted(expected or [])}")
         return rows
@@ -147,16 +162,19 @@ def main() -> int:
               f"{r['extraction_method']} ({r['confidence_score']})")
     conn = connect()
     try:
-        return _load(conn, rows, a.commit, former=Path(a.src).name in FORMER_IDS, profile=profile)
+        return _load(conn, rows, a.commit, former=Path(a.src).name in FORMER_IDS, profile=profile,
+                     src_name=Path(a.src).name)
     finally:
         conn.close()
 
 
-def _load(conn, rows: list[dict], commit: bool, former: bool = False, profile: dict | None = None) -> int:
+def _load(conn, rows: list[dict], commit: bool, former: bool = False, profile: dict | None = None,
+          src_name: str = "") -> int:
     lga = profile["lga"] if profile else LGA
     fc = profile["former_council"] if profile else FORMER_COUNCIL
     envelope = profile["envelope"] if profile else CB_ENVELOPE
-    outside = profile["outside"] if profile else OUTSIDE_ALL
+    per_file = (profile["files"].get(src_name) or {}) if profile else {}
+    outside = (per_file.get("outside") or {}) if profile else OUTSIDE_ALL
     # prior-art-checked: closing this script's own connection; no new data source is added.
     cur = conn.cursor()
     cur.execute("SELECT current_database()")
@@ -216,7 +234,7 @@ def _load(conn, rows: list[dict], commit: bool, former: bool = False, profile: d
         cur.execute(LOOKUP_SQL, (cx, cy, lga))
         if pid not in {r[0] for r in cur.fetchall()}:
             problems.append(f"{pid}: a point inside it is not found by the site's lookup")
-    for label, (x, y) in (profile or {}).get("inside", {}).items():
+    for label, (x, y) in (per_file.get("inside") or {}).items():
         cur.execute(LOOKUP_SQL, (x, y, lga))
         hit = [r[0] for r in cur.fetchall()]
         print(f"  lookup {label}: {hit or 'no precinct'}")

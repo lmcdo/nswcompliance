@@ -1,0 +1,5 @@
+{"tier": "minor", "justification": "One outline data file and per-file anchors in the existing loader profile", "commit_hash": "a3c42352",
+ "files": ["scripts/import_cb_centre_boundaries.py", "data/warringah_precincts/centres_g7.geojson"],
+ "real_layer_exempt": {"scripts/import_cb_centre_boundaries.py": "the changed code is profile lookup only; the write path is unchanged and its proof (anchors resolved by the site's own lookup) runs inside the load transaction"},
+ "break_it": [{"scenario": "an outline file loaded with another file's anchors", "what_happens": "Evergreen would be checked against Frenchs Forest points and wrongly fail or pass", "mitigated": true, "how": "anchors are keyed by the outline file name", "repro": "import_cb_centre_boundaries.py --council northern_beaches --src data/warringah_precincts/centres_g7.geojson"}],
+ "post_merge": {"db_reset": "No", "secrets": "No", "other_repo": "No", "manual_verify": "No — loaded and proved 2026-10-20; 20 Evergreen Drive matches G7 live"}}
