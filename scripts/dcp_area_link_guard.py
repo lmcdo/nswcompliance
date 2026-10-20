@@ -164,7 +164,12 @@ def enforce(cur, council: str, chapter_key: str, before: Linked, allowed: frozen
                               + f" If intended, re-run with --allow-area-link-loss {council}/{chapter_key}")
 
 
-def rederive_after_publish(councils, dry_run: bool = False) -> None:
+class PrecinctKeysUnverified(RuntimeError):
+    """Raised AFTER the publish when it could not be confirmed that no precinct-limited rule is live without its
+    key. The provisions are committed; raising makes the run end non-zero so the failure is seen, not logged."""
+
+
+def rederive_after_publish(councils, dry_run: bool = False) -> list[str]:
     """Re-make the precinct keys (v2_precinct_id) of the councils just published. Both publish paths call this.
 
     A publish inserts every row with no key; only derive_precinct_keys puts them back. dcp_commit_approved ran it
@@ -179,36 +184,154 @@ def rederive_after_publish(councils, dry_run: bool = False) -> None:
          gate skipped enrichment.)
       2. It is SCOPED PER COUNCIL. run() refuses validate:False rules on a bulk apply and honours them only when a
          council is named, so a bulk call would leave e.g. Ashfield's chapter-D rows unkeyed.
-      3. It is wrapped. A derivation error must not fail provisions that are already live -- they can be re-derived
-         -- so it degrades to a loud warning. A council with no rule derives nothing and returns 0.
+      3. It is wrapped, and it FAILS CLOSED. A derivation error must not fail the publish, but a rule a precinct
+         rule should have keyed must not stay live without its key: with no key it is served to every house in the
+         council (DQ-143). So after the derivation -- whether it raised, returned non-zero, or "succeeded" and wrote
+         nothing (a re-paginated PDF fails closed silently) -- withhold_unkeyed takes those rows off the page.
     """
     councils = sorted(set(councils or ()))
     if not councils or dry_run:
-        return
+        return []
     print(f"Re-deriving precinct keys for {len(councils)} published council(s)...")
     # The IMPORT is guarded too, and catches Exception: derive_precinct_keys reads
     # data/cos_precinct_page_ranges.json at MODULE level, so a missing data file raises FileNotFoundError, which an
     # `except ImportError` would not catch. Dockerfile.monitors COPYs both the module and that json.
     try:
         try:
-            from scripts.derive_precinct_keys import run as derive
+            from scripts import derive_precinct_keys as dpk
         except ImportError:  # invoked from inside scripts/
-            from derive_precinct_keys import run as derive
+            import derive_precinct_keys as dpk
+        derive = dpk.run
     except Exception as exc:  # noqa: BLE001 - module-level file reads raise anything
-        print(f"  [warn] could not load the precinct derivation: {exc}. Provisions ARE live but unkeyed; check "
-              f"Dockerfile.monitors COPYs scripts/derive_precinct_keys.py AND data/cos_precinct_page_ranges.json.")
-        return
+        raise PrecinctKeysUnverified(
+            f"could not load the precinct derivation ({exc}); {', '.join(councils)} published but precinct-limited "
+            f"rules may be live without their key and cannot be checked. Check Dockerfile.monitors COPYs "
+            f"scripts/derive_precinct_keys.py AND data/cos_precinct_page_ranges.json, then run "
+            f"derive_precinct_keys.py --council X --apply per council.") from exc
+    unverified: list[str] = []
+    withheld: list[str] = []
     for council in councils:
         try:
             rc = derive(council=council, apply=True, validate=False)
         except Exception as exc:  # noqa: BLE001 - never fail a published provision
-            print(f"  [warn] precinct re-derivation failed for {council}: {exc}. Provisions ARE live but unkeyed; "
-                  f"run `python scripts/derive_precinct_keys.py --council {council} --apply`. Until then a "
-                  f"precinct lookup for {council} serves council-wide only.")
+            print(f"  [warn] precinct re-derivation failed for {council}: {exc}. Rules it should have keyed are "
+                  f"withheld below; run `python scripts/derive_precinct_keys.py --council {council} --apply`.")
+            rc = None
+        n = withhold_unkeyed(dpk, council)
+        if n is None:
+            unverified.append(council)
+        elif n:
+            withheld.append(f"{council}: {n} precinct-limited rule(s) withheld (no precinct key). "
+                            + RESTORE.format(council=council))
+        if rc is None:
             continue
         # run() can signal failure by return value; today only the validate path returns 1, which this call cannot
         # reach. Forward-looking. NOT covered: a page_range rule whose PDF was re-paginated fails closed, writes no
         # keys and returns 0 -- see scripts/audit_precinct_keying_coverage.py.
         if rc:
-            print(f"  [warn] precinct re-derivation reported failure (exit {rc}) for {council}. Provisions ARE live "
-                  f"but may be unkeyed; run `python scripts/derive_precinct_keys.py --council {council} --apply`.")
+            print(f"  [warn] precinct re-derivation reported failure (exit {rc}) for {council}. Rules it should "
+                  f"have keyed were withheld above; run `python scripts/derive_precinct_keys.py --council {council} "
+                  f"--apply`.")
+    if unverified:
+        raise PrecinctKeysUnverified(
+            f"could not check {', '.join(unverified)} for precinct-limited rules live without their key; they may be "
+            f"served council-wide. Run derive_precinct_keys.py --council X --apply, then this check again.")
+    return withheld
+
+
+def alert_precinct_keys(councils, dry_run: bool, send) -> None:
+    """Run rederive_after_publish for a publish path and send what a person must act on: rules withheld for a
+    missing precinct key, or a check that could not run. Never raises: the provisions are committed, and both
+    publish paths treat a post-commit step's failure as an alert, not a failed publish (#1080)."""
+    try:
+        notices = rederive_after_publish(councils, dry_run=dry_run)
+    except PrecinctKeysUnverified as exc:
+        print(f"  [ERROR] {exc}")
+        notices = [f"NOT VERIFIED: {exc}"]
+    if notices and send:
+        try:
+            send("DCP publish: precinct keys need attention\n\n" + "\n".join(notices))
+        except Exception as exc:  # noqa: BLE001 - an alert outage must not abort the rest of the publish run
+            print(f"  [ERROR] could not send the precinct-key alert ({exc}); notices above")
+
+
+RESTORE = ("Restore once the keys can be made: python scripts/derive_precinct_keys.py --council {council} --apply, "
+           "then python -c \"from enrichment.pipeline import run_actionability_classification as r; "
+           "r(force_reprocess=True)\" (re-reads FALSE rows from their text).")
+
+
+def unkeyed_precinct_ids(cur, dpk, council: str) -> list[int]:
+    """Live rows a precinct rule derives a key for, that still have no key. Read-only; runs the same selectors and
+    _derive as the derivation itself, so it names exactly the rows the derivation should have keyed."""
+    ids: set[int] = set()
+    for rule in dpk.RULES:
+        if rule["council"] != council:
+            continue
+        # Same selection as the derivation (all current rows of the rule), so the page-range fingerprint can be
+        # judged exactly as it judges it.
+        cur.execute(
+            f"""SELECT id, document_id, ref_number, pdf_page, source_chapter_key, v2_precinct_id, v2_dcp_layer,
+                       v2_dcp_part, provision_text, v2_is_actionable
+                  FROM regulatory_provisions
+                 WHERE is_current = true AND source_council = %(council)s AND ({rule['where']})""",
+            {"council": council, **dict(rule.get("params") or {})})
+        cols = [d[0] for d in cur.description]
+        rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+        derived = {}
+        for row in rows:
+            try:
+                derived[row["id"]] = dpk._derive(rule["strategy"], row)
+            except Exception:  # noqa: BLE001 - a row whose key cannot be worked out is withheld, not served
+                derived[row["id"]] = "UNDERIVABLE"
+        # A re-paginated PDF fails the rule's fingerprint: the derivation then writes NO key for the rule, and its
+        # page map cannot say which rows are local, so every unkeyed live row of the rule is withheld (Sol, 2026-10-20).
+        fp = rule.get("fingerprint")
+        broken = bool(fp and rows and dpk._fingerprint_reasons(
+            fp, [r["pdf_page"] for r in rows if r["pdf_page"] is not None],
+            sum(1 for v in derived.values() if v is None), len(rows)))
+        for row in rows:
+            # TRUE (served now) or NULL (enrichment would switch it on next run): both must be withheld.
+            if row["v2_is_actionable"] is not False and row["v2_precinct_id"] is None and (broken or derived[row["id"]]):
+                ids.add(row["id"])
+    return sorted(ids)
+
+
+def withhold_unkeyed(dpk, council: str) -> "int | None":
+    """Take off the page every live rule the precinct derivation should have keyed but did not. Returns how many,
+    or None when the check itself could not run (the caller then fails the run).
+
+    Withheld = v2_is_actionable FALSE. Not NULL: routine enrichment switches NULL rows on from their text alone,
+    which would serve the still-unkeyed rule council-wide again (Sol, 2026-10-20); only an explicit
+    force_reprocess run re-reads FALSE rows. Recovery, once the keys exist: derive them, then re-read FALSE rows
+    (see RESTORE below). Any failure HERE is reported as an error, never swallowed: it is the guard."""
+    import psycopg2
+
+    try:
+        conn = psycopg2.connect(dpk.DATABASE_URL, connect_timeout=10)
+    except Exception as exc:  # noqa: BLE001
+        print(f"  [ERROR] could not check {council} for unkeyed precinct rules: {exc}")
+        return None
+    try:
+        cur = conn.cursor()
+        ids = unkeyed_precinct_ids(cur, dpk, council)
+        if not ids:
+            conn.rollback()
+            return 0
+        cur.execute(
+            "UPDATE regulatory_provisions SET v2_is_actionable = FALSE "
+            "WHERE id = ANY(%s) AND is_current AND v2_precinct_id IS NULL",
+            (ids,),
+        )
+        n = cur.rowcount
+        conn.commit()
+        print(f"  [WITHHELD] {n} {council} rule(s) limited to one precinct had no precinct key and were taken off the "
+              f"page instead of being shown to every house in the council (ids {ids[:20]}"
+              f"{' ...' if len(ids) > 20 else ''}). {RESTORE.format(council=council)}")
+        return n
+    except Exception as exc:  # noqa: BLE001
+        conn.rollback()
+        print(f"  [ERROR] withholding unkeyed precinct rules for {council} failed: {exc}. They may be served "
+              f"council-wide until derive_precinct_keys.py --council {council} --apply is run.")
+        return None
+    finally:
+        conn.close()

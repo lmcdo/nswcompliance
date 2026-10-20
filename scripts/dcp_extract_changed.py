@@ -6180,10 +6180,22 @@ def main() -> None:
     # Precinct keys: a publish inserts every row unkeyed. The commit path re-derived them; this path did not, and
     # on 2026-10-18 Ku-ring-gai 14A/14H went live with no row keyed. Shared with dcp_commit_approved, and run even
     # when enrichment was skipped above (see rederive_after_publish for why that is safe).
-    area_links.rederive_after_publish(published_councils, dry_run=args.dry_run)
+    area_links.alert_precinct_keys(published_councils, args.dry_run, _precinct_alert_sender())
 
     sys.exit(2)
 
+
+
+def _precinct_alert_sender():
+    """send_telegram if available (same import fallback as the completeness alert), else None."""
+    try:
+        from scripts.check_council_completeness import send_telegram
+    except ImportError:
+        try:
+            from check_council_completeness import send_telegram
+        except ImportError:
+            return None
+    return send_telegram
 
 if __name__ == "__main__":
     main()
