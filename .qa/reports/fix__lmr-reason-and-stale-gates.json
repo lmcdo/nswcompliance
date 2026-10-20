@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes the reason the Housing SEPP card gives when a lot is outside a Low and Mid-Rise housing area, and which lot's gate answer the page uses",
-  "commit_hash": "528433fd",
+  "commit_hash": "f98f472d",
   "files": [
     "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
     "frontend-nextjs/lib/schemas/index.ts",
