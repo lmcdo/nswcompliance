@@ -71,3 +71,13 @@ describe('greenwebForPoint', () => {
     expect(GREENWEB_POINT_SQL).toMatch(/ST_Contains\(o\.geom/);
   });
 });
+
+describe('greenwebConstraints', () => {
+  it('returns a plain-words note instead of throwing when the check fails', async () => {
+    const { greenwebConstraints } = await import('@/lib/greenweb-overlay');
+    const failing = async () => { throw new Error('db down'); };
+    const out = await greenwebConstraints(failing, 151.15, -33.75);
+    expect(out.greenweb).toBeUndefined();
+    expect(out.greenwebUnchecked).toMatch(/couldn't check the council's Greenweb/);
+  });
+});

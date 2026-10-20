@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PropertyDataService } from '../../../lib/property-data';
 import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 import { query } from '@/lib/db';
-import { greenwebForPoint } from '@/lib/greenweb-overlay';
+import { greenwebConstraints } from '@/lib/greenweb-overlay';
 
 /**
  * General NSW Property Data API Endpoint
@@ -208,15 +208,8 @@ export async function GET(req: NextRequest) {
  // Ku-ring-gai Greenweb is flagged by the LOT, not the address point: Part 18 applies to areas
  // identified as Greenweb, and a lot that only partly overlaps a patch is still bound. Separate
  // query so a failure here cannot hide the point-based overlays above, and vice versa.
- try {
-   const greenweb = await greenwebForPoint(query, spatialLon, spatialLat);
-   if (greenweb) propertyData.constraints.greenweb = greenweb;
- } catch (greenwebErr) {
-   console.warn('[Property API] Greenweb lot-overlap query failed (non-fatal):', greenwebErr);
-   // Say it, never leave it silent: without the flag the Part 18 rules are not shown.
-   propertyData.constraints.greenwebUnchecked =
-     "We couldn't check the council's Greenweb biodiversity map for this lot, so its biodiversity rules may be missing.";
- }
+ // greenwebConstraints never throws: a failed check comes back as a plain-words greenwebUnchecked note.
+ Object.assign(propertyData.constraints, await greenwebConstraints(query, spatialLon, spatialLat));
  }
 
  return NextResponse.json({

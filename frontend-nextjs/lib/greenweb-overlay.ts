@@ -79,3 +79,22 @@ export async function greenwebForPoint(
   const categories = toCategories(pointResult.rows[0]?.categories);
   return categories.length > 0 ? { onGreenweb: true, categories, basis: 'point' } : null;
 }
+
+/** What the property lookup records: the Greenweb flag, or a plain-words note when the check could not run
+ *  (without the flag, Part 18 rules are not shown, so the page must be able to say why). */
+export async function greenwebConstraints(
+  query: QueryFn,
+  lon: number,
+  lat: number
+): Promise<{ greenweb?: GreenwebConstraint; greenwebUnchecked?: string }> {
+  try {
+    const greenweb = await greenwebForPoint(query, lon, lat);
+    return greenweb ? { greenweb } : {};
+  } catch (err) {
+    console.warn('[greenweb] lot-overlap query failed:', err);
+    return {
+      greenwebUnchecked:
+        "We couldn't check the council's Greenweb biodiversity map for this lot, so its biodiversity rules may be missing.",
+    };
+  }
+}
