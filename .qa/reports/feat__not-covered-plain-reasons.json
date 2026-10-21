@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The council-wide not-mapped notice listed chapter names in one sentence with no reason and no link. Users asked for a brief, plain explanation for every rule we cannot place: each part now shows the plan's name for it, one plain sentence on why we cannot tell, and a link to the plan page.",
-  "commit_hash": "eb689cb7",
+  "commit_hash": "0c8bed4e",
   "files": [
     "frontend-nextjs/components/compliance/DcpNotCoveredNotice.tsx",
     "frontend-nextjs/lib/not-covered.ts",
