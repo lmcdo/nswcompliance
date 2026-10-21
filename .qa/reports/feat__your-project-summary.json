@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New 'Your project' summary above the SEPP/LEP/DCP tabs: project picker, key-controls table (LEP height/FSR/min lot size; DCP setbacks, site coverage, landscaping, open space, parking, solar) with each source's figure, words, clause/page and link passed through unchanged, a 'your proposal' box giving above/below/equal by arithmetic, and the site's triggered conditions. One shared project type for the summary and the DCP tab.",
-  "commit_hash": "5f7bea12",
+  "commit_hash": "b3528ba4",
   "files": [
     "frontend-nextjs/components/compliance/YourProjectSummary.tsx",
     "frontend-nextjs/lib/project-summary.ts",
