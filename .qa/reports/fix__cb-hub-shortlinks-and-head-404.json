@@ -1,0 +1,82 @@
+{
+ "tier": "standard",
+ "justification": "Changes what the DCP monitor treats as a council's current document for Canterbury-Bankstown (68 active chapters) and how every council's HEAD check reacts to a 404. After merge the next monitor run re-points 4 registry URLs and queues re-extraction for 3 chapters whose content changed, through the existing url_migrated path and review queue. Not Critical: no new query or write path; the existing diff_urls/url_migrated code does the writing. Not Minor: it decides which version of a council's rules we serve.",
+ "commit_hash": "b69aec3a",
+ "files": [
+  "scripts/hub_scrapers/canterbury_bankstown.py",
+  "scripts/r2_monitor.py",
+  "tests/test_cb_scraper_follows_short_links.py"
+ ],
+ "pre_impl": {
+  "existing_data": "dcp_chapter_registry rows for canterbury_bankstown (council_url, content_hash, check_failures). Measured live 2026-10-21, read-only: of 52 short-linked chapters 49 hash-identical to the council's current file, 3 different (1.1, 7.3, 7.6); 16 guides have no short link and are unaffected.",
+  "assumption_mismatch": "#1188 assumed the hub page never lists CB chapters and that three chapters were on a dead host. Both wrong: the page lists them as cb.city short links, and the host answers HEAD 404 while GET serves the PDF. The fuzzy label matcher would also accept 'Chapter 7.3 - City East' for 'Chapter 7.2 - City West' (60% word overlap), so short links match on the chapter number exactly instead.",
+  "new_vs_existing": "Existing rows: the next r2_monitor run records a URL migration for 1.1, 2.1, 7.3 and 7.6 and hash-checks them; 2.1 hashes the same (no extraction), the other three are changed and queue extraction. 7.7 and 11.16 are offered as new chapters through the existing auto-register path."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_cb_scraper_follows_short_links.py -q -o addopts=",
+  "fails_when": "the scraper stops following cb.city short links, matches them fuzzily onto a neighbouring chapter, or head_request stops retrying a HEAD 404 as a GET",
+  "observed_red": "YES, forced twice. Disabling the short-link branch failed 3 tests; restoring the 405-only fallback failed 2. Restored green: 6 passed, 96 across the neighbouring monitor/scraper test files. Live dry run against the real hub page: 70 links found, 66 matched, no key matched twice, 4 migrations."
+ },
+ "functions": [
+  {
+   "name": "_match_by_chapter_number",
+   "file_line": "scripts/hub_scrapers/canterbury_bankstown.py:50",
+   "input": "chapter major and minor numbers from a cb.city short link, plus registry keys",
+   "output": "the single chapter_key starting chapter-<major>-<minor>-, else None",
+   "if_none": "no key or two keys -> None, so the link is offered unmatched rather than forced onto a chapter"
+  },
+  {
+   "name": "_resolve_short_link",
+   "file_line": "scripts/hub_scrapers/canterbury_bankstown.py:40",
+   "input": "a cb.city short link href taken from the council's hub page",
+   "output": "the api/publish Location of its 301, else None",
+   "if_none": "network error or non-redirect -> None, link skipped, which is the previous behaviour"
+  },
+  {
+   "name": "head_request",
+   "file_line": "scripts/r2_monitor.py:253",
+   "input": "a chapter council_url string read from dcp_chapter_registry",
+   "output": "status/length/etag dict; HEAD 404 or 405 retried as a range GET",
+   "if_none": "GET also 404 -> status 404 -> counted as a failure exactly as before"
+  }
+ ],
+ "values": [
+  {
+   "value": "chapter_key from a short link",
+   "read_at": "scripts/hub_scrapers/canterbury_bankstown.py:50",
+   "nullable": "yes",
+   "guard_at": "diff_urls treats None as unmatched",
+   "if_missing": "the chapter is reported 'unlisted' as it was before this change; nothing is re-pointed"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "A short link resolves to a neighbouring chapter's document",
+   "what_happens": "the registry would be re-pointed to the wrong chapter and its rules replaced",
+   "mitigated": true,
+   "how": "exact chapter-number match; test_short_links_resolve_to_the_current_version_of_the_right_chapter checks 7.2 and 7.3 are not swapped",
+   "repro": "pytest tests/test_cb_scraper_follows_short_links.py"
+  },
+  {
+   "scenario": "Two registry keys share a chapter number (e.g. an old and a new 7.3 key)",
+   "what_happens": "the link could be matched to the superseded key",
+   "mitigated": true,
+   "how": "_match_by_chapter_number returns None unless exactly one key matches",
+   "repro": "test_chapter_number_match_is_exact"
+  },
+  {
+   "scenario": "Another council's server answers HEAD 404 for a document that is really gone",
+   "what_happens": "the GET fallback also 404s and the chapter still counts as failed, so nothing is hidden",
+   "mitigated": true,
+   "how": "head_request returns the GET's status",
+   "repro": "test_a_link_that_is_really_gone_still_fails"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes -- the next r2_monitor run (or a manual CB-only run) should log URL migrations for 1.1, 2.1, 7.3, 7.6 and queue extraction for 1.1, 7.3, 7.6; those go through the review queue."
+ }
+}
