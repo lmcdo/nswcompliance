@@ -12,10 +12,10 @@ import { ReviewNotice } from '@/components/compliance/DcpStructuredControls';
 const text = () => screen.getByTestId('dcp-review-pending').textContent;
 
 describe('ReviewNotice', () => {
-  test('rows withheld for a source change are counted as an amendment', () => {
+  test('rows withheld for a source change say the plan changed', () => {
     render(<ReviewNotice status={{ amendment_pending: true, withheld_source_changed: 42, withheld_other: 0 }} />);
     expect(text()).toBe(
-      'Amendment detected — 42 controls are held back until reviewed. Check the council website for the latest version.',
+      "The council's plan has changed — 42 controls are held back until reviewed. Check the council website for the latest version.",
     );
   });
 
@@ -26,19 +26,19 @@ describe('ReviewNotice', () => {
 
   test('a pending chapter with nothing withheld still warns', () => {
     render(<ReviewNotice status={{ amendment_pending: true, withheld_source_changed: 0, withheld_other: 0 }} />);
-    expect(text()).toContain('updated controls pending review');
+    expect(text()).toContain('updated controls are pending review');
   });
 
-  test('rows held for another reason are NEVER called an amendment', () => {
+  test('rows held for another reason NEVER say the plan changed', () => {
     render(<ReviewNotice status={{ amendment_pending: false, withheld_source_changed: 0, withheld_other: 13 }} />);
     expect(text()).toBe("13 controls are held back until checked against the council's plan.");
-    expect(text()).not.toContain('Amendment');
+    expect(text()).not.toContain('changed');
   });
 
   test('both reasons are given, each with its own count', () => {
     render(<ReviewNotice status={{ amendment_pending: true, withheld_source_changed: 2, withheld_other: 3 }} />);
     expect(text()).toBe(
-      "Amendment detected — 2 controls are held back until reviewed. Check the council website for the latest version. 3 more are held back until checked against the council's plan.",
+      "The council's plan has changed — 2 controls are held back until reviewed. Check the council website for the latest version. 3 more are held back until checked against the council's plan.",
     );
   });
 

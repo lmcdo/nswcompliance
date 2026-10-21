@@ -79,7 +79,9 @@ export function ReviewNotice({ status }: { status: StructuredControlsResponse['r
   }
   const { amendment_pending: pending, withheld_source_changed: changed, withheld_other: other } = status;
   const controls = (n: number) => `${n} ${n === 1 ? 'control is' : 'controls are'}`;
-  // Only a change at the council's source is called an amendment. Rows held back
+  // Only a confirmed text change at the council's source (r2_monitor's re-export
+  // gate drops byte-only re-uploads) is reported as the plan changing - and it is
+  // not called an amendment, which is more than the monitor can know. Rows held back
   // because our number did not match the council's document are a different
   // claim and are worded as one (cross-review, 2026-10-22).
   const amendment = pending || changed > 0;
@@ -91,7 +93,7 @@ export function ReviewNotice({ status }: { status: StructuredControlsResponse['r
     >
       {amendment && (
         <>
-          Amendment detected — {changed > 0 ? `${controls(changed)} held back until reviewed` : 'updated controls pending review'}.
+          The council&apos;s plan has changed — {changed > 0 ? `${controls(changed)} held back until reviewed` : 'updated controls are pending review'}.
           {' '}Check the council website for the latest version.
         </>
       )}
