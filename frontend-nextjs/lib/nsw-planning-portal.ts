@@ -1391,7 +1391,7 @@ export class NSWPlanningPortalService {
    constraints.complyingExcluded = seppExclusionData.complying;
    constraints.exemptExcluded = seppExclusionData.exempt;
  }
- if (!seppExclusionData || Object.values(seppExclusionData).some((v) => v === null)) notChecked.push('sepp_exclusions');
+ if (!seppExclusionData || Object.values(seppExclusionData).some((v) => v == null)) notChecked.push('sepp_exclusions');
  if (dualOccData) {
    constraints.dualOccProhibited = dualOccData;
  } else {

@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: changes what /api/property returns when an outside source or the database fails (null plus a named not-checked list instead of a filled-in value), and adds one time limit for the whole lookup. Not Critical: no database writes, no schema change; every answered source gives the same reply as before (recorded-reply test).",
-  "commit_hash": "2d98eed2",
+  "commit_hash": "d720e6d1",
   "files": [
     ".github/workflows/gates.yml",
     "frontend-nextjs/__tests__/api/property-lookup-no-fillins.test.ts",
