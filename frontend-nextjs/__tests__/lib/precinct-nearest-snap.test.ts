@@ -20,6 +20,8 @@ it('snaps only to precincts of councils whose precincts tile their land', async 
   const [sql, params] = mockQuery.mock.calls[1];
   expect(sql).toContain('LOWER(former_council) = ANY($4::text[])');
   expect(params[3]).toEqual(NEAREST_SNAP_FORMER_COUNCILS);
+  // an exact LEP-layer overlay (Marrickville 2.26) is never snapped to
+  expect(sql).toContain("COALESCE(extraction_method, '') NOT LIKE 'nsw_planning_local_provisions%'");
   expect(NEAREST_SNAP_FORMER_COUNCILS).not.toContain('ashfield');
 });
 

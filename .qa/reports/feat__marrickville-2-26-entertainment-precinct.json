@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "Marrickville DCP 2.26 (21 live rules) applies to Sound Category Areas on its five figures but was served to every Marrickville house. Lots inside the LEP Special Entertainment Precinct blocks get the rules; other houses in the figures' suburbs see them in the may-apply box (the category lines along side streets are not mapped); everyone else none. The may-apply query now also lists rows keyed to an outline the property is not inside.",
+  "commit_hash": "e98bb8d1",
+  "files": [
+    "data/inner_west_precincts/marrickville_2_26_sep.geojson",
+    "scripts/import_cb_centre_boundaries.py",
+    "scripts/gate_rules_areas.py",
+    "scripts/gate_rules.py",
+    "frontend-nextjs/lib/may-apply-query.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/lib/precinct-service.ts",
+    "data/chapter_scope/suburb_unconfirmed_areas.json",
+    "frontend-nextjs/shared/may-apply-areas.json",
+    "tests/test_gate_rules.py",
+    "frontend-nextjs/__tests__/api/may-apply-meta.test.ts",
+    "frontend-nextjs/__tests__/lib/precinct-nearest-snap.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/may-apply-meta.test.ts __tests__/lib/precinct-nearest-snap.test.ts; python -m pytest -q tests/test_gate_rules.py",
+    "fails_when": "A property inside the outline also sees the rows in the box, a property outside does not, or the snap reaches an LEP-layer outline.",
+    "observed_red": "Before: 2.26 rows generic, shown to every Marrickville house (DQ-143 21).",
+    "external_authority": "Inner West LEP 2022 Special Entertainment Precinct layer (Planning Portal Development_Control/3), 97 polygons, 47.3 ha; anchors 89 Enmore Rd inside, 7 Phillip St outside."
+  },
+  "pre_impl": {
+    "existing_data": "may-apply area marrickville-2-26-sound-category-areas already existed (SOUND_AREA_MAP); loader and keying patterns as Riverwood/Edgecliff.",
+    "assumption_mismatch": "The LEP layer is only the pink blocks; the category lines extend beyond, so the rest is shown as may-apply, not hidden.",
+    "new_vs_existing": "One overlay outline, keying in gate_rules_areas.py, one SQL clause in the may-apply query, a snap guard, suburb list extended from figure evidence."
+  },
+  "functions": [
+    {
+      "name": "apply_gate_rules",
+      "file_line": "scripts/gate_rules.py:471",
+      "input": "the 2.26 keying and layer rules for council marrickville",
+      "output": "23 rows keyed (21 live), 21 moved generic to precinct (dry run)",
+      "if_none": "zero matching rows means nothing is keyed or written"
+    }
+  ],
+  "values": [
+    {
+      "value": "97 polygons, 473,331 m2",
+      "read_at": "Planning Portal 2026-10-21",
+      "if_missing": "no outline"
+    },
+    {
+      "value": "jest 1428 passed, tsc 0",
+      "read_at": "local 2026-10-21",
+      "if_missing": "no test evidence"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A side-street house on a category line outside the pink.",
+      "what_happens": "It would lose 2.26 rules with no explanation.",
+      "mitigated": true,
+      "how": "Shown in the may-apply box with the sound-area reason for the figures' suburbs.",
+      "repro": "for-property former_council=marrickville suburb=ENMORE without the precinct"
+    },
+    {
+      "scenario": "A lot near the pink with no precinct snaps to the overlay.",
+      "what_happens": "It gets 2.26 rules and loses its own precinct.",
+      "mitigated": true,
+      "how": "Snap skips any outline whose method starts nsw_planning_local_provisions.",
+      "repro": "npx jest __tests__/lib/precinct-nearest-snap.test.ts"
+    },
+    {
+      "scenario": "A lot inside the pink sees 2.26 twice.",
+      "what_happens": "The same rules listed in the property list and in the box.",
+      "mitigated": true,
+      "how": "The box excludes rows keyed to a precinct the property is in (test).",
+      "repro": "npx jest __tests__/api/may-apply-meta.test.ts"
+    }
+  ],
+  "mutation_analysis": "Removing the not-this-property clause fails the may-apply outside-house test.",
+  "post_merge": {
+    "db_reset": "Yes, AFTER deploy: load the outline (import_cb_centre_boundaries.py --council marrickville --src data/inner_west_precincts/marrickville_2_26_sep.geojson --commit), then derive_precinct_keys.py --council marrickville --only <2.26 rules> --apply.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Live: 89 Enmore Rd sees 2.26 rules; 7 Phillip St sees them in the box; a Marrickville house outside the suburbs sees none."
+  },
+  "residual_risk": "Category lines outside the pink are shown as may-apply, not exact."
+}

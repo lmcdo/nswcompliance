@@ -684,6 +684,7 @@ export async function GET(request: NextRequest) {
             councilSlug: councilSlugForMayApply,
             suburb: searchParams.get('suburb'),
             selectColumns: PROVISION_BASE_SELECT,
+            precinctIds: filters.precinct_id,
             mapRow: (row: any) =>
               withServedCitation(withCouncilWords(row, stripOcrHeaderPrefix), parseRefNumber(row.ref_number, row.source_council)),
           })

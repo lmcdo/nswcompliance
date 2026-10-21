@@ -46,7 +46,10 @@ SITE_IDS = {"site_plans_8_3.geojson": {"8.3.5", "8.3.7", "8.3.8"}, "site_plans_1
 FORMER_IDS = {"former_councils_abs2015.geojson": {"C-B former Bankstown", "C-B former Canterbury"}}
 #: The Planning Portal's state outline is the council's legal map layer (1.0). A figure fitted to
 #: the cadastre is positionally ~4 m, and doubtful lots were kept, so it is recorded lower.
-CONFIDENCE = {"cadastre_lot_plan": 0.95, "nsw_planning_local_provisions": 1.0, "nsw_planning_epi_layer": 1.0, "dcp_figure_georeferenced_to_cadastre": 0.9,
+CONFIDENCE = {"cadastre_lot_plan": 0.95, "nsw_planning_local_provisions": 1.0,
+              # an LEP overlay laid on top of a council's own precincts (Marrickville 2.26): ranked below them, so the
+              # property keeps its own precinct first
+              "nsw_planning_local_provisions_overlay": 0.85, "nsw_planning_epi_layer": 1.0, "dcp_figure_georeferenced_to_cadastre": 0.9,
               "dcp_raster_map_fitted_to_road_centrelines": 0.85, "dcp_site_plan_shape_fitted_to_cadastre": 0.85,
               "abs_asgs_2015_former_lga": 0.95, "dcp_precinct_map_fitted_to_cadastre_lot_lines": 0.85}
 CB_ENVELOPE = (150.95, -33.99, 151.18, -33.85)
@@ -138,6 +141,22 @@ PROFILES = {
                     "203-233 New South Head Rd Edgecliff": (151.235520, -33.879215),
                     "180 Ocean St Edgecliff": (151.237012, -33.879495),
                 },
+            },
+        },
+    },
+    # Marrickville DCP 2011 s2.26 (2026-10-21): the IWLEP 2022 'Inner West Special Entertainment Precinct' polygons the
+    # five figures cover (Enmore Road, Dulwich Hill, Marrickville North, Marrickville, and the Leichhardt polygons on
+    # former Marrickville land south of Parramatta Road), unioned. lga/former_council as the 46 Marrickville tiles
+    # already loaded. Every Marrickville address sits in a tile, so "outside" means: not in this outline.
+    "marrickville": {
+        "lga": "Inner West", "former_council": "Marrickville",
+        "envelope": (151.12, -33.93, 151.20, -33.87),
+        "files": {
+            "marrickville_2_26_sep.geojson": {
+                "ids": {"Marrickville 2.26 entertainment precinct"},
+                "outside_means_not_in_these_ids": True,
+                "outside": {"7 Phillip St Newtown (side street off Enmore Rd)": (151.173976, -33.898147)},
+                "inside": {"89 Enmore Rd Newtown": (151.174588, -33.898498)},
             },
         },
     },
