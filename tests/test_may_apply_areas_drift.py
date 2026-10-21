@@ -66,4 +66,11 @@ def test_map_image_url_only_when_base_url_is_set(tmp_path):
 def test_base_url_points_at_the_uploaded_maps():
     # Uploaded 2026-10-21 (scripts/upload_may_apply_maps.py --commit): the public R2 folder of the PNGs.
     import export_may_apply_areas as ex
-    assert ex.MAP_BASE_URL.startswith("https://") and ex.MAP_BASE_URL.rstrip("/").endswith("/may-apply-maps")
+    # The exporter adds the 'may-apply-maps/' folder itself, so the base is the bucket root (a doubled folder broke
+    # every image, found in review 2026-10-21).
+    assert ex.MAP_BASE_URL.startswith("https://") and "may-apply-maps" not in ex.MAP_BASE_URL
+    import json
+    from pathlib import Path
+    shared = json.loads((Path(__file__).resolve().parent.parent / "frontend-nextjs/shared/may-apply-areas.json").read_text(encoding="utf-8"))
+    urls = [a["map_image_url"] for c in shared.values() for l in c.values() for a in l if a.get("map_image_url")]
+    assert urls and all(u.count("may-apply-maps/") == 1 for u in urls)
