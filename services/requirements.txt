@@ -1,19 +1,19 @@
 # Core API
-fastapi==0.141.1
-uvicorn==0.52.4
-pydantic==2.13.5
+fastapi==0.143.3
+uvicorn==0.54.0
+pydantic==2.14.1
 psycopg2-binary==2.9.13
-python-dotenv==1.2.3
+python-dotenv==1.2.4
 requests==2.34.2
 httpx==0.28.1
-anthropic==1.5.0
-boto3==1.43.92
-supabase==2.31.0
+anthropic==1.15.0
+boto3==1.43.114
+supabase==2.33.0
 
 # Shadow Detector + shadow_model.py
-geopandas==1.1.4
+geopandas==1.2.0
 pybdshadow==0.3.5
-shapely==2.1.2
+shapely==2.2.0
 # suncalc: solar position for services/solar_position.py. Already present in
 # this container as a pybdshadow dependency — pybdshadow calls it to derive the
 # sun position for the shadow polygon (pybdshadow/pybdshadow.py:34,129). Now
@@ -29,16 +29,16 @@ suncalc==0.1.3
 # migration 064 removed those claims.
 
 # sentinel2.py (Shadow, Threat Radar)
-numpy==2.5.3
+numpy==2.5.4
 pystac-client==0.9.0
-rasterio==1.5.1
+rasterio==1.5.2
 
 # Flood Truth — Sentinel-1 via Planetary Computer + BOM XML parsing
 planetary-computer==1.0.0
 xmltodict==1.0.4
 
 # Climate risk raster — NARCliM NetCDF sampling
-netCDF4==1.7.4
+netCDF4==1.7.5
 
 # Whitebox — DEM/terrain/hydrology analysis (484 tools, MIT, Rust binary)
 # Watershed delineation, pluvial flood susceptibility, shadow/solar from DSM, slope/aspect
