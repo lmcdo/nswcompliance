@@ -204,7 +204,7 @@ describe('language', () => {
   const path = require('path') as typeof import('path');
   const hook = fs.readFileSync(path.join(__dirname, '../../../scripts/liability_language_check.py'), 'utf8');
   const start = hook.indexOf('FLAGGED_TERMS = re.compile(');
-  const block = hook.slice(start, hook.indexOf('# "as-of-right"', start));
+  const block = hook.slice(start, hook.indexOf("r'as[", start)); // up to the phrase entry
   const words = Array.from(new Set((block.match(/[a-z]{4,}/g) ?? []).filter((w) => !['compile', 'should_'].includes(w))));
   const LIABILITY = new RegExp(`\\b(${[...words, 'complies'].join('|')})\\b`, 'i');
   it('reads a real word list from the hook', () => {
