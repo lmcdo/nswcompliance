@@ -35,9 +35,11 @@ def test_live_hub_exposes_every_numbered_chapter_through_a_short_link():
     import requests
     import hub_scrapers.canterbury_bankstown as cb
     try:
-        found = cb.scrape_canterbury_bankstown(HUB, KEYS)
-    except (requests.RequestException, cb.HubScrapeError) as exc:
+        requests.get(HUB, timeout=30)
+    except requests.RequestException as exc:
         pytest.skip(f"council hub page not reachable from here: {exc}")
+    # Past this point a HubScrapeError is the page changing shape -- a FAILURE.
+    found = cb.scrape_canterbury_bankstown(HUB, KEYS)
     matched = [d["chapter_key"] for d in found if d["chapter_key"]]
     assert set(matched) == KEYS, f"short links no longer resolve for: {sorted(KEYS - set(matched))}"
     assert not [k for k, n in Counter(matched).items() if n > 1], "a key matched twice"
