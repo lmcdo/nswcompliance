@@ -6,8 +6,8 @@ cb.city short links, the fixture tests stay green and this one goes red.
 
 prior-art-checked: no live test for any hub scraper existed.
 
-Run with `pytest -m integration tests/test_canterbury_bankstown_hub_live.py -o addopts=`.
-Needs network; skips without it.
+Run with `PYTEST_REAL_HTTP=1 pytest -m integration tests/test_canterbury_bankstown_hub_live.py -o addopts=`.
+Without PYTEST_REAL_HTTP=1, conftest_mocks stubs `requests`, so this skips and says so.
 """
 import os
 import sys
@@ -30,6 +30,8 @@ KEYS = {"chapter-1-1-introduction-and-administration", "chapter-7-2-city-west",
 
 @pytest.mark.integration
 def test_live_hub_exposes_every_numbered_chapter_through_a_short_link():
+    if os.environ.get("PYTEST_REAL_HTTP") != "1":
+        pytest.skip("requests is stubbed by conftest_mocks; set PYTEST_REAL_HTTP=1")
     import requests
     import hub_scrapers.canterbury_bankstown as cb
     try:
