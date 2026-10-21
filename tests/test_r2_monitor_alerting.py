@@ -144,3 +144,45 @@ class TestUnlistedIsNotRemoved:
         )
         assert diff.removed == [] and diff.unlisted == []
         assert diff.url_same == ["ch-a"]
+
+
+# ── verified_at is stamped only when the council was actually checked ─────────
+# 2026-10-15: eight councils (bayside, burwood, camden, canada_bay, fairfield, ryde,
+# the_hills, the_hills_shire) had only hub-only chapters -- no council_url, every one
+# skipped -- and were stamped verified because "zero failures" was the whole test.
+from r2_monitor import _council_verified  # noqa: E402
+
+
+def test_no_checkable_chapter_is_not_verified():
+    assert _council_verified(checkable=0, checked=0, changed=0, failed=0) is False
+
+
+def test_a_skipped_chapter_blocks_the_stamp():
+    # a chapter still 429 after its retry is skipped without counting as failed
+    assert _council_verified(checkable=3, checked=2, changed=0, failed=0) is False
+
+
+def test_every_chapter_checked_and_unchanged_is_verified():
+    assert _council_verified(checkable=3, checked=3, changed=0, failed=0) is True
+
+
+def test_a_change_or_a_failure_blocks_the_stamp():
+    assert _council_verified(checkable=3, checked=3, changed=1, failed=0) is False
+    assert _council_verified(checkable=3, checked=2, changed=0, failed=1) is False
+
+
+def test_every_check_path_counts_toward_the_council():
+    """A new unchanged/changed path that bumps results["checked"] but not
+    council_checked would block every stamp for that council -- or, if someone
+    'fixes' that by loosening _council_verified, bring the false stamps back."""
+    import re
+    src = open(os.path.join(os.path.dirname(__file__), "..", "scripts", "r2_monitor.py"),
+               encoding="utf-8").read()
+    body = src[src.index("def run_monitor("):]
+    body = body[:body.index("\ndef ", 1)]
+    lines = body.splitlines()
+    bumps = [i for i, l in enumerate(lines) if re.search(r'results\["checked"\] \+= 1', l)]
+    assert bumps, "no results['checked'] increments found -- has the counter changed?"
+    unpaired = [lines[i].strip() for i in bumps if "council_checked += 1" not in lines[i + 1]]
+    assert not unpaired, f"{len(unpaired)} check path(s) not counted in council_checked"
+    assert "_council_verified(council_checkable, council_checked" in body
