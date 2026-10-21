@@ -147,3 +147,35 @@ export function describeUnavailable(
     tone: 'error',
   };
 }
+
+/**
+ * The bushfire pre-screen ran (a value object is present) but has no designation category.
+ * That is "not bushfire-prone" ONLY when the RFS map answered No (is_bushfire_prone === false).
+ * Before 2026-10-21 any present value without a category read "Not bushfire-prone" — including
+ * an RFS query that failed (services/bushfire_prescreen.py returns is_bushfire_prone None) and a
+ * prone lot whose map row carried no category. Returns null when the value is not this case.
+ */
+export function describeBushfireWithoutCategory(value: unknown): Unavailable | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  if (v.category != null) return null;
+  if (v.is_bushfire_prone === false) {
+    return {
+      label: 'Not bushfire-prone',
+      detail: 'Checked the RFS Bushfire Prone Land map — this property is not designated bushfire-prone.',
+      tone: 'clear',
+    };
+  }
+  if (v.is_bushfire_prone === true) {
+    return {
+      label: 'Bushfire-prone',
+      detail: 'The RFS Bushfire Prone Land map shows this property as bushfire-prone; the map gave no category.',
+      tone: 'neutral',
+    };
+  }
+  return {
+    label: 'Not checked',
+    detail: 'Not checked — the RFS Bushfire Prone Land map did not answer, so we cannot say whether this property is bushfire-prone.',
+    tone: 'error',
+  };
+}
