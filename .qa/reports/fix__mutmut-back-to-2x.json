@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Restores a monthly production cron (maintenance-mutation) that has failed on every run since 2026-08-12 and changes a dependency pin plus Dependabot policy. Not Critical: no DB, no served output; the job only measures test strength. Not Minor: it changes what the maintenance image installs and what Dependabot may propose.",
- "commit_hash": "6d49fe1b",
+ "commit_hash": "6be04cec",
  "files": [
   "scripts/mutation_health.py",
   "scripts/requirements-maintenance.txt",
@@ -65,5 +65,8 @@
   "secrets": "No",
   "other_repo": "No",
   "manual_verify": "Yes -- confirm the maintenance-mutation image rebuilds green, and that the 2026-11-01 run exits clean (check_railway_jobs_ran.py)."
+ },
+ "real_layer_exempt": {
+  "scripts/mutation_health.py": "its only 'database' is mutmut's own local .mutmut-cache sqlite file written by the subprocess it just ran; no production DB or HTTP. The change adds the subprocess's output to an existing error string. mutmut itself cannot run on Windows (it refuses), and the real layer is the Railway run, watched by check_railway_jobs_ran.py."
  }
 }
