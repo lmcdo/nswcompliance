@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Canterbury-Bankstown Ch 11.6 Potts Hill (136 live rules) and Ch 11.5 Riverlands (71) were only in the may-apply box. Their DCP site maps were fitted to the cadastre (shape IoU 0.99, lots-only IoU 0.96/0.98, placement margins 0.37/0.38, pictures checked). Both are below the fitter's 0.5 lot-line-share bar (0.449/0.439: old coarse maps, land resubdivided); the user accepted them on 2026-10-21, recorded per fit as accepted_below_bar. Loaded and keyed before merge.",
-  "commit_hash": "76877ae6",
+  "commit_hash": "24d31c4e",
   "files": [
     "scripts/fit_site_plans.py",
     "data/canterbury_bankstown_precincts/site_map_11_5.json",
