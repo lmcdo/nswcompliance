@@ -23,6 +23,11 @@ jest.mock('@/lib/dcp-controls-client', () => ({
   DcpControlsUnavailableError: class DcpControlsUnavailableError extends Error {},
 }));
 
+// The review-status query has its own test file; here it is held at "nothing pending".
+jest.mock('@/lib/dcp-review-status', () => ({
+  fetchDcpReviewStatus: async () => ({ amendment_pending: false, withheld_controls: 0 }),
+}));
+
 import { GET } from '@/app/api/dcp/structured-controls/route';
 import { DcpControlsUnavailableError } from '@/lib/dcp-controls-client';
 

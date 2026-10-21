@@ -56,6 +56,39 @@ interface StructuredControlsResponse {
    *  undefined branch below. */
   available_dev_types?: string[];
   categories: ControlCategory[];
+  /** Change found at the council's source, not yet reviewed. ABSENT (older
+   *  backend) = say nothing; null = the check failed and the panel says so. */
+  review_status?: { amendment_pending: boolean; withheld_controls: number } | null;
+}
+
+/**
+ * Says why numbers may be missing or out of date. Flagged setback rows are
+ * withheld before serving, so without this a setback-only council's numbers
+ * would disappear with no explanation.
+ */
+export function ReviewNotice({ status }: { status: StructuredControlsResponse['review_status'] }) {
+  if (status === undefined) return null;
+  if (status === null) {
+    return (
+      <p className="mb-2 text-xs text-gray-500" data-testid="dcp-review-status-unknown">
+        Could not check whether this council&apos;s plan has a change waiting for review.
+      </p>
+    );
+  }
+  const { amendment_pending: pending, withheld_controls: withheld } = status;
+  if (!pending && withheld === 0) return null;
+  const detail =
+    withheld > 0
+      ? `${withheld} ${withheld === 1 ? 'control is' : 'controls are'} held back until reviewed`
+      : 'updated controls pending review';
+  return (
+    <div
+      className="mb-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1"
+      data-testid="dcp-review-pending"
+    >
+      Amendment detected — {detail}. Check the council website for the latest version.
+    </div>
+  );
 }
 
 interface DcpStructuredControlsProps {
@@ -209,6 +242,8 @@ export function DcpStructuredControls({
     const otherTypes = data?.available_dev_types;
     if (otherTypes === undefined) {
       return (
+        <>
+        <ReviewNotice status={data?.review_status} />
         <div className="mb-4 border border-gray-200 rounded-lg p-4 bg-gray-50/60">
           <p className="text-sm text-gray-700">
             No numeric controls returned for this development type.
@@ -218,10 +253,13 @@ export function DcpStructuredControls({
             established.
           </p>
         </div>
+        </>
       );
     }
     if (otherTypes.length > 0) {
       return (
+        <>
+        <ReviewNotice status={data?.review_status} />
         <div className="mb-4 border border-gray-200 rounded-lg p-4 bg-gray-50/60">
           <p className="text-sm text-gray-700">
             No numeric controls extracted for this development type yet.
@@ -230,9 +268,10 @@ export function DcpStructuredControls({
             This council has controls for: {otherTypes.join(', ').replace(/_/g, ' ')}.
           </p>
         </div>
+        </>
       );
     }
-    return <>{fallback}</>;
+    return <><ReviewNotice status={data?.review_status} />{fallback}</>;
   }
 
   const totalControls = data.categories.reduce((sum, cat) => sum + cat.controls.length, 0);
@@ -248,6 +287,8 @@ export function DcpStructuredControls({
   );
 
   return (
+    <>
+    <ReviewNotice status={data.review_status} />
     <div className="mb-4 border border-teal-200 rounded-lg overflow-hidden bg-white">
       {/* Header */}
       <button
@@ -391,5 +432,6 @@ export function DcpStructuredControls({
         </div>
       )}
     </div>
+    </>
   );
 }
