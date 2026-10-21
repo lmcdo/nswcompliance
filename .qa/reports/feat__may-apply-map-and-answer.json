@@ -1,0 +1,69 @@
+{
+  "tier": "standard",
+  "justification": "The 'may apply here' box lists ~1,200 rules for places we cannot yet place on the map. Each place now links to the plan's own map page, and the user can say whether their property is in the area (kept on their device); 'in' expands it, 'not in' folds it to one line. The rules never move into the property's own list.",
+  "commit_hash": "671a9fa7",
+  "files": [
+    "frontend-nextjs/components/compliance/DcpMayApplyBlock.tsx",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/__tests__/components/compliance/DcpMayApplyBlock.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/components/compliance/DcpMayApplyBlock.test.tsx",
+    "fails_when": "A link is built without a url, the page anchor is added to a non-PDF or anchored url, an answer state renders wrongly, or a storage error breaks the box.",
+    "observed_red": "Before: the box had the plan's words and a reason but no map link and no way for the user to resolve it.",
+    "external_authority": "meta.chapter_pdf_urls (council PDFs) and the area's applies_to_page."
+  },
+  "pre_impl": {
+    "existing_data": "Reuses chapter_pdf_urls already passed to DcpNotCoveredNotice (#1419).",
+    "assumption_mismatch": "No page-image renderer exists, so no thumbnail; a link to the plan page instead.",
+    "new_vs_existing": "Answer buttons + localStorage in the existing block; no new API."
+  },
+  "functions": [
+    {
+      "name": "DcpMayApplyBlock",
+      "file_line": "frontend-nextjs/components/compliance/DcpMayApplyBlock.tsx:1",
+      "input": "may-apply areas, the property address and the chapter PDF urls",
+      "output": "per area: plan words, reason, map link, the user's answer state and the rules",
+      "if_none": "no areas at all means nothing is rendered"
+    }
+  ],
+  "values": [
+    {
+      "value": "jest 15/15, tsc 0, regulatory-number lint OK",
+      "read_at": "agent run 2026-10-21",
+      "if_missing": "no test evidence"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Browser storage is blocked or throws.",
+      "what_happens": "The answer buttons could crash the box.",
+      "mitigated": true,
+      "how": "All reads and writes in try/catch; the answer works for the visit.",
+      "repro": "jest localStorage-throws case"
+    },
+    {
+      "scenario": "A user marks 'in' by mistake.",
+      "what_happens": "They read the rules as theirs.",
+      "mitigated": true,
+      "how": "Heading says it is their answer; a Change link resets it; rules stay outside the main list.",
+      "repro": "jest 'in' state"
+    },
+    {
+      "scenario": "The chapter has no PDF url.",
+      "what_happens": "A broken map link would show.",
+      "mitigated": true,
+      "how": "No url means no link.",
+      "repro": "jest no-url case"
+    }
+  ],
+  "mutation_analysis": "Dropping the url check or the try/catch fails the matching tests.",
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Open a Riverwood or Pymble address: the box shows the map link and the three answers."
+  },
+  "residual_risk": "No thumbnail; the answer is stored per device only."
+}
