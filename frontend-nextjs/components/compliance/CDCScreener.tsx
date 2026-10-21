@@ -72,10 +72,10 @@ export function evaluateCriteria(
   // heritageAffected = any heritage flag (HCA, conservation area) → warn, not auto-fail
   criteria.push({
     label: 'Heritage item status',
-    result: heritageItem ? 'fail' : heritageAffected === null ? 'unknown' : heritageAffected ? 'warn' : 'pass',
+    result: heritageItem ? 'fail' : heritageAffected == null ? 'unknown' : heritageAffected ? 'warn' : 'pass',
     detail: heritageItem
       ? 'Property is listed as a heritage item — CDC is not permitted. A Development Application (DA) is required.'
-      : heritageAffected === null
+      : heritageAffected == null
       ? 'Heritage status not checked: the NSW planning map did not answer. Check the LEP Heritage Map before relying on CDC.'
       : heritageAffected
       ? 'Not a listed heritage item, but property is marked as heritage-affected (likely within a Heritage Conservation Area). CDC may still apply, but heritage constraints must be verified in the LEP and council DCP before issuing.'

@@ -178,7 +178,7 @@ export function isSubdivisionRequirement(req: FilterableRequirement): boolean {
  */
 export function hasHeritage(heritage?: any): boolean {
   if (!heritage) return false; // unknown-ok: no heritage object = the caller passed no heritage data
-  if (heritage.isHeritage === null) return true; // not checked: keep heritage requirements in view
+  if ('isHeritage' in heritage && heritage.isHeritage == null) return true; // not checked: keep heritage requirements in view
 
   return heritage.isHeritage === true ||
          !!heritage.hcaName || // unknown-ok: a named HCA is a positive answer

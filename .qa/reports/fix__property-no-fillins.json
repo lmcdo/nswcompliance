@@ -4,14 +4,44 @@
   "commit_hash": "d720e6d1",
   "files": [
     ".github/workflows/gates.yml",
+    ".qa/reports/fix__property-no-fillins.json",
     "frontend-nextjs/__tests__/api/property-lookup-no-fillins.test.ts",
     "frontend-nextjs/__tests__/fixtures/property-lookup/8-hollands-ave-marrickville.json",
     "frontend-nextjs/__tests__/lib/hazard-unknown-cross-review.test.ts",
+    "frontend-nextjs/__tests__/unknown-never-no.test.ts",
+    "frontend-nextjs/__tests__/unknown-never-pass.test.tsx",
+    "frontend-nextjs/app/api/assessment/full/route.ts",
+    "frontend-nextjs/app/api/compliance/dashboard/route.ts",
+    "frontend-nextjs/app/api/compliance/precinct-requirements/route.ts",
+    "frontend-nextjs/app/api/og/granny-flat/route.tsx",
     "frontend-nextjs/app/api/pathway/pattern-book-eligibility/route.ts",
     "frontend-nextjs/app/api/property/[address]/route.ts",
     "frontend-nextjs/app/api/property/route.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route_RELEVANCE_DRAFT.ts",
+    "frontend-nextjs/app/assessment/page.tsx",
+    "frontend-nextjs/app/check/page.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/app/tools/subdivision-check/page.tsx",
+    "frontend-nextjs/app/tools/zoning-check/page.tsx",
+    "frontend-nextjs/components/assessment/core/PropertyCard.tsx",
+    "frontend-nextjs/components/compliance/CDCPathway.tsx",
+    "frontend-nextjs/components/compliance/CDCScreener.tsx",
+    "frontend-nextjs/components/compliance/ExemptComplyingProvisions.tsx",
     "frontend-nextjs/components/compliance/HeritageDetails.tsx",
+    "frontend-nextjs/components/compliance/HeritageProvisionsCard.tsx",
+    "frontend-nextjs/components/compliance/LepControls.tsx",
     "frontend-nextjs/components/compliance/LocalProvisionsCard.tsx",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+    "frontend-nextjs/components/home/PropertyProfile.tsx",
+    "frontend-nextjs/components/property-details-comprehensive.tsx",
+    "frontend-nextjs/hooks/assessment/useProperty.ts",
+    "frontend-nextjs/hooks/useFullPropertyData.ts",
+    "frontend-nextjs/lib/ai/classifier.ts",
+    "frontend-nextjs/lib/assessment/reports.ts",
+    "frontend-nextjs/lib/assessment/types.ts",
+    "frontend-nextjs/lib/fact-answer.ts",
     "frontend-nextjs/lib/fetch-timeout.ts",
     "frontend-nextjs/lib/flood/flood-map.ts",
     "frontend-nextjs/lib/geometry/corner-lot-detection.ts",
@@ -19,10 +49,15 @@
     "frontend-nextjs/lib/lookup-not-checked.ts",
     "frontend-nextjs/lib/lot-adjacency.ts",
     "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "frontend-nextjs/lib/pattern-book-eligibility/assess-eligibility.ts",
     "frontend-nextjs/lib/pattern-book-eligibility/check-exclusions.ts",
     "frontend-nextjs/lib/property-data.ts",
+    "frontend-nextjs/lib/prospector/filter-params.ts",
+    "frontend-nextjs/lib/requirement-prioritization.ts",
     "frontend-nextjs/lib/road-classification-service.ts",
-    "frontend-nextjs/types/property.ts"
+    "frontend-nextjs/lib/see/intake.ts",
+    "frontend-nextjs/types/property.ts",
+    "frontend-nextjs/types/regulatory.ts"
   ],
   "pre_impl": {
     "existing_data": "No database change. The lookup reads NSW Planning Portal, valuation, lot, TOD, hazard and road services, plus PostGIS spatial_overlays and nsw_cadastre_lots (read only).",
@@ -55,6 +90,20 @@
       "input": "the pattern-book constraints built from the /api/property reply",
       "output": "exclusions that cannot be tested (flood, bush fire, heritage, acid sulfate)",
       "if_none": "No environmental object means flood and bush fire are listed as not checked"
+    },
+    {
+      "name": "scan",
+      "file_line": "frontend-nextjs/__tests__/unknown-never-no.test.ts",
+      "input": "the text of one source file, read line by line",
+      "output": "each line that turns an unknown heritage, strata, corner lot or acid sulfate answer into No, false or a pass",
+      "if_none": "An empty file gives no findings; a line marked unknown-ok with a reason is skipped"
+    },
+    {
+      "name": "heritageAnswer / acidSulfateAnswer / yesNo",
+      "file_line": "frontend-nextjs/lib/fact-answer.ts",
+      "input": "a heritage object or boolean, or the lookup constraints with notChecked",
+      "output": "true, false or null (not checked); yesNo prints Not checked for null",
+      "if_none": "undefined input reads as not checked, never as No"
     }
   ],
   "values": [],
@@ -94,6 +143,13 @@
       "mitigated": false,
       "how": "Not in this PR; listed for the next PR",
       "repro": "grep isHeritage ? 'Yes' : 'No' in app/check/page.tsx:115"
+    },
+    {
+      "scenario": "A page prints a null heritage answer as No.",
+      "what_happens": "Before this change 41 lines turned an unknown into No, false or a pass.",
+      "mitigated": true,
+      "how": "scanner test blocks the patterns in CI; 27 lines fixed through lib/fact-answer.ts, 14 marked unknown-ok with a reason",
+      "repro": "put back app/check/page.tsx:116 old line: the scanner test goes red"
     }
   ],
   "post_merge": {

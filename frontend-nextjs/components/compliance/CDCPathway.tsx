@@ -323,7 +323,7 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
           warn: heritageFact !== false,
           text: isHeritage
             ? 'Heritage property — confirm with certifier before starting'
-            : heritageFact === null
+            : heritageFact == null
             ? 'Heritage not checked (the planning map did not answer) — confirm with certifier before starting'
             : `Zone ${zone} — permitted`,
         });
@@ -351,7 +351,7 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
       }
       if (isHeritage) {
         cdcBlockers.push('Heritage property — CDC not available, DA required');
-      } else if (heritageFact === null) {
+      } else if (heritageFact == null) {
         cdcBlockers.push('Heritage not checked — the planning map did not answer, so we could not check whether CDC is available');
       }
 
