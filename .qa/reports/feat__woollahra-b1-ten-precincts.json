@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Woollahra DCP B3 (453 live rules) applies to 'land identified on Map 1' (p5) = the ten B1 residential precincts, but was served to every Woollahra house incl. Paddington. The five refused B1 maps were searched at the wrong scale; each map is now searched within 5% of its own printed scale bar and all ten pass the unchanged gates. B3 keyed to their union. Loaded and keyed 2026-10-21 before merge.",
-  "commit_hash": "96fedfd0",
+  "commit_hash": "ff5445cd",
   "files": [
     "data/woollahra_precincts/b1_residential_precincts.geojson",
     "data/woollahra_precincts/b1_maps.json",
