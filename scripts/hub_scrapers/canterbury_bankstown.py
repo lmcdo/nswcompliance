@@ -30,6 +30,34 @@ HEADERS = {
 # Patterns that identify CB's document hosting
 CB_DOC_HOSTS = ("webdocs.bankstown.nsw.gov.au", "cbcity-webdocs.azurewebsites.net")
 
+# The hub links every numbered chapter through a short link, cb.city/DCP7-3, that
+# 301s to the CURRENT version's api/publish URL. Those hrefs do not end in .pdf, so
+# they were skipped, and an amendment published under a new filename was never seen:
+# on 2026-10-21 chapters 1.1, 7.3 and 7.6 had newer versions on the council's site.
+CB_SHORT_LINK = re.compile(r"^https?://cb\.city/DCP(\d+)-(\d+)/?$", re.IGNORECASE)
+
+
+def _resolve_short_link(href: str, timeout: int) -> str | None:
+    """The api/publish URL a cb.city short link redirects to, or None."""
+    try:
+        resp = requests.head(href, headers=HEADERS, timeout=timeout, allow_redirects=False)
+    except requests.RequestException:
+        return None
+    location = resp.headers.get("Location") if resp.status_code in (301, 302, 303, 307, 308) else None
+    return location if location and "api/publish" in location else None
+
+
+def _match_by_chapter_number(major: str, minor: str, expected_keys: set[str]) -> str | None:
+    """The one key named chapter-<major>-<minor>-..., matched exactly.
+
+    Not the fuzzy label match: "Chapter 7.3 - City East" and "Chapter 7.2 - City West"
+    share 60% of their words, which that matcher accepts, and a wrong match here would
+    swap one chapter's document for another's.
+    """
+    prefix = f"chapter-{int(major)}-{int(minor)}-"
+    hits = [k for k in expected_keys if k.startswith(prefix)]
+    return hits[0] if len(hits) == 1 else None
+
 
 def _extract_label_from_title(url: str, link_text: str) -> str:
     """Extract a readable chapter label from the CB URL title parameter.
@@ -75,6 +103,22 @@ def scrape_canterbury_bankstown(
 
     for a in soup.find_all("a", href=True):
         href: str = a["href"]
+
+        short = CB_SHORT_LINK.match(href.strip())
+        if short:
+            target = _resolve_short_link(href.strip(), timeout)
+            if target is None:
+                continue
+            doc_path = parse_qs(urlparse(target).query).get("documentPath", [""])[0]
+            if (doc_path or target) in seen_urls:
+                continue
+            seen_urls.add(doc_path or target)
+            results.append({
+                "chapter_key": _match_by_chapter_number(short.group(1), short.group(2), expected_keys),
+                "url": target,
+                "label": _extract_label_from_title(target, a.get_text(" ", strip=True)),
+            })
+            continue
 
         if not href.lower().endswith(".pdf"):
             continue

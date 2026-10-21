@@ -253,11 +253,14 @@ def _range_total(headers) -> str | None:
 def head_request(url: str) -> dict:
     """HTTP HEAD to cheaply check Content-Length before downloading.
     Falls back to a range-0 GET if HEAD returns 405 (some council APIs
-    only support GET — e.g. Canterbury Bankstown webdocs).
+    only support GET — e.g. Canterbury Bankstown webdocs) or 404: CB's
+    cbcity-webdocs host answers HEAD 404 for a document a GET serves (three
+    chapters failed every run from 2026-05-11 while their PDFs downloaded fine).
+    A link that is really gone 404s on the GET as well, so it still fails.
     """
     try:
         resp = SESSION.head(url, timeout=30, allow_redirects=True)
-        if resp.status_code == 405:
+        if resp.status_code in (404, 405):
             # Server doesn't support HEAD — try GET with Range header
             # to avoid downloading the full file just for metadata.
             resp = SESSION.get(
