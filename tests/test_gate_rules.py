@@ -268,6 +268,28 @@ def test_woollahra_b1_outlines_carry_the_keys_the_b1_rule_writes():
     for f in feats:
         p = f["properties"]
         assert p["quote"] and p["source"] and "refused" not in p["proof"]
+        if p["precinct_id"] == "Woollahra Residential Precincts":
+            continue  # the union: its proof is its members (checked in the B3 test below)
         assert p["proof"]["iou_shape"] >= 0.85 and p["proof"]["iou_lot_land"] >= 0.85
+        assert p["proof"]["coarse"] - p["proof"]["runner_up_far"] >= 0.15 and p["proof"]["line_share"] >= 0.5
     if "Woollahra Residential Precincts" not in ids:
         assert not any(r["where"] == "source_chapter_key = 'chapter-b3-general-development'" for r in dpk.RULES)
+
+
+def test_woollahra_b3_keyed_to_the_union_of_all_ten_b1_outlines():
+    """DCP chapter B3 applies to its Map 1 = the ten residential precincts; the key must be their union outline."""
+    import json
+    from pathlib import Path
+    rule = next(r for r in dpk.RULES if r["name"] == "woollahra_b3_residential_precincts")
+    assert rule["council"] == "woollahra"
+    assert rule["where"] == "source_chapter_key = 'chapter-b3-general-development'"
+    assert rule["strategy"] == {"type": "constant", "precinct_id": "Woollahra Residential Precincts"}
+    layer = next(r for r in g.GATE_RULES if r["name"] == "woollahra_b3_layer")
+    assert "chapter-b3-general-development" in layer["where"] and "v2_dcp_layer = 'generic'" in layer["where"]
+    assert layer["set"] == {"v2_dcp_layer": "precinct"}
+    src = Path(__file__).resolve().parent.parent / "data" / "woollahra_precincts" / "b1_residential_precincts.geojson"
+    feats = {f["properties"]["precinct_id"]: f for f in json.loads(src.read_text(encoding="utf-8"))["features"]}
+    b1 = next(r for r in dpk.RULES if r["name"] == "woollahra_b1_precincts_by_page")
+    ten = {pid for pid, _, _ in b1["strategy"]["ranges"]} - {"Woollahra Residential Precincts"}
+    assert len(ten) == 10 and ten <= set(feats)
+    assert set(feats["Woollahra Residential Precincts"]["properties"]["proof"]["members"]) == ten

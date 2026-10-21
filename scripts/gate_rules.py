@@ -244,6 +244,12 @@ GATE_RULES += [
     {"name": "woollahra_d4_layer", "council": "woollahra",
      "where": "source_chapter_key = 'chapter-d4-edgecliff-centre' AND v2_dcp_layer = 'generic'",
      "set": {"v2_dcp_layer": "precinct"}},
+    # Woollahra B3 "applies to land identified on Map 1" (B3 p5) = the ten B1 precincts ("The general controls in
+    # Chapter B3 apply to all land where Chapter B1 applies", B1.1.5 p10). Its 'generic' rows go to the precinct layer,
+    # keyed by woollahra_b3_residential_precincts to the union outline 'Woollahra Residential Precincts'.
+    {"name": "woollahra_b3_layer", "council": "woollahra",
+     "where": "source_chapter_key = 'chapter-b3-general-development' AND v2_dcp_layer = 'generic'",
+     "set": {"v2_dcp_layer": "precinct"}},
 ]
 # ---- end lane-gates ----------------------------------------------------------------------------------------------
 _GATE_COLUMNS = {"v2_marker", "v2_dcp_layer", "v2_site_condition_required", "v2_applicable_zones",
@@ -350,6 +356,12 @@ EXTRA_KEY_RULES: list[dict] = [
     {"name": "woollahra_d4_edgecliff_centre", "council": "woollahra", "validate": False,
      "where": "source_chapter_key = 'chapter-d4-edgecliff-centre'",
      "strategy": {"type": "constant", "precinct_id": "Edgecliff Centre"}},
+    # Woollahra DCP 2015 B3 General Development Controls: "This chapter applies to land identified on Map 1" (B3 p5),
+    # Map 1 = the ten B1 residential precincts. Outline = their union (b1_residential_precincts.geojson, written only
+    # when all ten maps pass the fit gates; B3 Map 1 north-up shape 0.88 against it).
+    {"name": "woollahra_b3_residential_precincts", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-b3-general-development'",
+     "strategy": {"type": "constant", "precinct_id": "Woollahra Residential Precincts"}},
     # Ku-ring-gai Part 14H: "The site at 101 Eton Road, Lindfield, which is currently occupied by Screen Australia"
     # (p3), drawn as the orange "Site Location" in Figure 14H.1-1 (p2) -- every section is that one site. 101 left the
     # address register when the site was subdivided (DP271066 2019, SP109812 2025); outline = those 12 lots, shape

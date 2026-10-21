@@ -46,7 +46,7 @@ import numpy as np
 from PIL import Image
 from scipy.signal import fftconvolve
 from scipy.spatial import cKDTree
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Point, Polygon, mapping, shape
 from shapely.ops import unary_union
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -242,6 +242,20 @@ def precinct_map(pdf: Path, page: int) -> tuple[np.ndarray, np.ndarray, np.ndarr
         comp = lab2 == i
         if st2[i, 4] >= 1500 and white[comp].mean() > 0.8:
             out[comp] = 0
+    # 'Areas Excluded From the Precinct' drawn as a thick BLACK closed line round unfilled land inside the blue (B1 Maps
+    # 8 and 11: O'Sullivan Road / Plumer Road neighbourhood centres). The rule above misses them: a box under 1,500 px,
+    # or one whose lot lines and leader line keep the hole under 80% white. Here: every hole of the black mask >= 300 px
+    # (letters' holes are smaller) with under 20% blue inside, lying in the blue area, is cut out with its own line.
+    blk = (a.max(2) < 70).astype(np.uint8)
+    cs3, hier3 = cv2.findContours(blk, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+    for i, c in enumerate(cs3):
+        if hier3[0][i][3] < 0 or cv2.contourArea(c) < 300:
+            continue
+        hole = np.zeros_like(out)
+        cv2.drawContours(hole, [c], -1, 1, -1)
+        hb = hole > 0
+        if blue[hb].mean() < 0.2 and out[hb].mean() > 0.5:
+            out[cv2.dilate(hole, np.ones((9, 9), np.uint8)) > 0] = 0
     return a, lines, out
 
 
@@ -349,6 +363,22 @@ def draw_precinct(fig, geom, cad, path: Path) -> None:
     cv2.imwrite(str(path), img)
 
 
+SCALE_BAR_TOL = 0.05
+
+
+def precinct_scale_range(c: dict, cfg: dict) -> tuple:
+    """Scales to search for one map. A map whose 'scale_bar' is recorded ({"metres": M, "px": P}: the label printed
+    at the bar's right end, and the bar's length in the figure's own pixels) is searched within SCALE_BAR_TOL of M / P;
+    otherwise the file's shared 'scale_range'. Measured 2026-10-21: the five Woollahra B1 maps refused under the shared
+    0.45-0.9 range print 0.336 (Manning Road) and 0.966 (Bellevue Hill North, Vaucluse West) m/px, outside it, and the
+    search pinned near 0.434; the five accepted fits came out 0.5-0.8% above their own bar."""
+    sb = c.get("scale_bar")
+    if not sb:
+        return tuple(cfg["scale_range"])
+    m = float(sb["metres"]) / float(sb["px"])
+    return (m * (1 - SCALE_BAR_TOL), m * (1 + SCALE_BAR_TOL))
+
+
 def main_precincts(cfg: dict, out: Path, only: set | None = None) -> int:
     pdf = out / ".pdf_cache" / cfg["pdf"]
     if not pdf.exists():
@@ -359,7 +389,7 @@ def main_precincts(cfg: dict, out: Path, only: set | None = None) -> int:
     for c in cfg["precincts"]:
         if only and c["precinct_id"] not in only:
             continue
-        row = fit_precinct(c, pdf, cad, box, cfg["scale_range"])
+        row = fit_precinct(c, pdf, cad, box, precinct_scale_range(c, cfg))
         g, fig = row.pop("_geom"), row.pop("_fig")
         (out / "checks").mkdir(exist_ok=True)
         draw_precinct(fig, g, cad, out / "checks" / f"b1_p{c['page']}.png")
@@ -379,7 +409,14 @@ def main_precincts(cfg: dict, out: Path, only: set | None = None) -> int:
         print("--only: nothing written")
         return 0
     stem = cfg["out_stem"]
-    (out / f"{stem}.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}, indent=1), encoding="utf-8")
+    # Compact: all ten plus their union came to 6 MB indented (the repo's limit is 2 MB). Vertices thinned by 0.25 m
+    # (the fit is ~4 m positional) and rounded to 1e-6 degrees (~0.1 m); rounding can cross rings, so it is repaired
+    # (buffer 0) and rounded once more.
+    rnd = lambda geo: json.loads(json.dumps(mapping(geo)), parse_float=lambda v: round(float(v), 6))  # noqa: E731
+    for f in feats:
+        f["geometry"] = rnd(shape(rnd(shape(f["geometry"]).simplify(2.5e-6, preserve_topology=True))).buffer(0))
+    (out / f"{stem}.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats},
+                                                    separators=(",", ":")), encoding="utf-8")
     (out / f"fit_report_{stem}.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
     print(f"accepted {len(ok_geoms)} / {len(report)}")
     return 0
