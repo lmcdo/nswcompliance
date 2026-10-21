@@ -233,6 +233,10 @@ GATE_RULES += [
     {"name": "woollahra_e1_8_4_zone", "council": "woollahra",
      "where": "source_chapter_key = 'chapter-e1-parking-access' AND ref_number ~ '__E1_8_4([_~ ]|$)'",
      "set": {"v2_applicable_zones": ["MU1"]}},  # noqa: zone-codes (the plan's own zone)
+    # Woollahra D4 Edgecliff Centre: its 'generic' rows go to the precinct layer, keyed by woollahra_d4_edgecliff_centre.
+    {"name": "woollahra_d4_layer", "council": "woollahra",
+     "where": "source_chapter_key = 'chapter-d4-edgecliff-centre' AND v2_dcp_layer = 'generic'",
+     "set": {"v2_dcp_layer": "precinct"}},
 ]
 # ---- end lane-gates ----------------------------------------------------------------------------------------------
 _GATE_COLUMNS = {"v2_marker", "v2_dcp_layer", "v2_site_condition_required", "v2_applicable_zones",
@@ -332,6 +336,13 @@ EXTRA_KEY_RULES: list[dict] = [
     {"name": "cb_11_14_riverwood_stage1", "council": "canterbury_bankstown", "validate": False,
      "where": "source_chapter_key = 'chapter-11-14-riverwood-estate'",
      "strategy": {"type": "constant", "precinct_id": "11.14"}},
+    # Woollahra DCP 2015 D4 Edgecliff Centre, "zoned E1 Local Centre under the Woollahra Local Environmental Plan 2014"
+    # and "located between New South Head Road to the north, New McLean Street and Arthur Street to the south and Ocean
+    # Street to the east, as identified in Map 1" (p5) -- every section. Outline: the LEP E1 polygon (Map 1 shape 0.99,
+    # edges on those four streets; data/woollahra_precincts/lep_e1_edgecliff_centre_d4.geojson).
+    {"name": "woollahra_d4_edgecliff_centre", "council": "woollahra", "validate": False,
+     "where": "source_chapter_key = 'chapter-d4-edgecliff-centre'",
+     "strategy": {"type": "constant", "precinct_id": "Edgecliff Centre"}},
     # Ku-ring-gai Part 14H: "The site at 101 Eton Road, Lindfield, which is currently occupied by Screen Australia"
     # (p3), drawn as the orange "Site Location" in Figure 14H.1-1 (p2) -- every section is that one site. 101 left the
     # address register when the site was subdivided (DP271066 2019, SP109812 2025); outline = those 12 lots, shape

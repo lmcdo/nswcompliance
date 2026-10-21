@@ -95,6 +95,27 @@ PROFILES = {
             },
         },
     },
+    # Woollahra D4 Edgecliff Centre (2026-10-21): the LEP's E1 Local Centre polygon at Edgecliff. Outside anchors are
+    # register points across New South Head Road, Ocean Street and the Arthur Street corner that sit in NO Woollahra
+    # precinct today (the south and west neighbours are in Paddington HCA / the MU1 corridor, which this check forbids).
+    "woollahra": {
+        "lga": "Woollahra", "former_council": "Woollahra",
+        "envelope": (151.21, -33.90, 151.29, -33.83),
+        "files": {
+            "lep_e1_edgecliff_centre_d4.geojson": {
+                "ids": {"Edgecliff Centre"},
+                "outside": {
+                    "218-228 New South Head Rd Edgecliff (north side)": (151.237922, -33.878918),
+                    "458 Edgecliff Rd Edgecliff (east of Ocean St)": (151.237922, -33.879975),
+                    "170 Ocean St Edgecliff": (151.237334, -33.880412),
+                },
+                "inside": {
+                    "203-233 New South Head Rd Edgecliff": (151.235520, -33.879215),
+                    "180 Ocean St Edgecliff": (151.237012, -33.879495),
+                },
+            },
+        },
+    },
 }
 
 LOOKUP_SQL = """SELECT precinct_id FROM dcp_precinct_boundaries
