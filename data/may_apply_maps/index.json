@@ -83,7 +83,8 @@
   "file": "cb-6-2-key-sites.png",
   "width": 626,
   "height": 480,
-  "how_found": "large figure on the area's own page"
+  "how_found": "large figure on the area's own page",
+  "reviewed": true
  },
  "cb-6-3-campsie": {
   "file": null,
@@ -96,7 +97,8 @@
   "file": "cb-7-3-intro.png",
   "width": 509,
   "height": 331,
-  "how_found": "start page 5 had no large figure; page 4 has a Figure/Map caption and 3 title words"
+  "how_found": "start page 5 had no large figure; page 4 has a Figure/Map caption and 3 title words",
+  "reviewed": true
  },
  "cb-7-3-s2-belfield": {
   "file": null,
@@ -109,15 +111,13 @@
   "file": "cb-7-3-s4-canterbury.png",
   "width": 620,
   "height": 433,
-  "how_found": "large figure on the area's own page"
+  "how_found": "large figure on the area's own page",
+  "reviewed": true
  },
  "cb-7-3-s5-croydon-park": {
-  "chapter_pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-7-3-city-east.pdf",
+  "file": null,
   "page": 12,
-  "file": "cb-7-3-s5-croydon-park.png",
-  "width": 497,
-  "height": 364,
-  "how_found": "start page 14 had no large figure; page 12 has a Figure/Map caption and 2 title words"
+  "skipped": "rejected on review 2026-10-21: Figure 4d of the Canterbury section, not Croydon Park"
  },
  "cb-7-3-s6-earlwood": {
   "chapter_pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-7-3-city-east.pdf",
@@ -141,7 +141,8 @@
   "file": "cb-7-3-s11-roselands.png",
   "width": 588,
   "height": 420,
-  "how_found": "large figure on the area's own page"
+  "how_found": "large figure on the area's own page",
+  "reviewed": true
  },
  "cb-7-3-s12-wiley-park": {
   "chapter_pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-7-3-city-east.pdf",
@@ -161,7 +162,8 @@
   "file": "cb-11-5-riverlands.png",
   "width": 990,
   "height": 694,
-  "how_found": "start page 3 had no large figure; page 4 has a Figure/Map caption and 2 title words"
+  "how_found": "start page 3 had no large figure; page 4 has a Figure/Map caption and 2 title words",
+  "reviewed": true
  },
  "cb-11-2-undercliffe-bridge": {
   "file": null,
@@ -174,7 +176,8 @@
   "file": "cb-2-2-carinya-road-flood.png",
   "width": 963,
   "height": 1344,
-  "how_found": "start page 12 had no large figure; page 14 has a Figure/Map caption and 6 title words"
+  "how_found": "start page 12 had no large figure; page 14 has a Figure/Map caption and 6 title words",
+  "reviewed": true
  },
  "cb-8-2-canterbury-road": {
   "file": null,
@@ -187,7 +190,8 @@
   "file": "cb-8-3-corridor-general.png",
   "width": 1038,
   "height": 608,
-  "how_found": "large figure on the area's own page"
+  "how_found": "large figure on the area's own page",
+  "reviewed": true
  },
  "cb-8-3-s5-139-159-hume-hwy": {
   "chapter_pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-8-3-hume-highway.pdf",
@@ -195,7 +199,8 @@
   "file": "cb-8-3-s5-139-159-hume-hwy.png",
   "width": 410,
   "height": 294,
-  "how_found": "start page 16 had no large figure; page 19 has a Figure/Map caption and 7 title words"
+  "how_found": "start page 16 had no large figure; page 19 has a Figure/Map caption and 7 title words",
+  "reviewed": true
  },
  "cb-8-3-s7-225-243a-hume-hwy": {
   "chapter_pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-8-3-hume-highway.pdf",
@@ -203,7 +208,8 @@
   "file": "cb-8-3-s7-225-243a-hume-hwy.png",
   "width": 938,
   "height": 755,
-  "how_found": "start page 34 had no large figure; page 36 has a Figure/Map caption and 6 title words"
+  "how_found": "start page 34 had no large figure; page 36 has a Figure/Map caption and 6 title words",
+  "reviewed": true
  },
  "krg-14f-roseville-local-centre": {
   "chapter_pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/ku_ring_gai/v1.0-baseline/section-b-part-14f-roseville-local-centre.pdf",
@@ -211,7 +217,8 @@
   "file": "krg-14f-roseville-local-centre.png",
   "width": 958,
   "height": 1311,
-  "how_found": "large figure on the area's own page"
+  "how_found": "large figure on the area's own page",
+  "reviewed": true
  },
  "krg-14c-pymble-local-centre": {
   "chapter_pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/ku_ring_gai/v1.0-baseline/section-b-part-14c-pymble-local-centre.pdf",
@@ -219,7 +226,8 @@
   "file": "krg-14c-pymble-local-centre.png",
   "width": 964,
   "height": 1311,
-  "how_found": "large figure on the area's own page"
+  "how_found": "large figure on the area's own page",
+  "reviewed": true
  },
  "leichhardt-george-upward-streets": {
   "chapter_pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/leichhardt/v1.1-2026-04-05/amendment-1-george-upward-streets.pdf",
@@ -227,7 +235,8 @@
   "file": "leichhardt-george-upward-streets.png",
   "width": 862,
   "height": 1354,
-  "how_found": "start page 3 had no large figure; page 4 has a Figure/Map caption and 4 title words"
+  "how_found": "start page 3 had no large figure; page 4 has a Figure/Map caption and 4 title words",
+  "reviewed": true
  },
  "leichhardt-part-g-s3-jane-street": {
   "chapter_pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/leichhardt/v1.1-2026-03-02/part-g-s1-site-specific.pdf",
@@ -260,7 +269,8 @@
   "file": "marrickville-2-26-sound-category-areas.png",
   "width": 702,
   "height": 503,
-  "how_found": "large figure on the area's own page"
+  "how_found": "large figure on the area's own page",
+  "reviewed": true
  },
  "parramatta-part-8-area-sections": {
   "chapter_pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/parramatta/v1.1-2026-04-27/parramatta-dcp-2023-full.pdf",
@@ -268,6 +278,7 @@
   "file": "parramatta-part-8-area-sections.png",
   "width": 991,
   "height": 891,
-  "how_found": "large figure on the area's own page"
+  "how_found": "large figure on the area's own page",
+  "reviewed": true
  }
 }

@@ -55,12 +55,23 @@ def test_map_image_url_only_when_base_url_is_set(tmp_path):
         {"council": "c", "suburb": "X", "area_id": "b"},
     ]}), encoding="utf-8")
     idx = tmp_path / "i.json"
-    idx.write_text(json.dumps({"a": {"file": "a.png"}, "b": {"skipped": "no figure"}}), encoding="utf-8")
+    idx.write_text(json.dumps({"a": {"file": "a.png", "reviewed": True}, "b": {"skipped": "no figure"},
+                               "c": {"file": "c.png"}}), encoding="utf-8")
     off = ex.build(src, base_url="", maps_index=idx)["c"]["X"]
     assert all("map_image_url" not in r for r in off)
     on = {r["area_id"]: r for r in ex.build(src, base_url="https://img.test/", maps_index=idx)["c"]["X"]}
     assert on["a"]["map_image_url"] == "https://img.test/may-apply-maps/a.png"
     assert "map_image_url" not in on["b"]
+
+
+def test_unreviewed_image_is_never_published(tmp_path):
+    # A rerun of the heuristic renderer writes files without 'reviewed'; they must not reach the page.
+    import export_may_apply_areas as ex
+    src = tmp_path / "s.json"
+    src.write_text(json.dumps({"areas": [{"council": "c", "suburb": "X", "area_id": "c"}]}), encoding="utf-8")
+    idx = tmp_path / "i.json"
+    idx.write_text(json.dumps({"c": {"file": "c.png"}}), encoding="utf-8")
+    assert "map_image_url" not in ex.build(src, base_url="https://img.test/", maps_index=idx)["c"]["X"][0]
 
 
 def test_base_url_points_at_the_uploaded_maps():

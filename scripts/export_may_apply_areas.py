@@ -39,7 +39,9 @@ def build(source: Path = SOURCE, base_url: str | None = None, maps_index: Path =
     areas = [
         {**a, "map_image_url": f"{base}/may-apply-maps/{maps[a['area_id']]['file']}",
          "map_page": maps[a["area_id"]].get("page")}
-        if a.get("area_id") in maps and maps[a["area_id"]].get("file") else a
+        # Only an image a person has checked (reviewed: true) is published: a rerun of the heuristic renderer must not
+        # bring back a rejected page.
+        if a.get("area_id") in maps and maps[a["area_id"]].get("file") and maps[a["area_id"]].get("reviewed") is True else a
         for a in areas
     ]
     out: dict[str, dict[str, list[dict]]] = {}
