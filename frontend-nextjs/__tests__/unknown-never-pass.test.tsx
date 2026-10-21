@@ -3,8 +3,9 @@
  * Companion to __tests__/unknown-never-no.test.ts, which scans for the coercions; this runs the code.
  * prior-art-checked: reuse not viable because hazard-lookup-unknown.test.ts covers the hazard maps only.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { CDCScreener, evaluateCriteria } from '@/components/compliance/CDCScreener';
+import { DAIntakeModal } from '@/components/compliance/DAIntakeModal';
 import { autoPopulateFromConstraints } from '@/lib/see/intake';
 import { hasHeritage } from '@/lib/requirement-prioritization';
 import { acidSulfateAnswer, heritageAnswer, yesNo } from '@/lib/fact-answer';
@@ -55,5 +56,22 @@ describe('requirement prioritisation (lib/requirement-prioritization.ts)', () =>
     expect(hasHeritage({ isHeritage: false })).toBe(false);
     expect(hasHeritage(undefined)).toBe(true);
     expect(hasHeritage(false)).toBe(false);
+    expect(hasHeritage('false' as any)).toBe(true); // odd old data: unknown, no crash
+  });
+});
+
+describe('DA intake pop-up (components/compliance/DAIntakeModal.tsx)', () => {
+  const show = (heritageChecked: boolean) => {
+    render(<DAIntakeModal open onApply={async () => {}} onSkip={() => {}} provisions={[]} heritage heritageChecked={heritageChecked} />);
+    fireEvent.click(screen.getByText('Apply')); // the heritage row is on the confirmation step
+  };
+  it('unknown heritage says "not checked", not a tick for heritage', () => {
+    show(false);
+    expect(screen.queryByText('Heritage Conservation Area')).toBeNull();
+    expect(screen.getByText('Heritage — not checked (rules included)')).toBeTruthy();
+  });
+  it('a real heritage answer still shows as heritage', () => {
+    show(true);
+    expect(screen.getByText('Heritage Conservation Area')).toBeTruthy();
   });
 });

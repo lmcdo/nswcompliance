@@ -2082,6 +2082,7 @@ export function ProvisionsByTocStructure({
           provisions={allProvisions}
           initialAnswers={mergedIntakeAnswers}
           heritage={includeHeritage}
+          heritageChecked={heritage != null}
           hcaName={hcaName}
           precinctName={precinctName}
           hasAncillaryScope={ancillaryWorksLocal.length > 0}

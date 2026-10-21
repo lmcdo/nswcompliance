@@ -180,6 +180,7 @@ export function hasHeritage(heritage?: any): boolean {
   // No heritage answer at all is unknown: keep heritage requirements in view. Only a real false hides them.
   if (heritage == null) return true;
   if (typeof heritage === 'boolean') return heritage;
+  if (typeof heritage !== 'object') return true; // odd old data: unknown, keep heritage rules in view
   if ('isHeritage' in heritage && heritage.isHeritage == null) return true; // not checked: keep heritage requirements in view
 
   return heritage.isHeritage === true ||
