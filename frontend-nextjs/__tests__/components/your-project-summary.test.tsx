@@ -5,7 +5,7 @@
 import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
-import { PROJECT_TYPE_TO_CONTROLS_DEV_TYPE, projectTypeToControlsDevType } from '@/lib/project-type';
+import { PROJECT_TYPE_TO_CONTROLS_DEV_TYPE, projectTypeToControlsDevType, resolveControlsDevType } from '@/lib/project-type';
 import {
   NOT_FOUND_TEXT,
   NO_CONTROLS_FOR_TYPE_TEXT,
@@ -208,5 +208,23 @@ describe('language', () => {
     expect(second.container.textContent).not.toMatch(LIABILITY);
     expect(NOT_FOUND_TEXT).not.toMatch(LIABILITY);
     expect(NO_CONTROLS_FOR_TYPE_TEXT).not.toMatch(LIABILITY);
+  });
+});
+
+describe('summary and DCP tab read the same mapped type', () => {
+  it('both call resolveControlsDevType: default, mapped and unmapped picks', () => {
+    expect(resolveControlsDevType(null)).toBe(projectTypeToControlsDevType(DEV_TYPE_OPTIONS[0].value));
+    for (const o of DEV_TYPE_OPTIONS) {
+      expect(resolveControlsDevType(o.value)).toBe(PROJECT_TYPE_TO_CONTROLS_DEV_TYPE[o.value]);
+    }
+    expect(resolveControlsDevType('subdivision')).toBeNull();
+  });
+  it('both call sites use the shared function (source check)', () => {
+    const fs = require('fs');
+    const tab = fs.readFileSync(require('path').join(__dirname, '../../components/compliance/ProvisionsByTocStructure.tsx'), 'utf8');
+    const sum = fs.readFileSync(require('path').join(__dirname, '../../components/compliance/YourProjectSummary.tsx'), 'utf8');
+    expect(tab).toContain('resolveControlsDevType(sharedProjectType)');
+    expect(sum).toContain('resolveControlsDevType(shared)');
+    expect((tab.match(/devType=\{controlsDevType\}/g) || []).length).toBe(2);
   });
 });

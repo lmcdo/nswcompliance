@@ -32,6 +32,11 @@ export function projectTypeToControlsDevType(projectType: string): string | null
     : null;
 }
 
+/** The ONE place the picked project type becomes a controls dev_type; the summary and the DCP tab both call it. */
+export function resolveControlsDevType(shared: string | null): string | null {
+  return projectTypeToControlsDevType(shared ?? DEFAULT_PROJECT_TYPE);
+}
+
 // ── Shared picked project type (module-level store) ──────────────────────────
 let picked: string | null = null;
 const listeners = new Set<() => void>();

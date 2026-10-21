@@ -19,7 +19,7 @@ import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import { DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
 import {
   DEFAULT_PROJECT_TYPE,
-  projectTypeToControlsDevType,
+  resolveControlsDevType,
   setSharedProjectType,
   useSharedProjectTypeRaw,
 } from '@/lib/project-type';
@@ -230,7 +230,7 @@ export interface YourProjectSummaryProps {
 export function YourProjectSummary({ formerCouncil, constraints, planningLayers }: YourProjectSummaryProps) {
   const shared = useSharedProjectTypeRaw();
   const projectType = shared ?? DEFAULT_PROJECT_TYPE;
-  const controlsType = projectTypeToControlsDevType(projectType);
+  const controlsType = resolveControlsDevType(shared);
 
   const url = controlsType && formerCouncil
     ? `/api/dcp/structured-controls?council=${encodeURIComponent(formerCouncil)}&dev_type=${encodeURIComponent(controlsType)}`
