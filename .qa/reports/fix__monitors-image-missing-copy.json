@@ -1,0 +1,74 @@
+{
+ "tier": "standard",
+ "justification": "Restores two production cron workers (dcp-extract 03:00 UTC, dcp-commit 09:00 UTC) that crash at start-up on every run, and the commit job's page-link repair, which exited before its write. Not Critical: no code path or query changes, only which files ship in the image, and the failure was loud (ImportError, Railway status Crashed), never wrong data served. Not Minor: it decides whether DCP extraction and commit run at all, and it widens a guard test.",
+ "commit_hash": "a236b533",
+ "files": [
+  "Dockerfile.monitors",
+  "tests/test_dockerfile_monitors_imports.py"
+ ],
+ "pre_impl": {
+  "existing_data": "none -- no table, column or query is touched. The image gains 10 script files and data/chapter_scope/ (3 JSON files, 276K), all already on main.",
+  "assumption_mismatch": "The existing guard test claimed every worker import was copied. It was blind to `from scripts import X as y`: the module name sits after `import`, and the scan reduced the line to the root package `scripts`, which it skips. Once that was fixed the scan also reached gate_rules_roads/areas (module-level in gate_rules) and the dcp_page_repair -> dq_probe_live / outreach_claim_checks chain. A second blind spot remained that no import regex can close: dq_probe_live reads data/chapter_scope/*.json at module level, a FileNotFoundError.",
+  "new_vs_existing": "Applies to the next image Railway builds from main; no backfill. Every run since #1285 was a no-op crash, so changed chapters queued in that window are picked up on the next dcp-extract run by its own change detection."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_dockerfile_monitors_imports.py -q -o addopts=",
+  "fails_when": "a module any DCP worker reaches is not COPYd, or a file a worker opens at import is not COPYd, or the `from scripts import X` form is dropped from the scan again",
+  "observed_red": "YES, forced twice. Removing the dcp_area_link_guard COPY fails test_every_local_module_a_worker_reaches_is_copied. Removing the data/chapter_scope COPY fails test_each_worker_imports_from_the_image_file_set[dq_probe_live]. Both restored green (14 passed). The origin/main COPY set, imported the same way, reproduces Railway's exact error: \"ImportError: cannot import name 'dcp_area_link_guard' from 'scripts' (unknown location)\"."
+ },
+ "functions": [
+  {
+   "name": "_imports",
+   "file_line": "tests/test_dockerfile_monitors_imports.py:150",
+   "input": "the full source text of one worker or sibling script",
+   "output": "top-level module names it imports, now including each X in `from scripts import X as y`",
+   "if_none": "empty source -> empty set"
+  },
+  {
+   "name": "test_each_worker_imports_from_the_image_file_set",
+   "file_line": "tests/test_dockerfile_monitors_imports.py",
+   "input": "the COPY lines of Dockerfile.monitors, replayed into tmp_path",
+   "output": "pass when `import <worker>` succeeds in a subprocess against only those files",
+   "if_none": "a ModuleNotFoundError for a non-local, non-repo package skips (CI may lack a third-party wheel); any other failure, including a missing local module or data file, fails"
+  }
+ ],
+ "values": [
+  {
+   "value": "_DEV_ONLY = {tests, section_reader, conveyancing_db}",
+   "read_at": "tests/test_dockerfile_monitors_imports.py",
+   "nullable": "no",
+   "guard_at": "N/A",
+   "if_missing": "section_reader runs only with DCP_READER=section; Railway dcp-extract variables were listed (names only) and it is not set. conveyancing_db is imported only inside outreach_claim_checks functions dcp_page_repair never calls. If DCP_READER=section is ever set on Railway the worker raises ImportError loudly, it does not degrade."
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "A future module-level import in a worker is added without a COPY",
+   "what_happens": "worker crashes at start-up on every cron run; Railway shows Crashed",
+   "mitigated": true,
+   "how": "the closure scan and the file-set import test both fail in CI before merge",
+   "repro": "delete a COPY line from Dockerfile.monitors and run the falsifiable_check command"
+  },
+  {
+   "scenario": "A worker opens a data file at import that is not copied",
+   "what_happens": "the worker stops with FileNotFoundError at start-up on every run",
+   "mitigated": true,
+   "how": "test_each_worker_imports_from_the_image_file_set imports from only the copied files",
+   "repro": "delete the data/chapter_scope COPY and run the falsifiable_check command"
+  },
+  {
+   "scenario": "r2_monitor or dcp_watchdog gains a missing dependency",
+   "what_happens": "they need R2/DB credentials at import, so the file-set import test cannot cover them",
+   "mitigated": false,
+   "how": "covered by the source-text closure scan only, as before",
+   "repro": "N/A"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes -- after Railway rebuilds dcp-extract and dcp-commit from main, the next 03:00 / 09:00 UTC runs should log past the import (`railway logs -s dcp-extract`) and status should leave Crashed."
+ }
+}
