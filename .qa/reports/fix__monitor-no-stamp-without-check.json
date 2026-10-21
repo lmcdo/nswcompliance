@@ -1,0 +1,67 @@
+{
+ "tier": "standard",
+ "justification": "Changes when a production cron writes instrument_currency.verified_at, a date the site shows users as 'Last verified' (InstrumentCurrency.tsx, ProvisionsByTocStructure.tsx). The bug served a false verified date for eight councils. Not Critical: no new query, no change to the upsert itself, and the change can only make the monitor stamp LESS often. Not Minor: it decides a user-facing provenance claim.",
+ "commit_hash": "0e836781",
+ "files": [
+  "scripts/r2_monitor.py",
+  "tests/test_r2_monitor_alerting.py"
+ ],
+ "pre_impl": {
+  "existing_data": "instrument_currency (council, instrument_key='dcp', verified_at) and dcp_chapter_registry (is_active, council_url, url_last_checked). Measured live 2026-10-21, read-only: bayside, burwood, camden, canada_bay, fairfield, ryde, the_hills and the_hills_shire have 0 active chapters with a council_url and verified_at 2026-10-15.",
+  "assumption_mismatch": "The old condition assumed a council with zero failures had been checked. A council whose every chapter is hub-only skips them all and passes trivially. A chapter still 429 after its retry is skipped with no counter at all. Both now block the stamp. Cross-review then showed the first version still stamped a council on its linked chapters alone while others were hub-only; the denominator is now every active chapter.",
+  "new_vs_existing": "Only future runs. The eight false 2026-10-15 stamps already in the table are NOT changed by this PR; correcting them is a separate, user-approved production write."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_r2_monitor_alerting.py -q -o addopts=",
+  "fails_when": "_council_verified goes back to 'changed == 0 and failed == 0', or a check path bumps results['checked'] without council_checked",
+  "observed_red": "YES, forced twice. Restoring the old condition failed test_no_checkable_chapter_is_not_verified and test_a_skipped_chapter_blocks_the_stamp. Deleting one council_checked bump failed test_every_check_path_counts_toward_the_council. Restored green, 18 passed."
+ },
+ "functions": [
+  {
+   "name": "_council_verified",
+   "file_line": "scripts/r2_monitor.py:479",
+   "input": "four per-council integer counters from the run_monitor chapter loop",
+   "output": "bool: whether run_monitor may call _update_instrument_currency for that council",
+   "if_none": "counters start at 0 per council, so a council with no checkable chapter returns False and is not stamped"
+  }
+ ],
+ "values": [
+  {
+   "value": "council_active / council_checked",
+   "read_at": "scripts/r2_monitor.py:1340",
+   "nullable": "no",
+   "guard_at": "N/A -- ints initialised to 0 per council",
+   "if_missing": "the council is not stamped, the run log says how many of its active chapters were checked, and the site shows the older date or 'Not yet verified'"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "A council has some hub-only chapters and some with a council_url (cross-review finding)",
+   "what_happens": "it used to be stamped verified for the whole DCP on the linked chapters alone; now the stamp is withheld",
+   "mitigated": true,
+   "how": "council_active is counted before the hub-only skip, so checked < active; test_a_hub_only_chapter_is_counted_before_its_skip. Live effect: cumberland, parramatta, strathfield, northern_beaches, waverley and sutherland_shire stop being stamped until their hub-only chapters can be checked",
+   "repro": "SELECT council, count(*) FILTER (WHERE council_url IS NULL) FROM dcp_chapter_registry WHERE is_active GROUP BY 1"
+  },
+  {
+   "scenario": "A chapter is rate-limited past its retry",
+   "what_happens": "previously the council was still stamped verified; now the stamp is withheld for that run",
+   "mitigated": true,
+   "how": "checked < checkable in _council_verified",
+   "repro": "test_a_skipped_chapter_blocks_the_stamp"
+  },
+  {
+   "scenario": "Someone adds a new unchanged-content fast path that bumps results['checked'] but forgets council_checked",
+   "what_happens": "that council would never be stamped again and slowly show as stale on the site",
+   "mitigated": true,
+   "how": "test_every_check_path_counts_toward_the_council pairs every results['checked'] bump with a council_checked bump inside run_monitor",
+   "repro": "delete one 'council_checked += 1' line and run the falsifiable_check command"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes -- the eight existing false stamps need a separate, user-approved UPDATE; after the next 1st/15th run, check the log for 'verified_at NOT updated' lines."
+ }
+}

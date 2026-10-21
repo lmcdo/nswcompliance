@@ -476,6 +476,20 @@ def diff_urls(
     return result
 
 
+def _council_verified(active: int, checked: int, changed: int, failed: int) -> bool:
+    """Whether this run may stamp the council's DCP as verified.
+
+    Only when every active chapter was content-checked, at least one exists, and none
+    changed or failed. Zero failures used to be enough, so a council whose chapters are
+    all hub-only (no council_url, every one skipped) was stamped verified without a
+    single hash check -- eight councils on 2026-10-15 -- and one with SOME hub-only
+    chapters was stamped on the rest alone. A chapter still rate-limited after its
+    retry is skipped without counting as failed, so it is caught here by
+    checked < active rather than by the failure count.
+    """
+    return active > 0 and checked == active and changed == 0 and failed == 0
+
+
 def _update_instrument_currency(conn, council: str, dry_run: bool) -> None:
     """Update instrument_currency.verified_at for a council's DCP after a clean run."""
     if dry_run:
@@ -978,6 +992,8 @@ def run_monitor(
         # ── Per-chapter hash check ─────────────────────────────────────────────
         council_changed = 0
         council_failed = 0  # failures for THIS council only — used for currency update
+        council_active = 0   # active chapters this run reached, hub-only ones included
+        council_checked = 0  # of those, chapters this run actually content-checked
         cur = conn.cursor()
         for chapter in council_chapters:
             chapter_id  = chapter["id"]
@@ -994,6 +1010,9 @@ def run_monitor(
             is_inert    = chapter.get("is_inert", False)
 
             print(f"\n  {ch_council}/{key}")
+            # Counted BEFORE the hub-only skip below: a hub-only chapter is never
+            # content-checked, so a council holding one cannot be stamped verified.
+            council_active += 1
 
             # Reachable for the first time as of this change: the query above now
             # admits chapters that have only a hub URL, and those cannot be hash-
@@ -1070,6 +1089,7 @@ def run_monitor(
                         conn.commit()
                     results["unchanged"] += 1
                     results["checked"] += 1
+                    council_checked += 1
                     adaptive_delay(url)
                     continue
                 elif stored_etag and not new_etag_head:
@@ -1110,6 +1130,7 @@ def run_monitor(
                         conn.commit()
                     results["unchanged"] += 1
                     results["checked"] += 1
+                    council_checked += 1
                     continue
 
                 # ── Content-change gate ──────────────────────────────────────
@@ -1163,6 +1184,7 @@ def run_monitor(
                                 conn.commit()
                             results["unchanged"] += 1
                             results["checked"] += 1
+                            council_checked += 1
                             continue
                     except Exception as exc:
                         print(f"    [re-export check skipped: {exc}]")
@@ -1256,6 +1278,7 @@ def run_monitor(
                     })
                     council_changed += 1
                 results["checked"] += 1
+                council_checked += 1
 
             except WAFBlockError as exc:
                 # 403 WAF/access denial — infrastructure (CDN blocking the IP), not a
@@ -1314,9 +1337,13 @@ def run_monitor(
         # Use council_failed (not results["failed"]) — the global counter is cumulative
         # across all councils, so a failure in council A would otherwise block verified_at
         # updates for all subsequently-processed councils even if they had zero failures.
-        if council_changed == 0 and council_failed == 0:
+        if _council_verified(council_active, council_checked, council_changed, council_failed):
             _update_instrument_currency(conn, council, dry_run)
             print(f"\n  [{council}] instrument_currency updated — verified_at=NOW()")
+        else:
+            print(f"\n  [{council}] verified_at NOT updated — checked {council_checked} of "
+                  f"{council_active} active chapters, {council_changed} changed, "
+                  f"{council_failed} failed")
 
         cur.close()
 
