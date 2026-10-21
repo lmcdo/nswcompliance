@@ -22,7 +22,7 @@ TARGET = ROOT / "frontend-nextjs" / "shared" / "may-apply-areas.json"
 MAPS_INDEX = ROOT / "data" / "may_apply_maps" / "index.json"
 # Public address the map PNGs are served from (R2 prefix may-apply-maps/). EMPTY until scripts/upload_may_apply_maps.py
 # --commit has been run: while empty no map_image_url is emitted and the box shows the plan link only.
-MAP_BASE_URL = ""
+MAP_BASE_URL = "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/may-apply-maps"
 
 
 def canonical_suburb(s: object) -> str:
