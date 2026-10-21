@@ -300,6 +300,9 @@ describe('assessment findings (lib/assessment/reports.ts)', () => {
     const failed = await env({ notChecked: ['planning_layers', 'spatial_overlays'] });
     expect(failed.acidSulfate).toBe(HAZARD_NOT_CHECKED);
     expect(failed.landslide).toBe(HAZARD_NOT_CHECKED);
+    const legacy = await env({}); // an older saved payload: no not-checked list
+    expect(legacy.acidSulfate).toBe(HAZARD_NOT_CHECKED);
+    expect(legacy.landslide).toBe(HAZARD_NOT_CHECKED);
     const answered = await env({ notChecked: [] });
     expect(answered.acidSulfate).toBe('No');
     expect(answered.landslide).toBe('No');
