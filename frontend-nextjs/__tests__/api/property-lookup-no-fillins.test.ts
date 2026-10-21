@@ -226,6 +226,26 @@ describe('strata status', () => {
   });
 });
 
+describe('lot shape', () => {
+  const realFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = realFetch;
+    jest.restoreAllMocks();
+  });
+
+  it('a lot record with no shape names lot_shape "not checked"', async () => {
+    mockDb.query.mockResolvedValue({ rows: [] });
+    mockDb.connect.mockResolvedValue({ query: async () => ({ rows: [] }), release() {} });
+    for (const m of ['log', 'warn', 'error'] as const) jest.spyOn(console, m).mockImplementation(() => {});
+    global.fetch = jest.fn((input: any, init: any) => (String(input).includes('/ePlanningApi/lot?')
+      ? Promise.resolve(new Response(JSON.stringify([{ geometry: null, attributes: { LotDescription: '1//DP1' } }]), { status: 200 }))
+      : replay(String(input), init))) as any;
+    const { body } = await lookup();
+    expect(body.data.constraints.notChecked).toContain('lot_shape');
+    expect(body.data.lotDimensions).toBeNull();
+  });
+});
+
 describe('site-specific LEP clauses', () => {
   const realFetch = global.fetch;
   afterEach(() => {
