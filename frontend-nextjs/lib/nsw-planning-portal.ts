@@ -9,6 +9,8 @@ import { getKeySitesProvision } from './key-sites-map-provisions';
 import { filterToAskedProperty } from './address-number-match';
 import { strataPlanFromLots } from './property/strata-plan';
 import { floodMapStatus } from './flood/flood-map';
+import { arcgisFeatures, fetchWithTimeout } from './fetch-timeout';
+import type { HazardKey } from './hazard-unchecked';
 import { landFactsFromLayers, type LandFacts } from './lep-land-condition';
 
 export const ADDRESS_SEARCH_UNAVAILABLE = 'Address search unavailable';
@@ -69,8 +71,11 @@ export interface PlanningConstraints {
    blockType?: string;
    blockStartDate?: string;
  } | null;
- bushfireProne: boolean;
+ /** On the NSW Bush Fire Prone Land map: true / false / null (the map did not answer — not checked). */
+ bushfireProne: boolean | null;
  bushfireCategory?: string | null;
+ /** Hazard maps that failed or timed out (lib/hazard-unchecked.ts). Absent from this list = answered. */
+ uncheckedHazards?: HazardKey[];
  acidSulfateSoils?: string;
  mineSubsidence?: {
    inDistrict: boolean;
@@ -775,7 +780,7 @@ export class NSWPlanningPortalService {
  lga: null,
  heritage: false,
  floodProne: null,
- bushfireProne: false,
+ bushfireProne: null,
  basixClimate: null,
  basixWater: null,
  applicableSepps: []
@@ -1205,9 +1210,10 @@ export class NSWPlanningPortalService {
  let lotGeometry = initialLotGeometry;
  if (!propertyData) {
    try {
-     const fbRes = await fetch(
+     const fbRes = await fetchWithTimeout(
        `${this.BASE_URL}/address?a=${encodeURIComponent(address)}&noOfRecords=10`,
-       { headers: { 'Accept': 'application/json', 'User-Agent': 'ComplianceEngine/1.0' } }
+       { headers: { 'Accept': 'application/json', 'User-Agent': 'ComplianceEngine/1.0' } },
+       10000,
      );
      if (fbRes.ok) {
        const fbRaw = await fbRes.json();
@@ -1246,31 +1252,45 @@ export class NSWPlanningPortalService {
    strataUnits: lotPlan?.units ?? null,
  };
 
- // Stage 2: fan out from single valuation result (needs geometry for coordinate conversion)
+ // Stage 2: fan out from single valuation result (needs geometry for coordinate conversion).
+ // Every call here has a deadline (lib/fetch-timeout.ts). A hazard map that fails or times out is
+ // recorded in constraints.uncheckedHazards and stays unknown — it must never read as "No".
+ type Lookup<T> = { ok: true; value: T } | { ok: false };
+ const look = <T,>(url: string, pick: (features: any[]) => T): Promise<Lookup<T>> =>
+   arcgisFeatures(url)
+     .then((features): Lookup<T> => ({ ok: true, value: pick(features) }))
+     .catch((): Lookup<T> => ({ ok: false }));
+ const failed: Lookup<never> = { ok: false };
+
  let todLayers: PlanningLayer[] = [];
  let roadClassifications: any[] = [];
- let anefData: AnefInfo | null = null;
- let bushfireData: any = null;
- let mineSubsidenceData: any = null;
- let contaminatedLandData: any = null;
- let drinkingWaterData: any = null;
- let coastalData: any = null;
+ let anefLookup: Lookup<AnefInfo | null> = failed;
+ let bushfireLookup: Lookup<any> = failed;
+ let mineSubsidenceLookup: Lookup<any> = failed;
+ let contaminatedLandLookup: Lookup<any> = failed;
+ let drinkingWaterLookup: Lookup<any> = failed;
+ let coastalLookups: Lookup<string | null>[] = [];
  let seppExclusionData: { lowMidRise: boolean | null; complying: boolean | null; exempt: boolean | null } | null = null;
  let dualOccData: { prohibited: boolean; epiName?: string; lgaName?: string } | null = null;
+ let flood: { floodProne: boolean | null; note: string } | null = null;
 
  if (propertyData) {
    const lon = (propertyData.geometry.x / 20037508.34) * 180;
    const lat = (Math.atan(Math.exp((propertyData.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+   const exclusion = (layer: Parameters<typeof ePlanningPointQuery>[0]) =>
+     arcgisFeatures(ePlanningPointQuery(layer, lon, lat, 'LAY_CLASS'))
+       .then((f) => f.length > 0)
+       .catch(() => null);
+   // Flood needs only stage-1 layers, so it runs alongside the hazard maps, not after them.
+   const floodInstruments = (this.extractPlanningConstraints(layers, address).landApplicationInstruments ?? []).map((i) => i.name);
 
-   [todLayers, roadClassifications, anefData, bushfireData, mineSubsidenceData, contaminatedLandData, drinkingWaterData, coastalData, seppExclusionData, dualOccData] = await Promise.all([
+   [todLayers, roadClassifications, anefLookup, bushfireLookup, mineSubsidenceLookup, contaminatedLandLookup, drinkingWaterLookup, coastalLookups, seppExclusionData, dualOccData, flood] = await Promise.all([
      this.getTODLayers(propertyData.geometry).catch(() => []),
      getRoadClassifications(lat, lon).catch(() => []),
      // ANEF (Aircraft Noise) - Using NSW Planning Portal Protection Layer 2
-     fetch(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/2/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=ANEF_CODE,EPI_NAME,LGA_NAME&returnGeometry=false&f=json&inSR=4283`)
-       .then(res => res.json())
-       .then(data => {
-         if (!data.features || data.features.length === 0) return null;
-         const attrs = data.features[0].attributes;
+     look<AnefInfo | null>(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/2/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=ANEF_CODE,EPI_NAME,LGA_NAME&returnGeometry=false&f=json&inSR=4283`, (features) => {
+         if (features.length === 0) return null;
+         const attrs = features[0].attributes;
          // Parse ANEF level from ANEF_CODE (e.g., "20-25", "25-30", ">40")
          const anefCode = attrs.ANEF_CODE || '';
          let anefLevel = null;
@@ -1292,64 +1312,44 @@ export class NSWPlanningPortalService {
            buildingAcceptability: null,
            standardReference: ''
          } as any;
-       })
-       .catch(() => null),
+       }),
      // Bushfire data
-     fetch(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Fire/BFPL/MapServer/0/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json&inSR=4283`)
-       .then(res => res.json())
-       .then(data => data.features?.[0]?.attributes || null)
-       .catch(() => null),
+     look(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Fire/BFPL/MapServer/0/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json&inSR=4283`,
+       (features) => features[0]?.attributes || null),
      // Mine subsidence data
-     fetch(`https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Administrative_Boundaries_Theme/FeatureServer/7/query?f=json&geometry=${JSON.stringify({x: lon, y: lat, spatialReference: {wkid: 4326}})}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=districtname,lastupdate&returnGeometry=false`)
-       .then(res => res.json())
-       .then(data => data.features?.[0]?.attributes || null)
-       .catch(() => null),
+     look(`https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Administrative_Boundaries_Theme/FeatureServer/7/query?f=json&geometry=${JSON.stringify({x: lon, y: lat, spatialReference: {wkid: 4326}})}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=districtname,lastupdate&returnGeometry=false`,
+       (features) => features[0]?.attributes || null),
      // Contaminated land (within 500m)
-     fetch(`https://mapprod2.environment.nsw.gov.au/arcgis/rest/services/EPA/Contaminated_land_notified_sites/MapServer/0/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&distance=500&units=esriSRUnit_Meter&spatialRel=esriSpatialRelIntersects&outFields=SiteName,SiteStreet,Suburb,ManagementClass,ContaminationActivityType&returnGeometry=true&f=json&inSR=4283&orderByFields=OBJECTID ASC`)
-       .then(res => res.json())
-       .then(data => {
-         if (!data.features || data.features.length === 0) return null;
-         const site = data.features[0].attributes;
-         const geom = data.features[0].geometry;
+     look(`https://mapprod2.environment.nsw.gov.au/arcgis/rest/services/EPA/Contaminated_land_notified_sites/MapServer/0/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&distance=500&units=esriSRUnit_Meter&spatialRel=esriSpatialRelIntersects&outFields=SiteName,SiteStreet,Suburb,ManagementClass,ContaminationActivityType&returnGeometry=true&f=json&inSR=4283&orderByFields=OBJECTID ASC`, (features) => {
+         if (features.length === 0) return null;
+         const site = features[0].attributes;
+         const geom = features[0].geometry;
          // Calculate approximate distance
          const dx = (geom.x - lon) * 111320 * Math.cos(lat * Math.PI / 180);
          const dy = (geom.y - lat) * 110540;
          const distance = Math.sqrt(dx * dx + dy * dy);
          return { ...site, distance };
-       })
-       .catch(() => null),
+       }),
      // Drinking water catchment
-     fetch(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/3/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=EPI_NAME,LGA_NAME&returnGeometry=false&f=json&inSR=4283`)
-       .then(res => res.json())
-       .then(data => data.features?.[0]?.attributes || null)
-       .catch(() => null),
+     look(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/3/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=EPI_NAME,LGA_NAME&returnGeometry=false&f=json&inSR=4283`,
+       (features) => features[0]?.attributes || null),
      // Coastal environment (check multiple coastal layers)
-     Promise.all([
-       fetch(`https://mapprod1.environment.nsw.gov.au/arcgis/rest/services/CoastalManagementSEPP/CoastalManagementSEPP/MapServer/1/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json&inSR=4283`).then(r => r.json()).then(d => d.features?.[0] ? 'Coastal Wetlands' : null).catch(() => null),
-       fetch(`https://mapprod1.environment.nsw.gov.au/arcgis/rest/services/CoastalManagementSEPP/CoastalManagementSEPP/MapServer/6/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json&inSR=4283`).then(r => r.json()).then(d => d.features?.[0] ? 'Coastal Environment Area' : null).catch(() => null),
-       fetch(`https://mapprod1.environment.nsw.gov.au/arcgis/rest/services/CoastalManagementSEPP/CoastalManagementSEPP/MapServer/3/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json&inSR=4283`).then(r => r.json()).then(d => d.features?.[0] ? 'Littoral Rainforests' : null).catch(() => null),
-     ]).then(results => results.filter(Boolean))
-       .catch(() => []),
-     // ePlanning Phase 1: SEPP exclusion layers (776, 92, 93) — batch as 3 parallel fetches to same service
-     Promise.all([
-       fetch(ePlanningPointQuery('lowMidRiseExclusion', lon, lat, 'LAY_CLASS')).then(r => r.json()).then(d => (!d.error && Array.isArray(d.features)) ? d.features.length > 0 : null).catch(() => null),
-       fetch(ePlanningPointQuery('complyingExclusion', lon, lat, 'LAY_CLASS')).then(r => r.json()).then(d => (!d.error && Array.isArray(d.features)) ? d.features.length > 0 : null).catch(() => null),
-       fetch(ePlanningPointQuery('exemptExclusion', lon, lat, 'LAY_CLASS')).then(r => r.json()).then(d => (!d.error && Array.isArray(d.features)) ? d.features.length > 0 : null).catch(() => null),
-     ]).then(([lowMidRise, complying, exempt]) => ({
-       lowMidRise,
-       complying,
-       exempt,
-     })).catch(() => null),
+     Promise.all(([[1, 'Coastal Wetlands'], [6, 'Coastal Environment Area'], [3, 'Littoral Rainforests']] as const).map(([layerId, zone]) =>
+       look(`https://mapprod1.environment.nsw.gov.au/arcgis/rest/services/CoastalManagementSEPP/CoastalManagementSEPP/MapServer/${layerId}/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json&inSR=4283`,
+         (features): string | null => (features[0] ? zone : null)))),
+     // ePlanning Phase 1: SEPP exclusion layers (776, 92, 93) — null when the map does not answer
+     Promise.all([exclusion('lowMidRiseExclusion'), exclusion('complyingExclusion'), exclusion('exemptExclusion')])
+       .then(([lowMidRise, complying, exempt]) => ({ lowMidRise, complying, exempt })),
      // ePlanning Phase 1: Dual occupancy prohibition (layer 452)
-     fetch(ePlanningPointQuery('dualOccProhibition', lon, lat, 'LAY_CLASS,EPI_NAME,LGA_NAME'))
-       .then(r => r.json())
-       .then(d => {
-         if (d.error || !Array.isArray(d.features)) return null;
-         if (d.features.length === 0) return { prohibited: false };
-         const attrs = d.features[0].attributes;
+     arcgisFeatures(ePlanningPointQuery('dualOccProhibition', lon, lat, 'LAY_CLASS,EPI_NAME,LGA_NAME'))
+       .then((features) => {
+         if (features.length === 0) return { prohibited: false };
+         const attrs = features[0].attributes;
          return { prohibited: true, epiName: attrs.EPI_NAME, lgaName: attrs.LGA_NAME };
        })
        .catch(() => null),
+     // Flood: from the council's published Flood Planning Map, never a constant.
+     floodMapStatus(lon, lat, floodInstruments, lotGeometry?.geometry ?? null),
    ]);
  }
 
@@ -1359,44 +1359,63 @@ export class NSWPlanningPortalService {
 
  const allLayers = [...layers, ...todLayers];
  const constraints = this.extractPlanningConstraints(allLayers, address);
+ const unchecked: HazardKey[] = [];
 
- // Add environmental constraint data
- if (bushfireData) {
+ // Add environmental constraint data. A map that did not answer -> unknown, never "No".
+ if (!bushfireLookup.ok) {
+   constraints.bushfireProne = null;
+   unchecked.push('bushfire');
+ } else if (bushfireLookup.value) {
    constraints.bushfireProne = true;
-   constraints.bushfireCategory = bushfireData.Category || bushfireData.TYPE || null;
+   constraints.bushfireCategory = bushfireLookup.value.Category || bushfireLookup.value.TYPE || null;
+ } else {
+   constraints.bushfireProne = false;
  }
- if (mineSubsidenceData) {
+ if (!mineSubsidenceLookup.ok) {
+   unchecked.push('mine_subsidence');
+ } else if (mineSubsidenceLookup.value) {
    constraints.mineSubsidence = {
      inDistrict: true,
-     districtName: mineSubsidenceData.districtname,
-     lastUpdate: mineSubsidenceData.lastupdate
+     districtName: mineSubsidenceLookup.value.districtname,
+     lastUpdate: mineSubsidenceLookup.value.lastupdate
    };
  }
- if (contaminatedLandData) {
+ if (!contaminatedLandLookup.ok) {
+   unchecked.push('contaminated_land');
+ } else if (contaminatedLandLookup.value) {
+   const site = contaminatedLandLookup.value;
    constraints.contaminatedLand = {
      hasNotifiedSites: true,
      nearestSite: {
-       name: contaminatedLandData.SiteName,
-       address: contaminatedLandData.SiteStreet + (contaminatedLandData.Suburb ? ', ' + contaminatedLandData.Suburb : ''),
-       managementClass: contaminatedLandData.ManagementClass,
-       contaminationType: contaminatedLandData.ContaminationActivityType,
-       distance: Math.round(contaminatedLandData.distance)
+       name: site.SiteName,
+       address: site.SiteStreet + (site.Suburb ? ', ' + site.Suburb : ''),
+       managementClass: site.ManagementClass,
+       contaminationType: site.ContaminationActivityType,
+       distance: Math.round(site.distance)
      }
    };
  }
- if (drinkingWaterData) {
+ if (!drinkingWaterLookup.ok) {
+   unchecked.push('drinking_water');
+ } else if (drinkingWaterLookup.value) {
    constraints.drinkingWaterCatchment = {
      inCatchment: true,
-     epiName: drinkingWaterData.EPI_NAME,
-     lgaName: drinkingWaterData.LGA_NAME
+     epiName: drinkingWaterLookup.value.EPI_NAME,
+     lgaName: drinkingWaterLookup.value.LGA_NAME
    };
  }
- if (coastalData && coastalData.length > 0) {
+ const coastalZones = coastalLookups.flatMap((l) => (l.ok && l.value ? [l.value] : []));
+ if (coastalZones.length > 0) {
    constraints.coastalEnvironment = {
      inCoastalArea: true,
-     zones: coastalData
+     zones: coastalZones
    };
+ } else if (coastalLookups.length === 0 || coastalLookups.some((l) => !l.ok)) {
+   unchecked.push('coastal'); // a coastal map was silent and none hit: cannot say "No"
  }
+ const anefData: AnefInfo | null = anefLookup.ok ? anefLookup.value : null;
+ if (!anefLookup.ok) unchecked.push('anef');
+ constraints.uncheckedHazards = unchecked;
 
  // ePlanning Phase 1: exclusion gates
  if (seppExclusionData) {
@@ -1408,12 +1427,7 @@ export class NSWPlanningPortalService {
    constraints.dualOccProhibited = dualOccData;
  }
 
- // Flood: from the council's published Flood Planning Map, never a constant.
- if (propertyData) {
-   const fLon = (propertyData.geometry.x / 20037508.34) * 180;
-   const fLat = (Math.atan(Math.exp((propertyData.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
-   const flood = await floodMapStatus(fLon, fLat, (constraints.landApplicationInstruments ?? []).map((i) => i.name),
-     lotGeometry?.geometry ?? null);
+ if (flood) {
    constraints.floodProne = flood.floodProne;
    constraints.floodMapNote = flood.note;
  }

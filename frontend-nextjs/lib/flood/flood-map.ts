@@ -18,6 +18,8 @@
  * report. This queries the registered layer (same service and id as
  * EPLANNING_LAYERS.floodPlanningMap; not imported, to keep nsw-planning-portal free of a cycle).
  */
+import { fetchWithTimeout } from '../fetch-timeout';
+
 const LAYER_URL =
   'https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_Hazard/MapServer/230/query';
 
@@ -39,7 +41,7 @@ let publishingPlans: Promise<Set<string> | null> | null = null;
 /** Names of the plans (EPI_NAME) that publish a flood planning map to the layer. Cached per server instance. */
 function plansWithAFloodMap(): Promise<Set<string> | null> {
   if (!publishingPlans) {
-    publishingPlans = fetch(`${LAYER_URL}?where=1%3D1&outFields=EPI_NAME&returnDistinctValues=true&returnGeometry=false&f=json`)
+    publishingPlans = fetchWithTimeout(`${LAYER_URL}?where=1%3D1&outFields=EPI_NAME&returnDistinctValues=true&returnGeometry=false&f=json`)
       .then((r) => r.json())
       .then((d) => (!d.error && Array.isArray(d.features)
         ? new Set<string>(d.features.map((f: any) => String(f?.attributes?.EPI_NAME ?? '')).filter(Boolean))
@@ -124,14 +126,14 @@ export function boundaryMatchesPoint(rings: number[][][], wkid: number, lon: num
  *  whole lot counts as tested only when both queries answered, so a stale boundary can never hide a
  *  flooded address point (Sol, 2026-10-20). */
 async function queryLot(lon: number, lat: number, boundary: LotBoundary | null | undefined): Promise<FloodHit> {
-  const point = fetch(`${LAYER_URL}?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=LAY_CLASS&returnGeometry=false&f=json&inSR=4283`)
+  const point = fetchWithTimeout(`${LAYER_URL}?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=LAY_CLASS&returnGeometry=false&f=json&inSR=4283`)
     .then((r) => r.json())
     .then(countFrom)
     .catch(() => null);
   const rings = validRings(boundary?.rings);
   const wkid = boundary?.spatialReference?.latestWkid ?? boundary?.spatialReference?.wkid ?? null;
   const lot = rings && wkid && boundaryMatchesPoint(rings, wkid, lon, lat)
-    ? fetch(LAYER_URL, {
+    ? fetchWithTimeout(LAYER_URL, {
       method: 'POST',
       body: new URLSearchParams({
         geometry: JSON.stringify({ rings, spatialReference: { wkid } }),

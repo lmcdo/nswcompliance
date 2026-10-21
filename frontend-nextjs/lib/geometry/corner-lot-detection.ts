@@ -116,10 +116,11 @@ export async function detectCornerLot(geometry: LotGeometry): Promise<CornerLotR
 
     // The NSW road map times out now and then (Winston Hills, 2026-10-19: "This operation was
     // aborted" after one 10 s try). A lot either is on a corner or is not, so try again with a
-    // longer wait before telling the reader we could not find out.
+    // longer wait before telling the reader we could not find out. Capped at 4 s + 6 s = 10 s in
+    // all (was 10 + 15 + 20 = 45 s, past the 30 s gateway limit on /api/property, 2026-10-21).
     let response: Response | null = null;
     let lastError: unknown = null;
-    for (const waitMs of [10000, 15000, 20000]) {
+    for (const waitMs of [4000, 6000]) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), waitMs);
       try {
