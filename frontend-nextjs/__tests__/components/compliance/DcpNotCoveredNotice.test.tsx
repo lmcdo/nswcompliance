@@ -15,7 +15,7 @@ describe('DcpNotCoveredNotice', () => {
     render(<DcpNotCoveredNotice notCovered={getNotCovered('Marrickville')} chapterPdfUrls={{ 'part2-s14-unique-env-features': 'https://x.test/m.pdf' }} />);
     const text = screen.getByTestId('dcp-not-covered-notice').textContent ?? '';
     expect(text).toContain('Rules for particular areas we could not place on the map');
-    expect(text).toContain('their rules are not listed below');
+    expect(text).toContain('Each line says what we could not check');
     // the plan's own title from the not-covered list, not the internal chapter key
     expect(text).toContain('Part 2.14 Unique Environmental Features');
     expect(text).not.toContain('part2-s14');
@@ -61,5 +61,19 @@ describe('DcpNotCoveredNotice', () => {
 
   it('chapterLabel makes a readable name', () => {
     expect(chapterLabel('chapter-e1-parking-access')).toBe('Chapter e1 parking access');
+  });
+});
+
+describe('DcpNotCoveredNotice page link', () => {
+  it('names a page only when the link opens at it', () => {
+    const { container } = render(
+      <DcpNotCoveredNotice
+        notCovered={{ council: 'x', chapters: [{ chapter_key: 'k', title: 'T', reason: 'r', page: 95 }] }}
+        chapterPdfUrls={{ k: 'https://example.test/plan.pdf#page=1' }}
+      />,
+    );
+    const a = container.querySelector('a');
+    expect(a?.getAttribute('href')).toBe('https://example.test/plan.pdf#page=1');
+    expect(a?.textContent).not.toContain('page 95');
   });
 });

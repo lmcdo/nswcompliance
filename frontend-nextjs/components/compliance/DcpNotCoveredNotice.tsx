@@ -12,10 +12,12 @@ import { chapterLabel, type NotCovered } from '@/lib/not-covered';
 const COLLAPSE_AFTER = 3;
 
 /** The link to the plan at the page: only a PDF address can take a #page anchor. */
-function planHref(url: string | undefined, page: number | null | undefined): string | null {
+function planHref(url: string | undefined, page: number | null | undefined): { href: string; page: number | null } | null {
   if (!url) return null;
   const isPdf = /\.pdf(\?|#|$)/i.test(url);
-  return isPdf && typeof page === 'number' && page > 0 && !url.includes('#') ? `${url}#page=${page}` : url;
+  // The page is named only when the link opens at it (a url that already carries '#' is left as it is).
+  if (isPdf && typeof page === 'number' && page > 0 && !url.includes('#')) return { href: `${url}#page=${page}`, page };
+  return { href: url, page: null };
 }
 
 export function DcpNotCoveredNotice({
@@ -36,8 +38,8 @@ export function DcpNotCoveredNotice({
             {c.reason_text && <p className="mt-1">{c.reason_text}</p>}
             {href && (
               <p className="mt-1">
-                <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-sky-800">
-                  Read it in the plan{typeof c.page === 'number' ? ` (page ${c.page})` : ''}
+                <a href={href.href} target="_blank" rel="noopener noreferrer" className="underline text-sky-800">
+                  Read it in the plan{href.page !== null ? ` (page ${href.page})` : ''}
                 </a>
               </p>
             )}
@@ -48,7 +50,7 @@ export function DcpNotCoveredNotice({
   );
   const heading = 'Rules for particular areas we could not place on the map';
   const lead =
-    'These parts of the council’s plan apply only to certain land. We could not tell from the map whether this property is in that land, so their rules are not listed below. Read them in the plan if they may apply to you.';
+    'These parts of the council’s plan apply only to certain land, and we could not fully place that land on the map. Each line says what we could not check. If one may apply to this property, read it in the plan.';
   const box = 'text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5 mb-3';
   if (notCovered.chapters.length > COLLAPSE_AFTER) {
     return (
