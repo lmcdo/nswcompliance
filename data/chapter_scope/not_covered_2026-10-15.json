@@ -2184,6 +2184,13 @@
       "expect": 72,
       "reason": "Section 2.22 applies to the DCP 2011 Flood Planning Area Map (Appendix 1) and Flood Liable Land Map (Appendix 2) (p5). Its rules are shown where the lot is on Inner West's flood planning area; Appendix 2 also takes in land reached only by the Cooks River probable maximum flood (p6), which we have not mapped (gate rule marrickville_2_22_flood, user decision 2026-10-21).",
       "title": "Part 2.22 Flood Management, for land reached only by the largest Cooks River flood (Appendix 2 map)"
+    },
+    {
+      "council": "ku_ring_gai",
+      "chapter_key": "section-b-part-20-rail-roads",
+      "expect": 13,
+      "reason": "Part 20 applies to development 'in, or immediately adjacent to, the rail corridor or a busy road' (p20-2). Lots next to the North Shore line, Pacific Highway, Ryde Road, Mona Vale Road and the M1 are checked from the map; the listed sections of Boundary Street and of Horace Street, Link Road and Killeaton Street apply only 'within the Local Centre boundary', which we have not mapped (2026-10-21).",
+      "title": "Part 20 Development near rail corridors and busy roads, for lots on Boundary Street, Horace Street, Link Road or Killeaton Street in a local centre"
     }
   ],
   "unmapped_precinct_chapters": "rules in these chapters are already shown to no house (DQ-146) until a map exists: C-B 11.14 Riverwood, 11.6 Potts Hill, 8.3 Hume Hwy (S1-3, S5, S7), 6.3 Campsie, 11.2 Undercliffe, 8.2 Canterbury Rd (outside Area 9), KRG 14C/14G if refused, Parramatta 16",
