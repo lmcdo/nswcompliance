@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The may-apply box now shows a thumbnail of the plan's own map for 13 places (15 images rendered from the chapter PDFs, checked by eye; 7 wrong pages rejected), uploaded to R2 may-apply-maps/. Places without a clear figure keep the link only.",
-  "commit_hash": "b8cb5396",
+  "commit_hash": "42ae9bf5",
   "files": [
     "scripts/render_may_apply_maps.py",
     "scripts/upload_may_apply_maps.py",
