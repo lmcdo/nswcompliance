@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "13 live DCP rows say in their own words they apply only to land on a classified or State road, but reached every house in their council. New site flags state_road / classified_road from the TfNSW NSW Road Network Categorisation (legal State/Regional class) and the cadastre road corridor the lot touches; gate rules move those rows to the flags.",
+  "commit_hash": "6ae21bca",
+  "files": [
+    "frontend-nextjs/lib/lot-adjacency.ts",
+    "frontend-nextjs/lib/classified-road.ts",
+    "frontend-nextjs/lib/rail-busy-road.ts",
+    "frontend-nextjs/shared/classified-roads.json",
+    "frontend-nextjs/app/api/property/route.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/lib/dcp-provisions-query.ts",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "scripts/gate_rules_roads.py",
+    "scripts/gate_rules.py",
+    "scripts/dq_probe_live.py",
+    "tests/test_gate_rules.py"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib __tests__/api; python -m pytest -q tests/test_gate_rules.py",
+    "fails_when": "A lot one street back is flagged, a lot on a State road is not, a 7xxx regional road counts as classified, or the route serves the rows without the flag.",
+    "observed_red": "Before: the 13 rows were in the generic layer, shown to every house in Ashfield, Leichhardt, City of Sydney, Wollongong, Hornsby and Canterbury-Bankstown.",
+    "external_authority": "TfNSW NSW_Roads_Network_Categorisation_vw FeatureServer layers 0/1 (admin_class S/R, edited 2026-10-03); live lots: 1311 Pacific Hwy state+classified; 30 Marion St Leichhardt classified; 2 Kissing Point Rd (7421) neither; one street back not flagged."
+  },
+  "pre_impl": {
+    "existing_data": "Generalises the Part 20 rail/busy-road check (#1417) into lib/lot-adjacency.ts; Part 20 tests still pass.",
+    "assumption_mismatch": "A centreline-distance test would flag lots one street back from wide roads; the flag requires the lot to touch the road corridor the classified centreline runs inside.",
+    "new_vs_existing": "Two flags, one shared adjacency lib, gate rules in a new file (gate_rules.py at the 500-line limit)."
+  },
+  "functions": [
+    {
+      "name": "apply_gate_rules",
+      "file_line": "scripts/gate_rules.py:465",
+      "input": "the road gate rules from gate_rules_roads.py for six councils",
+      "output": "13 rows moved to condition state_road or classified_road (dry runs)",
+      "if_none": "zero matching rows means nothing is written for that council"
+    }
+  ],
+  "values": [
+    {
+      "value": "3 m adjacency: 12 frontage lots 0-1.51 m from their road corridor; one-back lot has none within 30 m",
+      "read_at": "agent measurement 2026-10-21",
+      "if_missing": "tolerance would be a guess"
+    },
+    {
+      "value": "tsc 0 errors; jest 106 suites / 1437 tests; pytest 27",
+      "read_at": "local run after rebase 2026-10-21",
+      "if_missing": "no test evidence"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A lot one street back from a highway is flagged.",
+      "what_happens": "A house not on the road is shown road-frontage rules.",
+      "mitigated": true,
+      "how": "Flag needs the lot to touch the corridor holding the classified centreline; one-back lot not flagged (test).",
+      "repro": "npx jest __tests__/lib/classified-road.test.ts"
+    },
+    {
+      "scenario": "An unclassified regional road (7xxx) is treated as classified.",
+      "what_happens": "Lots on unclassified regional roads would get classified-road rules.",
+      "mitigated": true,
+      "how": "7000-7999 excluded from classified_road (recorded assumption; schedule PDF blocked).",
+      "repro": "2 Kissing Point Rd (7421) test lot"
+    },
+    {
+      "scenario": "The TfNSW or cadastre service fails at lookup.",
+      "what_happens": "The lot's road flags cannot be computed.",
+      "mitigated": true,
+      "how": "No flag and a plain note on the page, as for Part 20.",
+      "repro": "route test with the lookup failing"
+    }
+  ],
+  "mutation_analysis": "Removing the corridor-containment test or the 7xxx exclusion fails the unit tests.",
+  "post_merge": {
+    "db_reset": "Yes, AFTER deploy: derive_precinct_keys.py --council <each of ashfield, leichhardt, city_of_sydney, wollongong, hornsby, canterbury_bankstown> --only <road rules> --apply.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Live: 1311 Pacific Hwy shows the gated rows for its council; a one-back lot does not."
+  },
+  "residual_risk": "7xxx = unclassified is an inference; roads not held as corridors (some motorways/tunnels) are missed; a lot touching only the junction piece of a side street can be flagged."
+}
