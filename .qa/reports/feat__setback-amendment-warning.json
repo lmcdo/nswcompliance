@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes what a property page says about setback numbers. A false warning over-warns (fail closed); a missing warning lets numbers vanish unexplained, which is the bug. Not Critical: no write, no change to which numbers are served. Not Minor: user-facing wording on a compliance surface.",
- "commit_hash": "d4710d5b",
+ "commit_hash": "59c05bb8",
  "files": [
   "frontend-nextjs/lib/dcp-review-status.ts",
   "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
