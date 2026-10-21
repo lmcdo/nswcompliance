@@ -350,6 +350,20 @@ def test_state_and_classified_road_rows_go_to_their_own_conditions():
     assert (rng["from"], rng["to"]) == (7000, 7999)
 
 
+def test_cb_6_2_ks8_keyed_to_its_address_outline():
+    import json
+    rule = next(r for r in dpk.RULES if r["name"] == "cb_6_2_ks8_212_south_terrace")
+    assert rule["where"] == "source_chapter_key = 'chapter-6-2-bankstown-city-centre' AND pdf_page = 182"
+    assert rule["strategy"] == {"type": "constant", "precinct_id": "6.2 KS8"}
+    root = Path(__file__).resolve().parent.parent
+    sites = json.loads((root / "data" / "site_chapters" / "address_sites.json").read_text(encoding="utf-8"))["sites"]
+    site = next(s for s in sites if s["precinct_id"] == "6.2 KS8")
+    assert (site["numbers"], site["street"], site["page"]) == ("212", "SOUTH TERRACE", 182)
+    areas = json.loads((root / "data" / "chapter_scope" / "suburb_unconfirmed_areas.json").read_text(encoding="utf-8"))
+    ks = next(a for a in areas["areas"] if a.get("area_id") == "cb-6-2-key-sites")
+    assert 132211 not in ks["row_selector"]["ids"] and len(ks["row_selector"]["ids"]) == 148
+
+
 def test_road_gate_writes_only_the_gate_columns():
     cur = FakeCursor([(241411, "generic", "none")])
     changes = g.apply_gate_rules(cur, "ashfield", apply=True, only={"ashfield_f_ds4_2_classified_road"})

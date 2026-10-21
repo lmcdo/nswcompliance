@@ -16,6 +16,14 @@ AREA_KEY_RULES: list[dict] = [
     {"name": "marrickville_2_26_entertainment_precincts", "council": "marrickville", "validate": False,
      "where": _MARRICKVILLE_2_26,
      "strategy": {"type": "constant", "precinct_id": "Marrickville 2.26 entertainment precinct"}},
+    # C-B DCP Ch 6.2 Section 6.8 "KS8- 212 South Terrace" (p182 only; KS9 starts p183): "The 212 South Terrace key site
+    # is situated at the eastern edge of the City Centre, at the corner of South Terrace and Stacey Street" (p182).
+    # Outline = the parcel under the register's 212 SOUTH TERRACE BANKSTOWN point (7,629 m2), matched to the red key
+    # site boundary of Figure 80 (IoU 0.99): data/site_chapters/address_sites.json, build_site_boundaries --addresses.
+    # The other key sites (p167-181, p183-213) stay unkeyed in the "may apply" box (area cb-6-2-key-sites).
+    {"name": "cb_6_2_ks8_212_south_terrace", "council": "canterbury_bankstown", "validate": False,
+     "where": "source_chapter_key = 'chapter-6-2-bankstown-city-centre' AND pdf_page = 182",
+     "strategy": {"type": "constant", "precinct_id": "6.2 KS8"}},
 ]
 
 #: Gate rules (spliced into GATE_RULES).

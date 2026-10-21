@@ -1,0 +1,73 @@
+{
+  "tier": "standard",
+  "justification": "CB DCP 6.2 key site KS8 (212 South Terrace, 7 rules) was only in the may-apply box. Its address names one parcel (7,629 m2) that matches the plan's Figure 80 red key-site line at 0.992. Loaded and keyed before merge; live: the KS8 precinct serves 7 rules.",
+  "commit_hash": "0918fa00",
+  "files": [
+    "data/site_chapters/address_sites.json",
+    "scripts/gate_rules_areas.py",
+    "data/chapter_scope/suburb_unconfirmed_areas.json",
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    "frontend-nextjs/shared/may-apply-areas.json",
+    "frontend-nextjs/shared/not-covered-councils.json",
+    "tests/test_gate_rules.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q tests/test_gate_rules.py",
+    "fails_when": "The KS8 keying rule is removed or keyed elsewhere.",
+    "observed_red": "Before: KS8's 7 rows were unplaced (precinct layer, no key) and showed only in the may-apply box.",
+    "external_authority": "CB DCP 2023 Ch 6.2 p182 text + Figure 80; NSW address register; build_site_boundaries proof (verbatim, named, neighbours, map IoU 0.992)."
+  },
+  "pre_impl": {
+    "existing_data": "Same address-site prover as 11.1, 11.3, 11.8, 11.10, 11.11, 11.13.",
+    "assumption_mismatch": "Of ~20 places tried only KS8 proved; others lack register addresses or a named LEP shape (recorded in the agent report).",
+    "new_vs_existing": "One address-site entry, one keying rule, area row count trimmed 155 -> 148."
+  },
+  "functions": [
+    {
+      "name": "apply_gate_rules",
+      "file_line": "scripts/gate_rules.py:471",
+      "input": "keying rule cb_6_2_ks8_212_south_terrace for council canterbury_bankstown",
+      "output": "7 rows keyed to 6.2 KS8 (applied 2026-10-21)",
+      "if_none": "zero matching rows means nothing is keyed or written"
+    }
+  ],
+  "values": [
+    {
+      "value": "1 lot, 7,629 m2, map IoU 0.992",
+      "read_at": "build_site_boundaries.py --addresses --only '6.2 KS8' 2026-10-21",
+      "if_missing": "no proof"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A neighbouring lot gets KS8's rules.",
+      "what_happens": "A property next to the key site would be shown its rules.",
+      "mitigated": true,
+      "how": "Prover: no neighbour address inside; outline is the one parcel.",
+      "repro": "python scripts/build_site_boundaries.py --addresses --only '6.2 KS8'"
+    },
+    {
+      "scenario": "Other Bankstown houses lose KS8 in the box.",
+      "what_happens": "Nearby houses stop seeing these rules as 'may apply'.",
+      "mitigated": true,
+      "how": "Rows keyed to a precinct the property is not in still show in the box (#1423).",
+      "repro": "for-property former_council=Canterbury-Bankstown suburb=BANKSTOWN without the KS8 precinct"
+    },
+    {
+      "scenario": "A re-extraction drops the key.",
+      "what_happens": "KS8 rules would reach nobody again.",
+      "mitigated": true,
+      "how": "The keying rule re-runs after every publish (dcp_commit_approved.py).",
+      "repro": "python scripts/derive_precinct_keys.py --council canterbury_bankstown --only cb_6_2_ks8_212_south_terrace"
+    }
+  ],
+  "mutation_analysis": "Removing the keying rule fails the new test.",
+  "post_merge": {
+    "db_reset": "Already done before merge: outline loaded (backup site_boundaries_pre_2026-10-21T060027.json), 7 rows keyed.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Done live: KS8 precinct serves 7 rules."
+  },
+  "residual_risk": "None beyond the prover's checks."
+}

@@ -64,13 +64,6 @@
             132208,
             132209,
             132210,
-            132211,
-            132212,
-            132213,
-            132214,
-            132215,
-            132216,
-            132217,
             132218,
             132219,
             132220,
@@ -165,7 +158,7 @@
             132313
           ]
         },
-        "rows_withheld": 155,
+        "rows_withheld": 148,
         "suburbs": [
           "BANKSTOWN"
         ],
@@ -173,7 +166,7 @@
         "reason_code": "DRAWING_NOT_MATCHED",
         "applies_to_quote": "The following sites have been identified as playing a key role in the realisation of the vision and objectives of Bankstown City Centre",
         "applies_to_page": 167,
-        "evidence": "Plan names Bankstown City Centre and KS3 \"67-70 Rickard Road, Bankstown\" (p167-168). Site boundaries only on Figure 67 key sites map (p168). Rows p167-213."
+        "evidence": "Plan names Bankstown City Centre and KS3 \"67-70 Rickard Road, Bankstown\" (p167-168). Site boundaries only on Figure 67 key sites map (p168). Rows p167-213. KS8 212 South Terrace (p182, 7 rows) has its own outline (address register + Figure 80) and is no longer here."
       }
     ],
     "BELFIELD": [
