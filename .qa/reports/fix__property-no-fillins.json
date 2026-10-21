@@ -1,0 +1,105 @@
+{
+  "tier": "standard",
+  "justification": "Standard: changes what /api/property returns when an outside source or the database fails (null plus a named not-checked list instead of a filled-in value), and adds one time limit for the whole lookup. Not Critical: no database writes, no schema change; every answered source gives the same reply as before (recorded-reply test).",
+  "commit_hash": "2d98eed2",
+  "files": [
+    ".github/workflows/gates.yml",
+    "frontend-nextjs/__tests__/api/property-lookup-no-fillins.test.ts",
+    "frontend-nextjs/__tests__/fixtures/property-lookup/8-hollands-ave-marrickville.json",
+    "frontend-nextjs/__tests__/lib/hazard-unknown-cross-review.test.ts",
+    "frontend-nextjs/app/api/pathway/pattern-book-eligibility/route.ts",
+    "frontend-nextjs/app/api/property/[address]/route.ts",
+    "frontend-nextjs/app/api/property/route.ts",
+    "frontend-nextjs/components/compliance/HeritageDetails.tsx",
+    "frontend-nextjs/components/compliance/LocalProvisionsCard.tsx",
+    "frontend-nextjs/lib/fetch-timeout.ts",
+    "frontend-nextjs/lib/flood/flood-map.ts",
+    "frontend-nextjs/lib/geometry/corner-lot-detection.ts",
+    "frontend-nextjs/lib/geometry/street-frontage.ts",
+    "frontend-nextjs/lib/lookup-not-checked.ts",
+    "frontend-nextjs/lib/lot-adjacency.ts",
+    "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "frontend-nextjs/lib/pattern-book-eligibility/check-exclusions.ts",
+    "frontend-nextjs/lib/property-data.ts",
+    "frontend-nextjs/lib/road-classification-service.ts",
+    "frontend-nextjs/types/property.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "No database change. The lookup reads NSW Planning Portal, valuation, lot, TOD, hazard and road services, plus PostGIS spatial_overlays and nsw_cadastre_lots (read only).",
+    "assumption_mismatch": "The code assumed an empty list or false from a failed call meant the lot had nothing. A failed, timed-out or 429 call tells us nothing, so those facts are now null and named in constraints.notChecked.",
+    "new_vs_existing": "Extends the existing uncheckedHazards pattern (lib/hazard-unchecked.ts) with lib/lookup-not-checked.ts for non-hazard checks, and changes the existing lib/fetch-timeout.ts helper instead of adding a new one."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/property-lookup-no-fillins.test.ts",
+    "fails_when": "Any single fix is undone: 28 mutations, each restoring one old fill-in (Class 5, 40%, R2 routing, heritage false, planning layers [], TOD dropped, roads [], 0,0 location, valuation read as not found, timer stopping at headers, no overall limit, and others).",
+    "observed_red": "Before the fix: 4 of 6 tests failed, including 23 filled-in values listed by the walker (heritage false, Class 5, 40%, SEPP routing, isStrata false). After the fix: 10 of 10 pass. Break-check script undid each of the 28 fixes in turn: all 28 turned the file red, then the file was restored."
+  },
+  "functions": [
+    {
+      "name": "fetchWithTimeout",
+      "file_line": "frontend-nextjs/lib/fetch-timeout.ts",
+      "input": "url, init, per-call ms; reads the lookup time limit from AsyncLocalStorage",
+      "output": "Response whose body is already read, or a rejection on failure, per-call timeout or the lookup running out of time",
+      "if_none": "No lookup time limit running: only the per-call timer applies"
+    },
+    {
+      "name": "NSWPlanningPortalService.getPropertyComplianceData",
+      "file_line": "frontend-nextjs/lib/nsw-planning-portal.ts",
+      "input": "the street address the user typed, as one string",
+      "output": "property data with constraints.notChecked naming each check that did not answer; null only when the search found no such property",
+      "if_none": "Valuation failure or no location throws, so the route answers 503, never 404 not found"
+    },
+    {
+      "name": "uncheckedExclusions",
+      "file_line": "frontend-nextjs/lib/pattern-book-eligibility/check-exclusions.ts",
+      "input": "the pattern-book constraints built from the /api/property reply",
+      "output": "exclusions that cannot be tested (flood, bush fire, heritage, acid sulfate)",
+      "if_none": "No environmental object means flood and bush fire are listed as not checked"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The planning layers answer 429 three times in a row under load.",
+      "what_happens": "Zoning, heritage and FSR are unknown; the page must not say not heritage.",
+      "mitigated": true,
+      "how": "getPlanningLayers throws; heritage null and planning_layers in notChecked",
+      "repro": "jest test (a) with every call failing"
+    },
+    {
+      "scenario": "A reply sends its headers and then stalls mid-body.",
+      "what_happens": "Before, the timer had already stopped, so the lookup hung until the 30 s gateway limit.",
+      "mitigated": true,
+      "how": "fetchWithTimeout races the body read against the deadline and the lookup time limit",
+      "repro": "jest stall test plus the fetchWithTimeout unit test"
+    },
+    {
+      "scenario": "The valuation service times out.",
+      "what_happens": "Before, the reply was 404 no such property.",
+      "mitigated": true,
+      "how": "VALUATION_UNAVAILABLE propagates; route answers 503",
+      "repro": "jest 'valuation down' test"
+    },
+    {
+      "scenario": "The valuation record has no geometry.",
+      "what_happens": "Before, every map was queried at 0, 0 in the ocean and answered nothing.",
+      "mitigated": true,
+      "how": "LOCATION_NOT_FOUND stops the lookup",
+      "repro": "jest 'valuation with no location' test"
+    },
+    {
+      "scenario": "Pages read the new null as No.",
+      "what_happens": "About 33 page and hook call sites (found by search) still print null heritage or missing acid sulfate as No, the same as before this change when the value was false.",
+      "mitigated": false,
+      "how": "Not in this PR; listed for the next PR",
+      "repro": "grep isHeritage ? 'Yes' : 'No' in app/check/page.tsx:115"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Live timings on 8 Hollands Ave Marrickville and 165 Belmore Rd North Riverwood to be reported from the Vercel logs ([lookup-call] lines) after deploy."
+  }
+}
