@@ -11,7 +11,7 @@ semgrep>=1.172.0
 # mutation_health.py (mutmut drives pytest over services/*)
 mutmut>=3.7.0,<4
 pytest>=8.0
-hypothesis>=6.0
+hypothesis>=6.168.3
 icontract>=2.7.3
 pydantic>=2.13.5
 
