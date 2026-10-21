@@ -67,8 +67,10 @@ interface StructuredControlsResponse {
  * would disappear with no explanation.
  */
 export function ReviewNotice({ status }: { status: StructuredControlsResponse['review_status'] }) {
-  if (status === undefined) return null;
-  if (status === null) {
+  if (status == null) {
+    // undefined = an older backend without the field: say nothing.
+    // null = the check itself failed: say so, never imply "nothing pending".
+    if (status === undefined) return null;
     return (
       <p className="mb-2 text-xs text-gray-500" data-testid="dcp-review-status-unknown">
         Could not check whether this council&apos;s plan has a change waiting for review.
