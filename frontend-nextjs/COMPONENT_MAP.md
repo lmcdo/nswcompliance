@@ -54,6 +54,11 @@
     ↓ displays page numbers via group.displayPageNumber
   ```
 
+**"Your project" summary (above the three tabs):**
+- `components/compliance/YourProjectSummary.tsx` (view: `YourProjectSummaryView`), mounted in `app/assessment/page.tsx` just above the tab bar.
+- Logic: `lib/project-summary.ts` (row building, comparison, site flags). Project-type table + shared picked type: `lib/project-type.ts` (the DCP tab's `ProvisionsByTocStructure` reads and writes the same value).
+- Data: LEP height/FSR/min lot from `selectedProperty.constraints`; DCP rows from `GET /api/dcp/structured-controls` (same endpoint as `DcpStructuredControls`; helpers reused). Values pass through unchanged. Tests: `__tests__/components/your-project-summary.test.tsx`.
+
 **LEP Tab:**
 - `LepControls.tsx`
 - API: **none of its own.** Every value arrives as props from `app/assessment/page.tsx`,

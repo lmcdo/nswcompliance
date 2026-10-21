@@ -18,7 +18,7 @@ import { ChevronDown, ChevronRight, Ruler, Car, TreePine, Building2, Maximize2, 
 type ControlDataStatus = 'numeric' | 'not_applicable' | 'under_review';
 type ControlDirection = 'min' | 'max';
 
-interface StructuredControl {
+export interface StructuredControl {
   control_type: string;
   control_label: string;
   // 'max' → the value is a ceiling (render "≤"); 'min'/absent → a floor ("≥").
