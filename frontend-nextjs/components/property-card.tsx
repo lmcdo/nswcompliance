@@ -1,6 +1,6 @@
 "use client"
 
-import { HAZARD_NOT_CHECKED } from '@/lib/hazard-unchecked'
+import { HAZARD_NOT_CHECKED, bushfireFromPayload } from '@/lib/hazard-unchecked'
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -124,8 +124,8 @@ export function PropertyCard() {
            basixClimate: data.constraints?.basixClimate || data.environmental?.basixClimate,
            basixWater: data.constraints?.basixWater || data.environmental?.basixWater,
            floodProne: data.constraints?.floodProne ?? data.environmental?.floodProne ?? null,
-           // `|| false` turned a bush fire map that did not answer into "not bushfire prone".
-           bushfireProne: data.constraints?.bushfireProne ?? data.environmental?.bushfireProne ?? null
+           // A fresh null (map did not answer) must not be replaced by an older environmental boolean.
+           bushfireProne: bushfireFromPayload(data.constraints, data.environmental)
          },
          anef: data.anefData ? {
            inAnefZone: data.anefData.inAnefZone,

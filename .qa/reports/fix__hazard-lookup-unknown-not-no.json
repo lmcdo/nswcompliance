@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Live /api/property hit the 30 s gateway limit (504) when one NSW map call stalled: ~14 calls had no timeout. And a failed hazard call was swallowed and shown as 'No' (bush fire, mine subsidence, contaminated land) on the LEP tab, SEE/DA report, assessment reports, pattern-book check and property cards. Now every map call has an 8 s deadline and a failed or timed-out hazard is unknown, shown as 'Not checked'.",
-  "commit_hash": "2f544f9d",
+  "commit_hash": "e8483cf7",
   "files": [
     "frontend-nextjs/__tests__/components/compliance/lep-controls-hazard-not-checked.test.tsx",
     "frontend-nextjs/__tests__/lib/hazard-lookup-unknown.test.ts",
@@ -25,7 +25,8 @@
     "frontend-nextjs/lib/project-summary.ts",
     "frontend-nextjs/lib/property-data.ts",
     "frontend-nextjs/lib/see/intake.ts",
-    "frontend-nextjs/lib/see/propertyContext.ts"
+    "frontend-nextjs/lib/see/propertyContext.ts",
+    "frontend-nextjs/__tests__/lib/hazard-unknown-cross-review.test.ts"
   ],
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx jest __tests__/lib/hazard-lookup-unknown.test.ts __tests__/components/compliance/lep-controls-hazard-not-checked.test.tsx",
@@ -93,6 +94,27 @@
       "mitigated": true,
       "how": "Now CONDITIONAL when either is unknown (agent change; more addresses will read CONDITIONAL).",
       "repro": "pattern-book check-exclusions test"
+    },
+    {
+      "scenario": "The ANEF aircraft noise map times out while bush fire and flood answer clear.",
+      "what_happens": "Pattern Book check found no exclusions and said ELIGIBLE although aircraft noise was never tested.",
+      "mitigated": true,
+      "how": "anef in uncheckedHazards -> aircraft_noise in notChecked -> CONDITIONAL; mutation (drop the anef mapping) fails the test.",
+      "repro": "npx jest __tests__/lib/hazard-unknown-cross-review.test.ts"
+    },
+    {
+      "scenario": "A fresh property lookup returns bushfireProne null while an older environmental payload says false.",
+      "what_happens": "The ?? fallback replaced the unknown with the stale false, so the card hid the not-checked line.",
+      "mitigated": true,
+      "how": "bushfireFromPayload keeps the constraints value when the field is present; mutation back to ?? fails the test.",
+      "repro": "npx jest __tests__/lib/hazard-unknown-cross-review.test.ts"
+    },
+    {
+      "scenario": "The compliance dashboard route builds constraints without querying any NSW hazard map at all.",
+      "what_happens": "Mine subsidence, contaminated land, ANEF, drinking water and coastal read as No in LepControls.",
+      "mitigated": true,
+      "how": "uncheckedHazards = every hazard the route did not query; mutation (remove it) fails the test.",
+      "repro": "npx jest __tests__/lib/hazard-unknown-cross-review.test.ts"
     }
   ],
   "mutation_analysis": "Two breaks run by the main session (A: 3 fail, B: 1 fails); the agent ran 7 more, one per fix.",
