@@ -109,15 +109,18 @@ def scrape_canterbury_bankstown(
     soup = BeautifulSoup(resp.content, "lxml")
     results = []
     seen_urls: set[str] = set()
+    short_seen = short_resolved = 0
 
     for a in soup.find_all("a", href=True):
         href: str = a["href"]
 
         short = CB_SHORT_LINK.match(href.strip())
         if short:
+            short_seen += 1
             target = _resolve_short_link(href.strip(), timeout)
             if target is None:
                 continue
+            short_resolved += 1
             doc_path = parse_qs(urlparse(target).query).get("documentPath", [""])[0]
             if (doc_path or target) in seen_urls:
                 continue
@@ -168,6 +171,14 @@ def scrape_canterbury_bankstown(
             "url": full_url,
             "label": label,
         })
+
+    if short_seen and not short_resolved:
+        # Every chapter is behind a short link. None resolving means the shortener
+        # was down or changed, not that the council removed its whole DCP -- fail the
+        # scrape loudly rather than report every chapter as merely unlisted.
+        raise HubScrapeError(
+            f"{short_seen} cb.city short links on the hub page and none resolved: {hub_url}"
+        )
 
     if not results:
         raise HubScrapeError(

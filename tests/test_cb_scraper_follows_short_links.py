@@ -131,3 +131,17 @@ def test_head_404_then_an_html_page_is_still_a_failure(monkeypatch):
     monkeypatch.setattr(r2_monitor.SESSION, "head", lambda *a, **k: _resp(404))
     monkeypatch.setattr(r2_monitor.SESSION, "get", lambda *a, **k: _resp(200, {"Content-Type": "text/html"}))
     assert r2_monitor.head_request(OLD_7_3)["status"] == 404
+
+
+def test_no_short_link_resolving_fails_the_scrape(monkeypatch):
+    import pytest
+    _patch_network(monkeypatch, redirects={})
+    with pytest.raises(cb.HubScrapeError, match="none resolved"):
+        cb.scrape_canterbury_bankstown(HUB, KEYS)
+
+
+def test_head_404_then_octet_stream_is_a_document(monkeypatch):
+    import r2_monitor
+    monkeypatch.setattr(r2_monitor.SESSION, "head", lambda *a, **k: _resp(404))
+    monkeypatch.setattr(r2_monitor.SESSION, "get", lambda *a, **k: _resp(206, {"Content-Type": "application/octet-stream"}))
+    assert r2_monitor.head_request(OLD_7_3)["status"] == 200

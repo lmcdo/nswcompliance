@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes what the DCP monitor treats as a council's current document for Canterbury-Bankstown (68 active chapters) and how every council's HEAD check reacts to a 404. After merge the next monitor run re-points 4 registry URLs and queues re-extraction for 3 chapters whose content changed, through the existing url_migrated path and review queue. Not Critical: no new query or write path; the existing diff_urls/url_migrated code does the writing. Not Minor: it decides which version of a council's rules we serve.",
- "commit_hash": "0e95d616",
+ "commit_hash": "7946fde5",
  "files": [
   "scripts/hub_scrapers/canterbury_bankstown.py",
   "scripts/r2_monitor.py",
@@ -79,6 +79,13 @@
    "mitigated": true,
    "how": "_resolve_short_link requires https, a CB_DOC_HOSTS host and /api/publish (cross-review finding)",
    "repro": "test_a_redirect_off_the_councils_document_hosts_is_refused"
+  },
+  {
+   "scenario": "cb.city times out or rate-limits every HEAD while the hub page loads",
+   "what_happens": "every chapter would drop out silently as merely unlisted and stale documents keep being served",
+   "mitigated": true,
+   "how": "the scraper raises HubScrapeError when short links exist and none resolve (cross-review finding)",
+   "repro": "test_no_short_link_resolving_fails_the_scrape"
   }
  ],
  "post_merge": {

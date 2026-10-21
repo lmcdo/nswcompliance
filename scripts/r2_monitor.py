@@ -274,7 +274,8 @@ def head_request(url: str) -> dict:
             status = 200 if resp.status_code in (200, 206) else resp.status_code
             # After a HEAD 404, a GET 200 counts only if it is a PDF: some servers
             # answer a removed document with a branded "not found" HTML page.
-            if head_404 and status == 200 and "pdf" not in (resp.headers.get("Content-Type") or "").lower():
+            ctype = (resp.headers.get("Content-Type") or "").lower()
+            if head_404 and status == 200 and "pdf" not in ctype and "octet-stream" not in ctype:
                 status = 404
             return {
                 # NOT resp.headers['Content-Length'] on this path. We asked for
