@@ -1,0 +1,75 @@
+{
+  "tier": "standard",
+  "justification": "The may-apply box now shows a thumbnail of the plan's own map for 13 places (15 images rendered from the chapter PDFs, checked by eye; 7 wrong pages rejected), uploaded to R2 may-apply-maps/. Places without a clear figure keep the link only.",
+  "commit_hash": "81a68f04",
+  "files": [
+    "scripts/render_may_apply_maps.py",
+    "scripts/upload_may_apply_maps.py",
+    "scripts/export_may_apply_areas.py",
+    "data/may_apply_maps/index.json",
+    "frontend-nextjs/shared/may-apply-areas.json",
+    "frontend-nextjs/components/compliance/DcpMayApplyBlock.tsx",
+    "frontend-nextjs/lib/may-apply-query.ts",
+    "frontend-nextjs/__tests__/components/compliance/DcpMayApplyBlock.test.tsx",
+    "tests/test_may_apply_areas_drift.py"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/components/compliance/DcpMayApplyBlock.test.tsx; python -m pytest -q tests/test_may_apply_areas_drift.py",
+    "fails_when": "A thumbnail shows without a url, the alt text is missing, or the export emits urls when the base url is empty.",
+    "observed_red": "Before: link only, no image.",
+    "external_authority": "Images cropped from the council PDFs; public R2 url returns 200 image/png."
+  },
+  "pre_impl": {
+    "existing_data": "Same R2 bucket and boto3 pattern as add_new_chapter.py.",
+    "assumption_mismatch": "Page search is a heuristic; 7 of 22 found pages were wrong (cover pages, diagrams) and were removed on review.",
+    "new_vs_existing": "Render + upload scripts, image field in the export, thumbnail in the existing block."
+  },
+  "functions": [
+    {
+      "name": "DcpMayApplyBlock",
+      "file_line": "frontend-nextjs/components/compliance/DcpMayApplyBlock.tsx:1",
+      "input": "may-apply areas with an optional map_image_url",
+      "output": "a lazy thumbnail linking to the plan page when the url exists",
+      "if_none": "no image url means the link alone is shown"
+    }
+  ],
+  "values": [
+    {
+      "value": "15 images kept of 22 rendered; 13 current places carry a url",
+      "read_at": "index.json + export 2026-10-21",
+      "if_missing": "no images"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A wrong page is shown as the area's map.",
+      "what_happens": "The user reads the wrong drawing as the area.",
+      "mitigated": true,
+      "how": "All 22 checked by eye on one contact sheet; 7 removed.",
+      "repro": "open data/may_apply_maps/*.png"
+    },
+    {
+      "scenario": "The image host is down.",
+      "what_happens": "A broken image in the box.",
+      "mitigated": true,
+      "how": "Lazy image with alt text; the PDF link still works.",
+      "repro": "block an image url in the browser"
+    },
+    {
+      "scenario": "The image base address is left empty.",
+      "what_happens": "No place in the box would show a thumbnail.",
+      "mitigated": true,
+      "how": "Export emits urls only when set; drift test covers both.",
+      "repro": "python -m pytest -q tests/test_may_apply_areas_drift.py"
+    }
+  ],
+  "mutation_analysis": "Removing the url check in the block fails the jest thumbnail test.",
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Open a Pymble or Riverwood-area address: the box shows the map thumbnail."
+  },
+  "residual_risk": "32 places still link only (no clear figure found)."
+}

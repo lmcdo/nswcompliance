@@ -63,6 +63,7 @@ def test_map_image_url_only_when_base_url_is_set(tmp_path):
     assert "map_image_url" not in on["b"]
 
 
-def test_base_url_is_empty_until_upload():
+def test_base_url_points_at_the_uploaded_maps():
+    # Uploaded 2026-10-21 (scripts/upload_may_apply_maps.py --commit): the public R2 folder of the PNGs.
     import export_may_apply_areas as ex
-    assert ex.MAP_BASE_URL == ""
+    assert ex.MAP_BASE_URL.startswith("https://") and ex.MAP_BASE_URL.rstrip("/").endswith("/may-apply-maps")
