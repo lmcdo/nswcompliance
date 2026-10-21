@@ -294,3 +294,11 @@ describe('pass-through, every row: each row shows exactly its own source control
     }
   });
 });
+
+describe('flood lookup with no answer', () => {
+  it('null flood says it could not be checked; false says nothing; true is a flag', () => {
+    expect(buildSiteFlags({ floodProne: null }).unchecked).toEqual(['Flood: we could not check whether this lot is on the flood map.']);
+    expect(buildSiteFlags({ floodProne: false })).toEqual({ flags: [], unchecked: [] });
+    expect(buildSiteFlags({ floodProne: true }).flags.map((f) => f.key)).toEqual(['flood']);
+  });
+});

@@ -190,6 +190,9 @@ export function buildSiteFlags(c: FlagConstraints | null | undefined): SiteFlagR
   if (!c) return { flags, unchecked };
   if (c.floodProne === true) {
     flags.push({ key: 'flood', label: 'Flood', detail: c.floodMapNote ?? null, source: "Council's Flood Planning Map", url: null });
+  } else if (c.floodProne == null) {
+    // null = the flood lookup did not give an answer; saying nothing would read as "not on the flood map".
+    unchecked.push('Flood: we could not check whether this lot is on the flood map.');
   }
   if (c.heritage === true) {
     flags.push({
