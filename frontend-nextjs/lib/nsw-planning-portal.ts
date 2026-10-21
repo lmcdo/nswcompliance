@@ -1202,8 +1202,8 @@ export class NSWPlanningPortalService {
  if (!propertyData) {
    throw new Error(`${LOCATION_NOT_FOUND}: no valuation record for propId ${searchResult.propId}`);
  }
- // A lot record without a shape answers "which lot" but not its size or frontage.
- if (lotGeometry && !lotGeometry.geometry && !notChecked.includes('lot_shape')) notChecked.push('lot_shape');
+ // No lot shape (no record, or a record without one): size and frontage are unknown.
+ if (!lotGeometry?.geometry && !notChecked.includes('lot_shape')) notChecked.push('lot_shape');
 
  // Detect strata: valuation-null fallback (strata unit propIds return no valuation) combined
  // with address heuristic ("5/12 Smith St", "Unit 3/12 Smith St").

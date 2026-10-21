@@ -223,6 +223,7 @@ describe('strata status', () => {
       : replay(String(input), init))) as any;
     const { body } = await lookup();
     expect(body.data.strataInfo.isStrata).toBeNull();
+    expect(body.data.constraints.notChecked).toContain('lot_shape');
   });
 });
 
