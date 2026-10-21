@@ -1,0 +1,94 @@
+{
+ "_doc": "Woollahra DCP 2015 Chapter B1 precinct maps -> outlines (scripts/fit_site_plans.py precinct-map mode). The council's own layer (maps.woollahra.nsw.gov.au int/planning_other/MapServer/24 'WDCP 2015 - Residential Precincts') answered HTTP 503 all of 2026-10-21; if it comes back, prefer it and compare.",
+ "pdf": "chapter-b1-residential-precincts.pdf",
+ "pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/woollahra/v1.4-2026-09-15/chapter-b1-residential-precincts.pdf",
+ "box_mga": [
+  334965,
+  6246943,
+  342225,
+  6255385
+ ],
+ "scale_range": [
+  0.45,
+  0.9
+ ],
+ "out_stem": "b1_residential_precincts",
+ "precincts": [
+  {
+   "precinct_id": "Darling Point Precinct",
+   "name": "Woollahra DCP 2015 B1.2 Darling Point Precinct",
+   "page": 11,
+   "figure": "MAP 2 Darling Point Precinct",
+   "quote": "Woollahra DCP 2015 Chapter B1 B1.2 (B1 pg.5, PDF p11): 'MAP 2 Darling Point Precinct' -- the land filled blue"
+  },
+  {
+   "precinct_id": "Double Bay Precinct",
+   "name": "Woollahra DCP 2015 B1.3 Double Bay Precinct",
+   "page": 15,
+   "figure": "MAP 3 Double Bay Precinct",
+   "quote": "Woollahra DCP 2015 Chapter B1 B1.3 (B1 pg.9, PDF p15): 'MAP 3 Double Bay Precinct' -- the land filled blue"
+  },
+  {
+   "precinct_id": "Wallaroy Precinct",
+   "name": "Woollahra DCP 2015 B1.4 Wallaroy Precinct",
+   "page": 18,
+   "figure": "MAP 4 Wallaroy Precinct",
+   "quote": "Woollahra DCP 2015 Chapter B1 B1.4 (B1 pg.12, PDF p18): 'MAP 4 Wallaroy Precinct' -- the land filled blue"
+  },
+  {
+   "precinct_id": "Manning Road Precinct",
+   "name": "Woollahra DCP 2015 B1.5 Manning Road Precinct",
+   "page": 21,
+   "figure": "MAP 5 Manning Road Precinct",
+   "quote": "Woollahra DCP 2015 Chapter B1 B1.5 (B1 pg.15, PDF p21): 'MAP 5 Manning Road Precinct' -- the land filled blue"
+  },
+  {
+   "precinct_id": "Point Piper Precinct",
+   "name": "Woollahra DCP 2015 B1.6 Point Piper Precinct",
+   "page": 24,
+   "figure": "MAP 6 Point Piper Precinct",
+   "quote": "Woollahra DCP 2015 Chapter B1 B1.6 (B1 pg.18, PDF p24): 'MAP 6 Point Piper Precinct' -- the land filled blue"
+  },
+  {
+   "precinct_id": "Bellevue Hill South Precinct",
+   "name": "Woollahra DCP 2015 B1.7 Bellevue Hill South Precinct",
+   "page": 27,
+   "figure": "MAP 7 Bellevue Hill South Precinct",
+   "quote": "Woollahra DCP 2015 Chapter B1 B1.7 (B1 pg.21, PDF p27): 'MAP 7 Bellevue Hill South Precinct' -- the land filled blue"
+  },
+  {
+   "precinct_id": "Bellevue Hill North Precinct",
+   "name": "Woollahra DCP 2015 B1.8 Bellevue Hill North Precinct",
+   "page": 30,
+   "figure": "MAP 8 Bellevue Hill North Precinct",
+   "quote": "Woollahra DCP 2015 Chapter B1 B1.8 (B1 pg.24, PDF p30): 'MAP 8 Bellevue Hill North Precinct' -- the land filled blue"
+  },
+  {
+   "precinct_id": "Rose Bay Precinct",
+   "name": "Woollahra DCP 2015 B1.9 Rose Bay Precinct",
+   "page": 34,
+   "figure": "MAP 9 Rose Bay Precinct",
+   "quote": "Woollahra DCP 2015 Chapter B1 B1.9 (B1 pg.28, PDF p34): 'MAP 9 Rose Bay Precinct' -- the land filled blue"
+  },
+  {
+   "precinct_id": "Vaucluse West Precinct",
+   "name": "Woollahra DCP 2015 B1.10 Vaucluse West Precinct",
+   "page": 37,
+   "figure": "MAP 10 Vaucluse West Precinct",
+   "quote": "Woollahra DCP 2015 Chapter B1 B1.10 (B1 pg.31, PDF p37): 'MAP 10 Vaucluse West Precinct' -- the land filled blue"
+  },
+  {
+   "precinct_id": "Vaucluse East Precinct",
+   "name": "Woollahra DCP 2015 B1.11 Vaucluse East Precinct",
+   "page": 40,
+   "figure": "MAP 11 Vaucluse East Precinct",
+   "quote": "Woollahra DCP 2015 Chapter B1 B1.11 (B1 pg.34, PDF p40): 'MAP 11 Vaucluse East Precinct' -- the land filled blue"
+  }
+ ],
+ "union": {
+  "precinct_id": "Woollahra Residential Precincts",
+  "name": "Woollahra DCP 2015 B1 residential precincts (all ten; B3 Map 1)",
+  "source": "union of the ten B1 precinct outlines in this file (chapter-b1-residential-precincts.pdf Maps 2-11)",
+  "quote": "B1.1.1 (B1 pg.1, PDF p7): 'This chapter applies to the following residential precincts: Darling Point, Double Bay, Wallaroy, Manning Road, Point Piper, Bellevue Hill South, Bellevue Hill North, Rose Bay, Vaucluse West, Vaucluse East'; B1.1.5 (B1 pg.4, PDF p10): 'The general controls in Chapter B3 apply to all land where Chapter B1 applies.'; B3.1.1 (B3 pg.1, PDF p5): 'This chapter applies to land identified on Map 1 below.'"
+ }
+}

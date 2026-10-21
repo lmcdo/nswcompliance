@@ -862,6 +862,7 @@ latent-scope-data/
 data/canterbury_bankstown_precincts/.pdf_cache/
 data/*_precincts/.page_cache/
 data/ku_ring_gai_precincts/.pdf_cache/
+data/woollahra_precincts/.pdf_cache/
 
 # state-law proof: cached legislation HTML (sha256 in manifest.json)
 data/law_text_cache/*.html

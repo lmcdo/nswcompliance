@@ -1,0 +1,42 @@
+[
+ {
+  "precinct_id": "Darling Point Precinct",
+  "page": 11,
+  "coarse": 0.836,
+  "runner_up_far": 0.619,
+  "line_share": 0.565,
+  "m_per_px": 0.6376,
+  "figure_m2": 756775,
+  "lots": 567,
+  "doubt_lots": [
+   "//SP10535",
+   "2//DP1246367",
+   "5//DP1311043",
+   "7321//DP1165813",
+   "7331//DP1160051"
+  ],
+  "outline_m2": 756566,
+  "iou_shape": 0.997,
+  "iou_lot_land": 0.91
+ },
+ {
+  "precinct_id": "Double Bay Precinct",
+  "page": 15,
+  "coarse": 0.952,
+  "runner_up_far": 0.671,
+  "line_share": 0.721,
+  "m_per_px": 0.5071,
+  "figure_m2": 260043,
+  "lots": 280,
+  "doubt_lots": [
+   "//SP65405",
+   "11//DP556238",
+   "5//DP10997",
+   "7104//DP93728",
+   "7332//DP1160051"
+  ],
+  "outline_m2": 258328,
+  "iou_shape": 0.99,
+  "iou_lot_land": 0.98
+ }
+]
