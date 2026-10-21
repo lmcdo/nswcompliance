@@ -22,6 +22,7 @@ import { VerifyRegistrationPrompt } from '@/components/compliance/VerifyRegistra
 import { ProvisionsByTocStructure } from '@/components/compliance/ProvisionsByTocStructure';
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
 import { LepControls } from '@/components/compliance/LepControls';
+import { YourProjectSummary } from '@/components/compliance/YourProjectSummary';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
@@ -491,6 +492,14 @@ export default function AssessmentPage() {
 
             {!loading && selectedProperty && (
               <>
+                {/* Your project: key controls passed through from existing sources, above the tabs */}
+                <ErrorBoundary fallbackTitle="Error loading project summary">
+                  <YourProjectSummary
+                    formerCouncil={selectedProperty.constraints?.formerCouncil || normalizeLgaSlug(selectedProperty.constraints?.lga || '')}
+                    constraints={selectedProperty.constraints as any}
+                    planningLayers={selectedProperty.planningLayers || []}
+                  />
+                </ErrorBoundary>
                 {/* Regulatory Tabs - SEPP purple, LEP amber, DCP green */}
                 <div className="bg-white border rounded-lg shadow-md mb-4 overflow-hidden">
                   <div className="flex" role="tablist" aria-label="Regulatory controls">

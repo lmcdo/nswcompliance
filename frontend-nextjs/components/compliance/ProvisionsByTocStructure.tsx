@@ -25,6 +25,7 @@ import { deriveProvisionPartKey, inferSectionNumberFromHeader, buildSectionKey, 
 import { matchesSearchWithSynonyms, scoreProvision, getSearchSuggestions } from '@/lib/search-utils';
 import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { useDASession } from '@/hooks/useDASession';
+import { getSharedProjectType, setSharedProjectType, useSharedProjectTypeRaw } from '@/lib/project-type';
 import { DAModeCard } from './DAModeCard';
 import { DAIntakeModal } from './DAIntakeModal';
 import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, autoPopulateFromConstraints, DEFAULT_INTAKE_ANSWERS, type IntakeAnswers } from '@/lib/see/intake';
@@ -241,7 +242,14 @@ export function ProvisionsByTocStructure({
     };
   }, []);
 
+  // The "Your project" summary above the tabs shares this choice (lib/project-type.ts).
+  const sharedProjectType = useSharedProjectTypeRaw();
+  useEffect(() => {
+    if (sharedProjectType && sharedProjectType !== devTypeRef.current) handleDevTypeChange(sharedProjectType);
+  }, [sharedProjectType]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleDevTypeChange = (newType: string) => {
+    setSharedProjectType(newType);
     setDevType(newType);
     if (descriptionDebounceTimer.current) clearTimeout(descriptionDebounceTimer.current);
     descriptionDebounceTimer.current = setTimeout(() => { saveDescription(assembleDescription(newType, ancillaryWorksLocal, devWorksText)); }, 800);
@@ -308,6 +316,7 @@ export function ProvisionsByTocStructure({
     if (!sessionToken) return;
     if (primaryDevType && devType === '') {
       setDevType(primaryDevType);
+      if (getSharedProjectType() === null) setSharedProjectType(primaryDevType);
     }
     if (savedWorksText && devWorksText === '') {
       setDevWorksText(savedWorksText);
