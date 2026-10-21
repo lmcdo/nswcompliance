@@ -420,10 +420,12 @@ export class ReportGenerator {
 
  // A hazard map that did not answer is "Not checked", never "No" (lib/hazard-unchecked.ts).
  const unchecked = (key: HazardKey) => hazardUnchecked(constraints, key);
+ // Read once from the shared flood producer (lib/flood/flood-map.ts via nsw-planning-portal.ts).
+ const floodAnswer: boolean | null | undefined = constraints.floodProne;
  const environmentalConstraints = {
  // floodProne is three-state (lib/flood/flood-map.ts); the old `floodPlanning` field never existed, so this always said 'No'.
- flood: constraints.floodProne === true ? 'Yes - Property is within flood planning area'
- : constraints.floodProne === false ? 'No'
+ flood: floodAnswer === true ? 'Yes - Property is within flood planning area'
+ : floodAnswer === false ? 'No'
  : (constraints.floodMapNote || HAZARD_NOT_CHECKED),
  bushfire: constraints.bushfireProne === true ? 'Yes - Property is bushfire prone land'
  : (constraints.bushfireProne == null || unchecked('bushfire')) ? HAZARD_NOT_CHECKED : 'No',

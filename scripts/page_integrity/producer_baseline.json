@@ -107,6 +107,7 @@
   "frontend-nextjs/app/api/property/route.ts": 2,
   "frontend-nextjs/components/compliance/ComplianceDashboard.tsx": 2,
   "frontend-nextjs/components/property-card.tsx": 1,
+  "frontend-nextjs/lib/assessment/reports.ts": 1,
   "frontend-nextjs/lib/flood/flood-map.ts": 1,
   "frontend-nextjs/lib/nsw-planning-portal.ts": 1,
   "frontend-nextjs/lib/property-data.ts": 1,
