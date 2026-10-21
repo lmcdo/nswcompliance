@@ -37,8 +37,14 @@ COPY scripts/dcp_commit_approved.py ./scripts/dcp_commit_approved.py
 # The json is NOT optional: derive_precinct_keys reads it at MODULE level, so the
 # import itself fails without it -- and a FileNotFoundError is not an ImportError.
 COPY scripts/derive_precinct_keys.py ./scripts/derive_precinct_keys.py
-# gate_rules is imported by derive_precinct_keys at module level (DQ-146 gate rules).
+# gate_rules is imported by derive_precinct_keys at module level (DQ-146 gate rules),
+# and it imports its two sibling rule files at module level in turn.
 COPY scripts/gate_rules.py ./scripts/gate_rules.py
+COPY scripts/gate_rules_roads.py ./scripts/gate_rules_roads.py
+COPY scripts/gate_rules_areas.py ./scripts/gate_rules_areas.py
+# The area-link guard. Both DCP workers import it at MODULE level (#1285); without
+# this COPY dcp-extract and dcp-commit ImportError at start-up on every run.
+COPY scripts/dcp_area_link_guard.py ./scripts/dcp_area_link_guard.py
 COPY data/cos_precinct_page_ranges.json ./data/cos_precinct_page_ranges.json
 # Sibling modules dcp_extract_changed imports at runtime: check_provision (review
 # path) and check_gate (commit-path quality gate). Without these the worker
@@ -71,6 +77,19 @@ COPY scripts/dq_probe_section_code_not_in_source.py ./scripts/dq_probe_section_c
 # ...and every served rule's page link (migration 079). ai_extractor imports the locator too.
 COPY scripts/dcp_page_repair.py ./scripts/dcp_page_repair.py
 COPY scripts/rule_page_locator.py ./scripts/rule_page_locator.py
+# dcp_page_repair --apply measures DQ-145 before it writes (dq_probe_live) and reads
+# its ceiling after (outreach_claim_checks). Without these the subprocess exits
+# before the write and dcp_commit_approved logs only a [warn]: links stay unchecked.
+COPY scripts/dq_probe_live.py ./scripts/dq_probe_live.py
+# dq_probe_live reads the chapters' scope files at MODULE level (a FileNotFoundError,
+# which the import scan in tests/ cannot see).
+COPY data/chapter_scope/ ./data/chapter_scope/
+COPY scripts/dq_db.py ./scripts/dq_db.py
+COPY scripts/qa_report_path.py ./scripts/qa_report_path.py
+COPY scripts/outreach_claim_checks.py ./scripts/outreach_claim_checks.py
+COPY scripts/outreach_flood_depth_probe.py ./scripts/outreach_flood_depth_probe.py
+COPY scripts/outreach_scoped_councils.py ./scripts/outreach_scoped_councils.py
+COPY scripts/dq_probe_applicability_config.py ./scripts/dq_probe_applicability_config.py
 # verify_extraction_fidelity (the gate's grader) imports this at module level.
 COPY services/extracted_data_integrity.py ./services/extracted_data_integrity.py
 # dcp_commit_approved falls back to this to recover a section code from
