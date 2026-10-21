@@ -71,5 +71,9 @@
     "other_repo": "No.",
     "manual_verify": "Open a Pymble or Riverwood-area address: the box shows the map thumbnail."
   },
-  "residual_risk": "32 places still link only (no clear figure found)."
+  "residual_risk": "32 places still link only (no clear figure found).",
+  "real_layer_exempt": {
+    "scripts/render_may_apply_maps.py": "one-off offline tool: SELECT of chapter PDF urls + curl; its output (22 PNGs) was checked by eye on a contact sheet and 7 rejected; not on any served path",
+    "scripts/upload_may_apply_maps.py": "one-off upload tool run once with --commit on the user's approval; result verified by a public GET (200 image/png)"
+  }
 }
