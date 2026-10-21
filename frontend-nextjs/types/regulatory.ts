@@ -13,7 +13,8 @@ export interface PropertyContext {
   formerCouncil: string;
   precinctId?: string;
   heritage?: {
-    isHeritage: boolean;
+    /** null = the Heritage Map did not answer (not checked). */
+    isHeritage: boolean | null;
     heritageType?: string;
     hcaCode?: string;
   };

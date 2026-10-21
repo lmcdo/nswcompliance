@@ -139,7 +139,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil
   }
 
   // Don't render if NEITHER heritage item NOR HCA
-  if ((!heritage || !heritage.isHeritage) && !hcaData) {
+  if ((!heritage || !heritage.isHeritage) && !hcaData) { // unknown-ok: null is handled by the not-checked card above
     return null;
   }
 
@@ -243,7 +243,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil
   }
 
   // If ONLY HCA from HCA API (no heritage data from Planning API), show simplified HCA-only card
-  if (!hasSpecificHeritageItem && hcaData && !heritage?.isHeritage) {
+  if (!hasSpecificHeritageItem && hcaData && !heritage?.isHeritage) { // unknown-ok: hcaData is a positive HCA answer from its own API
     return (
       <Card className="border-amber-300 bg-amber-50/30">
         <CardHeader className="pb-2">

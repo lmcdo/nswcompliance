@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     console.log('[Precinct Requirements API] Extracted values:', { address, precinctId, precinctName, lga, heritage });
     console.log('[Precinct Requirements API] precinctId type:', typeof precinctId, 'value:', precinctId);
     console.log('[Precinct Requirements API] Will use precinctId?', !!precinctId);
-    console.log('[Precinct Requirements API] Heritage mode?', !!heritage);
+    console.log('[Precinct Requirements API] Heritage mode?', !!heritage); // unknown-ok: log line only
 
     // Query categorized requirements with ALL source provisions for text matching
     let requirementsQuery = `

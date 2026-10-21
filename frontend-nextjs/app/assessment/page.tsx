@@ -35,6 +35,7 @@ import AerialTile from '@/components/reports/AerialTile';
 import { classifyHeritageType } from '@/lib/see/heritageType';
 import { SkeletonSeppContent, SkeletonDcpContent, SkeletonPropertyDetails } from '@/components/compliance/AssessmentSkeleton';
 
+import { heritageAnswer, yesNo } from '@/lib/fact-answer';
 const DCP_ENABLED = process.env.NEXT_PUBLIC_DCP_ENABLED === 'true';
 // When set, only show DCP for listed councils (comma-separated formerCouncil slugs).
 // When unset, all councils show DCP (if DCP_ENABLED is true).
@@ -286,7 +287,7 @@ export default function AssessmentPage() {
                     </div>
                     <div>
                       <label className="text-xs text-stone-500">Heritage</label>
-                      <p className="font-medium text-sm text-stone-800">{selectedProperty.heritage?.isHeritage ? 'Yes' : 'No'}</p>
+                      <p className="font-medium text-sm text-stone-800">{yesNo(heritageAnswer(selectedProperty.heritage))}</p>
                     </div>
                   </div>
 
@@ -639,7 +640,7 @@ export default function AssessmentPage() {
                         lga={selectedProperty.constraints?.lga}
                         formerCouncil={selectedProperty.constraints?.formerCouncil || normalizeLgaSlug(selectedProperty.constraints?.lga || '')}
                         zone={selectedProperty.constraints?.zone}
-                        heritage={selectedProperty.heritage?.isHeritage || false}
+                        heritage={heritageAnswer(selectedProperty.heritage)}
                         hcaName={heritageClass.isConservationArea
                           ? selectedProperty.heritage?.heritageItemName
                           : undefined}

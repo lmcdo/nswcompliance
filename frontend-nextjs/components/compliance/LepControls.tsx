@@ -211,7 +211,7 @@ export function LepControls({
 
       {/* Constraint Arithmetic — development yield estimate */}
       {/* Not on a strata lot: a whole-lot yield is not something one unit owner can build. */}
-      {lotArea && lotArea > 0 && (constraints?.maxHeight || constraints?.maxFsr) && !strataInfo?.isStrata && (
+      {lotArea && lotArea > 0 && (constraints?.maxHeight || constraints?.maxFsr) && strataInfo?.isStrata === false && (
         <ConstraintArithmeticCard
           lotArea={lotArea}
           devType={developmentType || 'dwelling_house'}

@@ -164,7 +164,7 @@ function buildFilterFields(filters: ProspectorFilters): Record<string, unknown> 
   if (filters.max_gfa_m2 != null) body.max_gfa_m2 = filters.max_gfa_m2;
   if (filters.min_dwellings != null) body.min_dwellings = filters.min_dwellings;
 
-  const heritage = triStateToBoolean(filters.heritage);
+  const heritage = triStateToBoolean(filters.heritage); // unknown-ok: a user's search filter, not a property fact
   if (heritage !== undefined) body.heritage = heritage;
   const flood = triStateToBoolean(filters.flood_prone);
   if (flood !== undefined) body.flood_prone = flood;

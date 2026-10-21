@@ -23,7 +23,7 @@ interface CDCScreenerProps {
   zoneCode: string;
   lotArea?: number | null;        // m² — pre-filled from property context
   heritageItem?: boolean;         // true = listed heritage item (LEP Schedule 5) — CDC not permitted
-  heritageAffected?: boolean;     // true = any heritage flag (item OR HCA) — warn even if not listed item
+  heritageAffected?: boolean | null; // true = any heritage flag (item OR HCA) — warn; null = not checked (never a pass)
   provisions: Array<{
     provision_text: string;
     v2_topic?: string;
@@ -55,11 +55,11 @@ function extractNumeric(text: string, unit: 'm' | 'm²' | '%'): number | null {
  * No fallback values — if a limit cannot be confirmed from loaded provisions,
  * result is 'unknown' and the user is directed to verify the PDF directly.
  */
-function evaluateCriteria(
+export function evaluateCriteria(
   zoneCode: string,
   lotArea: number | null,
   heritageItem: boolean,
-  heritageAffected: boolean,
+  heritageAffected: boolean | null,
   proposed: ProposedValues,
   provisions: CDCScreenerProps['provisions']
 ): CDCCriterion[] {
@@ -72,9 +72,11 @@ function evaluateCriteria(
   // heritageAffected = any heritage flag (HCA, conservation area) → warn, not auto-fail
   criteria.push({
     label: 'Heritage item status',
-    result: heritageItem ? 'fail' : heritageAffected ? 'warn' : 'pass',
+    result: heritageItem ? 'fail' : heritageAffected === null ? 'unknown' : heritageAffected ? 'warn' : 'pass',
     detail: heritageItem
       ? 'Property is listed as a heritage item — CDC is not permitted. A Development Application (DA) is required.'
+      : heritageAffected === null
+      ? 'Heritage status not checked: the NSW planning map did not answer. Check the LEP Heritage Map before relying on CDC.'
       : heritageAffected
       ? 'Not a listed heritage item, but property is marked as heritage-affected (likely within a Heritage Conservation Area). CDC may still apply, but heritage constraints must be verified in the LEP and council DCP before issuing.'
       : 'Property is not listed as a heritage item and has no heritage flag.',

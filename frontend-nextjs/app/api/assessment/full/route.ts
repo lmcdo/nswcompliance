@@ -27,6 +27,7 @@ import { captureServerException } from '@/lib/posthog-server';
 import { encodeLandApplication } from '@/lib/dcp-land-application';
 import { encodeLandFacts } from '@/lib/lep-land-condition';
 
+import { heritageAnswer } from '@/lib/fact-answer';
 interface AssessmentRequest {
   address: string;
   coordinates?: { lat: number; lng: number };
@@ -119,7 +120,8 @@ export async function POST(request: NextRequest) {
     const zone = property.constraints?.zone || '';
     const lga = property.constraints?.lga || '';
     const formerCouncil = property.constraints?.formerCouncil || '';
-    const heritage = property.heritage?.isHeritage || false;
+    // Unknown heritage includes the heritage rules: they may apply.
+    const heritage = heritageAnswer(property.heritage) !== false;
     const precinctId = property.constraints?.precinctId;
     const lotArea = property.lotDimensions?.area ||
       (property.propertyArea ? parseFloat(property.propertyArea.replace(/[^\d.]/g, '')) : null);

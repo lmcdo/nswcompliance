@@ -241,7 +241,7 @@ function StrataDisplay({ data }: { data: Record<string, unknown> }) {
         .join(', ')
     : null;
 
-  if (!isStrata) {
+  if (!isStrata) { // unknown-ok: isStrata here is the site report's own is_strata, not the property lookup
     // A freehold house needs one sentence, not four rows repeating "not strata".
     return (
       <p className="text-sm text-slate-900">

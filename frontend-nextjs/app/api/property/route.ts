@@ -167,7 +167,7 @@ export async function GET(req: NextRequest) {
    }
 
    const acidRows = rows.filter(r => r.layer_type === 'acid_sulfate');
-   if (acidRows.length > 0 && !propertyData.constraints.acidSulfateSoils) {
+   if (acidRows.length > 0 && !propertyData.constraints.acidSulfateSoils) { // unknown-ok: fills the class only when the layers gave none
      propertyData.constraints.acidSulfateSoils = acidRows[0].value as string ?? 'Present';
    }
 
@@ -221,7 +221,7 @@ export async function GET(req: NextRequest) {
    console.warn('[Property API] Spatial overlay query failed:', spatialErr);
    notChecked('spatial_overlays');
    // The overlay is the acid sulfate fallback: with no class from the layers either, it is unknown.
-   if (!propertyData.constraints.acidSulfateSoils) notChecked('acid_sulfate');
+   if (!propertyData.constraints.acidSulfateSoils) notChecked('acid_sulfate'); // unknown-ok: this IS the not-checked marking
  }
  // Ku-ring-gai Greenweb is flagged by the LOT, not the address point: Part 18 applies to areas
  // identified as Greenweb, and a lot that only partly overlaps a patch is still bound. Separate

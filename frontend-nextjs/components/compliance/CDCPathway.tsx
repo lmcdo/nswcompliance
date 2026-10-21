@@ -10,6 +10,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 
+import { heritageAnswer } from '@/lib/fact-answer';
 interface CDCPathwayProps {
   propertyData: any;
   proposedWorkType?: 'deck' | 'garage' | 'extension' | 'other';
@@ -278,7 +279,9 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
     if (config.needsHeight && (!height || height <= 0)) return;
 
     const lotArea = propertyData?.lotDimensions?.area || 0;
-    const isHeritage = propertyData?.heritage?.isHeritage || false;
+    // null = the Heritage Map did not answer: never treated as "not heritage".
+    const heritageFact = heritageAnswer(propertyData?.heritage);
+    const isHeritage = heritageFact === true;
     const zone = propertyData?.constraints?.zone || '';
     const workLabel = workType.toLowerCase();
 
@@ -316,10 +319,12 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
           reqs.push({ pass: true, text: `Height ${height}m — at or under ${heightLimit}m exempt limit` });
         }
         reqs.push({
-          pass: !isHeritage,
-          warn: isHeritage,
+          pass: heritageFact === false,
+          warn: heritageFact !== false,
           text: isHeritage
             ? 'Heritage property — confirm with certifier before starting'
+            : heritageFact === null
+            ? 'Heritage not checked (the planning map did not answer) — confirm with certifier before starting'
             : `Zone ${zone} — permitted`,
         });
 
@@ -346,6 +351,8 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
       }
       if (isHeritage) {
         cdcBlockers.push('Heritage property — CDC not available, DA required');
+      } else if (heritageFact === null) {
+        cdcBlockers.push('Heritage not checked — the planning map did not answer, so we could not check whether CDC is available');
       }
 
       if (cdcBlockers.length === 0) {

@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { assessmentAPI } from '@/lib/assessment/api-client';
 import { PropertyData } from '@/lib/assessment/types';
 
+import { answer } from '@/lib/fact-answer';
 export function useProperty(address: string) {
  const [property, setProperty] = useState<PropertyData | null>(null);
  const [loading, setLoading] = useState(false);
@@ -33,7 +34,7 @@ export function useProperty(address: string) {
  lga: data.data.constraints.lga || 'Unknown',
  area: data.data.propertyData.propertyArea || 'Unknown',
  landValue: data.data.propertyData.landValue,
- heritage: data.data.constraints.heritage || false
+ heritage: answer(data.data.constraints.heritage)
  });
  } else {
  setError('Property not found');

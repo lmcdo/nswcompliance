@@ -625,7 +625,7 @@ async function queryLayer(
   }
 
   // Heritage filtering logic (unchanged)
-  if (!filters.heritage && layer !== 'condition' && layer !== 'precinct') {
+  if (!filters.heritage && layer !== 'condition' && layer !== 'precinct') { // unknown-ok: draft copy; same param contract as route.ts
     sql += ` AND (LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage'))`;
   } else if (filters.hca && layer !== 'condition' && layer !== 'precinct') {
     sql += ` AND (LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage'))`;

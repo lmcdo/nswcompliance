@@ -5,7 +5,8 @@ export interface PropertyData {
  lga: string;
  area: string;
  landValue?: string;
- heritage?: boolean;
+ /** null = the Heritage Map did not answer (not checked). */
+ heritage?: boolean | null;
 }
 
 export interface AssessmentContext {

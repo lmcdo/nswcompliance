@@ -1132,7 +1132,7 @@ async function queryLayer(
   //
   // Authority: EP&A Act s 3.42 - DCP precinct provisions apply to all properties within
   // precinct boundaries, independently of LEP heritage schedules (precinct maps define scope)
-  if (!filters.heritage && layer !== 'condition' && layer !== 'precinct') {
+  if (!filters.heritage && layer !== 'condition' && layer !== 'precinct') { // unknown-ok: callers send heritage=true when heritage is yes OR not checked (heritageAnswer !== false)
     // Property is not heritage - exclude all heritage provisions from generic/use-specific layers
     sql += ` AND ${NOT_HERITAGE_SQL}`;
   } else if (filters.hca && layer !== 'condition' && layer !== 'precinct') {

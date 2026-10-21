@@ -3,6 +3,7 @@
 import React from 'react';
 import { useProperty } from '@/hooks/assessment/useProperty';
 
+import { heritageAnswer, yesNo } from '@/lib/fact-answer';
 interface PropertyCardProps {
  address: string;
  onPropertyLoaded?: (property: any) => void;
@@ -85,7 +86,7 @@ export default function PropertyCard({ address, onPropertyLoaded }: PropertyCard
  </div>
  <div>
  <label className="text-sm text-gray-600">Heritage</label>
- <p className="font-medium">{property.heritage ? 'Yes' : 'No'}</p>
+ <p className="font-medium">{yesNo(heritageAnswer(property.heritage))}</p>
  </div>
  </div>
 

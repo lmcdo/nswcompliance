@@ -53,8 +53,8 @@ interface Props {
   zoneCode: string;           // e.g. "R2"
   lotArea?: number | null;    // m² — from property context
   heritageItem?: boolean;     // true = individually listed heritage item (LEP Schedule 5)
-  heritageAffected?: boolean; // true = any heritage flag (item OR conservation area)
-  isStrata?: boolean;         // true = strata unit — lot area figures are parent lot, not unit
+  heritageAffected?: boolean | null; // true = any heritage flag (item OR conservation area); null = not checked
+  isStrata?: boolean | null;         // true = strata unit — lot area figures are parent lot, not unit; null = not checked
 }
 
 export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = false, heritageAffected = false, isStrata = false }: Props) {
@@ -133,11 +133,11 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
 
       {expanded && (
         <CardContent className="pt-0">
-          {isStrata && (
+          {isStrata !== false && (
             <div className="mb-3 bg-orange-50 border border-orange-200 rounded px-3 py-2 flex items-start gap-2 text-xs">
               <Shield className="h-3.5 w-3.5 text-orange-500 flex-shrink-0 mt-0.5" />
               <span className="text-orange-800">
-                <span className="font-semibold">Strata unit — </span>
+                <span className="font-semibold">{isStrata ? 'Strata unit — ' : 'Strata status not checked — if this is a unit, '}</span>
                 Lot area figures below apply to the parent lot. For individual unit works (decks, fences within a lot), confirm area with your strata plan. Works affecting common property require owners corporation consent.
               </span>
             </div>
