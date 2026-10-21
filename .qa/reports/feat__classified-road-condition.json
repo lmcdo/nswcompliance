@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "13 live DCP rows say in their own words they apply only to land on a classified or State road, but reached every house in their council. New site flags state_road / classified_road from the TfNSW NSW Road Network Categorisation (legal State/Regional class) and the cadastre road corridor the lot touches; gate rules move those rows to the flags.",
-  "commit_hash": "6ae21bca",
+  "commit_hash": "306bbcb6",
   "files": [
     "frontend-nextjs/lib/lot-adjacency.ts",
     "frontend-nextjs/lib/classified-road.ts",
