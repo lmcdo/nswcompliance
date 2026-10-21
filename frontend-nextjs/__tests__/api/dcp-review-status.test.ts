@@ -55,8 +55,8 @@ describe('fetchDcpReviewStatus', () => {
     expect(sql).toMatch(/is_current = TRUE AND needs_review = TRUE/);
     // Only the monitor's own reason counts as an amendment; everything else
     // (a number that did not match the council's document) is counted apart.
-    expect(sql).toMatch(/AND review_reason = 'chapter_pdf_changed'\)\s+AS withheld_source_changed/);
-    expect(sql).toMatch(/AND review_reason IS DISTINCT FROM 'chapter_pdf_changed'\)\s+AS withheld_other/);
+    expect(sql).toMatch(/FILTER \(WHERE review_reason = 'chapter_pdf_changed'\)::int\s+AS withheld_source_changed/);
+    expect(sql).toMatch(/FILTER \(WHERE review_reason IS DISTINCT FROM 'chapter_pdf_changed'\)::int\s+AS withheld_other/);
   });
 
   test('a count arriving as a string (pg bigint) is still a number', async () => {

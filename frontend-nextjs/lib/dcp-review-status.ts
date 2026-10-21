@@ -29,14 +29,14 @@ export async function fetchDcpReviewStatus(slugs: string[]): Promise<DcpReviewSt
          EXISTS (SELECT 1 FROM dcp_chapter_registry
                  WHERE council = ANY($1) AND is_active = TRUE AND needs_extraction = TRUE)
            AS amendment_pending,
-         (SELECT count(*)::int FROM dcp_setback_controls
-          WHERE lga = ANY($1) AND is_current = TRUE AND needs_review = TRUE
-            AND review_reason = 'chapter_pdf_changed')
-           AS withheld_source_changed,
-         (SELECT count(*)::int FROM dcp_setback_controls
-          WHERE lga = ANY($1) AND is_current = TRUE AND needs_review = TRUE
-            AND review_reason IS DISTINCT FROM 'chapter_pdf_changed')
-           AS withheld_other`,
+         s.withheld_source_changed, s.withheld_other
+       FROM (SELECT
+               count(*) FILTER (WHERE review_reason = 'chapter_pdf_changed')::int
+                 AS withheld_source_changed,
+               count(*) FILTER (WHERE review_reason IS DISTINCT FROM 'chapter_pdf_changed')::int
+                 AS withheld_other
+             FROM dcp_setback_controls
+             WHERE lga = ANY($1) AND is_current = TRUE AND needs_review = TRUE) s`,
       [slugs],
     );
     const row = rows[0];
