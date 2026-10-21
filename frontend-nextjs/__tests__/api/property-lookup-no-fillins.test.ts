@@ -291,6 +291,21 @@ describe('pattern-book exclusions (lib/pattern-book-eligibility/check-exclusions
   });
 });
 
+describe('assessment findings (lib/assessment/reports.ts)', () => {
+  it('acid sulfate and landslide say "Not checked" when their source did not answer, "No" only when it did', async () => {
+    const { ReportGenerator } = await import('@/lib/assessment/reports');
+    const { HAZARD_NOT_CHECKED } = await import('@/lib/hazard-unchecked');
+    const env = async (constraints: any) =>
+      (await ReportGenerator.generateFindings({ property_data: { constraints } } as any, 's')).environmental_constraints;
+    const failed = await env({ notChecked: ['planning_layers', 'spatial_overlays'] });
+    expect(failed.acidSulfate).toBe(HAZARD_NOT_CHECKED);
+    expect(failed.landslide).toBe(HAZARD_NOT_CHECKED);
+    const answered = await env({ notChecked: [] });
+    expect(answered.acidSulfate).toBe('No');
+    expect(answered.landslide).toBe('No');
+  });
+});
+
 describe('fetchWithTimeout (lib/fetch-timeout.ts)', () => {
   const realFetch = global.fetch;
   afterEach(() => {
