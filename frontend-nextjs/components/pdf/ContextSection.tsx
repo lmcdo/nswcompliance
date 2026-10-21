@@ -280,7 +280,7 @@ export function ContextSection({
             </View>
             <View style={styles.contextTableRow}>
               <Text style={styles.tableCellLabel}>Bushfire Prone Land:</Text>
-              <Text style={styles.tableCellValue}>{environmental_constraints.bushfire_prone ? 'Yes' : (environmental_constraints.bushfire_prone === null ? HAZARD_NOT_CHECKED : 'No')}</Text>
+              <Text style={styles.tableCellValue}>{environmental_constraints.bushfire_prone ? 'Yes' : (environmental_constraints.bushfire_prone == null ? HAZARD_NOT_CHECKED : 'No')}</Text>
             </View>
             <View style={styles.contextTableRow}>
               <Text style={styles.tableCellLabel}>Acid Sulfate Soils:</Text>
@@ -303,7 +303,7 @@ export function ContextSection({
               <Text style={styles.tableCellValue}>
                 {environmental_constraints.mine_subsidence
                   ? `Yes${environmental_constraints.mine_subsidence_district ? ` — ${environmental_constraints.mine_subsidence_district}` : ''}`
-                  : (environmental_constraints.mine_subsidence === null ? HAZARD_NOT_CHECKED : 'No')}
+                  : (environmental_constraints.mine_subsidence == null ? HAZARD_NOT_CHECKED : 'No')}
               </Text>
             </View>
             <View style={styles.contextTableRow}>
@@ -315,12 +315,12 @@ export function ContextSection({
               <Text style={styles.tableCellValue}>
                 {environmental_constraints.contaminated_land
                   ? `Yes — Notified site within 500m${environmental_constraints.contaminated_site_name ? `: ${environmental_constraints.contaminated_site_name}` : ''}`
-                  : (environmental_constraints.contaminated_land === null ? HAZARD_NOT_CHECKED : 'No known sites within 500m')}
+                  : (environmental_constraints.contaminated_land == null ? HAZARD_NOT_CHECKED : 'No known sites within 500m')}
               </Text>
             </View>
             <View style={styles.contextTableRow}>
               <Text style={styles.tableCellLabel}>Drinking Water Catchment:</Text>
-              <Text style={styles.tableCellValue}>{environmental_constraints.drinking_water_catchment ? 'Yes' : (environmental_constraints.drinking_water_catchment === null ? HAZARD_NOT_CHECKED : 'No')}</Text>
+              <Text style={styles.tableCellValue}>{environmental_constraints.drinking_water_catchment ? 'Yes' : (environmental_constraints.drinking_water_catchment == null ? HAZARD_NOT_CHECKED : 'No')}</Text>
             </View>
             <View style={styles.contextTableRow}>
               <Text style={styles.tableCellLabel}>Terrestrial Biodiversity:</Text>

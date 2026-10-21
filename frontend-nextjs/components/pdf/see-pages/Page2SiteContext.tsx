@@ -122,7 +122,7 @@ export function Page2SiteContext({ computed }: { computed: SEEComputedData }) {
               label="Mine Subsidence:"
               value={environmental_constraints.mine_subsidence
                 ? `Yes${environmental_constraints.mine_subsidence_district ? ` — ${environmental_constraints.mine_subsidence_district}` : ''}`
-                : (environmental_constraints.mine_subsidence === null ? HAZARD_NOT_CHECKED : 'No')}
+                : (environmental_constraints.mine_subsidence == null ? HAZARD_NOT_CHECKED : 'No')}
             />
             <DataRow
               label="Landslide Risk:"
@@ -134,9 +134,9 @@ export function Page2SiteContext({ computed }: { computed: SEEComputedData }) {
               label="Contaminated Land:"
               value={environmental_constraints.contaminated_land
                 ? `Yes — notified site within 500m${environmental_constraints.contaminated_site_name ? `: ${environmental_constraints.contaminated_site_name}` : ''}${environmental_constraints.contaminated_management_class ? ` (${environmental_constraints.contaminated_management_class})` : ''}${environmental_constraints.contaminated_type ? ` — ${environmental_constraints.contaminated_type}` : ''}`
-                : (environmental_constraints.contaminated_land === null ? HAZARD_NOT_CHECKED : 'No known sites within 500m')}
+                : (environmental_constraints.contaminated_land == null ? HAZARD_NOT_CHECKED : 'No known sites within 500m')}
             />
-            <DataRow label="Drinking Water Catchment:" value={environmental_constraints.drinking_water_catchment ? 'Yes' : (environmental_constraints.drinking_water_catchment === null ? HAZARD_NOT_CHECKED : 'No')} />
+            <DataRow label="Drinking Water Catchment:" value={environmental_constraints.drinking_water_catchment ? 'Yes' : (environmental_constraints.drinking_water_catchment == null ? HAZARD_NOT_CHECKED : 'No')} />
             <DataRow label="Terrestrial Biodiversity:" value={environmental_constraints.terrestrial_biodiversity ? 'Yes' : 'No'} />
             <DataRow
               label="Coastal Management:"
