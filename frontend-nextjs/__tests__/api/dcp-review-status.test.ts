@@ -51,6 +51,8 @@ describe('fetchDcpReviewStatus', () => {
     // a retired chapter or a superseded row would raise a false warning.
     expect(sql).toMatch(/council = ANY\(\$1\)/);
     expect(sql).toMatch(/is_active = TRUE AND needs_extraction = TRUE/);
+    // A queued re-read with no new file must not read as "the plan has changed".
+    expect(sql).toMatch(/provisions_extracted_from_hash IS NOT NULL\s+AND content_hash IS DISTINCT FROM provisions_extracted_from_hash/);
     expect(sql).toMatch(/lga = ANY\(\$1\)/);
     expect(sql).toMatch(/is_current = TRUE AND needs_review = TRUE/);
     // Only the monitor's own reason counts as an amendment; everything else

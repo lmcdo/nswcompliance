@@ -11,7 +11,7 @@ import { query } from '@/lib/db';
  * just vanish and the page says nothing.
  */
 export interface DcpReviewStatus {
-  /** An active chapter is waiting to be re-read from a newer council file. */
+  /** An active chapter's served rules were read from an older file than the one we now hold. */
   amendment_pending: boolean;
   /** Current setback rows held back because the council's file changed (r2_monitor). */
   withheld_source_changed: number;
@@ -26,8 +26,14 @@ export async function fetchDcpReviewStatus(slugs: string[]): Promise<DcpReviewSt
   try {
     const { rows } = await query(
       `SELECT
+         -- Evidence of a source change, not just a queued re-read: the rules we
+         -- serve were read from a different file than the one we now hold (the
+         -- same test as DQ-70). needs_extraction alone is also set by a manual
+         -- re-read (dcp_queue_reread.py) with no new file (cross-review).
          EXISTS (SELECT 1 FROM dcp_chapter_registry
-                 WHERE council = ANY($1) AND is_active = TRUE AND needs_extraction = TRUE)
+                 WHERE council = ANY($1) AND is_active = TRUE AND needs_extraction = TRUE
+                   AND provisions_extracted_from_hash IS NOT NULL
+                   AND content_hash IS DISTINCT FROM provisions_extracted_from_hash)
            AS amendment_pending,
          s.withheld_source_changed, s.withheld_other
        FROM (SELECT
