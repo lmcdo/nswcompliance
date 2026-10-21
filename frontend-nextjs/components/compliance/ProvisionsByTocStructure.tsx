@@ -2162,7 +2162,7 @@ export function ProvisionsByTocStructure({
         </p>
       )}
       <DcpNotCoveredNotice notCovered={data?.meta?.not_covered} chapterPdfUrls={data?.meta?.chapter_pdf_urls} />
-      <DcpMayApplyBlock mayApply={data?.meta?.may_apply} />
+      <DcpMayApplyBlock mayApply={data?.meta?.may_apply} address={address} chapterPdfUrls={data?.meta?.chapter_pdf_urls} />
       <DcpFrontageFigureNotice items={data?.meta?.frontage_setback_figures} failed={data?.meta?.frontage_setback_figures_failed} />
 
       {landApplication?.status === 'partial' && (
