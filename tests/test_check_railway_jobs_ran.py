@@ -1,11 +1,10 @@
-"""check_railway_jobs_ran.judge: red on a crashed run, a failed deploy, an overdue run,
-or a status it does not know.
+"""check_railway_jobs_ran.judge: red on a crashed run, a missed run, a stuck run or
+deploy, a failed deploy, or anything it does not know.
 
-prior-art-checked: tests/test_railway_cron_drift.py covers schedules, not outcomes.
+prior-art-checked: tests/test_railway_cron_drift.py covers schedules, not runs.
 
-The SNAPSHOT rows are copied from `railway status --json` for production on
-2026-10-21 (~07:30 UTC), trimmed to the fields judge reads. That day the two
-maintenance jobs' latest deployments were FAILED with no build.
+SNAPSHOT is copied from Railway's API for production on 2026-10-21 (~07:40 UTC):
+each job's schedule, latest deployment, and its newest run (deploymentInstanceExecutions).
 """
 import os
 import sys
@@ -13,58 +12,89 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
-from check_railway_jobs_ran import judge  # noqa: E402
+from check_railway_jobs_ran import judge, last_due  # noqa: E402
 
-NOW = datetime(2026, 10, 21, 7, 30, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 21, 7, 40, tzinfo=timezone.utc)
 
 
-def _job(name, status, nxt, cron="0 3 * * *"):
-    return {"name": name, "cronSchedule": cron, "nextCronRunAt": nxt,
-            "latestDeployment": {"status": status} if status is not None else None}
+def _job(name, cron, run_at, run_status, deploy="SUCCESS", deploy_at="2026-10-21T06:22:08Z"):
+    runs = [{"createdAt": run_at, "status": run_status}] if run_at else []
+    return {"name": name, "cronSchedule": cron, "runs": runs,
+            "latestDeployment": {"status": deploy, "createdAt": deploy_at} if deploy else None}
 
 
 SNAPSHOT = [
-    _job("maintenance-mutation", "FAILED", "2026-11-01T06:00:00Z", "0 6 1 * *"),
-    _job("dcp-commit", "SUCCESS", "2026-10-21T09:00:00Z", "0 9 * * *"),
-    _job("dcp-extract", "SUCCESS", "2026-10-22T03:00:00Z", "0 3 * * *"),
-    _job("maintenance-security", "FAILED", "2026-10-26T09:00:00Z", "0 9 * * 1"),
-    _job("monitor-satellite", "SUCCESS", "2026-10-26T06:00:00Z", "0 6 * * 1"),
-    _job("dcp-monitor", "SUCCESS", "2026-11-01T02:00:00Z", "0 2 1,15 * *"),
-    _job("brief-drift-check", "SUCCESS", "2026-10-26T03:00:00Z", "0 3 * * 1"),
-    _job("monitor-watchdog", "SUCCESS", "2026-10-21T10:00:00Z", "0 10 * * 3"),
-    _job("nswcompliance", "SUCCESS", None, None),
-    _job("dcp-extract-all", "SUCCESS", None, None),
-    _job("property-alerts", "SUCCESS", None, None),
+    _job("maintenance-mutation", "0 6 1 * *", "2026-10-01T06:01:00Z", "CRASHED", "FAILED"),
+    _job("dcp-commit", "0 9 * * *", "2026-10-20T09:03:00Z", "CRASHED"),
+    _job("dcp-extract", "0 3 * * *", "2026-10-21T03:02:56Z", "CRASHED"),
+    _job("maintenance-security", "0 9 * * 1", "2026-10-19T09:02:00Z", "EXITED", "FAILED"),
+    _job("monitor-satellite", "0 6 * * 1", "2026-10-19T06:03:00Z", "EXITED"),
+    _job("dcp-monitor", "0 2 1,15 * *", "2026-10-15T02:00:00Z", "CRASHED"),
+    _job("brief-drift-check", "0 3 * * 1", "2026-10-19T03:00:00Z", "EXITED"),
+    _job("monitor-watchdog", "0 10 * * 3", "2026-10-14T10:02:00Z", "EXITED"),
+    _job("nswcompliance", None, None, None),
 ]
 
 
-def test_the_real_snapshot_flags_exactly_the_two_failed_deploys():
+def _names(problems):
+    return sorted({p.split(":")[0].strip() for p in problems})
+
+
+def test_the_real_snapshot_flags_exactly_the_five_bad_jobs():
     problems, checked = judge(SNAPSHOT, NOW)
-    assert checked == 8  # the three with no schedule are not judged
-    assert [p.split(":")[0].strip() for p in problems] == ["maintenance-mutation", "maintenance-security"]
-
-
-def test_a_crashed_run_is_red():
-    """The 2026-10-21 incident: dcp-extract crashing on every run."""
-    problems, _ = judge([_job("dcp-extract", "CRASHED", "2026-10-22T03:00:00Z")], NOW)
-    assert problems and "exited with an error" in problems[0]
-
-
-def test_an_overdue_run_is_red_after_the_grace():
-    late, _ = judge([_job("dcp-commit", "SUCCESS", "2026-10-21T05:00:00Z")], NOW)
-    on_time, _ = judge([_job("dcp-commit", "SUCCESS", "2026-10-21T06:00:00Z")], NOW)
-    assert late and "scheduler stopped" in late[0]
-    assert on_time == []
-
-
-def test_unknown_or_missing_state_is_red():
-    for status in (None, "", "SOMETHING_NEW"):
-        problems, _ = judge([_job("dcp-extract", status, "2026-10-22T03:00:00Z")], NOW)
-        assert problems, status
-    problems, _ = judge([_job("dcp-extract", "SUCCESS", None)], NOW)
-    assert problems and "no next run" in problems[0]
+    assert checked == 8  # the web app has no schedule and is not judged
+    assert _names(problems) == ["dcp-commit", "dcp-extract", "dcp-monitor",
+                                "maintenance-mutation", "maintenance-security"]
 
 
 def test_healthy_jobs_pass():
-    problems, checked = judge([j for j in SNAPSHOT if not j["name"].startswith("maintenance")], NOW)
-    assert problems == [] and checked == 6
+    healthy = [j for j in SNAPSHOT if j["name"] in ("monitor-satellite", "brief-drift-check", "monitor-watchdog")]
+    assert judge(healthy, NOW) == ([], 3)
+
+
+def test_a_missed_run_is_red_even_when_everything_says_success():
+    """Cross-review: status SUCCESS and a future next run, but the 03:00 run never started."""
+    problems, _ = judge([_job("dcp-extract", "0 3 * * *", "2026-10-20T03:02:00Z", "EXITED")], NOW)
+    assert problems and "none happened" in problems[0]
+
+
+def test_a_job_that_has_never_run_is_red():
+    problems, _ = judge([_job("new-job", "0 3 * * *", None, None)], NOW)
+    assert problems and "last run: never" in problems[0]
+
+
+def test_a_run_within_the_grace_is_not_yet_missed():
+    # due 07:00, now 07:40, grace 2h: not judged missed yet; yesterday's run is fine
+    assert judge([_job("j", "0 7 * * *", "2026-10-20T07:01:00Z", "EXITED")], NOW) == ([], 1)
+
+
+def test_stuck_runs_and_deploys_are_red():
+    run, _ = judge([_job("j", "0 1 * * *", "2026-10-21T01:00:00Z", "RUNNING")], NOW)  # 6h40 ago
+    dep, _ = judge([_job("j", "0 3 * * *", "2026-10-21T03:00:00Z", "EXITED", "BUILDING", "2026-10-20T20:00:00Z")], NOW)
+    assert run and "stuck" in run[0]
+    assert dep and "stuck" in dep[0]
+
+
+def test_unfinished_or_unknown_outcomes_are_red():
+    for status in ("SKIPPED", "REMOVED", "", "SOMETHING_NEW"):
+        problems, _ = judge([_job("j", "0 3 * * *", "2026-10-21T03:00:00Z", status)], NOW)
+        assert problems, status
+    problems, _ = judge([_job("j", "0 3 * * *", "2026-10-21T03:00:00Z", "EXITED", None)], NOW)
+    assert problems and "unknown" in problems[0]
+
+
+def test_last_due_for_every_schedule_in_use():
+    at = datetime(2026, 10, 21, 5, 40, tzinfo=timezone.utc)  # a Wednesday
+    assert last_due("0 3 * * *", at) == datetime(2026, 10, 21, 3, 0, tzinfo=timezone.utc)
+    assert last_due("0 2 1,15 * *", at) == datetime(2026, 10, 15, 2, 0, tzinfo=timezone.utc)
+    assert last_due("0 9 * * 1", at) == datetime(2026, 10, 19, 9, 0, tzinfo=timezone.utc)
+    assert last_due("0 6 1 * *", at) == datetime(2026, 10, 1, 6, 0, tzinfo=timezone.utc)
+    assert last_due("0 10 * * 3", at) == datetime(2026, 10, 14, 10, 0, tzinfo=timezone.utc)
+
+
+def test_the_alert_says_what_happened():
+    """The line is what a person reads at 6am: it must name the failure, not just 'unknown'."""
+    problems, _ = judge(SNAPSHOT, NOW)
+    text = "\n".join(problems)
+    assert "dcp-extract: last run (2026-10-21T03:02) exited with an error" in text
+    assert "maintenance-security: latest deploy FAILED" in text
