@@ -1,0 +1,75 @@
+{
+ "tier": "standard",
+ "justification": "Adds an outside-in check to the daily production alarm. A red result withholds the healthchecks.io ping and alerts the user, so a false red is noise and a false green hides a dead pipeline. Not Critical: read-only, no DB, no served output. Not Minor: it is the alarm that decides whether anyone hears about a crashed job.",
+ "commit_hash": "cbf1a263",
+ "files": [
+  "scripts/check_railway_jobs_ran.py",
+  "tests/test_check_railway_jobs_ran.py",
+  ".github/workflows/freshness-alarm.yml"
+ ],
+ "pre_impl": {
+  "existing_data": "none in the DB. Reads Railway's GraphQL project query (cronSchedule, nextCronRunAt, latestDeployment.status) for the production environment, with the account token CI already holds as RAILWAY_TOKEN.",
+  "assumption_mismatch": "Railway marks a cron job CRASHED when its last run exits non-zero and SUCCESS otherwise, but SUCCESS is also what a fresh deploy shows before its first run. So SUCCESS alone cannot prove a run happened; the overdue check on nextCronRunAt covers the 'never ran' case. A FAILED latest deployment may still leave an older active one running, so the message says 'runs older code or nothing' instead of claiming the job is down.",
+  "new_vs_existing": "Applies from the first freshness-alarm run after merge. Today's state is already red: maintenance-mutation and maintenance-security latest deployments FAILED with no build, so the first run will withhold the ping and the watchdog will alert."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_check_railway_jobs_ran.py -q -o addopts=",
+  "fails_when": "CRASHED stops counting as red, the overdue check is removed, or an unknown status passes",
+  "observed_red": "YES, forced three times: dropping CRASHED from BAD, disabling the overdue check, and disabling the unknown-status branch each failed one test. Restored green, 5 passed. Run against the real 2026-10-21 snapshot it reports 8 checked, 2 red (the two FAILED maintenance deploys)."
+ },
+ "functions": [
+  {
+   "name": "judge",
+   "file_line": "scripts/check_railway_jobs_ran.py:76",
+   "input": "list of service-instance dicts from the Railway API, plus the current UTC time",
+   "output": "list of plain-English problem lines and the count of scheduled jobs checked",
+   "if_none": "a missing latestDeployment or status is red; a missing nextCronRunAt on a scheduled job is red; an empty list gives checked=0, which main() treats as a failure"
+  },
+  {
+   "name": "fetch",
+   "file_line": "scripts/check_railway_jobs_ran.py:46",
+   "input": "RAILWAY_TOKEN account token read from the environment",
+   "output": "production service instances with name, cronSchedule, nextCronRunAt, latestDeployment",
+   "if_none": "an API error, network error or missing key makes main() exit 1: unreachable is not clean"
+  }
+ ],
+ "values": [
+  {
+   "value": "GRACE = 2 hours",
+   "read_at": "scripts/check_railway_jobs_ran.py:76",
+   "nullable": "no",
+   "guard_at": "N/A",
+   "if_missing": "a run more than 2h late is reported as 'scheduler stopped'"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "A job crashes at import on every run, as dcp-extract did",
+   "what_happens": "Railway shows CRASHED; this goes red; no ping; the user is alerted the next morning",
+   "mitigated": true,
+   "how": "BAD includes CRASHED",
+   "repro": "test_a_crashed_run_is_red"
+  },
+  {
+   "scenario": "Railway's scheduler stops firing a job while its status still reads SUCCESS",
+   "what_happens": "nextCronRunAt stays in the past; red after 2h",
+   "mitigated": true,
+   "how": "overdue check in judge",
+   "repro": "test_an_overdue_run_is_red_after_the_grace"
+  },
+  {
+   "scenario": "Railway adds a new status name, or the token or API shape changes",
+   "what_happens": "an unknown status, or a fetch error, would otherwise read as clean",
+   "mitigated": true,
+   "how": "unknown status is red; fetch errors and zero jobs found exit 1",
+   "repro": "test_unknown_or_missing_state_is_red"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes -- the first freshness-alarm run after merge will be red on the two FAILED maintenance deploys until they are redeployed; that red is correct."
+ }
+}
