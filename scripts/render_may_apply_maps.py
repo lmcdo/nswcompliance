@@ -94,8 +94,14 @@ def save_png(page: fitz.Page, clip: fitz.Rect, path: Path) -> tuple[int, int]:
 def main() -> None:
     areas = json.loads(SOURCE.read_text(encoding="utf-8"))["areas"]
     cur = psycopg2.connect(_env("DATABASE_URL"), options="-c statement_timeout=30000").cursor()
-    cur.execute("select council, chapter_key, r2_public_pdf_url from dcp_chapter_registry where r2_public_pdf_url is not null")
-    urls = {(c, k): u for c, k, u in cur.fetchall()}
+    # Current version only; one row per chapter, or the chapter is skipped (never a guessed version).
+    cur.execute("select council, chapter_key, r2_public_pdf_url from dcp_chapter_registry"
+                " where r2_public_pdf_url is not null and is_active")
+    rows = cur.fetchall()
+    seen: dict[tuple, set] = {}
+    for c, k, u in rows:
+        seen.setdefault((c, k), set()).add(u)
+    urls = {key: next(iter(us)) for key, us in seen.items() if len(us) == 1}
     OUT.mkdir(parents=True, exist_ok=True)
     for old in OUT.glob("*.png"):  # a rerun must not leave images from an earlier, looser run
         old.unlink()
