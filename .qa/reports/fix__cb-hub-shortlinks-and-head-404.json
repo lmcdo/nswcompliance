@@ -1,11 +1,12 @@
 {
  "tier": "standard",
  "justification": "Changes what the DCP monitor treats as a council's current document for Canterbury-Bankstown (68 active chapters) and how every council's HEAD check reacts to a 404. After merge the next monitor run re-points 4 registry URLs and queues re-extraction for 3 chapters whose content changed, through the existing url_migrated path and review queue. Not Critical: no new query or write path; the existing diff_urls/url_migrated code does the writing. Not Minor: it decides which version of a council's rules we serve.",
- "commit_hash": "b69aec3a",
+ "commit_hash": "996739b6",
  "files": [
   "scripts/hub_scrapers/canterbury_bankstown.py",
   "scripts/r2_monitor.py",
-  "tests/test_cb_scraper_follows_short_links.py"
+  "tests/test_cb_scraper_follows_short_links.py",
+  "tests/test_canterbury_bankstown_hub_live.py"
  ],
  "pre_impl": {
   "existing_data": "dcp_chapter_registry rows for canterbury_bankstown (council_url, content_hash, check_failures). Measured live 2026-10-21, read-only: of 52 short-linked chapters 49 hash-identical to the council's current file, 3 different (1.1, 7.3, 7.6); 16 guides have no short link and are unaffected.",
@@ -15,7 +16,7 @@
  "falsifiable_check": {
   "command": "python -m pytest tests/test_cb_scraper_follows_short_links.py -q -o addopts=",
   "fails_when": "the scraper stops following cb.city short links, matches them fuzzily onto a neighbouring chapter, or head_request stops retrying a HEAD 404 as a GET",
-  "observed_red": "YES, forced twice. Disabling the short-link branch failed 3 tests; restoring the 405-only fallback failed 2. Restored green: 6 passed, 96 across the neighbouring monitor/scraper test files. Live dry run against the real hub page: 70 links found, 66 matched, no key matched twice, 4 migrations."
+  "observed_red": "YES, forced twice. Disabling the short-link branch failed 3 tests; restoring the 405-only fallback failed 2. Restored green: 6 passed, 96 across the neighbouring monitor/scraper test files. Live dry run against the real hub page: 70 links found, 66 matched, no key matched twice, 4 migrations. Live integration test (pytest -m integration tests/test_canterbury_bankstown_hub_live.py) passes against the real hub page: all 5 sample keys resolve via short links."
  },
  "functions": [
   {

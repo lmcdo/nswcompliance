@@ -54,6 +54,8 @@ def _match_by_chapter_number(major: str, minor: str, expected_keys: set[str]) ->
     share 60% of their words, which that matcher accepts, and a wrong match here would
     swap one chapter's document for another's.
     """
+    if not (major and minor and major.isdigit() and minor.isdigit()):
+        return None
     prefix = f"chapter-{int(major)}-{int(minor)}-"
     hits = [k for k in expected_keys if k.startswith(prefix)]
     return hits[0] if len(hits) == 1 else None
