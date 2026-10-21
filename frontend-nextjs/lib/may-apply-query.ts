@@ -45,11 +45,16 @@ export function areasInChapter(councilSlug: string | null | undefined, chapterKe
 }
 
 /**
- * ONE select per area. Current rows the address route does NOT serve: switched off (v2_is_actionable = FALSE), or
- * an area rule with no outline (precinct layer, v2_precinct_id NULL), which the route's precinct layer returns to
- * nobody. A row the property is already served appears in the main list, so it is not repeated here. TOC lines and
- * rows with no layer are left out (no layer = no record of why the row was held back).
- * Measured 2026-10-21 over the 46 areas: 172 rows with the switched-off test alone, 1,427 with both.
+ * ONE select per area. Current rows the address route does NOT serve to THIS property: switched off
+ * (v2_is_actionable = FALSE), an area rule with no outline (precinct layer, v2_precinct_id NULL), which the route's
+ * precinct layer returns to nobody, or an area rule keyed to an outline this property is not inside ($6 = the
+ * property's precinct ids, the same list the route's precinct layer uses). A row the property is already served
+ * appears in the main list, so it is not repeated here. TOC lines and rows with no layer are left out (no layer = no
+ * record of why the row was held back).
+ * Measured 2026-10-21 over the 46 areas: 172 rows with the switched-off test alone, 1,427 with both. The outline
+ * test (51 areas) adds Marrickville 2.26 (an outline narrower than the section's land: the pink precinct blocks, not
+ * the Sound Category street lines) and 96 Carinya Road rows keyed to 'C-B former Bankstown' -- its one suburb,
+ * Picnic Point, is inside that outline, so they stay in the main list there.
  */
 export function buildMayApplySql(selectColumns: string): string {
   return `
@@ -61,7 +66,10 @@ export function buildMayApplySql(selectColumns: string): string {
       AND (rp.pdf_page BETWEEN $3::int AND $4::int OR rp.id = ANY($5::bigint[]))
       AND (rp.v2_provision_type IS NULL OR rp.v2_provision_type != 'TOC')
       AND rp.v2_dcp_layer IS NOT NULL
-      AND (rp.v2_is_actionable = FALSE OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL))
+      AND (rp.v2_is_actionable = FALSE
+           OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL)
+           OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NOT NULL
+               AND NOT (rp.v2_precinct_id = ANY($6::text[]))))
     ORDER BY rp.pdf_page, rp.id
     LIMIT ${MAY_APPLY_ROW_CAP + 1}`;
 }
@@ -78,18 +86,26 @@ type Query = (sql: string, params: unknown[]) => Promise<{ rows: any[] }>;
  */
 export async function loadMayApply(
   query: Query,
-  opts: { councilSlug: string | null; suburb: string | null | undefined; selectColumns: string; mapRow: (row: any) => any },
+  opts: {
+    councilSlug: string | null;
+    suburb: string | null | undefined;
+    selectColumns: string;
+    mapRow: (row: any) => any;
+    /** The property's precinct ids (comma-separated, as the route's precinct filter takes them); none = empty. */
+    precinctIds?: string | null;
+  },
 ): Promise<MayApplyArea[]> {
   const areas = mayApplyAreasFor(opts.councilSlug, opts.suburb);
   if (areas.length === 0 || !opts.councilSlug) return [];
   const sql = buildMayApplySql(opts.selectColumns);
   const suburb = normaliseSuburb(opts.suburb);
+  const precinctIds = (opts.precinctIds ?? '').split(',').map((x) => x.trim()).filter(Boolean);
   const out: MayApplyArea[] = [];
   for (const a of areas) {
     const sel = a.row_selector ?? {};
     const hasRange = Number.isInteger(sel.pdf_page_from) && Number.isInteger(sel.pdf_page_to);
     // An empty range is (1, 0) so BETWEEN matches nothing; an area with neither selector matches nothing.
-    const params = [opts.councilSlug, a.chapter_key, hasRange ? sel.pdf_page_from : 1, hasRange ? sel.pdf_page_to : 0, sel.ids ?? []];
+    const params = [opts.councilSlug, a.chapter_key, hasRange ? sel.pdf_page_from : 1, hasRange ? sel.pdf_page_to : 0, sel.ids ?? [], precinctIds];
     let provisions: any[] | null;
     try {
       const rows = (await query(sql, params)).rows;

@@ -1830,16 +1830,20 @@
         },
         "rows_withheld": 21,
         "suburbs": [
-          "ENMORE",
           "DULWICH HILL",
+          "ENMORE",
+          "LEICHHARDT",
           "MARRICKVILLE",
-          "LEICHHARDT"
+          "NEWTOWN",
+          "PETERSHAM",
+          "STANMORE",
+          "SYDENHAM"
         ],
         "postcodes": [],
         "reason_code": "SOUND_AREA_MAP",
         "applies_to_quote": "Section 2.26 applies to land identified as a Sound Category Area in the following maps",
         "applies_to_page": 1,
-        "evidence": "Figures 2.26.1-2.26.5 named Enmore Road, Dulwich Hill, Marrickville North, Marrickville Town Centre, Leichhardt (south of Parramatta Road only). 21 rows is_current AND v2_is_actionable, p1-7. NOT in not_covered_2026-10-15.json, so currently served; entry presumes they are withheld too."
+        "evidence": "Figures 2.26.1-2.26.5 named Enmore Road, Dulwich Hill, Marrickville North, Marrickville Town Centre, Leichhardt (south of Parramatta Road only). Suburbs measured 2026-10-21 from NSW address register points within 150 m of each figure's IWLEP 2022 Special Entertainment Precinct polygons (the Category 1-3 lines run along the streets and lots around the pink): Enmore Road -> NEWTOWN 943, ENMORE 655; Marrickville North -> MARRICKVILLE, ENMORE 70, NEWTOWN 44; Marrickville Town Centre -> MARRICKVILLE, SYDENHAM 39; Dulwich Hill -> DULWICH HILL; Leichhardt south of Parramatta Rd -> PETERSHAM 345, STANMORE 86, LEICHHARDT (18 inside the pink itself). Lots inside the pink are served the 21 rows (outline 'Marrickville 2.26 entertainment precinct'); this box covers the rest of these suburbs."
       }
     ],
     "ENMORE": [
@@ -1854,16 +1858,20 @@
         },
         "rows_withheld": 21,
         "suburbs": [
-          "ENMORE",
           "DULWICH HILL",
+          "ENMORE",
+          "LEICHHARDT",
           "MARRICKVILLE",
-          "LEICHHARDT"
+          "NEWTOWN",
+          "PETERSHAM",
+          "STANMORE",
+          "SYDENHAM"
         ],
         "postcodes": [],
         "reason_code": "SOUND_AREA_MAP",
         "applies_to_quote": "Section 2.26 applies to land identified as a Sound Category Area in the following maps",
         "applies_to_page": 1,
-        "evidence": "Figures 2.26.1-2.26.5 named Enmore Road, Dulwich Hill, Marrickville North, Marrickville Town Centre, Leichhardt (south of Parramatta Road only). 21 rows is_current AND v2_is_actionable, p1-7. NOT in not_covered_2026-10-15.json, so currently served; entry presumes they are withheld too."
+        "evidence": "Figures 2.26.1-2.26.5 named Enmore Road, Dulwich Hill, Marrickville North, Marrickville Town Centre, Leichhardt (south of Parramatta Road only). Suburbs measured 2026-10-21 from NSW address register points within 150 m of each figure's IWLEP 2022 Special Entertainment Precinct polygons (the Category 1-3 lines run along the streets and lots around the pink): Enmore Road -> NEWTOWN 943, ENMORE 655; Marrickville North -> MARRICKVILLE, ENMORE 70, NEWTOWN 44; Marrickville Town Centre -> MARRICKVILLE, SYDENHAM 39; Dulwich Hill -> DULWICH HILL; Leichhardt south of Parramatta Rd -> PETERSHAM 345, STANMORE 86, LEICHHARDT (18 inside the pink itself). Lots inside the pink are served the 21 rows (outline 'Marrickville 2.26 entertainment precinct'); this box covers the rest of these suburbs."
       }
     ],
     "LEICHHARDT": [
@@ -1878,16 +1886,20 @@
         },
         "rows_withheld": 21,
         "suburbs": [
-          "ENMORE",
           "DULWICH HILL",
+          "ENMORE",
+          "LEICHHARDT",
           "MARRICKVILLE",
-          "LEICHHARDT"
+          "NEWTOWN",
+          "PETERSHAM",
+          "STANMORE",
+          "SYDENHAM"
         ],
         "postcodes": [],
         "reason_code": "SOUND_AREA_MAP",
         "applies_to_quote": "Section 2.26 applies to land identified as a Sound Category Area in the following maps",
         "applies_to_page": 1,
-        "evidence": "Figures 2.26.1-2.26.5 named Enmore Road, Dulwich Hill, Marrickville North, Marrickville Town Centre, Leichhardt (south of Parramatta Road only). 21 rows is_current AND v2_is_actionable, p1-7. NOT in not_covered_2026-10-15.json, so currently served; entry presumes they are withheld too."
+        "evidence": "Figures 2.26.1-2.26.5 named Enmore Road, Dulwich Hill, Marrickville North, Marrickville Town Centre, Leichhardt (south of Parramatta Road only). Suburbs measured 2026-10-21 from NSW address register points within 150 m of each figure's IWLEP 2022 Special Entertainment Precinct polygons (the Category 1-3 lines run along the streets and lots around the pink): Enmore Road -> NEWTOWN 943, ENMORE 655; Marrickville North -> MARRICKVILLE, ENMORE 70, NEWTOWN 44; Marrickville Town Centre -> MARRICKVILLE, SYDENHAM 39; Dulwich Hill -> DULWICH HILL; Leichhardt south of Parramatta Rd -> PETERSHAM 345, STANMORE 86, LEICHHARDT (18 inside the pink itself). Lots inside the pink are served the 21 rows (outline 'Marrickville 2.26 entertainment precinct'); this box covers the rest of these suburbs."
       }
     ],
     "MARRICKVILLE": [
@@ -1935,16 +1947,132 @@
         },
         "rows_withheld": 21,
         "suburbs": [
-          "ENMORE",
           "DULWICH HILL",
+          "ENMORE",
+          "LEICHHARDT",
           "MARRICKVILLE",
-          "LEICHHARDT"
+          "NEWTOWN",
+          "PETERSHAM",
+          "STANMORE",
+          "SYDENHAM"
         ],
         "postcodes": [],
         "reason_code": "SOUND_AREA_MAP",
         "applies_to_quote": "Section 2.26 applies to land identified as a Sound Category Area in the following maps",
         "applies_to_page": 1,
-        "evidence": "Figures 2.26.1-2.26.5 named Enmore Road, Dulwich Hill, Marrickville North, Marrickville Town Centre, Leichhardt (south of Parramatta Road only). 21 rows is_current AND v2_is_actionable, p1-7. NOT in not_covered_2026-10-15.json, so currently served; entry presumes they are withheld too."
+        "evidence": "Figures 2.26.1-2.26.5 named Enmore Road, Dulwich Hill, Marrickville North, Marrickville Town Centre, Leichhardt (south of Parramatta Road only). Suburbs measured 2026-10-21 from NSW address register points within 150 m of each figure's IWLEP 2022 Special Entertainment Precinct polygons (the Category 1-3 lines run along the streets and lots around the pink): Enmore Road -> NEWTOWN 943, ENMORE 655; Marrickville North -> MARRICKVILLE, ENMORE 70, NEWTOWN 44; Marrickville Town Centre -> MARRICKVILLE, SYDENHAM 39; Dulwich Hill -> DULWICH HILL; Leichhardt south of Parramatta Rd -> PETERSHAM 345, STANMORE 86, LEICHHARDT (18 inside the pink itself). Lots inside the pink are served the 21 rows (outline 'Marrickville 2.26 entertainment precinct'); this box covers the rest of these suburbs."
+      }
+    ],
+    "NEWTOWN": [
+      {
+        "area_id": "marrickville-2-26-sound-category-areas",
+        "council": "marrickville",
+        "chapter_key": "part2-s26-entertainment-precincts",
+        "title": "Part 2.26 Special Entertainment Precincts: Sound Category Areas",
+        "row_selector": {
+          "pdf_page_from": 1,
+          "pdf_page_to": 7
+        },
+        "rows_withheld": 21,
+        "suburbs": [
+          "DULWICH HILL",
+          "ENMORE",
+          "LEICHHARDT",
+          "MARRICKVILLE",
+          "NEWTOWN",
+          "PETERSHAM",
+          "STANMORE",
+          "SYDENHAM"
+        ],
+        "postcodes": [],
+        "reason_code": "SOUND_AREA_MAP",
+        "applies_to_quote": "Section 2.26 applies to land identified as a Sound Category Area in the following maps",
+        "applies_to_page": 1,
+        "evidence": "Figures 2.26.1-2.26.5 named Enmore Road, Dulwich Hill, Marrickville North, Marrickville Town Centre, Leichhardt (south of Parramatta Road only). Suburbs measured 2026-10-21 from NSW address register points within 150 m of each figure's IWLEP 2022 Special Entertainment Precinct polygons (the Category 1-3 lines run along the streets and lots around the pink): Enmore Road -> NEWTOWN 943, ENMORE 655; Marrickville North -> MARRICKVILLE, ENMORE 70, NEWTOWN 44; Marrickville Town Centre -> MARRICKVILLE, SYDENHAM 39; Dulwich Hill -> DULWICH HILL; Leichhardt south of Parramatta Rd -> PETERSHAM 345, STANMORE 86, LEICHHARDT (18 inside the pink itself). Lots inside the pink are served the 21 rows (outline 'Marrickville 2.26 entertainment precinct'); this box covers the rest of these suburbs."
+      }
+    ],
+    "PETERSHAM": [
+      {
+        "area_id": "marrickville-2-26-sound-category-areas",
+        "council": "marrickville",
+        "chapter_key": "part2-s26-entertainment-precincts",
+        "title": "Part 2.26 Special Entertainment Precincts: Sound Category Areas",
+        "row_selector": {
+          "pdf_page_from": 1,
+          "pdf_page_to": 7
+        },
+        "rows_withheld": 21,
+        "suburbs": [
+          "DULWICH HILL",
+          "ENMORE",
+          "LEICHHARDT",
+          "MARRICKVILLE",
+          "NEWTOWN",
+          "PETERSHAM",
+          "STANMORE",
+          "SYDENHAM"
+        ],
+        "postcodes": [],
+        "reason_code": "SOUND_AREA_MAP",
+        "applies_to_quote": "Section 2.26 applies to land identified as a Sound Category Area in the following maps",
+        "applies_to_page": 1,
+        "evidence": "Figures 2.26.1-2.26.5 named Enmore Road, Dulwich Hill, Marrickville North, Marrickville Town Centre, Leichhardt (south of Parramatta Road only). Suburbs measured 2026-10-21 from NSW address register points within 150 m of each figure's IWLEP 2022 Special Entertainment Precinct polygons (the Category 1-3 lines run along the streets and lots around the pink): Enmore Road -> NEWTOWN 943, ENMORE 655; Marrickville North -> MARRICKVILLE, ENMORE 70, NEWTOWN 44; Marrickville Town Centre -> MARRICKVILLE, SYDENHAM 39; Dulwich Hill -> DULWICH HILL; Leichhardt south of Parramatta Rd -> PETERSHAM 345, STANMORE 86, LEICHHARDT (18 inside the pink itself). Lots inside the pink are served the 21 rows (outline 'Marrickville 2.26 entertainment precinct'); this box covers the rest of these suburbs."
+      }
+    ],
+    "STANMORE": [
+      {
+        "area_id": "marrickville-2-26-sound-category-areas",
+        "council": "marrickville",
+        "chapter_key": "part2-s26-entertainment-precincts",
+        "title": "Part 2.26 Special Entertainment Precincts: Sound Category Areas",
+        "row_selector": {
+          "pdf_page_from": 1,
+          "pdf_page_to": 7
+        },
+        "rows_withheld": 21,
+        "suburbs": [
+          "DULWICH HILL",
+          "ENMORE",
+          "LEICHHARDT",
+          "MARRICKVILLE",
+          "NEWTOWN",
+          "PETERSHAM",
+          "STANMORE",
+          "SYDENHAM"
+        ],
+        "postcodes": [],
+        "reason_code": "SOUND_AREA_MAP",
+        "applies_to_quote": "Section 2.26 applies to land identified as a Sound Category Area in the following maps",
+        "applies_to_page": 1,
+        "evidence": "Figures 2.26.1-2.26.5 named Enmore Road, Dulwich Hill, Marrickville North, Marrickville Town Centre, Leichhardt (south of Parramatta Road only). Suburbs measured 2026-10-21 from NSW address register points within 150 m of each figure's IWLEP 2022 Special Entertainment Precinct polygons (the Category 1-3 lines run along the streets and lots around the pink): Enmore Road -> NEWTOWN 943, ENMORE 655; Marrickville North -> MARRICKVILLE, ENMORE 70, NEWTOWN 44; Marrickville Town Centre -> MARRICKVILLE, SYDENHAM 39; Dulwich Hill -> DULWICH HILL; Leichhardt south of Parramatta Rd -> PETERSHAM 345, STANMORE 86, LEICHHARDT (18 inside the pink itself). Lots inside the pink are served the 21 rows (outline 'Marrickville 2.26 entertainment precinct'); this box covers the rest of these suburbs."
+      }
+    ],
+    "SYDENHAM": [
+      {
+        "area_id": "marrickville-2-26-sound-category-areas",
+        "council": "marrickville",
+        "chapter_key": "part2-s26-entertainment-precincts",
+        "title": "Part 2.26 Special Entertainment Precincts: Sound Category Areas",
+        "row_selector": {
+          "pdf_page_from": 1,
+          "pdf_page_to": 7
+        },
+        "rows_withheld": 21,
+        "suburbs": [
+          "DULWICH HILL",
+          "ENMORE",
+          "LEICHHARDT",
+          "MARRICKVILLE",
+          "NEWTOWN",
+          "PETERSHAM",
+          "STANMORE",
+          "SYDENHAM"
+        ],
+        "postcodes": [],
+        "reason_code": "SOUND_AREA_MAP",
+        "applies_to_quote": "Section 2.26 applies to land identified as a Sound Category Area in the following maps",
+        "applies_to_page": 1,
+        "evidence": "Figures 2.26.1-2.26.5 named Enmore Road, Dulwich Hill, Marrickville North, Marrickville Town Centre, Leichhardt (south of Parramatta Road only). Suburbs measured 2026-10-21 from NSW address register points within 150 m of each figure's IWLEP 2022 Special Entertainment Precinct polygons (the Category 1-3 lines run along the streets and lots around the pink): Enmore Road -> NEWTOWN 943, ENMORE 655; Marrickville North -> MARRICKVILLE, ENMORE 70, NEWTOWN 44; Marrickville Town Centre -> MARRICKVILLE, SYDENHAM 39; Dulwich Hill -> DULWICH HILL; Leichhardt south of Parramatta Rd -> PETERSHAM 345, STANMORE 86, LEICHHARDT (18 inside the pink itself). Lots inside the pink are served the 21 rows (outline 'Marrickville 2.26 entertainment precinct'); this box covers the rest of these suburbs."
       }
     ]
   },

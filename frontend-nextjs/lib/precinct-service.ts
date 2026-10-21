@@ -303,6 +303,10 @@ async function findNearestPrecinct(
       FROM dcp_precinct_boundaries
       WHERE LOWER(lga) = LOWER($3)
       AND LOWER(former_council) = ANY($4::text[])
+      -- Snap only to the tiling precincts. An outline taken from an LEP map layer (e.g. Marrickville 2.26
+      -- entertainment precincts) is exact and overlays the tiles: a point outside it is outside, and snapping to it
+      -- would serve its rules -- and drop the lot's own tile.
+      AND extraction_method IS DISTINCT FROM 'nsw_planning_local_provisions'
       AND ST_DWithin(
         ST_Transform(boundary, 3857),
         ST_Transform(ST_SetSRID(ST_MakePoint($1, $2), 4326), 3857),

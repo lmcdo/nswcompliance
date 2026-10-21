@@ -141,6 +141,22 @@ PROFILES = {
             },
         },
     },
+    # Marrickville DCP 2011 s2.26 (2026-10-21): the IWLEP 2022 'Inner West Special Entertainment Precinct' polygons the
+    # five figures cover (Enmore Road, Dulwich Hill, Marrickville North, Marrickville, and the Leichhardt polygons on
+    # former Marrickville land south of Parramatta Road), unioned. lga/former_council as the 46 Marrickville tiles
+    # already loaded. Every Marrickville address sits in a tile, so "outside" means: not in this outline.
+    "marrickville": {
+        "lga": "Inner West", "former_council": "Marrickville",
+        "envelope": (151.12, -33.93, 151.20, -33.87),
+        "files": {
+            "marrickville_2_26_sep.geojson": {
+                "ids": {"Marrickville 2.26 entertainment precinct"},
+                "outside_means_not_in_these_ids": True,
+                "outside": {"7 Phillip St Newtown (side street off Enmore Rd)": (151.173976, -33.898147)},
+                "inside": {"89 Enmore Rd Newtown": (151.174588, -33.898498)},
+            },
+        },
+    },
 }
 
 LOOKUP_SQL = """SELECT precinct_id FROM dcp_precinct_boundaries

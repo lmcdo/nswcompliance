@@ -55,10 +55,46 @@ describe('meta.may_apply', () => {
     expect(calls).toHaveLength(areas.length);
     expect(calls[0][0]).toContain('LIMIT 401');
     // withheld rows only: a served row is already in the main list (no double listing)
-    expect(calls[0][0]).toContain("(rp.v2_is_actionable = FALSE OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL))");
+    expect(calls[0][0]).toContain('rp.v2_is_actionable = FALSE');
+    expect(calls[0][0]).toContain("OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL)");
+    // ... or keyed to an outline this property is not inside ($6 = its precinct ids)
+    expect(calls[0][0]).toContain("AND NOT (rp.v2_precinct_id = ANY($6::text[]))");
     expect(calls[0][1][0]).toBe(council);
+    expect(calls[0][1][5]).toEqual([]); // no precinct sent = empty list, never undefined
     // never merged into the property's own provisions
     expect(body.data.summary.total_provisions).toBe(0);
+  });
+
+  describe('an area whose rules are keyed to an outline (Marrickville 2.26)', () => {
+    const mk = 'marrickville';
+    const area = (DATA[mk]?.ENMORE ?? []).find((a) => a.area_id === 'marrickville-2-26-sound-category-areas')!;
+    const SEP = 'Marrickville 2.26 entertainment precinct';
+    // The database's answer for a row keyed to SEP: withheld from this property unless SEP is one of its precincts.
+    const KEYED = { ...ROW, v2_dcp_layer: 'precinct', v2_precinct_id: SEP };
+    beforeEach(() => {
+      client.query.mockImplementation(async (sql: string, params: unknown[]) => ({
+        rows: isMayApplySql(sql) && !(params[5] as string[]).includes(SEP) ? [KEYED] : [],
+      }));
+    });
+    const mayApplyFor = async (extra: Record<string, string>) => {
+      const { GET } = await import('@/app/api/provisions/for-property/route');
+      const body = await (await GET(req({ former_council: mk, suburb: 'Enmore', ...extra }))).json();
+      return body.meta.may_apply.filter((a: { area_id: string }) => a.area_id === area.area_id);
+    };
+
+    it('is listed for Enmore', () => expect(area).toBeTruthy());
+
+    it('shows the rows to a house outside the outline', async () => {
+      const got = await mayApplyFor({ precinct_id: '8_' });
+      expect(got).toHaveLength(1);
+      expect(got[0].provisions).toHaveLength(1);
+    });
+
+    it('does not repeat them for a lot inside the outline (served in the main list instead)', async () => {
+      expect(await mayApplyFor({ precinct_id: `8_,${SEP}` })).toEqual([]);
+      const call = client.query.mock.calls.find(([sql]: [string]) => isMayApplySql(sql))!;
+      expect(call[1][5]).toEqual(['8_', SEP]);
+    });
   });
 
   it('returns none for another suburb', async () => {

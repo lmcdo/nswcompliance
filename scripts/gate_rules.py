@@ -460,6 +460,12 @@ EXTRA_KEY_RULES += [
      "strategy": {"type": "constant", "precinct_id": "E1"}},
 ]
 # ---- end lane-gates keys ----
+try:  # area rules live in a sibling file (this one is over 500 lines); scripts/ on sys.path or the repo root
+    from gate_rules_areas import AREA_GATE_RULES, AREA_KEY_RULES
+except ImportError:  # pragma: no cover
+    from scripts.gate_rules_areas import AREA_GATE_RULES, AREA_KEY_RULES
+GATE_RULES += AREA_GATE_RULES
+EXTRA_KEY_RULES += AREA_KEY_RULES
 
 
 def apply_gate_rules(cur, council: str | None, apply: bool, only: set[str] | None = None) -> list[tuple]:

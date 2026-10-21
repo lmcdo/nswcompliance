@@ -228,6 +228,32 @@ def test_cb_11_14_riverwood_keyed_to_its_lep_outline():
     assert ids == {"11.14"}
 
 
+def test_marrickville_2_26_keyed_to_the_sep_outline_and_moved_to_precinct_layer():
+    import json
+    from pathlib import Path
+    from shapely.geometry import Point, shape
+    import import_cb_centre_boundaries as imp
+    rule = next(r for r in dpk.RULES if r["name"] == "marrickville_2_26_entertainment_precincts")
+    assert rule["council"] == "marrickville"
+    assert rule["where"] == "source_chapter_key = 'part2-s26-entertainment-precincts'"
+    assert rule["strategy"] == {"type": "constant", "precinct_id": "Marrickville 2.26 entertainment precinct"}
+    layer = next(r for r in g.GATE_RULES if r["name"] == "marrickville_2_26_layer")
+    assert "part2-s26-entertainment-precincts" in layer["where"] and "v2_dcp_layer = 'generic'" in layer["where"]
+    assert layer["set"] == {"v2_dcp_layer": "precinct"}
+    prof = imp.PROFILES["marrickville"]
+    assert (prof["lga"], prof["former_council"]) == ("Inner West", "Marrickville")  # as the 46 Marrickville tiles
+    src = Path(__file__).resolve().parent.parent / "data" / "inner_west_precincts" / "marrickville_2_26_sep.geojson"
+    rows = imp.load_rows(src, prof)  # aborts unless the file holds exactly the profile's ids
+    assert [r["precinct_id"] for r in rows] == ["Marrickville 2.26 entertainment precinct"]
+    assert 450_000 < rows[0]["area_sqm"] < 500_000
+    poly = shape(json.loads(src.read_text(encoding="utf-8"))["features"][0]["geometry"])
+    spec = prof["files"][src.name]
+    assert all(poly.contains(Point(*xy)) for xy in spec["inside"].values())
+    assert not any(poly.contains(Point(*xy)) for xy in spec["outside"].values())
+    # North of Parramatta Road is Leichhardt DCP land (Figure 2.26.5 caption): nothing north of the road's line.
+    assert poly.bounds[3] < -33.8875
+
+
 def test_woollahra_d4_edgecliff_keyed_to_its_lep_outline_and_moved_to_precinct_layer():
     import json
     from pathlib import Path
