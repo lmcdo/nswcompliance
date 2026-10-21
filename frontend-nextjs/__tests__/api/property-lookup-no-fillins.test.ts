@@ -207,6 +207,25 @@ describe('/api/property when only the lot shape also answers', () => {
   });
 });
 
+describe('strata status', () => {
+  const realFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = realFetch;
+    jest.restoreAllMocks();
+  });
+
+  it('a lot service that answers with no lot records leaves strata unknown, not "No"', async () => {
+    mockDb.query.mockResolvedValue({ rows: [] });
+    mockDb.connect.mockResolvedValue({ query: async () => ({ rows: [] }), release() {} });
+    for (const m of ['log', 'warn', 'error'] as const) jest.spyOn(console, m).mockImplementation(() => {});
+    global.fetch = jest.fn((input: any, init: any) => (String(input).includes('/ePlanningApi/lot?')
+      ? Promise.resolve(new Response('[]', { status: 200 }))
+      : replay(String(input), init))) as any;
+    const { body } = await lookup();
+    expect(body.data.strataInfo.isStrata).toBeNull();
+  });
+});
+
 describe('site-specific LEP clauses', () => {
   const realFetch = global.fetch;
   afterEach(() => {

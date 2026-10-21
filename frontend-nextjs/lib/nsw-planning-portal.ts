@@ -1168,7 +1168,8 @@ export class NSWPlanningPortalService {
    settle(this.getLotGeometry(searchResult.propId), 'lot_shape'),
  ]);
  const layers: PlanningLayer[] = layersAnswer ?? [];
- let lotAnswered = initialLotGeometry !== undefined;
+ // Only a real lot record can show "not strata"; no record (or no answer) leaves it unknown.
+ let lotRecord = initialLotGeometry != null;
 
  // Fallback: when the top-scored propId has no valuation (strata unit propIds),
  // try other candidates from a broader search until one has valuation data.
@@ -1192,7 +1193,7 @@ export class NSWPlanningPortalService {
        propertyData = candidateData;
        const candidateLot = await settle(this.getLotGeometry(candidate.propId), 'lot_shape');
        lotGeometry = candidateLot ?? null;
-       lotAnswered = candidateLot !== undefined;
+       lotRecord = candidateLot != null;
        break;
      }
    }
@@ -1211,7 +1212,7 @@ export class NSWPlanningPortalService {
  const unitMatch = address.match(/^(\d+)\//i) ?? address.match(/^(?:unit|apt|apartment|flat)\s+(\d+)/i);
  const strataSign = !!lotPlan || valuationFallback || !!unitMatch;
  const strataInfo: StrataInfo = {
-   isStrata: strataSign ? true : lotAnswered ? false : null,
+   isStrata: strataSign ? true : lotRecord ? false : null,
    source: lotPlan ? 'lot_plan'
          : (valuationFallback && unitMatch) ? 'combined'
          : valuationFallback               ? 'valuation_fallback'

@@ -22,6 +22,7 @@ import { calculateLotDimensions, type LotDimensions } from './geometry/lot-dimen
 import { deriveAnefBuildingAcceptability } from './see/propertyUtils';
 import { detectCornerLot, type CornerLotResult } from './geometry/corner-lot-detection';
 import type { HazardKey } from './hazard-unchecked';
+import { withinLookupBudget } from './fetch-timeout';
 import { LOCATION_NOT_FOUND, VALUATION_UNAVAILABLE, ADDRESS_SEARCH_UNAVAILABLE } from './nsw-planning-portal';
 
 // Re-export TOD/HIA interfaces for use in components
@@ -249,11 +250,11 @@ export class PropertyDataService {
  // Match precinct for DCP filtering - precinct data includes formerCouncil from spatial match
  if (precinctModule) {
    try {
-     const precinctData = await precinctModule.getPrecinctForAddress(
+     const precinctData = await withinLookupBudget(precinctModule.getPrecinctForAddress(
        propertyData.address,
        constraints.lga || '',
        { lat, lon }
-     );
+     ));
 
      if (precinctData) {
        constraints.precinctId = precinctData.precinctId;
@@ -282,7 +283,9 @@ export class PropertyDataService {
  // The lot's own stored former council beats both guesses above: the suburb/postcode mapping put
  // St Peters, Enmore and Lewisham in the wrong former council (see getFormerCouncilForPoint).
  if (precinctModule && constraints.lga?.toLowerCase().includes('inner west')) {
-   const lotCouncil = await precinctModule.getFormerCouncilForPoint(lat, lon);
+   // Bounded by the lookup's time limit; past it, the suburb mapping above stands (logged).
+   const lotCouncil = await withinLookupBudget(precinctModule.getFormerCouncilForPoint(lat, lon))
+     .catch((error) => { console.error('[PropertyDataService] Lot former council lookup failed:', error); return null; });
    if (lotCouncil) {
      if (constraints.formerCouncil && constraints.formerCouncil.toLowerCase() !== lotCouncil.toLowerCase()) {
        console.warn(`[PropertyDataService] former council: lot says ${lotCouncil}, mapping said ${constraints.formerCouncil}`);
@@ -296,10 +299,10 @@ export class PropertyDataService {
  // Must run after suburbModule so formerCouncil is populated.
  if (!constraints.precinctId && constraints.formerCouncil && precinctModule) {
    try {
-     const localityPrecinctIds = await precinctModule.getPrecinctFromLocality(
+     const localityPrecinctIds = await withinLookupBudget(precinctModule.getPrecinctFromLocality(
        propertyData.address,
        constraints.formerCouncil,
-     );
+     ));
      if (localityPrecinctIds && localityPrecinctIds.length > 0) {
        constraints.precinctId = localityPrecinctIds.join(',');
        constraints.precinctName = localityPrecinctIds[0];
