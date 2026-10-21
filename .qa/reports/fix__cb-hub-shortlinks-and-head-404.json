@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes what the DCP monitor treats as a council's current document for Canterbury-Bankstown (68 active chapters) and how every council's HEAD check reacts to a 404. After merge the next monitor run re-points 4 registry URLs and queues re-extraction for 3 chapters whose content changed, through the existing url_migrated path and review queue. Not Critical: no new query or write path; the existing diff_urls/url_migrated code does the writing. Not Minor: it decides which version of a council's rules we serve.",
- "commit_hash": "d5ca467c",
+ "commit_hash": "28feff3b",
  "files": [
   "scripts/hub_scrapers/canterbury_bankstown.py",
   "scripts/r2_monitor.py",
