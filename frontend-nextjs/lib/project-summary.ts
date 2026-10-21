@@ -142,7 +142,7 @@ export type Comparison =
 
 /** Plain arithmetic on the passed-through number. No pass / fail wording. */
 export function compareFigure(planNumber: number | null, input: string): Comparison {
-  if (planNumber === null) return { kind: 'none' };
+  if (planNumber == null) return { kind: 'none' };
   const trimmed = input.trim();
   if (trimmed === '') return { kind: 'none' };
   const mine = Number(trimmed);

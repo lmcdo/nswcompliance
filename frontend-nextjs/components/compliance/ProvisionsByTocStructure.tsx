@@ -318,7 +318,7 @@ export function ProvisionsByTocStructure({
     if (!sessionToken) return;
     if (primaryDevType && devType === '') {
       setDevType(primaryDevType);
-      if (getSharedProjectType() === null) setSharedProjectType(primaryDevType);
+      if (getSharedProjectType() == null) setSharedProjectType(primaryDevType);
     }
     if (savedWorksText && devWorksText === '') {
       setDevWorksText(savedWorksText);
@@ -1964,7 +1964,7 @@ export function ProvisionsByTocStructure({
       )}
 
       {/* Structured DCP controls — extracted numeric values (setbacks, parking, landscaping etc.) */}
-      {controlsDevType === null ? (
+      {controlsDevType == null ? (
         <p className="mb-4 text-sm text-gray-700" data-testid="dcp-no-controls-for-type">{NO_CONTROLS_FOR_TYPE_TEXT}</p>
       ) : (
         <DcpStructuredControls formerCouncil={formerCouncil} devType={controlsDevType} chapterTextLoaded cornerStatus={cornerStatus(propertyData?.cornerLot)} />

@@ -97,7 +97,7 @@ function YourProposal({ row }: { row: SummaryRow }) {
   const [value, setValue] = useState('');
   // One comparison per row, and only when the row holds exactly one entry with a single number.
   const entry = row.entries.length === 1 ? row.entries[0] : null;
-  if (!entry || entry.number === null) {
+  if (!entry || entry.number == null) {
     return <td className="px-2 py-2 align-top text-xs text-slate-400">No number to compare with</td>;
   }
   const result = compareFigure(entry.number, value);
@@ -184,7 +184,7 @@ export function YourProjectSummaryView(p: YourProjectSummaryViewProps) {
                 {p.lepRows.map((r) => <RowView key={r.key} row={r} />)}
                 {p.unmapped ? (
                   <tr className="border-t border-slate-100"><td colSpan={5} className="px-2 py-2 text-xs text-slate-600" data-testid="unmapped">{NO_CONTROLS_FOR_TYPE_TEXT}</td></tr>
-                ) : p.dcpRows === null ? (
+                ) : p.dcpRows == null ? (
                   <tr className="border-t border-slate-100"><td colSpan={5} className="px-2 py-2 text-xs text-slate-500">Loading council plan controls…</td></tr>
                 ) : (
                   p.dcpRows.map((r) => <RowView key={r.key} row={r} />)
