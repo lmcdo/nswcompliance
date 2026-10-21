@@ -412,7 +412,10 @@ def main_precincts(cfg: dict, out: Path, only: set | None = None) -> int:
     # Compact: all ten plus their union came to 6 MB indented (the repo's limit is 2 MB). Vertices thinned by 0.25 m
     # (the fit is ~4 m positional) and rounded to 1e-6 degrees (~0.1 m); rounding can cross rings, so it is repaired
     # (buffer 0) and rounded once more.
-    rnd = lambda geo: json.loads(json.dumps(mapping(geo)), parse_float=lambda v: round(float(v), 6))  # noqa: E731
+    def _round6(number_text: str) -> float:  # json.loads hands parse_float the number's text, never None
+        return round(float(number_text or 0), 6)
+
+    rnd = lambda geo: json.loads(json.dumps(mapping(geo)), parse_float=_round6)  # noqa: E731
     for f in feats:
         f["geometry"] = rnd(shape(rnd(shape(f["geometry"]).simplify(2.5e-6, preserve_topology=True))).buffer(0))
     (out / f"{stem}.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats},
