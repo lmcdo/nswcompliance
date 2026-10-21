@@ -1,0 +1,92 @@
+{
+ "tier": "standard",
+ "justification": "Changes what a property page says about setback numbers. A false warning over-warns (fail closed); a missing warning lets numbers vanish unexplained, which is the bug. Not Critical: no write, no change to which numbers are served. Not Minor: user-facing wording on a compliance surface.",
+ "commit_hash": "f025ef9f",
+ "files": [
+  "frontend-nextjs/lib/dcp-review-status.ts",
+  "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
+  "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+  "frontend-nextjs/__tests__/api/dcp-review-status.test.ts",
+  "frontend-nextjs/__tests__/components/dcp-review-notice.test.tsx",
+  "frontend-nextjs/__tests__/api/dcp-structured-controls.test.ts",
+  "frontend-nextjs/__tests__/dcp-citation-links.test.ts"
+ ],
+ "pre_impl": {
+  "existing_data": "dcp_chapter_registry.needs_extraction (set by r2_monitor on a source change) and dcp_setback_controls.needs_review (rows excluded at scripts/conveyancing_db.py:677-686). Measured 2026-10-22 read-only: bayside 2 and canterbury_bankstown 9 current rows withheld; canterbury_bankstown 3 chapters flagged after today's monitor run.",
+  "assumption_mismatch": "The plan assumed the existing 'Amendment detected' line covered every council. It renders only after ProvisionsByTocStructure's early return (:1548), which a council with zero provisions never passes, so setback-only councils got nothing.",
+  "new_vs_existing": "Applies on deploy. canterbury_bankstown shows the warning at once (3 flagged chapters, 9 withheld rows); bayside shows '2 controls are held back'."
+ },
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/api/dcp-review-status.test.ts __tests__/components/dcp-review-notice.test.tsx __tests__/dcp-citation-links.test.ts",
+  "fails_when": "review_status is dropped from either response, a failed check reads as nothing pending, the needs_extraction / is_current filters are loosened, the count is hidden, or the unknown state is silent, or a row held for a non-amendment reason is called an amendment",
+  "observed_red": "YES, 10 mutants applied one at a time, each killed: both response branches dropping review_status, error returning {false,0}, needs_extraction IS NOT NULL, is_current dropped, count not coerced, null state silent, withheld-only hidden, count not shown, fallback removed. Restored green. Second round after cross-review, 5 more killed: source-change count taking every reason, NULL reason dropped from the other count, other reasons called an amendment, other-only hidden, other count not shown."
+ },
+ "functions": [
+  {
+   "name": "fetchDcpReviewStatus",
+   "file_line": "frontend-nextjs/lib/dcp-review-status.ts:21",
+   "input": "the council slugs returned by getLgaSlugs for this request",
+   "output": "an object with amendment_pending and withheld_controls, or null",
+   "if_none": "no slugs or any DB error -> null (unknown), never {false,0}"
+  },
+  {
+   "name": "ReviewNotice",
+   "file_line": "frontend-nextjs/components/compliance/DcpStructuredControls.tsx:69",
+   "input": "the review_status field taken from the structured-controls response",
+   "output": "amber warning, 'could not check' line, or nothing",
+   "if_none": "undefined (older backend) -> nothing; null -> says it could not check"
+  }
+ ],
+ "values": [
+  {
+   "value": "review_status",
+   "read_at": "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+   "nullable": "yes",
+   "guard_at": "ReviewNotice",
+   "if_missing": "absent = nothing shown; null = 'could not check' shown"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "tell the setback panel whether this council has a source change waiting for review and how many numbers are withheld",
+   "file_line": "frontend-nextjs/lib/dcp-review-status.ts:24",
+   "where_clause": "council = ANY($1) AND is_active AND needs_extraction; lga = ANY($1) AND is_current AND needs_review split by review_reason = 'chapter_pdf_changed' vs IS DISTINCT FROM"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Every setback row of a council is withheld (bayside after its new edition is flagged)",
+   "what_happens": "has_controls false; the empty branch still shows 'Amendment detected — 42 controls are held back'",
+   "mitigated": true,
+   "how": "review_status on the empty response + notice in every branch",
+   "repro": "structured-controls carries review_status > when every row was withheld"
+  },
+  {
+   "scenario": "The review status database query fails or times out",
+   "what_happens": "panel says it could not check; controls still served",
+   "mitigated": true,
+   "how": "null distinct from {false,0}",
+   "repro": "a failed check is sent as null, not dropped"
+  },
+  {
+   "scenario": "Frontend deploys before/after a backend without the field",
+   "what_happens": "no extra line is shown on the panel",
+   "mitigated": true,
+   "how": "undefined branch",
+   "repro": "an older backend without the field shows nothing"
+  },
+  {
+   "scenario": "A setback row is held back because our number did not match the council's document (114 of 192 measured 2026-10-22)",
+   "what_happens": "the panel says it is held back until checked against the council's plan, and does not say an amendment was detected",
+   "mitigated": true,
+   "how": "withheld_source_changed counts only review_reason = 'chapter_pdf_changed'; everything else is withheld_other",
+   "repro": "rows held for another reason are NEVER called an amendment"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes -- load a canterbury_bankstown and a bayside address on prod; the setback panel shows the amber line."
+ }
+}

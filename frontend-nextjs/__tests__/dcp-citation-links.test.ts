@@ -50,7 +50,7 @@ describe('the DCP tab does not contradict itself', () => {
     expect(child).toContain('fallback');
     const branch = child.slice(child.indexOf('if (!data?.has_controls)'));
     expect(branch.slice(0, branch.indexOf('}'))).not.toBe('');
-    expect(branch).toContain('return <>{fallback}</>;');
+    expect(branch).toContain('{fallback}</>;');
   });
 });
 
@@ -110,7 +110,7 @@ describe('citation links', () => {
     expect(card).not.toContain('available_dev_types ?? []');
     const branch = card.slice(card.indexOf('if (!data?.has_controls)'));
     expect(branch.indexOf('otherTypes === undefined'))
-      .toBeLessThan(branch.indexOf('return <>{fallback}</>;'));
+      .toBeLessThan(branch.indexOf('{fallback}</>;'));
   });
 
   it('the council-level empty state is not decided by a dev-type-scoped flag', () => {
@@ -121,7 +121,7 @@ describe('citation links', () => {
     const card = read('components/compliance/DcpStructuredControls.tsx');
     expect(card).toContain('available_dev_types');
     const branch = card.slice(card.indexOf('if (!data?.has_controls)'));
-    const scoped = branch.slice(0, branch.indexOf('return <>{fallback}</>;'));
+    const scoped = branch.slice(0, branch.indexOf('{fallback}</>;'));
     expect(scoped).toContain('otherTypes.length > 0');
   });
 });

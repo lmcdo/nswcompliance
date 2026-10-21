@@ -19,6 +19,7 @@ import {
   DcpControlRow,
   DcpControlsUnavailableError,
 } from '@/lib/dcp-controls-client';
+import { fetchDcpReviewStatus } from '@/lib/dcp-review-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -203,9 +204,13 @@ export async function GET(request: NextRequest) {
     //   2. is_current is strict (measured: zero NULL rows, no served change).
     // The registry PDF map is per-council by construction, so the old
     // cross-council leak sentinel is structurally unnecessary here.
-    const results = await Promise.all(
-      lgaSlugs.map((slug) => fetchDcpControls(slug)),
-    );
+    // review_status runs beside the controls fetch: a flagged row is excluded from
+    // `results`, so this is the only way the page can say WHY numbers are missing.
+    // null = the check itself failed (the panel says so); never "nothing pending".
+    const [results, reviewStatus] = await Promise.all([
+      Promise.all(lgaSlugs.map((slug) => fetchDcpControls(slug))),
+      fetchDcpReviewStatus(lgaSlugs),
+    ]);
 
     // Each row keeps its OWN result's PDF map and metadata — flattening the
     // per-council maps by chapter_key alone could attach one former
@@ -236,6 +241,7 @@ export async function GET(request: NextRequest) {
         has_controls: false,
         available_dev_types: availableDevTypes,
         categories: [],
+        review_status: reviewStatus,
       });
     }
 
@@ -330,6 +336,7 @@ export async function GET(request: NextRequest) {
       as_at: asAt?.as_at ?? null,
       as_at_line: asAt?.as_at_line ?? null,
       categories,
+      review_status: reviewStatus,
     });
   } catch (err) {
     if (err instanceof DcpControlsUnavailableError) {
