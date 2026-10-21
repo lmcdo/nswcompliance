@@ -17,6 +17,7 @@ import React, { useState } from 'react';
 import useSWR from 'swr';
 import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import { DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
+import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
 import {
   DEFAULT_PROJECT_TYPE,
   resolveControlsDevType,
@@ -78,6 +79,8 @@ function EntryCells({ entry }: { entry: SummaryEntry }) {
         ) : (
           <span className="text-slate-500" data-testid="no-link">{entry.citation}</span>
         )}
+        {/* Same mark as DcpStructuredControls: these control rows are never citation-checked. */}
+        {' '}<CitationUncheckedBadge checked={false} />
       </td>
       <td className="px-2 py-2 align-top text-xs text-slate-600">
         {entry.words ? (
