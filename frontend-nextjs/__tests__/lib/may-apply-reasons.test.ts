@@ -1,9 +1,9 @@
 import { MAY_APPLY_REASONS, reasonText, normaliseSuburb, suburbFromAddress } from '@/lib/may-apply-reasons';
 
 describe('may-apply-reasons', () => {
-  it('has text for the five codes and null for unknown', () => {
+  it('has text for the seven codes and null for unknown', () => {
     expect(Object.keys(MAY_APPLY_REASONS).sort()).toEqual(
-      ['DRAWING_NOT_MATCHED', 'LOT_LIST_UNPROVEN', 'MAP_NOT_PUBLISHED', 'SOUND_AREA_MAP', 'WORDS_ONLY'],
+      ['DRAWING_NOT_MATCHED', 'LOT_LIST_UNPROVEN', 'MAP_NOT_PUBLISHED', 'NOT_YET_MAPPED', 'PART_MAPPED', 'SOUND_AREA_MAP', 'WORDS_ONLY'],
     );
     expect(reasonText('WORDS_ONLY')).toBe('The plan describes this area in words only, with no map.');
     expect(reasonText('NOPE')).toBeNull();

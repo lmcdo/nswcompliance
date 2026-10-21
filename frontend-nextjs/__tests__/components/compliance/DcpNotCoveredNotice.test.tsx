@@ -77,3 +77,11 @@ describe('DcpNotCoveredNotice page link', () => {
     expect(a?.textContent).not.toContain('page 95');
   });
 });
+
+describe('getNotCovered reason fallback', () => {
+  it('every listed chapter has a reason sentence', () => {
+    for (const council of Object.keys(notCoveredData)) {
+      for (const c of getNotCovered(council)?.chapters ?? []) expect([council, c.chapter_key, Boolean(c.reason_text)]).toEqual([council, c.chapter_key, true]);
+    }
+  });
+});

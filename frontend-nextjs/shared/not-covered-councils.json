@@ -7,14 +7,6 @@
       "reason_code": "WORDS_ONLY",
       "page": null,
       "count_hint": 1
-    },
-    {
-      "chapter_key": "chapter-d-precinct-guidelines",
-      "title": "Chapter D Precinct Guidelines: contents line",
-      "reason": "Chapter D Precinct Guidelines: contents line -- the chapter's p2 contents row; applies to no single precinct. Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
-      "reason_code": "WORDS_ONLY",
-      "page": null,
-      "count_hint": 1
     }
   ],
   "canterbury_bankstown": [
@@ -122,7 +114,7 @@
       "chapter_key": "amendment-1-george-upward-streets",
       "title": "George and Upward Streets site (Leichhardt DCP Amendment 1)",
       "reason": "Site DCP 'George & Upward Streets, Leichhardt DCP 2014' -- no outline of the site; was served across Leichhardt (audit run2: 32/1-15 Barr St Balmain)",
-      "reason_code": "WORDS_ONLY",
+      "reason_code": "LOT_LIST_UNPROVEN",
       "page": null,
       "count_hint": 108
     },
@@ -168,7 +160,7 @@
       "chapter_key": "parramatta-dcp-2023-full",
       "title": "Parramatta DCP 2023 Part 8 section introductions (local centres, neighbourhood precincts, special character areas, specific sites) and the p1537 waste controls",
       "reason": "Parramatta DCP 2023 Part 8 section introductions (local centres, neighbourhood precincts, special character areas, specific sites) and the p1537 waste controls -- area-limited Part 8 rows with no outline of the union their section applies to. Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
-      "reason_code": "WORDS_ONLY",
+      "reason_code": "NOT_YET_MAPPED",
       "page": null,
       "count_hint": 16
     }

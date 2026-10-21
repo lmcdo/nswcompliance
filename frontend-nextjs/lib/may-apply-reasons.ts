@@ -12,6 +12,7 @@ export const MAY_APPLY_REASONS: Record<string, string> = {
   WORDS_ONLY: 'The plan describes this area in words only, with no map.',
   SOUND_AREA_MAP: 'The plan shows this area only on its noise (sound category) maps, which we have not mapped.',
   PART_MAPPED: 'We check this from the map for most land, but not for the part the plan describes here.',
+  NOT_YET_MAPPED: 'The plan names this area, but we have not drawn it on the map yet.',
   LOT_LIST_UNPROVEN: 'The plan lists the lots in this area, but we could not match that list to the official lot records.',
 };
 

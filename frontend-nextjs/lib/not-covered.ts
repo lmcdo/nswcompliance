@@ -41,7 +41,8 @@ export function getNotCovered(formerCouncil: string | null | undefined): NotCove
       title: r.title,
       reason: r.reason,
       reason_code: r.reason_code ?? null,
-      reason_text: reasonText(r.reason_code),
+      // Never a line without a reason: an unknown or missing code reads as the general one.
+      reason_text: reasonText(r.reason_code) ?? reasonText('NOT_YET_MAPPED'),
       page: typeof r.page === 'number' ? r.page : null,
     })) };
 }
