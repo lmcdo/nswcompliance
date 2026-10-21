@@ -16,7 +16,7 @@ semgrep>=1.172.0
 # tests/test_mutmut_pin_matches_its_cli.py enforces this; .github/dependabot.yml ignores
 # mutmut majors.
 mutmut>=2.5,<3
-pytest>=8.0
+pytest>=9.1.1
 hypothesis>=6.0
 icontract>=2.7.3
 pydantic>=2.13.5
