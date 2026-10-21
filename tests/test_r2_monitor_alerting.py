@@ -154,21 +154,21 @@ from r2_monitor import _council_verified  # noqa: E402
 
 
 def test_no_checkable_chapter_is_not_verified():
-    assert _council_verified(checkable=0, checked=0, changed=0, failed=0) is False
+    assert _council_verified(active=0, checked=0, changed=0, failed=0) is False
 
 
 def test_a_skipped_chapter_blocks_the_stamp():
     # a chapter still 429 after its retry is skipped without counting as failed
-    assert _council_verified(checkable=3, checked=2, changed=0, failed=0) is False
+    assert _council_verified(active=3, checked=2, changed=0, failed=0) is False
 
 
 def test_every_chapter_checked_and_unchanged_is_verified():
-    assert _council_verified(checkable=3, checked=3, changed=0, failed=0) is True
+    assert _council_verified(active=3, checked=3, changed=0, failed=0) is True
 
 
 def test_a_change_or_a_failure_blocks_the_stamp():
-    assert _council_verified(checkable=3, checked=3, changed=1, failed=0) is False
-    assert _council_verified(checkable=3, checked=2, changed=0, failed=1) is False
+    assert _council_verified(active=3, checked=3, changed=1, failed=0) is False
+    assert _council_verified(active=3, checked=2, changed=0, failed=1) is False
 
 
 def test_every_check_path_counts_toward_the_council():
@@ -185,4 +185,13 @@ def test_every_check_path_counts_toward_the_council():
     assert bumps, "no results['checked'] increments found -- has the counter changed?"
     unpaired = [lines[i].strip() for i in bumps if "council_checked += 1" not in lines[i + 1]]
     assert not unpaired, f"{len(unpaired)} check path(s) not counted in council_checked"
-    assert "_council_verified(council_checkable, council_checked" in body
+    assert "_council_verified(council_active, council_checked" in body
+
+
+def test_a_hub_only_chapter_is_counted_before_its_skip():
+    """Cross-review 2026-10-21: counting only chapters with a council_url let a council
+    with 1 linked and 20 hub-only chapters be stamped verified for the whole DCP."""
+    src = open(os.path.join(os.path.dirname(__file__), "..", "scripts", "r2_monitor.py"),
+               encoding="utf-8").read()
+    body = src[src.index("def run_monitor("):]
+    assert body.index("council_active += 1") < body.index('results["skipped_no_url"] += 1')

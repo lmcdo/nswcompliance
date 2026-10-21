@@ -1,14 +1,14 @@
 {
  "tier": "standard",
  "justification": "Changes when a production cron writes instrument_currency.verified_at, a date the site shows users as 'Last verified' (InstrumentCurrency.tsx, ProvisionsByTocStructure.tsx). The bug served a false verified date for eight councils. Not Critical: no new query, no change to the upsert itself, and the change can only make the monitor stamp LESS often. Not Minor: it decides a user-facing provenance claim.",
- "commit_hash": "74345e99",
+ "commit_hash": "0e836781",
  "files": [
   "scripts/r2_monitor.py",
   "tests/test_r2_monitor_alerting.py"
  ],
  "pre_impl": {
   "existing_data": "instrument_currency (council, instrument_key='dcp', verified_at) and dcp_chapter_registry (is_active, council_url, url_last_checked). Measured live 2026-10-21, read-only: bayside, burwood, camden, canada_bay, fairfield, ryde, the_hills and the_hills_shire have 0 active chapters with a council_url and verified_at 2026-10-15.",
-  "assumption_mismatch": "The old condition assumed a council with zero failures had been checked. A council whose every chapter is hub-only skips them all and passes trivially. A chapter still 429 after its retry is skipped with no counter at all. Both now block the stamp.",
+  "assumption_mismatch": "The old condition assumed a council with zero failures had been checked. A council whose every chapter is hub-only skips them all and passes trivially. A chapter still 429 after its retry is skipped with no counter at all. Both now block the stamp. Cross-review then showed the first version still stamped a council on its linked chapters alone while others were hub-only; the denominator is now every active chapter.",
   "new_vs_existing": "Only future runs. The eight false 2026-10-15 stamps already in the table are NOT changed by this PR; correcting them is a separate, user-approved production write."
  },
  "falsifiable_check": {
@@ -27,20 +27,20 @@
  ],
  "values": [
   {
-   "value": "council_checkable / council_checked",
-   "read_at": "scripts/r2_monitor.py:1337",
+   "value": "council_active / council_checked",
+   "read_at": "scripts/r2_monitor.py:1340",
    "nullable": "no",
    "guard_at": "N/A -- ints initialised to 0 per council",
-   "if_missing": "the council is not stamped, the run log says how many chapters were checked of how many, and the site shows the older date or 'Not yet verified'"
+   "if_missing": "the council is not stamped, the run log says how many of its active chapters were checked, and the site shows the older date or 'Not yet verified'"
   }
  ],
  "queries": [],
  "break_it": [
   {
-   "scenario": "A council has some hub-only chapters and some with a council_url",
-   "what_happens": "it is stamped on the linked chapters alone, as before (cumberland, parramatta, strathfield, northern_beaches, waverley)",
-   "mitigated": false,
-   "how": "out of scope: hub-only chapters have no hash check to run; noted in the PR",
+   "scenario": "A council has some hub-only chapters and some with a council_url (cross-review finding)",
+   "what_happens": "it used to be stamped verified for the whole DCP on the linked chapters alone; now the stamp is withheld",
+   "mitigated": true,
+   "how": "council_active is counted before the hub-only skip, so checked < active; test_a_hub_only_chapter_is_counted_before_its_skip. Live effect: cumberland, parramatta, strathfield, northern_beaches, waverley and sutherland_shire stop being stamped until their hub-only chapters can be checked",
    "repro": "SELECT council, count(*) FILTER (WHERE council_url IS NULL) FROM dcp_chapter_registry WHERE is_active GROUP BY 1"
   },
   {
