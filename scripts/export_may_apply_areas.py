@@ -19,6 +19,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "data" / "chapter_scope" / "suburb_unconfirmed_areas.json"
 TARGET = ROOT / "frontend-nextjs" / "shared" / "may-apply-areas.json"
+MAPS_INDEX = ROOT / "data" / "may_apply_maps" / "index.json"
+# Public address the map PNGs are served from (R2 prefix may-apply-maps/). EMPTY until scripts/upload_may_apply_maps.py
+# --commit has been run: while empty no map_image_url is emitted and the box shows the plan link only.
+MAP_BASE_URL = "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev"
 
 
 def canonical_suburb(s: object) -> str:
@@ -28,8 +32,18 @@ def canonical_suburb(s: object) -> str:
     return " ".join(t for t in toks if t not in ("NSW", "AUSTRALIA") and not (len(t) == 4 and t.isdigit()))
 
 
-def build(source: Path = SOURCE) -> dict:
+def build(source: Path = SOURCE, base_url: str | None = None, maps_index: Path = MAPS_INDEX) -> dict:
+    base = (MAP_BASE_URL if base_url is None else base_url).rstrip("/")
+    maps = json.loads(maps_index.read_text(encoding="utf-8")) if base and maps_index.exists() else {}
     areas = json.loads(source.read_text(encoding="utf-8"))["areas"]
+    areas = [
+        {**a, "map_image_url": f"{base}/may-apply-maps/{maps[a['area_id']]['file']}",
+         "map_page": maps[a["area_id"]].get("page")}
+        # Only an image a person has checked (reviewed: true) is published: a rerun of the heuristic renderer must not
+        # bring back a rejected page.
+        if a.get("area_id") in maps and maps[a["area_id"]].get("file") and maps[a["area_id"]].get("reviewed") is True else a
+        for a in areas
+    ]
     out: dict[str, dict[str, list[dict]]] = {}
     for a in areas:
         # An area names several suburbs ("suburbs": [...]) or one ("suburb"). One that names none must say it keeps
