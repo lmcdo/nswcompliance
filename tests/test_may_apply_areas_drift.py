@@ -45,3 +45,24 @@ def test_an_area_with_no_suburb_must_say_it_shows_to_everyone(tmp_path):
     src.write_text(json.dumps({"areas": [{"area_id": "typo", "council": "x", "subrub": ["A"]}]}), encoding="utf-8")
     with pytest.raises(ValueError, match="typo"):
         ex.build(src)
+
+
+def test_map_image_url_only_when_base_url_is_set(tmp_path):
+    import export_may_apply_areas as ex
+    src = tmp_path / "s.json"
+    src.write_text(json.dumps({"areas": [
+        {"council": "c", "suburb": "X", "area_id": "a"},
+        {"council": "c", "suburb": "X", "area_id": "b"},
+    ]}), encoding="utf-8")
+    idx = tmp_path / "i.json"
+    idx.write_text(json.dumps({"a": {"file": "a.png"}, "b": {"skipped": "no figure"}}), encoding="utf-8")
+    off = ex.build(src, base_url="", maps_index=idx)["c"]["X"]
+    assert all("map_image_url" not in r for r in off)
+    on = {r["area_id"]: r for r in ex.build(src, base_url="https://img.test/", maps_index=idx)["c"]["X"]}
+    assert on["a"]["map_image_url"] == "https://img.test/may-apply-maps/a.png"
+    assert "map_image_url" not in on["b"]
+
+
+def test_base_url_is_empty_until_upload():
+    import export_may_apply_areas as ex
+    assert ex.MAP_BASE_URL == ""

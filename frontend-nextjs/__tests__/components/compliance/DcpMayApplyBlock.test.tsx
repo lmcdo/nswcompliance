@@ -69,6 +69,18 @@ describe('DcpMayApplyBlock', () => {
       expect(screen.getByTestId('dcp-may-apply-map-link').getAttribute('href')).toBe('https://x.test/plan.pdf#page=12');
       expect(screen.getByTestId('dcp-may-apply-map-link').textContent).toContain('(page 12)');
     });
+    it('shows a lazy thumbnail linking to the pdf page only when the area has a map image', () => {
+      withUrl('https://x.test/plan.pdf', { map_image_url: 'https://img.test/a1.png' });
+      const img = screen.getByTestId('dcp-may-apply-map-thumb') as HTMLImageElement;
+      expect(img.getAttribute('src')).toBe('https://img.test/a1.png');
+      expect(img.getAttribute('loading')).toBe('lazy');
+      expect(img.getAttribute('alt')).toBe('The plan’s map of Winston Hills Precinct, page 12');
+      expect(img.closest('a')?.getAttribute('href')).toBe('https://x.test/plan.pdf#page=12');
+      cleanup();
+      withUrl('https://x.test/plan.pdf');
+      expect(screen.queryByTestId('dcp-may-apply-map-thumb')).toBeNull();
+      expect(screen.getByTestId('dcp-may-apply-map-link')).toBeTruthy();
+    });
     it('has no link without a url', () => {
       withUrl(undefined);
       expect(screen.queryByTestId('dcp-may-apply-map-link')).toBeNull();

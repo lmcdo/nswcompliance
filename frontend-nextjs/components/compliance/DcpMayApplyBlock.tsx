@@ -23,6 +23,8 @@ export interface MayApplyArea {
   reason_text: string;
   applies_to_quote?: string | null;
   applies_to_page?: number | string | null;
+  /** Cropped picture of the plan's map for this area; absent until the images are uploaded. */
+  map_image_url?: string | null;
   suburb: string;
   provisions?: Provision[] | null;
 }
@@ -152,6 +154,18 @@ export function DcpMayApplyBlock({
                 >
                   See the plan’s map of this area{link.page !== null ? ` (page ${link.page})` : ''}
                 </a>
+                {area.map_image_url && (
+                  <a href={link.href} target="_blank" rel="noopener noreferrer" className="mt-2 block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={area.map_image_url}
+                      loading="lazy"
+                      alt={`The plan’s map of ${area.title}${link.page !== null ? `, page ${link.page}` : ''}`}
+                      data-testid="dcp-may-apply-map-thumb"
+                      className="max-w-[320px] w-full h-auto border border-amber-200 rounded"
+                    />
+                  </a>
+                )}
               </p>
             )}
             <div className="mt-2" role="group" aria-label={`Is your property in ${area.title}?`}>

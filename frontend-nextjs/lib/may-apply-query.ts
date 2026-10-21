@@ -20,6 +20,7 @@ interface AreaRow {
   reason_code: string;
   applies_to_quote?: string | null;
   applies_to_page?: number | string | null;
+  map_image_url?: string | null;
   row_selector: { pdf_page_from?: number; pdf_page_to?: number; ids?: number[] };
 }
 
@@ -127,6 +128,7 @@ export async function loadMayApply(
       reason_text: reasonText(a.reason_code) ?? '',
       applies_to_quote: a.applies_to_quote ?? null,
       applies_to_page: a.applies_to_page ?? null,
+      map_image_url: a.map_image_url ?? null,
       suburb,
       provisions,
     });
