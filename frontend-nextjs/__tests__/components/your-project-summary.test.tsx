@@ -228,3 +228,54 @@ describe('summary and DCP tab read the same mapped type', () => {
     expect((tab.match(/devType=\{controlsDevType\}/g) || []).length).toBe(2);
   });
 });
+
+describe('pass-through, every row: each row shows exactly its own source controls', () => {
+  // Generated fixture: every control type the table reads gets a unique figure, page and words, so a row that
+  // reads the wrong type (or drops/merges one) shows a figure or page that is not its own and fails here.
+  // Mutation that motivated it (2026-10-21): pointing 'Private open space' at landscaping_min passed all 20 tests.
+  it('every DCP_ROW_SPECS row, every type: own figure, own page, own words, own link; no other type leaks in', () => {
+    // The expected row -> control types table is written HERE, independently of the code under test: a test that
+    // imports the code's own table agrees with any mistake in it (it passed the mutation above).
+    const DCP_ROW_SPECS = [
+      { key: 'front', types: ['front_setback'] },
+      { key: 'side', types: ['side_setback'] },
+      { key: 'rear', types: ['rear_setback'] },
+      { key: 'coverage', types: ['max_site_coverage'] },
+      { key: 'landscape', types: ['landscaped_area_min', 'landscaping_min', 'deep_soil_min'] },
+      { key: 'pos', types: ['private_open_space'] },
+      { key: 'parking', types: ['car_parking'] },
+      { key: 'solar', types: ['solar_access_hours'] },
+    ];
+    const all: Array<{ type: string; value: number; page: number; words: string }> = [];
+    (DCP_ROW_SPECS as Array<{ key: string; types: string[] }>).forEach((spec, i) =>
+      spec.types.forEach((t, j) => all.push({ type: t, value: 101 + i * 10 + j, page: 201 + i * 10 + j, words: `Words for ${t}.` })),
+    );
+    const payload: ControlsPayload = {
+      has_controls: true,
+      dcp_name: 'Fixture Council DCP 2000',
+      categories: [{
+        controls: all.map((c) =>
+          control({ control_type: c.type, control_label: c.type, value_min: c.value, unit: 'm', direction: 'min',
+            section_ref: `S-${c.type}`, pdf_page: c.page, pdf_url: `https://example.test/dcp.pdf#page=${c.page}`, source_text: c.words })),
+      }],
+    };
+    renderView({ dcpRows: buildDcpRows(payload) });
+    for (const spec of DCP_ROW_SPECS as Array<{ key: string; types: string[] }>) {
+      const rows = screen.getAllByTestId(`row-${spec.key}`);
+      const text = rows.map((r) => r.textContent ?? '').join(' | ');
+      const mine = all.filter((c) => spec.types.includes(c.type));
+      const others = all.filter((c) => !spec.types.includes(c.type));
+      for (const c of mine) {
+        expect([spec.key, c.type, text.includes(String(c.value))]).toEqual([spec.key, c.type, true]);
+        expect([spec.key, c.type, text.includes(`p. ${c.page}`)]).toEqual([spec.key, c.type, true]);
+        const hrefs = rows.flatMap((r) => within(r).queryAllByTestId('link').map((a) => a.getAttribute('href')));
+        expect([spec.key, c.type, hrefs.includes(`https://example.test/dcp.pdf#page=${c.page}`)]).toEqual([spec.key, c.type, true]);
+        const words = rows.flatMap((r) => within(r).queryAllByTestId('words').map((w) => w.textContent));
+        expect([spec.key, c.type, words.includes(c.words)]).toEqual([spec.key, c.type, true]);
+      }
+      for (const o of others) {
+        expect([spec.key, o.type, text.includes(String(o.value)) || text.includes(`p. ${o.page}`)]).toEqual([spec.key, o.type, false]);
+      }
+    }
+  });
+});
