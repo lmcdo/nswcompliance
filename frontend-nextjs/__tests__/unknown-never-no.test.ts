@@ -22,7 +22,8 @@ const READ = String.raw`[\w$.?\[\]'"]*\b${FIELD}\b`;
 
 const PATTERNS: Array<[string, RegExp]> = [
   ['unknown read as "No"', new RegExp(String.raw`${READ}\)?\s*\?[^:;]*:\s*['"\`]No\b`)],
-  ['unknown read as false', new RegExp(String.raw`${READ}\)?\s*(?:\|\||\?\?)\s*false\b`)],
+  ['unknown shown in the "clear" colour', new RegExp(String.raw`${READ}\)?\s*\?[^:;]*:\s*['"\`][^'"\`]*green`)],
+  ['unknown read as false',new RegExp(String.raw`${READ}\)?\s*(?:\|\||\?\?)\s*false\b`)],
   ['unknown read as false (!!)', new RegExp(String.raw`!!\s*\(?\s*${READ}`)],
   ['unknown read as false (Boolean)', new RegExp(String.raw`Boolean\(\s*${READ}`)],
   ['unknown read as "not" (!)', new RegExp(String.raw`(?:^|[^!=\w])!\s*\(?\s*${READ}\s*(?:\)|\}|\]|&&|\|\||\?|;|,|$)`)],
@@ -63,12 +64,13 @@ describe('unknown facts are never shown or used as "No"', () => {
       'const f = { pass: !isHeritage };',
       "const g = data.heritage ? 'Yes' : 'No';",
       "const h = c.acidSulfateSoils ? `Class ${c.acidSulfateSoils}` : 'No';",
+      "const i = `x ${p.heritage?.isHeritage ? 'text-red-600' : 'text-green-600'}`;",
       // must NOT flag:
       'const ok1 = p.heritage?.isHeritage === true;',
       "const ok2 = isHeritage === null ? 'Not checked' : isHeritage ? 'Yes' : 'No'; // unknown-ok: null handled first",
       'const ok3 = heritage !== false;',
     ].join('\n');
-    expect(scan(fixture).map((f) => f.line)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(scan(fixture).map((f) => f.line)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 
   it('no source file turns an unknown fact into "No", false or a pass', () => {

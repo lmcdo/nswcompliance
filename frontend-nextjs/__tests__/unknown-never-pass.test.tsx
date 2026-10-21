@@ -23,6 +23,7 @@ describe('lib/fact-answer.ts', () => {
     expect(acidSulfateAnswer({ notChecked: ['planning_layers'] })).toBeNull();
     expect(acidSulfateAnswer({ notChecked: ['acid_sulfate'] })).toBeNull();
     expect(acidSulfateAnswer({ notChecked: [] })).toBe(false);
+    expect(acidSulfateAnswer({})).toBeNull(); // an older payload with no not-checked list
     expect(acidSulfateAnswer({ acidSulfateSoils: 'Class 2', notChecked: ['planning_layers'] })).toBe('Class 2');
   });
 });
@@ -52,5 +53,7 @@ describe('requirement prioritisation (lib/requirement-prioritization.ts)', () =>
   it('unknown heritage keeps heritage requirements in view', () => {
     expect(hasHeritage({ isHeritage: null })).toBe(true);
     expect(hasHeritage({ isHeritage: false })).toBe(false);
+    expect(hasHeritage(undefined)).toBe(true);
+    expect(hasHeritage(false)).toBe(false);
   });
 });

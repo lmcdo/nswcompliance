@@ -42,6 +42,7 @@ export function acidSulfateAnswer(
   constraints: { acidSulfateSoils?: string | null; notChecked?: readonly string[] | null } | null | undefined,
 ): string | false | null {
   if (constraints?.acidSulfateSoils) return constraints.acidSulfateSoils;
-  if (!constraints || notChecked(constraints, 'planning_layers', 'acid_sulfate')) return null;
+  // No not-checked list (an older saved payload) cannot show the map answered: unknown.
+  if (!constraints || !Array.isArray(constraints.notChecked) || notChecked(constraints, 'planning_layers', 'acid_sulfate')) return null;
   return false;
 }
