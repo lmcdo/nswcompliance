@@ -16,14 +16,18 @@
  * flag, so the Part 20 rules are not shown and the page says why.
  */
 import part20 from '@/shared/krg-rail-busy-roads.json';
+import {
+  LOT_SQL,
+  LotNotFound,
+  arcgisAttributes,
+  distanceQuery as lotDistanceQuery,
+  lotForPoint,
+  type FetchFn,
+  type QueryFn,
+} from '@/lib/lot-adjacency';
 
-type QueryFn = (
-  sql: string,
-  params?: unknown[]
-) => Promise<{ rows: Array<Record<string, unknown>> }>;
-
-export type FetchFn = (url: string, init: { method: 'POST'; body: URLSearchParams; signal?: AbortSignal }) =>
-  Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>;
+export { toEsriRings } from '@/lib/lot-adjacency';
+export type { FetchFn } from '@/lib/lot-adjacency';
 
 export interface RailOrBusyRoadConstraint {
   adjoins: true;
@@ -32,12 +36,8 @@ export interface RailOrBusyRoadConstraint {
   rail: boolean;
 }
 
-/** The lot polygons holding the address point, merged, as GeoJSON. */
-export const RAIL_ROAD_LOT_SQL = `
-  SELECT ST_AsGeoJSON(ST_Union(l.geom)) AS lot_geojson
-  FROM nsw_cadastre_lots l
-  WHERE ST_Covers(l.geom, ST_SetSRID(ST_Point($1, $2), 4326))
-`;
+/** The lot polygons holding the address point, merged, as GeoJSON (shared with lib/classified-road.ts). */
+export const RAIL_ROAD_LOT_SQL = LOT_SQL;
 
 export const TOLERANCE_M: number = part20.tolerance_m;
 const ROAD_URL = `${part20.road_corridor_layer}/query`;
@@ -54,45 +54,11 @@ export const RAIL_WHERE =
   `LGA_NAME = '${part20.rail_corridor.lga_name}' AND SYM_CODE = '${part20.rail_corridor.sym_code}'` +
   ` AND PURPOSE IN (${sqlList(part20.rail_corridor.purposes)})`;
 
-/** GeoJSON Polygon / MultiPolygon -> Esri polygon rings. */
-export function toEsriRings(geojson: unknown): number[][][] | null {
-  const g = geojson as { type?: string; coordinates?: unknown };
-  if (g?.type === 'Polygon' && Array.isArray(g.coordinates)) return g.coordinates as number[][][];
-  if (g?.type === 'MultiPolygon' && Array.isArray(g.coordinates)) return (g.coordinates as number[][][][]).flat();
-  return null;
-}
+const distanceQuery = (rings: number[][][], where: string, outFields: string) =>
+  lotDistanceQuery(rings, where, outFields, TOLERANCE_M);
 
-function distanceQuery(rings: number[][][], where: string, outFields: string): URLSearchParams {
-  return new URLSearchParams({
-    where,
-    geometry: JSON.stringify({ rings, spatialReference: { wkid: 4326 } }),
-    geometryType: 'esriGeometryPolygon',
-    inSR: '4326',
-    spatialRel: 'esriSpatialRelIntersects',
-    distance: String(TOLERANCE_M),
-    units: 'esriSRUnit_Meter',
-    outFields,
-    returnGeometry: 'false',
-    f: 'json',
-  });
-}
-
-/** Feature attributes from an ArcGIS query; throws when the service answers with an error or no feature list. */
-async function features(fetchFn: FetchFn, url: string, body: URLSearchParams): Promise<Array<Record<string, unknown>>> {
-  const res = await fetchFn(url, { method: 'POST', body, signal: AbortSignal.timeout(10_000) });
-  if (!res.ok) throw new Error(`map service HTTP ${res.status}`);
-  const data = (await res.json()) as { error?: unknown; features?: Array<{ attributes?: Record<string, unknown> }> };
-  if (data?.error || !Array.isArray(data?.features)) throw new Error('map service returned no feature list');
-  return data.features.map((f) => f.attributes ?? {});
-}
-
-/** Raised when no cadastre lot holds the address point: adjacency is a property of the lot, so it was not checked. */
-export class RailRoadLotNotFound extends Error {
-  constructor() {
-    super('no cadastre lot contains the address point');
-    this.name = 'RailRoadLotNotFound';
-  }
-}
+/** Raised when no cadastre lot holds the address point (the shared lib/lot-adjacency.ts error). */
+export const RailRoadLotNotFound = LotNotFound;
 
 /**
  * The constraint, or null when the lot adjoins neither. Throws when the lot is not found or a map service fails.
@@ -103,15 +69,11 @@ export async function railOrBusyRoadForPoint(
   lon: number,
   lat: number
 ): Promise<RailOrBusyRoadConstraint | null> {
-  if (!Number.isFinite(lon) || !Number.isFinite(lat)) throw new RailRoadLotNotFound();
-  const lot = await query(RAIL_ROAD_LOT_SQL, [lon, lat]);
-  const raw = lot.rows[0]?.lot_geojson;
-  const rings = typeof raw === 'string' ? toEsriRings(JSON.parse(raw)) : null;
-  if (!rings || rings.length === 0) throw new RailRoadLotNotFound();
+  const { rings } = await lotForPoint(query, lon, lat);
 
   const [roadHits, railHits] = await Promise.all([
-    features(fetchFn, ROAD_URL, distanceQuery(rings, ROAD_WHERE, 'roadnamelabel')),
-    features(fetchFn, RAIL_URL, distanceQuery(rings, RAIL_WHERE, 'PURPOSE')),
+    arcgisAttributes(fetchFn, ROAD_URL, distanceQuery(rings, ROAD_WHERE, 'roadnamelabel')),
+    arcgisAttributes(fetchFn, RAIL_URL, distanceQuery(rings, RAIL_WHERE, 'PURPOSE')),
   ]);
   const roads = [
     ...new Set(
@@ -136,7 +98,7 @@ export async function railOrBusyRoadConstraints(
     const railOrBusyRoad = await railOrBusyRoadForPoint(query, fetchFn, lon, lat);
     return railOrBusyRoad ? { railOrBusyRoad } : {};
   } catch (err) {
-    if (err instanceof RailRoadLotNotFound) {
+    if (err instanceof LotNotFound) {
       return {
         railOrBusyRoadUnchecked:
           "We couldn't find this property's lot on the NSW lot map, so we couldn't check whether it adjoins the rail line or a busy road; the council's rail and busy-road rules may be missing.",

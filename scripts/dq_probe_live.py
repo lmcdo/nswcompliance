@@ -218,7 +218,7 @@ def _part_of_council_gates() -> tuple[list[str], list[str]]:
 #: 1,064 false faults. The row's own tag carries the council's words (DQ-115).
 _GATED_FOR_ITS_CHAPTER = (
     "(rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NOT NULL)"
-    " OR (rp.v2_dcp_layer = 'condition' AND rp.v2_site_condition_required IN ('flood', 'bushfire', 'acid_sulfate', 'riparian', 'greenweb', 'rail_or_busy_road'))"
+    " OR (rp.v2_dcp_layer = 'condition' AND rp.v2_site_condition_required IN ('flood', 'bushfire', 'acid_sulfate', 'riparian', 'greenweb', 'rail_or_busy_road', 'state_road', 'classified_road'))"
     " OR (cs.kind = 'heritage' AND rp.v2_heritage_hca IS NOT NULL)"
     " OR (cs.kind = 'heritage_general'"
     "     AND (LOWER(COALESCE(rp.v2_marker, '')) = 'heritage' OR LOWER(COALESCE(rp.v2_topic, '')) = 'heritage'))"
@@ -247,7 +247,7 @@ _REACHES_EVERY_HOUSE = (
 #: Avenue HCA) is shown 1 of the 64 Woollahra B2 rules written for it.
 _REACHES_NOBODY = (
     "((rp.v2_dcp_layer = 'condition'"
-    "  AND COALESCE(rp.v2_site_condition_required, '') NOT IN ('flood', 'bushfire', 'acid_sulfate', 'riparian', 'greenweb', 'rail_or_busy_road'))"
+    "  AND COALESCE(rp.v2_site_condition_required, '') NOT IN ('flood', 'bushfire', 'acid_sulfate', 'riparian', 'greenweb', 'rail_or_busy_road', 'state_road', 'classified_road'))"
     " OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL)"
     " OR COALESCE(rp.v2_dcp_layer, '') NOT IN ('generic', 'use_specific', 'condition', 'precinct'))"
     " AND LOWER(COALESCE(rp.v2_marker, '')) <> 'heritage'"

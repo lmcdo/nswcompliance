@@ -90,7 +90,7 @@ def test_all_heritage_pattern_reads_the_chapters_own_sentence():
 def test_dq146_counts_exactly_what_no_route_query_returns():
     sql = probes.PROBES["DQ-146"][1]
     assert "v2_dcp_layer = 'condition'" in sql
-    assert "NOT IN ('flood', 'bushfire', 'acid_sulfate', 'riparian', 'greenweb', 'rail_or_busy_road')" in sql
+    assert "NOT IN ('flood', 'bushfire', 'acid_sulfate', 'riparian', 'greenweb', 'rail_or_busy_road', 'state_road', 'classified_road')" in sql
     assert "<> 'heritage'" in sql
 
 
@@ -293,3 +293,40 @@ def test_woollahra_b3_keyed_to_the_union_of_all_ten_b1_outlines():
     ten = {pid for pid, _, _ in b1["strategy"]["ranges"]} - {"Woollahra Residential Precincts"}
     assert len(ten) == 10 and ten <= set(feats)
     assert set(feats["Woollahra Residential Precincts"]["properties"]["proof"]["members"]) == ten
+
+
+def test_state_and_classified_road_rows_go_to_their_own_conditions():
+    """Rows limited by their own words to lots on a State / classified road reach only lots the lookup flags."""
+    import json
+    import gate_rules_roads as roads
+    rules = {r["name"]: r for r in g.GATE_RULES if r in roads.ROAD_GATE_RULES}
+    assert len(rules) == len(roads.ROAD_GATE_RULES) == 7
+    for name, rule in rules.items():
+        # Exact rows only: every rule is keyed by row id inside named chapters.
+        assert re.search(r"\bid IN \(\d+(, \d+)*\)$", rule["where"]), name
+        assert "source_chapter_key" in rule["where"], name
+        assert rule["set"]["v2_dcp_layer"] == "condition", name
+        assert rule["set"]["v2_site_condition_required"] in roads.ROAD_CONDITIONS, name
+    # 'state road' wording only for C-B 10.7; every other row says "classified".
+    state = [n for n, r in rules.items() if r["set"]["v2_site_condition_required"] == "state_road"]
+    assert state == ["cb_10_7_9_state_road"]
+    # The probes and the rules route must know both conditions, or the rows read as unreachable / are never served.
+    route = (Path(__file__).resolve().parents[1] / "frontend-nextjs" / "app" / "api" / "provisions" / "for-property"
+             / "route.ts").read_text(encoding="utf-8")
+    for cond in roads.ROAD_CONDITIONS:
+        assert f"'{cond}'" in probes._REACHES_NOBODY and f"'{cond}'" in probes._GATED_FOR_ITS_CHAPTER, cond
+        assert f"conditions.push('{cond}')" in route, cond
+    # The lookup's data file: unclassified Regional roads (7xxx) are excluded from 'classified'.
+    cfg = json.loads((Path(__file__).resolve().parents[1] / "frontend-nextjs" / "shared" / "classified-roads.json")
+                     .read_text(encoding="utf-8"))
+    assert set(cfg["conditions"]) == set(roads.ROAD_CONDITIONS)
+    rng = cfg["unclassified_regional_number_range"]
+    assert (rng["from"], rng["to"]) == (7000, 7999)
+
+
+def test_road_gate_writes_only_the_gate_columns():
+    cur = FakeCursor([(241411, "generic", "none")])
+    changes = g.apply_gate_rules(cur, "ashfield", apply=True, only={"ashfield_f_ds4_2_classified_road"})
+    assert {(c[1], c[3]) for c in changes} == {("v2_dcp_layer", "condition"),
+                                               ("v2_site_condition_required", "classified_road")}
+    assert len(cur.updates) == 1 and "provision_text" not in cur.updates[0][0]
