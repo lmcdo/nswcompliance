@@ -19,22 +19,6 @@
       "count_hint": 15
     },
     {
-      "chapter_key": "chapter-11-5-riverlands",
-      "title": "Chapter 11.5 Riverlands",
-      "reason": "Chapter 11.5 Riverlands -- no outline yet: the 2026-10-17 fit (scripts/fit_area_maps.py) gave shape IoU below 0.85 against the chapter's own figure, or the figure could not be read (data/area_map_checks/). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
-      "reason_code": "DRAWING_NOT_MATCHED",
-      "page": null,
-      "count_hint": 71
-    },
-    {
-      "chapter_key": "chapter-11-6-potts-hill",
-      "title": "Chapter 11.6 Potts Hill (former reservoir site)",
-      "reason": "Chapter 11.6 Potts Hill (former reservoir site) -- no outline yet: the 2026-10-17 fit (scripts/fit_area_maps.py) gave shape IoU below 0.85 against the chapter's own figure, or the figure could not be read (data/area_map_checks/). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
-      "reason_code": "DRAWING_NOT_MATCHED",
-      "page": null,
-      "count_hint": 136
-    },
-    {
       "chapter_key": "chapter-2-2-flood-risk-management",
       "title": "Chapter 2.2 Flood Risk Management: Carinya Road controls",
       "reason": "Carinya Road, Picnic Point floodplain: clause 4.4 (p12) and Schedules 4A-4C (p25-51) apply only to that floodplain and its subdivision; no outline of it. Address audit run3: '69 Carinya Road' served at Marco Ave Revesby.",

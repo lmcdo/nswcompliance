@@ -24,6 +24,18 @@ AREA_KEY_RULES: list[dict] = [
     {"name": "cb_6_2_ks8_212_south_terrace", "council": "canterbury_bankstown", "validate": False,
      "where": "source_chapter_key = 'chapter-6-2-bankstown-city-centre' AND pdf_page = 182",
      "strategy": {"type": "constant", "precinct_id": "6.2 KS8"}},
+    # C-B DCP 2023 Ch 11.5 Riverlands: "Chapter 11.5 of this DCP applies to the site as shown in the Land Application
+    # Map (Figure 1a)" (p4) -- every section. Outline: site_map_11_5.geojson (Figure 1a fitted to the cadastre, shape
+    # 0.991, 83 ha; lot-line share 0.439 accepted by the user 2026-10-21, recorded in the file). Rows already 'precinct'.
+    {"name": "cb_11_5_riverlands", "council": "canterbury_bankstown", "validate": False,
+     "where": "source_chapter_key = 'chapter-11-5-riverlands'",
+     "strategy": {"type": "constant", "precinct_id": "11.5"}},
+    # C-B DCP 2023 Ch 11.6 Potts Hill: "applies to the former Potts Hill Reservoir site, Potts Hill as shown in Figure 1"
+    # (p4) -- every section. Outline: site_map_11_6.geojson (Figure 1 fitted to the cadastre, shape 0.992, 23 ha;
+    # lot-line share 0.449 accepted by the user 2026-10-21, recorded in the file). Rows already 'precinct'.
+    {"name": "cb_11_6_potts_hill", "council": "canterbury_bankstown", "validate": False,
+     "where": "source_chapter_key = 'chapter-11-6-potts-hill'",
+     "strategy": {"type": "constant", "precinct_id": "11.6"}},
 ]
 
 #: Gate rules (spliced into GATE_RULES).

@@ -2,8 +2,16 @@
  "_doc": "C-B DCP 2023 Ch 11.6 Potts Hill -> outline (scripts/fit_site_plans.py precinct-map mode, site_map: thick black edge 'Land to which these controls apply', black lot lines). Figure 1 has no scale bar; scale searched 0.6-1.0 m/px. Replaces the refused site-mode attempt (site_plans_11_6.json: 500 m window, coloured-blob mask, IoU 0.468).",
  "pdf": "chapter-11-6-potts-hill.pdf",
  "pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-11-6-potts-hill.pdf",
- "box_mga": [316900, 6247000, 318500, 6249100],
- "scale_range": [0.6, 1.0],
+ "box_mga": [
+  316900,
+  6247000,
+  318500,
+  6249100
+ ],
+ "scale_range": [
+  0.6,
+  1.0
+ ],
  "out_stem": "site_map_11_6",
  "check_prefix": "potts_hill_11_6",
  "precincts": [
@@ -13,7 +21,28 @@
    "page": 5,
    "figure": "Figure 1: Land Application Map",
    "quote": "Chapter 11.6 of this DCP applies to the former Potts Hill Reservoir site, Potts Hill as shown in Figure 1. (p4) - Figure 1: Land Application Map (p5)",
-   "site_map": {"crop": [90, 80, 680, 1400], "lines": "dark", "edge_px": 2, "inside_px": [210, 520], "rotate_deg": 8.5}
+   "site_map": {
+    "crop": [
+     90,
+     80,
+     680,
+     1400
+    ],
+    "lines": "dark",
+    "edge_px": 2,
+    "inside_px": [
+     210,
+     520
+    ],
+    "rotate_deg": 8.5
+   },
+   "accepted_below_bar": {
+    "gates": [
+     "map lot lines not on the cadastre"
+    ],
+    "decision": "User decision 2026-10-21: accepted with lot-line share 0.449 below the 0.5 bar (bar unchanged).",
+    "reason": "shape IoU 0.992 / lots-only 0.963, placement margin 0.372 over the best placement more than 100 m away, and the check picture shows the edge on lot lines and streets all round. The low share is explained: a coarse map drawn on an old cadastre (proposed or 2015 lots), land resubdivided since, long single-lot edges."
+   }
   }
  ]
 }

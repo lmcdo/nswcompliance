@@ -2,8 +2,16 @@
  "_doc": "C-B DCP 2023 Ch 11.5 Riverlands -> outline (scripts/fit_site_plans.py precinct-map mode, site_map: thick black edge, grey 2015 cadastre lot lines). Figure 1a Land Application Map is the Bankstown LEP 2015 planning-proposal map 'PLANNING PROPOSAL - Riverlands Land Application', scale bar 0-140-280 m, 1:7,000 @ A3.",
  "pdf": "chapter-11-5-riverlands.pdf",
  "pdf_url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/dcps/canterbury_bankstown/v1.0-baseline/chapter-11-5-riverlands.pdf",
- "box_mga": [311200, 6241200, 314300, 6244200],
- "scale_range": [2.1, 2.4],
+ "box_mga": [
+  311200,
+  6241200,
+  314300,
+  6244200
+ ],
+ "scale_range": [
+  2.1,
+  2.4
+ ],
  "out_stem": "site_map_11_5",
  "check_prefix": "riverlands_11_5",
  "precincts": [
@@ -13,8 +21,31 @@
    "page": 4,
    "figure": "Figure 1a: Land Application Map",
    "quote": "Chapter 11.5 of this DCP applies to the site as shown in the Land Application Map (Figure 1a). (p4)",
-   "scale_bar": {"metres": 280, "px": 124},
-   "site_map": {"crop": [256, 12, 1254, 856], "lines": "grey", "edge_px": 2, "inside_px": [594, 588]}
+   "scale_bar": {
+    "metres": 280,
+    "px": 124
+   },
+   "site_map": {
+    "crop": [
+     256,
+     12,
+     1254,
+     856
+    ],
+    "lines": "grey",
+    "edge_px": 2,
+    "inside_px": [
+     594,
+     588
+    ]
+   },
+   "accepted_below_bar": {
+    "gates": [
+     "map lot lines not on the cadastre"
+    ],
+    "decision": "User decision 2026-10-21: accepted with lot-line share 0.439 below the 0.5 bar (bar unchanged).",
+    "reason": "shape IoU 0.991 / lots-only 0.978, placement margin 0.376 over the best placement more than 100 m away, and the check picture shows the edge on lot lines and streets all round. The low share is explained: a coarse map drawn on an old cadastre (proposed or 2015 lots), land resubdivided since, long single-lot edges."
+   }
   }
  ]
 }

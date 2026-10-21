@@ -267,12 +267,10 @@ def site_map(pdf: Path, page: int, sm: dict) -> tuple[np.ndarray, np.ndarray, np
       edge_px    width of the site edge: dark pixels that survive an opening this wide are the edge, thin lines are not
       inside_px  a pixel of the panel inside the site: the site is the region the edge closes round it (else ABORT)
       rotate_deg grid bearing of the plan's 'up' when it is not north (see below)"""
-    d = fitz.open(pdf)
-    p = d[page - 1]
+    p = (d := fitz.open(pdf))[page - 1]
     xref = max(p.get_images(full=True), key=lambda im: d.extract_image(im[0])["width"] * d.extract_image(im[0])["height"])[0]
     a = np.asarray(Image.open(io.BytesIO(d.extract_image(xref)["image"])).convert("RGB")).astype(int)
-    x0, y0, x1, y1 = (int(v) for v in sm["crop"])
-    a = a[y0:y1, x0:x1]
+    a = a[int(sm["crop"][1]):int(sm["crop"][3]), int(sm["crop"][0]):int(sm["crop"][2])]
     mean, chroma = a.mean(2), a.max(2) - a.min(2)
     if sm.get("lines", "grey") == "dark":
         lines = ((mean < 140) & (chroma < 40)).astype(np.uint8)   # a glyph is a small blob, a lot line a long network
@@ -292,8 +290,7 @@ def site_map(pdf: Path, page: int, sm: dict) -> tuple[np.ndarray, np.ndarray, np
     out = np.zeros_like(region)
     cv2.drawContours(out, [max(cv2.findContours(region, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0], key=cv2.contourArea)], -1, 1, -1)
     if sm.get("rotate_deg"):  # plan drawn along a street the page draws straight up; its NSW centreline gives the bearing
-        h, w = out.shape
-        R = cv2.getRotationMatrix2D((w / 2, h / 2), -float(sm["rotate_deg"]), 1.0)
+        R = cv2.getRotationMatrix2D(((w := out.shape[1]) / 2, (h := out.shape[0]) / 2), -float(sm["rotate_deg"]), 1.0)
         W, H = int(h * abs(R[0, 1]) + w * abs(R[0, 0])) + 2, int(h * abs(R[0, 0]) + w * abs(R[0, 1])) + 2
         R[:, 2] += (W / 2 - w / 2, H / 2 - h / 2)
         rot = lambda m, v: cv2.warpAffine(m, R, (W, H), flags=cv2.INTER_NEAREST, borderValue=v)  # noqa: E731
@@ -381,7 +378,10 @@ def fit_precinct(c: dict, pdf: Path, cad, box: tuple, scale_range) -> dict:
                               ("placement not unique", row["coarse"] - row["runner_up_far"] < PEAK_MARGIN),
                               ("shape does not match the map", row["iou_shape"] < IOU_MIN),
                               ("lots do not match the map", row["iou_lot_land"] < IOU_MIN)) if bad]
-    if fails:
+    acc = c.get("accepted_below_bar") or {}   # a user's recorded decision to accept named gates for this entry only
+    if fails and set(fails) <= set(acc.get("gates", [])):
+        row["accepted_below_bar"] = acc   # the bar itself is unchanged; the decision travels in the outline's proof
+    elif fails:
         row["refused"] = "; ".join(fails)
     row["_geom"], row["_fig"] = geom, fig   # drawn either way; written only when not refused
     return row

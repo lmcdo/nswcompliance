@@ -228,6 +228,28 @@ def test_cb_11_14_riverwood_keyed_to_its_lep_outline():
     assert ids == {"11.14"}
 
 
+def test_cb_11_5_and_11_6_keyed_to_their_fitted_outlines_with_the_users_acceptance_recorded():
+    import json
+    from pathlib import Path
+    import import_cb_centre_boundaries as imp
+    base = Path(__file__).resolve().parent.parent / "data"
+    scope = json.loads((base / "chapter_scope" / "suburb_unconfirmed_areas.json").read_text(encoding="utf-8"))
+    for pid, ck, fname in (("11.5", "chapter-11-5-riverlands", "site_map_11_5.geojson"),
+                           ("11.6", "chapter-11-6-potts-hill", "site_map_11_6.geojson")):
+        rule = next(r for r in dpk.RULES if r["strategy"] == {"type": "constant", "precinct_id": pid})
+        assert rule["where"] == f"source_chapter_key = '{ck}'" and rule["council"] == "canterbury_bankstown"
+        assert imp.SITE_IDS[fname] == {pid}
+        feats = json.loads((base / "canterbury_bankstown_precincts" / fname).read_text(encoding="utf-8"))["features"]
+        assert [f["properties"]["precinct_id"] for f in feats] == [pid]
+        proof = feats[0]["properties"]["proof"]
+        # accepted below the lot-line bar only by the user's recorded decision; every other gate passed
+        assert proof["iou_shape"] >= 0.85 and proof["iou_lot_land"] >= 0.85
+        assert proof["coarse"] - proof["runner_up_far"] >= 0.15
+        assert proof["accepted_below_bar"]["gates"] == ["map lot lines not on the cadastre"]
+        assert "2026-10-21" in proof["accepted_below_bar"]["decision"] and proof["accepted_below_bar"]["reason"]
+        assert all(a.get("chapter_key") != ck for a in scope["areas"])
+
+
 def test_marrickville_2_26_keyed_to_the_sep_outline_and_moved_to_precinct_layer():
     import json
     from pathlib import Path
