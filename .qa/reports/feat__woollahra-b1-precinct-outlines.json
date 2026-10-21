@@ -1,0 +1,78 @@
+{
+  "tier": "standard",
+  "justification": "Woollahra DCP B1's 10 residential precincts had no outlines, so their rules reached no house. The DCP's own precinct maps were fitted to the cadastre lot lines; 5 pass (shape IoU 0.976-0.997, lot-land IoU 0.91-0.998, check pictures read), 5 refused. Loaded 2026-10-21 before merge; live: Darling Point 34 rules, Rose Bay 10, outside 0.",
+  "commit_hash": "bf85d378",
+  "files": [
+    "data/woollahra_precincts/b1_residential_precincts.geojson",
+    "data/woollahra_precincts/b1_maps.json",
+    "data/woollahra_precincts/fit_report_b1_residential_precincts.json",
+    "scripts/fit_site_plans.py",
+    "scripts/import_cb_centre_boundaries.py",
+    "tests/test_gate_rules.py",
+    ".gitignore"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q tests/test_gate_rules.py",
+    "fails_when": "The outline file holds ids other than the five proven precincts, or the keying rule changes.",
+    "observed_red": "Before: dcp_precinct_boundaries had no B1 precinct rows; B1 rows keyed to precinct names reached no house.",
+    "external_authority": "Woollahra DCP 2015 B1 precinct maps (pages 11, 15, 18, 24, 34) fitted to nsw_cadastre_lots lot lines; check pictures in data/woollahra_precincts/checks/."
+  },
+  "pre_impl": {
+    "existing_data": "Council layer WDCP 2015 Residential Precincts (MapServer/24) returned 503 all day. fit_site_plans.py extended with a precinct-map mode rather than a new fitter.",
+    "assumption_mismatch": "Five precinct maps' lot lines do not sit on the current cadastre (line share ~0.25, no unique placement); refused, not forced.",
+    "new_vs_existing": "Precinct-map mode in the existing fitter, one outline file, Woollahra loader profile entries, one test."
+  },
+  "functions": [
+    {
+      "name": "_load",
+      "file_line": "scripts/import_cb_centre_boundaries.py:210",
+      "input": "the five B1 outlines with inside and outside address anchors",
+      "output": "5 rows upserted, every anchor resolved as expected",
+      "if_none": "an empty file aborts before any write"
+    }
+  ],
+  "values": [
+    {
+      "value": "5 of 10 precincts pass; Darling Point line share 0.565 against a 0.5 bar set after that result (picture confirmed)",
+      "read_at": "fit log 2026-10-21",
+      "if_missing": "no fit evidence"
+    },
+    {
+      "value": "live: Darling Point 34 B1 rules, Rose Bay 10, no precinct 0",
+      "read_at": "canibuildit.com.au for-property 2026-10-21",
+      "if_missing": "no live proof"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A fitted outline sits one block off.",
+      "what_happens": "Houses next door would be shown another precinct's rules.",
+      "mitigated": true,
+      "how": "Lot-land IoU >= 0.91 and the check picture shows the edge on lot lines all round; unique placement required.",
+      "repro": "open data/woollahra_precincts/checks/b1_p11.png etc."
+    },
+    {
+      "scenario": "A refused precinct's houses expect B1 rules.",
+      "what_happens": "Those houses see no B1 rules for their precinct.",
+      "mitigated": false,
+      "how": "Recorded: five precincts refused; their rules stay unshown until outlined (same as before this change).",
+      "repro": "for-property with precinct_id=Manning Road Precinct returns no outline match"
+    },
+    {
+      "scenario": "Paddington or a centre lands in a B1 outline.",
+      "what_happens": "Houses outside residential precincts get B1 rules.",
+      "mitigated": true,
+      "how": "Loader anchors: 5 Victoria St Paddington -> Paddington HCA only; 368A New South Head Rd -> Double Bay Centre only.",
+      "repro": "python scripts/import_cb_centre_boundaries.py --council woollahra --src data/woollahra_precincts/b1_residential_precincts.geojson"
+    }
+  ],
+  "mutation_analysis": "Changing the outline ids fails the new test.",
+  "post_merge": {
+    "db_reset": "Already done before merge: 5 outlines loaded, backup woollahra_precinct_boundaries_before_2026-10-21T012231.json.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Done live: Darling Point 34, Rose Bay 10, none 0."
+  },
+  "residual_risk": "B3 (453 rules) still served to all Woollahra houses until all ten precincts are outlined or the may-apply block can show it to the refused precincts."
+}
