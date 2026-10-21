@@ -1,0 +1,94 @@
+{
+  "tier": "critical",
+  "justification": "Live /api/property hit the 30 s gateway limit (504) when one NSW map call stalled: ~14 calls had no timeout. And a failed hazard call was swallowed and shown as 'No' (bush fire, mine subsidence, contaminated land) on the LEP tab, SEE/DA report, assessment reports, pattern-book check and property cards. Now every map call has an 8 s deadline and a failed or timed-out hazard is unknown, shown as 'Not checked'.",
+  "commit_hash": "9fb963e9",
+  "files": [
+    "frontend-nextjs/lib/fetch-timeout.ts",
+    "frontend-nextjs/lib/hazard-unchecked.ts",
+    "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "frontend-nextjs/components/compliance/LepControls.tsx",
+    "frontend-nextjs/lib/see/intake.ts",
+    "frontend-nextjs/lib/see/propertyContext.ts",
+    "frontend-nextjs/lib/assessment/reports.ts",
+    "frontend-nextjs/components/property-card.tsx",
+    "frontend-nextjs/lib/project-summary.ts",
+    "frontend-nextjs/__tests__/lib/hazard-lookup-unknown.test.ts",
+    "frontend-nextjs/__tests__/components/compliance/lep-controls-hazard-not-checked.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/hazard-lookup-unknown.test.ts __tests__/components/compliance/lep-controls-hazard-not-checked.test.tsx",
+    "fails_when": "A failed or stalled hazard call becomes false/'No', or a reader prints 'No' for unknown.",
+    "observed_red": "Run by the main session 2026-10-21: reverting the bushfire unknown branch to false -> 3 fail; making the LEP tile ignore not-checked -> 1 fails; clean 15/15. Full suite 170 suites / 2194 tests pass, tsc 0.",
+    "external_authority": "Live 2026-10-21: /api/property 504 at 30.4-30.7 s on 2 of 3 tries; bushfire map stalled 40 s, TOD 11.4 s on first try then ~0.1-0.2 s."
+  },
+  "pre_impl": {
+    "existing_data": "Three-state model copied from scripts/generate_conveyancing_report.py get_bushfire_live ('Not assessed', never 'Clear').",
+    "assumption_mismatch": "reports.ts read non-existent floodPlanning / mineSubsidenceDistrict (always 'No'); pattern-book read anefValue, never set (aircraft noise never excluded) — both fixed. Pattern-book now CONDITIONAL, not ELIGIBLE, when bush fire or flood is unknown.",
+    "new_vs_existing": "fetch-timeout helper, hazard-unchecked helper, uncheckedHazards list on constraints, readers updated.",
+    "external_source_error": "A NSW ArcGIS map that stalls (40 s seen) or returns an error body: now a deadline/no-answer result, recorded in constraints.uncheckedHazards, never parsed as 'no features'.",
+    "frontend_type": "bushfireProne is boolean | null; mine subsidence / contaminated land / ANEF / coastal carry unknown via uncheckedHazards; readers check unknown before printing yes/no.",
+    "user_failure_mode": "Before: a buyer or certifier read 'Bushfire Prone: No' or a report row 'No' for a lot nobody checked, or the page failed with HTTP 504. After: 'Not checked — the government map did not answer', and the page loads."
+  },
+  "functions": [
+    {
+      "name": "fetchWithTimeout",
+      "file_line": "frontend-nextjs/lib/fetch-timeout.ts:1",
+      "input": "a NSW map url and the 8 second deadline",
+      "output": "the parsed answer, or an explicit no-answer result on timeout or ArcGIS error",
+      "if_none": "no answer at all becomes unknown and is never read as No"
+    }
+  ],
+  "values": [
+    {
+      "value": "8 s per call; corner-lot retries 4 s + 6 s",
+      "read_at": "code 2026-10-21",
+      "if_missing": "unbounded lookup"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A NSW government map service never answers the property lookup request.",
+      "what_happens": "The whole property lookup would run past the 30 s gateway limit.",
+      "mitigated": true,
+      "how": "8 s deadline; test with a never-resolving fetch returns in time with that hazard unknown.",
+      "repro": "npx jest __tests__/lib/hazard-lookup-unknown.test.ts"
+    },
+    {
+      "scenario": "The bush fire prone land map returns an error instead of features.",
+      "what_happens": "The lot would be shown as not bush fire prone.",
+      "mitigated": true,
+      "how": "bushfireProne null + uncheckedHazards; LEP tile, SEE intake, reports print 'Not checked'.",
+      "repro": "break A above: 3 tests fail"
+    },
+    {
+      "scenario": "A page or report reader still prints No when the hazard value is unknown.",
+      "what_happens": "A report says No for a hazard nobody checked.",
+      "mitigated": true,
+      "how": "Each reader updated and tested; LEP tile break fails 1 test.",
+      "repro": "break B above"
+    },
+    {
+      "scenario": "The SEE/DA intake receives an unknown bush fire value.",
+      "what_happens": "The DA bundle would record bush fire as 'no'.",
+      "mitigated": true,
+      "how": "Intake leaves the question unanswered for null (agent mutation 4).",
+      "repro": "npx jest __tests__/lib/hazard-lookup-unknown.test.ts -t intake"
+    },
+    {
+      "scenario": "Pattern-book eligibility with bush fire or flood unknown.",
+      "what_happens": "A lot would be called ELIGIBLE without the hazard being checked.",
+      "mitigated": true,
+      "how": "Now CONDITIONAL when either is unknown (agent change; more addresses will read CONDITIONAL).",
+      "repro": "pattern-book check-exclusions test"
+    }
+  ],
+  "mutation_analysis": "Two breaks run by the main session (A: 3 fail, B: 1 fails); the agent ran 7 more, one per fix.",
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Live: 8 Hollands Ave and 165 Belmore Rd North under 10 s on 5 tries each with no 504; the page loads and shows the summary."
+  },
+  "residual_risk": "Bushfire DCP rules still show only on a firm yes (scope decision). property-data.ts fills acidSulfateSoils 'Class 5' and basixWater '40%' when data is missing (pre-existing, separate fix)."
+}
