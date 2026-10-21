@@ -90,7 +90,7 @@ def test_all_heritage_pattern_reads_the_chapters_own_sentence():
 def test_dq146_counts_exactly_what_no_route_query_returns():
     sql = probes.PROBES["DQ-146"][1]
     assert "v2_dcp_layer = 'condition'" in sql
-    assert "NOT IN ('flood', 'bushfire', 'acid_sulfate', 'riparian', 'greenweb')" in sql
+    assert "NOT IN ('flood', 'bushfire', 'acid_sulfate', 'riparian', 'greenweb', 'rail_or_busy_road')" in sql
     assert "<> 'heritage'" in sql
 
 
@@ -194,6 +194,27 @@ def test_marrickville_2_22_flood_goes_to_the_flood_condition_layer():
     assert rule["council"] == "marrickville"
     assert rule["where"] == "source_chapter_key = 'part2-s22-flood-management'"
     assert rule["set"] == {"v2_dcp_layer": "condition", "v2_site_condition_required": "flood"}
+
+
+def test_krg_20_rail_and_busy_roads_go_to_their_own_condition():
+    """Part 20 rows reach only lots the property lookup flags as adjoining the rail corridor or a busy road."""
+    import json
+    from pathlib import Path
+    rule = next(r for r in g.GATE_RULES if r["name"] == "krg_20_rail_or_busy_road")
+    assert rule["council"] == "ku_ring_gai"
+    assert rule["where"] == "source_chapter_key = 'section-b-part-20-rail-roads'"
+    assert rule["set"] == {"v2_dcp_layer": "condition", "v2_site_condition_required": "rail_or_busy_road"}
+    # The probe that counts rows no route query returns must know the new condition, or all 13 read as unreachable.
+    assert "'rail_or_busy_road'" in probes._REACHES_NOBODY
+    assert "'rail_or_busy_road'" in probes._GATED_FOR_ITS_CHAPTER
+    # The busy roads the lookup matches are the DCP's own words: every name is in the note it quotes.
+    data = json.loads((Path(__file__).resolve().parent.parent / "frontend-nextjs" / "shared"
+                       / "krg-rail-busy-roads.json").read_text(encoding="utf-8"))
+    assert data["chapter_key"] == "section-b-part-20-rail-roads"
+    for road in data["busy_roads"]:
+        assert road["dcp_name"] in data["busy_roads_note"]["quote"], road["dcp_name"]
+        assert road["road_corridor_labels"] or road.get("limit"), road["dcp_name"]
+    assert "North Shore rail line" in data["rail_note"]["quote"]
 
 
 def test_cb_11_14_riverwood_keyed_to_its_lep_outline():
