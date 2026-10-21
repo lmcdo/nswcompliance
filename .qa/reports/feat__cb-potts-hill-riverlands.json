@@ -1,0 +1,78 @@
+{
+  "tier": "standard",
+  "justification": "Canterbury-Bankstown Ch 11.6 Potts Hill (136 live rules) and Ch 11.5 Riverlands (71) were only in the may-apply box. Their DCP site maps were fitted to the cadastre (shape IoU 0.99, lots-only IoU 0.96/0.98, placement margins 0.37/0.38, pictures checked). Both are below the fitter's 0.5 lot-line-share bar (0.449/0.439: old coarse maps, land resubdivided); the user accepted them on 2026-10-21, recorded per fit as accepted_below_bar. Loaded and keyed before merge.",
+  "commit_hash": "76877ae6",
+  "files": [
+    "scripts/fit_site_plans.py",
+    "data/canterbury_bankstown_precincts/site_map_11_5.json",
+    "data/canterbury_bankstown_precincts/site_map_11_6.json",
+    "data/canterbury_bankstown_precincts/site_map_11_5.geojson",
+    "data/canterbury_bankstown_precincts/site_map_11_6.geojson",
+    "scripts/import_cb_centre_boundaries.py",
+    "scripts/gate_rules_areas.py",
+    "data/chapter_scope/suburb_unconfirmed_areas.json",
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    "frontend-nextjs/shared/may-apply-areas.json",
+    "frontend-nextjs/shared/not-covered-councils.json",
+    "tests/test_gate_rules.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q tests/test_gate_rules.py",
+    "fails_when": "A keying rule is removed or the outline ids change.",
+    "observed_red": "Before: 207 live rows unplaced, shown only in the may-apply box.",
+    "external_authority": "Live 2026-10-21: 62 Rowe Dr Potts Hill 136 rules, 114 Cooper Rd Birrong 0; Riverlands precinct 71, none 0."
+  },
+  "pre_impl": {
+    "existing_data": "fit_site_plans.py precinct-map mode (Woollahra B1); site-plan mode limited to a 500 m window.",
+    "assumption_mismatch": "Sites 1.1-1.7 km across needed a site_map option; lot-line share below the bar for explained reasons (user decision).",
+    "new_vs_existing": "Opt-in site_map mode, accepted_below_bar record, two outlines, two keying rules, one test."
+  },
+  "functions": [
+    {
+      "name": "apply_gate_rules",
+      "file_line": "scripts/gate_rules.py:471",
+      "input": "keying rules cb_11_5_riverlands and cb_11_6_potts_hill for council canterbury_bankstown",
+      "output": "217 rows keyed (207 live), applied 2026-10-21",
+      "if_none": "zero matching rows means nothing is keyed or written"
+    }
+  ],
+  "values": [
+    {
+      "value": "Potts Hill IoU 0.992 / lots 0.963 / margin 0.37 / share 0.449; Riverlands 0.991 / 0.978 / 0.38 / 0.439",
+      "read_at": "fit reports 2026-10-21",
+      "if_missing": "no fit evidence"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A Cooper Road house next to Potts Hill gets its rules.",
+      "what_happens": "A neighbour is shown site rules that are not its own.",
+      "mitigated": true,
+      "how": "Edge on the back fences; live 114 Cooper Rd 0.",
+      "repro": "live for-property for 114 COOPER ROAD BIRRONG"
+    },
+    {
+      "scenario": "Land resubdivided since the map was drawn.",
+      "what_happens": "A lot near the edge may sit on the wrong side of the line.",
+      "mitigated": false,
+      "how": "Recorded: lot-line share 0.44-0.45 accepted by the user; picture shows edge on today's fences and roads.",
+      "repro": "see checks/potts_hill_11_6_p5.png, checks/riverlands_11_5_p4.png"
+    },
+    {
+      "scenario": "The default fitter bar is weakened for every map.",
+      "what_happens": "Later fits could pass with poor lot-line matches.",
+      "mitigated": true,
+      "how": "Default 0.5 unchanged; only entries listing accepted_below_bar with a dated reason pass under it.",
+      "repro": "grep accepted_below_bar scripts/fit_site_plans.py"
+    }
+  ],
+  "mutation_analysis": "Removing a keying rule fails the new test.",
+  "post_merge": {
+    "db_reset": "Already done before merge: 2 outlines loaded (backups cb_precinct_boundaries_before_2026-10-21*), 217 rows keyed.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Done live: Potts Hill 136/0, Riverlands 71/0."
+  },
+  "residual_risk": "Edge lots on resubdivided land; Riverlands inside test address not found by the site's address lookup (checked by precinct)."
+}
