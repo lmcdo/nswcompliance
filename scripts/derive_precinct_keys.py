@@ -291,8 +291,8 @@ RULES: list[dict] = [
      "where": "source_chapter_key = 'chapter-d6-rose-bay-centre'",
      "strategy": {"type": "constant", "precinct_id": "Rose Bay Centre"}},
     # Woollahra B1.2-B1.11: one residential precinct each, by PDF page from each section's MAP page ("B1.2 Darling Point
-    # Precinct MAP 2", p11); pages before (B1.1) apply to all, under the key live used. No outlines exist yet: the
-    # precinct maps are figure-only (ce-precinct-maps-PLAN), so these rules keep live's reach until they are traced.
+    # Precinct MAP 2", p11); pages before (B1.1) apply to all, under the key live used. Outlines: the ten maps fitted to
+    # the cadastre (fit_site_plans.py --config data/woollahra_precincts/b1_maps.json) + their union (2026-10-21).
     {"name": "woollahra_b1_precincts_by_page", "council": "woollahra", "validate": False,
      "where": "source_chapter_key = 'chapter-b1-residential-precincts'",
      "strategy": {"type": "page_range", "ranges": [

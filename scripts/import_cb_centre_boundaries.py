@@ -48,7 +48,7 @@ FORMER_IDS = {"former_councils_abs2015.geojson": {"C-B former Bankstown", "C-B f
 #: the cadastre is positionally ~4 m, and doubtful lots were kept, so it is recorded lower.
 CONFIDENCE = {"cadastre_lot_plan": 0.95, "nsw_planning_local_provisions": 1.0, "nsw_planning_epi_layer": 1.0, "dcp_figure_georeferenced_to_cadastre": 0.9,
               "dcp_raster_map_fitted_to_road_centrelines": 0.85, "dcp_site_plan_shape_fitted_to_cadastre": 0.85,
-              "abs_asgs_2015_former_lga": 0.95}
+              "abs_asgs_2015_former_lga": 0.95, "dcp_precinct_map_fitted_to_cadastre_lot_lines": 0.85}
 CB_ENVELOPE = (150.95, -33.99, 151.18, -33.85)
 
 #: Lot points (ST_PointOnSurface of nsw_cadastre_lots, 2026-10-11) of the served-answer audit's
@@ -95,13 +95,30 @@ PROFILES = {
             },
         },
     },
-    # Woollahra D4 Edgecliff Centre (2026-10-21): the LEP's E1 Local Centre polygon at Edgecliff. Outside anchors are
-    # register points across New South Head Road, Ocean Street and the Arthur Street corner that sit in NO Woollahra
-    # precinct today (the south and west neighbours are in Paddington HCA / the MU1 corridor, which this check forbids).
+    # Woollahra D4 Edgecliff Centre (2026-10-21): the LEP E1 Local Centre polygon (lep_e1_edgecliff_centre_d4.geojson).
+    # Woollahra DCP 2015 B1 residential precincts (2026-10-21, scripts/fit_site_plans.py --config
+    # data/woollahra_precincts/b1_maps.json). lga/former_council 'Woollahra' as every Woollahra row already loaded
+    # (HCAs, centres). The outside anchors sit inside outlines of their own (Paddington HCA, Double Bay Centre), so for
+    # this file "outside" means: in none of the B1 ids. All points are NSW address register points.
     "woollahra": {
         "lga": "Woollahra", "former_council": "Woollahra",
-        "envelope": (151.21, -33.90, 151.29, -33.83),
+        "envelope": (151.21, -33.91, 151.30, -33.82),
         "files": {
+            "b1_residential_precincts.geojson": {
+                # the five maps proved (2026-10-21); Manning Road, Bellevue Hill South/North and Vaucluse West/East were
+                # refused (map lot lines not on the cadastre, placement not unique) and the union waits for all ten
+                "ids": {"Darling Point Precinct", "Double Bay Precinct", "Wallaroy Precinct", "Point Piper Precinct",
+                        "Rose Bay Precinct"},
+                "outside_means_not_in_these_ids": True,
+                "outside": {
+                    "5 Victoria St Paddington (Paddington HCA)": (151.230640, -33.886899),
+                    "368A New South Head Rd Double Bay (Double Bay Centre)": (151.242743, -33.877535),
+                },
+                "inside": {
+                    "10 Hampden Ave Darling Point": (151.237603, -33.869974),
+                    "20A Stafford St Double Bay": (151.244884, -33.873873),
+                },
+            },
             "lep_e1_edgecliff_centre_d4.geojson": {
                 "ids": {"Edgecliff Centre"},
                 "outside": {
@@ -273,6 +290,8 @@ def _load(conn, rows: list[dict], commit: bool, former: bool = False, profile: d
         else:
             # The former-council halves tile the whole LGA, so every address is in one; only a CENTRE/site hit is wrong.
             hit = [h for h in hit if not h.startswith("C-B former ")]
+            if per_file.get("outside_means_not_in_these_ids"):  # the anchor sits in an outline of its own (an HCA)
+                hit = [h for h in hit if h in {r["precinct_id"] for r in rows}]
             if hit:
                 problems.append(f"{label} now resolves to {hit}")
     if problems:

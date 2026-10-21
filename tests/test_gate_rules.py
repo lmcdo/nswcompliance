@@ -249,3 +249,25 @@ def test_woollahra_d4_edgecliff_keyed_to_its_lep_outline_and_moved_to_precinct_l
     spec = imp.PROFILES["woollahra"]["files"][src.name]
     assert all(poly.contains(Point(*xy)) for xy in spec["inside"].values())
     assert not any(poly.contains(Point(*xy)) for xy in spec["outside"].values())
+
+
+def test_woollahra_b1_outlines_carry_the_keys_the_b1_rule_writes():
+    """Every outline in the B1 file must be a key the B1 page rule writes (else it matches no rule), passed the fit
+    gates, and carry its source + quote. B3 is NOT keyed until all ten and their union exist: keying it to an id with
+    no outline would hide its 453 rules from every house."""
+    import json
+    from pathlib import Path
+    import import_cb_centre_boundaries as imp
+    b1 = next(r for r in dpk.RULES if r["name"] == "woollahra_b1_precincts_by_page")
+    b1_ids = {pid for pid, _, _ in b1["strategy"]["ranges"]}
+    src = Path(__file__).resolve().parent.parent / "data" / "woollahra_precincts" / "b1_residential_precincts.geojson"
+    feats = json.loads(src.read_text(encoding="utf-8"))["features"]
+    ids = {f["properties"]["precinct_id"] for f in feats}
+    assert ids and ids <= b1_ids
+    assert ids == imp.PROFILES["woollahra"]["files"][src.name]["ids"]
+    for f in feats:
+        p = f["properties"]
+        assert p["quote"] and p["source"] and "refused" not in p["proof"]
+        assert p["proof"]["iou_shape"] >= 0.85 and p["proof"]["iou_lot_land"] >= 0.85
+    if "Woollahra Residential Precincts" not in ids:
+        assert not any(r["where"] == "source_chapter_key = 'chapter-b3-general-development'" for r in dpk.RULES)

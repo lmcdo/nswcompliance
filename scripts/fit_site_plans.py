@@ -15,6 +15,22 @@ ACCEPTANCE (else REFUSED, nothing written)
   shape IoU (site_figure_check.shape_iou) of the lots' union vs the plan's shape >= 0.85
   share of the placed shape's edge within 2 m of a lot edge >= 0.6
   every address that the register DOES hold for the section is inside (e.g. 243A Hume Highway for S7)
+
+PRECINCT MAPS (config key "precincts"; Woollahra DCP 2015 B1, 2026-10-21). A precinct map is a raster with the
+cadastre drawn in grey and the precinct filled light blue. No seed and no street labels are needed: the map's own grey
+lot lines are matched (FFT, north up, scale searched) against every cadastre edge in the config's box, 2 m grid
+first, then 0.5 m round the best. The outline is the cadastre lots >= 80% inside the placed blue area, plus the road
+space the map colours (the DCP draws precinct edges on road centrelines; road space holds no lot), plus the map's part
+of any lot 20-80% inside (it straddles the map's own line). A white area inside the blue ('Areas Excluded From the
+Precinct') stays out. Every map is also drawn (checks/) and looked at before any load.
+ACCEPTANCE (else REFUSED, nothing written)
+  share of the map's lot-line pixels within 1 m of a cadastre edge at the 0.5 m fit       >= 0.5
+    (measured 2026-10-21: the B1 maps are drawn on the ~2015 cadastre, with labels and view arrows over the lines;
+     Darling Point scored 0.565 on a fit whose picture lies on the lot lines along its whole edge)
+  the best placement beats every placement > 100 m away at the same scale by               >= 0.15 (2 m grid score)
+  shape IoU (site_figure_check.shape_iou) of the outline vs the placed blue area           >= 0.85
+  IoU on lot land only: lots inside vs the blue area minus road space                       >= 0.85
+Usage: python scripts/fit_site_plans.py --config data/woollahra_precincts/b1_maps.json
 """
 from __future__ import annotations
 
@@ -195,11 +211,188 @@ def fit(c: dict) -> dict:
     return row
 
 
+# ---------------------------------------------------------------- precinct maps (see the docstring)
+LINE_MIN, PEAK_MARGIN = 0.5, 0.15
+
+
+def precinct_map(pdf: Path, page: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """(rgb, grey lot-line mask, blue precinct mask) inside the map's black frame (the largest image on the page)."""
+    d = fitz.open(pdf)
+    p = d[page - 1]
+    xref = max(p.get_images(full=True), key=lambda im: d.extract_image(im[0])["width"] * d.extract_image(im[0])["height"])[0]
+    a = np.asarray(Image.open(io.BytesIO(d.extract_image(xref)["image"])).convert("RGB")).astype(int)
+    blk = a.max(2) < 70
+    cols = np.nonzero(blk.sum(0) > 0.5 * blk.shape[0])[0]   # frame verticals: map's left edge, map/legend divider
+    rows = np.nonzero(blk.sum(1) > 0.3 * blk.shape[1])[0]
+    if len(cols) < 2 or len(rows) < 2:
+        raise SystemExit(f"[ABORT] no map frame on p{page}")
+    a = a[rows[0] + 6:rows[-1] - 5, cols[0] + 6:cols[-1] - 5]
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    lines = ((a.mean(2) >= 140) & (a.mean(2) <= 205) & (a.max(2) - a.min(2) < 25)).astype(np.uint8)
+    blue = ((b >= 225) & (g >= 200) & (r < 215) & (b - r > 30)) | ((b > 180) & (r < 80) & (g > 120))  # fill | edge
+    m = cv2.morphologyEx(blue.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
+    n, lab, st, _ = cv2.connectedComponentsWithStats(m, 8)
+    keep = np.isin(lab, [i for i in range(1, n) if st[i, 4] >= 20000]).astype(np.uint8)  # drops labels, arrows
+    cs, _ = cv2.findContours(keep, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    out = np.zeros_like(keep)
+    cv2.drawContours(out, cs, -1, 1, -1)
+    n2, lab2, st2, _ = cv2.connectedComponentsWithStats(((out > 0) & (keep == 0)).astype(np.uint8), 4)
+    white = a.min(2) >= 235
+    for i in range(1, n2):  # a hole is lines/labels (filled) unless it is a white area ('excluded from the precinct')
+        comp = lab2 == i
+        if st2[i, 4] >= 1500 and white[comp].mean() > 0.8:
+            out[comp] = 0
+    return a, lines, out
+
+
+def _line_search(lines: np.ndarray, E: np.ndarray, res: float, scales, x0: float, y1: float, far_m: float = 0) -> list:
+    """(score, m/px, X, Y of the map's top-left[, best score > far_m away at that scale]) per scale: share of line
+    pixels on a cadastre edge (+-1 cell)."""
+    Ed = cv2.dilate(E, np.ones((3, 3), np.uint8)).astype(np.float32)
+    out = []
+    for s in scales:
+        k = s / res
+        e = cv2.resize(lines.astype(np.float32), (int(lines.shape[1] * k), int(lines.shape[0] * k)), interpolation=cv2.INTER_AREA)
+        e = (e > 0.15).astype(np.float32)
+        if e.shape[0] >= Ed.shape[0] or e.shape[1] >= Ed.shape[1] or e.sum() < 100:
+            continue
+        C = fftconvolve(Ed, e[::-1, ::-1], mode="valid") / e.sum()
+        iy, ix = np.unravel_index(int(np.argmax(C)), C.shape)
+        row = (float(C[iy, ix]), float(s), x0 + ix * res, y1 - iy * res)
+        if far_m:
+            r = int(far_m / res)
+            C[max(0, iy - r):iy + r + 1, max(0, ix - r):ix + r + 1] = -1
+            row += (float(C.max()),)
+        out.append(row)
+    return out
+
+
+def _edges(cad, box: tuple, res: float) -> np.ndarray:
+    x0, y0, x1, y1 = box
+    E = np.zeros((int((y1 - y0) / res) + 1, int((x1 - x0) / res) + 1), np.uint8)
+    for _, g in cad:
+        for poly in getattr(g, "geoms", [g]):
+            for ring in [poly.exterior, *poly.interiors]:
+                c = np.asarray(ring.coords)
+                cv2.polylines(E, [np.c_[(c[:, 0] - x0) / res, (y1 - c[:, 1]) / res].astype(np.int32)], True, 1, 1)
+    return E
+
+
+def place_on_lot_lines(lines: np.ndarray, cad, box: tuple, scale_range) -> dict:
+    # uniqueness is judged at the SAME scale: across scales a smaller map always fits dense lot lines somewhere better
+    coarse = _line_search(lines, _edges(cad, box, 2.0), 2.0, np.geomspace(*scale_range, 30), box[0], box[3], far_m=100)
+    best = max(coarse)
+    s, ox, oy = best[1:4]
+    win = (ox - 60, oy - lines.shape[0] * s * 1.06 - 60, ox + lines.shape[1] * s * 1.06 + 60, oy + 60)
+    fine = max(_line_search(lines, _edges(cad, win, 0.5), 0.5, np.linspace(s * 0.96, s * 1.04, 17), win[0], win[3]))
+    return {"coarse": round(best[0], 3), "runner_up_far": round(best[4], 3),
+            "line_share": round(fine[0], 3), "m_per_px": round(fine[1], 4), "x0": fine[2], "y0": fine[3]}
+
+
+def fit_precinct(c: dict, pdf: Path, cad, box: tuple, scale_range) -> dict:
+    a, lines, mask = precinct_map(pdf, c["page"])
+    row = {"precinct_id": c["precinct_id"], "page": c["page"], **place_on_lot_lines(lines, cad, box, scale_range)}
+    s, ox, oy = row["m_per_px"], row.pop("x0"), row.pop("y0")
+    cs, hier = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+    tf = lambda r: np.c_[ox + r[:, 0] * s, oy - r[:, 1] * s]  # noqa: E731
+    fig = unary_union([Polygon(tf(cs[i][:, 0, :].astype(float)),
+                               [tf(cs[j][:, 0, :].astype(float)) for j in range(len(cs)) if hier[0][j][3] == i and len(cs[j]) >= 4]
+                               ).buffer(0) for i in range(len(cs)) if hier[0][i][3] == -1 and len(cs[i]) >= 4])
+    fx0, fy0, fx1, fy1 = fig.bounds
+    inside, other = [], []
+    for lot, g in cad:
+        b = g.bounds
+        if b[2] < fx0 or b[0] > fx1 or b[3] < fy0 or b[1] > fy1:
+            continue
+        g = g if g.is_valid else g.buffer(0)
+        if g.area <= 0 or not g.intersects(fig):
+            continue
+        share = g.intersection(fig).area / g.area
+        (inside if share >= cb.IN_SHARE else other).append((lot, g, share))
+    lots_u = unary_union([g for _, g, _ in inside])
+    road = fig.difference(unary_union([g for _, g, _ in inside + other]))   # coloured space no lot holds
+    # a lot 20-80% inside straddles the map's own line (the 2015 map was drawn on an older cadastre, e.g. Darling Point's
+    # 10 ha foreshore park lot 7321//DP1165813 at 53%): keep the map's part of it, not the whole lot and not none of it
+    cut = [g.intersection(fig) for _, g, sh in other if sh > cb.UNCERTAIN_SHARE]
+    geom = unary_union([lots_u, road, *cut]).buffer(0)
+    land = fig.difference(road)
+    inter = lots_u.intersection(land).area
+    row.update({"figure_m2": round(fig.area), "lots": len(inside),
+                "doubt_lots": sorted(lot for lot, _, sh in other if sh > cb.UNCERTAIN_SHARE),
+                "outline_m2": round(geom.area), "iou_shape": sfc.shape_iou(fig, geom)[0],
+                "iou_lot_land": round(inter / (lots_u.area + land.area - inter), 3)})
+    fails = [m for m, bad in (("map lot lines not on the cadastre", row["line_share"] < LINE_MIN),
+                              ("placement not unique", row["coarse"] - row["runner_up_far"] < PEAK_MARGIN),
+                              ("shape does not match the map", row["iou_shape"] < IOU_MIN),
+                              ("lots do not match the map", row["iou_lot_land"] < IOU_MIN)) if bad]
+    if fails:
+        row["refused"] = "; ".join(fails)
+    row["_geom"], row["_fig"] = geom, fig   # drawn either way; written only when not refused
+    return row
+
+
+def draw_precinct(fig, geom, cad, path: Path) -> None:
+    """The placed map's blue area (red, thin) over the cadastre, the accepted outline (green), for a person to look at."""
+    x0, y0, x1, y1 = fig.buffer(80).bounds
+    img = np.full((int(y1 - y0), int(x1 - x0), 3), 255, np.uint8)
+    tf = lambda c: np.c_[c[:, 0] - x0, y1 - c[:, 1]].astype(np.int32)  # noqa: E731
+    for _, g in cad:
+        b = g.bounds
+        if b[2] < x0 or b[0] > x1 or b[3] < y0 or b[1] > y1:
+            continue
+        for p in getattr(g, "geoms", [g]):
+            cv2.polylines(img, [tf(np.asarray(p.exterior.coords))], True, (170, 170, 170), 1)
+    for g, col, w in ((geom, (0, 160, 0), 3), (fig, (0, 0, 255), 1)):
+        for p in getattr(g, "geoms", [g]):
+            for ring in [p.exterior, *p.interiors]:
+                cv2.polylines(img, [tf(np.asarray(ring.coords))], True, col, w)
+    cv2.imwrite(str(path), img)
+
+
+def main_precincts(cfg: dict, out: Path, only: set | None = None) -> int:
+    pdf = out / ".pdf_cache" / cfg["pdf"]
+    if not pdf.exists():
+        raise SystemExit(f"[ABORT] {pdf} missing: curl {cfg['pdf_url']} -o {pdf} (urllib gets 403)")
+    box = tuple(float(v) for v in cfg["box_mga"])
+    cad = cb.fetch_cadastre(box)
+    feats, report, ok_geoms = [], [], []
+    for c in cfg["precincts"]:
+        if only and c["precinct_id"] not in only:
+            continue
+        row = fit_precinct(c, pdf, cad, box, cfg["scale_range"])
+        g, fig = row.pop("_geom"), row.pop("_fig")
+        (out / "checks").mkdir(exist_ok=True)
+        draw_precinct(fig, g, cad, out / "checks" / f"b1_p{c['page']}.png")
+        if "refused" not in row:
+            ok_geoms.append(g)
+            feats.append(cb.feature(c["precinct_id"], c["name"], g, {
+                "method": "dcp_precinct_map_fitted_to_cadastre_lot_lines", "source": f"{cfg['pdf']} p{c['page']} {c['figure']}",
+                "quote": c["quote"], "proof": dict(row)}))
+        report.append(row)
+        print(json.dumps(row), flush=True)
+    u = cfg.get("union")
+    if u and len(ok_geoms) == len(cfg["precincts"]):  # the chapter's union only when EVERY precinct was accepted
+        feats.append(cb.feature(u["precinct_id"], u["name"], unary_union(ok_geoms), {
+            "method": "dcp_precinct_map_fitted_to_cadastre_lot_lines", "source": u["source"], "quote": u["quote"],
+            "proof": {"members": [c["precinct_id"] for c in cfg["precincts"]]}}))
+    if only:
+        print("--only: nothing written")
+        return 0
+    stem = cfg["out_stem"]
+    (out / f"{stem}.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}, indent=1), encoding="utf-8")
+    (out / f"fit_report_{stem}.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
+    print(f"accepted {len(ok_geoms)} / {len(report)}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--config", default=str(OUT / "site_plans_8_3.json"))
+    ap.add_argument("--only", help="precinct maps: comma-separated precinct ids to try (nothing written)")
     a = ap.parse_args()
     cfg = json.loads(Path(a.config).read_text(encoding="utf-8"))
+    if "precincts" in cfg:
+        return main_precincts(cfg, Path(a.config).resolve().parent, set(a.only.split(",")) if a.only else None)
     feats, report = [], []
     for c in cfg["sites"]:
         try:
