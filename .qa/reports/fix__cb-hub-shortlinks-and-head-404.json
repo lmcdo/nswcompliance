@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes what the DCP monitor treats as a council's current document for Canterbury-Bankstown (68 active chapters) and how every council's HEAD check reacts to a 404. After merge the next monitor run re-points 4 registry URLs and queues re-extraction for 3 chapters whose content changed, through the existing url_migrated path and review queue. Not Critical: no new query or write path; the existing diff_urls/url_migrated code does the writing. Not Minor: it decides which version of a council's rules we serve.",
- "commit_hash": "b1b9bcb5",
+ "commit_hash": "0e95d616",
  "files": [
   "scripts/hub_scrapers/canterbury_bankstown.py",
   "scripts/r2_monitor.py",
@@ -21,7 +21,7 @@
  "functions": [
   {
    "name": "_match_by_chapter_number",
-   "file_line": "scripts/hub_scrapers/canterbury_bankstown.py:50",
+   "file_line": "scripts/hub_scrapers/canterbury_bankstown.py:57",
    "input": "chapter major and minor numbers from a cb.city short link, plus registry keys",
    "output": "the single chapter_key starting chapter-<major>-<minor>-, else None",
    "if_none": "no key or two keys -> None, so the link is offered unmatched rather than forced onto a chapter"
@@ -44,7 +44,7 @@
  "values": [
   {
    "value": "chapter_key from a short link",
-   "read_at": "scripts/hub_scrapers/canterbury_bankstown.py:50",
+   "read_at": "scripts/hub_scrapers/canterbury_bankstown.py:57",
    "nullable": "yes",
    "guard_at": "diff_urls treats None as unmatched",
    "if_missing": "the chapter is reported 'unlisted' as it was before this change; nothing is re-pointed"
@@ -72,6 +72,13 @@
    "mitigated": true,
    "how": "head_request returns the GET's status",
    "repro": "test_a_link_that_is_really_gone_still_fails"
+  },
+  {
+   "scenario": "A short link redirects off the council's document hosts, or to a relative URL",
+   "what_happens": "it was accepted as the chapter's new source and would be ingested as council rules",
+   "mitigated": true,
+   "how": "_resolve_short_link requires https, a CB_DOC_HOSTS host and /api/publish (cross-review finding)",
+   "repro": "test_a_redirect_off_the_councils_document_hosts_is_refused"
   }
  ],
  "post_merge": {

@@ -105,7 +105,7 @@ def test_the_existing_replacement_check_now_sees_the_new_version(monkeypatch):
 def test_head_404_falls_back_to_get(monkeypatch):
     import r2_monitor
     monkeypatch.setattr(r2_monitor.SESSION, "head", lambda *a, **k: _resp(404))
-    monkeypatch.setattr(r2_monitor.SESSION, "get", lambda *a, **k: _resp(206, {"Content-Range": "bytes 0-0/3182931"}))
+    monkeypatch.setattr(r2_monitor.SESSION, "get", lambda *a, **k: _resp(206, {"Content-Range": "bytes 0-0/3182931", "Content-Type": "application/pdf"}))
     assert r2_monitor.head_request(OLD_7_3)["status"] == 200
 
 
@@ -113,4 +113,21 @@ def test_a_link_that_is_really_gone_still_fails(monkeypatch):
     import r2_monitor
     monkeypatch.setattr(r2_monitor.SESSION, "head", lambda *a, **k: _resp(404))
     monkeypatch.setattr(r2_monitor.SESSION, "get", lambda *a, **k: _resp(404))
+    assert r2_monitor.head_request(OLD_7_3)["status"] == 404
+
+
+# ── Cross-review 2026-10-21 ───────────────────────────────────────────────────
+
+def test_a_redirect_off_the_councils_document_hosts_is_refused(monkeypatch):
+    for bad in ("https://unrelated.example/api/publish?documentPath=x",
+                "/api/publish?documentPath=x",
+                "http://cbcity-webdocs.azurewebsites.net/api/publish?documentPath=x"):
+        monkeypatch.setattr(cb.requests, "head", lambda *a, _b=bad, **k: _resp(301, {"Location": _b}))
+        assert cb._resolve_short_link("https://cb.city/DCP7-3", 30) is None, bad
+
+
+def test_head_404_then_an_html_page_is_still_a_failure(monkeypatch):
+    import r2_monitor
+    monkeypatch.setattr(r2_monitor.SESSION, "head", lambda *a, **k: _resp(404))
+    monkeypatch.setattr(r2_monitor.SESSION, "get", lambda *a, **k: _resp(200, {"Content-Type": "text/html"}))
     assert r2_monitor.head_request(OLD_7_3)["status"] == 404

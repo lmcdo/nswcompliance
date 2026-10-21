@@ -44,7 +44,14 @@ def _resolve_short_link(href: str, timeout: int) -> str | None:
     except requests.RequestException:
         return None
     location = resp.headers.get("Location") if resp.status_code in (301, 302, 303, 307, 308) else None
-    return location if location and "api/publish" in location else None
+    if not location:
+        return None
+    # Only the council's own document hosts, absolute https: a redirect anywhere else
+    # would be recorded as this chapter's new source and its contents ingested.
+    target = urlparse(location)
+    if target.scheme != "https" or target.netloc not in CB_DOC_HOSTS or target.path != "/api/publish":
+        return None
+    return location
 
 
 def _match_by_chapter_number(major: str, minor: str, expected_keys: set[str]) -> str | None:

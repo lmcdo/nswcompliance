@@ -261,6 +261,7 @@ def head_request(url: str) -> dict:
     try:
         resp = SESSION.head(url, timeout=30, allow_redirects=True)
         if resp.status_code in (404, 405):
+            head_404 = resp.status_code == 404
             # Server doesn't support HEAD — try GET with Range header
             # to avoid downloading the full file just for metadata.
             resp = SESSION.get(
@@ -271,6 +272,10 @@ def head_request(url: str) -> dict:
             resp.close()
             # Range request returns 206; some servers ignore Range and return 200
             status = 200 if resp.status_code in (200, 206) else resp.status_code
+            # After a HEAD 404, a GET 200 counts only if it is a PDF: some servers
+            # answer a removed document with a branded "not found" HTML page.
+            if head_404 and status == 200 and "pdf" not in (resp.headers.get("Content-Type") or "").lower():
+                status = 404
             return {
                 # NOT resp.headers['Content-Length'] on this path. We asked for
                 # ONE byte, so a 206 reports Content-Length: 1 - the length of
