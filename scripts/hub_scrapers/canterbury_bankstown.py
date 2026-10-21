@@ -56,7 +56,7 @@ def _match_by_chapter_number(major: str, minor: str, expected_keys: set[str]) ->
     """
     if not (major and minor and major.isdigit() and minor.isdigit()):
         return None
-    prefix = f"chapter-{int(major)}-{int(minor)}-"
+    prefix = f"chapter-{major.lstrip('0') or '0'}-{minor.lstrip('0') or '0'}-"
     hits = [k for k in expected_keys if k.startswith(prefix)]
     return hits[0] if len(hits) == 1 else None
 
