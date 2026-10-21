@@ -21,6 +21,7 @@ import { getSiteSpecificClauses, getSiteSpecificProvisionDetails } from './site-
 import { calculateLotDimensions, type LotDimensions } from './geometry/lot-dimensions';
 import { deriveAnefBuildingAcceptability } from './see/propertyUtils';
 import { detectCornerLot, type CornerLotResult } from './geometry/corner-lot-detection';
+import type { HazardKey } from './hazard-unchecked';
 
 // Re-export TOD/HIA interfaces for use in components
 export type { TODPrecinctInfo, AcceleratedTODInfo, HIAInfo };
@@ -70,7 +71,8 @@ export interface PropertyData {
  basixWater?: string;
  floodProne: boolean | null;
  floodMapNote?: string;
- bushfireProne: boolean;
+ bushfireProne: boolean | null; // null = the bush fire map did not answer (not checked)
+ uncheckedHazards?: HazardKey[];
  };
  geometry: {
  x: number;
@@ -226,7 +228,8 @@ export class PropertyDataService {
  basixWater: constraints.basixWater || '40%',
  floodProne: constraints.floodProne,
  floodMapNote: constraints.floodMapNote,
- bushfireProne: constraints.bushfireProne
+ bushfireProne: constraints.bushfireProne,
+ uncheckedHazards: constraints.uncheckedHazards ?? [],
  };
 
  // Convert Web Mercator (x, y) to WGS84 (lat, lon) for geocoding

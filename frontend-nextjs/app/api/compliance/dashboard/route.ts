@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ComplianceDataClient, type ComplianceData } from '@/lib/database/compliance-client';
 import { ComplianceCheckSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
+import { hazardsNotQueried } from '@/lib/hazard-unchecked';
 
 
 export const dynamic = 'force-dynamic';
@@ -43,7 +44,9 @@ export async function GET(request: NextRequest) {
       lga,
       heritage,
       floodProne: null, // not known here: this route queries no flood map
-      bushfireProne: false
+      bushfireProne: null, // not known here: this route queries no bush fire map
+      // This route queries no hazard map at all: every one is unknown, never "No".
+      uncheckedHazards: hazardsNotQueried(),
     };
 
     // Get compliance data from real database
@@ -126,7 +129,9 @@ export async function POST(request: NextRequest) {
       lga: body.lga,
       heritage: body.heritage || false,
       floodProne: body.floodProne ?? null,
-      bushfireProne: body.bushfireProne || false
+      bushfireProne: typeof body.bushfireProne === 'boolean' ? body.bushfireProne : null,
+      // Only a caller-supplied bush fire answer counts; every other hazard map is unqueried here.
+      uncheckedHazards: hazardsNotQueried(typeof body.bushfireProne === 'boolean' ? ['bushfire'] : []),
     };
 
     // Get compliance data

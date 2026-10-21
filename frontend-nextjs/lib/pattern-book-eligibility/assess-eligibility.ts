@@ -102,8 +102,23 @@ export async function assessPatternBookEligibility(
   let nextSteps: string[] = [];
   let estimatedApprovalTime: string | undefined;
 
+  // Case 0: No exclusions found, but an exclusion map did not answer → not known, never ELIGIBLE
+  if (!exclusionResult.hasExclusions && numericResult.allCompliant && exclusionResult.notChecked.length > 0) {
+    status = 'CONDITIONAL';
+    pathway = 'PATTERN_BOOK_CDC';
+    summary = `Exclusion check not finished: ${exclusionResult.notChecked.join(', ')} not checked — the government map did not answer`;
+    reasons = [
+      'Zone is eligible for the Pattern Book pathway',
+      'No exclusions found on the maps that answered',
+      `Not checked: ${exclusionResult.notChecked.join(', ')}`,
+      'Numeric standards met'
+    ];
+    nextSteps = [
+      'Check the property again later, or look up the missing map on the NSW Planning Portal'
+    ];
+  }
   // Case 1: No exclusions, numerics compliant → ELIGIBLE
-  if (!exclusionResult.hasExclusions && numericResult.allCompliant) {
+  else if (!exclusionResult.hasExclusions && numericResult.allCompliant) {
     status = 'ELIGIBLE';
     pathway = 'PATTERN_BOOK_CDC';
     summary = 'Property is eligible for Pattern Book CDC pathway (10-day approval)';

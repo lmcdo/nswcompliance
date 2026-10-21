@@ -1,5 +1,6 @@
 "use client"
 
+import { HAZARD_NOT_CHECKED, bushfireFromPayload } from '@/lib/hazard-unchecked'
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -28,7 +29,8 @@ interface PropertyData {
    basixClimate?: string
    basixWater?: string
    floodProne: boolean | null
-   bushfireProne: boolean
+   /** null = the bush fire map did not answer (not checked). */
+   bushfireProne: boolean | null
  }
  anef?: {
    inAnefZone: boolean
@@ -58,7 +60,7 @@ export function PropertyCard() {
    address: "",
    environmental: {
      floodProne: false,
-     bushfireProne: false
+     bushfireProne: null
    },
    seppOverlays: []
  })
@@ -122,7 +124,8 @@ export function PropertyCard() {
            basixClimate: data.constraints?.basixClimate || data.environmental?.basixClimate,
            basixWater: data.constraints?.basixWater || data.environmental?.basixWater,
            floodProne: data.constraints?.floodProne ?? data.environmental?.floodProne ?? null,
-           bushfireProne: data.constraints?.bushfireProne || data.environmental?.bushfireProne || false
+           // A fresh null (map did not answer) must not be replaced by an older environmental boolean.
+           bushfireProne: bushfireFromPayload(data.constraints, data.environmental)
          },
          anef: data.anefData ? {
            inAnefZone: data.anefData.inAnefZone,
@@ -364,7 +367,7 @@ export function PropertyCard() {
      )}
 
      {/* Environmental Constraints */}
-     {(property.environmental?.acidSulfateSoils || property.environmental?.basixClimate || property.environmental?.basixWater || property.environmental?.floodProne || property.environmental?.bushfireProne) && (
+     {(property.environmental?.acidSulfateSoils || property.environmental?.basixClimate || property.environmental?.basixWater || property.environmental?.floodProne || property.environmental?.bushfireProne || (property.address && property.environmental?.bushfireProne === null)) && (
        <Card className="border-green-200 bg-green-50">
          <CardHeader className="pb-3">
            <CardTitle className="flex items-center gap-2 text-lg text-green-800">
@@ -407,6 +410,12 @@ export function PropertyCard() {
              <div className="flex items-center gap-2 text-sm">
                <AlertTriangle className="h-4 w-4 text-red-600" />
                <span className="text-red-800 font-medium">Bushfire Prone Area</span>
+             </div>
+           )}
+           {property.address && property.environmental?.bushfireProne === null && (
+             <div className="flex items-center gap-2 text-sm">
+               <AlertTriangle className="h-4 w-4 text-gray-500" />
+               <span className="text-gray-700">Bush fire prone land: {HAZARD_NOT_CHECKED}</span>
              </div>
            )}
          </CardContent>

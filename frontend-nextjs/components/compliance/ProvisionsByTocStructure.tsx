@@ -391,6 +391,8 @@ export function ProvisionsByTocStructure({
     // The council's own DCP flood map only: DCP flood rules apply to land on that map, and the
     // separate state flag could add land outside it (cross-review 2026-10-12).
     flood: propertyData?.constraints?.dcpFloodMap?.inFloodArea === true,
+    // Only a Yes serves bush fire rules. Unknown (null: the map did not answer) is shown as
+    // "Not checked" on the hazard tile and in the project summary, never as "No".
     bushfire: propertyData?.constraints?.bushfireProne === true,
     acidSulfate: Boolean(propertyData?.constraints?.acidSulfateSoils),
     riparian: propertyData?.constraints?.riparianLand?.inRiparianArea === true,

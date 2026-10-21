@@ -19,8 +19,11 @@ export interface PropertyConstraints {
   // From PropertyData.environmental
   environmental?: {
     floodProne: boolean | null;
-    bushfireProne: boolean;
+    /** null = the bush fire map did not answer (not checked). */
+    bushfireProne: boolean | null;
     acidSulfateSoils?: string; // 'Class 1', 'Class 2', etc.
+    /** Hazard maps that did not answer (lib/hazard-unchecked.ts), from PropertyData.environmental. */
+    uncheckedHazards?: readonly string[] | null;
   };
 
   // From PropertyData.constraints
@@ -33,7 +36,9 @@ export interface PropertyConstraints {
   // From PropertyData.anefData
   anefData?: {
     anefValue?: number; // Aircraft noise exposure forecast
-  };
+    /** What PropertyData.anefData actually carries (anefValue is never set by the portal client). */
+    anefLevel?: number | null;
+  } | null;
 }
 
 export interface ExclusionTrigger {
@@ -47,6 +52,27 @@ export interface ExclusionCheckResult {
   hasExclusions: boolean;
   triggered: ExclusionTrigger[];
   summary: string;
+  /** Exclusions that could not be tested because the map did not answer. Not empty = "no exclusions" is NOT known. */
+  notChecked: string[];
+}
+
+/** Hazard map (lib/hazard-unchecked.ts key) -> the Pattern Book exclusion it decides. */
+const EXCLUSION_FOR_HAZARD: ReadonlyArray<[string, string]> = [
+  ['bushfire', 'bushfire_prone'],
+  ['anef', 'aircraft_noise'],
+];
+
+/** Exclusions whose map gave no answer: unknown is not "clear" (a failed bush fire lookup used to read as eligible). */
+export function uncheckedExclusions(constraints: PropertyConstraints): string[] {
+  const out: string[] = [];
+  if (constraints.environmental && constraints.environmental.floodProne == null) out.push('flood_planning_area');
+  if (constraints.environmental && constraints.environmental.bushfireProne == null) out.push('bushfire_prone');
+  // Every other map-backed exclusion whose map did not answer (an ANEF timeout must not read as clear).
+  const unanswered = constraints.environmental?.uncheckedHazards ?? [];
+  for (const [hazard, exclusion] of EXCLUSION_FOR_HAZARD) {
+    if (unanswered.includes(hazard) && !out.includes(exclusion)) out.push(exclusion);
+  }
+  return out;
 }
 
 /**
@@ -77,7 +103,8 @@ function mapConstraintsToExclusions(constraints: PropertyConstraints): string[] 
   }
 
   // Aircraft Noise (ANEF > 20 is a constraint)
-  if (constraints.anefData?.anefValue && constraints.anefData.anefValue > 20) {
+  const anef = constraints.anefData?.anefValue ?? constraints.anefData?.anefLevel ?? null;
+  if (anef != null && anef > 20) {
     potentialExclusions.push('aircraft_noise');
   }
 
@@ -100,12 +127,17 @@ export async function checkExclusions(
 
   // Map property data to potential exclusion types
   const potentialExclusions = mapConstraintsToExclusions(constraints);
+  const notChecked = uncheckedExclusions(constraints);
+  const notCheckedNote = notChecked.length
+    ? `; not checked (the government map did not answer): ${notChecked.join(', ')}`
+    : '';
 
   if (potentialExclusions.length === 0) {
     return {
       hasExclusions: false,
       triggered: [],
-      summary: 'No exclusions triggered'
+      summary: 'No exclusions triggered' + notCheckedNote,
+      notChecked,
     };
   }
 
@@ -169,7 +201,7 @@ export async function checkExclusions(
         break;
 
       case 'aircraft_noise':
-        reason = `Property in aircraft noise zone: ${constraints.anefData?.anefValue} ANEF`;
+        reason = `Property in aircraft noise zone: ${constraints.anefData?.anefValue ?? constraints.anefData?.anefLevel} ANEF`;
         break;
 
       default:
@@ -192,7 +224,8 @@ export async function checkExclusions(
   return {
     hasExclusions: triggered.length > 0,
     triggered,
-    summary
+    summary: summary + notCheckedNote,
+    notChecked,
   };
 }
 

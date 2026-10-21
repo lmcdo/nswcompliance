@@ -9,6 +9,7 @@ import { HeritageProvisionsCard } from './HeritageProvisionsCard';
 import { NotApplicableCard } from './NotApplicableCard';
 import { ServicingTile } from './ServicingTile';
 import { PlanningConstraints, PlanningLayer } from '@/lib/nsw-planning-portal';
+import { HAZARD_NOT_CHECKED, HAZARD_NOT_CHECKED_SHORT, hazardUnchecked, type HazardKey } from '@/lib/hazard-unchecked';
 import { AuthorityColors } from '@/lib/design-tokens';
 import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin, CheckCircle2, AlertCircle, XCircle, Anchor, BookOpen, LandPlot, FileText, Info } from 'lucide-react';
 import { calculateGFA, anefStatusConfig, bushfireCategoryAnnotation } from '@/lib/see/propertyUtils';
@@ -56,6 +57,12 @@ export function LepControls({
   // fall back to the council name without a year when no EPI Name is available.
   const lepName = zoneResult?.['EPI Name']
     || (constraints?.lga ? `${constraints.lga} Local Environmental Plan` : 'Local Environmental Plan');
+
+  // A hazard map that did not answer is "Not checked", never "No" (lib/hazard-unchecked.ts).
+  const notChecked = (key: HazardKey) =>
+    hazardUnchecked(constraints, key)
+    || (key === 'bushfire' && constraints != null && constraints.bushfireProne == null);
+  const notCheckedLabel = <span title={HAZARD_NOT_CHECKED}>{HAZARD_NOT_CHECKED_SHORT}</span>;
 
   return (
     <div className="space-y-6">
@@ -258,7 +265,7 @@ export function LepControls({
                 <span className="text-xs text-gray-700 truncate">Bushfire Prone</span>
               </div>
               <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.bushfireProne ? 'text-orange-800' : 'text-gray-400'}`}>
-                {constraints?.bushfireProne ? (constraints.bushfireCategory || 'Yes') : 'No'}
+                {constraints?.bushfireProne ? (constraints.bushfireCategory || 'Yes') : (notChecked('bushfire') ? notCheckedLabel : 'No')}
               </span>
             </div>
 
@@ -287,7 +294,7 @@ export function LepControls({
                 <span className="text-xs text-gray-700 truncate">Aircraft Noise</span>
               </div>
               <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${propertyData?.anefData?.inAnefZone ? 'text-sky-800' : 'text-gray-400'}`}>
-                {propertyData?.anefData?.inAnefZone ? `ANEF ${propertyData.anefData.anefLevel}` : 'No'}
+                {propertyData?.anefData?.inAnefZone ? `ANEF ${propertyData.anefData.anefLevel}` : (notChecked('anef') ? notCheckedLabel : 'No')}
               </span>
             </div>
 
@@ -300,7 +307,7 @@ export function LepControls({
                 <span className="text-xs text-gray-700 truncate">Mine Subsidence</span>
               </div>
               <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.mineSubsidence?.inDistrict ? 'text-indigo-800' : 'text-gray-400'}`}>
-                {constraints?.mineSubsidence?.inDistrict ? (constraints.mineSubsidence.districtName || 'Yes') : 'No'}
+                {constraints?.mineSubsidence?.inDistrict ? (constraints.mineSubsidence.districtName || 'Yes') : (notChecked('mine_subsidence') ? notCheckedLabel : 'No')}
               </span>
             </div>
 
@@ -328,7 +335,7 @@ export function LepControls({
               <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.contaminatedLand?.hasNotifiedSites ? 'text-red-800' : 'text-gray-400'}`}>
                 {constraints?.contaminatedLand?.hasNotifiedSites
                   ? `${constraints.contaminatedLand.nearestSite?.distance}m`
-                  : 'No'}
+                  : (notChecked('contaminated_land') ? notCheckedLabel : 'No')}
               </span>
             </div>
 
@@ -341,7 +348,7 @@ export function LepControls({
                 <span className="text-xs text-gray-700 truncate">Drinking Water</span>
               </div>
               <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.drinkingWaterCatchment?.inCatchment ? 'text-blue-800' : 'text-gray-400'}`}>
-                {constraints?.drinkingWaterCatchment?.inCatchment ? 'Yes' : 'No'}
+                {constraints?.drinkingWaterCatchment?.inCatchment ? 'Yes' : (notChecked('drinking_water') ? notCheckedLabel : 'No')}
               </span>
             </div>
 
@@ -374,7 +381,7 @@ export function LepControls({
               <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones?.length ? 'text-cyan-800' : 'text-gray-400'}`}>
                 {constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones?.length
                   ? `${constraints.coastalEnvironment.zones.length} zone${constraints.coastalEnvironment.zones.length > 1 ? 's' : ''}`
-                  : 'No'}
+                  : (notChecked('coastal') ? notCheckedLabel : 'No')}
               </span>
             </div>
 

@@ -14,7 +14,7 @@ import { DAOutcomesDisplay, RefusalStatsSentence, type DAOutcomesPayload, type R
 import { BriefIntentBar, BriefOverlayCard, assembleBriefPayload } from '@/components/reports/BriefIntentOverlay';
 import { SeppContextCard } from '@/components/reports/SeppContextCard';
 import { GrannyFlatBriefCard } from '@/components/reports/GrannyFlatBriefCard';
-import { describeUnavailable, type UnavailableTone } from './unavailable';
+import { describeUnavailable, describeBushfireWithoutCategory, type UnavailableTone } from './unavailable';
 import { ShadowDisplay, type ShadowData } from '@/components/reports/ShadowDetailDisplay';
 import { floodSignalLine, emsLine, type EmsActivation } from './satellite-copy';
 import { floodZoneUnavailableMessage } from '@/lib/not-assessed';
@@ -168,20 +168,14 @@ function SectionCard({ section, data, satelliteRan = false }: { section: string;
   const reason = isDataField ? (data.reason as string | null) : null;
   const source = isDataField ? (data.source as string) : null;
   const value = isDataField ? (data.value as Record<string, unknown> | null) : data;
-  // A bushfire prescreen that RAN but found no Bushfire Attack Level is good news
-  // ("not bushfire-prone"), not an un-ticked add-on — the value object is present.
-  const bushfireNotProne =
-    section === 'satellite.bushfire' && confidence === 'not_available' &&
-    !!value && typeof value === 'object' && !Array.isArray(value) &&
-    (value as Record<string, unknown>).category == null;
+  // A bushfire prescreen that RAN (value object present) but has no category: "Not bushfire-prone"
+  // only when the RFS map answered No; a failed RFS query is "Not checked" (unavailable.ts).
+  const bushfireNoCategory = section === 'satellite.bushfire' && confidence === 'not_available'
+    ? describeBushfireWithoutCategory(value)
+    : null;
   const unavail = confidence === 'not_available'
-    ? (bushfireNotProne
-        ? {
-            label: 'Not bushfire-prone',
-            detail: 'Checked the RFS Bushfire Prone Land map — this property is not designated bushfire-prone.',
-            tone: 'clear' as UnavailableTone,
-          }
-        : describeUnavailable(reason, section, satelliteRan, sectionDesc(section)))
+    ? (bushfireNoCategory
+        ?? describeUnavailable(reason, section, satelliteRan, sectionDesc(section)))
     : null;
 
   return (

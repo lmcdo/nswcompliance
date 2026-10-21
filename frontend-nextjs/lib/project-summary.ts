@@ -3,6 +3,7 @@
 // THROUGH values that already exist (constraints from the Planning Portal,
 // /api/dcp/structured-controls rows). It holds no planning figure of its own.
 
+import { hazardUnchecked } from './hazard-unchecked';
 import { formatValue, noNumberLabel, shortCitation, type StructuredControl } from '@/components/compliance/DcpStructuredControls';
 
 export const NOT_FOUND_TEXT = 'Not found in our data — check the plan';
@@ -171,8 +172,11 @@ export interface FlagConstraints {
   heritageItemName?: string;
   heritageLegislativeClause?: string;
   heritageLegislationUrl?: string;
-  bushfireProne?: boolean;
+  /** null = the bush fire map did not answer (not checked). */
+  bushfireProne?: boolean | null;
   bushfireCategory?: string | null;
+  /** Hazard maps that did not answer (lib/hazard-unchecked.ts). */
+  uncheckedHazards?: readonly string[] | null;
   acidSulfateSoils?: string;
   mineSubsidence?: { inDistrict: boolean; districtName?: string } | null;
   landslideRisk?: { hasRisk: boolean; layClass?: string } | null;
@@ -203,12 +207,17 @@ export function buildSiteFlags(c: FlagConstraints | null | undefined): SiteFlagR
   }
   if (c.bushfireProne === true) {
     flags.push({ key: 'bushfire', label: 'Bush fire prone land', detail: c.bushfireCategory ?? null, source: 'NSW Bush Fire Prone Land map', url: null });
+  } else if (c.bushfireProne === null || hazardUnchecked(c, 'bushfire')) {
+    // null = the bush fire map did not answer; saying nothing would read as "not bush fire prone".
+    unchecked.push('Bush fire: not checked — the government map did not answer.');
   }
   if (typeof c.acidSulfateSoils === 'string' && c.acidSulfateSoils.trim() !== '') {
     flags.push({ key: 'acid', label: 'Acid sulfate soils', detail: `Map class: ${c.acidSulfateSoils}`, source: 'Acid Sulfate Soils Map', url: null });
   }
   if (c.mineSubsidence?.inDistrict) {
     flags.push({ key: 'mine', label: 'Mine subsidence district', detail: c.mineSubsidence.districtName ?? null, source: 'Mine Subsidence District map', url: null });
+  } else if (hazardUnchecked(c, 'mine_subsidence')) {
+    unchecked.push('Mine subsidence: not checked — the government map did not answer.');
   }
   if (c.landslideRisk?.hasRisk) {
     flags.push({ key: 'landslide', label: 'Landslide risk', detail: c.landslideRisk.layClass ?? null, source: 'Landslide Risk Land map', url: null });
