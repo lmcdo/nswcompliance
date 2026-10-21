@@ -56,10 +56,8 @@ def _when(ts: str) -> datetime:
 
 def _field_matches(spec: str, value: int) -> bool:
     for part in spec.split(","):
-        step = 1
-        if "/" in part:
-            part, step_s = part.split("/")
-            step = int(step_s)
+        part, _, step_txt = part.partition("/")
+        step = int(step_txt or 1)
         if part == "*":
             lo, hi = 0, 10 ** 6
         elif "-" in part:
