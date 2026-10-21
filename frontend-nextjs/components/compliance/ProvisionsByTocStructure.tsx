@@ -2153,7 +2153,7 @@ export function ProvisionsByTocStructure({
           {propertyData.constraints.railOrBusyRoadUnchecked}
         </p>
       )}
-      <DcpNotCoveredNotice notCovered={data?.meta?.not_covered} />
+      <DcpNotCoveredNotice notCovered={data?.meta?.not_covered} chapterPdfUrls={data?.meta?.chapter_pdf_urls} />
       <DcpMayApplyBlock mayApply={data?.meta?.may_apply} />
       <DcpFrontageFigureNotice items={data?.meta?.frontage_setback_figures} failed={data?.meta?.frontage_setback_figures_failed} />
 
