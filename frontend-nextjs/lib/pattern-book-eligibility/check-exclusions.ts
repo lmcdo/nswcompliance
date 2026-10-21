@@ -73,7 +73,7 @@ export function uncheckedExclusions(constraints: PropertyConstraints): string[] 
   if (constraints.environmental?.bushfireProne == null) out.push('bushfire_prone');
   if (constraints.heritage?.isHeritage == null) out.push('heritage');
   // Acid sulfate class comes from the planning layers: no layers, no answer.
-  if (constraints.notChecked?.includes('planning_layers')) out.push('acid_sulfate_soils');
+  if (constraints.notChecked?.some((c) => c === 'planning_layers' || c === 'acid_sulfate')) out.push('acid_sulfate_soils');
   // Every other map-backed exclusion whose map did not answer (an ANEF timeout must not read as clear).
   const unanswered = constraints.environmental?.uncheckedHazards ?? [];
   for (const [hazard, exclusion] of EXCLUSION_FOR_HAZARD) {

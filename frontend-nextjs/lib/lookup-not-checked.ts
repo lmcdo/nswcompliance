@@ -20,11 +20,12 @@ export type LookupCheck =
   | 'sepp_exclusions' // low-mid-rise, complying and exempt exclusion maps
   | 'flood' // flood planning map
   | 'corner_lot' // corner lot and street frontage
-  | 'classified_road'; // State / classified road the lot fronts
+  | 'classified_road' // State / classified road the lot fronts
+  | 'acid_sulfate'; // no class from the planning layers AND the PostGIS fallback did not answer
 
 export const LOOKUP_CHECKS: readonly LookupCheck[] = [
   'planning_layers', 'lot_shape', 'tod', 'roads', 'spatial_overlays',
-  'dual_occupancy', 'sepp_exclusions', 'flood', 'corner_lot', 'classified_road',
+  'dual_occupancy', 'sepp_exclusions', 'flood', 'corner_lot', 'classified_road', 'acid_sulfate',
 ];
 
 /** One time limit for the whole lookup, under the 30 s function limit in vercel.json. */

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PropertyDataService } from '../../../lib/property-data';
 import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
-import { query } from '@/lib/db';
+import { query as dbQuery } from '@/lib/db';
 import { greenwebConstraints } from '@/lib/greenweb-overlay';
 import { railOrBusyRoadConstraints } from '@/lib/rail-busy-road';
 import { classifiedRoadConstraints } from '@/lib/classified-road';
-import { withLookupBudget } from '@/lib/fetch-timeout';
+import { withLookupBudget, withinLookupBudget, LOOKUP_OUT_OF_TIME } from '@/lib/fetch-timeout';
 import { LOOKUP_BUDGET_MS, type LookupCheck } from '@/lib/lookup-not-checked';
 import { ADDRESS_SEARCH_UNAVAILABLE, VALUATION_UNAVAILABLE, LOCATION_NOT_FOUND } from '@/lib/nsw-planning-portal';
 
@@ -46,6 +46,8 @@ export async function GET(req: NextRequest) {
  // One time limit for the whole lookup: anything unfinished when it runs out is "Not checked".
  const propertyData = await withLookupBudget(LOOKUP_BUDGET_MS, async () => {
  const propertyData = await PropertyDataService.getPropertyComplianceData(address);
+ // Database calls cannot take the time limit's signal, so each is cut off by it instead.
+ const query: typeof dbQuery = (text, params) => withinLookupBudget(dbQuery(text, params));
  const notChecked = (check: LookupCheck) => {
    propertyData.constraints.notChecked = [...(propertyData.constraints.notChecked ?? []), check];
  };
@@ -218,6 +220,8 @@ export async function GET(req: NextRequest) {
    // Flood, TOD, acid sulfate, key sites, ... all unknown: never "not in any overlay".
    console.warn('[Property API] Spatial overlay query failed:', spatialErr);
    notChecked('spatial_overlays');
+   // The overlay is the acid sulfate fallback: with no class from the layers either, it is unknown.
+   if (!propertyData.constraints.acidSulfateSoils) notChecked('acid_sulfate');
  }
  // Ku-ring-gai Greenweb is flagged by the LOT, not the address point: Part 18 applies to areas
  // identified as Greenweb, and a lot that only partly overlaps a patch is still bound. Separate
@@ -257,7 +261,7 @@ export async function GET(req: NextRequest) {
  // caller can tell "no such property" from "the service is down" -- never serve a neighbour.
  const message = error instanceof Error ? error.message : '';
  // A source that did not answer is an outage (503), never "no such property".
- if ([ADDRESS_SEARCH_UNAVAILABLE, VALUATION_UNAVAILABLE, LOCATION_NOT_FOUND].some((m) => message.startsWith(m))) {
+ if ([ADDRESS_SEARCH_UNAVAILABLE, VALUATION_UNAVAILABLE, LOCATION_NOT_FOUND, LOOKUP_OUT_OF_TIME].some((m) => message.startsWith(m))) {
    return NextResponse.json(
      { success: false, error: 'The NSW property services did not answer, so this property could not be looked up. Please try again.', details: message },
      { status: 503 }

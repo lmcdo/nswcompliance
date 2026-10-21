@@ -150,6 +150,39 @@ describe('/api/property when its sources fail', () => {
   });
 });
 
+describe('/api/property when the database never answers', () => {
+  const realFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = realFetch;
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  it('(a) the overlay and lot queries hang: the reply still comes inside the budget, those checks "not checked"', async () => {
+    jest.useFakeTimers();
+    mockDb.query.mockImplementation(() => new Promise(() => {}));
+    mockDb.connect.mockImplementation(() => new Promise(() => {}));
+    for (const m of ['log', 'warn', 'error'] as const) jest.spyOn(console, m).mockImplementation(() => {});
+    global.fetch = jest.fn((input: any, init: any) => replay(String(input), init)) as any;
+    let done: { status: number; body: any } | null = null;
+    const pending = lookup().then((r) => (done = r));
+    await jest.advanceTimersByTimeAsync(LOOKUP_BUDGET_MS + 2100);
+    expect(done).not.toBeNull();
+    const { status, body } = await pending;
+    expect(status).toBe(200);
+    expect(body.data.constraints.notChecked).toEqual(expect.arrayContaining(['spatial_overlays', 'classified_road']));
+  });
+
+  it('work that ignores the time limit is still cut off: the lookup stops with "ran out of time", never hangs', async () => {
+    jest.useFakeTimers();
+    const { withLookupBudget, LOOKUP_OUT_OF_TIME, LOOKUP_GRACE_MS } = await import('@/lib/fetch-timeout');
+    let outcome = 'pending';
+    withLookupBudget(1000, () => new Promise(() => {})).then(() => (outcome = 'answered'), (e) => (outcome = String(e)));
+    await jest.advanceTimersByTimeAsync(1000 + LOOKUP_GRACE_MS + 50);
+    expect(outcome).toContain(LOOKUP_OUT_OF_TIME);
+  });
+});
+
 describe('/api/property when only the lot shape also answers', () => {
   const realFetch = global.fetch;
   beforeEach(() => {

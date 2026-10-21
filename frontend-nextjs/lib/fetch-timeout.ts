@@ -17,15 +17,41 @@ export const MAP_LOOKUP_TIMEOUT_MS = 8000;
 
 const budget = new AsyncLocalStorage<AbortSignal>();
 
-/** Run `fn` with one time limit: every call made through this file stops when it runs out. */
+export const LOOKUP_OUT_OF_TIME = 'Property lookup ran out of time';
+/** After the limit, calls that saw the signal settle as "not checked" within this grace; then the lookup stops. */
+export const LOOKUP_GRACE_MS = 2000;
+
+/**
+ * Run `fn` with one time limit: every call made through this file stops when it runs out. Work that
+ * cannot see the signal (a database query) is cut off too: past the limit plus a short grace, this
+ * REJECTS with LOOKUP_OUT_OF_TIME, so the caller always answers instead of hanging.
+ */
 export async function withLookupBudget<T>(ms: number, fn: () => Promise<T>): Promise<T> {
   const controller = new AbortController();
+  let hardStop: ReturnType<typeof setTimeout> | undefined;
   const timer = setTimeout(() => controller.abort(new Error(`lookup ran out of time after ${ms} ms`)), ms);
+  const stopped = new Promise<never>((_, reject) => {
+    hardStop = setTimeout(() => reject(new Error(`${LOOKUP_OUT_OF_TIME} after ${ms + LOOKUP_GRACE_MS} ms`)), ms + LOOKUP_GRACE_MS);
+  });
   try {
-    return await budget.run(controller.signal, fn);
+    return await Promise.race([budget.run(controller.signal, fn), stopped]);
   } finally {
     clearTimeout(timer);
+    clearTimeout(hardStop);
   }
+}
+
+/** `p`, but rejecting once the running lookup is out of time (for work that cannot take a signal). */
+export function withinLookupBudget<T>(p: Promise<T>): Promise<T> {
+  const outer = budget.getStore();
+  if (!outer) return p;
+  return new Promise<T>((resolve, reject) => {
+    const stop = () => reject(new Error('lookup ran out of time'));
+    // Always handle `p`, even when already out of time, so its own failure is never unhandled.
+    p.then(resolve, reject).finally(() => outer.removeEventListener('abort', stop));
+    if (outer.aborted) stop();
+    else outer.addEventListener('abort', stop, { once: true });
+  });
 }
 
 /** The running lookup's time limit, if any (for code that builds its own signal). */
