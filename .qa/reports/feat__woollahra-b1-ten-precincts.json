@@ -1,0 +1,78 @@
+{
+  "tier": "standard",
+  "justification": "Woollahra DCP B3 (453 live rules) applies to 'land identified on Map 1' (p5) = the ten B1 residential precincts, but was served to every Woollahra house incl. Paddington. The five refused B1 maps were searched at the wrong scale; each map is now searched within 5% of its own printed scale bar and all ten pass the unchanged gates. B3 keyed to their union. Loaded and keyed 2026-10-21 before merge.",
+  "commit_hash": "ff5445cd",
+  "files": [
+    "data/woollahra_precincts/b1_residential_precincts.geojson",
+    "data/woollahra_precincts/b1_maps.json",
+    "data/woollahra_precincts/fit_report_b1_residential_precincts.json",
+    "scripts/fit_site_plans.py",
+    "scripts/gate_rules.py",
+    "scripts/import_cb_centre_boundaries.py",
+    "tests/test_gate_rules.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q tests/test_gate_rules.py",
+    "fails_when": "The B3 rule is removed or keyed elsewhere, or the outline file lacks the union id.",
+    "observed_red": "Before: DQ-143 = 498 (453 of them Woollahra B3 served council-wide).",
+    "external_authority": "Live after load: Vaucluse East house 452 B3 rules, Paddington HCA house 0; DQ-143 498 -> 45."
+  },
+  "pre_impl": {
+    "existing_data": "Same fitter and loader as PR #1418 (five precincts).",
+    "assumption_mismatch": "The five refusals were a scale-search range error (maps at 0.336 and 0.97 m/px outside 0.45-0.9), not bad maps.",
+    "new_vs_existing": "Per-map scale-bar search window, excluded-area cut-out, five outlines + union, B3 keying rule, one test."
+  },
+  "functions": [
+    {
+      "name": "apply_gate_rules",
+      "file_line": "scripts/gate_rules.py:460",
+      "input": "rules woollahra_b3_residential_precincts and woollahra_b3_layer for council woollahra",
+      "output": "495 B3 rows keyed to the union (applied 2026-10-21)",
+      "if_none": "zero matching rows means nothing is keyed or written"
+    }
+  ],
+  "values": [
+    {
+      "value": "five new precincts: line share 0.65-0.83, margin 0.22-0.45, shape IoU 0.984-0.998",
+      "read_at": "fit report 2026-10-21",
+      "if_missing": "no fit evidence"
+    },
+    {
+      "value": "DQ-143 498 -> 45",
+      "read_at": "scripts/dq_probe_live.py --id DQ-143 after keying",
+      "if_missing": "no measured effect"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A Paddington house still gets B3.",
+      "what_happens": "Rules for residential precincts reach a heritage area they do not cover.",
+      "mitigated": true,
+      "how": "Union excludes Paddington HCA; loader anchor 5 Victoria St resolves to Paddington HCA only; live 0.",
+      "repro": "for-property precinct_id=Paddington HCA"
+    },
+    {
+      "scenario": "A precinct house loses B3.",
+      "what_happens": "Houses in a precinct miss the general controls written for them.",
+      "mitigated": true,
+      "how": "Union of all ten; one inside anchor per precinct resolves to its precinct and the union.",
+      "repro": "python scripts/import_cb_centre_boundaries.py --council woollahra --src data/woollahra_precincts/b1_residential_precincts.geojson"
+    },
+    {
+      "scenario": "Manning Road Centre lies inside the Wallaroy outline.",
+      "what_happens": "Centre properties may also be shown Wallaroy B1 and B3 rules.",
+      "mitigated": false,
+      "how": "Recorded open item: Wallaroy's map draws the centre in a box with no 'excluded' legend entry; not cut.",
+      "repro": "lookup a Manning Road Centre address"
+    }
+  ],
+  "mutation_analysis": "Removing the B3 rule fails the new test.",
+  "post_merge": {
+    "db_reset": "Already done before merge: 11 outlines loaded (backup woollahra_precinct_boundaries_before_2026-10-21T025830.json), 495 B3 rows keyed (backup precinct_keying_derived_2026-10-21.csv).",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Done live: Vaucluse East 452 B3, Paddington 0."
+  },
+  "residual_risk": "Manning Road Centre inside Wallaroy (open item); outline vertices thinned within 0.25 m to fit the 2 MB file limit."
+}

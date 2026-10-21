@@ -105,10 +105,13 @@ PROFILES = {
         "envelope": (151.21, -33.91, 151.30, -33.82),
         "files": {
             "b1_residential_precincts.geojson": {
-                # the five maps proved (2026-10-21); Manning Road, Bellevue Hill South/North and Vaucluse West/East were
-                # refused (map lot lines not on the cadastre, placement not unique) and the union waits for all ten
+                # all ten maps proved (2026-10-21). Manning Road, Bellevue Hill South/North and Vaucluse West/East were
+                # first refused: the shared 0.45-0.9 m/px search missed their printed scale bars (0.336 / 0.97); each
+                # map is now searched at its own bar. The union (B3 Map 1's land) exists only because all ten passed.
                 "ids": {"Darling Point Precinct", "Double Bay Precinct", "Wallaroy Precinct", "Point Piper Precinct",
-                        "Rose Bay Precinct"},
+                        "Rose Bay Precinct", "Manning Road Precinct", "Bellevue Hill South Precinct",
+                        "Bellevue Hill North Precinct", "Vaucluse West Precinct", "Vaucluse East Precinct",
+                        "Woollahra Residential Precincts"},
                 "outside_means_not_in_these_ids": True,
                 "outside": {
                     "5 Victoria St Paddington (Paddington HCA)": (151.230640, -33.886899),
@@ -117,6 +120,11 @@ PROFILES = {
                 "inside": {
                     "10 Hampden Ave Darling Point": (151.237603, -33.869974),
                     "20A Stafford St Double Bay": (151.244884, -33.873873),
+                    "46 Epping Rd Double Bay (Manning Road)": (151.246101, -33.881782),
+                    "6/20 Birriga Rd Bellevue Hill (Bellevue Hill South)": (151.261663, -33.886070),
+                    "58 Cranbrook Rd Bellevue Hill (Bellevue Hill North)": (151.253726, -33.876780),
+                    "13 Olola Ave Vaucluse (Vaucluse West)": (151.271966, -33.856379),
+                    "16 Kings Rd Vaucluse (Vaucluse East)": (151.282807, -33.854335),
                 },
             },
             "lep_e1_edgecliff_centre_d4.geojson": {
