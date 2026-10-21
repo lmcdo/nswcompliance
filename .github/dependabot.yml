@@ -45,6 +45,12 @@ updates:
       - "security"
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # mutation_health.py speaks the mutmut 2.x CLI. #777 bumped it to 3.x and the
+      # monthly maintenance-mutation job crashed on every run after. A 3.x move is a
+      # rewrite of that script, decided by a person -- see scripts/requirements-maintenance.txt.
+      - dependency-name: "mutmut"
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         patterns:

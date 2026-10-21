@@ -70,7 +70,7 @@ def run_one(name: str, src: str, tests: str) -> dict:
         "--no-progress",
     ]
     # mutmut exits non-zero when mutants survive; that is expected, not an error.
-    subprocess.run(cmd, capture_output=True, text=True, timeout=2400)
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=2400)
 
     try:
         conn = sqlite3.connect(".mutmut-cache")
@@ -79,7 +79,11 @@ def run_one(name: str, src: str, tests: str) -> dict:
         counts = dict(cur.fetchall())
         conn.close()
     except Exception as e:  # noqa: BLE001 — surface the parse failure, don't crash the batch
-        return {"name": name, "error": str(e)}
+        # Say what mutmut said. Its output used to be thrown away, so from 2026-08-12 (when
+        # mutmut 3 removed every flag above) each run reported only "no such table: Mutant".
+        # prior-art-checked: an edit inside this function's existing error path, no new capability.
+        said = ((proc.stderr or proc.stdout or "").strip().splitlines() or ["(no output)"])[-1]
+        return {"name": name, "error": f"{e}; mutmut exit {proc.returncode}: {said}"}
 
     total = sum(counts.values())
     killed = counts.get("ok_killed", 0)

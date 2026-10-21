@@ -1,0 +1,72 @@
+{
+ "tier": "standard",
+ "justification": "Restores a monthly production cron (maintenance-mutation) that has failed on every run since 2026-08-12 and changes a dependency pin plus Dependabot policy. Not Critical: no DB, no served output; the job only measures test strength. Not Minor: it changes what the maintenance image installs and what Dependabot may propose.",
+ "commit_hash": "6be04cec",
+ "files": [
+  "scripts/mutation_health.py",
+  "scripts/requirements-maintenance.txt",
+  ".github/dependabot.yml",
+  "tests/test_mutmut_pin_matches_its_cli.py"
+ ],
+ "pre_impl": {
+  "existing_data": "none -- no table or query. Railway run history (deploymentInstanceExecutions) shows maintenance-mutation CRASHED on 2026-07-01, 09-01 and 10-01, REMOVED on 08-01.",
+  "assumption_mismatch": "The pin assumed a mutmut major bump was safe. mutmut 3.8.0's `run` accepts only --max-children and mutant names (read from its click definitions), so all four flags the script passes are rejected, and the .mutmut-cache sqlite it reads does not exist in 3.x. mutmut 2.5.1, installed in a throwaway venv, lists all four flags in `run --help`.",
+  "new_vs_existing": "The next maintenance image build installs mutmut 2.5.x; the next monthly run (2026-11-01 06:00 UTC) is the first that can succeed. The 07-01 crash predates #777; its cause is unknown and is not claimed fixed."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_mutmut_pin_matches_its_cli.py -q -o addopts=",
+  "fails_when": "the pin allows mutmut 3 while mutation_health.py still passes 2.x-only flags, or Dependabot stops ignoring mutmut majors",
+  "observed_red": "YES, forced: restoring 'mutmut>=3.7.0,<4' failed test_a_script_on_the_2x_cli_is_pinned_below_3. Restored green, 2 passed."
+ },
+ "functions": [
+  {
+   "name": "run_one",
+   "file_line": "scripts/mutation_health.py:52",
+   "input": "service name, source path and tests path for one mutmut scan",
+   "output": "counts dict, or an error dict that now carries mutmut's exit code and last output line",
+   "if_none": "empty mutmut output gives '(no output)' in the error text rather than an IndexError"
+  }
+ ],
+ "values": [
+  {
+   "value": "mutmut pin >=2.5,<3",
+   "read_at": "scripts/requirements-maintenance.txt",
+   "nullable": "no",
+   "guard_at": "tests/test_mutmut_pin_matches_its_cli.py",
+   "if_missing": "the test fails if the mutmut line disappears"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "Dependabot proposes mutmut 4.x next year",
+   "what_happens": "it is ignored as a major; a person decides the port",
+   "mitigated": true,
+   "how": "dependabot.yml ignore + test_dependabot_does_not_offer_mutmut_majors",
+   "repro": "pytest tests/test_mutmut_pin_matches_its_cli.py"
+  },
+  {
+   "scenario": "Someone ports the script to the 3.x CLI",
+   "what_happens": "the pin test stops requiring <3 because the 2.x flags are gone from the script",
+   "mitigated": true,
+   "how": "the test only holds the pin while the 2.x flags are used",
+   "repro": "read test_a_script_on_the_2x_cli_is_pinned_below_3"
+  },
+  {
+   "scenario": "mutmut fails again for a new reason",
+   "what_happens": "previously only 'no such table: Mutant'; now the error names mutmut's exit code and last output line, visible in the run log and Telegram",
+   "mitigated": true,
+   "how": "run_one error text",
+   "repro": "run mutation_health.py with mutmut absent"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes -- confirm the maintenance-mutation image rebuilds green, and that the 2026-11-01 run exits clean (check_railway_jobs_ran.py)."
+ },
+ "real_layer_exempt": {
+  "scripts/mutation_health.py": "its only 'database' is mutmut's own local .mutmut-cache sqlite file written by the subprocess it just ran; no production DB or HTTP. The change adds the subprocess's output to an existing error string. mutmut itself cannot run on Windows (it refuses), and the real layer is the Railway run, watched by check_railway_jobs_ran.py."
+ }
+}
