@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Live /api/property hit the 30 s gateway limit (504) when one NSW map call stalled: ~14 calls had no timeout. And a failed hazard call was swallowed and shown as 'No' (bush fire, mine subsidence, contaminated land) on the LEP tab, SEE/DA report, assessment reports, pattern-book check and property cards. Now every map call has an 8 s deadline and a failed or timed-out hazard is unknown, shown as 'Not checked'.",
-  "commit_hash": "3a72c3d0",
+  "commit_hash": "2f544f9d",
   "files": [
     "frontend-nextjs/__tests__/components/compliance/lep-controls-hazard-not-checked.test.tsx",
     "frontend-nextjs/__tests__/lib/hazard-lookup-unknown.test.ts",
