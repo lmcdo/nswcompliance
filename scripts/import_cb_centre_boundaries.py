@@ -105,8 +105,10 @@ PROFILES = {
         "envelope": (151.21, -33.91, 151.30, -33.82),
         "files": {
             "b1_residential_precincts.geojson": {
-                # the two maps proved so far; the other eight and the union are added when they are fitted
-                "ids": {"Darling Point Precinct", "Double Bay Precinct"},
+                # the five maps proved (2026-10-21); Manning Road, Bellevue Hill South/North and Vaucluse West/East were
+                # refused (map lot lines not on the cadastre, placement not unique) and the union waits for all ten
+                "ids": {"Darling Point Precinct", "Double Bay Precinct", "Wallaroy Precinct", "Point Piper Precinct",
+                        "Rose Bay Precinct"},
                 "outside_means_not_in_these_ids": True,
                 "outside": {
                     "5 Victoria St Paddington (Paddington HCA)": (151.230640, -33.886899),
