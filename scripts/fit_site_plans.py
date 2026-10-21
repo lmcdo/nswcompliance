@@ -259,6 +259,45 @@ def precinct_map(pdf: Path, page: int) -> tuple[np.ndarray, np.ndarray, np.ndarr
     return a, lines, out
 
 
+def site_map(pdf: Path, page: int, sm: dict) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """(rgb, lot-line mask, site mask) for a single-site plan drawn on the cadastre with the site edged by a thick dark
+    line and no fill (C-B DCP 2023 11.5 Riverlands, 11.6 Potts Hill; a precinct entry's "site_map"). Keys:
+      crop       [x0, y0, x1, y1] pixels of the page's largest image: the map panel (legend and title left out)
+      lines      'grey' (lot lines drawn grey, as precinct_map) or 'dark' (drawn black, lot-number glyphs dropped)
+      edge_px    width of the site edge: dark pixels that survive an opening this wide are the edge, thin lines are not
+      inside_px  a pixel of the panel inside the site: the site is the region the edge closes round it (else ABORT)
+      rotate_deg grid bearing of the plan's 'up' when it is not north (see below)"""
+    p = (d := fitz.open(pdf))[page - 1]
+    xref = max(p.get_images(full=True), key=lambda im: d.extract_image(im[0])["width"] * d.extract_image(im[0])["height"])[0]
+    a = np.asarray(Image.open(io.BytesIO(d.extract_image(xref)["image"])).convert("RGB")).astype(int)
+    a = a[int(sm["crop"][1]):int(sm["crop"][3]), int(sm["crop"][0]):int(sm["crop"][2])]
+    mean, chroma = a.mean(2), a.max(2) - a.min(2)
+    if sm.get("lines", "grey") == "dark":
+        lines = ((mean < 140) & (chroma < 40)).astype(np.uint8)   # a glyph is a small blob, a lot line a long network
+        n, lab, st, _ = cv2.connectedComponentsWithStats(lines, connectivity=8)
+        lines = np.isin(lab, [i for i in range(1, n) if max(st[i, 2], st[i, 3]) >= 25]).astype(np.uint8)
+    else:
+        lines = ((mean >= 140) & (mean <= 205) & (chroma < 25)).astype(np.uint8)
+    k = int(sm["edge_px"])
+    edge = cv2.morphologyEx(cv2.morphologyEx((a.max(2) < 110).astype(np.uint8), cv2.MORPH_OPEN, np.ones((k, k), np.uint8)),
+                            cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))   # the close bridges 1-3 px breaks in the edge
+    _, lab = cv2.connectedComponents((edge == 0).astype(np.uint8), connectivity=4)
+    ix, iy = (int(v) for v in sm["inside_px"])
+    region = (lab == lab[iy, ix]).astype(np.uint8)
+    if lab[iy, ix] == 0 or region[0].any() or region[-1].any() or region[:, 0].any() or region[:, -1].any():
+        raise SystemExit(f"[ABORT] p{page}: the site edge does not close round inside_px")
+    region = cv2.dilate(region, np.ones((k + 2, k + 2), np.uint8))   # the edge line itself is the boundary
+    out = np.zeros_like(region)
+    cv2.drawContours(out, [max(cv2.findContours(region, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0], key=cv2.contourArea)], -1, 1, -1)
+    if sm.get("rotate_deg"):  # plan drawn along a street the page draws straight up; its NSW centreline gives the bearing
+        R = cv2.getRotationMatrix2D(((w := out.shape[1]) / 2, (h := out.shape[0]) / 2), -float(sm["rotate_deg"]), 1.0)
+        W, H = int(h * abs(R[0, 1]) + w * abs(R[0, 0])) + 2, int(h * abs(R[0, 0]) + w * abs(R[0, 1])) + 2
+        R[:, 2] += (W / 2 - w / 2, H / 2 - h / 2)
+        rot = lambda m, v: cv2.warpAffine(m, R, (W, H), flags=cv2.INTER_NEAREST, borderValue=v)  # noqa: E731
+        a, lines, out = rot(a.astype(np.uint8), (255, 255, 255)).astype(int), rot(lines, 0), rot(out, 0)
+    return a, lines, out
+
+
 def _line_search(lines: np.ndarray, E: np.ndarray, res: float, scales, x0: float, y1: float, far_m: float = 0) -> list:
     """(score, m/px, X, Y of the map's top-left[, best score > far_m away at that scale]) per scale: share of line
     pixels on a cadastre edge (+-1 cell)."""
@@ -304,7 +343,7 @@ def place_on_lot_lines(lines: np.ndarray, cad, box: tuple, scale_range) -> dict:
 
 
 def fit_precinct(c: dict, pdf: Path, cad, box: tuple, scale_range) -> dict:
-    a, lines, mask = precinct_map(pdf, c["page"])
+    a, lines, mask = site_map(pdf, c["page"], c["site_map"]) if c.get("site_map") else precinct_map(pdf, c["page"])
     row = {"precinct_id": c["precinct_id"], "page": c["page"], **place_on_lot_lines(lines, cad, box, scale_range)}
     s, ox, oy = row["m_per_px"], row.pop("x0"), row.pop("y0")
     cs, hier = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
@@ -339,7 +378,10 @@ def fit_precinct(c: dict, pdf: Path, cad, box: tuple, scale_range) -> dict:
                               ("placement not unique", row["coarse"] - row["runner_up_far"] < PEAK_MARGIN),
                               ("shape does not match the map", row["iou_shape"] < IOU_MIN),
                               ("lots do not match the map", row["iou_lot_land"] < IOU_MIN)) if bad]
-    if fails:
+    acc = c.get("accepted_below_bar") or {}   # a user's recorded decision to accept named gates for this entry only
+    if fails and set(fails) <= set(acc.get("gates", [])):
+        row["accepted_below_bar"] = acc   # the bar itself is unchanged; the decision travels in the outline's proof
+    elif fails:
         row["refused"] = "; ".join(fails)
     row["_geom"], row["_fig"] = geom, fig   # drawn either way; written only when not refused
     return row
@@ -392,7 +434,7 @@ def main_precincts(cfg: dict, out: Path, only: set | None = None) -> int:
         row = fit_precinct(c, pdf, cad, box, precinct_scale_range(c, cfg))
         g, fig = row.pop("_geom"), row.pop("_fig")
         (out / "checks").mkdir(exist_ok=True)
-        draw_precinct(fig, g, cad, out / "checks" / f"b1_p{c['page']}.png")
+        draw_precinct(fig, g, cad, out / "checks" / f"{cfg.get('check_prefix', 'b1')}_p{c['page']}.png")
         if "refused" not in row:
             ok_geoms.append(g)
             feats.append(cb.feature(c["precinct_id"], c["name"], g, {
