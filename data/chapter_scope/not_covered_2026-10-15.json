@@ -1150,7 +1150,7 @@
       "expect": 994,
       "reason": "Warringah DCP 2011 Part G (p95-258): ten named areas (G1 Dee Why Town Centre .. G10), each 'Applies to Land' limited to that area; served to all of Warringah (audit run4). G1 general sections 1-11 are keyed back to the Dee Why Town Centre outline by gate rule warringah_g1_dee_why_town_centre; the rest wait for outlines. Plus 4 rows on p259 printed above the Part H heading (end of Part G), found 2026-10-16 resolving mixed heading pages. Plus Part F rules for named places (2026-10-16, audit run8: 'The Strand, Dee Why' served to Brookvale): F1 requirements 11-15 (Manly Vale, Forestville, The Strand Dee Why, Pittwater Road Collaroy, Forestway Shops), F2 Brookvale Brickworks (Lots 11 and 12 DP 1101677), F3/F4 named special-use sites (Narrabeen Lagoon trail, War Veterans Village, Collaroy sites, Allambie Heights, Manly Vale Hydraulics Laboratory, Frenchs Forest cemetery, Kimbriki, Bare Creek). F1 general requirements 1-9 stay served (zones declined on purpose: B1/B2 retired, see northern_beaches_config Part F).",
       "title": "Warringah DCP 2011 Part G Special Area Controls, and Part F named centres and sites",
-      "reason_code": "PART_MAPPED",
+      "reason_code": "NOT_YET_MAPPED",
       "page": 95
     },
     {

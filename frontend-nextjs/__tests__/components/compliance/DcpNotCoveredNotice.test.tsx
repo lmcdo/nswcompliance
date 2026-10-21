@@ -85,3 +85,12 @@ describe('getNotCovered reason fallback', () => {
     }
   });
 });
+
+describe('not-covered data', () => {
+  it('uses only known reason codes (a typo fails here, not silently on the page)', () => {
+    const data = notCoveredData as Record<string, Array<{ chapter_key: string; reason_code?: string }>>;
+    for (const [council, rows] of Object.entries(data)) {
+      for (const r of rows) expect([council, r.chapter_key, r.reason_code && r.reason_code in MAY_APPLY_REASONS]).toEqual([council, r.chapter_key, true]);
+    }
+  });
+});
