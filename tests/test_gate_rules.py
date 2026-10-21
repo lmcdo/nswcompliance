@@ -205,3 +205,26 @@ def test_cb_11_14_riverwood_keyed_to_its_lep_outline():
     src = Path(__file__).resolve().parent.parent / "data" / "canterbury_bankstown_precincts" / "lep_riverwood_11_14.geojson"
     ids = {f["properties"]["precinct_id"] for f in json.loads(src.read_text(encoding="utf-8"))["features"]}
     assert ids == {"11.14"}
+
+
+def test_woollahra_d4_edgecliff_keyed_to_its_lep_outline_and_moved_to_precinct_layer():
+    import json
+    from pathlib import Path
+    import import_cb_centre_boundaries as imp
+    rule = next(r for r in dpk.RULES if r["name"] == "woollahra_d4_edgecliff_centre")
+    assert rule["council"] == "woollahra"
+    assert rule["where"] == "source_chapter_key = 'chapter-d4-edgecliff-centre'"
+    assert rule["strategy"] == {"type": "constant", "precinct_id": "Edgecliff Centre"}
+    layer = next(r for r in g.GATE_RULES if r["name"] == "woollahra_d4_layer")
+    assert "chapter-d4-edgecliff-centre" in layer["where"] and "v2_dcp_layer = 'generic'" in layer["where"]
+    assert layer["set"] == {"v2_dcp_layer": "precinct"}
+    src = Path(__file__).resolve().parent.parent / "data" / "woollahra_precincts" / "lep_e1_edgecliff_centre_d4.geojson"
+    rows = imp.load_rows(src, imp.PROFILES["woollahra"])  # aborts unless the file holds exactly the profile's ids
+    assert [r["precinct_id"] for r in rows] == ["Edgecliff Centre"]
+    assert 29_000 < rows[0]["area_sqm"] < 31_500  # the LEP E1 polygon, 3.0 ha
+    feat = json.loads(src.read_text(encoding="utf-8"))["features"][0]
+    from shapely.geometry import Point, shape
+    poly = shape(feat["geometry"])
+    spec = imp.PROFILES["woollahra"]["files"][src.name]
+    assert all(poly.contains(Point(*xy)) for xy in spec["inside"].values())
+    assert not any(poly.contains(Point(*xy)) for xy in spec["outside"].values())
