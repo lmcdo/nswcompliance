@@ -205,7 +205,9 @@ describe('language', () => {
   const hook = fs.readFileSync(path.join(__dirname, '../../../scripts/liability_language_check.py'), 'utf8');
   const start = hook.indexOf('FLAGGED_TERMS = re.compile(');
   const block = hook.slice(start, hook.indexOf("r'as[", start)); // up to the phrase entry
-  const words = Array.from(new Set((block.match(/[a-z]{4,}/g) ?? []).filter((w) => !['compile', 'should_'].includes(w))));
+  // Only words inside the r'...' pattern strings, never the hook's comments.
+  const patternText = Array.from(block.matchAll(/r'([^']*)'/g), (m) => m[1]).join('|');
+  const words = Array.from(new Set(patternText.match(/[a-z]{4,}/g) ?? []));
   const LIABILITY = new RegExp(`\\b(${[...words, 'complies'].join('|')})\\b`, 'i');
   it('reads a real word list from the hook', () => {
     expect(words.length).toBeGreaterThanOrEqual(15);
