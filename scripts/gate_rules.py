@@ -252,6 +252,11 @@ GATE_RULES += [
      "set": {"v2_dcp_layer": "precinct"}},
 ]
 # ---- end lane-gates ----------------------------------------------------------------------------------------------
+try:  # rows limited to lots on a State or classified road (scripts/gate_rules_roads.py)
+    from gate_rules_roads import ROAD_GATE_RULES
+except ImportError:                                   # imported as scripts.gate_rules
+    from scripts.gate_rules_roads import ROAD_GATE_RULES
+GATE_RULES += ROAD_GATE_RULES
 _GATE_COLUMNS = {"v2_marker", "v2_dcp_layer", "v2_site_condition_required", "v2_applicable_zones",
                  "v2_heritage_hca"}
 #: v2_applicable_zones added 2026-10-14: a zone limit set by hand was undone by every re-extraction (dry run of the

@@ -4,6 +4,7 @@ import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@
 import { query } from '@/lib/db';
 import { greenwebConstraints } from '@/lib/greenweb-overlay';
 import { railOrBusyRoadConstraints } from '@/lib/rail-busy-road';
+import { classifiedRoadConstraints } from '@/lib/classified-road';
 
 /**
  * General NSW Property Data API Endpoint
@@ -62,6 +63,9 @@ export async function GET(req: NextRequest) {
  const spatialCoords = propertyData.coordinates;
  if (spatialCoords) {
  const { lon: spatialLon, lat: spatialLat } = spatialCoords;
+ // Does the LOT front a State or classified road (any council)? Started now so it runs alongside the overlay queries.
+ // Never throws: a failed check comes back as a plain-words classifiedRoadUnchecked note (lib/classified-road.ts).
+ const classifiedRoadCheck = classifiedRoadConstraints(query, fetch, spatialLon, spatialLat);
  try {
    const spatialResult = await query(
      `SELECT layer_type, value
@@ -220,6 +224,8 @@ export async function GET(req: NextRequest) {
    ]);
    Object.assign(propertyData.constraints, greenweb, railOrBusyRoad);
  }
+ const classifiedRoad = await classifiedRoadCheck;
+ if (propertyData.constraints) Object.assign(propertyData.constraints, classifiedRoad);
  }
 
  return NextResponse.json({

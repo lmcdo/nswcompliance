@@ -57,6 +57,8 @@ interface PropertyFilters {
   riparian?: boolean;      // lot on the LEP Riparian Lands / watercourse map
   greenweb?: boolean;      // any part of the lot overlaps a Ku-ring-gai DCP Part 18R.1 Greenweb category
   rail_or_busy_road?: boolean; // the lot adjoins the rail corridor or a busy road (Ku-ring-gai DCP Part 20, p20-2)
+  state_road?: boolean;        // the lot fronts a TfNSW State road (lib/classified-road.ts)
+  classified_road?: boolean;   // the lot fronts a State road or a classified Regional road (lib/classified-road.ts)
   precinct_id?: string;
   dev_type?: string;
   topic?: string;
@@ -305,6 +307,8 @@ export async function GET(request: NextRequest) {
       riparian: searchParams.get('riparian') === 'true',
       greenweb: searchParams.get('greenweb') === 'true',
       rail_or_busy_road: searchParams.get('rail_or_busy_road') === 'true',
+      state_road: searchParams.get('state_road') === 'true',
+      classified_road: searchParams.get('classified_road') === 'true',
       precinct_id: searchParams.get('precinct_id') ? normalizePrecinctId(searchParams.get('precinct_id')!) : undefined,
       dev_type: searchParams.get('dev_types') || searchParams.get('dev_type') || undefined,
       topic: searchParams.get('topic') || undefined,
@@ -1169,6 +1173,8 @@ async function queryLayer(
     if (filters.riparian) conditions.push('riparian');
     if (filters.greenweb) conditions.push('greenweb');
     if (filters.rail_or_busy_road) conditions.push('rail_or_busy_road');
+    if (filters.state_road) conditions.push('state_road');
+    if (filters.classified_road) conditions.push('classified_road');
 
     if (conditions.length === 0) {
       // No conditions apply, skip condition layer

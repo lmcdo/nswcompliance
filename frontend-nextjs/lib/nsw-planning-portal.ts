@@ -142,6 +142,16 @@ export interface PlanningConstraints {
  railOrBusyRoad?: { adjoins: boolean; roads: string[]; rail: boolean } | null;
  /** Plain-words note when the rail / busy-road check could not run (Part 20 rules may then be missing). */
  railOrBusyRoadUnchecked?: string;
+ // The LOT touches (within shared/classified-roads.json tolerance_m) a road corridor that carries a TfNSW State road
+ // or a classified Regional road (lib/classified-road.ts). Absent when it touches neither.
+ classifiedRoad?: {
+   state: boolean;
+   classified: boolean;
+   unclassifiedRegional: boolean;
+   roads: Array<{ roadNumber: string; roadName: string | null; roadClass: string }>;
+ } | null;
+ /** Plain-words note when the State / classified road check could not run (those rules may then be missing). */
+ classifiedRoadUnchecked?: string;
  wetlands?: { inWetlandsArea: boolean } | null;
  keySite?: { isKeySite: boolean; clause?: string } | null;
  activeStreetFrontage?: { required: boolean; clause?: string } | null;

@@ -385,6 +385,8 @@ export function ProvisionsByTocStructure({
     riparian: propertyData?.constraints?.riparianLand?.inRiparianArea === true,
     greenweb: propertyData?.constraints?.greenweb?.onGreenweb === true,
     railOrBusyRoad: propertyData?.constraints?.railOrBusyRoad?.adjoins === true,
+    stateRoad: propertyData?.constraints?.classifiedRoad?.state === true,
+    classifiedRoad: propertyData?.constraints?.classifiedRoad?.classified === true,
     suburb: suburbFromAddress(address),
   });
 
@@ -2151,6 +2153,12 @@ export function ProvisionsByTocStructure({
         // Without the flag the Part 20 rail and busy-road rules are not shown, so say why.
         <p className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {propertyData.constraints.railOrBusyRoadUnchecked}
+        </p>
+      )}
+      {propertyData?.constraints?.classifiedRoadUnchecked && (
+        // Without the flag the rules for lots on State or classified roads are not shown, so say why.
+        <p className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {propertyData.constraints.classifiedRoadUnchecked}
         </p>
       )}
       <DcpNotCoveredNotice notCovered={data?.meta?.not_covered} chapterPdfUrls={data?.meta?.chapter_pdf_urls} />

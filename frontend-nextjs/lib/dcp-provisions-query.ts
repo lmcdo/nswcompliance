@@ -31,6 +31,10 @@ export interface ForPropertyQueryInput {
   greenweb?: boolean | null;
   /** The lot adjoins the rail corridor or a busy road (Ku-ring-gai DCP Part 20). */
   railOrBusyRoad?: boolean | null;
+  /** The lot fronts a TfNSW State road (lib/classified-road.ts). */
+  stateRoad?: boolean | null;
+  /** The lot fronts a State road or a classified Regional road (lib/classified-road.ts). */
+  classifiedRoad?: boolean | null;
   /** The suburb of the address, so the route can offer the areas whose rules may apply to it (lib/may-apply-query.ts). */
   suburb?: string | null;
 }
@@ -61,6 +65,8 @@ export function buildForPropertyParams(input: ForPropertyQueryInput): URLSearchP
   if (input.riparian === true) params.set('riparian', 'true');
   if (input.greenweb === true) params.set('greenweb', 'true');
   if (input.railOrBusyRoad === true) params.set('rail_or_busy_road', 'true');
+  if (input.stateRoad === true) params.set('state_road', 'true');
+  if (input.classifiedRoad === true) params.set('classified_road', 'true');
   if (input.suburb) params.set('suburb', input.suburb);
   // dev_types intentionally excluded -- provisions are property-specific, not dev-type-specific.
   return params;

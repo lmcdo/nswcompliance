@@ -1,0 +1,32 @@
+{
+  "_what": "Does a lot front / adjoin a State road or a classified road? Read by frontend-nextjs/lib/classified-road.ts. Gate rules that use the two conditions: scripts/gate_rules_roads.py (each quotes its row's own words).",
+  "road_corridor_layer": "https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Land_Parcel_Property_Theme_multiCRS/FeatureServer/5",
+  "road_class_source": {
+    "name": "Transport for NSW, NSW Road Network Categorisation (public ArcGIS, no login)",
+    "service": "https://services6.arcgis.com/LHYr6B7cFUs40aCx/arcgis/rest/services/NSW_Roads_Network_Categorisation_vw/FeatureServer",
+    "state_layer": 0,
+    "regional_layer": 1,
+    "fields": "road_number (7 digits), road_name (inconsistent: matched on nothing), admin_class ('S' state, 'R' regional)",
+    "geometry": "road CENTRELINES, not road land. A lot is never flagged by its distance to a centreline (a lot one street back can be closer to a wide road's centreline than a fronting lot is); the centreline only says which cadastre road corridor carries the road."
+  },
+  "conditions": {
+    "state_road": "the lot touches a road corridor that carries a TfNSW State road (admin_class 'S')",
+    "classified_road": "the lot touches a road corridor that carries a State road, or a Regional road whose number is outside the unclassified range below"
+  },
+  "unclassified_regional_number_range": {
+    "from": 7000,
+    "to": 7999,
+    "basis": "ASSUMPTION (2026-10-21), not read from the TfNSW 'Schedule of Classified Roads and Unclassified Regional Roads' (the PDF refused our download, HTTP 403). In the regional layer 2,726 records are numbered 7000-7999, and the rest are numbered as classified Main Roads (0-999) or Secondary Roads (2000-2999). State records numbered 4xxx (tourist roads), 6xxx and 8xxx (transitways, busways, light rail) and five 7xxx records are all admin_class 'S' and are treated as State, therefore classified. 32 regional records carry non-standard numbers (e.g. 2350010); they are treated as classified so their rules are shown rather than hidden."
+  },
+  "tolerance_m": 3,
+  "tolerance_basis": "2026-10-21, lot (nsw_cadastre_lots) to the cadastre road corridor that carries the road, metres. Fronting lots: 1311 Pacific Hwy Turramurra 0.00 (State 0000010); neighbouring Pacific Hwy lots 1//DP550866 0.00, 6//DP666961 0.00, 1//DP500077 0.38, 1//DP807765 1.13, 8//DP237813 1.36, 2//DP16463 1.49; 30 Marion St Leichhardt 1.38 (Regional 0002013); 150 Enmore Rd Enmore 1.36 (State 0000167); 354 Darling St Balmain 1.50 (Regional 0007318); 100 Waterloo Rd Greenacre 0.31 (Regional 0007118); 2 Kissing Point Rd Turramurra 0.18 (Regional 0007421). Largest gap on a fronting lot: 1.51 m. Lots that do not front: 1//DP519532 Turramurra (behind Forbes Lane, one street back from the Pacific Highway) has no State/Regional corridor within 30 m; 4//DP132873 Turramurra is 22.74 m from the nearest such corridor although 37.4 m from the Pacific Highway centreline. Same 3 m as Ku-ring-gai Part 20 (shared/krg-rail-busy-roads.json).",
+  "centreline_search_m": 100,
+  "centreline_search_basis": "Centrelines are fetched within this distance of the lot, then kept only where they run inside a corridor the lot touches. 100 m covers the half-width of the widest corridors measured (Pacific Hwy, divided, centrelines 4.4-24 m from fronting lots). Recorded limit: a corridor wider than about 200 m whose centreline lies more than 100 m from the lot would be missed.",
+  "min_inside_m": 1,
+  "min_inside_basis": "A centreline must run at least this far inside the corridor; a line that only touches its edge does not count. Smallest real run measured: 5.6 m (a Kissing Point Rd stub inside the Pacific Hwy intersection piece). Survey 2026-10-21 of every corridor within 150 m of Pacific Hwy Turramurra, Enmore Rd, Marion St and Waterloo Rd: State/Regional centrelines ran only inside their own named corridor or an unnamed intersection piece, never inside a side street's corridor.",
+  "limits": [
+    "A road that is not held as a cadastre road corridor (some motorways, tunnels, roads held as ordinary lots or Crown land) is not found, so lots beside it are not flagged.",
+    "A lot touching only the unnamed intersection piece of a junction with a State or classified road is flagged (it is a corner lot at that junction).",
+    "Canterbury-Bankstown DCP Chapter 10.7 clause 2.3 (p6) lists Waterloo Road and Koala Road among its 'state roads'; TfNSW lists Waterloo Road as Regional 7118 and Koala Road on neither layer. The 'state road' condition follows TfNSW admin class 'S', which matches the DCP's own definition (Chapter 3.1 p22: 'state road means a roadway under the control of the TfNSW')."
+  ]
+}
