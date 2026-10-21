@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Ku-ring-gai DCP Part 20 (13 live rules) applies to development 'in, or immediately adjacent to, the rail corridor or a busy road' (p20-2) but reached every KRG house. New site condition rail_or_busy_road: the property lookup flags a lot within 3 m of the LEP SP2 railway zone or a listed busy road's cadastre corridor; a gate rule moves Part 20 to that condition.",
-  "commit_hash": "47664e15",
+  "commit_hash": "408fdad2",
   "files": [
     "frontend-nextjs/lib/rail-busy-road.ts",
     "frontend-nextjs/shared/krg-rail-busy-roads.json",
