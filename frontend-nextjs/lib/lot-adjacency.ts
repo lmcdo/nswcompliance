@@ -93,7 +93,8 @@ export async function arcgisGeojson(
   body: URLSearchParams
 ): Promise<Array<{ properties: Record<string, unknown>; geometry: unknown }>> {
   const data = await post(fetchFn, url, body);
-  return (data.features as Array<{ properties?: Record<string, unknown>; geometry?: unknown }>)
-    .filter((f) => f.geometry)
-    .map((f) => ({ properties: f.properties ?? {}, geometry: f.geometry }));
+  const feats = data.features as Array<{ properties?: Record<string, unknown>; geometry?: unknown }>;
+  // A feature with no shape cannot be tested, so the answer is unknown (the page says so), never "no road".
+  if (feats.some((f) => !f.geometry)) throw new Error('map service returned a feature with no geometry');
+  return feats.map((f) => ({ properties: f.properties ?? {}, geometry: f.geometry }));
 }
