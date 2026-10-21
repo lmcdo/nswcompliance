@@ -51,6 +51,8 @@ def _resolve_short_link(href: str, timeout: int) -> str | None:
     target = urlparse(location)
     if target.scheme != "https" or target.netloc not in CB_DOC_HOSTS or target.path != "/api/publish":
         return None
+    if not parse_qs(target.query).get("documentPath", [""])[0]:
+        return None  # the endpoint without a document is not a document
     return location
 
 

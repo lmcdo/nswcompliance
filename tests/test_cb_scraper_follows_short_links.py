@@ -61,6 +61,7 @@ PAGE = f"""<html><body>
 def _resp(status, headers=None, content=b""):
     r = MagicMock()
     r.status_code, r.headers, r.content, r.url = status, headers or {}, content, HUB
+    r.iter_content = lambda n: iter([content[:n]])
     return r
 
 
@@ -105,7 +106,7 @@ def test_the_existing_replacement_check_now_sees_the_new_version(monkeypatch):
 def test_head_404_falls_back_to_get(monkeypatch):
     import r2_monitor
     monkeypatch.setattr(r2_monitor.SESSION, "head", lambda *a, **k: _resp(404))
-    monkeypatch.setattr(r2_monitor.SESSION, "get", lambda *a, **k: _resp(206, {"Content-Range": "bytes 0-0/3182931", "Content-Type": "application/pdf"}))
+    monkeypatch.setattr(r2_monitor.SESSION, "get", lambda *a, **k: _resp(206, {"Content-Range": "bytes 0-4/3182931"}, b"%PDF-"))
     assert r2_monitor.head_request(OLD_7_3)["status"] == 200
 
 
@@ -129,7 +130,7 @@ def test_a_redirect_off_the_councils_document_hosts_is_refused(monkeypatch):
 def test_head_404_then_an_html_page_is_still_a_failure(monkeypatch):
     import r2_monitor
     monkeypatch.setattr(r2_monitor.SESSION, "head", lambda *a, **k: _resp(404))
-    monkeypatch.setattr(r2_monitor.SESSION, "get", lambda *a, **k: _resp(200, {"Content-Type": "text/html"}))
+    monkeypatch.setattr(r2_monitor.SESSION, "get", lambda *a, **k: _resp(200, {"Content-Type": "text/html"}, b"<!DOC"))
     assert r2_monitor.head_request(OLD_7_3)["status"] == 404
 
 
@@ -143,5 +144,17 @@ def test_no_short_link_resolving_fails_the_scrape(monkeypatch):
 def test_head_404_then_octet_stream_is_a_document(monkeypatch):
     import r2_monitor
     monkeypatch.setattr(r2_monitor.SESSION, "head", lambda *a, **k: _resp(404))
-    monkeypatch.setattr(r2_monitor.SESSION, "get", lambda *a, **k: _resp(206, {"Content-Type": "application/octet-stream"}))
+    monkeypatch.setattr(r2_monitor.SESSION, "get", lambda *a, **k: _resp(206, {"Content-Type": "application/octet-stream"}, b"%PDF-"))
     assert r2_monitor.head_request(OLD_7_3)["status"] == 200
+
+
+def test_head_404_then_a_non_pdf_body_is_a_failure_whatever_its_label(monkeypatch):
+    import r2_monitor
+    monkeypatch.setattr(r2_monitor.SESSION, "head", lambda *a, **k: _resp(404))
+    monkeypatch.setattr(r2_monitor.SESSION, "get", lambda *a, **k: _resp(200, {"Content-Type": "application/octet-stream"}, b"<html"))
+    assert r2_monitor.head_request(OLD_7_3)["status"] == 404
+
+
+def test_a_redirect_with_no_document_is_refused(monkeypatch):
+    monkeypatch.setattr(cb.requests, "head", lambda *a, **k: _resp(301, {"Location": "https://cbcity-webdocs.azurewebsites.net/api/publish"}))
+    assert cb._resolve_short_link("https://cb.city/DCP7-3", 30) is None
