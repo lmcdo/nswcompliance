@@ -81,6 +81,16 @@ jobs:
           done
           exit $rc
 
+      # Did every scheduled Railway job run, and did its last run succeed? Checked from
+      # here, outside Railway, because a job that crashes on import or never starts
+      # cannot alert from inside itself: dcp-extract and dcp-commit crashed on every run
+      # for days in October 2026 and nothing said so. Red here = no ping below.
+      - name: Did every Railway job run and succeed?
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: python scripts/check_railway_jobs_ran.py
+
       # Ping ONLY on success. A ping sent regardless of the result is a heartbeat, and a
       # heartbeat is the thing this workflow exists to replace.
       - name: Tell the watchdog we are current

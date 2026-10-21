@@ -1,0 +1,89 @@
+{
+ "tier": "standard",
+ "justification": "Adds an outside-in check to the daily production alarm. A red result withholds the healthchecks.io ping and alerts the user, so a false red is noise and a false green hides a dead pipeline. Not Critical: read-only, no DB, no served output. Not Minor: it is the alarm that decides whether anyone hears about a crashed job.",
+ "commit_hash": "243df568",
+ "files": [
+  "scripts/check_railway_jobs_ran.py",
+  "tests/test_check_railway_jobs_ran.py",
+  ".github/workflows/freshness-alarm.yml"
+ ],
+ "pre_impl": {
+  "existing_data": "none in the DB. Reads Railway's GraphQL API for production: each scheduled job's cronSchedule and latestDeployment, and its newest runs from deploymentInstanceExecutions (createdAt, status), with the account token CI already holds as RAILWAY_TOKEN.",
+  "assumption_mismatch": "The first version trusted latestDeployment.status. Cross-review showed that cannot see a run that never started: status reads SUCCESS on a fresh deploy and stays SUCCESS if the scheduler stops. The run history (deploymentInstanceExecutions) can, and measuring it showed far more than the status did: maintenance-mutation crashed every month since July, dcp-monitor ended in a failure on every run since at least 2026-09-01, and dcp-extract crashed on all six runs 16-21 Oct.",
+  "new_vs_existing": "Applies from the first freshness-alarm run after merge. Today is already red on 5 jobs (dcp-commit, dcp-extract, dcp-monitor, maintenance-mutation, maintenance-security), so the first run withholds the ping and the watchdog alerts. dcp-extract and dcp-commit should clear on their next run with the #1426 image."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_check_railway_jobs_ran.py -q -o addopts=",
+  "fails_when": "CRASHED stops counting as red, the overdue check is removed, or an unknown status passes",
+  "observed_red": "YES, forced six times: ignoring CRASHED, ignoring missed runs, ignoring stuck runs, ignoring stuck deploys, accepting SKIPPED/REMOVED/unknown run outcomes, and ignoring a FAILED deploy each fail at least one test. Restored green, 9 passed. On the real 2026-10-21 run history: 8 jobs checked, 5 red."
+ },
+ "functions": [
+  {
+   "name": "judge",
+   "file_line": "scripts/check_railway_jobs_ran.py:137",
+   "input": "list of scheduled-job dicts (schedule, latest deployment, runs) plus the current UTC time",
+   "output": "list of plain-English problem lines and the number of scheduled jobs checked",
+   "if_none": "no runs = 'never ran' red; missing status or deployment = red; checked=0 is a failure in main()"
+  },
+  {
+   "name": "last_due",
+   "file_line": "scripts/check_railway_jobs_ran.py:74",
+   "input": "a 5-field cron string from Railway plus a UTC datetime to look back from",
+   "output": "the latest minute at or before that time the cron fires, within 40 days",
+   "if_none": "returns None when nothing fires in 40 days, which judge reports as red"
+  },
+  {
+   "name": "fetch",
+   "file_line": "scripts/check_railway_jobs_ran.py:111",
+   "input": "RAILWAY_TOKEN account token read from the environment",
+   "output": "scheduled production jobs with their last 3 runs",
+   "if_none": "API error, network error, missing key, or more than 100 services makes main() exit 1"
+  }
+ ],
+ "values": [
+  {
+   "value": "GRACE = 2h, STUCK = 6h",
+   "read_at": "scripts/check_railway_jobs_ran.py:137",
+   "nullable": "no",
+   "guard_at": "N/A",
+   "if_missing": "a run more than 2h late is 'none happened'; a run or deploy unfinished after 6h is 'stuck'"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "A job crashes at import on every run, as dcp-extract did 16-21 Oct",
+   "what_happens": "its newest run is CRASHED; this goes red; no ping; the user is alerted next morning",
+   "mitigated": true,
+   "how": "judge reads the newest run's status",
+   "repro": "test_the_real_snapshot_flags_exactly_the_five_bad_jobs"
+  },
+  {
+   "scenario": "The scheduler stops firing while status still reads SUCCESS (cross-review)",
+   "what_happens": "no run after the cron's last due time; red after 2h",
+   "mitigated": true,
+   "how": "last_due + newest run createdAt",
+   "repro": "test_a_missed_run_is_red_even_when_everything_says_success"
+  },
+  {
+   "scenario": "A build or a run hangs for days (cross-review)",
+   "what_happens": "previously read as in progress, so fine",
+   "mitigated": true,
+   "how": "STUCK = 6h on both runs and deploys",
+   "repro": "test_stuck_runs_and_deploys_are_red"
+  },
+  {
+   "scenario": "The project grows past one page of services (cross-review)",
+   "what_happens": "a crashed job on page 2 would be missed",
+   "mitigated": true,
+   "how": "services(first: 100) and hasNextPage -> exit 1",
+   "repro": "read fetch(); no live repro at 11 services"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes -- the first freshness-alarm run after merge is red on 5 jobs; that is correct. Check the run log lists them."
+ }
+}
