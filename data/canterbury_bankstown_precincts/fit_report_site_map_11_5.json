@@ -1,0 +1,20 @@
+[
+ {
+  "precinct_id": "11.5",
+  "page": 4,
+  "coarse": 0.764,
+  "runner_up_far": 0.388,
+  "line_share": 0.439,
+  "m_per_px": 2.2669,
+  "figure_m2": 832425,
+  "lots": 124,
+  "doubt_lots": [
+   "1//DP577886",
+   "1//DP596508"
+  ],
+  "outline_m2": 828592,
+  "iou_shape": 0.991,
+  "iou_lot_land": 0.978,
+  "refused": "map lot lines not on the cadastre"
+ }
+]
