@@ -1,0 +1,74 @@
+{
+  "tier": "standard",
+  "justification": "New 'Your project' summary above the SEPP/LEP/DCP tabs: project picker, key-controls table (LEP height/FSR/min lot size; DCP setbacks, site coverage, landscaping, open space, parking, solar) with each source's figure, words, clause/page and link passed through unchanged, a 'your proposal' box giving above/below/equal by arithmetic, and the site's triggered conditions. One shared project type for the summary and the DCP tab.",
+  "commit_hash": "5f7bea12",
+  "files": [
+    "frontend-nextjs/components/compliance/YourProjectSummary.tsx",
+    "frontend-nextjs/lib/project-summary.ts",
+    "frontend-nextjs/lib/project-type.ts",
+    "frontend-nextjs/app/assessment/page.tsx",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+    "frontend-nextjs/__tests__/components/your-project-summary.test.tsx",
+    "frontend-nextjs/COMPONENT_MAP.md"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/components/your-project-summary.test.tsx",
+    "fails_when": "A shown figure, page, words or link differs from its source fixture; a missing value is filled; the comparison says anything but above/below/equal; a liability word appears; a picker type has no explicit mapping; the DCP tab and summary read different types.",
+    "observed_red": "Measured by deliberate breaks 2026-10-21 (code restored after each): comparison direction flipped -> 2 fail; liability word added to the not-found text -> 1 fails; 'Private open space' row pointed at landscaping_min -> 1 fails (passed all 20 before the every-row test was added); deep soil dropped from the landscaping row -> 1 fails. Clean: 21/21.",
+    "external_authority": "/api/dcp/structured-controls (dcp_setback_controls rows), Planning Portal constraints for LEP figures."
+  },
+  "pre_impl": {
+    "existing_data": "Reuses DcpStructuredControls helpers (formatValue, noNumberLabel, shortCitation) and /api/dcp/structured-controls; LEP figures from usePropertyAssessment constraints.",
+    "assumption_mismatch": "Three project-type vocabularies; one explicit mapping added. LEP has no page numbers: shown as 'LEP map' + link.",
+    "new_vs_existing": "One component, two small libs, one mount point, a shared type store; no new API or fetcher."
+  },
+  "functions": [
+    {
+      "name": "resolveControlsDevType",
+      "file_line": "frontend-nextjs/lib/project-type.ts:1",
+      "input": "the picked project type from the shared store",
+      "output": "the structured-controls dev_type, or null for types with no key controls",
+      "if_none": "no picked type at all falls back to the default new_dwelling"
+    }
+  ],
+  "values": [
+    {
+      "value": "jest 20/20, tsc 0, regulatory-number lint OK",
+      "read_at": "agent run 2026-10-21",
+      "if_missing": "no test evidence"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A source value is reformatted or rounded on the way to the table.",
+      "what_happens": "The user reads a figure that is not in the plan.",
+      "mitigated": true,
+      "how": "Pass-through test asserts figure, page, words and link equal the fixture exactly.",
+      "repro": "npx jest __tests__/components/your-project-summary.test.tsx"
+    },
+    {
+      "scenario": "A control has no figure in our data.",
+      "what_happens": "A guessed or blank figure would mislead.",
+      "mitigated": true,
+      "how": "Row says 'Not found in our data — check the plan' with the plan link; no comparison box.",
+      "repro": "jest not-found case"
+    },
+    {
+      "scenario": "The summary and the DCP tab show different project types.",
+      "what_happens": "Two different sets of controls for the same property.",
+      "mitigated": true,
+      "how": "Both read resolveControlsDevType from one shared store; test checks both call sites.",
+      "repro": "jest shared-type case"
+    }
+  ],
+  "mutation_analysis": "Four real mutations run, each caught (see observed_red). The every-row test reads an expected table written in the test, not the code's own table.",
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Open a Hornsby or Woollahra R2 address: the summary shows height, FSR and DCP setbacks with page links; type a number and see above/below/equal."
+  },
+  "residual_risk": "Parking uses the DCP control only; LEP rows have no page or quote; the 'may apply' count line is not in v1."
+}
