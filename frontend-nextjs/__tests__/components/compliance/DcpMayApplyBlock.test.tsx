@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { DcpMayApplyBlock, type MayApplyArea } from '@/components/compliance/DcpMayApplyBlock';
 import type { Provision } from '@/components/compliance/PageGroupedProvisions';
 
@@ -58,6 +58,84 @@ describe('DcpMayApplyBlock', () => {
     const text = screen.getByTestId('dcp-may-apply-block').textContent ?? '';
     expect(text).toMatch(/couldn.t load the rules/);
     expect(text).not.toMatch(/\(0 rules\)/);
+  });
+
+  describe('plan map link', () => {
+    const withUrl = (url: string | undefined, over: Partial<MayApplyArea> = {}) =>
+      render(<DcpMayApplyBlock address="1 A St" mayApply={[area({ chapter_key: 'c1', ...over })]} chapterPdfUrls={url ? { c1: url } : {}} />);
+
+    it('opens the pdf at the area page', () => {
+      withUrl('https://x.test/plan.pdf');
+      expect(screen.getByTestId('dcp-may-apply-map-link').getAttribute('href')).toBe('https://x.test/plan.pdf#page=12');
+      expect(screen.getByTestId('dcp-may-apply-map-link').textContent).toContain('(page 12)');
+    });
+    it('has no link without a url', () => {
+      withUrl(undefined);
+      expect(screen.queryByTestId('dcp-may-apply-map-link')).toBeNull();
+    });
+    it('adds no anchor to a url that has a # or is not a pdf, or when the page is missing', () => {
+      withUrl('https://x.test/plan.pdf#zoom=50');
+      expect(screen.getByTestId('dcp-may-apply-map-link').getAttribute('href')).toBe('https://x.test/plan.pdf#zoom=50');
+      cleanup();
+      withUrl('https://x.test/plan.html');
+      expect(screen.getByTestId('dcp-may-apply-map-link').getAttribute('href')).toBe('https://x.test/plan.html');
+      cleanup();
+      withUrl('https://x.test/plan.pdf', { applies_to_page: null });
+      expect(screen.getByTestId('dcp-may-apply-map-link').getAttribute('href')).toBe('https://x.test/plan.pdf');
+    });
+  });
+
+  describe('the reader’s answer', () => {
+    beforeEach(() => window.localStorage.clear());
+    const open = () => render(<DcpMayApplyBlock address="1 A St" mayApply={[area()]} />);
+
+    it('in: expands and says so, as the reader’s own words', () => {
+      open();
+      fireEvent.click(screen.getByRole('button', { name: 'My property is in this area' }));
+      const a = screen.getByTestId('dcp-may-apply-area') as HTMLDetailsElement;
+      expect(a.open).toBe(true);
+      expect(a.textContent).toContain('You said your property is in this area — these rules apply to it');
+      expect(window.localStorage.getItem('dcp-may-apply:v1:1 A St:a1')).toBe('in');
+    });
+    it('out: collapses to one line with Change, which restores the area', () => {
+      open();
+      fireEvent.click(screen.getByRole('button', { name: 'My property is not in this area' }));
+      expect(screen.queryByTestId('dcp-may-apply-rule')).toBeNull();
+      expect(screen.getByTestId('dcp-may-apply-area-out').textContent).toContain('You said your property is not in this area.');
+      fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+      expect(screen.getAllByTestId('dcp-may-apply-rule')).toHaveLength(2);
+    });
+    it('remembers the answer for the same address only', () => {
+      window.localStorage.setItem('dcp-may-apply:v1:1 A St:a1', 'out');
+      open();
+      expect(screen.getByTestId('dcp-may-apply-area-out')).toBeTruthy();
+      cleanup();
+      render(<DcpMayApplyBlock address="2 B St" mayApply={[area()]} />);
+      expect(screen.getByTestId('dcp-may-apply-area')).toBeTruthy();
+    });
+    it('not sure is the default and reads as today', () => {
+      open();
+      expect((screen.getByTestId('dcp-may-apply-area') as HTMLDetailsElement).open).toBe(false);
+      expect(screen.getByTestId('dcp-may-apply-area').textContent).toContain('may apply to this property (2 rules)');
+    });
+    it('still renders and answers when localStorage throws', () => {
+      const boom = jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
+      const set = jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
+      open();
+      fireEvent.click(screen.getByRole('button', { name: 'My property is not in this area' }));
+      expect(screen.getByTestId('dcp-may-apply-area-out')).toBeTruthy();
+      boom.mockRestore();
+      set.mockRestore();
+    });
+  });
+
+  it('collapses the whole box with a count when there are more than three areas', () => {
+    const many = [1, 2, 3, 4].map((i) => area({ area_id: `m${i}` }));
+    render(<DcpMayApplyBlock address="1 A St" mayApply={many} />);
+    const box = screen.getByTestId('dcp-may-apply-block') as HTMLDetailsElement;
+    expect(box.tagName).toBe('DETAILS');
+    expect(box.open).toBe(false);
+    expect(box.textContent).toContain('(4)');
   });
 
   it('prints no empty page citation when the page is missing', () => {
