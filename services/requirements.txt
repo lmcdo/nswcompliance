@@ -48,7 +48,7 @@ whitebox
 reportlab==5.0.1
 
 # nsw_imagery.py (Granny Flat aerial tiles)
-Pillow==12.3.0
+Pillow==13.0.0
 opencv-python-headless==5.0.0.93
 
 # Pre-DA Site History — Tessera embeddings + Wayback SSIM
