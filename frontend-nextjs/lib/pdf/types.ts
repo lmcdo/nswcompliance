@@ -66,23 +66,24 @@ export interface PropertyContext {
     flood_prone: boolean | null;
     /** Why flood is not known, in plain words (lib/flood/flood-map.ts). */
     flood_map_note?: string | null;
-    bushfire_prone: boolean;
+    /** null = the hazard map did not answer (lib/hazard-unchecked.ts) — print "Not checked", never "No". */
+    bushfire_prone: boolean | null;
     acid_sulfate_soils?: string;       // e.g., "Class 5"
-    anef_zone: boolean;
+    anef_zone: boolean | null;
     anef_level?: number;
     anef_code?: string;
-    mine_subsidence: boolean;
+    mine_subsidence: boolean | null;
     mine_subsidence_district?: string;
     landslide_risk: boolean;
-    contaminated_land: boolean;
+    contaminated_land: boolean | null;
     contaminated_site_name?: string;
     contaminated_site_distance?: number;
     contaminated_management_class?: string;
     contaminated_type?: string;
     landslide_risk_class?: string;
-    drinking_water_catchment: boolean;
+    drinking_water_catchment: boolean | null;
     terrestrial_biodiversity: boolean;
-    coastal_management: boolean;
+    coastal_management: boolean | null;
     coastal_zones?: string[];
   };
 

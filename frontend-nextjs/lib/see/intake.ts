@@ -4,6 +4,8 @@
 // factually IMPOSSIBLE given confirmed inputs, never merely unlikely.
 // "unknown" always defaults to inclusion.
 // Every exclusion traces to a confirmed factual answer stored in proposed_values.
+import { hazardUnchecked, type HazardKey } from '../hazard-unchecked';
+
 
 export interface IntakeAnswers {
   /** Does the proposal create new impervious surfaces (deck, paving, slab, extension footprint)? */
@@ -432,7 +434,7 @@ export function autoPopulateFromConstraints(constraints: Record<string, any>): P
   if (constraints.floodProne === false) result.flood_prone = 'no';
   else if (constraints.floodProne === true) result.flood_prone = 'yes';
 
-  // --- Bushfire ---
+  // --- Bushfire --- (null = the map did not answer: leave unanswered, never 'no')
   if (constraints.bushfireProne === false) result.bushfire_prone = 'no';
   else if (constraints.bushfireProne === true) result.bushfire_prone = 'yes';
 
@@ -442,8 +444,11 @@ export function autoPopulateFromConstraints(constraints: Record<string, any>): P
 
   // coastal/biodiversity: portal only sets inCoastalArea/inBiodiversityArea when the overlay IS found.
   // Absent (undefined/null) = layer not detected = site confirmed NOT in that area.
+  // A map that did not answer (constraints.uncheckedHazards) leaves the question unanswered.
+  const unchecked = (key: HazardKey) => hazardUnchecked(constraints, key);
+
   if (constraints.coastalEnvironment?.inCoastalArea === true) result.coastal = 'yes';
-  else result.coastal = 'no';
+  else if (!unchecked('coastal')) result.coastal = 'no';
 
   if (constraints.terrestrialBiodiversity?.inBiodiversityArea === true) result.biodiversity = 'yes';
   else result.biodiversity = 'no';
@@ -457,16 +462,16 @@ export function autoPopulateFromConstraints(constraints: Record<string, any>): P
   // Remaining LEP Part 5 / SEPP (Resilience and Hazards) 2021 constraints.
   // Portal only sets these when the overlay IS found — absent means confirmed not present.
   if (constraints.mineSubsidence?.inDistrict === true) result.mine_subsidence = 'yes';
-  else result.mine_subsidence = 'no';
+  else if (!unchecked('mine_subsidence')) result.mine_subsidence = 'no';
 
   if (constraints.landslideRisk?.hasRisk === true) result.landslide_risk = 'yes';
   else result.landslide_risk = 'no';
 
   if (constraints.contaminatedLand?.hasNotifiedSites === true) result.contaminated_land = 'yes';
-  else result.contaminated_land = 'no';
+  else if (!unchecked('contaminated_land')) result.contaminated_land = 'no';
 
   if (constraints.drinkingWaterCatchment?.inCatchment === true) result.drinking_water_catchment = 'yes';
-  else result.drinking_water_catchment = 'no';
+  else if (!unchecked('drinking_water')) result.drinking_water_catchment = 'no';
 
   return result;
 }

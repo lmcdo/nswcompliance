@@ -1,3 +1,4 @@
+import { HAZARD_NOT_CHECKED } from '@/lib/hazard-unchecked';
 import { Page, View, Text, Link } from '@react-pdf/renderer';
 import { styles } from '../styles';
 import { DataRow } from '../DataRow';
@@ -104,7 +105,7 @@ export function Page2SiteContext({ computed }: { computed: SEEComputedData }) {
           <Text style={styles.sectionTitle}>2.3 Environmental Constraints</Text>
           <View style={styles.dataTable}>
             <DataRow label="Flood Prone Land:" value={environmental_constraints.flood_prone === true ? 'Yes' : environmental_constraints.flood_prone === false ? 'No' : (environmental_constraints.flood_map_note ?? 'Not known')} />
-            <DataRow label="Bushfire Prone Land:" value={environmental_constraints.bushfire_prone ? 'Yes' : 'No'} />
+            <DataRow label="Bushfire Prone Land:" value={environmental_constraints.bushfire_prone ? 'Yes' : (environmental_constraints.bushfire_prone === null ? HAZARD_NOT_CHECKED : 'No')} />
             <DataRow
               label="Acid Sulfate Soils:"
               value={environmental_constraints.acid_sulfate_soils
@@ -115,13 +116,13 @@ export function Page2SiteContext({ computed }: { computed: SEEComputedData }) {
               label="Aircraft Noise (ANEF):"
               value={environmental_constraints.anef_zone
                 ? `Yes — ANEF ${environmental_constraints.anef_level ?? ''}${environmental_constraints.anef_code ? ` (${environmental_constraints.anef_code})` : ''}`
-                : 'No'}
+                : (environmental_constraints.anef_zone === null ? HAZARD_NOT_CHECKED : 'No')}
             />
             <DataRow
               label="Mine Subsidence:"
               value={environmental_constraints.mine_subsidence
                 ? `Yes${environmental_constraints.mine_subsidence_district ? ` — ${environmental_constraints.mine_subsidence_district}` : ''}`
-                : 'No'}
+                : (environmental_constraints.mine_subsidence === null ? HAZARD_NOT_CHECKED : 'No')}
             />
             <DataRow
               label="Landslide Risk:"
@@ -133,15 +134,15 @@ export function Page2SiteContext({ computed }: { computed: SEEComputedData }) {
               label="Contaminated Land:"
               value={environmental_constraints.contaminated_land
                 ? `Yes — notified site within 500m${environmental_constraints.contaminated_site_name ? `: ${environmental_constraints.contaminated_site_name}` : ''}${environmental_constraints.contaminated_management_class ? ` (${environmental_constraints.contaminated_management_class})` : ''}${environmental_constraints.contaminated_type ? ` — ${environmental_constraints.contaminated_type}` : ''}`
-                : 'No known sites within 500m'}
+                : (environmental_constraints.contaminated_land === null ? HAZARD_NOT_CHECKED : 'No known sites within 500m')}
             />
-            <DataRow label="Drinking Water Catchment:" value={environmental_constraints.drinking_water_catchment ? 'Yes' : 'No'} />
+            <DataRow label="Drinking Water Catchment:" value={environmental_constraints.drinking_water_catchment ? 'Yes' : (environmental_constraints.drinking_water_catchment === null ? HAZARD_NOT_CHECKED : 'No')} />
             <DataRow label="Terrestrial Biodiversity:" value={environmental_constraints.terrestrial_biodiversity ? 'Yes' : 'No'} />
             <DataRow
               label="Coastal Management:"
               value={environmental_constraints.coastal_management
                 ? `Yes${environmental_constraints.coastal_zones?.length ? ` — ${environmental_constraints.coastal_zones.join(', ')}` : ''}`
-                : 'No'}
+                : (environmental_constraints.coastal_management === null ? HAZARD_NOT_CHECKED : 'No')}
             />
           </View>
         </View>
@@ -252,7 +253,7 @@ export function Page2SiteContext({ computed }: { computed: SEEComputedData }) {
           {environmental_constraints && (
             <>
               <DataRow label="Flood Prone:" value={environmental_constraints.flood_prone === true ? 'Yes — refer Section 2.3' : environmental_constraints.flood_prone === false ? 'No' : (environmental_constraints.flood_map_note ?? 'Not known')} />
-              <DataRow label="Bushfire Prone:" value={environmental_constraints.bushfire_prone ? 'Yes — refer Section 2.3' : 'No'} />
+              <DataRow label="Bushfire Prone:" value={environmental_constraints.bushfire_prone ? 'Yes — refer Section 2.3' : (environmental_constraints.bushfire_prone === null ? HAZARD_NOT_CHECKED : 'No')} />
               {environmental_constraints.coastal_management && (
                 <DataRow
                   label="Coastal Management:"

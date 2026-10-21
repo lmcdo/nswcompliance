@@ -2,6 +2,7 @@
 // Shared helpers for building PDF/SEE export data from raw propertyData + lepClauseData.
 // Extracted from ProvisionsByTocStructure.tsx (W3-1, W3-2).
 
+import { hazardUnchecked } from '../hazard-unchecked';
 import { lepLimits } from './lep-limits';
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
 import { streetFrontageText } from '@/lib/geometry/street-frontage';
@@ -169,23 +170,25 @@ export function buildPropertyContext(
         // null = the council publishes no flood map here; never read it as "No".
         flood_prone: envC.floodProne ?? null,
         flood_map_note: envC.floodMapNote ?? null,
-        bushfire_prone: !!envC.bushfireProne,
+        // null = that hazard map did not answer (lib/hazard-unchecked.ts); never read it as "No".
+        bushfire_prone: (hazardUnchecked(envC, 'bushfire') || envC.bushfireProne == null) ? null : envC.bushfireProne,
         acid_sulfate_soils: envC.acidSulfateSoils || undefined,
-        anef_zone: !!anef?.inAnefZone,
+        anef_zone: hazardUnchecked(envC, 'anef') ? null : !!anef?.inAnefZone,
         anef_level: anef?.anefLevel,
         anef_code: anef?.anefCode,
-        mine_subsidence: !!envC.mineSubsidence?.inDistrict,
+        mine_subsidence: hazardUnchecked(envC, 'mine_subsidence') ? null : !!envC.mineSubsidence?.inDistrict,
         mine_subsidence_district: envC.mineSubsidence?.districtName,
         landslide_risk: !!envC.landslideRisk?.hasRisk,
-        contaminated_land: !!envC.contaminatedLand?.hasNotifiedSites,
+        contaminated_land: hazardUnchecked(envC, 'contaminated_land') ? null : !!envC.contaminatedLand?.hasNotifiedSites,
         contaminated_site_name: envC.contaminatedLand?.nearestSite?.name,
         contaminated_site_distance: envC.contaminatedLand?.nearestSite?.distance,
         contaminated_management_class: envC.contaminatedLand?.nearestSite?.managementClass || undefined,
         contaminated_type: envC.contaminatedLand?.nearestSite?.contaminationType || undefined,
         landslide_risk_class: envC.landslideRisk?.layClass || undefined,
-        drinking_water_catchment: !!envC.drinkingWaterCatchment?.inCatchment,
+        drinking_water_catchment: hazardUnchecked(envC, 'drinking_water') ? null : !!envC.drinkingWaterCatchment?.inCatchment,
         terrestrial_biodiversity: !!envC.terrestrialBiodiversity?.inBiodiversityArea,
-        coastal_management: !!(envC.coastalEnvironment?.inCoastalArea && envC.coastalEnvironment?.zones?.length),
+        coastal_management: (envC.coastalEnvironment?.inCoastalArea && envC.coastalEnvironment?.zones?.length)
+          ? true : (hazardUnchecked(envC, 'coastal') ? null : false),
         coastal_zones: envC.coastalEnvironment?.zones,
       }
     : undefined;

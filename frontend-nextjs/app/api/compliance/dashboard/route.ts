@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       lga,
       heritage,
       floodProne: null, // not known here: this route queries no flood map
-      bushfireProne: false
+      bushfireProne: null // not known here: this route queries no bush fire map
     };
 
     // Get compliance data from real database
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       lga: body.lga,
       heritage: body.heritage || false,
       floodProne: body.floodProne ?? null,
-      bushfireProne: body.bushfireProne || false
+      bushfireProne: typeof body.bushfireProne === 'boolean' ? body.bushfireProne : null
     };
 
     // Get compliance data

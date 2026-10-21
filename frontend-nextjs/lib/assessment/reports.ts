@@ -2,6 +2,7 @@
  * Professional Report Generation Utilities
  * Provides PDF generation, templates, and export capabilities for NSW compliance assessments
  */
+import { HAZARD_NOT_CHECKED, hazardUnchecked, type HazardKey } from '../hazard-unchecked';
 
 export interface ReportTemplate {
  id: string;
@@ -417,21 +418,30 @@ export class ReportGenerator {
  const constraints = config.property_data?.constraints || {};
  const anefData = config.property_data?.anefData || null;
 
+ // A hazard map that did not answer is "Not checked", never "No" (lib/hazard-unchecked.ts).
+ const unchecked = (key: HazardKey) => hazardUnchecked(constraints, key);
  const environmentalConstraints = {
- flood: constraints.floodPlanning ? 'Yes - Property is within flood planning area' : 'No',
- bushfire: constraints.bushfireProne ? 'Yes - Property is bushfire prone land' : 'No',
+ // floodProne is three-state (lib/flood/flood-map.ts); the old `floodPlanning` field never existed, so this always said 'No'.
+ flood: constraints.floodProne === true ? 'Yes - Property is within flood planning area'
+ : constraints.floodProne === false ? 'No'
+ : (constraints.floodMapNote || HAZARD_NOT_CHECKED),
+ bushfire: constraints.bushfireProne === true ? 'Yes - Property is bushfire prone land'
+ : (constraints.bushfireProne == null || unchecked('bushfire')) ? HAZARD_NOT_CHECKED : 'No',
  acidSulfate: constraints.acidSulfateSoils ? `Yes - Class ${constraints.acidSulfateSoils}` : 'No',
- anef: anefData?.inAnefZone ? `Yes - ANEF ${anefData.anefLevel} (${anefData.anefCode || 'N/A'})` : 'No',
- mineSubsidence: constraints.mineSubsidenceDistrict ? `Yes - ${constraints.mineSubsidenceDistrict}` : 'No',
+ anef: anefData?.inAnefZone ? `Yes - ANEF ${anefData.anefLevel} (${anefData.anefCode || 'N/A'})` : (unchecked('anef') ? HAZARD_NOT_CHECKED : 'No'),
+ // The old `mineSubsidenceDistrict` field never existed, so this always said 'No'.
+ mineSubsidence: constraints.mineSubsidence?.inDistrict
+ ? `Yes${constraints.mineSubsidence.districtName ? ` - ${constraints.mineSubsidence.districtName}` : ''}`
+ : (unchecked('mine_subsidence') ? HAZARD_NOT_CHECKED : 'No'),
  landslide: constraints.landslideRisk?.hasRisk ? 'Yes - Landslide risk identified' : 'No',
  contaminatedLand: constraints.contaminatedLand?.hasNotifiedSites
  ? `Yes - Notified site within 500m${constraints.contaminatedLand.nearestSite?.name ? ': ' + constraints.contaminatedLand.nearestSite.name : ''}`
- : 'No known sites within 500m',
- drinkingWater: constraints.drinkingWaterCatchment?.inCatchment ? 'Yes - Within drinking water catchment' : 'No',
+ : (unchecked('contaminated_land') ? HAZARD_NOT_CHECKED : 'No known sites within 500m'),
+ drinkingWater: constraints.drinkingWaterCatchment?.inCatchment ? 'Yes - Within drinking water catchment' : (unchecked('drinking_water') ? HAZARD_NOT_CHECKED : 'No'),
  biodiversity: constraints.terrestrialBiodiversity?.inBiodiversityArea ? 'Yes - Within terrestrial biodiversity area' : 'No',
  coastal: constraints.coastalEnvironment?.inCoastalArea
  ? `Yes - ${constraints.coastalEnvironment.zones?.length || 0} coastal management zone${(constraints.coastalEnvironment.zones?.length || 0) > 1 ? 's' : ''}`
- : 'No'
+ : (unchecked('coastal') ? HAZARD_NOT_CHECKED : 'No')
  };
 
  return {

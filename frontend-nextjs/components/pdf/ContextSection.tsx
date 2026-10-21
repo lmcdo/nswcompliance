@@ -1,5 +1,6 @@
 // PDF Context Section - LEP/SEPP/Pathway explanation with real data
 
+import { HAZARD_NOT_CHECKED } from '@/lib/hazard-unchecked';
 import { Page, Text, View } from '@react-pdf/renderer';
 import { PropertyContext } from '@/lib/pdf/types';
 import { styles } from './styles';
@@ -279,7 +280,7 @@ export function ContextSection({
             </View>
             <View style={styles.contextTableRow}>
               <Text style={styles.tableCellLabel}>Bushfire Prone Land:</Text>
-              <Text style={styles.tableCellValue}>{environmental_constraints.bushfire_prone ? 'Yes' : 'No'}</Text>
+              <Text style={styles.tableCellValue}>{environmental_constraints.bushfire_prone ? 'Yes' : (environmental_constraints.bushfire_prone === null ? HAZARD_NOT_CHECKED : 'No')}</Text>
             </View>
             <View style={styles.contextTableRow}>
               <Text style={styles.tableCellLabel}>Acid Sulfate Soils:</Text>
@@ -294,7 +295,7 @@ export function ContextSection({
               <Text style={styles.tableCellValue}>
                 {environmental_constraints.anef_zone
                   ? `Yes — ANEF ${environmental_constraints.anef_level ?? ''}${environmental_constraints.anef_code ? ` (${environmental_constraints.anef_code})` : ''}`
-                  : 'No'}
+                  : (environmental_constraints.anef_zone === null ? HAZARD_NOT_CHECKED : 'No')}
               </Text>
             </View>
             <View style={styles.contextTableRow}>
@@ -302,7 +303,7 @@ export function ContextSection({
               <Text style={styles.tableCellValue}>
                 {environmental_constraints.mine_subsidence
                   ? `Yes${environmental_constraints.mine_subsidence_district ? ` — ${environmental_constraints.mine_subsidence_district}` : ''}`
-                  : 'No'}
+                  : (environmental_constraints.mine_subsidence === null ? HAZARD_NOT_CHECKED : 'No')}
               </Text>
             </View>
             <View style={styles.contextTableRow}>
@@ -314,12 +315,12 @@ export function ContextSection({
               <Text style={styles.tableCellValue}>
                 {environmental_constraints.contaminated_land
                   ? `Yes — Notified site within 500m${environmental_constraints.contaminated_site_name ? `: ${environmental_constraints.contaminated_site_name}` : ''}`
-                  : 'No known sites within 500m'}
+                  : (environmental_constraints.contaminated_land === null ? HAZARD_NOT_CHECKED : 'No known sites within 500m')}
               </Text>
             </View>
             <View style={styles.contextTableRow}>
               <Text style={styles.tableCellLabel}>Drinking Water Catchment:</Text>
-              <Text style={styles.tableCellValue}>{environmental_constraints.drinking_water_catchment ? 'Yes' : 'No'}</Text>
+              <Text style={styles.tableCellValue}>{environmental_constraints.drinking_water_catchment ? 'Yes' : (environmental_constraints.drinking_water_catchment === null ? HAZARD_NOT_CHECKED : 'No')}</Text>
             </View>
             <View style={styles.contextTableRow}>
               <Text style={styles.tableCellLabel}>Terrestrial Biodiversity:</Text>
@@ -330,7 +331,7 @@ export function ContextSection({
               <Text style={styles.tableCellValue}>
                 {environmental_constraints.coastal_management
                   ? `Yes${environmental_constraints.coastal_zones?.length ? ` — ${environmental_constraints.coastal_zones.join(', ')}` : ''}`
-                  : 'No'}
+                  : (environmental_constraints.coastal_management === null ? HAZARD_NOT_CHECKED : 'No')}
               </Text>
             </View>
           </View>
