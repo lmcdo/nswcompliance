@@ -291,6 +291,11 @@ jobs:
         working-directory: frontend-nextjs
       - run: npx jest --ci --silent
         working-directory: frontend-nextjs
+      # The property lookup's "no filled-in facts" tests, run again by name so each test's
+      # name and result show in this log (--silent above prints file names only).
+      - name: property lookup — no filled-in facts (named)
+        run: npx jest --ci --verbose __tests__/api/property-lookup-no-fillins.test.ts
+        working-directory: frontend-nextjs
       # PRODUCTION BUILD. Nothing ran one until 2026-08-26, and the cost was a
       # DAY of frozen deploys: every Vercel deployment from #1003 onward failed
       # while every gate reported green.

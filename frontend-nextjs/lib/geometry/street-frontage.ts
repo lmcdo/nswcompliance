@@ -77,7 +77,8 @@ export interface StreetFrontage {
   status: 'measured' | 'not_identified' | 'unavailable';
   roads: RoadWidthRange[];
   /** Lot boundary along unnamed road parcels (rear lanes etc.), in metres. Never treated as the front. */
-  unnamedRoadEdge_m: number;
+  /** null when the frontage could not be measured (unavailable). */
+  unnamedRoadEdge_m: number | null;
   error?: string;
 }
 
@@ -179,7 +180,7 @@ function round2(v: number): number {
  */
 export function measureStreetFrontage(lotRing: unknown, roads: RoadShape[]): StreetFrontage {
   const raw = usableRing(lotRing);
-  if (!raw || raw.length < 4) return { status: 'unavailable', roads: [], unnamedRoadEdge_m: 0, error: 'unusable lot ring' };
+  if (!raw || raw.length < 4) return { status: 'unavailable', roads: [], unnamedRoadEdge_m: null, error: 'unusable lot ring' };
   const scale = scaleFactorForRing(raw);
   const toM = (p: number[]): Pt => [p[0] / scale, p[1] / scale];
   const ring = raw.map(toM);

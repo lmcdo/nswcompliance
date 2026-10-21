@@ -22,6 +22,7 @@ import { calculateLotDimensions, type LotDimensions } from './geometry/lot-dimen
 import { deriveAnefBuildingAcceptability } from './see/propertyUtils';
 import { detectCornerLot, type CornerLotResult } from './geometry/corner-lot-detection';
 import type { HazardKey } from './hazard-unchecked';
+import { LOCATION_NOT_FOUND, VALUATION_UNAVAILABLE, ADDRESS_SEARCH_UNAVAILABLE } from './nsw-planning-portal';
 
 // Re-export TOD/HIA interfaces for use in components
 export type { TODPrecinctInfo, AcceleratedTODInfo, HIAInfo };
@@ -57,7 +58,8 @@ export interface PropertyData {
  heightSource?: SourceInfo;
  minLotSizeSource?: SourceInfo;
  heritage?: {
- isHeritage: boolean;
+ /** null = the Heritage Map did not answer (not checked). */
+ isHeritage: boolean | null;
  heritageType?: string;
  heritageItemName?: string;
  heritageItemNumber?: string;
@@ -175,6 +177,7 @@ export class PropertyDataService {
  const heightLayer = layers.find(l => l.layerName === 'Height of Buildings Map');
  const lotSizeLayer = layers.find(l => l.layerName === 'Lot Size Map');
  const heritageLayer = layers.find(l => l.layerName === 'Heritage Map');
+ const lepZoneResult = layers.find(l => l.layerName === 'Land Zoning Map')?.results?.[0];
 
  // Build source info with ALL available metadata
  const fsrSource = fsrLayer?.results?.[0] ? {
@@ -211,7 +214,7 @@ export class PropertyDataService {
  } : undefined;
 
  // Heritage information - extract all available fields
- const heritage = constraints.heritage ? {
+ const heritage = constraints.heritage === true ? {
  isHeritage: true,
  heritageType: constraints.heritageType,
  heritageItemName: constraints.heritageItemName,
@@ -219,13 +222,14 @@ export class PropertyDataService {
  heritageClause: constraints.heritageLegislativeClause,
  heritageSignificance: constraints.heritageSignificance,
  heritageLegislationUrl: constraints.heritageLegislationUrl
- } : { isHeritage: false };
+ } : { isHeritage: constraints.heritage === false ? false : null };
 
- // Environmental constraints - use extracted data or provide defaults
+ // Environmental constraints: only what the layers said. A missing class stays missing —
+ // never 'Class 5' / '40%' (those were printed as this lot's data when the layer was silent).
  const environmental = {
- acidSulfateSoils: constraints.acidSulfateSoils || 'Class 5',
- basixClimate: constraints.basixClimate || 'Class 5',
- basixWater: constraints.basixWater || '40%',
+ acidSulfateSoils: constraints.acidSulfateSoils || undefined,
+ basixClimate: constraints.basixClimate || undefined,
+ basixWater: constraints.basixWater || undefined,
  floodProne: constraints.floodProne,
  floodMapNote: constraints.floodMapNote,
  bushfireProne: constraints.bushfireProne,
@@ -360,8 +364,9 @@ export class PropertyDataService {
               clauseNumber: clauseNumber,
               pageNumber: details.pageNumber,
               mapType: 'Site-Specific',
-              legislationUrl: constraints.heritageLegislationUrl,
-              epiName: constraints.lga ? `${constraints.lga} Local Environmental Plan 2022` : undefined
+              // The plan's name and link as the zoning layer gives them — never a guessed year or the heritage link.
+              legislationUrl: lepZoneResult?.['legislationUrl'] || undefined,
+              epiName: lepZoneResult?.['EPI Name'] || undefined
             });
           }
         }
@@ -370,21 +375,26 @@ export class PropertyDataService {
       console.error('[PropertyDataService] Site-specific clause matching failed:', error);
     }
 
- // Route applicable SEPPs
- const seppRouter = new SeppRouter();
- let applicableSepps = constraints.applicableSepps || [];
-
- applicableSepps = seppRouter.addContextualSepps(
- 'residential_low', // TODO: determine from zone and property
- propertyData.zoneDescription || 'R2',
- heritage.isHeritage,
- applicableSepps
- );
-
- const seppRouting = seppRouter.routeApplicableSepps(applicableSepps);
+ // Route applicable SEPPs from the LEP zone the planning layers gave. With no zone (layers not
+ // checked) routing does not run — it used to route every such lot as an R2 house.
+ let seppRouting: SeppRoutingResult | undefined;
+ if (constraints.zone) {
+   const seppRouter = new SeppRouter();
+   const applicableSepps = seppRouter.addContextualSepps(
+     constraints.zone.startsWith('R') ? 'residential' : 'other',
+     constraints.zone,
+     heritage.isHeritage === true,
+     constraints.applicableSepps || []
+   );
+   seppRouting = seppRouter.routeApplicableSepps(applicableSepps);
+ }
 
  // Resolve corner lot detection (started earlier in parallel with other work)
  const cornerLot = await cornerLotPromise;
+ // No lot boundary, or the road map did not answer: corner lot and frontage were not checked.
+ if (!lotGeometry?.geometry || cornerLot?.error) {
+   constraints.notChecked = [...(constraints.notChecked ?? []), 'corner_lot'];
+ }
 
  return {
  propId: propertyData.propId,
@@ -420,6 +430,10 @@ export class PropertyDataService {
  console.error('Failed to get NSW Planning Portal data:', error);
 
  // Don't return fallback data - throw error with clear message
+ // An outage or a missing location is passed on as it is: it must never read as "not found".
+ if (error instanceof Error && [ADDRESS_SEARCH_UNAVAILABLE, VALUATION_UNAVAILABLE, LOCATION_NOT_FOUND].some((m) => error.message.startsWith(m))) {
+   throw error;
+ }
  if (error instanceof Error && error.message.includes('abort')) {
    throw new Error('NSW Planning Portal API request timed out. Please try again.');
  }

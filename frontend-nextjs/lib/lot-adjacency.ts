@@ -6,6 +6,8 @@
  * same lot lookup and the same fail-closed service handling instead of a copy.
  */
 
+import { lookupBudgetSignal } from './fetch-timeout';
+
 export type QueryFn = (
   sql: string,
   params?: unknown[]
@@ -69,7 +71,10 @@ export function distanceQuery(
 }
 
 async function post(fetchFn: FetchFn, url: string, body: URLSearchParams): Promise<Record<string, unknown>> {
-  const res = await fetchFn(url, { method: 'POST', body, signal: AbortSignal.timeout(10_000) });
+  // 10 s for this call, and never past the lookup's own time limit (lib/fetch-timeout.ts).
+  const budget = lookupBudgetSignal();
+  const signal = budget ? AbortSignal.any([AbortSignal.timeout(10_000), budget]) : AbortSignal.timeout(10_000);
+  const res = await fetchFn(url, { method: 'POST', body, signal });
   if (!res.ok) throw new Error(`map service HTTP ${res.status}`);
   const data = (await res.json()) as Record<string, unknown> | null;
   if (!data || data.error || !Array.isArray(data.features)) throw new Error('map service returned no feature list');

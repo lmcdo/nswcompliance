@@ -21,7 +21,7 @@ describe('(1) pattern-book exclusions: an ANEF map that did not answer is not cl
     expect(out).toContain('aircraft_noise');
   });
   it('lists nothing when every map answered', () => {
-    expect(uncheckedExclusions({ environmental: { floodProne: false, bushfireProne: false, uncheckedHazards: [] } })).toEqual([]);
+    expect(uncheckedExclusions({ heritage: { isHeritage: false }, environmental: { floodProne: false, bushfireProne: false, uncheckedHazards: [] } })).toEqual([]);
   });
 });
 

@@ -23,7 +23,8 @@ interface HCAData {
 
 interface HeritageDetailsProps {
   heritage?: {
-    isHeritage: boolean;
+    /** null = the Heritage Map did not answer (not checked). */
+    isHeritage: boolean | null;
     heritageType?: string;
     heritageItemName?: string;
     heritageItemNumber?: string;
@@ -119,6 +120,23 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil
       });
     }
   }, [propertyGeometry, lga]);
+
+  // The Heritage Map did not answer: say so. Rendering nothing here would read as "not heritage".
+  if (heritage?.isHeritage === null && !hcaData) {
+    return (
+      <Card className="border-gray-300">
+        <CardHeader className="pb-2">
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-gray-500" />
+            <CardTitle className="text-base text-gray-800">Heritage: not checked</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="text-sm text-gray-700">
+          The NSW planning map did not answer, so we could not check whether this lot is a heritage item or in a heritage conservation area.
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Don't render if NEITHER heritage item NOR HCA
   if ((!heritage || !heritage.isHeritage) && !hcaData) {
