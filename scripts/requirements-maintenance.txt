@@ -9,7 +9,13 @@ python-dotenv>=1.2.3
 semgrep>=1.172.0
 
 # mutation_health.py (mutmut drives pytest over services/*)
-mutmut>=3.7.0,<4
+# HELD ON 2.x. mutation_health.py calls the 2.x CLI (--paths-to-mutate, --tests-dir,
+# --runner, --no-progress) and reads its sqlite .mutmut-cache. mutmut 3 removed all of
+# them; Dependabot raised this pin to 3.x on 2026-08-12 (#777) and every monthly run
+# crashed from then on. Moving to 3.x means rewriting mutation_health.py, not a bump.
+# tests/test_mutmut_pin_matches_its_cli.py enforces this; .github/dependabot.yml ignores
+# mutmut majors.
+mutmut>=2.5,<3
 pytest>=8.0
 hypothesis>=6.0
 icontract>=2.7.3
