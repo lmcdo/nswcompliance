@@ -66,9 +66,11 @@ export function buildMayApplySql(selectColumns: string): string {
       AND (rp.pdf_page BETWEEN $3::int AND $4::int OR rp.id = ANY($5::bigint[]))
       AND (rp.v2_provision_type IS NULL OR rp.v2_provision_type != 'TOC')
       AND rp.v2_dcp_layer IS NOT NULL
-      AND (rp.v2_is_actionable = FALSE
+      -- A switched-off row counts only while it has no area: once keyed, switched off means left out on purpose
+      -- (a caption or a repeated objective), not unplaced (Marrickville 2.26, 2026-10-21).
+      AND ((rp.v2_is_actionable = FALSE AND rp.v2_precinct_id IS NULL)
            OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL)
-           OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NOT NULL
+           OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NOT NULL AND rp.v2_is_actionable = TRUE
                AND NOT (rp.v2_precinct_id = ANY($6::text[]))))
     ORDER BY rp.pdf_page, rp.id
     LIMIT ${MAY_APPLY_ROW_CAP + 1}`;

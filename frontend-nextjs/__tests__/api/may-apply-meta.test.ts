@@ -55,7 +55,9 @@ describe('meta.may_apply', () => {
     expect(calls).toHaveLength(areas.length);
     expect(calls[0][0]).toContain('LIMIT 401');
     // withheld rows only: a served row is already in the main list (no double listing)
-    expect(calls[0][0]).toContain('rp.v2_is_actionable = FALSE');
+    expect(calls[0][0]).toContain('rp.v2_is_actionable = FALSE AND rp.v2_precinct_id IS NULL');
+    // a keyed row is offered only if it is live (switched-off keyed rows were left out on purpose)
+    expect(calls[0][0]).toContain('rp.v2_precinct_id IS NOT NULL AND rp.v2_is_actionable = TRUE');
     expect(calls[0][0]).toContain("OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL)");
     // ... or keyed to an outline this property is not inside ($6 = its precinct ids)
     expect(calls[0][0]).toContain("AND NOT (rp.v2_precinct_id = ANY($6::text[]))");

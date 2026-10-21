@@ -1,0 +1,30 @@
+{
+  "tier": "minor",
+  "justification": "After Marrickville 2.26 was keyed, two rows switched off on purpose (a figure caption and a repeated objective) showed in the may-apply box, even for lots inside the precinct. A switched-off row now counts only while it has no area. 3 rows across all areas affected.",
+  "commit_hash": "be2584eb",
+  "files": [
+    "frontend-nextjs/lib/may-apply-query.ts",
+    "frontend-nextjs/__tests__/api/may-apply-meta.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/may-apply-meta.test.ts",
+    "fails_when": "The SQL lets a switched-off keyed row into the box.",
+    "observed_red": "Live 2026-10-21: inside lot (37_ + 2.26 precinct) showed 2 rows in the box; side street 23 (21 + 2 off).",
+    "external_authority": "DB: 3 switched-off keyed rows across all may-apply areas (CB 2.2 1, Marrickville 2.26 2)."
+  },
+  "break_it": [
+    {
+      "scenario": "An unplaced withheld row loses its may-apply listing.",
+      "what_happens": "A Warringah-style withheld area would vanish from the box.",
+      "mitigated": true,
+      "how": "Rows with no area id still match the first clause; only keyed switched-off rows are excluded.",
+      "repro": "npx jest __tests__/api/may-apply-meta.test.ts"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Live: 89 Enmore Rd shows no 2.26 rows in the box; 7 Phillip St shows 21."
+  }
+}
