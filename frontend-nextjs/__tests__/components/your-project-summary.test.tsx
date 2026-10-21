@@ -196,7 +196,20 @@ describe('site flags', () => {
 });
 
 describe('language', () => {
-  const LIABILITY = /\b(safe|feasible|compliant|complies|should|recommend|suitable|adequate|sufficient|approved|guaranteed|certified|confirmed|verified|ensure|assure|accurate|definitive|comprehensive|reliable)\b/i;
+  // The words come from the list the liability hook enforces (scripts/liability_language_check.py), read at test
+  // time: one source, and no copy of the words in this file. "complies" is added: it is a verdict too.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('fs') as typeof import('fs');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const path = require('path') as typeof import('path');
+  const hook = fs.readFileSync(path.join(__dirname, '../../../scripts/liability_language_check.py'), 'utf8');
+  const start = hook.indexOf('FLAGGED_TERMS = re.compile(');
+  const block = hook.slice(start, hook.indexOf('# "as-of-right"', start));
+  const words = Array.from(new Set((block.match(/[a-z]{4,}/g) ?? []).filter((w) => !['compile', 'should_'].includes(w))));
+  const LIABILITY = new RegExp(`\\b(${[...words, 'complies'].join('|')})\\b`, 'i');
+  it('reads a real word list from the hook', () => {
+    expect(words.length).toBeGreaterThanOrEqual(15);
+  });
   it('rendered text (including the not-found, unmapped and comparison text) has no liability words', () => {
     const { container, unmount } = renderView({
       flags: buildSiteFlags({ heritage: true, heritageItemName: 'Fixture House', bushfireProne: true, acidSulfateSoils: 'Class 5' }),
