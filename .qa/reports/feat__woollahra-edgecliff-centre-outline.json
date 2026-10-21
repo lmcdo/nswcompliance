@@ -1,0 +1,75 @@
+{
+  "tier": "standard",
+  "justification": "Woollahra DCP D4 Edgecliff Centre rules (12 live) were served to every Woollahra house. The chapter names its land: 'zoned E1 Local Centre under the Woollahra LEP 2014', between New South Head Rd, New McLean St, Arthur St and Ocean St (p5). Outline = the LEP E1 polygon.",
+  "commit_hash": "2c458b11",
+  "files": [
+    "data/woollahra_precincts/lep_e1_edgecliff_centre_d4.geojson",
+    "scripts/gate_rules.py",
+    "scripts/import_cb_centre_boundaries.py",
+    "tests/test_gate_rules.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q tests/test_gate_rules.py",
+    "fails_when": "The D4 keying rule or layer rule is removed or changed, or the outline file holds another id.",
+    "observed_red": "Before: D4 rows in layer generic with no precinct id, served to every Woollahra house (DQ-143 counted 12).",
+    "external_authority": "Planning Portal Land Zoning E1 polygon OBJECTID 769061 (30,117 m2), Map 1 shape match 0.99; road edges New South Head Rd 280 m, New McLean St 235 m, Ocean St 195 m, Arthur St 76 m."
+  },
+  "pre_impl": {
+    "existing_data": "'New South Head Road Corridor Edgecliff' outline is chapter D2's MU1 zone and shares no land with D4. Loader profile pattern from northern_beaches.",
+    "assumption_mismatch": "The chapter's own lot list matches Map 1 at only 0.82 because the zone also takes in the station and bus interchange land; the E1 polygon matches at 0.99.",
+    "new_vs_existing": "One outline file, a woollahra loader profile, two rules (key + layer), one test."
+  },
+  "functions": [
+    {
+      "name": "apply_gate_rules",
+      "file_line": "scripts/gate_rules.py:441",
+      "input": "rules woollahra_d4_layer and woollahra_d4_edgecliff_centre for council woollahra",
+      "output": "14 rows keyed, 7 generic rows moved to precinct (dry run)",
+      "if_none": "zero matching rows means nothing is written at all"
+    }
+  ],
+  "values": [
+    {
+      "value": "E1 polygon 30,117 m2, Map 1 IoU 0.99",
+      "read_at": "Planning Portal EPI_Primary_Planning_Layers/2, 2026-10-21",
+      "if_missing": "no shape proof"
+    },
+    {
+      "value": "only register addresses inside: 203-233 New South Head Rd, 180 Ocean St",
+      "read_at": "NSW address register 2026-10-21",
+      "if_missing": "no address proof"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A Woollahra house outside Edgecliff Centre still gets D4 rules.",
+      "what_happens": "Rules for the centre reach houses they do not apply to.",
+      "mitigated": true,
+      "how": "Generic rows move to the precinct layer; only lots inside the E1 outline resolve to 'Edgecliff Centre'.",
+      "repro": "live for-property for 170 Ocean St Edgecliff after the write"
+    },
+    {
+      "scenario": "A centre property misses them.",
+      "what_happens": "Centre properties lose the rules written for them.",
+      "mitigated": true,
+      "how": "Loader proof: 203-233 New South Head Rd and 180 Ocean St resolve to the outline.",
+      "repro": "python scripts/import_cb_centre_boundaries.py --council woollahra --src data/woollahra_precincts/lep_e1_edgecliff_centre_d4.geojson --commit"
+    },
+    {
+      "scenario": "use_specific rows ignore the precinct key.",
+      "what_happens": "Five live use_specific rows could reach houses outside the centre.",
+      "mitigated": true,
+      "how": "Agent reports the route serves keyed use_specific rows only inside; checked live after the write.",
+      "repro": "live for-property for an address outside the centre, count chapter-d4 rows"
+    }
+  ],
+  "mutation_analysis": "Removing either rule fails the new test.",
+  "post_merge": {
+    "db_reset": "Yes: import_cb_centre_boundaries.py --council woollahra --src ... --commit, then derive_precinct_keys.py --council woollahra --only woollahra_d4_layer,woollahra_d4_edgecliff_centre --apply (both write backups). Run BEFORE merge.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Live: an Edgecliff Centre address gets D4 rules; 170 Ocean St does not."
+  },
+  "residual_risk": "Edgecliff Centre land outside the E1 zone, if any, is not shown D4."
+}
