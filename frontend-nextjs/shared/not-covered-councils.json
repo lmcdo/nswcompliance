@@ -4,12 +4,8 @@
       "chapter_key": "chapter-c-sustainability",
       "title": "Chapter C Sustainability: DS1.3 stormwater outlets at Hawthorne Parade and Dobroyd Canal",
       "reason": "DS1.3 names stormwater outlets at Hawthorne Parade and Dobroyd Canal -- a site-specific public domain control, no outline (audit run2: Queen St Ashfield)",
-      "count_hint": 1
-    },
-    {
-      "chapter_key": "chapter-d-precinct-guidelines",
-      "title": "Chapter D Precinct Guidelines: contents line",
-      "reason": "Chapter D Precinct Guidelines: contents line -- the chapter's p2 contents row; applies to no single precinct. Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
+      "reason_code": "WORDS_ONLY",
+      "page": null,
       "count_hint": 1
     }
   ],
@@ -18,54 +14,72 @@
       "chapter_key": "chapter-11-2-undercliffe-bridge-precinct",
       "title": "Chapter 11.2 Undercliffe Bridge Precinct",
       "reason": "Chapter 11.2 Undercliffe Bridge Precinct -- no outline yet: the 2026-10-17 fit (scripts/fit_area_maps.py) gave shape IoU below 0.85 against the chapter's own figure, or the figure could not be read (data/area_map_checks/). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
+      "reason_code": "DRAWING_NOT_MATCHED",
+      "page": null,
       "count_hint": 15
     },
     {
       "chapter_key": "chapter-11-5-riverlands",
       "title": "Chapter 11.5 Riverlands",
       "reason": "Chapter 11.5 Riverlands -- no outline yet: the 2026-10-17 fit (scripts/fit_area_maps.py) gave shape IoU below 0.85 against the chapter's own figure, or the figure could not be read (data/area_map_checks/). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
+      "reason_code": "DRAWING_NOT_MATCHED",
+      "page": null,
       "count_hint": 71
     },
     {
       "chapter_key": "chapter-11-6-potts-hill",
       "title": "Chapter 11.6 Potts Hill (former reservoir site)",
       "reason": "Chapter 11.6 Potts Hill (former reservoir site) -- no outline yet: the 2026-10-17 fit (scripts/fit_area_maps.py) gave shape IoU below 0.85 against the chapter's own figure, or the figure could not be read (data/area_map_checks/). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
+      "reason_code": "DRAWING_NOT_MATCHED",
+      "page": null,
       "count_hint": 136
     },
     {
       "chapter_key": "chapter-2-2-flood-risk-management",
       "title": "Chapter 2.2 Flood Risk Management: Carinya Road controls",
       "reason": "Carinya Road, Picnic Point floodplain: clause 4.4 (p12) and Schedules 4A-4C (p25-51) apply only to that floodplain and its subdivision; no outline of it. Address audit run3: '69 Carinya Road' served at Marco Ave Revesby.",
+      "reason_code": "DRAWING_NOT_MATCHED",
+      "page": 12,
       "count_hint": 97
     },
     {
       "chapter_key": "chapter-6-2-bankstown-city-centre",
       "title": "Chapter 6.2 Bankstown City Centre: Section 6 Key sites",
       "reason": "C-B DCP 2023 Chapter 6.2 Section 6 Key sites (p167-213): controls for nine named sites KS1-KS9 (e.g. KS9 Bankstown Central, KS3 67-70 Rickard Road); no site outlines, so they were served to every house in the 6.2 city centre outline (audit run6: 33 Chertsey Ave).",
+      "reason_code": "DRAWING_NOT_MATCHED",
+      "page": 167,
       "count_hint": 155
     },
     {
       "chapter_key": "chapter-6-3-campsie-town-centre",
       "title": "Chapter 6.3 Campsie Town Centre",
       "reason": "Chapter 6.3 Campsie Town Centre -- no outline yet: the 2026-10-17 fit (scripts/fit_area_maps.py) gave shape IoU below 0.85 against the chapter's own figure, or the figure could not be read (data/area_map_checks/). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
+      "reason_code": "DRAWING_NOT_MATCHED",
+      "page": null,
       "count_hint": 42
     },
     {
       "chapter_key": "chapter-7-3-city-east",
       "title": "Chapter 7.3 City East (Bankstown): section land application maps",
       "reason": "Chapter 7.3 City East (Bankstown): section land application maps -- no outline yet: the 2026-10-17 fit (scripts/fit_area_maps.py) gave shape IoU below 0.85 against the chapter's own figure, or the figure could not be read (data/area_map_checks/). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
+      "reason_code": "DRAWING_NOT_MATCHED",
+      "page": null,
       "count_hint": 236
     },
     {
       "chapter_key": "chapter-8-2-canterbury-road",
       "title": "Chapter 8.2 Canterbury Road (Enterprise Corridor precincts)",
       "reason": "Chapter 8.2 Canterbury Road (Enterprise Corridor precincts) -- no outline yet: the 2026-10-17 fit (scripts/fit_area_maps.py) gave shape IoU below 0.85 against the chapter's own figure, or the figure could not be read (data/area_map_checks/). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
+      "reason_code": "DRAWING_NOT_MATCHED",
+      "page": null,
       "count_hint": 161
     },
     {
       "chapter_key": "chapter-8-3-hume-highway",
       "title": "Chapter 8.3 Hume Highway: sections not yet mapped",
       "reason": "Chapter 8.3 Hume Highway: sections not yet mapped -- no outline yet: the 2026-10-17 fit (scripts/fit_area_maps.py) gave shape IoU below 0.85 against the chapter's own figure, or the figure could not be read (data/area_map_checks/). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
+      "reason_code": "DRAWING_NOT_MATCHED",
+      "page": null,
       "count_hint": 55
     }
   ],
@@ -74,18 +88,24 @@
       "chapter_key": "section-b-part-14c-pymble-local-centre",
       "title": "Part 14C Pymble Local Centre",
       "reason": "Part 14C Pymble Local Centre -- no outline yet: a zoning outline scored IoU 0.70 against Figure 14C.1-1/14C.7-1 and the vector fit was refused (drawing off the road network). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so. Listed by whole chapter from 2026-10-18: the doubled-text re-read replaced the row ids, and every Part 14C rule is about the Pymble centre.",
+      "reason_code": "DRAWING_NOT_MATCHED",
+      "page": null,
       "count_hint": 80
     },
     {
       "chapter_key": "section-b-part-14f-roseville-local-centre",
       "title": "Part 14F Roseville Local Centre (precincts R1-R3)",
       "reason": "Part 14F Roseville Local Centre (precincts R1-R3) -- no outline yet: a zoning outline scored IoU 0.51-0.70 against Figures 14F.1-1/14F.7-1 to 14F.9-1 and the vector fit was refused (drawing off the road network). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so. Listed by whole chapter from 2026-10-18: the doubled-text re-read replaced the row ids, and every Part 14F rule is about the Roseville centre.",
+      "reason_code": "DRAWING_NOT_MATCHED",
+      "page": null,
       "count_hint": 108
     },
     {
       "chapter_key": "section-b-part-20-rail-roads",
       "title": "Part 20 Development near rail corridors and busy roads, for lots on Boundary Street, Horace Street, Link Road or Killeaton Street in a local centre",
       "reason": "Part 20 applies to development 'in, or immediately adjacent to, the rail corridor or a busy road' (p20-2). Lots next to the North Shore line, Pacific Highway, Ryde Road, Mona Vale Road and the M1 are checked from the map; the listed sections of Boundary Street and of Horace Street, Link Road and Killeaton Street apply only 'within the Local Centre boundary', which we have not mapped (2026-10-21).",
+      "reason_code": "PART_MAPPED",
+      "page": null,
       "count_hint": 13
     }
   ],
@@ -94,12 +114,16 @@
       "chapter_key": "amendment-1-george-upward-streets",
       "title": "George and Upward Streets site (Leichhardt DCP Amendment 1)",
       "reason": "Site DCP 'George & Upward Streets, Leichhardt DCP 2014' -- no outline of the site; was served across Leichhardt (audit run2: 32/1-15 Barr St Balmain)",
+      "reason_code": "LOT_LIST_UNPROVEN",
+      "page": null,
       "count_hint": 108
     },
     {
       "chapter_key": "part-g-s1-site-specific",
       "title": "Part G Site Specific Controls: Jane Street, 17 Marion Street, 1-5 Chester Street",
       "reason": "Leichhardt DCP 2013 Part G site-specific rules left unkeyed: Section 3 Jane Street Balmain (p13-15), G10 17 Marion Street (p116), Section 11 1-5 Chester Street Annandale (p124) -- no outline; served across Leichhardt (audit run5: 118 Louisa Rd Birchgrove). The p9 introduction rows stay served.",
+      "reason_code": "WORDS_ONLY",
+      "page": 13,
       "count_hint": 31
     }
   ],
@@ -108,12 +132,16 @@
       "chapter_key": "part2-s14-unique-env-features",
       "title": "Part 2.14 Unique Environmental Features",
       "reason": "Section 2.14 applies to land with identified unique environmental features (e.g. Thornley St scenic protection area) -- no outline; was served across Marrickville (audit run2: Enmore)",
+      "reason_code": "WORDS_ONLY",
+      "page": null,
       "count_hint": 20
     },
     {
       "chapter_key": "part2-s22-flood-management",
       "title": "Part 2.22 Flood Management, for land reached only by the largest Cooks River flood (Appendix 2 map)",
       "reason": "Section 2.22 applies to the DCP 2011 Flood Planning Area Map (Appendix 1) and Flood Liable Land Map (Appendix 2) (p5). Its rules are shown where the lot is on Inner West's flood planning area; Appendix 2 also takes in land reached only by the Cooks River probable maximum flood (p6), which we have not mapped (gate rule marrickville_2_22_flood, user decision 2026-10-21).",
+      "reason_code": "PART_MAPPED",
+      "page": 6,
       "count_hint": 72
     }
   ],
@@ -122,6 +150,8 @@
       "chapter_key": "warringah-dcp-2011-full",
       "title": "Warringah DCP 2011 Part G Special Area Controls, and Part F named centres and sites",
       "reason": "Warringah DCP 2011 Part G (p95-258): ten named areas (G1 Dee Why Town Centre .. G10), each 'Applies to Land' limited to that area; served to all of Warringah (audit run4). G1 general sections 1-11 are keyed back to the Dee Why Town Centre outline by gate rule warringah_g1_dee_why_town_centre; the rest wait for outlines. Plus 4 rows on p259 printed above the Part H heading (end of Part G), found 2026-10-16 resolving mixed heading pages. Plus Part F rules for named places (2026-10-16, audit run8: 'The Strand, Dee Why' served to Brookvale): F1 requirements 11-15 (Manly Vale, Forestville, The Strand Dee Why, Pittwater Road Collaroy, Forestway Shops), F2 Brookvale Brickworks (Lots 11 and 12 DP 1101677), F3/F4 named special-use sites (Narrabeen Lagoon trail, War Veterans Village, Collaroy sites, Allambie Heights, Manly Vale Hydraulics Laboratory, Frenchs Forest cemetery, Kimbriki, Bare Creek). F1 general requirements 1-9 stay served (zones declined on purpose: B1/B2 retired, see northern_beaches_config Part F).",
+      "reason_code": "NOT_YET_MAPPED",
+      "page": 95,
       "count_hint": 994
     }
   ],
@@ -130,6 +160,8 @@
       "chapter_key": "parramatta-dcp-2023-full",
       "title": "Parramatta DCP 2023 Part 8 section introductions (local centres, neighbourhood precincts, special character areas, specific sites) and the p1537 waste controls",
       "reason": "Parramatta DCP 2023 Part 8 section introductions (local centres, neighbourhood precincts, special character areas, specific sites) and the p1537 waste controls -- area-limited Part 8 rows with no outline of the union their section applies to. Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so.",
+      "reason_code": "NOT_YET_MAPPED",
+      "page": null,
       "count_hint": 16
     }
   ],
@@ -138,6 +170,8 @@
       "chapter_key": "chapter-e1-parking-access",
       "title": "Chapter E1 Parking and Access: E1.8.6 (Syd Einfeld Dr / Edgecliff Rd block)",
       "reason": "E1.8.6 applies to residential land in the block bounded by Syd Einfeld Dr, Edgecliff Rd, Adelaide St and Vernon St -- no outline (audit run2: Vaucluse)",
+      "reason_code": "WORDS_ONLY",
+      "page": null,
       "count_hint": 2
     }
   ]

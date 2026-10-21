@@ -1,0 +1,74 @@
+{
+  "tier": "standard",
+  "justification": "The council-wide not-mapped notice listed chapter names in one sentence with no reason and no link. Users asked for a brief, plain explanation for every rule we cannot place: each part now shows the plan's name for it, one plain sentence on why we cannot tell, and a link to the plan page.",
+  "commit_hash": "7de33093",
+  "files": [
+    "frontend-nextjs/components/compliance/DcpNotCoveredNotice.tsx",
+    "frontend-nextjs/lib/not-covered.ts",
+    "frontend-nextjs/lib/may-apply-reasons.ts",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "scripts/export_not_covered_councils.py",
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    "frontend-nextjs/shared/not-covered-councils.json",
+    "frontend-nextjs/__tests__/components/compliance/DcpNotCoveredNotice.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/components/compliance/DcpNotCoveredNotice.test.tsx; python -m pytest -q tests/test_not_covered_councils_drift.py",
+    "fails_when": "A chapter renders without its reason sentence, a link is built without a URL, or the shared file drifts from the source.",
+    "observed_red": "Before: one sentence, names only (DcpNotCoveredNotice on main).",
+    "external_authority": "Reason codes taken from each entry's recorded reason; pages from the entries' own page citations (spot-checked: Marrickville 2.22 p6 = provision 246992's pdf_page)."
+  },
+  "pre_impl": {
+    "existing_data": "Reuses MAY_APPLY_REASONS sentences and meta.chapter_pdf_urls already in the response.",
+    "assumption_mismatch": "Some entries fit no code exactly; WORDS_ONLY used as the closest honest one (Leichhardt Amendment 1, Parramatta, Ashfield D). CB 2.2 and 6.2 corrected to DRAWING_NOT_MATCHED in review.",
+    "new_vs_existing": "One new reason code PART_MAPPED; no new component."
+  },
+  "functions": [
+    {
+      "name": "DcpNotCoveredNotice",
+      "file_line": "frontend-nextjs/components/compliance/DcpNotCoveredNotice.tsx:21",
+      "input": "the council's not-covered chapters with reason codes and the chapter PDF urls",
+      "output": "one line per chapter: name, plain reason, plan link when a url exists",
+      "if_none": "no chapters at all means nothing is rendered"
+    }
+  ],
+  "values": [
+    {
+      "value": "21 entries coded: WORDS_ONLY, DRAWING_NOT_MATCHED, PART_MAPPED",
+      "read_at": "data/chapter_scope/not_covered_2026-10-15.json 2026-10-21",
+      "if_missing": "no reason shown"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A chapter has no PDF url.",
+      "what_happens": "A broken or empty link would be shown to the user.",
+      "mitigated": true,
+      "how": "planHref returns null and no link is rendered.",
+      "repro": "jest DcpNotCoveredNotice test 'no link without url'"
+    },
+    {
+      "scenario": "A chapter carries an unknown reason code.",
+      "what_happens": "The line would show no explanation.",
+      "mitigated": true,
+      "how": "reason_text omitted; the name and plan link still show.",
+      "repro": "jest with a made-up code"
+    },
+    {
+      "scenario": "Liability wording in the new copy.",
+      "what_happens": "Text could read as an assurance about the property.",
+      "mitigated": true,
+      "how": "Copy says 'we could not tell' and 'read them in the plan'; liability check passed on commit.",
+      "repro": "grep the component for the pre-pr-review word list"
+    }
+  ],
+  "mutation_analysis": "Removing the reason line or the link fails the extended notice test.",
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Open a Canterbury-Bankstown address page: the notice lists each part with a reason and a plan link."
+  },
+  "residual_risk": "The lead sentence says their rules are not listed; for PART_MAPPED items houses on the map do get them (the item's own reason line says so)."
+}

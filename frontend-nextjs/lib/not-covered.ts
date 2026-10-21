@@ -8,12 +8,19 @@
  */
 import notCoveredData from '@/shared/not-covered-councils.json';
 import { councilKey } from '@/lib/council-key';
+import { reasonText } from '@/lib/may-apply-reasons';
 
 export interface NotCoveredChapter {
   chapter_key: string;
   /** The plan's own name for the part withheld (data/chapter_scope/not_covered_*.json `title`). */
   title?: string;
   reason: string;
+  /** Why we cannot place it: a key of MAY_APPLY_REASONS. */
+  reason_code?: string | null;
+  /** The plain sentence for reason_code, or null when the code is missing or unknown. */
+  reason_text?: string | null;
+  /** Page in the chapter PDF where the land is described, when known. */
+  page?: number | null;
 }
 
 export interface NotCovered {
@@ -29,7 +36,15 @@ export function getNotCovered(formerCouncil: string | null | undefined): NotCove
   if (!slug) return null;
   const rows = Object.prototype.hasOwnProperty.call(DATA, slug) ? DATA[slug] : undefined;
   if (!rows || rows.length === 0) return null;
-  return { council: slug, chapters: rows.map((r) => ({ chapter_key: r.chapter_key, title: r.title, reason: r.reason })) };
+  return { council: slug, chapters: rows.map((r) => ({
+      chapter_key: r.chapter_key,
+      title: r.title,
+      reason: r.reason,
+      reason_code: r.reason_code ?? null,
+      // Never a line without a reason: an unknown or missing code reads as the general one.
+      reason_text: reasonText(r.reason_code) ?? reasonText('NOT_YET_MAPPED'),
+      page: typeof r.page === 'number' ? r.page : null,
+    })) };
 }
 
 /**

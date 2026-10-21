@@ -6,7 +6,7 @@ carries it.
 
 Source:  data/chapter_scope/not_covered_2026-10-15.json  (withheld_area_rules)
 Output:  frontend-nextjs/shared/not-covered-councils.json
-         {council_slug: [{chapter_key, reason, count_hint}]}
+         {council_slug: [{chapter_key, title, reason, reason_code, page, count_hint}]}
 
 The address page says so when its council has any entry (OC-21). The areas have no
 outline, so the notice is per council, not per address.
@@ -33,7 +33,7 @@ def build(source: Path = SOURCE) -> dict:
         row = chapters.setdefault(
             e["chapter_key"],
             {"chapter_key": e["chapter_key"], "title": e.get("title") or e["chapter_key"], "reason": e["reason"],
-             "count_hint": 0},
+             "reason_code": e.get("reason_code"), "page": e.get("page"), "count_hint": 0},
         )
         row["count_hint"] += int(e.get("expect") or len(e.get("ids") or []))
     return {c: sorted(r.values(), key=lambda x: x["chapter_key"]) for c, r in sorted(out.items())}
