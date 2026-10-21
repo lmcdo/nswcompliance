@@ -260,8 +260,15 @@ export async function GET(req: NextRequest) {
  // DQ-122: no candidate carried the asked street number and street. Say so plainly (404), so a
  // caller can tell "no such property" from "the service is down" -- never serve a neighbour.
  const message = error instanceof Error ? error.message : '';
+ // The record answered but has no location: the maps cannot be checked. Not an outage, not "no such property".
+ if (message.startsWith(LOCATION_NOT_FOUND)) {
+   return NextResponse.json(
+     { success: false, error: 'The NSW property record for this address has no location, so the map checks could not be done.', details: message },
+     { status: 422 }
+   );
+ }
  // A source that did not answer is an outage (503), never "no such property".
- if ([ADDRESS_SEARCH_UNAVAILABLE, VALUATION_UNAVAILABLE, LOCATION_NOT_FOUND, LOOKUP_OUT_OF_TIME].some((m) => message.startsWith(m))) {
+ if ([ADDRESS_SEARCH_UNAVAILABLE, VALUATION_UNAVAILABLE, LOOKUP_OUT_OF_TIME].some((m) => message.startsWith(m))) {
    return NextResponse.json(
      { success: false, error: 'The NSW property services did not answer, so this property could not be looked up. Please try again.', details: message },
      { status: 503 }
