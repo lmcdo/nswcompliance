@@ -119,6 +119,10 @@ reportlab==5.0.1
 # The test parses with the stdlib html.parser, so lxml is NOT needed here.
 # Pinned to match scripts/requirements-monitor.txt.
 beautifulsoup4>=4.12
+# lxml: the Canterbury-Bankstown scraper parses with "lxml", as it does in the
+# monitor image. tests/test_cb_scraper_follows_short_links.py drives that scraper,
+# so the tests use the parser production uses rather than a substitute.
+lxml>=6.1.1
 
 # pypdf: the OCR path now slices a chapter into page batches before posting it
 # (scripts/dcp_extract_changed.py:_ocr_pdf_slice), because one request for a

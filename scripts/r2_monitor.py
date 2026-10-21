@@ -253,21 +253,33 @@ def _range_total(headers) -> str | None:
 def head_request(url: str) -> dict:
     """HTTP HEAD to cheaply check Content-Length before downloading.
     Falls back to a range-0 GET if HEAD returns 405 (some council APIs
-    only support GET — e.g. Canterbury Bankstown webdocs).
+    only support GET — e.g. Canterbury Bankstown webdocs) or 404: CB's
+    cbcity-webdocs host answers HEAD 404 for a document a GET serves (three
+    chapters failed every run from 2026-05-11 while their PDFs downloaded fine).
+    A link that is really gone 404s on the GET as well, so it still fails.
     """
     try:
         resp = SESSION.head(url, timeout=30, allow_redirects=True)
-        if resp.status_code == 405:
+        if resp.status_code in (404, 405):
+            head_404 = resp.status_code == 404
             # Server doesn't support HEAD — try GET with Range header
             # to avoid downloading the full file just for metadata.
             resp = SESSION.get(
                 url, timeout=30, allow_redirects=True,
-                headers={**SESSION.headers, "Range": "bytes=0-0"},
+                headers={**SESSION.headers, "Range": "bytes=0-4"},
                 stream=True,
             )
+            first = b""
+            if head_404 and resp.status_code in (200, 206):
+                first = next(resp.iter_content(5), b"")
             resp.close()
             # Range request returns 206; some servers ignore Range and return 200
             status = 200 if resp.status_code in (200, 206) else resp.status_code
+            # After a HEAD 404, a GET 200 counts only if the body is a PDF: some
+            # servers answer a removed document with a "not found" page, labelled
+            # text/html or even application/octet-stream. The bytes, not the label.
+            if head_404 and status == 200 and not first.startswith(b"%PDF-"):
+                status = 404
             return {
                 # NOT resp.headers['Content-Length'] on this path. We asked for
                 # ONE byte, so a 206 reports Content-Length: 1 - the length of
