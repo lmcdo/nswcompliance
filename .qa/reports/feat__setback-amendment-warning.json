@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes what a property page says about setback numbers. A false warning over-warns (fail closed); a missing warning lets numbers vanish unexplained, which is the bug. Not Critical: no write, no change to which numbers are served. Not Minor: user-facing wording on a compliance surface.",
- "commit_hash": "852ab31e",
+ "commit_hash": "d4710d5b",
  "files": [
   "frontend-nextjs/lib/dcp-review-status.ts",
   "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
@@ -18,8 +18,8 @@
  },
  "falsifiable_check": {
   "command": "cd frontend-nextjs && npx jest __tests__/api/dcp-review-status.test.ts __tests__/components/dcp-review-notice.test.tsx __tests__/dcp-citation-links.test.ts",
-  "fails_when": "review_status is dropped from either response, a failed check reads as nothing pending, the needs_extraction / is_current filters are loosened, the count is hidden, or the unknown state is silent",
-  "observed_red": "YES, 10 mutants applied one at a time, each killed: both response branches dropping review_status, error returning {false,0}, needs_extraction IS NOT NULL, is_current dropped, count not coerced, null state silent, withheld-only hidden, count not shown, fallback removed. Restored green."
+  "fails_when": "review_status is dropped from either response, a failed check reads as nothing pending, the needs_extraction / is_current filters are loosened, the count is hidden, or the unknown state is silent, or a row held for a non-amendment reason is called an amendment",
+  "observed_red": "YES, 10 mutants applied one at a time, each killed: both response branches dropping review_status, error returning {false,0}, needs_extraction IS NOT NULL, is_current dropped, count not coerced, null state silent, withheld-only hidden, count not shown, fallback removed. Restored green. Second round after cross-review, 5 more killed: source-change count taking every reason, NULL reason dropped from the other count, other reasons called an amendment, other-only hidden, other count not shown."
  },
  "functions": [
   {
@@ -50,7 +50,7 @@
   {
    "purpose": "tell the setback panel whether this council has a source change waiting for review and how many numbers are withheld",
    "file_line": "frontend-nextjs/lib/dcp-review-status.ts:24",
-   "where_clause": "council = ANY($1) AND is_active = TRUE AND needs_extraction = TRUE; lga = ANY($1) AND is_current = TRUE AND needs_review = TRUE"
+   "where_clause": "council = ANY($1) AND is_active AND needs_extraction; lga = ANY($1) AND is_current AND needs_review split by review_reason = 'chapter_pdf_changed' vs IS DISTINCT FROM"
   }
  ],
  "break_it": [
@@ -74,6 +74,13 @@
    "mitigated": true,
    "how": "undefined branch",
    "repro": "an older backend without the field shows nothing"
+  },
+  {
+   "scenario": "A setback row is held back because our number did not match the council's document (114 of 192 measured 2026-10-22)",
+   "what_happens": "the panel says it is held back until checked against the council's plan, and does not say an amendment was detected",
+   "mitigated": true,
+   "how": "withheld_source_changed counts only review_reason = 'chapter_pdf_changed'; everything else is withheld_other",
+   "repro": "rows held for another reason are NEVER called an amendment"
   }
  ],
  "post_merge": {

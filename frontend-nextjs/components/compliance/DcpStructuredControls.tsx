@@ -58,7 +58,7 @@ interface StructuredControlsResponse {
   categories: ControlCategory[];
   /** Change found at the council's source, not yet reviewed. ABSENT (older
    *  backend) = say nothing; null = the check failed and the panel says so. */
-  review_status?: { amendment_pending: boolean; withheld_controls: number } | null;
+  review_status?: { amendment_pending: boolean; withheld_source_changed: number; withheld_other: number } | null;
 }
 
 /**
@@ -77,18 +77,28 @@ export function ReviewNotice({ status }: { status: StructuredControlsResponse['r
       </p>
     );
   }
-  const { amendment_pending: pending, withheld_controls: withheld } = status;
-  if (!pending && withheld === 0) return null;
-  const detail =
-    withheld > 0
-      ? `${withheld} ${withheld === 1 ? 'control is' : 'controls are'} held back until reviewed`
-      : 'updated controls pending review';
+  const { amendment_pending: pending, withheld_source_changed: changed, withheld_other: other } = status;
+  const controls = (n: number) => `${n} ${n === 1 ? 'control is' : 'controls are'}`;
+  // Only a change at the council's source is called an amendment. Rows held back
+  // because our number did not match the council's document are a different
+  // claim and are worded as one (cross-review, 2026-10-22).
+  const amendment = pending || changed > 0;
+  if (!amendment && other === 0) return null;
   return (
     <div
       className="mb-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1"
       data-testid="dcp-review-pending"
     >
-      Amendment detected — {detail}. Check the council website for the latest version.
+      {amendment && (
+        <>
+          Amendment detected — {changed > 0 ? `${controls(changed)} held back until reviewed` : 'updated controls pending review'}.
+          {' '}Check the council website for the latest version.
+        </>
+      )}
+      {amendment && other > 0 && ' '}
+      {other > 0 && (
+        <>{amendment ? `${other} more ${other === 1 ? 'is' : 'are'}` : controls(other)} held back until checked against the council&apos;s plan.</>
+      )}
     </div>
   );
 }

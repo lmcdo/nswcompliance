@@ -41,9 +41,9 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('fetchDcpReviewStatus', () => {
   test('reads both signals for the council slugs', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ amendment_pending: true, withheld_controls: 2 }] });
+    mockQuery.mockResolvedValueOnce({ rows: [{ amendment_pending: true, withheld_source_changed: 2, withheld_other: 1 }] });
     await expect(fetchDcpReviewStatus(['bayside'])).resolves.toEqual({
-      amendment_pending: true, withheld_controls: 2,
+      amendment_pending: true, withheld_source_changed: 2, withheld_other: 1,
     });
     const [sql, params] = mockQuery.mock.calls[0];
     expect(params).toEqual([['bayside']]);
@@ -53,12 +53,16 @@ describe('fetchDcpReviewStatus', () => {
     expect(sql).toMatch(/is_active = TRUE AND needs_extraction = TRUE/);
     expect(sql).toMatch(/lga = ANY\(\$1\)/);
     expect(sql).toMatch(/is_current = TRUE AND needs_review = TRUE/);
+    // Only the monitor's own reason counts as an amendment; everything else
+    // (a number that did not match the council's document) is counted apart.
+    expect(sql).toMatch(/AND review_reason = 'chapter_pdf_changed'\)\s+AS withheld_source_changed/);
+    expect(sql).toMatch(/AND review_reason IS DISTINCT FROM 'chapter_pdf_changed'\)\s+AS withheld_other/);
   });
 
   test('a count arriving as a string (pg bigint) is still a number', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ amendment_pending: false, withheld_controls: '9' }] });
+    mockQuery.mockResolvedValueOnce({ rows: [{ amendment_pending: false, withheld_source_changed: '9', withheld_other: '4' }] });
     await expect(fetchDcpReviewStatus(['canterbury_bankstown'])).resolves.toEqual({
-      amendment_pending: false, withheld_controls: 9,
+      amendment_pending: false, withheld_source_changed: 9, withheld_other: 4,
     });
   });
 
@@ -77,18 +81,18 @@ describe('fetchDcpReviewStatus', () => {
 describe('structured-controls carries review_status', () => {
   test('when controls are served', async () => {
     mockFetchDcpControls.mockResolvedValueOnce(result([row]));
-    mockQuery.mockResolvedValueOnce({ rows: [{ amendment_pending: true, withheld_controls: 2 }] });
+    mockQuery.mockResolvedValueOnce({ rows: [{ amendment_pending: true, withheld_source_changed: 2, withheld_other: 0 }] });
     const body = await (await GET(req('council=bayside&dev_type=dwelling_house'))).json();
     expect(body.has_controls).toBe(true);
-    expect(body.review_status).toEqual({ amendment_pending: true, withheld_controls: 2 });
+    expect(body.review_status).toEqual({ amendment_pending: true, withheld_source_changed: 2, withheld_other: 0 });
   });
 
   test('when every row was withheld (the case the warning exists for)', async () => {
     mockFetchDcpControls.mockResolvedValueOnce(result([]));
-    mockQuery.mockResolvedValueOnce({ rows: [{ amendment_pending: true, withheld_controls: 42 }] });
+    mockQuery.mockResolvedValueOnce({ rows: [{ amendment_pending: true, withheld_source_changed: 42, withheld_other: 0 }] });
     const body = await (await GET(req('council=bayside&dev_type=dwelling_house'))).json();
     expect(body.has_controls).toBe(false);
-    expect(body.review_status).toEqual({ amendment_pending: true, withheld_controls: 42 });
+    expect(body.review_status).toEqual({ amendment_pending: true, withheld_source_changed: 42, withheld_other: 0 });
   });
 
   test('a failed check is sent as null, not dropped', async () => {

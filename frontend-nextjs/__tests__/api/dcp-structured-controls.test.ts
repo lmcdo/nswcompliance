@@ -25,7 +25,7 @@ jest.mock('@/lib/dcp-controls-client', () => ({
 
 // The review-status query has its own test file; here it is held at "nothing pending".
 jest.mock('@/lib/dcp-review-status', () => ({
-  fetchDcpReviewStatus: async () => ({ amendment_pending: false, withheld_controls: 0 }),
+  fetchDcpReviewStatus: async () => ({ amendment_pending: false, withheld_source_changed: 0, withheld_other: 0 }),
 }));
 
 import { GET } from '@/app/api/dcp/structured-controls/route';
