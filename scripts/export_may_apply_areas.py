@@ -37,7 +37,8 @@ def build(source: Path = SOURCE, base_url: str | None = None, maps_index: Path =
     maps = json.loads(maps_index.read_text(encoding="utf-8")) if base and maps_index.exists() else {}
     areas = json.loads(source.read_text(encoding="utf-8"))["areas"]
     areas = [
-        {**a, "map_image_url": f"{base}/may-apply-maps/{maps[a['area_id']]['file']}"}
+        {**a, "map_image_url": f"{base}/may-apply-maps/{maps[a['area_id']]['file']}",
+         "map_page": maps[a["area_id"]].get("page")}
         if a.get("area_id") in maps and maps[a["area_id"]].get("file") else a
         for a in areas
     ]
