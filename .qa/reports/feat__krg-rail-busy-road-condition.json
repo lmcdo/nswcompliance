@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "Ku-ring-gai DCP Part 20 (13 live rules) applies to development 'in, or immediately adjacent to, the rail corridor or a busy road' (p20-2) but reached every KRG house. New site condition rail_or_busy_road: the property lookup flags a lot within 3 m of the LEP SP2 railway zone or a listed busy road's cadastre corridor; a gate rule moves Part 20 to that condition.",
+  "commit_hash": "408fdad2",
+  "files": [
+    "frontend-nextjs/lib/rail-busy-road.ts",
+    "frontend-nextjs/shared/krg-rail-busy-roads.json",
+    "frontend-nextjs/app/api/property/route.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/lib/dcp-provisions-query.ts",
+    "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "scripts/gate_rules.py",
+    "scripts/dq_probe_live.py",
+    "tests/test_gate_rules.py",
+    "frontend-nextjs/__tests__/lib/rail-busy-road.test.ts",
+    "frontend-nextjs/__tests__/api/rail-busy-road-condition.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/rail-busy-road.test.ts __tests__/api/rail-busy-road-condition.test.ts; python -m pytest -q tests/test_gate_rules.py",
+    "fails_when": "The flag is set for a lot across the street from the line, not set for a lot on the highway or backing onto the line, or the route serves condition rows without the flag.",
+    "observed_red": "Before: 13 Part 20 rows in the generic layer, served to every Ku-ring-gai house (DQ-143).",
+    "external_authority": "KRG DCP Part 20 p20-2 text; measured distances: Pacific Hwy lots 0.00-1.34 m from the corridor; 33 Killara Ave 0.00 m from the SP2 rail zone; 43 Werona Ave 11.75 m."
+  },
+  "pre_impl": {
+    "existing_data": "Same pattern as the Greenweb condition (#1408): lot from nsw_cadastre_lots, flag in property route, condition layer in for-property, gate rule.",
+    "assumption_mismatch": "Much of the North Shore line is held as ordinary lots, so the cadastre railway corridor misses it; the LEP SP2 railway zone covers all 62 sampled points.",
+    "new_vs_existing": "One lib module, one data file with the DCP's road list and quotes, wiring in the same five places Greenweb used, one gate rule."
+  },
+  "functions": [
+    {
+      "name": "apply_gate_rules",
+      "file_line": "scripts/gate_rules.py:448",
+      "input": "gate rule krg_20_rail_or_busy_road for council ku_ring_gai",
+      "output": "13 rows moved to condition rail_or_busy_road (dry run)",
+      "if_none": "zero matching rows means no rows are written at all"
+    }
+  ],
+  "values": [
+    {
+      "value": "3 m adjacency tolerance",
+      "read_at": "measured lot-to-corridor distances 2026-10-21",
+      "if_missing": "tolerance would be a guess"
+    },
+    {
+      "value": "live: 1311 Pacific Hwy flagged; 33 Killara Ave flagged; 43 Werona Ave not flagged",
+      "read_at": "agent measurement 2026-10-21",
+      "if_missing": "no inside/outside proof"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A lot across the street from the line is flagged.",
+      "what_happens": "A house not adjoining the corridor is shown Part 20.",
+      "mitigated": true,
+      "how": "3 m tolerance; 43 Werona Ave at 11.75 m is not flagged (unit test).",
+      "repro": "npx jest __tests__/lib/rail-busy-road.test.ts"
+    },
+    {
+      "scenario": "The map service is slow or down at lookup.",
+      "what_happens": "The lot's flag cannot be computed.",
+      "mitigated": true,
+      "how": "Flag left unset and the page shows a plain note, as for Greenweb.",
+      "repro": "route test with the lookup failing"
+    },
+    {
+      "scenario": "Unnamed stretches of a busy road corridor.",
+      "what_happens": "An adjoining lot on that stretch is missed.",
+      "mitigated": false,
+      "how": "Recorded limit in the data file (Pacific Hwy 1/11, Mona Vale Rd 4/13 samples unnamed).",
+      "repro": "see shared/krg-rail-busy-roads.json limits"
+    }
+  ],
+  "mutation_analysis": "Agent tests: flag inside/outside lots and route serving; removing the condition from the route fails the route test.",
+  "post_merge": {
+    "db_reset": "Yes, AFTER deploy: derive_precinct_keys.py --council ku_ring_gai --only krg_20_rail_or_busy_road --apply.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Live: 1311 Pacific Hwy Turramurra sees Part 20; a house one street back does not."
+  },
+  "residual_risk": "Each KRG lookup adds two map queries (10 s timeout); on a slow day the note shows instead of the rules. Boundary St / Horace St local-centre sections not placed."
+}

@@ -111,6 +111,13 @@ GATE_RULES: list[dict] = [
     {"name": "krg_18_greenweb", "council": "ku_ring_gai",
      "where": "source_chapter_key = 'section-b-part-18-biodiversity'",
      "set": {"v2_dcp_layer": "condition", "v2_site_condition_required": "greenweb"}},
+    # Ku-ring-gai Part 20 applies to "All development that is in, or immediately adjacent to, the rail corridor or a
+    # busy road" (p20-2); control 3 "On lots adjoining the rail corridor and/or a busy road". The property lookup flags
+    # a lot within the tolerance of a listed busy road's corridor or the LEP SP2 railway land
+    # (frontend-nextjs/lib/rail-busy-road.ts; roads, labels and measurements in frontend-nextjs/shared/krg-rail-busy-roads.json).
+    {"name": "krg_20_rail_or_busy_road", "council": "ku_ring_gai",
+     "where": "source_chapter_key = 'section-b-part-20-rail-roads'",
+     "set": {"v2_dcp_layer": "condition", "v2_site_condition_required": "rail_or_busy_road"}},
     # "General Requirements for residential flat buildings and mixed use development in areas zoned R4, B3 and B4
     # zones." (Campbelltown DCP Part 4, p2). B3 and B4 were retired by the 2023 Employment Zones reform; the repo's
     # own translation (frontend-nextjs/shared/zone-taxonomy.json legacyToCurrentAliases) maps B3 -> E2, B4 -> MU1.

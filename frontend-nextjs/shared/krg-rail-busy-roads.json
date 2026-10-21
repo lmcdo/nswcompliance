@@ -1,0 +1,58 @@
+{
+  "_what": "Ku-ring-gai DCP Part 20 (Development near rail corridors and busy roads): which land the chapter applies to, and the map layer that places each named road and the rail corridor. Read by frontend-nextjs/lib/rail-busy-road.ts. The names below are the DCP's own words; the labels are what the NSW maps call the same road.",
+  "council": "ku_ring_gai",
+  "chapter_key": "section-b-part-20-rail-roads",
+  "page": "p20-2",
+  "applies_to": {
+    "row_id": 152173,
+    "quote": "All development that is in, or immediately adjacent to, the rail corridor or a busy road is to be designed in accordance with the SEPP (Transport and Infrastructure) 2021."
+  },
+  "adjoining": {
+    "row_id": 152177,
+    "quote": "On lots adjoining the rail corridor and/or a busy road, landscaping is to be designed to:"
+  },
+  "busy_roads_note": {
+    "row_id": 152174,
+    "quote": "Note: Under SEPP (Transport and Infrastructure) 2021, busy roads include: \n - M1 Motorway;\n - North Connex;\n - Pacific Highway; \n - Ryde Road;\n - Mona Vale Road; \n - Main Road 328, Section of Boundary Street, between Pacific Highway and Babbage Road, within the Local Centre boundary; and \n - Secondary Road 2043, Section of Horace Street, Link Road, Killeaton Street within the Local Centre boundary."
+  },
+  "rail_note": {
+    "row_id": 152175,
+    "quote": "Note: Under the SEPP (Transport and Infrastructure) 2021, Chapter 2, the rail corridor refers to the North Shore rail line."
+  },
+  "road_corridor_layer": "https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Land_Parcel_Property_Theme_multiCRS/FeatureServer/5",
+  "busy_roads": [
+    {
+      "dcp_name": "M1 Motorway",
+      "road_corridor_labels": ["SYDNEY NEWCASTLE FWY"],
+      "measured": "2026-10-21: 82 of 87 points sampled every 150 m along the NSW road centreline PACIFIC MOTORWAY (the M1) lie in road-corridor parcels labelled SYDNEY NEWCASTLE FWY (the M1's former name); 4 in unlabelled corridors, 1 in PACIFIC HWY."
+    },
+    {
+      "dcp_name": "North Connex",
+      "road_corridor_labels": [],
+      "limit": "Runs in a tunnel; no surface road corridor to adjoin. Lots at its Wahroonga portal adjoin the M1 or Pacific Highway corridors, which are checked."
+    },
+    { "dcp_name": "Pacific Highway", "road_corridor_labels": ["PACIFIC HWY"] },
+    { "dcp_name": "Ryde Road", "road_corridor_labels": ["RYDE RD"] },
+    { "dcp_name": "Mona Vale Road", "road_corridor_labels": ["MONA VALE RD"] },
+    {
+      "dcp_name": "Main Road 328",
+      "road_corridor_labels": [],
+      "limit": "Only a section of Boundary Street, within the Local Centre boundary. No map layer here places that section, so these lots are not flagged."
+    },
+    {
+      "dcp_name": "Secondary Road 2043",
+      "road_corridor_labels": [],
+      "limit": "Only sections of Horace Street, Link Road and Killeaton Street within the Local Centre boundary. No map layer here places those sections, so these lots are not flagged."
+    }
+  ],
+  "rail_corridor": {
+    "dcp_name": "North Shore rail line",
+    "layer": "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/EPI_Primary_Planning_Layers/MapServer/2",
+    "lga_name": "KU-RING-GAI",
+    "sym_code": "SP2",
+    "purposes": ["Railway Infrastructure", "Railway"],
+    "measured": "2026-10-21: all 62 points sampled every 250 m along the surface rail centrelines (NSW_Transport_Theme layer 7) inside Ku-ring-gai lie in Ku-ring-gai LEP 2015 SP2 Railway Infrastructure land. The cadastre's own railway-corridor parcels do not cover the line: much of it is held as ordinary lots."
+  },
+  "tolerance_m": 3,
+  "tolerance_basis": "2026-10-21, lot (nsw_cadastre_lots) to corridor, metres: 1311 Pacific Hwy Turramurra 0.00 to PACIFIC HWY; 1250 Pacific Hwy Pymble 1.34 to PACIFIC HWY and 0.00 to the cadastre railway corridor; 1428 Pacific Hwy Turramurra 1.21; 1047 Pacific Hwy Pymble 0.00; 33 Killara Ave Killara 0.00 to the LEP rail zone. A lot across a street from the line: 43 Werona Ave Killara, 11.75 m from the railway corridor (not flagged). Not yet measured: a lot one street back from the highway."
+}

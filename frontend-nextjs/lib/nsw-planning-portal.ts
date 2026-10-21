@@ -137,6 +137,11 @@ export interface PlanningConstraints {
  greenweb?: { onGreenweb: boolean; categories: string[]; basis: 'lot' | 'point' } | null;
  /** Plain-words note when the Greenweb check could not run (Part 18 rules may then be missing). */
  greenwebUnchecked?: string;
+ // Ku-ring-gai DCP Part 20: the LOT adjoins (within shared/krg-rail-busy-roads.json tolerance_m) a busy road's
+ // corridor or the LEP SP2 railway land. Absent when it adjoins neither.
+ railOrBusyRoad?: { adjoins: boolean; roads: string[]; rail: boolean } | null;
+ /** Plain-words note when the rail / busy-road check could not run (Part 20 rules may then be missing). */
+ railOrBusyRoadUnchecked?: string;
  wetlands?: { inWetlandsArea: boolean } | null;
  keySite?: { isKeySite: boolean; clause?: string } | null;
  activeStreetFrontage?: { required: boolean; clause?: string } | null;

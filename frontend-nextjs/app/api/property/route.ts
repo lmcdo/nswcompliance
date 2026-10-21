@@ -3,6 +3,7 @@ import { PropertyDataService } from '../../../lib/property-data';
 import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 import { query } from '@/lib/db';
 import { greenwebConstraints } from '@/lib/greenweb-overlay';
+import { railOrBusyRoadConstraints } from '@/lib/rail-busy-road';
 
 /**
  * General NSW Property Data API Endpoint
@@ -211,7 +212,13 @@ export async function GET(req: NextRequest) {
  // greenwebConstraints never throws: a failed check comes back as a plain-words greenwebUnchecked note.
  // Ku-ring-gai only: Greenweb is that council's own DCP map, so no other council gets a Greenweb note (Sol, 2026-10-20).
  if (/ku-?ring-?gai/i.test(String(propertyData.constraints?.lga ?? ''))) {
-   Object.assign(propertyData.constraints, await greenwebConstraints(query, spatialLon, spatialLat));
+   // Part 20 (rail corridor and busy roads) is also a property of the LOT: it adjoins the corridor or it does not.
+   // Never throws: a failed check comes back as a plain-words railOrBusyRoadUnchecked note.
+   const [greenweb, railOrBusyRoad] = await Promise.all([
+     greenwebConstraints(query, spatialLon, spatialLat),
+     railOrBusyRoadConstraints(query, fetch, spatialLon, spatialLat),
+   ]);
+   Object.assign(propertyData.constraints, greenweb, railOrBusyRoad);
  }
  }
 

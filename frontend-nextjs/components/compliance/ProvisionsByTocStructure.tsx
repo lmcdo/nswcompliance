@@ -384,6 +384,7 @@ export function ProvisionsByTocStructure({
     acidSulfate: Boolean(propertyData?.constraints?.acidSulfateSoils),
     riparian: propertyData?.constraints?.riparianLand?.inRiparianArea === true,
     greenweb: propertyData?.constraints?.greenweb?.onGreenweb === true,
+    railOrBusyRoad: propertyData?.constraints?.railOrBusyRoad?.adjoins === true,
     suburb: suburbFromAddress(address),
   });
 
@@ -2144,6 +2145,12 @@ export function ProvisionsByTocStructure({
         // Without the Greenweb flag the Part 18 biodiversity rules are not shown, so say why (Sol, 2026-10-20).
         <p className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {propertyData.constraints.greenwebUnchecked}
+        </p>
+      )}
+      {propertyData?.constraints?.railOrBusyRoadUnchecked && (
+        // Without the flag the Part 20 rail and busy-road rules are not shown, so say why.
+        <p className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {propertyData.constraints.railOrBusyRoadUnchecked}
         </p>
       )}
       <DcpNotCoveredNotice notCovered={data?.meta?.not_covered} />

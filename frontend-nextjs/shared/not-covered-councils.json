@@ -81,6 +81,12 @@
       "title": "Part 14F Roseville Local Centre (precincts R1-R3)",
       "reason": "Part 14F Roseville Local Centre (precincts R1-R3) -- no outline yet: a zoning outline scored IoU 0.51-0.70 against Figures 14F.1-1/14F.7-1 to 14F.9-1 and the vector fit was refused (drawing off the road network). Rules already withheld (precinct layer, no key); listed 2026-10-17 under the 2026-10-15 rule so the address page says so. Listed by whole chapter from 2026-10-18: the doubled-text re-read replaced the row ids, and every Part 14F rule is about the Roseville centre.",
       "count_hint": 108
+    },
+    {
+      "chapter_key": "section-b-part-20-rail-roads",
+      "title": "Part 20 Development near rail corridors and busy roads, for lots on Boundary Street, Horace Street, Link Road or Killeaton Street in a local centre",
+      "reason": "Part 20 applies to development 'in, or immediately adjacent to, the rail corridor or a busy road' (p20-2). Lots next to the North Shore line, Pacific Highway, Ryde Road, Mona Vale Road and the M1 are checked from the map; the listed sections of Boundary Street and of Horace Street, Link Road and Killeaton Street apply only 'within the Local Centre boundary', which we have not mapped (2026-10-21).",
+      "count_hint": 13
     }
   ],
   "leichhardt": [

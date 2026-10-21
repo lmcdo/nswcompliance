@@ -56,6 +56,7 @@ interface PropertyFilters {
   acid_sulfate?: boolean;  // lot on the LEP Acid Sulfate Soils Map (any class)
   riparian?: boolean;      // lot on the LEP Riparian Lands / watercourse map
   greenweb?: boolean;      // any part of the lot overlaps a Ku-ring-gai DCP Part 18R.1 Greenweb category
+  rail_or_busy_road?: boolean; // the lot adjoins the rail corridor or a busy road (Ku-ring-gai DCP Part 20, p20-2)
   precinct_id?: string;
   dev_type?: string;
   topic?: string;
@@ -303,6 +304,7 @@ export async function GET(request: NextRequest) {
       acid_sulfate: searchParams.get('acid_sulfate') === 'true',
       riparian: searchParams.get('riparian') === 'true',
       greenweb: searchParams.get('greenweb') === 'true',
+      rail_or_busy_road: searchParams.get('rail_or_busy_road') === 'true',
       precinct_id: searchParams.get('precinct_id') ? normalizePrecinctId(searchParams.get('precinct_id')!) : undefined,
       dev_type: searchParams.get('dev_types') || searchParams.get('dev_type') || undefined,
       topic: searchParams.get('topic') || undefined,
@@ -1166,6 +1168,7 @@ async function queryLayer(
     if (filters.acid_sulfate) conditions.push('acid_sulfate');
     if (filters.riparian) conditions.push('riparian');
     if (filters.greenweb) conditions.push('greenweb');
+    if (filters.rail_or_busy_road) conditions.push('rail_or_busy_road');
 
     if (conditions.length === 0) {
       // No conditions apply, skip condition layer
