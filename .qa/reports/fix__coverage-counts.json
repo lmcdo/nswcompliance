@@ -3,7 +3,11 @@
   "justification": "Minor: two published coverage figures brought to the measured live counts; no logic change.",
   "commit_hash": "1e82be84",
   "files": [
-    "frontend-nextjs/lib/coverage.ts"
+    ".qa/reports/fix__coverage-counts.json",
+    "frontend-nextjs/lib/coverage.ts",
+    "frontend-nextjs/lib/lga-data/verify-lgas.ts",
+    "scripts/address_audit/rules_per_address_panel.json",
+    "tests/test_no_hardcoded_council_counts.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/verify_coverage_stats.py --field dcpNumericCouncils dcpSetbackTripleCouncils",
@@ -31,6 +35,13 @@
       "mitigated": true,
       "how": "OC-1 and OC-2 fail in CI on any drift, in either direction",
       "repro": "python scripts/verify_coverage_stats.py --field dcpNumericCouncils"
+    },
+    {
+      "scenario": "A Bayside planning-controls page claims DCP data that is not served.",
+      "what_happens": "verify-lgas.ts said hasDcpData=true with 0 live rows.",
+      "mitigated": true,
+      "how": "flag set false; data-watch capability check flags drift either way",
+      "repro": "data-watch step 'Per-council capability flags match the database'"
     }
   ],
   "post_merge": {
