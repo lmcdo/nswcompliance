@@ -1,0 +1,66 @@
+{
+  "tier": "standard",
+  "justification": "Standard: deletes 8 unused files that carried hand-typed planning figures, shrinking the figure ledger from 546 to 515 open.",
+  "commit_hash": "4912fd80",
+  "files": [
+    ".claude/regulatory_figure_ledger.json",
+    "frontend-nextjs/components/assessment/core/compliance-checklist.tsx",
+    "frontend-nextjs/lib/constants.ts",
+    "frontend-nextjs/lib/setback-calculator.ts",
+    "services/authoritative_setback_calculator.py",
+    "services/live_compliance_engine.py",
+    "services/setback_calculator.py",
+    "tests/root_tests/test_actual_setback_query.py",
+    "tests/root_tests/test_enhanced_setback_system.py"
+  ],
+  "pre_impl": {
+    "existing_data": "No database change of any kind; only source files are deleted.",
+    "assumption_mismatch": "None: grep found no importer of any deleted module outside the deleted files themselves.",
+    "new_vs_existing": "Deletion only; no new code, module or route is added."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/lint_hardcoded_regulatory_numbers.py --check && cd frontend-nextjs && node node_modules/typescript/bin/tsc --noEmit --skipLibCheck",
+    "fails_when": "Any remaining file still imports a deleted module (tsc or pytest collection breaks), or the ledger lists figures in files that no longer exist.",
+    "observed_red": "Before pruning, --check reported the deleted files' entries as GONE; after --prune it reports 0 unlisted and 515 open. tsc 0 errors; pytest collects 9,371 tests with no import errors."
+  },
+  "functions": [
+    {
+      "name": "scan (lint_hardcoded_regulatory_numbers)",
+      "file_line": "scripts/lint_hardcoded_regulatory_numbers.py",
+      "input": "the repository source tree after the deletion",
+      "output": "0 unlisted figures and 515 open, down from 546",
+      "if_none": "if a deleted file were still listed the check reports it as GONE and fails"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A dynamic import or string path still loads one of the deleted modules at run time.",
+      "what_happens": "The caller would fail when it runs.",
+      "mitigated": true,
+      "how": "grep for each module name across py/ts/tsx, Dockerfiles, toml, yml and json found only history docs and the ledger",
+      "repro": "grep -rn setback_calculator services scripts frontend-nextjs/app"
+    },
+    {
+      "scenario": "A Python test file still imports a deleted service module.",
+      "what_happens": "pytest collection would error and CI would go red.",
+      "mitigated": true,
+      "how": "the two root_tests that imported authoritative_setback_calculator were deleted with it; pytest collects 9,371 with no errors",
+      "repro": "python -m pytest --collect-only -q"
+    },
+    {
+      "scenario": "A frontend file imports @/lib/constants or @/lib/setback-calculator.",
+      "what_happens": "the Next build would fail.",
+      "mitigated": true,
+      "how": "tsc --noEmit reports 0 errors after the deletion",
+      "repro": "node node_modules/typescript/bin/tsc --noEmit --skipLibCheck"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "None needed; no deleted file was imported."
+  }
+}
