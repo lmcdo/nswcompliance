@@ -16,6 +16,7 @@ import { loadHousingCodeStandards } from '@/lib/cdc/housing-code-standards-db';
 import {
   evaluateCdcChecks,
   summariseChecks,
+  shortfallText,
   type CdcCheckInput,
 } from '@/lib/cdc/housing-code-checks';
 
@@ -36,8 +37,8 @@ export async function POST(request: NextRequest) {
     const failed = results.filter((r) => r.status === 'fail');
     const recommendations = failed.map(
       (r) =>
-        `${r.label}: ${r.proposed}${r.unit} against the stored ${r.comparison === 'min' ? 'minimum' : 'maximum'} ` +
-        `${r.required}${r.unit} (${r.clause})`
+        `${r.label}: ${r.proposed}${r.unit === '' ? '' : ' ' + r.unit}, ${shortfallText(r)} ` +
+        `(${r.required}${r.unit === '' ? '' : ' ' + r.unit}, ${r.clause})`
     );
 
     let text: string;

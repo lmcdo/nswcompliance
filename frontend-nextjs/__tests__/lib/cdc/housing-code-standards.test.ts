@@ -17,7 +17,7 @@ import {
   publicRow,
   type StandardRow,
 } from '@/lib/cdc/housing-code-standards';
-import { evaluateCdcChecks } from '@/lib/cdc/housing-code-checks';
+import { evaluateCdcChecks, shortfallText } from '@/lib/cdc/housing-code-checks';
 
 const rows = fixture as unknown as StandardRow[];
 const parsed = parseRows(rows);
@@ -214,6 +214,7 @@ describe('evaluateCdcChecks with real rows', () => {
     developmentType: 'new_dwelling' as const,
     lotAreaM2: 500,
     lotWidthM: 12,
+    neighbourDwellings: 'no' as const,
     setbacks: { front: 3, sideLeft: 1, sideRight: 0.5, rear: 3 },
     hasUpperFloorHabitableRooms: false,
     siteCoveragePercent: 40,
@@ -289,6 +290,7 @@ describe('route level: database returns no rows', () => {
     developmentType: 'new_dwelling',
     lotAreaM2: 500,
     lotWidthM: 12,
+    neighbourDwellings: 'no',
     setbacks: { front: 6, sideLeft: 1, sideRight: 1, rear: 3 },
     hasUpperFloorHabitableRooms: false,
     siteCoveragePercent: 40,
@@ -376,6 +378,8 @@ describe('citations', () => {
           for (const dt of ['new_dwelling', 'addition', 'secondary_dwelling'] as const) {
             inputs.push({
               developmentType: dt, lotAreaM2: a, lotWidthM: w, buildingHeightMeters: h,
+              neighbourDwellings: (['yes', 'no', 'unknown', null] as const)[(a + w + h) % 4],
+              neighbourAverageFrontM: 7,
               setbacks: { front: 5, sideLeft: 1, sideRight: 1, rear: 4 },
               hasUpperFloorHabitableRooms: false, siteCoveragePercent: 40,
               landscapedAreaPercent: 20, storeys: 2, parkingSpaces: 1,
@@ -436,5 +440,99 @@ describe('row 24 (rear, lot area 200-300 m2, height 0-4.5 m)', () => {
     const a = at(300.01);
     expect(a.ok && a.rowIds).toEqual([26]);
     expect(at(199.99).ok).toBe(false);
+  });
+});
+
+describe('front setback: neighbours average rule vs lot-area band', () => {
+  const base = {
+    developmentType: 'new_dwelling' as const,
+    lotAreaM2: 500,
+    setbacks: { front: 5 },
+  };
+  const front = (extra: object) =>
+    evaluateCdcChecks({ ...base, ...extra }, parsed).find((c) => c.key === 'front')!;
+  const bandValue = Number(byId(14).numericValue);
+
+  it('yes + average: compared with the average, citing the average rule (not the band)', () => {
+    const c = front({ neighbourDwellings: 'yes', neighbourAverageFrontM: 7 });
+    expect(c.status).toBe('fail');
+    expect(c.required).toBe(7);
+    expect(c.clause).toBe(byId(17).citation);
+    expect(c.quote).toBe(byId(17).row.source_quote);
+    expect(c.required).not.toBe(bandValue);
+  });
+
+  it('yes + average: passes when the setback meets the average, even above/below the band figure', () => {
+    expect(front({ neighbourDwellings: 'yes', neighbourAverageFrontM: 5 }).status).toBe('pass');
+    expect(front({ neighbourDwellings: 'yes', neighbourAverageFrontM: 2 }).required).toBe(2);
+  });
+
+  it('yes without an average => Not checked, rule quoted', () => {
+    const c = front({ neighbourDwellings: 'yes' });
+    expect(c.status).toBe('not_checked');
+    expect(c.required).toBeNull();
+    expect(c.reason).toMatch(/average front setback/);
+    expect(c.quote).toBe(byId(17).row.source_quote);
+  });
+
+  it('no => the stored lot-area band applies', () => {
+    const c = front({ neighbourDwellings: 'no', neighbourAverageFrontM: 99 });
+    expect(c.status).toBe(5 >= bandValue ? 'pass' : 'fail');
+    expect(c.required).toBe(bandValue);
+    expect(c.clause).toBe('3.10(3)');
+  });
+
+  it.each([['unknown'], [null], [undefined]])('state %s => Not checked, no number, rule quoted', (st) => {
+    const c = front({ neighbourDwellings: st, neighbourAverageFrontM: 7 });
+    expect(c.status).toBe('not_checked');
+    expect(c.required).toBeNull();
+    expect(c.margin).toBeNull();
+    expect(c.reason).toMatch(/at least 2 dwelling houses/);
+    expect(c.quote).toBe(byId(17).row.source_quote);
+  });
+
+  it('absent in the API body => front Not checked', async () => {
+    jest.resetModules();
+    jest.doMock('@/lib/db', () => ({ query: async (sql: string) => (/regulatory_provisions/.test(sql)
+      ? { rows: rows.map((r: any) => ({ id: r.source_provision_ids[0], pdf_page: r.pdf_page })) }
+      : { rows: rows.map((r) => ({ ...r })) }) }));
+    const { POST } = require('@/app/api/cdc/compliance-check/route');
+    const res = await POST({ json: async () => ({ ...base, setbacks: { front: 5 } }) } as any);
+    const out = await res.json();
+    expect(out.results.find((r: any) => r.key === 'front').status).toBe('not_checked');
+  });
+});
+
+describe('failure wording', () => {
+  it('maximum says over, minimum says short', () => {
+    const cs = evaluateCdcChecks({
+      developmentType: 'new_dwelling', buildingHeightMeters: 9.5, storeys: 3,
+      lotAreaM2: 500, neighbourDwellings: 'no', setbacks: { front: 1 },
+    }, parsed);
+    const h = cs.find((c) => c.key === 'buildingHeight')!;
+    const f = cs.find((c) => c.key === 'front')!;
+    expect(h.status).toBe('fail');
+    expect(shortfallText(h)).toBe(`${Math.abs(h.margin!).toFixed(1)} m over the stored maximum`);
+    expect(shortfallText(h)).not.toMatch(/short/);
+    expect(f.status).toBe('fail');
+    expect(shortfallText(f)).toBe(`${Math.abs(f.margin!).toFixed(1)} m short of the stored minimum`);
+    expect(shortfallText(f)).not.toMatch(/over/);
+  });
+
+  it('route recommendations use the same wording', async () => {
+    jest.resetModules();
+    jest.doMock('@/lib/db', () => ({ query: async (sql: string) => (/regulatory_provisions/.test(sql)
+      ? { rows: rows.map((r: any) => ({ id: r.source_provision_ids[0], pdf_page: r.pdf_page })) }
+      : { rows: rows.map((r) => ({ ...r })) }) }));
+    const { POST } = require('@/app/api/cdc/compliance-check/route');
+    const res = await POST({ json: async () => ({
+      developmentType: 'new_dwelling', buildingHeightMeters: 9.5, lotAreaM2: 500,
+      neighbourDwellings: 'no', setbacks: { front: 1 },
+    }) } as any);
+    const out = await res.json();
+    const recs: string[] = out.recommendations;
+    expect(recs.some((r) => /over the stored maximum/.test(r))).toBe(true);
+    expect(recs.some((r) => /short of the stored minimum/.test(r))).toBe(true);
+    expect(recs.join(' ')).not.toMatch(/short of the stored maximum/);
   });
 });

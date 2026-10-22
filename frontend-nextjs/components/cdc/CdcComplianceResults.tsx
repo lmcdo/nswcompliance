@@ -12,6 +12,7 @@
 import { ArrowRight, FileText } from 'lucide-react';
 import { FormValidation, CdcCheck } from './types';
 import { StatusIcon, CheckDetail } from './CdcCheckBits';
+import { shortfallText } from '@/lib/cdc/housing-code-checks';
 
 interface CdcComplianceResultsProps {
   validation: FormValidation;
@@ -93,8 +94,7 @@ export function CdcComplianceResults({
             <div key={c.key} className="flex items-start gap-2 text-gray-600">
               <ArrowRight className="w-3 h-3 mt-1 flex-shrink-0 text-gray-400" />
               <span>
-                {c.label}: {Math.abs(c.margin ?? 0).toFixed(1)}{c.unit} short of the stored{' '}
-                {c.comparison === 'min' ? 'minimum' : 'maximum'} ({c.clause})
+                {c.label}: {shortfallText(c)} ({c.clause})
               </span>
             </div>
           ))}

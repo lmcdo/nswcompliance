@@ -45,6 +45,11 @@ export function CheckDetail({ check }: { check: CdcCheck }) {
         {check.storedClauses.length > 0 && (
           <span> Stored clauses: {check.storedClauses.join(', ')}.</span>
         )}
+        {check.quote && (
+          <blockquote className="mt-1 border-l-2 border-gray-200 pl-2 text-gray-600">
+            {clauseLabel(check.clause)}: {check.quote}
+          </blockquote>
+        )}
       </div>
     );
   }

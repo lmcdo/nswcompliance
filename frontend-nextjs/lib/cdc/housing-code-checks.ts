@@ -22,6 +22,14 @@ export interface CdcCheckInput {
   lotAreaM2?: number | null;
   /** Lot width AT THE BUILDING LINE (the stored bands use this, not the shorter side). */
   lotWidthM?: number | null;
+  /**
+   * At least 2 dwelling houses on the same side of the primary road within the
+   * stored distance? 'yes' => front setback is compared with their average;
+   * 'no' => the stored lot-area band applies; anything else => Not checked.
+   */
+  neighbourDwellings?: 'yes' | 'no' | 'unknown' | null;
+  /** Average front setback of the 2 nearest dwelling houses (m), when 'yes'. */
+  neighbourAverageFrontM?: number | null;
   setbacks?: {
     front?: number | null;
     sideLeft?: number | null;
@@ -119,6 +127,60 @@ function evaluate(parsed: ParsedRow[], spec: Spec): CdcCheck {
   };
 }
 
+/** The stored rule that makes the front setback the neighbours' average. */
+const AVERAGE_RULE = /^average of 2 nearest dwelling houses on same side of primary road(?:\s*\|.*)?$/i;
+
+function evaluateFront(parsed: ParsedRow[], input: CdcCheckInput, spec: Spec): CdcCheck {
+  const rule = parsed.find(
+    (p) => p.row.standard_type === 'min_front_setback_m' && AVERAGE_RULE.test((p.row.conditionality ?? '').trim())
+  );
+  const state = input.neighbourDwellings ?? null;
+  const base: CdcCheck = {
+    key: spec.key, label: spec.label, comparison: spec.comparison, unit: spec.unit,
+    proposed: spec.proposed, status: 'not_checked', required: null, margin: null,
+    clause: null, quote: null, reason: null, storedClauses: [], unmodelledClauses: [],
+  };
+  const withRule = (reason: string): CdcCheck => ({
+    ...base,
+    reason,
+    // show the stored average rule so the reader can apply it
+    clause: rule?.citation ?? null,
+    quote: rule?.row.source_quote ?? null,
+    storedClauses: rule?.citation ? [rule.citation] : [],
+  });
+
+  if (state === 'no') return evaluate(parsed, spec);
+  if (!rule || !rule.citation) {
+    return { ...base, reason: 'Not checked: the stored rule for neighbouring dwellings is not available' };
+  }
+  if (state !== 'yes') {
+    return withRule(
+      'Not checked: answer whether at least 2 dwelling houses are on the same side of the primary road; ' +
+      'if so the front setback is measured against their average'
+    );
+  }
+  const avg = finite(input.neighbourAverageFrontM);
+  if (avg === null) return withRule('Not checked: enter the average front setback of the 2 nearest dwelling houses');
+  if (spec.proposed === null) return withRule('Not checked: no value entered');
+  const pass = spec.proposed >= avg;
+  return {
+    ...base,
+    status: pass ? 'pass' : 'fail',
+    required: avg,
+    margin: Math.round((spec.proposed - avg) * 100) / 100,
+    clause: rule.citation,
+    quote: rule.row.source_quote,
+    storedClauses: [rule.citation],
+  };
+}
+
+/** Wording for a failed check: maximums are "over", minimums are "short". */
+export function shortfallText(c: CdcCheck): string {
+  const n = Math.abs(c.margin ?? 0).toFixed(1);
+  const u = c.unit === '' ? '' : ' ' + c.unit;
+  return c.comparison === 'max' ? n + u + ' over the stored maximum' : n + u + ' short of the stored minimum';
+}
+
 /** Run every calculator check against the parsed stored rows. */
 export function evaluateCdcChecks(
   input: CdcCheckInput,
@@ -165,12 +227,12 @@ export function evaluateCdcChecks(
   ];
   if (unavailableReason) {
     return specs.map((s) => ({
-      ...evaluate([], s),
+      ...(s.key === 'front' ? evaluateFront([], input, s) : evaluate([], s)),
       status: 'not_checked' as const,
       reason: `Not checked: ${unavailableReason}`,
     }));
   }
-  return specs.map((s) => evaluate(parsed, s));
+  return specs.map((s) => (s.key === 'front' ? evaluateFront(parsed, input, s) : evaluate(parsed, s)));
 }
 
 export interface CdcCheckSummary {

@@ -20,6 +20,10 @@ export interface CdcComplianceInput {
   lotAreaM2: number | null;
   /** Lot width AT THE BUILDING LINE, selects the stored band for side setbacks. */
   lotWidthM: number | null;
+  /** At least 2 dwelling houses on the same side of the primary road? null = not answered. */
+  neighbourDwellings: 'yes' | 'no' | 'unknown' | null;
+  /** Average front setback of the 2 nearest dwelling houses, when yes. */
+  neighbourAverageFrontM: number | null;
   setbacks: {
     front: number | null;      // meters
     sideLeft: number | null;   // meters
@@ -39,6 +43,8 @@ export const CDC_INPUT_DEFAULTS: CdcComplianceInput = {
   developmentType: 'new_dwelling',
   lotAreaM2: null,
   lotWidthM: null,
+  neighbourDwellings: null,
+  neighbourAverageFrontM: null,
   setbacks: { front: null, sideLeft: null, sideRight: null, rear: null },
   hasUpperFloorHabitableRooms: false,
   siteCoveragePercent: null,

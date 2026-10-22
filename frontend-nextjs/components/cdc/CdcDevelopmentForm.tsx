@@ -128,6 +128,44 @@ export function CdcDevelopmentForm({
         </div>
       </div>
 
+      {/* Front setback rule depends on neighbouring dwellings */}
+      <div className="space-y-2">
+        <Label htmlFor="neighbourDwellings" className="text-xs font-medium text-gray-600">
+          Are there at least 2 dwelling houses on the same side of the primary road within 40 m?
+        </Label>
+        <div className="grid grid-cols-2 gap-2">
+          <Select
+            value={form.neighbourDwellings ?? ''}
+            onValueChange={(v) => updateField('neighbourDwellings', v as 'yes' | 'no' | 'unknown')}
+          >
+            <SelectTrigger id="neighbourDwellings" className="h-8 text-sm">
+              <SelectValue placeholder="Select" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="yes">Yes</SelectItem>
+              <SelectItem value="no">No</SelectItem>
+              <SelectItem value="unknown">Do not know</SelectItem>
+            </SelectContent>
+          </Select>
+          {form.neighbourDwellings === 'yes' && (
+            <div className="relative">
+              <Input
+                id="neighbourAverageFront"
+                aria-label="Average front setback of the 2 nearest dwelling houses"
+                placeholder="Their average front setback"
+                type="number"
+                value={form.neighbourAverageFrontM ?? ''}
+                onChange={(e) => updateField('neighbourAverageFrontM', parseOrNull(e.target.value))}
+                min={0}
+                step={0.1}
+                className="h-8 text-sm pr-5"
+              />
+              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">m</span>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Setbacks Row */}
       <div className="space-y-2">
         <Label className="text-xs font-medium text-gray-600">
