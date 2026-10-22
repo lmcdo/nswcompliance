@@ -7,9 +7,12 @@ import { notFound, redirect } from 'next/navigation'
 // One exception: a buyer who opened checkout before the switch-off and paid after it is sent
 // here by Stripe (?payment=success&report_id=...). Forward them to their own report page,
 // which stays live for paid orders; everyone else gets 404.
-export default function ShadowPage({ searchParams }: { searchParams?: Record<string, string | string[] | undefined> }) {
-  const reportId = searchParams?.report_id
-  if (searchParams?.payment === 'success' && typeof reportId === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(reportId)) {
+type Params = Record<string, string | string[] | undefined>
+// Awaited so it works whether Next passes a plain object (14) or a Promise (15+).
+export default async function ShadowPage({ searchParams }: { searchParams?: Params | Promise<Params> }) {
+  const sp = (await searchParams) ?? {}
+  const reportId = sp.report_id
+  if (sp.payment === 'success' && typeof reportId === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(reportId)) {
     redirect(`/reports/shadow/${reportId}`)
   }
   notFound()

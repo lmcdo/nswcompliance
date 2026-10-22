@@ -113,8 +113,9 @@ describe('shadow tool is off', () => {
 describe('paid buyers are not stranded', () => {
   it('a Stripe success return with a report id is forwarded to that report, anything else is 404', async () => {
     const { default: Page } = await import('@/app/reports/shadow/page');
-    expect(() => Page({ searchParams: { payment: 'success', report_id: 'abc-123' } })).toThrow('REDIRECT /reports/shadow/abc-123');
-    expect(() => Page({ searchParams: {} })).toThrow('NOT_FOUND');
-    expect(() => Page({ searchParams: { payment: 'success', report_id: '../../x' } })).toThrow('NOT_FOUND');
+    await expect(Page({ searchParams: { payment: 'success', report_id: 'abc-123' } })).rejects.toThrow('REDIRECT /reports/shadow/abc-123');
+    await expect(Page({ searchParams: Promise.resolve({ payment: 'success', report_id: 'abc-123' }) })).rejects.toThrow('REDIRECT /reports/shadow/abc-123');
+    await expect(Page({ searchParams: {} })).rejects.toThrow('NOT_FOUND');
+    await expect(Page({ searchParams: { payment: 'success', report_id: '../../x' } })).rejects.toThrow('NOT_FOUND');
   });
 });
