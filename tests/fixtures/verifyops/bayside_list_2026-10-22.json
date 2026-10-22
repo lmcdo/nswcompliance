@@ -1,0 +1,47 @@
+{
+ "council": "bayside",
+ "hub_url": "https://www.bayside.nsw.gov.au/planning-and-development/planning-our-city/controls",
+ "fetched_utc": "2026-10-22T06:21:24",
+ "held": {
+  "bayside-dcp-2022-part3": "Part 3 - Residential Development",
+  "s3-5-traffic-parking-access": "Section 3.5 - Traffic, Parking & Access",
+  "bayside-dcp-2022-part5": "Part 5 - General Controls"
+ },
+ "discovered": [
+  {
+   "chapter_key": null,
+   "url": "https://www.bayside.nsw.gov.au/sites/default/files/2026-05/26%20102612%20%20Bayside%20Development%20Control%20Plan%202022%20-%20Amendment%202.PDF",
+   "label": "Bayside Development Control Plan 2022"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://www.bayside.nsw.gov.au/sites/default/files/2023-04/bayside_dcp_2022_appendices.PDF",
+   "label": "Appendices"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://www.bayside.nsw.gov.au/sites/default/files/2023-04/traffic_parking_and_access_technical_specification.PDF",
+   "label": "Traffic, Parking and Access"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://www.bayside.nsw.gov.au/sites/default/files/2023-04/waste_management_technical_specification_2022.PDF",
+   "label": "Waste management"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://www.bayside.nsw.gov.au/sites/default/files/2023-04/stormwater_management_technical_specification.PDF",
+   "label": "Stormwater management"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://www.bayside.nsw.gov.au/sites/default/files/2023-04/landscape_technical_specification_0.PDF",
+   "label": "Landscape"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://www.bayside.nsw.gov.au/sites/default/files/2018-07/Final%20Wolli%20Creek%20and%20Bonar%20Street%20Precinct%20Public%20Domain%20Plan%20%20%2B%20Technical%20Manual%20%28High%20Quality%29%20May%20Dec%202011.PDF",
+   "label": "Wolli Creek and Bonar Street Precinct Public Domain Plan and Technical Manual\u202f- May and December 2011"
+  }
+ ]
+}
