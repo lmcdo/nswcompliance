@@ -1,0 +1,136 @@
+{
+ "tier": "critical",
+ "justification": "Changes what the production DCP monitor does with every newly found council document: it now downloads each one, reads its cover and rejects duplicates and non-DCP documents in dcp_chapter_registry. A wrong verdict silently drops a real new DCP chapter from review, so every unsure case is kept for a person.",
+ "commit_hash": "31ca87e2",
+ "files": [
+  "scripts/verifyops_classify.py",
+  "scripts/r2_monitor.py",
+  "Dockerfile.monitors",
+  "tests/test_verifyops_classify.py",
+  "tests/test_verifyops_classify_real_db.py",
+  "tests/fixtures/verifyops/new_docs_2026-10-23.json"
+ ],
+ "pre_impl": {
+  "existing_data": "Measured 2026-10-23 read-only on production: 28 dcp_chapter_registry rows with registration_status='auto_detected' across 5 councils (city_of_sydney 8, canada_bay 7, bayside 7, canterbury_bankstown 4, woollahra 2), the oldest waiting since 2026-05-18. Opening each file by hand: 3 were the very files already served (Bayside DCP 2022 Amendment 2 = row 725; CB chapters 5.1 and 5.2 = rows 316, 317, same sha256), about 20 were guidelines, technical specifications, policies or public domain plans, 2 were DCP chapters not covered (CB 7.7, Canada Bay appendix 3), and 3 had no readable text or no stated kind.",
+  "assumption_mismatch": "(1) _auto_register_chapter deduplicated by the label slug only, so a served file under another link label was registered as new; it now also checks the address. (2) A commencement-date reader already existed (scripts/extract_dcp_stated_dates.py); its patterns are reused, not rewritten. (3) Its date patterns match amendment-history tables too, so only the cover text before the first contents / amendment-history heading is read.",
+  "new_vs_existing": "Applied once to production on 2026-10-23 with the user's yes after a dry run (backup data/db_rollback_backups/verifyops_classify_pre_2026-10-23T070149.json): 21 rows rejected (18 not_dcp, 3 duplicate), 5 tagged and left waiting (2 dcp_needs_person, 3 unreadable), 2 Woollahra rows left untouched because their download failed. From the next monitor run every new document is classified the same way.",
+  "external_source_error": "A failed download leaves the row untouched and is retried next run; a web page served instead of a PDF, or a damaged PDF, is a red verdict kept for a person, never a rejection.",
+  "frontend_type": "No frontend change. Only registration_status and detected_category of waiting registry rows change; no served row is touched (every UPDATE is guarded by registration_status='auto_detected').",
+  "user_failure_mode": "If a real new DCP chapter were wrongly rejected as not_dcp, nobody would review it and the site would keep serving the old rules without saying so. That is why not_dcp needs positive evidence on the cover (another document kind named, and no DCP words), and anything else stays waiting and red in the alarm (new_doc_undecided_3d)."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q -o addopts= tests/test_verifyops_classify.py tests/test_dockerfile_monitors_imports.py ; PYTEST_REAL_DB=1 DATABASE_URL=<pooler url> python -m pytest -m database -o addopts= tests/test_verifyops_classify_real_db.py",
+  "fails_when": "any of the 28 real documents gets a verdict other than the one a person read from its cover, a row is called its own duplicate, an amendment-history date or a second date is read as the commencement, a plan is not in force on its effective day, a failed download is written, a dry run writes, a decided row is overwritten, a waiting tag is downloaded again, or a verdict is not committed",
+  "observed_red": "YES: 15 hand-made mutants applied one at a time. 14 killed first time; the survivor (in_force d <= today -> d < today) got a boundary test and is killed. A second survivor (commit removed) got a commit-count test and is killed. The real-DB tests insert their own waiting rows on production inside one transaction that is rolled back; they kill the pending() filter, the auto_detected guard on the UPDATE and the not_dcp settlement mapping."
+ },
+ "functions": [
+  {
+   "name": "classify",
+   "file_line": "scripts/verifyops_classify.py:75",
+   "input": "one document (id, url, sha256, first pages' text) and the other registry rows of its council",
+   "output": "a verdict dict: duplicate (with the matched row id), not_dcp, dcp (with the one effective date or needs_person), or red",
+   "if_none": "no text or a failed read -> red"
+  },
+  {
+   "name": "cover_text",
+   "file_line": "scripts/verifyops_classify.py:46",
+   "input": "the list of page texts read from the first three pages of the PDF",
+   "output": "page 1 up to the first contents / amendment-history heading, at most 600 characters",
+   "if_none": "an empty list gives an empty cover, which classify turns into a red verdict"
+  },
+  {
+   "name": "classify_pending",
+   "file_line": "scripts/verifyops_classify.py:181",
+   "input": "connection, a url -> bytes fetch, today, dry_run",
+   "output": "counts per verdict plus retry; writes one guarded UPDATE per document and commits it",
+   "if_none": "no waiting rows returns an empty dict and nothing is downloaded or written"
+  },
+  {
+   "name": "_auto_register_chapter",
+   "file_line": "scripts/r2_monitor.py:587",
+   "input": "a newly found hub link with its label, its address and the council's hub page",
+   "output": "skipped when its address is already a registry row of the council",
+   "if_none": "rows whose council_url is NULL never match, so the link is registered as before"
+  }
+ ],
+ "values": [
+  {
+   "value": "first_pages_text",
+   "read_at": "scripts/verifyops_classify.py read_document",
+   "nullable": "yes",
+   "guard_at": "classify",
+   "if_missing": "red verdict, row kept for a person"
+  },
+  {
+   "value": "content_hash",
+   "read_at": "scripts/verifyops_classify.py council_rows",
+   "nullable": "yes",
+   "guard_at": "classify",
+   "if_missing": "duplicate check falls back to the address"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "documents waiting for a verdict",
+   "file_line": "scripts/verifyops_classify.py:141",
+   "where_clause": "registration_status = 'auto_detected' AND detected_category not dcp_needs_person / unreadable"
+  },
+  {
+   "purpose": "write one verdict",
+   "file_line": "scripts/verifyops_classify.py:163",
+   "where_clause": "id = %s AND registration_status = 'auto_detected'; rowcount must be 1 or the run stops"
+  },
+  {
+   "purpose": "same address already registered",
+   "file_line": "scripts/r2_monitor.py:587",
+   "where_clause": "council = %s AND lower(trimmed council_url) = lower(trimmed new url)"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A new edition's page 1 runs on into its amendment history with an older date",
+   "what_happens": "only the cover before the heading is read",
+   "mitigated": true,
+   "how": "cover_text stops at the first contents / amendment-history heading",
+   "repro": "test_amendment_history_dates_are_not_read"
+  },
+  {
+   "scenario": "The council serves an HTML error page at the PDF address",
+   "what_happens": "the verdict is red and the row stays waiting for a person to decide",
+   "mitigated": true,
+   "how": "read_document requires the %PDF- header",
+   "repro": "test_a_web_page_served_instead_of_a_pdf_is_an_error"
+  },
+  {
+   "scenario": "A guideline is actually adopted as part of the DCP but its cover does not say so",
+   "what_happens": "it is rejected as not_dcp and drops out of the review list without a person",
+   "mitigated": "partly",
+   "how": "only covers that name another kind of document are rejected; the rejection is visible (detected_category not_dcp) and reversible from the backup",
+   "repro": "test_each_real_document_gets_the_verdict_a_person_read"
+  },
+  {
+   "scenario": "A cover states two different commencement dates, for example original and amended",
+   "what_happens": "no date is chosen; the row stays waiting and needs a person to read it",
+   "mitigated": true,
+   "how": "exactly one date or none",
+   "repro": "test_two_dates_on_a_cover_need_a_person"
+  },
+  {
+   "scenario": "The registry row changed between the read and the write",
+   "what_happens": "the run stops with an error instead of overwriting",
+   "mitigated": true,
+   "how": "guarded UPDATE + rowcount check",
+   "repro": "test_a_row_already_decided_is_never_overwritten"
+  }
+ ],
+ "verification_after_merge": [
+  "1. Deploy dcp-monitor from main once Railway accepts the build.",
+  "2. After the next run: SELECT detected_category, count(*) FROM dcp_chapter_registry WHERE registration_status='auto_detected' GROUP BY 1 -- only dcp_needs_person, unreadable, or rows whose download failed."
+ ],
+ "post_merge": {
+  "db_reset": "None. The one-off write to the 28 waiting rows was already applied on 2026-10-23 with the user's yes (backup data/db_rollback_backups/verifyops_classify_pre_2026-10-23T070149.json).",
+  "secrets": "None added.",
+  "other_repo": "None. Railway: dcp-monitor must be redeployed from main for the monitor to classify new documents.",
+  "manual_verify": "The 5 rows left waiting (CB 7.7, Canada Bay appendix 3, CB 11.16, Canada Bay fact sheet, Bayside appendices) need a person's decision on coverage."
+ }
+}
