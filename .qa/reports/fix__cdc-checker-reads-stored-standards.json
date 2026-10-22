@@ -1,0 +1,131 @@
+{
+  "tier": "critical",
+  "justification": "Critical: the CDC checker shows pass or fail on Housing Code standards to customers; it now reads stored, verified law instead of typed figures.",
+  "commit_hash": "6448c518",
+  "files": [
+    ".claude/regulatory_figure_ledger.json",
+    "frontend-nextjs/__tests__/fixtures/cdc-housing-code-standards.json",
+    "frontend-nextjs/__tests__/lib/cdc/housing-code-standards.test.ts",
+    "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
+    "frontend-nextjs/app/api/cdc/setback-check/route.ts",
+    "frontend-nextjs/app/api/cdc/standards/route.ts",
+    "frontend-nextjs/components/cdc/CdcCheckBits.tsx",
+    "frontend-nextjs/components/cdc/CdcComplianceCalculator.tsx",
+    "frontend-nextjs/components/cdc/CdcComplianceResults.tsx",
+    "frontend-nextjs/components/cdc/CdcDevelopmentForm.tsx",
+    "frontend-nextjs/components/cdc/CdcFieldGroup.tsx",
+    "frontend-nextjs/components/cdc/types.ts",
+    "frontend-nextjs/hooks/useCdcComplianceCalculator.ts",
+    "frontend-nextjs/hooks/useCdcSetbacks.ts",
+    "frontend-nextjs/lib/cdc/housing-code-checks.ts",
+    "frontend-nextjs/lib/cdc/housing-code-standards-db.ts",
+    "frontend-nextjs/lib/cdc/housing-code-standards.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "cdc_eligibility_standards holds 79 active housing_code rows: 4 unbanded and 75 banded, each with a verbatim source_quote and source_provision_ids.",
+    "assumption_mismatch": "The old checker used typed figures and cited 'SEPP Housing 2021 Cl 21-25', which is the wrong instrument; the Housing Code is in the Codes SEPP 2008 Part 3. Bands are stored as free text, and some carry no clause number, only a PDF page on the source provision.",
+    "new_vs_existing": "New lib/cdc parser, selector, checks and loader on the existing lib/db query() client; new GET /api/cdc/standards; existing compliance-check and setback-check routes rewritten.",
+    "external_source_error": "If the database read fails, the loader returns an error and every one of the nine checks shows Not checked with that error as its reason.",
+    "frontend_type": "Each check result is { status: 'pass' | 'fail' | 'not_checked', value: number | null, citation: string | null, quote: string | null, reason: string | null }.",
+    "user_failure_mode": "A user sees Not checked with a plain reason and the stored citations, never a guessed figure or a pass based on a typed number."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && node node_modules/jest/bin/jest.js __tests__/lib/cdc",
+    "fails_when": "A band is parsed loosely, a conflicting match picks a value, a row without clause or page gives a verdict, an internal label is shown as a citation, or a missing database answer produces a number.",
+    "observed_red": "Break-checks: '>' made inclusive (2 red), first-of-conflict (1 red), lenient parser (7 red), structure filter off (4 red), unusable rows allowed (10 red), DB-error reason dropped (1 red), no-citation row allowed (1 red), page fallback removed (4 red), raw ref_number as citation (5 red), publicRow leak (2 red). All restored; 63 of 63 pass."
+  },
+  "functions": [
+    {
+      "name": "select",
+      "file_line": "frontend-nextjs/lib/cdc/housing-code-standards.ts",
+      "input": "a standard type and the lot area, lot width at building line and building height",
+      "output": "the single stored value with its citation and verbatim quote",
+      "if_none": "null with a reason and the list of stored citations, shown as Not checked"
+    },
+    {
+      "name": "citationOf",
+      "file_line": "frontend-nextjs/lib/cdc/housing-code-standards.ts",
+      "input": "one stored standard row with its source provision page",
+      "output": "the clause number, or Codes SEPP 2008 page N",
+      "if_none": "null, and the row cannot give a verdict at all"
+    },
+    {
+      "name": "loadHousingCodeStandards",
+      "file_line": "frontend-nextjs/lib/cdc/housing-code-standards-db.ts",
+      "input": "no arguments; it reads every active housing_code row from the database",
+      "output": "the rows plus each first source provision's pdf_page",
+      "if_none": "an error result, and every check becomes Not checked with the error as reason"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "sql": "SELECT ... FROM cdc_eligibility_standards WHERE code_name='housing_code' AND is_active",
+      "purpose": "load the stored Housing Code standards",
+      "file_line": "frontend-nextjs/lib/cdc/housing-code-standards-db.ts",
+      "where_clause": "code_name = 'housing_code' AND is_active",
+      "table": "cdc_eligibility_standards",
+      "filters": "code and active only",
+      "if_none": "no rows means every check is Not checked"
+    },
+    {
+      "sql": "SELECT id, pdf_page FROM regulatory_provisions WHERE id = ANY($1::int[])",
+      "purpose": "fetch the PDF page used as the citation when no clause is stored",
+      "file_line": "frontend-nextjs/lib/cdc/housing-code-standards-db.ts",
+      "where_clause": "id = ANY of the rows' source provision ids",
+      "table": "regulatory_provisions",
+      "filters": "by id only",
+      "if_none": "a row with no page and no clause cannot give a verdict"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A lot of exactly 300 m2 sits on the boundary of two bands.",
+      "what_happens": "it must fall in exactly one band, never in both or neither",
+      "mitigated": true,
+      "how": "'>' is exclusive, upper bound inclusive; tests at 200, 250, 300, 300.01, 199.99",
+      "repro": "jest __tests__/lib/cdc"
+    },
+    {
+      "scenario": "Two stored rows match the same lot with different values.",
+      "what_happens": "picking either value would be a guess, so no verdict may be given",
+      "mitigated": true,
+      "how": "select returns null with a reason; test",
+      "repro": "jest conflicting-values test"
+    },
+    {
+      "scenario": "The database is unreachable or the standards query throws an error at request time.",
+      "what_happens": "The checker must not fall back to typed numbers.",
+      "mitigated": true,
+      "how": "every check is Not checked with the error as the reason; route test",
+      "repro": "jest route test with DB mocked to throw"
+    },
+    {
+      "scenario": "A stored standard row has no clause number stored on it or on its source.",
+      "what_happens": "An internal label could be shown as the citation.",
+      "mitigated": true,
+      "how": "citation falls back to the source provision's PDF page, else the row is unusable; test scans all 79 rows and 432 combinations",
+      "repro": "jest internal-label test"
+    },
+    {
+      "scenario": "Landscaped area and parking rows are labelled for detached development or are value-only.",
+      "what_happens": "those checks cannot give a verdict today and must say why, never show a number",
+      "mitigated": true,
+      "how": "shown as Not checked with reason, never a number",
+      "repro": "jest landscaped and parking tests"
+    },
+    {
+      "scenario": "The page lookup on regulatory_provisions returns no row for a standard's source provision id.",
+      "what_happens": "the row has no page to cite, so it must not give a verdict unless it has a clause number",
+      "mitigated": true,
+      "how": "citationOf returns null when there is neither clause nor page, and the row is unusable; test",
+      "repro": "jest no-clause-no-page test"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Open the CDC checker on the preview for a 450 m2 lot, 15 m wide: front, side, rear, height and storeys show a stored figure with a clause or page; landscaped, parking and site coverage show Not checked."
+  }
+}
