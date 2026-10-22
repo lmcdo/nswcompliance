@@ -102,3 +102,13 @@ def test_force_switch(name, env, expect_force):
 def test_copy_from_another_stage_is_not_a_repo_path():
     df = "COPY --from=build /app/x ./x\nCOPY scripts/a.py ./scripts/a.py\n"
     assert v.image_paths(df) == ["scripts/a.py"]
+
+
+def test_flags_before_the_source_keep_the_source_and_multi_source_copies_count():
+    df = chr(10).join(["COPY --chown=app:app scripts/b.py ./scripts/b.py", "COPY a.txt c.txt ./d/"])
+    assert v.image_paths(df) == ["a.txt", "c.txt", "scripts/b.py"]
+
+
+def test_a_ref_name_instead_of_a_commit_is_red(paths):
+    assert v.deployed_not_main("origin/main", paths, main="origin/main") is True
+    assert v.deployed_not_main(SHA_1453.upper(), paths, main=SHA_1453) is True

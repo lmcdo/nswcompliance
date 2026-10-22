@@ -128,14 +128,22 @@ DOCKERFILE = ROOT / "Dockerfile.monitors"
 
 def image_paths(dockerfile: str) -> list[str]:
     """Source paths the monitor image COPYs (first argument of each COPY line)."""
-    return sorted({m.group(1) for m in re.finditer(r"^COPY\s+(?!--)(\S+)\s", dockerfile, re.M)})
+    out: set[str] = set()
+    for line in dockerfile.splitlines():
+        parts = line.split()
+        if not parts or parts[0] != "COPY" or any(t.startswith("--from") for t in parts):
+            continue
+        args = [t for t in parts[1:] if not t.startswith("--")]  # --chown/--chmod keep their source
+        if len(args) >= 2:
+            out.update(args[:-1])
+    return sorted(out)
 
 
 def deployed_not_main(sha: str | None, paths: list[str], main: str = "origin/main",
                       git=subprocess.run) -> bool:
     """True (red) unless the deployed sha is known AND no image file differs from origin/main.
     Compares the image's own files, not main's HEAD: Railway skips merges that touch none of them."""
-    if not sha or not paths:
+    if not sha or not re.fullmatch(r"[0-9a-f]{40}", sha) or not paths:  # 'main' would diff main itself
         return True
     r = git(["git", "diff", "--quiet", sha, main, "--", *paths],
             cwd=ROOT, capture_output=True)

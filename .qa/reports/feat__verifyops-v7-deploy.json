@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Alarm logic (two new red keys) and the monitor launcher. No DB writes, no user-facing text.",
- "commit_hash": "3fbe705b",
+ "commit_hash": "a4250bd0",
  "files": [
   "scripts/run_monitors.py",
   "scripts/verifyops_coverage.py",
@@ -44,7 +44,7 @@
    "repro": "railway logs -s dcp-monitor -d <removed deployment id>  (before: only Starting/Stopping Container)"
   }
  ],
- "mutation_analysis": "10 hand mutants (unknown sha green, empty-paths guard, NULL sha green, 6h->0h, drop finished_at, drop full-run filter, unwire check, COPY --from, force on any monitor, any value forces): 10 killed.",
+ "mutation_analysis": "14 hand mutants, 14 killed: the 10 first-round ones, plus 4 after the Sol review (40-hex sha guard, --chown flag skip, multi-source COPY, COPY --from skip). Sol #1/#2 accepted and fixed; #3-#7 rejected (env is always os.environ; a missing Dockerfile already exits 2; streaming stdout is intended).",
  "residual_risk": "deployed_not_main compares the latest full run, which is up to a day old; a deploy between runs is not seen until the next run records its sha. The Actions checkout must have history for the sha (otherwise red, which is loud not silent).",
  "post_merge": {
   "db_reset": "No.",
@@ -60,7 +60,7 @@
  "functions": [
   {
    "name": "deployed_not_main",
-   "file_line": "scripts/verifyops_coverage.py:134",
+   "file_line": "scripts/verifyops_coverage.py:142",
    "input": "deployed sha (may be None), image paths, main ref",
    "output": "bool: True means the deployed image cannot be proven current (red)",
    "if_none": "None/empty sha or no paths -> True (red); git exit 128 (unknown sha) -> True"
@@ -74,7 +74,7 @@
   },
   {
    "name": "deploy_keys",
-   "file_line": "scripts/verifyops_coverage.py:145",
+   "file_line": "scripts/verifyops_coverage.py:153",
    "input": "an open psycopg2 connection to the production database",
    "output": "a list holding the fleet key '*|*|deployed_not_main', or an empty list",
    "if_none": "no full run -> [] (no_run_2d covers it)"
