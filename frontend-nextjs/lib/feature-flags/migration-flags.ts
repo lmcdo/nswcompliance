@@ -5,7 +5,6 @@
 
 export interface MigrationFlags {
   usePostgreSQLProvisions: boolean;
-  usePostgreSQLLiveCheck: boolean;
   usePostgreSQLVersions: boolean;
   usePostgreSQLTODRates: boolean;
   usePostgreSQLVersionCompliance: boolean;
@@ -19,7 +18,6 @@ export interface MigrationFlags {
 export function getMigrationFlags(): MigrationFlags {
   return {
     usePostgreSQLProvisions: process.env.USE_POSTGRESQL_PROVISIONS === 'true',
-    usePostgreSQLLiveCheck: process.env.USE_POSTGRESQL_LIVE_CHECK === 'true',
     usePostgreSQLVersions: process.env.USE_POSTGRESQL_VERSIONS === 'true',
     usePostgreSQLTODRates: process.env.USE_POSTGRESQL_TOD_RATES === 'true',
     usePostgreSQLVersionCompliance: process.env.USE_POSTGRESQL_VERSION_COMPLIANCE === 'true',
@@ -39,8 +37,6 @@ export function shouldUsePostgreSQL(endpoint: string, requestId?: string): boole
     switch (endpoint) {
       case 'provisions':
         return flags.usePostgreSQLProvisions;
-      case 'live-check':
-        return flags.usePostgreSQLLiveCheck;
       case 'versions':
         return flags.usePostgreSQLVersions;
       case 'tod-rates':
