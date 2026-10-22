@@ -1,7 +1,7 @@
 {
- "tier": "minor",
+ "tier": "standard",
  "justification": "Schedule constants and their wording only: cron string, one SQL interval, two site sentences, comments, ledger text. No function bodies changed. The window is pinned by tests that fail on any other value (2 mutants killed).",
- "commit_hash": "61a083bf",
+ "commit_hash": "fe996420",
  "files": [
   "railway.dcp-monitor.toml",
   "scripts/dq_probe_live.py",
@@ -23,6 +23,20 @@
    "mitigated": true,
    "how": "live value set with serviceInstanceUpdate after merge, then the CI step re-run",
    "repro": "python scripts/check_railway_cron_drift.py"
+  },
+  {
+   "scenario": "Someone restores a 17-day window and two weeks of missed daily runs pass green",
+   "what_happens": "DQ-117 stays green while nothing runs",
+   "mitigated": true,
+   "how": "test_the_old_windows_are_gone rejects 8, 10 and 17; mutant INTERVAL 4 days also killed",
+   "repro": "sed -i \"s/INTERVAL '3 days'/INTERVAL '17 days'/\" scripts/dq_probe_live.py && pytest tests/test_one_outcome_alarm.py"
+  },
+  {
+   "scenario": "A daily run takes longer than a day and the next cron start overlaps it",
+   "what_happens": "two runs share the council rate limits and the median still moves, hiding the slowdown",
+   "mitigated": true,
+   "how": "run_unfinished (#1456) goes red for any full run older than 6 h without finished_at, so a long run is red long before an overlap",
+   "repro": "PYTEST_REAL_DB=1 pytest -o addopts= tests/test_verifyops_coverage_real_db.py -k killed  (on #1456)"
   }
  ],
  "residual_risk": "Live Railway cron must be changed by hand (user go); until then DQ-117 and no_run_2d read red, which is loud.",
@@ -31,5 +45,26 @@
   "secrets": "None.",
   "other_repo": "No.",
   "manual_verify": "Set dcp-monitor live cronSchedule to '0 2 * * *'; confirm the drift check passes and two consecutive daily run rows exist with finished_at and >= 90% CHECKED."
- }
+ },
+ "pre_impl": {
+  "existing_data": "Reuses the existing DQ-117 probe and its schedule test; no new check. url_last_checked is written on every r2_monitor path (lines 1153-1526), so a daily run moves the median daily.",
+  "assumption_mismatch": "The ledger text already said weekly/8 days while the code held 17 days; the user's 2026-10-14 weekly decision was never applied. Superseded by v7 daily.",
+  "new_vs_existing": "Edits existing constants and their tests only; the CI drift step that compares live vs file already exists."
+ },
+ "functions": [
+  {
+   "name": "test_the_declared_cron_is_daily",
+   "file_line": "tests/test_one_outcome_alarm.py:66",
+   "input": "the text of railway.dcp-monitor.toml read from disk",
+   "output": "passes only when cronSchedule is exactly '0 2 * * *'",
+   "if_none": "a missing file or missing cronSchedule fails the test loudly"
+  },
+  {
+   "name": "test_three_days_tolerates_one_missed_run_not_two",
+   "file_line": "tests/test_one_outcome_alarm.py:86",
+   "input": "the daily period, the 3-day window, and the 6-hour run limit",
+   "output": "passes when one missed run is green and two missed runs are red",
+   "if_none": "no inputs can be None; all are constants in the test"
+  }
+ ]
 }
