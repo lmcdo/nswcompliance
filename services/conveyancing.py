@@ -78,7 +78,6 @@ from generate_conveyancing_report import (  # noqa: E402
     calc_development_headroom,
     detect_strata,
     detect_former_council,
-    get_shadow_risk,
     _council_from_zone_epi,
 )
 from conveyancing_db import (  # noqa: E402
@@ -636,25 +635,12 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
     lep_clauses = []
     dcp_setbacks_db = None
     postgis_heritage = {"hca": [], "items": [], "has_heritage": False, "raw": []}
-    shadow_result = None
     db_url = os.getenv("DATABASE_URL")
 
     def _fetch_db_data():
         return _fetch_pdf_db_data(
             db_url, lat, lng, lot_wkt, controls, dcp_former_council,
         )
-
-    def _fetch_shadow():
-        """Shadow risk — calls Railway geometric model (~17s)."""
-        if not resolved_prop_id:
-            return None
-        lep_height = None
-        raw_h = controls.get("height")
-        if raw_h:
-            m = re.search(r"(\d+(?:\.\d+)?)", str(raw_h))
-            if m:
-                lep_height = float(m.group(1))
-        return get_shadow_risk(address, str(resolved_prop_id), lat, lng, height_m=lep_height)
 
     def _fetch_bushfire():
         """Live NSW RFS BFPL point query (~1-2s) — governs the PDF bushfire row.
@@ -843,7 +829,6 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
 
     with ThreadPoolExecutor(max_workers=12) as executor:
         db_future = executor.submit(_fetch_db_data)
-        shadow_future = executor.submit(_fetch_shadow)
         bushfire_future = executor.submit(_fetch_bushfire)
         anef_future = executor.submit(_fetch_anef)
         contributions_future = executor.submit(_fetch_contributions)
@@ -856,7 +841,6 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         servicing_future = executor.submit(_fetch_servicing)
         coastal_future = executor.submit(_fetch_coastal)
         das, lep_clauses, dcp_setbacks_db, postgis_heritage, db_fetch_failed = db_future.result()
-        shadow_result = shadow_future.result()
         bushfire_live = bushfire_future.result()
         anef_live = anef_future.result()
         contributions_result = contributions_future.result()
@@ -891,7 +875,6 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         dcp_former_council=dcp_former_council,
         strata_info=strata_info,
         covered_layers=covered_layers,
-        shadow_result=shadow_result,
         lep_clauses=lep_clauses,
         dcp_setbacks_db=dcp_setbacks_db,
         db_fetch_failed=db_fetch_failed,

@@ -511,7 +511,7 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
             </h3>
             <p className="text-sm text-gray-500 mb-4">
               A 10-15 page PDF report suitable for conveyancing due diligence,
-              including DCP setback controls, shadow risk analysis, heritage detail,
+              including DCP setback controls, heritage detail,
               nearby DA summaries, and development headroom calculations with clause citations.
             </p>
 
@@ -526,7 +526,6 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
               ]}
               paid={[
                 'DCP setback controls with clause references',
-                'Shadow risk analysis (ADG compliance)',
                 'Full nearby DA summary with descriptions',
                 'LEP key sites clause interpretation',
                 'PostGIS heritage conservation area detail',

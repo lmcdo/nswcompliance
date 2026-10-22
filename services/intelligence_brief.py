@@ -3428,7 +3428,7 @@ def _build_neighbourhood(
             confidence=ConfidenceLevel.DERIVED if shadow_schema else ConfidenceLevel.NOT_AVAILABLE,
             source="shadow_detector",
             as_at=today,
-            reason="Shadow pipeline unavailable" if not shadow_schema else None,
+            reason="Shadow analysis is not part of the brief" if not shadow_schema else None,
         ),
     )
 
@@ -3900,11 +3900,6 @@ def _generate_brief_sse(
             lambda: _fetch_nearby_das(lat, lng, council_name, CONFIG.da_radius_m, CONFIG.da_lookback_days),
             "eplanning_da_api", ConfidenceLevel.AUTHORITATIVE,
         )
-        f_shadow = pool.submit(
-            _safe_call,
-            lambda: _fetch_shadow(req.address, resolved_prop_id or 0, lat, lng, height_m, _derive_service_report_id(report_id, "shadow")),
-            "shadow_detector", ConfidenceLevel.DERIVED,
-        )
         f_dcp = pool.submit(
             _safe_call,
             lambda: _fetch_dcp_controls(dcp_former_council, zone_code),
@@ -4014,13 +4009,12 @@ def _generate_brief_sse(
         dcp_df = _timed_result(f_dcp, 10, "plotdetect_dcp", timings)
         sepp_df = _timed_result(f_sepp, 10, "housing_sepp_standards", timings)
         das_df = _timed_result(f_das, 15, "eplanning_da_api", timings)
-        # 30s: the shadow endpoint's Sentinel-2 fetch step alone can take ~25s;
-        # the prior 20s budget guaranteed a timeout before it could return.
-        shadow_df = _timed_result(f_shadow, CONFIG.timeout_shadow_collect, "shadow_detector", timings)
 
         dcp_raw = dcp_df.value
         sepp_raw = sepp_df.value or []  # failsoft-ok: empty list = no standards; SEPP is a fast DB lookup, _build_sepp_housing handles empty gracefully
-        shadow_raw = shadow_df.value
+        # Shadow step removed 2026-10-22: it produced an "ADG solar access" verdict about
+        # a neighbouring lot, which is not a real standard. The brief carries no shadow result.
+        shadow_raw = None
 
         if not is_apartment:
             dcp_controls = _build_dcp_controls(dcp_raw, dcp_former_council)

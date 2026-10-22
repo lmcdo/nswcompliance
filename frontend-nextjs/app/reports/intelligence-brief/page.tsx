@@ -15,7 +15,6 @@ import { BriefIntentBar, BriefOverlayCard, assembleBriefPayload } from '@/compon
 import { SeppContextCard } from '@/components/reports/SeppContextCard';
 import { GrannyFlatBriefCard } from '@/components/reports/GrannyFlatBriefCard';
 import { describeUnavailable, describeBushfireWithoutCategory, type UnavailableTone } from './unavailable';
-import { ShadowDisplay, type ShadowData } from '@/components/reports/ShadowDetailDisplay';
 import { floodSignalLine, emsLine, type EmsActivation } from './satellite-copy';
 import { floodZoneUnavailableMessage } from '@/lib/not-assessed';
 import { collectSources } from './provenance';
@@ -82,7 +81,7 @@ const SECTION_LABELS: Record<string, { label: string; description: string }> = {
   planning_controls: { label: 'Planning Controls', description: 'Zoning, height, FSR and lot-size standards from the LEP' },
   dcp_controls: { label: 'Council Development Controls', description: 'Setbacks, landscaping and built-form provisions from the DCP' },
   sepp_housing: { label: 'SEPP Housing', description: 'State policy housing standards' },
-  neighbourhood: { label: 'Neighbourhood Activity', description: 'Development applications nearby, outcomes, and shadow analysis' },
+  neighbourhood: { label: 'Neighbourhood Activity', description: 'Development applications nearby and their outcomes' },
   constraint_arithmetic: { label: 'Development Capacity', description: 'Indicative yield and the binding planning constraint' },
   'satellite.bushfire': { label: 'Bushfire Risk', description: 'Bushfire attack level, vegetation category' },
   'satellite.flood': { label: 'Flood Analysis', description: 'Multi-source flood occurrence screening' },
@@ -337,6 +336,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
     ([key, val]) =>
       !['confidence', 'source', 'as_at', 'reason', 'overlay_coverage', 'nearest_features'].includes(key) &&
       !key.endsWith('_units') &&
+      key !== 'shadow' && // shadow section removed 2026-10-22 (also hides it on older stored briefs)
       !(key === 'lot_area_m2' && section !== 'economics') &&
       !(/reason/i.test(key) && (val === null || val === undefined || val === '')) &&
       !(HIDE_WHEN_NULL_KEYS.has(key) && (isDataField(val) ? val.value == null : val == null)),
@@ -399,16 +399,6 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
               <div key={key} className="flex flex-col col-span-full">
                 <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Heritage</dt>
                 <dd className="text-sm text-slate-900 mt-0.5">{humanizeHeritage(df.value as Record<string, unknown>)}</dd>
-              </div>
-            );
-          }
-          // Shadow is a nested overshadowing result — render a readable summary,
-          // not "6 fields".
-          if (key === 'shadow' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
-            return (
-              <div key={key} className="flex flex-col col-span-full">
-                <FieldLabel fieldKey={key} />
-                <dd className="mt-0.5"><ShadowDisplay data={df.value as ShadowData} /></dd>
               </div>
             );
           }
@@ -1164,10 +1154,6 @@ function HeritageList({ items }: { items: string[] }) {
     </ul>
   );
 }
-
-// Shadow display (summary + full scenario table) lives in
-// components/reports/ShadowDetailDisplay so the table is render-testable;
-// imported at the top of this file.
 
 interface OverlayItem { layer_type?: string; value?: unknown; instrument?: string | null; lga?: string | null; }
 

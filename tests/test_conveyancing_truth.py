@@ -33,7 +33,6 @@ from generate_conveyancing_report import (  # noqa: E402
     build_anef_row,
     build_bushfire_row,
     build_land_tax_rows,
-    build_shadow_row,
     build_unmapped_note,
     parse_controls,
 )
@@ -48,100 +47,17 @@ def _bowral_raw() -> list[dict]:
         return json.load(fh)
 
 
-def _shadow_result(height_source: str, height_m: float = 9.0, noon_fraction: float = 0.0,
-                   adg_compliant: bool = True, overlaps: bool = False) -> dict:
-    """Minimal shadow outputs dict as returned by /pipeline/shadow."""
-    return {
-        "height_m": height_m,
-        "height_source": height_source,
-        "adg_compliant": adg_compliant,
-        "scenarios": [
-            {
-                "scenario": "jun21_12pm",
-                "shadow_overlap_fraction": noon_fraction,
-                "overlaps_subject_lot": overlaps,
-            },
-        ],
-    }
-
-
 # ---------------------------------------------------------------------------
-# 1-2. Shadow row provenance (D1)
+# 1-2. Shadow row removed 2026-10-22
 # ---------------------------------------------------------------------------
 
-class TestShadowRowProvenance:
-    def test_adg_none_renders_not_assessed_never_a_verdict(self):
-        """THE fix-1 PDF pin (output-grounding, 2026-08-03): adg_compliant None
-        (noon scenario missing/errored) must render "Not assessed" — checked
-        BEFORE the height-provenance branches so no numeric noon-shadow claim
-        is made either. The old code fell through to "ADG concern". FAILS on
-        pre-change code."""
-        text, style, source = build_shadow_row(
-            _shadow_result("spatial_overlays", adg_compliant=None)
-        )
-        assert text.startswith("Not assessed")
-        assert "No shadow verdict" in text
-        assert "ADG concern" not in text
-        assert "%" not in text            # no numeric claim from an errored noon
-        assert style == "note"
-
-    def test_adg_none_with_default_height_makes_no_percent_claim(self):
-        """Even on the assumed-envelope path, adg None must short-circuit
-        before the '0% at Jun 21 noon' wording (the old order made that claim
-        from an errored scenario)."""
-        text, style, source = build_shadow_row(
-            _shadow_result("default", adg_compliant=None)
-        )
-        assert text.startswith("Not assessed")
-        assert "%" not in text
-
-    def test_default_height_never_claims_lep(self):
-        """G1-1: default envelope → no LEP attribution anywhere in the row."""
-        text, style, source = build_shadow_row(_shadow_result("default"))
-        assert "LEP maximum height" not in text
-        assert "no LEP height limit is mapped for this lot" in text
-        assert "assumed envelope" in text
-        assert "NSW LEP" not in source
-        assert source == "assumed envelope · shadow model"
-
-    def test_default_height_never_asserts_clear(self):
-        """A verdict of "Clear" must never be built from an assumed envelope."""
-        text, style, source = build_shadow_row(
-            _shadow_result("default", noon_fraction=0.0, adg_compliant=True)
-        )
-        assert not text.startswith("Clear")
-        assert "Not determinable from LEP controls" in text
-        assert "taller merit-assessed build is possible" in text
-        assert style != "ok"
-
-    def test_spatial_overlays_height_allows_lep_attribution(self):
-        """G1-2: real LEP height (9.0, spatial_overlays) → LEP attribution allowed."""
-        text, style, source = build_shadow_row(
-            _shadow_result("spatial_overlays", height_m=9.0)
-        )
-        assert "LEP maximum height of buildings: 9.0 m" in text
-        assert source == "NSW LEP · shadow model"
-
-    def test_portal_height_allows_lep_attribution(self):
-        text, style, source = build_shadow_row(
-            _shadow_result("planning_portal", height_m=8.5)
-        )
-        assert source == "NSW LEP · shadow model"
-
-    def test_no_shadow_result_is_not_assessed(self):
-        text, style, source = build_shadow_row(None)
-        assert text == "Not assessed"
-        assert style == "note"
-        assert "NSW LEP" not in source
-
-    def test_missing_height_source_fails_closed(self):
-        """Unknown provenance must never be attributed to the LEP."""
-        result = _shadow_result("spatial_overlays")
-        del result["height_source"]
-        text, style, source = build_shadow_row(result)
-        assert "LEP maximum height" not in text
-        assert "NSW LEP" not in source
-        assert not text.startswith("Clear")
+class TestShadowVerdictRemoved:
+    def test_report_carries_no_shadow_verdict_or_adg_claim(self):
+        src = (_ROOT / "scripts" / "generate_conveyancing_report.py").read_text(encoding="utf-8")
+        assert "build_shadow_row" not in src
+        assert "Northern Development Shadow Risk" not in src
+        assert "ADG concern" not in src
+        assert "ADG compliance requires" not in src
 
 
 # ---------------------------------------------------------------------------

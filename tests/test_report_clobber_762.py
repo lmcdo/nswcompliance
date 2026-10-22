@@ -167,7 +167,6 @@ class TestBriefCallSitesUseDerivedIds:
         source = inspect.getsource(brief)
         assert '_derive_service_report_id(report_id, "bushfire")' in source
         assert '_derive_service_report_id(report_id, "flood")' in source
-        assert '_derive_service_report_id(report_id, "shadow")' in source
 
     def test_no_fetch_receives_the_raw_parent_id(self):
         source = inspect.getsource(brief)
