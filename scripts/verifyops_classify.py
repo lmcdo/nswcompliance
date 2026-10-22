@@ -26,6 +26,7 @@ Deterministic text matching only. Nothing here interprets a rule.
 from __future__ import annotations
 
 import re
+from collections import Counter
 from datetime import date
 from urllib.parse import unquote
 
@@ -185,16 +186,16 @@ def classify_pending(conn, fetch, today: date, dry_run: bool) -> dict[str, int]:
         fetch: url -> bytes (raises on a failed download)
     Returns counts per verdict, plus 'retry' for failed downloads.
     """
-    counts: dict[str, int] = {}
+    counts: Counter[str] = Counter()
     for doc in pending(conn):
         try:
             doc.update(read_document(fetch(doc["url"])))
         except Exception as e:  # noqa: BLE001 - a failed download is retried next run
-            counts["retry"] = counts.get("retry", 0) + 1
+            counts["retry"] += 1
             print(f"    [classify] #{doc['id']} download failed ({type(e).__name__}) - retry next run")
             continue
         verdict = classify(doc, council_rows(conn, doc["council"]), today)
-        counts[verdict["verdict"]] = counts.get(verdict["verdict"], 0) + 1
+        counts[verdict["verdict"]] += 1
         detail = {k: verdict[k] for k in ("of", "effective", "why") if verdict.get(k)}
         print(f"    [classify] #{doc['id']} {doc['council']} '{doc['label']}' -> {verdict['verdict']} {detail}")
         if not dry_run:
@@ -202,7 +203,7 @@ def classify_pending(conn, fetch, today: date, dry_run: bool) -> dict[str, int]:
                 conn.rollback()
                 raise RuntimeError(f"verdict for #{doc['id']} matched no waiting row - stopped")
             conn.commit()
-    return counts
+    return dict(counts)
 
 
 if __name__ == "__main__":  # pragma: no cover - manual run: python scripts/verifyops_classify.py [--apply]
