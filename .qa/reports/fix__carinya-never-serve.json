@@ -97,5 +97,8 @@
     "secrets": "No",
     "other_repo": "No",
     "manual_verify": "Railway monitors image rebuild picks up scripts/never_serve.py; next C-B publish log should show never-serve-skipped=97."
+  },
+  "real_layer_exempt": {
+    "scripts/fixes/rerun_actionable_classifier.py": "The change only drops listed ids from a Python list before the existing UPDATE; no new or changed SQL. Covered by tests/test_never_serve.py::test_other_writers_consult_the_list and by DQ-148 on the live database."
   }
 }
