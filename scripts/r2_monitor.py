@@ -53,6 +53,7 @@ except ImportError:
 # Every run's outcome per council list and per chapter (migration 116), and the daily-cadence
 # decisions. NOT optional: a monitor that silently stops recording is what the alarm reads as
 # "not checked", so a missing module must fail loudly here rather than run blind.
+from verifyops_classify import classify_pending
 from verifyops_record import Recorder, decide_fetch, is_spot_check
 
 
@@ -612,6 +613,18 @@ def _auto_register_chapter(
     if cur.fetchone():
         cur.close()
         print(f"    [auto-reg] {slug} already in registry — skipping")
+        return {"category": category, "action": "skipped"}
+    # The same file under another link label is not a new document. Measured 2026-10-23: 3 of
+    # the 28 waiting rows were files already served (Bayside DCP 2022, CB chapters 5.1 and 5.2).
+    cur.execute(
+        "SELECT id FROM dcp_chapter_registry WHERE council = %s"
+        " AND lower(rtrim(btrim(council_url), '/')) = lower(rtrim(btrim(%s), '/'))",
+        (council, url),
+    )
+    same_file = cur.fetchone()
+    if same_file:
+        cur.close()
+        print(f"    [auto-reg] {slug} is the address of row #{same_file[0]} — skipping")
         return {"category": category, "action": "skipped"}
 
     dcp_name = council_chapters[0].get("dcp_name", f"{council.title()} DCP")
@@ -1584,6 +1597,9 @@ def main():
         recorder.start()
         results = run_monitor(args.council, s3, conn, args.dry_run, args.force, args.reseed,
                               recorder=recorder)
+        # Read each newly found document's own cover and settle the ones it can (step 7).
+        results["new_documents"] = classify_pending(
+            conn, lambda u: download_pdf(u)[0], datetime.now(timezone.utc).date(), args.dry_run)
         recorder.finish({k: (len(v) if isinstance(v, list) else v) for k, v in results.items()})
     finally:
         conn.close()
