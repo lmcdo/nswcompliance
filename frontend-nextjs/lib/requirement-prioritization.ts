@@ -177,11 +177,15 @@ export function isSubdivisionRequirement(req: FilterableRequirement): boolean {
  * Check if property is in a Heritage Conservation Area
  */
 export function hasHeritage(heritage?: any): boolean {
-  if (!heritage) return false;
+  // No heritage answer at all is unknown: keep heritage requirements in view. Only a real false hides them.
+  if (heritage == null) return true;
+  if (typeof heritage === 'boolean') return heritage;
+  if (typeof heritage !== 'object') return true; // odd old data: unknown, keep heritage rules in view
+  if ('isHeritage' in heritage && heritage.isHeritage == null) return true; // not checked: keep heritage requirements in view
 
   return heritage.isHeritage === true ||
-         !!heritage.hcaName ||
-         (heritage.heritageItems && heritage.heritageItems.length > 0);
+         !!heritage.hcaName || // unknown-ok: a named HCA is a positive answer
+         (heritage.heritageItems?.length ?? 0) > 0;
 }
 
 /**

@@ -197,7 +197,7 @@ export async function assessPatternBookEligibility(
   let confidence = 1.0;
   if (!lotDimensions) confidence -= 0.2;
   if (!constraints.zone) confidence -= 0.3;
-  if (!constraints.heritage && !constraints.environmental) confidence -= 0.2;
+  if (!constraints.heritage && !constraints.environmental) confidence -= 0.2; // unknown-ok: missing data lowers confidence; not a verdict
 
   return {
     status,

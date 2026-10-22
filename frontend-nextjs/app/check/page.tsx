@@ -16,6 +16,7 @@ import { CDCPathway } from '@/components/compliance/CDCPathway';
 import { usePropertyAssessment } from '@/hooks';
 import { Home, CheckCircle2 } from 'lucide-react';
 
+import { heritageAnswer, yesNo } from '@/lib/fact-answer';
 export default function CheckPage() {
   const {
     selectedAddress,
@@ -112,8 +113,8 @@ export default function CheckPage() {
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Heritage</p>
-                <p className={`text-sm font-medium ${selectedProperty.heritage?.isHeritage ? 'text-red-600' : 'text-green-600'}`}>
-                  {selectedProperty.heritage?.isHeritage ? 'Yes' : 'No'}
+                <p className={`text-sm font-medium ${heritageAnswer(selectedProperty.heritage) === true ? 'text-red-600' : heritageAnswer(selectedProperty.heritage) === false ? 'text-green-600' : 'text-gray-500'}`}>
+                  {yesNo(heritageAnswer(selectedProperty.heritage))}
                 </p>
               </div>
             </div>

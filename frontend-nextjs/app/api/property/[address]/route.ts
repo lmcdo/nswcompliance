@@ -214,11 +214,12 @@ export async function GET(
  // Detect corner lot from adjacent road parcels
  let cornerLot: CornerLotInfo | null = null;
  if (lotGeometry) {
-   cornerLot = await detectCornerLot(lotGeometry);
-   if (cornerLot.confidence > 0) {
-     console.log(`[API] Corner lot detection: isCornerLot=${cornerLot.isCornerLot}, roads=[${cornerLot.adjacentRoads.join(', ')}]`);
-   } else if (cornerLot.error) {
-     console.warn(`[API] Corner lot detection failed: ${cornerLot.error}`);
+   const detected = await detectCornerLot(lotGeometry);
+   cornerLot = detected;
+   if (detected.error) {
+     console.warn(`[API] Corner lot detection failed: ${detected.error}`);
+   } else {
+     console.log(`[API] Corner lot detection: isCornerLot=${detected.isCornerLot}, roads=[${detected.adjacentRoads.join(', ')}]`);
    }
  }
 

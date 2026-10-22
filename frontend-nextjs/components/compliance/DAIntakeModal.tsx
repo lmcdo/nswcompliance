@@ -28,6 +28,8 @@ interface DAIntakeModalProps {
   initialAnswers?: IntakeAnswers;
   /** Property-level flags for first-class passenger display */
   heritage?: boolean;
+  /** false when the Heritage Map did not answer: heritage rules are included, but heritage is not a known fact. */
+  heritageChecked?: boolean;
   hcaName?: string;
   precinctName?: string;
   /** Whether ancillary works checkboxes are active (enables review mode) */
@@ -49,6 +51,7 @@ export function DAIntakeModal({
   provisions = [],
   initialAnswers,
   heritage,
+  heritageChecked = true,
   hcaName,
   precinctName,
   hasAncillaryScope = false,
@@ -169,8 +172,8 @@ export function DAIntakeModal({
             <div className="ml-7 space-y-1 mb-4">
               {heritage && (
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-teal-500 font-bold text-xs">✓</span>
-                  <span className="font-medium text-gray-700">Heritage{hcaName ? ` — ${hcaName}` : ' Conservation Area'}</span>
+                  <span className="text-teal-500 font-bold text-xs">{heritageChecked ? '✓' : '?'}</span>
+                  <span className="font-medium text-gray-700">{heritageChecked ? `Heritage${hcaName ? ` — ${hcaName}` : ' Conservation Area'}` : 'Heritage — not checked (rules included)'}</span>
                   <span className="text-gray-400 text-xs ml-auto">
                     {provisions.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length} provisions
                   </span>

@@ -53,7 +53,7 @@ function assess(
   else if (heritage) constraint = 'Heritage listed — CDC excluded';
   else if (areaOk === false) constraint = `${Math.round(lotArea!)} m² — below 450 m² minimum`;
 
-  const eligible = zoneOk !== false && !heritage && areaOk !== false && zoneOk !== null;
+  const eligible = zoneOk !== false && !heritage && areaOk !== false && zoneOk !== null; // unknown-ok: heritage here is the granny-flat report's own heritage_status, not the property lookup
   return { eligible, zone: zoneCode, zoneName, lotArea, frontage, depth, heightLimit, heritage, constraint, lga };
 }
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { heritageAnswer, yesNo } from '@/lib/fact-answer';
 import {
   Droplets, Flame, Sun, Eye, Radio, Home, FileSearch,
   MapPin, Ruler, Building2, Shield, ChevronRight,
@@ -222,7 +223,7 @@ export function PropertyProfile() {
               <PropertyFact
                 icon={data.heritage ? AlertTriangle : Shield}
                 label="Heritage"
-                value={data.heritage ? 'Yes' : 'No'}
+                value={yesNo(heritageAnswer(data.heritage))}
                 sub={data.heritageItemName}
                 alert={data.heritage}
               />

@@ -8,10 +8,12 @@
 import { Pool } from 'pg';
 import { PATTERN_BOOK_CDC } from '../regulatory-constants';
 
+import { acidSulfateAnswer } from '../fact-answer';
 export interface PropertyConstraints {
   // From PropertyData.heritage
   heritage?: {
-    isHeritage: boolean;
+    /** null = the Heritage Map did not answer (not checked). */
+    isHeritage: boolean | null;
     heritageType?: string; // 'item' or 'conservation area'
     heritageItemName?: string;
   };
@@ -27,6 +29,8 @@ export interface PropertyConstraints {
   };
 
   // From PropertyData.constraints
+  /** Lookup checks that did not answer (lib/lookup-not-checked.ts), from PropertyData.constraints.notChecked. */
+  notChecked?: readonly string[] | null;
   zone?: string;
   lga?: string;
 
@@ -65,8 +69,12 @@ const EXCLUSION_FOR_HAZARD: ReadonlyArray<[string, string]> = [
 /** Exclusions whose map gave no answer: unknown is not "clear" (a failed bush fire lookup used to read as eligible). */
 export function uncheckedExclusions(constraints: PropertyConstraints): string[] {
   const out: string[] = [];
-  if (constraints.environmental && constraints.environmental.floodProne == null) out.push('flood_planning_area');
-  if (constraints.environmental && constraints.environmental.bushfireProne == null) out.push('bushfire_prone');
+  // No environmental answers at all is not "no flood, no bush fire".
+  if (constraints.environmental?.floodProne == null) out.push('flood_planning_area');
+  if (constraints.environmental?.bushfireProne == null) out.push('bushfire_prone');
+  if (constraints.heritage?.isHeritage == null) out.push('heritage');
+  // Acid sulfate class comes from the planning layers: no layers, no answer.
+  if (acidSulfateAnswer({ acidSulfateSoils: constraints.environmental?.acidSulfateSoils, notChecked: constraints.notChecked }) == null) out.push('acid_sulfate_soils');
   // Every other map-backed exclusion whose map did not answer (an ANEF timeout must not read as clear).
   const unanswered = constraints.environmental?.uncheckedHazards ?? [];
   for (const [hazard, exclusion] of EXCLUSION_FOR_HAZARD) {

@@ -18,6 +18,7 @@ import { MapPin, ArrowRight, CheckCircle2, XCircle, AlertTriangle, Building2 } f
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
 
+import { heritageAnswer } from '@/lib/fact-answer';
 interface ZoneResult {
   address: string;
   zone_code: string;
@@ -28,7 +29,8 @@ interface ZoneResult {
   fsr: number | null;
   height_m: number | null;
   min_lot_size_sqm: number | null;
-  heritage_item: boolean;
+  /** null = the Heritage Map did not answer. */
+  heritage_item: boolean | null;
   heritage_conservation_area: boolean;
 }
 
@@ -95,7 +97,7 @@ export default function ZoningCheckPage() {
         fsr: constraints.maxFsr ?? null,
         height_m: constraints.maxHeight ?? null,
         min_lot_size_sqm: constraints.minLotSize ?? null,
-        heritage_item: prop.heritage?.isHeritage ?? false,
+        heritage_item: heritageAnswer(prop.heritage),
         heritage_conservation_area: (prop.heritage?.heritageType ?? '').toLowerCase().includes('conservation'),
       });
 

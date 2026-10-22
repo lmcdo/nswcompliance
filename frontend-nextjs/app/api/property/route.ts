@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PropertyDataService } from '../../../lib/property-data';
 import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
-import { query } from '@/lib/db';
+import { query as dbQuery } from '@/lib/db';
 import { greenwebConstraints } from '@/lib/greenweb-overlay';
 import { railOrBusyRoadConstraints } from '@/lib/rail-busy-road';
 import { classifiedRoadConstraints } from '@/lib/classified-road';
+import { withLookupBudget, withinLookupBudget, LOOKUP_OUT_OF_TIME } from '@/lib/fetch-timeout';
+import { LOOKUP_BUDGET_MS, type LookupCheck } from '@/lib/lookup-not-checked';
+import { ADDRESS_SEARCH_UNAVAILABLE, VALUATION_UNAVAILABLE, LOCATION_NOT_FOUND } from '@/lib/nsw-planning-portal';
 
 /**
  * General NSW Property Data API Endpoint
@@ -40,8 +43,14 @@ export async function GET(req: NextRequest) {
  const { address, lga, includeConstraints } = validation.data;
  
  try {
- // Get comprehensive property data
+ // One time limit for the whole lookup: anything unfinished when it runs out is "Not checked".
+ const propertyData = await withLookupBudget(LOOKUP_BUDGET_MS, async () => {
  const propertyData = await PropertyDataService.getPropertyComplianceData(address);
+ // Database calls cannot take the time limit's signal, so each is cut off by it instead.
+ const query: typeof dbQuery = (text, params) => withinLookupBudget(dbQuery(text, params));
+ const notChecked = (check: LookupCheck) => {
+   propertyData.constraints.notChecked = [...(propertyData.constraints.notChecked ?? []), check];
+ };
 
  // Transform Web Mercator geometry (EPSG:3857) to WGS84 coordinates (EPSG:4326)
  // ComplianceDashboard needs coordinates for geographic neighbourhood detection
@@ -158,7 +167,7 @@ export async function GET(req: NextRequest) {
    }
 
    const acidRows = rows.filter(r => r.layer_type === 'acid_sulfate');
-   if (acidRows.length > 0 && !propertyData.constraints.acidSulfateSoils) {
+   if (acidRows.length > 0 && !propertyData.constraints.acidSulfateSoils) { // unknown-ok: fills the class only when the layers gave none
      propertyData.constraints.acidSulfateSoils = acidRows[0].value as string ?? 'Present';
    }
 
@@ -208,7 +217,11 @@ export async function GET(req: NextRequest) {
      };
    }
  } catch (spatialErr) {
-   console.warn('[Property API] Spatial overlay query failed (non-fatal):', spatialErr);
+   // Flood, TOD, acid sulfate, key sites, ... all unknown: never "not in any overlay".
+   console.warn('[Property API] Spatial overlay query failed:', spatialErr);
+   notChecked('spatial_overlays');
+   // The overlay is the acid sulfate fallback: with no class from the layers either, it is unknown.
+   if (!propertyData.constraints.acidSulfateSoils) notChecked('acid_sulfate'); // unknown-ok: this IS the not-checked marking
  }
  // Ku-ring-gai Greenweb is flagged by the LOT, not the address point: Part 18 applies to areas
  // identified as Greenweb, and a lot that only partly overlaps a patch is still bound. Separate
@@ -226,7 +239,10 @@ export async function GET(req: NextRequest) {
  }
  const classifiedRoad = await classifiedRoadCheck;
  if (propertyData.constraints) Object.assign(propertyData.constraints, classifiedRoad);
+ if (classifiedRoad.classifiedRoadUnchecked) notChecked('classified_road');
  }
+ return propertyData;
+ });
 
  return NextResponse.json({
  success: true,
@@ -244,6 +260,20 @@ export async function GET(req: NextRequest) {
  // DQ-122: no candidate carried the asked street number and street. Say so plainly (404), so a
  // caller can tell "no such property" from "the service is down" -- never serve a neighbour.
  const message = error instanceof Error ? error.message : '';
+ // The record answered but has no location: the maps cannot be checked. Not an outage, not "no such property".
+ if (message.startsWith(LOCATION_NOT_FOUND)) {
+   return NextResponse.json(
+     { success: false, error: 'The NSW property record for this address has no location, so the map checks could not be done.', details: message },
+     { status: 422 }
+   );
+ }
+ // A source that did not answer is an outage (503), never "no such property".
+ if ([ADDRESS_SEARCH_UNAVAILABLE, VALUATION_UNAVAILABLE, LOOKUP_OUT_OF_TIME].some((m) => message.startsWith(m))) {
+   return NextResponse.json(
+     { success: false, error: 'The NSW property services did not answer, so this property could not be looked up. Please try again.', details: message },
+     { status: 503 }
+   );
+ }
  if (message.includes('Property not found')) {
    return NextResponse.json(
      {

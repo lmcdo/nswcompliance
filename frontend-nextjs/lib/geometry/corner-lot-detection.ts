@@ -15,6 +15,7 @@
 import type { LotGeometry } from '@/types/property';
 import { scaleFactorForRing, usableRing } from './mercator';
 import { measureStreetFrontage, type RoadShape, type StreetFrontage } from './street-frontage';
+import { fetchWithTimeout } from '../fetch-timeout';
 
 // NSW Spatial Services Feature Server
 const NSW_SPATIAL_BASE = 'https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Land_Parcel_Property_Theme_multiCRS/FeatureServer';
@@ -24,14 +25,14 @@ const ROAD_CORRIDOR_LAYER = 5;
 
 
 export interface CornerLotResult {
-  /** Whether lot is a corner lot (2+ adjacent roads) */
-  isCornerLot: boolean;
+  /** Whether lot is a corner lot (2+ adjacent roads); null when the road map did not answer (not checked). */
+  isCornerLot: boolean | null;
   /** Names of adjacent roads */
   adjacentRoads: string[];
-  /** Number of distinct road boundaries */
-  roadCount: number;
-  /** Confidence in detection (1.0 if API returned data, 0 if failed) */
-  confidence: number;
+  /** Number of distinct road boundaries; null when not checked. */
+  roadCount: number | null;
+  /** Confidence in detection (1.0 if API returned data, null if not checked) */
+  confidence: number | null;
   /** Error message if detection failed */
   error?: string;
   /** Street edges per named road and the lot's width range back from each (street-frontage.ts). */
@@ -76,12 +77,12 @@ function paddedEnvelope(ring: number[][]): string | null {
 
 function unavailable(error: string): CornerLotResult {
   return {
-    isCornerLot: false,
+    isCornerLot: null,
     adjacentRoads: [],
-    roadCount: 0,
-    confidence: 0,
+    roadCount: null,
+    confidence: null,
     error,
-    streetFrontage: { status: 'unavailable', roads: [], unnamedRoadEdge_m: 0, error },
+    streetFrontage: { status: 'unavailable', roads: [], unnamedRoadEdge_m: null, error },
   };
 }
 
@@ -121,22 +122,13 @@ export async function detectCornerLot(geometry: LotGeometry): Promise<CornerLotR
     let response: Response | null = null;
     let lastError: unknown = null;
     for (const waitMs of [4000, 6000]) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), waitMs);
       try {
-        response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json'
-          },
-          signal: controller.signal
-        });
+        // The timer covers the whole reply and stops with the lookup's time limit (lib/fetch-timeout.ts).
+        response = await fetchWithTimeout(url, { method: 'GET', headers: { 'Accept': 'application/json' } }, waitMs);
         if (response.ok || response.status < 500) break;
       } catch (e) {
         lastError = e;
         response = null;
-      } finally {
-        clearTimeout(timeoutId);
       }
     }
     if (!response) throw lastError ?? new Error('road map did not answer');

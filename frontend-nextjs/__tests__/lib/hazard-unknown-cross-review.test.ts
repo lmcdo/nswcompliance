@@ -11,7 +11,7 @@ jest.mock('@/lib/database/compliance-client', () => {
 
 import { uncheckedExclusions } from '@/lib/pattern-book-eligibility/check-exclusions';
 import { bushfireFromPayload } from '@/lib/hazard-unchecked';
-import { GET } from '@/app/api/compliance/dashboard/route';
+import { GET, POST } from '@/app/api/compliance/dashboard/route';
 
 describe('(1) pattern-book exclusions: an ANEF map that did not answer is not clear', () => {
   it('lists aircraft_noise as not checked when ANEF timed out, so the result cannot be ELIGIBLE', () => {
@@ -21,7 +21,9 @@ describe('(1) pattern-book exclusions: an ANEF map that did not answer is not cl
     expect(out).toContain('aircraft_noise');
   });
   it('lists nothing when every map answered', () => {
-    expect(uncheckedExclusions({ environmental: { floodProne: false, bushfireProne: false, uncheckedHazards: [] } })).toEqual([]);
+    expect(uncheckedExclusions({ heritage: { isHeritage: false }, notChecked: [], environmental: { floodProne: false, bushfireProne: false, uncheckedHazards: [] } })).toEqual([]);
+    // no not-checked list at all (an older payload): acid sulfate cannot be called clear
+    expect(uncheckedExclusions({ heritage: { isHeritage: false }, environmental: { floodProne: false, bushfireProne: false, uncheckedHazards: [] } })).toEqual(['acid_sulfate_soils']);
   });
 });
 
@@ -42,5 +44,17 @@ describe('(3) compliance dashboard route: hazards it never queries are unknown',
     const constraints = __get.mock.calls[0].at(-1);
     expect(constraints.uncheckedHazards).toEqual(expect.arrayContaining(
       ['bushfire', 'mine_subsidence', 'contaminated_land', 'drinking_water', 'coastal', 'anef']));
+  });
+});
+
+describe('(3b) compliance dashboard POST: unknown heritage stays unknown as a fact', () => {
+  it('includes heritage rules but records the heritage fact as null, not true', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    const { __get } = jest.requireMock('@/lib/database/compliance-client');
+    __get.mockClear();
+    await POST({ json: async () => ({ address: '8 Hollands Ave, Marrickville NSW 2204', zone: 'R2', developmentType: 'dwelling_house' }) } as any);
+    const [, includeHeritageRules, constraints] = __get.mock.calls[0];
+    expect(includeHeritageRules).toBe(true);
+    expect(constraints.heritage).toBeNull();
   });
 });

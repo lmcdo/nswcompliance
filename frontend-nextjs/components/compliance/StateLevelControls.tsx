@@ -32,6 +32,7 @@ import { tryGetLGAConfig } from '@/lib/lga-configs';
 import { widthRange } from '@/lib/geometry/street-frontage';
 import { useLmrGates } from '@/hooks/useLmrGates';
 
+import { answer, heritageAnswer } from '@/lib/fact-answer';
 interface StrataInfo {
   isStrata: boolean;
   source: string | null;
@@ -699,9 +700,9 @@ export function StateLevelControls({
         <ExemptComplyingProvisions
           zoneCode={zoneCode}
           lotArea={lotSize}
-          heritageItem={!!(propertyData?.heritage?.isHeritage && propertyData?.heritage?.heritageType?.toLowerCase().includes('item'))}
-          heritageAffected={!!propertyData?.heritage?.isHeritage}
-          isStrata={!!strataInfo?.isStrata}
+          heritageItem={heritageAnswer(propertyData?.heritage) === true && propertyData?.heritage?.heritageType?.toLowerCase().includes('item') === true}
+          heritageAffected={heritageAnswer(propertyData?.heritage)}
+          isStrata={answer(strataInfo?.isStrata)}
         />
       )}
 

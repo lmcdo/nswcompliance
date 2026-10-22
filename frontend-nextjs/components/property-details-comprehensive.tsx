@@ -251,7 +251,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                </p>
              </div>
            )}
-           {!propertyData.cornerLot.isCornerLot && propertyData.cornerLot.adjacentRoads.length > 0 && (
+           {propertyData.cornerLot.isCornerLot === false && propertyData.cornerLot.adjacentRoads.length > 0 && (
              <p className="text-xs text-gray-600">
                Adjacent road: {propertyData.cornerLot.adjacentRoads[0]}
              </p>

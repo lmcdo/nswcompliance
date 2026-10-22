@@ -18,6 +18,7 @@ import { Scissors, ArrowRight, CheckCircle2, XCircle, AlertTriangle, Info } from
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
 
+import { heritageAnswer } from '@/lib/fact-answer';
 interface SubdivisionResult {
   address: string;
   lga: string;
@@ -30,7 +31,8 @@ interface SubdivisionResult {
   permitted_dwelling_types: string[];
   subdivision_likely: 'yes' | 'no' | 'maybe';
   reason: string;
-  heritage_item: boolean;
+  /** null = the Heritage Map did not answer. */
+  heritage_item: boolean | null;
   heritage_conservation_area: boolean;
 }
 
@@ -170,7 +172,7 @@ export default function SubdivisionCheckPage() {
         ),
         subdivision_likely: assessment.likely,
         reason: assessment.reason,
-        heritage_item: prop.heritage?.isHeritage ?? false,
+        heritage_item: heritageAnswer(prop.heritage),
         heritage_conservation_area: (prop.heritage?.heritageType ?? '').toLowerCase().includes('conservation'),
       });
 

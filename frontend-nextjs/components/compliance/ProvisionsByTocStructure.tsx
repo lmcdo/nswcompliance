@@ -54,6 +54,7 @@ import { NumericChecker, type NumericCheckValues } from './NumericChecker';
 import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
 
 
+import { acidSulfateAnswer } from '@/lib/fact-answer';
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)
 const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
   ashfield: {
@@ -113,7 +114,8 @@ interface ProvisionsByTocStructureProps {
   lga?: string;
   formerCouncil: string;
   zone?: string;
-  heritage?: boolean;
+  /** true / false, or null when the Heritage Map was not checked (heritage rules are then included). */
+  heritage?: boolean | null;
   hcaName?: string;
   precinctId?: string;
   precinctName?: string;
@@ -169,6 +171,8 @@ export function ProvisionsByTocStructure({
   isDaMode = false,
   onToggleDaMode,
 }: ProvisionsByTocStructureProps) {
+  // Unknown heritage includes the heritage rules (they may apply); verdicts below use the fact itself.
+  const includeHeritage = heritage !== false;
   const [provisionView] = useState<'task' | 'structure'>('structure');
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
@@ -383,7 +387,7 @@ export function ProvisionsByTocStructure({
   const params = buildForPropertyParams({
     formerCouncil,
     zone,
-    heritage,
+    heritage: includeHeritage,
     hcaName,
     precinctId,
     landApplicationInstruments: propertyData?.constraints?.landApplicationInstruments,
@@ -394,7 +398,8 @@ export function ProvisionsByTocStructure({
     // Only a Yes serves bush fire rules. Unknown (null: the map did not answer) is shown as
     // "Not checked" on the hazard tile and in the project summary, never as "No".
     bushfire: propertyData?.constraints?.bushfireProne === true,
-    acidSulfate: Boolean(propertyData?.constraints?.acidSulfateSoils),
+    // Unknown acid sulfate includes its rules (they may apply).
+    acidSulfate: acidSulfateAnswer(propertyData?.constraints) !== false,
     riparian: propertyData?.constraints?.riparianLand?.inRiparianArea === true,
     greenweb: propertyData?.constraints?.greenweb?.onGreenweb === true,
     railOrBusyRoad: propertyData?.constraints?.railOrBusyRoad?.adjoins === true,
@@ -1177,7 +1182,7 @@ export function ProvisionsByTocStructure({
     // Sort by relevance if searching, otherwise by priority
     if (debouncedSearch) {
       // Rank by search relevance
-      const context = { heritage, zone, precinct: precinctId };
+      const context = { heritage: includeHeritage, zone, precinct: precinctId };
       const scored = filtered.map(p => ({
         provision: p,
         score: scoreProvision(p, debouncedSearch, context)
@@ -1233,7 +1238,7 @@ export function ProvisionsByTocStructure({
         return aPriority - bPriority;
       });
     }
-  }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, refinements, heritageTypeFilter, heritage, zone, precinctId, isDaMode, expandedDevTypes, topicAssertions, allDismissedChapters]);
+  }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, refinements, heritageTypeFilter, includeHeritage, zone, precinctId, isDaMode, expandedDevTypes, topicAssertions, allDismissedChapters]);
 
   // Provisions for SEE export — baseProvisions filtered only by DA-mode scope rules.
   // Intentionally ignores layerFilter, search, and refinements so the exported document
@@ -1634,7 +1639,7 @@ export function ProvisionsByTocStructure({
   const handleExportPdf = async () => {
     try {
       const heritageCtx = {
-        in_hca: heritage || false,
+        in_hca: heritage === true,
         hca_name: hcaName,
         hca_code: hcaCode || hcaName,
         heritage_item: heritageItem,
@@ -1671,14 +1676,14 @@ export function ProvisionsByTocStructure({
           const recommended =
             eligibility.status === 'ELIGIBLE' ? 'Pattern Book CDC' :
             isResZone ? 'Exempt & Complying Development' :
-            isHousingZone && !heritage ? 'Housing SEPP (Low-Mid Rise)' :
+            isHousingZone && heritage === false ? 'Housing SEPP (Low-Mid Rise)' :
             'Development Application (DA)';
           pathwaySummary = {
             recommended_pathway: recommended,
             pathways: [
               { name: 'Pattern Book CDC', status: eligibility.status === 'ELIGIBLE' ? 'Available' : eligibility.status === 'CONDITIONAL' ? 'Conditional' : 'Not Available', timeframe: '10 days', notes: eligibility.status === 'ELIGIBLE' ? undefined : patternBookData.blockers?.length ? patternBookData.blockers[0] : 'See exclusions' },
               { name: 'Exempt & Complying Development', status: isResZone ? 'Available' : 'Not Available', timeframe: '20 days', notes: isResZone ? 'For eligible work types (deck, fence, carport, pool)' : 'Zone not eligible' },
-              { name: 'Housing SEPP (Low-Mid Rise)', status: isHousingZone && !heritage ? 'Available' : 'Not Available', timeframe: '25 days', notes: !isHousingZone ? 'Zone not eligible' : heritage ? 'Heritage area excluded' : undefined },
+              { name: 'Housing SEPP (Low-Mid Rise)', status: !isHousingZone ? 'Not Available' : heritage === false ? 'Available' : heritage == null ? 'Conditional' : 'Not Available', timeframe: '25 days', notes: !isHousingZone ? 'Zone not eligible' : heritage == null ? 'Heritage not checked: the planning map did not answer' : heritage ? 'Heritage area excluded' : undefined },
               { name: 'Development Application (DA)', status: 'Available', timeframe: '50+ days', notes: 'Always available — required when other pathways excluded' },
             ],
           };
@@ -1763,7 +1768,7 @@ export function ProvisionsByTocStructure({
       await refreshResponses();
 
       const heritageCtx = {
-        in_hca: heritage || false,
+        in_hca: heritage === true,
         hca_name: hcaName,
         hca_code: hcaCode || hcaName,
         heritage_item: heritageItem,
@@ -2044,7 +2049,7 @@ export function ProvisionsByTocStructure({
               onPreparedByChange={handlePreparedByChange}
               lepHeight={lepLimits(lepClauseData).height != null ? `${lepLimits(lepClauseData).height} m` : undefined}
               lepFsr={lepLimits(lepClauseData).fsr != null ? `${lepLimits(lepClauseData).fsr}:1` : undefined}
-              heritage={heritage}
+              heritage={includeHeritage}
               hcaName={hcaName}
               precinctName={precinctName}
               layerCounts={layerCounts}
@@ -2076,7 +2081,8 @@ export function ProvisionsByTocStructure({
           onSkip={() => setShowIntakeModal(false)}
           provisions={allProvisions}
           initialAnswers={mergedIntakeAnswers}
-          heritage={heritage}
+          heritage={includeHeritage}
+          heritageChecked={heritage != null}
           hcaName={hcaName}
           precinctName={precinctName}
           hasAncillaryScope={ancillaryWorksLocal.length > 0}
@@ -2331,7 +2337,7 @@ export function ProvisionsByTocStructure({
               layerCounts={layerCounts}
               layerLabels={layerLabels}
               zone={zone}
-              heritage={heritage}
+              heritage={includeHeritage}
               hcaName={hcaName}
               precinctName={precinctName}
               formerCouncil={formerCouncil}
@@ -2474,7 +2480,7 @@ export function ProvisionsByTocStructure({
           chapterPdfUrls={data?.meta?.chapter_pdf_urls ?? undefined}
           formerCouncil={formerCouncil}
           zone={zone}
-          heritage={heritage}
+          heritage={includeHeritage}
           hcaName={hcaName}
           precinctId={precinctId}
           isDaMode={isDaMode}

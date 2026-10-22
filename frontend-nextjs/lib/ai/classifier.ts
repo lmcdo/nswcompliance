@@ -16,6 +16,7 @@ import { google } from '@ai-sdk/google';
 import { generateText } from 'ai';
 import type { LandFacts } from '@/lib/lep-land-condition';
 
+import { heritageAnswer, yesNo } from '../fact-answer';
 // Question categories
 export type QuestionCategory =
   | 'factual_lookup'
@@ -106,7 +107,7 @@ Property Context:
 - LGA: ${propertyContext.lga || 'Unknown'}
 - Former Council: ${propertyContext.formerCouncil || 'Unknown'}
 - Lot Size: ${propertyContext.lotSize ? `${propertyContext.lotSize}m²` : 'Unknown'}
-- Heritage: ${propertyContext.constraints?.heritage ? `Yes (${propertyContext.constraints.heritageName || 'Heritage listed'})` : 'No'}
+- Heritage: ${yesNo(heritageAnswer(propertyContext.constraints?.heritage), `Yes (${propertyContext.constraints?.heritageName || 'Heritage listed'})`)}
 `
     : 'No property selected';
 

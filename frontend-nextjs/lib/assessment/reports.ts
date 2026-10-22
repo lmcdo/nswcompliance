@@ -4,6 +4,7 @@
  */
 import { HAZARD_NOT_CHECKED, hazardUnchecked, type HazardKey } from '../hazard-unchecked';
 
+import { wasNotChecked } from '../fact-answer';
 export interface ReportTemplate {
  id: string;
  name: string;
@@ -420,6 +421,8 @@ export class ReportGenerator {
 
  // A hazard map that did not answer is "Not checked", never "No" (lib/hazard-unchecked.ts).
  const unchecked = (key: HazardKey) => hazardUnchecked(constraints, key);
+ // Other lookup checks that did not answer (lib/lookup-not-checked.ts).
+ const notChecked = (...keys: string[]) => wasNotChecked(constraints, ...keys);
  // Read once from the shared flood producer (lib/flood/flood-map.ts via nsw-planning-portal.ts).
  const floodAnswer: boolean | null | undefined = constraints.floodProne;
  const environmentalConstraints = {
@@ -429,13 +432,15 @@ export class ReportGenerator {
  : (constraints.floodMapNote || HAZARD_NOT_CHECKED),
  bushfire: constraints.bushfireProne === true ? 'Yes - Property is bushfire prone land'
  : (constraints.bushfireProne == null || unchecked('bushfire')) ? HAZARD_NOT_CHECKED : 'No',
- acidSulfate: constraints.acidSulfateSoils ? `Yes - Class ${constraints.acidSulfateSoils}` : 'No',
+ acidSulfate: constraints.acidSulfateSoils ? `Yes - Class ${constraints.acidSulfateSoils}`
+ : notChecked('planning_layers', 'acid_sulfate') ? HAZARD_NOT_CHECKED : 'No',
  anef: anefData?.inAnefZone ? `Yes - ANEF ${anefData.anefLevel} (${anefData.anefCode || 'N/A'})` : (unchecked('anef') ? HAZARD_NOT_CHECKED : 'No'),
  // The old `mineSubsidenceDistrict` field never existed, so this always said 'No'.
  mineSubsidence: constraints.mineSubsidence?.inDistrict
  ? `Yes${constraints.mineSubsidence.districtName ? ` - ${constraints.mineSubsidence.districtName}` : ''}`
  : (unchecked('mine_subsidence') ? HAZARD_NOT_CHECKED : 'No'),
- landslide: constraints.landslideRisk?.hasRisk ? 'Yes - Landslide risk identified' : 'No',
+ landslide: constraints.landslideRisk?.hasRisk ? 'Yes - Landslide risk identified'
+ : notChecked('spatial_overlays') ? HAZARD_NOT_CHECKED : 'No',
  contaminatedLand: constraints.contaminatedLand?.hasNotifiedSites
  ? `Yes - Notified site within 500m${constraints.contaminatedLand.nearestSite?.name ? ': ' + constraints.contaminatedLand.nearestSite.name : ''}`
  : (unchecked('contaminated_land') ? HAZARD_NOT_CHECKED : 'No known sites within 500m'),

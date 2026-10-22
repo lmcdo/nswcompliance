@@ -28,6 +28,8 @@ export interface FloodMapStatus {
   floodProne: boolean | null;
   /** The plain-words sentence the page shows, including why when it cannot tell. */
   note: string;
+  /** Set when the flood map itself did not answer (failed or timed out): the lookup lists flood as not checked. */
+  mapDidNotAnswer?: true;
 }
 
 /** What the map query found: how many flood polygons touch the lot, and whether the whole lot was tested. */
@@ -65,10 +67,10 @@ const POINT_ONLY = "The point the NSW Planning Portal gives for this address is 
 
 /** Pure decision, kept separate so it can be tested without the network. */
 export function decideFloodMap(hit: FloodHit, lotPlans: string[], plansWithMap: Set<string> | null): FloodMapStatus {
-  if (hit.features == null) return { floodProne: null, note: UNREACHABLE };
+  if (hit.features == null) return { floodProne: null, note: UNREACHABLE, mapDidNotAnswer: true };
   // A flood polygon touching the lot is a "Yes" whichever way it was found.
   if (hit.features > 0) return { floodProne: true, note: ON_MAP };
-  if (plansWithMap == null) return { floodProne: null, note: PLANS_UNKNOWN };
+  if (plansWithMap == null) return { floodProne: null, note: PLANS_UNKNOWN, mapDidNotAnswer: true };
   if (lotPlans.length === 0) return { floodProne: null, note: LOT_PLAN_UNKNOWN };
   if (!lotPlans.some((p) => plansWithMap.has(p))) return { floodProne: null, note: NO_PUBLISHED_MAP };
   // The plan publishes a map and nothing touches what was tested: "No" only for the whole lot.

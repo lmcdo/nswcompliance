@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { LocalProvision } from '@/lib/nsw-planning-portal';
+import type { LocalProvision } from '@/lib/nsw-planning-portal';
 import { SemanticColors } from '@/lib/design-tokens';
 import { legislationAnchorUrl, storedLepTextEpi } from '@/lib/citation-instrument-urls';
 

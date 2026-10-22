@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
     const constraints: PropertyConstraints = {
       heritage: property.heritage,
       environmental: property.environmental,
+      notChecked: property.constraints?.notChecked,
       zone: property.constraints?.zone,
       lga: property.constraints?.lga,
       planningLayers: property.planningLayers,

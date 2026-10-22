@@ -62,7 +62,7 @@ export function HeritageProvisionsCard({
   const [provisionDetail, setProvisionDetail] = useState<ProvisionDetail | null>(null);
   const [loading, setLoading] = useState(false);
 
-  if (!heritage) return null;
+  if (!heritage) return null; // unknown-ok: unknown heritage is shown by HeritageDetails' not-checked card; this card lists heritage rules only for a Yes
 
   // Determine if this is a Heritage Conservation Area or specific heritage item
   const isHCA = heritageType?.toLowerCase().includes('conservation area');

@@ -8,12 +8,17 @@ import { getClauseNumbersForMapType } from './lep-local-provisions-mapping';
 import { getKeySitesProvision } from './key-sites-map-provisions';
 import { filterToAskedProperty } from './address-number-match';
 import { strataPlanFromLots } from './property/strata-plan';
-import { floodMapStatus } from './flood/flood-map';
-import { arcgisFeatures, fetchWithTimeout } from './fetch-timeout';
+import { floodMapStatus, type FloodMapStatus } from './flood/flood-map';
+import { arcgisFeatures, fetchWithTimeout, lookupSleep } from './fetch-timeout';
 import type { HazardKey } from './hazard-unchecked';
+import type { LookupCheck } from './lookup-not-checked';
 import { landFactsFromLayers, type LandFacts } from './lep-land-condition';
 
 export const ADDRESS_SEARCH_UNAVAILABLE = 'Address search unavailable';
+/** The valuation service did not answer: without it there is no location, so the lookup stops. */
+export const VALUATION_UNAVAILABLE = 'Property valuation unavailable';
+/** The property was found but no source gave its location. The maps are never checked at 0, 0. */
+export const LOCATION_NOT_FOUND = 'Location not found for this property';
 
 export interface NSWPropertyData {
  propId: number;
@@ -55,7 +60,8 @@ export interface PlanningConstraints {
  precinctId?: string | null;
  precinctName?: string | null;
  formerCouncil?: string | null;
- heritage: boolean;
+ /** On the LEP Heritage Map: true / false / null (the planning layers did not answer — not checked). */
+ heritage: boolean | null;
  heritageType?: string;
  heritageItemName?: string;
  heritageItemNumber?: string;
@@ -76,6 +82,8 @@ export interface PlanningConstraints {
  bushfireCategory?: string | null;
  /** Hazard maps that failed or timed out (lib/hazard-unchecked.ts). Absent from this list = answered. */
  uncheckedHazards?: HazardKey[];
+ /** Other checks that failed or timed out (lib/lookup-not-checked.ts). Their facts are null, never a default. */
+ notChecked?: LookupCheck[];
  acidSulfateSoils?: string;
  mineSubsidence?: {
    inDistrict: boolean;
@@ -370,7 +378,8 @@ function isSuburbNearby(userSuburb: string, clauseSuburb: string): boolean {
 }
 
 export interface StrataInfo {
-  isStrata: boolean;
+  /** null = no lot records answered and no other sign: unknown, not "No". */
+  isStrata: boolean | null;
   source: 'lot_plan' | 'valuation_fallback' | 'address_heuristic' | 'combined' | null;
   strataUnit: string | null;
   /** Strata plan named by the Portal lot records, e.g. "SP9807" (the strongest signal). */
@@ -467,22 +476,17 @@ export class NSWPlanningPortalService {
  */
  static async searchProperty(address: string): Promise<{ propId: number; address: string; GURASID: number } | null> {
  try {
- const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 15000);
-
  // Fetch multiple results to find best match (fixes "Ashfield St" returning "Ashfield Place Glen Alpine" bug)
- const response = await fetch(
+ const response = await fetchWithTimeout(
  `${this.BASE_URL}/address?a=${encodeURIComponent(address)}&noOfRecords=10`,
  {
- signal: controller.signal,
  headers: {
  'Accept': 'application/json',
  'User-Agent': 'ComplianceEngine/1.0'
  }
- }
+ },
+ 15000,
  );
-
- clearTimeout(timeoutId);
 
  if (!response.ok) {
  throw new Error(`Address search failed: ${response.status}`);
@@ -559,26 +563,27 @@ export class NSWPlanningPortalService {
 
  /**
  * Get planning layers (zoning, height, FSR, heritage, etc.)
- * Now includes 10s timeout to prevent indefinite hangs
+ * THROWS when the layers did not answer (failed, timed out, still 429 after the retries): an empty
+ * list would read as "no heritage, no zone". The retries wait inside the lookup's time limit.
  */
  static async getPlanningLayers(propId: number, retryCount: number = 0): Promise<PlanningLayer[]> {
- const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 10000);
-
+ let response: Response;
  try {
- const response = await fetch(
- `${this.BASE_URL}/layerintersect?type=property&id=${propId}&layers=epi`,
- { signal: controller.signal }
- );
-
- clearTimeout(timeoutId);
+ response = await fetchWithTimeout(`${this.BASE_URL}/layerintersect?type=property&id=${propId}&layers=epi`, {}, 10000);
+ } catch (error) {
+ if (/timed out after/.test(String(error)) && retryCount < 1) {
+ await lookupSleep(2000);
+ return this.getPlanningLayers(propId, retryCount + 1);
+ }
+ throw error;
+ }
 
  if (response.status === 429) {
  if (retryCount < 2) {
- await new Promise(resolve => setTimeout(resolve, 2000));
+ await lookupSleep(2000);
  return this.getPlanningLayers(propId, retryCount + 1);
  }
- return [];
+ throw new Error('Planning layers rate-limited (429)');
  }
 
  if (!response.ok) {
@@ -586,57 +591,47 @@ export class NSWPlanningPortalService {
  }
 
  const data = await response.json();
- return data || [];
-
- } catch (error) {
- clearTimeout(timeoutId);
-
- if (error instanceof Error && error.name === 'AbortError') {
- if (retryCount < 1) {
- await new Promise(resolve => setTimeout(resolve, 2000));
- return this.getPlanningLayers(propId, retryCount + 1);
- }
- return [];
- }
-
- console.error('Planning layers error:', error);
- return [];
- }
+ if (!Array.isArray(data)) throw new Error('Planning layers returned no layer list');
+ return data;
  }
 
 
  /**
  * Get property valuation and physical data
  */
+ /**
+ * Returns null only when the service answered with no record for this propId. THROWS when the
+ * service did not answer (VALUATION_UNAVAILABLE) or the record has no location (LOCATION_NOT_FOUND).
+ */
  static async getPropertyValuation(propId: number): Promise<NSWPropertyData | null> {
+ let data: any;
  try {
- const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 15000);
-
- const response = await fetch(
+ const response = await fetchWithTimeout(
  `${this.VALUATION_URL}?where=propid=${propId}&outFields=propid,address,val1_bd,val1_lv,prop_area,zone_desc,urbanity&f=json`,
  {
- signal: controller.signal,
  headers: {
  'Accept': 'application/json',
  'User-Agent': 'ComplianceEngine/1.0'
  }
- }
+ },
+ 15000,
  );
- 
- clearTimeout(timeoutId);
- 
- if (!response.ok) {
- throw new Error(`Property valuation failed: ${response.status}`);
+ if (!response.ok) throw new Error(`HTTP ${response.status}`);
+ data = await response.json();
+ if (!data || data.error || !Array.isArray(data.features)) throw new Error('no feature list');
+ } catch (error) {
+ throw new Error(`${VALUATION_UNAVAILABLE}: ${error instanceof Error ? error.message : String(error)}`);
  }
- 
- const data = await response.json() as any;
- 
- if (data.features && data.features.length > 0) {
+
+ if (data.features.length > 0) {
  const feature = data.features[0];
  const attrs = feature.attributes;
  const geom = feature.geometry;
- 
+ // A missing location used to become 0, 0 — a point in the ocean, where every map answers "nothing".
+ if (!Number.isFinite(geom?.x) || !Number.isFinite(geom?.y)) {
+ throw new Error(`${LOCATION_NOT_FOUND}: the valuation record for propId ${propId} has no geometry`);
+ }
+
  return {
  propId: attrs.propid,
  address: attrs.address?.trim() || '',
@@ -646,51 +641,41 @@ export class NSWPlanningPortalService {
  zoneDescription: attrs.zone_desc || 'Unknown',
  urbanity: attrs.urbanity || 'U',
  geometry: {
- x: geom?.x || 0,
- y: geom?.y || 0
+ x: geom.x,
+ y: geom.y
  }
  };
  }
- 
- return null;
 
- } catch (error) {
- console.error('Property valuation error:', error);
  return null;
- }
  }
 
  /**
  * Get lot geometry (polygon boundary) for a property
  * Returns detailed boundary coordinates for dimension calculations
  */
+ /** Returns null only when the Portal answered with no lot. THROWS when it did not answer. */
  static async getLotGeometry(propId: number): Promise<LotGeometryData | null> {
- try {
- const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 15000);
-
- const response = await fetch(
+ const response = await fetchWithTimeout(
  `${this.BASE_URL}/lot?propId=${propId}`,
  {
- signal: controller.signal,
  headers: {
  'Accept': 'application/json',
  'Origin': 'https://www.planningportal.nsw.gov.au',
  'Referer': 'https://www.planningportal.nsw.gov.au/'
  }
- }
+ },
+ 15000,
  );
 
- clearTimeout(timeoutId);
-
  if (!response.ok) {
- console.warn(`Lot geometry fetch failed: ${response.status}`);
- return null;
+ throw new Error(`Lot geometry fetch failed: ${response.status}`);
  }
 
  const data = await response.json();
+ if (!Array.isArray(data)) throw new Error('Lot geometry returned no lot list');
 
- if (data && data.length > 0) {
+ if (data.length > 0) {
  const lot = data[0];
  return {
  geometry: lot.geometry,
@@ -701,10 +686,6 @@ export class NSWPlanningPortalService {
  }
 
  return null;
- } catch (error) {
- console.warn('Lot geometry fetch failed:', error);
- return null;
- }
  }
 
  /**
@@ -713,12 +694,7 @@ export class NSWPlanningPortalService {
  * Phase 3: Separate API call for TOD/HIA detection
  */
  static async getTODLayers(geometry: { x: number; y: number }): Promise<PlanningLayer[]> {
- const todController = new AbortController();
- const accController = new AbortController();
- const todTimeout = setTimeout(() => todController.abort(), 8000);
- const accTimeout = setTimeout(() => accController.abort(), 8000);
-
- try {
+ // THROWS when either TOD map did not answer: no answer is not "outside every TOD area".
  const todUrl = `https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/SEPP_Housing_2021/MapServer/3/query?` +
  `geometry=${geometry.x},${geometry.y}&geometryType=esriGeometryPoint&` +
  `spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json`;
@@ -727,44 +703,22 @@ export class NSWPlanningPortalService {
  `geometry=${geometry.x},${geometry.y}&geometryType=esriGeometryPoint&` +
  `spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json`;
 
- const [todResponse, acceleratedResponse] = await Promise.all([
- fetch(todUrl, { signal: todController.signal }).catch(() => null),
- fetch(acceleratedUrl, { signal: accController.signal }).catch(() => null)
- ]);
-
- clearTimeout(todTimeout);
- clearTimeout(accTimeout);
+ const [todFeatures, acceleratedFeatures] = await Promise.all([arcgisFeatures(todUrl), arcgisFeatures(acceleratedUrl)]);
 
  const todLayers: PlanningLayer[] = [];
-
- if (todResponse?.ok) {
- const todData = await todResponse.json();
- if (todData.features?.length > 0) {
+ if (todFeatures.length > 0) {
  todLayers.push({
  layerName: 'Transport Oriented Development Sites Map',
- results: todData.features.map((f: any) => f.attributes)
+ results: todFeatures.map((f: any) => f.attributes)
  });
  }
- }
-
- if (acceleratedResponse?.ok) {
- const acceleratedData = await acceleratedResponse.json();
- if (acceleratedData.features?.length > 0) {
+ if (acceleratedFeatures.length > 0) {
  todLayers.push({
  layerName: 'Accelerated TOD Precincts Rezoning Areas Map',
- results: acceleratedData.features.map((f: any) => f.attributes)
+ results: acceleratedFeatures.map((f: any) => f.attributes)
  });
  }
- }
-
  return todLayers;
-
- } catch (error) {
- clearTimeout(todTimeout);
- clearTimeout(accTimeout);
- // Graceful degradation — TOD layers are non-critical
- return [];
- }
  }
 
  /**
@@ -1194,54 +1148,73 @@ export class NSWPlanningPortalService {
  const searchResult = await this.searchProperty(address);
 
  if (!searchResult) {
- throw new Error('Property not found');
+ return null; // searched, and nothing matched (DQ-122)
  }
 
- // Stage 1: independent fetches in parallel (valuation called once only)
- const [layers, initialPropertyData, initialLotGeometry] = await Promise.all([
-   this.getPlanningLayers(searchResult.propId),
+ // Checks that did not answer. Their facts stay null and the page says "Not checked".
+ const notChecked: LookupCheck[] = [];
+ const settle = <T,>(p: Promise<T>, check: LookupCheck): Promise<T | undefined> =>
+   p.catch((error) => {
+     console.warn(`[NSW Planning Portal] ${check} not checked:`, error instanceof Error ? error.message : error);
+     notChecked.push(check);
+     return undefined;
+   });
+
+ // Stage 1: independent fetches in parallel (valuation called once only). A valuation failure
+ // stops the lookup (no location); planning layers or the lot failing leaves those facts unknown.
+ const [layersAnswer, initialPropertyData, initialLotGeometry] = await Promise.all([
+   settle(this.getPlanningLayers(searchResult.propId), 'planning_layers'),
    this.getPropertyValuation(searchResult.propId),
-   this.getLotGeometry(searchResult.propId).catch(() => null)
+   settle(this.getLotGeometry(searchResult.propId), 'lot_shape'),
  ]);
+ const layers: PlanningLayer[] = layersAnswer ?? [];
+ // Only a real lot record can show "not strata"; no record (or no answer) leaves it unknown.
+ let lotRecord = initialLotGeometry != null;
 
  // Fallback: when the top-scored propId has no valuation (strata unit propIds),
  // try other candidates from a broader search until one has valuation data.
+ // A failed fallback is an outage (thrown), never "this property has no valuation".
  let propertyData = initialPropertyData;
- let lotGeometry = initialLotGeometry;
+ let lotGeometry = initialLotGeometry ?? null;
  if (!propertyData) {
-   try {
-     const fbRes = await fetchWithTimeout(
-       `${this.BASE_URL}/address?a=${encodeURIComponent(address)}&noOfRecords=10`,
-       { headers: { 'Accept': 'application/json', 'User-Agent': 'ComplianceEngine/1.0' } },
-       10000,
-     );
-     if (fbRes.ok) {
-       const fbRaw = await fbRes.json();
-       // Same rule as searchProperty: a neighbour with valuation data is still a neighbour (DQ-122).
-       const fbResults = Array.isArray(fbRaw) ? filterToAskedProperty(address, fbRaw) : [];
-       for (const candidate of fbResults) {
-         if (candidate.propId === searchResult.propId) continue;
-         const candidateData = await this.getPropertyValuation(candidate.propId);
-         if (candidateData) {
-           propertyData = candidateData;
-           lotGeometry = await this.getLotGeometry(candidate.propId).catch(() => null);
-           break;
-         }
-       }
+   const fbRes = await fetchWithTimeout(
+     `${this.BASE_URL}/address?a=${encodeURIComponent(address)}&noOfRecords=10`,
+     { headers: { 'Accept': 'application/json', 'User-Agent': 'ComplianceEngine/1.0' } },
+     10000,
+   ).catch((error) => { throw new Error(`${VALUATION_UNAVAILABLE}: candidate search failed (${error})`); });
+   if (!fbRes.ok) throw new Error(`${VALUATION_UNAVAILABLE}: candidate search returned ${fbRes.status}`);
+   const fbRaw = await fbRes.json();
+   // Same rule as searchProperty: a neighbour with valuation data is still a neighbour (DQ-122).
+   const fbResults = Array.isArray(fbRaw) ? filterToAskedProperty(address, fbRaw) : [];
+   for (const candidate of fbResults) {
+     if (candidate.propId === searchResult.propId) continue;
+     const candidateData = await this.getPropertyValuation(candidate.propId);
+     if (candidateData) {
+       propertyData = candidateData;
+       const candidateLot = await settle(this.getLotGeometry(candidate.propId), 'lot_shape');
+       lotGeometry = candidateLot ?? null;
+       lotRecord = candidateLot != null;
+       break;
      }
-   } catch {
-     // fallback failed — propertyData stays null, will throw below
    }
  }
+
+ if (!propertyData) {
+   throw new Error(`${LOCATION_NOT_FOUND}: no valuation record for propId ${searchResult.propId}`);
+ }
+ // No lot shape (no record, or a record without one): size and frontage are unknown.
+ if (!lotGeometry?.geometry && !notChecked.includes('lot_shape')) notChecked.push('lot_shape');
 
  // Detect strata: valuation-null fallback (strata unit propIds return no valuation) combined
  // with address heuristic ("5/12 Smith St", "Unit 3/12 Smith St").
  // The lot records name the strata plan outright (CP + one lot per unit); use them first.
+ // With no lot records and no other sign, strata is unknown (null), not "No".
  const lotPlan = strataPlanFromLots(lotGeometry?.lotDescriptions ?? []);
  const valuationFallback = !initialPropertyData;
  const unitMatch = address.match(/^(\d+)\//i) ?? address.match(/^(?:unit|apt|apartment|flat)\s+(\d+)/i);
+ const strataSign = !!lotPlan || valuationFallback || !!unitMatch;
  const strataInfo: StrataInfo = {
-   isStrata: !!lotPlan || valuationFallback || !!unitMatch,
+   isStrata: strataSign ? true : lotRecord ? false : null,
    source: lotPlan ? 'lot_plan'
          : (valuationFallback && unitMatch) ? 'combined'
          : valuationFallback               ? 'valuation_fallback'
@@ -1272,7 +1245,7 @@ export class NSWPlanningPortalService {
  let coastalLookups: Lookup<string | null>[] = [];
  let seppExclusionData: { lowMidRise: boolean | null; complying: boolean | null; exempt: boolean | null } | null = null;
  let dualOccData: { prohibited: boolean; epiName?: string; lgaName?: string } | null = null;
- let flood: { floodProne: boolean | null; note: string } | null = null;
+ let flood: FloodMapStatus | null = null;
 
  if (propertyData) {
    const lon = (propertyData.geometry.x / 20037508.34) * 180;
@@ -1285,8 +1258,8 @@ export class NSWPlanningPortalService {
    const floodInstruments = (this.extractPlanningConstraints(layers, address).landApplicationInstruments ?? []).map((i) => i.name);
 
    [todLayers, roadClassifications, anefLookup, bushfireLookup, mineSubsidenceLookup, contaminatedLandLookup, drinkingWaterLookup, coastalLookups, seppExclusionData, dualOccData, flood] = await Promise.all([
-     this.getTODLayers(propertyData.geometry).catch(() => []),
-     getRoadClassifications(lat, lon).catch(() => []),
+     settle(this.getTODLayers(propertyData.geometry), 'tod').then((v) => v ?? []),
+     settle(getRoadClassifications(lat, lon), 'roads').then((v) => v ?? []),
      // ANEF (Aircraft Noise) - Using NSW Planning Portal Protection Layer 2
      look<AnefInfo | null>(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/2/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=ANEF_CODE,EPI_NAME,LGA_NAME&returnGeometry=false&f=json&inSR=4283`, (features) => {
          if (features.length === 0) return null;
@@ -1353,12 +1326,10 @@ export class NSWPlanningPortalService {
    ]);
  }
 
- if (!propertyData) {
- throw new Error('Property valuation data not found');
- }
-
  const allLayers = [...layers, ...todLayers];
  const constraints = this.extractPlanningConstraints(allLayers, address);
+ // No layers = no Heritage Map answer: unknown, not "not heritage".
+ if (layersAnswer === undefined) constraints.heritage = null;
  const unchecked: HazardKey[] = [];
 
  // Add environmental constraint data. A map that did not answer -> unknown, never "No".
@@ -1423,14 +1394,19 @@ export class NSWPlanningPortalService {
    constraints.complyingExcluded = seppExclusionData.complying;
    constraints.exemptExcluded = seppExclusionData.exempt;
  }
+ if (!seppExclusionData || Object.values(seppExclusionData).some((v) => v == null)) notChecked.push('sepp_exclusions');
  if (dualOccData) {
    constraints.dualOccProhibited = dualOccData;
+ } else {
+   notChecked.push('dual_occupancy');
  }
 
  if (flood) {
    constraints.floodProne = flood.floodProne;
    constraints.floodMapNote = flood.note;
  }
+ if (!flood || flood.mapDidNotAnswer) notChecked.push('flood');
+ constraints.notChecked = notChecked;
 
  // Step 4: Clean up the address from search result
  // Hunter Street Lewisham has incorrect "8-12" in addresses - remove it
@@ -1460,11 +1436,9 @@ export class NSWPlanningPortalService {
  };
 
  } catch (error) {
+ // Every failure propagates: only "searched, and nothing matched" (null above) is "not found".
  console.error('Property compliance data error:', error);
- if (error instanceof Error && error.message.startsWith(ADDRESS_SEARCH_UNAVAILABLE)) {
-   throw error; // an outage must not read as "property not found"
- }
- return null;
+ throw error;
  }
  }
 }

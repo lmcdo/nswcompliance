@@ -4,6 +4,8 @@
  * Used for setback calculations (primary roads require different setbacks than local roads)
  */
 
+import { fetchWithTimeout } from './fetch-timeout';
+
 export interface RoadClassification {
   road_name: string;
   functional_hierarchy: 'Motorway' | 'Primary Road' | 'Arterial Road' | 'Sub-Arterial Road' | 'Distributor Road' | 'Local Road' | 'Urban Service Road' | 'Track-Vehicular' | 'Path' | 'Dedicated Busway' | 'Access Way';
@@ -69,27 +71,23 @@ export async function getRoadClassifications(
   url.searchParams.set('f', 'json');
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-
-    const response = await fetch(url.toString(), {
-      signal: controller.signal,
+    // The timer covers the whole reply (lib/fetch-timeout.ts). A failure THROWS: [] means "no roads
+    // found", so it must never stand for "the road map did not answer".
+    const response = await fetchWithTimeout(url.toString(), {
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'ComplianceEngine/1.0'
       }
-    });
-
-    clearTimeout(timeoutId);
+    }, 5000);
 
     if (!response.ok) {
-      console.warn('[Road Classification] API error:', response.status);
-      return []; // Graceful degradation
+      throw new Error(`road map returned ${response.status}`);
     }
 
     const data = await response.json();
+    if (!data || data.error || !Array.isArray(data.features)) throw new Error('road map returned no feature list');
 
-    if (!data.features || data.features.length === 0) {
+    if (data.features.length === 0) {
       console.warn('[Road Classification] No roads found within', bufferMeters, 'm');
       return [];
     }
@@ -121,15 +119,8 @@ export async function getRoadClassifications(
     return roads;
 
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.error('[Road Classification] Request timed out after 5 seconds');
-    } else {
-      console.error('[Road Classification] Error:', error);
-      if (error instanceof Error) {
-        console.error('[Road Classification] Stack:', error.stack);
-      }
-    }
-    return []; // Graceful degradation - don't break property lookup
+    console.error('[Road Classification] Error:', error);
+    throw error;
   }
 }
 

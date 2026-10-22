@@ -77,14 +77,14 @@ export interface BoundarySegment {
 }
 
 export interface CornerLotInfo {
-  /** Whether lot is a corner lot (2+ adjacent roads) */
-  isCornerLot: boolean;
+  /** Whether lot is a corner lot (2+ adjacent roads); null when the road map did not answer (not checked). */
+  isCornerLot: boolean | null;
   /** Names of adjacent roads */
   adjacentRoads: string[];
-  /** Number of distinct road boundaries */
-  roadCount: number;
-  /** Confidence in detection (1.0 if API returned data, 0 if failed) */
-  confidence: number;
+  /** Number of distinct road boundaries; null when not checked. */
+  roadCount: number | null;
+  /** Confidence in detection (1.0 if API returned data, null if not checked) */
+  confidence: number | null;
   /** Error message if detection failed */
   error?: string;
   /** Street edges per named road and the lot's width range back from each (lib/geometry/street-frontage.ts). */

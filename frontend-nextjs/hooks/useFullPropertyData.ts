@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { detectDevTypeFromZone } from '@/lib/requirement-prioritization';
 import { encodeLandFacts, type LandFacts } from '@/lib/lep-land-condition';
+import { heritageAnswer } from '@/lib/fact-answer';
 import type {
   PropertyContext,
   LepCapacityData,
@@ -38,7 +39,7 @@ interface PropertyApiResponse {
       landFacts?: LandFacts | null;
     };
     heritage?: {
-      isHeritage?: boolean;
+      isHeritage?: boolean | null;
       heritageType?: string;
       hcaCode?: string;
     };
@@ -219,7 +220,7 @@ export function useFullPropertyData(): UseFullPropertyDataReturn {
       const params = new URLSearchParams({
         lga: propertyContext.lga,
         zone: propertyContext.zone,
-        heritage: String(propertyContext.heritage?.isHeritage || false),
+        heritage: String(heritageAnswer(propertyContext.heritage) !== false), // unknown includes heritage rules
         groupBy: 'toc',
       });
 
@@ -312,7 +313,7 @@ export function useFullPropertyData(): UseFullPropertyDataReturn {
         precinctId: propertyResult.data.constraints?.precinctId,
         landFacts: propertyResult.data.constraints?.landFacts ?? null,
         heritage: propertyResult.data.heritage ? {
-          isHeritage: propertyResult.data.heritage.isHeritage || false,
+          isHeritage: heritageAnswer(propertyResult.data.heritage),
           heritageType: propertyResult.data.heritage.heritageType,
           hcaCode: propertyResult.data.heritage.hcaCode,
         } : undefined,

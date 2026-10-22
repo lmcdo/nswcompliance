@@ -7,6 +7,7 @@
 import { hazardUnchecked, type HazardKey } from '../hazard-unchecked';
 
 
+import { acidSulfateAnswer } from '../fact-answer';
 export interface IntakeAnswers {
   /** Does the proposal create new impervious surfaces (deck, paving, slab, extension footprint)? */
   new_impervious_surfaces: 'yes' | 'no' | 'unknown';
@@ -438,9 +439,10 @@ export function autoPopulateFromConstraints(constraints: Record<string, any>): P
   if (constraints.bushfireProne === false) result.bushfire_prone = 'no';
   else if (constraints.bushfireProne === true) result.bushfire_prone = 'yes';
 
-  // acidSulfateSoils is a string class or undefined/null — falsy means absent, truthy means present.
-  if (!constraints.acidSulfateSoils) result.acid_sulfate_soils = 'no';
-  else result.acid_sulfate_soils = 'yes';
+  // Mapped class = yes; the map answered and the lot is not on it = no; not checked = left unanswered.
+  const acid = acidSulfateAnswer(constraints);
+  if (acid === false) result.acid_sulfate_soils = 'no';
+  else if (acid) result.acid_sulfate_soils = 'yes';
 
   // coastal/biodiversity: portal only sets inCoastalArea/inBiodiversityArea when the overlay IS found.
   // Absent (undefined/null) = layer not detected = site confirmed NOT in that area.

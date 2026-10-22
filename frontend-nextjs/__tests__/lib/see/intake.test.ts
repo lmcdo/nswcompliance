@@ -94,11 +94,12 @@ describe('autoPopulateFromConstraints', () => {
   test('bushfire_prone=yes when bushfireProne true', () => {
     expect(autoPopulateFromConstraints({ bushfireProne: true }).bushfire_prone).toBe('yes');
   });
-  test('acid_sulfate_soils=no when acidSulfateSoils null', () => {
-    expect(autoPopulateFromConstraints({ acidSulfateSoils: null }).acid_sulfate_soils).toBe('no');
+  test('acid_sulfate_soils=no when the layers answered and gave no class', () => {
+    expect(autoPopulateFromConstraints({ acidSulfateSoils: null, notChecked: [] }).acid_sulfate_soils).toBe('no');
   });
-  test('acid_sulfate_soils=no when acidSulfateSoils absent', () => {
-    expect(autoPopulateFromConstraints({}).acid_sulfate_soils).toBe('no');
+  test('acid_sulfate_soils unset when nothing says the map answered (not checked, never "no")', () => {
+    expect(autoPopulateFromConstraints({}).acid_sulfate_soils).toBeUndefined();
+    expect(autoPopulateFromConstraints({ notChecked: ['planning_layers'] }).acid_sulfate_soils).toBeUndefined();
   });
   test('acid_sulfate_soils=yes when acidSulfateSoils has value', () => {
     expect(autoPopulateFromConstraints({ acidSulfateSoils: 'Class 2' }).acid_sulfate_soils).toBe('yes');
@@ -136,6 +137,7 @@ describe('autoPopulateFromConstraints', () => {
       coastalEnvironment: { inCoastalArea: false },
       terrestrialBiodiversity: { inBiodiversityArea: false },
       anefData: { inAnefZone: false },
+      notChecked: [],
     });
     expect(r.flood_prone).toBe('no');
     expect(r.bushfire_prone).toBe('no');

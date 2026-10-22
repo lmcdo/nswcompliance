@@ -10,6 +10,7 @@ import { ComplianceCheckSchema, validateRequest, formatValidationErrors } from '
 import { hazardsNotQueried } from '@/lib/hazard-unchecked';
 
 
+import { heritageAnswer } from '@/lib/fact-answer';
 export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
       maxFsr: body.maxFsr,
       basixWater: body.basixWater,
       lga: body.lga,
-      heritage: body.heritage || false,
+      heritage: heritageAnswer(body.heritage), // the fact: true / false / null (not checked)
       floodProne: body.floodProne ?? null,
       bushfireProne: typeof body.bushfireProne === 'boolean' ? body.bushfireProne : null,
       // Only a caller-supplied bush fire answer counts; every other hazard map is unqueried here.
@@ -138,7 +139,7 @@ export async function POST(request: NextRequest) {
     const complianceClient = new ComplianceDataClient();
     const complianceData: ComplianceData = await complianceClient.getComplianceData(
       zone,
-      body.heritage || false,
+      heritageAnswer(body.heritage) !== false,
       constraints
     );
 
