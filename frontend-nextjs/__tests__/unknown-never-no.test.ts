@@ -73,6 +73,17 @@ describe('unknown facts are never shown or used as "No"', () => {
     expect(scan(fixture).map((f) => f.line)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 
+  it('the not-checked list is read only through wasNotChecked (lib/fact-answer.ts)', () => {
+    // A direct read forgets that a payload with NO list cannot show anything was checked.
+    const direct = /constraints\??\.notChecked\??\.(?:includes|some|indexOf)|Array\.isArray\([\w.?]*constraints\??\.notChecked\)/;
+    const found = DIRS.flatMap((d) => files(join(ROOT, d)))
+      .filter((f) => !/lib[\\/]fact-answer\.ts$/.test(f))
+      .flatMap((f) => readFileSync(f, 'utf-8').split('\n').map((code, i) => ({ f, i, code }))
+        .filter(({ code }) => direct.test(code))
+        .map(({ f, i, code }) => `${relative(ROOT, f).replace(/\\/g, '/')}:${i + 1}  ${code.trim().slice(0, 140)}`));
+    expect(found).toEqual([]);
+  });
+
   it('no source file turns an unknown fact into "No", false or a pass', () => {
     const found = DIRS.flatMap((d) => files(join(ROOT, d))).flatMap((f) =>
       scan(readFileSync(f, 'utf-8')).map((h) => `${relative(ROOT, f).replace(/\\/g, '/')}:${h.line}  [${h.kind}]  ${h.code}`));

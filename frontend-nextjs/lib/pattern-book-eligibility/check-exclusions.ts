@@ -8,6 +8,7 @@
 import { Pool } from 'pg';
 import { PATTERN_BOOK_CDC } from '../regulatory-constants';
 
+import { acidSulfateAnswer } from '../fact-answer';
 export interface PropertyConstraints {
   // From PropertyData.heritage
   heritage?: {
@@ -73,7 +74,7 @@ export function uncheckedExclusions(constraints: PropertyConstraints): string[] 
   if (constraints.environmental?.bushfireProne == null) out.push('bushfire_prone');
   if (constraints.heritage?.isHeritage == null) out.push('heritage');
   // Acid sulfate class comes from the planning layers: no layers, no answer.
-  if (constraints.notChecked?.some((c) => c === 'planning_layers' || c === 'acid_sulfate')) out.push('acid_sulfate_soils');
+  if (acidSulfateAnswer({ acidSulfateSoils: constraints.environmental?.acidSulfateSoils, notChecked: constraints.notChecked }) == null) out.push('acid_sulfate_soils');
   // Every other map-backed exclusion whose map did not answer (an ANEF timeout must not read as clear).
   const unanswered = constraints.environmental?.uncheckedHazards ?? [];
   for (const [hazard, exclusion] of EXCLUSION_FOR_HAZARD) {

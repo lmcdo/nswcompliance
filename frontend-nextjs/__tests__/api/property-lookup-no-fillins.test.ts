@@ -282,7 +282,7 @@ describe('site-specific LEP clauses', () => {
 describe('pattern-book exclusions (lib/pattern-book-eligibility/check-exclusions.ts)', () => {
   it('no environmental answers, unknown heritage, or no planning layers: those exclusions are not checked, not clear', async () => {
     const { uncheckedExclusions } = await import('@/lib/pattern-book-eligibility/check-exclusions');
-    expect(uncheckedExclusions({}).sort()).toEqual(['bushfire_prone', 'flood_planning_area', 'heritage']);
+    expect(uncheckedExclusions({}).sort()).toEqual(['acid_sulfate_soils', 'bushfire_prone', 'flood_planning_area', 'heritage']);
     expect(uncheckedExclusions({
       heritage: { isHeritage: null },
       environmental: { floodProne: false, bushfireProne: false, uncheckedHazards: [] },

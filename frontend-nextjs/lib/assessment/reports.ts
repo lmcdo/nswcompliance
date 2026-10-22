@@ -4,6 +4,7 @@
  */
 import { HAZARD_NOT_CHECKED, hazardUnchecked, type HazardKey } from '../hazard-unchecked';
 
+import { wasNotChecked } from '../fact-answer';
 export interface ReportTemplate {
  id: string;
  name: string;
@@ -421,8 +422,7 @@ export class ReportGenerator {
  // A hazard map that did not answer is "Not checked", never "No" (lib/hazard-unchecked.ts).
  const unchecked = (key: HazardKey) => hazardUnchecked(constraints, key);
  // Other lookup checks that did not answer (lib/lookup-not-checked.ts).
- // No not-checked list (an older saved payload) cannot show any source answered: treat every check as not checked.
- const notChecked = (...keys: string[]) => !Array.isArray(constraints.notChecked) || keys.some((k) => constraints.notChecked.includes(k));
+ const notChecked = (...keys: string[]) => wasNotChecked(constraints, ...keys);
  // Read once from the shared flood producer (lib/flood/flood-map.ts via nsw-planning-portal.ts).
  const floodAnswer: boolean | null | undefined = constraints.floodProne;
  const environmentalConstraints = {

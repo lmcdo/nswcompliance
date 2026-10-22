@@ -30,8 +30,14 @@ export function heritageAnswer(heritage: unknown): boolean | null {
   return answer(heritage);
 }
 
-function notChecked(constraints: { notChecked?: readonly string[] | null } | null | undefined, ...keys: string[]): boolean {
-  return Array.isArray(constraints?.notChecked) && keys.some((k) => constraints!.notChecked!.includes(k));
+/**
+ * Did any of these lookup checks (lib/lookup-not-checked.ts) fail to answer? A payload with NO list
+ * (an older saved report, or a caller that never ran the lookup) cannot show any check answered, so it
+ * counts as not checked. The ONLY reader of `notChecked` (__tests__/unknown-never-no.test.ts enforces it).
+ */
+export function wasNotChecked(constraints: { notChecked?: readonly string[] | null } | null | undefined, ...keys: string[]): boolean {
+  const list = constraints?.notChecked;
+  return !Array.isArray(list) || keys.some((k) => list.includes(k));
 }
 
 /**
@@ -43,6 +49,6 @@ export function acidSulfateAnswer(
 ): string | false | null {
   if (constraints?.acidSulfateSoils) return constraints.acidSulfateSoils;
   // No not-checked list (an older saved payload) cannot show the map answered: unknown.
-  if (!constraints || !Array.isArray(constraints.notChecked) || notChecked(constraints, 'planning_layers', 'acid_sulfate')) return null;
+  if (!constraints || wasNotChecked(constraints, 'planning_layers', 'acid_sulfate')) return null;
   return false;
 }

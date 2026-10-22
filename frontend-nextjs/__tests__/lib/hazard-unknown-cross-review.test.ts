@@ -21,7 +21,9 @@ describe('(1) pattern-book exclusions: an ANEF map that did not answer is not cl
     expect(out).toContain('aircraft_noise');
   });
   it('lists nothing when every map answered', () => {
-    expect(uncheckedExclusions({ heritage: { isHeritage: false }, environmental: { floodProne: false, bushfireProne: false, uncheckedHazards: [] } })).toEqual([]);
+    expect(uncheckedExclusions({ heritage: { isHeritage: false }, notChecked: [], environmental: { floodProne: false, bushfireProne: false, uncheckedHazards: [] } })).toEqual([]);
+    // no not-checked list at all (an older payload): acid sulfate cannot be called clear
+    expect(uncheckedExclusions({ heritage: { isHeritage: false }, environmental: { floodProne: false, bushfireProne: false, uncheckedHazards: [] } })).toEqual(['acid_sulfate_soils']);
   });
 });
 
