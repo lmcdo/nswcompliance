@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes what a user is told about whether their work qualifies as Complying Development. Two defects, both an absence presented as a determination. An absent lot area rendered 'Lot size 0m2 - meets 200m2 minimum' with pass: true and skipped the minimum-lot-size blocker, so cdcBlockers.length === 0 routed the user to a qualification; and parseMinLotArea invented a 200m2 threshold with a clause reference for three work types the Housing Code imposes no lot area on. Not Critical: no write, no migration, and the quoted provision text is unchanged -- only the verdict derived from it. Not Minor: it alters a displayed regulatory conclusion on a LIVE surface (app/check/page.tsx), narrows two function signatures to nullable, and removes a control that was being applied to fences, carports and pools.",
-  "commit_hash": "b85c5a9e",
+  "commit_hash": "9d56b77b",
   "files": [
     "frontend-nextjs/components/compliance/CDCPathway.tsx",
     "frontend-nextjs/__tests__/components/compliance/cdc-unknown-lot-area.test.tsx"
