@@ -416,3 +416,12 @@ def test_coverage_counts_only_active_chapters_and_council_and_fleet_keys():
     assert cov.coverage(["a|1|no_url"], active) == "C = 3/4 active chapters with no red key"
     assert cov.coverage(["a|*|list_not_read_2d"], active) == "C = 2/4 active chapters with no red key"
     assert cov.coverage(["*|*|no_run_2d"], active) == "C = 0/4 active chapters with no red key"
+
+
+def test_a_link_with_no_address_is_not_a_document():
+    assert link_entries([{"url": None, "label": "DCP"}, {"url": "  ", "label": "x"}]) == []
+    conn = FakeConn()
+    rec = Recorder(conn, dry_run=True, mode="daily")
+    rec.council_list_checked("x", "https://x", [{"url": None, "label": "DCP"}], {}, probe=lambda u: None,
+                             send=lambda t: None, now=NOW)
+    assert rec._councils[0][2] == "empty"

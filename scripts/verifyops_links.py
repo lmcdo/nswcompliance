@@ -67,6 +67,8 @@ def link_entries(discovered: list[dict]) -> list[dict]:
     """Scraper output -> stored list entries, one per normalised link, sorted, de-duplicated."""
     seen: dict[str, dict] = {}
     for d in discovered:
+        if not (d.get("url") or "").strip():
+            continue  # a link with no address is not a document; all-empty reads as 'empty'
         norm, base = normalise_href(d.get("url") or "")
         if norm in seen:
             continue

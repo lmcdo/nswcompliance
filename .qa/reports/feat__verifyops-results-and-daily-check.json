@@ -56,7 +56,7 @@
   },
   {
    "name": "diff_lists",
-   "file_line": "scripts/verifyops_links.py:141",
+   "file_line": "scripts/verifyops_links.py:143",
    "input": "the last list stored with outcome 'ok' for this council (or None) and today's normalised link entries",
    "output": "new / gone / re-upload / redesign lines",
    "if_none": "no previous list means a first scan: today's list is saved and no alert is raised, the setup run never alerts"
