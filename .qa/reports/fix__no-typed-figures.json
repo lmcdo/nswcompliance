@@ -1,0 +1,76 @@
+{
+  "tier": "standard",
+  "justification": "Standard: replaces a CI gate (typed planning figures) from a per-file count to a named ledger; no production code or data change.",
+  "commit_hash": "70742ba1",
+  "files": [
+    ".claude/regulatory_figure_ledger.json",
+    ".claude/regulatory_number_baseline.json",
+    ".github/workflows/gates.yml",
+    "scripts/lint_hardcoded_regulatory_numbers.py",
+    "tests/test_lint_hardcoded_regulatory_numbers.py"
+  ],
+  "pre_impl": {
+    "existing_data": "No database access. Reads shipped source files under frontend-nextjs and services.",
+    "assumption_mismatch": "The old gate counted figures per file and named none, so the allowed set grew from 245 to 261 and nothing was removed.",
+    "new_vs_existing": "Extends the existing lint script and its test file; the old count file is replaced by .claude/regulatory_figure_ledger.json."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lint_hardcoded_regulatory_numbers.py -q -o addopts= && python scripts/lint_hardcoded_regulatory_numbers.py --check",
+    "fails_when": "A new typed figure is added anywhere scanned, a widened shape is dropped from the patterns, the unlisted/gone/open-rise checks are removed, or Markdown scanning is turned off.",
+    "observed_red": "Six break-checks each turned the tests red (ratio shape, constant shape, unlisted check, gone check, open-rise check, Markdown scan) and green when restored. The real tree reads 0 unlisted with 346 open."
+  },
+  "functions": [
+    {
+      "name": "hits_in_text",
+      "file_line": "scripts/lint_hardcoded_regulatory_numbers.py",
+      "input": "one file's text and its suffix",
+      "output": "every typed planning figure on lines with a planning word",
+      "if_none": "empty text gives no hits"
+    },
+    {
+      "name": "judge",
+      "file_line": "scripts/lint_hardcoded_regulatory_numbers.py",
+      "input": "the scan result and the ledger document",
+      "output": "every reason the check fails",
+      "if_none": "an empty scan with an empty ledger passes"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A developer types 'minimum 450 m2' in a new page.",
+      "what_happens": "Before: allowed if the file count did not rise elsewhere.",
+      "mitigated": true,
+      "how": "unlisted hit fails CI",
+      "repro": "tests: test_planted_figure_in_real_tree_fails_as_unlisted"
+    },
+    {
+      "scenario": "A figure is fixed but left in the ledger.",
+      "what_happens": "The list would drift from the code.",
+      "mitigated": true,
+      "how": "GONE fails CI until --prune",
+      "repro": "test_a_listed_figure_passes_and_a_fixed_one_must_be_pruned"
+    },
+    {
+      "scenario": "Someone marks a figure as a quote to hide it.",
+      "what_happens": "A typed rule passes as cited.",
+      "mitigated": true,
+      "how": "cited needs an instrument and a clause number in the reason",
+      "repro": "test_cited_needs_instrument_and_clause"
+    },
+    {
+      "scenario": "A rule is written as prose with no number.",
+      "what_happens": "No pattern can catch it.",
+      "mitigated": false,
+      "how": "Output-side provenance check is the next PR",
+      "repro": "verify-lgas.ts FAQ answers"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
