@@ -135,15 +135,23 @@ def compare(baseline: list[str], now: list[str]) -> tuple[list[str], list[str]]:
     return sorted(n - b), sorted(b - n)
 
 
-def coverage(now: list[str], served: int) -> str:
-    """Metric C as a line: chapters with no red key / active chapters."""
-    red_chapters = set()
+def coverage(now: list[str], active: list[tuple[str, str]]) -> str:
+    """Metric C as a line: active chapters with no red key of their own, of their council
+    ('council|*') or of the fleet ('*|*'), out of all active chapters. Keys for rows that are not
+    active chapters (new documents awaiting a decision) are red but never counted here, so C can
+    neither go negative nor be lowered by them (first live run 2026-10-22 printed -24/547)."""
+    chapters, councils, fleet = set(), set(), False
     for k in now:
         council, _, rest = k.partition("|")
         chapter = rest.partition("|")[0]
-        if chapter and chapter != "*":
-            red_chapters.add(f"{council}|{chapter}")
-    return f"C = {served - len(red_chapters)}/{served} active chapters with no red key"
+        if council == "*":
+            fleet = True
+        elif chapter == "*":
+            councils.add(council)
+        elif chapter:
+            chapters.add((council, chapter))
+    green = 0 if fleet else sum(1 for c, ch in active if c not in councils and (c, ch) not in chapters)
+    return f"C = {green}/{len(active)} active chapters with no red key"
 
 
 def main(argv: list[str] | None = None, conn=None) -> int:
@@ -162,8 +170,8 @@ def main(argv: list[str] | None = None, conn=None) -> int:
     try:
         now = measure(conn)
         cur = conn.cursor()
-        cur.execute(f"SELECT count(*) FROM dcp_chapter_registry r WHERE {_ACTIVE}")
-        served = cur.fetchone()[0]
+        cur.execute(f"SELECT r.council, r.chapter_key FROM dcp_chapter_registry r WHERE {_ACTIVE}")
+        active = [tuple(r) for r in cur.fetchall()]
         cur.close()
     except Exception as exc:  # noqa: BLE001 - a missing table means we could not look
         print(f"VERIFYOPS: could not measure ({type(exc).__name__}: {str(exc).splitlines()[0]})")
@@ -175,7 +183,7 @@ def main(argv: list[str] | None = None, conn=None) -> int:
     new, cleared = compare(base_keys, now)
     print(f"VERIFYOPS: {len(now)} red keys today; baseline {len(base_keys)}; "
           f"{len(new)} new; {len(cleared)} cleared")
-    print(f"  {coverage(now, served)}")
+    print(f"  {coverage(now, active)}")
     for k in new[:60]:
         print(f"  NEW RED  {k}")
     for k in cleared[:60]:

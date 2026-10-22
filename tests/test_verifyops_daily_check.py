@@ -338,8 +338,8 @@ class AlarmConn:
             def execute(self, sql, params=None):
                 if outer.missing and "dcp_monitor_" in sql:
                     raise RuntimeError('relation "dcp_monitor_runs" does not exist')
-                if sql.strip().startswith("SELECT count(*)"):
-                    self.rows = [(outer.served,)]
+                if sql.strip().startswith("SELECT r.council, r.chapter_key FROM dcp_chapter_registry r WHERE r.is_active"):
+                    self.rows = [("x", f"k{i}") for i in range(outer.served)]
                     return
                 reason = next(r for r, q in cov.QUERIES.items() if q == sql)
                 self.rows = outer.reds.get(reason, [])
@@ -407,3 +407,12 @@ def test_the_download_date_is_saved_only_with_a_good_outcome():
     assert src.count("url_last_downloaded=%s") == 3            # unchanged-hash, re-export, changed
     tail = src[src.index("except WAFBlockError as exc:"):src.index("adaptive_delay(url)  # per-domain")]
     assert "url_last_downloaded" not in tail
+
+
+def test_coverage_counts_only_active_chapters_and_council_and_fleet_keys():
+    active = [("a", "1"), ("a", "2"), ("b", "1"), ("c", "1")]
+    # a new-document key for a row that is not an active chapter never lowers C (it read -24/547)
+    assert cov.coverage(["d|new-doc|new_doc_undecided_3d"], active) == "C = 4/4 active chapters with no red key"
+    assert cov.coverage(["a|1|no_url"], active) == "C = 3/4 active chapters with no red key"
+    assert cov.coverage(["a|*|list_not_read_2d"], active) == "C = 2/4 active chapters with no red key"
+    assert cov.coverage(["*|*|no_run_2d"], active) == "C = 0/4 active chapters with no red key"
