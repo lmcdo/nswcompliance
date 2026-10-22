@@ -164,11 +164,15 @@ def test_delisted_is_not_gone():
 
 def test_draft_words_are_labelled():
     assert is_draft("Draft DCP 2026 on public exhibition")
-    assert is_draft("Part 4", "https://x.gov.au/Planning+Portal+exhibitions+/x.pdf")
+    # the folder name is not evidence: canada_bay serves an operative guide from an "exhibitions" path
+    assert not is_draft("Homebush Transport Oriented Development Precinct Design Guide",
+                        "https://x.amazonaws.com/NSW%2BPlanning%2BPortal%2Bexhibitions%2B/Homebush/x.pdf")
     assert not is_draft("Part 4 Residential")
     prev = link_entries([{"url": "https://x.gov.au/a.pdf", "label": "a"}] * 1)
     cur = prev + link_entries([{"url": "https://x.gov.au/d.pdf", "label": "Draft Part 4 Residential"}])
-    assert "(draft, not in force)" in alert_lines("x", diff_lists(prev, cur), {})[0]
+    line = alert_lines("x", diff_lists(prev, cur), {})[0]
+    assert "title says draft or exhibition - check whether it is in force" in line
+    assert "not in force)" not in line
 
 
 def test_held_match_is_exact_number_and_unique():

@@ -81,8 +81,10 @@ def fingerprint(entries: list[dict]) -> str:
 
 
 def is_draft(text: str | None, href: str | None = None) -> bool:
-    """Words that mean 'not in force yet'. Labelled, never suppressed."""
-    return bool(_DRAFT.search(f"{text or ''} {unquote(href or '')}"))
+    """The link's TITLE uses a draft/exhibition word. Labelled, never suppressed, and never read as
+    "not in force": that is for the person who opens it. The URL is not read: Canada Bay serves an
+    operative guide from a `Planning Portal exhibitions` folder (cross-review 2026-10-22)."""
+    return bool(_DRAFT.search(text or ""))
 
 
 def chapter_number(text: str | None) -> str | None:
@@ -180,7 +182,7 @@ def alert_lines(council: str, diff: ListDiff, held: dict[str, str],
         new = [e for e in diff.new if likely_replaces(e["text"], held, plans)]
     for e in new:
         match = likely_replaces(e["text"], held, plans)
-        tag = " (draft, not in force)" if is_draft(e["text"], e["href"]) else ""
+        tag = " (title says draft or exhibition - check whether it is in force)" if is_draft(e["text"]) else ""
         likely = f" - may replace {match}" if match else ""
         lines.append(f"[{council}] new document{tag}: {e['text'] or '(no title)'} {e['href']}{likely}")
     for e in diff.reuploads:

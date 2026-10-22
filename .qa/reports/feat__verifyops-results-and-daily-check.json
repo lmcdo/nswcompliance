@@ -56,14 +56,14 @@
   },
   {
    "name": "diff_lists",
-   "file_line": "scripts/verifyops_links.py:139",
+   "file_line": "scripts/verifyops_links.py:141",
    "input": "the last list stored with outcome 'ok' for this council (or None) and today's normalised link entries",
    "output": "new / gone / re-upload / redesign lines",
    "if_none": "no previous list means a first scan: today's list is saved and no alert is raised, the setup run never alerts"
   },
   {
    "name": "main",
-   "file_line": "scripts/verifyops_coverage.py:145",
+   "file_line": "scripts/verifyops_coverage.py:149",
    "input": "argv flags --update and --allow-raise, plus DATABASE_URL from the environment or an injected connection for tests",
    "output": "exit 0 / 1 (new red key) / 2 (could not look)",
    "if_none": "a missing DATABASE_URL or a missing dcp_monitor table exits 2, which dq_check reports as unverifiable and the workflow step as failed, never 0"
@@ -98,7 +98,7 @@
   },
   {
    "purpose": "the alarm's red keys",
-   "file_line": "scripts/verifyops_coverage.py:51",
+   "file_line": "scripts/verifyops_coverage.py:55",
    "where_clause": "active AND NOT inert chapters; per reason windows 2/8/30/3/33 days"
   }
  ],
@@ -149,14 +149,14 @@
  "verification_after_merge": [
   "1. Apply migrations/116_dcp_monitor_results.sql (user go). VERIFY: 3 dcp_monitor_* tables.",
   "2. Deploy dcp-monitor from main once Railway Hobby deploys resume; trigger one run.",
-  "3. SELECT outcome, count(*) FROM dcp_monitor_chapter_results WHERE run_id = <that run> GROUP BY 1 - every active chapter has exactly one terminal row; run verifyops_coverage.py and read each red key against the registry (kills the SQL survivor).",
-  "4. python scripts/verifyops_coverage.py --update --allow-raise 'first recorded run <date>'.",
-  "5. Separate PR: cron 0 2 * * * + live value + DQ-117 window + tests/test_one_outcome_alarm.py."
+  "3. Separate PR: cron 0 2 * * * + live value + DQ-117 window + tests/test_one_outcome_alarm.py. The alarm's 2-day windows assume it.",
+  "4. After the first DAILY run: count chapter results per outcome for that run_id (one terminal row per active chapter), run python scripts/verifyops_coverage.py and read every red key.",
+  "5. python scripts/verifyops_coverage.py --update --allow-raise 'first daily run <date>'. Never before step 3, or the alarm is red for most of each fortnight."
  ],
  "post_merge": {
   "db_reset": "Apply migrations/116_dcp_monitor_results.sql once to production (additive: 3 new tables, 1 nullable column; rollback in the file header). Needs the user's go.",
   "secrets": "None added. The GitHub DATABASE_URL secret predates the 2026-10-22 password rotation and must be updated for freshness-alarm (and this new step) to log in; RAILWAY_TOKEN likely needs replacing too, as Railway voided all API tokens at 04:17 UTC that day.",
   "other_repo": "None. Railway: dcp-monitor must be deployed from main after merge (deploys are paused for Hobby workspaces as of 2026-10-22).",
-  "manual_verify": "After the first recorded run: count chapter results per outcome for that run_id (one terminal row per active chapter), run python scripts/verifyops_coverage.py and read every red key, then write the baseline with --update --allow-raise 'first recorded run <date>'."
+  "manual_verify": "After the daily cron is live and its first run has recorded results: count chapter results per outcome for that run_id (one terminal row per active chapter), run python scripts/verifyops_coverage.py and read every red key, then write the baseline with --update --allow-raise 'first daily run <date>'."
  }
 }
