@@ -1,6 +1,6 @@
 {
  "_about": "(.claude/regulatory_figure_ledger.json) names every hit by file + the hit's own text:\n  \"open\"  -- known, still to fix (read it from the database, or delete it and point to the address lookup);\n  \"cited\" -- a verbatim quote that names its instrument AND clause on the same line (the reason says which);\n  \"not_regulatory\" -- not a planning figure (a map bound, an image size, a price); the reason (4+ words) says what.\nCI fails when: a hit is not in the ledger (a new typed figure); a ledger entry is no longer found (fixed -- remove it,\nso the list stays exact); a \"cited\" entry's reason names no instrument + clause; the open count rises; a\n`noqa: regulatory-number` carries no real reason (4+ words after \"--\").",
- "max_open": 546,
+ "max_open": 515,
  "entries": [
   {
    "file": "frontend-nextjs/app/(tools)/granny-flat/page.tsx",
@@ -812,48 +812,6 @@
    "count": 1
   },
   {
-   "file": "frontend-nextjs/components/assessment/core/compliance-checklist.tsx",
-   "text": "\"Lot is 208m², minimum 400m² required for dual occupancy\"",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/assessment/core/compliance-checklist.tsx",
-   "text": "\"Maximum: 9.5m\"",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/assessment/core/compliance-checklist.tsx",
-   "text": "\"Proposed: 0.45:1, Maximum: 0.6:1\"",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/assessment/core/compliance-checklist.tsx",
-   "text": "\"Front setback: 3m provided, 4m required\"",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/assessment/core/compliance-checklist.tsx",
-   "text": "\"Minimum 25% of site area required\"",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/assessment/core/compliance-checklist.tsx",
-   "text": "\"2 spaces required per dwelling\"",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found",
-   "count": 1
-  },
-  {
    "file": "frontend-nextjs/components/assessment/core/compliance-status.tsx",
    "text": "\"9.5m maximum\\nCheck plans\"",
    "fate": "open",
@@ -1260,48 +1218,6 @@
    "file": "frontend-nextjs/lib/blog-articles.ts",
    "text": "'Maximum penalties up to $1.1M, a Building Commission with investigative powers, and mandatory professional standards. What builders and certifiers need to know.'",
    "fate": "open",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/constants.ts",
-   "text": "DEFAULT_FSR = 0.9",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/constants.ts",
-   "text": "DEFAULT_HEIGHT_M = 6.0",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/constants.ts",
-   "text": "MIN_LOT_SIZE_SQM = 450",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/constants.ts",
-   "text": "DEFAULT_FRONT_SETBACK_M = 6.0",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/constants.ts",
-   "text": "DEFAULT_SIDE_SETBACK_M = 0.9",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/constants.ts",
-   "text": "DEFAULT_REAR_SETBACK_M = 6.0",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete",
    "count": 1
   },
   {
@@ -2512,34 +2428,6 @@
    "count": 1
   },
   {
-   "file": "frontend-nextjs/lib/setback-calculator.ts",
-   "text": "`Lot area ${lotArea.toFixed(0)}sqm < 450sqm - Primary road frontage`",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) typed lot-area bands 450/600 sqm and 'over 2 storeys' rule; no importer found (dead code?)",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/setback-calculator.ts",
-   "text": "`Lot area ${lotArea.toFixed(0)}sqm (450-600sqm) - Primary road frontage`",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) typed lot-area bands 450/600 sqm and 'over 2 storeys' rule; no importer found (dead code?)",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/setback-calculator.ts",
-   "text": "`Lot area ${lotArea.toFixed(0)}sqm > 600sqm - Primary road frontage`",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) typed lot-area bands 450/600 sqm and 'over 2 storeys' rule; no importer found (dead code?)",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/setback-calculator.ts",
-   "text": "'Setbacks may increase for buildings over 2 storeys'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) typed lot-area bands 450/600 sqm and 'over 2 storeys' rule; no importer found (dead code?)",
-   "count": 1
-  },
-  {
    "file": "frontend-nextjs/shared/classified-roads.json",
    "text": "\"2026-10-21, lot (nsw_cadastre_lots) to the cadastre road corridor that carries the road, metres. Fronting lots: 1311 Pacific Hwy Turramurra 0.00 (State 0000010); neighbouring Pacific Hwy lots 1//DP550866 0.00, 6//DP666961 0.00, 1//DP500077 0.38, 1//DP807765 1.13, 8//DP237813 1.36, 2//DP16463 1.49; 30 Marion St Leichhardt 1.38 (Regional 0002013); 150 Enmore Rd Enmore 1.36 (State 0000167); 354 Darling St Balmain 1.50 (Regional 0007318); 100 Waterloo Rd Greenacre 0.31 (Regional 0007118); 2 Kissing Point Rd Turramurra 0.18 (Regional 0007421). Largest gap on a fronting lot: 1.51 m. Lots that do not front: 1//DP519532 Turramurra (behind Forbes Lane, one street back from the Pacific Highway) has no State/Regional corridor within 30 m; 4//DP132873 Turramurra is 22.74 m from the nearest such corridor although 37.4 m from the Pacific Highway centreline. Same 3 m as Ku-ring-gai Part 20 (shared/krg-rail-busy-roads.json).\"",
    "fate": "open",
@@ -2579,13 +2467,6 @@
    "fate": "open",
    "reason": "inventory 2026-10-22: not_regulatory (engine) developer doc",
    "count": 1
-  },
-  {
-   "file": "services/authoritative_setback_calculator.py",
-   "text": "'0.6:1'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (engine) typed R2 Marrickville setback min/max/typical + height factors + default height/FSR; no importer found (dead?)",
-   "count": 2
   },
   {
    "file": "services/cdc_lot_requirements.py",
@@ -2733,25 +2614,6 @@
    "count": 1
   },
   {
-   "file": "services/setback_calculator.py",
-   "text": "height_adjustment=0.0",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: not_regulatory (engine) calc code",
-   "count": 1
-  },
-  {
-   "file": "services/setback_calculator.py",
-   "text": "estimated_lot_width = 15.0",
-   "fate": "open",
-   "count": 2
-  },
-  {
-   "file": "services/setback_calculator.py",
-   "text": "estimated_lot_depth = 30.0",
-   "fate": "open",
-   "count": 2
-  },
-  {
    "file": "services/shadow_detector.py",
    "text": "DEFAULT_HEIGHT_M = 9.0",
    "fate": "open",
@@ -2836,20 +2698,6 @@
    "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
   },
   {
-   "file": "services/authoritative_setback_calculator.py",
-   "text": "height_threshold\": 7.5",
-   "fate": "open",
-   "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
-  },
-  {
-   "file": "services/authoritative_setback_calculator.py",
-   "text": "rear_height_factor\": 0.5",
-   "fate": "open",
-   "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
-  },
-  {
    "file": "services/compound_constraints.py",
    "text": "plotdetect_dcp\": 180",
    "fate": "open",
@@ -2885,34 +2733,6 @@
    "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
   },
   {
-   "file": "services/live_compliance_engine.py",
-   "text": "gross_floor_area': 180",
-   "fate": "open",
-   "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
-  },
-  {
-   "file": "services/live_compliance_engine.py",
-   "text": "height': 8.5",
-   "fate": "open",
-   "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
-  },
-  {
-   "file": "services/live_compliance_engine.py",
-   "text": "gross_floor_area': 250",
-   "fate": "open",
-   "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
-  },
-  {
-   "file": "services/live_compliance_engine.py",
-   "text": "height': 12.0",
-   "fate": "open",
-   "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
-  },
-  {
    "file": "services/pre_da_history.py",
    "text": "SMALL_LOT_THRESHOLD_M2 = 300",
    "fate": "open",
@@ -2924,20 +2744,6 @@
    "text": "subject_lot_area_m2=0",
    "fate": "open",
    "count": 2,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
-  },
-  {
-   "file": "services/setback_calculator.py",
-   "text": "height_threshold\": 7.5",
-   "fate": "open",
-   "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
-  },
-  {
-   "file": "services/setback_calculator.py",
-   "text": "rear_height_factor\": 0.5",
-   "fate": "open",
-   "count": 1,
    "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
   },
   {
