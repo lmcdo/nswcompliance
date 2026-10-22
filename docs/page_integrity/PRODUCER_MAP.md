@@ -436,7 +436,7 @@ Columns: producer # (per fact) | file:line function | language | inputs | surfac
 
 Address, Lot DP, Precinct, BASIX, Applicable SEPPs, SEPP parking rates, Data currency, Other single-place overlays: either display-only (static literals in StateLevelControls.tsx:1376-1560) or one producer (lib/nsw-planning-portal.ts) with no second computation found. Not exhaustively searched.
 
-Dead or unmounted producers found while tracing (not counted): lib/setback-calculator.ts (no importers), lib/geometry/calculator.ts + app/api/setbacks/calculate (only unmounted PreciseSetbackCalculator/AnalysisTabs), components/compliance/ComplianceDashboard.tsx and its API routes, hooks/useFullPropertyData.ts, hooks/useFullAssessment.ts, services/setback_calculator.py (no importers), services/authoritative_setback_calculator.py (imports only itself/universal_regulatory_engine).
+Dead or unmounted producers found while tracing (not counted): the old frontend setback calculator (deleted 2026-10-23, #1451) (no importers), lib/geometry/calculator.ts + app/api/setbacks/calculate (only unmounted PreciseSetbackCalculator/AnalysisTabs), components/compliance/ComplianceDashboard.tsx and its API routes, hooks/useFullPropertyData.ts, hooks/useFullAssessment.ts, the old setback service (deleted 2026-10-23, #1451) (no importers), the old authoritative setback service (deleted 2026-10-23, #1451) (imports only itself/universal_regulatory_engine).
 
 ## LINT PATTERNS
 
