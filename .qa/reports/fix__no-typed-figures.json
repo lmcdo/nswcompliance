@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: replaces a CI gate (typed planning figures) from a per-file count to a named ledger; no production code or data change.",
-  "commit_hash": "70742ba1",
+  "commit_hash": "1fcd7cbc",
   "files": [
     ".claude/regulatory_figure_ledger.json",
     ".claude/regulatory_number_baseline.json",
