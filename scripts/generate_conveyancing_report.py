@@ -2199,91 +2199,6 @@ def get_coastal_inundation_live(
 # user-visible wording is testable without rendering a PDF.
 # ---------------------------------------------------------------------------
 
-# Source labels for the shadow row. "NSW LEP" may ONLY be claimed when the
-# height actually came from an LEP control (portal/spatial_overlays/provisions).
-_SHADOW_SOURCE_LEP = "NSW LEP · shadow model"
-_SHADOW_SOURCE_ASSUMED = "assumed envelope · shadow model"
-# height_source values that genuinely trace to an LEP control — anything else
-# (default, None, unrecognised) must fail closed to the assumed-envelope label.
-_LEP_HEIGHT_SOURCES = frozenset({"spatial_overlays", "regulatory_provisions", "planning_portal"})
-
-
-def build_shadow_row(shadow_result: Optional[dict]) -> tuple[str, str, str]:
-    """Build the Risk Summary shadow row: (text, style_key, source_label).
-
-    style_key ∈ {"ok", "warn", "alert", "note"} — maps to PDF paragraph styles.
-
-    When height_source == "default" the 9 m figure is an assumption
-    (shadow_detector.DEFAULT_HEIGHT_M), not an LEP control: the row must not
-    claim "LEP maximum height", must not assert "Clear", and must carry the
-    assumed-envelope source label. Mirrors the Intelligence Brief wording
-    (frontend-nextjs/app/reports/intelligence-brief/page.tsx).
-    """
-    if shadow_result is None:
-        return ("Not assessed", "note", "shadow model")
-
-    jun21 = [s for s in (shadow_result.get("scenarios") or [])
-             if s.get("scenario") in {"jun21_9am", "jun21_12pm", "jun21_3pm"}]
-    overlap_count = sum(1 for s in jun21 if s.get("overlaps_subject_lot"))
-    height_m = shadow_result.get("height_m") or "?"
-    adg_ok = shadow_result.get("adg_compliant", True)
-    noon = next((s for s in jun21 if s.get("scenario") == "jun21_12pm"), None)
-    noon_pct = round((noon.get("shadow_overlap_fraction") or 0) * 100) if noon else 0
-    height_source = shadow_result.get("height_source")
-
-    if adg_ok is None:
-        # Three-state (output-grounding fix 1): the noon scenario was missing,
-        # errored, or its overlap unknown — the model issued NO verdict. Checked
-        # BEFORE the height-provenance branches so no numeric noon-shadow claim
-        # (a noon_pct of 0 here would be an errored scenario, not a measurement)
-        # is made either. The old fallthrough rendered this as "ADG concern".
-        text = (
-            "Not assessed — the shadow model could not compute the Jun 21 noon "
-            "scenario for this lot, so the ADG solar-access test was not run. "
-            "No shadow verdict is made in this report."
-        )
-        return (text, "note", "shadow model")
-
-    if height_source == "default":
-        # Assumed envelope — no LEP height limit is mapped for this lot.
-        text = (
-            f"Not determinable from LEP controls — no LEP height limit is mapped for this lot, "
-            f"so the analysis uses a standard two-storey height ({height_m} m assumed envelope). "
-            f"A {height_m} m building on the northern adjacent lot would shadow {noon_pct}% of "
-            f"this property at Jun 21 noon. A taller merit-assessed build is possible and is not "
-            f"modelled here."
-        )
-        return (text, "warn", _SHADOW_SOURCE_ASSUMED)
-
-    if height_source not in _LEP_HEIGHT_SOURCES:
-        # Unknown provenance (missing/unrecognised height_source) — fail closed:
-        # never attribute an unverified height to the LEP.
-        text = (
-            f"Modelled with a {height_m} m building envelope whose height provenance was not "
-            f"recorded — not attributed to LEP controls. A {height_m} m building on the northern "
-            f"adjacent lot would shadow {noon_pct}% of this property at Jun 21 noon."
-        )
-        return (text, "warn", _SHADOW_SOURCE_ASSUMED)
-
-    hob_note = f" (LEP maximum height of buildings: {height_m} m)"
-    if adg_ok and overlap_count == 0:
-        text = (
-            f"Clear — a {height_m} m building on the northern adjacent lot would not "
-            f"significantly shadow this property on any Jun 21 scenario.{hob_note}"
-        )
-        return (text, "ok", _SHADOW_SOURCE_LEP)
-    if adg_ok:
-        text = (
-            f"Low risk — a {height_m} m building on the northern adjacent lot would shadow "
-            f"{noon_pct}% of this property at Jun 21 noon. ADG solar access requirement met.{hob_note}"
-        )
-        return (text, "warn", _SHADOW_SOURCE_LEP)
-    text = (
-        f"ADG concern — a {height_m} m building on the northern adjacent lot would shadow "
-        f"{noon_pct}% of this property at Jun 21 noon. Solar access may not meet the "
-        f"2-hour ADG requirement.{hob_note}"
-    )
-    return (text, "alert", _SHADOW_SOURCE_LEP)
 
 
 def build_bushfire_row(
@@ -3650,7 +3565,6 @@ def generate_pdf(
     dcp_former_council: Optional[str] = None,
     strata_info: Optional[dict] = None,
     covered_layers: Optional[set] = None,
-    shadow_result: Optional[dict] = None,
     lep_clauses: Optional[list] = None,
     dcp_setbacks_db: Optional[dict] = None,
     # Per-fetch DB-failure map from _fetch_db_data (output-grounding fix 3):
@@ -4409,15 +4323,6 @@ def generate_pdf(
         ])
     risk_rows = [r for r in risk_rows if r is not None]
 
-    # Shadow risk row — build_shadow_row threads height_source so an assumed
-    # 9 m envelope is never attributed to the LEP (D1)
-    _sh_text, _sh_style, _sh_source = build_shadow_row(shadow_result)
-    risk_rows.append([
-        "Northern Development Shadow Risk",
-        Paragraph(_sh_text, ss[_sh_style]),
-        _sh_source,
-    ])
-
     c1, c2, c3 = 65 * mm, 70 * mm, CW - 135 * mm
     story.append(table(risk_rows, [c1, c2, c3]))
 
@@ -4456,22 +4361,6 @@ def generate_pdf(
         "apply; this report adds the mapped category and extent detail.",
         ss["note"]
     ))
-    # `is False` (not falsy): adg_compliant None means NOT ASSESSED — the ADG
-    # methodology paragraph must not imply a concern verdict for it (fix 1).
-    if shadow_result is not None and shadow_result.get("adg_compliant") is False:
-        story.append(Spacer(1, 2 * mm))
-        story.append(Paragraph(
-            "<b>Northern Development Shadow Risk</b> — modelled using the NSW Apartment Design Guide (ADG) "
-            "standard: 5 key dates/times including the three Jun 21 (winter solstice) snapshots that determine "
-            "ADG compliance. The model assumes a building at the modelled height — the LEP height limit where "
-            "one is mapped for the lot, otherwise a standard two-storey (9 m) assumed envelope as labelled in "
-            "the row above — on the lot immediately to the north, using the subject lot's own cadastral "
-            "footprint as a symmetric proxy. "
-            "This modelled risk is not part of a standard s10.7 certificate, title search, or conveyancing "
-            "inspection. A formal shadow impact assessment prepared by a qualified town planner is required "
-            "for Development Application submission.",
-            ss["note"]
-        ))
 
     # ------------------------------------------------------------------
     # SECTION 2 — Development Feasibility Snapshot
@@ -5691,19 +5580,6 @@ def generate_pdf(
          "<b>PostGIS spatial overlays:</b> last ingestion from NSW Government ArcGIS services. "
          "<b>DA activity:</b> NSW ePlanning Portal API, past 12 months. "
          "No representation is made as to the completeness or accuracy of any data source."),
-        ("Shadow risk methodology",
-         "Northern development shadow risk is modelled using the <b>maximum permissible building height "
-         "(Height of Buildings, HOB)</b> from the applicable Local Environmental Plan where one is mapped "
-         "for the lot. HOB is the LEP control that sets the tallest structure a neighbour could legally "
-         "build — <b>it is not the height of any existing building.</b> <b>Where no LEP height limit is "
-         "mapped for the lot, the model uses a standard two-storey (9 m) assumed envelope instead — the "
-         "Risk Summary row is labelled accordingly, and a taller merit-assessed build is possible.</b> "
-         "The model tests whether a worst-case neighbour build at the modelled height would shadow this "
-         "property on the <b>NSW Apartment Design Guide (ADG)</b> test dates "
-         "(21 June winter solstice, 9 am / 12 pm / 3 pm). ADG compliance requires <b>at least 2 hours "
-         "of direct sunlight between 9 am and 3 pm on 21 June</b> for living areas and private open space. "
-         "This is a <b>conservative envelope model</b> — not a site-specific shadow study. A formal shadow "
-         "impact assessment by a qualified architect is required for DA submission."),
         ("Infrastructure contributions (S7.11 / S7.12)",
          "This report <b>does not include infrastructure contribution liability estimates.</b> "
          "Development applications for new dwellings or subdivision require a <b>Section 7.11 or 7.12 "
@@ -5966,27 +5842,6 @@ def main():
         # PostGIS found individual items portal missed
         controls["heritage_items"] = postgis_heritage["items"][:]
 
-    shadow_result = None
-    if prop_id and lat and lng:
-        print("\nRunning shadow risk model ...")
-        # Parse LEP height from controls (e.g. "9.5" or "9.5m") and pass to pipeline
-        lep_height: Optional[float] = None
-        raw_h = controls.get("height")
-        if raw_h:
-            import re as _re
-            m = _re.search(r"(\d+(?:\.\d+)?)", str(raw_h))
-            if m:
-                lep_height = float(m.group(1))
-        shadow_result = get_shadow_risk(args.address, prop_id, lat, lng, height_m=lep_height)
-        if shadow_result:
-            _adg_val = shadow_result.get("adg_compliant")
-            adg = ("ADG not assessed" if _adg_val is None
-                   else "ADG concern" if _adg_val is False
-                   else "ADG solar access test met")
-            print(f"  {adg}  height: {shadow_result.get('height_m')} m ({shadow_result.get('height_source')})")
-        else:
-            print("  Shadow model unavailable — section omitted from PDF")
-
     print("\nQuerying NSW RFS BFPL (live) ...")
     bushfire_live = get_bushfire_live(lat, lng)
     if bushfire_live is None or bushfire_live.get("is_bushfire_prone") is None:
@@ -6090,7 +5945,6 @@ def main():
             dcp_former_council=dcp_former_council,
             strata_info=strata_info,
             covered_layers=covered_layers,
-            shadow_result=shadow_result,
             lep_clauses=lep_clauses,
             dcp_setbacks_db=dcp_setbacks_db,
             proximity_m=proximity_m,

@@ -59,11 +59,6 @@ export const conveyancingConfig: ProductLandingConfig = {
       description: "Structured DCP controls for 28 Sydney LGAs — front, side, and rear setbacks, site coverage, landscaping minimums, and parking requirements with clause citations.",
     },
     {
-      icon: Satellite,
-      title: "Shadow Risk Analysis",
-      description: "Geometric shadow modelling from the LEP maximum height envelope at the winter solstice — does a maximum-height neighbour development create ADG solar access concerns?",
-    },
-    {
       icon: Building2,
       title: "Nearby Development Applications",
       description: "All DAs and CDCs within 200m of the property — summarised by type, status, and determination date from the NSW ePlanning API.",
@@ -81,7 +76,6 @@ export const conveyancingConfig: ProductLandingConfig = {
     { name: "Development feasibility screening", free: true, paid: true },
     { name: "Title type detection", free: true, paid: true },
     { name: "DCP setback controls", free: false, paid: true },
-    { name: "Shadow risk analysis", free: false, paid: true },
     { name: "Nearby DA summary", free: false, paid: true },
     { name: "Land value history", free: false, paid: true },
     { name: "LEP clause interpretation", free: false, paid: true },

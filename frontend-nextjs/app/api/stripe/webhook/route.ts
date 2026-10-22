@@ -350,7 +350,7 @@ const SATELLITE_REPORT_META: Record<
   'shadow': {
     generatePath: '/api/reports/shadow/generate',
     subject: 'Your Shadow Analysis Report',
-    bodyLine: 'Your Shadow Analysis Report is attached as a PDF. It includes hourly and seasonal shadow diagrams, ADG compliance assessment, and an objection-ready summary for your council submission.',
+    bodyLine: 'Your Shadow Analysis Report is attached as a PDF. It includes hourly and seasonal shadow diagrams for the modelled scenarios.',
     filePrefix: 'shadow-report',
   },
   'solar-yield': {

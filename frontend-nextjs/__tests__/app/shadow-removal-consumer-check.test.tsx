@@ -11,7 +11,6 @@ jest.mock('@/lib/pdf/map-overlay', () => ({ AerialWithOverlay: () => null }));
 
 import { render, screen } from '@testing-library/react';
 import { buildFindings, type ShadowReportData } from '@/lib/pdf/shadow-report';
-import { ShadowDisplay } from '@/components/reports/ShadowDetailDisplay';
 import { shadowConfig } from '@/components/reports/landing/data/shadow';
 
 const SCENARIOS = ['jun21_9am','jun21_12pm','jun21_3pm','sep21_12pm','dec21_12pm'].map(k => ({
@@ -30,19 +29,6 @@ it('PDF: no finding mentions the removed check, and findings are non-empty', () 
   const all = JSON.stringify(f);
   for (const t of ['bare-soil','Sentinel','surface-change','Surface-change','adjacent','ground-surface','Ground-surface'])
     expect(all).not.toContain(t);
-});
-
-it('Brief/report page: card renders, no surface-change line, no trailing empty block', () => {
-  const { container } = render(<ShadowDisplay data={{
-    height_m: 9, adg_compliant: true, confidence: 'low',
-    scenarios: [{ date_label: '21 Jun', time_label: '12:00', shadow_length_m: 14,
-                  overlap_pct: 10, overlaps_subject_lot: false, status: 'computed' }],
-  }} />);
-  expect(screen.getByTestId('shadow-scenario-table')).toBeInTheDocument();
-  expect(container.textContent).not.toMatch(/bare-soil|Sentinel|Surface-change|adjacent/i);
-  const root = container.firstElementChild!;
-  const last = root.lastElementChild!;
-  expect(last.textContent!.trim().length).toBeGreaterThan(0); // no empty trailing div
 });
 
 it('landing page: sells nothing it cannot do, and the grid has no empty cell', () => {
