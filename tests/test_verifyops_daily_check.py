@@ -44,8 +44,20 @@ def test_a_query_that_names_the_document_is_kept():
     assert a != b
 
 
+def test_a_version_in_the_query_is_a_different_document():
+    a, _ = normalise_href("https://x.gov.au/dcp.pdf?version=1")
+    b, _ = normalise_href("https://x.gov.au/dcp.pdf?version=2")
+    assert a != b
+
+
+def test_a_one_council_run_is_recorded_as_partial_even_with_force():
+    src = (ROOT / "scripts" / "r2_monitor.py").read_text(encoding="utf-8")
+    line = src[src.index("    mode = ("):src.index("recorder = Recorder(conn")]
+    assert line.index('f"council:{args.council}"') < line.index('"force"')
+
+
 def test_cache_busters_case_and_fragment_do_not_make_a_new_link():
-    a, _ = normalise_href("https://WWW.Council.nsw.gov.au/files/dcp.pdf?itok=abc&v=3#page=2")
+    a, _ = normalise_href("https://WWW.Council.nsw.gov.au/files/dcp.pdf?itok=abc&t=3#page=2")
     b, _ = normalise_href("https://www.council.nsw.gov.au/files/dcp.pdf")
     assert a == b
 

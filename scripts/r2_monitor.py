@@ -1575,8 +1575,10 @@ def main():
             conn.close()
         sys.exit(0)
 
-    mode = ("force" if args.force else "reseed" if args.reseed else
-            f"council:{args.council}" if args.council else "daily")
+    # A one-council run is never a full run, whatever else it was asked to do: the alarm treats
+    # only 'daily'/'force' as covering the fleet (no_run_2d, missing_from_last_run).
+    mode = (f"council:{args.council}" if args.council else "force" if args.force else
+            "reseed" if args.reseed else "daily")
     recorder = Recorder(conn, dry_run=args.dry_run, mode=mode)
     try:
         recorder.start()

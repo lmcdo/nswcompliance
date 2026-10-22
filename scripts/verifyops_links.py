@@ -21,8 +21,8 @@ from urllib.parse import parse_qsl, unquote, urlencode, urlsplit, urlunsplit
 #: document in the query itself: canada_bay `...content/?id=folder-7719479&streamId=...` and
 #: liverpool `kapish-api/document?id=290103.2016`. Dropping the whole query (the v6 wording) would
 #: fold every one of those links into one.
-CACHE_BUSTER_KEYS = frozenset({"v", "ver", "version", "t", "ts", "timestamp", "cb", "_", "itok", "h",
-                               "rev", "modified", "download", "dl", "inline"})
+#: `v`/`version`/`rev` are NOT here: `dcp.pdf?version=2` can name a new edition (cross-review 2026-10-22).
+CACHE_BUSTER_KEYS = frozenset({"t", "ts", "timestamp", "cb", "_", "itok", "modified", "download", "dl", "inline"})
 
 #: Drupal appends _0, _1 ... when a file of the same name is uploaded again.
 _REUPLOAD = re.compile(r"_(\d{1,2})(\.[a-z0-9]{2,5})$", re.IGNORECASE)
