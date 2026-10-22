@@ -200,8 +200,15 @@ export function lotSizeRequirement(
     };
   }
 
-  const met = `Lot size ${Math.round(lotArea)}m² — meets ${minArea}m² minimum`;
-  if (compound && lotArea < minArea) {
+  // The figure is parsed from "more than N m2", so N itself does not meet it.
+  const met = `Lot size ${Math.round(lotArea)}m² — more than the ${minArea}m² minimum`;
+  if (!compound && lotArea <= minArea) {
+    return {
+      pass: false,
+      text: `Lot size ${Math.round(lotArea)}m² — not more than the ${minArea}m² CDC minimum (${source ?? 'SEPP Housing Code'})`,
+    };
+  }
+  if (compound && lotArea <= minArea) {
     // Below the parsed (stricter) branch. The lower branch's figure and the width
     // condition are not parsed, so "meets" would be a pass nobody tested, and
     // "below" would refuse a lot the Code may allow.
@@ -484,7 +491,7 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
       // Not blocked when the provision is compound either -- page 129 permits a
       // lot down to 200m² where the width exceeds 7m, so blocking on the 300m²
       // branch alone would refuse CDC to a lot the Code allows.
-      if (lotArea != null && minArea != null && !minAreaCompound && lotArea < minArea) {
+      if (lotArea != null && minArea != null && !minAreaCompound && lotArea <= minArea) {
         cdcBlockers.push(`Lot size ${Math.round(lotArea)}m² — below ${minArea}m² CDC minimum (${lotAreaSource})`);
       }
       if (isHeritage) {

@@ -36,10 +36,9 @@ describe('lotSizeRequirement — a known area', () => {
     expect(lotSizeRequirement(449.6, 200, SOURCE)!.text).toContain('450m²');
   });
 
-  it('still passes at exactly the minimum, which the caller has already tested', () => {
-    // lotSizeRequirement reports; the blocker decision lives in the caller. If
-    // this function also decided, there would be two places to disagree.
-    expect(lotSizeRequirement(200, 200, SOURCE)!.pass).toBe(true);
+  it('does not pass at exactly the figure: the provision says "more than"', () => {
+    expect(lotSizeRequirement(200, 200, SOURCE)!.pass).toBe(false);
+    expect(lotSizeRequirement(201, 200, SOURCE)!.pass).toBe(true);
   });
 });
 
@@ -200,7 +199,7 @@ describe('the source assertion that the fix is actually wired in', () => {
     // minimum cannot block, and a compound threshold must not block on its
     // stricter branch alone. `!=`, not `!==`, so undefined counts as absent.
     expect(src).toMatch(
-      /lotArea != null && minArea != null && !minAreaCompound && lotArea < minArea/,
+      /lotArea != null && minArea != null && !minAreaCompound && lotArea <= minArea/,
     );
   });
 
@@ -232,8 +231,9 @@ describe('a COMPOUND threshold with the lot BELOW the parsed branch', () => {
     expect(req.text).not.toMatch(/meets/);
     expect(req.text).toMatch(/NOT assessed/);
   });
-  it('at the parsed figure it still meets it', () => {
-    expect(lotSizeRequirement(300, 300, 'p129', true)!.pass).toBe(true);
+  it('at exactly the parsed figure it is not assessed ("more than"), above it passes', () => {
+    expect(lotSizeRequirement(300, 300, 'p129', true)!.pass).toBe(false);
+    expect(lotSizeRequirement(301, 300, 'p129', true)!.pass).toBe(true);
   });
 });
 
