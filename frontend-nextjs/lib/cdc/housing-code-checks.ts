@@ -160,8 +160,8 @@ function evaluateFront(parsed: ParsedRow[], input: CdcCheckInput, spec: Spec): C
     );
   }
   const avg = finite(input.neighbourAverageFrontM);
-  if (avg === null) return withRule('Not checked: enter the average front setback of the 2 nearest dwelling houses');
-  if (spec.proposed === null) return withRule('Not checked: no value entered');
+  if (avg == null) return withRule('Not checked: enter the average front setback of the 2 nearest dwelling houses');
+  if (spec.proposed == null) return withRule('Not checked: no value entered');
   const pass = spec.proposed >= avg;
   return {
     ...base,
