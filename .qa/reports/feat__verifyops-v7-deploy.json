@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Alarm logic (two new red keys) and the monitor launcher. No DB writes, no user-facing text.",
- "commit_hash": "54abc444",
+ "commit_hash": "3fbe705b",
  "files": [
   "scripts/run_monitors.py",
   "scripts/verifyops_coverage.py",
