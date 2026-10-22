@@ -34,6 +34,8 @@ COPY services/ ./services/
 COPY src/ ./src/
 COPY tests/ ./tests/
 COPY scripts/ ./scripts/
+# scripts/never_serve.py reads this list and raises if it is missing (a silent empty list would guard nothing).
+COPY data/chapter_scope/ ./data/chapter_scope/
 COPY frontend-nextjs/ ./frontend-nextjs/
 COPY pytest.ini ./pytest.ini
 

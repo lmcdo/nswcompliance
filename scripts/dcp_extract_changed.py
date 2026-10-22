@@ -58,6 +58,8 @@ from scripts.dcp_page_map_gate import (
 from scripts.dcp_supersede_guard import enforce as enforce_section_loss
 from scripts.dcp_supersede_guard import snapshot as section_snapshot
 from scripts import dcp_area_link_guard as area_links
+# reviewed rules that must stay switched off (data/chapter_scope/never_serve.json)
+from scripts import never_serve
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -5216,13 +5218,14 @@ def extract_chapter(
                             UPDATE regulatory_provisions
                             SET provision_text   = %s,
                                 pdf_page         = %s,
-                                v2_is_actionable = NULL
+                                -- a reviewed never-serve rule stays switched off (data/chapter_scope/never_serve.json)
+                                v2_is_actionable = CASE WHEN id = ANY(%s) THEN FALSE ELSE NULL END
                             WHERE source_council    = %s
                               AND source_chapter_key = %s
                               AND ref_number         = %s
                               AND is_current         = TRUE
                             """,
-                            (c["new_text"], c["new_page"], council, chapter_key, c["ref_number"]),
+                            (c["new_text"], c["new_page"], list(never_serve.ids()), council, chapter_key, c["ref_number"]),
                         )
                         updated += 1
 

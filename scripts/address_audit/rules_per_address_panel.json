@@ -293,17 +293,18 @@
     "former_council": "woollahra",
     "zone": "R2",
     "heritage": "false",
+    "precinct_id": "Vaucluse West Precinct,Woollahra Residential Precincts",
     "land_application": "[{\"name\":\"Woollahra Local Environmental Plan 2014\",\"type\":\"Included\"}]",
     "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Height of Buildings Map\":[\"9.5 m\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Lot Size Map\":[\"675 m²\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Floor Space Ratio Map\":[\"0.5:1\"],\"Local Aboriginal Land Council\":[\"LA PEROUSE\"],\"Land Application Map\":[\"Woollahra Local Environmental Plan 2014\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Acid Sulfate Soils Map\":[\"Class 5\"],\"Special Provisions\":[\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"2030\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"WOOLLAHRA\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\"]}}",
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 1174,
+    "total": 1655,
     "layers": {
      "generic": 1016,
      "use_specific": 158,
      "condition": 0,
-     "precinct": 0
+     "precinct": 481
     },
     "councils": [
      "woollahra"
@@ -311,6 +312,8 @@
     "chapters": [
      "chapter-a1-introduction",
      "chapter-a3-definitions",
+     "chapter-b1-residential-precincts",
+     "chapter-b3-general-development",
      "chapter-b4-housing-accessible-areas",
      "chapter-e1-parking-access",
      "chapter-e2-stormwater-flood",
@@ -1034,6 +1037,10 @@
   {
    "date": "2026-10-22",
    "reason": "2026-10-22: 006/007 Woollahra lose chapter-b3 (~450 generic) -- #1420 moved B3 to the 'Woollahra Residential Precincts' outline; these frozen lots are outside it. 013 Marrickville +72 condition -- #1413 moved part2-s22 flood rules to the flood condition layer and this lot sends flood=true; part2-s26 entertainment rules now only inside that precinct (#1423). 002/003 back to 232 precinct after the 96 Carinya Road (Picnic Point) rows were withheld again (backup data/db_rollback_backups/carinya_road_withhold_pre_2026-10-22T201544.json)."
+  },
+  {
+   "date": "2026-10-22",
+   "reason": "2026-10-22: 007 Vaucluse re-frozen with the precinct the live page sends today ('Vaucluse West Precinct,Woollahra Residential Precincts'; frozen 2026-10-16 with none). It now gets Woollahra B3 rules, as the real page does. Checked: the other 27 addresses' frozen inputs match the live page."
   }
  ]
 }

@@ -17,6 +17,15 @@ import psycopg2
 
 from enrichment.extractors.actionable_classifier import ActionableClassifier
 
+def _never_serve_ids() -> frozenset[int]:
+    """The reviewed never-serve ids; a missing list raises rather than guarding nothing."""
+    import os as _os
+    import sys as _sys
+    _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+    import never_serve  # noqa: PLC0415
+    return never_serve.ids()
+
+
 def rerun_classifier():
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
     cur = conn.cursor()
@@ -79,7 +88,9 @@ def rerun_classifier():
         print(f"\nApplying {len(batch_updates)} updates...")
 
         # Split into actionable=true and actionable=false batches
-        to_actionable = [id for (val, id) in batch_updates if val]
+        # A reviewed never-serve rule is never switched on (data/chapter_scope/never_serve.json).
+        _never = _never_serve_ids()
+        to_actionable = [id for (val, id) in batch_updates if val and id not in _never]
         to_excluded = [id for (val, id) in batch_updates if not val]
 
         if to_actionable:

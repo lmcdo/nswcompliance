@@ -163,6 +163,9 @@ def sync_to_supabase(supa_conn, data):
     columns_str = ', '.join(['id'] + V2_COLUMNS)
 
     updated = 0
+    import never_serve  # scripts/ is on sys.path (above)
+    never = never_serve.ids()
+    skipped_never = 0
     errors = 0
 
     for row in data:
@@ -175,6 +178,9 @@ def sync_to_supabase(supa_conn, data):
 
             # Create parameterized UPDATE
             set_parts = []
+            if row['id'] in never:
+                skipped_never += 1
+                continue  # a reviewed never-serve rule is never overwritten from a local copy
             params = []
             for i, col in enumerate(V2_COLUMNS):
                 set_parts.append(f"{col} = %s")
@@ -199,7 +205,7 @@ def sync_to_supabase(supa_conn, data):
                 print(f"    Error on id {row['id']}: {e}")
 
     supa_conn.commit()
-    print(f"  Synced {updated} provisions to Supabase ({errors} errors)")
+    print(f"  Synced {updated} provisions to Supabase ({errors} errors; {skipped_never} never-serve rows left untouched)")
     return updated, errors
 
 def main():

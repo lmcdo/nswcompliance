@@ -54,6 +54,7 @@ import psycopg2
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gate_rules import EXTRA_KEY_RULES, apply_gate_rules  # noqa: E402
+import never_serve  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
@@ -447,7 +448,8 @@ def run(council: str | None, apply: bool, validate: bool, only: set[str] | None 
         )
         cols = [d[0] for d in cur.description]
         rows = [dict(zip(cols, r)) for r in cur.fetchall()]
-        r_new = r_changed = r_ok = r_none = 0
+        r_new = r_changed = r_ok = r_none = r_never = 0
+        never = never_serve.ids()
         pending: list[tuple] = []  # (row_id, current, derived, layer) — buffered so the
         # fingerprint gate below can decide to write them or fail closed as a batch.
         for row in rows:
@@ -455,6 +457,13 @@ def run(council: str | None, apply: bool, validate: bool, only: set[str] | None 
             current = row["v2_precinct_id"]
             if derived is None:
                 r_none += 1
+                continue
+            # A reviewed never-serve rule (data/chapter_scope/never_serve.json) keeps NO key: a page-range rule
+            # re-keyed the Carinya Road rows on 2026-10-21 and served them to all of former Bankstown. Skipped
+            # here, after the derivation, so the fingerprint's coverage maths still sees every row.
+            never_text = never_serve.text_keys(rule["council"], row["source_chapter_key"] or "")
+            if row["id"] in never or (never_text and never_serve.text_key(row["provision_text"]) in never_text):
+                r_never += 1  # by id, or by text for a re-read that minted new ids
                 continue
             if rule["validate"] and current is not None and current != derived:
                 validation_failures.append(
@@ -500,7 +509,7 @@ def run(council: str | None, apply: bool, validate: bool, only: set[str] | None 
                     (derived, row_id))
         gate = "" if fp_ok else "  [FAIL-CLOSED: not written]"
         print(f"  {rule['name']:<34} rows={len(rows):<5} new={r_new} changed={r_changed} "
-              f"already-ok={r_ok} no-derivation={r_none}{gate}")
+              f"already-ok={r_ok} no-derivation={r_none} never-serve-skipped={r_never}{gate}")
         total_new += r_new; total_changed += r_changed; total_ok += r_ok; total_none += r_none
 
     gate_backup = apply_gate_rules(cur, council, apply, only)

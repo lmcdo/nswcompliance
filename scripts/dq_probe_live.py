@@ -173,6 +173,19 @@ def _withheld_listed() -> tuple[list[str], list[int]]:
     return keys, ids
 
 
+def _never_serve() -> tuple[int, list[int], list[str], list[str]]:
+    """(expected rows, listed ids, 'council__chapter' keys, text fingerprints) from data/chapter_scope/never_serve.json."""
+    import never_serve  # noqa: PLC0415  (scripts/ is on sys.path above)
+    es = never_serve.entries()
+    return (sum(e["expect"] for e in es), sorted(never_serve.ids()),
+            sorted({f"{e['council']}__{e['chapter_key']}" for e in es}),
+            sorted({h for e in es for h in e["text_sha256_16"]}))
+
+
+#: never_serve.text_key() in SQL: lower-case, whitespace collapsed, trimmed, first 16 hex of sha256.
+_TEXT_KEY_SQL = "left(encode(sha256(convert_to(lower(btrim(regexp_replace(COALESCE({col}, ''), '\s+', ' ', 'g'))), 'UTF8')), 'hex'), 16)"
+
+
 def _chapter_scope_keys(*, part_of_council: bool | None = None,
                         applies_to: tuple[str, ...] = (),
                         machine_whole_council: bool | None = None) -> list[str]:
@@ -2926,6 +2939,26 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "be for every house or for one Part's area. Cleared per Part: record the Part's "
         "own words in data/chapter_scope/ and gate the local rows (DQ-143 then counts "
         "any that stay ungated).",
+    ),
+    "DQ-148": (
+        "Reviewed never-serve rules that are served, or have slipped out of their safe state",
+        # Found 2026-10-22: 97 Carinya Road (Picnic Point only) flood rules were hidden by removing their key; a
+        # page-range re-derive on 2026-10-21 keyed them back and they were served to all of former Bankstown.
+        # Safe state = current, v2_is_actionable FALSE, precinct layer, no key (shown only in the may-apply block).
+        # Counts (a) listed rows NOT in that state -- including a listed row that stopped being current, which is
+        # what a re-read that mints new ids looks like -- plus (b) any OTHER current row in the same chapter whose
+        # text matches a listed rule and is not switched off (the re-read's new copy).
+        "SELECT (%s - (SELECT count(*) FROM regulatory_provisions"
+        "               WHERE id = ANY(%s) AND is_current AND v2_is_actionable = FALSE"
+        "                 AND v2_dcp_layer = 'precinct' AND v2_precinct_id IS NULL))"
+        "     + (SELECT count(*) FROM regulatory_provisions rp"
+        "        WHERE rp.is_current AND rp.v2_is_actionable IS NOT FALSE AND NOT (rp.id = ANY(%s))"
+        "          AND COALESCE(rp.source_council, '') || '__' || COALESCE(rp.source_chapter_key, '') = ANY(%s)"
+        f"          AND {_TEXT_KEY_SQL.format(col='rp.provision_text')} = ANY(%s))",
+        (lambda n, i, k, h: (n, i, i, k, h))(*_never_serve()),
+        "A rule a person reviewed and ruled 'never serve' (it applies to an area we cannot map) is back in a "
+        "main rule list, or is one step from it. Fix the row back to the safe state (backups in "
+        "data/db_rollback_backups/carinya_road_*), then find the job that moved it.",
     ),
     "DQ-146": (
         "Served-flagged rules the page shows to no house",

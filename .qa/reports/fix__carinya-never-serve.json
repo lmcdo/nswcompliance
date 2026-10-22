@@ -1,0 +1,104 @@
+{
+  "tier": "standard",
+  "justification": "Standard: changes six production writers so reviewed never-serve rules are skipped, adds a live DQ probe; production rows were changed separately with user approval and backups. Not Critical: no schema change, skips only listed ids.",
+  "commit_hash": "bf2950c7",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "Dockerfile.maintenance",
+    "Dockerfile.monitors",
+    "data/chapter_scope/never_serve.json",
+    "enrichment/pipeline.py",
+    "frontend-nextjs/lib/may-apply-query.ts",
+    "scripts/address_audit/rules_per_address_panel.json",
+    "scripts/dcp_extract_changed.py",
+    "scripts/derive_precinct_keys.py",
+    "scripts/dq_probe_live.py",
+    "scripts/fixes/rerun_actionable_classifier.py",
+    "scripts/gate_rules.py",
+    "scripts/never_serve.py",
+    "scripts/sync_v2_to_supabase.py",
+    "tests/test_never_serve.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions: 97 Canterbury-Bankstown chapter 2.2 rows (ids in data/chapter_scope/never_serve.json); now current, v2_is_actionable FALSE, precinct layer, no key.",
+    "assumption_mismatch": "Hiding a rule by removing its precinct key was assumed permanent; derive_precinct_keys re-keys by page range after every publish and does not know which rows were hidden on purpose.",
+    "new_vs_existing": "New list data/chapter_scope/never_serve.json; not may-apply-areas.json or not_covered, because those also name rows that are keyed and served on purpose."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_never_serve.py -q -o addopts= ; python scripts/dq_probe_live.py --id DQ-148",
+    "fails_when": "The skip is removed from derive_precinct_keys, gate_rules or enrichment, the loader count check is removed, or Dockerfile.monitors stops copying scripts/never_serve.py.",
+    "observed_red": "Five break-checks each turned the tests red (derive, gate, enrichment, loader, Dockerfile copy) and green when restored. DQ-148 reads 0 live after the production fix."
+  },
+  "functions": [
+    {
+      "name": "never_serve.ids",
+      "file_line": "scripts/never_serve.py",
+      "input": "the reviewed list file data/chapter_scope/never_serve.json",
+      "output": "the frozen set of listed row ids",
+      "if_none": "a missing or miscounted list raises instead of returning an empty set"
+    },
+    {
+      "name": "derive_precinct_keys.run",
+      "file_line": "scripts/derive_precinct_keys.py",
+      "input": "council, apply flag and rule filter from the command line or a publish",
+      "output": "precinct keys written for derived rows, listed rows skipped and counted",
+      "if_none": "rows with no derivation are counted as before"
+    },
+    {
+      "name": "gate_rules.apply_gate_rules",
+      "file_line": "scripts/gate_rules.py",
+      "input": "database cursor, council and the gate rule list",
+      "output": "layer and condition updates, listed rows skipped",
+      "if_none": "no matching rows means no updates"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "DQ-148: listed rows out of their safe state plus switched-on text copies",
+      "file_line": "scripts/dq_probe_live.py",
+      "where_clause": "id = ANY(listed) AND is_current AND v2_is_actionable = FALSE AND precinct AND key NULL; plus same council/chapter and text fingerprint",
+      "if_zero": "clean"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A publish re-derives Canterbury-Bankstown keys.",
+      "what_happens": "Before: the 97 rows were re-keyed and served to all of former Bankstown.",
+      "mitigated": true,
+      "how": "derive skips listed ids",
+      "repro": "tests/test_never_serve.py::test_derive_never_keys_a_listed_row"
+    },
+    {
+      "scenario": "Forced enrichment re-reads switched-off rows.",
+      "what_happens": "Before: it could switch them back on.",
+      "mitigated": true,
+      "how": "update loop skips listed ids",
+      "repro": "tests/test_never_serve.py wiring check + DQ-148"
+    },
+    {
+      "scenario": "The chapter is re-read and the rows get new ids.",
+      "what_happens": "An id-only guard would read 0 while new copies leak.",
+      "mitigated": true,
+      "how": "DQ-148 counts listed ids no longer current and text copies switched on",
+      "repro": "DQ-148 query"
+    },
+    {
+      "scenario": "The job image lacks the helper.",
+      "what_happens": "Every re-derive after publish would fail for every council.",
+      "mitigated": true,
+      "how": "COPY line plus test_dockerfile_monitors_imports",
+      "repro": "remove the COPY line: 4 tests fail"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Railway monitors image rebuild picks up scripts/never_serve.py; next C-B publish log should show never-serve-skipped=97."
+  },
+  "real_layer_exempt": {
+    "scripts/fixes/rerun_actionable_classifier.py": "The change only drops listed ids from a Python list before the existing UPDATE; no new or changed SQL. Covered by tests/test_never_serve.py::test_other_writers_consult_the_list and by DQ-148 on the live database."
+  }
+}

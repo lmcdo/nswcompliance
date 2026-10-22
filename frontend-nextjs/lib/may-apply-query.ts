@@ -55,8 +55,10 @@ export function areasInChapter(councilSlug: string | null | undefined, chapterKe
  * record of why the row was held back).
  * Measured 2026-10-21 over the 46 areas: 172 rows with the switched-off test alone, 1,427 with both. The outline
  * test (51 areas) adds Marrickville 2.26 (an outline narrower than the section's land: the pink precinct blocks, not
- * the Sound Category street lines) and 96 Carinya Road rows keyed to 'C-B former Bankstown' -- its one suburb,
- * Picnic Point, is inside that outline, so they stay in the main list there.
+ * the Sound Category street lines). The 97 Carinya Road rows (cb-2-2-carinya-road-flood) are NOT keyed: on
+ * 2026-10-21 a re-derive keyed them to 'C-B former Bankstown' and they were served to all of former Bankstown.
+ * Since 2026-10-22 they are switched off with no key (data/chapter_scope/never_serve.json, guarded by DQ-148), so
+ * Picnic Point lots see them here, through the first test, and no lot sees them in its main list.
  */
 export function buildMayApplySql(selectColumns: string): string {
   return `

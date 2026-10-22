@@ -37,6 +37,9 @@ COPY scripts/dcp_commit_approved.py ./scripts/dcp_commit_approved.py
 # The json is NOT optional: derive_precinct_keys reads it at MODULE level, so the
 # import itself fails without it -- and a FileNotFoundError is not an ImportError.
 COPY scripts/derive_precinct_keys.py ./scripts/derive_precinct_keys.py
+# Reviewed never-serve rules: imported by derive_precinct_keys, gate_rules, dcp_extract_changed and enrichment.
+# Without it every re-derive after a publish fails, for every council.
+COPY scripts/never_serve.py ./scripts/never_serve.py
 # gate_rules is imported by derive_precinct_keys at module level (DQ-146 gate rules),
 # and it imports its two sibling rule files at module level in turn.
 COPY scripts/gate_rules.py ./scripts/gate_rules.py
