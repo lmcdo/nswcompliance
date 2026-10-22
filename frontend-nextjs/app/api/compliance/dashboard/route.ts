@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
       maxFsr: body.maxFsr,
       basixWater: body.basixWater,
       lga: body.lga,
-      heritage: heritageAnswer(body.heritage) !== false, // unknown includes heritage rules
+      heritage: heritageAnswer(body.heritage), // the fact: true / false / null (not checked)
       floodProne: body.floodProne ?? null,
       bushfireProne: typeof body.bushfireProne === 'boolean' ? body.bushfireProne : null,
       // Only a caller-supplied bush fire answer counts; every other hazard map is unqueried here.
