@@ -1,0 +1,42 @@
+{
+  "tier": "minor",
+  "justification": "Minor: two published coverage figures brought to the measured live counts; no logic change.",
+  "commit_hash": "1e82be84",
+  "files": [
+    "frontend-nextjs/lib/coverage.ts"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/verify_coverage_stats.py --field dcpNumericCouncils dcpSetbackTripleCouncils",
+    "fails_when": "The published figures in coverage.ts differ from the live database counts.",
+    "observed_red": "Before: published 26 and 19 versus live 25 and 18, DRIFT. After: 25 and 18 on both sides, OK."
+  },
+  "functions": [],
+  "values": [
+    {
+      "name": "dcpNumericCouncils",
+      "value": "25",
+      "source": "scripts/verify_coverage_stats.py live count, 2026-10-22"
+    },
+    {
+      "name": "dcpSetbackTripleCouncils",
+      "value": "18",
+      "source": "scripts/verify_coverage_stats.py live count, 2026-10-22"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Bayside is re-read from its new DCP and its rows are served again.",
+      "what_happens": "The live counts go back to 26 and 19 and these figures understate coverage.",
+      "mitigated": true,
+      "how": "OC-1 and OC-2 fail in CI on any drift, in either direction",
+      "repro": "python scripts/verify_coverage_stats.py --field dcpNumericCouncils"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
