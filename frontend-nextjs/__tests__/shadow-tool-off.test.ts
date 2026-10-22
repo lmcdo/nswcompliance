@@ -12,6 +12,11 @@
  *
  * @jest-environment node
  */
+jest.mock('next/navigation', () => ({
+  redirect: (url: string) => { throw new Error(`REDIRECT ${url}`); },
+  notFound: () => { throw new Error('NOT_FOUND'); },
+}));
+
 import fs from 'fs';
 import path from 'path';
 
@@ -101,5 +106,15 @@ describe('shadow tool is off', () => {
       expect(res.status).toBe(410);
       expect(await res.json()).toEqual({ error: 'The shadow tool has been turned off.' });
     }
+  });
+});
+
+
+describe('paid buyers are not stranded', () => {
+  it('a Stripe success return with a report id is forwarded to that report, anything else is 404', async () => {
+    const { default: Page } = await import('@/app/reports/shadow/page');
+    expect(() => Page({ searchParams: { payment: 'success', report_id: 'abc-123' } })).toThrow('REDIRECT /reports/shadow/abc-123');
+    expect(() => Page({ searchParams: {} })).toThrow('NOT_FOUND');
+    expect(() => Page({ searchParams: { payment: 'success', report_id: '../../x' } })).toThrow('NOT_FOUND');
   });
 });

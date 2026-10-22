@@ -365,7 +365,7 @@ export default function PricingPage() {
               },
               {
                 q: 'What is the pre-auction bundle?',
-                a: 'All 6 standard reports (solar, bushfire, flood, granny flat, site history, conveyancing) for one address at $149 instead of $274. Covers every hazard and planning dimension before you bid.',
+                a: 'All 6 standard reports (solar, bushfire, flood, granny flat, site history, conveyancing) for one address at $149 instead of $274.',
               },
               {
                 q: 'Is this planning advice?',
