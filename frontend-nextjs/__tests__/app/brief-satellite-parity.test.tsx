@@ -100,6 +100,6 @@ describe('page source — shadow section removed (2026-10-22)', () => {
     expect(PAGE_SRC).not.toContain('ShadowDisplay');
     expect(PAGE_SRC).not.toContain('ShadowDetailDisplay');
     expect(PAGE_SRC).not.toMatch(/shadow analysis/i);
-    expect(PAGE_SRC).not.toMatch(/bADGb/);
+    expect(PAGE_SRC).not.toMatch(/\bADG\b/);
   });
 });
