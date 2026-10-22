@@ -112,7 +112,12 @@ def compare(baseline: list[str], now: list[str]) -> tuple[list[str], list[str]]:
 
 def coverage(now: list[str], served: int) -> str:
     """Metric C as a line: chapters with no red key / active chapters."""
-    red_chapters = {k.rsplit("|", 1)[0] for k in now if not k.split("|")[1] == "*"}
+    red_chapters = set()
+    for k in now:
+        council, _, rest = k.partition("|")
+        chapter = rest.partition("|")[0]
+        if chapter and chapter != "*":
+            red_chapters.add(f"{council}|{chapter}")
     return f"C = {served - len(red_chapters)}/{served} active chapters with no red key"
 
 
@@ -140,9 +145,10 @@ def main(argv: list[str] | None = None, conn=None) -> int:
         print("  If 'dcp_monitor_' is named above, apply migrations/116_dcp_monitor_results.sql first.")
         return 2
 
-    doc = json.loads(BASELINE.read_text(encoding="utf-8")) if BASELINE.exists() else {"keys": []}
-    new, cleared = compare(doc.get("keys", []), now)
-    print(f"VERIFYOPS: {len(now)} red keys today; baseline {len(doc.get('keys', []))}; "
+    doc = json.loads(BASELINE.read_text(encoding="utf-8")) if BASELINE.exists() else {}
+    base_keys = doc.get("keys") or []
+    new, cleared = compare(base_keys, now)
+    print(f"VERIFYOPS: {len(now)} red keys today; baseline {len(base_keys)}; "
           f"{len(new)} new; {len(cleared)} cleared")
     print(f"  {coverage(now, served)}")
     for k in new[:60]:
@@ -154,9 +160,9 @@ def main(argv: list[str] | None = None, conn=None) -> int:
         if new and not args.allow_raise:
             print("REFUSED: new red keys (shrink-only). Fix them, or --allow-raise 'reason'.")
             return 1
-        doc["keys"] = now if args.allow_raise else sorted(set(doc.get("keys", [])) - set(cleared))
+        doc["keys"] = now if args.allow_raise else sorted(set(base_keys) - set(cleared))
         if args.allow_raise:
-            doc.setdefault("raised", []).append(args.allow_raise)
+            doc["raised"] = (doc.get("raised") or []) + [args.allow_raise]
         BASELINE.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf-8")
         print(f"baseline written: {len(doc['keys'])} keys")
         return 0

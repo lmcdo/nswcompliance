@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Changes the production DCP change monitor: which files are downloaded each run, what is recorded, and what the daily alarm calls red. A wrong cadence decision silently skips a changed file; a wrong alarm query stays green over an unchecked chapter. Adds a migration (3 tables, 1 column).",
- "commit_hash": "b20d4eb1",
+ "commit_hash": "cdb9b48b",
  "files": [
   "migrations/116_dcp_monitor_results.sql",
   "scripts/verifyops_record.py",
@@ -15,7 +15,9 @@
   "tests/test_verifyops_daily_check.py",
   "tests/fixtures/verifyops/bayside_list_2026-10-22.json",
   "tests/fixtures/verifyops/canada_bay_list_2026-10-22.json",
-  "tests/fixtures/verifyops/canterbury_bankstown_list_2026-10-22.json"
+  "tests/fixtures/verifyops/canterbury_bankstown_list_2026-10-22.json",
+  "tests/test_verifyops_coverage_real_db.py",
+  "tests/test_verifyops_record_real_db.py"
  ],
  "pre_impl": {
   "existing_data": "Measured 2026-10-22 read-only on production: no dcp_monitor_* tables and no url_last_downloaded column; 571 active chapters, 541 with a council_url, 454 tagged (ETag), 544 with a council_page_url across 21 councils. Unwatched: inner_west 495 served provisions (no registry row), nsw_statewide 31 setbacks. 28 auto_detected new documents waiting since 2026-05-18 across 5 councils. 6 chapters with needs_extraction.",
@@ -26,9 +28,9 @@
   "user_failure_mode": "If this is wrong a site visitor is shown a DCP chapter as current when the council changed it: a cadence bug that skips a download, or an alarm query that stays green over an unchecked chapter. Both fail silently, which is why every outcome is stored and the alarm is red on anything it cannot read (exit 2)."
  },
  "falsifiable_check": {
-  "command": "python -m pytest -q tests/test_verifyops_daily_check.py tests/test_r2_monitor_alerting.py tests/test_hub_discovery_is_not_gated_on_change_detection.py tests/test_dockerfile_monitors_imports.py",
+  "command": "python -m pytest -q tests/test_verifyops_daily_check.py tests/test_r2_monitor_alerting.py tests/test_hub_discovery_is_not_gated_on_change_detection.py tests/test_dockerfile_monitors_imports.py ; PYTEST_REAL_DB=1 DATABASE_URL=<pooler url> python -m pytest -m database -o addopts= tests/test_verifyops_coverage_real_db.py tests/test_verifyops_record_real_db.py",
   "fails_when": "an untagged file is downloaded before 7 days or not at 7, a tag change or spot check does not download, the spot check picks more than once a week, the shadow week is not exactly 7 days, a dry run writes, a rate-limited skip is not recorded, a re-upload or chapter number is misread, a redesign hides a held-chapter match, a delisted file is called gone, a plan without a year matches, the alarm lets a new key cancel a cleared one, cannot-look reads as a pass, or --update raises the baseline",
-  "observed_red": "YES: 35 hand-made mutants applied one at a time to verifyops_record/links/coverage. 33 killed. 1 equivalent (flush without the dry_run guard: a dry run never gets a run_id). 1 survivor: the alarm SQL predicate 'last.outcome NOT IN' -> 'IN' cannot be killed without a database; it is checked on the first live run (step 3 of the verification below). Two real bugs were found by the tests before commit: dcp_part_3.pdf read as a re-upload of dcp_part.pdf, and 'exhibitions' not flagged as draft. A third by the real canada_bay list: 3 new links on an 8-link page read as a redesign (floor of 5 added)."
+  "observed_red": "YES: 35 hand-made mutants applied one at a time to verifyops_record/links/coverage. 33 killed. 1 equivalent (flush without the dry_run guard: a dry run never gets a run_id). The SQL survivor is now killed by the real-database tests (TEMP copies of the migration-116 tables on production, rolled back): 5 SQL mutants, 5 killed - last.outcome NOT IN -> IN, the ok filter on list_not_read_2d dropped, the checked-outcome filter on not_checked_8d dropped, two INSERT columns swapped, and the ok filter on the previous-list lookup dropped (that one first SURVIVED and got its own test: a blocked day's empty list must never become the list compared with). Two real bugs were found by the tests before commit: dcp_part_3.pdf read as a re-upload of dcp_part.pdf, and 'exhibitions' not flagged as draft. A third by the real canada_bay list: 3 new links on an 8-link page read as a redesign (floor of 5 added)."
  },
  "functions": [
   {
