@@ -68,7 +68,9 @@ export interface CdcCheck {
 }
 
 function finite(v: unknown): number | null {
-  return typeof v === 'number' && Number.isFinite(v) ? v : null;
+  // Every CDC input (setback, height, area, storeys, spaces) is zero or more; a negative
+  // value is treated as not given, so it can never pass a maximum.
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null;
 }
 
 /** Structure tags for the proposal. Secondary dwellings (detached) are not modelled. */

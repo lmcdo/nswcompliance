@@ -536,3 +536,18 @@ describe('failure wording', () => {
     expect(recs.join(' ')).not.toMatch(/short of the stored maximum/);
   });
 });
+
+
+describe('negative inputs never pass', () => {
+  it('a negative height or storey count is Not checked, not a pass against the maximum', () => {
+    const input = {
+      developmentType: 'new_dwelling' as const, lotAreaM2: 500, lotWidthM: 12, neighbourDwellings: 'no' as const,
+      setbacks: { front: 3, sideLeft: 1, sideRight: 1, rear: 3 }, hasUpperFloorHabitableRooms: false,
+      buildingHeightMeters: -1, storeys: -1,
+    };
+    const checks = evaluateCdcChecks(input, parsed);
+    for (const key of ['buildingHeight', 'storeys']) {
+      expect(checks.find((c) => c.key === key)?.status).toBe('not_checked');
+    }
+  });
+});
