@@ -21,7 +21,7 @@
   "falsifiable_check": {
     "command": "python scripts/lint_hardcoded_regulatory_numbers.py --check && cd frontend-nextjs && npx tsc --noEmit --skipLibCheck",
     "fails_when": "Any remaining import of the deleted client, schema or types would fail the type check; a typed figure left behind would fail the ledger check.",
-    "observed_red": "Before pruning, the ledger check failed with 4 GONE entries for the deleted figures; after --prune it passes at 524 open. tsc reports 0 errors."
+    "observed_red": "Before pruning, the ledger check failed with 4 GONE entries for the deleted figures; after --prune it passed at 524 open. The widened constant pattern then named 22 more copies already in the code: 546 open, 0 unlisted. Quoted-key break-check: test red with quote support removed. tsc 0 errors."
   },
   "functions": [
     {
