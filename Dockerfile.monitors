@@ -21,6 +21,8 @@ COPY scripts/r2_monitor.py ./scripts/r2_monitor.py
 # Run results (migration 116) + the daily council-list diff; r2_monitor imports both.
 COPY scripts/verifyops_record.py ./scripts/verifyops_record.py
 COPY scripts/verifyops_links.py ./scripts/verifyops_links.py
+COPY scripts/verifyops_classify.py ./scripts/verifyops_classify.py
+COPY scripts/extract_dcp_stated_dates.py ./scripts/extract_dcp_stated_dates.py
 # Deterministic content-change gate (text-hash) — r2_monitor imports it to reject
 # re-export false positives.
 COPY scripts/pdf_text_hash.py ./scripts/pdf_text_hash.py
