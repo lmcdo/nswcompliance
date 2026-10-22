@@ -47,7 +47,8 @@ def test_a_duplicate_names_the_served_row():
 
 def test_a_served_file_under_another_label_is_found_by_address_too():
     doc = dict(DOCS[805], sha256=None)
-    row = {"id": 725, "council_url": DOCS[805]["url"].upper(), "content_hash": None}
+    url = DOCS[805]["url"].replace("https://www.bayside", "HTTPS://WWW.BAYSIDE") + "/"
+    row = {"id": 725, "council_url": url, "content_hash": None}
     assert V.classify(doc, [row], TODAY) == {"verdict": "duplicate", "of": 725, "why": "same address"}
 
 
@@ -121,10 +122,30 @@ def test_each_written_verdict_is_committed(monkeypatch):
         def rollback(self):
             raise AssertionError("no rollback expected")
 
-    monkeypatch.setattr(V, "pending", lambda c: [{"id": 1, "council": "x", "label": "a", "url": "u1"},
+    monkeypatch.setattr(V, "pending", lambda c, council=None: [{"id": 1, "council": "x", "label": "a", "url": "u1"},
                                                  {"id": 2, "council": "x", "label": "b", "url": "u2"}])
     monkeypatch.setattr(V, "council_rows", lambda c, council: [])
     monkeypatch.setattr(V, "read_document", lambda b: {"sha256": "s", "first_pages_text": DOCS[807]["first_pages_text"]})
     monkeypatch.setattr(V, "write_verdict", lambda c, rid, v: 1)
     assert V.classify_pending(Conn(), lambda u: b"", TODAY, dry_run=False) == {"not_dcp": 2}
     assert Conn.commits == 2
+
+
+def test_two_new_copies_of_one_file_keep_the_first_waiting():
+    a = dict(DOCS[814], id=10, sha256="same")
+    b = dict(DOCS[814], id=11, sha256="same", url="https://other.example/copy.pdf")
+    rows = [{"id": 10, "council_url": a["url"], "content_hash": "same", "status": "auto_detected"},
+            {"id": 11, "council_url": b["url"], "content_hash": "same", "status": "auto_detected"}]
+    assert V.classify(a, rows, TODAY)["verdict"] == "dcp"
+    assert V.classify(b, rows, TODAY) == {"verdict": "duplicate", "of": 10, "why": "same file (sha256)"}
+
+
+def test_a_rejected_row_is_never_the_original():
+    row = {"id": 1, "council_url": DOCS[814]["url"], "content_hash": DOCS[814]["sha256"], "status": "rejected"}
+    assert V.classify(DOCS[814], [row], TODAY)["verdict"] == "dcp"
+
+
+def test_paths_that_differ_only_by_case_are_different_files():
+    doc = {"id": 2, "url": "https://host.example/Plans/A.pdf", "first_pages_text": ["Example Development Control Plan"]}
+    row = {"id": 1, "council_url": "https://host.example/plans/a.pdf", "content_hash": None, "status": "confirmed"}
+    assert V.classify(doc, [row], TODAY)["verdict"] == "dcp"

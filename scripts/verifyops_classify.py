@@ -28,7 +28,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from datetime import date
-from urllib.parse import unquote
+from urllib.parse import urlsplit
 
 from extract_dcp_stated_dates import MONTHS, _STATEMENTS, _to_year
 
@@ -70,7 +70,13 @@ def effective_dates(cover: str) -> set[date]:
 
 
 def _norm_url(url: str | None) -> str:
-    return unquote(url or "").strip().lower().rstrip("/")
+    """Same address: scheme and host ignore case; the path is kept exactly (servers may be
+    case-sensitive, and %2F is not /)."""
+    parts = urlsplit((url or "").strip())
+    if not parts.netloc:
+        return (url or "").strip().rstrip("/")
+    return f"{parts.scheme.lower()}://{parts.netloc.lower()}{parts.path.rstrip('/')}" + (
+        f"?{parts.query}" if parts.query else "")
 
 
 def classify(doc: dict, registry: list[dict], today: date) -> dict:
@@ -78,11 +84,16 @@ def classify(doc: dict, registry: list[dict], today: date) -> dict:
 
     Args:
         doc: {id, url, sha256?, first_pages_text?: [str]}
-        registry: the other rows of the same council: {id, council_url, content_hash}
+        registry: the other rows of the same council: {id, council_url, content_hash, status}
         today: the day the verdict is for
+
+    A rejected row is never the original. A waiting row is the original only when it is older,
+    so two new copies of one file leave the first one waiting instead of rejecting both.
     """
     for row in registry:
-        if row["id"] == doc["id"]:
+        if row["id"] == doc["id"] or row.get("status") == "rejected":
+            continue
+        if row.get("status") == "auto_detected" and row["id"] > doc["id"]:
             continue
         if doc.get("sha256") and doc["sha256"] == row.get("content_hash"):
             return {"verdict": "duplicate", "of": row["id"], "why": "same file (sha256)"}
@@ -139,14 +150,16 @@ def read_document(data: bytes) -> dict:
     return out
 
 
-def pending(conn) -> list[dict]:
+def pending(conn, council: str | None = None) -> list[dict]:
+    """Waiting documents, oldest first; only `council`'s when a one-council run asks."""
     cur = conn.cursor()
     cur.execute("""SELECT id, council, chapter_key, chapter_label, council_url
                    FROM dcp_chapter_registry
                    WHERE registration_status = 'auto_detected'
                      AND detected_category IS DISTINCT FROM 'dcp_needs_person'
                      AND detected_category IS DISTINCT FROM 'unreadable'
-                   ORDER BY id""")
+                     AND (%s::text IS NULL OR council = %s)
+                   ORDER BY id""", (council, council))
     rows = [dict(zip(("id", "council", "chapter_key", "label", "url"), r)) for r in cur.fetchall()]
     cur.close()
     return rows
@@ -154,9 +167,9 @@ def pending(conn) -> list[dict]:
 
 def council_rows(conn, council: str) -> list[dict]:
     cur = conn.cursor()
-    cur.execute("SELECT id, council_url, content_hash FROM dcp_chapter_registry WHERE council = %s",
-                (council,))
-    rows = [dict(zip(("id", "council_url", "content_hash"), r)) for r in cur.fetchall()]
+    cur.execute("SELECT id, council_url, content_hash, registration_status FROM dcp_chapter_registry"
+                " WHERE council = %s", (council,))
+    rows = [dict(zip(("id", "council_url", "content_hash", "status"), r)) for r in cur.fetchall()]
     cur.close()
     return rows
 
@@ -179,7 +192,7 @@ def write_verdict(conn, row_id: int, verdict: dict) -> int:
     return n
 
 
-def classify_pending(conn, fetch, today: date, dry_run: bool) -> dict[str, int]:
+def classify_pending(conn, fetch, today: date, dry_run: bool, council: str | None = None) -> dict[str, int]:
     """Download, classify and (unless dry_run) record every waiting document.
 
     Args:
@@ -187,7 +200,7 @@ def classify_pending(conn, fetch, today: date, dry_run: bool) -> dict[str, int]:
     Returns counts per verdict, plus 'retry' for failed downloads.
     """
     counts: Counter[str] = Counter()
-    for doc in pending(conn):
+    for doc in pending(conn, council):
         try:
             doc.update(read_document(fetch(doc["url"])))
         except Exception as e:  # noqa: BLE001 - a failed download is retried next run

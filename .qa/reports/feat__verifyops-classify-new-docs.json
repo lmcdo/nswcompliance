@@ -21,26 +21,26 @@
  "falsifiable_check": {
   "command": "python -m pytest -q -o addopts= tests/test_verifyops_classify.py tests/test_dockerfile_monitors_imports.py ; PYTEST_REAL_DB=1 DATABASE_URL=<pooler url> python -m pytest -m database -o addopts= tests/test_verifyops_classify_real_db.py",
   "fails_when": "any of the 28 real documents gets a verdict other than the one a person read from its cover, a row is called its own duplicate, an amendment-history date or a second date is read as the commencement, a plan is not in force on its effective day, a failed download is written, a dry run writes, a decided row is overwritten, a waiting tag is downloaded again, or a verdict is not committed",
-  "observed_red": "YES: 15 hand-made mutants applied one at a time. 14 killed first time; the survivor (in_force d <= today -> d < today) got a boundary test and is killed. A second survivor (commit removed) got a commit-count test and is killed. The real-DB tests insert their own waiting rows on production inside one transaction that is rolled back; they kill the pending() filter, the auto_detected guard on the UPDATE and the not_dcp settlement mapping."
+  "observed_red": "YES: 15 hand-made mutants applied one at a time. 14 killed first time; the survivor (in_force d <= today -> d < today) got a boundary test and is killed. A second survivor (commit removed) got a commit-count test and is killed. The real-DB tests insert their own waiting rows on production inside one transaction that is rolled back; they kill the pending() filter, the auto_detected guard on the UPDATE and the not_dcp settlement mapping. Sol cross-review 2026-10-23 found 4 real defects, all fixed with tests and killed mutants: two new copies of one file rejected each other; a rejected row at the same address blocked a new document there; lowercasing the path merged different files on case-sensitive servers; a one-council run classified other councils' documents."
  },
  "functions": [
   {
    "name": "classify",
-   "file_line": "scripts/verifyops_classify.py:75",
+   "file_line": "scripts/verifyops_classify.py:82",
    "input": "one document (id, url, sha256, first pages' text) and the other registry rows of its council",
    "output": "a verdict dict: duplicate (with the matched row id), not_dcp, dcp (with the one effective date or needs_person), or red",
    "if_none": "no text or a failed read -> red"
   },
   {
    "name": "cover_text",
-   "file_line": "scripts/verifyops_classify.py:46",
+   "file_line": "scripts/verifyops_classify.py:47",
    "input": "the list of page texts read from the first three pages of the PDF",
    "output": "page 1 up to the first contents / amendment-history heading, at most 600 characters",
    "if_none": "an empty list gives an empty cover, which classify turns into a red verdict"
   },
   {
    "name": "classify_pending",
-   "file_line": "scripts/verifyops_classify.py:181",
+   "file_line": "scripts/verifyops_classify.py:195",
    "input": "connection, a url -> bytes fetch, today, dry_run",
    "output": "counts per verdict plus retry; writes one guarded UPDATE per document and commits it",
    "if_none": "no waiting rows returns an empty dict and nothing is downloaded or written"
@@ -72,12 +72,12 @@
  "queries": [
   {
    "purpose": "documents waiting for a verdict",
-   "file_line": "scripts/verifyops_classify.py:141",
+   "file_line": "scripts/verifyops_classify.py:153",
    "where_clause": "registration_status = 'auto_detected' AND detected_category not dcp_needs_person / unreadable"
   },
   {
    "purpose": "write one verdict",
-   "file_line": "scripts/verifyops_classify.py:163",
+   "file_line": "scripts/verifyops_classify.py:177",
    "where_clause": "id = %s AND registration_status = 'auto_detected'; rowcount must be 1 or the run stops"
   },
   {

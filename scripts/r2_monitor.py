@@ -618,7 +618,8 @@ def _auto_register_chapter(
     # the 28 waiting rows were files already served (Bayside DCP 2022, CB chapters 5.1 and 5.2).
     cur.execute(
         "SELECT id FROM dcp_chapter_registry WHERE council = %s"
-        " AND lower(rtrim(btrim(council_url), '/')) = lower(rtrim(btrim(%s), '/'))",
+        " AND registration_status <> 'rejected'"
+        " AND rtrim(btrim(council_url), '/') = rtrim(btrim(%s), '/')",
         (council, url),
     )
     same_file = cur.fetchone()
@@ -1599,7 +1600,8 @@ def main():
                               recorder=recorder)
         # Read each newly found document's own cover and settle the ones it can (step 7).
         results["new_documents"] = classify_pending(
-            conn, lambda u: download_pdf(u)[0], datetime.now(timezone.utc).date(), args.dry_run)
+            conn, lambda u: download_pdf(u)[0], datetime.now(timezone.utc).date(), args.dry_run,
+            council=args.council)
         recorder.finish({k: (len(v) if isinstance(v, list) else v) for k, v in results.items()})
     finally:
         conn.close()

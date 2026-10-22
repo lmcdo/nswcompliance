@@ -62,7 +62,7 @@ def _only(conn, row_id):
     """Restrict pending() to the test row so real waiting rows are never downloaded."""
     import verifyops_classify as V
     real = V.pending
-    return lambda c: [r for r in real(c) if r["id"] == row_id]
+    return lambda c, council=None: [r for r in real(c, council) if r["id"] == row_id]
 
 
 def test_a_guideline_is_rejected_as_not_dcp(conn, monkeypatch):
@@ -92,7 +92,7 @@ def test_the_same_address_as_another_row_is_a_duplicate(conn, monkeypatch):
     cur = conn.cursor()
     first = _waiting_row(cur, "https://zz.test/same.pdf")
     cur.execute("UPDATE dcp_chapter_registry SET registration_status = 'confirmed' WHERE id = %s", (first,))
-    rid = _waiting_row(cur, "https://ZZ.test/same.pdf/")
+    rid = _waiting_row(cur, "https://ZZ.TEST/same.pdf/")
     monkeypatch.setattr(V, "pending", _only(conn, rid))
     monkeypatch.setattr(V, "read_document", lambda b: {"sha256": "z", "first_pages_text": ["anything"]})
     assert V.classify_pending(conn, lambda u: b"", date(2026, 10, 23), dry_run=False) == {"duplicate": 1}
@@ -128,3 +128,12 @@ def test_a_row_already_decided_is_never_overwritten(conn):
     cur.execute("UPDATE dcp_chapter_registry SET registration_status = 'confirmed' WHERE id = %s", (rid,))
     assert V.write_verdict(conn, rid, {"verdict": "not_dcp"}) == 0
     assert _state(cur, rid)[0] == "confirmed"
+
+
+def test_a_one_council_run_only_takes_that_councils_documents(conn):
+    import verifyops_classify as V
+    cur = conn.cursor()
+    rid = _waiting_row(cur, "https://zz.test/scoped.pdf")
+    assert rid in [r["id"] for r in V.pending(conn, "zz_test_council")]
+    assert all(r["council"] == "zz_test_council" for r in V.pending(conn, "zz_test_council"))
+    assert rid not in [r["id"] for r in V.pending(conn, "bayside")]
