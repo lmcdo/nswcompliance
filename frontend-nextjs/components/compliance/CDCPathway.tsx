@@ -201,6 +201,18 @@ export function lotSizeRequirement(
   }
 
   const met = `Lot size ${Math.round(lotArea)}m² — meets ${minArea}m² minimum`;
+  if (compound && lotArea < minArea) {
+    // Below the parsed (stricter) branch. The lower branch's figure and the width
+    // condition are not parsed, so "meets" would be a pass nobody tested, and
+    // "below" would refuse a lot the Code may allow.
+    return {
+      pass: false,
+      warn: true,
+      text: `Minimum lot size NOT assessed — the lot is ${Math.round(lotArea)}m², below the `
+        + `${minArea}m² branch of a provision that states more than one lot-area threshold `
+        + `and a width condition (${source ?? 'SEPP Housing Code'}). The other branch has not been assessed here.`,
+    };
+  }
   if (compound) {
     // The provision states more than one area threshold, so this is the
     // stricter branch of a conditional control rather than the only one.
@@ -216,6 +228,28 @@ export function lotSizeRequirement(
     };
   }
   return { pass: true, text: met };
+}
+
+/**
+ * Tier and summary for the not-exempt, not-blocked case. When the lot-area line
+ * was not assessed, the headline must not name a pathway the requirement list
+ * says nobody checked.
+ */
+export function cdcTierText(
+  workLabel: string,
+  lotAreaUnassessed: boolean,
+): { tier: string; summary: string } {
+  if (lotAreaUnassessed) {
+    return {
+      tier: 'Complying Development (CDC) — lot area not assessed',
+      summary: `Your ${workLabel} cannot proceed as exempt. Whether it can proceed as a CDC `
+        + `depends on the lot-area condition, which was not assessed.`,
+    };
+  }
+  return {
+    tier: 'Complying Development (CDC)',
+    summary: `Your ${workLabel} cannot proceed as exempt — a CDC is required.`,
+  };
 }
 
 /**
@@ -472,15 +506,15 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
           exemptBlockers.push(`${workType} — no exempt pathway available for this configuration`);
         }
 
+        const lotReq = lotSizeRequirement(lotArea, minArea, lotAreaSource, minAreaCompound);
         setResult({
           verdict: 'review',
-          tier: 'Complying Development (CDC)',
-          summary: `Your ${workLabel} cannot proceed as exempt — a CDC is required.`,
+          ...cdcTierText(workLabel, lotReq?.pass === false),
           blockers: exemptBlockers,
           // filter(Boolean): lotSizeRequirement returns null when the provisions
           // state no lot area, so the line is absent rather than invented.
           requirements: [
-            lotSizeRequirement(lotArea, minArea, lotAreaSource, minAreaCompound),
+            lotReq,
             { pass: true, text: `Zone ${zone} — CDC permitted` },
             { pass: false, warn: true, text: 'Setback requirements — certifier to measure and confirm on site' },
           ].filter((r): r is Requirement => r !== null),

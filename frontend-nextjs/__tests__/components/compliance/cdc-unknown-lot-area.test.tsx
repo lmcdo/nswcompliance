@@ -20,7 +20,7 @@
  * an active one. It is guarded because the consequence is wrong planning
  * advice, not because it fires often.
  */
-import { lotSizeRequirement } from '@/components/compliance/CDCPathway';
+import { lotSizeRequirement, cdcTierText } from '@/components/compliance/CDCPathway';
 
 const SOURCE = 'SEPP Housing Code Part 3, page 12';
 
@@ -219,5 +219,32 @@ describe('the source assertion that the fix is actually wired in', () => {
     // Math.round(null) is 0, so an unguarded interpolation would have printed
     // "0m² lot" as the multiplicand of a figure shown to the user.
     expect(src).not.toMatch(/×\s*\$\{Math\.round\(lotArea\)\}/);
+  });
+});
+
+describe('a COMPOUND threshold with the lot BELOW the parsed branch', () => {
+  // Page 129: a deck lot of 200-300 m2 qualifies when wider than 7 m. A 100 m2 lot
+  // used to read "meets 300m² minimum" with pass: true.
+  const req = lotSizeRequirement(100, 300, 'SEPP Housing Code Part 3, page 129', true)!;
+  it('is not a pass and never says "meets"', () => {
+    expect(req.pass).toBe(false);
+    expect(req.warn).toBe(true);
+    expect(req.text).not.toMatch(/meets/);
+    expect(req.text).toMatch(/NOT assessed/);
+  });
+  it('at the parsed figure it still meets it', () => {
+    expect(lotSizeRequirement(300, 300, 'p129', true)!.pass).toBe(true);
+  });
+});
+
+describe('cdcTierText — the headline follows the lot-area line', () => {
+  it('names no pathway when the lot area was not assessed', () => {
+    const t = cdcTierText('deck', true);
+    expect(t.summary).not.toMatch(/a CDC is required/);
+    expect(t.summary).toMatch(/not assessed/);
+    expect(t.tier).toMatch(/not assessed/);
+  });
+  it('keeps the CDC headline when the lot area was assessed', () => {
+    expect(cdcTierText('deck', false).summary).toMatch(/a CDC is required/);
   });
 });
