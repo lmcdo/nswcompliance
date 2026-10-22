@@ -1,0 +1,69 @@
+{
+  "tier": "standard",
+  "justification": "Standard: removes a customer-facing ADG shadow verdict from the intelligence brief, the conveyancing report and their marketing copy.",
+  "commit_hash": "02dad0b3",
+  "files": [
+    "frontend-nextjs/__tests__/app/brief-satellite-parity.test.tsx",
+    "frontend-nextjs/__tests__/app/shadow-removal-consumer-check.test.tsx",
+    "frontend-nextjs/app/api/stripe/webhook/route.ts",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/components/reports/ShadowDetailDisplay.tsx",
+    "frontend-nextjs/components/reports/landing/data/conveyancing.ts",
+    "frontend-nextjs/components/tools/ConveyancingTool.tsx",
+    "scripts/generate_conveyancing_report.py",
+    "services/conveyancing.py",
+    "services/intelligence_brief.py",
+    "tests/test_conveyancing_truth.py",
+    "tests/test_report_clobber_762.py"
+  ],
+  "pre_impl": {
+    "existing_data": "No database change. Stored briefs that already carry a shadow field are hidden by the page, not rewritten.",
+    "assumption_mismatch": "The shadow verdict claimed an ADG 2-hour sunlight rule protects a neighbouring house; ADG 4A-1 applies to a new apartment building's own apartments and 3F is visual privacy.",
+    "new_vs_existing": "Removal only: the shadow fetch, its report row, its page section and its copy. No new modules."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && node node_modules/jest/bin/jest.js __tests__/app/brief-satellite-parity.test.tsx && cd .. && python -m pytest -q -o addopts= tests/test_conveyancing_truth.py",
+    "fails_when": "The intelligence brief page source renders ShadowDisplay, mentions shadow analysis or says ADG, or the conveyancing report source prints a shadow row or ADG wording.",
+    "observed_red": "Both checks are new source checks that match the removed text exactly; on origin/main the brief page imports ShadowDisplay and the report script defines build_shadow_row, so both fail there. Branch: jest 20 of 20, pytest 60 of 60, tsc 0."
+  },
+  "functions": [
+    {
+      "name": "build_brief (shadow step)",
+      "file_line": "services/intelligence_brief.py",
+      "input": "a brief request for any address",
+      "output": "shadow field marked not available with a plain reason",
+      "if_none": "the brief carries no shadow result and calls no shadow service at all"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A stored brief from before this change still has a shadow field.",
+      "what_happens": "It must not show the ADG verdict.",
+      "mitigated": true,
+      "how": "the page's generic field list skips the shadow key",
+      "repro": "open an older brief id"
+    },
+    {
+      "scenario": "A conveyancing PDF is generated after deploy.",
+      "what_happens": "It must not carry a shadow risk row.",
+      "mitigated": true,
+      "how": "build_shadow_row and the fetch removed; test checks the source",
+      "repro": "pytest tests/test_conveyancing_truth.py"
+    },
+    {
+      "scenario": "An already-paid shadow report is opened.",
+      "what_happens": "Its PDF still contains the ADG verdict.",
+      "mitigated": false,
+      "how": "owner decision pending: edit the paid PDF or refund",
+      "repro": "open /reports/shadow/{id}"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Open an intelligence brief and a conveyancing report after deploy; neither shows a shadow section."
+  }
+}
