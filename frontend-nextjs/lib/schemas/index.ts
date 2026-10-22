@@ -242,15 +242,6 @@ export const HousingSEPPSchema = z.object({
 });
 
 /**
- * Live Compliance Check Schema - /api/compliance/live-check
- */
-export const LiveCheckSchema = z.object({
-  address: AddressStringSchema,
-  developmentType: DevelopmentTypeSchema,
-  includeReasons: z.boolean().optional(),
-});
-
-/**
  * Setback Request Schema - /api/setbacks/*
  */
 export const SetbackRequestSchema = z.object({

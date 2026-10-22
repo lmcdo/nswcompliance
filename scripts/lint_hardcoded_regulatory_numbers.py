@@ -50,8 +50,8 @@ JSX_TEXT = re.compile(rf""">([^<>{{}}\n]*?(?:{FIGURE})[^<>{{}}\n]*)<""", re.I)
 PROSE = re.compile(rf"([^\n]*?(?:{FIGURE})[^\n]*)", re.I)
 # Engine constants: DEFAULT_HEIGHT_M = 9.0 / maxFsr: 0.5 / MIN_LOT_AREA_M2 = 450
 CONSTANT = re.compile(
-    r"\b([A-Za-z_]*(?:SETBACK|HEIGHT|FSR|LOT|FRONTAGE|PARKING|COVERAGE|LANDSCAP|STOREY|SEPARATION|SOLAR|SUN)"
-    r"[A-Za-z_]*\s*[:=]\s*\d+(?:\.\d+)?)", re.I)
+    r"\b([A-Za-z_]*(?:SETBACK|HEIGHT|FSR|LOT|FRONTAGE|PARKING|COVERAGE|LANDSCAP|STOREY|SEPARATION|SOLAR|SUN|"
+    r"FLOOR_?AREA|SITE_?COVER|GFA)[A-Za-z0-9_]*['\"]?\s*[:=]\s*\d+(?:\.\d+)?)", re.I)
 PLANNING = re.compile(
     r"setback|height|lot|frontage|floor|FSR|parking|site area|coverage|storey|SEPP|LEP|DCP|cl\.|clause|"
     r"minimum|maximum|open space|landscap|sunlight|solar access|separation|dwelling|granny|secondary", re.I)
@@ -74,7 +74,7 @@ def hits_in_text(text: str, suffix: str = ".ts") -> list[str]:
             out += [m.strip() for m in PROSE.findall(line)]
             continue
         found = LITERAL.findall(line) + [t.strip() for t in JSX_TEXT.findall(line)]
-        if suffix in (".py", ".ts", ".tsx"):
+        if suffix in (".py", ".ts", ".tsx", ".json"):
             found += [c for c in CONSTANT.findall(line) if not any(c in f for f in found)]
         out += found
     return [h for h in out if h]

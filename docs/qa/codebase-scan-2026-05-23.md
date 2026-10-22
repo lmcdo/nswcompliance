@@ -51,7 +51,7 @@
 | `enrichment/pipeline.py` | 87, 137, 193, 275, etc. | AR | Enrichment pipeline intentionally reads all provisions (including non-current) to re-classify and enrich them. Reading all rows is the pipeline's purpose. |
 | `scripts/fix_id_sequence.py` | 13, 18, 24 | AR | Admin script to fix Postgres sequence. Reads MAX(id) from all rows — must include all rows. |
 | `scripts/verify_controls_monitoring.py` | 49 | FP | Queries `information_schema.columns`, not actual data from `dcp_setback_controls`. Scanner matched table name in a schema introspection query. |
-| `lib/database/specialized/live-compliance-client.ts` | 145, 156, 167 | TP | Queries `development_controls` JOINed to `regulatory_provisions` (not canonical/clean) without `is_current`. These return FSR, height, and site coverage rules to production users. |
+| live-compliance-client (file deleted 2026-10-22, #1448) | 145, 156, 167 | TP | Queries `development_controls` JOINed to `regulatory_provisions` (not canonical/clean) without `is_current`. These return FSR, height, and site coverage rules to production users. |
 | `api/compliance/dcp-complete/route.ts` | 395 | FP | Query filters by specific `document_id` patterns and excludes TOC pages. This is a full-text display — showing all provisions for a specific document is intentional. |
 | `api/lep/provisions/route.ts` | 37 | FP | Queries by specific `document_id` and `ref_number`. Returns a single provision by ID — `is_current` is not applicable to ID-based lookups. |
 
@@ -83,9 +83,9 @@ Four dominant false-positive patterns account for ~88% of findings:
 | File | Line | Issue |
 |------|------|-------|
 | `api/canibuildit/check/route.ts` | 386 | `dcp_setback_controls` query missing `is_current = TRUE` — could return superseded setback controls for granny flat eligibility check |
-| `lib/database/specialized/live-compliance-client.ts` | 145 | FSR rules query against `regulatory_provisions` (not canonical) without `is_current` |
-| `lib/database/specialized/live-compliance-client.ts` | 156 | Height rules query — same issue |
-| `lib/database/specialized/live-compliance-client.ts` | 167 | Site coverage rules query — same issue |
+| live-compliance-client (file deleted 2026-10-22, #1448) | 145 | FSR rules query against `regulatory_provisions` (not canonical) without `is_current` |
+| live-compliance-client (file deleted 2026-10-22, #1448) | 156 | Height rules query — same issue |
+| live-compliance-client (file deleted 2026-10-22, #1448) | 167 | Site coverage rules query — same issue |
 | `api/tod/parking-rates/route.ts` | 126 | DCP parking provisions query references `regulatory_provisions` JOINed to `dcps` without `is_current`. Could return superseded parking rates. |
 
 ---
@@ -243,7 +243,7 @@ Two false-positive patterns:
 
 1. **`api/canibuildit/check/route.ts:386`** — Add `AND is_current = TRUE` to `dcp_setback_controls` query. Without it, granny flat eligibility checks may use superseded setback controls.
 
-2. **`lib/database/specialized/live-compliance-client.ts:145,156,167`** — Add `is_current` filter to FSR, height, and site coverage queries against `regulatory_provisions`. These serve production compliance data.
+2. **`live-compliance-client (file deleted 2026-10-22, #1448):145,156,167`** — Add `is_current` filter to FSR, height, and site coverage queries against `regulatory_provisions`. These serve production compliance data.
 
 3. **`api/tod/parking-rates/route.ts:126`** — Add currency filter to DCP parking provisions query.
 

@@ -1,6 +1,6 @@
 {
  "_about": "(.claude/regulatory_figure_ledger.json) names every hit by file + the hit's own text:\n  \"open\"  -- known, still to fix (read it from the database, or delete it and point to the address lookup);\n  \"cited\" -- a verbatim quote that names its instrument AND clause on the same line (the reason says which);\n  \"not_regulatory\" -- not a planning figure (a map bound, an image size, a price); the reason (4+ words) says what.\nCI fails when: a hit is not in the ledger (a new typed figure); a ledger entry is no longer found (fixed -- remove it,\nso the list stays exact); a \"cited\" entry's reason names no instrument + clause; the open count rises; a\n`noqa: regulatory-number` carries no real reason (4+ words after \"--\").",
- "max_open": 528,
+ "max_open": 546,
  "entries": [
   {
    "file": "frontend-nextjs/app/(tools)/granny-flat/page.tsx",
@@ -157,12 +157,6 @@
   {
    "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
    "text": "parkingSpaces: 2",
-   "fate": "open",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/api/compliance/live-check/route.ts",
-   "text": "height: 8.5",
    "fate": "open",
    "count": 1
   },
@@ -1360,27 +1354,6 @@
    "text": "'3.0m front setback'",
    "fate": "open",
    "reason": "inventory guessed not_regulatory (unreviewed): mock-client fixture (verify not imported by shipped paths)",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/database/specialized/live-compliance-client.ts",
-   "text": "maxFSR: 0.5",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) MOCK property data + 0.5 FSR fallback served by /api/compliance/live-check; fabricates limits for any address",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/database/specialized/live-compliance-client.ts",
-   "text": "maxHeight: 8.5",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) MOCK property data + 0.5 FSR fallback served by /api/compliance/live-check; fabricates limits for any address",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/database/specialized/live-compliance-client.ts",
-   "text": "siteCoverageLimit: 50",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) MOCK property data + 0.5 FSR fallback served by /api/compliance/live-check; fabricates limits for any address",
    "count": 1
   },
   {
@@ -2832,6 +2805,153 @@
    "fate": "open",
    "reason": "inventory 2026-10-22: from_db (api) ADG solar-access rule (2 hrs, 70% of apartments) typed in narrative; no clause cited (ADG 4A-1 if kept)",
    "count": 1
+  },
+  {
+   "file": "frontend-nextjs/app/developers/page.tsx",
+   "text": "fsr\": 0.5",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "frontend-nextjs/app/developers/page.tsx",
+   "text": "height_m\": 8.5",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "frontend-nextjs/app/developers/page.tsx",
+   "text": "min_lot_size_sqm\": 450",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "frontend-nextjs/lib/regulatory-constants.ts",
+   "text": "MIN_LOT_AREA_MULTI_DWELLING_M2: 450",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "frontend-nextjs/lib/geometry/street-frontage.ts",
+   "text": "LARGE_LOT_M2 = 2000",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/authoritative_setback_calculator.py",
+   "text": "height_threshold\": 7.5",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/authoritative_setback_calculator.py",
+   "text": "rear_height_factor\": 0.5",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/compound_constraints.py",
+   "text": "plotdetect_dcp\": 180",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/constraint_arithmetic.py",
+   "text": "MIN_DWELLING_GFA_M2 = 65.0",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/constraint_arithmetic.py",
+   "text": "PARKING_AREA_PER_SPACE_M2 = 30.0",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/constraint_arithmetic.py",
+   "text": "landscape_reduction_m2 = 0.0",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/constraint_arithmetic.py",
+   "text": "lot_area_m2=0.0",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/live_compliance_engine.py",
+   "text": "gross_floor_area': 180",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/live_compliance_engine.py",
+   "text": "height': 8.5",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/live_compliance_engine.py",
+   "text": "gross_floor_area': 250",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/live_compliance_engine.py",
+   "text": "height': 12.0",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/pre_da_history.py",
+   "text": "SMALL_LOT_THRESHOLD_M2 = 300",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/reverse_shadow.py",
+   "text": "subject_lot_area_m2=0",
+   "fate": "open",
+   "count": 2,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/setback_calculator.py",
+   "text": "height_threshold\": 7.5",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/setback_calculator.py",
+   "text": "rear_height_factor\": 0.5",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "services/street_frontage.py",
+   "text": "LARGE_LOT_M2 = 2000.0",
+   "fate": "open",
+   "count": 1,
+   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
   }
  ]
 }

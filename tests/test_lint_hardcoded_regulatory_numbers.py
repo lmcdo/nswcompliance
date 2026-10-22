@@ -130,3 +130,9 @@ def test_markdown_bullets_and_headings_are_scanned():
 def test_a_ledger_without_max_open_fails():
     e = {"file": "a.ts", "text": "'4 m setback'", "fate": "open"}
     assert any("NO max_open" in p for p in lint.judge({"a.ts": [e["text"]]}, {"entries": [e]}))
+
+
+def test_quoted_keys_and_floor_area_constants_are_caught():
+    """Cross-review 2026-10-22: a quoted JSON key and a floor-area name slipped past."""
+    assert lint.hits_in_text('  {"minimumLotSizeM2": 450, "zone": "R2"}', ".json")
+    assert lint.hits_in_text("  maxFloorAreaM2: 60,", ".ts")

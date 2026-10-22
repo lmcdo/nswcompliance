@@ -1,0 +1,73 @@
+{
+  "tier": "standard",
+  "justification": "Standard: deletes a public API endpoint that served fabricated planning limits, plus the typed-figure ledger it stacks on.",
+  "commit_hash": "f690c213",
+  "files": [
+    ".claude/regulatory_figure_ledger.json",
+    ".qa/reports/fix__no-typed-figures.json",
+    ".qa/reports/fix__typed-figures-dangerous.json",
+    "frontend-nextjs/ZOD_VALIDATION_EXAMPLES.md",
+    "frontend-nextjs/app/api/compliance/live-check/route.ts",
+    "frontend-nextjs/lib/database/specialized/live-compliance-client.ts",
+    "frontend-nextjs/lib/feature-flags/migration-flags.ts",
+    "frontend-nextjs/lib/schemas/index.ts",
+    "frontend-nextjs/types/live-compliance.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "No database change. The deleted client never queried the database for limits: getPropertyPlanningData was a stub.",
+    "assumption_mismatch": "The endpoint looked like a live compliance check; its property data was a fixed mock (R2, FSR 0.5, 8.5 m, 50%) for every address.",
+    "new_vs_existing": "Deletion only; no replacement. No page or script calls the endpoint (grep of app, components, hooks, lib, services, scripts)."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/lint_hardcoded_regulatory_numbers.py --check && cd frontend-nextjs && npx tsc --noEmit --skipLibCheck",
+    "fails_when": "Any remaining import of the deleted client, schema or types would fail the type check; a typed figure left behind would fail the ledger check.",
+    "observed_red": "Before pruning, the ledger check failed with 4 GONE entries for the deleted figures; after --prune it passed at 524 open. The widened constant pattern then named 22 more copies already in the code: 546 open, 0 unlisted. Quoted-key break-check: test red with quote support removed. tsc 0 errors."
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/lint_hardcoded_regulatory_numbers.py",
+      "input": "the command line flag --check or --prune",
+      "output": "pass or fail with the named problems",
+      "if_none": "no flag runs the check"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "An outside caller still uses /api/compliance/live-check.",
+      "what_happens": "They now get a 404 instead of a made-up answer.",
+      "mitigated": true,
+      "how": "a 404 is honest; nothing in the repo calls it",
+      "repro": "curl the URL after deploy"
+    },
+    {
+      "scenario": "Another file still imports the deleted client.",
+      "what_happens": "The production build would fail on the missing import.",
+      "mitigated": true,
+      "how": "tsc 0 errors",
+      "repro": "npx tsc --noEmit"
+    },
+    {
+      "scenario": "The deleted figures stay in the ledger.",
+      "what_happens": "CI would fail as GONE.",
+      "mitigated": true,
+      "how": "ledger pruned in the same commit",
+      "repro": "lint --check"
+    },
+    {
+      "scenario": "A config adds a quoted key such as minimumLotSizeM2: 450.",
+      "what_happens": "The old pattern missed quoted keys and floor-area names entirely.",
+      "mitigated": true,
+      "how": "constant pattern allows a quote and runs on JSON",
+      "repro": "test_quoted_keys_and_floor_area_constants_are_caught"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "After deploy, /api/compliance/live-check returns 404."
+  }
+}

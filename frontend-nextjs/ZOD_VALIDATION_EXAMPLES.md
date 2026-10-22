@@ -126,38 +126,6 @@ GET /api/provisions?q=s
 
 ---
 
-## 5. `/api/compliance/live-check` (POST)
-
-### Valid Request
-```json
-{
-  "address": "45 Liverpool Street, Ashfield NSW 2131",
-  "developmentType": "dual_occupancy",
-  "includeReasons": true
-}
-```
-
-### Invalid Request (Invalid Development Type)
-```json
-{
-  "address": "45 Liverpool Street, Ashfield NSW 2131",
-  "developmentType": "not_a_real_type"
-}
-```
-
-**Response (400):**
-```json
-{
-  "success": false,
-  "error": "Invalid request data",
-  "details": [
-    "developmentType: Invalid enum value. Expected 'dwelling_house' | 'dual_occupancy' | ..."
-  ]
-}
-```
-
----
-
 ## 6. `/api/permissibility/check` (POST)
 
 ### Valid Request
