@@ -22,9 +22,9 @@
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 2111,
+    "total": 2118,
     "layers": {
-     "generic": 2111,
+     "generic": 2118,
      "use_specific": 0,
      "condition": 0,
      "precinct": 0
@@ -52,9 +52,9 @@
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 2409,
+    "total": 2416,
     "layers": {
-     "generic": 2179,
+     "generic": 2186,
      "use_specific": 0,
      "condition": 230,
      "precinct": 0
@@ -83,9 +83,9 @@
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 1909,
+    "total": 1907,
     "layers": {
-     "generic": 1677,
+     "generic": 1675,
      "use_specific": 0,
      "condition": 0,
      "precinct": 232
@@ -132,9 +132,9 @@
     "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Lot Size Map\":[\"450 m²\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Floor Space Ratio Map\":[\"0.5:1\"],\"Land Application Map\":[\"Canterbury-Bankstown Local Environmental Plan 2023\"],\"Special Provisions\":[\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"CANTERBURY-BANKSTOWN\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"2211\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Local Provisions\":[\"30km\",\"30 km\",\"SEPP (Western Sydney Aerotropolis) 2020 Wind Turbines Map\",\"Area 1\",\"Clause Application Map\"],\"Height of Buildings Map\":[\"9 m\"],\"Local Aboriginal Land Council\":[\"GANDANGARA\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"]}}"
    },
    "baseline": {
-    "total": 1909,
+    "total": 1907,
     "layers": {
-     "generic": 1677,
+     "generic": 1675,
      "use_specific": 0,
      "condition": 0,
      "precinct": 232
@@ -182,10 +182,10 @@
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 2552,
+    "total": 2544,
     "layers": {
-     "generic": 1473,
-     "use_specific": 695,
+     "generic": 1466,
+     "use_specific": 694,
      "condition": 0,
      "precinct": 384
     },
@@ -218,10 +218,10 @@
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 2338,
+    "total": 2330,
     "layers": {
-     "generic": 1598,
-     "use_specific": 728,
+     "generic": 1591,
+     "use_specific": 727,
      "condition": 0,
      "precinct": 12
     },
@@ -253,9 +253,9 @@
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 1703,
+    "total": 1251,
     "layers": {
-     "generic": 1498,
+     "generic": 1046,
      "use_specific": 158,
      "condition": 0,
      "precinct": 47
@@ -266,7 +266,6 @@
     "chapters": [
      "chapter-a1-introduction",
      "chapter-a3-definitions",
-     "chapter-b3-general-development",
      "chapter-b4-housing-accessible-areas",
      "chapter-c2-woollahra-hca",
      "chapter-e1-parking-access",
@@ -299,9 +298,9 @@
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 1623,
+    "total": 1174,
     "layers": {
-     "generic": 1465,
+     "generic": 1016,
      "use_specific": 158,
      "condition": 0,
      "precinct": 0
@@ -312,7 +311,6 @@
     "chapters": [
      "chapter-a1-introduction",
      "chapter-a3-definitions",
-     "chapter-b3-general-development",
      "chapter-b4-housing-accessible-areas",
      "chapter-e1-parking-access",
      "chapter-e2-stormwater-flood",
@@ -344,9 +342,9 @@
     "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Crown Reserves\":[\"LRegNo - R1011588\"],\"Government Property Index\":[\"2/-/DP1160724\"],\"Crown Land\":[\"Crown Land\"],\"Lot Size Map\":[\"500 m²\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Land Application Map\":[\"Inner West Local Environmental Plan 2022\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Special Provisions\":[\"2045\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"INNER WEST\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Floor Space Ratio Map\":[\"0.5:1\"],\"Heritage Map\":[\"I1060\",\"Yasmar House, including interiors and gardens Significance: State\",\"C54\",\"Haberfield Heritage Conservation Area (nominated area of State significance) Significance: Local\"],\"Height of Buildings Map\":[\"7 m\"],\"State Heritage Register Curtilage (Non-EPI)\":[\"Yasmar\"],\"Local Aboriginal Land Council\":[\"METROPOLITAN\"]}}"
    },
    "baseline": {
-    "total": 2018,
+    "total": 2017,
     "layers": {
-     "generic": 1409,
+     "generic": 1408,
      "use_specific": 179,
      "condition": 209,
      "precinct": 221
@@ -380,9 +378,9 @@
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 1995,
+    "total": 1994,
     "layers": {
-     "generic": 1409,
+     "generic": 1408,
      "use_specific": 179,
      "condition": 209,
      "precinct": 198
@@ -416,9 +414,9 @@
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 1586,
+    "total": 1493,
     "layers": {
-     "generic": 1528,
+     "generic": 1435,
      "use_specific": 0,
      "condition": 36,
      "precinct": 22
@@ -444,11 +442,9 @@
      "part2-s18-landscaping",
      "part2-s20-tree-management",
      "part2-s21-site-facilities-waste",
-     "part2-s22-flood-management",
      "part2-s23-acid-sulfate",
      "part2-s24-contaminated-land",
      "part2-s25-stormwater",
-     "part2-s26-entertainment-precincts",
      "part3-subdivision",
      "part4-s2-multi-dwelling",
      "part4-s3-boarding-houses",
@@ -473,9 +469,9 @@
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 2087,
+    "total": 2086,
     "layers": {
-     "generic": 2015,
+     "generic": 2014,
      "use_specific": 0,
      "condition": 0,
      "precinct": 72
@@ -520,11 +516,11 @@
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 1747,
+    "total": 1726,
     "layers": {
-     "generic": 1711,
+     "generic": 1618,
      "use_specific": 0,
-     "condition": 36,
+     "condition": 108,
      "precinct": 0
     },
     "councils": [
@@ -552,7 +548,6 @@
      "part2-s23-acid-sulfate",
      "part2-s24-contaminated-land",
      "part2-s25-stormwater",
-     "part2-s26-entertainment-precincts",
      "part3-subdivision",
      "part6-industrial",
      "part7-s1-childcare",
@@ -575,9 +570,9 @@
     "acid_sulfate": "true"
    },
    "baseline": {
-    "total": 2699,
+    "total": 2557,
     "layers": {
-     "generic": 1309,
+     "generic": 1167,
      "use_specific": 1390,
      "condition": 0,
      "precinct": 0
@@ -597,8 +592,6 @@
      "section-a-part-8-mixed-use",
      "section-a-part-9-non-residential",
      "section-b-part-15-contamination",
-     "section-b-part-18-biodiversity",
-     "section-b-part-20-rail-roads",
      "section-c-part-21-site-design",
      "section-c-part-22-parking",
      "section-c-part-23-building-design",
@@ -734,9 +727,9 @@
     "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Local Aboriginal Land Council\":[\"ILLAWARRA\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Floor Space Ratio Map\":[\"0.5:1\"],\"Land Application Map\":[\"Wollongong Local Environmental Plan 2009\"],\"Special Provisions\":[\"WOLLONGONG\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"2500\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Height of Buildings Map\":[\"9 m\"],\"Regional Plan Boundary\":[\"Illawarra-Shoalhaven\"],\"Lot Size Map\":[\"449 m²\"]}}"
    },
    "baseline": {
-    "total": 821,
+    "total": 819,
     "layers": {
-     "generic": 821,
+     "generic": 819,
      "use_specific": 0,
      "condition": 0,
      "precinct": 0
@@ -767,9 +760,9 @@
     "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Special Provisions\":[\"WOLLONGONG\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"2500\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\"],\"Floor Space Ratio Map\":[\"0.5:1\"],\"Height of Buildings Map\":[\"9 m\"],\"Lot Size Map\":[\"449 m²\"],\"Land Application Map\":[\"Wollongong Local Environmental Plan 2009\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Local Aboriginal Land Council\":[\"ILLAWARRA\"],\"Regional Plan Boundary\":[\"Illawarra-Shoalhaven\"]}}"
    },
    "baseline": {
-    "total": 821,
+    "total": 819,
     "layers": {
-     "generic": 821,
+     "generic": 819,
      "use_specific": 0,
      "condition": 0,
      "precinct": 0
@@ -980,9 +973,9 @@
     "land_facts": "{\"zone\":\"R2\",\"layers\":{\"Height of Buildings Map\":[\"8.5 m\"],\"Land Application Map\":[\"Hornsby Local Environmental Plan 2013\"],\"Lot Size Map\":[\"500 m²\"],\"Land Zoning Map\":[\"R2: Low Density Residential\"],\"Local Aboriginal Land Council\":[\"DEERUBBIN\"],\"Greater Sydney Tree Canopy Cover 2019\":[\"Canopy %\"],\"Regional Plan Boundary\":[\"Greater Sydney\"],\"Special Provisions\":[\"Greater Sydney\",\"Thermal Energy from Waste Prohibition Map - Greater Sydney\",\"2154\",\"40%\",\"SEPP (Sustainable Buildings) 2022 Water Use Map\",\"HORNSBY\",\"5\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map\",\"56\",\"SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map\"],\"Greater Sydney Tree Canopy Cover 2022\":[\"Canopy %\"]}}"
    },
    "baseline": {
-    "total": 675,
+    "total": 671,
     "layers": {
-     "generic": 675,
+     "generic": 671,
      "use_specific": 0,
      "condition": 0,
      "precinct": 0
@@ -1011,9 +1004,9 @@
     "bushfire": "true"
    },
    "baseline": {
-    "total": 675,
+    "total": 671,
     "layers": {
-     "generic": 675,
+     "generic": 671,
      "use_specific": 0,
      "condition": 0,
      "precinct": 0
@@ -1037,6 +1030,10 @@
   {
    "date": "2026-10-19",
    "reason": "City of Sydney schedules + section 1 re-read went live 2026-10-18 (doubled-text fix). Measured: schedules served rows 252 -> 541 (text 135k -> 158k chars: rules the doubled-glyph read had dropped), section 1 49 -> 73 (same text, 18.6k -> 17.6k chars, list items split). Explains +304 of 004's +312 and 005's +314; section 3 unchanged since 2026-10-14. Duplicates checked: 18-20 identical-text copies, all different clause refs (Schedule 6 Rocks signage repeated per clause by the council), none same-ref."
+  },
+  {
+   "date": "2026-10-22",
+   "reason": "2026-10-22: 006/007 Woollahra lose chapter-b3 (~450 generic) -- #1420 moved B3 to the 'Woollahra Residential Precincts' outline; these frozen lots are outside it. 013 Marrickville +72 condition -- #1413 moved part2-s22 flood rules to the flood condition layer and this lot sends flood=true; part2-s26 entertainment rules now only inside that precinct (#1423). 002/003 back to 232 precinct after the 96 Carinya Road (Picnic Point) rows were withheld again (backup data/db_rollback_backups/carinya_road_withhold_pre_2026-10-22T201544.json)."
   }
  ]
 }

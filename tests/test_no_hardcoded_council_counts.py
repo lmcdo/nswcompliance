@@ -117,15 +117,18 @@ def test_every_allowlisted_file_still_states_a_count():
 def test_the_two_council_figures_are_not_interchangeable():
     """Documentation as a test, because this is the trap the sweep found.
 
-    28 = active LGA rows with controls. 26 = council AREAS, Inner West's three
-    labels collapsed to one. coverage.ts publishes the AREA count, because a
-    sentence saying "N councils" is a claim about councils.
+    Label count = active LGA rows with controls; AREA count = Inner West's three
+    labels collapsed to one, so labels = areas + 2. coverage.ts publishes the AREA
+    count, because a sentence saying "N councils" is a claim about councils.
+    2026-10-22: 25 areas / 27 labels (was 26 / 28) -- Bayside's rows withheld
+    ('chapter_pdf_changed') until its new DCP is read. Move this pin with coverage.ts;
+    scripts/verify_coverage_stats.py is the live check.
     """
     ts = (ROOT / "frontend-nextjs" / "lib" / "coverage.ts").read_text(encoding="utf-8")
     m = re.search(r"dcpNumericCouncils:\s*(\d+)", ts)
     assert m, "dcpNumericCouncils not found in coverage.ts"
-    assert m.group(1) == "26", (
-        f"dcpNumericCouncils is {m.group(1)}. If it is now 28 it has been set to the "
+    assert m.group(1) == "25", (
+        f"dcpNumericCouncils is {m.group(1)}. If it is now 27 it has been set to the "
         f"LABEL count, which counts Inner West three times and claims two councils "
         f"that do not exist."
     )

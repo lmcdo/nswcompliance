@@ -135,8 +135,8 @@
 export const COVERAGE = {
   provisionsTotal: 53716,
   dcpActionableProvisions: 39827,
-  dcpNumericCouncils: 26,
-  dcpSetbackTripleCouncils: 19,
+  dcpNumericCouncils: 25,
+  dcpSetbackTripleCouncils: 18,
   dcpSetbackRows: 1069,
   heritageAreas: 2039,
   regulatoryDefinitions: 474,
@@ -157,8 +157,8 @@ export const COVERAGE = {
 export const COVERAGE_DISPLAY = {
   provisionsTotal: '53,000+',
   dcpActionableProvisions: '39,000+',
-  dcpNumericCouncils: '26',
-  dcpSetbackTripleCouncils: '19',
+  dcpNumericCouncils: '25',
+  dcpSetbackTripleCouncils: '18',
   dcpSetbackRows: '1,000+',
   heritageAreas: '2,039',
   regulatoryDefinitions: '470+',

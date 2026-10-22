@@ -24,7 +24,9 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
   {
     name: 'Bayside',
     slug: 'bayside',
-    hasDcpData: true,
+    // 2026-10-22: false while Bayside's DCP rules are withheld (review_reason 'chapter_pdf_changed' -- the
+    // council published a new DCP). Back to true when they are re-read; data-watch flags the drift either way.
+    hasDcpData: false,
     relatedSlugs: ['randwick', 'georges-river', 'canterbury-bankstown'],
     faqs: [
       { q: 'What planning controls apply in Bayside?', a: 'Bayside properties are governed by the Bayside LEP 2021, SEPP Housing 2021, and the Bayside DCP. Controls cover height, FSR, setbacks, parking, landscaping, and design requirements. Enter your address above for the specific controls with clause citations.' },
