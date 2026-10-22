@@ -42,14 +42,14 @@
   },
   {
    "name": "is_spot_check",
-   "file_line": "scripts/verifyops_record.py:59",
+   "file_line": "scripts/verifyops_record.py:60",
    "input": "the registry chapter id (int) and the run time (timezone-aware datetime, UTC)",
    "output": "bool, ~1 in 20 per ISO week, one weekday",
    "if_none": "not applicable: both arguments are always present; the pick is pure arithmetic on them, so the same chapter and week always give the same answer"
   },
   {
    "name": "council_list_checked",
-   "file_line": "scripts/verifyops_record.py:155",
+   "file_line": "scripts/verifyops_record.py:156",
    "input": "one council's slug, hub URL, the scraper's discovered list of {chapter_key,url,label}, held chapter labels, plan names, a probe and a sender",
    "output": "saved list + alert lines; Telegram only after the shadow week",
    "if_none": "an empty scrape is stored as outcome 'empty' with no diff, so the alarm sees the council as not read rather than unchanged"
@@ -63,7 +63,7 @@
   },
   {
    "name": "main",
-   "file_line": "scripts/verifyops_coverage.py:129",
+   "file_line": "scripts/verifyops_coverage.py:145",
    "input": "argv flags --update and --allow-raise, plus DATABASE_URL from the environment or an injected connection for tests",
    "output": "exit 0 / 1 (new red key) / 2 (could not look)",
    "if_none": "a missing DATABASE_URL or a missing dcp_monitor table exits 2, which dq_check reports as unverifiable and the workflow step as failed, never 0"
@@ -88,17 +88,17 @@
  "queries": [
   {
    "purpose": "record each run / council list / chapter outcome",
-   "file_line": "scripts/verifyops_record.py:113",
+   "file_line": "scripts/verifyops_record.py:114",
    "where_clause": "INSERT only"
   },
   {
    "purpose": "last good list for a council",
-   "file_line": "scripts/verifyops_record.py:182",
+   "file_line": "scripts/verifyops_record.py:183",
    "where_clause": "council = %s AND outcome = 'ok' ORDER BY id DESC LIMIT 1"
   },
   {
    "purpose": "the alarm's red keys",
-   "file_line": "scripts/verifyops_coverage.py:48",
+   "file_line": "scripts/verifyops_coverage.py:51",
    "where_clause": "active AND NOT inert chapters; per reason windows 2/8/30/3/33 days"
   }
  ],

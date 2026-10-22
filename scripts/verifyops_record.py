@@ -37,7 +37,8 @@ def decide_fetch(*, force: bool, stored_hash: str | None, stored_etag: str | Non
                  last_downloaded: datetime | None, now: datetime, spot: bool) -> tuple[bool, str]:
     """Whether to download the file today, and why. HEAD has already been made.
 
-    Tagged (both ETags present): download only when the tag differs, or on a spot check.
+    Tagged (both ETags present): download when the tag differs, the size differs, or on a spot
+    check. (A size change behind an unchanged tag costs one download if it is only gzip noise.)
     Untagged: download when the size differs, or when the last full download is
     FULL_DOWNLOAD_EVERY old or unknown. Any missing baseline downloads.
     """
@@ -45,12 +46,12 @@ def decide_fetch(*, force: bool, stored_hash: str | None, stored_etag: str | Non
         return True, "force"
     if not stored_hash:
         return True, "no_baseline"
-    if stored_etag and head_etag:
-        if stored_etag != head_etag:
-            return True, "etag_changed"
-        return (True, "spot_check") if spot else (False, "etag_match")
+    if stored_etag and head_etag and stored_etag != head_etag:
+        return True, "etag_changed"
     if stored_len and head_len and int(stored_len) != int(head_len):
         return True, "size_changed"
+    if stored_etag and head_etag:
+        return (True, "spot_check") if spot else (False, "etag_match")
     if last_downloaded is None or now - last_downloaded >= FULL_DOWNLOAD_EVERY:
         return True, "untagged_weekly"
     return False, "untagged_recent"

@@ -7,9 +7,12 @@ would let the two cancel out.
 Reasons (each a stored query below; spec ~/.claude/plans/ce-verifyops-v5-SPEC-2026-10-22.md, v6):
   unwatched               a council serving rules (provisions OR setbacks) has no active, non-inert chapter
   no_url                  an active chapter has no link of its own, so its file is never checked
+  no_list_page            a council with active chapters has no list page stored, so a new document
+                          it publishes can never be found
   list_not_read_2d        a council with a stored list page had no list read OK in 2 days
   not_checked_8d          an active chapter with a link was not content-checked in 8 days
   last_run_unchecked      the chapter's latest result is not a check (blocked, 429, error, ...)
+  missing_from_last_run   the latest full run finished without any result for the chapter
   etag_lied_30d           a spot re-download found new bytes behind an unchanged tag
   new_doc_undecided_3d    a new council document has waited > N1 = 3 days for a decision
   update_unpublished_33d  a changed chapter is not re-extracted N1 + N2 = 33 days after the change
@@ -57,6 +60,12 @@ QUERIES: dict[str, str] = {
     "no_url": f"""
         SELECT r.council, r.chapter_key FROM dcp_chapter_registry r
         WHERE {_ACTIVE} AND NOT ({_HAS_URL})""",
+    "no_list_page": f"""
+        SELECT DISTINCT r.council, '*' FROM dcp_chapter_registry r
+        WHERE {_ACTIVE}
+          AND NOT EXISTS (SELECT 1 FROM dcp_chapter_registry p
+                          WHERE p.council = r.council AND p.is_active AND p.council_page_url IS NOT NULL
+                            AND btrim(p.council_page_url) <> '')""",
     "list_not_read_2d": f"""
         SELECT DISTINCT r.council, '*' FROM dcp_chapter_registry r
         WHERE {_ACTIVE} AND r.council_page_url IS NOT NULL
@@ -74,6 +83,13 @@ QUERIES: dict[str, str] = {
         JOIN LATERAL (SELECT outcome FROM dcp_monitor_chapter_results x
                       WHERE x.chapter_id = r.id ORDER BY x.id DESC LIMIT 1) last ON TRUE
         WHERE {_ACTIVE} AND {_HAS_URL} AND last.outcome NOT IN ({_CHECKED})""",
+    "missing_from_last_run": f"""
+        SELECT r.council, r.chapter_key FROM dcp_chapter_registry r
+        JOIN LATERAL (SELECT id FROM dcp_monitor_runs WHERE mode IN ('daily', 'force')
+                        AND finished_at IS NOT NULL ORDER BY id DESC LIMIT 1) last_run ON TRUE
+        WHERE {_ACTIVE} AND {_HAS_URL}
+          AND NOT EXISTS (SELECT 1 FROM dcp_monitor_chapter_results x
+                          WHERE x.chapter_id = r.id AND x.run_id = last_run.id)""",
     "etag_lied_30d": f"""
         SELECT DISTINCT r.council, r.chapter_key FROM dcp_chapter_registry r
         JOIN dcp_monitor_chapter_results x ON x.chapter_id = r.id

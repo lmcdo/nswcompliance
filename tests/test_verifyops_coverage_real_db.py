@@ -122,3 +122,34 @@ def test_a_one_council_run_does_not_count_as_the_fleet_run(conn):
     assert "*|*|no_run_2d" in cov.measure(conn)
     cur.execute("INSERT INTO dcp_monitor_runs (mode, finished_at) VALUES ('daily', NOW())")
     assert "*|*|no_run_2d" not in cov.measure(conn)
+
+
+def test_a_chapter_the_last_full_run_skipped_is_red(conn):
+    # Cross-review 2026-10-22: yesterday's good result must not cover a chapter today's full run
+    # never wrote a row for.
+    import verifyops_coverage as cov
+    cur = conn.cursor()
+    cid, council, key = _a_checkable_chapter(cur)
+    cur.execute("INSERT INTO dcp_monitor_runs (mode, finished_at) VALUES ('daily', NOW() - INTERVAL '1 day')"
+                " RETURNING id")
+    yesterday = cur.fetchone()[0]
+    cur.execute("INSERT INTO dcp_monitor_chapter_results (run_id, chapter_id, council, chapter_key, outcome)"
+                " VALUES (%s, %s, %s, %s, 'unchanged_etag')", (yesterday, cid, council, key))
+    assert f"{council}|{key}|missing_from_last_run" not in cov.measure(conn)
+    cur.execute("INSERT INTO dcp_monitor_runs (mode, finished_at) VALUES ('daily', NOW())")
+    reds = cov.measure(conn)
+    assert f"{council}|{key}|missing_from_last_run" in reds
+    assert f"{council}|{key}|not_checked_8d" not in reds          # the old check alone would miss it
+    # a later one-council run that DID check it does not stand in for the full run
+    cur.execute("INSERT INTO dcp_monitor_runs (mode, finished_at) VALUES ('council:x', NOW()) RETURNING id")
+    partial = cur.fetchone()[0]
+    cur.execute("INSERT INTO dcp_monitor_chapter_results (run_id, chapter_id, council, chapter_key, outcome)"
+                " VALUES (%s, %s, %s, %s, 'unchanged_etag')", (partial, cid, council, key))
+    assert f"{council}|{key}|missing_from_last_run" in cov.measure(conn)
+
+
+def test_no_list_page_query_runs_and_names_councils_only(conn):
+    import verifyops_coverage as cov
+    for k in cov.measure(conn):
+        if k.endswith("|no_list_page"):
+            assert k.split("|")[1] == "*"

@@ -190,6 +190,13 @@ def test_tagged_downloads_only_on_a_tag_change_or_spot_check():
     assert _fetch(stored_etag="a", head_etag="a", spot=True) == (True, "spot_check")
 
 
+def test_a_size_change_behind_an_unchanged_tag_downloads():
+    # Cross-review 2026-10-22: the tag alone was trusted, so a changed file with a reused tag
+    # stayed served as current until a spot check happened to pick it.
+    assert _fetch(stored_etag="a", head_etag="a", stored_len=100, head_len=200) == (True, "size_changed")
+    assert _fetch(stored_etag="a", head_etag="a", stored_len=100, head_len=None) == (False, "etag_match")
+
+
 def test_size_change_force_and_no_baseline_always_download():
     assert _fetch(head_len=101) == (True, "size_changed")
     assert _fetch(force=True, stored_etag="a", head_etag="a") == (True, "force")
