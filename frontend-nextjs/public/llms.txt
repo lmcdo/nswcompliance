@@ -3,7 +3,7 @@
 > Description: Structured planning compliance data, zoning analysis, and property feasibility tools for New South Wales, Australia.
 
 ## What PlotDetect Does
-PlotDetect provides structured, machine-readable NSW planning data including zoning controls (FSR, height, lot size), development permissibility, DCP provisions, SEPP requirements, overlay constraints, and satellite property intelligence (flood risk, bushfire, shadow, solar yield).
+PlotDetect provides structured, machine-readable NSW planning data including zoning controls (FSR, height, lot size), development permissibility, DCP provisions, SEPP requirements, overlay constraints, and satellite property intelligence (flood risk, bushfire, solar yield).
 
 ## Primary Topics
 - NSW zoning rules and permissible land uses
@@ -15,7 +15,7 @@ PlotDetect provides structured, machine-readable NSW planning data including zon
 - Overlay constraints: heritage, flood, bushfire, biodiversity, coastal
 - Subdivision feasibility
 - Climate risk assessment (flood, bushfire, coastal)
-- Satellite property intelligence (shadow analysis, solar yield, development monitoring)
+- Satellite property intelligence (solar yield, development monitoring)
 
 ## Coverage
 - All 128 NSW Local Government Areas (councils)
@@ -43,11 +43,7 @@ BAL assessment, bushfire-prone land mapping, and planning implications.
 
 ### Solar Potential Analysis (per council)
 https://canibuildit.com.au/solar-potential/{council-slug}
-Shadow analysis, solar yield estimates, and roof assessment.
-
-### Shadow Analysis (per council)
-https://canibuildit.com.au/shadow/{council-slug}
-Overshadowing assessment and solar access compliance.
+Solar yield estimates and roof assessment.
 
 ### Development Monitoring (per council)
 https://canibuildit.com.au/threat-radar/{council-slug}

@@ -3,10 +3,10 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Property Intelligence Reports — NSW',
-  description: 'Seven data-driven property intelligence tools for NSW. Flood depth, bushfire BAL, shadow analysis, solar yield, granny flat eligibility, and development monitoring.',
+  description: 'Six data-driven property intelligence tools for NSW. Flood depth, bushfire BAL, solar yield, granny flat eligibility, and development monitoring.',
   openGraph: {
     title: 'NSW Property Intelligence Reports — PlotDetect',
-    description: 'Flood depth, bushfire BAL, shadow analysis, solar yield, granny flat eligibility, and development monitoring for any NSW address.',
+    description: 'Flood depth, bushfire BAL, solar yield, granny flat eligibility, and development monitoring for any NSW address.',
     url: '/reports',
   },
 };
@@ -57,14 +57,6 @@ const TOOLS = [
     badge: 'Free',
   },
   {
-    href: '/reports/shadow',
-    title: 'Overshadowing Check',
-    tagline: 'Will a new build block your sun?',
-    description:
-      'Shadow modelled from the maximum-height building envelope across the five ADG solar access test dates used by NSW planning panels.',
-    badge: '$39',
-  },
-  {
     href: '/reports/solar-yield',
     title: 'Rooftop Solar Potential',
     tagline: 'How much could solar earn on this roof?',
@@ -94,7 +86,7 @@ export default async function ReportsLanding({ searchParams }: Props) {
           Know exactly what your property can do
         </h1>
         <p className="mt-2 text-gray-500 max-w-xl">
-          Seven property intelligence tools for NSW — from flood depth to solar yield. No consultants, no waiting rooms.
+          Six property intelligence tools for NSW — from flood depth to solar yield. No consultants, no waiting rooms.
         </p>
       </div>
 

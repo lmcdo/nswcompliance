@@ -1,18 +1,8 @@
-import { ShadowTool } from '@/components/tools/ShadowTool'
+import { notFound } from 'next/navigation'
 
-export default function EmbedShadowPage({
-  searchParams,
-}: {
-  searchParams: { ref?: string }
-}) {
-  return (
-    <div className="px-4 py-5">
-      <ShadowTool embedRef={searchParams.ref} />
-      <p className="mt-4 text-center text-xs text-gray-400">
-        <a href="https://verify.plotdetect.com.au/shadow-detector" target="_blank" rel="noopener">
-          Powered by PlotDetect
-        </a>
-      </p>
-    </div>
-  )
+// Shadow tool turned off 2026-10-22 by the owner: it sold an "ADG solar access" verdict
+// for neighbouring houses, but ADG 4A-1 (2 hours of sun) applies to a new apartment
+// building's own apartments and 3F is visual privacy, so the verdict was not a real standard.
+export default function EmbedShadowPage() {
+  notFound()
 }

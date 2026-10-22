@@ -7,7 +7,6 @@ const TOOL_LINKS = [
   { label: 'Bushfire Pre-Screen', href: '/reports/bushfire' },
   { label: 'Conveyancing Disclosure', href: '/reports/conveyancing' },
   { label: 'Granny Flat Yield', href: '/reports/granny-flat' },
-  { label: 'Shadow Analyser', href: '/reports/shadow' },
   { label: 'Solar Yield', href: '/reports/solar-yield' },
   { label: 'Threat Radar', href: '/reports/threat-radar' },
   { label: 'Pre-DA Site History', href: '/reports/pre-da-history' },

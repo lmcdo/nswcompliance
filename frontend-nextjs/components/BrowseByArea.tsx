@@ -8,7 +8,6 @@ const TOOLS = [
   { label: 'Flood Screening', prefix: '/flood-risk' },
   { label: 'DA Monitor', prefix: '/threat-radar' },
   { label: 'Solar', prefix: '/solar-potential' },
-  { label: 'Shadow', prefix: '/shadow' },
   { label: 'Bushfire', prefix: '/bushfire' },
   { label: 'Planning Controls', prefix: '/planning-controls' },
   { label: 'Conveyancing', prefix: '/conveyancing' },

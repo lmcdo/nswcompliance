@@ -141,15 +141,6 @@ const DOMAINS: { domain: string; items: Capability[] }[] = [
         personas: ['owner'],
       },
       {
-        title: 'Overshadowing',
-        data: 'Shadow modelled from the maximum-height building envelope on the ADG solar-access test dates.',
-        youCanDo: 'Check the solar-access impact of a design or a neighbour proposal.',
-        coverage: 'Statewide',
-        source: 'Terrain + envelope model',
-        href: '/reports/shadow',
-        personas: ['owner', 'planner'],
-      },
-      {
         title: 'Site change history',
         data: 'Eight years of satellite change detection cross-referenced with DA records and heritage.',
         youCanDo: 'See what was built, cleared or applied for on the site before buying.',

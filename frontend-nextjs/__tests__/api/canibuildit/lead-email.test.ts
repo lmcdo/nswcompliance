@@ -59,16 +59,11 @@ describe('buildEmailContent', () => {
     });
   });
 
-  describe('shadow', () => {
-    it('returns shadow subject with address', () => {
-      const { subject } = buildEmailContent('shadow', ADDR);
-      expect(subject).toMatch(/shadow/i);
-      expect(subject).toContain(ADDR);
-    });
-
-    it('body contains address', () => {
-      const { body } = buildEmailContent('shadow', ADDR);
-      expect(body).toContain(ADDR);
+  describe('shadow (tool turned off 2026-10-22)', () => {
+    it('has no shadow email: falls back to the default email, never mentions shadow', () => {
+      const { subject, body } = buildEmailContent('shadow', ADDR);
+      expect(subject).not.toMatch(/shadow/i);
+      expect(body).not.toMatch(/reports\/shadow/);
     });
   });
 
@@ -144,7 +139,7 @@ describe('buildEmailContent', () => {
     // address at all, so there's nothing to escape there.
     const MALICIOUS = '14 Street</strong><a href="https://evil.example">click</a><strong>';
     const PRODUCTS_WITH_ADDRESS_IN_BODY = [
-      'flood', 'solar-yield', 'shadow', 'threat-radar', 'dual-occ-referral', 'granny-flat',
+      'flood', 'solar-yield', 'threat-radar', 'dual-occ-referral', 'granny-flat',
       'duplex-result',
     ];
 
@@ -189,7 +184,7 @@ describe('buildEmailContent', () => {
     });
 
     it('each product returns distinct subject lines', () => {
-      const products = ['granny-flat', 'flood', 'solar-yield', 'shadow', 'threat-radar'];
+      const products = ['granny-flat', 'flood', 'solar-yield', 'threat-radar'];
       const subjects = products.map(p => buildEmailContent(p, ADDR).subject);
       const unique = new Set(subjects);
       expect(unique.size).toBe(products.length);

@@ -55,8 +55,6 @@ export default function GrannyFlatLgaPage(
             : ''}
           {' '}biodiversity values, and acid sulfate soils. Free. Also check{' '}
           <Link href={`/solar-potential/${lga.slug}`} className="text-amber-600 hover:underline">solar yield</Link>
-          {' '}and{' '}
-          <Link href={`/shadow/${lga.slug}`} className="text-slate-600 hover:underline">shadow impact</Link>
           {' '}for any {lga.name} address.
         </p>
       </div>

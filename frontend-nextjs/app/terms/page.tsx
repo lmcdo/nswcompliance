@@ -33,7 +33,6 @@ export default function TermsPage() {
           <li>Granny flat eligibility (SEPP Housing 2021)</li>
           <li>Flood risk assessment</li>
           <li>Solar yield estimates</li>
-          <li>Shadow analysis</li>
           <li>Nearby DA and CDC activity (Threat Radar)</li>
           <li>Pre-DA site history</li>
         </ul>
@@ -57,7 +56,7 @@ export default function TermsPage() {
           the query and may not reflect the current state of any planning instrument.
         </p>
         <p>
-          Satellite-derived outputs (structure detection, solar yield, shadow analysis) are estimates
+          Satellite-derived outputs (structure detection, solar yield) are estimates
           based on available imagery and computational models. They are not surveys and may not be
           accurate for all properties.
         </p>

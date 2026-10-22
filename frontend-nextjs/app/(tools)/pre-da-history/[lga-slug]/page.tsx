@@ -113,7 +113,7 @@ export default function PreDaHistoryLgaPage(
         <h3 className="font-semibold text-gray-900">Need the full planning picture?</h3>
         <p className="text-sm text-gray-500 mt-1 mb-4">
           Site history is one layer. Check flood risk, bushfire status, granny flat eligibility,
-          shadow impact, and nearby development activity for the same address.
+          and nearby development activity for the same address.
         </p>
         <a
           href="/reports"

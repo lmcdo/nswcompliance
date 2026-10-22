@@ -54,7 +54,6 @@ export default function PricingPage() {
                 { text: 'Bushfire prone land check', sub: 'BFPL category — on the map or not' },
                 { text: 'Granny flat eligibility', sub: 'Eligible or not, with reason' },
                 { text: 'Solar yield indicator', sub: 'Estimated annual kWh — no system sizing' },
-                { text: 'Shadow path verdict', sub: 'Impact or no impact from adjacent sites' },
                 { text: 'Threat Radar summary', sub: 'DA count within 500m — no detail' },
                 { text: 'Site history changes detected', sub: 'Change count — no timeline' },
                 { text: 'Climate Risk Score', sub: 'Composite score out of 100 — 5 hazards' },
@@ -97,7 +96,6 @@ export default function PricingPage() {
             <ul className="space-y-3 text-sm text-gray-700 mb-8 flex-1">
               {[
                 { text: 'Solar Yield — $39', sub: 'System sizing, payback period, monthly kWh breakdown' },
-                { text: 'Shadow Analysis — $39', sub: 'Seasonal diagrams, ADG compliance, objection evidence' },
                 { text: 'Bushfire — $39', sub: 'BAL band estimation, AS 3959 requirements, RFS referral guidance' },
                 { text: 'Flood Screening — $49', sub: 'Depth modelling, ARI return periods, BoM history, mitigation' },
                 { text: 'Granny Flat — $49', sub: 'CDC compliance checklist, setbacks, rental yield analysis' },
@@ -253,8 +251,8 @@ export default function PricingPage() {
             <div>
               <h3 className="text-lg font-bold text-gray-900 mb-1">Pre-auction bundle — $149</h3>
               <p className="text-sm text-gray-500 max-w-lg">
-                All 7 standard reports for one address. Flood, bushfire, solar, shadow, granny flat,
-                site history, and conveyancing disclosure. Save up to $145.
+                All 6 standard reports for one address. Flood, bushfire, solar, granny flat,
+                site history, and conveyancing disclosure. Save up to $125.
               </p>
             </div>
             <Link
@@ -367,7 +365,7 @@ export default function PricingPage() {
               },
               {
                 q: 'What is the pre-auction bundle?',
-                a: 'All 7 standard reports (solar, shadow, bushfire, flood, granny flat, site history, conveyancing) for one address at $149 instead of $313. Covers every hazard and planning dimension before you bid.',
+                a: 'All 6 standard reports (solar, bushfire, flood, granny flat, site history, conveyancing) for one address at $149 instead of $274. Covers every hazard and planning dimension before you bid.',
               },
               {
                 q: 'Is this planning advice?',

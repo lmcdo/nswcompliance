@@ -3,7 +3,7 @@
 import { WaitlistButton } from './WaitlistButton';
 
 interface PaywallGateProps {
-  tool: 'flood-truth' | 'shadow' | 'solar-yield';
+  tool: 'flood-truth' | 'solar-yield';
   reportId: string;
   address: string;
   /** Price in AUD, displayed on the CTA. */
@@ -18,7 +18,6 @@ interface PaywallGateProps {
 
 const TOOL_LABELS: Record<PaywallGateProps['tool'], string> = {
   'flood-truth':  'Flood Truth Report',
-  'shadow':       'Shadow Analysis Report',
   'solar-yield':  'Solar Yield Report',
 };
 

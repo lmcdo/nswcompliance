@@ -53,9 +53,7 @@ export default function ThreatRadarLgaPage(
           every Monday when new applications are lodged within 200m of your property.
           {' '}Combine with a{' '}
           <Link href={`/granny-flat/${lga.slug}`} className="text-teal-600 hover:underline">granny flat eligibility check</Link>
-          {' '}to understand the full development picture, or run a{' '}
-          <Link href={`/shadow/${lga.slug}`} className="text-slate-600 hover:underline">shadow analysis</Link>
-          {' '}to see how nearby DAs could affect your property.
+          {' '}to understand the full development picture.
         </p>
       </div>
 

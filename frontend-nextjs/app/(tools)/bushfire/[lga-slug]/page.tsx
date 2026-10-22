@@ -133,7 +133,7 @@ export default function BushfireLgaPage(
       <div className="mt-10 rounded-xl border border-gray-200 bg-white p-6">
         <h3 className="font-semibold text-gray-900">Need the full planning picture?</h3>
         <p className="text-sm text-gray-500 mt-1 mb-4">
-          Bushfire is one layer. Check flood risk, granny flat eligibility, shadow impact,
+          Bushfire is one layer. Check flood risk, granny flat eligibility,
           and nearby development activity for the same address.
         </p>
         <a

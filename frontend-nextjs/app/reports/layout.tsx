@@ -18,13 +18,12 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: 'NSW Property Intelligence — PlotDetect',
-  description: 'NSW property intelligence reports: granny flat eligibility, flood risk, solar yield, shadow analysis, DA activity.',
+  description: 'NSW property intelligence reports: granny flat eligibility, flood risk, solar yield, DA activity.',
 };
 
 const NAV_ITEMS = [
   { href: '/reports/intelligence-brief', label: 'Site Report' },
   { href: '/reports/solar-yield', label: 'Solar Yield' },
-  { href: '/reports/shadow', label: 'Shadow' },
   { href: '/reports/threat-radar', label: 'Development Monitoring' },
   { href: '/reports/flood', label: 'Flood Screening' },
   { href: '/reports/granny-flat', label: 'Granny Flat' },

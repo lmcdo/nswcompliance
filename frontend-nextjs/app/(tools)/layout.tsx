@@ -11,7 +11,6 @@ const TOOLS = [
   { label: 'Granny Flat Check', href: '/reports/granny-flat', emoji: '🏡' },
   { label: 'Pre-DA Site History', href: '/reports/pre-da-history', emoji: '🛰' },
   { label: 'Solar Yield', href: '/reports/solar-yield', emoji: '☀️' },
-  { label: 'Shadow Detector', href: '/reports/shadow', emoji: '🌑' },
   { label: 'Threat Radar', href: '/reports/threat-radar', emoji: '📡' },
 ];
 
@@ -30,7 +29,6 @@ const TOOL_PREFIXES: Record<string, string> = {
   '/granny-flat': '/granny-flat',
   '/flood-risk': '/flood-risk',
   '/solar-potential': '/solar-potential',
-  '/shadow': '/shadow',
   '/threat-radar': '/threat-radar',
 };
 

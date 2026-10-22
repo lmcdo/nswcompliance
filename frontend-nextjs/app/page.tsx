@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import {
-  Droplets, Flame, FileCheck, Building2, Radar, Sun, Moon, Satellite,
+  Droplets, Flame, FileCheck, Building2, Radar, Sun, Satellite,
   ShieldCheck, Map, BarChart3, Thermometer, ArrowRight,
 } from 'lucide-react';
 import { HomeNav } from '@/components/marketing/HomeNav';
@@ -63,16 +63,6 @@ const TOOLS = [
     icon: Radar,
     iconColor: 'text-violet-600',
     iconBg: 'bg-violet-500/10',
-  },
-  {
-    href: '/reports/shadow',
-    title: 'Overshadowing Check',
-    question: 'stop',
-    tagline: 'Shadow modelled from the maximum-height building envelope on ADG solar access test dates.',
-    badge: '$39',
-    icon: Moon,
-    iconColor: 'text-slate-400',
-    iconBg: 'bg-slate-500/10',
   },
   {
     href: '/reports/solar-yield',

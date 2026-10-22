@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 // Single source of truth for "where is everything". Owner-facing index of every
 // user-reachable route plus status. Update this list when a route ships.
-type Status = 'live' | 'beta' | 'built-unlinked' | 'content' | 'dev';
+type Status = 'live' | 'beta' | 'built-unlinked' | 'content' | 'dev' | 'off';
 
 interface Offering {
   path: string;
@@ -56,7 +56,7 @@ const GROUPS: Group[] = [
       { path: '/reports/conveyancing', title: 'Conveyancing report', status: 'live' },
       { path: '/reports/flood', title: 'Flood risk', status: 'live' },
       { path: '/reports/solar-yield', title: 'Solar yield', status: 'live' },
-      { path: '/reports/shadow', title: 'Shadow', status: 'live' },
+      { path: '/reports/shadow', title: 'Shadow', note: 'OFF 2026-10-22: pages 404, new work refused with 410; paid orders still fulfilled', status: 'off' },
       { path: '/reports/threat-radar', title: 'Threat radar', status: 'live' },
       { path: '/reports/granny-flat', title: 'Granny flat', status: 'live' },
       { path: '/reports/bushfire', title: 'Bushfire', status: 'live' },
@@ -112,6 +112,7 @@ const STATUS_STYLE: Record<Status, string> = {
   'built-unlinked': 'bg-amber-100 text-amber-800',
   content: 'bg-slate-100 text-slate-700',
   dev: 'bg-rose-100 text-rose-700',
+  off: 'bg-gray-200 text-gray-600',
 };
 
 export default async function InternalDirectoryPage() {
