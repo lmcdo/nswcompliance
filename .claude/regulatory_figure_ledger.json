@@ -1,6 +1,6 @@
 {
  "_about": "(.claude/regulatory_figure_ledger.json) names every hit by file + the hit's own text:\n  \"open\"  -- known, still to fix (read it from the database, or delete it and point to the address lookup);\n  \"cited\" -- a verbatim quote that names its instrument AND clause on the same line (the reason says which);\n  \"not_regulatory\" -- not a planning figure (a map bound, an image size, a price); the reason (4+ words) says what.\nCI fails when: a hit is not in the ledger (a new typed figure); a ledger entry is no longer found (fixed -- remove it,\nso the list stays exact); a \"cited\" entry's reason names no instrument + clause; the open count rises; a\n`noqa: regulatory-number` carries no real reason (4+ words after \"--\").",
- "max_open": 515,
+ "max_open": 495,
  "entries": [
   {
    "file": "frontend-nextjs/app/(tools)/granny-flat/page.tsx",
@@ -77,88 +77,6 @@
    "text": "height: 1.6",
    "fate": "open",
    "count": 15
-  },
-  {
-   "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
-   "text": "`Increase front setback by ${Math.abs(frontResult.margin as number).toFixed(1)}m to meet 6.0m minimum`",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
-   "text": "`Increase side left setback by ${Math.abs(sideLeftResult.margin as number).toFixed(1)}m to meet 0.9m minimum`",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
-   "text": "`Increase side right setback by ${Math.abs(sideRightResult.margin as number).toFixed(1)}m to meet 0.9m minimum`",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
-   "text": "`Reduce site coverage by ${Math.abs(siteCoverageResult.margin as number).toFixed(0)}% to meet 50% maximum`",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
-   "text": "`Increase landscaped area by ${Math.abs(landscapedResult.margin as number).toFixed(0)}% to meet 30% minimum`",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
-   "text": "`Reduce building height by ${Math.abs(heightResult.margin as number).toFixed(1)}m to meet 8.5m maximum`",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
-   "text": "`Development exceeds 2 storey maximum - CDC pathway not available`",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
-   "text": "siteCoveragePercent: 45",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): example request payload in API self-description",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
-   "text": "landscapedAreaPercent: 35",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): example request payload in API self-description",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
-   "text": "buildingHeightMeters: 7.5",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): example request payload in API self-description",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
-   "text": "storeys: 2",
-   "fate": "open",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
-   "text": "parkingSpaces: 2",
-   "fate": "open",
-   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/compliance/parking/route.ts",
@@ -816,62 +734,6 @@
    "text": "\"9.5m maximum\\nCheck plans\"",
    "fate": "open",
    "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample status text (9.5m / 0.6:1); verify reachability",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/cdc/CdcComplianceCalculator.tsx",
-   "text": "estimatedCoverage : 45",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) prefilled 45% coverage / 35% landscape; 30 compared as landscape minimum",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/cdc/CdcComplianceCalculator.tsx",
-   "text": "landscapedAreaPercent: 100",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) prefilled 45% coverage / 35% landscape; 30 compared as landscape minimum",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/cdc/CdcComplianceCalculator.tsx",
-   "text": "estimatedCoverage : 35",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) prefilled 45% coverage / 35% landscape; 30 compared as landscape minimum",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/cdc/types.ts",
-   "text": "siteCoveragePercent: 45",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/cdc/types.ts",
-   "text": "landscapedAreaPercent: 30",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/cdc/types.ts",
-   "text": "buildingHeightMeters: 8.5",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/cdc/types.ts",
-   "text": "storeys: 2",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/cdc/types.ts",
-   "text": "parkingSpaces: 2",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers",
    "count": 1
   },
   {

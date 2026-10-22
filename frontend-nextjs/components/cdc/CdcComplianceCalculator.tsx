@@ -112,28 +112,12 @@ export function CdcComplianceCalculator({
     isLoading: eligibilityLoading,
   } = useCdcEligibility(address);
 
+  // Only the measured lot area is carried over. Lot width at the building line is
+  // NOT the shorter side of the lot, so it is left blank for the user to enter.
+  // Nothing is estimated and no standard is pre-filled.
   const initialValues = useMemo(() => {
-    if (!lotDimensions && !lotSize) return undefined;
-
-    const area = lotDimensions?.area || lotSize || 0;
-    // For a battleaxe, lotDimensions.frontage/depth describe the access handle;
-    // the buildable-footprint estimate must use the head (mainLotWidth and the
-    // derived head depth), or coverage is badly understated. Non-battleaxe lots
-    // return the raw frontage/depth unchanged.
-    // This is the lot WIDTH (shorter side of the bounding rectangle, or the battleaxe head),
-    // not the street frontage.
-    const lotWidth = battleaxeAwareLotWidth(lotDimensions) ?? 0;
-    const depth = battleaxeAwareLotDepth(lotDimensions) ?? 0;
-
-    const usableWidth = Math.max(0, lotWidth - 1.8);
-    const usableDepth = Math.max(0, depth - 9);
-    const maxFootprint = usableWidth * usableDepth;
-    const estimatedCoverage = area > 0 ? Math.min(50, Math.round((maxFootprint / area) * 100)) : 45;
-
-    return {
-      siteCoveragePercent: estimatedCoverage > 0 ? estimatedCoverage : 45,
-      landscapedAreaPercent: 100 - estimatedCoverage > 30 ? 100 - estimatedCoverage : 35,
-    };
+    const area = lotDimensions?.area || lotSize || null;
+    return area ? { lotAreaM2: area } : undefined;
   }, [lotDimensions, lotSize]);
 
   const {
@@ -142,6 +126,8 @@ export function CdcComplianceCalculator({
     updateSetback,
     validation,
     passCount,
+    failCount,
+    notCheckedCount,
     totalChecks,
     isFullyCompliant,
     reset,
@@ -170,6 +156,7 @@ export function CdcComplianceCalculator({
     return (
       <span className="inline-flex items-center gap-1 text-xs text-gray-600 font-medium">
         {passCount}/{totalChecks}
+        {notCheckedCount > 0 && ` (${notCheckedCount} not checked)`}
       </span>
     );
   };
@@ -195,7 +182,7 @@ export function CdcComplianceCalculator({
           <div className="flex items-center gap-2">
             {getSummaryIndicator()}
             <Badge variant="outline" className="text-xs text-gray-500 border-gray-300 font-normal">
-              SEPP Housing
+              Codes SEPP Housing Code
             </Badge>
           </div>
         </div>
@@ -208,6 +195,7 @@ export function CdcComplianceCalculator({
             <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
             <span>
               Preliminary guidance only. Does not replace assessment by a registered certifier.
+              Checks use only the stored Housing Code standards; others show Not checked.
             </span>
           </div>
 
@@ -314,6 +302,7 @@ export function CdcComplianceCalculator({
                   updateSetback={updateSetback}
                   passCount={passCount}
                   totalChecks={totalChecks}
+                  notCheckedCount={notCheckedCount}
                 />
               </div>
 
@@ -347,7 +336,8 @@ export function CdcComplianceCalculator({
                     validation={validation}
                     passCount={passCount}
                     totalChecks={totalChecks}
-                    bedrooms={form.bedrooms}
+                    failCount={failCount}
+                    notCheckedCount={notCheckedCount}
                   />
                 </div>
               )}
@@ -356,15 +346,6 @@ export function CdcComplianceCalculator({
 
           {/* External Links - subtle */}
           <div className="border-t border-gray-100 pt-3 flex flex-wrap gap-4">
-            <a
-              href="https://www.planningportal.nsw.gov.au/publications/environmental-planning-instruments/state-environmental-planning-policy-housing-2021"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
-            >
-              <ExternalLink className="w-3 h-3" />
-              SEPP Housing 2021
-            </a>
             <a
               href="https://www.planning.nsw.gov.au/assess-and-regulate/development-assessment/planning-approval-pathways/complying-development"
               target="_blank"
