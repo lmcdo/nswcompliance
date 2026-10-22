@@ -151,10 +151,11 @@ jobs:
         if: always()
         run: |
           python scripts/lint_hardcoded_zone_codes.py --baseline
-          # Hand-typed planning FIGURES (2026-10-10): zone codes were the only
-          # hardcoded data checked, so a typed '450 m2 minimum' reached six
-          # served surfaces. Shrink-only; the target is 0, served from the DB.
-          python scripts/lint_hardcoded_regulatory_numbers.py --baseline
+          # Hand-typed planning FIGURES: every hit must be NAMED in
+          # .claude/regulatory_figure_ledger.json (open / cited / not_regulatory with a reason).
+          # Unlisted = fail; a fixed one left in the ledger = fail; open count may only fall. Target: 0 open.
+          # (2026-10-22: the old per-file count allowed 261 and named none, so none were removed.)
+          python scripts/lint_hardcoded_regulatory_numbers.py --check
       # One producer per shared fact (2026-10-19): the yield box and the DCP tab
       # disagreed on one page because each derived the setback itself. 390 sites
       # produce 23 shared facts; this stops NEW copies while they are merged.
