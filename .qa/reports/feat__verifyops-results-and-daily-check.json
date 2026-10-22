@@ -1,0 +1,160 @@
+{
+ "tier": "critical",
+ "justification": "Changes the production DCP change monitor: which files are downloaded each run, what is recorded, and what the daily alarm calls red. A wrong cadence decision silently skips a changed file; a wrong alarm query stays green over an unchecked chapter. Adds a migration (3 tables, 1 column).",
+ "commit_hash": "b20d4eb1",
+ "files": [
+  "migrations/116_dcp_monitor_results.sql",
+  "scripts/verifyops_record.py",
+  "scripts/verifyops_links.py",
+  "scripts/verifyops_coverage.py",
+  "scripts/r2_monitor.py",
+  "Dockerfile.monitors",
+  ".github/workflows/freshness-alarm.yml",
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md",
+  "tests/test_verifyops_daily_check.py",
+  "tests/fixtures/verifyops/bayside_list_2026-10-22.json",
+  "tests/fixtures/verifyops/canada_bay_list_2026-10-22.json",
+  "tests/fixtures/verifyops/canterbury_bankstown_list_2026-10-22.json"
+ ],
+ "pre_impl": {
+  "existing_data": "Measured 2026-10-22 read-only on production: no dcp_monitor_* tables and no url_last_downloaded column; 571 active chapters, 541 with a council_url, 454 tagged (ETag), 544 with a council_page_url across 21 councils. Unwatched: inner_west 495 served provisions (no registry row), nsw_statewide 31 setbacks. 28 auto_detected new documents waiting since 2026-05-18 across 5 councils. 6 chapters with needs_extraction.",
+  "assumption_mismatch": "(1) v6 said drop query strings when normalising links; canada_bay and liverpool name the document in the query, so only cache-buster keys are dropped. (2) The #1430 chapter-number match never fires on Bayside: its new edition is titled with the whole plan name and no part number, so a whole-plan name+year match was added. (3) v6 implied a new alert table; new hub documents are already registered as auto_detected registry rows and that row is reused as the review item and dedupe state. (4) The old monitor already executes UPDATEs in --dry-run (it only skips commit).",
+  "new_vs_existing": "Nothing changes until migration 116 is applied and dcp-monitor is deployed from main. The cron stays fortnightly in this PR; the daily cron is a separate PR after the deploy (the drift check compares the file with the live value, and old code must not run daily).",
+  "external_source_error": "Council hub pages and document servers fail in four ways that are each recorded, never dropped: HubScrapeError 403 -> council outcome 'blocked', other hub errors -> 'error', an empty scrape -> 'empty', fewer than 80% of expected links -> 'anomaly'; per chapter 403 -> waf_blocked, 429 twice -> rate_limited, timeouts -> transient, anything else -> failed. A gone link whose HEAD cannot be read is reported as 'file not checked', never as removed.",
+  "frontend_type": "No frontend change. The new tables are read only by scripts/verifyops_coverage.py and by people; no API route or component reads them in this PR (the site banner is a later step).",
+  "user_failure_mode": "If this is wrong a site visitor is shown a DCP chapter as current when the council changed it: a cadence bug that skips a download, or an alarm query that stays green over an unchecked chapter. Both fail silently, which is why every outcome is stored and the alarm is red on anything it cannot read (exit 2)."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_verifyops_daily_check.py tests/test_r2_monitor_alerting.py tests/test_hub_discovery_is_not_gated_on_change_detection.py tests/test_dockerfile_monitors_imports.py",
+  "fails_when": "an untagged file is downloaded before 7 days or not at 7, a tag change or spot check does not download, the spot check picks more than once a week, the shadow week is not exactly 7 days, a dry run writes, a rate-limited skip is not recorded, a re-upload or chapter number is misread, a redesign hides a held-chapter match, a delisted file is called gone, a plan without a year matches, the alarm lets a new key cancel a cleared one, cannot-look reads as a pass, or --update raises the baseline",
+  "observed_red": "YES: 35 hand-made mutants applied one at a time to verifyops_record/links/coverage. 33 killed. 1 equivalent (flush without the dry_run guard: a dry run never gets a run_id). 1 survivor: the alarm SQL predicate 'last.outcome NOT IN' -> 'IN' cannot be killed without a database; it is checked on the first live run (step 3 of the verification below). Two real bugs were found by the tests before commit: dcp_part_3.pdf read as a re-upload of dcp_part.pdf, and 'exhibitions' not flagged as draft. A third by the real canada_bay list: 3 new links on an 8-link page read as a redesign (floor of 5 added)."
+ },
+ "functions": [
+  {
+   "name": "decide_fetch",
+   "file_line": "scripts/verifyops_record.py:35",
+   "input": "stored hash/tag/size, HEAD tag/size, last full download, now, spot flag",
+   "output": "a pair (download today?, reason) where reason is one of force, no_baseline, etag_changed, spot_check, etag_match, size_changed, untagged_weekly, untagged_recent",
+   "if_none": "no stored hash or no last download -> download"
+  },
+  {
+   "name": "is_spot_check",
+   "file_line": "scripts/verifyops_record.py:59",
+   "input": "the registry chapter id (int) and the run time (timezone-aware datetime, UTC)",
+   "output": "bool, ~1 in 20 per ISO week, one weekday",
+   "if_none": "not applicable: both arguments are always present; the pick is pure arithmetic on them, so the same chapter and week always give the same answer"
+  },
+  {
+   "name": "council_list_checked",
+   "file_line": "scripts/verifyops_record.py:155",
+   "input": "one council's slug, hub URL, the scraper's discovered list of {chapter_key,url,label}, held chapter labels, plan names, a probe and a sender",
+   "output": "saved list + alert lines; Telegram only after the shadow week",
+   "if_none": "an empty scrape is stored as outcome 'empty' with no diff, so the alarm sees the council as not read rather than unchanged"
+  },
+  {
+   "name": "diff_lists",
+   "file_line": "scripts/verifyops_links.py:139",
+   "input": "the last list stored with outcome 'ok' for this council (or None) and today's normalised link entries",
+   "output": "new / gone / re-upload / redesign lines",
+   "if_none": "no previous list means a first scan: today's list is saved and no alert is raised, the setup run never alerts"
+  },
+  {
+   "name": "main",
+   "file_line": "scripts/verifyops_coverage.py:119",
+   "input": "argv flags --update and --allow-raise, plus DATABASE_URL from the environment or an injected connection for tests",
+   "output": "exit 0 / 1 (new red key) / 2 (could not look)",
+   "if_none": "a missing DATABASE_URL or a missing dcp_monitor table exits 2, which dq_check reports as unverifiable and the workflow step as failed, never 0"
+  }
+ ],
+ "values": [
+  {
+   "value": "url_last_downloaded",
+   "read_at": "scripts/r2_monitor.py run_monitor SELECT",
+   "nullable": "yes",
+   "guard_at": "decide_fetch",
+   "if_missing": "NULL = never downloaded -> download"
+  },
+  {
+   "value": "previous council list",
+   "read_at": "Recorder.previous_list",
+   "nullable": "yes",
+   "guard_at": "diff_lists",
+   "if_missing": "first scan: saved, no alerts"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "record each run / council list / chapter outcome",
+   "file_line": "scripts/verifyops_record.py:113",
+   "where_clause": "INSERT only"
+  },
+  {
+   "purpose": "last good list for a council",
+   "file_line": "scripts/verifyops_record.py:182",
+   "where_clause": "council = %s AND outcome = 'ok' ORDER BY id DESC LIMIT 1"
+  },
+  {
+   "purpose": "the alarm's red keys",
+   "file_line": "scripts/verifyops_coverage.py:46",
+   "where_clause": "active AND NOT inert chapters; per reason windows 2/8/30/3/33 days"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A server keeps the ETag but changes the bytes",
+   "what_happens": "caught only on the weekly 1-in-20 spot download",
+   "mitigated": "partly",
+   "how": "outcome etag_lied -> red key for 30 days; stated residual risk in the spec",
+   "repro": "test_tagged_downloads_only_on_a_tag_change_or_spot_check"
+  },
+  {
+   "scenario": "A chapter's server answers HTTP 429 to the HEAD request twice in a row",
+   "what_happens": "recorded rate_limited, listed in the run summary and Telegram infra note, red key last_run_unchecked",
+   "mitigated": true,
+   "how": "finding 13",
+   "repro": "test_the_rate_limited_skip_is_recorded_in_r2_monitor"
+  },
+  {
+   "scenario": "Council page redesigned; one new link is the new edition of a held chapter",
+   "what_happens": "one redesign line plus the matching link's own line",
+   "mitigated": true,
+   "how": "resolution 6",
+   "repro": "test_a_redesign_is_one_line_but_a_held_chapter_match_still_shows"
+  },
+  {
+   "scenario": "The new code is deployed to Railway before migration 116 is applied to the database",
+   "what_happens": "dcp-monitor fails at its first SELECT (url_last_downloaded) and exits 1; check_railway_jobs_ran goes red",
+   "mitigated": "visible, not silent",
+   "how": "apply 116 before the deploy",
+   "repro": "deploy order in the PR"
+  },
+  {
+   "scenario": "The daily alarm runs before any monitor run has recorded results in the new tables",
+   "what_happens": "exit 2 (could not look) or every chapter red",
+   "mitigated": true,
+   "how": "baseline written from the first real run with --update --allow-raise",
+   "repro": "test_alarm_cannot_look_is_never_a_pass"
+  },
+  {
+   "scenario": "One of the alarm's red keys queries returns no rows because its predicate is wrong, so an unchecked chapter is not reported",
+   "what_happens": "the alarm stays green over the gap - the one silent mode left in this PR",
+   "mitigated": "partly",
+   "how": "unit tests pin every window and table; the predicate meaning is checked on the first live run by reading each red key against the registry and confirming a known-unchecked chapter (camden, no council_url) appears as no_url",
+   "repro": "verification_after_merge step 3"
+  }
+ ],
+ "verification_after_merge": [
+  "1. Apply migrations/116_dcp_monitor_results.sql (user go). VERIFY: 3 dcp_monitor_* tables.",
+  "2. Deploy dcp-monitor from main once Railway Hobby deploys resume; trigger one run.",
+  "3. SELECT outcome, count(*) FROM dcp_monitor_chapter_results WHERE run_id = <that run> GROUP BY 1 - every active chapter has exactly one terminal row; run verifyops_coverage.py and read each red key against the registry (kills the SQL survivor).",
+  "4. python scripts/verifyops_coverage.py --update --allow-raise 'first recorded run <date>'.",
+  "5. Separate PR: cron 0 2 * * * + live value + DQ-117 window + tests/test_one_outcome_alarm.py."
+ ],
+ "post_merge": {
+  "db_reset": "Apply migrations/116_dcp_monitor_results.sql once to production (additive: 3 new tables, 1 nullable column; rollback in the file header). Needs the user's go.",
+  "secrets": "None added. The GitHub DATABASE_URL secret predates the 2026-10-22 password rotation and must be updated for freshness-alarm (and this new step) to log in; RAILWAY_TOKEN likely needs replacing too, as Railway voided all API tokens at 04:17 UTC that day.",
+  "other_repo": "None. Railway: dcp-monitor must be deployed from main after merge (deploys are paused for Hobby workspaces as of 2026-10-22).",
+  "manual_verify": "After the first recorded run: count chapter results per outcome for that run_id (one terminal row per active chapter), run python scripts/verifyops_coverage.py and read every red key, then write the baseline with --update --allow-raise 'first recorded run <date>'."
+ }
+}
