@@ -50,6 +50,11 @@ except ImportError:
     HUB_SCRAPERS = {}
     HubScrapeError = Exception
 
+# Every run's outcome per council list and per chapter (migration 116), and the daily-cadence
+# decisions. NOT optional: a monitor that silently stops recording is what the alarm reads as
+# "not checked", so a missing module must fail loudly here rather than run blind.
+from verifyops_record import Recorder, decide_fetch, is_spot_check
+
 
 class WAFBlockError(Exception):
     """Raised when a 403 indicates WAF/access denial, not a content issue.
@@ -300,6 +305,17 @@ def head_request(url: str) -> dict:
         }
     except Exception as exc:
         return {"error": str(exc), "status": None}
+
+
+def _still_opens(url: str) -> bool | None:
+    """Does a link that left the council's page still open? None = could not tell (#1188:
+    delisted is not gone, so an unknown answer is never reported as removed)."""
+    status = head_request(url).get("status")
+    if status in (200, 206):
+        return True
+    if status in (404, 410):
+        return False
+    return None
 
 
 #: Below this, a response cannot be a usable PDF. Read off the distribution
@@ -748,11 +764,14 @@ def run_monitor(
     dry_run: bool = False,
     force: bool = False,
     reseed: bool = False,
+    recorder: Recorder | None = None,
 ) -> dict:
     """
     Main monitor loop.
     Returns summary dict with counts and list of changed chapters.
+    `recorder` stores every outcome (migration 116); None records nothing (tests, reseed).
     """
+    rec = recorder or Recorder(conn, dry_run=True, mode="unrecorded")
     cur = conn.cursor()
     now = datetime.now(timezone.utc)
 
@@ -760,7 +779,7 @@ def run_monitor(
     query = """
         SELECT id, council, dcp_name, chapter_key, chapter_label, council_url,
                council_page_url, hub_expected_count, hub_last_pdf_count,
-               r2_current_path, r2_version_label,
+               r2_current_path, r2_version_label, url_last_downloaded,
                content_hash, url_content_length, url_etag, check_failures,
                COALESCE(is_spatial, FALSE) AS is_spatial,
                COALESCE(is_inert, FALSE) AS is_inert
@@ -810,6 +829,7 @@ def run_monitor(
         "hub_alerts": [],
         "waf_blocked": [],
         "transient": [],
+        "rate_limited": [],
     }
 
     # Spread the load across the run: randomise council order + a paced gap
@@ -863,7 +883,18 @@ def run_monitor(
                     send_telegram(msg)
                     results["hub_alerts"].append(msg)
                     results["failed"] += len(council_chapters)
+                    rec.council_list(council, hub_url, "anomaly",
+                                     detail=f"{len(discovered)} links, expected ~{hub_expected}")
+                    rec.flush()
                     continue
+
+                # Today's list against the last good one (new / gone / redesigned page).
+                if recorder is not None:
+                    rec.council_list_checked(
+                        council, hub_url, discovered, expected_labels,
+                        probe=_still_opens, send=send_telegram, now=now,
+                        plans=sorted({ch["dcp_name"] for ch in council_chapters if ch.get("dcp_name")}),
+                    )
 
                 # Collect digest items for this council
                 council_hub_alerts = []
@@ -978,6 +1009,8 @@ def run_monitor(
                 print(f"  HUB ERROR: {exc} -- falling through to per-chapter checks")
                 send_telegram(msg)
                 results["hub_alerts"].append(msg)
+                rec.council_list(council, hub_url, "blocked" if is_waf_denial(exc) else "error",
+                                 detail=str(exc))
                 # A 403 is WAF/access denial: INFRASTRUCTURE, not data. The concept
                 # already exists in this file -- WAFBlockError, "should not increment
                 # check_failures, it's an infrastructure problem, not data" -- and the
@@ -1000,6 +1033,9 @@ def run_monitor(
                     # loop DOES run now and reports each chapter's real outcome, so
                     # counting them here as well would double-count every one.
                     results["failed"] += 1
+        elif hub_url:
+            # Recorded so the alarm can name a council whose list is never read.
+            rec.council_list(council, hub_url, "no_scraper", detail="hub URL stored, no scraper registered")
 
         # ── Per-chapter hash check ─────────────────────────────────────────────
         council_changed = 0
@@ -1035,6 +1071,7 @@ def run_monitor(
                 print("    [no council_url] hub-only chapter -- no hash check "
                       "possible; discovery for this council runs off its hub page")
                 results["skipped_no_url"] += 1
+                rec.chapter(chapter_id, ch_council, key, "no_url")
                 continue
 
             try:
@@ -1048,6 +1085,7 @@ def run_monitor(
                     _backoff(url)
                     results["failed"] += 1
                     council_failed += 1
+                    rec.chapter(chapter_id, ch_council, key, "waf_blocked", detail="HEAD 403")
                     adaptive_delay(url)
                     continue
                 if head_status == 429:
@@ -1058,7 +1096,11 @@ def run_monitor(
                     head = head_request(url)
                     head_status = head.get("status")
                     if head_status == 429:
+                        # Not failed and not checked: recorded and listed so the run summary
+                        # and the alarm can see it (v6 finding 13 - this used to leave no trace).
                         print(f"    [429] still rate-limited after backoff — skipping")
+                        rec.chapter(chapter_id, ch_council, key, "rate_limited", detail="HEAD 429 twice")
+                        results["rate_limited"].append({"council": ch_council, "chapter_key": key})
                         adaptive_delay(url)
                         continue
                 if head_status not in (200, 206):
@@ -1076,17 +1118,23 @@ def run_monitor(
                 # serve Content-Length as the compressed size (gzip) while the monitor
                 # stores len(content) = decompressed size — these will never match for
                 # gzip responses even when the file is unchanged.
+                #
+                # DAILY CADENCE (v6 resolutions 4 and 9): the run is daily, but an untagged file is
+                # downloaded at most weekly unless its size changed, and 1 in 20 tagged files is
+                # re-downloaded each week even on a tag match (a server can keep the tag while
+                # the bytes change). verifyops_record.decide_fetch is the whole rule.
                 stored_etag = chapter.get("url_etag")
                 new_etag_head = head.get("etag")
-                etag_match = (
-                    not force
-                    and stored_hash
-                    and stored_etag
-                    and new_etag_head
-                    and stored_etag == new_etag_head
+                spot = is_spot_check(chapter_id, now)
+                download, fetch_reason = decide_fetch(
+                    force=force, stored_hash=stored_hash, stored_etag=stored_etag,
+                    head_etag=new_etag_head, stored_len=stored_len, head_len=remote_len,
+                    last_downloaded=chapter.get("url_last_downloaded"), now=now, spot=spot,
                 )
-                if etag_match:
-                    print(f"    [unchanged] ETag match — skipping download")
+                if not download:
+                    head_outcome = "unchanged_etag" if fetch_reason == "etag_match" else "unchanged_head"
+                    print(f"    [unchanged] {fetch_reason} — skipping download")
+                    rec.chapter(chapter_id, ch_council, key, head_outcome, fetch_reason)
                     cur.execute(
                         "UPDATE dcp_chapter_registry SET url_last_checked=%s, check_failures=0 WHERE id=%s",
                         (now, chapter_id),
@@ -1104,14 +1152,9 @@ def run_monitor(
                     council_checked += 1
                     adaptive_delay(url)
                     continue
-                elif stored_etag and not new_etag_head:
-                    print(f"    Stored ETag but server no longer serving one — downloading for hash check")
-                elif not stored_etag:
-                    # No stored ETag yet (first run, or server didn't serve one previously)
-                    pass
 
                 # Step 2: Full download + hash comparison
-                print(f"    Downloading for hash check...")
+                print(f"    Downloading for hash check ({fetch_reason})...")
                 content, resp_headers = download_pdf(url)
                 new_hash = sha256(content)
                 # Store the HEAD Content-Length (not len(content)) so future HEAD
@@ -1123,14 +1166,16 @@ def run_monitor(
 
                 if new_hash == stored_hash:
                     print(f"    [unchanged] Hash matches stored ({new_hash[:16]}...)")
+                    rec.chapter(chapter_id, ch_council, key, "unchanged_hash", fetch_reason)
                     cur.execute(
                         """
                         UPDATE dcp_chapter_registry
                         SET url_last_checked=%s, url_content_length=%s,
-                            url_etag=%s, url_last_modified=%s, check_failures=0
+                            url_etag=%s, url_last_modified=%s, check_failures=0,
+                            url_last_downloaded=%s
                         WHERE id=%s
                         """,
-                        (now, new_len, new_etag, new_lm, chapter_id),
+                        (now, new_len, new_etag, new_lm, now, chapter_id),
                     )
                     # Mark linked control rows as verified current
                     cur.execute(
@@ -1158,11 +1203,13 @@ def run_monitor(
                         old_content = s3.get_object(Bucket=R2_BUCKET_NAME, Key=r2_path)["Body"].read()
                         if is_reexport(old_content, content):
                             print(f"    [re-export] bytes changed but text identical — not a real change")
+                            rec.chapter(chapter_id, ch_council, key, "reexport", fetch_reason)
                             cur.execute(
                                 """
                                 UPDATE dcp_chapter_registry
                                 SET content_hash=%s, url_last_checked=%s, url_content_length=%s,
                                     url_etag=%s, url_last_modified=%s, check_failures=0,
+                                    url_last_downloaded=%s,
                                     -- Advance the extraction hash TOO, or this
                                     -- optimisation defeats itself downstream.
                                     --
@@ -1189,7 +1236,7 @@ def run_monitor(
                                              THEN NULL ELSE %s END
                                 WHERE id=%s
                                 """,
-                                (new_hash, now, new_len, new_etag, new_lm,
+                                (new_hash, now, new_len, new_etag, new_lm, now,
                                  new_hash, chapter_id),
                             )
                             if not dry_run:
@@ -1203,6 +1250,9 @@ def run_monitor(
 
                 # ── CHANGE DETECTED ──────────────────────────────────────────
                 print(f"    [CHANGED] {stored_hash[:16] if stored_hash else 'NEW'} → {new_hash[:16]}")
+                # A spot check that finds new bytes behind an unchanged tag: the server's tag lied.
+                rec.chapter(chapter_id, ch_council, key,
+                            "etag_lied" if fetch_reason == "spot_check" else "changed", fetch_reason)
                 old_size = f"{stored_len:,}" if stored_len else "?"
                 print(f"    Old size: {old_size}  New size: {new_len:,}")
 
@@ -1229,7 +1279,7 @@ def run_monitor(
                             r2_public_pdf_url=%s,
                             content_hash=%s, url_content_length=%s,
                             url_etag=%s, url_last_modified=%s,
-                            url_last_checked=%s, url_last_changed=%s,
+                            url_last_checked=%s, url_last_changed=%s, url_last_downloaded=%s,
                             needs_extraction=%s, check_failures=0
                         WHERE id=%s
                         """,
@@ -1238,7 +1288,7 @@ def run_monitor(
                             new_public_url,
                             new_hash, new_len,
                             new_etag, new_lm,
-                            now, now,
+                            now, now, now,
                             not is_spatial and not is_inert,
                             chapter_id,
                         ),
@@ -1297,6 +1347,7 @@ def run_monitor(
                 # data issue. Bucketed separately and does NOT count as a real failure,
                 # so it never fails the run (exit 1).
                 print(f"    [WAF-BLOCKED] {exc}")
+                rec.chapter(chapter_id, ch_council, key, "waf_blocked", detail=str(exc))
                 cur.execute(
                     "UPDATE dcp_chapter_registry SET url_last_checked=%s WHERE id=%s",
                     (now, chapter_id),
@@ -1317,6 +1368,7 @@ def run_monitor(
                 # unfetchable chapter still surfaces (via the >=3 digest), but do NOT
                 # count it as a real failure, so a one-off blip never pages.
                 print(f"    [TRANSIENT] {exc}")
+                rec.chapter(chapter_id, ch_council, key, "transient", detail=str(exc))
                 cur.execute(
                     "UPDATE dcp_chapter_registry SET url_last_checked=%s, check_failures=%s WHERE id=%s",
                     (now, failures + 1, chapter_id),
@@ -1333,6 +1385,7 @@ def run_monitor(
 
             except Exception as exc:
                 print(f"    [ERROR] {exc}")
+                rec.chapter(chapter_id, ch_council, key, "failed", detail=str(exc))
                 new_failures = failures + 1
                 cur.execute(
                     "UPDATE dcp_chapter_registry SET url_last_checked=%s, check_failures=%s WHERE id=%s",
@@ -1358,6 +1411,7 @@ def run_monitor(
                   f"{council_failed} failed")
 
         cur.close()
+        rec.flush()
 
     return results
 
@@ -1521,8 +1575,16 @@ def main():
             conn.close()
         sys.exit(0)
 
+    # A one-council run is never a full run, whatever else it was asked to do: the alarm treats
+    # only 'daily'/'force' as covering the fleet (no_run_2d, missing_from_last_run).
+    mode = (f"council:{args.council}" if args.council else "force" if args.force else
+            "reseed" if args.reseed else "daily")
+    recorder = Recorder(conn, dry_run=args.dry_run, mode=mode)
     try:
-        results = run_monitor(args.council, s3, conn, args.dry_run, args.force, args.reseed)
+        recorder.start()
+        results = run_monitor(args.council, s3, conn, args.dry_run, args.force, args.reseed,
+                              recorder=recorder)
+        recorder.finish({k: (len(v) if isinstance(v, list) else v) for k, v in results.items()})
     finally:
         conn.close()
 
@@ -1535,6 +1597,7 @@ def main():
     print(f"  Unchanged : {results['unchanged']}")
     print(f"  Changed   : {n_changed}")
     print(f"  Failed    : {results['failed']}")
+    print(f"  Rate-limited, not checked : {len(results['rate_limited'])}")
 
     # ── Persistent-failure alert ─────────────────────────────────────────────
     # Warn about chapters that have failed repeatedly — these need investigation.
@@ -1576,9 +1639,11 @@ def main():
     n_waf = len(results["waf_blocked"])
     real_failed = results["failed"]  # transient + WAF are bucketed separately, not here
     exit_code = run_exit_code(n_changed, real_failed)
+    n_rate = len(results["rate_limited"])
     infra_note = (
-        f"\n  {n_transient} transient + {n_waf} WAF-blocked (infra — retried next run)."
-        if (n_transient or n_waf) else ""
+        f"\n  {n_transient} transient + {n_waf} WAF-blocked + {n_rate} rate-limited, not checked"
+        f" (infra — retried next run)."
+        if (n_transient or n_waf or n_rate) else ""
     )
 
     if exit_code == 1:

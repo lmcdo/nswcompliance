@@ -1,0 +1,52 @@
+{
+ "council": "canada_bay",
+ "hub_url": "https://www.canadabay.nsw.gov.au/development/plans-policies-and-controls/planning-controls-LEP-DCP",
+ "fetched_utc": "2026-10-22T06:21:24",
+ "held": {
+  "part-c-table-cb-parking": "Part C - Parking Rates Table",
+  "part-e-single-dwellings": "Part E - Single Dwellings",
+  "landscaping-controls": "Landscaping Controls"
+ },
+ "discovered": [
+  {
+   "chapter_key": null,
+   "url": "https://www.canadabay.nsw.gov.au/sites/default/files/CCB-DCP-16_Appendix-3-Tree-Species.pdf",
+   "label": "DCP - Appendix 3 Tree Species"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://www.canadabay.nsw.gov.au/sites/default/files/2023-02/PRCUTS%20Stage%201%20-%20Infrastructure%20Strategy%20(Final)%20-%2013%2002%202023.pdf",
+   "label": "PRCUTS Stage 1 Infrastructure Strategy"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://www.canadabay.nsw.gov.au/sites/default/files/2025-01/Good%20Design%20Fact%20Sheet.pdf",
+   "label": "Good Design Fact Sheet"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://www.canadabay.nsw.gov.au/ https:/shared-drupal-s3fs.s3.ap-southeast-2.amazonaws.com/master-test/s3fs-public/dpe-public/documents/NSW%2BPlanning%2BPortal%2Bexhibitions%2B/Homebush/Homebush+Design+Guide+-+Nov+2024.pdf",
+   "label": "Homebush Transport Oriented Development Precinct Design Guide"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://shared-drupal-s3fs.s3.ap-southeast-2.amazonaws.com/master-test/s3fs-public/dpe-public/documents/NSW%2BPlanning%2BPortal%2Bexhibitions%2B/Homebush/Homebush+Design+Guide+-+Nov+2024.pdf",
+   "label": "Homebush Transport Orientated Development Precinct Design Guide"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://www.canadabay.nsw.gov.au/sites/default/files/2021-10/City%20of%20Canada%20Bay%20Local%20Approvals%20Policy.pdf",
+   "label": "Local Approvals Policy"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://www.canadabay.nsw.gov.au/sites/default/files/2023-01/20509_PRCUTS_Stage%201_PDP_Master%20plan%20update%20(3).pdf",
+   "label": "PRCUTS Public Domain Plan"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://www.canadabay.nsw.gov.au/sites/default/files/2024-08/223-0053-00%20-%20PR01_Public%20Domain%20Plan_Final%20(Rv07)_Optimized.pdf",
+   "label": "Rhodes East Public Domain Plan"
+  }
+ ]
+}

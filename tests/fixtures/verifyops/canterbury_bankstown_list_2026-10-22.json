@@ -1,0 +1,427 @@
+{
+ "council": "canterbury_bankstown",
+ "hub_url": "https://www.cbcity.nsw.gov.au/planning-and-building/planning-city/planning-controls-and-policies/canterbury-bankstown-development-control-plan",
+ "fetched_utc": "2026-10-22T06:22:10",
+ "held": {
+  "2024-08-06-development-engineering-standards-guide": "2024.08.06 - Development Engineering Standards Guide",
+  "2023-06-23-dcp-2023-consolidated-waste-design-for-new-developments-guide-f": "2023.06.23 - DCP 2023 - CONSOLIDATED - Waste Design for New Developments - Guide F",
+  "chapter-6-3-campsie-town-centre": "Chapter 6.3 - Campsie Town Centre",
+  "chapter-11-13-former-wsu-campus-milperra": "Chapter 11.13 - Former WSU Campus Milperra",
+  "2024-08-06-tree-management-manual": "2024.08.06 - Tree Management Manual",
+  "chapter-11-2-undercliffe-bridge-precinct": "Chapter 11.2 - Undercliffe Bridge Precinct",
+  "chapter-3-1-development-engineering-standards": "Chapter 3.1 - Development Engineering Standards",
+  "chapter-11-8-boorea": "Chapter 11.8 - Boorea",
+  "2023-06-23-dcp-2023-consolidated-waste-design-for-new-developments-guide-b": "2023.06.23 - DCP 2023 - CONSOLIDATED - Waste Design for New Developments - Guide B",
+  "2024-08-06-character-statement-ashbury-hca": "2024.08.06 - Character Statement - Ashbury HCA",
+  "chapter-2-2-flood-risk-management": "Chapter 2.2 - Flood Risk Management",
+  "chapter-3-5-subdivision": "Chapter 3.5 - Subdivision",
+  "chapter-3-4-sustainable-development": "Chapter 3.4 - Sustainable Development",
+  "2023-06-23-dcp-2023-consolidated-waste-design-for-new-developments-guide-e": "2023.06.23 - DCP 2023 - CONSOLIDATED - Waste Design for New Developments - Guide E",
+  "chapter-4-3-heritage-conservation-areas": "Chapter 4.3 - Heritage Conservation Areas",
+  "2024-08-06-landscape-guide": "2024.08.06 - Landscape Guide",
+  "chapter-4-1-introduction": "Chapter 4.1 - Introduction",
+  "chapter-11-7-auburn-road": "Chapter 11.7 - Auburn Road",
+  "chapter-3-2-parking": "Chapter 3.2 - Parking",
+  "cb-dcp-2023-ch5-1-bankstown": "CB DCP 2023 Amendment 11 \u2014 Chapter 5.1 Former Bankstown LGA",
+  "chapter-11-5-riverlands": "Chapter 11.5 - Riverlands",
+  "chapter-8-2-canterbury-road": "Chapter 8.2 - Canterbury Road",
+  "2024-08-06-heritage-guide": "2024.08.06 - Heritage Guide",
+  "cb-dcp-2023-ch5-2-canterbury": "CB DCP 2023 Amendment 11 \u2014 Chapter 5.2 Former Canterbury LGA",
+  "retrofitting-communal-bin-storage-areas-guide-g": "Retrofitting Communal Bin Storage Areas - Guide G",
+  "chapter-8-3-hume-highway": "Chapter 8.3 - Hume Highway",
+  "chapter-9-1-general-requirements": "Chapter 9.1 - General Requirements",
+  "2023-06-23-dcp-2023-consolidated-waste-design-for-new-developments-guide-c": "2023.06.23 - DCP 2023 - CONSOLIDATED - Waste Design for New Developments - Guide C",
+  "chapter-11-12-445-canterbury-road": "Chapter 11.12 - 445 Canterbury Road",
+  "chapter-10-7-sex-services-premises": "Chapter 10.7 - Sex Services Premises",
+  "2023-06-23-dcp-2023-consolidated-waste-design-for-new-developments-guide-d": "2023.06.23 - DCP 2023 - CONSOLIDATED - Waste Design for New Developments - Guide D",
+  "chapter-11-10-chullora-marketplace": "Chapter 11.10 - Chullora Marketplace",
+  "character-statement-hurlstone-park": "Character Statement - Hurlstone Park",
+  "chapter-10-4-non-residential-land-uses": "Chapter 10.4 - Non Residential Land Uses",
+  "chapter-10-5-places-of-public-worship": "Chapter 10.5 - Places of Public Worship",
+  "chapter-7-3-city-east": "Chapter 7.3 - City East",
+  "chapter-11-11-brighton-avenue": "Chapter 11.11 - Brighton Avenue",
+  "chapter-11-14-riverwood-estate": "Chapter 11.14 - Riverwood Estate",
+  "chapter-11-15-marco-avenue": "Chapter 11.15 - Marco Avenue",
+  "chapter-11-9-revesby-hospital": "Chapter 11.9 - Revesby Hospital",
+  "chapter-11-6-potts-hill": "Chapter 11.6 - Potts Hill",
+  "chapter-2-1-site-analysis": "Chapter 2.1 - Site Analysis",
+  "chapter-2-4-pipeline-corridors": "Chapter 2.4 - Pipeline Corridors",
+  "chapter-7-2-city-west": "Chapter 7.2 - City West",
+  "chapter-6-1-general-requirements": "Chapter 6.1 - General Requirements",
+  "2024-08-06-demolition-and-construction-guide": "2024.08.06 - Demolition and Construction Guide",
+  "chapter-4-2-heritage-items": "Chapter 4.2 - Heritage Items",
+  "chapter-3-6-signs": "Chapter 3.6 - Signs",
+  "chapter-10-3-home-businesses": "Chapter 10.3 - Home Businesses",
+  "chapter-3-3-waste-management": "Chapter 3.3 - Waste Management",
+  "chapter-10-2-schools": "Chapter 10.2 - Schools",
+  "2023-06-23-dcp-2023-consolidated-waste-design-for-new-developments-guide-a": "2023.06.23 - DCP 2023 - CONSOLIDATED - Waste Design for New Developments - Guide A",
+  "chapter-10-1-child-care-centres": "Chapter 10.1 - Child Care Centres",
+  "chapter-10-6-commercial-land-uses": "Chapter 10.6 - Commercial Land Uses",
+  "chapter-10-8-telecommunications-facilities": "Chapter 10.8 - Telecommunications Facilities",
+  "chapter-11-3-roberts-road": "Chapter 11.3 - Roberts Road",
+  "chapter-7-5-canterbury-local-centre": "Chapter 7.5 - Canterbury Local Centre",
+  "chapter-11-4-croydon-street-precinct": "Chapter 11.4 - Croydon Street Precinct",
+  "chapter-2-3-tree-management": "Chapter 2.3 - Tree Management",
+  "chapter-3-7-landscape": "Chapter 3.7 - Landscape",
+  "chapter-6-2-bankstown-city-centre": "Chapter 6.2 - Bankstown City Centre",
+  "chapter-7-4-neighbourhood-centres": "Chapter 7.4 - Neighbourhood Centres",
+  "chapter-7-6-belmore-and-lakemba": "Chapter 7.6 - Belmore and Lakemba",
+  "chapter-7-1-general-requirements": "Chapter 7.1 - General Requirements",
+  "chapter-4-4-vicinity-of-places-of-heritage-significance": "Chapter 4.4 - Vicinity of Places of Heritage Significance",
+  "chapter-1-1-introduction-and-administration": "Chapter 1.1 - Introduction and Administration",
+  "chapter-11-1-milton-street": "Chapter 11.1 - Milton Street",
+  "chapter-8-1-general-requirements": "Chapter 8.1 - General Requirements"
+ },
+ "discovered": [
+  {
+   "chapter_key": "chapter-1-1-introduction-and-administration",
+   "url": "https://cbcity-webdocs.azurewebsites.net/api/publish?documentPath=aHR0cHM6Ly9jYmNpdHkuc2hhcmVwb2ludC5jb20vc2l0ZXMvUGxhbm5pbmctU1AvRENQIEFtZW5kbWVudHMvRENQIC0gV2Vic2l0ZSBEb2N1bWVudHMgLSBDdXJyZW50IHZlcnNpb25zIG9uIENvdW5jaWwncyB3ZWJzaXRlLzIwMjYuMDcuMTcgLSBEQ1AgMjAyMyAtIEFNRU5ETUVOVCAxNSAtIENoYXB0ZXIgMS4xIC0gSW50cm9kdWN0aW9uIGFuZCBBZG1pbmlzdHJhdGlvbi5wZGY=&title=2026.07.17%20-%20DCP%202023%20-%20AMENDMENT%2015%20-%20Chapter%201.1%20-%20Introduction%20and%20Administration.pdf",
+   "label": "Chapter 1.1 - Introduction and Administration"
+  },
+  {
+   "chapter_key": "chapter-2-1-site-analysis",
+   "url": "https://cbcity-webdocs.azurewebsites.net/api/publish?documentPath=aHR0cHM6Ly9jYmNpdHkuc2hhcmVwb2ludC5jb20vc2l0ZXMvQ09NTVNQVUIvV2Vic2l0ZSBEb2N1bWVudHMvMjAyNV8wOF8wMV8tX0RDUF8yMDIzXy1fQU1FTkRNRU5UXzhfLV9DaGFwdGVyXzJfMV8tX1NpdGVfQW5hbHlzaXNfcGRmLnBkZg==&title=2025_08_01_-_DCP_2023_-_AMENDMENT_8_-_Chapter_2_1_-_Site_Analysis_pdf.pdf",
+   "label": "2025_08_01_-_DCP_2023_-_AMENDMENT_8_-_Chapter_2_1_-_Site_Analysis_pdf"
+  },
+  {
+   "chapter_key": "chapter-2-2-flood-risk-management",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFwdGVyIDIuMiAtIEZsb29kIFJpc2sgTWFuYWdlbWVudC5wZGY=&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Chapter%202.2%20-%20Flood%20Risk%20Management.pdf",
+   "label": "Chapter 2.2 - Flood Risk Management"
+  },
+  {
+   "chapter_key": "chapter-2-3-tree-management",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDIuMyAtIFRyZWUgTWFuYWdlbWVudC5wZGY=&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%202.3%20-%20Tree%20Management.pdf",
+   "label": "Chapter 2.3 - Tree Management"
+  },
+  {
+   "chapter_key": "chapter-2-4-pipeline-corridors",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wOC4wMSAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDggLSBDaGFwdGVyIDIuNCAtIFBpcGVsaW5lIENvcnJpZG9ycy5wZGY=&title=2025.08.01%20-%20DCP%202023%20-%20AMENDMENT%208%20-%20Chapter%202.4%20-%20Pipeline%20Corridors.pdf",
+   "label": "Chapter 2.4 - Pipeline Corridors"
+  },
+  {
+   "chapter_key": "chapter-3-1-development-engineering-standards",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNi4wMy4xMiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDExIC0gQ2hhcHRlciAzLjEgLSBEZXZlbG9wbWVudCBFbmdpbmVlcmluZyBTdGFuZGFyZHMucGRm&title=2026.03.12%20-%20DCP%202023%20-%20AMENDMENT%2011%20-%20Chapter%203.1%20-%20Development%20Engineering%20Standards.pdf",
+   "label": "Chapter 3.1 - Development Engineering Standards"
+  },
+  {
+   "chapter_key": "chapter-3-2-parking",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wOC4wMSAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDggLSBDaGFwdGVyIDMuMiAtIFBhcmtpbmcucGRm&title=2025.08.01%20-%20DCP%202023%20-%20AMENDMENT%208%20-%20Chapter%203.2%20-%20Parking.pdf",
+   "label": "Chapter 3.2 - Parking"
+  },
+  {
+   "chapter_key": "chapter-3-3-waste-management",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wOC4wMSAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDggLSBDaGFwdGVyIDMuMyAtIFdhc3RlIE1hbmFnZW1lbnQucGRm&title=2025.08.01%20-%20DCP%202023%20-%20AMENDMENT%208%20-%20Chapter%203.3%20-%20Waste%20Management.pdf",
+   "label": "Chapter 3.3 - Waste Management"
+  },
+  {
+   "chapter_key": "chapter-3-4-sustainable-development",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDMuNCAtIFN1c3RhaW5hYmxlIERldmVsb3BtZW50LnBkZg==&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%203.4%20-%20Sustainable%20Development.pdf",
+   "label": "Chapter 3.4 - Sustainable Development"
+  },
+  {
+   "chapter_key": "chapter-3-5-subdivision",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDMuNSAtIFN1YmRpdmlzaW9uLnBkZg==&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%203.5%20-%20Subdivision.pdf",
+   "label": "Chapter 3.5 - Subdivision"
+  },
+  {
+   "chapter_key": "chapter-3-6-signs",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFwdGVyIDMuNiAtIFNpZ25zLnBkZg==&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Chapter%203.6%20-%20Signs.pdf",
+   "label": "Chapter 3.6 - Signs"
+  },
+  {
+   "chapter_key": "chapter-3-7-landscape",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDMuNyAtIExhbmRzY2FwZS5wZGY=&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%203.7%20-%20Landscape.pdf",
+   "label": "Chapter 3.7 - Landscape"
+  },
+  {
+   "chapter_key": "chapter-4-1-introduction",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDQuMSAtIEludHJvZHVjdGlvbi5wZGY=&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%204.1%20-%20Introduction.pdf",
+   "label": "Chapter 4.1 - Introduction"
+  },
+  {
+   "chapter_key": "chapter-4-2-heritage-items",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDQuMiAtIEhlcml0YWdlIEl0ZW1zLnBkZg==&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%204.2%20-%20Heritage%20Items.pdf",
+   "label": "Chapter 4.2 - Heritage Items"
+  },
+  {
+   "chapter_key": "chapter-4-3-heritage-conservation-areas",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDQuMyAtIEhlcml0YWdlIENvbnNlcnZhdGlvbiBBcmVhcy5wZGY=&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%204.3%20-%20Heritage%20Conservation%20Areas.pdf",
+   "label": "Chapter 4.3 - Heritage Conservation Areas"
+  },
+  {
+   "chapter_key": "chapter-4-4-vicinity-of-places-of-heritage-significance",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDQuNCAtIFZpY2luaXR5IG9mIFBsYWNlcyBvZiBIZXJpdGFnZSBTaWduaWZpY2FuY2UucGRm&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%204.4%20-%20Vicinity%20of%20Places%20of%20Heritage%20Significance.pdf",
+   "label": "Chapter 4.4 - Vicinity of Places of Heritage Significance"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNi4wMy4xMiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDExIC0gQ2hhcHRlciA1LjEgLSBGb3JtZXIgQmFua3N0b3duIExHQS5wZGY=&title=2026.03.12%20-%20DCP%202023%20-%20AMENDMENT%2011%20-%20Chapter%205.1%20-%20Former%20Bankstown%20LGA.pdf",
+   "label": "Chapter 5.1 - Former Bankstown LGA"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNi4wMy4xMiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDExIC0gQ2hhcHRlciA1LjIgLSBGb3JtZXIgQ2FudGVyYnVyeSBMR0EucGRm&title=2026.03.12%20-%20DCP%202023%20-%20AMENDMENT%2011%20-%20Chapter%205.2%20-%20Former%20Canterbury%20LGA.pdf",
+   "label": "Chapter 5.2 - Former Canterbury LGA"
+  },
+  {
+   "chapter_key": "chapter-6-1-general-requirements",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wOC4wMSAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDggLSBDaGFwdGVyIDYuMSAtIEdlbmVyYWwgUmVxdWlyZW1lbnRzLnBkZg==&title=2025.08.01%20-%20DCP%202023%20-%20AMENDMENT%208%20-%20Chapter%206.1%20-%20General%20Requirements.pdf",
+   "label": "Chapter 6.1 - General Requirements"
+  },
+  {
+   "chapter_key": "chapter-6-2-bankstown-city-centre",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wOC4wMSAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDggLSBDaGFwdGVyIDYuMiAtIEJhbmtzdG93biBDaXR5IENlbnRyZS5wZGY=&title=2025.08.01%20-%20DCP%202023%20-%20AMENDMENT%208%20-%20Chapter%206.2%20-%20Bankstown%20City%20Centre.pdf",
+   "label": "Chapter 6.2 - Bankstown City Centre"
+  },
+  {
+   "chapter_key": "chapter-6-3-campsie-town-centre",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFwdGVyIDYuMyAtIENhbXBzaWUgVG93biBDZW50cmUucGRm&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Chapter%206.3%20-%20Campsie%20Town%20Centre.pdf",
+   "label": "Chapter 6.3 - Campsie Town Centre"
+  },
+  {
+   "chapter_key": "chapter-7-1-general-requirements",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wOC4wMSAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDggLSBDaGFwdGVyIDcuMSAtIEdlbmVyYWwgUmVxdWlyZW1lbnRzLnBkZg==&title=2025.08.01%20-%20DCP%202023%20-%20AMENDMENT%208%20-%20Chapter%207.1%20-%20General%20Requirements.pdf",
+   "label": "Chapter 7.1 - General Requirements"
+  },
+  {
+   "chapter_key": "chapter-7-2-city-west",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wOC4wMSAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDggLSBDaGFwdGVyIDcuMiAtIENpdHkgV2VzdC5wZGY=&title=2025.08.01%20-%20DCP%202023%20-%20AMENDMENT%208%20-%20Chapter%207.2%20-%20City%20West.pdf",
+   "label": "Chapter 7.2 - City West"
+  },
+  {
+   "chapter_key": "chapter-7-3-city-east",
+   "url": "https://cbcity-webdocs.azurewebsites.net/api/publish?documentPath=aHR0cHM6Ly9jYmNpdHkuc2hhcmVwb2ludC5jb20vc2l0ZXMvUGxhbm5pbmctU1AvRENQIEFtZW5kbWVudHMvRENQIC0gV2Vic2l0ZSBEb2N1bWVudHMgLSBDdXJyZW50IHZlcnNpb25zIG9uIENvdW5jaWwncyB3ZWJzaXRlLzIwMjYuMDQuMjQgLSBEQ1AgMjAyMyAtIEFNRU5ETUVOVCAxNCAtIENoYXB0ZXIgNy4zIC0gQ2l0eSBFYXN0LnBkZg==&title=2026.04.24%20-%20DCP%202023%20-%20AMENDMENT%2014%20-%20Chapter%207.3%20-%20City%20East.pdf",
+   "label": "Chapter 7.3 - City East"
+  },
+  {
+   "chapter_key": "chapter-7-4-neighbourhood-centres",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wOC4wMSAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDggLSBDaGFwdGVyIDcuNCAtIE5laWdoYm91cmhvb2QgQ2VudHJlcy5wZGY=&title=2025.08.01%20-%20DCP%202023%20-%20AMENDMENT%208%20-%20Chapter%207.4%20-%20Neighbourhood%20Centres.pdf",
+   "label": "Chapter 7.4 - Neighbourhood Centres"
+  },
+  {
+   "chapter_key": "chapter-7-5-canterbury-local-centre",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9Db21tdW5pY2F0aW9ucy9QdWJsaWNhdGlvbnMvV2Vic2l0ZSBEb2N1bWVudHMvMjAyNi4wMy4zMCAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDEyIC0gQ2hhcHRlciA3LjUgLSBDYW50ZXJidXJ5IExvY2FsIENlbnRyZS5wZGY=&title=2026.03.30%20-%20DCP%202023%20-%20AMENDMENT%2012%20-%20Chapter%207.5%20-%20Canterbury%20Local%20Centre.pdf",
+   "label": "Chapter 7.5 - Canterbury Local Centre"
+  },
+  {
+   "chapter_key": "chapter-7-6-belmore-and-lakemba",
+   "url": "https://cbcity-webdocs.azurewebsites.net/api/publish?documentPath=aHR0cHM6Ly9jYmNpdHkuc2hhcmVwb2ludC5jb20vc2l0ZXMvUGxhbm5pbmctU1AvRENQIEFtZW5kbWVudHMvRENQIC0gV2Vic2l0ZSBEb2N1bWVudHMgLSBDdXJyZW50IHZlcnNpb25zIG9uIENvdW5jaWwncyB3ZWJzaXRlLzIwMjYuMDYuMjIgLSBEQ1AgMjAyMyAtIEFNRU5ETUVOVCAxMyAtIENoYXB0ZXIgNy42IC0gQmVsbW9yZSBhbmQgTGFrZW1iYSAtIHdlYnNpdGUucGRm&title=2026.06.22%20-%20DCP%202023%20-%20AMENDMENT%2013%20-%20Chapter%207.6%20-%20Belmore%20and%20Lakemba%20-%20website.pdf",
+   "label": "Chapter 7.6 - Belmore and Lakemba - website"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://cbcity-webdocs.azurewebsites.net/api/publish?documentPath=aHR0cHM6Ly9jYmNpdHkuc2hhcmVwb2ludC5jb20vc2l0ZXMvUGxhbm5pbmctU1AvRENQIEFtZW5kbWVudHMvRENQIC0gV2Vic2l0ZSBEb2N1bWVudHMgLSBDdXJyZW50IHZlcnNpb25zIG9uIENvdW5jaWwncyB3ZWJzaXRlLzIwMjYuMDQuMjQgLSBEQ1AgMjAyMyAtIEFNRU5ETUVOVCAxNCAtIENoYXB0ZXIgNy43IC0gUHVuY2hib3dsIGFuZCBXaWxleSBQYXJrIC0gd2Vic2l0ZS5wZGY=&title=2026.04.24%20-%20DCP%202023%20-%20AMENDMENT%2014%20-%20Chapter%207.7%20-%20Punchbowl%20and%20Wiley%20Park%20-%20website.pdf",
+   "label": "Chapter 7.7 - Punchbowl and Wiley Park - website"
+  },
+  {
+   "chapter_key": "chapter-8-1-general-requirements",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFwdGVyIDguMSAtIEdlbmVyYWwgUmVxdWlyZW1lbnRzLnBkZg==&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Chapter%208.1%20-%20General%20Requirements.pdf",
+   "label": "Chapter 8.1 - General Requirements"
+  },
+  {
+   "chapter_key": "chapter-8-2-canterbury-road",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFwdGVyIDguMiAtIENhbnRlcmJ1cnkgUm9hZC5wZGY=&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Chapter%208.2%20-%20Canterbury%20Road.pdf",
+   "label": "Chapter 8.2 - Canterbury Road"
+  },
+  {
+   "chapter_key": "chapter-8-3-hume-highway",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFwdGVyIDguMyAtIEh1bWUgSGlnaHdheS5wZGY=&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Chapter%208.3%20-%20Hume%20Highway.pdf",
+   "label": "Chapter 8.3 - Hume Highway"
+  },
+  {
+   "chapter_key": "chapter-9-1-general-requirements",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFwdGVyIDkuMSAtIEdlbmVyYWwgUmVxdWlyZW1lbnRzLnBkZg==&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Chapter%209.1%20-%20General%20Requirements.pdf",
+   "label": "Chapter 9.1 - General Requirements"
+  },
+  {
+   "chapter_key": "chapter-10-1-child-care-centres",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wOC4wMSAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDggLSBDaGFwdGVyIDEwLjEgLSBDaGlsZCBDYXJlIENlbnRyZXMucGRm&title=2025.08.01%20-%20DCP%202023%20-%20AMENDMENT%208%20-%20Chapter%2010.1%20-%20Child%20Care%20Centres.pdf",
+   "label": "Chapter 10.1 - Child Care Centres"
+  },
+  {
+   "chapter_key": "chapter-10-2-schools",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFwdGVyIDEwLjIgLSBTY2hvb2xzLnBkZg==&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Chapter%2010.2%20-%20Schools.pdf",
+   "label": "Chapter 10.2 - Schools"
+  },
+  {
+   "chapter_key": "chapter-10-3-home-businesses",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDEwLjMgLSBIb21lIEJ1c2luZXNzZXMucGRm&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%2010.3%20-%20Home%20Businesses.pdf",
+   "label": "Chapter 10.3 - Home Businesses"
+  },
+  {
+   "chapter_key": "chapter-10-4-non-residential-land-uses",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wOC4wMSAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDggLSBDaGFwdGVyIDEwLjQgLSBOb24gUmVzaWRlbnRpYWwgTGFuZCBVc2VzLnBkZg==&title=2025.08.01%20-%20DCP%202023%20-%20AMENDMENT%208%20-%20Chapter%2010.4%20-%20Non%20Residential%20Land%20Uses.pdf",
+   "label": "Chapter 10.4 - Non Residential Land Uses"
+  },
+  {
+   "chapter_key": "chapter-10-5-places-of-public-worship",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFwdGVyIDEwLjUgLSBQbGFjZXMgb2YgUHVibGljIFdvcnNoaXAucGRm&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Chapter%2010.5%20-%20Places%20of%20Public%20Worship.pdf",
+   "label": "Chapter 10.5 - Places of Public Worship"
+  },
+  {
+   "chapter_key": "chapter-10-6-commercial-land-uses",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDEwLjYgLSBDb21tZXJjaWFsIExhbmQgVXNlcy5wZGY=&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%2010.6%20-%20Commercial%20Land%20Uses.pdf",
+   "label": "Chapter 10.6 - Commercial Land Uses"
+  },
+  {
+   "chapter_key": "chapter-10-7-sex-services-premises",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDEwLjcgLSBTZXggU2VydmljZXMgUHJlbWlzZXMucGRm&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%2010.7%20-%20Sex%20Services%20Premises.pdf",
+   "label": "Chapter 10.7 - Sex Services Premises"
+  },
+  {
+   "chapter_key": "chapter-10-8-telecommunications-facilities",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFwdGVyIDEwLjggLSBUZWxlY29tbXVuaWNhdGlvbnMgRmFjaWxpdGllcy5wZGY=&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Chapter%2010.8%20-%20Telecommunications%20Facilities.pdf",
+   "label": "Chapter 10.8 - Telecommunications Facilities"
+  },
+  {
+   "chapter_key": "chapter-11-1-milton-street",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDExLjEgLSBNaWx0b24gU3RyZWV0LnBkZg==&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%2011.1%20-%20Milton%20Street.pdf",
+   "label": "Chapter 11.1 - Milton Street"
+  },
+  {
+   "chapter_key": "chapter-11-2-undercliffe-bridge-precinct",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDExLjIgLSBVbmRlcmNsaWZmZSBCcmlkZ2UgUHJlY2luY3QucGRm&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%2011.2%20-%20Undercliffe%20Bridge%20Precinct.pdf",
+   "label": "Chapter 11.2 - Undercliffe Bridge Precinct"
+  },
+  {
+   "chapter_key": "chapter-11-3-roberts-road",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDExLjMgLSBSb2JlcnRzIFJvYWQucGRm&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%2011.3%20-%20Roberts%20Road.pdf",
+   "label": "Chapter 11.3 - Roberts Road"
+  },
+  {
+   "chapter_key": "chapter-11-4-croydon-street-precinct",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFwdGVyIDExLjQgLSBDcm95ZG9uIFN0cmVldCBQcmVjaW5jdC5wZGY=&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Chapter%2011.4%20-%20Croydon%20Street%20Precinct.pdf",
+   "label": "Chapter 11.4 - Croydon Street Precinct"
+  },
+  {
+   "chapter_key": "chapter-11-5-riverlands",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDExLjUgLSBSaXZlcmxhbmRzLnBkZg==&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%2011.5%20-%20Riverlands.pdf",
+   "label": "Chapter 11.5 - Riverlands"
+  },
+  {
+   "chapter_key": "chapter-11-6-potts-hill",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDExLjYgLSBQb3R0cyBIaWxsLnBkZg==&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%2011.6%20-%20Potts%20Hill.pdf",
+   "label": "Chapter 11.6 - Potts Hill"
+  },
+  {
+   "chapter_key": "chapter-11-7-auburn-road",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDExLjcgLSBBdWJ1cm4gUm9hZC5wZGY=&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%2011.7%20-%20Auburn%20Road.pdf",
+   "label": "Chapter 11.7 - Auburn Road"
+  },
+  {
+   "chapter_key": "chapter-11-8-boorea",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDExLjggLSBCb29yZWEucGRm&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%2011.8%20-%20Boorea.pdf",
+   "label": "Chapter 11.8 - Boorea"
+  },
+  {
+   "chapter_key": "chapter-11-9-revesby-hospital",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDExLjkgLSBSZXZlc2J5IEhvc3BpdGFsLnBkZg==&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%2011.9%20-%20Revesby%20Hospital.pdf",
+   "label": "Chapter 11.9 - Revesby Hospital"
+  },
+  {
+   "chapter_key": "chapter-11-10-chullora-marketplace",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFwdGVyIDExLjEwIC0gQ2h1bGxvcmEgTWFya2V0cGxhY2UucGRm&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Chapter%2011.10%20-%20Chullora%20Marketplace.pdf",
+   "label": "Chapter 11.10 - Chullora Marketplace"
+  },
+  {
+   "chapter_key": "chapter-11-11-brighton-avenue",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNC4wOC4wNiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDQgLSBDaGFwdGVyIDExLjExIC0gQnJpZ2h0b24gQXZlbnVlLnBkZg==&title=2024.08.06%20-%20DCP%202023%20-%20AMENDMENT%204%20-%20Chapter%2011.11%20-%20Brighton%20Avenue.pdf",
+   "label": "Chapter 11.11 - Brighton Avenue"
+  },
+  {
+   "chapter_key": "chapter-11-12-445-canterbury-road",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFwdGVyIDExLjEyIC0gNDQ1IENhbnRlcmJ1cnkgUm9hZC5wZGY=&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Chapter%2011.12%20-%20445%20Canterbury%20Road.pdf",
+   "label": "Chapter 11.12 - 445 Canterbury Road"
+  },
+  {
+   "chapter_key": "chapter-11-13-former-wsu-campus-milperra",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFwdGVyIDExLjEzIC0gRm9ybWVyIFdTVSBDYW1wdXMgTWlscGVycmEucGRm&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Chapter%2011.13%20-%20Former%20WSU%20Campus%20Milperra.pdf",
+   "label": "Chapter 11.13 - Former WSU Campus Milperra"
+  },
+  {
+   "chapter_key": "chapter-11-14-riverwood-estate",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wOS4wMiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDkgLSBDaGFwdGVyIDExLjE0IC0gUml2ZXJ3b29kIEVzdGF0ZS5wZGY=&title=2025.09.02%20-%20DCP%202023%20-%20AMENDMENT%209%20-%20Chapter%2011.14%20-%20Riverwood%20Estate.pdf",
+   "label": "Chapter 11.14 - Riverwood Estate"
+  },
+  {
+   "chapter_key": "chapter-11-15-marco-avenue",
+   "url": "https://cbcity-webdocs.azurewebsites.net/api/publish?documentPath=aHR0cHM6Ly9jYmNpdHkuc2hhcmVwb2ludC5jb20vc2l0ZXMvQ09NTVNQVUIvV2Vic2l0ZSBEb2N1bWVudHMvMjAyNS4xMi4xMiAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDEwIC0gQ2hhcHRlciAxMS4xNSAtIE1hcmNvIEF2ZW51ZS5wZGY=&title=2025.12.12%20-%20DCP%202023%20-%20AMENDMENT%2010%20-%20Chapter%2011.15%20-%20Marco%20Avenue.pdf",
+   "label": "Chapter 11.15 - Marco Avenue"
+  },
+  {
+   "chapter_key": null,
+   "url": "https://cbcity-webdocs.azurewebsites.net/api/publish?documentPath=aHR0cHM6Ly9jYmNpdHkuc2hhcmVwb2ludC5jb20vc2l0ZXMvUGxhbm5pbmctU1AvRENQIEFtZW5kbWVudHMvRENQIC0gV2Vic2l0ZSBEb2N1bWVudHMgLSBDdXJyZW50IHZlcnNpb25zIG9uIENvdW5jaWwncyB3ZWJzaXRlLzIwMjYuMDcuMTcgLSBEQ1AgMjAyMyAtIEFNRU5ETUVOVCAxNSAtIENoYXB0ZXIgMTEuMTYgLSBMZWljZXN0ZXIgU3RyZWV0LnBkZg==&title=2026.07.17%20-%20DCP%202023%20-%20AMENDMENT%2015%20-%20Chapter%2011.16%20-%20Leicester%20Street.pdf",
+   "label": "Chapter 11.16 - Leicester Street"
+  },
+  {
+   "chapter_key": "2024-08-06-demolition-and-construction-guide",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9Db21tdW5pY2F0aW9ucy9QdWJsaWNhdGlvbnMvV2Vic2l0ZSBEb2N1bWVudHMvMjAyNC4wOC4wNiAtIERlbW9saXRpb24gYW5kIENvbnN0cnVjdGlvbiBHdWlkZS5wZGY=&title=2024.08.06%20-%20Demolition%20and%20Construction%20Guide.pdf",
+   "label": "2024.08.06 - Demolition and Construction Guide"
+  },
+  {
+   "chapter_key": "2024-08-06-development-engineering-standards-guide",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9Db21tdW5pY2F0aW9ucy9QdWJsaWNhdGlvbnMvV2Vic2l0ZSBEb2N1bWVudHMvMjAyNC4wOC4wNiAtIERldmVsb3BtZW50IEVuZ2luZWVyaW5nIFN0YW5kYXJkcyBHdWlkZS5wZGY=&title=2024.08.06%20-%20Development%20Engineering%20Standards%20Guide.pdf",
+   "label": "2024.08.06 - Development Engineering Standards Guide"
+  },
+  {
+   "chapter_key": "2024-08-06-heritage-guide",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9Db21tdW5pY2F0aW9ucy9QdWJsaWNhdGlvbnMvV2Vic2l0ZSBEb2N1bWVudHMvMjAyNC4wOC4wNiAtIEhlcml0YWdlIEd1aWRlLnBkZg==&title=2024.08.06%20-%20Heritage%20Guide.pdf",
+   "label": "2024.08.06 - Heritage Guide"
+  },
+  {
+   "chapter_key": "2024-08-06-character-statement-ashbury-hca",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9Db21tdW5pY2F0aW9ucy9QdWJsaWNhdGlvbnMvV2Vic2l0ZSBEb2N1bWVudHMvMjAyNC4wOC4wNiAtIENoYXJhY3RlciBTdGF0ZW1lbnQgLSBBc2hidXJ5IEhDQS5wZGY=&title=2024.08.06%20-%20Character%20Statement%20-%20Ashbury%20HCA.pdf",
+   "label": "2024.08.06 - Character Statement - Ashbury HCA"
+  },
+  {
+   "chapter_key": "character-statement-hurlstone-park",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wNC4xNyAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDYgLSBDaGFyYWN0ZXIgU3RhdGVtZW50IC0gSHVybHN0b25lIFBhcmsucGRm&title=2025.04.17%20-%20DCP%202023%20-%20AMENDMENT%206%20-%20Character%20Statement%20-%20Hurlstone%20Park.pdf",
+   "label": "Character Statement - Hurlstone Park"
+  },
+  {
+   "chapter_key": "2024-08-06-landscape-guide",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9Db21tdW5pY2F0aW9ucy9QdWJsaWNhdGlvbnMvV2Vic2l0ZSBEb2N1bWVudHMvMjAyNC4wOC4wNiAtIExhbmRzY2FwZSBHdWlkZS5wZGY=&title=2024.08.06%20-%20Landscape%20Guide.pdf",
+   "label": "2024.08.06 - Landscape Guide"
+  },
+  {
+   "chapter_key": "2024-08-06-tree-management-manual",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9Db21tdW5pY2F0aW9ucy9QdWJsaWNhdGlvbnMvV2Vic2l0ZSBEb2N1bWVudHMvMjAyNC4wOC4wNiAtIFRyZWUgTWFuYWdlbWVudCBNYW51YWwucGRm&title=2024.08.06%20-%20Tree%20Management%20Manual.pdf",
+   "label": "2024.08.06 - Tree Management Manual"
+  },
+  {
+   "chapter_key": "2023-06-23-dcp-2023-consolidated-waste-design-for-new-developments-guide-a",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyMy4wNi4yMyAtIERDUCAyMDIzIC0gQ09OU09MSURBVEVEIC0gV2FzdGUgRGVzaWduIGZvciBOZXcgRGV2ZWxvcG1lbnRzIC0gR3VpZGUgQS5wZGY=&title=2023.06.23%20-%20DCP%202023%20-%20CONSOLIDATED%20-%20Waste%20Design%20for%20New%20Developments%20-%20Guide%20A.pdf",
+   "label": "2023.06.23 - DCP 2023 - CONSOLIDATED - Waste Design for New Developments - Guide A"
+  },
+  {
+   "chapter_key": "2023-06-23-dcp-2023-consolidated-waste-design-for-new-developments-guide-b",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyMy4wNi4yMyAtIERDUCAyMDIzIC0gQ09OU09MSURBVEVEIC0gV2FzdGUgRGVzaWduIGZvciBOZXcgRGV2ZWxvcG1lbnRzIC0gR3VpZGUgQi5wZGY=&title=2023.06.23%20-%20DCP%202023%20-%20CONSOLIDATED%20-%20Waste%20Design%20for%20New%20Developments%20-%20Guide%20B.pdf",
+   "label": "2023.06.23 - DCP 2023 - CONSOLIDATED - Waste Design for New Developments - Guide B"
+  },
+  {
+   "chapter_key": "2023-06-23-dcp-2023-consolidated-waste-design-for-new-developments-guide-c",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyMy4wNi4yMyAtIERDUCAyMDIzIC0gQ09OU09MSURBVEVEIC0gV2FzdGUgRGVzaWduIGZvciBOZXcgRGV2ZWxvcG1lbnRzIC0gR3VpZGUgQy5wZGY=&title=2023.06.23%20-%20DCP%202023%20-%20CONSOLIDATED%20-%20Waste%20Design%20for%20New%20Developments%20-%20Guide%20C.pdf",
+   "label": "2023.06.23 - DCP 2023 - CONSOLIDATED - Waste Design for New Developments - Guide C"
+  },
+  {
+   "chapter_key": "2023-06-23-dcp-2023-consolidated-waste-design-for-new-developments-guide-d",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyMy4wNi4yMyAtIERDUCAyMDIzIC0gQ09OU09MSURBVEVEIC0gV2FzdGUgRGVzaWduIGZvciBOZXcgRGV2ZWxvcG1lbnRzIC0gR3VpZGUgRC5wZGY=&title=2023.06.23%20-%20DCP%202023%20-%20CONSOLIDATED%20-%20Waste%20Design%20for%20New%20Developments%20-%20Guide%20D.pdf",
+   "label": "2023.06.23 - DCP 2023 - CONSOLIDATED - Waste Design for New Developments - Guide D"
+  },
+  {
+   "chapter_key": "2023-06-23-dcp-2023-consolidated-waste-design-for-new-developments-guide-e",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyMy4wNi4yMyAtIERDUCAyMDIzIC0gQ09OU09MSURBVEVEIC0gV2FzdGUgRGVzaWduIGZvciBOZXcgRGV2ZWxvcG1lbnRzIC0gR3VpZGUgRS5wZGY=&title=2023.06.23%20-%20DCP%202023%20-%20CONSOLIDATED%20-%20Waste%20Design%20for%20New%20Developments%20-%20Guide%20E.pdf",
+   "label": "2023.06.23 - DCP 2023 - CONSOLIDATED - Waste Design for New Developments - Guide E"
+  },
+  {
+   "chapter_key": "2023-06-23-dcp-2023-consolidated-waste-design-for-new-developments-guide-f",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyMy4wNi4yMyAtIERDUCAyMDIzIC0gQ09OU09MSURBVEVEIC0gV2FzdGUgRGVzaWduIGZvciBOZXcgRGV2ZWxvcG1lbnRzIC0gR3VpZGUgRi5wZGY=&title=2023.06.23%20-%20DCP%202023%20-%20CONSOLIDATED%20-%20Waste%20Design%20for%20New%20Developments%20-%20Guide%20F.pdf",
+   "label": "2023.06.23 - DCP 2023 - CONSOLIDATED - Waste Design for New Developments - Guide F"
+  },
+  {
+   "chapter_key": "retrofitting-communal-bin-storage-areas-guide-g",
+   "url": "https://webdocs.bankstown.nsw.gov.au/api/publish?documentPath=aHR0cDovL2lzaGFyZS9zaXRlcy9QbGFubmluZy9TUC9EQ1AgQW1lbmRtZW50cy9EQ1AgLSBXZWJzaXRlIERvY3VtZW50cyAtIEN1cnJlbnQgdmVyc2lvbnMgb24gQ291bmNpbCdzIHdlYnNpdGUvMjAyNS4wOC4wMSAtIERDUCAyMDIzIC0gQU1FTkRNRU5UIDggLSBSZXRyb2ZpdHRpbmcgQ29tbXVuYWwgQmluIFN0b3JhZ2UgQXJlYXMgLSBHdWlkZSBHLnBkZg==&title=2025.08.01%20-%20DCP%202023%20-%20AMENDMENT%208%20-%20Retrofitting%20Communal%20Bin%20Storage%20Areas%20-%20Guide%20G.pdf",
+   "label": "Retrofitting Communal Bin Storage Areas - Guide G"
+  }
+ ]
+}

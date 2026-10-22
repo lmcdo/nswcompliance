@@ -81,6 +81,16 @@ jobs:
           done
           exit $rc
 
+      # Is every served DCP chapter watched and checked? Per council and per chapter, against
+      # a baseline that may only shrink (scripts/verifyops_coverage.py, DQ-118). Run directly,
+      # not through dq_check: DQ-118 is declared open, and an open row that fails exits 0
+      # there, which would make this step unable to go red. Exit 2 = could not look.
+      - name: Is every served DCP chapter watched and checked?
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/verifyops_coverage.py
+
       # Did every scheduled Railway job run, and did its last run succeed? Checked from
       # here, outside Railway, because a job that crashes on import or never starts
       # cannot alert from inside itself: dcp-extract and dcp-commit crashed on every run
