@@ -39,6 +39,12 @@ def ids() -> frozenset[int]:
     return frozenset(i for e in entries() for i in e["ids"])
 
 
+def text_keys(council: str, chapter_key: str) -> frozenset[str]:
+    """Text fingerprints of the listed rules in one chapter: a re-read that mints new ids keeps the same text."""
+    return frozenset(h for e in entries() if e["council"] == council and e["chapter_key"] == chapter_key
+                     for h in e["text_sha256_16"])
+
+
 def text_key(text: str | None) -> str:
     """The fingerprint stored in text_sha256_16: lower-case, whitespace collapsed, first 16 hex of sha256."""
     norm = re.sub(r"\s+", " ", text or "").strip().lower()

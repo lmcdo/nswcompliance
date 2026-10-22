@@ -461,8 +461,9 @@ def run(council: str | None, apply: bool, validate: bool, only: set[str] | None 
             # A reviewed never-serve rule (data/chapter_scope/never_serve.json) keeps NO key: a page-range rule
             # re-keyed the Carinya Road rows on 2026-10-21 and served them to all of former Bankstown. Skipped
             # here, after the derivation, so the fingerprint's coverage maths still sees every row.
-            if row["id"] in never:
-                r_never += 1
+            never_text = never_serve.text_keys(rule["council"], row["source_chapter_key"] or "")
+            if row["id"] in never or (never_text and never_serve.text_key(row["provision_text"]) in never_text):
+                r_never += 1  # by id, or by text for a re-read that minted new ids
                 continue
             if rule["validate"] and current is not None and current != derived:
                 validation_failures.append(

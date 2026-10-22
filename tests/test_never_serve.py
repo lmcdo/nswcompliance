@@ -87,6 +87,24 @@ def test_derive_never_keys_a_listed_row(monkeypatch, tmp_path, capsys):
     assert "never-serve-skipped=1" in out
 
 
+def test_derive_never_keys_a_reread_copy_with_a_new_id(monkeypatch, tmp_path):
+    """A re-read mints new ids; a row with a listed rule's text must still be skipped."""
+    import derive_precinct_keys as dpk
+    probe = "carinya road rule text as re-read under a new id"
+    monkeypatch.setattr(never_serve, "text_keys", lambda council, chapter: frozenset({never_serve.text_key(probe)}))
+    rule = next(r for r in dpk.RULES if r["name"] == "cb_2_2_flood_by_former_council")
+    # Same words, different case and spacing: the fingerprint normalises both.
+    copy = dict(_row(999999001, 25), provision_text="  Carinya ROAD rule text as re-read\n under a new id ")
+    rows = [copy, _row(UNLISTED, 25), _row(2, rule.get("fingerprint", {}).get("max_page", 65))]
+    cur = FakeCursor({"chapter-2-2-flood-risk-management": rows})
+    monkeypatch.setattr(dpk.psycopg2, "connect", lambda *a, **k: FakeConn(cur))
+    monkeypatch.setattr(dpk, "REPO", tmp_path)
+    (tmp_path / "data" / "db_rollback_backups").mkdir(parents=True)
+    assert dpk.run(council="canterbury_bankstown", apply=True, validate=False, only={rule["name"]}) == 0
+    assert 999999001 not in cur.updated_ids(), "a re-read copy of a never-serve rule was keyed"
+    assert UNLISTED in cur.updated_ids()
+
+
 def test_gate_rules_never_relayer_a_listed_row(monkeypatch):
     import gate_rules as gr
     rule = {"name": "t", "council": "canterbury_bankstown", "where": "source_chapter_key = 'chapter-x'",
