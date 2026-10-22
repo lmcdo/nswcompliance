@@ -1,20 +1,17 @@
 {
   "tier": "standard",
   "justification": "Standard: deletes a public API endpoint that served fabricated planning limits, plus the typed-figure ledger it stacks on.",
-  "commit_hash": "1fcd7cbc",
+  "commit_hash": "f690c213",
   "files": [
     ".claude/regulatory_figure_ledger.json",
-    ".claude/regulatory_number_baseline.json",
-    ".github/workflows/gates.yml",
     ".qa/reports/fix__no-typed-figures.json",
+    ".qa/reports/fix__typed-figures-dangerous.json",
     "frontend-nextjs/ZOD_VALIDATION_EXAMPLES.md",
     "frontend-nextjs/app/api/compliance/live-check/route.ts",
     "frontend-nextjs/lib/database/specialized/live-compliance-client.ts",
     "frontend-nextjs/lib/feature-flags/migration-flags.ts",
     "frontend-nextjs/lib/schemas/index.ts",
-    "frontend-nextjs/types/live-compliance.ts",
-    "scripts/lint_hardcoded_regulatory_numbers.py",
-    "tests/test_lint_hardcoded_regulatory_numbers.py"
+    "frontend-nextjs/types/live-compliance.ts"
   ],
   "pre_impl": {
     "existing_data": "No database change. The deleted client never queried the database for limits: getPropertyPlanningData was a stub.",
@@ -58,6 +55,13 @@
       "mitigated": true,
       "how": "ledger pruned in the same commit",
       "repro": "lint --check"
+    },
+    {
+      "scenario": "A config adds a quoted key such as minimumLotSizeM2: 450.",
+      "what_happens": "The old pattern missed quoted keys and floor-area names entirely.",
+      "mitigated": true,
+      "how": "constant pattern allows a quote and runs on JSON",
+      "repro": "test_quoted_keys_and_floor_area_constants_are_caught"
     }
   ],
   "post_merge": {
