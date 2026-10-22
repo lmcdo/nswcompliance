@@ -63,7 +63,8 @@ def hits_in_text(text: str, suffix: str = ".ts") -> list[str]:
     out: list[str] = []
     for line in text.splitlines():
         stripped = line.strip()
-        if stripped.startswith(("//", "#", "*", "/*")):
+        # Comment lines in CODE only: a Markdown bullet ('* ...') or heading ('# ...') is shipped text.
+        if suffix not in (".md", ".mdx") and stripped.startswith(("//", "#", "*", "/*")):
             continue
         if SUPPRESS in line:
             continue
@@ -126,7 +127,11 @@ def load_ledger(path: Path = LEDGER) -> dict:
 def judge(found: dict[str, list[str]], ledger: dict) -> list[str]:
     """Every reason the check fails (empty = pass). Pure."""
     entries = {_key(e["file"], e["text"]): e for e in ledger["entries"]}
-    now = {_key(f, h) for f, hs in found.items() for h in hs}
+    counts: dict[str, int] = {}
+    for f, hs in found.items():
+        for h in hs:
+            counts[_key(f, h)] = counts.get(_key(f, h), 0) + 1
+    now = set(counts)
     problems = [f"NOT IN LEDGER (new typed figure): {k}" for k in sorted(now - entries.keys())]
     problems += [f"GONE (fixed? run --prune): {k}" for k in sorted(entries.keys() - now)]
     for k, e in entries.items():
@@ -136,8 +141,13 @@ def judge(found: dict[str, list[str]], ledger: dict) -> list[str]:
             problems.append(f"NOT_REGULATORY WITHOUT A REASON: {k}")
         if e.get("fate") not in ("open", "cited", "not_regulatory"):
             problems.append(f"BAD FATE {e.get('fate')!r}: {k}")
-    open_n = sum(1 for e in entries.values() if e.get("fate") == "open")
-    if open_n > ledger.get("max_open", open_n):
+    # A second copy of a listed figure in the same file is a NEW typed figure.
+    problems += [f"MORE COPIES THAN LISTED ({counts[k]} > {e.get('count', 1)}): {k}"
+                 for k, e in entries.items() if counts.get(k, 0) > e.get("count", 1)]
+    open_n = sum(e.get("count", 1) for e in entries.values() if e.get("fate") == "open")
+    if not isinstance(ledger.get("max_open"), int):
+        problems.append("LEDGER HAS NO max_open: the open count could rise unseen")
+    elif open_n > ledger["max_open"]:
         problems.append(f"OPEN COUNT ROSE: {open_n} > max_open {ledger['max_open']}")
     return problems
 
@@ -155,8 +165,9 @@ def main(argv: list[str]) -> int:
         print(f"{total} hit(s) in {len(found)} file(s)")
         return 0
     if "--init" in argv:  # one-off: name every current hit as open
-        entries = [{"file": f, "text": re.sub(r"\s+", " ", h).strip(), "fate": "open"}
-                   for f, hs in sorted(found.items()) for h in dict.fromkeys(hs)]
+        entries = [{"file": f, "text": _norm(h), "fate": "open", "count": n}
+                   for f, hs in sorted(found.items())
+                   for h, n in {_norm(x): hs.count(x) for x in hs}.items()]
         about = (__doc__ or "").partition("THE LEDGER")[2].partition("    python")[0].strip()
         LEDGER.write_text(json.dumps({"_about": about,
                                       "max_open": len(entries), "entries": entries}, indent=1, ensure_ascii=False)
@@ -172,12 +183,12 @@ def main(argv: list[str]) -> int:
         now = {_key(f, h) for f, hs in found.items() for h in hs}
         kept = [e for e in ledger["entries"] if _key(e["file"], e["text"]) in now]
         ledger["entries"] = kept
-        ledger["max_open"] = sum(1 for e in kept if e["fate"] == "open")
+        ledger["max_open"] = sum(e.get("count", 1) for e in kept if e["fate"] == "open")
         LEDGER.write_text(json.dumps(ledger, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
         print(f"pruned to {len(kept)} entries; max_open {ledger['max_open']}")
         return 0
     problems = judge(found, ledger) + [f"SUPPRESSION WITHOUT A REASON: {b}" for b in bad]
-    open_n = sum(1 for e in ledger["entries"] if e["fate"] == "open")
+    open_n = sum(e.get("count", 1) for e in ledger["entries"] if e["fate"] == "open")
     if problems:
         print(f"Typed planning figures: FAILED ({len(problems)} problem(s)).")
         print("  Serve the figure from the database with its quote of the law, or delete it and point to the address")

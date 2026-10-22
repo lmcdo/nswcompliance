@@ -1,2413 +1,2837 @@
 {
  "_about": "(.claude/regulatory_figure_ledger.json) names every hit by file + the hit's own text:\n  \"open\"  -- known, still to fix (read it from the database, or delete it and point to the address lookup);\n  \"cited\" -- a verbatim quote that names its instrument AND clause on the same line (the reason says which);\n  \"not_regulatory\" -- not a planning figure (a map bound, an image size, a price); the reason (4+ words) says what.\nCI fails when: a hit is not in the ledger (a new typed figure); a ledger entry is no longer found (fixed -- remove it,\nso the list stays exact); a \"cited\" entry's reason names no instrument + clause; the open count rises; a\n`noqa: regulatory-number` carries no real reason (4+ words after \"--\").",
- "max_open": 346,
+ "max_open": 528,
  "entries": [
   {
    "file": "frontend-nextjs/app/(tools)/granny-flat/page.tsx",
    "text": "'Under SEPP Housing 2021 (the state-wide policy that overrides local council rules), the minimum lot size for a secondary dwelling approved as complying development is 450 m². If your lot is below this threshold, a DA through your local council is required and approval is not guaranteed.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo)"
+   "reason": "inventory 2026-10-22: from_db (faq_seo)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/(tools)/granny-flat/page.tsx",
    "text": "'Under SEPP Housing 2021, a secondary dwelling is limited to 60 m² internal floor area. On lots over 900 m², an attached secondary dwelling may have different sizing provisions. DCP setback and height controls from your local council also apply regardless of SEPP eligibility.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo)"
+   "reason": "inventory 2026-10-22: from_db (faq_seo)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/(tools)/granny-flat/page.tsx",
    "text": "'450 m²'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/(tools)/granny-flat/page.tsx",
    "text": "'60 m²'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo)"
+   "reason": "inventory 2026-10-22: from_db (faq_seo)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
    "text": "'Up to 12m (4 storeys)'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed"
+   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
    "text": "'12-25m (5-8 storeys)'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed"
+   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
    "text": "'Over 25m (9+ storeys)'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed"
+   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
    "text": "'Up to 12m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed"
+   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
    "text": "'12-25m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed"
+   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
    "text": "'Over 25m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed"
+   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/canibuildit/lead/route.ts",
    "text": "height: 1.6",
-   "fate": "open"
+   "fate": "open",
+   "count": 15
   },
   {
    "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
    "text": "`Increase front setback by ${Math.abs(frontResult.margin as number).toFixed(1)}m to meet 6.0m minimum`",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)"
+   "reason": "inventory 2026-10-22: from_db (api)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
    "text": "`Increase side left setback by ${Math.abs(sideLeftResult.margin as number).toFixed(1)}m to meet 0.9m minimum`",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)"
+   "reason": "inventory 2026-10-22: from_db (api)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
    "text": "`Increase side right setback by ${Math.abs(sideRightResult.margin as number).toFixed(1)}m to meet 0.9m minimum`",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)"
+   "reason": "inventory 2026-10-22: from_db (api)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
    "text": "`Reduce site coverage by ${Math.abs(siteCoverageResult.margin as number).toFixed(0)}% to meet 50% maximum`",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)"
+   "reason": "inventory 2026-10-22: from_db (api)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
    "text": "`Increase landscaped area by ${Math.abs(landscapedResult.margin as number).toFixed(0)}% to meet 30% minimum`",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)"
+   "reason": "inventory 2026-10-22: from_db (api)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
    "text": "`Reduce building height by ${Math.abs(heightResult.margin as number).toFixed(1)}m to meet 8.5m maximum`",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)"
+   "reason": "inventory 2026-10-22: from_db (api)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
    "text": "`Development exceeds 2 storey maximum - CDC pathway not available`",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)"
+   "reason": "inventory 2026-10-22: from_db (api)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
    "text": "siteCoveragePercent: 45",
-   "fate": "not_regulatory",
-   "reason": "example request payload in API self-description"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): example request payload in API self-description",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
    "text": "landscapedAreaPercent: 35",
-   "fate": "not_regulatory",
-   "reason": "example request payload in API self-description"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): example request payload in API self-description",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
    "text": "buildingHeightMeters: 7.5",
-   "fate": "not_regulatory",
-   "reason": "example request payload in API self-description"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): example request payload in API self-description",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
    "text": "storeys: 2",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/cdc/compliance-check/route.ts",
    "text": "parkingSpaces: 2",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/compliance/live-check/route.ts",
    "text": "height: 8.5",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/compliance/parking/route.ts",
    "text": "'1 space per dwelling'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)"
+   "reason": "inventory 2026-10-22: from_db (api)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
    "text": "'Up to 6-storey apartments within 400m of a train station — Transit Oriented Development'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)"
+   "reason": "inventory 2026-10-22: from_db (api)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
    "text": "'Up to 4-storey apartments 400-800m from a train station — Transit Oriented Development'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)"
+   "reason": "inventory 2026-10-22: from_db (api)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
    "text": "'A self-contained dwelling on the same lot as a principal dwelling — max 60m² floor area'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)"
+   "reason": "inventory 2026-10-22: from_db (api)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/og/granny-flat/route.tsx",
    "text": "`${Math.round(lotArea!)} m² — below 450 m² minimum`",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)"
+   "reason": "inventory 2026-10-22: from_db (api)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/og/granny-flat/route.tsx",
    "text": "'50%'",
-   "fate": "not_regulatory",
-   "reason": "CSS/layout or non-planning literal"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "count": 3
   },
   {
    "file": "frontend-nextjs/app/api/og/granny-flat/route.tsx",
    "text": "lineHeight: 1.15",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/og/granny-flat/route.tsx",
    "text": "height: 630",
-   "fate": "open"
+   "fate": "open",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/app/api/og/granny-flat/route.tsx",
    "text": "lineHeight: 1.1",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/satellite/solar-coverage-interest/route.ts",
    "text": "height: 1.6",
-   "fate": "open"
+   "fate": "open",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
    "text": "height: 1.6",
-   "fate": "open"
+   "fate": "open",
+   "count": 11
   },
   {
    "file": "frontend-nextjs/app/assessment/page.tsx",
    "text": "\"Max FSR 2.5:1\"",
-   "fate": "not_regulatory",
-   "reason": "JSX comment documenting removal of hardcoded figures"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): JSX comment documenting removal of hardcoded figures",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/assessment/page.tsx",
    "text": "\"Max Height 24m\"",
-   "fate": "not_regulatory",
-   "reason": "JSX comment documenting removal of hardcoded figures"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): JSX comment documenting removal of hardcoded figures",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/building-height-limits-nsw/page.tsx",
    "text": "'8.5–9 m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/building-height-limits-nsw/page.tsx",
    "text": "'2 storeys'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/app/blog/building-height-limits-nsw/page.tsx",
    "text": "'Most common residential zone. Height limits vary by council — some set 8.5 m, others 9 m.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/building-height-limits-nsw/page.tsx",
    "text": "'9–12 m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/building-height-limits-nsw/page.tsx",
    "text": "'2–3 storeys'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/building-height-limits-nsw/page.tsx",
    "text": "'10–25 m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/building-height-limits-nsw/page.tsx",
    "text": "'2–6 storeys'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/building-height-limits-nsw/page.tsx",
    "text": "'8–10 m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/building-height-limits-nsw/page.tsx",
    "text": "'12–15 m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/building-height-limits-nsw/page.tsx",
    "text": "height: 12",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) ADG 3F separation 12/18/24 m typed, no clause cited"
+   "reason": "inventory 2026-10-22: from_db (blog) ADG 3F separation 12/18/24 m typed, no clause cited",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/can-i-build-a-granny-flat-nsw/page.tsx",
    "text": "'Is your lot at least 450 m\\u00B2?'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/can-i-build-a-granny-flat-nsw/page.tsx",
    "text": "'Some councils accept smaller lots via DA, but CDC requires 450 m\\u00B2'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/can-i-build-a-granny-flat-nsw/page.tsx",
    "text": "'60 m\\u00B2'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/app/blog/can-i-build-a-granny-flat-nsw/page.tsx",
    "text": "'60 m\\u00B2 (same cap applies)'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/can-i-build-a-granny-flat-nsw/page.tsx",
    "text": "'450 m\\u00B2'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/can-i-build-a-granny-flat-nsw/page.tsx",
    "text": "'8.5 m (2 storeys)'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/can-i-build-a-granny-flat-nsw/page.tsx",
    "text": "'3 m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/can-i-build-a-granny-flat-nsw/page.tsx",
    "text": "'0.9 m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/can-i-build-a-granny-flat-nsw/page.tsx",
    "text": "Larger rear setbacks than the SEPP 3 m minimum",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/cdc-vs-da-which-approval-pathway/page.tsx",
    "text": "Your project doesn&apos;t meet one or more CDC standards (e.g. setback is 4.5m, standard requires 5m)",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/cdc-vs-da-which-approval-pathway/page.tsx",
    "text": "— CDC pathway on lots &ge;450m² in R1, R2, R3, R4, RU5 zones (subject to site exclusions)",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/cdc-vs-da-which-approval-pathway/page.tsx",
    "text": "(3–4 dwellings) — CDC in R1, R2, R3 zones on lots &ge;600m²",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "'3 m from main dwelling'",
-   "fate": "not_regulatory",
-   "reason": "illustrative scenario table (hypothetical lot), label as example"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): illustrative scenario table (hypothetical lot), label as example",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "'4 m from main dwelling'",
-   "fate": "not_regulatory",
-   "reason": "illustrative scenario table (hypothetical lot), label as example"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): illustrative scenario table (hypothetical lot), label as example",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "'3 m'",
-   "fate": "not_regulatory",
-   "reason": "illustrative scenario table (hypothetical lot), label as example"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): illustrative scenario table (hypothetical lot), label as example",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "'Some DCPs specify different values for single vs two storey'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "'0.9 m (single storey)'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "'0.9\\u20131.5 m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "'Two-storey SEPP minimum is 1.5 m; some DCPs go higher'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "'24 m\\u00B2 minimum'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "'Some DCPs require minimum dimensions (e.g. 4 m width)'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "'8.5 m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "'7\\u20138.5 m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "setbacks: 3",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/development-control-plans-explained/page.tsx",
    "text": "'Hours of sunlight that neighbouring properties must retain (typically 2–3 hours mid-winter).'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/development-control-plans-explained/page.tsx",
    "text": "\"6 m front setback\"",
-   "fate": "not_regulatory",
-   "reason": "illustrative example of general vs precinct control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): illustrative example of general vs precinct control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/development-control-plans-explained/page.tsx",
    "text": "\"4.5 m\"",
-   "fate": "not_regulatory",
-   "reason": "illustrative example of general vs precinct control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): illustrative example of general vs precinct control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/granny-flat/[council-slug]/page.tsx",
    "text": "`Under SEPP Housing 2021, secondary dwellings are permitted in R1, R2, R3, and RU5 zones on lots of at least 450 m\\u00B2. The property must not be a heritage item, in a heritage conservation area, or affected by certain environmental overlays. ${hasToolPage ? '",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/granny-flat/[council-slug]/page.tsx",
    "text": "'450 m\\u00B2'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/granny-flat/[council-slug]/page.tsx",
    "text": "'60 m\\u00B2'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/granny-flat/[council-slug]/page.tsx",
    "text": "'3 m (SEPP minimum)'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/granny-flat/[council-slug]/page.tsx",
    "text": "'0.9 m (SEPP minimum)'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/granny-flat/[council-slug]/page.tsx",
    "text": "'8.5 m (2 storeys)'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/heritage-conservation-area-granny-flat-nsw/page.tsx",
    "text": "'Lot 450m2+ without special overlays'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/is-my-house-in-a-flood-zone-nsw/page.tsx",
    "text": "Minimum floor levels — habitable floors must be above the 1% AEP flood level plus freeboard",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) states flood floor-level rule (1% AEP + freeboard) as fact"
+   "reason": "inventory 2026-10-22: from_db (blog) states flood floor-level rule (1% AEP + freeboard) as fact",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/merged-lga-different-setback-rules/page.tsx",
    "text": "Rear setback: 8m",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/merged-lga-different-setback-rules/page.tsx",
    "text": "Side setback: 0.9m",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/app/blog/merged-lga-different-setback-rules/page.tsx",
    "text": "Rear setback: 6m",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/merged-lga-different-setback-rules/page.tsx",
    "text": "Side setback: 1.2m",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/merged-lga-different-setback-rules/page.tsx",
    "text": "Rear setback: 5m",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/merged-lga-different-setback-rules/page.tsx",
    "text": "'30%–50%'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/merged-lga-different-setback-rules/page.tsx",
    "text": "'40%–50%'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/merged-lga-different-setback-rules/page.tsx",
    "text": "'30%–40%'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/merged-lga-different-setback-rules/page.tsx",
    "text": "'40%–55%'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/modular-prefab-homes-nsw-building-bill-2026/page.tsx",
    "text": "'Maximum penalties for building certifiers increase to $1.1M (individuals) and higher for corporations. Aimed at eliminating non-compliance in certification.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/nsw-building-bill-2026-certifier-penalties/page.tsx",
    "text": "'The NSW Building Bill 2026: $1.1M Certifier Penalties and What It Means for the Industry — PlotDetect'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/nsw-building-bill-2026-certifier-penalties/page.tsx",
    "text": "`Maximum penalties up to \\$1.1M, a Building Commission with investigative powers, and mandatory professional standards. What builders and certifiers need to know.`",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/regional-property-conveyancing-nsw/page.tsx",
    "text": "'Rural zone minimums range from 2ha to 100ha+ \\u2014 not the 450m\\u00B2 city conveyancers expect'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/setback-requirements-nsw/page.tsx",
    "text": "'Narrow lots (under 12 m) often get reduced side setbacks. Some DCPs specify 0.9 m for lots under 10 m wide.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (blog) generic/typical-range claim with no instrument or date",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/setback-requirements-nsw/page.tsx",
    "text": "height: 12",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/subdivide-property-nsw-minimum-lot-sizes/page.tsx",
    "text": "'Both resulting lots must meet or exceed the minimum lot size. A 700sqm lot with a 300sqm minimum can create two 350sqm lots.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: not_regulatory (blog) worked hypothetical"
+   "reason": "inventory 2026-10-22: not_regulatory (blog) worked hypothetical",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/tiny-houses-nsw-planning-rules/page.tsx",
    "text": "'Likely a building or secondary dwelling. Needs DA (or CDC if it meets Housing SEPP criteria on a 450m2+ lot without special overlays).'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/uninsurable-households-australia-2050/page.tsx",
    "text": "'Lismore, Ballina, Byron. 30-40% of households already dropped coverage post-2022.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: not_regulatory (blog) insurance statistic"
+   "reason": "inventory 2026-10-22: not_regulatory (blog) insurance statistic",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/what-can-i-build-rural-land-nsw/page.tsx",
    "text": "'450-2,000sqm typical'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/blog/what-can-i-build-rural-land-nsw/page.tsx",
    "text": "'0.4ha (4,000sqm)'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause"
+   "reason": "inventory 2026-10-22: from_db (blog) SEPP Housing / LEP / DCP figure with no clause cited near it; serve from provisions table or cite clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/for/buyers-agents/page.tsx",
    "text": "'Every property check in one place. Flood depth, bushfire BAL, zone/FSR/height, heritage, DAs within 500m, granny flat eligibility, shadow risk, climate projections, and more — free for any NSW address.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/for/buyers-agents/page.tsx",
    "text": "'Every DA and CDC within 500m — with weekly email alerts when new applications are lodged. Know before your client\\'",
-   "fate": "not_regulatory",
-   "reason": "product search radius, not a planning control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): product search radius, not a planning control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/how-it-works/page.tsx",
    "text": "'State-wide eligibility rules: minimum 450 m² lot, permitted zones, not strata'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/how-it-works/page.tsx",
    "text": "'Coverage depends on councils submitting applications to the ePlanning Portal. Some councils may have incomplete records. Search radius is 500 m for the free check; monitoring alerts cover 200 m.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/internal/structure-labelling/StructureLabeller.tsx",
    "text": "height: 22",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/layout.tsx",
    "text": "height: 512",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/pricing/page.tsx",
    "text": "\"mailto:hello@plotdetect.com.au?subject=Founding%2050%20—%20interested\"",
-   "fate": "not_regulatory",
-   "reason": "CSS/layout or non-planning literal"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/reports/granny-flat/page.tsx",
    "text": "height: 380",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/reports/granny-flat/page.tsx",
    "text": "'The maximum floor area for a secondary dwelling approved as complying development is 60 m² (SEPP Housing 2021 cl 4.18). A DA pathway allows larger floor areas subject to council DCP controls — typically up to 20–25% of the principal dwelling\\'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/reports/granny-flat/page.tsx",
    "text": "'Under SEPP Housing 2021 Schedule 3 Subdivision 4: rear setback minimum 3 m, side setbacks 0.9 m for the first 8 m height and 1.5 m above that, minimum 3 m separation from the principal dwelling. Your council\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) FAQ cites 'cl 4.18' / 'Sch 3 Subdivision 4' for 60 m2 / 3 m / 0.9 m; services/secondary_dwelling_paths.py cites s 53 for the 450 m2 - verify clause numbers"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) FAQ cites 'cl 4.18' / 'Sch 3 Subdivision 4' for 60 m2 / 3 m / 0.9 m; services/secondary_dwelling_paths.py cites s 53 for the 450 m2 - verify clause numbers",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/reports/granny-flat/page.tsx",
    "text": "'The calculator uses the actual CDC maximum floor area for this property (up to 60 m²), your selected build cost per m², and your selected weekly rent. Gross yield is annual rent divided by build cost. It excludes DA/CDC fees, finance costs, vacancy, and ongoing maintenance. Net yields are typically 1–2% lower.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
    "text": "'Ground elevation from the NSW 5 m elevation model, in metres above the Australian Height Datum.'",
-   "fate": "not_regulatory",
-   "reason": "hydrology definition / data description / search radius"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): hydrology definition / data description / search radius",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
    "text": "maxHeight: 220",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/share/granny-flat/page.tsx",
    "text": "height: 630",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/user-guide/page.tsx",
    "text": "Maximum building height for the zone (e.g., 8.5m for single dwelling)",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) 'e.g. 8.5m for single dwelling' presented as typical height limit"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) 'e.g. 8.5m for single dwelling' presented as typical height limit",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/user-guide/page.tsx",
    "text": "Maximum floor space ratio (e.g., 0.5:1 means 500m² floor space on 1000m² lot)",
-   "fate": "not_regulatory",
-   "reason": "worked arithmetic / timing copy"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): worked arithmetic / timing copy",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/user-guide/page.tsx",
    "text": "Use PlotDetect to understand complete regulatory context (SEPP/LEP/DCP) in 60 seconds instead of 2 hours of PDF reading",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/user-guide/page.tsx",
    "text": "LEP FSR limit × lot size = maximum GFA (e.g., 0.5:1 FSR on 600m² = 300m² max floor space)",
-   "fate": "not_regulatory",
-   "reason": "worked arithmetic / timing copy"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): worked arithmetic / timing copy",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/app/widget-demo/[slug]/page.tsx",
    "text": "\"width:100%;height:760px;border:0;\"",
-   "fate": "not_regulatory",
-   "reason": "CSS/layout or non-planning literal"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/assessment/core/compliance-checklist.tsx",
    "text": "\"Lot is 208m², minimum 400m² required for dual occupancy\"",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/assessment/core/compliance-checklist.tsx",
    "text": "\"Maximum: 9.5m\"",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/assessment/core/compliance-checklist.tsx",
    "text": "\"Proposed: 0.45:1, Maximum: 0.6:1\"",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/assessment/core/compliance-checklist.tsx",
    "text": "\"Front setback: 3m provided, 4m required\"",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/assessment/core/compliance-checklist.tsx",
    "text": "\"Minimum 25% of site area required\"",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/assessment/core/compliance-checklist.tsx",
    "text": "\"2 spaces required per dwelling\"",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample/demo checklist data (208m2 lot, 9.5m, 0.6:1) shown as if real; no importer found",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/assessment/core/compliance-status.tsx",
    "text": "\"9.5m maximum\\nCheck plans\"",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample status text (9.5m / 0.6:1); verify reachability"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) sample status text (9.5m / 0.6:1); verify reachability",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/cdc/CdcComplianceCalculator.tsx",
    "text": "estimatedCoverage : 45",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) prefilled 45% coverage / 35% landscape; 30 compared as landscape minimum"
+   "reason": "inventory 2026-10-22: from_db (tool_page) prefilled 45% coverage / 35% landscape; 30 compared as landscape minimum",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/cdc/CdcComplianceCalculator.tsx",
    "text": "landscapedAreaPercent: 100",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) prefilled 45% coverage / 35% landscape; 30 compared as landscape minimum"
+   "reason": "inventory 2026-10-22: from_db (tool_page) prefilled 45% coverage / 35% landscape; 30 compared as landscape minimum",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/cdc/CdcComplianceCalculator.tsx",
    "text": "estimatedCoverage : 35",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) prefilled 45% coverage / 35% landscape; 30 compared as landscape minimum"
+   "reason": "inventory 2026-10-22: from_db (tool_page) prefilled 45% coverage / 35% landscape; 30 compared as landscape minimum",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/cdc/types.ts",
    "text": "siteCoveragePercent: 45",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers"
+   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/cdc/types.ts",
    "text": "landscapedAreaPercent: 30",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers"
+   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/cdc/types.ts",
    "text": "buildingHeightMeters: 8.5",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers"
+   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/cdc/types.ts",
    "text": "storeys: 2",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers"
+   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/cdc/types.ts",
    "text": "parkingSpaces: 2",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers"
+   "reason": "inventory 2026-10-22: from_db (tool_page) CDC_INPUT_DEFAULTS / getRequiredParking prefill the form with SEPP-looking numbers",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/cdc/types.ts",
    "text": "'Self-contained dwelling up to 60m\\u00B2'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/compliance/CDCPathway.tsx",
    "text": "`Floor area = length × width. Example: 5m × 4m = 20m². Maximum GFA on this lot: ${Math.round(maxGFA)}m² (LEP Clause 4.4 FSR control).`",
-   "fate": "not_regulatory",
-   "reason": "arithmetic example in help text"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): arithmetic example in help text",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/compliance/CDCPathway.tsx",
    "text": "\"Floor area = length × width. Example: 5m × 4m = 20m².\"",
-   "fate": "not_regulatory",
-   "reason": "arithmetic example in help text"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): arithmetic example in help text",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/compliance/CDCPathway.tsx",
    "text": "'Fence height from ground level (typical limits: 1.2m front, 1.8m side/rear)'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/compliance/ComplianceDashboard.tsx",
    "text": "'In Ashfield, setbacks are specified as numeric minimums (e.g., 900mm side, 6m rear). Rules-based approach with clear compliance thresholds.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) typed claim about how Ashfield/Marrickville express setbacks, with example 900mm/6m"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) typed claim about how Ashfield/Marrickville express setbacks, with example 900mm/6m",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/compliance/ComplianceDashboard.tsx",
    "text": "'In Marrickville, setbacks are specified as numeric minimums (e.g., 900mm side, 6m rear). Rules-based approach with clear compliance thresholds.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) typed claim about how Ashfield/Marrickville express setbacks, with example 900mm/6m"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) typed claim about how Ashfield/Marrickville express setbacks, with example 900mm/6m",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/compliance/DAModeCard.tsx",
    "text": "\"Dimensions, materials, location on site — e.g. Open-sided timber structure, 4.2m × 3.6m, 2.4m height, within the front setback\"",
    "fate": "open",
-   "reason": "inventory 2026-10-22: not_regulatory (tool_page) placeholder example text"
+   "reason": "inventory 2026-10-22: not_regulatory (tool_page) placeholder example text",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/compliance/DCPProvisionsBrowser.tsx",
    "text": "setback_front: 1",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/compliance/DCPProvisionsBrowser.tsx",
    "text": "landscaping: 2",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/compliance/HousingSEPPEligibilityCard.tsx",
    "text": "'1 storey'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: not_regulatory (tool_page) pluralisation formatter"
+   "reason": "inventory 2026-10-22: not_regulatory (tool_page) pluralisation formatter",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/compliance/LegalTextPanel.tsx",
    "text": "'calc(100% - 200px)'",
-   "fate": "not_regulatory",
-   "reason": "CSS/layout or non-planning literal"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/feedback/FeedbackDemo.tsx",
    "text": "\"Front setback is 6m from boundary\"",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/components/feedback/FeedbackDemo.tsx",
    "text": "\"Development must maintain a minimum setback of 6m from the front boundary.\"",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/header.tsx",
    "text": "'100%'",
-   "fate": "not_regulatory",
-   "reason": "CSS/layout or non-planning literal"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/pdf/CoverPage.tsx",
    "text": "lineHeight: 1.3",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/pdf/ProvisionReport.tsx",
    "text": "lineHeight: 1.4",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/pdf/ProvisionTable.tsx",
    "text": "lineHeight: 1.3",
-   "fate": "open"
+   "fate": "open",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/components/pdf/see-pages/Page1Cover.tsx",
    "text": "lineHeight: 1.3",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/pdf/see-pages/Page1Cover.tsx",
    "text": "lineHeight: 1.5",
-   "fate": "open"
+   "fate": "open",
+   "count": 3
   },
   {
    "file": "frontend-nextjs/components/pdf/see-pages/Page2SiteContext.tsx",
    "text": "lineHeight: 1.5",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/pdf/see-pages/Page4Dcp.tsx",
    "text": "lineHeight: 1.5",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/pdf/see-pages/Page5Environmental.tsx",
    "text": "minHeight: 60",
-   "fate": "open"
+   "fate": "open",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/components/pdf/see-pages/Page5Environmental.tsx",
    "text": "minHeight: 40",
-   "fate": "open"
+   "fate": "open",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/components/pdf/see-pages/Page6Conclusion.tsx",
    "text": "lineHeight: 1.5",
-   "fate": "open"
+   "fate": "open",
+   "count": 7
   },
   {
    "file": "frontend-nextjs/components/pdf/see-pages/Page6Conclusion.tsx",
    "text": "lineHeight: 1.4",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/pdf/styles.ts",
    "text": "lineHeight: 1.4",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/pdf/styles.ts",
    "text": "minHeight: 28",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/pdf/styles.ts",
    "text": "minHeight: 40",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/pdf/styles.ts",
    "text": "lineHeight: 1.5",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/pdf/styles.ts",
    "text": "lineHeight: 1.3",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/property-details-comprehensive.tsx",
    "text": "Below 3m minimum",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) Housing SEPP battle-axe access/main-lot figures typed in JSX (3m access, 12m x 12m main lot)"
+   "reason": "inventory 2026-10-22: from_db (tool_page) Housing SEPP battle-axe access/main-lot figures typed in JSX (3m access, 12m x 12m main lot)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/property/PropertyPanel.tsx",
    "text": "'9.5m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/property/PropertyPanel.tsx",
    "text": "'0.6:1 sq m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/reports/AerialTile.tsx",
    "text": "height = 220",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/reports/AerialTile.tsx",
    "text": "'100%'",
-   "fate": "not_regulatory",
-   "reason": "CSS/layout or non-planning literal"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/reports/ShadowMap.tsx",
    "text": "'100%'",
-   "fate": "not_regulatory",
-   "reason": "CSS/layout or non-planning literal"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/components/reports/landing/data/bushfire.ts",
    "text": "\"100%\"",
-   "fate": "not_regulatory",
-   "reason": "marketing coverage stat / product radius, not a planning control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): marketing coverage stat / product radius, not a planning control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/reports/landing/data/bushfire.ts",
    "text": "\"Whether the property qualifies for 10/50 entitlement — allowing removal of trees within 10m and understorey within 50m of a dwelling without council approval.\"",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/reports/landing/data/flood.ts",
    "text": "\"100%\"",
-   "fate": "not_regulatory",
-   "reason": "marketing coverage stat / product radius, not a planning control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): marketing coverage stat / product radius, not a planning control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/reports/landing/data/threat-radar.ts",
    "text": "\"Every DA lodged within 500m of your property in the last 6 months — including the development description, estimated cost, and how many new dwellings are proposed.\"",
-   "fate": "not_regulatory",
-   "reason": "marketing coverage stat / product radius, not a planning control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): marketing coverage stat / product radius, not a planning control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/sepp/SeppOverrideAlert.tsx",
    "text": "'Bonus FSR +20%'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) typed SEPP override summaries"
+   "reason": "inventory 2026-10-22: from_db (tool_page) typed SEPP override summaries",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/tools/GrannyFlatTool.tsx",
    "text": "height: 220",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/tools/GrannyFlatTool.tsx",
    "text": "'front 6m · side 0.9m · rear 3m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/tools/ShadowTool.tsx",
    "text": "'Even if your neighbour builds to the maximum permitted height, the model indicates your property would receive at least 2 hours of direct sunlight between 9 am and 3 pm on 21 June (the worst day of the year for shadows).'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/tools/ShadowTool.tsx",
    "text": "'If a neighbour builds to maximum permitted height, your property could lose the 2 hours of winter sunlight required under the ADG. This is grounds for objection if a DA is lodged.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/tools/ShadowTool.tsx",
    "text": "height: 280",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/components/tools/SolarYieldTool.tsx",
    "text": "height: 220",
-   "fate": "open"
+   "fate": "open",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/components/tools/ThreatRadarTool.tsx",
    "text": "`${sign}${stats.netDwellingChange} net dwellings within 500m`",
-   "fate": "not_regulatory",
-   "reason": "product search radius, not a planning control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): product search radius, not a planning control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/ai/classifier.ts",
    "text": "'two storey'",
-   "fate": "not_regulatory",
-   "reason": "intent keyword ('two storey'), not a planning figure"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): intent keyword ('two storey'), not a planning figure",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/ai/formatter.ts",
    "text": "'\\n\\n**Parking** — *Check DCP for parking requirements. Typically 1-2 spaces required for dwelling houses.*'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (ai) AI chat reply template asserts typical parking/landscape rule"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (ai) AI chat reply template asserts typical parking/landscape rule",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/ai/formatter.ts",
    "text": "'\\n\\n**Landscaping** — *Check DCP for landscaping requirements. Typically 30-50% of site required as landscaped area.*'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (ai) AI chat reply template asserts typical parking/landscape rule"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (ai) AI chat reply template asserts typical parking/landscape rule",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/ai/router.ts",
    "text": "'two storey'",
-   "fate": "not_regulatory",
-   "reason": "intent keyword ('two storey'), not a planning figure"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): intent keyword ('two storey'), not a planning figure",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/blog-articles.ts",
    "text": "'Maximum penalties up to $1.1M, a Building Commission with investigative powers, and mandatory professional standards. What builders and certifiers need to know.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/constants.ts",
    "text": "DEFAULT_FSR = 0.9",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/constants.ts",
    "text": "DEFAULT_HEIGHT_M = 6.0",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/constants.ts",
    "text": "MIN_LOT_SIZE_SQM = 450",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/constants.ts",
    "text": "DEFAULT_FRONT_SETBACK_M = 6.0",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/constants.ts",
    "text": "DEFAULT_SIDE_SETBACK_M = 0.9",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/constants.ts",
    "text": "DEFAULT_REAR_SETBACK_M = 6.0",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (engine) default FSR/height/setbacks/min lot; no importer found (dead code) - delete",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/council-configs/_template.json",
    "text": "\"Verify v2_ column population (>80% coverage)\"",
-   "fate": "not_regulatory",
-   "reason": "documentation example / provision-count stat, not a control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): documentation example / provision-count stat, not a control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/council-configs/ashfield.json",
    "text": "\"Ashfield DCP is heritage-focused with Chapter E1 providing extensive controls for Heritage Conservation Areas. Chapter F covers development categories and Chapter D provides guidance for 11 Village Precincts. Most provisions (69%) apply broadly across all development types.\\n\\n[Base Controls] in Chapter A cover general requirements. [Heritage] (Chapter E1) is the most detailed section with conservation principles, character assessment, building form, and materials guidance for each HCA - filtered to your property'",
-   "fate": "not_regulatory",
-   "reason": "documentation example / provision-count stat, not a control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): documentation example / provision-count stat, not a control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/council-configs/woollahra.json",
    "text": "\"Woollahra DCP 2015 is heritage-heavy (56% of provisions). Structured as:\\n- Chapters A-B: General controls and building design\\n- Chapters C1-C3: Heritage Conservation Areas (Paddington, Woollahra, Double Bay etc.)\\n- Chapters D: Development type controls (neighbourhood centres, mixed use)\\n- Chapters E: Specific controls (parking, signage, adaptable housing)\\n\\nHeritage provisions are filtered to your property'",
-   "fate": "not_regulatory",
-   "reason": "documentation example / provision-count stat, not a control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): documentation example / provision-count stat, not a control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/coverage.ts",
    "text": "dcpSetbackTripleCouncils: 18",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/coverage.ts",
    "text": "dcpSetbackRows: 1069",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/data-dictionary.ts",
    "text": "'A floor space ratio (FSR) expresses the maximum gross floor area of buildings on a site as a multiple of the site area. An FSR of 0.5:1 on a 600 m² lot corresponds to 300 m² of gross floor area. The control applies through the LEP clause that references the FSR map — typically clause 4.4.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/database/mock-client.ts",
    "text": "'3.0m front setback'",
-   "fate": "not_regulatory",
-   "reason": "mock-client fixture (verify not imported by shipped paths)"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): mock-client fixture (verify not imported by shipped paths)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/database/specialized/live-compliance-client.ts",
    "text": "maxFSR: 0.5",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) MOCK property data + 0.5 FSR fallback served by /api/compliance/live-check; fabricates limits for any address"
+   "reason": "inventory 2026-10-22: from_db (api) MOCK property data + 0.5 FSR fallback served by /api/compliance/live-check; fabricates limits for any address",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/database/specialized/live-compliance-client.ts",
    "text": "maxHeight: 8.5",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) MOCK property data + 0.5 FSR fallback served by /api/compliance/live-check; fabricates limits for any address"
+   "reason": "inventory 2026-10-22: from_db (api) MOCK property data + 0.5 FSR fallback served by /api/compliance/live-check; fabricates limits for any address",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/database/specialized/live-compliance-client.ts",
    "text": "siteCoverageLimit: 50",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) MOCK property data + 0.5 FSR fallback served by /api/compliance/live-check; fabricates limits for any address"
+   "reason": "inventory 2026-10-22: from_db (api) MOCK property data + 0.5 FSR fallback served by /api/compliance/live-check; fabricates limits for any address",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/db.ts",
    "text": "ZONE_COVERAGE_CACHE_MS = 5",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/geometry/lot-shape-analysis.ts",
    "text": "MIN_MAIN_LOT_DIMENSION = 12.0",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/geometry/lot-shape-analysis.ts",
    "text": "MIN_MAIN_LOT_AREA = 144.0",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/geometry/lot-shape-analysis.ts",
    "text": "mainLotWidth: 0",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/geometry/lot-shape-analysis.ts",
    "text": "mainLotArea: 0",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/geometry/street-frontage.ts",
    "text": "FRONTAGE_GAP_M = 3.0",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 2",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 5",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 3",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 1",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 45",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 70",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 65",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 20",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 12",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 8",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 15",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 3
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 30",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 40",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 60",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 35",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 55",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 10",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "'Approximately 10% of Georges River LGA is mapped as bush fire prone land. Affected areas are primarily along the Georges River and near remnant bushland in Oatley, Lugarno, and Peakhurst Heights.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 95",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 50",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 80",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
    "text": "bfplCoveragePct: 85",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) hand-typed % of LGA mapped bush fire prone (also repeated in FAQ prose); compute from BFPL layer or drop",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/flood-lgas.ts",
    "text": "'Campbelltown has ARI-quantified flood data covering 0.2% AEP (1-in-500-year) through PMF (Probable Maximum Flood). The 1% AEP (1-in-100-year) zone is the primary planning standard under the Campbelltown LEP. Properties in the 1% AEP zone are in the Flood Planning Area and face development controls.'",
-   "fate": "not_regulatory",
-   "reason": "hydrology terminology, not a planning control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): hydrology terminology, not a planning control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/flood-lgas.ts",
    "text": "'Yes. Under SEPP Housing 2021, a property on a flood control lot is ineligible for complying development (CDC). If your Campbelltown address is in the 1% AEP flood zone, a granny flat requires a DA with a flood risk management report.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) FAQ states SEPP Housing flood-control CDC exclusion as fact; no clause"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) FAQ states SEPP Housing flood-control CDC exclusion as fact; no clause",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/flood-lgas.ts",
    "text": "'Yes. Shoalhaven has both extensive flood planning areas and high bushfire coverage (85% BFPL). Some properties face dual natural hazard constraints. The 2019-20 fires followed by 2022 flooding demonstrated both risks in rapid succession.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Yes — many Campbelltown properties qualify under SEPP Housing 2021. The minimum lot size is 450 m² and the property must not be a heritage item, flood control lot, or affected by biodiversity or acid sulfate soil exclusions. R1, R2, R3, and RU5 zones are generally permitted. Use the checker above to confirm your specific address.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum lot size under SEPP Housing 2021 is 450 m². Campbelltown has a mix of lot sizes — many post-war suburban lots are 550–700 m² and qualify. Newer estate lots under 450 m² do not qualify for complying development.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Yes. Campbelltown has detailed ARI flood data — properties on flood control lots (within the 1% AEP zone) are ineligible for a CDC secondary dwelling. A DA with a flood risk management report is required. Check flood status above before proceeding.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Under SEPP Housing 2021, secondary dwellings are limited to 60 m² internal floor area. On lots over 900 m², attached secondary dwellings may be permitted up to a different size. DCP setbacks and height limits also apply.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'s most significant flood risks. The 2024 Hawkesbury-Nepean River Flood Study maps 12 ARI scenarios. Properties within the 1% AEP (1-in-100-year) flood extent are on flood control lots and cannot use the CDC pathway for secondary dwellings.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (faq_seo) FAQ/SEO claim with no source"
+   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (faq_seo) FAQ/SEO claim with no source",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The SEPP Housing 2021 minimum is 450 m². Rural-residential lots in Hawkesbury are typically large enough, but some town lots in Windsor and Richmond may be closer to the minimum. Check your specific lot area using the checker above.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Yes, if your property meets the SEPP Housing 2021 criteria. The Inner West has many R2 and R3 zoned properties over 450 m² that qualify. However, with 2,039 heritage items, heritage exclusions are a common reason for ineligibility. Check your address above.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The most common exclusions in the Inner West are: heritage listing (heritage item or conservation area), lot under 450 m², or a zone that doesn\\'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum under SEPP Housing 2021 is 450 m². Many Inner West terrace houses sit on lots of 200–350 m² and are ineligible on lot size alone. Semi-detached homes and detached houses on larger blocks are more likely to qualify.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Secondary dwellings under SEPP Housing 2021 are capped at 60 m² internal floor area. Inner West Council\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Many properties in Canterbury-Bankstown qualify — the area has a large stock of R2 residential lots over 450 m². Heritage exclusions are less common than in inner-city suburbs. Check your address above to confirm zone, lot area, and any exclusions.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum under SEPP Housing 2021 is 450 m². Post-war suburban lots in Bankstown, Canterbury, and Punchbowl are typically 550–700 m² and qualify. Smaller lots in terrace streets are less likely to meet the minimum.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Yes, many Parramatta properties qualify under SEPP Housing 2021. R2 residential lots over 450 m² in suburbs like Merrylands, Granville, and Toongabbie are good candidates. Heritage exclusions are more common near the Parramatta CBD heritage conservation area.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m² under SEPP Housing 2021. Many post-war lots in the outer Parramatta suburbs are 550–700 m² and qualify. Compact lots near the CBD or in townhouse estates may be below the threshold.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Blacktown\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Secondary dwellings under SEPP Housing 2021 are capped at 60 m² internal floor area. Blacktown\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The Hills Shire is well-suited to granny flats. Large residential lots across Castle Hill, Baulkham Hills, and Kellyville frequently exceed 450 m², and heritage exclusions are relatively uncommon. Check your address above to confirm all criteria.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum under SEPP Housing 2021 is 450 m². The Hills Shire has some of Greater Sydney\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The most common exclusions are heritage (conservation areas in beachside villages), biodiversity values map (coastal heathlands and bushland areas), and lot size (some older beachside lots are under 450 m²). The checker above identifies which exclusion applies.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m² under SEPP Housing 2021. Many Northern Beaches lots are 600–900 m² in established suburbs. Some compact lots near Manly and Dee Why may be below 450 m².'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Hornsby\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Ku-ring-gai\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Many Georges River properties qualify under SEPP Housing 2021. Suburbs like Hurstville, Kogarah, Penshurst, and Oatley have R2 lots over 450 m² that are good candidates. Heritage exclusions are moderate. Check your address above.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Post-war suburban lots in Georges River are typically 550–700 m² and qualify. Compact lots near town centres and some strata-style subdivisions may be below the minimum.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Many Bayside properties qualify. Suburbs like Bexley, Arncliffe, Rockdale, and Mascot have R2 lots over 450 m² that are good candidates. Heritage exclusions exist in some precincts. Check your address above.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m² under SEPP Housing 2021. Post-war suburban lots in Bayside are typically 500–700 m². Compact lots near Botany and inner areas may be below the threshold.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'It depends heavily on your specific address. Randwick has 574 heritage items and many streets in Coogee, Kensington, and Randwick itself are in heritage conservation areas. Lot sizes in inner Randwick are often below 450 m². Check your address above.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Two main reasons: lot size (many terrace and semi-detached lots are under 450 m²) and heritage (conservation areas cover large parts of Randwick, Coogee, and Kingsford). The checker identifies which constraint applies to your address.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Detached houses in outer Randwick suburbs like Matraville and Little Bay are more likely to clear 450 m². Inner suburbs and terrace streets typically do not.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Waverley is one of the harder council areas for granny flat eligibility. Most lots are under 450 m², and heritage conservation areas cover large parts of Bondi, Waverley, and Bronte. Check your address above — detached homes on larger blocks have the best chance.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'s density means most residential lots are under 450 m² — the most common reason for ineligibility. Heritage conservation areas add a second common exclusion. The two together make Waverley one of the lowest SEPP eligibility rates in Sydney.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Most Waverley terrace and semi-detached properties are on lots of 150–350 m². Detached houses in Bronte and North Bondi on larger blocks are the most likely candidates.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Yes. If the CDC pathway is unavailable, a DA can be lodged with Waverley Council. On lots under 450 m², an attached secondary dwelling may still be achievable through DA depending on the DCP provisions.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Woollahra is challenging for granny flat eligibility. With 761 heritage items and many lots under 450 m² in Paddington and Double Bay, a large proportion of properties are ineligible via CDC. Check your address above — larger detached homes in Woollahra and Bellevue Hill have better prospects.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Two main reasons: heritage (conservation areas cover most of Paddington and parts of Woollahra village) and lot size (Paddington terrace lots are typically 100–250 m²). Either exclusion alone is enough to block the CDC pathway.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Almost certainly not via CDC — Paddington lots are typically well under 450 m² and heritage-listed. A DA is theoretically possible but would require heritage impact assessment and council approval, and may still face DCP restrictions.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Larger detached homes in Bellevue Hill, Rose Bay, and parts of Woollahra on bigger blocks have the best prospects. Even these should be checked for heritage conservation area status.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Many Sutherland Shire properties qualify. The area has predominantly detached suburban homes on lots well over 450 m², and heritage exclusions are moderate. Biodiversity exclusions near bushland are the main risk factor. Check your address above.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Most Sutherland Shire suburban lots are 600–900 m² — well above the minimum. This is one of Greater Sydney\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m² under SEPP Housing 2021. Camden\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Secondary dwellings under SEPP Housing 2021 are capped at 60 m² internal floor area. Camden\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Liverpool has strong granny flat eligibility. Low heritage density, predominantly R2 zoning, and suburban lot sizes over 450 m² across most of the LGA combine for high eligibility rates. Check your address above to confirm.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Liverpool\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Penrith\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Many Lane Cove properties qualify. Post-war detached homes on lots over 450 m² are common. Heritage exclusions are moderate and mainly affect the Lane Cove village area. Biodiversity exclusions near the Lane Cove River are worth checking.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Lane Cove\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Many Ryde properties qualify under SEPP Housing 2021. Post-war suburban lots over 450 m² are common across Meadowbank, West Ryde, and Eastwood. Heritage exclusions are moderate. Check your address above.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Ryde\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Many Wollongong properties qualify under SEPP Housing 2021. Suburban lots across Wollongong, Figtree, and Unanderra are typically over 450 m². Heritage and flood exclusions are worth checking depending on suburb. Use the checker above.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m² under SEPP Housing 2021. Most post-war residential lots in Wollongong are 550–800 m². Compact lots near the CBD and beachside suburbs may be below the threshold.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Rural-residential lots in Clarence Valley are typically much larger than this. Town lots in Grafton and Maclean vary — check your specific lot.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Most Yass Valley residential lots clear this easily. Compact town lots in central Yass are the exception.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Most Forbes residential lots are over 450 m². The binding constraint for many Forbes properties is flood, not lot size.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Many Tamworth Regional properties qualify. The area has predominantly R2 residential lots over 450 m². Flood exclusions near the Peel River are the main risk. Heritage is notable but mainly affects the CBD precinct.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Tamworth\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'Many Bathurst properties qualify. Suburban lots over 450 m² are common and heritage exclusions mainly affect the Bathurst CBD heritage conservation area. Flood risk near the Macquarie River is worth checking.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Bathurst\\'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
    "text": "'The minimum is 450 m². Southern Highlands residential lots are typically well over 450 m². Rural-residential lots of 2,000 m²+ are common and easily qualify.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows"
+   "reason": "inventory 2026-10-22: from_db (faq_seo) SEPP Housing 2021 secondary-dwelling min lot size / max floor area (stored provision); same figure repeated across LGA FAQ rows",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/shadow-lgas.ts",
    "text": "'Medium-to-high density terraces and 3-4 storey apartments create significant shadow exposure on narrow lots.'",
-   "fate": "not_regulatory",
-   "reason": "descriptive built-form/shadow copy, not a stated control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): descriptive built-form/shadow copy, not a stated control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/shadow-lgas.ts",
    "text": "'The main sources are terrace houses with rear extensions, new 3-4 storey apartment buildings on narrow lots, and dual-occupancy infill. North-facing rear yards are particularly vulnerable to shadow from neighbouring development.'",
-   "fate": "not_regulatory",
-   "reason": "descriptive built-form/shadow copy, not a stated control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): descriptive built-form/shadow copy, not a stated control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/shadow-lgas.ts",
    "text": "'Yes, potentially over a wide radius. Towers taller than 6 storeys can cast winter shadows more than 50m. If you live within 100-200m of a high-rise DA site, a professional shadow analysis using the proposed building height and your property coordinates is worth commissioning.'",
-   "fate": "not_regulatory",
-   "reason": "descriptive built-form/shadow copy, not a stated control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): descriptive built-form/shadow copy, not a stated control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/shadow-lgas.ts",
    "text": "'Ongoing medium-density uplift near town centres creates shadow exposure risk for established 1-2 storey homes in adjacent streets.'",
-   "fate": "not_regulatory",
-   "reason": "descriptive built-form/shadow copy, not a stated control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): descriptive built-form/shadow copy, not a stated control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/shadow-lgas.ts",
    "text": "'s compact lot sizes leave little room for solar access once a neighbouring property extends to 2 storeys. Heritage conservation area controls limit new large-scale development but cannot address existing building heights.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/shadow-lgas.ts",
    "text": "'Shadow risk in the Sutherland Shire is low to moderate. Larger suburban lots and predominantly 1-2 storey housing provide reasonable separation. The main shadow risk comes from secondary dwelling additions and new 2-storey knockdown-rebuild projects on properties directly to the north.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/shadow-lgas.ts",
    "text": "'In new estates, 2-storey dwellings on narrow lots are the main source. When a neighbour builds 2 storeys on a standard estate lot, north-facing yards and windows of the property to the south can be significantly affected in winter.'",
-   "fate": "not_regulatory",
-   "reason": "descriptive built-form/shadow copy, not a stated control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): descriptive built-form/shadow copy, not a stated control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/shadow-lgas.ts",
    "text": "'Secondary dwelling additions to rear yards, and new 2-storey dwellings on lots where single-storey homes previously stood, are the most common shadow sources. In growth areas, compact-lot estate homes at 2 storeys can also affect adjoining single-storey properties.'",
-   "fate": "not_regulatory",
-   "reason": "descriptive built-form/shadow copy, not a stated control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): descriptive built-form/shadow copy, not a stated control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/shadow-lgas.ts",
    "text": "'2-storey dwellings on standard residential lots are the main source, along with secondary dwelling additions in established suburbs. Near the Tamworth CBD, 2-3 storey commercial buildings on the main street can affect narrow adjoining properties.'",
-   "fate": "not_regulatory",
-   "reason": "descriptive built-form/shadow copy, not a stated control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): descriptive built-form/shadow copy, not a stated control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/shadow-lgas.ts",
    "text": "'Shadow risk in Lane Cove is moderate. The LGA is transitioning to medium density near the town centre and along the Pacific Highway. New 3-4 storey apartment buildings can cast significant shadow on adjoining lower-density properties.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/shadow-lgas.ts",
    "text": "'Yes. Properties at the interface between R2 and R3/R4 zones are most at risk. A 3-4 storey building on a neighbouring R3 lot can significantly shadow an adjoining R2 property.'",
-   "fate": "not_regulatory",
-   "reason": "descriptive built-form/shadow copy, not a stated control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): descriptive built-form/shadow copy, not a stated control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/shadow-lgas.ts",
    "text": "'Yes. Towers can cast long winter shadows. Properties within 100-200m, particularly to the south, can experience reduced solar access. Check the DA register for proposed developments near your address.'",
-   "fate": "not_regulatory",
-   "reason": "descriptive built-form/shadow copy, not a stated control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): descriptive built-form/shadow copy, not a stated control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/solar-lgas.ts",
    "text": "'Most Northern Beaches homes are single or double-storey with moderate roof areas. A 6.6 kW system requires 26–28 m² of usable north-facing roof. The checker above estimates your specific capacity from aerial imagery.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/threat-radar-lgas.ts",
    "text": "'The Inner West has consistently high DA and CDC volumes. Medium-density uplift under the Inner West LEP, dual-occupancy approvals, and apartment conversions generate significant ongoing activity. Suburbs like Marrickville, Leichhardt, and Ashfield regularly see 20–40 new applications per month within 500m of residential addresses.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/threat-radar-lgas.ts",
    "text": "'The most common DAs affecting neighbouring properties are: dual-occupancy and secondary dwelling approvals (can change street character), demolition and new construction of multi-dwelling housing, and commercial development on mixed-use corridors. Building works within 50m can also affect street parking and construction amenity.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/threat-radar-lgas.ts",
    "text": "'The tool checks for DA and CDC applications lodged within 200m of your address. In a dense suburb like Newtown or Leichhardt, this can include 40–80 properties. Most neighbours who would affect your amenity, solar access, or street parking fall within this radius.'",
-   "fate": "not_regulatory",
-   "reason": "product search radius, not a planning control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): product search radius, not a planning control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/threat-radar-lgas.ts",
    "text": "'Alerts cover applications within 200m. In lower-density Northern Beaches suburbs this typically covers 30–50 properties on larger lots.'",
-   "fate": "not_regulatory",
-   "reason": "product search radius, not a planning control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): product search radius, not a planning control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/threat-radar-lgas.ts",
    "text": "'CDCs for secondary dwellings are common in suburbs where lot sizes clear 450m² — particularly Dee Why, Cromer, Narrabeen, and Warriewood. In heritage-affected suburbs like Manly and Avalon, secondary dwellings typically require a DA rather than CDC due to heritage constraints.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/threat-radar-lgas.ts",
    "text": "'Alerts cover applications within 200m. In Ku-ring-gai\\'",
-   "fate": "not_regulatory",
-   "reason": "product search radius, not a planning control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): product search radius, not a planning control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/threat-radar-lgas.ts",
    "text": "'Yes. The Hurstville and Kogarah station precincts are designated for medium-to-high density under the Georges River LEP. Residents within 500m of these stations may see multi-dwelling and mixed-use DAs that affect street character and parking.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/threat-radar-lgas.ts",
    "text": "'Alerts cover applications within 200m. In Woollahra\\'",
-   "fate": "not_regulatory",
-   "reason": "product search radius, not a planning control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): product search radius, not a planning control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/verify-lgas.ts",
    "text": "'Parking rates in Bayside come from the DCP and vary by development type and zone. Residential parking rates are typically 1 space per dwelling for 1-2 bedroom units and 2 spaces for 3+ bedroom dwellings. Check your address for the exact applicable rates.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/verify-lgas.ts",
    "text": "'Height limits in Randwick vary by zone and are mapped in the LEP Height of Buildings map. Common residential limits range from 8.5m to 12m. The tool pulls the specific limit for your property from the LEP.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/verify-lgas.ts",
    "text": "'Parking requirements come from the Woollahra DCP and vary by development type and proximity to transport. Residential parking rates are typically 1-2 spaces per dwelling depending on unit size.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/verify-lgas.ts",
    "text": "'Setback requirements come from the Hornsby DCP and vary by zone and lot size. Typical residential front setbacks are 6-7.5m. The tool shows the specific setback controls for your property with DCP clause references.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/verify-lgas.ts",
    "text": "'Height limits in Lane Cove vary by zone and are mapped in the LEP. Typical residential height limits are 8.5m for low density zones. The tool pulls the specific limit for your property.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/verify-lgas.ts",
    "text": "'Setback requirements come from the Penrith DCP and vary by zone, lot width, and precinct. Standard residential setbacks are typically 4.5-6m front, 0.9-1.5m side. The tool shows the specific controls for your address.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/verify-lgas.ts",
    "text": "'Setback requirements come from the Campbelltown DCP and vary by zone and lot width. Standard residential front setbacks are typically 4.5-6m. The tool shows the specific controls for your property.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/nsw-planning-portal.ts",
    "text": "\"35%\"",
-   "fate": "not_regulatory",
-   "reason": "code comment documenting removal of hardcoded figures"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): code comment documenting removal of hardcoded figures",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/bushfire-map-tile.ts",
    "text": "height = 400",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/bushfire-report.tsx",
    "text": "lineHeight: 1.4",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/bushfire-report.tsx",
    "text": "height: 18",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/bushfire-report.tsx",
    "text": "lineHeight: 1.5",
-   "fate": "open"
+   "fate": "open",
+   "count": 3
   },
   {
    "file": "frontend-nextjs/lib/pdf/flood-truth-report.tsx",
    "text": "lineHeight: 1.4",
-   "fate": "open"
+   "fate": "open",
+   "count": 3
   },
   {
    "file": "frontend-nextjs/lib/pdf/flood-truth-report.tsx",
    "text": "height: 18",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/flood-truth-report.tsx",
    "text": "lineHeight: 1.5",
-   "fate": "open"
+   "fate": "open",
+   "count": 7
   },
   {
    "file": "frontend-nextjs/lib/pdf/flood-truth-report.tsx",
    "text": "height: 7",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "lineHeight: 1.4",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "height: 18",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "lineHeight: 1.5",
-   "fate": "open"
+   "fate": "open",
+   "count": 3
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "height: 7",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "'The CDC pathway caps secondary dwellings at 60 m\\u00B2. Based on the data sources checked, your lot is within the full allowance. This is the maximum habitable floor area, excluding verandahs, garages, and laundries.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "'60 m\\u00B2'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 3
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "'Min 3 m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 4
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "'Min 0.9 m (1.5 m above 8 m)'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "'5 m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "'8.5 m'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "'Min 24 m\\u00B2 (3 m dimension)'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "height: 14",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/map-overlay.tsx",
    "text": "'100%'",
-   "fate": "not_regulatory",
-   "reason": "CSS/layout or non-planning literal"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/pdf/pre-da-history-report.tsx",
    "text": "lineHeight: 1.4",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/pre-da-history-report.tsx",
    "text": "height: 18",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/pre-da-history-report.tsx",
    "text": "lineHeight: 1.5",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/pre-da-history-report.tsx",
    "text": "lineHeight: 1.6",
-   "fate": "open"
+   "fate": "open",
+   "count": 3
   },
   {
    "file": "frontend-nextjs/lib/pdf/shadow-report.tsx",
    "text": "lineHeight: 1.4",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/shadow-report.tsx",
    "text": "height: 18",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/shadow-report.tsx",
    "text": "lineHeight: 1.5",
-   "fate": "open"
+   "fate": "open",
+   "count": 3
   },
   {
    "file": "frontend-nextjs/lib/pdf/shadow-report.tsx",
    "text": "height: 7",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/shadow-report.tsx",
    "text": "'No building height control was found in the applicable LEP. A 9m default has been used, which is the typical height limit for low-density residential zones.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) typed 9m default height described as typical limit for low-density when LEP height missing"
+   "reason": "inventory 2026-10-22: from_db (tool_page) typed 9m default height described as typical limit for low-density when LEP height missing",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/shadow-report.tsx",
    "text": "' At this height, a Development Application is required (exceeds 8m CDC limit), triggering mandatory neighbour notification.'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)"
+   "reason": "inventory 2026-10-22: from_db (tool_page)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/shadow-report.tsx",
    "text": "'Substantial shadow impact during the worst-case scenario. This exceeds the ADG Part 3F threshold of 20% coverage of neighbouring open space at 12pm on 21 June.'",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/shadow-report.tsx",
    "text": "lineHeight: 1.6",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/shadow-report.tsx",
    "text": "'} of my property in shadow at ${worstLabel}. The Apartment Design Guide (2015) Part 3F requires a minimum of 2 hours of direct sunlight to living areas between 9am and 3pm on 21 June. On that basis I ask that the shadow impact of the proposed development, as designed, be assessed against that requirement under Section 4.15(1)(a)(iii) of the Environmental Planning and Assessment Act 1979.\"",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/shadow-report.tsx",
    "text": "height: 10",
-   "fate": "open"
+   "fate": "open",
+   "count": 3
   },
   {
    "file": "frontend-nextjs/lib/pdf/shared-components.tsx",
    "text": "lineHeight: 1.4",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/shared-components.tsx",
    "text": "height: 18",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/shared-components.tsx",
    "text": "lineHeight: 1.6",
-   "fate": "open"
+   "fate": "open",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/pdf/shared-components.tsx",
    "text": "lineHeight: 1.5",
-   "fate": "open"
+   "fate": "open",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/pdf/shared-components.tsx",
    "text": "height: 72",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/solar-yield-report.tsx",
    "text": "lineHeight: 1.4",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/solar-yield-report.tsx",
    "text": "height: 18",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/solar-yield-report.tsx",
    "text": "lineHeight: 1.5",
-   "fate": "open"
+   "fate": "open",
+   "count": 5
   },
   {
    "file": "frontend-nextjs/lib/pdf/solar-yield-report.tsx",
    "text": "height: 50",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/solar-yield-report.tsx",
    "text": "lineHeight: 1",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/solar-yield-report.tsx",
    "text": "height: 7",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/solar-yield-report.tsx",
    "text": "'}LEP. A building at this height to the north could reduce your solar yield by 20–40% during winter months.`",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/threat-radar-report.tsx",
    "text": "lineHeight: 1.4",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/threat-radar-report.tsx",
    "text": "height: 18",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/threat-radar-report.tsx",
    "text": "lineHeight: 1.5",
-   "fate": "open"
+   "fate": "open",
+   "count": 4
   },
   {
    "file": "frontend-nextjs/lib/pdf/threat-radar-report.tsx",
    "text": "height: 7",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/threat-radar-report.tsx",
    "text": "'100%'",
-   "fate": "not_regulatory",
-   "reason": "CSS/layout or non-planning literal"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "count": 2
   },
   {
    "file": "frontend-nextjs/lib/pdf/types.ts",
    "text": "\"12m\"",
-   "fate": "not_regulatory",
-   "reason": "comment/format example or type doc"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): comment/format example or type doc",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/types.ts",
    "text": "\"1.5:1\"",
-   "fate": "not_regulatory",
-   "reason": "comment/format example or type doc"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): comment/format example or type doc",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/regulatory-constants.ts",
    "text": "MIN_LOT_WIDTH_DUAL_OCC_M: 12",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (engine) hand-typed SEPP/ADG/BASIX/EP&A figure in shared constants module (TOD walkable distances = Housing SEPP Sch 11 accessible area; ADG apartment sizes/ceilings; BASIX; DA timeframes). Needs stored provis"
+   "reason": "inventory 2026-10-22: from_db (engine) hand-typed SEPP/ADG/BASIX/EP&A figure in shared constants module (TOD walkable distances = Housing SEPP Sch 11 accessible area; ADG apartment sizes/ceilings; BASIX; DA timeframes). Needs stored provis",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/regulatory-constants.ts",
    "text": "EXEMPT_MAX_HEIGHT_M: 3",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (engine) hand-typed SEPP/ADG/BASIX/EP&A figure in shared constants module (TOD walkable distances = Housing SEPP Sch 11 accessible area; ADG apartment sizes/ceilings; BASIX; DA timeframes). Needs stored provis"
+   "reason": "inventory 2026-10-22: from_db (engine) hand-typed SEPP/ADG/BASIX/EP&A figure in shared constants module (TOD walkable distances = Housing SEPP Sch 11 accessible area; ADG apartment sizes/ceilings; BASIX; DA timeframes). Needs stored provis",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/security/README.md",
    "text": "answer: 'Tree canopy coverage: 25%',",
-   "fate": "not_regulatory",
-   "reason": "documentation example / provision-count stat, not a control"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): documentation example / provision-count stat, not a control",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/see/daBundleChecklist.ts",
    "text": "`Lot area ${lotArea?.toFixed(0)}m² — exceeds 500m² threshold`",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) 500m2 site-area trigger for stormwater plan typed (council-specific)"
+   "reason": "inventory 2026-10-22: from_db (tool_page) 500m2 site-area trigger for stormwater plan typed (council-specific)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/see/daBundleChecklist.ts",
    "text": "'Site area >500m² or steep gradient — lot area not confirmed'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) 500m2 site-area trigger for stormwater plan typed (council-specific)"
+   "reason": "inventory 2026-10-22: from_db (tool_page) 500m2 site-area trigger for stormwater plan typed (council-specific)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/setback-calculator.ts",
    "text": "`Lot area ${lotArea.toFixed(0)}sqm < 450sqm - Primary road frontage`",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) typed lot-area bands 450/600 sqm and 'over 2 storeys' rule; no importer found (dead code?)"
+   "reason": "inventory 2026-10-22: from_db (tool_page) typed lot-area bands 450/600 sqm and 'over 2 storeys' rule; no importer found (dead code?)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/setback-calculator.ts",
    "text": "`Lot area ${lotArea.toFixed(0)}sqm (450-600sqm) - Primary road frontage`",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) typed lot-area bands 450/600 sqm and 'over 2 storeys' rule; no importer found (dead code?)"
+   "reason": "inventory 2026-10-22: from_db (tool_page) typed lot-area bands 450/600 sqm and 'over 2 storeys' rule; no importer found (dead code?)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/setback-calculator.ts",
    "text": "`Lot area ${lotArea.toFixed(0)}sqm > 600sqm - Primary road frontage`",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) typed lot-area bands 450/600 sqm and 'over 2 storeys' rule; no importer found (dead code?)"
+   "reason": "inventory 2026-10-22: from_db (tool_page) typed lot-area bands 450/600 sqm and 'over 2 storeys' rule; no importer found (dead code?)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/setback-calculator.ts",
    "text": "'Setbacks may increase for buildings over 2 storeys'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) typed lot-area bands 450/600 sqm and 'over 2 storeys' rule; no importer found (dead code?)"
+   "reason": "inventory 2026-10-22: from_db (tool_page) typed lot-area bands 450/600 sqm and 'over 2 storeys' rule; no importer found (dead code?)",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/shared/classified-roads.json",
    "text": "\"2026-10-21, lot (nsw_cadastre_lots) to the cadastre road corridor that carries the road, metres. Fronting lots: 1311 Pacific Hwy Turramurra 0.00 (State 0000010); neighbouring Pacific Hwy lots 1//DP550866 0.00, 6//DP666961 0.00, 1//DP500077 0.38, 1//DP807765 1.13, 8//DP237813 1.36, 2//DP16463 1.49; 30 Marion St Leichhardt 1.38 (Regional 0002013); 150 Enmore Rd Enmore 1.36 (State 0000167); 354 Darling St Balmain 1.50 (Regional 0007318); 100 Waterloo Rd Greenacre 0.31 (Regional 0007118); 2 Kissing Point Rd Turramurra 0.18 (Regional 0007421). Largest gap on a fronting lot: 1.51 m. Lots that do not front: 1//DP519532 Turramurra (behind Forbes Lane, one street back from the Pacific Highway) has no State/Regional corridor within 30 m; 4//DP132873 Turramurra is 22.74 m from the nearest such corridor although 37.4 m from the Pacific Highway centreline. Same 3 m as Ku-ring-gai Part 20 (shared/krg-rail-busy-roads.json).\"",
-   "fate": "not_regulatory",
-   "reason": "data-provenance metadata (tolerances / figure numbers), not a planning figure"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): data-provenance metadata (tolerances / figure numbers), not a planning figure",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/shared/classified-roads.json",
    "text": "\"Centrelines are fetched within this distance of the lot, then kept only where they run inside a corridor the lot touches. 100 m covers the half-width of the widest corridors measured (Pacific Hwy, divided, centrelines 4.4-24 m from fronting lots). Recorded limit: a corridor wider than about 200 m whose centreline lies more than 100 m from the lot would be missed.\"",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/shared/krg-rail-busy-roads.json",
    "text": "\"2026-10-21: all 62 points sampled every 250 m along the surface rail centrelines (NSW_Transport_Theme layer 7) inside Ku-ring-gai lie in Ku-ring-gai LEP 2015 SP2 Railway Infrastructure land. The cadastre'",
-   "fate": "not_regulatory",
-   "reason": "data-provenance metadata (tolerances / figure numbers), not a planning figure"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): data-provenance metadata (tolerances / figure numbers), not a planning figure",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/shared/krg-rail-busy-roads.json",
    "text": "\"2026-10-21, lot (nsw_cadastre_lots) to corridor, metres: 1311 Pacific Hwy Turramurra 0.00 to PACIFIC HWY; 1250 Pacific Hwy Pymble 1.34 to PACIFIC HWY and 0.00 to the cadastre railway corridor; 1428 Pacific Hwy Turramurra 1.21; 1047 Pacific Hwy Pymble 0.00; 33 Killara Ave Killara 0.00 to the LEP rail zone. A lot across a street from the line: 43 Werona Ave Killara, 11.75 m from the railway corridor (not flagged). Not yet measured: a lot one street back from the highway.\"",
-   "fate": "not_regulatory",
-   "reason": "data-provenance metadata (tolerances / figure numbers), not a planning figure"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): data-provenance metadata (tolerances / figure numbers), not a planning figure",
+   "count": 1
   },
   {
    "file": "frontend-nextjs/shared/may-apply-areas.json",
    "text": "\"Figures 2.26.1-2.26.5 named Enmore Road, Dulwich Hill, Marrickville North, Marrickville Town Centre, Leichhardt (south of Parramatta Road only). Suburbs measured 2026-10-21 from NSW address register points within 150 m of each figure'",
-   "fate": "not_regulatory",
-   "reason": "data-provenance metadata (tolerances / figure numbers), not a planning figure"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): data-provenance metadata (tolerances / figure numbers), not a planning figure",
+   "count": 8
   },
   {
    "file": "services/CLAUDE.md",
    "text": "> ⚠ **The Sentinel-2 adjacent-lot change check was REMOVED 2026-08-07 (§4h).** It returned a reading in **0 of 538** attempts, and even working it cannot answer the question: at 20 m SWIR a suburban lot is ~1 pixel, so it measured ~30–40 properties at once while the prose named one neighbour. `services/sentinel2.py` is deleted. Shadow queries no satellite imagery at all — do not re-add it, and do not describe shadow as a satellite product.",
    "fate": "open",
-   "reason": "inventory 2026-10-22: not_regulatory (engine) developer doc"
+   "reason": "inventory 2026-10-22: not_regulatory (engine) developer doc",
+   "count": 1
   },
   {
    "file": "services/authoritative_setback_calculator.py",
    "text": "'0.6:1'",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (engine) typed R2 Marrickville setback min/max/typical + height factors + default height/FSR; no importer found (dead?)"
+   "reason": "inventory 2026-10-22: from_db (engine) typed R2 Marrickville setback min/max/typical + height factors + default height/FSR; no importer found (dead?)",
+   "count": 2
   },
   {
    "file": "services/cdc_lot_requirements.py",
    "text": "WHOLE_LOT_FRACTION = 0.995",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "services/cdc_lot_requirements.py",
    "text": "\"lot mapped as Class {shown} over {frac:.1%} of its area\"",
-   "fate": "not_regulatory",
-   "reason": "non-planning engineering/IO constant, formatting, calculation code, or test spike"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "count": 1
   },
   {
    "file": "services/cdc_lot_requirements.py",
    "text": "'{frac:.1%}'",
-   "fate": "not_regulatory",
-   "reason": "non-planning engineering/IO constant, formatting, calculation code, or test spike"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "count": 1
   },
   {
    "file": "services/compound_constraints.py",
    "text": "\"Lot area ({lot_area_m2:.0f}m\\u00b2) is within 10% of zone minimum \"",
-   "fate": "not_regulatory",
-   "reason": "10% marginal-lot heuristic band (engineering heuristic; label as such)"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): 10% marginal-lot heuristic band (engineering heuristic; label as such)",
+   "count": 1
   },
   {
    "file": "services/compound_constraints.py",
    "text": "\"Fix C: approved/assessed DA within 100m with multi-storey description.\"",
-   "fate": "not_regulatory",
-   "reason": "non-planning engineering/IO constant, formatting, calculation code, or test spike"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "count": 1
   },
   {
    "file": "services/constraint_arithmetic.py",
    "text": "STOREY_HEIGHT_M = 3.0",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (engine) typed assumptions (3.0 m/storey, 30 m2/parking space, 2.5:1 lot aspect, half-storey shadow loss) feed user-facing GFA/yield; source or label as assumptions"
+   "reason": "inventory 2026-10-22: from_db (engine) typed assumptions (3.0 m/storey, 30 m2/parking space, 2.5:1 lot aspect, half-storey shadow loss) feed user-facing GFA/yield; source or label as assumptions",
+   "count": 1
   },
   {
    "file": "services/constraint_arithmetic.py",
    "text": "_MIN_PLAUSIBLE_BUILDING_HEIGHT_M = 3.0",
-   "fate": "not_regulatory",
-   "reason": "non-planning engineering/IO constant, formatting, calculation code, or test spike"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "count": 1
   },
   {
    "file": "services/constraint_arithmetic.py",
    "text": "shadow_storey_reduction = 1",
-   "fate": "open"
+   "fate": "open",
+   "count": 1
   },
   {
    "file": "services/db_config.py",
    "text": "_ZONE_COVERAGE_CACHE_TTL_SECONDS = 300",
-   "fate": "not_regulatory",
-   "reason": "non-planning engineering/IO constant, formatting, calculation code, or test spike"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "count": 1
   },
   {
    "file": "services/exempt_screening.py",
    "text": "SAMGEO_HEIGHT_UNCERTAINTY = 1.0",
-   "fate": "not_regulatory",
-   "reason": "non-planning engineering/IO constant, formatting, calculation code, or test spike"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "count": 1
   },
   {
    "file": "services/extracted_data_integrity.py",
    "text": "\"24 spaces per 25 dwellings\"",
-   "fate": "not_regulatory",
-   "reason": "docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures",
+   "count": 1
   },
   {
    "file": "services/extracted_data_integrity.py",
    "text": "'3 hours of sunlight'",
-   "fate": "not_regulatory",
-   "reason": "docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures",
+   "count": 1
   },
   {
    "file": "services/extracted_data_integrity.py",
    "text": "\"1 space per 4 dwellings\"",
-   "fate": "not_regulatory",
-   "reason": "docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures",
+   "count": 1
   },
   {
    "file": "services/extracted_data_integrity.py",
    "text": "\"Minimum 35% landscaped area\"",
-   "fate": "not_regulatory",
-   "reason": "docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures",
+   "count": 1
   },
   {
    "file": "services/extracted_data_integrity.py",
    "text": "'1 space per 4 dwellings'",
-   "fate": "not_regulatory",
-   "reason": "docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures",
+   "count": 1
   },
   {
    "file": "services/full_clause_langextract_config.py",
    "text": "\"4.1.5.1 Side setbacks for dwelling houses in R2 zones shall be a minimum of 0.9 metres, or 0.5 times the building height measured from natural ground level, whichever is the greater. For buildings over 7.5 metres in height, an additional 0.5 metres shall be added for every metre or part thereof above 7.5 metres. Side setbacks may be reduced to nil where existing development on adjoining properties has nil or minimal setbacks, subject to council approval and demonstration of no unreasonable impacts on amenity.\"",
-   "fate": "not_regulatory",
-   "reason": "few-shot extraction example (not served to users); keep clearly synthetic"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): few-shot extraction example (not served to users); keep clearly synthetic",
+   "count": 1
   },
   {
    "file": "services/full_clause_langextract_config.py",
    "text": "\"Side setbacks for dwelling houses in R2 zones shall be a minimum of 0.9 metres, or 0.5 times the building height measured from natural ground level, whichever is the greater. For buildings over 7.5 metres in height, an additional 0.5 metres shall be added for every metre or part thereof above 7.5 metres. Side setbacks may be reduced to nil where existing development on adjoining properties has nil or minimal setbacks, subject to council approval and demonstration of no unreasonable impacts on amenity.\"",
-   "fate": "not_regulatory",
-   "reason": "few-shot extraction example (not served to users); keep clearly synthetic"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): few-shot extraction example (not served to users); keep clearly synthetic",
+   "count": 1
   },
   {
    "file": "services/full_clause_langextract_config.py",
    "text": "\"Signage on buildings exceeding 15 metres in height shall be subject to additional design controls to ensure integration with the built form and minimise visual impact on the streetscape. Such signage shall not exceed 2 metres in height above the building roofline, shall use materials and colours compatible with the building facade, and shall not incorporate flashing, moving, or animated elements. All signage applications for buildings over 15 metres require development consent and must demonstrate compliance with relevant State Environmental Planning Policies.\"",
-   "fate": "not_regulatory",
-   "reason": "few-shot extraction example (not served to users); keep clearly synthetic"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): few-shot extraction example (not served to users); keep clearly synthetic",
+   "count": 2
   },
   {
    "file": "services/granny_flat.py",
    "text": "\"needed for a 60 m² secondary dwelling plus SEPP Housing 2021 setbacks \"",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) 120 m2 residual-area gate + warning text restate SEPP Housing 60 m2 / 3 m / 0.9 m / 3 m instead of DB values"
+   "reason": "inventory 2026-10-22: from_db (api) 120 m2 residual-area gate + warning text restate SEPP Housing 60 m2 / 3 m / 0.9 m / 3 m instead of DB values",
+   "count": 1
   },
   {
    "file": "services/granny_flat.py",
    "text": "\"(3 m rear, 0.9 m sides, 3 m from dwelling). \"",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) 120 m2 residual-area gate + warning text restate SEPP Housing 60 m2 / 3 m / 0.9 m / 3 m instead of DB values"
+   "reason": "inventory 2026-10-22: from_db (api) 120 m2 residual-area gate + warning text restate SEPP Housing 60 m2 / 3 m / 0.9 m / 3 m instead of DB values",
+   "count": 1
   },
   {
    "file": "services/pre_da_history.py",
    "text": "\"8-point ring at ~40m from lot centroid (reduced from 16 to cut memory).\"",
-   "fate": "not_regulatory",
-   "reason": "non-planning engineering/IO constant, formatting, calculation code, or test spike"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "count": 1
   },
   {
    "file": "services/setback_calculator.py",
    "text": "height_adjustment=0.0",
    "fate": "open",
-   "reason": "inventory 2026-10-22: not_regulatory (engine) calc code"
+   "reason": "inventory 2026-10-22: not_regulatory (engine) calc code",
+   "count": 1
   },
   {
    "file": "services/setback_calculator.py",
    "text": "estimated_lot_width = 15.0",
-   "fate": "open"
+   "fate": "open",
+   "count": 2
   },
   {
    "file": "services/setback_calculator.py",
    "text": "estimated_lot_depth = 30.0",
-   "fate": "open"
+   "fate": "open",
+   "count": 2
   },
   {
    "file": "services/shadow_detector.py",
    "text": "DEFAULT_HEIGHT_M = 9.0",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (engine) 9.0 m default height when LEP lookup fails + 40% noon-shadow proxy for ADG 2-hour test (reverse_shadow.py uses 50%: inconsistent)"
+   "reason": "inventory 2026-10-22: from_db (engine) 9.0 m default height when LEP lookup fails + 40% noon-shadow proxy for ADG 2-hour test (reverse_shadow.py uses 50%: inconsistent)",
+   "count": 1
   },
   {
    "file": "services/shadow_model.py",
    "text": "\"0% of the lot is in shadow\"",
-   "fate": "not_regulatory",
-   "reason": "non-planning engineering/IO constant, formatting, calculation code, or test spike"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "count": 1
   },
   {
    "file": "services/street_frontage.py",
    "text": "FRONTAGE_GAP_M = 3.0",
-   "fate": "not_regulatory",
-   "reason": "non-planning engineering/IO constant, formatting, calculation code, or test spike"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "count": 1
   },
   {
    "file": "services/terrain_analysis.py",
    "text": "\"site gradient, elevation and ruggedness are read from a ~90m window over the lot \"",
-   "fate": "not_regulatory",
-   "reason": "non-planning engineering/IO constant, formatting, calculation code, or test spike"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "count": 1
   },
   {
    "file": "services/terrain_analysis.py",
    "text": "\"summarised over a ~90m window centred on the property (the lot footprint) \"",
-   "fate": "not_regulatory",
-   "reason": "non-planning engineering/IO constant, formatting, calculation code, or test spike"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "count": 1
   },
   {
    "file": "services/terrain_analysis.py",
    "text": "\"over a ~90m window centred on the property (the lot footprint), not the wider \"",
-   "fate": "not_regulatory",
-   "reason": "non-planning engineering/IO constant, formatting, calculation code, or test spike"
+   "fate": "open",
+   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "count": 1
   },
   {
    "file": "services/terrain_analysis.py",
    "text": "\"(minimum 2 hours direct sun to 70% of apartments between 9am\\u20133pm at mid-winter) \"",
    "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) ADG solar-access rule (2 hrs, 70% of apartments) typed in narrative; no clause cited (ADG 4A-1 if kept)"
+   "reason": "inventory 2026-10-22: from_db (api) ADG solar-access rule (2 hrs, 70% of apartments) typed in narrative; no clause cited (ADG 4A-1 if kept)",
+   "count": 1
   }
  ]
 }

@@ -115,3 +115,18 @@ def test_the_repo_ledger_matches_the_code():
         assert lint.judge(found, lint.load_ledger()) == [] and bad == []
     finally:
         os.chdir(cwd)
+
+
+def test_a_second_copy_of_a_listed_figure_fails():
+    e = {"file": "a.ts", "text": "'Minimum lot size is 450 m²'", "fate": "open", "count": 1}
+    assert any("MORE COPIES" in p for p in lint.judge({"a.ts": [e["text"], e["text"]]}, _ledger([e])))
+
+
+def test_markdown_bullets_and_headings_are_scanned():
+    assert lint.hits_in_text("* Minimum lot size is 450 m² for a granny flat", ".md")
+    assert lint.hits_in_text("# Maximum height: 9 m under the LEP", ".md")
+
+
+def test_a_ledger_without_max_open_fails():
+    e = {"file": "a.ts", "text": "'4 m setback'", "fate": "open"}
+    assert any("NO max_open" in p for p in lint.judge({"a.ts": [e["text"]]}, {"entries": [e]}))
