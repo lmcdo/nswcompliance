@@ -1,13 +1,14 @@
 {
   "tier": "standard",
   "justification": "Standard: changes what /api/property returns when an outside source or the database fails (null plus a named not-checked list instead of a filled-in value), and adds one time limit for the whole lookup. Not Critical: no database writes, no schema change; every answered source gives the same reply as before (recorded-reply test).",
-  "commit_hash": "d720e6d1",
+  "commit_hash": "60b5c5e7",
   "files": [
     ".github/workflows/gates.yml",
     ".qa/reports/fix__property-no-fillins.json",
     "frontend-nextjs/__tests__/api/property-lookup-no-fillins.test.ts",
     "frontend-nextjs/__tests__/fixtures/property-lookup/8-hollands-ave-marrickville.json",
     "frontend-nextjs/__tests__/lib/hazard-unknown-cross-review.test.ts",
+    "frontend-nextjs/__tests__/lib/see/intake.test.ts",
     "frontend-nextjs/__tests__/unknown-never-no.test.ts",
     "frontend-nextjs/__tests__/unknown-never-pass.test.tsx",
     "frontend-nextjs/app/api/assessment/full/route.ts",
@@ -27,6 +28,7 @@
     "frontend-nextjs/components/assessment/core/PropertyCard.tsx",
     "frontend-nextjs/components/compliance/CDCPathway.tsx",
     "frontend-nextjs/components/compliance/CDCScreener.tsx",
+    "frontend-nextjs/components/compliance/DAIntakeModal.tsx",
     "frontend-nextjs/components/compliance/ExemptComplyingProvisions.tsx",
     "frontend-nextjs/components/compliance/HeritageDetails.tsx",
     "frontend-nextjs/components/compliance/HeritageProvisionsCard.tsx",
