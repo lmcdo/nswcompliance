@@ -1,0 +1,35 @@
+{
+ "tier": "minor",
+ "justification": "Schedule constants and their wording only: cron string, one SQL interval, two site sentences, comments, ledger text. No function bodies changed. The window is pinned by tests that fail on any other value (2 mutants killed).",
+ "commit_hash": "54abc444",
+ "files": [
+  "railway.dcp-monitor.toml",
+  "scripts/dq_probe_live.py",
+  "tests/test_one_outcome_alarm.py",
+  "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+  ".claude/dq_checks.json",
+  "scripts/verifyops_coverage.py",
+  "scripts/dcp_watchdog.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_one_outcome_alarm.py",
+  "fails_when": "the toml cron is not '0 2 * * *' or DQ-117's interval is not 3 days",
+  "observed_red": "Mutants: INTERVAL '4 days' -> test fails; cron '0 2 * * 1' -> test fails."
+ },
+ "break_it": [
+  {
+   "scenario": "The Railway dashboard keeps the fortnightly value and overrides the new file",
+   "what_happens": "CI step 'Railway cron matches config-as-code' goes red until the live value is set",
+   "mitigated": true,
+   "how": "live value set with serviceInstanceUpdate after merge, then the CI step re-run",
+   "repro": "python scripts/check_railway_cron_drift.py"
+  }
+ ],
+ "residual_risk": "Live Railway cron must be changed by hand (user go); until then DQ-117 and no_run_2d read red, which is loud.",
+ "post_merge": {
+  "db_reset": "No.",
+  "secrets": "None.",
+  "other_repo": "No.",
+  "manual_verify": "Set dcp-monitor live cronSchedule to '0 2 * * *'; confirm the drift check passes and two consecutive daily run rows exist with finished_at and >= 90% CHECKED."
+ }
+}

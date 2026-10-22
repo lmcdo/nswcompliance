@@ -470,22 +470,15 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # (900, 1106, 1126, 1143), so only a real sweep moves it; a code edit
         # cannot satisfy this.
         #
-        # ⚠ 17 DAYS, NOT 10, AND THE 10 WAS WRONG. This shipped believing the
-        # cron was "weekly Mon 02:00 UTC", which the opening prompt asserted.
-        # railway.dcp-monitor.toml in this repo says otherwise:
+        # 3 DAYS (daily cron, 2026-10-23). History: shipped at 10 days believing the cron was
+        # "weekly Mon 02:00 UTC" (the opening prompt's claim, wrong); corrected to 17 for the
+        # fortnightly 1st-and-15th cron the toml actually held; now daily:
         #
-        #     cronSchedule = "0 2 1,15 * *"   # fortnightly: 1st and 15th, 02:00 UTC
+        #     cronSchedule = "0 2 * * *"   # daily, 02:00 UTC
         #
-        # The gap between the 15th and the 1st is 14-17 days depending on the
-        # month, so a 10-day window goes RED ON A HEALTHY SCHEDULE, every single
-        # cycle. A check that is always red is exactly as useless as one that is
-        # always green, and it is worse than useless here because this ledger's
-        # whole purpose is that a red row means something.
-        #
-        # 17 days = the longest healthy gap (15 Jan -> 1 Feb is 17 days) with no
-        # slack beyond it. A run missed entirely therefore shows up within about
-        # a fortnight, which for a corpus that amends ~5 times a year across 28
-        # councils is proportionate.
+        # A daily sweep moves the median every day; 3 days tolerates one missed run plus the
+        # run's own duration, and two missed runs in a row go red. The strict 2-day check is
+        # verifyops_coverage.py's no_run_2d; this row is the slower ledger view.
         #
         # ⚠ The toml is the DECLARED schedule, not proof of the live one:
         # scripts/check_railway_cron_drift.py exists because on 2026-09-10 six of
@@ -541,7 +534,7 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # byte-identical. That is DQ-118's question, not this one's.
         "SELECT CASE WHEN COALESCE(percentile_disc(0.5) WITHIN GROUP ("
         "                 ORDER BY COALESCE(url_last_checked, '-infinity'::timestamptz)), "
-        "               '-infinity'::timestamptz) < NOW() - INTERVAL '17 days' "
+        "               '-infinity'::timestamptz) < NOW() - INTERVAL '3 days' "
         "            THEN 1 ELSE 0 END "
         "FROM dcp_chapter_registry "
         "WHERE is_active AND NOT COALESCE(is_inert, false) "
