@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Critical: the CDC checker shows pass or fail on Housing Code standards to customers; it now reads stored, verified law instead of typed figures.",
-  "commit_hash": "1d95c85d",
+  "commit_hash": "669bbd21",
   "files": [
     ".claude/regulatory_figure_ledger.json",
     "frontend-nextjs/__tests__/fixtures/cdc-housing-code-standards.json",
