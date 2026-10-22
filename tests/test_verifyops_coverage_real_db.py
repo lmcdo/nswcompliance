@@ -153,3 +153,28 @@ def test_no_list_page_query_runs_and_names_councils_only(conn):
     for k in cov.measure(conn):
         if k.endswith("|no_list_page"):
             assert k.split("|")[1] == "*"
+
+
+def test_a_full_run_killed_mid_way_is_red_until_it_is_old_news(conn):
+    """Run 1 (2026-10-22 20:23 UTC, daily, sha 732ef41b) was killed when the next image deployed
+    at 20:30 and its finished_at stayed NULL. That row shape is the known-wrong case."""
+    import verifyops_coverage as cov
+    cur = conn.cursor()
+    cur.execute("INSERT INTO dcp_monitor_runs (mode, started_at) VALUES ('daily', NOW() - INTERVAL '1 hour')")
+    assert "*|*|run_unfinished" not in cov.measure(conn)       # may still be running
+    cur.execute("INSERT INTO dcp_monitor_runs (mode, started_at, git_sha) VALUES "
+                "('daily', NOW() - INTERVAL '13 hours', '732ef41b20da25fcc7b69023ec0c0b4e8878bf7e') RETURNING id")
+    killed = cur.fetchone()[0]
+    reds = cov.measure(conn)
+    assert "*|*|run_unfinished" in reds
+    cur.execute("UPDATE dcp_monitor_runs SET finished_at = NOW() WHERE id = %s", (killed,))
+    assert "*|*|run_unfinished" not in cov.measure(conn)
+    cur.execute("INSERT INTO dcp_monitor_runs (mode, started_at) VALUES ('council:x', NOW() - INTERVAL '9 hours')")
+    assert "*|*|run_unfinished" not in cov.measure(conn)       # one-council runs never count
+
+
+def test_the_latest_full_run_with_no_sha_is_deployed_not_main(conn):
+    import verifyops_coverage as cov
+    cur = conn.cursor()
+    cur.execute("INSERT INTO dcp_monitor_runs (mode, finished_at) VALUES ('force', NOW())")
+    assert "*|*|deployed_not_main" in cov.measure(conn)

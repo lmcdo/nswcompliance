@@ -1,0 +1,90 @@
+{
+ "tier": "standard",
+ "justification": "Alarm logic (two new red keys) and the monitor launcher. No DB writes, no user-facing text.",
+ "commit_hash": "d0d7e89b",
+ "files": [
+  "scripts/run_monitors.py",
+  "scripts/verifyops_coverage.py",
+  "tests/test_verifyops_deploy_check.py",
+  "tests/test_verifyops_coverage_real_db.py",
+  "tests/test_verifyops_daily_check.py"
+ ],
+ "falsifiable_check": {
+  "command": "PYTEST_REAL_DB=1 python -m pytest -o addopts= tests/test_verifyops_deploy_check.py tests/test_verifyops_coverage_real_db.py tests/test_verifyops_daily_check.py",
+  "fails_when": "a killed full run, a NULL/unknown sha, or an image file changed after the deployed sha is not red; or a merge touching no image file is red",
+  "observed_red": "Before the fix the live coverage had no key for run 1 (finished_at NULL since 2026-10-22 20:23 UTC). Real-DB test inserts that row shape -> run_unfinished red; real commits 732ef41b vs 2caecd2e -> deployed_not_main red. Each of 10 mutants made at least one test fail."
+ },
+ "break_it": [
+  {
+   "scenario": "Railway deploys a new image while a cron run is in progress (run 1, 2026-10-22)",
+   "mitigated": true,
+   "how": "run row keeps finished_at NULL; run_unfinished goes red after 6 h",
+   "what_happens": "silent: no red key / no log",
+   "repro": "PYTEST_REAL_DB=1 pytest -o addopts= tests/test_verifyops_coverage_real_db.py -k killed"
+  },
+  {
+   "scenario": "Coverage runs in a shallow clone that lacks the deployed sha",
+   "mitigated": true,
+   "how": "git diff exits 128 -> deployed_not_main red (cannot prove), never green",
+   "what_happens": "silent: no red key / no log",
+   "repro": "pytest tests/test_verifyops_deploy_check.py -k unknown"
+  },
+  {
+   "scenario": "A merge changes only frontend files",
+   "mitigated": true,
+   "how": "Railway skips the deploy; no image file differs; key stays green (real commits 2caecd2e->54abc444)",
+   "what_happens": "silent: no red key / no log",
+   "repro": "pytest tests/test_verifyops_deploy_check.py -k no_image_file"
+  },
+  {
+   "scenario": "A run is killed mid-way by a deploy and leaves no log",
+   "mitigated": true,
+   "how": "stdout now streams unbuffered, so the log shows how far it got",
+   "what_happens": "silent: no red key / no log",
+   "repro": "railway logs -s dcp-monitor -d <removed deployment id>  (before: only Starting/Stopping Container)"
+  }
+ ],
+ "mutation_analysis": "14 hand mutants, 14 killed: the 10 first-round ones, plus 4 after the Sol review (40-hex sha guard, --chown flag skip, multi-source COPY, COPY --from skip). Sol #1/#2 accepted and fixed; #3-#7 rejected (env is always os.environ; a missing Dockerfile already exits 2; streaming stdout is intended). Sol re-run 2026-10-23 (credits restored): Dockerfile itself now compared (mutant killed); real-DB test UPDATE scoped to its own row id.",
+ "residual_risk": "deployed_not_main compares the latest full run, which is up to a day old; a deploy between runs is not seen until the next run records its sha. The Actions checkout must have history for the sha (otherwise red, which is loud not silent).",
+ "post_merge": {
+  "db_reset": "No.",
+  "secrets": "None.",
+  "other_repo": "No.",
+  "manual_verify": "Set DCP_MONITOR_FORCE=1 on dcp-monitor, run once, unset; confirm a force row with finished_at and git_sha = merge commit."
+ },
+ "pre_impl": {
+  "existing_data": "Reuses dcp_monitor_runs.git_sha (written by verifyops_record from RAILWAY_GIT_COMMIT_SHA) and Dockerfile.monitors' own COPY list; no new table, no migration.",
+  "assumption_mismatch": "Spec said compare git_sha with the main merge commit. Measured: Railway SKIPS merges that touch no image file (54abc444), so HEAD comparison would be red after every unrelated merge. Compared the image's files instead.",
+  "new_vs_existing": "Two entries added to the existing QUERIES/measure() in verifyops_coverage; one helper added to run_monitors. No parallel alarm."
+ },
+ "functions": [
+  {
+   "name": "deployed_not_main",
+   "file_line": "scripts/verifyops_coverage.py:142",
+   "input": "deployed sha (may be None), image paths, main ref",
+   "output": "bool: True means the deployed image cannot be proven current (red)",
+   "if_none": "None/empty sha or no paths -> True (red); git exit 128 (unknown sha) -> True"
+  },
+  {
+   "name": "image_paths",
+   "file_line": "scripts/verifyops_coverage.py:129",
+   "input": "the full text of Dockerfile.monitors as a string",
+   "output": "sorted COPY source paths, excluding COPY --from",
+   "if_none": "empty list -> deployed_not_main red"
+  },
+  {
+   "name": "deploy_keys",
+   "file_line": "scripts/verifyops_coverage.py:153",
+   "input": "an open psycopg2 connection to the production database",
+   "output": "a list holding the fleet key '*|*|deployed_not_main', or an empty list",
+   "if_none": "no full run -> [] (no_run_2d covers it)"
+  },
+  {
+   "name": "monitor_cmd",
+   "file_line": "scripts/run_monitors.py:284",
+   "input": "monitor name, base cmd, env",
+   "output": "cmd, with --force only for dcp-monitor when DCP_MONITOR_FORCE is exactly 1",
+   "if_none": "DCP_MONITOR_FORCE unset or any other value returns the command unchanged"
+  }
+ ]
+}

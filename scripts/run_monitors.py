@@ -281,6 +281,14 @@ def ping_healthcheck(url: str, failed: bool = False) -> bool:
     return True
 
 
+def monitor_cmd(monitor_name: str, cmd: list[str], env) -> list[str]:
+    """The command to run. DCP_MONITOR_FORCE=1 adds --force to dcp-monitor only (a one-off full
+    re-download, recorded as mode 'force'); any other value, or any other monitor, is unchanged."""
+    if monitor_name == "dcp-monitor" and (env.get("DCP_MONITOR_FORCE") or "").strip() == "1":
+        return [*cmd, "--force"]
+    return list(cmd)
+
+
 def main() -> int:
     # Diagnostic: log which env vars are set (names only, not values)
     diag_keys = ["MONITOR_NAME", "DATABASE_URL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "HC_PING_URL"]
@@ -320,10 +328,14 @@ def main() -> int:
         )
 
     print(f"[run_monitors] Starting: {monitor_name}")
-    result = subprocess.run(config["cmd"], env=os.environ.copy(), capture_output=True, text=True)
+    cmd = monitor_cmd(monitor_name, config["cmd"], os.environ)
+    # stdout streams (unbuffered) rather than being held until exit: a run killed mid-way -- Railway
+    # removes a running cron container when a new image deploys -- otherwise leaves no log at all
+    # (run 1, 2026-10-22). stderr is still captured for the Telegram tail.
+    child_env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+    sys.stdout.flush()
+    result = subprocess.run(cmd, env=child_env, stdout=None, stderr=subprocess.PIPE, text=True)
     exit_code = result.returncode
-    if result.stdout:
-        print(result.stdout)
     if result.stderr:
         print(result.stderr, file=sys.stderr)
 
