@@ -63,7 +63,7 @@
   },
   {
    "name": "main",
-   "file_line": "scripts/verifyops_coverage.py:119",
+   "file_line": "scripts/verifyops_coverage.py:129",
    "input": "argv flags --update and --allow-raise, plus DATABASE_URL from the environment or an injected connection for tests",
    "output": "exit 0 / 1 (new red key) / 2 (could not look)",
    "if_none": "a missing DATABASE_URL or a missing dcp_monitor table exits 2, which dq_check reports as unverifiable and the workflow step as failed, never 0"
@@ -98,7 +98,7 @@
   },
   {
    "purpose": "the alarm's red keys",
-   "file_line": "scripts/verifyops_coverage.py:46",
+   "file_line": "scripts/verifyops_coverage.py:48",
    "where_clause": "active AND NOT inert chapters; per reason windows 2/8/30/3/33 days"
   }
  ],

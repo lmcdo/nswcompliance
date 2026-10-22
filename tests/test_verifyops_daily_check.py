@@ -365,3 +365,22 @@ def test_every_reason_has_a_query_and_the_windows_match_the_spec():
     assert "INTERVAL '3 days'" in q["new_doc_undecided_3d"]
     assert "INTERVAL '33 days'" in q["update_unpublished_33d"]
     assert "dcp_setback_controls" in q["unwatched"] and "regulatory_provisions" in q["unwatched"]
+
+
+def test_cross_review_fixes_stay_in_the_queries():
+    # An inert-only council is unwatched; a missing change date is old, not never.
+    q = cov.QUERIES
+    assert "NOT COALESCE(r.is_inert, FALSE)" in q["unwatched"]
+    assert "COALESCE(r.url_last_changed, '-infinity'::timestamptz)" in q["update_unpublished_33d"]
+    assert "mode IN ('daily', 'force')" in q["no_run_2d"]
+
+
+def test_the_download_date_is_saved_only_with_a_good_outcome():
+    # Cross-review 2026-10-22: saving it straight after the download meant a later error still
+    # committed it, and an untagged changed file was then skipped for up to 7 days.
+    src = (ROOT / "scripts" / "r2_monitor.py").read_text(encoding="utf-8")
+    between = src[src.index("content, resp_headers = download_pdf(url)"):src.index("if new_hash == stored_hash:")]
+    assert "url_last_downloaded" not in between
+    assert src.count("url_last_downloaded=%s") == 3            # unchanged-hash, re-export, changed
+    tail = src[src.index("except WAFBlockError as exc:"):src.index("adaptive_delay(url)  # per-domain")]
+    assert "url_last_downloaded" not in tail

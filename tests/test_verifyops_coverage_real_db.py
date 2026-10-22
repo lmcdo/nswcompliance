@@ -71,7 +71,7 @@ def test_a_rate_limited_last_result_is_red_and_a_check_clears_it(conn):
     import verifyops_coverage as cov
     cur = conn.cursor()
     cid, council, key = _a_checkable_chapter(cur)
-    cur.execute("INSERT INTO dcp_monitor_runs (mode, finished_at) VALUES ('test', NOW()) RETURNING id")
+    cur.execute("INSERT INTO dcp_monitor_runs (mode, finished_at) VALUES ('daily', NOW()) RETURNING id")
     run = cur.fetchone()[0]
     cur.execute("INSERT INTO dcp_monitor_chapter_results (run_id, chapter_id, council, chapter_key, outcome)"
                 " VALUES (%s, %s, %s, %s, 'rate_limited')", (run, cid, council, key))
@@ -109,3 +109,16 @@ def test_known_gaps_measured_on_2026_10_22_are_red(conn):
     reds = cov.measure(conn)
     assert "inner_west|*|unwatched" in reds
     assert "nsw_statewide|*|unwatched" in reds
+
+
+def test_a_one_council_run_does_not_count_as_the_fleet_run(conn):
+    # Cross-review 2026-10-22: an operator's `--council bayside` run kept no_run_2d green
+    # while every other council missed the scheduled run.
+    import verifyops_coverage as cov
+    cur = conn.cursor()
+    cur.execute("INSERT INTO dcp_monitor_runs (mode, finished_at) VALUES ('council:bayside', NOW())")
+    assert "*|*|no_run_2d" in cov.measure(conn)
+    cur.execute("INSERT INTO dcp_monitor_runs (mode) VALUES ('daily')")          # still running
+    assert "*|*|no_run_2d" in cov.measure(conn)
+    cur.execute("INSERT INTO dcp_monitor_runs (mode, finished_at) VALUES ('daily', NOW())")
+    assert "*|*|no_run_2d" not in cov.measure(conn)

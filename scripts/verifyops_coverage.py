@@ -5,7 +5,7 @@ SHRINK (v6 resolution 5). A new key is red even when an old key cleared the same
 would let the two cancel out.
 
 Reasons (each a stored query below; spec ~/.claude/plans/ce-verifyops-v5-SPEC-2026-10-22.md, v6):
-  unwatched               a council serving rules (provisions OR setbacks) has no active chapter
+  unwatched               a council serving rules (provisions OR setbacks) has no active, non-inert chapter
   no_url                  an active chapter has no link of its own, so its file is never checked
   list_not_read_2d        a council with a stored list page had no list read OK in 2 days
   not_checked_8d          an active chapter with a link was not content-checked in 8 days
@@ -13,7 +13,9 @@ Reasons (each a stored query below; spec ~/.claude/plans/ce-verifyops-v5-SPEC-20
   etag_lied_30d           a spot re-download found new bytes behind an unchanged tag
   new_doc_undecided_3d    a new council document has waited > N1 = 3 days for a decision
   update_unpublished_33d  a changed chapter is not re-extracted N1 + N2 = 33 days after the change
-  no_run_2d               no monitor run finished in 2 days (key council='*')
+                          (no recorded change date counts as old)
+  no_run_2d               no FULL monitor run (mode daily/force) finished in 2 days; a one-council
+                          run does not count (key council='*')
 
 prior-art-checked: DQ-117 (dq_probe_live.py) checks the fleet MEDIAN url_last_checked, so one
 chapter can go unchecked for ever under a green median; DQ-70 checks extraction hashes. Neither is
@@ -50,7 +52,8 @@ QUERIES: dict[str, str] = {
              WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
             UNION
             SELECT DISTINCT lga FROM dcp_setback_controls WHERE is_current AND lga IS NOT NULL) s
-        WHERE NOT EXISTS (SELECT 1 FROM dcp_chapter_registry r WHERE r.council = s.c AND r.is_active)""",
+        WHERE NOT EXISTS (SELECT 1 FROM dcp_chapter_registry r
+                          WHERE r.council = s.c AND r.is_active AND NOT COALESCE(r.is_inert, FALSE))""",
     "no_url": f"""
         SELECT r.council, r.chapter_key FROM dcp_chapter_registry r
         WHERE {_ACTIVE} AND NOT ({_HAS_URL})""",
@@ -82,10 +85,12 @@ QUERIES: dict[str, str] = {
     "update_unpublished_33d": f"""
         SELECT r.council, r.chapter_key FROM dcp_chapter_registry r
         WHERE {_ACTIVE} AND r.needs_extraction
-          AND r.url_last_changed < NOW() - INTERVAL '{N1_DAYS + N2_DAYS} days'""",
+          AND COALESCE(r.url_last_changed, '-infinity'::timestamptz)
+              < NOW() - INTERVAL '{N1_DAYS + N2_DAYS} days'""",
     "no_run_2d": """
         SELECT '*', '*' WHERE NOT EXISTS (SELECT 1 FROM dcp_monitor_runs
-                                          WHERE finished_at > NOW() - INTERVAL '2 days')""",
+                                          WHERE mode IN ('daily', 'force')
+                                            AND finished_at > NOW() - INTERVAL '2 days')""",
 }
 
 

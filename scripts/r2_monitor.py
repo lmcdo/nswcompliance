@@ -1157,10 +1157,6 @@ def run_monitor(
                 print(f"    Downloading for hash check ({fetch_reason})...")
                 content, resp_headers = download_pdf(url)
                 new_hash = sha256(content)
-                # Every full download is recorded, including the unchanged ones; the weekly
-                # rule for untagged files reads this. Same transaction as the outcome below.
-                cur.execute("UPDATE dcp_chapter_registry SET url_last_downloaded=%s WHERE id=%s",
-                            (now, chapter_id))
                 # Store the HEAD Content-Length (not len(content)) so future HEAD
                 # fast-path comparisons use the same value the server reports.
                 # Servers may gzip responses, making len(content) != Content-Length.
@@ -1175,10 +1171,11 @@ def run_monitor(
                         """
                         UPDATE dcp_chapter_registry
                         SET url_last_checked=%s, url_content_length=%s,
-                            url_etag=%s, url_last_modified=%s, check_failures=0
+                            url_etag=%s, url_last_modified=%s, check_failures=0,
+                            url_last_downloaded=%s
                         WHERE id=%s
                         """,
-                        (now, new_len, new_etag, new_lm, chapter_id),
+                        (now, new_len, new_etag, new_lm, now, chapter_id),
                     )
                     # Mark linked control rows as verified current
                     cur.execute(
@@ -1212,6 +1209,7 @@ def run_monitor(
                                 UPDATE dcp_chapter_registry
                                 SET content_hash=%s, url_last_checked=%s, url_content_length=%s,
                                     url_etag=%s, url_last_modified=%s, check_failures=0,
+                                    url_last_downloaded=%s,
                                     -- Advance the extraction hash TOO, or this
                                     -- optimisation defeats itself downstream.
                                     --
@@ -1238,7 +1236,7 @@ def run_monitor(
                                              THEN NULL ELSE %s END
                                 WHERE id=%s
                                 """,
-                                (new_hash, now, new_len, new_etag, new_lm,
+                                (new_hash, now, new_len, new_etag, new_lm, now,
                                  new_hash, chapter_id),
                             )
                             if not dry_run:
@@ -1281,7 +1279,7 @@ def run_monitor(
                             r2_public_pdf_url=%s,
                             content_hash=%s, url_content_length=%s,
                             url_etag=%s, url_last_modified=%s,
-                            url_last_checked=%s, url_last_changed=%s,
+                            url_last_checked=%s, url_last_changed=%s, url_last_downloaded=%s,
                             needs_extraction=%s, check_failures=0
                         WHERE id=%s
                         """,
@@ -1290,7 +1288,7 @@ def run_monitor(
                             new_public_url,
                             new_hash, new_len,
                             new_etag, new_lm,
-                            now, now,
+                            now, now, now,
                             not is_spatial and not is_inert,
                             chapter_id,
                         ),
