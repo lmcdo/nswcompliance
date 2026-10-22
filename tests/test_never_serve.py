@@ -148,7 +148,7 @@ def test_a_missing_list_raises_not_reads_empty(monkeypatch, tmp_path):
 
 @pytest.mark.parametrize("path, needle", [
     ("enrichment/pipeline.py", "if prov_id in never:"),
-    ("scripts/dcp_extract_changed.py", "CASE WHEN id = ANY(%s) THEN v2_is_actionable ELSE NULL END"),
+    ("scripts/dcp_extract_changed.py", "CASE WHEN id = ANY(%s) THEN FALSE ELSE NULL END"),
     ("scripts/fixes/rerun_actionable_classifier.py", "id not in _never"),
     ("scripts/sync_v2_to_supabase.py", "if row['id'] in never:"),
 ])

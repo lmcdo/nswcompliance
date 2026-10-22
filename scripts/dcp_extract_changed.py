@@ -5219,7 +5219,7 @@ def extract_chapter(
                             SET provision_text   = %s,
                                 pdf_page         = %s,
                                 -- a reviewed never-serve rule stays switched off (data/chapter_scope/never_serve.json)
-                                v2_is_actionable = CASE WHEN id = ANY(%s) THEN v2_is_actionable ELSE NULL END
+                                v2_is_actionable = CASE WHEN id = ANY(%s) THEN FALSE ELSE NULL END
                             WHERE source_council    = %s
                               AND source_chapter_key = %s
                               AND ref_number         = %s
