@@ -411,7 +411,7 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
     // "too small for CDC" blocker and rendered "Lot size 0m² — meets 200m²
     // minimum" as a pass on a check that never ran. A 0 area is not a measurement either.
     const rawLotArea = propertyData?.lotDimensions?.area;
-    const lotArea = typeof rawLotArea === 'number' && rawLotArea > 0 ? rawLotArea : null;
+    const lotArea = typeof rawLotArea === 'number' && Number.isFinite(rawLotArea) && rawLotArea > 0 ? rawLotArea : null;
     // null = the Heritage Map did not answer: never treated as "not heritage".
     const heritageFact = heritageAnswer(propertyData?.heritage);
     const isHeritage = heritageFact === true;
