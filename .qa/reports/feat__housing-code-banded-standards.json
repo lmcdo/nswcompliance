@@ -1,0 +1,68 @@
+{
+  "tier": "standard",
+  "justification": "Standard: changes a production unique index so banded Housing Code standards can be stored; no rows are changed by the migration itself.",
+  "commit_hash": "470218ac",
+  "files": [
+    "migrations/117_cdc_standards_one_active_per_band_and_clause.sql"
+  ],
+  "pre_impl": {
+    "existing_data": "cdc_eligibility_standards held 4 active housing_code rows (eligible_zones, min_lot_size, acid_sulfate_max_class, min_lot_width), none with a band.",
+    "assumption_mismatch": "Migration 058 assumed one value per standard type; the Housing Code has 75 values over 23 types, banded by lot area or width and split by clause.",
+    "new_vs_existing": "Replaces the existing index cdc_standards_one_active with a wider one of the same name; no new table or column."
+  },
+  "falsifiable_check": {
+    "command": "python -c \"import os,psycopg2;from dotenv import load_dotenv;load_dotenv('.env');c=psycopg2.connect(os.environ['DATABASE_URL']).cursor();c.execute(\\\"select count(*) from cdc_eligibility_standards where code_name='housing_code' and is_active\\\");print(c.fetchone()[0])\"",
+    "fails_when": "The count is not 79, meaning the banded rows were not stored or the old rows were lost.",
+    "observed_red": "With the 058 index the load failed: duplicate key (housing_code, max_height_m). After 117 the load inserted 75 and the count is 79."
+  },
+  "functions": [
+    {
+      "name": "cdc_standards_one_active (unique index)",
+      "file_line": "migrations/117_cdc_standards_one_active_per_band_and_clause.sql:21",
+      "input": "an insert of an active Housing Code standard with its band and clause",
+      "output": "accepted when no active row has the same type, band and clause",
+      "if_none": "a row with no band and no clause is compared as an empty band and empty clause, as before"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "sql": "CREATE UNIQUE INDEX cdc_standards_one_active ON cdc_eligibility_standards (code_name, standard_type, COALESCE(conditionality,''), COALESCE(ref_number,'')) WHERE is_active",
+      "table": "cdc_eligibility_standards",
+      "filters": "is_active only",
+      "if_none": "an index with no rows is valid; it only constrains future inserts",
+      "purpose": "allow one active standard per type, band and clause instead of one per type",
+      "file_line": "migrations/117_cdc_standards_one_active_per_band_and_clause.sql:21",
+      "where_clause": "WHERE is_active, so inactive history rows are never constrained"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Two active rows for the same type, band and clause are inserted.",
+      "what_happens": "The second must be refused.",
+      "mitigated": true,
+      "how": "the unique index still covers type, band and clause",
+      "repro": "insert a duplicate of any loaded row"
+    },
+    {
+      "scenario": "An existing reader expects one row per standard type.",
+      "what_happens": "It could read the wrong band.",
+      "mitigated": true,
+      "how": "the 75 new rows use 23 types that do not overlap the 4 types existing readers ask for",
+      "repro": "grep cdc_eligibility_standards services scripts frontend-nextjs/app"
+    },
+    {
+      "scenario": "The index must be rolled back.",
+      "what_happens": "The old index cannot be rebuilt while banded rows are active.",
+      "mitigated": true,
+      "how": "rollback steps in the file header; deactivate the 75 rows first",
+      "repro": "see migration header"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Already applied to production 2026-10-23; count of active housing_code rows is 79."
+  }
+}
