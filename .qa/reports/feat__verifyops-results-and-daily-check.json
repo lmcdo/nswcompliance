@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Changes the production DCP change monitor: which files are downloaded each run, what is recorded, and what the daily alarm calls red. A wrong cadence decision silently skips a changed file; a wrong alarm query stays green over an unchecked chapter. Adds a migration (3 tables, 1 column).",
- "commit_hash": "cdb9b48b",
+ "commit_hash": "4f08929a",
  "files": [
   "migrations/116_dcp_monitor_results.sql",
   "scripts/verifyops_record.py",
