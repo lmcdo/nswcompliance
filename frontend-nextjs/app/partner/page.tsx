@@ -31,13 +31,6 @@ const TOOLS = [
     color: 'amber',
   },
   {
-    name: 'Shadow Detector',
-    slug: 'shadow',
-    description: 'Shadow path analysis at 9am, noon, and 3pm on the winter solstice.',
-    audience: 'Town planners, building certifiers, objectors',
-    color: 'slate',
-  },
-  {
     name: 'Threat Radar',
     slug: 'threat-radar',
     description: 'Active DAs and CDCs lodged within 500m in the last 90 days.',

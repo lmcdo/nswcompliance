@@ -34,12 +34,6 @@ const TOOLS = [
     description: 'Active DAs and CDCs lodged within 500m in the last 90 days.',
     audience: 'Property managers, developers',
   },
-  {
-    name: 'Shadow Detector',
-    slug: 'shadow',
-    description: 'Shadow path analysis at 9am, noon, and 3pm on the winter solstice.',
-    audience: 'Town planners, building certifiers',
-  },
 ];
 
 export default function BuildersPage() {

@@ -5,7 +5,6 @@ export default function NotFound() {
     { emoji: '🏡', label: 'Granny Flat', href: '/granny-flat', color: 'border-teal-800 hover:border-teal-600' },
     { emoji: '🌊', label: 'Flood Screening',  href: '/reports/flood',        color: 'border-blue-800 hover:border-blue-600' },
     { emoji: '☀️', label: 'Solar Yield', href: '/reports/solar-yield',  color: 'border-amber-800 hover:border-amber-600' },
-    { emoji: '🌑', label: 'Shadow',      href: '/reports/shadow',       color: 'border-slate-700 hover:border-slate-500' },
     { emoji: '📡', label: 'Threat Radar',href: '/reports/threat-radar', color: 'border-violet-800 hover:border-violet-600' },
   ];
 

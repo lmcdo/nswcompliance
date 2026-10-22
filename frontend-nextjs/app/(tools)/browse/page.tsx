@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas';
 import { FLOOD_LGA_SLUG_MAP } from '@/lib/lga-data/flood-lgas';
 import { SOLAR_LGA_SLUG_MAP } from '@/lib/lga-data/solar-lgas';
-import { SHADOW_LGA_SLUG_MAP } from '@/lib/lga-data/shadow-lgas';
 import { THREAT_RADAR_LGA_SLUG_MAP } from '@/lib/lga-data/threat-radar-lgas';
 import { BUSHFIRE_LGA_SLUG_MAP } from '@/lib/lga-data/bushfire-lgas';
 import { PRE_DA_HISTORY_LGA_SLUG_MAP } from '@/lib/lga-data/pre-da-history-lgas';
@@ -11,7 +10,7 @@ import { PRE_DA_HISTORY_LGA_SLUG_MAP } from '@/lib/lga-data/pre-da-history-lgas'
 export const metadata: Metadata = {
   title: 'Browse NSW Planning Tools by Council Area — PlotDetect',
   description:
-    'Find granny flat eligibility, flood risk, solar yield, shadow analysis, DA monitoring, bushfire screening, and site history tools for every NSW council area.',
+    'Find granny flat eligibility, flood risk, solar yield, DA monitoring, bushfire screening, and site history tools for every NSW council area.',
 };
 
 const TOOLS = [
@@ -19,7 +18,6 @@ const TOOLS = [
   { label: 'Flood', prefix: '/flood-risk', map: FLOOD_LGA_SLUG_MAP, color: 'bg-blue-600' },
   { label: 'DA Monitor', prefix: '/threat-radar', map: THREAT_RADAR_LGA_SLUG_MAP, color: 'bg-amber-600' },
   { label: 'Solar', prefix: '/solar-potential', map: SOLAR_LGA_SLUG_MAP, color: 'bg-yellow-600' },
-  { label: 'Shadow', prefix: '/shadow', map: SHADOW_LGA_SLUG_MAP, color: 'bg-slate-600' },
   { label: 'Bushfire', prefix: '/bushfire', map: BUSHFIRE_LGA_SLUG_MAP, color: 'bg-red-600' },
   { label: 'Site History', prefix: '/pre-da-history', map: PRE_DA_HISTORY_LGA_SLUG_MAP, color: 'bg-violet-600' },
 ] as const;

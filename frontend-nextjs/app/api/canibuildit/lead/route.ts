@@ -176,7 +176,7 @@ export async function recomputeDualOccEligible(address: string): Promise<boolean
 // commit this branch forked from: 'intelligence-brief' (Site Report product)
 // and 'duplex-result' (this branch's email-my-result feature). Neither
 // supersedes the other.
-const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'shadow', 'threat-radar', 'conveyancing', 'pre-da-history', 'dual-occ-referral', 'lga-request', 'intelligence-brief', 'duplex-result'] as const;
+const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'threat-radar', 'conveyancing', 'pre-da-history', 'dual-occ-referral', 'lga-request', 'intelligence-brief', 'duplex-result'] as const;
 
 const LeadSchema = z.object({
   email: z.string().email('Invalid email address').max(254, 'Email too long'),
@@ -457,17 +457,6 @@ export function buildEmailContent(product: string, address: string, eligible: bo
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
             Your solar yield check for <strong>${safeAddress}</strong> is complete.
             Visit <a href="https://canibuildit.com.au/reports/solar-yield" style="color: #0d9488;">canibuildit.com.au/reports/solar-yield</a>
-            to run it again or check another address.
-          </p>`,
-      };
-    case 'shadow':
-      return {
-        subject: `Your shadow analysis — ${address}`,
-        body: `
-          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your shadow analysis is ready.</p>
-          <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your shadow analysis for <strong>${safeAddress}</strong> is complete.
-            Visit <a href="https://canibuildit.com.au/reports/shadow" style="color: #0d9488;">canibuildit.com.au/reports/shadow</a>
             to run it again or check another address.
           </p>`,
       };

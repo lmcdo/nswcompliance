@@ -53,9 +53,7 @@ export default function SolarPotentialLgaPage(
           Estimate the rooftop solar yield for any {lga.name} address — panel count, annual kWh,
           and payback period based on aerial imagery analysis of your actual roof.
           {lga.heritageCount > 200 && ` ${lga.name} has ${lga.heritageCount.toLocaleString()} heritage items — check your address for heritage constraints.`}
-          {' '}Combine with a{' '}
-          <Link href={`/shadow/${lga.slug}`} className="text-slate-600 hover:underline">shadow check</Link>
-          {' '}to see if neighbouring buildings will reduce your yield, or check{' '}
+          {' '}Also check{' '}
           <Link href={`/granny-flat/${lga.slug}`} className="text-teal-600 hover:underline">granny flat eligibility</Link>
           {' '}if you are planning a secondary dwelling.
         </p>

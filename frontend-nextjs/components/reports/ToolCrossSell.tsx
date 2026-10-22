@@ -17,7 +17,11 @@ interface Card {
   label: string;
 }
 
-const ALL_CARDS: Record<ToolKey, (address: string) => Card> = {
+// 'shadow-detector' stays a valid current tool (the tool component still exists) but has no
+// card: the shadow tool was turned off 2026-10-22 so nothing may link to it.
+type CardKey = Exclude<ToolKey, 'shadow-detector'>;
+
+const ALL_CARDS: Record<CardKey, (address: string) => Card> = {
   'granny-flat': (address) => ({
     title: 'Granny Flat Yield Predictor',
     body: 'Find out if your lot is eligible for a granny flat and estimate the rental income.',
@@ -35,12 +39,6 @@ const ALL_CARDS: Record<ToolKey, (address: string) => Card> = {
     body: 'Monitor nearby DA applications that could block sunlight, views, or property value.',
     href: `/reports/threat-radar?address=${encodeURIComponent(address)}`,
     label: 'Check nearby DAs →',
-  }),
-  'shadow-detector': (address) => ({
-    title: 'Construction Shadow Detector',
-    body: 'Check whether a maximum-height building immediately north of your lot would shadow your property.',
-    href: `/reports/shadow?address=${encodeURIComponent(address)}`,
-    label: 'Check shadow risk →',
   }),
   'solar-yield': (address) => ({
     title: 'Rooftop Solar Yield Underwriter',
@@ -81,16 +79,16 @@ const ALL_CARDS: Record<ToolKey, (address: string) => Card> = {
 };
 
 // Relevance order per tool — granny flat income angle always first when applicable
-const ORDER: Record<ToolKey, ToolKey[]> = {
-  'solar-yield':        ['planning-controls', 'granny-flat', 'shadow-detector', 'flood-truth', 'threat-radar'],
+const ORDER: Record<ToolKey, CardKey[]> = {
+  'solar-yield':        ['planning-controls', 'granny-flat', 'flood-truth', 'threat-radar'],
   'shadow-detector':    ['planning-controls', 'granny-flat', 'threat-radar', 'flood-truth', 'solar-yield'],
-  'flood-truth':        ['planning-controls', 'granny-flat', 'threat-radar', 'shadow-detector', 'solar-yield'],
-  'threat-radar':       ['planning-controls', 'granny-flat', 'flood-truth', 'shadow-detector', 'solar-yield'],
-  'granny-flat':        ['planning-controls', 'flood-truth', 'threat-radar', 'shadow-detector', 'solar-yield'],
-  'pre-da-history':     ['planning-controls', 'granny-flat', 'flood-truth', 'threat-radar', 'shadow-detector'],
-  'bushfire':           ['planning-controls', 'granny-flat', 'flood-truth', 'threat-radar', 'shadow-detector'],
+  'flood-truth':        ['planning-controls', 'granny-flat', 'threat-radar', 'solar-yield'],
+  'threat-radar':       ['planning-controls', 'granny-flat', 'flood-truth', 'solar-yield'],
+  'granny-flat':        ['planning-controls', 'flood-truth', 'threat-radar', 'solar-yield'],
+  'pre-da-history':     ['planning-controls', 'granny-flat', 'flood-truth', 'threat-radar'],
+  'bushfire':           ['planning-controls', 'granny-flat', 'flood-truth', 'threat-radar'],
   'conveyancing':       ['planning-controls', 'granny-flat', 'flood-truth', 'threat-radar', 'bushfire'],
-  'planning-controls':  ['granny-flat', 'flood-truth', 'threat-radar', 'shadow-detector', 'conveyancing'],
+  'planning-controls':  ['granny-flat', 'flood-truth', 'threat-radar', 'conveyancing'],
   'climate-risk':       ['flood-truth', 'bushfire', 'planning-controls', 'conveyancing', 'granny-flat'],
 };
 

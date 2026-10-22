@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
-  Radar, Droplets, Flame, Building2, ArrowRight, Moon, Sun, Satellite,
+  Radar, Droplets, Flame, Building2, ArrowRight, Sun, Satellite,
   FileCheck, ShieldCheck, Map, BarChart3, Thermometer,
 } from 'lucide-react';
 import { HomeNav } from '@/components/marketing/HomeNav';
@@ -11,7 +11,7 @@ import { COVERAGE_DISPLAY } from '@/lib/coverage';
 export const metadata: Metadata = {
   title: 'For Buyers Agents — PlotDetect',
   description:
-    'Every property check in one place. Flood depth, bushfire BAL, zone/FSR/height, heritage, DAs within 500m, granny flat eligibility, shadow risk, climate projections, and more — free for any NSW address.',
+    'Every property check in one place. Flood depth, bushfire BAL, zone/FSR/height, heritage, DAs within 500m, granny flat eligibility, climate projections, and more — free for any NSW address.',
 };
 
 /* ------------------------------------------------------------------ */
@@ -55,17 +55,6 @@ const WORKFLOW_SECTIONS = [
           'Five-hazard compound scoring — flood, bushfire, heat stress, precipitation change, and coastal risk. NARCliM 2.0 projections to 2099. The "should I buy in this suburb long-term" answer.',
         href: '/climate-risk',
         badge: 'Free check',
-      },
-      {
-        icon: Moon,
-        iconColor: 'text-slate-500',
-        iconBg: 'bg-slate-500/10',
-        title: 'Shadow Risk Analyser',
-        question: 'Will this property get overshadowed?',
-        answer:
-          'Shadow modelled from a maximum-height building envelope placed immediately north of the lot, calculated on ADG solar access test dates. Know before your client loses their north-facing light.',
-        href: '/reports/shadow',
-        badge: '$39',
       },
     ],
   },
@@ -206,7 +195,7 @@ export default function BuyersAgentsPage() {
           </h1>
           <p className="text-slate-400 text-lg max-w-xl mx-auto leading-relaxed mb-8">
             Flood depth, bushfire BAL, zone and FSR, heritage, nearby DAs, granny flat
-            eligibility, shadow risk, climate projections, and DA analytics — 12 checks
+            eligibility, climate projections, and DA analytics — 11 checks
             that replace 7 government portals. Free, no account required.
           </p>
           <div className="flex flex-wrap justify-center gap-3">

@@ -6,7 +6,7 @@ type InterestType =
   | 'flood-truth'
   | 'solar-yield'
   | 'solar'
-  | 'shadow'
+  | 'shadow' // only the switched-off ShadowTool still passes this; /api/canibuildit/lead no longer accepts it (2026-10-22)
   | 'threat-radar'
   | 'granny-flat'
   | 'conveyancing'

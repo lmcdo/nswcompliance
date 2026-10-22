@@ -1506,12 +1506,6 @@ function CrossSellCards({ buildable, address, ineligibleReason }: { buildable: b
         href: `/reports/solar-yield?address=${encoded}`,
         label: 'Check solar potential →',
       },
-      {
-        title: 'Shadow Detector',
-        body: 'Check whether a neighbour\'s development proposal would overshadow your existing structures.',
-        href: `/reports/shadow?address=${encoded}`,
-        label: 'Check shadow risk →',
-      },
     ];
   } else {
     // Default ineligible (lot size, other) — DA may still be viable

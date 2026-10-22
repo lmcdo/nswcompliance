@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { heritageAnswer, yesNo } from '@/lib/fact-answer';
 import {
-  Droplets, Flame, Sun, Eye, Radio, Home, FileSearch,
+  Droplets, Flame, Sun, Radio, Home, FileSearch,
   MapPin, Ruler, Building2, Shield, ChevronRight,
   AlertTriangle,
 } from 'lucide-react';
@@ -84,15 +84,6 @@ const BUILDING_TOOLS: ToolItem[] = [
     badge: 'Free + $49 report',
     icon: Home,
     iconColor: 'text-teal-600 bg-teal-50',
-  },
-  {
-    key: 'shadow',
-    title: 'Shadow Detector',
-    detail: 'ADG shadow analysis at 9am, noon, and 3pm on winter solstice.',
-    href: '/reports/shadow',
-    badge: '$29 report',
-    icon: Eye,
-    iconColor: 'text-slate-600 bg-slate-50',
   },
   {
     key: 'threat-radar',

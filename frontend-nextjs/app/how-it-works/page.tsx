@@ -63,21 +63,9 @@ const TOOLS = [
     sources: [
       { name: 'Google Solar API', use: 'Roof geometry, panel layout, segment orientation, and annual energy yield estimate' },
       { name: 'NSW Heritage Register', use: 'Heritage listing check — heritage properties may face additional approval requirements for solar installations' },
-      { name: 'LEP Height of Buildings controls', use: 'Maximum permitted building height for neighbouring lots (shadow cross-sell context)' },
     ],
     cadence: 'Google Solar API data is queried live. Heritage and height data are queried live from spatial overlays.',
     limitations: 'Yield estimates are based on Google Solar API modelling and assume standard panel configurations. Heavily shaded roofs, unusual orientations, or multi-storey buildings may produce less accurate estimates. Results are indicative — a CEC-accredited solar installer assessment is required for system sizing.',
-  },
-  {
-    name: 'Shadow Analysis',
-    href: '/reports/shadow',
-    sources: [
-      { name: 'NSW Planning Portal (lot API)', use: 'Cadastral lot boundary for the subject property' },
-      { name: 'pybdshadow shadow-casting model', use: 'Shadow geometry at 9 am, noon, and 3 pm on June 21 (winter solstice — worst case), with sun position derived from the modelled date and time' },
-      { name: 'LEP height limit controls', use: 'Maximum permitted building height from LEP and DCP to model worst-case neighbour shadow' },
-    ],
-    cadence: 'Solar position calculations are deterministic. LEP height controls are queried live.',
-    limitations: 'Shadow analysis is computed for the winter solstice as the worst-case scenario. Height estimates use LEP-permitted maximums, not actual building heights. Results are an estimate — council-submitted shadow diagrams require a licensed surveyor or certifier.',
   },
   {
     name: 'Pre-DA Site History',
@@ -149,7 +137,7 @@ export default function HowItWorksPage() {
         description="PlotDetect queries live NSW government data sources and satellite imagery to check zoning, flood risk, bushfire status, heritage overlays, and development controls for any NSW property address."
         steps={[
           { name: 'Enter a NSW property address', text: 'Type any NSW address into the search bar. PlotDetect resolves it to precise lot coordinates using the NSW Planning Portal geocoder.' },
-          { name: 'Select a planning check', text: 'Choose from granny flat eligibility, flood risk, bushfire pre-screen, planning controls, shadow analysis, solar potential, or development monitoring.' },
+          { name: 'Select a planning check', text: 'Choose from granny flat eligibility, flood risk, bushfire pre-screen, planning controls, solar potential, or development monitoring.' },
           { name: 'Review live government data', text: 'Results are queried live from NSW Planning Portal, Rural Fire Service, spatial overlays, and council DCPs. Every data source is cited.' },
           { name: 'Check spatial overlays', text: 'Heritage items, flood planning areas, bushfire-prone land, biodiversity, acid sulfate soils, and coastal zones are checked against 27 spatial layers.' },
           { name: 'Read the limitations', text: 'Every result includes data source citations, update cadence, and limitations. Results are indicative — always verify with a qualified professional.' },

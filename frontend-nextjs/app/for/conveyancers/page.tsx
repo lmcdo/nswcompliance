@@ -129,7 +129,7 @@ export default function ConveyancersPage() {
               <p className="text-2xl font-bold text-gray-900">$149</p>
               <p className="text-sm text-gray-500 mt-1">Full property bundle</p>
               <p className="text-xs text-gray-400 mt-2">
-                All standard reports for one address — conveyancing, flood, bushfire, granny flat, shadow, solar, site history.
+                All standard reports for one address — conveyancing, flood, bushfire, granny flat, solar, site history.
               </p>
             </div>
           </div>

@@ -1,0 +1,121 @@
+{
+  "tier": "standard",
+  "justification": "Standard: switches off a paid product on the live site (pages, APIs, links, sitemap, pricing copy) while keeping already-paid orders working.",
+  "commit_hash": "35551aa4",
+  "files": [
+    "frontend-nextjs/__tests__/api/canibuildit/lead-email.test.ts",
+    "frontend-nextjs/__tests__/api/stripe/checkout-shadow.test.ts",
+    "frontend-nextjs/__tests__/shadow-tool-off.test.ts",
+    "frontend-nextjs/app/(tools)/browse/page.tsx",
+    "frontend-nextjs/app/(tools)/bushfire/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/(tools)/granny-flat/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/(tools)/granny-flat/page.tsx",
+    "frontend-nextjs/app/(tools)/layout.tsx",
+    "frontend-nextjs/app/(tools)/pre-da-history/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/(tools)/shadow/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/(tools)/solar-potential/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/(tools)/threat-radar/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+    "frontend-nextjs/app/api/satellite/shadow/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/shadow/route.ts",
+    "frontend-nextjs/app/embed/shadow/page.tsx",
+    "frontend-nextjs/app/for/builders/page.tsx",
+    "frontend-nextjs/app/for/buyers-agents/page.tsx",
+    "frontend-nextjs/app/for/conveyancers/page.tsx",
+    "frontend-nextjs/app/how-it-works/page.tsx",
+    "frontend-nextjs/app/internal/page.tsx",
+    "frontend-nextjs/app/not-found.tsx",
+    "frontend-nextjs/app/page.tsx",
+    "frontend-nextjs/app/partner/page.tsx",
+    "frontend-nextjs/app/pricing/page.tsx",
+    "frontend-nextjs/app/reports/granny-flat/page.tsx",
+    "frontend-nextjs/app/reports/layout.tsx",
+    "frontend-nextjs/app/reports/page.tsx",
+    "frontend-nextjs/app/reports/shadow/page.tsx",
+    "frontend-nextjs/app/site-directory/page.tsx",
+    "frontend-nextjs/app/sitemap.ts",
+    "frontend-nextjs/app/terms/page.tsx",
+    "frontend-nextjs/app/what-you-get/CapabilityExplorer.tsx",
+    "frontend-nextjs/components/BrowseByArea.tsx",
+    "frontend-nextjs/components/home/PropertyProfile.tsx",
+    "frontend-nextjs/components/marketing/SiteFooter.tsx",
+    "frontend-nextjs/components/reports/PaywallGate.tsx",
+    "frontend-nextjs/components/reports/ToolCrossSell.tsx",
+    "frontend-nextjs/components/reports/WaitlistButton.tsx",
+    "frontend-nextjs/components/tools/GrannyFlatTool.tsx",
+    "frontend-nextjs/next.config.js",
+    "frontend-nextjs/public/llms.txt"
+  ],
+  "pre_impl": {
+    "existing_data": "No database change. Paid shadow orders already in property_reports keep their generate route and shared page.",
+    "assumption_mismatch": "The tool presented an ADG solar access verdict for neighbouring houses; the stored ADG rows (sepp_adg_requirements 4A-1, 3F-1) show 4A-1 is about a new building's own apartments and 3F is visual privacy.",
+    "new_vs_existing": "Uses Next notFound() and HTTP 410 on existing routes; no new routes. New guard test __tests__/shadow-tool-off.test.ts."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && node node_modules/jest/bin/jest.js __tests__/shadow-tool-off.test.ts",
+    "fails_when": "Any page or component under app/ or components/ links to a shadow route outside the allowlist, a tool page stops calling notFound, the sitemap lists a /shadow URL, next.config redirects to it, or either API stops returning 410.",
+    "observed_red": "The guard test was written against the changed tree and passes 6 of 6; it fails on the original main tree because the nav, footer and sitemap all link to /reports/shadow. Full jest 2,233 of 2,233; tsc 0 errors."
+  },
+  "functions": [
+    {
+      "name": "POST (satellite/shadow)",
+      "file_line": "frontend-nextjs/app/api/satellite/shadow/route.ts",
+      "input": "any request to the shadow analysis API",
+      "output": "HTTP 410 with a plain message",
+      "if_none": "every HTTP method still answers 410 with the message"
+    },
+    {
+      "name": "POST (stripe/checkout/shadow)",
+      "file_line": "frontend-nextjs/app/api/stripe/checkout/shadow/route.ts",
+      "input": "a checkout request for the shadow report",
+      "output": "HTTP 410, no Stripe session is created",
+      "if_none": "every HTTP method still answers 410 with the message"
+    }
+  ],
+  "values": [
+    {
+      "name": "bundle total",
+      "value": "274",
+      "source": "sum of the six listed report prices on app/pricing/page.tsx (39+39+49+49+49+49)",
+      "read_at": "app/pricing/page.tsx lines 98-103 (the six report prices) and lines 255 and 368 (the bundle copy)",
+      "if_missing": "if a report price changes, the bundle copy must be recomputed from the listed prices by hand"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A customer who already paid opens the report link in their email.",
+      "what_happens": "If the shared page were switched off they would lose what they paid for.",
+      "mitigated": true,
+      "how": "/reports/shadow/{id} page, generate route and webhook branch are kept",
+      "repro": "open an existing report id"
+    },
+    {
+      "scenario": "A search engine or old link visits /shadow/{council}.",
+      "what_happens": "It must not show the tool or its verdict.",
+      "mitigated": true,
+      "how": "notFound() and no static params; sitemap entries removed",
+      "repro": "curl the URL after deploy"
+    },
+    {
+      "scenario": "Someone starts a new shadow purchase from a cached page.",
+      "what_happens": "They must not be charged for a switched-off product.",
+      "mitigated": true,
+      "how": "checkout route answers 410 before creating a Stripe session",
+      "repro": "test checkout-shadow 410"
+    },
+    {
+      "scenario": "The intelligence brief still shows its shadow section.",
+      "what_happens": "The brief may still carry the ADG wording.",
+      "mitigated": false,
+      "how": "follow-up PR; not linked from the tool",
+      "repro": "open an intelligence brief"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "After deploy, /reports/shadow and /shadow/parramatta return 404 and /api/satellite/shadow returns 410."
+  }
+}

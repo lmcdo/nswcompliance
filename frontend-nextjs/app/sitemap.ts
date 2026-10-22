@@ -3,7 +3,6 @@ import { FLOOD_LGAS } from '@/lib/lga-data/flood-lgas'
 import { SOLAR_LGAS } from '@/lib/lga-data/solar-lgas'
 import { GRANNY_FLAT_LGAS } from '@/lib/lga-data/granny-flat-lgas'
 import { THREAT_RADAR_LGAS } from '@/lib/lga-data/threat-radar-lgas'
-import { SHADOW_LGAS } from '@/lib/lga-data/shadow-lgas'
 import { BUSHFIRE_LGAS } from '@/lib/lga-data/bushfire-lgas'
 import { PRE_DA_HISTORY_LGAS } from '@/lib/lga-data/pre-da-history-lgas'
 import { VERIFY_LGAS } from '@/lib/lga-data/verify-lgas'
@@ -23,7 +22,7 @@ export async function generateSitemaps() {
     { id: 1 },  // granny-flat — LGA pages
     { id: 2 },  // flood — LGA pages
     { id: 3 },  // solar — LGA pages
-    { id: 4 },  // hazards — bushfire + shadow LGA pages
+    { id: 4 },  // hazards — bushfire LGA pages
     { id: 5 },  // monitoring — threat-radar + pre-da-history LGA pages
     { id: 6 },  // compliance — planning-controls + conveyancing LGA pages
     { id: 7 },  // blog — articles + council granny flat guides
@@ -47,7 +46,6 @@ export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
         { url: `${base}/granny-flat`,     priority: 0.95, changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/flood-risk`,      priority: 0.9,  changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/solar-potential`, priority: 0.9,  changeFrequency: 'weekly',  lastModified: now },
-        { url: `${base}/shadow`,          priority: 0.9,  changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/threat-radar`,    priority: 0.9,  changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/assessment`,       priority: 0.9,  changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/reports/conveyancing`, priority: 0.9, changeFrequency: 'weekly', lastModified: now },
@@ -70,7 +68,6 @@ export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
         { url: `${base}/reports/flood`,   priority: 0.9,  changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/reports/bushfire`, priority: 0.9,  changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/reports/granny-flat`, priority: 0.9, changeFrequency: 'weekly', lastModified: now },
-        { url: `${base}/reports/shadow`,  priority: 0.85, changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/reports/solar-yield`, priority: 0.85, changeFrequency: 'weekly', lastModified: now },
         { url: `${base}/reports/threat-radar`, priority: 0.85, changeFrequency: 'weekly', lastModified: now },
         { url: `${base}/reports/pre-da-history`, priority: 0.8, changeFrequency: 'weekly', lastModified: now },
@@ -124,17 +121,11 @@ export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
         priority: 0.85,
       }))
 
-    // Hazards: bushfire + shadow LGA pages
+    // Hazards: bushfire LGA pages
     case 4:
       return [
         ...BUSHFIRE_LGAS.map(lga => ({
           url: `${base}/bushfire/${lga.slug}`,
-          lastModified: now,
-          changeFrequency: 'weekly' as const,
-          priority: 0.85,
-        })),
-        ...SHADOW_LGAS.map(lga => ({
-          url: `${base}/shadow/${lga.slug}`,
           lastModified: now,
           changeFrequency: 'weekly' as const,
           priority: 0.85,

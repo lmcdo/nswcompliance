@@ -144,7 +144,6 @@ export default function GrannyFlatHubPage() {
           {[
             { label: 'Flood Screening', desc: 'Statutory overlay + ARI data', href: '/flood-risk', color: 'text-blue-600' },
             { label: 'Solar Yield', desc: 'Roof yield estimate', href: '/solar-potential', color: 'text-amber-600' },
-            { label: 'Shadow Check', desc: 'Summer + winter solstice', href: '/shadow', color: 'text-slate-600' },
             { label: 'Threat Radar', desc: 'Nearby DA + CDC activity', href: '/threat-radar', color: 'text-violet-600' },
           ].map(({ label, desc, href, color }) => (
             <Link key={href} href={href} className="rounded-lg border border-gray-200 bg-white p-4 hover:border-gray-300 transition-colors">

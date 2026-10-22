@@ -696,12 +696,6 @@
   },
   {
    "file": "frontend-nextjs/app/for/buyers-agents/page.tsx",
-   "text": "'Every property check in one place. Flood depth, bushfire BAL, zone/FSR/height, heritage, DAs within 500m, granny flat eligibility, shadow risk, climate projections, and more — free for any NSW address.'",
-   "fate": "open",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/for/buyers-agents/page.tsx",
    "text": "'Every DA and CDC within 500m — with weekly email alerts when new applications are lodged. Know before your client\\'",
    "fate": "open",
    "reason": "inventory guessed not_regulatory (unreviewed): product search radius, not a planning control",
@@ -2952,6 +2946,13 @@
    "fate": "open",
    "count": 1,
    "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+  },
+  {
+   "file": "frontend-nextjs/app/for/buyers-agents/page.tsx",
+   "text": "'Every property check in one place. Flood depth, bushfire BAL, zone/FSR/height, heritage, DAs within 500m, granny flat eligibility, climate projections, and more — free for any NSW address.'",
+   "fate": "open",
+   "count": 1,
+   "reason": "same figure as before; sentence edited when the shadow tool was turned off (2026-10-22)"
   }
  ]
 }

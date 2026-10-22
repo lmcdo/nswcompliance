@@ -1,60 +1,20 @@
-/**
- * POST /api/stripe/checkout/shadow
- * Body: { report_id: string; address: string; email?: string }
- *
- * Creates a Stripe Checkout session for the $29 Shadow Detector report.
- * email is optional — Stripe's hosted checkout collects it if absent.
- */
-import { NextRequest, NextResponse } from 'next/server';
-import { getStripe } from '@/lib/stripe-client';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: NextRequest) {
-  let report_id: string | undefined;
-  let address: string | undefined;
-  let email: string | undefined;
-  let firm_name: string | undefined;
-
-  try {
-    const body = await req.json();
-    report_id = body?.report_id?.trim();
-    address   = body?.address?.trim();
-    email     = body?.email?.trim() || undefined;
-    firm_name = body?.firm_name?.trim() || undefined;
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
-
-  if (!report_id) return NextResponse.json({ error: 'report_id is required' }, { status: 400 });
-  if (!address)   return NextResponse.json({ error: 'address is required' }, { status: 400 });
-
-  const priceId = process.env.STRIPE_SHADOW_PRICE_ID;
-  if (!priceId) {
-    console.error('[stripe/checkout/shadow] STRIPE_SHADOW_PRICE_ID not set');
-    return NextResponse.json({ error: 'Payment not configured' }, { status: 500 });
-  }
-
-  const stripe = getStripe();
-  if (!stripe) {
-    return NextResponse.json({ error: 'Payment not configured' }, { status: 500 });
-  }
-
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://verify.plotdetect.com.au';
-
-  try {
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      allow_promotion_codes: true,
-      ...(email ? { customer_email: email } : {}),
-      line_items: [{ price: priceId, quantity: 1 }],
-      metadata: { report_id, address, product: 'shadow-report', ...(firm_name ? { firm_name } : {}) },
-      success_url: `${origin}/reports/shadow?payment=success&report_id=${report_id}&address=${encodeURIComponent(address)}`,
-      cancel_url:  `${origin}/reports/shadow?payment=cancelled`,
-    });
-    return NextResponse.json({ checkout_url: session.url });
-  } catch (err) {
-    console.error('[stripe/checkout/shadow] Stripe error:', err);
-    return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 });
-  }
+// Shadow tool turned off 2026-10-22 by the owner: it sold an "ADG solar access" verdict
+// for neighbouring houses, but ADG 4A-1 (2 hours of sun) applies to a new apartment
+// building's own apartments and 3F is visual privacy, so the verdict was not a real standard.
+// New work is refused. Already-paid orders are still fulfilled by
+// /api/reports/shadow/generate and the 'shadow' branch of /api/stripe/webhook.
+function off() {
+  return NextResponse.json({ error: 'The shadow tool has been turned off.' }, { status: 410 });
 }
+
+export const GET = off;
+export const POST = off;
+export const PUT = off;
+export const PATCH = off;
+export const DELETE = off;
+export const OPTIONS = off;
+export const HEAD = off;

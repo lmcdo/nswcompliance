@@ -4,7 +4,6 @@ import { FLOOD_LGAS } from '@/lib/lga-data/flood-lgas';
 import { SOLAR_LGAS } from '@/lib/lga-data/solar-lgas';
 import { GRANNY_FLAT_LGAS } from '@/lib/lga-data/granny-flat-lgas';
 import { THREAT_RADAR_LGAS } from '@/lib/lga-data/threat-radar-lgas';
-import { SHADOW_LGAS } from '@/lib/lga-data/shadow-lgas';
 import { BUSHFIRE_LGAS } from '@/lib/lga-data/bushfire-lgas';
 import { PRE_DA_HISTORY_LGAS } from '@/lib/lga-data/pre-da-history-lgas';
 import { VERIFY_LGAS } from '@/lib/lga-data/verify-lgas';
@@ -45,7 +44,6 @@ const GROUPS: DirGroup[] = [
       { href: '/reports/bushfire', label: 'Bushfire pre-screen', desc: 'Bushfire-prone-land indication for a lot.', badge: `${BUSHFIRE_LGAS.length} councils` },
       { href: '/reports/granny-flat', label: 'Granny flat feasibility', desc: 'Secondary-dwelling potential and yield.', badge: `${GRANNY_FLAT_LGAS.length} councils` },
       { href: '/reports/solar-yield', label: 'Solar potential', desc: 'Rooftop solar exposure and yield estimate.', badge: `${SOLAR_LGAS.length} councils` },
-      { href: '/reports/shadow', label: 'Shadow analysis', desc: 'Overshadowing from nearby development.', badge: `${SHADOW_LGAS.length} councils` },
       { href: '/reports/threat-radar', label: 'Development monitoring', desc: 'Track nearby development applications.', badge: `${THREAT_RADAR_LGAS.length} councils` },
       { href: '/reports/pre-da-history', label: 'Site history', desc: "A lot's past development-application history.", badge: `${PRE_DA_HISTORY_LGAS.length} councils` },
       { href: '/reports/conveyancing', label: 'Conveyancing disclosure', desc: 'Planning-disclosure report for a transaction.', badge: `${CONVEYANCING_LGAS.length} councils` },
@@ -115,7 +113,7 @@ export default function DirectoryPage() {
         <h1 className="text-3xl font-bold tracking-tight text-slate-900">Site directory</h1>
         <p className="mt-2 text-slate-600 max-w-2xl leading-relaxed">
           Every tool, report and page on the site, grouped. The per-address tools
-          (flood, bushfire, granny flat, solar, shadow, monitoring, planning
+          (flood, bushfire, granny flat, solar, monitoring, planning
           controls and conveyancing) also have a page for each covered council —
           reach those from the report or via <Link href="/browse" className="text-teal-700 underline hover:text-teal-900">Browse councils</Link>.
         </p>
