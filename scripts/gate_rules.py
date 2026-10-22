@@ -468,6 +468,12 @@ GATE_RULES += AREA_GATE_RULES
 EXTRA_KEY_RULES += AREA_KEY_RULES
 
 
+def _never_serve_ids() -> frozenset[int]:
+    """Imported late: gate_rules is also loaded by tests and tools that never touch the list."""
+    import never_serve  # noqa: PLC0415  (scripts/ is on sys.path for every caller)
+    return never_serve.ids()
+
+
 def apply_gate_rules(cur, council: str | None, apply: bool, only: set[str] | None = None) -> list[tuple]:
     """Set each GATE_RULES row's gate columns. Returns (id, column, before, after, rule) per
     changed column, for the backup. Idempotent: a row already holding the values is skipped."""
@@ -500,7 +506,10 @@ def apply_gate_rules(cur, council: str | None, apply: bool, only: set[str] | Non
             {"council": rule["council"]})
         rows = cur.fetchall()
         n = 0
+        never = _never_serve_ids()
         for row in rows:
+            if row[0] in never:
+                continue  # a reviewed never-serve rule keeps its layer (data/chapter_scope/never_serve.json)
             diff = [(c, row[i + 1], rule["set"][c]) for i, c in enumerate(cols)
                     if row[i + 1] != rule["set"][c]]
             if not diff:

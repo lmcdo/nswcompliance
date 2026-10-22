@@ -131,6 +131,17 @@ def _classify_one(prov, classifier, gemini, cur):
     )
 
 
+def _never_serve_ids() -> frozenset[int]:
+    """Reviewed rules that must stay switched off. A missing list RAISES: a silent empty list guards nothing."""
+    import sys as _sys
+    from pathlib import Path as _Path
+    _scripts = str(_Path(__file__).resolve().parent.parent / "scripts")
+    if _scripts not in _sys.path:
+        _sys.path.insert(0, _scripts)
+    import never_serve  # noqa: PLC0415
+    return never_serve.ids()
+
+
 def run_actionability_classification(
     limit: Optional[int] = None,
     dry_run: bool = False,
@@ -282,7 +293,10 @@ def run_actionability_classification(
                 processed += 1
 
         if updates and not dry_run:
+            never = _never_serve_ids()
             for is_actionable, prov_id in updates:
+                if prov_id in never:
+                    continue  # a reviewed never-serve rule stays switched off (data/chapter_scope/never_serve.json)
                 cur.execute("""
                     UPDATE regulatory_provisions
                     SET v2_is_actionable = %s

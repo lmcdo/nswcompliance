@@ -1795,6 +1795,18 @@
    "red_when": "the declared state and the check disagree in either direction",
    "note": "Reworded 2026-10-16. 2026-10-16: 4,071 state-law rows proven verbatim against legislation.nsw.gov.au in force; 244 non-law paraphrases withheld; DQ-145 6,104 -> 1,796. 2026-10-17 (user decision, option 1): the check is three parts, not DQ-145 = 0; unproven rules now carry the mark, and DQ-145 is a ratchet at 1,011; lowered to 911 the same day after 100 council pages were proven (#1316); 860 later on 2026-10-17 after 8 shared-page council proofs (#1320) and 43 state-law rows proven or re-copied verbatim (#1321); 430 later still: 905 Ashfield E1 Part 9 history/inventory rows, 87 Ku-ring-gai map-legend labels and 228 SEPP partial-overlap/paraphrase/fragment rows withheld (user yes), 67 SEPP labels fixed to the law's own clause and 16 rows re-copied without a leaked next heading. 290 later still: 45 + 6 SEPP rows re-copied as the smallest complete clause (6 settled by the row's own or neighbouring labels), 28 Inner West LEP rows proven, 29 Inner West LEP paraphrases + 24 council not-a-rule rows + 8 duplicates withheld."
   },
+  "DQ-148": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/dq_probe_live.py",
+    "--id",
+    "DQ-148"
+   ],
+   "passes_when": "exit 0 - every rule on data/chapter_scope/never_serve.json is current, switched off, precinct layer, no key (shown only in the may-apply block), and no other current row in its chapter carries the same text switched on.",
+   "red_when": "a reviewed never-serve rule is back in a main rule list or one step from it (re-keyed, switched on, re-layered), or a re-read minted new ids so the listed rows are no longer current. Found 2026-10-22: 97 Carinya Road (Picnic Point only) flood rules re-keyed by a page-range re-derive on 2026-10-21 and served to all of former Bankstown.",
+   "note": "Fixed in production 2026-10-22 (user-approved; backups data/db_rollback_backups/carinya_road_withhold_pre_2026-10-22T201544.json and carinya_road_unkey_pre_2026-10-22T205445.json). derive_precinct_keys, gate_rules, enrichment, dcp_extract_changed, rerun_actionable_classifier and sync_v2_to_supabase skip listed ids. Probe reads 0."
+  },
   "DQ-146": {
    "declared": "fixed",
    "check": [
