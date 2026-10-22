@@ -341,6 +341,9 @@ class AlarmConn:
                 if sql.strip().startswith("SELECT r.council, r.chapter_key FROM dcp_chapter_registry r WHERE r.is_active"):
                     self.rows = [("x", f"k{i}") for i in range(outer.served)]
                     return
+                if sql.startswith("SELECT git_sha FROM dcp_monitor_runs"):
+                    self.rows = []  # no run: deployed_not_main has its own tests
+                    return
                 reason = next(r for r, q in cov.QUERIES.items() if q == sql)
                 self.rows = outer.reds.get(reason, [])
 
@@ -348,7 +351,7 @@ class AlarmConn:
                 return self.rows
 
             def fetchone(self):
-                return self.rows[0]
+                return self.rows[0] if self.rows else None
 
             def close(self):
                 pass

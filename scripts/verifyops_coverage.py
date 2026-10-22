@@ -19,6 +19,10 @@ Reasons (each a stored query below; spec ~/.claude/plans/ce-verifyops-v5-SPEC-20
                           (no recorded change date counts as old)
   no_run_2d               no FULL monitor run (mode daily/force) finished in 2 days; a one-council
                           run does not count (key council='*')
+  run_unfinished          a FULL run started > 6 h ago and never finished (killed: Railway removes a
+                          running cron container when a new image deploys -- run 1, 2026-10-22)
+  deployed_not_main       the latest full run's git_sha is NULL, unknown to git, or a file the monitor
+                          image COPYs (Dockerfile.monitors) differs between it and origin/main
 
 prior-art-checked: DQ-117 (dq_probe_live.py) checks the fleet MEDIAN url_last_checked, so one
 chapter can go unchecked for ever under a green median; DQ-70 checks extraction hashes. Neither is
@@ -39,6 +43,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -111,7 +117,41 @@ QUERIES: dict[str, str] = {
         SELECT '*', '*' WHERE NOT EXISTS (SELECT 1 FROM dcp_monitor_runs
                                           WHERE mode IN ('daily', 'force')
                                             AND finished_at > NOW() - INTERVAL '2 days')""",
+    "run_unfinished": """
+        SELECT '*', '*' WHERE EXISTS (SELECT 1 FROM dcp_monitor_runs
+                                      WHERE mode IN ('daily', 'force') AND finished_at IS NULL
+                                        AND started_at < NOW() - INTERVAL '6 hours')""",
 }
+
+DOCKERFILE = ROOT / "Dockerfile.monitors"
+
+
+def image_paths(dockerfile: str) -> list[str]:
+    """Source paths the monitor image COPYs (first argument of each COPY line)."""
+    return sorted({m.group(1) for m in re.finditer(r"^COPY\s+(?!--)(\S+)\s", dockerfile, re.M)})
+
+
+def deployed_not_main(sha: str | None, paths: list[str], main: str = "origin/main",
+                      git=subprocess.run) -> bool:
+    """True (red) unless the deployed sha is known AND no image file differs from origin/main.
+    Compares the image's own files, not main's HEAD: Railway skips merges that touch none of them."""
+    if not sha or not paths:
+        return True
+    r = git(["git", "diff", "--quiet", sha, main, "--", *paths],
+            cwd=ROOT, capture_output=True)
+    return r.returncode != 0  # 1 = differs, 128 = sha unknown: both red
+
+
+def deploy_keys(conn) -> list[str]:
+    cur = conn.cursor()
+    cur.execute("SELECT git_sha FROM dcp_monitor_runs WHERE mode IN ('daily', 'force') "
+                "ORDER BY id DESC LIMIT 1")
+    row = cur.fetchone()
+    cur.close()
+    if row is None:
+        return []  # no run at all is no_run_2d's job
+    paths = image_paths(DOCKERFILE.read_text(encoding="utf-8"))
+    return [key("*", "*", "deployed_not_main")] if deployed_not_main(row[0], paths) else []
 
 
 def key(council: str, chapter: str, reason: str) -> str:
@@ -126,6 +166,7 @@ def measure(conn) -> list[str]:
         cur.execute(sql)
         out.update(key(c, ch, reason) for c, ch in cur.fetchall())
     cur.close()
+    out.update(deploy_keys(conn))
     return sorted(out)
 
 
