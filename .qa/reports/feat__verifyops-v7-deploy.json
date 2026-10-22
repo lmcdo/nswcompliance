@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Alarm logic (two new red keys) and the monitor launcher. No DB writes, no user-facing text.",
- "commit_hash": "68b118bf",
+ "commit_hash": "3a41455e",
  "files": [
   "scripts/run_monitors.py",
   "scripts/verifyops_coverage.py",
@@ -44,7 +44,7 @@
    "repro": "railway logs -s dcp-monitor -d <removed deployment id>  (before: only Starting/Stopping Container)"
   }
  ],
- "mutation_analysis": "14 hand mutants, 14 killed: the 10 first-round ones, plus 4 after the Sol review (40-hex sha guard, --chown flag skip, multi-source COPY, COPY --from skip). Sol #1/#2 accepted and fixed; #3-#7 rejected (env is always os.environ; a missing Dockerfile already exits 2; streaming stdout is intended).",
+ "mutation_analysis": "14 hand mutants, 14 killed: the 10 first-round ones, plus 4 after the Sol review (40-hex sha guard, --chown flag skip, multi-source COPY, COPY --from skip). Sol #1/#2 accepted and fixed; #3-#7 rejected (env is always os.environ; a missing Dockerfile already exits 2; streaming stdout is intended). Sol re-run 2026-10-23 (credits restored): Dockerfile itself now compared (mutant killed); real-DB test UPDATE scoped to its own row id.",
  "residual_risk": "deployed_not_main compares the latest full run, which is up to a day old; a deploy between runs is not seen until the next run records its sha. The Actions checkout must have history for the sha (otherwise red, which is loud not silent).",
  "post_merge": {
   "db_reset": "No.",

@@ -163,10 +163,11 @@ def test_a_full_run_killed_mid_way_is_red_until_it_is_old_news(conn):
     cur.execute("INSERT INTO dcp_monitor_runs (mode, started_at) VALUES ('daily', NOW() - INTERVAL '1 hour')")
     assert "*|*|run_unfinished" not in cov.measure(conn)       # may still be running
     cur.execute("INSERT INTO dcp_monitor_runs (mode, started_at, git_sha) VALUES "
-                "('daily', NOW() - INTERVAL '13 hours', '732ef41b20da25fcc7b69023ec0c0b4e8878bf7e')")
+                "('daily', NOW() - INTERVAL '13 hours', '732ef41b20da25fcc7b69023ec0c0b4e8878bf7e') RETURNING id")
+    killed = cur.fetchone()[0]
     reds = cov.measure(conn)
     assert "*|*|run_unfinished" in reds
-    cur.execute("UPDATE dcp_monitor_runs SET finished_at = NOW() WHERE finished_at IS NULL")
+    cur.execute("UPDATE dcp_monitor_runs SET finished_at = NOW() WHERE id = %s", (killed,))
     assert "*|*|run_unfinished" not in cov.measure(conn)
     cur.execute("INSERT INTO dcp_monitor_runs (mode, started_at) VALUES ('council:x', NOW() - INTERVAL '9 hours')")
     assert "*|*|run_unfinished" not in cov.measure(conn)       # one-council runs never count

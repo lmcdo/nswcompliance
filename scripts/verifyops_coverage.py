@@ -158,7 +158,8 @@ def deploy_keys(conn) -> list[str]:
     cur.close()
     if row is None:
         return []  # no run at all is no_run_2d's job
-    paths = image_paths(DOCKERFILE.read_text(encoding="utf-8"))
+    # The Dockerfile itself defines the image too (base image, build steps), not only what it copies.
+    paths = [DOCKERFILE.name, *image_paths(DOCKERFILE.read_text(encoding="utf-8"))]
     return [key("*", "*", "deployed_not_main")] if deployed_not_main(row[0], paths) else []
 
 

@@ -112,3 +112,11 @@ def test_flags_before_the_source_keep_the_source_and_multi_source_copies_count()
 def test_a_ref_name_instead_of_a_commit_is_red(paths):
     assert v.deployed_not_main("origin/main", paths, main="origin/main") is True
     assert v.deployed_not_main(SHA_1453.upper(), paths, main=SHA_1453) is True
+
+
+def test_the_dockerfile_itself_is_compared(monkeypatch):
+    """A base-image or build-step change touches only Dockerfile.monitors (Sol, 2026-10-23)."""
+    seen = {}
+    monkeypatch.setattr(v, "deployed_not_main", lambda sha, paths: seen.setdefault("p", paths) and False)
+    v.deploy_keys(_Conn(("a" * 40,)))
+    assert seen["p"][0] == "Dockerfile.monitors" and "scripts/r2_monitor.py" in seen["p"]
