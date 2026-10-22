@@ -84,7 +84,7 @@ def bad_suppressions(text: str) -> list[str]:
     bad = []
     for line in text.splitlines():
         if SUPPRESS in line:
-            reason = line.split(SUPPRESS, 1)[1].lstrip(" -—:")
+            reason = line.partition(SUPPRESS)[2].lstrip(" -—:")
             if len(reason.split()) < 4:
                 bad.append(line.strip()[:140])
     return bad
@@ -130,7 +130,7 @@ def judge(found: dict[str, list[str]], ledger: dict) -> list[str]:
     problems = [f"NOT IN LEDGER (new typed figure): {k}" for k in sorted(now - entries.keys())]
     problems += [f"GONE (fixed? run --prune): {k}" for k in sorted(entries.keys() - now)]
     for k, e in entries.items():
-        if e.get("fate") == "cited" and not CITED.search(e.get("reason", "")):
+        if e.get("fate") == "cited" and not CITED.search(e.get("reason") or ""):
             problems.append(f"CITED WITHOUT INSTRUMENT + CLAUSE: {k}")
         if e.get("fate") == "not_regulatory" and len((e.get("reason") or "").split()) < 4:
             problems.append(f"NOT_REGULATORY WITHOUT A REASON: {k}")
@@ -157,7 +157,8 @@ def main(argv: list[str]) -> int:
     if "--init" in argv:  # one-off: name every current hit as open
         entries = [{"file": f, "text": re.sub(r"\s+", " ", h).strip(), "fate": "open"}
                    for f, hs in sorted(found.items()) for h in dict.fromkeys(hs)]
-        LEDGER.write_text(json.dumps({"_about": __doc__.split("THE LEDGER")[1].split("    python")[0].strip(),
+        about = (__doc__ or "").partition("THE LEDGER")[2].partition("    python")[0].strip()
+        LEDGER.write_text(json.dumps({"_about": about,
                                       "max_open": len(entries), "entries": entries}, indent=1, ensure_ascii=False)
                           + "\n", encoding="utf-8")
         print(f"ledger written: {len(entries)} open entries")
