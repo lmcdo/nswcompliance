@@ -94,8 +94,8 @@ function evaluate(parsed: ParsedRow[], spec: Spec): CdcCheck {
     storedClauses: sel && !sel.ok ? sel.storedClauses : [],
   });
 
-  if (spec.standardType === null) return notChecked('Not checked: no stored standard');
-  if (spec.proposed === null) return notChecked('Not checked: no value entered');
+  if (spec.standardType == null) return notChecked('Not checked: no stored standard');
+  if (spec.proposed == null) return notChecked('Not checked: no value entered');
   if (spec.blockedReason) {
     const sel = select(parsed, spec.standardType, {});
     return notChecked(`Not checked: ${spec.blockedReason}`, sel);

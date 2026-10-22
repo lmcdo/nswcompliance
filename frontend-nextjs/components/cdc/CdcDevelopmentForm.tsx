@@ -294,7 +294,7 @@ export function CdcDevelopmentForm({
             <StatusIcon status={validation.storeys.status} />
           </div>
           <Select
-            value={form.storeys === null ? '' : String(form.storeys)}
+            value={form.storeys == null ? '' : String(form.storeys)}
             onValueChange={(value) => updateField('storeys', parseInt(value))}
           >
             <SelectTrigger className="h-9 text-sm">
@@ -318,7 +318,7 @@ export function CdcDevelopmentForm({
             <StatusIcon status={validation.parking.status} />
           </div>
           <Select
-            value={form.parkingSpaces === null ? '' : String(form.parkingSpaces)}
+            value={form.parkingSpaces == null ? '' : String(form.parkingSpaces)}
             onValueChange={(value) => updateField('parkingSpaces', parseInt(value))}
           >
             <SelectTrigger className="h-9 text-sm">

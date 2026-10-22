@@ -14,5 +14,5 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const stored = await loadHousingCodeStandards();
-  return NextResponse.json({ success: stored.error === null, rows: stored.rows.map(publicRow), error: stored.error });
+  return NextResponse.json({ success: stored.error == null, rows: stored.rows.map(publicRow), error: stored.error });
 }

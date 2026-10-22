@@ -21,7 +21,7 @@ export function StatusIcon({ status, small = false }: { status: CdcCheck['status
 
 /** "Min 4.5 m (clause)" for a decided check, "Not checked" otherwise. */
 export function hintText(check: CdcCheck): string {
-  if (check.status === 'not_checked' || check.required === null) return 'Not checked';
+  if (check.status === 'not_checked' || check.required == null) return 'Not checked';
   const word = check.comparison === 'min' ? 'Min' : 'Max';
   const unit = check.unit === '' ? '' : ` ${check.unit}`;
   return `${word} ${check.required}${unit}`;

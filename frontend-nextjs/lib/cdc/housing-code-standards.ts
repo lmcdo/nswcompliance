@@ -144,7 +144,7 @@ export function parseBand(text: string | null | undefined): BandResult {
     if (between) {
       const lower = toNumber(between[2]);
       const upper = toNumber(between[4]);
-      if (lower === null || upper === null || upper < lower) {
+      if (lower == null || upper == null || upper < lower) {
         return { ok: false, reason: `band range not valid: "${clause}"` };
       }
       if (!unitOk(dimension, between[3]) || !unitOk(dimension, between[5])) {
@@ -156,7 +156,7 @@ export function parseBand(text: string | null | undefined): BandResult {
     const above = ABOVE.exec(rest);
     if (above) {
       const lower = toNumber(above[1]);
-      if (lower === null || !unitOk(dimension, above[2])) {
+      if (lower == null || !unitOk(dimension, above[2])) {
         return { ok: false, reason: `band range not valid: "${clause}"` };
       }
       ranges.push({ dimension, lower, lowerExclusive: true, upper: null });
@@ -178,7 +178,7 @@ export function citationOf(row: StandardRow): string | null {
   const m = CLEAN_CLAUSE.exec((row.ref_number ?? '').trim());
   if (m) return m[0].trim();
   const page = Number(row.pdf_page);
-  if (row.pdf_page !== null && row.pdf_page !== undefined && Number.isInteger(page) && page > 0) {
+  if (row.pdf_page != null && row.pdf_page !== undefined && Number.isInteger(page) && page > 0) {
     return `Codes SEPP 2008, page ${page}`;
   }
   return null;
@@ -201,7 +201,7 @@ export function publicRow(row: StandardRow): StandardRow {
 /** Parse one stored row and decide whether it may drive a verdict. */
 export function parseRow(row: StandardRow): ParsedRow {
   const numericValue =
-    row.numeric_value === null || row.numeric_value === undefined || row.numeric_value === ''
+    row.numeric_value == null || row.numeric_value === undefined || row.numeric_value === ''
       ? null
       : Number(row.numeric_value);
   const base = { row, numericValue: Number.isFinite(numericValue as number) ? numericValue : null };
@@ -210,11 +210,11 @@ export function parseRow(row: StandardRow): ParsedRow {
     ...base, usable: false, unusableReason: reason, ranges: [], structure: null, citation,
   });
 
-  if (base.numericValue === null) return fail('no stored number (value depends on other facts)');
+  if (base.numericValue == null) return fail('no stored number (value depends on other facts)');
   if (row.applicable_zones && row.applicable_zones.length > 0) {
     return fail('standard is limited to zones that are not modelled');
   }
-  if (citation === null) return fail('no clause or page stored');
+  if (citation == null) return fail('no clause or page stored');
   if (refNamesStructure(row)) {
     return fail('clause label names a structure that is not modelled');
   }
@@ -239,7 +239,7 @@ export interface SelectContext {
 
 function inRange(r: Range, v: number): boolean {
   const aboveLower = r.lowerExclusive ? v > r.lower : v >= r.lower;
-  const belowUpper = r.upper === null ? true : v <= r.upper;
+  const belowUpper = r.upper == null ? true : v <= r.upper;
   return aboveLower && belowUpper;
 }
 
@@ -292,7 +292,7 @@ export function select(parsed: ParsedRow[], standardType: string, ctx: SelectCon
   const usable = ofType.filter((p) => p.usable);
   const unusable = ofType.filter((p) => !p.usable);
   if (usable.length === 0) {
-    if (ofType.every((p) => p.citation === null)) return none('no clause or page stored');
+    if (ofType.every((p) => p.citation == null)) return none('no clause or page stored');
     return none('the stored standards for this item cannot be applied to a proposal without more facts');
   }
 
@@ -303,7 +303,7 @@ export function select(parsed: ParsedRow[], standardType: string, ctx: SelectCon
     let ok = true;
     for (const r of p.ranges) {
       const v = valueFor(ctx, r.dimension);
-      if (v === null) { missing.add(r.dimension); ok = false; break; }
+      if (v == null) { missing.add(r.dimension); ok = false; break; }
       if (!inRange(r, v)) { ok = false; break; }
     }
     if (ok && p.structure && !(ctx.structures ?? []).includes(p.structure)) {

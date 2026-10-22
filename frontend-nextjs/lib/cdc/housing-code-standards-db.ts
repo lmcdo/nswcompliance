@@ -34,6 +34,9 @@ export async function loadHousingCodeStandards(): Promise<LoadedStandards> {
     const pages = new Map<number, number | null>();
     if (firstIds.length > 0) {
       const pg = await query(
+        // is_current deliberately NOT filtered: this fetches the page of the exact provision each
+        // standard was copied from, to cite it. Whether the standard is still current is the
+        // standard row's own stale_since, not this lookup.
         'SELECT id, pdf_page FROM regulatory_provisions WHERE id = ANY($1::int[])',
         [firstIds]
       );

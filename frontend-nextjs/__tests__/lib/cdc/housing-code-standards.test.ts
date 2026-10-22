@@ -397,6 +397,7 @@ describe('citations', () => {
 
   it('the standards and check routes do not return internal labels as citations', async () => {
     jest.resetModules();
+    // Mocked DB: the page lookup by id (is_current deliberately not filtered, see the loader).
     jest.doMock('@/lib/db', () => ({
       query: async (sql: string) => (/regulatory_provisions/.test(sql)
         ? { rows: Array.from(new Set(rows.map((r) => (r as any).source_provision_ids[0])))
