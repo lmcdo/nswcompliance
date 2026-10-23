@@ -5,6 +5,10 @@
  */
 
 import { detectBattleaxeLot, analyzeLotShape } from '../lot-shape-analysis';
+import { applyBattleaxeLimits, type BattleaxeLimits } from '../../cdc/battleaxe-cdc';
+
+// Test fixture standing in for the stored cdc_eligibility_standards rows (ids 87, 88).
+const LIMITS: BattleaxeLimits = { accessMinWidth: 3, lotMinDimension: 12, ref: 'Sch 1 s2(1)(c)', quote: '', pdfPage: null };
 import type { LotGeometry } from '@/types/property';
 
 const EARTH_R = 6378137.0;
@@ -86,7 +90,11 @@ describe('detectBattleaxeLot', () => {
       expect(result.isBattleaxe).toBe(true);
       expect(result.accessWayWidth).toBeLessThan(6);
       expect(result.mainLotWidth).toBeGreaterThan(9);
-      expect(result.meetsMinimumRequirements).toBe(true);
+      // Detection alone never judges; the stored limits do.
+      expect(result.meetsMinimumRequirements).toBeNull();
+      // The fixture head is 12 m wide: exactly the limit, so 'near' is the honest answer.
+      expect(['meets', 'near']).toContain(applyBattleaxeLimits(result, LIMITS).cdcStatus);
+      expect(applyBattleaxeLimits(result, LIMITS).meetsMinimumRequirements).not.toBe(false);
       expect(result.confidence).toBeGreaterThan(0.6);
     });
 
@@ -130,9 +138,10 @@ describe('detectBattleaxeLot', () => {
       console.log('Non-compliant battleaxe result:', JSON.stringify(result, null, 2));
 
       expect(result.isBattleaxe).toBe(true);
-      expect(result.meetsMinimumRequirements).toBe(false);
-      expect(result.complianceIssues.length).toBeGreaterThan(0);
-      expect(result.complianceIssues.some(i => i.includes('Access way width'))).toBe(true);
+      expect(result.meetsMinimumRequirements).toBeNull();
+      const judged = applyBattleaxeLimits(result, LIMITS);
+      expect(judged.meetsMinimumRequirements).toBe(false);
+      expect(judged.complianceIssues.some(i => i.startsWith('Access way') && /complying development \(CDC\)/i.test(i))).toBe(true);
     });
   });
 

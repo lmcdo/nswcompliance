@@ -26,10 +26,8 @@ import type { LotGeometry } from '@/types/property';
 // NSW average latitude for Web Mercator scale correction
 // Mercator correction now comes from the ring's own latitude — see ./mercator.
 
-// SEPP Housing 2021 requirements
-const MIN_ACCESS_WAY_WIDTH = 3.0; // meters
-const MIN_MAIN_LOT_DIMENSION = 12.0; // meters
-const MIN_MAIN_LOT_AREA = 144.0; // 12m × 12m in sqm
+// The CDC battle-axe limits are NOT here: they are read from cdc_eligibility_standards and
+// applied by lib/cdc/battleaxe-cdc.ts. This module only measures the lot.
 
 // Detection thresholds
 // Proportion-based: handle must be < 40% of head width (per legislative definition
@@ -53,10 +51,24 @@ export interface BattleaxeDetectionResult {
   mainLotWidth: number;
   /** Estimated main lot area in sqm (excluding handle) */
   mainLotArea: number;
-  /** Whether lot meets SEPP Housing 2021 minimum requirements */
-  meetsMinimumRequirements: boolean;
-  /** Specific compliance issues */
+  /** Estimated main lot (head) length along the lot, metres (excluding handle) */
+  mainLotLength?: number;
+  /** Narrowest width across the main lot (head), metres */
+  mainLotMinWidth?: number;
+  /**
+   * Whether the lot meets the stored CDC battle-axe limits. null until
+   * applyBattleaxeLimits() runs, and when the limits could not be read or a
+   * measurement is close to a limit.
+   */
+  meetsMinimumRequirements: boolean | null;
+  /** Route-labelled messages from applyBattleaxeLimits(); empty from detection alone */
   complianceIssues: string[];
+  /** Set by applyBattleaxeLimits(): meets / fails / near / not_checked */
+  cdcStatus?: 'meets' | 'fails' | 'near' | 'not_checked';
+  /** Set by applyBattleaxeLimits(): instrument and clause the limits came from */
+  cdcRef?: string | null;
+  /** Set by applyBattleaxeLimits(): PDF page of that clause */
+  cdcPdfPage?: number | null;
   /** Width measurements at each cross-section (for debugging) */
   widthProfile?: number[];
 }
@@ -114,7 +126,7 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
     accessWayLength: 0,
     mainLotWidth: 0,
     mainLotArea: 0,
-    meetsMinimumRequirements: false,
+    meetsMinimumRequirements: null,
     complianceIssues: [],
   };
 
@@ -189,32 +201,11 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
     narrowThreshold
   );
   const mainLotArea = estimateMainLotArea(widths, narrowThreshold, headLength);
+  const headSliceWidths = widths.filter((w) => w >= narrowThreshold);
+  const mainLotMinWidth = headSliceWidths.length > 0 ? Math.min(...headSliceWidths) : 0;
 
   // Calculate confidence
   const confidence = calculateConfidence(widths, minWidth, maxWidth, narrowPercentage);
-
-  // Check SEPP compliance
-  const complianceIssues: string[] = [];
-  if (minWidth < MIN_ACCESS_WAY_WIDTH) {
-    complianceIssues.push(
-      `Access way width ${minWidth.toFixed(1)}m is below minimum ${MIN_ACCESS_WAY_WIDTH}m`
-    );
-  }
-  if (maxWidth < MIN_MAIN_LOT_DIMENSION) {
-    complianceIssues.push(
-      `Main lot width ${maxWidth.toFixed(1)}m is below minimum ${MIN_MAIN_LOT_DIMENSION}m`
-    );
-  }
-  if (mainLotArea < MIN_MAIN_LOT_AREA) {
-    complianceIssues.push(
-      `Main lot area ${mainLotArea.toFixed(0)}m² is below minimum ${MIN_MAIN_LOT_AREA}m²`
-    );
-  }
-
-  const meetsMinimumRequirements =
-    minWidth >= MIN_ACCESS_WAY_WIDTH &&
-    maxWidth >= MIN_MAIN_LOT_DIMENSION &&
-    mainLotArea >= MIN_MAIN_LOT_AREA;
 
   return {
     isBattleaxe: true,
@@ -223,8 +214,10 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
     accessWayLength: Math.round(handleLength * 100) / 100,
     mainLotWidth: Math.round(maxWidth * 100) / 100,
     mainLotArea: Math.round(mainLotArea),
-    meetsMinimumRequirements,
-    complianceIssues,
+    mainLotLength: Math.round(headLength * 100) / 100,
+    mainLotMinWidth: Math.round(mainLotMinWidth * 100) / 100,
+    meetsMinimumRequirements: null,
+    complianceIssues: [],
     widthProfile: widths,
   };
 }

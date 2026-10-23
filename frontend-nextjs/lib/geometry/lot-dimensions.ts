@@ -114,9 +114,6 @@ export function calculateLotDimensions(geometry: LotGeometry): LotDimensions | n
 
   if (battleaxe?.isBattleaxe) {
     notes.push(`Battleaxe lot detected (handle: ${battleaxe.accessWayWidth}m, head: ${battleaxe.mainLotWidth}m)`);
-    if (!battleaxe.meetsMinimumRequirements) {
-      notes.push('WARNING: Does not meet SEPP Housing 2021 minimum requirements');
-    }
   }
 
   return {

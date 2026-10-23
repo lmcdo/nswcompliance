@@ -1,0 +1,108 @@
+{
+  "tier": "critical",
+  "justification": "Battle-axe CDC test judged lots against typed 3 m / 12 m constants with no route named; the granny flat space heuristic (our estimate) set not-buildable. Limits now come from cdc_eligibility_standards rows 87/88 (Sch 1 s2(1)(c), clause row 41115); messages name the CDC route, the measurement, the map source and the next step; the heuristic is a caution.",
+  "commit_hash": "fede064e",
+  "files": [
+    ".claude/regulatory_figure_ledger.json",
+    "frontend-nextjs/app/api/property/[address]/route.ts",
+    "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+    "frontend-nextjs/components/property-details-comprehensive.tsx",
+    "frontend-nextjs/lib/geometry/__tests__/lot-shape-analysis.test.ts",
+    "frontend-nextjs/lib/geometry/lot-dimensions.ts",
+    "frontend-nextjs/lib/geometry/lot-shape-analysis.ts",
+    "frontend-nextjs/lib/property-data.ts",
+    "services/granny_flat.py",
+    "tests/test_granny_flat_mutation.py",
+    "frontend-nextjs/__tests__/lib/cdc/battleaxe-cdc.test.ts",
+    "frontend-nextjs/lib/cdc/battleaxe-cdc-db.ts",
+    "frontend-nextjs/lib/cdc/battleaxe-cdc.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "What existing data/state does this interact with? [table/column or 'none']",
+    "assumption_mismatch": "What if existing data doesn't match assumptions? [specific failure]",
+    "new_vs_existing": "Will this apply to existing rows or only new? [mechanism]",
+    "external_source_error": "(Critical only) What does external source return on error?",
+    "frontend_type": "(Critical only) Does frontend type need updating? — checked against the existing housing-code loader pattern and callers",
+    "user_failure_mode": "(Critical only) What does user see if this fails?"
+  },
+  "functions": [
+    {
+      "name": "applyBattleaxeLimits",
+      "file_line": "frontend-nextjs/lib/cdc/battleaxe-cdc.ts:40",
+      "input": "a detected battle-axe lot and the stored limits or null",
+      "output": "meets true/false/null, route-labelled messages, clause ref and PDF page",
+      "if_none": "limits null gives not_checked and a could-not-read message, never a pass"
+    },
+    {
+      "name": "loadBattleaxeLimits",
+      "file_line": "frontend-nextjs/lib/cdc/battleaxe-cdc-db.ts:13",
+      "input": "no arguments; it reads the two housing_sepp_sch1 rows from cdc_eligibility_standards",
+      "output": "access width and lot dimension with ref, quote and page",
+      "if_none": "returns null when a row is missing, stale, non-numeric or the query fails"
+    },
+    {
+      "name": "confirm_and_calculate",
+      "file_line": "services/granny_flat.py:1806",
+      "input": "lot area, detected dwelling footprint and request fields",
+      "output": "buildable flag unchanged by the space estimate; caution text naming CDC and DCP",
+      "if_none": "no caution when lot or dwelling area is missing"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "read the two stored battle-axe CDC limits and the page of their source clause",
+      "file_line": "frontend-nextjs/lib/cdc/battleaxe-cdc-db.ts:15",
+      "where_clause": "code_name = 'housing_sepp_sch1' AND standard_type IN (two types) AND is_active AND stale_since IS NULL",
+      "what this query does": "reads the limits"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "the stored rows are deactivated or deleted while the page is being served to a user",
+      "what_happens": "old code would still pass lots on typed numbers",
+      "repro": "UPDATE cdc_eligibility_standards SET is_active=false WHERE code_name=housing_sepp_sch1 (test DB)",
+      "mitigated": true,
+      "how": "loader returns null; message says not checked; jest covers null limits"
+    },
+    {
+      "scenario": "access way measured 2.9 m from the cadastre",
+      "what_happens": "a hard fail or pass on map-precision geometry",
+      "repro": "applyBattleaxeLimits with accessWayWidth 2.9",
+      "mitigated": true,
+      "how": "within 0.2 m gives close-to-the-limit, meets null"
+    },
+    {
+      "scenario": "a DA applicant reads below-minimum while the page is being served to a user",
+      "what_happens": "they think the lot cannot take a granny flat at all",
+      "repro": "battle-axe card on a 2.4 m handle",
+      "mitigated": true,
+      "how": "message says CDC is not available and a DA is assessed against the council controls"
+    },
+    {
+      "scenario": "loadBattleaxeLimits SQL fails or returns no rows while the page is being served to a user",
+      "what_happens": "a silent pass if the error were swallowed as true",
+      "repro": "break the DB connection in a test",
+      "mitigated": true,
+      "how": "catch returns null which maps to not_checked; jest null-limits case"
+    },
+    {
+      "scenario": "one of the two rows is stale or non-numeric",
+      "what_happens": "a half-read limit could judge on one value and miss the other",
+      "repro": "set stale_since on battleaxe_lot_min_dimension (test DB)",
+      "mitigated": true,
+      "how": "loader requires both rows, finite and positive, else returns null and not checked"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none",
+    "secrets": "none",
+    "other_repo": "none",
+    "manual_verify": "GET /api/property/<battle-axe address> on the preview and read lotDimensions.battleaxe.complianceIssues"
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/cdc/battleaxe-cdc.test.ts lib/geometry/__tests__/lot-shape-analysis.test.ts && cd .. && python -m pytest tests/test_granny_flat_mutation.py -k cautions",
+    "fails_when": "a typed limit returns, a missing row yields a pass, a message drops the route, or the space caution sets not-buildable",
+    "observed_red": "re-adding granny_flat_buildable = False under the caution fails test_residual_area_cautions_but_never_blocks (1 failed)"
+  }
+}

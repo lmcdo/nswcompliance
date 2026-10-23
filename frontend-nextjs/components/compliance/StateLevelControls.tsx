@@ -1032,44 +1032,37 @@ export function StateLevelControls({
               {/* X3: Battleaxe lot SEPP compliance */}
               {propertyData?.lotDimensions?.lotType === 'battleaxe' &&
                propertyData.lotDimensions.battleaxe && (
-                <div className={`border rounded p-2 ${
-                  propertyData.lotDimensions.battleaxe.meetsMinimumRequirements
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-red-50 border-red-200'
-                }`}>
-                  <div className="flex items-start gap-1.5">
-                    <AlertTriangle className={`h-3.5 w-3.5 flex-shrink-0 mt-0.5 ${
-                      propertyData.lotDimensions.battleaxe.meetsMinimumRequirements
-                        ? 'text-green-600' : 'text-red-600'
-                    }`} />
-                    <div>
-                      <span className={`text-xs font-semibold ${
-                        propertyData.lotDimensions.battleaxe.meetsMinimumRequirements
-                          ? 'text-green-800' : 'text-red-800'
-                      }`}>
-                        Battleaxe lot — access way {propertyData.lotDimensions.battleaxe.accessWayWidth.toFixed(1)}m wide
-                      </span>
-                      {propertyData.lotDimensions.battleaxe.meetsMinimumRequirements ? (
-                        <span className="text-xs text-green-700 ml-1">
-                          (meets 3m SEPP Housing 2021 minimum)
-                        </span>
-                      ) : (
+                (() => {
+                  const ba = propertyData.lotDimensions.battleaxe;
+                  // true = meets the stored CDC limits, false = below them, null = not checked or close to a limit
+                  const tone = ba.meetsMinimumRequirements === true ? 'green' : ba.meetsMinimumRequirements === false ? 'red' : 'amber';
+                  const box = { green: 'bg-green-50 border-green-200', red: 'bg-red-50 border-red-200', amber: 'bg-amber-50 border-amber-200' }[tone];
+                  const text = { green: 'text-green-800', red: 'text-red-800', amber: 'text-amber-800' }[tone];
+                  return (
+                    <div className={`border rounded p-2 ${box}`}>
+                      <div className="flex items-start gap-1.5">
+                        <AlertTriangle className={`h-3.5 w-3.5 flex-shrink-0 mt-0.5 ${text}`} />
                         <div>
-                          <span className="text-xs text-red-700 ml-1">
-                            (below 3m SEPP Housing 2021 minimum)
+                          <span className={`text-xs font-semibold ${text}`}>
+                            Battleaxe lot — access way {ba.accessWayWidth.toFixed(1)}m wide (measured from the cadastre map)
                           </span>
-                          {propertyData.lotDimensions.battleaxe.complianceIssues?.length > 0 && (
+                          {ba.meetsMinimumRequirements === true && (
+                            <span className="text-xs text-green-700 ml-1">
+                              (meets the battle-axe size minimums for complying development{ba.cdcRef ? `, ${ba.cdcRef}` : ''}; other CDC requirements are checked separately)
+                            </span>
+                          )}
+                          {ba.complianceIssues?.length > 0 && (
                             <ul className="mt-0.5 ml-1">
-                              {propertyData.lotDimensions.battleaxe.complianceIssues.map((issue: string, i: number) => (
-                                <li key={i} className="text-xs text-red-700">• {issue}</li>
+                              {ba.complianceIssues.map((issue: string, i: number) => (
+                                <li key={i} className={`text-xs ${text}`}>• {issue}</li>
                               ))}
                             </ul>
                           )}
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  );
+                })()
               )}
 
               <HousingSEPPEligibilityCard

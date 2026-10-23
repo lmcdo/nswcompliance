@@ -2062,13 +2062,20 @@ class TestConfirmAndCalculate:
         assert resp.granny_flat_buildable is False
         assert any("detection error" in w.lower() for w in resp.warnings)
 
-    def test_residual_area_blocks_when_too_small(self, monkeypatch):
-        """Residual < 120m² → not buildable."""
+    def test_residual_area_cautions_but_never_blocks(self, monkeypatch):
+        """Residual below our estimate → a CDC caution, never a not-buildable verdict.
+
+        The threshold is our own estimate, not a planning rule, so it may not decide the
+        outcome (user ruling 2026-10-24)."""
         _stub_confirm_all(monkeypatch)
         req = _make_confirm_req(lot_area_m2=600.0, main_dwelling_area_m2=500.0)
         resp = gf.confirm_and_calculate(req)
-        assert resp.granny_flat_buildable is False
-        assert any("insufficient" in w.lower() for w in resp.warnings)
+        assert resp.granny_flat_buildable is not False
+        caution = [w for w in resp.warnings if "may be tight" in w]
+        assert caution, resp.warnings
+        assert "complying development (CDC)" in caution[0]
+        assert "DCP" in caution[0]
+        assert not any("insufficient" in w.lower() for w in resp.warnings)
 
     def test_residual_area_ok_when_large_enough(self, monkeypatch):
         """Residual ≥ 120m² → still buildable."""
