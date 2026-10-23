@@ -1105,7 +1105,7 @@
   },
   {
    "file": "frontend-nextjs/lib/coverage.ts",
-   "text": "dcpSetbackTripleCouncils: 18",
+   "text": "dcpSetbackTripleCouncils: 17",
    "fate": "open",
    "count": 1
   },
