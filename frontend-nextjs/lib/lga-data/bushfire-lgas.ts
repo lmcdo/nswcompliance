@@ -1,6 +1,13 @@
 export interface BushfireLgaData {
   name: string
   slug: string
+  /**
+   * % of the LGA mapped bush fire prone (all categories + buffer), measured from the
+   * NSW RFS BFPL map against the Spatial Services LGA boundary on BFPL_MEASURED_ON
+   * by scripts/measure_bfpl_coverage.py (3 decimals; 0 only where the map returned no
+   * pieces inside the LGA). Re-run it rather than editing by hand.
+   */
+  bfplCoveragePct: number
   /** Dominant vegetation categories */
   dominantVegetation: string[]
   /** Related LGA slugs for "also check" links */
@@ -8,15 +15,25 @@ export interface BushfireLgaData {
   faqs: Array<{ q: string; a: string }>
 }
 
+export const BFPL_MEASURED_ON = '23 October 2026'
+
+/** Plain-English share of an LGA on the BFPL map, from a measured percentage. */
+export function describeBfplCoverage(pct: number): string {
+  if (pct === 0) return 'none'
+  if (pct < 1) return 'less than 1%'
+  return `about ${Math.round(pct)}%`
+}
+
 export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   // ── Greater Sydney — Inner & East ──────────────────────────────────
   {
     name: 'Inner West',
     slug: 'inner-west',
+    bfplCoveragePct: 0,
     dominantVegetation: ['Urban remnant', 'Riparian corridor'],
     relatedSlugs: ['bayside', 'canterbury-bankstown', 'lane-cove'],
     faqs: [
-      { q: 'Is the Inner West bush fire prone?', a: 'Parts of the Inner West are mapped as bush fire prone land. Small pockets exist along creek corridors and near remnant bushland in parks.' },
+      { q: 'Is the Inner West bush fire prone?', a: 'None of the Inner West is mapped as bush fire prone land on the NSW RFS map (measured 23 October 2026). The check above shows the result for a specific address.' },
       { q: 'Do I need a bushfire assessment for my Inner West property?', a: 'Most Inner West properties do not require a BAL assessment. However, if your property is within the mapped BFPL area — even in a vegetation buffer zone — any new building work triggers AS 3959 considerations. Check your specific address above.' },
       { q: 'Does low bushfire risk affect my Inner West insurance premium?', a: 'Generally no. Properties not on bush fire prone land are not subject to bushfire insurance loading. If your property IS mapped as BFPL (even at BAL-LOW), some insurers may apply a small loading.' },
     ],
@@ -24,6 +41,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Bayside',
     slug: 'bayside',
+    bfplCoveragePct: 0.678,
     dominantVegetation: ['Coastal heath', 'Urban remnant'],
     relatedSlugs: ['randwick', 'georges-river', 'canterbury-bankstown'],
     faqs: [
@@ -35,39 +53,43 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Randwick',
     slug: 'randwick',
+    bfplCoveragePct: 0,
     dominantVegetation: ['Coastal heath', 'Eastern Suburbs Banksia Scrub'],
     relatedSlugs: ['bayside', 'waverley', 'woollahra'],
     faqs: [
-      { q: 'Is Randwick bush fire prone?', a: 'Parts of Randwick are mapped as bush fire prone land. The main affected area is around Malabar Headland, Randwick Environment Park, and the Eastern Suburbs Banksia Scrub remnants near La Perouse.' },
+      { q: 'Is Randwick bush fire prone?', a: 'None of Randwick is mapped as bush fire prone land on the NSW RFS map (measured 23 October 2026). The check above shows the result for a specific address.' },
       { q: 'Does Eastern Suburbs Banksia Scrub create bushfire risk?', a: 'Eastern Suburbs Banksia Scrub is a critically endangered ecological community. Where it borders residential properties, it can trigger BFPL mapping. However, vegetation clearing is heavily restricted due to its conservation status.' },
-      { q: 'Do I need a BAL assessment in Randwick?', a: 'Only if your property is on mapped BFPL. The vast majority of Randwick residential properties are not affected. Properties near Malabar, La Perouse, and some parts of Matraville should check above.' },
+      { q: 'Do I need a BAL assessment in Randwick?', a: 'Only if your property is on mapped BFPL. On 23 October 2026 the NSW RFS map showed no bush fire prone land in Randwick. The check above shows the current result for a specific address.' },
     ],
   },
   {
     name: 'Waverley',
     slug: 'waverley',
+    bfplCoveragePct: 0,
     dominantVegetation: ['Coastal heath'],
     relatedSlugs: ['randwick', 'woollahra'],
     faqs: [
-      { q: 'Is Waverley bush fire prone?', a: 'Parts of Waverley are mapped as bush fire prone land. Small areas near coastal headlands may be mapped.' },
+      { q: 'Is Waverley bush fire prone?', a: 'None of Waverley is mapped as bush fire prone land on the NSW RFS map (measured 23 October 2026). The check above shows the result for a specific address.' },
       { q: 'Do I need to check bushfire status for a Waverley property?', a: 'While unlikely to be affected, it is still worth checking if your property borders parkland or headland reserves. Bush fire prone land status is disclosed on Section 10.7 certificates.' },
     ],
   },
   {
     name: 'Woollahra',
     slug: 'woollahra',
+    bfplCoveragePct: 0,
     dominantVegetation: ['Urban remnant', 'Harbour foreshore'],
     relatedSlugs: ['waverley', 'randwick'],
     faqs: [
-      { q: 'Is Woollahra bush fire prone?', a: 'Parts of Woollahra are mapped as bush fire prone land, primarily around harbour foreshore reserves and some larger private gardens with significant tree canopy.' },
-      { q: 'Does bushfire affect heritage properties in Woollahra?', a: 'For the small overlap of heritage and BFPL, both heritage conservation requirements and bushfire construction standards apply. This can create competing obligations.' },
-      { q: 'Do I need a BAL assessment for renovations in Woollahra?', a: 'Only if your property is on mapped BFPL. Given the very low coverage, most renovations do not require bushfire consideration.' },
+      { q: 'Is Woollahra bush fire prone?', a: 'None of Woollahra is mapped as bush fire prone land on the NSW RFS map (measured 23 October 2026). The check above shows the result for a specific address.' },
+      { q: 'Does bushfire affect heritage properties in Woollahra?', a: 'If a heritage property is on mapped BFPL, both heritage conservation requirements and bushfire construction standards apply. This can create competing obligations.' },
+      { q: 'Do I need a BAL assessment for renovations in Woollahra?', a: 'Only if your property is on mapped BFPL. On 23 October 2026 the NSW RFS map showed no bush fire prone land in Woollahra.' },
     ],
   },
   // ── Greater Sydney — North ─────────────────────────────────────────
   {
     name: 'Northern Beaches',
     slug: 'northern-beaches',
+    bfplCoveragePct: 65.843,
     dominantVegetation: ['Eucalypt forest', 'Heath', 'Littoral'],
     relatedSlugs: ['ku-ring-gai', 'hornsby', 'lane-cove'],
     faqs: [
@@ -79,6 +101,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Ku-ring-gai',
     slug: 'ku-ring-gai',
+    bfplCoveragePct: 50.238,
     dominantVegetation: ['Eucalypt forest', 'Turpentine-ironbark', 'Rainforest'],
     relatedSlugs: ['hornsby', 'northern-beaches', 'ryde'],
     faqs: [
@@ -90,6 +113,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Hornsby',
     slug: 'hornsby',
+    bfplCoveragePct: 83.134,
     dominantVegetation: ['Eucalypt forest', 'Woodland', 'Heath'],
     relatedSlugs: ['ku-ring-gai', 'the-hills-shire', 'northern-beaches'],
     faqs: [
@@ -101,6 +125,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Lane Cove',
     slug: 'lane-cove',
+    bfplCoveragePct: 15.659,
     dominantVegetation: ['Eucalypt forest', 'Turpentine-ironbark'],
     relatedSlugs: ['ryde', 'ku-ring-gai', 'northern-beaches'],
     faqs: [
@@ -112,6 +137,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Ryde',
     slug: 'ryde',
+    bfplCoveragePct: 17.914,
     dominantVegetation: ['Eucalypt forest', 'Turpentine-ironbark'],
     relatedSlugs: ['lane-cove', 'ku-ring-gai', 'parramatta'],
     faqs: [
@@ -124,6 +150,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Parramatta',
     slug: 'parramatta',
+    bfplCoveragePct: 8.535,
     dominantVegetation: ['Cumberland Plain woodland', 'Riparian'],
     relatedSlugs: ['blacktown', 'ryde', 'the-hills-shire'],
     faqs: [
@@ -135,6 +162,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Blacktown',
     slug: 'blacktown',
+    bfplCoveragePct: 29.938,
     dominantVegetation: ['Cumberland Plain woodland', 'Eucalypt forest'],
     relatedSlugs: ['the-hills-shire', 'penrith', 'parramatta'],
     faqs: [
@@ -146,6 +174,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'The Hills Shire',
     slug: 'the-hills-shire',
+    bfplCoveragePct: 77.977,
     dominantVegetation: ['Eucalypt forest', 'Cumberland Plain woodland'],
     relatedSlugs: ['hornsby', 'blacktown', 'hawkesbury'],
     faqs: [
@@ -157,6 +186,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Penrith',
     slug: 'penrith',
+    bfplCoveragePct: 70.887,
     dominantVegetation: ['Eucalypt forest', 'Cumberland Plain woodland'],
     relatedSlugs: ['blue-mountains', 'hawkesbury', 'blacktown'],
     faqs: [
@@ -168,6 +198,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Hawkesbury',
     slug: 'hawkesbury',
+    bfplCoveragePct: 97.004,
     dominantVegetation: ['Eucalypt forest', 'Woodland', 'Riparian'],
     relatedSlugs: ['penrith', 'the-hills-shire', 'blue-mountains'],
     faqs: [
@@ -180,6 +211,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Campbelltown',
     slug: 'campbelltown',
+    bfplCoveragePct: 77.727,
     dominantVegetation: ['Eucalypt forest', 'Cumberland Plain woodland'],
     relatedSlugs: ['camden', 'liverpool', 'sutherland-shire'],
     faqs: [
@@ -191,6 +223,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Camden',
     slug: 'camden',
+    bfplCoveragePct: 55.986,
     dominantVegetation: ['Cumberland Plain woodland', 'Eucalypt forest'],
     relatedSlugs: ['campbelltown', 'liverpool', 'wollongong'],
     faqs: [
@@ -202,6 +235,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Liverpool',
     slug: 'liverpool',
+    bfplCoveragePct: 63.094,
     dominantVegetation: ['Cumberland Plain woodland', 'Riparian'],
     relatedSlugs: ['campbelltown', 'canterbury-bankstown', 'camden'],
     faqs: [
@@ -213,6 +247,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Sutherland Shire',
     slug: 'sutherland-shire',
+    bfplCoveragePct: 71.801,
     dominantVegetation: ['Eucalypt forest', 'Heath', 'Woodland'],
     relatedSlugs: ['wollongong', 'campbelltown', 'georges-river'],
     faqs: [
@@ -224,6 +259,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Georges River',
     slug: 'georges-river',
+    bfplCoveragePct: 9.023,
     dominantVegetation: ['Eucalypt forest', 'Coastal heath'],
     relatedSlugs: ['sutherland-shire', 'bayside', 'canterbury-bankstown'],
     faqs: [
@@ -235,6 +271,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Canterbury-Bankstown',
     slug: 'canterbury-bankstown',
+    bfplCoveragePct: 10.01,
     dominantVegetation: ['Cumberland Plain woodland', 'Riparian'],
     relatedSlugs: ['georges-river', 'liverpool', 'inner-west'],
     faqs: [
@@ -247,6 +284,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Blue Mountains',
     slug: 'blue-mountains',
+    bfplCoveragePct: 98.528,
     dominantVegetation: ['Eucalypt forest', 'Woodland', 'Heath'],
     relatedSlugs: ['hawkesbury', 'penrith'],
     faqs: [
@@ -260,6 +298,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Wollongong',
     slug: 'wollongong',
+    bfplCoveragePct: 80.046,
     dominantVegetation: ['Eucalypt forest', 'Rainforest', 'Heath'],
     relatedSlugs: ['sutherland-shire', 'wingecarribee', 'shoalhaven'],
     faqs: [
@@ -271,6 +310,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Wingecarribee',
     slug: 'wingecarribee',
+    bfplCoveragePct: 96.993,
     dominantVegetation: ['Eucalypt forest', 'Woodland', 'Rainforest'],
     relatedSlugs: ['campbelltown', 'shoalhaven', 'wollongong'],
     faqs: [
@@ -282,6 +322,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Shoalhaven',
     slug: 'shoalhaven',
+    bfplCoveragePct: 94.721,
     dominantVegetation: ['Eucalypt forest', 'Coastal heath', 'Rainforest'],
     relatedSlugs: ['wingecarribee', 'wollongong'],
     faqs: [
@@ -293,6 +334,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Clarence Valley',
     slug: 'clarence-valley',
+    bfplCoveragePct: 98.554,
     dominantVegetation: ['Eucalypt forest', 'Rainforest', 'Wet sclerophyll'],
     relatedSlugs: ['yass-valley', 'tamworth-regional'],
     faqs: [
@@ -304,6 +346,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Yass Valley',
     slug: 'yass-valley',
+    bfplCoveragePct: 98.888,
     dominantVegetation: ['Woodland', 'Dry sclerophyll', 'Grassland'],
     relatedSlugs: ['bathurst-regional', 'clarence-valley'],
     faqs: [
@@ -315,6 +358,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Forbes',
     slug: 'forbes',
+    bfplCoveragePct: 8.088,
     dominantVegetation: ['Woodland', 'Grassland'],
     relatedSlugs: ['bathurst-regional'],
     faqs: [
@@ -325,6 +369,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Tamworth Regional',
     slug: 'tamworth-regional',
+    bfplCoveragePct: 98.845,
     dominantVegetation: ['Woodland', 'Dry sclerophyll', 'Grassland'],
     relatedSlugs: ['bathurst-regional', 'clarence-valley'],
     faqs: [
@@ -336,6 +381,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
   {
     name: 'Bathurst Regional',
     slug: 'bathurst-regional',
+    bfplCoveragePct: 98.755,
     dominantVegetation: ['Woodland', 'Dry sclerophyll', 'Box-gum woodland'],
     relatedSlugs: ['yass-valley', 'forbes', 'tamworth-regional'],
     faqs: [

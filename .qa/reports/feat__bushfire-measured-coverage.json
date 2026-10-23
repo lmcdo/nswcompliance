@@ -1,0 +1,72 @@
+{
+  "tier": "standard",
+  "justification": "Puts back a bush fire coverage % on 30 council pages, now measured from the NSW RFS map rather than typed; adds the script that measures it.",
+  "commit_hash": "815bb5b5",
+  "files": [
+    "scripts/measure_bfpl_coverage.py",
+    "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+    "frontend-nextjs/app/(tools)/bushfire/[lga-slug]/page.tsx",
+    "frontend-nextjs/__tests__/lib/bushfire-coverage.test.ts",
+    ".claude/regulatory_figure_ledger.json"
+  ],
+  "pre_impl": {
+    "existing_data": "What existing data/state does this interact with? [table/column or 'none']",
+    "assumption_mismatch": "What if existing data doesn't match assumptions? [specific failure]",
+    "new_vs_existing": "Will this apply to existing rows or only new? [mechanism]",
+    "external_source_error": "(Critical only) What does external source return on error?",
+    "frontend_type": "(Critical only) Does frontend type need updating?",
+    "user_failure_mode": "(Critical only) What does user see if this fails?"
+  },
+  "functions": [
+    {
+      "name": "measure",
+      "file_line": "scripts/measure_bfpl_coverage.py:96",
+      "input": "one Spatial Services LGA name in capitals",
+      "output": "percent of LGA area on the BFPL map, km2, piece count",
+      "if_none": "prints ERROR for that LGA and carries on; never a guessed value"
+    },
+    {
+      "name": "describeBfplCoverage",
+      "file_line": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts:20",
+      "input": "measured percent for one council record",
+      "output": "none / less than 1% / about N%",
+      "if_none": "field is required by the type, so a missing value fails tsc"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "BFPL service returns 500 mid-run",
+      "what_happens": "a council could be measured from partial pages",
+      "repro": "run on CLARENCE VALLEY with BFPL_PAGE=1000",
+      "mitigated": true,
+      "how": "any failed page raises after retries and the LGA prints ERROR, no number"
+    },
+    {
+      "scenario": "overlapping BFPL categories get counted twice",
+      "what_happens": "coverage could exceed the true share or 100%",
+      "repro": "sum areas of category 1, 2, 3 and buffer pieces",
+      "mitigated": true,
+      "how": "pieces are unioned before the area is taken; test caps values at 100"
+    },
+    {
+      "scenario": "a 0% council still says parts are mapped",
+      "what_happens": "FAQ contradicts the measured value on the same page",
+      "repro": "grep Parts of Waverley",
+      "mitigated": true,
+      "how": "four FAQs rewritten; jest test fails if a 0% council says parts are mapped"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none",
+    "secrets": "none",
+    "other_repo": "none",
+    "manual_verify": "open /bushfire/ku-ring-gai and see about 50% with the measured date"
+  },
+  "falsifiable_check": {
+    "command": "python scripts/measure_bfpl_coverage.py \"KU-RING-GAI\" WAVERLEY",
+    "fails_when": "the printed % differs from the value in bushfire-lgas.ts",
+    "observed_red": "old typed 70% for Ku-ring-gai; measured 50.2%; Waverley typed under 1%, measured 0.0%"
+  }
+}
