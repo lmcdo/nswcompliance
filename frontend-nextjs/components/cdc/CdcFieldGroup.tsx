@@ -7,17 +7,17 @@
  * Uses minimal color - only small icons for pass/fail.
  */
 
-import { Check, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FieldValidation } from './types';
+import { StatusIcon, StandardHint } from './CdcCheckBits';
 
 interface CdcFieldGroupProps {
   label: string;
   name: string;
-  value: number;
+  value: number | null;
   validation: FieldValidation;
-  onChange: (value: number) => void;
+  onChange: (value: number | null) => void;
   unit?: string;
   helperText?: string;
   step?: number;
@@ -43,12 +43,10 @@ export function CdcFieldGroup({
 }: CdcFieldGroupProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const num = parseFloat(e.target.value);
-    if (!isNaN(num)) {
-      onChange(num);
-    }
+    onChange(Number.isNaN(num) ? null : num);
   };
 
-  const { valid, required, margin } = validation;
+  const { status, margin } = validation;
 
   return (
     <div className={compact ? 'space-y-1' : 'space-y-1.5'}>
@@ -56,11 +54,7 @@ export function CdcFieldGroup({
         <Label htmlFor={name} className="text-xs font-medium text-gray-600">
           {label}
         </Label>
-        {valid ? (
-          <Check className="w-3.5 h-3.5 text-green-600" />
-        ) : (
-          <X className="w-3.5 h-3.5 text-red-500" />
-        )}
+        <StatusIcon status={status} />
       </div>
 
       <div className="relative">
@@ -68,7 +62,7 @@ export function CdcFieldGroup({
           id={name}
           name={name}
           type="number"
-          value={value}
+          value={value ?? ''}
           onChange={handleChange}
           step={step}
           min={min}
@@ -85,9 +79,9 @@ export function CdcFieldGroup({
 
       <div className="flex items-center justify-between text-xs">
         <span className="text-gray-400">
-          {helperText || `Min ${required}${unit}`}
+          {helperText ?? <StandardHint check={validation} className="" />}
         </span>
-        {!valid && margin < 0 && (
+        {status === 'fail' && margin !== null && margin < 0 && (
           <span className="text-red-500 font-medium">
             {Math.abs(margin).toFixed(1)}{unit} short
           </span>
@@ -113,12 +107,10 @@ export function CdcFieldInline({
 }: Omit<CdcFieldGroupProps, 'helperText' | 'disabled' | 'compact'>) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const num = parseFloat(e.target.value);
-    if (!isNaN(num)) {
-      onChange(num);
-    }
+    onChange(Number.isNaN(num) ? null : num);
   };
 
-  const { valid, required, margin } = validation;
+  const { status, margin } = validation;
 
   return (
     <div className="space-y-1">
@@ -126,18 +118,14 @@ export function CdcFieldInline({
         <Label htmlFor={name} className="text-xs text-gray-500">
           {label}
         </Label>
-        {valid ? (
-          <Check className="w-3 h-3 text-green-600" />
-        ) : (
-          <X className="w-3 h-3 text-red-500" />
-        )}
+        <StatusIcon status={status} small />
       </div>
       <div className="relative">
         <Input
           id={name}
           name={name}
           type="number"
-          value={value}
+          value={value ?? ''}
           onChange={handleChange}
           step={step}
           min={min}
@@ -151,8 +139,8 @@ export function CdcFieldInline({
         )}
       </div>
       <div className="text-[10px] text-gray-400">
-        Min {required}{unit}
-        {!valid && margin < 0 && (
+        <StandardHint check={validation} className="" />
+        {status === 'fail' && margin !== null && margin < 0 && (
           <span className="text-red-500 ml-1">
             ({Math.abs(margin).toFixed(1)} short)
           </span>

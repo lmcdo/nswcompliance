@@ -1,0 +1,1513 @@
+[
+ {
+  "id": 1,
+  "code_name": "housing_code",
+  "standard_type": "eligible_zones",
+  "numeric_value": null,
+  "text_value": null,
+  "applicable_zones": [
+   "R1",
+   "R2",
+   "R3",
+   "R4",
+   "RU5"
+  ],
+  "conditionality": null,
+  "ref_number": "cl 3.1(3)(a)",
+  "source_provision_ids": [
+   36996,
+   36997
+  ],
+  "source_quote": "(3) Lot requirements \u2014 Complying development specified for this code may only be carried out on a lot that meets the following requirements \u2014 (a) the lot must be in Zone R1, R2, R3, R4 or RU5",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": true,
+  "stale_since": null,
+  "pdf_page": 112
+ },
+ {
+  "id": 2,
+  "code_name": "housing_code",
+  "standard_type": "min_lot_size",
+  "numeric_value": "200",
+  "text_value": null,
+  "applicable_zones": null,
+  "conditionality": null,
+  "ref_number": "cl 3.1(3)(b)",
+  "source_provision_ids": [
+   36996,
+   36997
+  ],
+  "source_quote": "(3) Lot requirements \u2014 ... (b) the area of the lot must not be less than 200 m2",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": true,
+  "stale_since": null,
+  "pdf_page": 112
+ },
+ {
+  "id": 3,
+  "code_name": "housing_code",
+  "standard_type": "acid_sulfate_max_class",
+  "numeric_value": "2",
+  "text_value": null,
+  "applicable_zones": null,
+  "conditionality": null,
+  "ref_number": "cl 1.19(1)(c)",
+  "source_provision_ids": [
+   36184,
+   36185
+  ],
+  "source_quote": "To be complying development specified for the Housing Code ... the development must not be carried out on ... (c) land identified on an Acid Sulfate Soils Map as being Class 1 or Class 2",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": true,
+  "stale_since": null,
+  "pdf_page": 23
+ },
+ {
+  "id": 7,
+  "code_name": "housing_code",
+  "standard_type": "min_lot_width",
+  "numeric_value": "6",
+  "text_value": null,
+  "applicable_zones": null,
+  "conditionality": null,
+  "ref_number": "cl 3.1(3)(c)",
+  "source_provision_ids": [
+   36996,
+   36997
+  ],
+  "source_quote": "(3) Lot requirements \u2014 Complying development specified for this code may only be carried out on a lot that meets the following requirements \u2014 ... (c) the width of the lot must be at least 6m measured at the building line",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": true,
+  "stale_since": null,
+  "pdf_page": 112
+ },
+ {
+  "id": 10,
+  "code_name": "housing_code",
+  "standard_type": "max_height_m",
+  "numeric_value": "8.5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "dwelling house and any attached development",
+  "ref_number": "dwelling house height (heading row not stored)",
+  "source_provision_ids": [
+   37040
+  ],
+  "source_quote": "The maximum height for a dwelling house and any attached development is 8.5 m above ground level (existing).",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 118
+ },
+ {
+  "id": 11,
+  "code_name": "housing_code",
+  "standard_type": "max_height_m",
+  "numeric_value": "4.5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "any detached development",
+  "ref_number": "detached development height (heading row not stored)",
+  "source_provision_ids": [
+   37158
+  ],
+  "source_quote": "The maximum height for any detached development is 4.5 m above ground level (existing).",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 137
+ },
+ {
+  "id": 12,
+  "code_name": "housing_code",
+  "standard_type": "max_height_m",
+  "numeric_value": "6",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "detached studio within 900 mm of a lane and above a garage",
+  "ref_number": "3.25(2)",
+  "source_provision_ids": [
+   37221
+  ],
+  "source_quote": "the maximum height is 6m above ground level (existing).",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 145
+ },
+ {
+  "id": 13,
+  "code_name": "housing_code",
+  "standard_type": "min_front_setback_m",
+  "numeric_value": "3",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot size 200-300 m2 (if fewer than 2 dwelling houses within 40 m)",
+  "ref_number": "3.10(3)",
+  "source_provision_ids": [
+   39937
+  ],
+  "source_quote": "<td>200m{-300m2</td><td>3m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 121
+ },
+ {
+  "id": 14,
+  "code_name": "housing_code",
+  "standard_type": "min_front_setback_m",
+  "numeric_value": "4.5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot size >300-900 m2",
+  "ref_number": "3.10(3)",
+  "source_provision_ids": [
+   39937
+  ],
+  "source_quote": "<td>&gt;300m2-900m2</td><td>4.5m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 121
+ },
+ {
+  "id": 15,
+  "code_name": "housing_code",
+  "standard_type": "min_front_setback_m",
+  "numeric_value": "6.5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot size >900-1,500 m2",
+  "ref_number": "3.10(3)",
+  "source_provision_ids": [
+   39937
+  ],
+  "source_quote": "<td>&gt;900m2\u00b2\u22121,500m2</td><td>6.5m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 121
+ },
+ {
+  "id": 16,
+  "code_name": "housing_code",
+  "standard_type": "min_front_setback_m",
+  "numeric_value": "10",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot size >1,500 m2",
+  "ref_number": "3.10(3)",
+  "source_provision_ids": [
+   39937
+  ],
+  "source_quote": "<td>&gt;1,500m2</td><td>10m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 121
+ },
+ {
+  "id": 17,
+  "code_name": "housing_code",
+  "standard_type": "min_front_setback_m",
+  "numeric_value": null,
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "average of 2 nearest dwelling houses on same side of primary road | conditional: the value depends on other facts -- read the quote",
+  "ref_number": "3.10(1)",
+  "source_provision_ids": [
+   37049
+  ],
+  "source_quote": "must not be less than the average setback from the primary road of the 2 nearest dwelling houses on the same side of the primary road.",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 120
+ },
+ {
+  "id": 18,
+  "code_name": "housing_code",
+  "standard_type": "min_side_setback_m",
+  "numeric_value": "0.9",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot width at building line 6m-10m; building height 0m-5.5m",
+  "ref_number": "3.10(4)",
+  "source_provision_ids": [
+   39938
+  ],
+  "source_quote": "<td>6m-10m</td><td>0m-5.5m</td><td>900mm</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 121
+ },
+ {
+  "id": 19,
+  "code_name": "housing_code",
+  "standard_type": "min_side_setback_m",
+  "numeric_value": "0.9",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot width at building line >10m-18m; building height 0m-4.5m",
+  "ref_number": "3.10(4)",
+  "source_provision_ids": [
+   39938
+  ],
+  "source_quote": "<td>&gt;10m-18m</td><td>0m-4.5m</td><td>900mm</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 121
+ },
+ {
+  "id": 20,
+  "code_name": "housing_code",
+  "standard_type": "min_side_setback_m",
+  "numeric_value": "1.5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot width at building line >18m-24m; building height 0m-4.5m",
+  "ref_number": "3.10(4)",
+  "source_provision_ids": [
+   39938
+  ],
+  "source_quote": "<td>&gt;18m-24m</td><td>0m-4.5m</td><td>1.5m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 121
+ },
+ {
+  "id": 21,
+  "code_name": "housing_code",
+  "standard_type": "min_side_setback_m",
+  "numeric_value": null,
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot width at building line 6m-10m; upper building-height band | conditional: the value depends on other facts -- read the quote",
+  "ref_number": "3.10(4)",
+  "source_provision_ids": [
+   39938
+  ],
+  "source_quote": "<td>6m-10m</td><td>&gt;5.5m-8.5m</td><td>(building height\u20135.5m) \u00f7 4 + 0.9m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 121
+ },
+ {
+  "id": 22,
+  "code_name": "housing_code",
+  "standard_type": "min_side_setback_m",
+  "numeric_value": null,
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot width at building line >10m-18m; upper building-height band | conditional: the value depends on other facts -- read the quote",
+  "ref_number": "3.10(4)",
+  "source_provision_ids": [
+   39938
+  ],
+  "source_quote": "<td>&gt;10m-18m</td><td>&gt;4.5m-8.5m</td><td>(building height\u20134.5m) \u00f7 4 + 0.9m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 121
+ },
+ {
+  "id": 23,
+  "code_name": "housing_code",
+  "standard_type": "min_side_setback_m",
+  "numeric_value": null,
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot width at building line >18m-24m; upper building-height band | conditional: the value depends on other facts -- read the quote",
+  "ref_number": "3.10(4)",
+  "source_provision_ids": [
+   39938
+  ],
+  "source_quote": "<td>&gt;18m-24m</td><td>&gt;4.5m-8.5m</td><td>(building height\u20134.5m) \u00f7 4 + 1.5m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 121
+ },
+ {
+  "id": 24,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "3",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area 200-300 m2; building height 0-4.5 m",
+  "ref_number": "3.10(10)",
+  "source_provision_ids": [
+   39939
+  ],
+  "source_quote": "<td>200m2-300m2</td><td>0m-4.5m</td><td>3m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 124
+ },
+ {
+  "id": 25,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": null,
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area 200-300 m2; building height >4.5-8.5 m (upper level) | conditional: the value depends on other facts -- read the quote",
+  "ref_number": "3.10(10)",
+  "source_provision_ids": [
+   39939
+  ],
+  "source_quote": "<td>200m2-300m2</td><td>&gt;4.5m-8.5m</td><td>10m or the average rear setback of the 2 adjoining dwelling houses, measured at 4.5m above ground level (existing), whichever is the lesser",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 124
+ },
+ {
+  "id": 26,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "3",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area >300-900 m2; building height 0-4.5 m",
+  "ref_number": "3.10(10)",
+  "source_provision_ids": [
+   39939
+  ],
+  "source_quote": "<td>0m-4.5m</td><td></td></tr><tr><td></td><td></td><td>3m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 124
+ },
+ {
+  "id": 27,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "8",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area >300-900 m2; building height >4.5-8.5 m (upper level)",
+  "ref_number": "3.10(10)",
+  "source_provision_ids": [
+   37071
+  ],
+  "source_quote": ">4.5m\u20138.5m 8m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 125
+ },
+ {
+  "id": 28,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area >900-1,500 m2; building height 0-4.5 m",
+  "ref_number": "3.10(10)",
+  "source_provision_ids": [
+   37071
+  ],
+  "source_quote": "1,500m220m\u20134.5m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 125
+ },
+ {
+  "id": 29,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "12",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area >900-1,500 m2; building height >4.5-8.5 m (upper level)",
+  "ref_number": "3.10(10)",
+  "source_provision_ids": [
+   37071
+  ],
+  "source_quote": "1,500m22 >4.5m\u20138.5m 12m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 125
+ },
+ {
+  "id": 30,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "10",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area >1,500 m2; building height 0-4.5 m",
+  "ref_number": "3.10(10)",
+  "source_provision_ids": [
+   37071
+  ],
+  "source_quote": ">1,500m20m\u20134.5m 10m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 125
+ },
+ {
+  "id": 31,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "15",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area >1,500 m2; building height >4.5-8.5 m (upper level)",
+  "ref_number": "3.10(10)",
+  "source_provision_ids": [
+   37071
+  ],
+  "source_quote": ">1,500m 2 >4.5m\u20138.5m 15m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 125
+ },
+ {
+  "id": 32,
+  "code_name": "housing_code",
+  "standard_type": "min_secondary_road_setback_m",
+  "numeric_value": "2",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "corner lot dwelling; lot size 200-600 m2",
+  "ref_number": "3.10(11)",
+  "source_provision_ids": [
+   37072
+  ],
+  "source_quote": "200 m 2 { - } 600 m 22m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 125
+ },
+ {
+  "id": 33,
+  "code_name": "housing_code",
+  "standard_type": "min_secondary_road_setback_m",
+  "numeric_value": "3",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "corner lot dwelling; lot size >600-1,500 m2",
+  "ref_number": "3.10(11)",
+  "source_provision_ids": [
+   37072
+  ],
+  "source_quote": "> 600 m 2 - 15 00 m 23m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 125
+ },
+ {
+  "id": 34,
+  "code_name": "housing_code",
+  "standard_type": "min_secondary_road_setback_m",
+  "numeric_value": "5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "corner lot dwelling; lot size >1,500 m2",
+  "ref_number": "3.10(11)",
+  "source_provision_ids": [
+   37072
+  ],
+  "source_quote": ">1,500m25m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 125
+ },
+ {
+  "id": 35,
+  "code_name": "housing_code",
+  "standard_type": "min_parallel_road_setback_m",
+  "numeric_value": "3",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "parallel road lots",
+  "ref_number": "3.10(12)",
+  "source_provision_ids": [
+   37073
+  ],
+  "source_quote": "at least 3 m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 126
+ },
+ {
+  "id": 36,
+  "code_name": "housing_code",
+  "standard_type": "min_classified_road_setback_m",
+  "numeric_value": "9",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "classified road; if no setback specified by other EPI",
+  "ref_number": "3.10(13)",
+  "source_provision_ids": [
+   37076
+  ],
+  "source_quote": "if no setback is specified\u20149m.",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 126
+ },
+ {
+  "id": 37,
+  "code_name": "housing_code",
+  "standard_type": "min_public_reserve_setback_m",
+  "numeric_value": "3",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "boundary with public reserve",
+  "ref_number": "3.10(14)",
+  "source_provision_ids": [
+   37077
+  ],
+  "source_quote": "a public reserve of at least 3 m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 126
+ },
+ {
+  "id": 38,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "3",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "battle-axe lot: rear boundary of lot in front",
+  "ref_number": "3.10(15)",
+  "source_provision_ids": [
+   37078
+  ],
+  "source_quote": "in front of the battle-axe lot of at least 3 m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 126
+ },
+ {
+  "id": 39,
+  "code_name": "housing_code",
+  "standard_type": "min_side_setback_m",
+  "numeric_value": "0.9",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot width at building line 6m-18m",
+  "ref_number": "3.21(2) detached",
+  "source_provision_ids": [
+   39941
+  ],
+  "source_quote": "<td>6m-18m</td><td>900mm</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 139
+ },
+ {
+  "id": 40,
+  "code_name": "housing_code",
+  "standard_type": "min_side_setback_m",
+  "numeric_value": "1.5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot width at building line >18m-24m",
+  "ref_number": "3.21(2) detached",
+  "source_provision_ids": [
+   39941
+  ],
+  "source_quote": "<td>&gt;18m-24m</td><td>1.5m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 139
+ },
+ {
+  "id": 41,
+  "code_name": "housing_code",
+  "standard_type": "min_side_setback_m",
+  "numeric_value": "2.5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot width at building line >24m",
+  "ref_number": "3.21(2) detached",
+  "source_provision_ids": [
+   39941
+  ],
+  "source_quote": "<td>&gt;24m</td><td>2.5m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 139
+ },
+ {
+  "id": 42,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "0.9",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area 200-900 m2",
+  "ref_number": "3.23(7) detached garage/carport",
+  "source_provision_ids": [
+   39943
+  ],
+  "source_quote": "<td>200m\u00b2-900m2</td><td>900mm</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 144
+ },
+ {
+  "id": 43,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "0.9",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area 200-900 m2",
+  "ref_number": "3.24(2) detached deck/patio/pergola/terrace/verandah",
+  "source_provision_ids": [
+   39945
+  ],
+  "source_quote": "<td>200m2-900m2</td><td>900mm</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 145
+ },
+ {
+  "id": 44,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "1.5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area >900-1,500 m2",
+  "ref_number": "3.23(7) detached garage/carport",
+  "source_provision_ids": [
+   39943
+  ],
+  "source_quote": "<td>&gt;900m2-1,500m2</td><td>1.5m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 144
+ },
+ {
+  "id": 45,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "1.5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area >900-1,500 m2",
+  "ref_number": "3.24(2) detached deck/patio/pergola/terrace/verandah",
+  "source_provision_ids": [
+   39945
+  ],
+  "source_quote": "<td>&gt;900m2-1,500m2</td><td>1.5m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 145
+ },
+ {
+  "id": 46,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "2.5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area >1,500 m2",
+  "ref_number": "3.23(7) detached garage/carport",
+  "source_provision_ids": [
+   39943
+  ],
+  "source_quote": "<td>&gt;1,500m2</td><td>2.5m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 144
+ },
+ {
+  "id": 47,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "2.5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area >1,500 m2",
+  "ref_number": "3.24(2) detached deck/patio/pergola/terrace/verandah",
+  "source_provision_ids": [
+   39945
+  ],
+  "source_quote": "<td>&gt;1,500m2</td><td>2.5m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 145
+ },
+ {
+  "id": 48,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "0.9",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area 200-900 m2",
+  "ref_number": "3.21(8) cabana/shed/rainwater tank/shade structure",
+  "source_provision_ids": [
+   37190
+  ],
+  "source_quote": "200 m 2 { - } 900 m 20.9m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 141
+ },
+ {
+  "id": 49,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "1.5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area >900-1,500 m2",
+  "ref_number": "3.21(8)",
+  "source_provision_ids": [
+   37190
+  ],
+  "source_quote": "15 00 m 21.5m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 141
+ },
+ {
+  "id": 50,
+  "code_name": "housing_code",
+  "standard_type": "min_rear_setback_m",
+  "numeric_value": "2.5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot area >1,500 m2",
+  "ref_number": "3.21(8)",
+  "source_provision_ids": [
+   37190
+  ],
+  "source_quote": ">1,500m22.5m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 141
+ },
+ {
+  "id": 51,
+  "code_name": "housing_code",
+  "standard_type": "min_secondary_road_setback_m",
+  "numeric_value": "2",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot size 200-600 m2",
+  "ref_number": "3.23(6) detached garage/carport",
+  "source_provision_ids": [
+   39942
+  ],
+  "source_quote": "<td>200m2-600m2</td><td>2m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 144
+ },
+ {
+  "id": 52,
+  "code_name": "housing_code",
+  "standard_type": "min_secondary_road_setback_m",
+  "numeric_value": "3",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot size >600-1,500 m2",
+  "ref_number": "3.23(6)",
+  "source_provision_ids": [
+   39942
+  ],
+  "source_quote": "<td>&gt;600m2-1,500m2</td><td>3m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 144
+ },
+ {
+  "id": 53,
+  "code_name": "housing_code",
+  "standard_type": "min_secondary_road_setback_m",
+  "numeric_value": "5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot size >1,500 m2",
+  "ref_number": "3.23(6)",
+  "source_provision_ids": [
+   39942
+  ],
+  "source_quote": "<td>&gt;1,500m\u00b2</td><td>5m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 144
+ },
+ {
+  "id": 54,
+  "code_name": "housing_code",
+  "standard_type": "min_parallel_road_setback_m",
+  "numeric_value": "3",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "detached development, parallel road lot",
+  "ref_number": "3.21(9)",
+  "source_provision_ids": [
+   37192
+  ],
+  "source_quote": "minimum setback from a parallel road of 3 m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 141
+ },
+ {
+  "id": 55,
+  "code_name": "housing_code",
+  "standard_type": "min_front_setback_m",
+  "numeric_value": null,
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "detached development (not garage/carport) behind building line of dwelling house | conditional: the value depends on other facts -- read the quote",
+  "ref_number": "3.21(1)",
+  "source_provision_ids": [
+   37170
+  ],
+  "source_quote": "must be located behind the building line of a dwelling house that is adjacent to any primary road or secondary road.",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 138
+ },
+ {
+  "id": 56,
+  "code_name": "housing_code",
+  "standard_type": "min_front_setback_m",
+  "numeric_value": "1",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "detached garage/carport from primary road (value-only row; header in 37206)",
+  "ref_number": "3.23(5)",
+  "source_provision_ids": [
+   37207
+  ],
+  "source_quote": "At least 1m behind the building line of the dwelling house",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 143
+ },
+ {
+  "id": 57,
+  "code_name": "housing_code",
+  "standard_type": "min_front_setback_m",
+  "numeric_value": "1",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "attached garage/carport/space from primary road (value-only row; header in 37149)",
+  "ref_number": "3.16(5)",
+  "source_provision_ids": [
+   37150
+  ],
+  "source_quote": "1m or more behind the building line of the dwelling house",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 135
+ },
+ {
+  "id": 58,
+  "code_name": "housing_code",
+  "standard_type": "max_garage_door_width_m",
+  "numeric_value": "3.2",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot width at building line 8m-12m",
+  "ref_number": "3.23(9)",
+  "source_provision_ids": [
+   39944
+  ],
+  "source_quote": "<td>8m-12m</td><td>3.2m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 144
+ },
+ {
+  "id": 59,
+  "code_name": "housing_code",
+  "standard_type": "max_garage_door_width_m",
+  "numeric_value": "6",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot width at building line >12m",
+  "ref_number": "3.23(9)",
+  "source_provision_ids": [
+   39944
+  ],
+  "source_quote": "<td>&gt;12m</td><td>6m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 144
+ },
+ {
+  "id": 60,
+  "code_name": "housing_code",
+  "standard_type": "max_boundary_wall_height_m",
+  "numeric_value": "3.3",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "wall within 900 mm of side boundary (dwelling)",
+  "ref_number": "3.10(7)(a)",
+  "source_provision_ids": [
+   37061
+  ],
+  "source_quote": "(a) 3.3 m above ground level (existing)",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 123
+ },
+ {
+  "id": 61,
+  "code_name": "housing_code",
+  "standard_type": "max_boundary_wall_height_m",
+  "numeric_value": "3.3",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "wall within 900 mm of side boundary (detached)",
+  "ref_number": "3.21(5)(a)",
+  "source_provision_ids": [
+   37181
+  ],
+  "source_quote": "(a) 3.3 m above ground level (existing)",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 140
+ },
+ {
+  "id": 62,
+  "code_name": "housing_code",
+  "standard_type": "max_boundary_wall_length_m",
+  "numeric_value": null,
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot width 6m-10m / >10-12.5m (bands in row 37063, values here) | conditional: the value depends on other facts -- read the quote",
+  "ref_number": "3.10(8)",
+  "source_provision_ids": [
+   37064
+  ],
+  "source_quote": "20 m or 50 % of the depth of the lot, whichever is the lesser 10m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 123
+ },
+ {
+  "id": 63,
+  "code_name": "housing_code",
+  "standard_type": "max_finished_floor_level_mm",
+  "numeric_value": "600",
+  "text_value": "mm",
+  "applicable_zones": null,
+  "conditionality": "detached deck/patio/pergola/terrace/verandah",
+  "ref_number": "3.24(1)",
+  "source_provision_ids": [
+   37216
+  ],
+  "source_quote": "is 600 mm above ground level (existing)",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 145
+ },
+ {
+  "id": 64,
+  "code_name": "housing_code",
+  "standard_type": "max_floor_level_above_ground_m",
+  "numeric_value": "2",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "setback from side/rear boundary <3m",
+  "ref_number": "table p129 (clause heading not in stored rows)",
+  "source_provision_ids": [
+   39940
+  ],
+  "source_quote": "<td>&lt;3m</td><td>2m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 129
+ },
+ {
+  "id": 65,
+  "code_name": "housing_code",
+  "standard_type": "max_floor_level_above_ground_m",
+  "numeric_value": "3",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "3m-6m",
+  "ref_number": "table p129 (clause heading not in stored rows)",
+  "source_provision_ids": [
+   39940
+  ],
+  "source_quote": "<td>3m-6m</td><td>3m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 129
+ },
+ {
+  "id": 66,
+  "code_name": "housing_code",
+  "standard_type": "max_floor_level_above_ground_m",
+  "numeric_value": "4",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": ">6m",
+  "ref_number": "table p129 (clause heading not in stored rows)",
+  "source_provision_ids": [
+   39940
+  ],
+  "source_quote": "<td>&gt;6m</td><td>4m</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 129
+ },
+ {
+  "id": 67,
+  "code_name": "housing_code",
+  "standard_type": "min_landscaped_area_pct",
+  "numeric_value": "10",
+  "text_value": "% of lot area",
+  "applicable_zones": null,
+  "conditionality": "lot area 200-300 m2",
+  "ref_number": "landscaped area table (p149; detached development)",
+  "source_provision_ids": [
+   39946
+  ],
+  "source_quote": "<td>200m2-300m2</td><td>10% of lot area",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 149
+ },
+ {
+  "id": 68,
+  "code_name": "housing_code",
+  "standard_type": "min_landscaped_area_pct",
+  "numeric_value": "15",
+  "text_value": "% of lot area",
+  "applicable_zones": null,
+  "conditionality": "lot area >300-450 m2",
+  "ref_number": "landscaped area table (p149; detached development)",
+  "source_provision_ids": [
+   39946
+  ],
+  "source_quote": "<td>&gt;300m{-450m2</td><td>15% of lot area",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 149
+ },
+ {
+  "id": 69,
+  "code_name": "housing_code",
+  "standard_type": "min_landscaped_area_pct",
+  "numeric_value": "20",
+  "text_value": "% of lot area",
+  "applicable_zones": null,
+  "conditionality": "lot area >450-600 m2",
+  "ref_number": "landscaped area table (p149; detached development)",
+  "source_provision_ids": [
+   39946
+  ],
+  "source_quote": "<td>&gt;450m\u00b2-600m2</td><td>20% of lot area",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 149
+ },
+ {
+  "id": 70,
+  "code_name": "housing_code",
+  "standard_type": "min_landscaped_area_pct",
+  "numeric_value": "30",
+  "text_value": "% of lot area",
+  "applicable_zones": null,
+  "conditionality": "lot area >600-900 m2",
+  "ref_number": "landscaped area table (p149; detached development)",
+  "source_provision_ids": [
+   39946
+  ],
+  "source_quote": "<td>&gt;600m\u00b2-900m2</td><td>30% of lot area",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 149
+ },
+ {
+  "id": 71,
+  "code_name": "housing_code",
+  "standard_type": "min_landscaped_area_pct",
+  "numeric_value": "40",
+  "text_value": "% of lot area",
+  "applicable_zones": null,
+  "conditionality": "lot area >900-1,500 m2",
+  "ref_number": "landscaped area table (p149; detached development)",
+  "source_provision_ids": [
+   39946
+  ],
+  "source_quote": "<td>&gt;900m2\u22121,500m2</td><td>40% of lot area",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 149
+ },
+ {
+  "id": 72,
+  "code_name": "housing_code",
+  "standard_type": "min_landscaped_area_pct",
+  "numeric_value": "45",
+  "text_value": "% of lot area",
+  "applicable_zones": null,
+  "conditionality": "lot area >1,500 m2",
+  "ref_number": "landscaped area table (p149; detached development)",
+  "source_provision_ids": [
+   39946
+  ],
+  "source_quote": "<td>&gt;1,500m2</td><td>45% of lot area</td>",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 149
+ },
+ {
+  "id": 73,
+  "code_name": "housing_code",
+  "standard_type": "min_landscaped_area_pct",
+  "numeric_value": null,
+  "text_value": "% of lot area",
+  "applicable_zones": null,
+  "conditionality": "values only; bands in other rows, not paired | conditional: the value depends on other facts -- read the quote",
+  "ref_number": "landscaped area table (p130; dwelling)",
+  "source_provision_ids": [
+   37105
+  ],
+  "source_quote": "10 % of lot area 15 % of lot area 20 % of lot area 30 % of lot area 40 % of lot area 45 % of lot area",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 130
+ },
+ {
+  "id": 74,
+  "code_name": "housing_code",
+  "standard_type": "min_landscaped_forward_of_building_line_pct",
+  "numeric_value": "25",
+  "text_value": "%",
+  "applicable_zones": null,
+  "conditionality": "lot width at building line 18 m or less",
+  "ref_number": "landscaped (3)(a)",
+  "source_provision_ids": [
+   37107
+  ],
+  "source_quote": "if the lot width measured at the building line is 18 m or less\u2014 25 % of the area forward of the building line must be landscaped",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 130
+ },
+ {
+  "id": 75,
+  "code_name": "housing_code",
+  "standard_type": "min_landscaped_forward_of_building_line_pct",
+  "numeric_value": "50",
+  "text_value": "%",
+  "applicable_zones": null,
+  "conditionality": "lot width at building line more than 18 m",
+  "ref_number": "landscaped (3)(b)",
+  "source_provision_ids": [
+   37107
+  ],
+  "source_quote": "is more than 18 m - 50 % of the area forward of the building line must be landscaped",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 130
+ },
+ {
+  "id": 76,
+  "code_name": "housing_code",
+  "standard_type": "min_landscaped_behind_building_line_pct",
+  "numeric_value": "50",
+  "text_value": "%",
+  "applicable_zones": null,
+  "conditionality": "of minimum landscaped area",
+  "ref_number": "landscaped (3)(c)",
+  "source_provision_ids": [
+   37107
+  ],
+  "source_quote": "(c) 50 % of the minimum landscaped area must be located behind the building line",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 130
+ },
+ {
+  "id": 77,
+  "code_name": "housing_code",
+  "standard_type": "min_landscaped_dimension_m",
+  "numeric_value": "1.5",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "each landscaped area",
+  "ref_number": "landscaped (2)",
+  "source_provision_ids": [
+   37106
+  ],
+  "source_quote": "minimum width and length of 1.5 m",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 130
+ },
+ {
+  "id": 78,
+  "code_name": "housing_code",
+  "standard_type": "min_car_parking_spaces",
+  "numeric_value": "1",
+  "text_value": "spaces",
+  "applicable_zones": null,
+  "conditionality": "at least 1 space unless lot width < 8 m at building line (exceptions in row 37144)",
+  "ref_number": "3.16(1)",
+  "source_provision_ids": [
+   37143
+  ],
+  "source_quote": "At least 1 off-street car parking space, being an open hard stand space or a carport or garage, must be provided on a lot",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 135
+ },
+ {
+  "id": 79,
+  "code_name": "housing_code",
+  "standard_type": "min_lot_width_for_attached_garage_m",
+  "numeric_value": "8",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot width < 8 m: attached garage only if accessed from secondary road/parallel road/lane",
+  "ref_number": "3.16(4)",
+  "source_provision_ids": [
+   37147
+  ],
+  "source_quote": "lot that has a width of less than 8m measured at the building line if the garage is accessed only from a secondary road, parallel road or lane.",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 135
+ },
+ {
+  "id": 80,
+  "code_name": "housing_code",
+  "standard_type": "min_lot_width_for_detached_garage_m",
+  "numeric_value": "8",
+  "text_value": "m",
+  "applicable_zones": null,
+  "conditionality": "lot width < 8 m at building line: only if access from secondary road/parallel road/lane",
+  "ref_number": "3.23(3)",
+  "source_provision_ids": [
+   37204
+  ],
+  "source_quote": "lot that has a width of less than 8 m at the building line if the only vehicular access to the lot is from a secondary road, a parallel road or a lane.",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 143
+ },
+ {
+  "id": 81,
+  "code_name": "housing_code",
+  "standard_type": "max_gfa",
+  "numeric_value": null,
+  "text_value": "m2 or % of lot area",
+  "applicable_zones": null,
+  "conditionality": "bands row 37044, values row 37045; not paired in storage | conditional: the value depends on other facts -- read the quote",
+  "ref_number": "3.9 table (dwelling; p119)",
+  "source_provision_ids": [
+   37045
+  ],
+  "source_quote": "78 % of lot area \n75 % of lot area \n235 m2 \n25 % of lot area + 150 m2 \n290m 2 \n25 % of lot area + 150 m2 \n335m 2 \n25 % of lot area + 150 m2 \n380m 2 \n25 % of lot area + 150 m2 \n400m2",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 119
+ },
+ {
+  "id": 82,
+  "code_name": "housing_code",
+  "standard_type": "max_gfa",
+  "numeric_value": null,
+  "text_value": "m2 or % of lot area",
+  "applicable_zones": null,
+  "conditionality": "bands row 37162, values row 37163; not paired in storage | conditional: the value depends on other facts -- read the quote",
+  "ref_number": "3.19 table (detached; p137)",
+  "source_provision_ids": [
+   37163
+  ],
+  "source_quote": "78 % of lot area \n75 % of lot area \n235 m2 \n25 % of lot area + 150 m2 \n290m2 \n25 % of lot area + 150m2 \n335m 2 \n25 % of lot area + 150 m2 \n380m 2 \n25 % of lot area + 150 m2 \n400",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 137
+ },
+ {
+  "id": 83,
+  "code_name": "housing_code",
+  "standard_type": "max_storeys",
+  "numeric_value": "2",
+  "text_value": "storeys",
+  "applicable_zones": null,
+  "conditionality": "new dwelling house and attached development",
+  "ref_number": "storeys clause (p112)",
+  "source_provision_ids": [
+   36991
+  ],
+  "source_quote": "the erection of a new 1 or 2 storey dwelling house",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 112
+ },
+ {
+  "id": 84,
+  "code_name": "housing_code",
+  "standard_type": "max_basement_area_m2",
+  "numeric_value": "25",
+  "text_value": "m2",
+  "applicable_zones": null,
+  "conditionality": "lot width at building line 6-10 m",
+  "ref_number": "basement limit table (p113)",
+  "source_provision_ids": [
+   37006
+  ],
+  "source_quote": "Maximum area of basement 6\u201310m 25m 2",
+  "effective_date": null,
+  "is_active": true,
+  "manual_verified": false,
+  "stale_since": null,
+  "pdf_page": 113
+ }
+]
