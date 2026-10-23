@@ -129,3 +129,13 @@ def test_every_reader_checks_for_a_redirect():
         src = f.read_text(encoding="utf-8")
         if "def scrape_" in src and "resp = " in src:
             assert src.count("check_not_redirected(hub_url, resp.url)") == 1, f.name
+
+
+def test_a_page_chosen_by_its_query_must_keep_it():
+    # Sol HIGH: index.php?page=dcp -> index.php?page=home has the same host and path.
+    q = "https://council.nsw.gov.au/index.php?page=dcp"
+    check_not_redirected(q, q)
+    with pytest.raises(HubScrapeError):
+        check_not_redirected(q, "https://council.nsw.gov.au/index.php?page=home")
+    with pytest.raises(HubScrapeError):
+        check_not_redirected(q, "https://council.nsw.gov.au/index.php")

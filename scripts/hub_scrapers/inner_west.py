@@ -43,7 +43,11 @@ def check_not_redirected(requested: str, final: str | None) -> None:
     page, which still has links: read as "ok", it would become the list every later day is
     compared with. http->https, a www. prefix, a trailing slash and letter case are not moves.
     """
-    if final and _page_key(final) != _page_key(requested):
+    # A page chosen by its query (index.php?page=dcp) must keep it (Sol, 2026-10-23); an added
+    # query on a plain address (?page=1) is not a move.
+    want_q = urlparse(requested or "").query
+    moved = _page_key(final or "") != _page_key(requested) or (want_q and urlparse(final or "").query != want_q)
+    if final and moved:
         raise HubScrapeError(f"Hub page redirected off the page: {requested} -> {final}")
 
 
