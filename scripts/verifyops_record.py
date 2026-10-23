@@ -32,6 +32,11 @@ OUTCOMES = CHECKED | NOT_CHECKED
 LIST_OUTCOMES = frozenset({"ok", "blocked", "empty", "error", "anomaly", "no_scraper"})
 
 
+#: A stored size below this cannot be a PDF (r2_monitor.MIN_PDF_BYTES): download once to replace it.
+#: DQ-79: row 766 kept url_content_length = 1 behind a matching ETag, so it was never re-measured.
+MIN_STORED_BYTES = 1000
+
+
 def decide_fetch(*, force: bool, stored_hash: str | None, stored_etag: str | None,
                  head_etag: str | None, stored_len: int | None, head_len: int | None,
                  last_downloaded: datetime | None, now: datetime, spot: bool) -> tuple[bool, str]:
@@ -46,6 +51,8 @@ def decide_fetch(*, force: bool, stored_hash: str | None, stored_etag: str | Non
         return True, "force"
     if not stored_hash:
         return True, "no_baseline"
+    if stored_len is not None and int(stored_len) < MIN_STORED_BYTES:
+        return True, "size_impossible"
     if stored_etag and head_etag and stored_etag != head_etag:
         return True, "etag_changed"
     if stored_len and head_len and int(stored_len) != int(head_len):

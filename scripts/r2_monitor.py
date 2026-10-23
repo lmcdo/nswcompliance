@@ -362,6 +362,22 @@ def _still_opens(url: str) -> bool | None:
 MIN_PDF_BYTES = 1000
 
 
+def plausible_size(value) -> int | None:
+    """A server's reported size, or None when it cannot be the document's size.
+
+    DQ-79 (2026-10-23): Ku-ring-gai's server answered HEAD for a real PDF with a size of 1, and
+    `new_len = remote_len or len(content)` stored that 1 (row 766; row 257 before it). Below
+    MIN_PDF_BYTES no PDF that passes _assert_pdf_body can exist, so the number is not the file's
+    size: treat it as unknown, which makes the writer fall back to the bytes actually downloaded
+    and keeps decide_fetch from calling it a size change.
+    """
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return None
+    return n if n >= MIN_PDF_BYTES else None
+
+
 def _assert_pdf_body(content: bytes, url: str) -> None:
     """Raise unless the body really is a PDF.
 
@@ -1153,9 +1169,9 @@ def run_monitor(
                 if head_status not in (200, 206):
                     raise RuntimeError(f"HEAD returned HTTP {head_status}: {url}")
 
-                remote_len = head.get("content_length")
-                if remote_len:
-                    remote_len = int(remote_len)
+                remote_len = plausible_size(head.get("content_length"))
+                if head.get("content_length") and remote_len is None:
+                    print(f"    [size] server reported {head.get('content_length')!r} bytes -- not a PDF's size, ignored")
 
                 # Fast-path: skip full download if ETag matches stored value.
                 # ETag alone is sufficient — it is designed for this purpose and is
@@ -1536,8 +1552,8 @@ def reseed_hashes(conn, council_filter: str | None, dry_run: bool, delay: float 
             new_etag = resp_headers.get("ETag")
             new_lm = resp_headers.get("Last-Modified")
             # Use Content-Length from response if available, else len(content)
-            remote_len = resp_headers.get("Content-Length")
-            new_len = int(remote_len) if remote_len else len(content)
+            remote_len = plausible_size(resp_headers.get("Content-Length"))
+            new_len = remote_len if remote_len else len(content)
 
             changed = new_hash != stored_hash or new_etag != stored_etag
 
