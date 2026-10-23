@@ -817,6 +817,7 @@ def run_monitor(
     `recorder` stores every outcome (migration 116); None records nothing (tests, reseed).
     """
     rec = recorder or Recorder(conn, dry_run=True, mode="unrecorded")
+    _host_pause_spent.clear()  # the 429 budget is per run, not per process (Sol, 2026-10-23)
     cur = conn.cursor()
     now = datetime.now(timezone.utc)
 
