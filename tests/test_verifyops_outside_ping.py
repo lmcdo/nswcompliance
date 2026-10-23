@@ -186,3 +186,9 @@ def test_main_no_telegram_env_with_red_pings_fail(monkeypatch):
     p.main(_args(), post=f)
     assert f.calls[-1][0] == HC + "/fail"
     assert not any("telegram" in u for u, _ in f.calls)
+
+
+@pytest.mark.parametrize("answer", ["null", "[]", '{"ok": true, "result": []}', '"ok"',
+                                    '{"ok": true, "result": null}'])
+def test_send_telegram_odd_json_shapes_are_not_delivered_and_do_not_crash(answer):
+    assert p.send_telegram("x", "t", "c", post=lambda url, data: answer) is False

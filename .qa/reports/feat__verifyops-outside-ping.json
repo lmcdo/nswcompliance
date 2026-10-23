@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes how the outside watchdog and Telegram are told about the daily alarm; the alarm's own checks are unchanged.",
- "commit_hash": "a37d69d6",
+ "commit_hash": "2d3e9bc5",
  "files": [
   ".github/workflows/freshness-alarm.yml",
   "scripts/verifyops_outside_ping.py",
@@ -45,7 +45,7 @@
   },
   {
    "name": "ping",
-   "file_line": "scripts/verifyops_outside_ping.py:85",
+   "file_line": "scripts/verifyops_outside_ping.py:89",
    "input": "healthchecks.io URL, the verdict, injectable post function",
    "output": "True only when the body starts OK and is not OK (not found)",
    "if_none": "an unreachable host returns False and the job goes red"

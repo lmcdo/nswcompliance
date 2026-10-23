@@ -79,7 +79,11 @@ def send_telegram(text: str, token: str, chat: str, post=_post) -> bool:
     except Exception as exc:  # noqa: BLE001 - any failure = the reader did not hear
         print(f"telegram send failed: {type(exc).__name__}")
         return False
-    return ans.get("ok") is True and bool((ans.get("result") or {}).get("message_id"))
+    # Any other shape (null, a list, result not an object) is "not delivered", never a crash:
+    # a crash here would skip the /fail ping below (Sol, 2026-10-23).
+    result = ans.get("result") if isinstance(ans, dict) else None
+    return (isinstance(result, dict) and ans.get("ok") is True
+            and bool(result.get("message_id")))
 
 
 def ping(url: str, verdict: str, post=_post) -> bool:
