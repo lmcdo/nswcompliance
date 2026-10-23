@@ -1432,14 +1432,14 @@
    "fixed_by": "2026-09-28 - NOT a repair to the pipeline: the sweep was never broken, and this row was opened on a wrong premise. The opening prompt stated the cron was 'weekly Mon 02:00 UTC' and the row shipped with a 10-day window to match. railway.dcp-monitor.toml in this repo says `0 2 1,15 * *` -- FORTNIGHTLY. So the sweep's last run on 2026-09-15 was 12 days into a 14-day cycle, not a 12-day outage, and a 10-day window would have gone red on a healthy schedule every cycle for ever. Window corrected to 17 days and the probe reads 0. The row stays in the ledger as a live watch: a genuinely missed run still surfaces within about a fortnight."
   },
   "DQ-118": {
-   "declared": "open",
+   "declared": "fixed",
    "check": [
     "python",
     "scripts/verifyops_coverage.py"
    ],
    "passes_when": "exit 0 - every red key (council, chapter, reason) today is in .claude/verifyops_red_baseline.json, which may only shrink. Reasons: unwatched council, no own link, list not read OK in 2 days, chapter not content-checked in 8 days, last result not a check (blocked/429/error), ETag lied in 30 days, new council document undecided after 3 days, changed chapter not re-extracted after 33 days, no finished monitor run in 2 days.",
    "red_when": "A served DCP chapter is not watched or not checked, per chapter, and the problem is new (not in the baseline). Exit 2 (could not look, e.g. migration 116 not applied) is red too.",
-   "note": "Registered 2026-10-22 (VerifyOps v6 steps 3+4; spec ~/.claude/plans/ce-verifyops-v5-SPEC-2026-10-22.md): the per-council hub-scrape liveness row DQ-117 reserved this number for. Reads the run results r2_monitor now records (migration 116). Stays red until migration 116 is applied, one Railway run has recorded results, and the baseline is written from that run with --update --allow-raise. Also run directly in freshness-alarm.yml, because an open row that fails exits 0 in dq_check."
+   "note": "PASSING 2026-10-23 AGAINST A BASELINE, not zero breakage: the first baseline was written from daily run 4 (44/547 active chapters unchecked, under the 10% guard) and holds 85 known red keys, each with a category; the check passes because no NEW key is red. A baselined key still red after 30 days alarms again. Registered 2026-10-22 (VerifyOps v6 steps 3+4; spec ~/.claude/plans/ce-verifyops-v5-SPEC-2026-10-22.md): the per-council hub-scrape liveness row DQ-117 reserved this number for. Reads the run results r2_monitor now records (migration 116). Stays red until migration 116 is applied, one Railway run has recorded results, and the baseline is written from that run with --update --allow-raise. Also run directly in freshness-alarm.yml, because an open row that fails exits 0 in dq_check."
   },
   "DQ-119": {
    "declared": "open",

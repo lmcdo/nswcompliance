@@ -1,9 +1,11 @@
 {
  "tier": "minor",
  "justification": "Data-only: the first shrink-only baseline for the daily DCP alarm, written by verifyops_coverage.py --update.",
- "commit_hash": "70b706ed",
+ "commit_hash": "2a598c98",
  "files": [
-  ".claude/verifyops_red_baseline.json"
+  ".claude/verifyops_red_baseline.json",
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md"
  ],
  "pre_impl": {
   "existing_data": "Daily run 4 (dcp_monitor_runs id 4): 547 active chapters, 44 not content-checked; 85 red keys.",
