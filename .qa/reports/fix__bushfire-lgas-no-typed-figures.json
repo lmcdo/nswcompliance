@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Removes 31 hand-typed bush fire coverage percentages from public council pages and their FAQs; no measured source exists for them.",
-  "commit_hash": "e674b7cc",
+  "commit_hash": "3c5903f3",
   "files": [
     "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
     "frontend-nextjs/app/(tools)/bushfire/[lga-slug]/page.tsx",
