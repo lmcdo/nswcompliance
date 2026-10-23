@@ -1,0 +1,33 @@
+{
+ "tier": "minor",
+ "justification": "Data-only: the first shrink-only baseline for the daily DCP alarm, written by verifyops_coverage.py --update.",
+ "commit_hash": "70b706ed",
+ "files": [
+  ".claude/verifyops_red_baseline.json"
+ ],
+ "pre_impl": {
+  "existing_data": "Daily run 4 (dcp_monitor_runs id 4): 547 active chapters, 44 not content-checked; 85 red keys.",
+  "assumption_mismatch": "None: every category was read from run 4's chapter and council results; 0 keys were left unknown.",
+  "new_vs_existing": "First baseline file; the guard from #1465 decides whether it may be written."
+ },
+ "falsifiable_check": {
+  "command": "python scripts/verifyops_coverage.py",
+  "fails_when": "any red key appears that is not in this baseline, or a baselined key stays red past 30 days",
+  "observed_red": "Before the write: 85 new red keys, exit 1. After: 0 new, exit 0."
+ },
+ "break_it": [
+  {
+   "scenario": "A half-broken run is frozen as the baseline",
+   "what_happens": "real breakage silenced",
+   "mitigated": true,
+   "how": "guard refused over 10% unchecked; run 4 was 8.0%",
+   "repro": "python scripts/verifyops_coverage.py --update --allow-raise x"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Next freshness-alarm run: coverage exit 0 unless a new key appears."
+ }
+}
