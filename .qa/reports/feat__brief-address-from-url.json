@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The plotdetect.com.au hero is getting an address box that submits to brief.plotdetect.com.au?address=&plan=. The Site Report page declared useSearchParams but never read it, so the visitor would type the address twice. This change reads the link once, starts the report through the same path the landing-search event already uses, and preselects the plan chip. The link is untrusted input, so the rules for it live in a small pure helper with unit tests.",
-  "commit_hash": "6cbf8274",
+  "commit_hash": "2beda805",
   "files": [
     "frontend-nextjs/app/reports/intelligence-brief/url-start.ts",
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
