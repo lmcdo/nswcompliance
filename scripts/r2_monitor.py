@@ -23,6 +23,7 @@ Exit codes:
 
 import argparse
 import hashlib
+import itertools
 import os
 import re
 import sys
@@ -212,13 +213,16 @@ _host_pause_spent: dict[str, float] = {}  # domain -> seconds paused this run
 def retry_rate_limited(url: str, head=None, sleep=time.sleep) -> dict:
     """After a 429: pause the host, longer each time, and retry; the last answer is returned.
 
+    After the listed pauses it repeats the longest until the budget is spent: the host is
+    blocked for the next chapter too, so stopping early saves nothing (Sol, 2026-10-23).
     Stops early on any non-429 answer. Once the host's budget is spent it returns 429
     without waiting, so a host that never lets up costs at most HOST_PAUSE_BUDGET per run.
     """
     head = head or head_request
     domain = _get_domain(url)
     last: dict = {"status": 429}
-    for pause in HOST_PAUSES:
+    for i in itertools.count():
+        pause = HOST_PAUSES[min(i, len(HOST_PAUSES) - 1)]
         left = HOST_PAUSE_BUDGET - _host_pause_spent.get(domain, 0.0)
         if left <= 0:
             break

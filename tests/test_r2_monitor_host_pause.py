@@ -53,6 +53,12 @@ def test_block_longer_than_old_60s_wait_is_recovered():
     assert h.slept >= 170
 
 
+def test_block_past_the_listed_pauses_is_recovered_within_budget():
+    # Sol HIGH: blocked 500 s; the three listed pauses end at 480 s with 1,320 s of budget left.
+    h = Host(blocked_for=500)
+    assert m.retry_rate_limited(IW, head=h.head, sleep=h.sleep)["status"] == 200
+
+
 def test_short_block_recovers_on_first_pause():
     h = Host(blocked_for=30)
     assert m.retry_rate_limited(IW, head=h.head, sleep=h.sleep)["status"] == 200
@@ -91,3 +97,10 @@ def test_non_429_answer_is_returned_as_is():
     calls = []
     ans = m.retry_rate_limited(IW, head=lambda u: calls.append(u) or {"status": 403}, sleep=lambda s: None)
     assert ans["status"] == 403 and len(calls) == 1
+
+
+def test_pause_order_is_listed_then_longest_repeated():
+    slept = []
+    m.retry_rate_limited(IW, head=lambda u: {"status": 429}, sleep=slept.append)
+    assert slept[:4] == [60.0, 120.0, 300.0, 300.0]
+    assert sum(slept) == pytest.approx(m.HOST_PAUSE_BUDGET)
