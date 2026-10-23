@@ -559,3 +559,8 @@ def test_impossible_stored_size_downloads_once_dq79():
     assert _fetch(stored_etag="a", head_etag="a", stored_len=1000, head_len=None) == (False, "etag_match")
     # Unknown (never recorded) is not impossible: 31 active rows hold NULL and must not download daily.
     assert _fetch(stored_etag="a", head_etag="a", stored_len=None, head_len=None) == (False, "etag_match")
+
+
+def test_a_zero_reported_size_is_a_size_change():
+    # Sol: 0 is falsy, so `stored_len and head_len` used to skip it.
+    assert _fetch(stored_etag="a", head_etag="a", head_len=0) == (True, "size_changed")

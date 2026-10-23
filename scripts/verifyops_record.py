@@ -55,7 +55,7 @@ def decide_fetch(*, force: bool, stored_hash: str | None, stored_etag: str | Non
         return True, "size_impossible"
     if stored_etag and head_etag and stored_etag != head_etag:
         return True, "etag_changed"
-    if stored_len and head_len and int(stored_len) != int(head_len):
+    if stored_len is not None and head_len is not None and int(stored_len) != int(head_len):
         return True, "size_changed"
     if stored_etag and head_etag:
         return (True, "spot_check") if spot else (False, "etag_match")
