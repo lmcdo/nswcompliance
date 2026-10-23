@@ -1,0 +1,34 @@
+{
+ "tier": "minor",
+ "justification": "Ledger-only: DQ-79 declared fixed in both ledger files after a measured probe of 0.",
+ "commit_hash": "0b1e553d",
+ "files": [
+  ".claude/DATA_QUALITY_TRACKER.md",
+  ".claude/dq_checks.json"
+ ],
+ "pre_impl": {
+  "existing_data": "dcp_chapter_registry row 766 url_content_length 35405674 after daily run 4; dq_probe_live.py --id DQ-79 count 0.",
+  "assumption_mismatch": "None: the probe was re-run after the row was rechecked, unlike the earlier same-day fixed claim.",
+  "new_vs_existing": "Edits the existing DQ-79 rows only."
+ },
+ "falsifiable_check": {
+  "command": "python scripts/dq_check.py --id DQ-79",
+  "fails_when": "any active chapter stores a size under 1000 bytes while DQ-79 is declared fixed",
+  "observed_red": "dq_check.py reported DQ-79 declared open while the check passes; after the edit it reports PASSED."
+ },
+ "post_merge": {
+  "db_reset": "None.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "python scripts/dq_check.py --id DQ-79 prints PASSED on main."
+ },
+ "break_it": [
+  {
+   "scenario": "Ku-ring-gai's server reports 1 byte again for another chapter",
+   "what_happens": "DQ-79 would go red while declared fixed",
+   "mitigated": true,
+   "how": "#1469 ignores sizes under 1000 bytes when storing; dq_check ratchet goes red if it recurs",
+   "repro": "python scripts/dq_check.py --id DQ-79"
+  }
+ ]
+}
