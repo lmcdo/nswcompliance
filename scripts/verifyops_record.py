@@ -214,14 +214,20 @@ class Recorder:
         return lines
 
     def _query_previous(self, council: str, page_url: str | None) -> list[dict] | None:
+        # Same page = same normalised address as the redirect check uses (www., a trailing slash or
+        # case do not start a fresh first scan that would accept any list; Sol, 2026-10-23).
+        from hub_scrapers.inner_west import _page_key
+
         cur = self.conn.cursor()
         cur.execute(
-            "SELECT links FROM dcp_monitor_council_results WHERE council = %s AND outcome = 'ok'"
-            " AND (%s::text IS NULL OR page_url = %s) ORDER BY id DESC LIMIT 1",
-            (council, page_url, page_url),
+            "SELECT page_url, links FROM dcp_monitor_council_results WHERE council = %s AND outcome = 'ok'"
+            " ORDER BY id DESC LIMIT 50",
+            (council,),
         )
-        row = cur.fetchone()
+        rows = cur.fetchall()
         cur.close()
-        if row is None:
-            return None
-        return row[0] if isinstance(row[0], list) else json.loads(row[0])
+        want = _page_key(page_url) if page_url else None
+        for url, links in rows:
+            if want is None or _page_key(url or "") == want:
+                return links if isinstance(links, list) else json.loads(links)
+        return None
