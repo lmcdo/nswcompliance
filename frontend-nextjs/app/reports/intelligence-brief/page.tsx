@@ -15,6 +15,7 @@ import { BriefIntentBar, BriefOverlayCard, assembleBriefPayload } from '@/compon
 import { SeppContextCard } from '@/components/reports/SeppContextCard';
 import { GrannyFlatBriefCard } from '@/components/reports/GrannyFlatBriefCard';
 import { describeUnavailable, describeBushfireWithoutCategory, type UnavailableTone } from './unavailable';
+import { readBriefStartParams } from './url-start';
 import { floodSignalLine, emsLine, type EmsActivation } from './satellite-copy';
 import { floodZoneUnavailableMessage } from '@/lib/not-assessed';
 import { collectSources } from './provenance';
@@ -2951,6 +2952,23 @@ function IntelligenceBriefInner() {
     window.addEventListener('landing-search', onLandingSearch);
     return () => window.removeEventListener('landing-search', onLandingSearch);
   }, [startBrief]);
+
+  // The plotdetect.com.au hero form links here with ?address=&plan=. Start the
+  // brief from it once, the same way landing-search does, and preselect the
+  // plan chip. Rules for what the link may carry live in url-start.ts.
+  const urlStartedRef = useRef(false);
+  useEffect(() => {
+    if (urlStartedRef.current) return;
+    urlStartedRef.current = true;
+    const { address, intent } = readBriefStartParams(searchParams);
+    if (intent) setOverlayIntent(intent);
+    if (!address || stateRef.current !== 'idle') return;
+    setInputAddress(address);
+    setSelectedAddress(address);
+    setSelectedLat(null);
+    setSelectedLng(null);
+    startBrief(address, null, null);
+  }, [searchParams, startBrief]);
 
   const handleReset = useCallback(() => {
     if (abortRef.current) {

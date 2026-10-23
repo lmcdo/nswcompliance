@@ -61,7 +61,7 @@ interface OverlayApiResponse {
 }
 
 // Matches services/brief_manifest.Intent values exactly.
-const INTENT_CHIPS: Array<{ value: string; label: string }> = [
+export const INTENT_CHIPS: Array<{ value: string; label: string }> = [
   { value: 'granny_flat', label: 'Granny flat' },
   { value: 'duplex', label: 'Duplex' },
   { value: 'renovate', label: 'Renovate' },

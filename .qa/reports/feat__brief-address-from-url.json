@@ -1,0 +1,69 @@
+{
+  "tier": "standard",
+  "justification": "The plotdetect.com.au hero is getting an address box that submits to brief.plotdetect.com.au?address=&plan=. The Site Report page declared useSearchParams but never read it, so the visitor would type the address twice. This change reads the link once, starts the report through the same path the landing-search event already uses, and preselects the plan chip. The link is untrusted input, so the rules for it live in a small pure helper with unit tests.",
+  "commit_hash": "2beda805",
+  "files": [
+    "frontend-nextjs/app/reports/intelligence-brief/url-start.ts",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/components/reports/BriefIntentOverlay.tsx",
+    "frontend-nextjs/__tests__/app/brief-url-start.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/app/brief-url-start.test.ts --ci",
+    "fails_when": "MUTATION 1, accept any non-empty plan instead of only intent-chip values: 1 failed / 6 passed. MUTATION 2, drop the 200-character address cap: 1 failed / 6 passed. Both injected with sed on this branch and restored; clean run 7 passed.",
+    "external_authority": "INTENT_CHIPS in BriefIntentOverlay.tsx is the list the page renders and matches services/brief_manifest.Intent; the test iterates it rather than restating the values, so a chip added later is accepted automatically and a plan outside it is rejected.",
+    "observed_red": "Observed red on this branch: with the intent-set check replaced by any non-empty plan, jest reported 1 failed / 6 passed (the 'only those' case); with the 200-character cap removed, 1 failed / 6 passed (the over-cap case). Restored with git checkout; 7 passed."
+  },
+  "pre_impl": {
+    "existing_data": "The landing-search CustomEvent effect in page.tsx already starts a brief from a bare typed address with lat/lng null (resolved server-side). The URL start reuses that exact sequence. The intent keys were read from the live production bundle of brief.plotdetect.com.au (granny_flat, duplex, renovate, knockdown_rebuild, buy_and_hold, subdivide, researching) and match INTENT_CHIPS in source.",
+    "assumption_mismatch": "I assumed the page already read ?address= because useSearchParams was imported and called. It was called and the result never used.",
+    "new_vs_existing": "One new pure helper and its test; INTENT_CHIPS changed from const to export const so the helper validates against the same list the UI shows instead of a copy."
+  },
+  "functions": [
+    {
+      "name": "readBriefStartParams",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/url-start.ts:24",
+      "input": "the page's URLSearchParams from useSearchParams, i.e. whatever query string the incoming link carries",
+      "output": "{ address, intent } — address trimmed and at most 200 characters, intent only if it is an INTENT_CHIPS value; otherwise null",
+      "if_none": "null params or a bare link return both null and the page stays on its normal landing, as before this change"
+    }
+  ],
+  "values": [
+    {
+      "value": "clean 7 passed; mutation 1 1 failed / 6 passed; mutation 2 1 failed / 6 passed; brief-unavailable-copy suite still 9 passed; tsc 0 errors in changed files; pre-commit type gate 0 errors",
+      "read_at": "npx jest in frontend-nextjs on this branch, 2026-10-21",
+      "if_missing": "without the mutation runs the plan and cap assertions are unproven"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A crafted link carries a plan value that is not a chip, hoping it renders or reaches the overlay endpoint.",
+      "what_happens": "Dropped: intent is null and no chip is preselected.",
+      "mitigated": true,
+      "how": "INTENT_VALUES set membership; test 'accepts every intent chip the page shows, and only those'.",
+      "repro": "npx jest __tests__/app/brief-url-start.test.ts --ci"
+    },
+    {
+      "scenario": "The effect runs twice (React strict mode double-invokes effects in dev, or searchParams identity changes) and starts two briefs.",
+      "what_happens": "urlStartedRef guards a single read per mount, and the stateRef idle check refuses to start when a brief is already triggering.",
+      "mitigated": true,
+      "how": "Same idle guard the landing-search effect uses, plus a ref set before any work.",
+      "repro": "Load /reports/intelligence-brief?address=1+Main+St in dev and watch for a single POST /api/intelligence-brief."
+    },
+    {
+      "scenario": "An address that does not geocode arrives from the link.",
+      "what_happens": "Same outcome as typing it into the landing hero: the API resolves lat/lng server-side and the page shows its existing error state if it cannot.",
+      "mitigated": true,
+      "how": "No new failure path; the call is identical to the landing-search one.",
+      "repro": "n/a"
+    }
+  ],
+  "residual_risk": "The page effect itself has no render test; the rules it applies are tested in the helper. A JS-executing crawler following a shared ?address= link would start a brief run; the existing /api rate limiting in middleware applies the same as for typed searches.",
+  "post_merge": {
+    "db_reset": "None. No database read or write is added; the brief API call is unchanged.",
+    "secrets": "None. No environment variable or key is added or read.",
+    "other_repo": "Yes: the plotdetect.com.au info site (lmcdo/website) gets the hero form that links here, in a separate PR that should merge after this one.",
+    "manual_verify": "Open https://brief.plotdetect.com.au/?address=14+Stanley+St%2C+Concord&plan=granny_flat after deploy: the report starts without typing, and the Granny flat chip is selected."
+  }
+}
