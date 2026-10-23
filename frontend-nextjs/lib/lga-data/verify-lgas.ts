@@ -29,9 +29,9 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
     hasDcpData: false,
     relatedSlugs: ['randwick', 'georges-river', 'canterbury-bankstown'],
     faqs: [
-      { q: 'What planning controls apply in Bayside?', a: 'Bayside properties are governed by the Bayside LEP 2021, SEPP Housing 2021, and the Bayside DCP. Controls cover height, FSR, setbacks, parking, landscaping, and design requirements. Enter your address above for the specific controls with clause citations.' },
+      { q: 'What planning controls apply in Bayside?', a: 'Bayside properties are governed by the Bayside LEP 2021, SEPP Housing 2021, and the Bayside DCP. Controls cover height, FSR, setbacks, parking, landscaping, and design requirements. Enter your address above for the LEP and SEPP controls; Bayside\'s DCP rules are not shown here yet, so check the Bayside DCP for those.' },
       { q: 'How do heritage controls work in Bayside?', a: 'Heritage items and heritage conservation areas in Bayside are listed in the Bayside LEP. Properties within these areas face additional controls on design, materials, and demolition. The tool shows whether your property is heritage-affected.' },
-      { q: 'What parking requirements apply in Bayside?', a: 'Parking rates in Bayside come from the DCP and vary by development type and zone. The rate depends on dwelling type and bedroom count and is set in Bayside\'s DCP. Check your address at /check for the rate that applies.' },
+      { q: 'What parking requirements apply in Bayside?', a: 'Parking rates in Bayside come from the DCP and vary by development type and zone. The rate depends on dwelling type and bedroom count and is set in Bayside\'s DCP. Bayside\'s DCP rules are not shown here yet, so check the Bayside DCP for the rate that applies.' },
     ],
   },
   {
