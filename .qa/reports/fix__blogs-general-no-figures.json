@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "General blog articles stated rule numbers and clause citations a reader could act on for their own lot; now plain explanations with links to the property check. Shadow figures marked not served (tool off since #1449).",
-  "commit_hash": "88f79754",
+  "commit_hash": "1bf48796",
   "files": [
     ".claude/regulatory_figure_ledger.json",
     "frontend-nextjs/app/blog/building-height-limits-nsw/page.tsx",
