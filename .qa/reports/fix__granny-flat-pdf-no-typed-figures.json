@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Paid granny flat PDF cited the wrong instrument (cl 4.18, Sch 3 Subdiv 4) and stated standards Schedule 1 does not set (3 m separation, 5 m wall height) or sets differently (side setback, POS).",
-  "commit_hash": "c6e19e17",
+  "commit_hash": "c13e1fac",
   "files": [
     "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
     "frontend-nextjs/app/reports/granny-flat/page.tsx",
