@@ -73,7 +73,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
     faqs: [
       { q: 'Is the Northern Beaches bush fire prone?', a: 'Parts of the Northern Beaches are mapped as bush fire prone land. Key areas include properties adjacent to Ku-ring-gai Chase and Garigal National Parks, particularly in Ingleside, Terrey Hills, Belrose, Davidson, and Frenchs Forest.' },
       { q: 'What BAL ratings are common on the Northern Beaches?', a: 'BAL ratings vary widely. Coastal and harbour suburbs are generally BAL-LOW, while suburbs adjacent to national parks can range from BAL-12.5 to BAL-40. Ingleside has areas with higher ratings.' },
-      { q: 'Does bushfire affect development in Ingleside?', a: 'Parts of Ingleside are mapped as bush fire prone land. Properties there typically require formal BAL assessments for any building work.' },
+      { q: 'Does bushfire affect development in Ingleside?', a: 'Parts of Ingleside are mapped as bush fire prone land. Development on mapped bush fire prone land may need a BAL assessment, depending on the work and the approval pathway.' },
     ],
   },
   {
@@ -229,7 +229,7 @@ export const BUSHFIRE_LGAS: BushfireLgaData[] = [
     faqs: [
       { q: 'Is Georges River bush fire prone?', a: 'Parts of Georges River are mapped as bush fire prone land. Affected areas are primarily along the Georges River and near remnant bushland in Oatley, Lugarno, and Peakhurst Heights.' },
       { q: 'Do I need a BAL assessment in Georges River?', a: 'Only if your property is on mapped BFPL. Most properties — particularly in Hurstville, Kogarah, and Mortdale — are not affected.' },
-      { q: 'Does bushfire affect granny flat eligibility in Georges River?', a: 'For lots on BFPL, the CDC pathway still applies but requires compliance with Planning for Bush Fire Protection 2019. Most exclusions relate to lot size or strata.' },
+      { q: 'Does bushfire affect granny flat eligibility in Georges River?', a: 'A lot on BFPL may still use the CDC pathway only if it meets every bushfire and Housing SEPP condition. Some BAL ratings rule out complying development, so a DA through the council is then the pathway.' },
     ],
   },
   {
