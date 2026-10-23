@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Registers three councils with the existing generic list reader; no reader logic changes.",
- "commit_hash": "cb177b6d",
+ "commit_hash": "2924d276",
  "files": [
   "scripts/hub_scrapers/__init__.py",
   "scripts/hub_scrapers/generic.py",
