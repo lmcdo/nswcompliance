@@ -18,11 +18,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: true,
     relatedSlugs: ['camden', 'liverpool', 'sutherland-shire'],
     faqs: [
-      { q: 'Can I build a granny flat in Campbelltown?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Campbelltown?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What is the minimum lot size for a granny flat in Campbelltown?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
-      { q: 'Does flood risk affect granny flat approvals in Campbelltown?', a: 'Yes. Properties on flood control lots are ineligible for a CDC secondary dwelling, and a DA with a flood risk management report is required. Check flood status above before proceeding.' },
-      { q: 'Do I need council approval for a granny flat in Campbelltown?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Campbelltown City Council is required.' },
-      { q: 'How large can a granny flat be in Campbelltown?', a: 'SEPP Housing 2021 sets a maximum floor area for a secondary dwelling. The checker above reads it from the SEPP for your address. DCP setbacks and height limits also apply.' },
+      { q: 'Does flood risk affect granny flat approvals in Campbelltown?', a: 'Yes. Properties on flood control lots are ineligible for a CDC secondary dwelling, so a DA through Campbelltown City Council is then the pathway. Check flood status above before proceeding.' },
+      { q: 'Do I need council approval for a granny flat in Campbelltown?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Campbelltown City Council may be possible, unless the zone prohibits a secondary dwelling.' },
+      { q: 'How large can a granny flat be in Campbelltown?', a: 'SEPP Housing 2021 sets a maximum floor area for a secondary dwelling. The checker above reads it from the SEPP for your address.' },
     ],
   },
   {
@@ -33,11 +33,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: true,
     relatedSlugs: ['penrith', 'the-hills-shire', 'blacktown'],
     faqs: [
-      { q: 'Can I build a granny flat in Hawkesbury?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Hawkesbury?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'How does flooding affect granny flat eligibility in Hawkesbury?', a: 'The Hawkesbury-Nepean catchment has flood mapping. Properties on flood control lots are excluded from the CDC pathway and need a DA. The checker above reads the flood overlays for your address.' },
       { q: 'What heritage restrictions affect granny flats in Hawkesbury?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. Areas around Windsor, Richmond, and Wilberforce include heritage-listed properties. The checker above shows whether your address is affected.' },
       { q: 'What lot size is needed for a granny flat in Hawkesbury?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
-      { q: 'Do I need a DA for a granny flat in Hawkesbury?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Hawkesbury City Council is required.' },
+      { q: 'Do I need a DA for a granny flat in Hawkesbury?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Hawkesbury City Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -48,11 +48,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['bayside', 'canterbury-bankstown', 'lane-cove'],
     faqs: [
-      { q: 'Can I build a granny flat in the Inner West?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
-      { q: 'Why might my Inner West property be ineligible for a granny flat?', a: 'A secondary dwelling can be ineligible under SEPP Housing 2021 because of the zone, the lot size, a heritage item or heritage conservation area, a flood control lot, the Biodiversity Values Map, or acid sulfate soils. Flood overlays can apply near creek lines in Marrickville and Leichhardt. The checker above shows which applies to your address.' },
+      { q: 'Can I build a granny flat in the Inner West?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
+      { q: 'Why might my Inner West property be ineligible for a granny flat?', a: 'A secondary dwelling can be ineligible under SEPP Housing 2021 because of the zone, the lot size, a heritage item or heritage conservation area, a flood control lot, the Biodiversity Values Map, or some acid sulfate soil classes. Flood overlays can apply near creek lines in Marrickville and Leichhardt. The checker above shows which applies to your address.' },
       { q: 'Does heritage listing affect granny flat eligibility in the Inner West?', a: 'Yes. Heritage items and properties in heritage conservation areas are excluded from complying development. The checker above shows whether your address is affected.' },
       { q: 'What lot size is needed for a granny flat in the Inner West?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
-      { q: 'How large can a granny flat be in the Inner West?', a: 'SEPP Housing 2021 sets a maximum floor area for a secondary dwelling. The checker above reads it from the SEPP for your address. DCP setbacks and height limits also apply.' },
+      { q: 'How large can a granny flat be in the Inner West?', a: 'SEPP Housing 2021 sets a maximum floor area for a secondary dwelling. The checker above reads it from the SEPP for your address.' },
     ],
   },
   {
@@ -63,10 +63,10 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['bayside', 'inner-west', 'georges-river'],
     faqs: [
-      { q: 'Can I build a granny flat in Canterbury-Bankstown?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Canterbury-Bankstown?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What lot size is needed for a granny flat in Canterbury-Bankstown?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Are heritage exclusions common in Canterbury-Bankstown?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. Heritage conservation areas exist near Campsie and in older parts of Canterbury. The checker above shows whether your address is affected.' },
-      { q: 'Do I need council approval for a granny flat in Canterbury-Bankstown?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Canterbury-Bankstown Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Canterbury-Bankstown?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Canterbury-Bankstown Council may be possible, unless the zone prohibits a secondary dwelling.' },
       { q: 'What are the flood risks for granny flats in Canterbury-Bankstown?', a: 'Areas near the Cooks River and Duck River can be within flood planning areas. Properties on flood control lots are excluded from the CDC pathway and need a DA. The checker above reads the flood overlays for your address.' },
     ],
   },
@@ -78,11 +78,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['blacktown', 'ryde', 'penrith'],
     faqs: [
-      { q: 'Can I build a granny flat in Parramatta?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Parramatta?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'Does heritage affect granny flat eligibility in Parramatta?', a: 'Yes. Heritage items and properties in heritage conservation areas are excluded from complying development. The Parramatta CBD has a heritage conservation area. The checker above shows whether your address is affected.' },
       { q: 'What lot size is needed for a granny flat in Parramatta?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'What zone do I need for a granny flat in Parramatta?', a: 'SEPP Housing 2021 lets a secondary dwelling be built only in zones where it is permitted. The checker above reads your zone and whether it permits a secondary dwelling.' },
-      { q: 'Do I need a DA for a granny flat in Parramatta?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through the local council is required.' },
+      { q: 'Do I need a DA for a granny flat in Parramatta?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through the local council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -93,11 +93,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['parramatta', 'the-hills-shire', 'penrith'],
     faqs: [
-      { q: 'Can I build a granny flat in Blacktown?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Blacktown?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What lot size is needed for a granny flat in Blacktown?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Are heritage exclusions common in Blacktown?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. The Blacktown CBD has a heritage conservation area. The checker above shows whether your address is affected.' },
-      { q: 'Do I need council approval for a granny flat in Blacktown?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Blacktown City Council is required.' },
-      { q: 'How large can a granny flat be in Blacktown?', a: 'SEPP Housing 2021 sets a maximum floor area for a secondary dwelling. The checker above reads it from the SEPP for your address. DCP setbacks and height limits also apply.' },
+      { q: 'Do I need council approval for a granny flat in Blacktown?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Blacktown City Council may be possible, unless the zone prohibits a secondary dwelling.' },
+      { q: 'How large can a granny flat be in Blacktown?', a: 'SEPP Housing 2021 sets a maximum floor area for a secondary dwelling. The checker above reads it from the SEPP for your address.' },
     ],
   },
   {
@@ -108,11 +108,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['hornsby', 'blacktown', 'penrith'],
     faqs: [
-      { q: 'Can I build a granny flat in The Hills Shire?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in The Hills Shire?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What lot size is needed for a granny flat in The Hills Shire?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Are heritage exclusions common in The Hills?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. Historic village centres such as Rouse Hill and the Old Northern Road corridor have heritage areas. The checker above shows whether your address is affected.' },
-      { q: 'What are the DCP setback requirements in The Hills Shire?', a: 'The Hills Shire DCP sets rear setback requirements for secondary dwellings. These are separate from SEPP eligibility — a property can pass the SEPP check but still have design constraints from DCP setbacks, height limits, and landscaping requirements.' },
-      { q: 'Do I need council approval for a granny flat in The Hills Shire?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through The Hills Shire Council is required.' },
+      { q: 'What are the DCP setback requirements in The Hills Shire?', a: 'The Hills Shire DCP setbacks apply to a secondary dwelling assessed as a DA. On the CDC pathway, the SEPP Housing 2021 standards apply instead.' },
+      { q: 'Do I need council approval for a granny flat in The Hills Shire?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through The Hills Shire Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -123,8 +123,8 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['ku-ring-gai', 'lane-cove', 'hornsby'],
     faqs: [
-      { q: 'Can I build a granny flat on the Northern Beaches?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
-      { q: 'Why might my Northern Beaches property be ineligible?', a: 'A secondary dwelling can be ineligible under SEPP Housing 2021 because of the zone, the lot size, a heritage item or conservation area (including those in Manly, Avalon, and Palm Beach), the Biodiversity Values Map (coastal heathland and bushland), or acid sulfate soils. The checker above shows which applies to your address.' },
+      { q: 'Can I build a granny flat on the Northern Beaches?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
+      { q: 'Why might my Northern Beaches property be ineligible?', a: 'A secondary dwelling can be ineligible under SEPP Housing 2021 because of the zone, the lot size, a heritage item or conservation area (including those in Manly, Avalon, and Palm Beach), the Biodiversity Values Map (coastal heathland and bushland), or some acid sulfate soil classes. The checker above shows which applies to your address.' },
       { q: 'Does heritage affect granny flat approvals on the Northern Beaches?', a: 'Yes. Heritage items and properties in heritage conservation areas are excluded from complying development. Conservation areas exist in Manly, Avalon, and Palm Beach. The checker above shows whether your address is affected.' },
       { q: 'What lot size is needed for a granny flat on the Northern Beaches?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Do biodiversity exclusions affect granny flat eligibility on the Northern Beaches?', a: 'Yes. Coastal heathland and bushland areas on the Northern Beaches are mapped on the Biodiversity Values Map. Properties within this map are excluded from SEPP Housing 2021 complying development for secondary dwellings.' },
@@ -138,11 +138,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['ku-ring-gai', 'the-hills-shire', 'northern-beaches'],
     faqs: [
-      { q: 'Can I build a granny flat in Hornsby Shire?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Hornsby Shire?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'Are biodiversity exclusions common in Hornsby?', a: 'Biodiversity exclusions can apply. Properties on the Biodiversity Values Map are excluded from SEPP Housing 2021 complying development for secondary dwellings. Bushland areas, creek lines, and reserves in Hornsby Shire can be mapped. The checker above tests the map for your address.' },
       { q: 'Does heritage affect granny flat eligibility in Hornsby?', a: 'Yes. Heritage items and properties in heritage conservation areas are excluded from complying development. Conservation areas exist in Berowra, Galston, and Hornsby township. The checker above shows whether your address is affected.' },
       { q: 'What lot size is needed for a granny flat in Hornsby?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
-      { q: 'Do I need council approval for a granny flat in Hornsby?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Hornsby Shire Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Hornsby?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Hornsby Shire Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -153,7 +153,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['hornsby', 'northern-beaches', 'lane-cove'],
     faqs: [
-      { q: 'Can I build a granny flat in Ku-ring-gai?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Ku-ring-gai?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'Why do so many Ku-ring-gai properties fail the heritage check?', a: 'Heritage items and properties within heritage conservation areas, including those across Gordon, Killara, Lindfield, and Wahroonga, are excluded from SEPP Housing 2021 complying development. The checker above shows whether your address is affected.' },
       { q: 'What lot size is needed for a granny flat in Ku-ring-gai?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Can I still build a granny flat if my Ku-ring-gai property fails SEPP?', a: 'Yes. A property that fails a SEPP Housing 2021 check can be assessed through a DA lodged with Ku-ring-gai Council.' },
@@ -168,11 +168,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['sutherland-shire', 'bayside', 'campbelltown'],
     faqs: [
-      { q: 'Can I build a granny flat in Georges River?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Georges River?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What lot size is needed for a granny flat in Georges River?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Are heritage exclusions common in Georges River?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. Conservation areas exist in Oatley and parts of Hurstville. The checker above shows whether your address is affected.' },
       { q: 'What are the flood risks for granny flats in Georges River?', a: 'Areas near the Georges River and Salt Pan Creek can be within flood planning areas. Properties on flood control lots are excluded from the CDC pathway and need a DA. The checker above reads the flood overlays for your address.' },
-      { q: 'Do I need council approval for a granny flat in Georges River?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Georges River Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Georges River?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Georges River Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -183,11 +183,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['randwick', 'georges-river', 'inner-west'],
     faqs: [
-      { q: 'Can I build a granny flat in Bayside?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Bayside?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What lot size is needed for a granny flat in Bayside?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Are heritage exclusions common in Bayside?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. Conservation areas exist in parts of Rockdale and Bexley. The checker above shows whether your address is affected.' },
       { q: 'What are the flood and acid sulfate soil risks in Bayside?', a: 'Acid sulfate soils can be mapped in low-lying areas near Botany Bay. Either an acid sulfate soil map or a statutory flood overlay can be an exclusion under SEPP Housing 2021. The checker above reads both for your address.' },
-      { q: 'Do I need council approval for a granny flat in Bayside?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Bayside Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Bayside?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Bayside Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -198,11 +198,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['waverley', 'woollahra', 'bayside'],
     faqs: [
-      { q: 'Can I build a granny flat in Randwick?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
-      { q: 'Why are many Randwick properties ineligible for a granny flat?', a: 'A secondary dwelling can be ineligible under SEPP Housing 2021 because of the lot size, a heritage item or conservation area (including parts of Randwick, Coogee, and Kingsford), flood, or acid sulfate soils in coastal areas. The checker above shows which applies to your address.' },
+      { q: 'Can I build a granny flat in Randwick?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
+      { q: 'Why are many Randwick properties ineligible for a granny flat?', a: 'A secondary dwelling can be ineligible under SEPP Housing 2021 because of the lot size, a heritage item or conservation area (including parts of Randwick, Coogee, and Kingsford), flood, or some acid sulfate soil classes. The checker above shows which applies to your address.' },
       { q: 'What lot size is needed for a granny flat in Randwick?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
-      { q: 'Do acid sulfate soils affect granny flat eligibility in Randwick?', a: 'Acid sulfate soil mapping applies to parts of coastal Randwick. Properties on mapped acid sulfate soil land are excluded from SEPP Housing 2021 complying development. The checker above reads the mapping for your address.' },
-      { q: 'Do I need council approval for a granny flat in Randwick?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Randwick City Council is required.' },
+      { q: 'Do acid sulfate soils affect granny flat eligibility in Randwick?', a: 'Acid sulfate soil mapping applies to parts of coastal Randwick. Some acid sulfate soil classes are excluded from SEPP Housing 2021 complying development; the class on the map decides. The checker above reads the mapping for your address.' },
+      { q: 'Do I need council approval for a granny flat in Randwick?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Randwick City Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -213,8 +213,8 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['woollahra', 'randwick', 'bayside'],
     faqs: [
-      { q: 'Can I build a granny flat in Waverley?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
-      { q: 'Why are most Waverley properties ineligible?', a: 'A secondary dwelling can be ineligible under SEPP Housing 2021 because of the lot size, a heritage item or conservation area (including parts of Bondi, Waverley, and Bronte), flood, or acid sulfate soils. The checker above shows which applies to your address.' },
+      { q: 'Can I build a granny flat in Waverley?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
+      { q: 'Why are most Waverley properties ineligible?', a: 'A secondary dwelling can be ineligible under SEPP Housing 2021 because of the lot size, a heritage item or conservation area (including parts of Bondi, Waverley, and Bronte), flood, or some acid sulfate soil classes. The checker above shows which applies to your address.' },
       { q: 'What lot size is needed for a granny flat in Waverley?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Is a DA an option for a granny flat in Waverley?', a: 'Yes. If the CDC pathway is unavailable, a DA can be lodged with Waverley Council.' },
       { q: 'Does heritage affect granny flats in Waverley?', a: 'Yes. Heritage items and properties in heritage conservation areas are excluded from complying development. Conservation areas exist in Bondi and Waverley. The checker above shows whether your address is affected.' },
@@ -228,11 +228,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['waverley', 'randwick', 'inner-west'],
     faqs: [
-      { q: 'Can I build a granny flat in Woollahra?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Woollahra?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'Why are many Woollahra properties ineligible for a granny flat?', a: 'A secondary dwelling can be ineligible under SEPP Housing 2021 because of the lot size, or a heritage item or conservation area (including Paddington and parts of Woollahra village). Any one exclusion blocks the CDC pathway. The checker above shows which applies to your address.' },
       { q: 'Can I build a granny flat on a Paddington terrace?', a: 'A terrace that is a heritage item, or sits in a heritage conservation area, is excluded from complying development, and a DA through Woollahra Municipal Council is then the pathway. The checker above shows whether your address is affected.' },
       { q: 'What lot size is needed for a granny flat in Woollahra?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
-      { q: 'Do I need council approval for a granny flat in Woollahra?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Woollahra Municipal Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Woollahra?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Woollahra Municipal Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -243,11 +243,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['georges-river', 'campbelltown', 'camden'],
     faqs: [
-      { q: 'Can I build a granny flat in the Sutherland Shire?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in the Sutherland Shire?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'Are biodiversity exclusions common in the Sutherland Shire?', a: 'Biodiversity exclusions can apply. Properties on the Biodiversity Values Map are excluded from SEPP Housing 2021 complying development for secondary dwellings. The Royal National Park and bushland corridors in Sutherland Shire can be mapped. The checker above tests the map for your address.' },
       { q: 'What lot size is needed for a granny flat in Sutherland Shire?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Are heritage exclusions common in Sutherland Shire?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. Conservation areas exist in Cronulla and parts of Engadine and Helensburgh. The checker above shows whether your address is affected.' },
-      { q: 'Do I need council approval for a granny flat in Sutherland Shire?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Sutherland Shire Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Sutherland Shire?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Sutherland Shire Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -258,11 +258,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['campbelltown', 'liverpool', 'sutherland-shire'],
     faqs: [
-      { q: 'Can I build a granny flat in Camden?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Camden?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What lot size is needed for a granny flat in Camden?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Are heritage exclusions common in Camden?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. The Camden Town heritage conservation area is one example. The checker above shows whether your address is affected.' },
-      { q: 'Do I need council approval for a granny flat in Camden?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Camden Council is required.' },
-      { q: 'How large can a granny flat be in Camden?', a: 'SEPP Housing 2021 sets a maximum floor area for a secondary dwelling. The checker above reads it from the SEPP for your address. DCP setbacks and height limits also apply.' },
+      { q: 'Do I need council approval for a granny flat in Camden?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Camden Council may be possible, unless the zone prohibits a secondary dwelling.' },
+      { q: 'How large can a granny flat be in Camden?', a: 'SEPP Housing 2021 sets a maximum floor area for a secondary dwelling. The checker above reads it from the SEPP for your address.' },
     ],
   },
   {
@@ -273,11 +273,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['camden', 'campbelltown', 'parramatta'],
     faqs: [
-      { q: 'Can I build a granny flat in Liverpool?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Liverpool?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What lot size is needed for a granny flat in Liverpool?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Are heritage exclusions common in Liverpool?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. The Liverpool CBD has a heritage precinct. The checker above shows whether your address is affected.' },
       { q: 'What are the flood risks for granny flats in Liverpool?', a: 'Areas near the Georges River and South Creek can be within flood planning areas. Properties on flood control lots are excluded from the CDC pathway and need a DA. The checker above reads the flood overlays for your address.' },
-      { q: 'Do I need council approval for a granny flat in Liverpool?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Liverpool City Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Liverpool?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Liverpool City Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -288,11 +288,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['blacktown', 'hawkesbury', 'the-hills-shire'],
     faqs: [
-      { q: 'Can I build a granny flat in Penrith?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Penrith?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What lot size is needed for a granny flat in Penrith?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Are heritage exclusions common in Penrith?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. The Penrith CBD and Emu Plains have heritage precincts. The checker above shows whether your address is affected.' },
       { q: 'What flood risk exists for granny flats in Penrith?', a: 'Areas near the Nepean River and South Creek can be within flood planning areas. Properties on flood control lots are excluded from the CDC pathway and need a DA. The checker above reads the flood overlays for your address.' },
-      { q: 'Do I need council approval for a granny flat in Penrith?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Penrith City Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Penrith?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Penrith City Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -303,11 +303,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['ryde', 'ku-ring-gai', 'inner-west'],
     faqs: [
-      { q: 'Can I build a granny flat in Lane Cove?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Lane Cove?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'Are biodiversity exclusions a risk in Lane Cove?', a: 'Biodiversity exclusions can apply. Properties on the Biodiversity Values Map are excluded from SEPP Housing 2021 complying development for secondary dwellings. Lane Cove National Park and bushland corridors near creek lines and reserves can be mapped. The checker above tests the map for your address.' },
       { q: 'What lot size is needed for a granny flat in Lane Cove?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Are heritage exclusions common in Lane Cove?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. Conservation areas exist around Lane Cove village and some older residential streets. The checker above shows whether your address is affected.' },
-      { q: 'Do I need council approval for a granny flat in Lane Cove?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Lane Cove Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Lane Cove?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Lane Cove Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -318,11 +318,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['lane-cove', 'parramatta', 'ku-ring-gai'],
     faqs: [
-      { q: 'Can I build a granny flat in Ryde?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Ryde?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What lot size is needed for a granny flat in Ryde?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Are heritage exclusions common in Ryde?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. Conservation areas exist in parts of Meadowbank and the historic top of Ryde. The checker above shows whether your address is affected.' },
       { q: 'What flood and acid sulfate risks exist in Ryde?', a: 'Properties near the Parramatta River and Lane Cove River in Ryde can have flood or acid sulfate soil mapping. The checker above reads both for your address.' },
-      { q: 'Do I need council approval for a granny flat in Ryde?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through City of Ryde Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Ryde?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through City of Ryde Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -333,11 +333,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['wingecarribee', 'campbelltown', 'sutherland-shire'],
     faqs: [
-      { q: 'Can I build a granny flat in Wollongong?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Wollongong?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What lot size is needed for a granny flat in Wollongong?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Does flood risk affect granny flat eligibility in Wollongong?', a: 'Areas near coastal lagoons, Mullet Creek, and Allans Creek can be within flood planning areas. Properties on flood control lots are excluded from the CDC pathway and need a DA. The checker above reads the flood overlays for your address.' },
       { q: 'Are heritage exclusions common in Wollongong?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. Conservation areas exist in the Wollongong CBD and historic mining townships. The checker above shows whether your address is affected.' },
-      { q: 'Do I need council approval for a granny flat in Wollongong?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Wollongong City Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Wollongong?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Wollongong City Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -348,11 +348,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: true,
     relatedSlugs: ['tamworth-regional', 'bathurst-regional', 'yass-valley'],
     faqs: [
-      { q: 'Can I build a granny flat in Clarence Valley?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Clarence Valley?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'How does flooding affect granny flat eligibility in Clarence Valley?', a: 'The Clarence River creates flood planning areas across Grafton, Maclean, and Yamba. Properties on flood control lots are excluded from the CDC pathway and need a DA. The checker above reads the flood overlays for your address.' },
       { q: 'What lot size is needed for a granny flat in Clarence Valley?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Are heritage exclusions common in Clarence Valley?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. Conservation areas exist in Grafton and historic town centres. The checker above shows whether your address is affected.' },
-      { q: 'Do I need council approval for a granny flat in Clarence Valley?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Clarence Valley Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Clarence Valley?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Clarence Valley Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -363,11 +363,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: true,
     relatedSlugs: ['wingecarribee', 'bathurst-regional', 'wollongong'],
     faqs: [
-      { q: 'Can I build a granny flat in Yass Valley?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Yass Valley?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What lot size is needed for a granny flat in Yass Valley?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Does flood risk affect granny flat eligibility in Yass Valley?', a: 'Properties near the Yass River in central Yass can be within flood planning areas. Properties on flood control lots are excluded from the CDC pathway and need a DA. The checker above reads the flood overlays for your address.' },
       { q: 'Are heritage exclusions common in Yass Valley?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. The Yass town centre has a heritage conservation area. The checker above shows whether your address is affected.' },
-      { q: 'Do I need council approval for a granny flat in Yass Valley?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Yass Valley Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Yass Valley?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Yass Valley Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -378,11 +378,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['bathurst-regional', 'tamworth-regional', 'parramatta'],
     faqs: [
-      { q: 'Can I build a granny flat in Forbes?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Forbes?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'How does flooding affect granny flat eligibility in Forbes?', a: 'Parts of Forbes town are within flood planning areas. Properties on flood control lots are excluded from the CDC pathway and need a DA. The checker above reads the flood overlays for your address.' },
       { q: 'What lot size is needed for a granny flat in Forbes?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Are heritage exclusions common in Forbes?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. Forbes has a heritage conservation area in the town centre. The checker above shows whether your address is affected.' },
-      { q: 'Do I need council approval for a granny flat in Forbes?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Forbes Shire Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Forbes?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Forbes Shire Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -393,11 +393,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['bathurst-regional', 'forbes', 'clarence-valley'],
     faqs: [
-      { q: 'Can I build a granny flat in Tamworth?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Tamworth?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What lot size is needed for a granny flat in Tamworth?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Does flood risk affect granny flat eligibility in Tamworth?', a: 'Areas near the Peel River, Cockburn River, and Dungowan Creek can be within flood planning areas. Properties on flood control lots are excluded from the CDC pathway and need a DA. The checker above reads the flood overlays for your address.' },
       { q: 'Are heritage exclusions common in Tamworth?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. Conservation areas exist in the Tamworth CBD and some historic townships. The checker above shows whether your address is affected.' },
-      { q: 'Do I need council approval for a granny flat in Tamworth?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Tamworth Regional Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Tamworth?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Tamworth Regional Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -408,11 +408,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['tamworth-regional', 'yass-valley', 'forbes'],
     faqs: [
-      { q: 'Can I build a granny flat in Bathurst?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in Bathurst?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What lot size is needed for a granny flat in Bathurst?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Does flood risk affect granny flat eligibility in Bathurst?', a: 'Areas near the Macquarie River and local drainage lines can be within flood planning areas. Properties on flood control lots are excluded from the CDC pathway and need a DA. The checker above reads the flood overlays for your address.' },
       { q: 'Are heritage exclusions common in Bathurst?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. The Bathurst CBD and historic precincts have conservation areas. The checker above shows whether your address is affected.' },
-      { q: 'Do I need council approval for a granny flat in Bathurst?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Bathurst Regional Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Bathurst?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Bathurst Regional Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
   {
@@ -423,11 +423,11 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     hasAriData: false,
     relatedSlugs: ['wollongong', 'yass-valley', 'campbelltown'],
     faqs: [
-      { q: 'Can I build a granny flat in the Southern Highlands?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and no heritage, flood, biodiversity or acid sulfate soil exclusion. The checker above tests each one for your address.' },
+      { q: 'Can I build a granny flat in the Southern Highlands?', a: 'It depends on the property. Under SEPP Housing 2021 a secondary dwelling needs a zone that permits it, a lot that meets the minimum size, and none of the SEPP land exclusions (such as heritage, flood, biodiversity values and some acid sulfate soil classes). The checker above tests each one for your address.' },
       { q: 'What lot size is needed for a granny flat in Wingecarribee?', a: 'SEPP Housing 2021 sets a minimum lot size for a secondary dwelling. The checker above reads the minimum from the SEPP and compares it with the lot area for your address.' },
       { q: 'Does flood risk affect granny flat eligibility in Wingecarribee?', a: 'Areas near the Wingecarribee River around Moss Vale and Bowral, and low-lying areas near local creeks, can be within flood planning areas. Properties on flood control lots are excluded from the CDC pathway and need a DA. The checker above reads the flood overlays for your address.' },
       { q: 'Are heritage exclusions common in Wingecarribee?', a: 'Heritage items and properties in heritage conservation areas are excluded from complying development. Conservation areas exist in Bowral, Moss Vale, Berrima, and Mittagong. The checker above shows whether your address is affected.' },
-      { q: 'Do I need council approval for a granny flat in Wingecarribee?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, a DA through Wingecarribee Shire Council is required.' },
+      { q: 'Do I need council approval for a granny flat in Wingecarribee?', a: 'If all SEPP Housing 2021 checks pass, a CDC through a private certifier is the pathway and no council DA is needed. If any check fails, the CDC pathway is not available. A DA through Wingecarribee Shire Council may be possible, unless the zone prohibits a secondary dwelling.' },
     ],
   },
 ]
