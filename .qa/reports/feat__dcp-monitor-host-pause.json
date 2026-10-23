@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes how the DCP monitor waits when a council site rate-limits it; what counts as checked is unchanged.",
- "commit_hash": "2b711484",
+ "commit_hash": "c9d60a59",
  "files": [
   "scripts/r2_monitor.py",
   "tests/test_r2_monitor_host_pause.py",
