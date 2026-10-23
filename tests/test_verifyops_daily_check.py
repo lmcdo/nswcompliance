@@ -188,8 +188,8 @@ def test_held_match_is_exact_number_and_unique():
 # ── daily cadence (resolutions 4 and 9) ─────────────────────────────────────────────────────
 
 def _fetch(**kw):
-    base = dict(force=False, stored_hash="h", stored_etag=None, head_etag=None, stored_len=100,
-                head_len=100, last_downloaded=NOW - timedelta(days=1), now=NOW, spot=False)
+    base = dict(force=False, stored_hash="h", stored_etag=None, head_etag=None, stored_len=100_000,
+                head_len=100_000, last_downloaded=NOW - timedelta(days=1), now=NOW, spot=False)
     base.update(kw)
     return decide_fetch(**base)
 
@@ -209,12 +209,12 @@ def test_tagged_downloads_only_on_a_tag_change_or_spot_check():
 def test_a_size_change_behind_an_unchanged_tag_downloads():
     # Cross-review 2026-10-22: the tag alone was trusted, so a changed file with a reused tag
     # stayed served as current until a spot check happened to pick it.
-    assert _fetch(stored_etag="a", head_etag="a", stored_len=100, head_len=200) == (True, "size_changed")
-    assert _fetch(stored_etag="a", head_etag="a", stored_len=100, head_len=None) == (False, "etag_match")
+    assert _fetch(stored_etag="a", head_etag="a", stored_len=100_000, head_len=200_000) == (True, "size_changed")
+    assert _fetch(stored_etag="a", head_etag="a", stored_len=100_000, head_len=None) == (False, "etag_match")
 
 
 def test_size_change_force_and_no_baseline_always_download():
-    assert _fetch(head_len=101) == (True, "size_changed")
+    assert _fetch(head_len=100_001) == (True, "size_changed")
     assert _fetch(force=True, stored_etag="a", head_etag="a") == (True, "force")
     assert _fetch(stored_hash=None, stored_etag="a", head_etag="a") == (True, "no_baseline")
     # a stored tag the server stopped sending falls to the untagged rule, not to a free pass
@@ -550,3 +550,17 @@ def test_old_style_baseline_with_no_dates_alarms(tmp_path, monkeypatch):
 
 def test_a_future_date_counts_as_expired():
     assert cov.baselined_ages({"a|1|no_url": "2027-10-01"}, ["a|1|no_url"], TODAY) == [("a|1|no_url", 31)]
+
+
+def test_impossible_stored_size_downloads_once_dq79():
+    # Row 766 (ku_ring_gai, 2026-10-23): stored 1 byte behind a matching ETag -> never re-measured.
+    assert _fetch(stored_etag="a", head_etag="a", stored_len=1, head_len=None) == (True, "size_impossible")
+    assert _fetch(stored_len=999, head_len=None) == (True, "size_impossible")
+    assert _fetch(stored_etag="a", head_etag="a", stored_len=1000, head_len=None) == (False, "etag_match")
+    # Unknown (never recorded) is not impossible: 31 active rows hold NULL and must not download daily.
+    assert _fetch(stored_etag="a", head_etag="a", stored_len=None, head_len=None) == (False, "etag_match")
+
+
+def test_a_zero_reported_size_is_a_size_change():
+    # Sol: 0 is falsy, so `stored_len and head_len` used to skip it.
+    assert _fetch(stored_etag="a", head_etag="a", head_len=0) == (True, "size_changed")

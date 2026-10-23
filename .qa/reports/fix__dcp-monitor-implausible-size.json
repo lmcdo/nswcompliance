@@ -1,0 +1,73 @@
+{
+ "tier": "standard",
+ "justification": "Changes what file size the DCP monitor records and when it re-downloads; change detection by tag and hash is unchanged.",
+ "commit_hash": "7965ea32",
+ "files": [
+  "scripts/r2_monitor.py",
+  "scripts/verifyops_record.py",
+  "tests/test_r2_monitor_plausible_size.py",
+  "tests/test_verifyops_daily_check.py"
+ ],
+ "pre_impl": {
+  "existing_data": "dcp_chapter_registry row 766 (ku_ring_gai) url_content_length=1 after force run 3 recorded unchanged_hash; row 257 the same on 2026-09-01. 1 of 571 active rows is below 1000 bytes; 31 hold NULL.",
+  "assumption_mismatch": "The writer assumed a server's reported size is the file's size; Ku-ring-gai's server reports 1 for a real PDF (the download passed the 1000-byte PDF check, so the 1 came from HEAD).",
+  "new_vs_existing": "Reuses MIN_PDF_BYTES as the floor; one helper and one download reason added."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_r2_monitor_plausible_size.py tests/test_verifyops_daily_check.py",
+  "fails_when": "a reported size under 1000 bytes is stored, or a stored impossible size is never re-measured",
+  "observed_red": "9 hand mutants killed (5 on plausible_size and its two writers, 4 on the size_impossible rule); one survived a first draft (second writer reverted) and the test was tightened."
+ },
+ "functions": [
+  {
+   "name": "plausible_size",
+   "file_line": "scripts/r2_monitor.py:375",
+   "input": "a server's reported size as text or number",
+   "output": "the size as an int, or None below MIN_PDF_BYTES",
+   "if_none": "missing or unparseable input returns None so the writer uses the downloaded length"
+  },
+  {
+   "name": "decide_fetch",
+   "file_line": "scripts/verifyops_record.py:40",
+   "input": "stored and HEAD tags and sizes, last download time, spot flag",
+   "output": "whether to download today and why, now including size_impossible",
+   "if_none": "a NULL stored size is unknown, not impossible, and does not force a download"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A server answers HEAD for a real PDF with Content-Length 1 (Ku-ring-gai)",
+   "what_happens": "silent: url_content_length = 1 stored, DQ-79 red, gates blocked for every PR",
+   "mitigated": true,
+   "how": "sizes under 1000 bytes are unknown; the downloaded length is stored",
+   "repro": "pytest tests/test_r2_monitor_plausible_size.py -k ku_ring_gai"
+  },
+  {
+   "scenario": "A row already holds 1 byte behind a matching ETag",
+   "what_happens": "never re-downloaded, so the wrong size stays for ever",
+   "mitigated": true,
+   "how": "decide_fetch downloads once with reason size_impossible",
+   "repro": "pytest tests/test_verifyops_daily_check.py -k dq79"
+  },
+  {
+   "scenario": "31 active rows have no recorded size (NULL)",
+   "what_happens": "a careless rule would download them every day",
+   "mitigated": true,
+   "how": "NULL is unknown, not impossible; the rule needs a stored number",
+   "repro": "pytest tests/test_verifyops_daily_check.py -k dq79"
+  },
+  {
+   "scenario": "An error page replaces the PDF under the same ETag, HEAD size 500",
+   "what_happens": "silent if the tiny size were ignored everywhere: no download, no body check",
+   "mitigated": true,
+   "how": "the raw size still drives decide_fetch, only storage ignores it (Sol)",
+   "repro": "pytest tests/test_r2_monitor_plausible_size.py -k raw_size"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None: no schema change; row 766 is corrected by the next daily run's own download.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "After the next daily run: dcp_chapter_registry id 766 url_content_length > 1000 and python scripts/dq_probe_live.py --id DQ-79 reads 0."
+ }
+}
