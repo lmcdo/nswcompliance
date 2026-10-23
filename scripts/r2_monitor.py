@@ -23,6 +23,7 @@ Exit codes:
 
 import argparse
 import hashlib
+import itertools
 import os
 import re
 import sys
@@ -199,6 +200,40 @@ def _backoff(url: str) -> None:
     domain = _get_domain(url)
     current = _domain_delays.get(domain, DEFAULT_DELAY)
     _domain_delays[domain] = min(current * 2, MAX_DELAY)
+
+
+#: Host pause on HTTP 429. Run 2 (2026-10-23): Inner West let ~15 chapters through, then
+#: blocked for minutes, over and over; one 60 s wait then a skip lost 36 chapters. The loop is
+#: sequential, so sleeping here pauses the whole host. Budget caps what one host can add to a run.
+HOST_PAUSES = (60.0, 120.0, 300.0)
+HOST_PAUSE_BUDGET = 1800.0
+_host_pause_spent: dict[str, float] = {}  # domain -> seconds paused this run
+
+
+def retry_rate_limited(url: str, head=None, sleep=time.sleep) -> dict:
+    """After a 429: pause the host, longer each time, and retry; the last answer is returned.
+
+    After the listed pauses it repeats the longest until the budget is spent: the host is
+    blocked for the next chapter too, so stopping early saves nothing (Sol, 2026-10-23).
+    Stops early on any non-429 answer. Once the host's budget is spent it returns 429
+    without waiting, so a host that never lets up costs at most HOST_PAUSE_BUDGET per run.
+    """
+    head = head or head_request
+    domain = _get_domain(url)
+    last: dict = {"status": 429}
+    for i in itertools.count():
+        pause = HOST_PAUSES[min(i, len(HOST_PAUSES) - 1)]
+        left = HOST_PAUSE_BUDGET - _host_pause_spent.get(domain, 0.0)
+        if left <= 0:
+            break
+        pause = min(pause, left)
+        print(f"    [429] pausing {domain} for {pause:.0f}s, then retrying")
+        sleep(pause)
+        _host_pause_spent[domain] = _host_pause_spent.get(domain, 0.0) + pause
+        last = head(url)
+        if last.get("status") != 429:
+            return last
+    return last
 
 
 def _decay(url: str) -> None:
@@ -786,6 +821,7 @@ def run_monitor(
     `recorder` stores every outcome (migration 116); None records nothing (tests, reseed).
     """
     rec = recorder or Recorder(conn, dry_run=True, mode="unrecorded")
+    _host_pause_spent.clear()  # the 429 budget is per run, not per process (Sol, 2026-10-23)
     cur = conn.cursor()
     now = datetime.now(timezone.utc)
 
@@ -1104,16 +1140,13 @@ def run_monitor(
                     continue
                 if head_status == 429:
                     _backoff(url)
-                    delay = _domain_delays.get(_get_domain(url), DEFAULT_DELAY)
-                    print(f"    [429] rate-limited on HEAD — backing off {delay:.0f}s, retrying")
-                    time.sleep(delay)
-                    head = head_request(url)
+                    head = retry_rate_limited(url)
                     head_status = head.get("status")
                     if head_status == 429:
                         # Not failed and not checked: recorded and listed so the run summary
                         # and the alarm can see it (v6 finding 13 - this used to leave no trace).
-                        print(f"    [429] still rate-limited after backoff — skipping")
-                        rec.chapter(chapter_id, ch_council, key, "rate_limited", detail="HEAD 429 twice")
+                        print(f"    [429] still rate-limited after host pauses — skipping")
+                        rec.chapter(chapter_id, ch_council, key, "rate_limited", detail="HEAD 429 after host pauses")
                         results["rate_limited"].append({"council": ch_council, "chapter_key": key})
                         adaptive_delay(url)
                         continue

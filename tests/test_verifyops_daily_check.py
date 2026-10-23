@@ -312,7 +312,7 @@ def test_outcomes_match_the_migration_check_constraint():
 def test_the_rate_limited_skip_is_recorded_in_r2_monitor():
     # Finding 13: the 429-twice branch used to `continue` with no trace.
     src = (ROOT / "scripts" / "r2_monitor.py").read_text(encoding="utf-8")
-    branch = src[src.index("still rate-limited after backoff"):][:600]
+    branch = src[src.index("still rate-limited after host pauses"):][:600]
     assert '"rate_limited"' in branch and 'results["rate_limited"].append' in branch
 
 

@@ -1,0 +1,58 @@
+{
+ "tier": "standard",
+ "justification": "Changes how the DCP monitor waits when a council site rate-limits it; what counts as checked is unchanged.",
+ "commit_hash": "956282c7",
+ "files": [
+  "scripts/r2_monitor.py",
+  "tests/test_r2_monitor_host_pause.py",
+  "tests/test_verifyops_daily_check.py"
+ ],
+ "pre_impl": {
+  "existing_data": "dcp_monitor_chapter_results run_id=2: 36 rate_limited rows, all www.innerwest.nsw.gov.au (marrickville 26, leichhardt 7, ashfield 3).",
+  "assumption_mismatch": "The old code assumed one backoff of up to 60 s clears a 429; run 2 shows the site blocks for minutes after ~15 requests, again and again.",
+  "new_vs_existing": "One new helper replaces the inline single retry; adaptive delay and recording are reused unchanged."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_r2_monitor_host_pause.py",
+  "fails_when": "a block longer than 60 s is not recovered, a blocked host is paused past the budget, or a non-429 answer is retried",
+  "observed_red": "9 hand mutants all killed (two by hanging, caught by a 30 s timeout); Sol HIGH (stopping after 480 s with budget left) reproduced by a test that failed before the fix."
+ },
+ "functions": [
+  {
+   "name": "retry_rate_limited",
+   "file_line": "scripts/r2_monitor.py:212",
+   "input": "a chapter URL that just answered HTTP 429, plus injectable head and sleep",
+   "output": "the last HEAD answer after pausing the host 60, 120, then 300 s repeated until the budget is spent",
+   "if_none": "budget spent for the host returns status 429 at once with no request"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A site blocks for 3 minutes after every 15 requests (Inner West, run 2)",
+   "what_happens": "silent loss: old code skipped 5-7 chapters per block as rate_limited",
+   "mitigated": true,
+   "how": "escalating host pauses retry the same chapter until the block lifts",
+   "repro": "pytest tests/test_r2_monitor_host_pause.py -k longer_than_old"
+  },
+  {
+   "scenario": "A site blocks for the whole run",
+   "what_happens": "without a cap the run would sleep 8 minutes per chapter for hours",
+   "mitigated": true,
+   "how": "30 minute budget per host per run, then skip with no further requests",
+   "repro": "pytest tests/test_r2_monitor_host_pause.py -k permanent_block"
+  },
+  {
+   "scenario": "After a pause the site answers 403 instead of 429",
+   "what_happens": "a 403 retried as if rate-limited would waste the budget",
+   "mitigated": true,
+   "how": "any non-429 answer is returned at once to the caller",
+   "repro": "pytest tests/test_r2_monitor_host_pause.py -k non_429"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None: no schema or data change.",
+  "secrets": "None: no new env var.",
+  "other_repo": "None.",
+  "manual_verify": "Next force run on Railway: Inner West rate_limited count in dcp_monitor_chapter_results falls from 36, and the run still finishes."
+ }
+}
