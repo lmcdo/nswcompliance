@@ -173,6 +173,29 @@ def test_a_full_run_killed_mid_way_is_red_until_it_is_old_news(conn):
     assert "*|*|run_unfinished" not in cov.measure(conn)       # one-council runs never count
 
 
+def test_a_killed_run_is_old_news_once_a_later_full_run_finishes(conn):
+    """Real rows: run 1 (killed 2026-10-22, finished_at NULL) was followed by force runs 2 and 3,
+    both finished. It must not stay red for ever (found writing the step-5 baseline, 2026-10-23)."""
+    import verifyops_coverage as cov
+    cur = conn.cursor()
+    # The three real rows of dcp_monitor_runs as read 2026-10-23 (ids 1-3), into the temp table.
+    cur.execute("""INSERT INTO dcp_monitor_runs (mode, started_at, finished_at, git_sha) VALUES
+        ('daily', '2026-10-22 20:23:06+00', NULL, '732ef41b20da25fcc7b69023ec0c0b4e8878bf7e'),
+        ('force', '2026-10-23 00:40:26+00', '2026-10-23 02:07:43+00', NULL),
+        ('force', '2026-10-23 04:30:13+00', '2026-10-23 05:25:53+00', NULL)""")
+    assert "*|*|run_unfinished" not in cov.measure(conn)
+    cur.execute("INSERT INTO dcp_monitor_runs (mode, started_at) VALUES ('daily', NOW() - INTERVAL '7 hours')")
+    assert "*|*|run_unfinished" in cov.measure(conn)           # the newest full run is the killed one
+    cur.execute("INSERT INTO dcp_monitor_runs (mode, started_at, finished_at) VALUES "
+                "('council:x', NOW() - INTERVAL '1 hour', NOW())")
+    assert "*|*|run_unfinished" in cov.measure(conn)           # a one-council run does not supersede
+    cur.execute("INSERT INTO dcp_monitor_runs (mode, started_at) VALUES ('daily', NOW() - INTERVAL '1 hour')")
+    assert "*|*|run_unfinished" in cov.measure(conn)           # nor does a later run still going
+    cur.execute("INSERT INTO dcp_monitor_runs (mode, started_at, finished_at) VALUES "
+                "('daily', NOW() - INTERVAL '1 hour', NOW())")
+    assert "*|*|run_unfinished" not in cov.measure(conn)
+
+
 def test_the_latest_full_run_with_no_sha_is_deployed_not_main(conn):
     import verifyops_coverage as cov
     cur = conn.cursor()
