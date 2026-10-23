@@ -252,7 +252,7 @@ export async function GET(request: NextRequest) {
   const isEligible = !result.constraint;
   const verdictColor = isEligible ? '#94a3b8' : '#ef4444';
   const verdictBg = isEligible ? 'rgba(148,163,184,0.15)' : 'rgba(239,68,68,0.15)';
-  const verdictLabel = result.constraint ? 'DA likely required' : 'Check what applies to this lot';
+  const verdictLabel = result.constraint ? 'CDC not available here' : 'Check what applies to this lot';
   const displayAddress = resolvedAddress.length > 45
     ? resolvedAddress.slice(0, 42) + '...'
     : resolvedAddress;

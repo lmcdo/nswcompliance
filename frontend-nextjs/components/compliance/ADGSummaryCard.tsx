@@ -305,14 +305,16 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
                   </Tooltip>
                 </TooltipProvider>
               )}
-              {separationTable?.source_url && separationTable.source_page != null && (
+              {separationTable?.source_url && (
                 <a
-                  href={`${separationTable.source_url}#page=${separationTable.source_page}`}
+                  href={separationTable.source_page != null
+                    ? `${separationTable.source_url}#page=${separationTable.source_page}`
+                    : separationTable.source_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[10px] text-purple-600 hover:text-purple-800 flex items-center gap-0.5"
                 >
-                  p.{separationTable.source_page}
+                  {separationTable.source_page != null ? `p.${separationTable.source_page}` : 'Open guide'}
                   <ExternalLink className="w-2.5 h-2.5" />
                 </a>
               )}
