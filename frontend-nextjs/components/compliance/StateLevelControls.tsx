@@ -1048,7 +1048,7 @@ export function StateLevelControls({
                           </span>
                           {ba.meetsMinimumRequirements === true && (
                             <span className="text-xs text-green-700 ml-1">
-                              (meets the complying development minimums{ba.cdcRef ? `, ${ba.cdcRef}` : ''})
+                              (meets the battle-axe size minimums for complying development{ba.cdcRef ? `, ${ba.cdcRef}` : ''}; other CDC requirements are checked separately)
                             </span>
                           )}
                           {ba.complianceIssues?.length > 0 && (

@@ -57,32 +57,39 @@ export function applyBattleaxeLimits(
   }
 
   const src = `SEPP (Housing) 2021 ${limits.ref}`;
-  const minArea = limits.lotMinDimension * limits.lotMinDimension;
-  const tests = [
-    { value: b.accessWayWidth, min: limits.accessMinWidth, what: 'Access way', unit: 'm wide', limit: `${limits.accessMinWidth} m` },
-    { value: b.mainLotWidth, min: limits.lotMinDimension, what: 'Main lot (without the access way)', unit: 'm wide', limit: `${limits.lotMinDimension} m by ${limits.lotMinDimension} m` },
-    { value: b.mainLotArea, min: minArea, what: 'Main lot (without the access way)', unit: 'm² in area', limit: `${limits.lotMinDimension} m by ${limits.lotMinDimension} m` },
+  const square = `${limits.lotMinDimension} m by ${limits.lotMinDimension} m`;
+  // The 12 m by 12 m test needs both sides of the main lot: its narrowest width across and
+  // its length along. Either missing = that part not checked, never assumed.
+  const tests: Array<{ value: number | undefined; min: number; what: string; limit: string }> = [
+    { value: b.accessWayWidth, min: limits.accessMinWidth, what: 'Access way width', limit: `${limits.accessMinWidth} m` },
+    { value: b.mainLotMinWidth, min: limits.lotMinDimension, what: 'Main lot narrowest width (without the access way)', limit: square },
+    { value: b.mainLotLength, min: limits.lotMinDimension, what: 'Main lot length (without the access way)', limit: square },
   ];
 
   const issues: string[] = [];
   let anyFail = false;
   let anyNear = false;
+  let anyUnmeasured = false;
   for (const t of tests) {
-    const margin = t.unit.startsWith('m²') ? NEAR_LIMIT_M * limits.lotMinDimension * 2 : NEAR_LIMIT_M;
-    const shown = t.unit.startsWith('m²') ? t.value.toFixed(0) : t.value.toFixed(1);
-    if (Math.abs(t.value - t.min) <= margin) {
+    if (t.value == null || !Number.isFinite(t.value) || t.value <= 0) {
+      anyUnmeasured = true;
+      issues.push(`${t.what} could not be measured from the cadastre map, so the ${t.limit} complying development (CDC) test for a battle-axe lot (${src}) was not checked.`);
+      continue;
+    }
+    const shown = t.value.toFixed(1);
+    if (Math.abs(t.value - t.min) <= NEAR_LIMIT_M) {
       anyNear = true;
-      issues.push(`${t.what} ${shown} ${t.unit} (${MAP_NOTE}), close to the ${t.limit} that complying development (CDC) needs for a battle-axe lot (${src}).`);
+      issues.push(`${t.what} ${shown} m (${MAP_NOTE}), close to the ${t.limit} that complying development (CDC) needs for a battle-axe lot (${src}).`);
     } else if (t.value < t.min) {
       anyFail = true;
-      issues.push(`${t.what} ${shown} ${t.unit} (${MAP_NOTE}). Complying development (CDC) needs at least ${t.limit} for a battle-axe lot (${src}), so CDC is not available here; a DA is assessed against the council's own controls instead.`);
+      issues.push(`${t.what} ${shown} m (${MAP_NOTE}). Complying development (CDC) needs at least ${t.limit} for a battle-axe lot (${src}), so CDC is likely not available here. For a DA, the council assesses the lot against its own controls.`);
     }
   }
 
-  const cdcStatus: BattleaxeCdcStatus = anyFail ? 'fails' : anyNear ? 'near' : 'meets';
+  const cdcStatus: BattleaxeCdcStatus = anyFail ? 'fails' : anyNear ? 'near' : anyUnmeasured ? 'not_checked' : 'meets';
   return {
     ...b,
-    meetsMinimumRequirements: anyFail ? false : anyNear ? null : true,
+    meetsMinimumRequirements: anyFail ? false : anyNear || anyUnmeasured ? null : true,
     complianceIssues: issues,
     cdcStatus,
     cdcRef: src,

@@ -2004,8 +2004,9 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                     f"After the house (about {req.main_dwelling_area_m2:.0f} m²), about "
                     f"{residual_area_m2:.0f} m² of the lot is left. That may be tight for a "
                     f"complying development (CDC) granny flat once its SEPP (Housing) 2021 "
-                    f"Schedule 1 setbacks are applied. A DA uses the council's DCP setbacks "
-                    f"instead. A designer or certifier can confirm whether one fits."
+                    f"Schedule 1 setbacks are applied. For a DA, the council assesses setbacks "
+                    f"against its own controls, including its DCP. A designer or certifier can "
+                    f"confirm whether one fits."
                 )
 
     # Heritage: use user-provided value if set, otherwise auto-detect from spatial_overlays

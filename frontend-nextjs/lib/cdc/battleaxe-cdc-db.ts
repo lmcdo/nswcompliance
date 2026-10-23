@@ -33,10 +33,12 @@ export async function loadBattleaxeLimits(): Promise<BattleaxeLimits | null> {
     // The clause the limits were copied from must still be current (is_current = TRUE),
     // otherwise the law may have changed under them: not checked, never a stale pass.
     if (access.is_current !== true || dim.is_current !== true) return null;
+    // Both rows must name the same clause; no reference means no citation, so not checked.
+    if (!access.ref_number || access.ref_number !== dim.ref_number) return null;
     return {
       accessMinWidth: a,
       lotMinDimension: d,
-      ref: access.ref_number ?? 'Schedule 1',
+      ref: access.ref_number,
       quote: access.source_quote ?? '',
       pdfPage: access.pdf_page ?? null,
     };

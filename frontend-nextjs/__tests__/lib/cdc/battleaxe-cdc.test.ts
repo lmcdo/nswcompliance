@@ -6,10 +6,11 @@ import type { BattleaxeDetectionResult } from '@/lib/geometry/lot-shape-analysis
 // Stands in for the stored rows; a different value than the law proves the code reads it.
 const LIMITS: BattleaxeLimits = { accessMinWidth: 3, lotMinDimension: 12, ref: 'Sch 1 s2(1)(c)', quote: 'q', pdfPage: 88 }
 
-function lot(access: number, width = 15, area = 300): BattleaxeDetectionResult {
+function lot(access: number, headMinWidth: number | undefined = 15, headLength: number | undefined = 20): BattleaxeDetectionResult {
   return {
     isBattleaxe: true, confidence: 0.9, accessWayWidth: access, accessWayLength: 20,
-    mainLotWidth: width, mainLotArea: area, meetsMinimumRequirements: null, complianceIssues: [],
+    mainLotWidth: 16, mainLotArea: 300, mainLotMinWidth: headMinWidth, mainLotLength: headLength,
+    meetsMinimumRequirements: null, complianceIssues: [],
   }
 }
 
@@ -25,11 +26,12 @@ describe('applyBattleaxeLimits', () => {
     const r = applyBattleaxeLimits(lot(2.4), LIMITS)
     expect(r.meetsMinimumRequirements).toBe(false)
     const m = r.complianceIssues.join(' ')
-    expect(m).toContain('2.4 m wide')
+    expect(m).toContain('Access way width 2.4 m')
     expect(m).toContain('complying development (CDC)')
     expect(m).toContain('SEPP (Housing) 2021 Sch 1 s2(1)(c)')
     expect(m).toContain('cadastre map')
-    expect(m).toContain('a DA is assessed against the council')
+    expect(m).toContain('CDC is likely not available')
+    expect(m).toContain('For a DA, the council assesses')
     expect(r.cdcPdfPage).toBe(88)
   })
 
@@ -45,10 +47,16 @@ describe('applyBattleaxeLimits', () => {
     expect(r.complianceIssues[0]).toMatch(/close to the 3 m/)
   })
 
-  it('main lot too small fails on the 12 m by 12 m test', () => {
-    const r = applyBattleaxeLimits(lot(4, 10, 100), LIMITS)
-    expect(r.meetsMinimumRequirements).toBe(false)
-    expect(r.complianceIssues.join(' ')).toContain('12 m by 12 m')
+  it('main lot too narrow OR too short fails the 12 m by 12 m test (both sides)', () => {
+    expect(applyBattleaxeLimits(lot(4, 10, 20), LIMITS).meetsMinimumRequirements).toBe(false)
+    expect(applyBattleaxeLimits(lot(4, 20, 10), LIMITS).meetsMinimumRequirements).toBe(false)
+    expect(applyBattleaxeLimits(lot(4, 10, 20), LIMITS).complianceIssues.join(' ')).toContain('12 m by 12 m')
+  })
+
+  it('an unmeasured side is not checked, never a pass', () => {
+    const r = applyBattleaxeLimits(lot(4, undefined, 20), LIMITS)
+    expect(r.meetsMinimumRequirements).toBeNull()
+    expect(r.cdcStatus).toBe('not_checked')
   })
 
   it('the geometry module carries no typed CDC limits', () => {

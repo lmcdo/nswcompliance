@@ -51,6 +51,10 @@ export interface BattleaxeDetectionResult {
   mainLotWidth: number;
   /** Estimated main lot area in sqm (excluding handle) */
   mainLotArea: number;
+  /** Estimated main lot (head) length along the lot, metres (excluding handle) */
+  mainLotLength?: number;
+  /** Narrowest width across the main lot (head), metres */
+  mainLotMinWidth?: number;
   /**
    * Whether the lot meets the stored CDC battle-axe limits. null until
    * applyBattleaxeLimits() runs, and when the limits could not be read or a
@@ -191,6 +195,8 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
     narrowThreshold
   );
   const mainLotArea = estimateMainLotArea(widths, narrowThreshold, headLength);
+  const headSliceWidths = widths.filter((w) => w >= narrowThreshold);
+  const mainLotMinWidth = headSliceWidths.length > 0 ? Math.min(...headSliceWidths) : 0;
 
   // Calculate confidence
   const confidence = calculateConfidence(widths, minWidth, maxWidth, narrowPercentage);
@@ -202,6 +208,8 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
     accessWayLength: Math.round(handleLength * 100) / 100,
     mainLotWidth: Math.round(maxWidth * 100) / 100,
     mainLotArea: Math.round(mainLotArea),
+    mainLotLength: Math.round(headLength * 100) / 100,
+    mainLotMinWidth: Math.round(mainLotMinWidth * 100) / 100,
     meetsMinimumRequirements: null,
     complianceIssues: [],
     widthProfile: widths,
