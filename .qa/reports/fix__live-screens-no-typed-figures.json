@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Live screens showed typed planning rules: ADG separation fallbacks and an invented page number, a share image declaring CDC available from a typed 450 m2, and typed setbacks, lot sizes, floor areas and council values in tool pages, FAQs, the AI formatter and the granny flat PDF.",
-  "commit_hash": "5baf18a2",
+  "commit_hash": "9f79def0",
   "files": [
     ".claude/regulatory_figure_ledger.json",
     "frontend-nextjs/app/(tools)/granny-flat/page.tsx",
