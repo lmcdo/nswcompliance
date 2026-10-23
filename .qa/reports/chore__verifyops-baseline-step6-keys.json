@@ -1,0 +1,33 @@
+{
+ "tier": "minor",
+ "justification": "Data-only: the shrink-only alarm baseline updated after 7 council list pages were stored.",
+ "commit_hash": "5bd7e4ee",
+ "files": [
+  ".claude/verifyops_red_baseline.json"
+ ],
+ "pre_impl": {
+  "existing_data": "verifyops_coverage.py 2026-10-23 23:40 UTC: 83 red, 5 new, 7 cleared; run 5 council results: blacktown, hornsby, parramatta HTTP 403.",
+  "assumption_mismatch": "Storing list pages turned no_list_page keys into list_not_read_2d keys, which the shrink-only baseline counts as new.",
+  "new_vs_existing": "Same baseline file; every new key carries its own reason."
+ },
+ "falsifiable_check": {
+  "command": "python scripts/dq_check.py --id DQ-118",
+  "fails_when": "a red key is not in the baseline",
+  "observed_red": "Before: DQ-118 red on main (5 new keys). After: PASSED."
+ },
+ "break_it": [
+  {
+   "scenario": "A council's first list read is pending when baselined",
+   "what_happens": "its key stays quiet even if the read later fails",
+   "mitigated": true,
+   "how": "the key alarms again after 30 days, and it clears on the first ok read",
+   "repro": "python scripts/verifyops_coverage.py"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "gates on main: DQ-118 passes."
+ }
+}
