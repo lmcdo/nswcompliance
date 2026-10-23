@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes when a council list read counts as ok and which earlier list it is compared with; chapter checks unchanged.",
- "commit_hash": "d0acc0a7",
+ "commit_hash": "8e02770b",
  "files": [
   "scripts/verifyops_record.py",
   "scripts/hub_scrapers/inner_west.py",
