@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes when a council list read counts as ok and which earlier list it is compared with; chapter checks unchanged.",
- "commit_hash": "7115510e",
+ "commit_hash": "d0acc0a7",
  "files": [
   "scripts/verifyops_record.py",
   "scripts/hub_scrapers/inner_west.py",
@@ -76,5 +76,14 @@
   "secrets": "None.",
   "other_repo": "None.",
   "manual_verify": "Next daily run: dcp_monitor_council_results shows no anomaly for the 8 councils that read ok in run 4, unless their page really changed."
+ },
+ "real_layer_exempt": {
+  "scripts/hub_scrapers/city_of_sydney.py": "One added call after the existing status check; councils block this machine (403), so the live layer is measured from Railway: the next daily run's dcp_monitor_council_results row for this council.",
+  "scripts/hub_scrapers/cumberland.py": "One added call after the existing status check; councils block this machine (403), so the live layer is measured from Railway: the next daily run's dcp_monitor_council_results row for this council.",
+  "scripts/hub_scrapers/generic.py": "One added call after the existing status check; councils block this machine (403), so the live layer is measured from Railway: the next daily run's dcp_monitor_council_results row for this council.",
+  "scripts/hub_scrapers/inner_west.py": "One added call after the existing status check; councils block this machine (403), so the live layer is measured from Railway: the next daily run's dcp_monitor_council_results row for this council.",
+  "scripts/hub_scrapers/penrith.py": "One added call after the existing status check; councils block this machine (403), so the live layer is measured from Railway: the next daily run's dcp_monitor_council_results row for this council.",
+  "scripts/hub_scrapers/waverley.py": "One added call after the existing status check; councils block this machine (403), so the live layer is measured from Railway: the next daily run's dcp_monitor_council_results row for this council.",
+  "scripts/hub_scrapers/woollahra.py": "One added call after the existing status check; councils block this machine (403), so the live layer is measured from Railway: the next daily run's dcp_monitor_council_results row for this council."
  }
 }
