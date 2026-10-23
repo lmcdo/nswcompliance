@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Blog stated wrong granny flat CDC rules (one fixed setback, 1 parking space, two-storey 1.5 m) plus unsourced typical DCP ranges; now cites Housing SEPP 2021 Schedule 1.",
-  "commit_hash": "9ac82854",
+  "commit_hash": "b2959241",
   "files": [
     "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
     ".claude/regulatory_figure_ledger.json"
