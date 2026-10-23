@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Battle-axe CDC test judged lots against typed 3 m / 12 m constants with no route named; the granny flat space heuristic (our estimate) set not-buildable. Limits now come from cdc_eligibility_standards rows 87/88 (Sch 1 s2(1)(c), clause row 41115); messages name the CDC route, the measurement, the map source and the next step; the heuristic is a caution.",
-  "commit_hash": "3beb15af",
+  "commit_hash": "fede064e",
   "files": [
     ".claude/regulatory_figure_ledger.json",
     "frontend-nextjs/app/api/property/[address]/route.ts",
