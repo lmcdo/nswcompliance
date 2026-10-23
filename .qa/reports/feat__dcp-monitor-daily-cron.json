@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Schedule constants and their wording only: cron string, one SQL interval, two site sentences, comments, ledger text. No function bodies changed. The window is pinned by tests that fail on any other value (2 mutants killed).",
- "commit_hash": "f03be704",
+ "commit_hash": "172e727e",
  "files": [
   "railway.dcp-monitor.toml",
   "scripts/dq_probe_live.py",
