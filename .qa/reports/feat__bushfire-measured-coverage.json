@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Puts back a bush fire coverage % on 30 council pages, now measured from the NSW RFS map rather than typed; adds the script that measures it.",
-  "commit_hash": "815bb5b5",
+  "commit_hash": "8562b62a",
   "files": [
     "scripts/measure_bfpl_coverage.py",
     "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
