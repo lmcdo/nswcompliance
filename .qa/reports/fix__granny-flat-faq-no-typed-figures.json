@@ -1,0 +1,62 @@
+{
+  "tier": "standard",
+  "justification": "User-facing FAQ text only (no logic, queries or schema): removes hand-typed planning figures and unsourced comparisons from the granny-flat council FAQ data, and prunes the matching figure-ledger entries. Standard, not Minor, because the text is live, indexed planning information; not Critical because no computed verdict changes.",
+  "commit_hash": "ae85ce3f",
+  "files": [
+    "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
+    ".claude/regulatory_figure_ledger.json"
+  ],
+  "pre_impl": {
+    "existing_data": "none (static FAQ strings in a TypeScript module)",
+    "assumption_mismatch": "A page renders a FAQ field the rewrite removed -> tsc catches it; 0 errors",
+    "new_vs_existing": "All 24 council pages on the next deploy"
+  },
+  "functions": [
+    {
+      "name": "GRANNY_FLAT_LGA_SLUG_MAP",
+      "file_line": "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts:1",
+      "input": "static FAQ strings per council",
+      "output": "lga.faqs rendered by the /granny-flat/<council> page as a FAQ list and FAQPage JSON-LD",
+      "if_none": "faqs is required by the type; tsc fails the build if a council loses it"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "An answer still states a figure the scanner does not recognise (e.g. spelled-out numbers)",
+      "how": "grep for digits in granny-flat-lgas.ts: only heritageCount fields and '2021' remain; spelled-out figures checked by reading the diff",
+      "result": "none found",
+      "what_happens": "the rewritten answer would still state a hand-typed number",
+      "repro": "grep -nE '[0-9]' frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
+      "mitigated": "only heritageCount fields and '2021' remain"
+    },
+    {
+      "scenario": "An answer tells a user a DA is available where the zone prohibits a secondary dwelling",
+      "how": "Sol cross-review flagged it; every 'If any check fails' answer now says a DA may be possible unless the zone prohibits it",
+      "result": "24 answers reworded",
+      "what_happens": "wasted DA cost on development that cannot be approved",
+      "repro": "open /granny-flat/ku-ring-gai and read 'Do I need council approval'",
+      "mitigated": "answers now say a DA may be possible unless the zone prohibits a secondary dwelling"
+    },
+    {
+      "scenario": "An answer says all acid sulfate land is excluded, wrongly failing a Class 3-5 lot",
+      "how": "Sol cross-review flagged it; answers now say some acid sulfate soil classes are excluded and the class on the map decides",
+      "result": "33 answers reworded",
+      "what_happens": "a false 'not eligible' answer",
+      "repro": "open /granny-flat/randwick and read the acid sulfate answer",
+      "mitigated": "answers now say only some classes are excluded and the class on the map decides"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  },
+  "falsifiable_check": {
+    "command": "python scripts/lint_hardcoded_regulatory_numbers.py",
+    "fails_when": "any planning figure is typed back into granny-flat-lgas.ts: it is no longer in the ledger, so the scanner reports it as unlisted and exits non-zero (the 58 pruned entries also make the open cap 437, so re-adding them as open fails too)",
+    "observed_red": "2026-10-23: put '450 m²' back into one Campbelltown answer -> scanner printed 'NOT IN LEDGER (new typed figure): frontend-nextjs/lib/lga-data/granny-flat-lgas.ts::...450 m²...'; file restored after"
+  }
+}
