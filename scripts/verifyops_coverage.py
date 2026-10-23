@@ -34,9 +34,8 @@ Usage:
     python scripts/verifyops_coverage.py --update --allow-raise "first Railway run 2026-10-xx"
 Exit 2 = could not look (no database, or migration 116 not applied). Never a pass.
 
-The 2-day windows assume the DAILY cron. While dcp-monitor is still fortnightly they read red for
-most of each cycle, so the baseline is written only after the daily cron is live (QA report,
-verification_after_merge).
+The 2-day windows assume the DAILY cron (railway.dcp-monitor.toml `0 2 * * *`, 2026-10-23). The
+baseline is written only after the first daily run (v7 step 5).
 """
 from __future__ import annotations
 

@@ -146,12 +146,9 @@ stuck = cur.fetchall()
 
 # ── Check 2: Chapters with repeated download failures (grace period) ────────
 # check_failures counts CHECKS, not days, and the name of the constant below
-# says days. Those agreed while dcp-monitor ran daily. It runs FORTNIGHTLY as
-# of 2026-09-10 (Railway cron 0 2 1,15 * *), so 3 failures is now ~6 weeks of
-# a dead council URL before anyone is told, not 3 days. The value is left
-# alone rather than quietly retuned: at a fortnightly cadence there is no good
-# number here, and the fix is either a separate cheap URL liveness check or a
-# faster monitor cadence — a decision, not a constant edit.
+# says days. They agree when dcp-monitor runs daily, which it does again from
+# 2026-10-23 (Railway cron 0 2 * * *; it was fortnightly 2026-09-10..10-22,
+# when 3 failures meant ~6 weeks). If the cadence changes, revisit this.
 # Only alert at >= FAIL_GRACE_DAYS failures to filter transient outages.
 cur.execute("""
     SELECT council, chapter_key, check_failures, url_last_checked
