@@ -18,7 +18,7 @@ describe('granny flat report CDC standards', () => {
 
   it('every standard row names a Schedule 1 section', () => {
     const block = SRC.slice(SRC.indexOf('const CDC_SCHEDULE_1'), SRC.indexOf('];', SRC.indexOf('const CDC_SCHEDULE_1')))
-    const rows = block.split('\n').filter((l) => l.includes('{ std:'))
+    const rows = block.split('\n').filter((l) => l.includes("{ std: '"))
     expect(rows.length).toBeGreaterThanOrEqual(8)
     for (const r of rows) expect(r).toMatch(/clause: 'SEPP \(Housing\) 2021 Schedule 1( s\d+(\(\d+\))?)?'/)
   })
