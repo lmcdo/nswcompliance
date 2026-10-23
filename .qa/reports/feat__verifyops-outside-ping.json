@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes how the outside watchdog and Telegram are told about the daily alarm; the alarm's own checks are unchanged.",
- "commit_hash": "8c4c7e3e",
+ "commit_hash": "a37d69d6",
  "files": [
   ".github/workflows/freshness-alarm.yml",
   "scripts/verifyops_outside_ping.py",
