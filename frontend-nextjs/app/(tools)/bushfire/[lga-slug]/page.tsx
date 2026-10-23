@@ -61,7 +61,6 @@ export default function BushfireLgaPage(
         </h1>
         <p className="mt-3 text-base text-gray-500">
           Check whether a {lga.name} property address is on bush fire prone land.
-          {` Approximately ${lga.bfplCoveragePct}% of ${lga.name} is mapped as bush fire prone land by the NSW RFS.`}
           {' '}Bushfire status affects{' '}
           <Link href={`/granny-flat/${lga.slug}`} className="text-teal-600 hover:underline">granny flat eligibility</Link>
           , insurance premiums, and construction costs.
@@ -69,13 +68,7 @@ export default function BushfireLgaPage(
       </div>
 
       {/* Data summary */}
-      <div className="grid grid-cols-3 gap-3 mb-8">
-        <div className="rounded-lg bg-gray-50 p-4">
-          <p className="text-xs text-gray-500">BFPL coverage</p>
-          <p className="text-sm font-semibold text-gray-900 mt-1">
-            ~{lga.bfplCoveragePct}% of LGA
-          </p>
-        </div>
+      <div className="grid grid-cols-2 gap-3 mb-8">
         <div className="rounded-lg bg-gray-50 p-4">
           <p className="text-xs text-gray-500">Dominant vegetation</p>
           <p className="text-sm font-semibold text-gray-900 mt-1">
