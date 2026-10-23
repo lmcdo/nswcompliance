@@ -1,0 +1,92 @@
+{
+ "tier": "standard",
+ "justification": "Changes how the outside watchdog and Telegram are told about the daily alarm; the alarm's own checks are unchanged.",
+ "commit_hash": "54abc444",
+ "files": [
+  ".github/workflows/freshness-alarm.yml",
+  "scripts/verifyops_outside_ping.py",
+  "scripts/check_railway_jobs_ran.py",
+  "tests/test_verifyops_outside_ping.py",
+  "tests/test_check_railway_jobs_ran.py",
+  "tests/fixtures/verifyops/coverage_2026-10-23.txt",
+  "tests/fixtures/verifyops/railway_jobs_2026-10-23.txt"
+ ],
+ "pre_impl": {
+  "existing_data": "Reuses the existing healthchecks.io check (secret HC_PING_FRESHNESS, period 2 d) and Telegram secrets already in the repo; no new vendor.",
+  "assumption_mismatch": "The workflow pinged only when every check was green; with 236 known red keys today it would never ping and would email every 2 days. Railway check returned 1 for both 'found problems' and 'could not look'.",
+  "new_vs_existing": "One new decision script; the three existing check steps now record exit codes instead of stopping the job."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_verifyops_outside_ping.py tests/test_check_railway_jobs_ran.py",
+  "fails_when": "a red result is not sent to Telegram, a crash/exit 2/failed Telegram send pings success, or 'OK (not found)' counts as landed",
+  "observed_red": "The real-fixture test failed on the first draft: Railway job lines (dcp-commit: ...) were dropped from the message. Fixed. 9 hand mutants all killed."
+ },
+ "functions": [
+  {
+   "name": "decide",
+   "file_line": "scripts/verifyops_outside_ping.py:37",
+   "input": "dict of check name to exit code text, plus whether Telegram delivered",
+   "output": "the string success or fail for the healthchecks.io ping",
+   "if_none": "a missing or empty exit code means the step crashed and returns fail"
+  },
+  {
+   "name": "message",
+   "file_line": "scripts/verifyops_outside_ping.py:47",
+   "input": "the exit codes and the saved text output of each check",
+   "output": "the Telegram text with headline lines capped at 25, or None",
+   "if_none": "None when every check exited 0, so nothing is sent"
+  },
+  {
+   "name": "send_telegram",
+   "file_line": "scripts/verifyops_outside_ping.py:71",
+   "input": "message text, bot token, chat id, injectable post function",
+   "output": "True only when Telegram answers ok true with a message id",
+   "if_none": "any exception or a missing message id returns False"
+  },
+  {
+   "name": "ping",
+   "file_line": "scripts/verifyops_outside_ping.py:82",
+   "input": "healthchecks.io URL, the verdict, injectable post function",
+   "output": "True only when the body starts OK and is not OK (not found)",
+   "if_none": "an unreachable host returns False and the job goes red"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A check step crashes before it records an exit code",
+   "what_happens": "silent: the old job treated it like red and simply did not ping",
+   "mitigated": true,
+   "how": "empty rc -> decide returns fail -> /fail ping -> email now",
+   "repro": "pytest tests/test_verifyops_outside_ping.py -k crashed"
+  },
+  {
+   "scenario": "Telegram is down or the bot token was rotated and not updated",
+   "what_happens": "silent: red is computed but nobody hears it",
+   "mitigated": true,
+   "how": "send_telegram must return ok+message_id, else /fail -> healthchecks.io emails",
+   "repro": "pytest tests/test_verifyops_outside_ping.py -k telegram"
+  },
+  {
+   "scenario": "The healthchecks.io URL in the secret names no check",
+   "what_happens": "silent: 200 'OK (not found)' looks like a ping",
+   "mitigated": true,
+   "how": "body checked; not found -> exit 1, job red",
+   "repro": "pytest tests/test_verifyops_outside_ping.py -k not_found"
+  },
+  {
+   "scenario": "Railway API is down so the jobs check cannot look",
+   "what_happens": "silent: exit 1 read as 'looked, found problems' and pinged success",
+   "mitigated": true,
+   "how": "check_railway_jobs_ran returns 2 on could-not-look paths -> /fail",
+   "repro": "pytest tests/test_check_railway_jobs_ran.py -k could_not_look"
+  }
+ ],
+ "mutation_analysis": "9 hand mutants on decide/send_telegram/ping/message (accept rc 2, Telegram None as ok, empty rcs, always success, ok OR message_id, ignore 'not found', no /fail suffix, drop job lines, wrong red code): 9 killed.",
+ "residual_risk": "dq_check.py exit codes are folded to 1 in the ledger step, so a DB outage there reads as 'looked'; the coverage step (same DB) exits 2 in that case and forces /fail. Step 4 DONE WHEN (a 49 h pause producing one email) needs a manual test on healthchecks.io.",
+ "post_merge": {
+  "db_reset": "No.",
+  "secrets": "None new (HC_PING_FRESHNESS, TELEGRAM_* exist).",
+  "other_repo": "No.",
+  "manual_verify": "workflow_dispatch freshness-alarm once: Telegram message arrives and healthchecks.io shows a success ping; then pause the check 49 h and confirm exactly one email."
+ }
+}

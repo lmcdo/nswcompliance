@@ -69,70 +69,64 @@ jobs:
           if [ -z "${DATABASE_URL:-}" ]; then
             echo "::error::DATABASE_URL secret is not set, so this alarm cannot read"
             echo "anything. An alarm that cannot run must fail loudly, never skip."
-            exit 1
+            echo "rc=2" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           # The freshness rows specifically. DQ-117 = did the source sweep run.
           # DQ-70 = does what we serve still match its source. Both are DB-backed and
           # neither can be satisfied by editing code.
+          set +e
+          : > ledger.txt
           rc=0
           for id in DQ-117 DQ-70; do
-            echo "--- $id"
-            python scripts/dq_check.py --id "$id" || rc=1
+            echo "--- $id" | tee -a ledger.txt
+            python scripts/dq_check.py --id "$id" 2>&1 | tee -a ledger.txt
+            [ "${PIPESTATUS[0]}" -eq 0 ] || rc=1
           done
-          exit $rc
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
 
       # Is every served DCP chapter watched and checked? Per council and per chapter, against
       # a baseline that may only shrink (scripts/verifyops_coverage.py, DQ-118). Run directly,
       # not through dq_check: DQ-118 is declared open, and an open row that fails exits 0
       # there, which would make this step unable to go red. Exit 2 = could not look.
       - name: Is every served DCP chapter watched and checked?
+        id: coverage
         if: always()
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python scripts/verifyops_coverage.py
+        run: |
+          set +e
+          python scripts/verifyops_coverage.py 2>&1 | tee coverage.txt
+          echo "rc=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       # Did every scheduled Railway job run, and did its last run succeed? Checked from
       # here, outside Railway, because a job that crashes on import or never starts
       # cannot alert from inside itself: dcp-extract and dcp-commit crashed on every run
       # for days in October 2026 and nothing said so. Red here = no ping below.
       - name: Did every Railway job run and succeed?
+        id: railway
         if: always()
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: python scripts/check_railway_jobs_ran.py
-
-      # Ping ONLY on success. A ping sent regardless of the result is a heartbeat, and a
-      # heartbeat is the thing this workflow exists to replace.
-      - name: Tell the watchdog we are current
-        if: success()
-        env:
-          HC: ${{ secrets.HC_PING_FRESHNESS }}
         run: |
-          if [ -z "${HC:-}" ]; then
-            echo "::error::HC_PING_FRESHNESS is not set. Create one healthchecks.io"
-            echo "check (period 2 days, grace 12 hours) and add its ping URL as that"
-            echo "repository secret. Until then nothing watches this workflow, and"
-            echo "this step fails rather than passing quietly — a silent skip here is"
-            echo "exactly the defect this file was written to remove."
-            exit 1
-          fi
-          # healthchecks.io answers 200 with the body "OK (not found)" for a URL that
-          # names no check — measured 2026-09-28. So a 2xx is NOT proof the ping landed
-          # and the body has to be read. Same lesson as scripts/run_monitors.py.
-          body=$(curl -sS --max-time 20 --retry 2 --retry-delay 5 "$HC") || {
-            echo "::error::could not reach healthchecks.io"; exit 1; }
-          echo "healthchecks.io said: $body"
-          case "$body" in
-            *"not found"*)
-              echo "::error::that ping URL names no check, so no heartbeat was recorded"
-              exit 1 ;;
-          esac
+          set +e
+          python scripts/check_railway_jobs_ran.py 2>&1 | tee railway.txt
+          echo "rc=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
-      - name: Say what is stale, in the run itself
-        if: failure()
+      # v7 step 4: the outside watchdog hears whether we LOOKED, and red goes to Telegram.
+      # looked (every rc 0/1) AND any red delivered (Telegram ok + message_id) -> ping;
+      # could not look (2), a crashed step (no rc) or Telegram failing -> ping /fail;
+      # runner or GitHub dead -> no ping, healthchecks.io emails after its grace period.
+      # Old rule (ping only when all green) emailed every 2 days for a known, baselined red.
+      - name: Tell the outside watchdog, and send red to Telegram
+        if: always()
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          echo "::warning::A freshness row is red, so NO heartbeat was sent and"
-          echo "healthchecks.io will alert. Full ledger below for context."
-          python scripts/dq_check.py 2>&1 | tail -40 || true
+          HC_PING_URL: ${{ secrets.HC_PING_FRESHNESS }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: >-
+          python scripts/verifyops_outside_ping.py
+          --rc "ledger=${{ steps.ledger.outputs.rc }}"
+          --rc "coverage=${{ steps.coverage.outputs.rc }}"
+          --rc "railway=${{ steps.railway.outputs.rc }}"
+          --report ledger.txt --report coverage.txt --report railway.txt
