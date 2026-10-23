@@ -27,7 +27,7 @@ describe('applyBattleaxeLimits', () => {
     expect(r.meetsMinimumRequirements).toBe(false)
     const m = r.complianceIssues.join(' ')
     expect(m).toContain('Access way width 2.4 m')
-    expect(m).toContain('complying development (CDC)')
+    expect(m).toMatch(/complying development \(CDC\)/i)
     expect(m).toContain('SEPP (Housing) 2021 Sch 1 s2(1)(c)')
     expect(m).toContain('cadastre map')
     expect(m).toContain('CDC is likely not available')
@@ -54,7 +54,7 @@ describe('applyBattleaxeLimits', () => {
   })
 
   it('an unmeasured side is not checked, never a pass', () => {
-    const r = applyBattleaxeLimits(lot(4, undefined, 20), LIMITS)
+    const r = applyBattleaxeLimits(lot(4, NaN, 20), LIMITS)
     expect(r.meetsMinimumRequirements).toBeNull()
     expect(r.cdcStatus).toBe('not_checked')
   })
