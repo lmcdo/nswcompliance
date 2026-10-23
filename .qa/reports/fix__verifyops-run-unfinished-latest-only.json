@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes when the daily DCP alarm reports an unfinished monitor run.",
- "commit_hash": "8340c08c",
+ "commit_hash": "c9c13cd9",
  "files": [
   "scripts/verifyops_coverage.py",
   "tests/test_verifyops_coverage_real_db.py"
