@@ -10,7 +10,7 @@ import copy
 import json
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -323,11 +323,19 @@ def test_a_new_red_is_red_even_when_an_old_one_cleared():
     assert new == ["c|3|not_checked_8d"] and cleared == ["b|2|no_url"]
 
 
+TODAY = date(2026, 10, 23)
+
+
 class AlarmConn:
     """Answers each alarm query with a fixed set of rows."""
 
-    def __init__(self, reds: dict[str, list[tuple]], served: int = 10, missing: bool = False):
+    def __init__(self, reds: dict[str, list[tuple]], served: int = 10, missing: bool = False,
+                 run_rows: list[tuple] | None = None, active: list[tuple] | None = None):
         self.reds, self.served, self.missing = reds, served, missing
+        self.active = [("x", f"k{i}") for i in range(served)] if active is None else active
+        # Default: the latest full run content-checked every active chapter.
+        self.run_rows = ([(c, k, "unchanged_hash") for c, k in self.active]
+                         if run_rows is None else run_rows)
 
     def cursor(self):
         outer = self
@@ -339,7 +347,10 @@ class AlarmConn:
                 if outer.missing and "dcp_monitor_" in sql:
                     raise RuntimeError('relation "dcp_monitor_runs" does not exist')
                 if sql.strip().startswith("SELECT r.council, r.chapter_key FROM dcp_chapter_registry r WHERE r.is_active"):
-                    self.rows = [("x", f"k{i}") for i in range(outer.served)]
+                    self.rows = list(outer.active)
+                    return
+                if sql == cov._LAST_RUN_ROWS:
+                    self.rows = outer.run_rows
                     return
                 if sql.startswith("SELECT git_sha FROM dcp_monitor_runs"):
                     self.rows = []  # no run: deployed_not_main has its own tests
@@ -361,11 +372,12 @@ class AlarmConn:
 
 def test_alarm_passes_on_baseline_and_fails_on_a_new_key(tmp_path, monkeypatch):
     base = tmp_path / "b.json"
-    base.write_text(json.dumps({"keys": ["inner_west|*|unwatched"]}), encoding="utf-8")
+    base.write_text(json.dumps({"keys": ["inner_west|*|unwatched"],
+                                "since": {"inner_west|*|unwatched": "2026-10-20"}}), encoding="utf-8")
     monkeypatch.setattr(cov, "BASELINE", base)
-    assert cov.main([], conn=AlarmConn({"unwatched": [("inner_west", "*")]})) == 0
+    assert cov.main([], conn=AlarmConn({"unwatched": [("inner_west", "*")]}), today=TODAY) == 0
     assert cov.main([], conn=AlarmConn({"unwatched": [("inner_west", "*")],
-                                         "last_run_unchecked": [("x", "k")]})) == 1
+                                         "last_run_unchecked": [("x", "k")]}), today=TODAY) == 1
 
 
 def test_alarm_cannot_look_is_never_a_pass(monkeypatch):
@@ -376,13 +388,17 @@ def test_alarm_cannot_look_is_never_a_pass(monkeypatch):
 
 def test_update_is_shrink_only(tmp_path, monkeypatch):
     base = tmp_path / "b.json"
-    base.write_text(json.dumps({"keys": ["a|1|no_url", "b|2|no_url"]}), encoding="utf-8")
+    base.write_text(json.dumps({"keys": ["a|1|no_url", "b|2|no_url"],
+                                "since": {"a|1|no_url": "2026-10-20", "b|2|no_url": "2026-10-20"},
+                                "why": {"a|1|no_url": "first run", "b|2|no_url": "first run"}}), encoding="utf-8")
     monkeypatch.setattr(cov, "BASELINE", base)
     conn = AlarmConn({"no_url": [("a", "1")], "not_checked_8d": [("c", "3")]})
-    assert cov.main(["--update"], conn=conn) == 1                       # refused: new key
+    assert cov.main(["--update"], conn=conn, today=TODAY) == 1          # refused: new key
     assert json.loads(base.read_text())["keys"] == ["a|1|no_url", "b|2|no_url"]
-    assert cov.main(["--update"], conn=AlarmConn({"no_url": [("a", "1")]})) == 0
-    assert json.loads(base.read_text())["keys"] == ["a|1|no_url"]       # cleared key dropped
+    assert cov.main(["--update"], conn=AlarmConn({"no_url": [("a", "1")]}), today=TODAY) == 0
+    doc = json.loads(base.read_text())
+    assert doc["keys"] == ["a|1|no_url"]                                # cleared key dropped
+    assert doc["since"] == {"a|1|no_url": "2026-10-20"} and doc["why"] == {"a|1|no_url": "first run"}
 
 
 def test_every_reason_has_a_query_and_the_windows_match_the_spec():
@@ -428,3 +444,109 @@ def test_a_link_with_no_address_is_not_a_document():
     rec.council_list_checked("x", "https://x", [{"url": None, "label": "DCP"}], {}, probe=lambda u: None,
                              send=lambda t: None, now=NOW)
     assert rec._councils[0][2] == "empty"
+
+
+# ── step 5: the baseline guard (v7) ────────────────────────────────────────────────────────────
+
+RUN2 = json.loads((ROOT / "tests" / "fixtures" / "verifyops" / "run2_results_2026-10-23.json")
+                  .read_text(encoding="utf-8"))
+RUN2_ACTIVE = [tuple(r) for r in RUN2["active"]]
+RUN2_ROWS = [tuple(r) for r in RUN2["rows"]]
+
+
+def test_run2_real_share_is_81_of_547():
+    # Real data: force run 2. 8 active chapters have no row at all; they count as unchecked.
+    assert cov.unchecked_share(RUN2_ACTIVE, RUN2_ROWS) == (81, 547)
+
+
+def test_inactive_rows_do_not_count_toward_checked():
+    rows = [("a", "1", "unchanged_hash"), ("zz", "old", "unchanged_hash")]
+    assert cov.unchecked_share([("a", "1"), ("a", "2")], rows) == (1, 2)
+
+
+@pytest.mark.parametrize("outcome", ["rate_limited", "waf_blocked", "no_url", "failed", "transient"])
+def test_not_checked_outcomes_count_as_unchecked(outcome):
+    assert cov.unchecked_share([("a", "1")], [("a", "1", outcome)]) == (1, 1)
+
+
+@pytest.mark.parametrize("outcome", sorted(cov.CHECKED))
+def test_checked_outcomes_count_as_checked(outcome):
+    assert cov.unchecked_share([("a", "1")], [("a", "1", outcome)]) == (0, 1)
+
+
+def test_update_refused_on_run2(tmp_path, monkeypatch):
+    # Known-wrong case: freezing run 2 (14.8% unchecked) as the baseline.
+    base = tmp_path / "b.json"
+    monkeypatch.setattr(cov, "BASELINE", base)
+    conn = AlarmConn({}, active=RUN2_ACTIVE, run_rows=RUN2_ROWS)
+    assert cov.main(["--update", "--allow-raise", "run 2"], conn=conn, today=TODAY) == 1
+    assert not base.exists()
+
+
+def test_update_refused_with_no_finished_run(tmp_path, monkeypatch):
+    monkeypatch.setattr(cov, "BASELINE", tmp_path / "b.json")
+    conn = AlarmConn({}, active=[("a", "1")], run_rows=[])
+    assert cov.main(["--update", "--allow-raise", "x"], conn=conn, today=TODAY) == 1
+
+
+def test_update_allowed_at_exactly_10_percent_refused_above(tmp_path, monkeypatch):
+    base = tmp_path / "b.json"
+    monkeypatch.setattr(cov, "BASELINE", base)
+    active = [("a", str(i)) for i in range(10)]
+    rows = [("a", str(i), "unchanged_hash") for i in range(9)] + [("a", "9", "rate_limited")]
+    conn = AlarmConn({}, active=active, run_rows=rows)
+    assert cov.main(["--update", "--allow-raise", "first daily run"], conn=conn, today=TODAY) == 0
+    base.unlink()
+    rows[8] = ("a", "8", "rate_limited")  # 2/10 = 20%
+    conn = AlarmConn({}, active=active, run_rows=rows)
+    assert cov.main(["--update", "--allow-raise", "x"], conn=conn, today=TODAY) == 1
+    assert not base.exists()
+
+
+def test_raise_records_reason_and_date_for_every_key_and_keeps_first_date(tmp_path, monkeypatch):
+    base = tmp_path / "b.json"
+    base.write_text(json.dumps({"keys": ["a|1|no_url"], "since": {"a|1|no_url": "2026-10-01"},
+                                "why": {"a|1|no_url": "old"}}), encoding="utf-8")
+    monkeypatch.setattr(cov, "BASELINE", base)
+    conn = AlarmConn({"no_url": [("a", "1"), ("b", "2")]})
+    assert cov.main(["--update", "--allow-raise", "first daily run 2026-10-24"], conn=conn, today=TODAY) == 0
+    doc = json.loads(base.read_text())
+    assert doc["since"] == {"a|1|no_url": "2026-10-01", "b|2|no_url": "2026-10-23"}
+    assert doc["why"] == {"a|1|no_url": "old", "b|2|no_url": "first daily run 2026-10-24"}
+    assert set(doc["keys"]) == set(doc["since"]) == set(doc["why"])
+
+
+def test_baselined_over_30_days_alarms_again_and_re_raise_does_not_reset_it(tmp_path, monkeypatch, capsys):
+    base = tmp_path / "b.json"
+    base.write_text(json.dumps({"keys": ["a|1|no_url"], "since": {"a|1|no_url": "2026-09-22"},
+                                "why": {"a|1|no_url": "x"}}), encoding="utf-8")
+    monkeypatch.setattr(cov, "BASELINE", base)
+    conn = AlarmConn({"no_url": [("a", "1")]})
+    assert cov.main([], conn=conn, today=date(2026, 10, 22)) == 0   # 30 days: still quiet
+    assert "still red for 30 days" in capsys.readouterr().out
+    assert cov.main([], conn=conn, today=TODAY) == 1                # 31 days: alarms
+    assert "EXPIRED  a|1|no_url" in capsys.readouterr().out
+    assert cov.main(["--update", "--allow-raise", "again"], conn=conn, today=TODAY) == 1
+    assert cov.main([], conn=conn, today=TODAY) == 1
+
+
+def test_baselined_key_with_no_date_counts_as_expired():
+    assert cov.baselined_ages({"a|1|no_url": ""}, ["a|1|no_url"], TODAY) == [("a|1|no_url", 31)]
+
+
+def test_ages_are_oldest_first_and_skip_keys_not_red_today():
+    since = {"a|1|no_url": "2026-10-20", "b|2|no_url": "2026-10-01", "c|3|no_url": "2026-10-01"}
+    assert cov.baselined_ages(since, ["a|1|no_url", "b|2|no_url"], TODAY) == [
+        ("b|2|no_url", 22), ("a|1|no_url", 3)]
+
+
+def test_old_style_baseline_with_no_dates_alarms(tmp_path, monkeypatch):
+    # A key baselined before dates were recorded cannot prove it is recent: it alarms.
+    base = tmp_path / "b.json"
+    base.write_text(json.dumps({"keys": ["a|1|no_url"]}), encoding="utf-8")
+    monkeypatch.setattr(cov, "BASELINE", base)
+    assert cov.main([], conn=AlarmConn({"no_url": [("a", "1")]}), today=TODAY) == 1
+
+
+def test_a_future_date_counts_as_expired():
+    assert cov.baselined_ages({"a|1|no_url": "2027-10-01"}, ["a|1|no_url"], TODAY) == [("a|1|no_url", 31)]

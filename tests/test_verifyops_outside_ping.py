@@ -192,3 +192,9 @@ def test_main_no_telegram_env_with_red_pings_fail(monkeypatch):
                                     '{"ok": true, "result": null}'])
 def test_send_telegram_odd_json_shapes_are_not_delivered_and_do_not_crash(answer):
     assert p.send_telegram("x", "t", "c", post=lambda url, data: answer) is False
+
+
+def test_message_includes_expired_baseline_keys():
+    m = p.message({"coverage": "1"}, ["VERIFYOPS: 1 red\n  EXPIRED  a|1|no_url  (baselined > 30 days)\n"
+                                      "  baselined but still red for 3 days  b|2|no_url"])
+    assert "EXPIRED  a|1|no_url" in m and "still red for 3 days" not in m
