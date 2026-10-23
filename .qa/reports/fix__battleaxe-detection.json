@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Battle-axe detection flagged ~51 of 1,200 real lots, ~8 real (precision ~16-18%): it measured width along map axes, so tilted lots, triangles and wedges looked like handles (e.g. 42-44 Albert St Belmore). New rule straightens the lot and needs an even-width strip that opens suddenly; 91% precision and recall on 62 labelled real lots.",
-  "commit_hash": "a85b1528",
+  "commit_hash": "a36c8435",
   "files": [
     "frontend-nextjs/lib/geometry/lot-shape-analysis.ts",
     "frontend-nextjs/lib/geometry/__tests__/battleaxe-labelled-lots.test.ts",
