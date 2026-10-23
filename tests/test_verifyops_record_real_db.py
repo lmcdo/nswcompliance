@@ -129,3 +129,14 @@ def test_the_last_good_list_is_found_for_a_cosmetically_different_address(conn):
     assert rec.previous_list("bayside", "https://bayside.nsw.gov.au/dcp/") == good
     assert rec.previous_list("bayside", "https://www.bayside.nsw.gov.au/other") is None
     assert rec.previous_list("bayside") == []          # any page: the newest
+
+
+def test_two_query_pages_of_one_council_are_two_pages(conn):
+    from verifyops_record import Recorder
+    rec = Recorder(conn, dry_run=False, mode="test")
+    rec.start()
+    dcp = [{"href": "a", "norm": "a", "base": "a", "text": "t", "chapter_key": None}]
+    rec.council_list("bayside", "https://x.nsw.gov.au/index.php?page=dcp", "ok", dcp, "fp")
+    rec.flush()
+    assert rec.previous_list("bayside", "https://x.nsw.gov.au/index.php?page=dcp") == dcp
+    assert rec.previous_list("bayside", "https://x.nsw.gov.au/index.php?page=notices") is None

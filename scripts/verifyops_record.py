@@ -216,18 +216,24 @@ class Recorder:
     def _query_previous(self, council: str, page_url: str | None) -> list[dict] | None:
         # Same page = same normalised address as the redirect check uses (www., a trailing slash or
         # case do not start a fresh first scan that would accept any list; Sol, 2026-10-23).
+        from urllib.parse import urlparse
+
         from hub_scrapers.inner_west import _page_key
+
+        def same_page(u: str) -> tuple:
+            # The query counts here: index.php?page=dcp and ?page=notices are two pages (Sol).
+            return (*_page_key(u), urlparse(u).query)
 
         cur = self.conn.cursor()
         cur.execute(
             "SELECT page_url, links FROM dcp_monitor_council_results WHERE council = %s AND outcome = 'ok'"
-            " ORDER BY id DESC LIMIT 50",
+            " ORDER BY id DESC LIMIT 200",
             (council,),
         )
         rows = cur.fetchall()
         cur.close()
-        want = _page_key(page_url) if page_url else None
+        want = same_page(page_url) if page_url else None
         for url, links in rows:
-            if want is None or _page_key(url or "") == want:
+            if want is None or same_page(url or "") == want:
                 return links if isinstance(links, list) else json.loads(links)
         return None
