@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Ledger-only: DQ-79 is red again (ku_ring_gai row 766, 1 byte, 04:30 UTC run), so declare it open in both ledger files.",
-  "commit_hash": "60311653",
+  "commit_hash": "04814615",
   "files": [
     ".claude/dq_checks.json",
     ".claude/DATA_QUALITY_TRACKER.md"
