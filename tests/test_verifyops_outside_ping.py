@@ -62,18 +62,19 @@ def test_message_all_green_is_none():
     assert p.message({"a": "0", "b": "0"}, ["VERIFYOPS: x"]) is None
 
 
-def test_message_real_fixtures():
-    reports = [RAILWAY.read_text(encoding="utf-8"), COVERAGE.read_text(encoding="utf-8")]
+def test_message_real_fixtures_in_production_order():
+    """freshness-alarm.yml passes ledger, coverage, railway in that order. Coverage's 60 NEW RED
+    lines must not crowd Railway's failed jobs out (Sol, 2026-10-23)."""
+    reports = ["--- DQ-117\nPASS", COVERAGE.read_text(encoding="utf-8"), RAILWAY.read_text(encoding="utf-8")]
     m = p.message({"ledger": "0", "coverage": "1", "railway": "1"}, reports)
     assert "coverage=1" in m and "ledger=0" in m
     assert "C = 0/547" in m
     assert "*|*|no_run_2d" in m
-    assert "dcp-commit:" in m
+    assert "dcp-commit:" in m and "dcp-extract:" in m and "maintenance-mutation:" in m
     body = m.split("\n")[1:]
     more = [ln for ln in body if ln.startswith("... ") and "more lines" in ln]
     assert len(more) == 1
     assert len(body) - 1 <= p.MAX_LINES
-    assert len(body) - 1 == p.MAX_LINES
 
 
 def test_message_crashed_rc():

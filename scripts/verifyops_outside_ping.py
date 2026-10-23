@@ -49,15 +49,18 @@ def message(rcs: dict[str, str | None], reports: list[str]) -> str | None:
     if all((v or "").strip() == "0" for v in rcs.values()):
         return None
     head = ", ".join(f"{k}={'crashed' if not (v or '').strip() else v.strip()}" for k, v in rcs.items())
-    lines: list[str] = []
+    # Each report gets its own share of the cap, so one long report (coverage prints up to 60
+    # NEW RED lines) cannot crowd another check's failures out of the message (Sol, 2026-10-23).
+    share = max(5, MAX_LINES // max(1, len(reports)))
+    kept: list[str] = []
+    dropped = 0
     for text in reports:
-        for line in text.splitlines():
-            s = line.strip()
-            if s.startswith(("VERIFYOPS:", "C =", "NEW RED", "RAILWAY-JOBS:", "FAIL", "PASS", "---")) \
-                    or _JOB_LINE.match(s):
-                lines.append(s)
-    more = len(lines) - MAX_LINES
-    body = "\n".join(lines[:MAX_LINES]) + (f"\n... {more} more lines in the Actions log" if more > 0 else "")
+        hits = [s for s in (line.strip() for line in text.splitlines())
+                if s.startswith(("VERIFYOPS:", "C =", "NEW RED", "RAILWAY-JOBS:", "FAIL", "PASS", "---"))
+                or _JOB_LINE.match(s)]
+        kept += hits[:share]
+        dropped += max(0, len(hits) - share)
+    body = "\n".join(kept) + (f"\n... {dropped} more lines in the Actions log" if dropped else "")
     return f"DCP alarm (exit codes: {head})\n{body}".strip()
 
 

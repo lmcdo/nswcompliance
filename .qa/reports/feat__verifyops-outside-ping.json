@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes how the outside watchdog and Telegram are told about the daily alarm; the alarm's own checks are unchanged.",
- "commit_hash": "20b632bc",
+ "commit_hash": "e58059b2",
  "files": [
   ".github/workflows/freshness-alarm.yml",
   "scripts/verifyops_outside_ping.py",
@@ -38,14 +38,14 @@
   },
   {
    "name": "send_telegram",
-   "file_line": "scripts/verifyops_outside_ping.py:71",
+   "file_line": "scripts/verifyops_outside_ping.py:74",
    "input": "message text, bot token, chat id, injectable post function",
    "output": "True only when Telegram answers ok true with a message id",
    "if_none": "any exception or a missing message id returns False"
   },
   {
    "name": "ping",
-   "file_line": "scripts/verifyops_outside_ping.py:82",
+   "file_line": "scripts/verifyops_outside_ping.py:85",
    "input": "healthchecks.io URL, the verdict, injectable post function",
    "output": "True only when the body starts OK and is not OK (not found)",
    "if_none": "an unreachable host returns False and the job goes red"
@@ -81,8 +81,8 @@
    "repro": "pytest tests/test_check_railway_jobs_ran.py -k could_not_look"
   }
  ],
- "mutation_analysis": "9 hand mutants on decide/send_telegram/ping/message (accept rc 2, Telegram None as ok, empty rcs, always success, ok OR message_id, ignore 'not found', no /fail suffix, drop job lines, wrong red code): 9 killed.",
- "residual_risk": "dq_check.py exit codes are folded to 1 in the ledger step, so a DB outage there reads as 'looked'; the coverage step (same DB) exits 2 in that case and forces /fail. Step 4 DONE WHEN (a 49 h pause producing one email) needs a manual test on healthchecks.io.",
+ "mutation_analysis": "9 hand mutants on decide/send_telegram/ping/message (accept rc 2, Telegram None as ok, empty rcs, always success, ok OR message_id, ignore 'not found', no /fail suffix, drop job lines, wrong red code): 9 killed. Sol 2026-10-23: per-report line share (2 mutants killed, test now uses production report order) and ledger keeps 2/crash as 2 (7 exit-code combinations checked by hand).",
+ "residual_risk": "The ledger mapping is shell inside the workflow, checked by hand on 7 combinations, not by pytest. Step 4 DONE WHEN (a 49 h pause producing one email) needs a manual test on healthchecks.io.",
  "post_merge": {
   "db_reset": "No.",
   "secrets": "None new (HC_PING_FRESHNESS, TELEGRAM_* exist).",

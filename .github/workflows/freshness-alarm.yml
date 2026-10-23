@@ -81,7 +81,9 @@ jobs:
           for id in DQ-117 DQ-70; do
             echo "--- $id" | tee -a ledger.txt
             python scripts/dq_check.py --id "$id" 2>&1 | tee -a ledger.txt
-            [ "${PIPESTATUS[0]}" -eq 0 ] || rc=1
+            c=${PIPESTATUS[0]}
+            # 1 = looked and found red; anything else non-zero (2, a crash, a kill) = did not look.
+            if [ "$c" -eq 1 ]; then [ "$rc" -lt 1 ] && rc=1; elif [ "$c" -ne 0 ]; then rc=2; fi
           done
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
 
