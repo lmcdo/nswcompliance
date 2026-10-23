@@ -16,7 +16,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
-from .inner_west import HubScrapeError, _match_by_label, _match_by_filename, _slug
+from .inner_west import check_not_redirected, HubScrapeError, _match_by_label, _match_by_filename, _slug
 
 BASE = "https://www.waverley.nsw.gov.au"
 
@@ -42,6 +42,7 @@ def scrape_waverley(
     resp = requests.get(hub_url, headers=HEADERS, timeout=timeout, allow_redirects=True)
     if resp.status_code != 200:
         raise HubScrapeError(f"Hub page returned HTTP {resp.status_code}: {hub_url}")
+    check_not_redirected(hub_url, resp.url)
 
     soup = BeautifulSoup(resp.content, "lxml")
     results = []
