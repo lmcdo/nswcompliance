@@ -1,0 +1,89 @@
+{
+ "tier": "standard",
+ "justification": "Changes when a council list read counts as ok and which earlier list it is compared with; chapter checks unchanged.",
+ "commit_hash": "c5230171",
+ "files": [
+  "scripts/verifyops_record.py",
+  "scripts/hub_scrapers/inner_west.py",
+  "scripts/hub_scrapers/generic.py",
+  "scripts/hub_scrapers/canterbury_bankstown.py",
+  "scripts/hub_scrapers/city_of_sydney.py",
+  "scripts/hub_scrapers/cumberland.py",
+  "scripts/hub_scrapers/penrith.py",
+  "scripts/hub_scrapers/waverley.py",
+  "scripts/hub_scrapers/woollahra.py",
+  "tests/test_verifyops_list_anomaly.py",
+  "tests/test_woollahra_scraper_skips_repealed.py"
+ ],
+ "pre_impl": {
+  "existing_data": "dcp_monitor_council_results run 4: 8 ok, 6 blocked, 1 error, 1 no_scraper; Canterbury Bankstown list fixture 2026-10-22 has 70 links.",
+  "assumption_mismatch": "anomaly was only produced by the hub-count gate, so a homepage or error page with links was saved ok and became the list compared with next day; previous_list ignored which page.",
+  "new_vs_existing": "Reuses the anomaly outcome and dcp_monitor_council_results; no schema change."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_verifyops_list_anomaly.py",
+  "fails_when": "a list keeping under half the last good links, or a page redirected off its address, is saved as ok",
+  "observed_red": "11 hand mutants all killed; 4 Woollahra reader tests failed on the first run because their fake reply had no url, fixed by giving it one."
+ },
+ "functions": [
+  {
+   "name": "shrank",
+   "file_line": "scripts/verifyops_record.py:78",
+   "input": "the last good list and today's list of link entries",
+   "output": "True when today keeps fewer than half of the last good links",
+   "if_none": "no previous list is a first scan and returns False"
+  },
+  {
+   "name": "check_not_redirected",
+   "file_line": "scripts/hub_scrapers/inner_west.py:39",
+   "input": "the requested list page address and the final address",
+   "output": "raises HubScrapeError when host or path differ",
+   "if_none": "no final address is treated as not redirected"
+  },
+  {
+   "name": "council_list_checked",
+   "file_line": "scripts/verifyops_record.py:181",
+   "input": "council, page address, discovered links, held chapters, probe, send, now",
+   "output": "alert lines; an anomaly row instead of ok when the list shrank",
+   "if_none": "a page with no links is recorded as empty, which is red"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A council retires its DCP page and redirects to the homepage",
+   "what_happens": "silent: the homepage list saved ok becomes yesterday",
+   "mitigated": true,
+   "how": "final address off the page raises, recorded as error, red",
+   "repro": "pytest tests/test_verifyops_list_anomaly.py -k move"
+  },
+  {
+   "scenario": "An error page that still shows a few PDF links",
+   "what_happens": "silent: saved ok, every real document later looks new",
+   "mitigated": true,
+   "how": "under half kept = anomaly, not saved as the list",
+   "repro": "pytest tests/test_verifyops_list_anomaly.py -k homepage"
+  },
+  {
+   "scenario": "A second page (notices) for the same council",
+   "what_happens": "each page would diff against the other",
+   "mitigated": true,
+   "how": "previous_list keyed by page address",
+   "repro": "pytest tests/test_verifyops_list_anomaly.py -k this_page"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Next daily run: dcp_monitor_council_results shows no anomaly for the 8 councils that read ok in run 4, unless their page really changed."
+ },
+ "real_layer_exempt": {
+  "scripts/hub_scrapers/city_of_sydney.py": "One added call after the existing status check; councils block this machine (403), so the live layer is measured from Railway: the next daily run's dcp_monitor_council_results row for this council.",
+  "scripts/hub_scrapers/cumberland.py": "One added call after the existing status check; councils block this machine (403), so the live layer is measured from Railway: the next daily run's dcp_monitor_council_results row for this council.",
+  "scripts/hub_scrapers/generic.py": "One added call after the existing status check; councils block this machine (403), so the live layer is measured from Railway: the next daily run's dcp_monitor_council_results row for this council.",
+  "scripts/hub_scrapers/inner_west.py": "One added call after the existing status check; councils block this machine (403), so the live layer is measured from Railway: the next daily run's dcp_monitor_council_results row for this council.",
+  "scripts/hub_scrapers/penrith.py": "One added call after the existing status check; councils block this machine (403), so the live layer is measured from Railway: the next daily run's dcp_monitor_council_results row for this council.",
+  "scripts/hub_scrapers/waverley.py": "One added call after the existing status check; councils block this machine (403), so the live layer is measured from Railway: the next daily run's dcp_monitor_council_results row for this council.",
+  "scripts/hub_scrapers/woollahra.py": "One added call after the existing status check; councils block this machine (403), so the live layer is measured from Railway: the next daily run's dcp_monitor_council_results row for this council."
+ }
+}

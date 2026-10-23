@@ -30,6 +30,27 @@ class HubScrapeError(Exception):
     """Raised when a hub page cannot be scraped or yields no usable links."""
 
 
+def _page_key(url: str) -> tuple[str, str]:
+    u = urlparse(url or "")
+    host = u.netloc.lower().removeprefix("www.")
+    return host, u.path.rstrip("/").lower()
+
+
+def check_not_redirected(requested: str, final: str | None) -> None:
+    """Raise when the list page answered from somewhere else (v7 step 6 red-team).
+
+    A council that moves or retires its DCP page often redirects to its homepage or a search
+    page, which still has links: read as "ok", it would become the list every later day is
+    compared with. http->https, a www. prefix, a trailing slash and letter case are not moves.
+    """
+    # A page chosen by its query (index.php?page=dcp) must keep it (Sol, 2026-10-23); an added
+    # query on a plain address (?page=1) is not a move.
+    want_q = urlparse(requested or "").query
+    moved = _page_key(final or "") != _page_key(requested) or (want_q and urlparse(final or "").query != want_q)
+    if final and moved:
+        raise HubScrapeError(f"Hub page redirected off the page: {requested} -> {final}")
+
+
 def scrape_inner_west(
     hub_url: str,
     expected_keys: set[str],
@@ -59,6 +80,7 @@ def scrape_inner_west(
         resp = requests.get(hub_url, headers=HEADERS, timeout=timeout, allow_redirects=True)
     if resp.status_code != 200:
         raise HubScrapeError(f"Hub page returned HTTP {resp.status_code}: {hub_url}")
+    check_not_redirected(hub_url, resp.url)
 
     soup = BeautifulSoup(resp.content, "lxml")
     results = []

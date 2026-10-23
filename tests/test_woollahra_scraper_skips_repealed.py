@@ -55,8 +55,9 @@ PAGE = f"""<html><body>
 
 
 def _scrape(monkeypatch, page=PAGE, keys=frozenset({KEY})):
-    resp = MagicMock(status_code=200, content=page.encode("utf-8"))
-    monkeypatch.setattr(w.requests, "get", lambda *a, **k: resp)
+    # A real reply carries the address it came from; the reader now checks it was not redirected.
+    monkeypatch.setattr(w.requests, "get",
+                        lambda url, *a, **k: MagicMock(status_code=200, content=page.encode("utf-8"), url=url))
     # The scraper asks for lxml, which CI's test requirements do not install. The stdlib
     # parser builds the same <a> list for this markup, so the real loop is still what runs.
     monkeypatch.setattr(w, "BeautifulSoup", lambda content, _parser: BeautifulSoup(content, "html.parser"))
@@ -144,8 +145,9 @@ def test_the_council_misnamed_d5_file_does_not_capture_d4(monkeypatch):
             f'<a href="{d5}">Chapter D5 - Double Bay Centre</a>')
     labels = {"chapter-d4-edgecliff-centre": "Chapter D4 – Edgecliff Centre",
               "chapter-d5-double-bay-centre": "Chapter D5 - Double Bay Centre"}
-    resp = MagicMock(status_code=200, content=page.encode("utf-8"))
-    monkeypatch.setattr(w.requests, "get", lambda *a, **k: resp)
+    # A real reply carries the address it came from; the reader now checks it was not redirected.
+    monkeypatch.setattr(w.requests, "get",
+                        lambda url, *a, **k: MagicMock(status_code=200, content=page.encode("utf-8"), url=url))
     monkeypatch.setattr(w, "BeautifulSoup", lambda content, _parser: BeautifulSoup(content, "html.parser"))
     found = {d["chapter_key"]: d["url"]
              for d in w.scrape_woollahra(BASE + "/x", set(labels), expected_labels=labels)}

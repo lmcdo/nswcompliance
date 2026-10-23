@@ -75,6 +75,19 @@ def is_spot_check(chapter_id: int, now: datetime) -> bool:
     return h % SPOT_ONE_IN == 0 and (h // SPOT_ONE_IN) % 7 == weekday - 1
 
 
+def shrank(previous: list[dict] | None, current: list[dict]) -> bool:
+    """True when today's list keeps fewer than half of the last good list's links.
+
+    Counted as links still present, not as a raw count, so a page that swapped most of its
+    links for others (a homepage of the same size) is caught too. No previous list = first scan.
+    """
+    if not previous:
+        return False
+    before = {e.get("norm") for e in previous}
+    kept = len(before & {e.get("norm") for e in current})
+    return kept * 2 < len(before)
+
+
 def in_shadow(first_run_at: datetime | None, now: datetime) -> bool:
     """List alerts are logged only until the first recorded run is SHADOW_PERIOD old."""
     return first_run_at is None or now - first_run_at < SHADOW_PERIOD
@@ -150,15 +163,20 @@ class Recorder:
         self.conn.commit()
         cur.close()
 
-    def previous_list(self, council: str) -> list[dict] | None:
-        """The last list read OK for this council, or None when there is none (first scan)."""
+    def previous_list(self, council: str, page_url: str | None = None) -> list[dict] | None:
+        """The last list read OK for this council's page, or None when there is none (first scan).
+
+        Keyed by (council, page_url) so a council can have a second page (v7 red-team 2); a page
+        whose address changed starts a fresh first scan rather than diffing against another page.
+        page_url None = any page of the council.
+        """
         if self.dry_run and self.run_id is None:
             try:
-                return self._query_previous(council)
+                return self._query_previous(council, page_url)
             except Exception:  # noqa: BLE001 - a dry run before the migration has no table
                 self.conn.rollback()
                 return None
-        return self._query_previous(council)
+        return self._query_previous(council, page_url)
 
     def council_list_checked(self, council: str, hub_url: str, discovered: list[dict],
                              held: dict[str, str], probe, send, now: datetime,
@@ -174,7 +192,15 @@ class Recorder:
         if not entries:
             self.council_list(council, hub_url, "empty", detail="scraper returned no links")
             return []
-        diff = diff_lists(self.previous_list(council), entries)
+        previous = self.previous_list(council, hub_url)
+        if shrank(previous, entries):
+            # A homepage or error page that still has links (v7 red-team 1). Not saved as 'ok', so
+            # tomorrow is still compared with the last good list, and the council goes red.
+            self.council_list(council, hub_url, "anomaly", entries, fingerprint(entries),
+                              detail=f"{len(entries)} links, under half of the last good list's "
+                                     f"{len(previous)}: not saved as the list")
+            return []
+        diff = diff_lists(previous, entries)
         gone_alive = {} if diff.redesigned else {e["norm"]: probe(e["href"]) for e in diff.gone[:10]}
         lines = alert_lines(council, diff, held, gone_alive, plans)
         shadow = in_shadow(self.first_run_at, now)
@@ -187,15 +213,27 @@ class Recorder:
             send("DCP council list changed\n" + "\n".join(lines[:15]))
         return lines
 
-    def _query_previous(self, council: str) -> list[dict] | None:
+    def _query_previous(self, council: str, page_url: str | None) -> list[dict] | None:
+        # Same page = same normalised address as the redirect check uses (www., a trailing slash or
+        # case do not start a fresh first scan that would accept any list; Sol, 2026-10-23).
+        from urllib.parse import urlparse
+
+        from hub_scrapers.inner_west import _page_key
+
+        def same_page(u: str) -> tuple:
+            # The query counts here: index.php?page=dcp and ?page=notices are two pages (Sol).
+            return (*_page_key(u), urlparse(u).query)
+
         cur = self.conn.cursor()
         cur.execute(
-            "SELECT links FROM dcp_monitor_council_results WHERE council = %s AND outcome = 'ok'"
-            " ORDER BY id DESC LIMIT 1",
+            "SELECT page_url, links FROM dcp_monitor_council_results WHERE council = %s AND outcome = 'ok'"
+            " ORDER BY id DESC LIMIT 200",
             (council,),
         )
-        row = cur.fetchone()
+        rows = cur.fetchall()
         cur.close()
-        if row is None:
-            return None
-        return row[0] if isinstance(row[0], list) else json.loads(row[0])
+        want = same_page(page_url) if page_url else None
+        for url, links in rows:
+            if want is None or same_page(url or "") == want:
+                return links if isinstance(links, list) else json.loads(links)
+        return None
