@@ -2049,6 +2049,195 @@
    "text": "'Grows by 3 times the height above 3.8 m, up to a cap set by lot size (Housing SEPP 2021 Schedule 1 s10)'",
    "fate": "cited",
    "reason": "figures match SEPP (Housing) 2021 Schedule 1 s10 rear setbacks, regulatory_provisions 41154-41160 (table wording paraphrased; section number from order between confirmed s7 and s11)"
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 0",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 4
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 0.678",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 10.01",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 15.659",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 17.914",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 29.938",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 50.238",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 55.986",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 63.094",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 65.843",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 70.887",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 71.801",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 77.727",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 77.977",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 8.088",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 8.535",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 80.046",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 83.134",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 9.023",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 94.721",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 96.993",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 97.004",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 98.528",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 98.554",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 98.755",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 98.845",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+   "text": "bfplCoveragePct: 98.888",
+   "fate": "not_regulatory",
+   "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
+   "count": 1
   }
  ]
 }
