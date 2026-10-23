@@ -1,0 +1,70 @@
+{
+  "tier": "standard",
+  "justification": "Removes 31 hand-typed bush fire coverage percentages from public council pages and their FAQs; no measured source exists for them.",
+  "commit_hash": "59451aee",
+  "files": [
+    "frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+    "frontend-nextjs/app/(tools)/bushfire/[lga-slug]/page.tsx",
+    ".claude/regulatory_figure_ledger.json"
+  ],
+  "pre_impl": {
+    "existing_data": "What existing data/state does this interact with? [table/column or 'none']",
+    "assumption_mismatch": "What if existing data doesn't match assumptions? [specific failure]",
+    "new_vs_existing": "Will this apply to existing rows or only new? [mechanism]",
+    "external_source_error": "(Critical only) What does external source return on error?",
+    "frontend_type": "(Critical only) Does frontend type need updating?",
+    "user_failure_mode": "(Critical only) What does user see if this fails?"
+  },
+  "functions": [
+    {
+      "name": "BushfireLgaPage (app/(tools)/bushfire/[lga-slug]/page.tsx)",
+      "file_line": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts:1",
+      "input": "one council record looked up by slug",
+      "output": "page header and two data tiles, no coverage %",
+      "if_none": "unknown slug calls notFound() as before"
+    },
+    {
+      "name": "BushfireLgaData",
+      "file_line": "frontend-nextjs/lib/lga-data/bushfire-lgas.ts:1",
+      "input": "static council records typed in this file",
+      "output": "name, slug, vegetation, related slugs, FAQs",
+      "if_none": "n/a static data; a missing field fails tsc"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a page still reads lga.bfplCoveragePct",
+      "what_happens": "the page would render undefined percent text",
+      "repro": "grep -rn bfplCoveragePct frontend-nextjs",
+      "mitigated": true,
+      "how": "field removed from the type, so tsc fails on any reader; grep finds none"
+    },
+    {
+      "scenario": "an FAQ still claims a coverage %",
+      "what_happens": "a visitor reads a made-up coverage percentage",
+      "repro": "grep -nE \"[0-9]+ ?%\" frontend-nextjs/lib/lga-data/bushfire-lgas.ts",
+      "mitigated": true,
+      "how": "grep returns nothing; scanner shows 0 unlisted"
+    },
+    {
+      "scenario": "grid layout breaks with two tiles",
+      "what_happens": "an empty third column shows in the tile row",
+      "repro": "open /bushfire/<slug>",
+      "mitigated": true,
+      "how": "grid changed to grid-cols-2"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none",
+    "secrets": "none",
+    "other_repo": "none",
+    "manual_verify": "open /bushfire/northern-beaches and check no % appears"
+  },
+  "falsifiable_check": {
+    "command": "python scripts/lint_hardcoded_regulatory_numbers.py",
+    "fails_when": "a typed coverage % is still in bushfire-lgas.ts but not in the ledger",
+    "observed_red": "ledger listed 22 bfplCoveragePct entries open; scanner now reports 406 open (was 437)"
+  }
+}
