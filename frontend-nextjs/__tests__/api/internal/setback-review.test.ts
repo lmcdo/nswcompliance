@@ -38,6 +38,7 @@ const params = (id = '30') => ({ params: Promise.resolve({ id }) });
 
 beforeEach(() => {
   jest.clearAllMocks();
+  process.env.INTERNAL_REVIEWER_EMAILS = 'rev@x.com';
   installPool();
   mockCreateClient.mockResolvedValue({
     auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { email: 'rev@x.com' } } }) },
