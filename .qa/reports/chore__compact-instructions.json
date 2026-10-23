@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "One CLAUDE.md section added; no code, data, hook or CI path touched. Tier floor counts 0 substantive files.",
-  "commit_hash": "f7450d1a",
+  "commit_hash": "addf6ab7",
   "files": ["CLAUDE.md"],
   "break_it": [
     {
