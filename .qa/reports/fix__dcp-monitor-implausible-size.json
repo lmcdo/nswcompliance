@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes what file size the DCP monitor records and when it re-downloads; change detection by tag and hash is unchanged.",
- "commit_hash": "b4ab85e7",
+ "commit_hash": "8b2b91a1",
  "files": [
   "scripts/r2_monitor.py",
   "scripts/verifyops_record.py",
