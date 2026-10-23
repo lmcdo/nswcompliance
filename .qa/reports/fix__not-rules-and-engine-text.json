@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Records 59 line-checked non-rules, removes typed setbacks and a non-existent 3 m separation from the granny flat warning, names the ADG sunlight criterion instead of one location-dependent figure, and labels our own estimating assumptions and survey margin as not rules.",
-  "commit_hash": "6818ed34",
+  "commit_hash": "7920a20a",
   "files": [
     ".claude/regulatory_figure_ledger.json",
     "services/compound_constraints.py",
