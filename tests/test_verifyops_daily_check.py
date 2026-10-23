@@ -526,7 +526,7 @@ def test_baselined_over_30_days_alarms_again_and_re_raise_does_not_reset_it(tmp_
     assert "still red for 30 days" in capsys.readouterr().out
     assert cov.main([], conn=conn, today=TODAY) == 1                # 31 days: alarms
     assert "EXPIRED  a|1|no_url" in capsys.readouterr().out
-    cov.main(["--update", "--allow-raise", "again"], conn=conn, today=TODAY)
+    assert cov.main(["--update", "--allow-raise", "again"], conn=conn, today=TODAY) == 1
     assert cov.main([], conn=conn, today=TODAY) == 1
 
 
@@ -546,3 +546,7 @@ def test_old_style_baseline_with_no_dates_alarms(tmp_path, monkeypatch):
     base.write_text(json.dumps({"keys": ["a|1|no_url"]}), encoding="utf-8")
     monkeypatch.setattr(cov, "BASELINE", base)
     assert cov.main([], conn=AlarmConn({"no_url": [("a", "1")]}), today=TODAY) == 1
+
+
+def test_a_future_date_counts_as_expired():
+    assert cov.baselined_ages({"a|1|no_url": "2027-10-01"}, ["a|1|no_url"], TODAY) == [("a|1|no_url", 31)]

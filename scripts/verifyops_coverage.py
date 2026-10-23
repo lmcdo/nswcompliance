@@ -201,13 +201,16 @@ def unchecked_share(active: list[tuple[str, str]], rows: list[tuple[str, str, st
 
 def baselined_ages(since: dict[str, str], now: list[str], today: date) -> list[tuple[str, int]]:
     """(key, days) for every key both baselined and red today, oldest first.
-    A key with no recorded date counts as over the limit: it cannot prove it is recent."""
+    A key with no recorded date, or a date after today, counts as over the limit: it cannot
+    prove it is recent (Sol, 2026-10-23: a typo'd future date would stay quiet for a year)."""
     out = []
     for k in now:
         if k in since:
             try:
                 days = (today - date.fromisoformat(since[k])).days
             except (TypeError, ValueError):
+                days = -1
+            if days < 0:
                 days = MAX_BASELINED_DAYS + 1
             out.append((k, days))
     return sorted(out, key=lambda kd: (-kd[1], kd[0]))
@@ -305,7 +308,8 @@ def main(argv: list[str] | None = None, conn=None, today: date | None = None) ->
             doc["raised"] = (doc.get("raised") or []) + [args.allow_raise]
         BASELINE.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf-8")
         print(f"baseline written: {len(keys)} keys ({bad}/{total} active chapters unchecked in the latest run)")
-        return 0
+        # Writing the baseline never makes an expired key green (Sol, 2026-10-23).
+        return 1 if expired else 0
     return 1 if new or expired else 0
 
 if __name__ == "__main__":

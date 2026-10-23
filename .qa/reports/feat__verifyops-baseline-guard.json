@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes when the daily DCP alarm baseline may be written and when an old baselined key alarms again.",
- "commit_hash": "0fff1b94",
+ "commit_hash": "02fc4832",
  "files": [
   "scripts/verifyops_coverage.py",
   "scripts/verifyops_outside_ping.py",
@@ -17,7 +17,7 @@
  "falsifiable_check": {
   "command": "python -m pytest -q tests/test_verifyops_daily_check.py tests/test_verifyops_outside_ping.py",
   "fails_when": "a run over 10% unchecked can be baselined, a key loses its first date or reason, or a key baselined over 30 days stays quiet",
-  "observed_red": "13 hand mutants: 12 killed; the 13th removed a redundant no-rows check, which was then deleted (no rows already means every chapter unchecked)."
+  "observed_red": "14 hand mutants: 13 killed; the 14th (default date for an undated key) is equivalent once a future date also counts as expired. Two Sol findings (update exit 0 with expired keys; future date never expires) reproduced by tests that failed first."
  },
  "functions": [
   {
