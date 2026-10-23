@@ -1957,8 +1957,9 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             warnings.append(_pw)
 
     # Residual area proxy check — simple heuristic pending full geometric envelope computation.
-    # Rationale: a CDC granny flat needs ≥60 m² floor area (SEPP Housing 2021 cl 4.18) plus
-    # clearances: 3 m rear setback + 0.9 m each side + 3 m separation from principal dwelling.
+    # Rationale: a CDC granny flat's floor area cap (SEPP (Housing) 2021 Schedule 1 s4, read
+    # into max_floor_area_m2) plus its Schedule 1 setbacks. Schedule 1 sets no separation
+    # from the principal dwelling.
     # For a typical 10 m-wide lot rear yard that buffer alone consumes ~50–60 m² of ground.
     # Threshold 120 m² = 60 m² GF footprint + ~60 m² setback/circulation buffer.
     # Only fires when SAM returned a reliable main dwelling area.
@@ -1996,9 +1997,9 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             warnings.append(
                 f"Insufficient space for a complying development granny flat. "
                 f"After the principal dwelling footprint (~{req.main_dwelling_area_m2:.0f} m²), "
-                f"approximately {residual_area_m2:.0f} m² remains — less than the ~120 m² "
-                f"needed for a 60 m² secondary dwelling plus SEPP Housing 2021 setbacks "
-                f"(3 m rear, 0.9 m sides, 3 m from dwelling). "
+                f"approximately {residual_area_m2:.0f} m² remains — less than our rough "
+                f"estimate of the ground a granny flat plus its SEPP (Housing) 2021 "
+                f"Schedule 1 setbacks needs (an estimate, not a planning rule). "
                 f"A DA pathway may allow a smaller or differently positioned structure — "
                 f"consult a town planner."
             )

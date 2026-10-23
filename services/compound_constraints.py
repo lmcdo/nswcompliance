@@ -140,8 +140,8 @@ def evaluate_compound_constraints(
             constraints.append(CompoundConstraint(
                 id="marginal_lot_size",
                 description=(
-                    f"Lot area ({lot_area_m2:.0f}m\u00b2) is within 10% of zone minimum "
-                    f"({min_lot_size_m2:.0f}m\u00b2) — verify with registered survey."
+                    f"Lot area ({lot_area_m2:.0f}m\u00b2) is close to the zone minimum "
+                    f"({min_lot_size_m2:.0f}m\u00b2) — within our 10% survey margin, not a planning rule, so a registered survey matters here."
                 ),
                 caveat=(
                     "Valuer General lot areas may differ from surveyed areas. "

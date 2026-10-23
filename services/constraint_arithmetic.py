@@ -673,7 +673,7 @@ def compute_constraint_arithmetic(
             constraint=ConstraintType.LEP_HEIGHT,
             phase="lep",
             label="LEP height envelope",
-            note=f"{effective_height_m}m ÷ {STOREY_HEIGHT_M}m/storey = {max_storeys} storeys",
+            note=f"{effective_height_m}m ÷ {STOREY_HEIGHT_M}m per storey (our assumption, not a rule) = {max_storeys} storeys",
         ))
 
     # -----------------------------------------------------------------------
@@ -1140,7 +1140,7 @@ def compute_constraint_arithmetic(
                     output_gfa_m2=round(current_gfa, 1),
                     note=(
                         f"{spaces_required:.0f} spaces x {PARKING_AREA_PER_SPACE_M2}m2 = "
-                        f"{parking_gfa:.1f}m2 consumed (at-grade)"
+                        f"{parking_gfa:.1f}m2 consumed (at-grade; m2 per space is our assumption, not a rule)"
                     ),
                 ))
             else:
