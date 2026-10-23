@@ -19,8 +19,9 @@ Reasons (each a stored query below; spec ~/.claude/plans/ce-verifyops-v5-SPEC-20
                           (no recorded change date counts as old)
   no_run_2d               no FULL monitor run (mode daily/force) finished in 2 days; a one-council
                           run does not count (key council='*')
-  run_unfinished          a FULL run started > 6 h ago and never finished (killed: Railway removes a
-                          running cron container when a new image deploys -- run 1, 2026-10-22)
+  run_unfinished          a FULL run started > 6 h ago never finished and no later full run has
+                          (killed: Railway removes a running cron container when a new image
+                          deploys -- run 1, 2026-10-22)
   deployed_not_main       the latest full run's git_sha is NULL, unknown to git, or a file the monitor
                           image COPYs (Dockerfile.monitors) differs between it and origin/main
 
@@ -118,9 +119,15 @@ QUERIES: dict[str, str] = {
                                           WHERE mode IN ('daily', 'force')
                                             AND finished_at > NOW() - INTERVAL '2 days')""",
     "run_unfinished": """
-        SELECT '*', '*' WHERE EXISTS (SELECT 1 FROM dcp_monitor_runs
-                                      WHERE mode IN ('daily', 'force') AND finished_at IS NULL
-                                        AND started_at < NOW() - INTERVAL '6 hours')""",
+        SELECT '*', '*' WHERE EXISTS (SELECT 1 FROM dcp_monitor_runs u
+                                      WHERE u.mode IN ('daily', 'force') AND u.finished_at IS NULL
+                                        AND u.started_at < NOW() - INTERVAL '6 hours'
+                                        -- a later full run that finished makes it old news; else
+                                        -- killed run 1 (2026-10-22) stays red for ever
+                                        AND NOT EXISTS (SELECT 1 FROM dcp_monitor_runs f
+                                                        WHERE f.mode IN ('daily', 'force')
+                                                          AND f.finished_at IS NOT NULL
+                                                          AND f.id > u.id))""",
 }
 
 DOCKERFILE = ROOT / "Dockerfile.monitors"

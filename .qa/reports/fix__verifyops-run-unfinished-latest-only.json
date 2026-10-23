@@ -1,0 +1,57 @@
+{
+ "tier": "standard",
+ "justification": "Changes when the daily DCP alarm reports an unfinished monitor run.",
+ "commit_hash": "c9c13cd9",
+ "files": [
+  "scripts/verifyops_coverage.py",
+  "tests/test_verifyops_coverage_real_db.py"
+ ],
+ "pre_impl": {
+  "existing_data": "dcp_monitor_runs: id 1 daily killed 2026-10-22 (finished_at NULL), ids 2 and 3 force runs finished 2026-10-23.",
+  "assumption_mismatch": "The query assumed a killed run eventually finishes; it never does, so run_unfinished was red for ever after finished runs 2 and 3.",
+  "new_vs_existing": "Same query plus a NOT EXISTS on a later finished full run; ordered by id so tests do not depend on wall-clock times."
+ },
+ "falsifiable_check": {
+  "command": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_verifyops_coverage_real_db.py -o addopts=",
+  "fails_when": "a killed run stays red after a later full run finishes, or clears on a one-council or still-running run",
+  "observed_red": "4 hand mutants: 3 killed after adding the still-running case; the 4th (>= on id) is equivalent because the killed run itself never finished."
+ },
+ "functions": [
+  {
+   "name": "measure",
+   "file_line": "scripts/verifyops_coverage.py:177",
+   "input": "an open database connection to production, read only",
+   "output": "every red key today, run_unfinished only while no later full run has finished",
+   "if_none": "a missing table raises and the caller exits 2"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Run 1 killed by a deploy, then runs 2 and 3 finish",
+   "what_happens": "silent noise: run_unfinished red for ever and frozen into the baseline",
+   "mitigated": true,
+   "how": "a later finished full run makes it old news",
+   "repro": "pytest -m database tests/test_verifyops_coverage_real_db.py -k old_news"
+  },
+  {
+   "scenario": "A one-council run finishes after a killed full run",
+   "what_happens": "would hide that no full sweep completed",
+   "mitigated": true,
+   "how": "only daily/force runs supersede",
+   "repro": "pytest -m database tests/test_verifyops_coverage_real_db.py -k old_news"
+  },
+  {
+   "scenario": "The next full run is still going",
+   "what_happens": "would clear the alarm before anything finished",
+   "mitigated": true,
+   "how": "only a FINISHED later run supersedes",
+   "repro": "pytest -m database tests/test_verifyops_coverage_real_db.py -k old_news"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None: read-only query.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "python scripts/verifyops_coverage.py no longer prints *|*|run_unfinished while run 1 is the only unfinished run."
+ }
+}
