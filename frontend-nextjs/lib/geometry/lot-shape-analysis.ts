@@ -11,7 +11,8 @@
  * 2. Measure the width across the lot at even steps along that axis.
  * 3. A battle-axe lot has, at one end, an even-width strip (widths within EVEN_RATIO of
  *    each other, at least MIN_STRIP_M wide and MIN_RUN_M long; no absolute cap) that
- *    opens suddenly (within JUMP_WITHIN_M) into a part at least JUMP_RATIO times wider.
+ *    opens suddenly (within JUMP_WITHIN_M, by at least STEP_RATIO) into a main lot that
+ *    reaches at least JUMP_RATIO times the strip width (a flag lot may widen in steps).
  * Triangles, wedges and tilted rectangles narrow gradually, so they do not match.
  *
  * These are shape-recognition thresholds, not planning rules. The CDC battle-axe limits
@@ -24,7 +25,10 @@ import type { LotGeometry } from '@/types/property';
 const SLICES = 60;
 const MIN_STRIP_M = 1.5;
 const EVEN_RATIO = 1.3;
-const MIN_RUN_M = 5;
+const MIN_RUN_M = 8;
+/** The first step out of the strip must be at least this many times wider... */
+const STEP_RATIO = 2.0;
+/** ...and the main lot must reach at least this many times the strip width. */
 const JUMP_RATIO = 3.0;
 const JUMP_WITHIN_M = 4;
 /** Slices under this share of the strip's median at the street end are a cut corner, not strip. */
@@ -157,11 +161,11 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
     if (run.length * stepM < MIN_RUN_M || lo < MIN_STRIP_M) continue;
     const strip = median(run);
     const within = Math.max(1, Math.round(JUMP_WITHIN_M / stepM));
-    const jumpAt = seq.slice(i, i + within).findIndex((v) => v >= strip * JUMP_RATIO);
-    if (jumpAt < 0) continue;
+    if (!seq.slice(i, i + within).some((v) => v >= strip * STEP_RATIO)) continue;
 
     // Main lot = everything after the strip, minus a sliver at the far boundary.
     const head = seq.slice(i).filter((v) => v >= MIN_STRIP_M * 0.5);
+    if (!head.length || Math.max(...head) < strip * JUMP_RATIO) continue;
     const headArea = head.reduce((a, v) => a + v * stepM, 0);
     return {
       isBattleaxe: true,
