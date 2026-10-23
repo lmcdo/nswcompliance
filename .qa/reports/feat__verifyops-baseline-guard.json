@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes when the daily DCP alarm baseline may be written and when an old baselined key alarms again.",
- "commit_hash": "02fc4832",
+ "commit_hash": "8ec18fde",
  "files": [
   "scripts/verifyops_coverage.py",
   "scripts/verifyops_outside_ping.py",
