@@ -1,0 +1,64 @@
+{
+  "tier": "standard",
+  "justification": "Paid granny flat PDF cited the wrong instrument (cl 4.18, Sch 3 Subdiv 4) and stated standards Schedule 1 does not set (3 m separation, 5 m wall height) or sets differently (side setback, POS).",
+  "commit_hash": "2ddcc51d",
+  "files": [
+    "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
+    "frontend-nextjs/app/reports/granny-flat/page.tsx",
+    "frontend-nextjs/__tests__/lib/pdf/granny-flat-report-cdc-standards.test.ts",
+    ".claude/regulatory_figure_ledger.json"
+  ],
+  "pre_impl": {
+    "existing_data": "What existing data/state does this interact with? [table/column or 'none']",
+    "assumption_mismatch": "What if existing data doesn't match assumptions? [specific failure]",
+    "new_vs_existing": "Will this apply to existing rows or only new? [mechanism]",
+    "external_source_error": "(Critical only) What does external source return on error?",
+    "frontend_type": "(Critical only) Does frontend type need updating?",
+    "user_failure_mode": "(Critical only) What does user see if this fails?"
+  },
+  "functions": [
+    {
+      "name": "CDC_SCHEDULE_1",
+      "file_line": "frontend-nextjs/lib/pdf/granny-flat-report.tsx:87",
+      "input": "static list used by both standards tables in the PDF",
+      "output": "rows of standard, requirement and Schedule 1 section",
+      "if_none": "static data; the jest test fails if a row loses its section"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "owner keeps 3 m from the house because the PDF said so",
+      "what_happens": "they lose buildable area for a rule that does not exist",
+      "repro": "read Separation row on origin/main PDF",
+      "mitigated": true,
+      "how": "row now says Not set by Schedule 1; test pins it"
+    },
+    {
+      "scenario": "owner of a 1000 m2 lot uses the 3 m rear setback",
+      "what_happens": "a CDC could be refused for too small a setback",
+      "repro": "read Rear setback row",
+      "mitigated": true,
+      "how": "row and footnote state the 450-900 m2 band and that larger lots need more"
+    },
+    {
+      "scenario": "certifier checks a citation in the PDF",
+      "what_happens": "cl 4.18 / Sch 3 Subdiv 4 point at the wrong instrument",
+      "repro": "grep the PDF source",
+      "mitigated": true,
+      "how": "every row cites a Schedule 1 section; test fails on the old citations"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none",
+    "secrets": "none",
+    "other_repo": "none",
+    "manual_verify": "generate a granny flat PDF and read the Development standards table"
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/pdf/granny-flat-report-cdc-standards.test.ts",
+    "fails_when": "the PDF or report page contains cl 4.18, Sch 3 Subdiv 4, a 3 m separation or a row without a Schedule 1 section",
+    "observed_red": "origin/main granny-flat-report.tsx lines 784-790 cite Sch 3 Subdiv 4 and state Min 3 m separation"
+  }
+}
