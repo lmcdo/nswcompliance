@@ -2010,21 +2010,9 @@
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
-   "text": "'0.9 m on a 450–900 m² lot, plus 25% of the height above 3.8 m (Housing SEPP 2021 Schedule 1)'",
-   "fate": "cited",
-   "reason": "figures match (table wording paraphrased) SEPP (Housing) 2021 Schedule 1 s9 side / s10 rear setbacks, regulatory_provisions 41149-41161"
-  },
-  {
-   "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "'20% to 45% of the lot, by lot size (Housing SEPP 2021 Schedule 1 s16)'",
    "fate": "cited",
    "reason": "figures match (table wording paraphrased) SEPP (Housing) 2021 Schedule 1 s16 landscaped area, regulatory_provisions 41180-41183"
-  },
-  {
-   "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
-   "text": "'3 m on a 450–900 m² lot, larger on bigger lots and taller buildings (Housing SEPP 2021 Schedule 1)'",
-   "fate": "cited",
-   "reason": "figures match (table wording paraphrased) SEPP (Housing) 2021 Schedule 1 s9 side / s10 rear setbacks, regulatory_provisions 41149-41161"
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
@@ -2040,15 +2028,33 @@
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
-   "text": "'Grows by 3 times the height above 3.8 m, up to a cap set by lot size (Housing SEPP 2021 Schedule 1)'",
-   "fate": "cited",
-   "reason": "figures match (table wording paraphrased) SEPP (Housing) 2021 Schedule 1 s9 side / s10 rear setbacks, regulatory_provisions 41149-41161"
-  },
-  {
-   "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "'More than 24 m² (Housing SEPP 2021 Schedule 1 s17)'",
    "fate": "cited",
    "reason": "figures match (table wording paraphrased) SEPP (Housing) 2021 Schedule 1 s17 private open space, regulatory_provisions 41184-41185 and 17628"
+  },
+  {
+   "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
+   "text": "'0.9 m on a 450–900 m² lot, plus 25% of the height above 3.8 m (Housing SEPP 2021 Schedule 1 s9)'",
+   "fate": "cited",
+   "reason": "figures match SEPP (Housing) 2021 Schedule 1 s9 side setbacks, regulatory_provisions 41149-41153 (table wording paraphrased; section number from order between confirmed s7 and s11)"
+  },
+  {
+   "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
+   "text": "'3 m on a 450–900 m² lot, larger on bigger lots and taller buildings (Housing SEPP 2021 Schedule 1 s10)'",
+   "fate": "cited",
+   "reason": "figures match SEPP (Housing) 2021 Schedule 1 s10 rear setbacks, regulatory_provisions 41154-41160 (table wording paraphrased; section number from order between confirmed s7 and s11)"
+  },
+  {
+   "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
+   "text": "'Complying development, 450–900 m² lot, under 3.8 m high (Housing SEPP 2021 Schedule 1 s9, s10)'",
+   "fate": "cited",
+   "reason": "figures match SEPP (Housing) 2021 Schedule 1 s9 side and s10 rear setbacks, regulatory_provisions 41149-41160 (table wording paraphrased; section number from order between confirmed s7 and s11)"
+  },
+  {
+   "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
+   "text": "'Grows by 3 times the height above 3.8 m, up to a cap set by lot size (Housing SEPP 2021 Schedule 1 s10)'",
+   "fate": "cited",
+   "reason": "figures match SEPP (Housing) 2021 Schedule 1 s10 rear setbacks, regulatory_provisions 41154-41160 (table wording paraphrased; section number from order between confirmed s7 and s11)"
   }
  ]
 }

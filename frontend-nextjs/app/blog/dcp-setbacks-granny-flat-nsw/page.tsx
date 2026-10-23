@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 function BuildableEnvelopeDiagram() {
   const councils = [
     {
-      name: 'Complying development, single-storey (Housing SEPP 2021 Schedule 1)',
+      name: 'Complying development, 450–900 m² lot, under 3.8 m high (Housing SEPP 2021 Schedule 1 s9, s10)',
       rear: '3 m',
       side: '0.9 m',
       separation: 'None specified',
@@ -107,12 +107,12 @@ function SEPPvsDCPTable() {
   const rows = [
     {
       control: 'Rear setback',
-      sepp: '3 m on a 450–900 m² lot, larger on bigger lots and taller buildings (Housing SEPP 2021 Schedule 1)',
-      note: 'Grows by 3 times the height above 3.8 m, up to a cap set by lot size (Housing SEPP 2021 Schedule 1)',
+      sepp: '3 m on a 450–900 m² lot, larger on bigger lots and taller buildings (Housing SEPP 2021 Schedule 1 s10)',
+      note: 'Grows by 3 times the height above 3.8 m, up to a cap set by lot size (Housing SEPP 2021 Schedule 1 s10)',
     },
     {
       control: 'Side setback',
-      sepp: '0.9 m on a 450–900 m² lot, plus 25% of the height above 3.8 m (Housing SEPP 2021 Schedule 1)',
+      sepp: '0.9 m on a 450–900 m² lot, plus 25% of the height above 3.8 m (Housing SEPP 2021 Schedule 1 s9)',
       note: 'The setback depends on lot area and height, not on the number of storeys',
     },
     {
@@ -387,10 +387,10 @@ export default function DCPSetbacksGrannyFlatPage() {
               <p className="text-sm text-slate-700">
                 The SEPP standards apply. DCP controls are not part of the CDC
                 test, apart from the DCP&apos;s stormwater requirements where no
-                separate drainage approval is needed. If your build meets every SEPP standard and
-                your property is not excluded, the certifier issues the CDC
-                based on the SEPP alone. This is one of the main advantages of
-                the CDC pathway.
+                separate drainage approval is needed. A certifier can issue the CDC
+                only if the build meets every complying development requirement,
+                including that stormwater requirement where it applies, and the
+                property is not excluded.
               </p>
             </div>
             <div className="rounded-xl border-2 border-amber-200 bg-white p-5">
@@ -488,8 +488,10 @@ export default function DCPSetbacksGrannyFlatPage() {
                 Do DCP setbacks apply if I use the CDC pathway?
               </h3>
               <p className="text-slate-700 leading-relaxed">
-                No. For complying development, only the SEPP Housing 2021
-                standards apply. DCP controls are assessed under the DA pathway.
+                No. For complying development, the setbacks come from the SEPP
+                Housing 2021, not the DCP. The one DCP requirement Schedule 1
+                brings in is stormwater disposal, where no separate drainage
+                approval is needed. DCP setbacks are assessed under the DA pathway.
                 This is a key advantage of CDC &mdash; the statewide SEPP
                 standards are fixed and predictable, regardless of which council
                 you are in.
