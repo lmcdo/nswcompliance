@@ -1,0 +1,16 @@
+{
+  "tier": "minor",
+  "justification": "One CLAUDE.md section added; no code, data, hook or CI path touched. Tier floor counts 0 substantive files.",
+  "commit_hash": "addf6ab7",
+  "files": ["CLAUDE.md"],
+  "break_it": [
+    {
+      "scenario": "The section conflicts with the existing Worktree Rule or a later reader takes 'keep verbatim' as licence to paste whole tool outputs into summaries.",
+      "what_happens": "Summaries grow instead of shrinking, or a figure survives without its query.",
+      "mitigated": true,
+      "how": "CLAUDE.md Compact Instructions — explicit Drop list (tool output bodies, file dumps, dead ends); figures without a query are to be dropped, not paraphrased.",
+      "repro": "grep -n -A10 'Compact Instructions' CLAUDE.md"
+    }
+  ],
+  "post_merge": {"db_reset": "No", "secrets": "No", "other_repo": "No", "manual_verify": "No"}
+}
