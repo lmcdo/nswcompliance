@@ -122,7 +122,7 @@ function ApprovalDecisionTree() {
     },
     {
       question: 'Is it permanently fixed to the ground with full utility connections?',
-      yes: 'Likely a building or secondary dwelling. Needs DA (or CDC if it meets Housing SEPP criteria on a 450m2+ lot without special overlays).',
+      yes: 'Likely a building or secondary dwelling. Needs DA (or CDC if it meets Housing SEPP criteria on a lot that meets the Housing SEPP minimum size, without special overlays).',
       no: 'Continue below.',
       yesColor: 'text-red-700 bg-red-50',
       noColor: 'text-slate-600 bg-slate-50',
@@ -676,10 +676,11 @@ export default function TinyHousesNswPage() {
                 Do I need DA for a tiny house in NSW?
               </h3>
               <p className="text-slate-700 leading-relaxed">
-                It depends on classification. Registered caravans under Reg 77
-                do not need DA. Secondary dwellings under 60m2 on lots over
-                450m2 without special overlays can use the CDC pathway (no DA).
-                Manufactured homes on individual lots need DA plus s68 approval.
+                It depends on classification. Registered caravans
+                do not need DA. Secondary dwellings that meet the Housing SEPP floor area cap and minimum lot size,
+                without special overlays, can use the CDC pathway (no DA).
+                Manufactured homes on individual lots need DA plus a separate local approval to install.
+                <Link href="/check" className="text-teal-600 underline underline-offset-2 hover:text-teal-500">Check the minimum lot size and overlays for your property</Link>.
                 Anything permanently installed that doesn&apos;t fit these
                 categories needs full DA.
               </p>

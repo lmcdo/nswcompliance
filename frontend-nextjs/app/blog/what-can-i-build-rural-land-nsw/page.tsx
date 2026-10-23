@@ -42,35 +42,35 @@ function RuralZoneTable() {
       code: 'RU1',
       name: 'Primary Production',
       description: 'Broad-acre farming and grazing. The most common rural zone.',
-      minLot: '40ha typical (varies widely)',
+      minLot: 'set on the LEP lot size map',
       values: ['P', 'V', 'P', 'C', 'C', 'C', 'Very limited'],
     },
     {
       code: 'RU2',
       name: 'Rural Landscape',
       description: 'Scenic rural areas. Agriculture with landscape protection.',
-      minLot: '10-40ha typical',
+      minLot: 'set on the LEP lot size map',
       values: ['P', 'V', 'P', 'C', 'C', 'X', 'Limited'],
     },
     {
       code: 'RU4',
       name: 'Primary Production Small Lots',
       description: 'Small-scale rural and hobby farms.',
-      minLot: '2-10ha typical',
+      minLot: 'set on the LEP lot size map',
       values: ['P', 'C', 'P', 'V', 'C', 'V', 'Possible'],
     },
     {
       code: 'R5',
       name: 'Large Lot Residential',
       description: 'Rural-residential lifestyle blocks.',
-      minLot: '0.4-4ha typical',
+      minLot: 'set on the LEP lot size map',
       values: ['P', 'C', 'C', 'X', 'C', 'X', 'Possible'],
     },
     {
       code: 'RU5',
       name: 'Village',
       description: 'Small rural townships. Most flexible rural zone.',
-      minLot: '450-2,000sqm typical',
+      minLot: 'set on the LEP lot size map',
       values: ['P', 'C', 'V', 'C', 'P', 'X', 'Good'],
     },
   ];
@@ -170,37 +170,37 @@ function MinLotSizeExamples() {
     {
       region: 'Blue Mountains',
       zone: 'RU2',
-      minLot: '10ha',
+      minLot: 'set on the LEP lot size map',
       note: 'Scenic protection limits subdivision',
     },
     {
       region: 'Shoalhaven (coastal)',
       zone: 'R5',
-      minLot: '0.4ha (4,000sqm)',
+      minLot: 'set on the LEP lot size map',
       note: 'Near villages, popular with tree changers',
     },
     {
       region: 'Wingecarribee (Southern Highlands)',
       zone: 'RU1',
-      minLot: '40ha',
+      minLot: 'set on the LEP lot size map',
       note: 'Broad-acre farming — subdivision near impossible',
     },
     {
       region: 'Central Coast (hinterland)',
       zone: 'RU4',
-      minLot: '2ha',
+      minLot: 'set on the LEP lot size map',
       note: 'Small hobby farms, secondary dwelling possible',
     },
     {
       region: 'Clarence Valley',
       zone: 'RU1',
-      minLot: '100ha',
+      minLot: 'set on the LEP lot size map',
       note: 'Very large minimum — common in remote areas',
     },
     {
       region: 'Port Stephens',
       zone: 'R5',
-      minLot: '1ha',
+      minLot: 'set on the LEP lot size map',
       note: 'Rural-residential near coast',
     },
   ];
@@ -422,10 +422,10 @@ export default function WhatCanIBuildRuralPage() {
               </p>
               <p className="text-sm text-slate-700 leading-relaxed">
                 Room is not the issue. The minimum lot size is. If the LEP sets
-                a 40ha minimum for your zone, your 2ha lot cannot be
+                a minimum for your zone that is bigger than your lot, it cannot be
                 subdivided regardless of how much space it has. Minimum lot
                 size is set per lot in the LEP maps and varies enormously
-                across NSW.
+                across NSW. <Link href="/check" className="text-teal-600 underline underline-offset-2 hover:text-teal-500">Check the minimum lot size for your property</Link>.
               </p>
             </div>
           </div>

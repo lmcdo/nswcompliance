@@ -272,7 +272,7 @@ export default function CDCvDAPage() {
           </p>
           <ul className="space-y-2 text-slate-700">
             <li className="flex gap-2"><span className="text-blue-600">&#8226;</span> Your site has a CDC blocker (heritage, flood, foreshore)</li>
-            <li className="flex gap-2"><span className="text-blue-600">&#8226;</span> Your project doesn&apos;t meet one or more CDC standards (e.g. setback is 4.5m, standard requires 5m)</li>
+            <li className="flex gap-2"><span className="text-blue-600">&#8226;</span> Your project doesn&apos;t meet one or more CDC standards (e.g. a building sits closer to the boundary than the CDC standard allows, so even a small shortfall sends it to DA)</li>
             <li className="flex gap-2"><span className="text-blue-600">&#8226;</span> Your development type isn&apos;t covered by the Codes SEPP or Housing SEPP (e.g. commercial, industrial, mixed use)</li>
             <li className="flex gap-2"><span className="text-blue-600">&#8226;</span> You want design flexibility — a DA allows merit assessment where a variation can be justified</li>
             <li className="flex gap-2"><span className="text-blue-600">&#8226;</span> Designated development (large scale or high impact) — always requires a DA and environmental assessment</li>
@@ -293,9 +293,9 @@ export default function CDCvDAPage() {
             In particular:
           </p>
           <ul className="space-y-2 text-slate-700">
-            <li className="flex gap-2"><span className="text-teal-600">&#8226;</span> <strong>Secondary dwellings (granny flats)</strong> — CDC pathway on lots &ge;450m² in R1, R2, R3, R4, RU5 zones (subject to site exclusions)</li>
+            <li className="flex gap-2"><span className="text-teal-600">&#8226;</span> <strong>Secondary dwellings (granny flats)</strong> — CDC pathway where the zone and minimum lot size in the Housing SEPP are met (subject to site exclusions)</li>
             <li className="flex gap-2"><span className="text-teal-600">&#8226;</span> <strong>Dual occupancy</strong> — expanded CDC eligibility in some zones</li>
-            <li className="flex gap-2"><span className="text-teal-600">&#8226;</span> <strong>Manor houses</strong> (3–4 dwellings) — CDC in R1, R2, R3 zones on lots &ge;600m²</li>
+            <li className="flex gap-2"><span className="text-teal-600">&#8226;</span> <strong>Manor houses</strong> (multiple dwellings in one building) — CDC in the residential zones the Housing SEPP lists, on lots that meet its minimum size</li>
             <li className="flex gap-2"><span className="text-teal-600">&#8226;</span> <strong>Multi-dwelling housing (terraces)</strong> — CDC in some R3 zones</li>
           </ul>
           <p className="text-slate-700 leading-relaxed">

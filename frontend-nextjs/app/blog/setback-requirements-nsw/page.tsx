@@ -33,31 +33,31 @@ function SetbackTypesTable() {
   const types = [
     {
       type: 'Front setback',
-      typical: '4.5–6.5 m',
+      typical: 'Often set by averaging the neighbours',
       source: 'DCP — varies by zone, street hierarchy, and prevailing setback',
       notes: 'Often the most prescriptive. Many councils require averaging with neighbours.',
     },
     {
       type: 'Side setback',
-      typical: '0.9–1.5 m',
+      typical: 'Grows with wall height',
       source: 'DCP — varies by wall height, lot width, and building length',
       notes: 'BCA also imposes fire separation requirements that may override DCP.',
     },
     {
       type: 'Rear setback',
-      typical: '6–8 m',
+      typical: 'Varies by zone and lane access',
       source: 'DCP — varies by zone, storey count, and whether rear boundary adjoins a lane',
       notes: 'Some councils allow reduced rear setbacks for laneway lots.',
     },
     {
       type: 'Secondary street setback',
-      typical: '3–4 m',
+      typical: 'Applies on corner lots',
       source: 'DCP — applies to corner lots',
       notes: 'Measured from the secondary street boundary.',
     },
     {
       type: 'Building separation',
-      typical: '6–24 m',
+      typical: 'Grows with building height',
       source: 'ADG (Apartment Design Guide) — varies by building height',
       notes: 'Applies to residential flat buildings. Not the same as side setback.',
     },
@@ -107,7 +107,7 @@ function SetbackFactorsGrid() {
     },
     {
       factor: 'Lot width',
-      detail: 'Narrow lots (under 12 m) often get reduced side setbacks. Some DCPs specify 0.9 m for lots under 10 m wide.',
+      detail: 'Narrow lots often get reduced side setbacks. Some DCPs set a specific reduced side setback once a lot is narrower than a stated width, so check the lot-width tiers in your council\'s DCP.',
     },
     {
       factor: 'Building height / storeys',
@@ -325,7 +325,7 @@ export default function SetbackRequirementsNSWPage() {
         </p>
         <p className="text-slate-600 mb-3 leading-relaxed">
           A common structure in DCPs is to specify a minimum ground-floor side setback
-          (e.g., 0.9 m) and a larger upper-floor side setback (e.g., 1.5 m) to reduce
+          and a larger upper-floor side setback to reduce
           the visual bulk of upper storeys and limit overshadowing.
         </p>
         <h3 className="text-lg font-semibold text-slate-900 mb-2">Zero lot line / nil setback</h3>
@@ -374,15 +374,13 @@ export default function SetbackRequirementsNSWPage() {
           side setbacks.
         </p>
         <p className="text-slate-600 mb-3 leading-relaxed">
-          ADG separation distances increase with building height: 12 m between habitable rooms
-          up to 4 storeys, 18 m for 5&ndash;8 storeys, and 24 m for 9+ storeys. These are
+          ADG separation distances increase with building height, in steps set out in the ADG. These are
           measured between facing walls of separate buildings, not from the boundary.
         </p>
         <p className="text-slate-600 leading-relaxed">
-          The practical effect is that a setback from the side boundary of half the separation
-          distance is needed (e.g., 6 m for a 4-storey apartment building, 9 m for a 5&ndash;8
-          storey building). This is significantly larger than the 0.9&ndash;1.5 m side setback
-          typical for dwelling houses. Read more about{' '}
+          The practical effect is that each building must sit back from the side boundary by about half
+          the separation distance, and that grows with every extra storey. This is significantly larger than the side setback
+          typical for dwelling houses. <Link href="/check" className="text-teal-600 underline underline-offset-2 hover:text-teal-500">Check the setbacks for your property</Link>. Read more about{' '}
           <Link href="/blog/building-height-limits-nsw" className="text-teal-600 underline underline-offset-2 hover:text-teal-500">
             how building height limits interact with these controls
           </Link>.

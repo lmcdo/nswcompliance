@@ -43,24 +43,24 @@ function MergedLGADiagram() {
               Former Ashfield
             </p>
             <p className="text-xs text-slate-600">Ashfield DCP 2007</p>
-            <p className="text-xs text-slate-500 mt-2">Rear setback: 8m</p>
-            <p className="text-xs text-slate-500">Side setback: 0.9m</p>
+            <p className="text-xs text-slate-500 mt-2">Rear setback: set by this former area&apos;s DCP</p>
+            <p className="text-xs text-slate-500">Side setback: smaller</p>
           </div>
           <div className="rounded-lg border-2 border-dashed border-amber-300 bg-amber-50/50 p-4 text-center">
             <p className="text-xs font-bold text-amber-700 mb-1">
               Former Leichhardt
             </p>
             <p className="text-xs text-slate-600">Leichhardt DCP 2013</p>
-            <p className="text-xs text-slate-500 mt-2">Rear setback: 6m</p>
-            <p className="text-xs text-slate-500">Side setback: 1.2m</p>
+            <p className="text-xs text-slate-500 mt-2">Rear setback: set by this former area&apos;s DCP</p>
+            <p className="text-xs text-slate-500">Side setback: larger</p>
           </div>
           <div className="rounded-lg border-2 border-dashed border-teal-300 bg-teal-50/50 p-4 text-center">
             <p className="text-xs font-bold text-teal-700 mb-1">
               Former Marrickville
             </p>
             <p className="text-xs text-slate-600">Marrickville DCP 2011</p>
-            <p className="text-xs text-slate-500 mt-2">Rear setback: 5m</p>
-            <p className="text-xs text-slate-500">Side setback: 0.9m</p>
+            <p className="text-xs text-slate-500 mt-2">Rear setback: set by this former area&apos;s DCP</p>
+            <p className="text-xs text-slate-500">Side setback: smaller</p>
           </div>
         </div>
         <div className="mt-4 text-center">
@@ -79,30 +79,30 @@ function SetbackComparisonTable() {
     {
       lga: 'Inner West',
       former: 'Ashfield / Leichhardt / Marrickville',
-      rear: '5m–8m',
-      side: '0.9m–1.2m',
-      landscape: '30%–50%',
+      rear: 'Larger in the north, smaller in the south',
+      side: 'Larger in the central area',
+      landscape: 'Differs between the three areas',
     },
     {
       lga: 'Canterbury-Bankstown',
       former: 'Canterbury / Bankstown',
-      rear: '3m–6m',
-      side: '0.9m–1.5m',
-      landscape: '40%–50%',
+      rear: 'Differs between the two areas',
+      side: 'Differs between the two areas',
+      landscape: 'Differs between the two areas',
     },
     {
       lga: 'Cumberland',
       former: 'Auburn / Holroyd / Parramatta (part)',
-      rear: '3m–6m',
-      side: '0.9m–1.2m',
-      landscape: '30%–40%',
+      rear: 'Differs between the former areas',
+      side: 'Differs between the former areas',
+      landscape: 'Differs between the former areas',
     },
     {
       lga: 'Georges River',
       former: 'Kogarah / Hurstville',
-      rear: '6m–8m',
-      side: '0.9m–1.5m',
-      landscape: '40%–55%',
+      rear: 'Differs between the two areas',
+      side: 'Differs between the two areas',
+      landscape: 'Differs between the two areas',
     },
   ];
 
@@ -122,10 +122,10 @@ function SetbackComparisonTable() {
                 Former councils
               </th>
               <th className="text-left py-3 pr-4 font-semibold text-slate-900">
-                Rear setback range
+                Rear setback
               </th>
               <th className="text-left py-3 pr-4 font-semibold text-slate-900">
-                Side setback range
+                Side setback
               </th>
               <th className="text-left py-3 font-semibold text-slate-900">
                 Landscaped area
@@ -146,9 +146,10 @@ function SetbackComparisonTable() {
         </table>
       </div>
       <p className="text-xs text-slate-400 mt-3 italic">
-        Ranges reflect variation between former council DCPs within the same
-        merged LGA. Actual requirements depend on zone, lot size, and building
-        type. Verify current provisions with council.
+        This table shows where the former council DCPs within the same
+        merged LGA differ, not the requirements themselves. Actual requirements
+        depend on zone, lot size, and building type. See the current provisions
+        for your lot on the property check, or ask council.
       </p>
     </div>
   );
@@ -180,7 +181,7 @@ export default function MergedLGASetbackRulesPage() {
         </h1>
         <p className="text-lg text-slate-500 leading-relaxed">
           You and your neighbour are in the same council area. You share a
-          fence. But your rear setback is 8 metres, and theirs is 5 metres.
+          fence. But your rear setback is deeper than theirs, or the other way round.
           This is not an error &mdash; it is a consequence of NSW council
           amalgamations and the way development control plans were inherited,
           not unified.
@@ -198,7 +199,7 @@ export default function MergedLGASetbackRulesPage() {
             What happened in 2016
           </h2>
           <p className="text-slate-700 leading-relaxed">
-            In 2016, the NSW Government merged 43 councils into 20 new entities.
+            In 2016, the NSW Government merged dozens of councils into a smaller number of new entities.
             Each former council had its own Development Control Plan &mdash; a
             detailed document specifying setbacks, building heights, landscaping
             requirements, parking rates, and dozens of other site-specific
@@ -212,7 +213,7 @@ export default function MergedLGASetbackRulesPage() {
             standard.
           </p>
           <p className="text-slate-700 leading-relaxed">
-            This was intended to be temporary. Ten years later, most merged
+            This was intended to be temporary. Years later, most merged
             councils still operate under their inherited DCPs. Harmonisation is
             a multi-year process that requires extensive community consultation,
             technical studies, and political will. Some councils have begun the
@@ -234,7 +235,15 @@ export default function MergedLGASetbackRulesPage() {
             <li>
               <span className="font-medium">Rear setbacks</span> &mdash; the
               distance between your building and the rear boundary. This
-              directly affects how much of your lot is buildable.
+              directly affects how much of your lot is buildable. The value
+              for your lot is on the{' '}
+              <Link
+                href="/check"
+                className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
+              >
+                property check
+              </Link>
+              .
             </li>
             <li>
               <span className="font-medium">Side setbacks</span> &mdash;
@@ -244,7 +253,7 @@ export default function MergedLGASetbackRulesPage() {
             <li>
               <span className="font-medium">Landscaped area</span> &mdash;
               minimum percentage of the lot that must remain soft landscaping.
-              Ranges from 30% to 55% across different former council areas.
+              The required share differs noticeably across the former council areas.
             </li>
             <li>
               <span className="font-medium">Car parking rates</span> &mdash;
@@ -371,7 +380,7 @@ export default function MergedLGASetbackRulesPage() {
                 The merged council&apos;s planning department can confirm which
                 DCP applies to a specific address. Most councils have a duty
                 planner available by phone or in person. Ask specifically which
-                former council DCP applies, not just the LGA-wide DCP number.
+                former council DCP applies, not just the LGA-wide DCP.
               </p>
             </div>
 
@@ -397,10 +406,10 @@ export default function MergedLGASetbackRulesPage() {
           <p className="text-slate-700 leading-relaxed">
             There is no state-mandated deadline for DCP harmonisation. Each
             merged council is proceeding at its own pace. Inner West Council
-            began work on a comprehensive DCP in 2020, with parts still being
-            exhibited in 2026. Canterbury-Bankstown adopted a consolidated DCP
-            in 2023 but retained area-specific variations for some controls.
-            Cumberland Council is progressing a new comprehensive DCP.
+            has been working on a full replacement DCP, with parts still being
+            exhibited. Canterbury-Bankstown adopted a consolidated DCP
+            but retained area-specific variations for some controls.
+            Cumberland Council is progressing a new single DCP.
           </p>
           <p className="text-slate-700 leading-relaxed">
             Full harmonisation is likely to take several more years across most

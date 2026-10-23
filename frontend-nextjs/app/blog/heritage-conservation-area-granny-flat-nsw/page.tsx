@@ -41,7 +41,7 @@ function PathwayDiagram() {
           <div className="space-y-3">
             {[
               { step: 'Meet Housing SEPP criteria', status: 'check' },
-              { step: 'Lot 450m2+ without special overlays', status: 'check' },
+              { step: 'Lot meets the Housing SEPP minimum size, without special overlays', status: 'check' },
               { step: 'Lodge CDC with private certifier', status: 'check' },
               { step: 'Approved in ~20 days', status: 'check' },
             ].map((item) => (

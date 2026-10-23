@@ -111,7 +111,7 @@ function RegionalImpactDiagram() {
       severity: 'Extreme',
       dotColor: 'bg-red-600',
       detail:
-        'Lismore, Ballina, Byron. 30-40% of households already dropped coverage post-2022.',
+        'Lismore, Ballina, Byron. A large share of households there have already dropped coverage since the 2022 floods.',
     },
     {
       name: 'Far North Queensland',

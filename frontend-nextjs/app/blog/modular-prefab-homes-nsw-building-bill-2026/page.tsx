@@ -51,7 +51,7 @@ function BeforeAfterDiagram() {
     {
       aspect: 'Manufacturer liability',
       before: 'Unclear chain of responsibility. Site certifiers held liable for factory defects.',
-      after: 'Chain of responsibility established. Off-site manufacturers legally accountable. Certifier penalties up to $1.1M.',
+      after: 'Chain of responsibility established. Off-site manufacturers legally accountable. Much higher certifier penalties.',
     },
     {
       aspect: 'BCA compliance',
@@ -111,9 +111,9 @@ function KeyChangesSummary() {
       color: 'bg-green-100 text-green-700',
     },
     {
-      title: '$1.1M certifier penalties',
-      desc: 'Maximum penalties for building certifiers increase to $1.1M (individuals) and higher for corporations. Aimed at eliminating non-compliance in certification.',
-      icon: '$1.1M',
+      title: 'Much higher certifier penalties',
+      desc: 'Maximum penalties for building certifiers increase sharply, for individuals and more again for corporations, with the amounts set by the Act. Aimed at reducing non-compliance in certification.',
+      icon: '$$$',
       color: 'bg-red-100 text-red-700',
     },
     {
@@ -193,7 +193,7 @@ export default function ModularPrefabBuildingBillPage() {
           recognises modular and off-site construction in NSW law for the first
           time. It creates a clearer compliance pathway, introduces pre-approved
           Pattern Book designs eligible for 10-day CDC, and establishes
-          manufacturer accountability with certifier penalties up to $1.1M.
+          manufacturer accountability with much higher certifier penalties.
           Implementation begins 2027.
         </p>
       </div>
@@ -411,8 +411,8 @@ export default function ModularPrefabBuildingBillPage() {
                   <span className="text-amber-500 mt-0.5">&#9679;</span>
                   <span>
                     <span className="font-medium">Building certifiers</span>{' '}
-                    &mdash; clearer liability framework but penalties up to
-                    $1.1M raise the stakes. Factory-to-site handover
+                    &mdash; clearer liability framework but penalties that are
+                    much higher raise the stakes. Factory-to-site handover
                     responsibilities will need to be carefully managed.
                   </span>
                 </li>

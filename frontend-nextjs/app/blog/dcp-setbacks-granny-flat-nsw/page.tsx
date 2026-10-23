@@ -28,31 +28,31 @@ export const metadata: Metadata = {
 function BuildableEnvelopeDiagram() {
   const councils = [
     {
-      name: 'Complying development, 450–900 m² lot, under 3.8 m high (Housing SEPP 2021 Schedule 1 s9, s10)',
-      rear: '3 m',
-      side: '0.9 m',
+      name: 'Complying development (Housing SEPP 2021), single-storey granny flat',
+      rear: 'SEPP minimum',
+      side: 'SEPP minimum',
       separation: 'None specified',
-      buildable: '~42 m\u00B2 footprint',
+      buildable: 'Largest footprint',
       color: 'border-teal-300 bg-teal-50',
       barWidth: 'w-4/5',
       barColor: 'bg-teal-500',
     },
     {
       name: 'Council A (topic-based DCP)',
-      rear: '5 m',
-      side: '1.5 m',
-      separation: '3 m from main dwelling',
-      buildable: '~30 m\u00B2 footprint',
+      rear: 'Larger than the SEPP',
+      side: 'Larger than the SEPP',
+      separation: 'Set distance from main dwelling',
+      buildable: 'Smaller footprint',
       color: 'border-amber-300 bg-amber-50',
       barWidth: 'w-3/5',
       barColor: 'bg-amber-500',
     },
     {
       name: 'Council B (dev-type DCP)',
-      rear: '6 m',
-      side: '1.5 m',
-      separation: '4 m from main dwelling',
-      buildable: '~24 m\u00B2 footprint',
+      rear: 'Larger again',
+      side: 'Larger than the SEPP',
+      separation: 'Longer distance from main dwelling',
+      buildable: 'Smallest footprint',
       color: 'border-red-300 bg-red-50',
       barWidth: 'w-2/5',
       barColor: 'bg-red-400',
@@ -62,10 +62,10 @@ function BuildableEnvelopeDiagram() {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6 sm:p-8 my-6">
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-        Same 600 m&sup2; lot, different buildable footprints
+        Same lot, different buildable footprints
       </p>
       <p className="text-xs text-slate-400 mb-5">
-        Assumes 15 m wide &times; 40 m deep lot, existing dwelling 12 m from front boundary. Footprints are illustrative.
+        The same typical suburban lot with an existing dwelling at the front. Footprints are relative and illustrative; the controls themselves are set by the SEPP and your council&apos;s DCP.
       </p>
 
       <div className="space-y-4">
@@ -107,37 +107,37 @@ function SEPPvsDCPTable() {
   const rows = [
     {
       control: 'Rear setback',
-      sepp: '3 m on a 450–900 m² lot, larger on bigger lots and taller buildings (Housing SEPP 2021 Schedule 1 s10)',
-      note: 'Grows by 3 times the height above 3.8 m, up to a cap set by lot size (Housing SEPP 2021 Schedule 1 s10)',
+      sepp: 'A minimum set by lot size, larger on bigger lots and taller buildings',
+      note: 'Grows with building height above a set point, up to a cap set by lot size',
     },
     {
       control: 'Side setback',
-      sepp: '0.9 m on a 450–900 m² lot, plus 25% of the height above 3.8 m (Housing SEPP 2021 Schedule 1 s9)',
+      sepp: 'A minimum set by lot size, plus an extra amount for height above a set point',
       note: 'The setback depends on lot area and height, not on the number of storeys',
     },
     {
       control: 'Separation from main dwelling',
-      sepp: 'No separation distance in Schedule 1',
+      sepp: 'No separation distance specified',
       note: 'Some DCPs set one for a DA',
     },
     {
       control: 'Landscaped area',
-      sepp: '20% to 45% of the lot, by lot size (Housing SEPP 2021 Schedule 1 s16)',
-      note: 'At least half must be behind the building line to the primary road',
+      sepp: 'A share of the lot that rises with lot size',
+      note: 'Part of it must be behind the building line to the primary road',
     },
     {
       control: 'Private open space',
-      sepp: 'More than 24 m² (Housing SEPP 2021 Schedule 1 s17)',
-      note: 'Can be shared with the main dwelling; s17 also sets its minimum width and access',
+      sepp: 'A minimum area, which can be shared with the main dwelling',
+      note: 'The SEPP also sets its minimum width and access',
     },
     {
       control: 'Car parking',
-      sepp: 'No additional space required (Housing SEPP 2021 Schedule 1 s2(3))',
+      sepp: 'No additional space required',
       note: 'A DCP may set a parking rate for a DA',
     },
     {
       control: 'Maximum height',
-      sepp: '8.5 m above ground level (Housing SEPP 2021 Schedule 1 s6)',
+      sepp: 'A maximum height above ground level that keeps it low-rise',
       note: 'A DCP or LEP may set a different limit for a DA',
     },
     {
@@ -150,7 +150,7 @@ function SEPPvsDCPTable() {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6 sm:p-8 my-6">
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-5">
-        Complying development standards for a secondary dwelling (Housing SEPP 2021 Schedule 1)
+        Complying development standards for a secondary dwelling (Housing SEPP 2021)
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
@@ -207,8 +207,16 @@ export default function DCPSetbacksGrannyFlatPage() {
           goes through a development application instead, your council&apos;s
           Development Control Plan also applies &mdash; it can set larger
           setbacks, separation distances and landscaping rules that reduce
-          what you can actually build. The same 600 m&sup2; lot can have a very different
-          buildable envelope depending on which council it falls under.
+          what you can actually build. The same lot can have a very different
+          buildable envelope depending on which council it falls under. To see the
+          setbacks for your own lot, use the{' '}
+          <Link
+            href="/granny-flat"
+            className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
+          >
+            granny flat check
+          </Link>
+          .
         </p>
       </div>
 
@@ -221,7 +229,7 @@ export default function DCPSetbacksGrannyFlatPage() {
         <ul className="space-y-1.5 text-sm text-slate-600">
           <li><a href="#sepp-vs-dcp" className="hover:text-teal-600">What the SEPP says vs what DCPs add</a></li>
           <li><a href="#why-different" className="hover:text-teal-600">Why councils have different controls</a></li>
-          <li><a href="#merged-councils" className="hover:text-teal-600">Merged councils: the 3-DCP problem</a></li>
+          <li><a href="#merged-councils" className="hover:text-teal-600">Merged councils: several DCPs in one council</a></li>
           <li><a href="#sepp-dcp-conflict" className="hover:text-teal-600">What happens when SEPP and DCP conflict</a></li>
           <li><a href="#find-your-controls" className="hover:text-teal-600">How to find your specific DCP controls</a></li>
           <li><a href="#faq" className="hover:text-teal-600">Frequently asked questions</a></li>
@@ -313,7 +321,7 @@ export default function DCPSetbacksGrannyFlatPage() {
         {/* SECTION 3: Merged councils */}
         <section id="merged-councils" className="space-y-4">
           <h2 className="text-2xl font-bold text-slate-900">
-            Merged councils: the 3-DCP problem
+            Merged councils: several DCPs in one council
           </h2>
           <p className="text-slate-700 leading-relaxed">
             The 2016 NSW council amalgamations created a particular challenge
@@ -489,7 +497,7 @@ export default function DCPSetbacksGrannyFlatPage() {
               </h3>
               <p className="text-slate-700 leading-relaxed">
                 No. For complying development, the setbacks come from the SEPP
-                Housing 2021, not the DCP. The one DCP requirement Schedule 1
+                Housing 2021, not the DCP. The one DCP requirement the SEPP
                 brings in is stormwater disposal, where no separate drainage
                 approval is needed. DCP setbacks are assessed under the DA pathway.
                 This is a key advantage of CDC &mdash; the statewide SEPP
@@ -504,9 +512,16 @@ export default function DCPSetbacksGrannyFlatPage() {
               </h3>
               <p className="text-slate-700 leading-relaxed">
                 For complying development it depends on lot size and height.
-                On a 450 to 900 m&sup2; lot it is 3 metres, plus 3 times any
-                building height above 3.8 metres (Housing SEPP 2021 Schedule 1).
-                Larger lots have larger setbacks. For a DA, the council
+                The SEPP sets a minimum for each lot size band, then adds to it
+                for any building height above a set point. Larger lots have
+                larger setbacks. For the figure on your lot, run the{' '}
+                <Link
+                  href="/check"
+                  className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
+                >
+                  property check
+                </Link>
+                . For a DA, the council
                 assesses the setback against its own controls, usually in its
                 DCP, so check those.
               </p>
@@ -548,7 +563,7 @@ export default function DCPSetbacksGrannyFlatPage() {
                 LEPs and SEPPs). Council can approve a DA that does not fully
                 comply with DCP controls if they are satisfied the
                 development achieves the objectives of the control. However,
-                this is discretionary and should not be assumed.
+                this is at the council&apos;s discretion.
               </p>
             </div>
           </div>

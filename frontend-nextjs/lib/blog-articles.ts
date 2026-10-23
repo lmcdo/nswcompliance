@@ -113,8 +113,8 @@ export const ARTICLES: BlogArticle[] = [
   /* ---- Hub 3: Planning Reforms ---- */
   {
     slug: 'nsw-building-bill-2026-certifier-penalties',
-    title: 'The NSW Building Bill 2026: $1.1M certifier penalties and what it means',
-    description: 'Maximum penalties up to $1.1M, a Building Commission with investigative powers, and mandatory professional standards. What builders and certifiers need to know.',
+    title: 'The NSW Building Bill 2026: certifier penalties and what it means',
+    description: 'Much higher maximum penalties, a Building Commission with investigative powers, and mandatory professional standards. What builders and certifiers need to know.',
     category: 'Planning Reforms',
     date: '2026-05-20',
   },
