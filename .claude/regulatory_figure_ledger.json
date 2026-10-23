@@ -2240,7 +2240,7 @@
   },
   {
    "file": "frontend-nextjs/app/reports/granny-flat/page.tsx",
-   "text": "'The maximum floor area for a secondary dwelling approved as complying development is 60 m², or more if another planning instrument allows it (SEPP (Housing) 2021 Schedule 1 s4). For a DA, the council applies its own LEP and DCP floor area controls.'",
+   "text": "'The maximum floor area for a secondary dwelling built as complying development is 60 m², or more if another planning instrument allows it (SEPP (Housing) 2021 Schedule 1 s4). For a DA, the council applies its own LEP and DCP floor area controls.'",
    "fate": "cited",
    "reason": "figure matches SEPP (Housing) 2021 Schedule 1 s4 floor area, regulatory_provisions 41123-41126 (wording paraphrased)"
   }
