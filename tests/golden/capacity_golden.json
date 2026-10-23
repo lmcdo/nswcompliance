@@ -59,7 +59,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "9.5m \u00f7 3.0m/storey = 3 storeys x 700m2 lot = 2100.0m2 max GFA",
+        "note": "9.5m \u00f7 3.0m per storey (our assumption, not a rule) = 3 storeys x 700m2 lot = 2100.0m2 max GFA",
         "output_gfa_m2": 2100.0,
         "phase": "lep",
         "reduction_m2": null
@@ -149,7 +149,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "8.5m \u00f7 3.0m/storey = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
+        "note": "8.5m \u00f7 3.0m per storey (our assumption, not a rule) = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
         "output_gfa_m2": 1200.0,
         "phase": "lep",
         "reduction_m2": null
@@ -223,7 +223,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "9.5m \u00f7 3.0m/storey = 3 storeys x 700m2 lot = 2100.0m2 max GFA",
+        "note": "9.5m \u00f7 3.0m per storey (our assumption, not a rule) = 3 storeys x 700m2 lot = 2100.0m2 max GFA",
         "output_gfa_m2": 2100.0,
         "phase": "lep",
         "reduction_m2": null
@@ -299,7 +299,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "8.5m \u00f7 3.0m/storey = 2 storeys x 580m2 lot = 1160.0m2 max GFA",
+        "note": "8.5m \u00f7 3.0m per storey (our assumption, not a rule) = 2 storeys x 580m2 lot = 1160.0m2 max GFA",
         "output_gfa_m2": 1160.0,
         "phase": "lep",
         "reduction_m2": null
@@ -365,7 +365,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "6.0m \u00f7 3.0m/storey = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
+        "note": "6.0m \u00f7 3.0m per storey (our assumption, not a rule) = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
         "output_gfa_m2": 1200.0,
         "phase": "lep",
         "reduction_m2": null
@@ -431,7 +431,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "8.5m \u00f7 3.0m/storey = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
+        "note": "8.5m \u00f7 3.0m per storey (our assumption, not a rule) = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
         "output_gfa_m2": 1200.0,
         "phase": "lep",
         "reduction_m2": null
@@ -495,7 +495,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "8.5m \u00f7 3.0m/storey = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
+        "note": "8.5m \u00f7 3.0m per storey (our assumption, not a rule) = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
         "output_gfa_m2": 1200.0,
         "phase": "lep",
         "reduction_m2": null
@@ -569,7 +569,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "21.0m \u00f7 3.0m/storey = 7 storeys x 2000m2 lot = 14000.0m2 max GFA",
+        "note": "21.0m \u00f7 3.0m per storey (our assumption, not a rule) = 7 storeys x 2000m2 lot = 14000.0m2 max GFA",
         "output_gfa_m2": 14000.0,
         "phase": "lep",
         "reduction_m2": null
@@ -645,7 +645,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "8.5m \u00f7 3.0m/storey = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
+        "note": "8.5m \u00f7 3.0m per storey (our assumption, not a rule) = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
         "output_gfa_m2": 1200.0,
         "phase": "lep",
         "reduction_m2": null
@@ -749,7 +749,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "8.5m \u00f7 3.0m/storey = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
+        "note": "8.5m \u00f7 3.0m per storey (our assumption, not a rule) = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
         "output_gfa_m2": 1200.0,
         "phase": "lep",
         "reduction_m2": null
@@ -891,7 +891,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "9.5m \u00f7 3.0m/storey = 3 storeys x 580m2 lot = 1740.0m2 max GFA",
+        "note": "9.5m \u00f7 3.0m per storey (our assumption, not a rule) = 3 storeys x 580m2 lot = 1740.0m2 max GFA",
         "output_gfa_m2": 1740.0,
         "phase": "lep",
         "reduction_m2": null
@@ -955,7 +955,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "11.0m \u00f7 3.0m/storey = 3 storeys x 800m2 lot = 2400.0m2 max GFA",
+        "note": "11.0m \u00f7 3.0m per storey (our assumption, not a rule) = 3 storeys x 800m2 lot = 2400.0m2 max GFA",
         "output_gfa_m2": 2400.0,
         "phase": "lep",
         "reduction_m2": null
@@ -1029,7 +1029,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "8.5m \u00f7 3.0m/storey = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
+        "note": "8.5m \u00f7 3.0m per storey (our assumption, not a rule) = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
         "output_gfa_m2": 1200.0,
         "phase": "lep",
         "reduction_m2": null
@@ -1105,7 +1105,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "11.0m \u00f7 3.0m/storey = 3 storeys x 696m2 lot = 2088.0m2 max GFA",
+        "note": "11.0m \u00f7 3.0m per storey (our assumption, not a rule) = 3 storeys x 696m2 lot = 2088.0m2 max GFA",
         "output_gfa_m2": 2088.0,
         "phase": "lep",
         "reduction_m2": null
@@ -1181,7 +1181,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "8.5m \u00f7 3.0m/storey = 2 storeys x 450m2 lot = 900.0m2 max GFA",
+        "note": "8.5m \u00f7 3.0m per storey (our assumption, not a rule) = 2 storeys x 450m2 lot = 900.0m2 max GFA",
         "output_gfa_m2": 900.0,
         "phase": "lep",
         "reduction_m2": null
@@ -1245,7 +1245,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "11.0m \u00f7 3.0m/storey = 3 storeys x 600m2 lot = 1800.0m2 max GFA",
+        "note": "11.0m \u00f7 3.0m per storey (our assumption, not a rule) = 3 storeys x 600m2 lot = 1800.0m2 max GFA",
         "output_gfa_m2": 1800.0,
         "phase": "lep",
         "reduction_m2": null
@@ -1329,7 +1329,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "8.5m \u00f7 3.0m/storey = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
+        "note": "8.5m \u00f7 3.0m per storey (our assumption, not a rule) = 2 storeys x 600m2 lot = 1200.0m2 max GFA",
         "output_gfa_m2": 1200.0,
         "phase": "lep",
         "reduction_m2": null
@@ -1413,7 +1413,7 @@
         "footprint_m2": null,
         "input_gfa_m2": null,
         "label": "LEP height envelope",
-        "note": "8.5m \u00f7 3.0m/storey = 2 storeys x 250m2 lot = 500.0m2 max GFA",
+        "note": "8.5m \u00f7 3.0m per storey (our assumption, not a rule) = 2 storeys x 250m2 lot = 500.0m2 max GFA",
         "output_gfa_m2": 500.0,
         "phase": "lep",
         "reduction_m2": null

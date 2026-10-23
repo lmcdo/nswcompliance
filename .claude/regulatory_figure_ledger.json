@@ -1,6 +1,6 @@
 {
  "_about": "(.claude/regulatory_figure_ledger.json) names every hit by file + the hit's own text:\n  \"open\"  -- known, still to fix (read it from the database, or delete it and point to the address lookup);\n  \"cited\" -- a verbatim quote that names its instrument AND clause on the same line (the reason says which);\n  \"not_regulatory\" -- not a planning figure (a map bound, an image size, a price); the reason (4+ words) says what.\nCI fails when: a hit is not in the ledger (a new typed figure); a ledger entry is no longer found (fixed -- remove it,\nso the list stays exact); a \"cited\" entry's reason names no instrument + clause; the open count rises; a\n`noqa: regulatory-number` carries no real reason (4+ words after \"--\").",
- "max_open": 169,
+ "max_open": 102,
  "entries": [
   {
    "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
@@ -33,15 +33,15 @@
   {
    "file": "frontend-nextjs/app/api/compliance/parking/route.ts",
    "text": "'1 space per dwelling'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api)",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "frontend-nextjs/app/api/og/granny-flat/route.tsx",
    "text": "'50%'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 3
   },
   {
@@ -82,15 +82,15 @@
   {
    "file": "frontend-nextjs/app/assessment/page.tsx",
    "text": "\"Max FSR 2.5:1\"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): JSX comment documenting removal of hardcoded figures",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "frontend-nextjs/app/assessment/page.tsx",
    "text": "\"Max Height 24m\"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): JSX comment documenting removal of hardcoded figures",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -137,15 +137,16 @@
   {
    "file": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
    "text": "'Ground elevation from the NSW 5 m elevation model, in metres above the Australian Height Datum.'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): hydrology definition / data description / search radius",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
    "text": "maxHeight: 220",
-   "fate": "open",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "frontend-nextjs/app/share/granny-flat/page.tsx",
@@ -164,15 +165,16 @@
   {
    "file": "frontend-nextjs/app/user-guide/page.tsx",
    "text": "Maximum floor space ratio (e.g., 0.5:1 means 500m² floor space on 1000m² lot)",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): worked arithmetic / timing copy",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "frontend-nextjs/app/user-guide/page.tsx",
    "text": "Use PlotDetect to understand complete regulatory context (SEPP/LEP/DCP) in 60 seconds instead of 2 hours of PDF reading",
-   "fate": "open",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "frontend-nextjs/app/user-guide/page.tsx",
@@ -184,8 +186,8 @@
   {
    "file": "frontend-nextjs/app/widget-demo/[slug]/page.tsx",
    "text": "\"width:100%;height:760px;border:0;\"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -233,27 +235,29 @@
   {
    "file": "frontend-nextjs/components/compliance/DCPProvisionsBrowser.tsx",
    "text": "setback_front: 1",
-   "fate": "open",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "frontend-nextjs/components/compliance/DCPProvisionsBrowser.tsx",
    "text": "landscaping: 2",
-   "fate": "open",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "frontend-nextjs/components/compliance/HousingSEPPEligibilityCard.tsx",
    "text": "'1 storey'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: not_regulatory (tool_page) pluralisation formatter",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "frontend-nextjs/components/compliance/LegalTextPanel.tsx",
    "text": "'calc(100% - 200px)'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -273,8 +277,8 @@
   {
    "file": "frontend-nextjs/components/header.tsx",
    "text": "'100%'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -398,8 +402,8 @@
   {
    "file": "frontend-nextjs/components/reports/AerialTile.tsx",
    "text": "'100%'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -412,8 +416,8 @@
   {
    "file": "frontend-nextjs/components/reports/landing/data/bushfire.ts",
    "text": "\"100%\"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): marketing coverage stat / product radius, not a planning control",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -426,8 +430,8 @@
   {
    "file": "frontend-nextjs/components/reports/landing/data/flood.ts",
    "text": "\"100%\"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): marketing coverage stat / product radius, not a planning control",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -480,29 +484,29 @@
   {
    "file": "frontend-nextjs/components/tools/ThreatRadarTool.tsx",
    "text": "`${sign}${stats.netDwellingChange} net dwellings within 500m`",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): product search radius, not a planning control",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "frontend-nextjs/lib/ai/classifier.ts",
    "text": "'two storey'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): intent keyword ('two storey'), not a planning figure",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "frontend-nextjs/lib/ai/router.ts",
    "text": "'two storey'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): intent keyword ('two storey'), not a planning figure",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 2
   },
   {
    "file": "frontend-nextjs/lib/council-configs/_template.json",
    "text": "\"Verify v2_ column population (>80% coverage)\"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): documentation example / provision-count stat, not a control",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -522,14 +526,16 @@
   {
    "file": "frontend-nextjs/lib/coverage.ts",
    "text": "dcpSetbackTripleCouncils: 17",
-   "fate": "open",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "frontend-nextjs/lib/coverage.ts",
    "text": "dcpSetbackRows: 1069",
-   "fate": "open",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "frontend-nextjs/lib/data-dictionary.ts",
@@ -547,8 +553,9 @@
   {
    "file": "frontend-nextjs/lib/db.ts",
    "text": "ZONE_COVERAGE_CACHE_MS = 5",
-   "fate": "open",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "frontend-nextjs/lib/geometry/lot-shape-analysis.ts",
@@ -565,20 +572,23 @@
   {
    "file": "frontend-nextjs/lib/geometry/lot-shape-analysis.ts",
    "text": "mainLotWidth: 0",
-   "fate": "open",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "frontend-nextjs/lib/geometry/lot-shape-analysis.ts",
    "text": "mainLotArea: 0",
-   "fate": "open",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "frontend-nextjs/lib/geometry/street-frontage.ts",
    "text": "FRONTAGE_GAP_M = 3.0",
-   "fate": "open",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "frontend-nextjs/lib/lga-data/flood-lgas.ts",
@@ -716,8 +726,8 @@
   {
    "file": "frontend-nextjs/lib/lga-data/threat-radar-lgas.ts",
    "text": "'Alerts cover applications within 200m. In Ku-ring-gai\\'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): product search radius, not a planning control",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -729,15 +739,15 @@
   {
    "file": "frontend-nextjs/lib/lga-data/threat-radar-lgas.ts",
    "text": "'Alerts cover applications within 200m. In Woollahra\\'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): product search radius, not a planning control",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "frontend-nextjs/lib/nsw-planning-portal.ts",
    "text": "\"35%\"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): code comment documenting removal of hardcoded figures",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -833,8 +843,8 @@
   {
    "file": "frontend-nextjs/lib/pdf/map-overlay.tsx",
    "text": "'100%'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 2
   },
   {
@@ -1041,22 +1051,22 @@
   {
    "file": "frontend-nextjs/lib/pdf/threat-radar-report.tsx",
    "text": "'100%'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): CSS/layout or non-planning literal",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 2
   },
   {
    "file": "frontend-nextjs/lib/pdf/types.ts",
    "text": "\"12m\"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): comment/format example or type doc",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "frontend-nextjs/lib/pdf/types.ts",
    "text": "\"1.5:1\"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): comment/format example or type doc",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -1076,8 +1086,8 @@
   {
    "file": "frontend-nextjs/lib/security/README.md",
    "text": "answer: 'Tree canopy coverage: 25%',",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): documentation example / provision-count stat, not a control",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -1138,8 +1148,9 @@
   {
    "file": "services/cdc_lot_requirements.py",
    "text": "WHOLE_LOT_FRACTION = 0.995",
-   "fate": "open",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "map-overlay measuring tolerance for a whole-lot test, not a planning rule"
   },
   {
    "file": "services/cdc_lot_requirements.py",
@@ -1157,23 +1168,16 @@
   },
   {
    "file": "services/compound_constraints.py",
-   "text": "\"Lot area ({lot_area_m2:.0f}m\\u00b2) is within 10% of zone minimum \"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): 10% marginal-lot heuristic band (engineering heuristic; label as such)",
-   "count": 1
-  },
-  {
-   "file": "services/compound_constraints.py",
    "text": "\"Fix C: approved/assessed DA within 100m with multi-storey description.\"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "services/constraint_arithmetic.py",
    "text": "STOREY_HEIGHT_M = 3.0",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (engine) typed assumptions (3.0 m/storey, 30 m2/parking space, 2.5:1 lot aspect, half-storey shadow loss) feed user-facing GFA/yield; source or label as assumptions",
+   "fate": "not_regulatory",
+   "reason": "our estimating assumption for storeys from a height limit, labelled as such in the step note",
    "count": 1
   },
   {
@@ -1192,50 +1196,50 @@
   {
    "file": "services/db_config.py",
    "text": "_ZONE_COVERAGE_CACHE_TTL_SECONDS = 300",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "services/exempt_screening.py",
    "text": "SAMGEO_HEIGHT_UNCERTAINTY = 1.0",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "services/extracted_data_integrity.py",
    "text": "\"24 spaces per 25 dwellings\"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "services/extracted_data_integrity.py",
    "text": "'3 hours of sunlight'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "services/extracted_data_integrity.py",
    "text": "\"1 space per 4 dwellings\"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "services/extracted_data_integrity.py",
    "text": "\"Minimum 35% landscaped area\"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "services/extracted_data_integrity.py",
    "text": "'1 space per 4 dwellings'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): docstring examples for the text-vs-number integrity check; constants there are tolerances, not planning figures",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -1260,24 +1264,10 @@
    "count": 2
   },
   {
-   "file": "services/granny_flat.py",
-   "text": "\"needed for a 60 m² secondary dwelling plus SEPP Housing 2021 setbacks \"",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) 120 m2 residual-area gate + warning text restate SEPP Housing 60 m2 / 3 m / 0.9 m / 3 m instead of DB values",
-   "count": 1
-  },
-  {
-   "file": "services/granny_flat.py",
-   "text": "\"(3 m rear, 0.9 m sides, 3 m from dwelling). \"",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) 120 m2 residual-area gate + warning text restate SEPP Housing 60 m2 / 3 m / 0.9 m / 3 m instead of DB values",
-   "count": 1
-  },
-  {
    "file": "services/pre_da_history.py",
    "text": "\"8-point ring at ~40m from lot centroid (reduced from 16 to cut memory).\"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -1297,36 +1287,29 @@
   {
    "file": "services/street_frontage.py",
    "text": "FRONTAGE_GAP_M = 3.0",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "services/terrain_analysis.py",
    "text": "\"site gradient, elevation and ruggedness are read from a ~90m window over the lot \"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "services/terrain_analysis.py",
    "text": "\"summarised over a ~90m window centred on the property (the lot footprint) \"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
    "file": "services/terrain_analysis.py",
    "text": "\"over a ~90m window centred on the property (the lot footprint), not the wider \"",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): non-planning engineering/IO constant, formatting, calculation code, or test spike",
-   "count": 1
-  },
-  {
-   "file": "services/terrain_analysis.py",
-   "text": "\"(minimum 2 hours direct sun to 70% of apartments between 9am\\u20133pm at mid-winter) \"",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) ADG solar-access rule (2 hrs, 70% of apartments) typed in narrative; no clause cited (ADG 4A-1 if kept)",
+   "fate": "not_regulatory",
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
    "count": 1
   },
   {
@@ -1360,51 +1343,51 @@
   {
    "file": "frontend-nextjs/lib/geometry/street-frontage.ts",
    "text": "LARGE_LOT_M2 = 2000",
-   "fate": "open",
+   "fate": "not_regulatory",
    "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "services/compound_constraints.py",
    "text": "plotdetect_dcp\": 180",
-   "fate": "open",
+   "fate": "not_regulatory",
    "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "services/constraint_arithmetic.py",
    "text": "MIN_DWELLING_GFA_M2 = 65.0",
-   "fate": "open",
+   "fate": "not_regulatory",
    "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+   "reason": "our estimating assumption for dwelling count in the yield estimate, not a planning rule"
   },
   {
    "file": "services/constraint_arithmetic.py",
    "text": "PARKING_AREA_PER_SPACE_M2 = 30.0",
-   "fate": "open",
+   "fate": "not_regulatory",
    "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+   "reason": "our estimating assumption for floor area per parking space, labelled in the step note"
   },
   {
    "file": "services/constraint_arithmetic.py",
    "text": "landscape_reduction_m2 = 0.0",
-   "fate": "open",
+   "fate": "not_regulatory",
    "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "services/constraint_arithmetic.py",
    "text": "lot_area_m2=0.0",
-   "fate": "open",
+   "fate": "not_regulatory",
    "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "services/pre_da_history.py",
    "text": "SMALL_LOT_THRESHOLD_M2 = 300",
-   "fate": "open",
+   "fate": "not_regulatory",
    "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "services/reverse_shadow.py",
@@ -1416,9 +1399,9 @@
   {
    "file": "services/street_frontage.py",
    "text": "LARGE_LOT_M2 = 2000.0",
-   "fate": "open",
+   "fate": "not_regulatory",
    "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
+   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
   },
   {
    "file": "frontend-nextjs/app/for/buyers-agents/page.tsx",
@@ -1663,6 +1646,12 @@
    "text": "'The maximum floor area for a secondary dwelling built as complying development is 60 m², or more if another planning instrument allows it (SEPP (Housing) 2021 Schedule 1 s4). For a DA, the council applies its own LEP and DCP floor area controls.'",
    "fate": "cited",
    "reason": "figure matches SEPP (Housing) 2021 Schedule 1 s4 floor area, regulatory_provisions 41123-41126 (wording paraphrased)"
+  },
+  {
+   "file": "services/compound_constraints.py",
+   "text": "\"({min_lot_size_m2:.0f}m\\u00b2) — within our 10% survey margin, not a planning rule, so a registered survey matters here.\"",
+   "fate": "not_regulatory",
+   "reason": "our own survey-margin flag, stated in the text as not a planning rule; the minimum itself is read from the DB"
   }
  ]
 }

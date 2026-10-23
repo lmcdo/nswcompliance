@@ -735,9 +735,9 @@ def _interpret_aspect(d: dict) -> TerrainFinding:
         narr = (
             f"The site has a {aspect_dir} aspect ({aspect_deg}\u00b0) at a mean slope of "
             f"{slope_mean}\u00b0. {aspect_dir}-facing orientation provides {dir_desc} sun but "
-            "limits midday winter solar penetration to living areas. ADG solar access compliance "
-            "(minimum 2 hours direct sun to 70% of apartments between 9am\u20133pm at mid-winter) "
-            f"may require careful window placement and floor plate orientation. {aspect_dir}-facing "
+            "limits midday winter solar penetration to living areas. Meeting the Apartment Design "
+            "Guide solar access criteria (Objective 4A-1, which sets the mid-winter sun hours by "
+            f"location) may require careful window placement and floor plate orientation. {aspect_dir}-facing "
             f"sites receive {dir_desc} sun (beneficial for some uses, less so for {opp_desc})."
         )
     elif slope_mean is not None and slope_mean >= 10:
