@@ -98,3 +98,16 @@ def test_the_alert_says_what_happened():
     text = "\n".join(problems)
     assert "dcp-extract: last run (2026-10-21T03:02) exited with an error" in text
     assert "maintenance-security: latest deploy FAILED" in text
+
+
+def test_could_not_look_is_exit_2_not_1(monkeypatch):
+    """v7 step 4: the outside watchdog tells 'found problems' (1) from 'could not look' (2)."""
+    import check_railway_jobs_ran as m
+    monkeypatch.delenv("RAILWAY_TOKEN", raising=False)
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    assert m.main() == 2
+    monkeypatch.setenv("RAILWAY_TOKEN", "t")
+    monkeypatch.setattr(m, "fetch", lambda tok: (_ for _ in ()).throw(RuntimeError("503")))
+    assert m.main() == 2
+    monkeypatch.setattr(m, "fetch", lambda tok: [])
+    assert m.main() == 2

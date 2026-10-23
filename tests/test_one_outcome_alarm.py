@@ -183,35 +183,35 @@ class TestTheOutcomeAlarmExists:
         y = WORKFLOW_PATH.read_text(encoding="utf-8")
         assert "DQ-117" in y and "DQ-70" in y
 
-    def test_it_pings_only_on_success(self):
-        """A ping sent regardless of the result is a heartbeat, and a heartbeat is what
-        this replaces."""
-        y = WORKFLOW_PATH.read_text(encoding="utf-8")
-        i = y.index("Tell the watchdog we are current")
-        assert "if: success()" in y[i - 200:i + 200]
+    # v7 step 4 (2026-10-23): the ping decision moved from shell into
+    # scripts/verifyops_outside_ping.py, where tests/test_verifyops_outside_ping.py covers it
+    # (looked-vs-heard rule, a missing HC secret exits 1 with no call, 'OK (not found)' is not a
+    # ping). These tests pin the WIRING: the step always runs and is fed every check's exit code.
 
-    def test_a_missing_ping_secret_fails_loudly(self):
-        """A workflow that skips its own ping when unconfigured is the silent-no-switch
-        defect again, one layer out."""
+    def _ping_step(self) -> str:
         y = WORKFLOW_PATH.read_text(encoding="utf-8")
-        assert "HC_PING_FRESHNESS is not set" in y
-        assert y.count("exit 1") >= 3
+        i = y.index("Tell the outside watchdog")
+        return y[i:]
 
-    def test_it_reads_the_ping_response_body(self):
-        """healthchecks.io answers 200 with "OK (not found)" for a URL naming no check,
-        measured 2026-09-28. A 2xx is not proof the ping landed.
+    def test_the_ping_step_always_runs_and_reads_every_exit_code(self):
+        """It must run when a check is red or crashed, or a crash would mean no ping and only a
+        late email; and it must be told each check's code, or it cannot tell red from blind."""
+        step = self._ping_step()
+        assert "if: always()" in step.split("run:")[0]
+        assert "scripts/verifyops_outside_ping.py" in step
+        for check in ("ledger", "coverage", "railway"):
+            assert f'--rc "{check}=${{{{ steps.{check}.outputs.rc }}}}"' in step, check
 
-        Asserted on the shell CASE PATTERN, not on the words: the workflow explains
-        this behaviour in a comment, so "not found" appears whether or not the check
-        exists. A mutation that changed only the pattern survived a looser version of
-        this test -- the same comment-versus-code trap as elsewhere in this branch."""
+    def test_each_check_records_its_code_instead_of_stopping_the_job(self):
         y = WORKFLOW_PATH.read_text(encoding="utf-8")
-        code = chr(10).join(l for l in y.splitlines()
-                            if not l.strip().startswith("#"))
-        assert '*"not found"*' in code, (
-            "the ping response body is no longer matched against 'not found', so a URL "
-            "naming no check reports a successful heartbeat")
-        assert 'case "$body" in' in code
+        for step_id in ("ledger", "coverage", "railway"):
+            assert f"id: {step_id}" in y, step_id
+        assert y.count('>> "$GITHUB_OUTPUT"') >= 4  # ledger (2 paths), coverage, railway
+
+    def test_the_ping_is_given_the_secret_and_telegram(self):
+        step = self._ping_step()
+        assert "HC_PING_URL: ${{ secrets.HC_PING_FRESHNESS }}" in step
+        assert "secrets.TELEGRAM_BOT_TOKEN" in step and "secrets.TELEGRAM_CHAT_ID" in step
 
     def test_a_missing_database_url_fails_rather_than_skips(self):
         y = WORKFLOW_PATH.read_text(encoding="utf-8")

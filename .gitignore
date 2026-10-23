@@ -874,3 +874,6 @@ data/page_integrity/
 !tests/fixtures/page_integrity/*/site_report.jsonl.gz
 !tests/fixtures/page_integrity/*/rendered/
 !tests/fixtures/page_integrity/*/rendered/*.txt
+
+# Real alarm outputs used as test fixtures (v7 step 4)
+!tests/fixtures/verifyops/*.txt

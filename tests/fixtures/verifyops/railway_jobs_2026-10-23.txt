@@ -1,0 +1,7 @@
+RAILWAY-JOBS: FAILED -- 5 problem(s) across 8 scheduled jobs:
+  dcp-commit: a run was due 2026-10-22 09:00 UTC and none happened (last run: 2026-10-21T09:30)
+  dcp-commit: last run (2026-10-21T09:30) exited with an error
+  dcp-extract: last run (2026-10-22T03:01) exited with an error
+  dcp-monitor: last run is REMOVED -- it did not finish cleanly
+  maintenance-mutation: last run (2026-10-01T06:01) exited with an error
+  See `railway logs -s <job>` for the run, `--build` for a failed build.

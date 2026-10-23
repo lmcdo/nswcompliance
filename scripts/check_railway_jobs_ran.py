@@ -180,23 +180,24 @@ def judge(jobs: list[dict], now: datetime) -> tuple[list[str], int]:
 
 
 def main() -> int:
+    """0 = every job ran and succeeded; 1 = looked, found problems; 2 = could not look."""
     token = os.environ.get("RAILWAY_TOKEN")
     if not token:
         if os.environ.get("GITHUB_ACTIONS") == "true":
-            print("RAILWAY-JOBS: FAILED -- RAILWAY_TOKEN is not set in CI.")
-            return 1
+            print("RAILWAY-JOBS: COULD NOT LOOK -- RAILWAY_TOKEN is not set in CI.")
+            return 2
         print("RAILWAY-JOBS: SKIPPED -- no RAILWAY_TOKEN in the environment (local only).")
         return 0
     try:
         jobs = fetch(token)
     except (urllib.error.URLError, RuntimeError, KeyError, TypeError) as exc:
         print(f"RAILWAY-JOBS: FAILED -- could not read job state: {exc}")
-        print("  Unreachable is not clean. Exit 1.")
-        return 1
+        print("  Unreachable is not clean. Exit 2 (could not look).")
+        return 2
     problems, checked = judge(jobs, datetime.now(timezone.utc))
     if checked == 0:
-        print("RAILWAY-JOBS: FAILED -- no scheduled jobs found. That is not a pass.")
-        return 1
+        print("RAILWAY-JOBS: COULD NOT LOOK -- no scheduled jobs found. That is not a pass.")
+        return 2
     if problems:
         print(f"RAILWAY-JOBS: FAILED -- {len(problems)} problem(s) across {checked} scheduled jobs:")
         print("\n".join(problems))
