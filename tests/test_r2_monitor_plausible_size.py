@@ -53,3 +53,15 @@ def test_both_writers_use_it():
     assert not re.search(r"remote_len = int\(", src)
     assert "new_len = int(" not in src
     assert src.count("new_len = remote_len if remote_len else len(content)") == 2
+
+
+def test_the_download_decision_sees_the_raw_size():
+    # Sol HIGH: an error page (500 bytes) under the old ETag must still force a download.
+    src = (ROOT / "scripts" / "r2_monitor.py").read_text(encoding="utf-8")
+    assert 'head_len=_raw_len(head.get("content_length"))' in src
+    assert m._raw_len("500") == 500 and m._raw_len("1") == 1 and m._raw_len(None) is None
+    from verifyops_record import decide_fetch
+    from datetime import datetime, timezone
+    now = datetime(2026, 10, 23, tzinfo=timezone.utc)
+    assert decide_fetch(force=False, stored_hash="h", stored_etag="a", head_etag="a", stored_len=100_000,
+                        head_len=m._raw_len("500"), last_downloaded=now, now=now, spot=False) == (True, "size_changed")

@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes what file size the DCP monitor records and when it re-downloads; change detection by tag and hash is unchanged.",
- "commit_hash": "e7ebe17e",
+ "commit_hash": "b4ab85e7",
  "files": [
   "scripts/r2_monitor.py",
   "scripts/verifyops_record.py",
@@ -21,7 +21,7 @@
  "functions": [
   {
    "name": "plausible_size",
-   "file_line": "scripts/r2_monitor.py:365",
+   "file_line": "scripts/r2_monitor.py:375",
    "input": "a server's reported size as text or number",
    "output": "the size as an int, or None below MIN_PDF_BYTES",
    "if_none": "missing or unparseable input returns None so the writer uses the downloaded length"
@@ -55,6 +55,13 @@
    "mitigated": true,
    "how": "NULL is unknown, not impossible; the rule needs a stored number",
    "repro": "pytest tests/test_verifyops_daily_check.py -k dq79"
+  },
+  {
+   "scenario": "An error page replaces the PDF under the same ETag, HEAD size 500",
+   "what_happens": "silent if the tiny size were ignored everywhere: no download, no body check",
+   "mitigated": true,
+   "how": "the raw size still drives decide_fetch, only storage ignores it (Sol)",
+   "repro": "pytest tests/test_r2_monitor_plausible_size.py -k raw_size"
   }
  ],
  "post_merge": {

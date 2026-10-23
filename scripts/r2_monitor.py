@@ -362,6 +362,16 @@ def _still_opens(url: str) -> bool | None:
 MIN_PDF_BYTES = 1000
 
 
+def _raw_len(value) -> int | None:
+    """The server's size as given, for the download decision only (Sol, 2026-10-23): a tiny size
+    behind an unchanged tag -- an error page under the old ETag -- must still force a download, so
+    the body check can catch it. Never stored: plausible_size decides what is stored."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def plausible_size(value) -> int | None:
     """A server's reported size, or None when it cannot be the document's size.
 
@@ -1191,7 +1201,7 @@ def run_monitor(
                 spot = is_spot_check(chapter_id, now)
                 download, fetch_reason = decide_fetch(
                     force=force, stored_hash=stored_hash, stored_etag=stored_etag,
-                    head_etag=new_etag_head, stored_len=stored_len, head_len=remote_len,
+                    head_etag=new_etag_head, stored_len=stored_len, head_len=_raw_len(head.get("content_length")),
                     last_downloaded=chapter.get("url_last_downloaded"), now=now, spot=spot,
                 )
                 if not download:
