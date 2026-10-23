@@ -24,14 +24,14 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
   {
     name: 'Bayside',
     slug: 'bayside',
-    // 2026-10-22: false while Bayside's DCP rules are withheld (review_reason 'chapter_pdf_changed' -- the
+    // 2026-10-22: false while Bayside\'s DCP rules are withheld (review_reason 'chapter_pdf_changed' -- the
     // council published a new DCP). Back to true when they are re-read; data-watch flags the drift either way.
     hasDcpData: false,
     relatedSlugs: ['randwick', 'georges-river', 'canterbury-bankstown'],
     faqs: [
       { q: 'What planning controls apply in Bayside?', a: 'Bayside properties are governed by the Bayside LEP 2021, SEPP Housing 2021, and the Bayside DCP. Controls cover height, FSR, setbacks, parking, landscaping, and design requirements. Enter your address above for the specific controls with clause citations.' },
       { q: 'How do heritage controls work in Bayside?', a: 'Heritage items and heritage conservation areas in Bayside are listed in the Bayside LEP. Properties within these areas face additional controls on design, materials, and demolition. The tool shows whether your property is heritage-affected.' },
-      { q: 'What parking requirements apply in Bayside?', a: 'Parking rates in Bayside come from the DCP and vary by development type and zone. Residential parking rates are typically 1 space per dwelling for 1-2 bedroom units and 2 spaces for 3+ bedroom dwellings. Check your address for the exact applicable rates.' },
+      { q: 'What parking requirements apply in Bayside?', a: 'Parking rates in Bayside come from the DCP and vary by development type and zone. The rate depends on dwelling type and bedroom count and is set in Bayside\'s DCP. Check your address at /check for the rate that applies.' },
     ],
   },
   {
@@ -41,7 +41,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
     relatedSlugs: ['bayside', 'waverley', 'woollahra'],
     faqs: [
       { q: 'What planning controls apply in Randwick?', a: 'Randwick properties are governed by the Randwick LEP 2012 and Randwick DCP 2025. Controls cover height, FSR, setbacks, parking, landscaping, and heritage. Enter your address above for the full set of applicable controls.' },
-      { q: 'What are the height limits in Randwick?', a: 'Height limits in Randwick vary by zone and are mapped in the LEP Height of Buildings map. Common residential limits range from 8.5m to 12m. The tool pulls the specific limit for your property from the LEP.' },
+      { q: 'What are the height limits in Randwick?', a: 'Height limits in Randwick vary by zone and are mapped in the LEP Height of Buildings map. The limit for a given lot depends on its zone and map cell. The tool pulls the specific limit for your property from the LEP.' },
       { q: 'Does Randwick have specific controls for multi-dwelling housing?', a: 'Yes. The Randwick DCP has detailed controls for multi-dwelling housing including setbacks, communal open space, private open space, solar access, and landscaping requirements.' },
     ],
   },
@@ -64,7 +64,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
     faqs: [
       { q: 'What planning controls apply in Woollahra?', a: 'Woollahra properties are governed by the Woollahra LEP 2014 and Woollahra DCP 2015. Controls cover height, FSR, setbacks, parking, landscaping, heritage, and foreshore areas. Enter your address for the specific controls with clause citations.' },
       { q: 'Does Woollahra have view sharing controls?', a: 'Yes. Woollahra DCP includes view sharing provisions (based on the Tenacity Steps test) that affect developments visible from neighbouring properties, particularly in elevated areas of Double Bay, Point Piper, and Vaucluse.' },
-      { q: 'What parking requirements apply in Woollahra?', a: 'Parking requirements come from the Woollahra DCP and vary by development type and proximity to transport. Residential parking rates are typically 1-2 spaces per dwelling depending on unit size.' },
+      { q: 'What parking requirements apply in Woollahra?', a: 'Parking requirements come from the Woollahra DCP and vary by development type and proximity to transport. The rate depends on dwelling size and is set in Woollahra\'s DCP. Check your address at /check.' },
     ],
   },
   {
@@ -142,7 +142,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
     faqs: [
       { q: 'What planning controls apply in Hornsby?', a: 'Hornsby properties are governed by the Hornsby LEP 2013 and Hornsby DCP. Controls cover height, FSR, setbacks, landscaping, bushfire, and biodiversity. Much of the shire has environmental controls due to bushland proximity.' },
       { q: 'What bushfire controls apply in Hornsby?', a: 'Significant portions of Hornsby Shire are mapped as Bush Fire Prone Land. Properties on BFPL require BAL assessment, asset protection zones, and AS 3959-compliant construction.' },
-      { q: 'What setback requirements apply in Hornsby?', a: 'Setback requirements come from the Hornsby DCP and vary by zone and lot size. Typical residential front setbacks are 6-7.5m. The tool shows the specific setback controls for your property with DCP clause references.' },
+      { q: 'What setback requirements apply in Hornsby?', a: 'Setback requirements come from the Hornsby DCP and vary by zone and lot size. The front setback is set in Hornsby\'s DCP. The tool shows the specific setback controls for your property with DCP clause references.' },
     ],
   },
   {
@@ -152,8 +152,8 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
     relatedSlugs: ['ryde', 'inner-west', 'northern-beaches'],
     faqs: [
       { q: 'What planning controls apply in Lane Cove?', a: 'Lane Cove properties are governed by the Lane Cove LEP 2009 and Lane Cove DCP. Controls cover height, FSR, setbacks, parking, landscaping, and heritage. Enter your address for the specific controls with clause citations.' },
-      { q: 'What height limits apply in Lane Cove?', a: 'Height limits in Lane Cove vary by zone and are mapped in the LEP. Typical residential height limits are 8.5m for low density zones. The tool pulls the specific limit for your property.' },
-      { q: 'What parking requirements apply in Lane Cove?', a: 'Parking requirements come from the Lane Cove DCP and vary by development type. Standard residential rates apply. The tool shows the exact parking requirements for your property.' },
+      { q: 'What height limits apply in Lane Cove?', a: 'Height limits in Lane Cove vary by zone and are mapped in the LEP. The limit for low density zones is mapped in the LEP. The tool pulls the specific limit for your property.' },
+      { q: 'What parking requirements apply in Lane Cove?', a: 'Parking requirements come from the Lane Cove DCP and vary by development type. The rate is set in Lane Cove\'s DCP. The tool shows the parking requirements for your property.' },
     ],
   },
   {
@@ -231,7 +231,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
     faqs: [
       { q: 'What planning controls apply in Penrith?', a: 'Penrith properties are governed by the Penrith LEP 2010 and Penrith DCP. Controls cover height, FSR, setbacks, parking, landscaping, flood, and bushfire. Flood controls are significant near the Nepean River.' },
       { q: 'How does flood risk affect planning controls in Penrith?', a: 'Parts of Penrith near the Nepean River and South Creek are subject to flood planning controls. These may affect floor levels, setbacks, and the types of development permitted. The tool identifies applicable flood overlays.' },
-      { q: 'What setback requirements apply in Penrith?', a: 'Setback requirements come from the Penrith DCP and vary by zone, lot width, and precinct. Standard residential setbacks are typically 4.5-6m front, 0.9-1.5m side. The tool shows the specific controls for your address.' },
+      { q: 'What setback requirements apply in Penrith?', a: 'Setback requirements come from the Penrith DCP and vary by zone, lot width, and precinct. The front and side setbacks are set in Penrith\'s DCP. The tool shows the specific controls for your address.' },
     ],
   },
   {
@@ -253,7 +253,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
     relatedSlugs: ['camden', 'liverpool', 'sutherland-shire'],
     faqs: [
       { q: 'What planning controls apply in Campbelltown?', a: 'Campbelltown properties are governed by the Campbelltown LEP 2015 and Campbelltown DCP. Controls cover height, FSR, setbacks, parking, landscaping, flood, and bushfire. Enter your address for the specific controls.' },
-      { q: 'What setback requirements apply in Campbelltown?', a: 'Setback requirements come from the Campbelltown DCP and vary by zone and lot width. Standard residential front setbacks are typically 4.5-6m. The tool shows the specific controls for your property.' },
+      { q: 'What setback requirements apply in Campbelltown?', a: 'Setback requirements come from the Campbelltown DCP and vary by zone and lot width. The front setback is set in Campbelltown\'s DCP. The tool shows the specific controls for your property.' },
       { q: 'Are there special controls for new development areas in Campbelltown?', a: 'Yes. Growth areas in Campbelltown have precinct-specific controls that differ from established suburbs. The tool identifies which controls apply to your address.' },
     ],
   },

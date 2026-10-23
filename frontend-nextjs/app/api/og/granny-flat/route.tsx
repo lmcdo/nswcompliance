@@ -46,14 +46,13 @@ function assess(
   const zoneCode = zone?.split(' ')[0] ?? null;
   const zoneName = zoneCode ? (NSW_ZONE_NAMES[zoneCode] ?? zone) : null;
   const zoneOk = zoneCode ? ELIGIBLE_ZONE_PREFIXES.some(p => zoneCode.startsWith(p)) : null;
-  const areaOk = lotArea != null ? lotArea >= 450 : null;
 
   let constraint: string | null = null;
   if (zoneOk === false) constraint = `Zone ${zoneCode} not eligible`;
   else if (heritage) constraint = 'Heritage listed — CDC excluded';
-  else if (areaOk === false) constraint = `${Math.round(lotArea!)} m² — below 450 m² minimum`;
 
-  const eligible = zoneOk !== false && !heritage && areaOk !== false && zoneOk !== null; // unknown-ok: heritage here is the granny-flat report's own heritage_status, not the property lookup
+  // No pass verdict: the minimum lot size is not read here, so "eligible" is never claimed.
+  const eligible = false; // unknown-ok: heritage here is the granny-flat report's own heritage_status, not the property lookup
   return { eligible, zone: zoneCode, zoneName, lotArea, frontage, depth, heightLimit, heritage, constraint, lga };
 }
 
@@ -249,10 +248,11 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const isEligible = result.eligible;
-  const verdictColor = isEligible ? '#10b981' : '#ef4444';
-  const verdictBg = isEligible ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
-  const verdictLabel = isEligible ? 'CDC Pathway Available' : 'DA Required';
+  // Neutral slate when nothing blocks; red only for a known zone or heritage blocker. Never a pass colour.
+  const isEligible = !result.constraint;
+  const verdictColor = isEligible ? '#94a3b8' : '#ef4444';
+  const verdictBg = isEligible ? 'rgba(148,163,184,0.15)' : 'rgba(239,68,68,0.15)';
+  const verdictLabel = result.constraint ? 'DA likely required' : 'Check what applies to this lot';
   const displayAddress = resolvedAddress.length > 45
     ? resolvedAddress.slice(0, 42) + '...'
     : resolvedAddress;
@@ -260,11 +260,9 @@ export async function GET(request: NextRequest) {
   // Zone eligibility check status
   const zoneCode = result.zone;
   const zoneStatus: 'pass' | 'fail' | 'unknown' = zoneCode
-    ? (ELIGIBLE_ZONE_PREFIXES.some(p => zoneCode.startsWith(p)) ? 'pass' : 'fail')
+    ? (ELIGIBLE_ZONE_PREFIXES.some(p => zoneCode.startsWith(p)) ? 'unknown' : 'fail')
     : 'unknown';
-  const areaStatus: 'pass' | 'fail' | 'unknown' = result.lotArea != null
-    ? (result.lotArea >= 450 ? 'pass' : 'fail')
-    : 'unknown';
+  const areaStatus: 'pass' | 'fail' | 'unknown' = 'unknown';
   const heritageStatus: 'pass' | 'fail' | 'unknown' = result.heritage ? 'fail' : 'pass';
 
   // ── Card WITH aerial image ──
@@ -299,7 +297,7 @@ export async function GET(request: NextRequest) {
                 >
                   <polygon
                     points={polygonSvgPoints}
-                    fill={isEligible ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}
+                    fill={isEligible ? 'rgba(148,163,184,0.2)' : 'rgba(239,68,68,0.2)'}
                     stroke={verdictColor}
                     stroke-width="3"
                   />
@@ -476,8 +474,8 @@ export async function GET(request: NextRequest) {
   }
 
   // ── Fallback card (no aerial) — gradient design ──
-  const bgStart = isEligible ? '#0f766e' : '#991b1b';
-  const bgEnd = isEligible ? '#134e4a' : '#7f1d1d';
+  const bgStart = isEligible ? '#334155' : '#991b1b';
+  const bgEnd = isEligible ? '#1e293b' : '#7f1d1d';
 
   return new ImageResponse(
     (

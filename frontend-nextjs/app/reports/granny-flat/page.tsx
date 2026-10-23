@@ -926,7 +926,7 @@ const GRANNY_FLAT_FAQS = [
   },
   {
     q: 'What setbacks apply to a granny flat under the CDC pathway?',
-    a: 'Under SEPP Housing 2021 Schedule 3 Subdivision 4: rear setback minimum 3 m, side setbacks 0.9 m for the first 8 m height and 1.5 m above that, minimum 3 m separation from the principal dwelling. Your council\'s DCP may impose stricter controls on the DA pathway.',
+    a: 'Under SEPP Housing 2021 Schedule 3 Subdivision 4: the rear setback, the side setbacks (which step with building height) and the separation from the principal dwelling are set in the Schedule itself. The /granny-flat tool shows the values for your property. Your council\'s DCP may impose stricter controls on the DA pathway.',
   },
   {
     q: 'Why does this tool use aerial imagery to detect structures?',
@@ -934,7 +934,7 @@ const GRANNY_FLAT_FAQS = [
   },
   {
     q: 'What does the yield calculator assume?',
-    a: 'The calculator uses the actual CDC maximum floor area for this property (up to 60 m²), your selected build cost per m², and your selected weekly rent. Gross yield is annual rent divided by build cost. It excludes DA/CDC fees, finance costs, vacancy, and ongoing maintenance. Net yields are typically 1–2% lower.',
+    a: 'The calculator uses the actual CDC maximum floor area for this property (the cap set in the Housing SEPP), your selected build cost per m², and your selected weekly rent. Gross yield is annual rent divided by build cost. It excludes DA/CDC fees, finance costs, vacancy, and ongoing maintenance. Net yields are lower than gross once those costs are counted.',
   },
 ];
 

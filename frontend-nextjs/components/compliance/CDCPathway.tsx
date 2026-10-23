@@ -128,7 +128,7 @@ const getQuestionsForWorkType = (workType: string | null, maxGFA: number | null)
       type: 'number' as const,
       unit: 'm',
       guidance: workType === 'Fence'
-        ? 'Fence height from ground level (typical limits: 1.2m front, 1.8m side/rear)'
+        ? 'Fence height from ground level (front and side/rear fence limits differ; see the Codes SEPP and your council DCP)'
         : 'Highest point above natural ground level.',
     });
   }

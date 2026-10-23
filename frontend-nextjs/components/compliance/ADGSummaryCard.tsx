@@ -54,7 +54,7 @@ interface SeparationTableData {
   section_name: string;
   rows: SeparationTableRow[];
   source_url: string;
-  source_page: number;
+  source_page: number | null;
   pdf_page_image_url: string | null;
 }
 
@@ -164,7 +164,7 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
           }
         }
       } catch (err) {
-        // Silent fail - will use hardcoded fallback
+        // The table then says it could not be read; no typed values are shown
         console.warn('[ADGSummaryCard] Failed to fetch separation table:', err);
       }
     };
@@ -284,13 +284,13 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
               Side/Rear Setbacks to Boundaries (3F-1)
             </h4>
             <div className="flex items-center gap-2">
-              {separationTable?.pdf_page_image_url && (
+              {separationTable?.pdf_page_image_url && separationTable.source_page != null && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => setViewingPdfPage({
-                          pageNumber: separationTable.source_page,
+                          pageNumber: separationTable.source_page!,
                           url: separationTable.pdf_page_image_url!,
                           label: 'Building Separation (3F-1)'
                         })}
@@ -305,7 +305,7 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
                   </Tooltip>
                 </TooltipProvider>
               )}
-              {separationTable?.source_url && (
+              {separationTable?.source_url && separationTable.source_page != null && (
                 <a
                   href={`${separationTable.source_url}#page=${separationTable.source_page}`}
                   target="_blank"
@@ -330,7 +330,7 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
               </tr>
             </thead>
             <tbody className="text-gray-700">
-              {separationTable?.rows ? (
+              {separationTable?.rows?.length ? (
                 separationTable.rows.map((row) => (
                   <tr key={row.height_category}>
                     <td className="py-0.5">{row.height_range}</td>
@@ -339,23 +339,11 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
                   </tr>
                 ))
               ) : (
-                <>
-                  <tr>
-                    <td className="py-0.5">Up to 12m</td>
-                    <td className="py-0.5 font-medium">6m</td>
-                    <td className="py-0.5">3m</td>
-                  </tr>
-                  <tr>
-                    <td className="py-0.5">12-25m</td>
-                    <td className="py-0.5 font-medium">9m</td>
-                    <td className="py-0.5">4.5m</td>
-                  </tr>
-                  <tr>
-                    <td className="py-0.5">Over 25m</td>
-                    <td className="py-0.5 font-medium">12m</td>
-                    <td className="py-0.5">6m</td>
-                  </tr>
-                </>
+                <tr>
+                  <td colSpan={3} className="py-0.5 text-gray-500">
+                    The separation table could not be read from the Apartment Design Guide. Open the guide to see the distances.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

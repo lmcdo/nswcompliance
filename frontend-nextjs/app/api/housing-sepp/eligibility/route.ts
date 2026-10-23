@@ -98,15 +98,15 @@ const DEVELOPMENT_TYPE_NAMES: Record<string, { name: string; description: string
   },
   residential_flat_r3r4_inner: {
     name: 'Mid-Rise Apartments (Near Station)',
-    description: 'Up to 6-storey apartments within 400m of a train station — Transit Oriented Development'
+    description: 'Mid-rise apartments close to a train station (storey limit set in the Housing SEPP) — Transit Oriented Development'
   },
   residential_flat_r3r4_outer: {
     name: 'Mid-Rise Apartments (Near Station)',
-    description: 'Up to 4-storey apartments 400-800m from a train station — Transit Oriented Development'
+    description: 'Mid-rise apartments a short walk from a train station (storey limit and distance set in the Housing SEPP) — Transit Oriented Development'
   },
   secondary_dwelling: {
     name: 'Secondary Dwelling (Granny Flat)',
-    description: 'A self-contained dwelling on the same lot as a principal dwelling — max 60m² floor area'
+    description: 'A self-contained dwelling on the same lot as a principal dwelling — floor area capped by the Housing SEPP'
   },
   independent_living_unit: {
     name: 'Independent Living Units',
