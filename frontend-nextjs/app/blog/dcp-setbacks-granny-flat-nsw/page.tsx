@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 function BuildableEnvelopeDiagram() {
   const councils = [
     {
-      name: 'SEPP minimum (statewide)',
+      name: 'Complying development, single-storey (Housing SEPP 2021 Schedule 1)',
       rear: '3 m',
       side: '0.9 m',
       separation: 'None specified',
@@ -107,50 +107,42 @@ function SEPPvsDCPTable() {
   const rows = [
     {
       control: 'Rear setback',
-      sepp: '3 m',
-      typical_dcp: '3\u20136 m',
-      note: 'Some DCPs specify different values for single vs two storey',
+      sepp: '3 m on a 450–900 m² lot, larger on bigger lots and taller buildings (Housing SEPP 2021 Schedule 1)',
+      note: 'Grows by 3 times the height above 3.8 m, up to a cap set by lot size (Housing SEPP 2021 Schedule 1)',
     },
     {
       control: 'Side setback',
-      sepp: '0.9 m (single storey)',
-      typical_dcp: '0.9\u20131.5 m',
-      note: 'Two-storey SEPP minimum is 1.5 m; some DCPs go higher',
+      sepp: '0.9 m on a 450–900 m² lot, plus 25% of the height above 3.8 m (Housing SEPP 2021 Schedule 1)',
+      note: 'The setback depends on lot area and height, not on the number of storeys',
     },
     {
       control: 'Separation from main dwelling',
-      sepp: 'Not specified in SEPP',
-      typical_dcp: '3\u20134 m',
-      note: 'Common DCP addition; affects siting on narrow lots',
+      sepp: 'No separation distance in Schedule 1',
+      note: 'Some DCPs set one for a DA',
     },
     {
       control: 'Landscaped area',
-      sepp: 'Minimum % (varies by lot size)',
-      typical_dcp: '30\u201350% of site area',
-      note: 'DCPs often specify deep soil zones, not just soft landscaping',
+      sepp: '20% to 45% of the lot, by lot size (Housing SEPP 2021 Schedule 1 s16)',
+      note: 'At least half must be behind the building line to the primary road',
     },
     {
       control: 'Private open space',
-      sepp: '24 m\u00B2 minimum',
-      typical_dcp: '24\u201335 m\u00B2',
-      note: 'Some DCPs require minimum dimensions (e.g. 4 m width)',
+      sepp: 'More than 24 m² (Housing SEPP 2021 Schedule 1 s17)',
+      note: 'Can be shared with the main dwelling; must be more than 4 m wide (Housing SEPP 2021 Schedule 1 s17)',
     },
     {
       control: 'Car parking',
-      sepp: '1 additional space',
-      typical_dcp: '1\u20132 spaces',
-      note: 'Some DCPs prohibit tandem parking; others allow it',
+      sepp: 'No additional space required (Housing SEPP 2021 Schedule 1 s2(3))',
+      note: 'A DCP may set a parking rate for a DA',
     },
     {
       control: 'Maximum height',
-      sepp: '8.5 m',
-      typical_dcp: '7\u20138.5 m',
-      note: 'Some DCPs set lower maximums in low-density character areas',
+      sepp: '8.5 m above ground level (Housing SEPP 2021 Schedule 1 s6)',
+      note: 'A DCP or LEP may set a different limit for a DA',
     },
     {
       control: 'Design / materials',
       sepp: 'Not specified',
-      typical_dcp: 'Varies widely',
       note: 'Heritage areas may require specific materials, colours, roof pitch',
     },
   ];
@@ -158,7 +150,7 @@ function SEPPvsDCPTable() {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6 sm:p-8 my-6">
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-5">
-        SEPP Housing 2021 standards vs typical DCP additions
+        Complying development standards for a secondary dwelling (Housing SEPP 2021 Schedule 1)
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
@@ -166,7 +158,6 @@ function SEPPvsDCPTable() {
             <tr className="border-b border-slate-200">
               <th className="text-left py-3 pr-3 font-semibold text-slate-900">Control</th>
               <th className="text-left py-3 pr-3 font-semibold text-teal-700">SEPP standard</th>
-              <th className="text-left py-3 pr-3 font-semibold text-amber-700">Typical DCP range</th>
               <th className="text-left py-3 font-semibold text-slate-500">Notes</th>
             </tr>
           </thead>
@@ -175,7 +166,6 @@ function SEPPvsDCPTable() {
               <tr key={r.control} className="border-b border-slate-100">
                 <td className="py-2.5 pr-3 font-medium text-slate-900">{r.control}</td>
                 <td className="py-2.5 pr-3">{r.sepp}</td>
-                <td className="py-2.5 pr-3">{r.typical_dcp}</td>
                 <td className="py-2.5 text-xs text-slate-500">{r.note}</td>
               </tr>
             ))}
@@ -212,10 +202,12 @@ export default function DCPSetbacksGrannyFlatPage() {
         </h1>
         <p className="text-lg text-slate-500 leading-relaxed">
           The SEPP Housing 2021 sets statewide minimums for granny flat
-          setbacks: 3 m rear, 0.9 m side. But your council&apos;s Development
-          Control Plan can add stricter requirements &mdash; larger setbacks,
-          separation distances, landscaping rules &mdash; that reduce what you
-          can actually build. The same 600 m&sup2; lot can have a very different
+          setbacks for a granny flat built as complying development, and those
+          setbacks grow with lot size and building height. If the granny flat
+          goes through a development application instead, your council&apos;s
+          Development Control Plan also applies &mdash; it can set larger
+          setbacks, separation distances and landscaping rules that reduce
+          what you can actually build. The same 600 m&sup2; lot can have a very different
           buildable envelope depending on which council it falls under.
         </p>
       </div>
@@ -256,9 +248,9 @@ export default function DCPSetbacksGrannyFlatPage() {
             The most impactful DCP addition is usually the{' '}
             <span className="font-medium">separation distance</span> between
             the main dwelling and the granny flat. The SEPP does not specify a
-            separation distance. When a DCP requires 3 to 4 metres of
-            separation, combined with the rear setback, the buildable area
-            shrinks significantly &mdash; especially on lots under 700 m&sup2;.
+            separation distance. When a DCP sets one for a DA, combined with
+            the rear setback, the buildable area shrinks &mdash; most of all
+            on smaller lots.
           </p>
         </section>
 
@@ -393,8 +385,9 @@ export default function DCPSetbacksGrannyFlatPage() {
                 CDC pathway (complying development)
               </p>
               <p className="text-sm text-slate-700">
-                The SEPP standards apply. DCP controls are not relevant for
-                CDC assessment. If your build meets every SEPP standard and
+                The SEPP standards apply. DCP controls are not part of the CDC
+                test, apart from the DCP&apos;s stormwater requirements where no
+                separate drainage approval is needed. If your build meets every SEPP standard and
                 your property is not excluded, the certifier issues the CDC
                 based on the SEPP alone. This is one of the main advantages of
                 the CDC pathway.
@@ -508,10 +501,11 @@ export default function DCPSetbacksGrannyFlatPage() {
                 What is the minimum rear setback for a granny flat in NSW?
               </h3>
               <p className="text-slate-700 leading-relaxed">
-                The SEPP Housing 2021 minimum rear setback for a secondary
-                dwelling is 3 metres. Council DCPs may require larger rear
-                setbacks (commonly 5 to 6 metres) for DAs, but cannot reduce
-                below the SEPP minimum.
+                For complying development it depends on lot size and height.
+                On a 450 to 900 m&sup2; lot it is 3 metres, plus 3 times any
+                building height above 3.8 metres (Housing SEPP 2021 Schedule 1).
+                Larger lots have larger setbacks. For a DA, the council&apos;s
+                DCP sets the rear setback, so check its own controls.
               </p>
             </div>
 
