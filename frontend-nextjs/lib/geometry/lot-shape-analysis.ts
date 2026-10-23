@@ -63,6 +63,12 @@ export interface BattleaxeDetectionResult {
   meetsMinimumRequirements: boolean | null;
   /** Route-labelled messages from applyBattleaxeLimits(); empty from detection alone */
   complianceIssues: string[];
+  /** Set by applyBattleaxeLimits(): meets / fails / near / not_checked */
+  cdcStatus?: 'meets' | 'fails' | 'near' | 'not_checked';
+  /** Set by applyBattleaxeLimits(): instrument and clause the limits came from */
+  cdcRef?: string | null;
+  /** Set by applyBattleaxeLimits(): PDF page of that clause */
+  cdcPdfPage?: number | null;
   /** Width measurements at each cross-section (for debugging) */
   widthProfile?: number[];
 }

@@ -24,6 +24,10 @@ export async function loadBattleaxeLimits(): Promise<BattleaxeLimits | null> {
       standard_type: string; numeric_value: string | number | null; ref_number: string | null;
       source_quote: string | null; pdf_page: number | null; is_current: boolean | null;
     }>;
+    // Exactly one active row per standard: duplicates mean nobody knows which value is right.
+    const counts = new Map<string, number>();
+    for (const r of rows) counts.set(r.standard_type, (counts.get(r.standard_type) ?? 0) + 1);
+    if ([...counts.values()].some((n) => n !== 1)) return null;
     const byType = new Map(rows.map((r) => [r.standard_type, r]));
     const access = byType.get('battleaxe_access_min_width');
     const dim = byType.get('battleaxe_lot_min_dimension');
