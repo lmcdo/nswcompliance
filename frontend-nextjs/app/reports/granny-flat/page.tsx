@@ -914,7 +914,7 @@ const GRANNY_FLAT_FAQS = [
   },
   {
     q: 'What is the maximum size of a granny flat under SEPP Housing 2021?',
-    a: 'The maximum floor area for a secondary dwelling approved as complying development is 60 m² (SEPP Housing 2021 cl 4.18). A DA pathway allows larger floor areas subject to council DCP controls — typically up to 20–25% of the principal dwelling\'s floor area.',
+    a: 'The maximum floor area for a secondary dwelling approved as complying development is 60 m², or more if another planning instrument allows it (SEPP (Housing) 2021 Schedule 1 s4). For a DA, the council applies its own LEP and DCP floor area controls.',
   },
   {
     q: 'Do I need a DA or CDC to build a granny flat?',

@@ -1,6 +1,6 @@
 {
  "_about": "(.claude/regulatory_figure_ledger.json) names every hit by file + the hit's own text:\n  \"open\"  -- known, still to fix (read it from the database, or delete it and point to the address lookup);\n  \"cited\" -- a verbatim quote that names its instrument AND clause on the same line (the reason says which);\n  \"not_regulatory\" -- not a planning figure (a map bound, an image size, a price); the reason (4+ words) says what.\nCI fails when: a hit is not in the ledger (a new typed figure); a ledger entry is no longer found (fixed -- remove it,\nso the list stays exact); a \"cited\" entry's reason names no instrument + clause; the open count rises; a\n`noqa: regulatory-number` carries no real reason (4+ words after \"--\").",
- "max_open": 394,
+ "max_open": 373,
  "entries": [
   {
    "file": "frontend-nextjs/app/(tools)/granny-flat/page.tsx",
@@ -585,12 +585,6 @@
   {
    "file": "frontend-nextjs/app/reports/granny-flat/page.tsx",
    "text": "height: 380",
-   "fate": "open",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/reports/granny-flat/page.tsx",
-   "text": "'The maximum floor area for a secondary dwelling approved as complying development is 60 m² (SEPP Housing 2021 cl 4.18). A DA pathway allows larger floor areas subject to council DCP controls — typically up to 20–25% of the principal dwelling\\'",
    "fate": "open",
    "count": 1
   },
@@ -1354,33 +1348,30 @@
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "lineHeight: 1.4",
-   "fate": "open",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "PDF layout style value (react-pdf), not a planning figure"
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "height: 18",
-   "fate": "open",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "PDF layout style value (react-pdf), not a planning figure"
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "lineHeight: 1.5",
-   "fate": "open",
-   "count": 3
+   "fate": "not_regulatory",
+   "count": 3,
+   "reason": "PDF layout style value (react-pdf), not a planning figure"
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "height: 7",
-   "fate": "open",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
-   "text": "'The CDC pathway caps secondary dwellings at 60 m\\u00B2. Based on the data sources checked, your lot is within the full allowance. This is the maximum habitable floor area, excluding verandahs, garages, and laundries.'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "PDF layout style value (react-pdf), not a planning figure"
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
@@ -1391,44 +1382,10 @@
   },
   {
    "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
-   "text": "'Min 3 m'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)",
-   "count": 4
-  },
-  {
-   "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
-   "text": "'Min 0.9 m (1.5 m above 8 m)'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)",
-   "count": 2
-  },
-  {
-   "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
-   "text": "'5 m'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)",
-   "count": 2
-  },
-  {
-   "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
-   "text": "'8.5 m'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)",
-   "count": 2
-  },
-  {
-   "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
-   "text": "'Min 24 m\\u00B2 (3 m dimension)'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)",
-   "count": 2
-  },
-  {
-   "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
    "text": "height: 14",
-   "fate": "open",
-   "count": 1
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "PDF layout style value (react-pdf), not a planning figure"
   },
   {
    "file": "frontend-nextjs/lib/pdf/map-overlay.tsx",
@@ -2238,6 +2195,54 @@
    "fate": "not_regulatory",
    "reason": "measured BFPL map coverage, not a planning control: scripts/measure_bfpl_coverage.py on 23 October 2026 (NSW RFS BFPL layer 0 vs Spatial Services LGA layer 8)",
    "count": 1
+  },
+  {
+   "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
+   "text": "'0.9 m on a 450-900 m² lot, plus 25% of height above 3.8 m (SEPP (Housing) 2021 Schedule 1 s9)'",
+   "fate": "cited",
+   "reason": "figures match SEPP (Housing) 2021 Schedule 1 s9 side setbacks, regulatory_provisions 41149-41153 (wording paraphrased)"
+  },
+  {
+   "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
+   "text": "'20% to 45% of the lot, by lot size (SEPP (Housing) 2021 Schedule 1 s16)'",
+   "fate": "cited",
+   "reason": "figures match SEPP (Housing) 2021 Schedule 1 s16 landscaped area, regulatory_provisions 41180-41183 (wording paraphrased)"
+  },
+  {
+   "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
+   "text": "'3 m on a 450-900 m² lot, plus 3 x height above 3.8 m (SEPP (Housing) 2021 Schedule 1 s10)'",
+   "fate": "cited",
+   "reason": "figures match SEPP (Housing) 2021 Schedule 1 s10 rear setbacks, regulatory_provisions 41154-41160 (wording paraphrased)"
+  },
+  {
+   "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
+   "text": "'60 m², or more if another planning instrument allows (SEPP (Housing) 2021 Schedule 1 s4)'",
+   "fate": "cited",
+   "reason": "figures match SEPP (Housing) 2021 Schedule 1 s4 floor area, regulatory_provisions 41123-41126 (wording paraphrased)"
+  },
+  {
+   "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
+   "text": "'8.5 m above ground level (SEPP (Housing) 2021 Schedule 1 s6)'",
+   "fate": "cited",
+   "reason": "figures match SEPP (Housing) 2021 Schedule 1 s6 building height, regulatory_provisions 41135 (wording paraphrased)"
+  },
+  {
+   "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
+   "text": "'More than 24 m² (SEPP (Housing) 2021 Schedule 1 s17)'",
+   "fate": "cited",
+   "reason": "figures match SEPP (Housing) 2021 Schedule 1 s17 private open space, regulatory_provisions 41184-41185 (wording paraphrased)"
+  },
+  {
+   "file": "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
+   "text": "'On the CDC pathway a secondary dwelling may have up to 60 m\\u00B2 of floor area, not counting an attached ancillary structure, or more if another planning instrument allows it (SEPP (Housing) 2021 Schedule 1 s4(1)).'",
+   "fate": "cited",
+   "reason": "figures match SEPP (Housing) 2021 Schedule 1 s4 floor area, regulatory_provisions 41123-41126 (wording paraphrased)"
+  },
+  {
+   "file": "frontend-nextjs/app/reports/granny-flat/page.tsx",
+   "text": "'The maximum floor area for a secondary dwelling approved as complying development is 60 m², or more if another planning instrument allows it (SEPP (Housing) 2021 Schedule 1 s4). For a DA, the council applies its own LEP and DCP floor area controls.'",
+   "fate": "cited",
+   "reason": "figure matches SEPP (Housing) 2021 Schedule 1 s4 floor area, regulatory_provisions 41123-41126 (wording paraphrased)"
   }
  ]
 }

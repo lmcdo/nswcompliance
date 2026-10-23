@@ -77,6 +77,26 @@ export interface GrannyFlatReportData {
 }
 
 // ---------------------------------------------------------------------------
+// CDC standards
+// ---------------------------------------------------------------------------
+
+/**
+ * Complying development standards for a secondary dwelling, SEPP (Housing) 2021
+ * Schedule 1 (regulatory_provisions 41114-41195). Setbacks are the 450-900 m2 band;
+ * the s9 / s10 numbers come from their order between the confirmed s7 and s11.
+ */
+const CDC_SCHEDULE_1: Array<{ std: string; req: string; clause: string; dcpKey: string }> = [
+  { std: 'Maximum floor area', req: '60 m², or more if another planning instrument allows (SEPP (Housing) 2021 Schedule 1 s4)', clause: 'SEPP (Housing) 2021 Schedule 1 s4', dcpKey: 'max floor area' },
+  { std: 'Rear setback', req: '3 m on a 450-900 m² lot, plus 3 x height above 3.8 m (SEPP (Housing) 2021 Schedule 1 s10)', clause: 'SEPP (Housing) 2021 Schedule 1 s10', dcpKey: 'rear setback' },
+  { std: 'Side setback', req: '0.9 m on a 450-900 m² lot, plus 25% of height above 3.8 m (SEPP (Housing) 2021 Schedule 1 s9)', clause: 'SEPP (Housing) 2021 Schedule 1 s9', dcpKey: 'side setback' },
+  { std: 'Separation from dwelling', req: 'Not set by Schedule 1', clause: 'SEPP (Housing) 2021 Schedule 1', dcpKey: 'separation from dwelling' },
+  { std: 'Maximum building height', req: '8.5 m above ground level (SEPP (Housing) 2021 Schedule 1 s6)', clause: 'SEPP (Housing) 2021 Schedule 1 s6', dcpKey: 'max height' },
+  { std: 'Private open space', req: 'More than 24 m² (SEPP (Housing) 2021 Schedule 1 s17)', clause: 'SEPP (Housing) 2021 Schedule 1 s17', dcpKey: 'private open space' },
+  { std: 'Car parking', req: 'No additional space required', clause: 'SEPP (Housing) 2021 Schedule 1 s2(3)', dcpKey: 'car parking' },
+  { std: 'Landscaped area', req: '20% to 45% of the lot, by lot size (SEPP (Housing) 2021 Schedule 1 s16)', clause: 'SEPP (Housing) 2021 Schedule 1 s16', dcpKey: 'min landscaped area' },
+];
+
+// ---------------------------------------------------------------------------
 // Palette
 // ---------------------------------------------------------------------------
 
@@ -305,9 +325,9 @@ function buildFindings(data: GrannyFlatReportData): Finding[] {
   // Max floor area (unless ruled out)
   if (notRuledOut && data.max_floor_area_m2 > 0) {
     findings.push({
-      label: 'SEPP Housing 2021 cl 4.18 - floor area cap',
+      label: 'SEPP (Housing) 2021 Schedule 1 s4 - floor area cap',
       value: `${fmt(data.max_floor_area_m2)} m\u00B2 maximum floor area (CDC)`,
-      detail: 'The CDC pathway caps secondary dwellings at 60 m\u00B2. Based on the data sources checked, your lot is within the full allowance. This is the maximum habitable floor area, excluding verandahs, garages, and laundries.',
+      detail: 'On the CDC pathway a secondary dwelling may have up to 60 m\u00B2 of floor area, not counting an attached ancillary structure, or more if another planning instrument allows it (SEPP (Housing) 2021 Schedule 1 s4(1)).',
       severity: 'green',
     });
   }
@@ -697,7 +717,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
             { factor: 'Application fee', cdc: '~$1,000-$2,500', da: '~$500-$2,000 + certifier' },
             { factor: 'Design flexibility', cdc: 'Must comply with all SEPP standards', da: 'Council may exercise discretion' },
             { factor: 'Max floor area', cdc: '60 m\u00B2', da: 'Subject to DCP' },
-            { factor: 'Heritage / flood lots', cdc: 'Excluded (cl 54-58)', da: 'Possible with specialist report' },
+            { factor: 'Heritage / flood lots', cdc: 'May be excluded (Housing SEPP s54(2); Codes SEPP cl 1.19)', da: 'Possible with specialist report' },
             { factor: 'Neighbour notification', cdc: 'Not required', da: 'Required - neighbours can object' },
           ].map((row, i) => (
             <View key={i} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
@@ -719,17 +739,8 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
               dcpMap[key] = { req: sb.requirement, clause: sb.clause, notes: sb.notes };
             }
             const rows = [
-              { control: 'Maximum floor area', cdc: '60 m\u00B2', dcpKey: 'max floor area' },
+              ...CDC_SCHEDULE_1.map((r) => ({ control: r.std, cdc: r.req, dcpKey: r.dcpKey })),
               { control: 'Front setback', cdc: 'Not specified', dcpKey: 'front setback' },
-              { control: 'Rear setback', cdc: 'Min 3 m', dcpKey: 'rear setback' },
-              { control: 'Side setback', cdc: 'Min 0.9 m (1.5 m above 8 m)', dcpKey: 'side setback' },
-              { control: 'Separation from dwelling', cdc: 'Min 3 m', dcpKey: 'separation from dwelling' },
-              { control: 'Max wall height', cdc: '5 m', dcpKey: 'max height' },
-              { control: 'Max roof height', cdc: '8.5 m', dcpKey: 'max roof height' },
-              { control: 'Private open space', cdc: 'Min 24 m\u00B2 (3 m dimension)', dcpKey: 'private open space' },
-              { control: 'Car parking', cdc: 'Not required', dcpKey: 'car parking' },
-              { control: 'Site coverage', cdc: 'Not specified', dcpKey: 'max site coverage' },
-              { control: 'Landscaped area', cdc: 'Not specified', dcpKey: 'min landscaped area' },
             ];
             return (
               <>
@@ -762,7 +773,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
                   </View>
                 )}
                 <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 6 }}>
-                  CDC = SEPP Housing 2021 Sch 3 Subdiv 4 (statewide). DA = {data.dcp_name || 'local DCP'} (council-specific).
+                  CDC = SEPP (Housing) 2021 Schedule 1 (statewide; setbacks shown for a 450-900 m{'²'} lot). DA = {data.dcp_name || 'local DCP'} (council-specific).
                   {data.dcp_url && ' '}
                   {data.dcp_url && (
                     <Link src={data.dcp_url} style={{ color: TEAL }}>View full DCP</Link>
@@ -780,23 +791,15 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
                 <Text style={{ ...s.tableHeaderCell, flex: 2 }}>CDC Requirement</Text>
                 <Text style={{ ...s.tableHeaderCell, flex: 1.5 }}>Source</Text>
               </View>
-              {[
-                { std: 'Maximum floor area', req: '60 m\u00B2', clause: 'cl 4.18' },
-                { std: 'Rear setback', req: 'Min 3 m', clause: 'Sch 3 Subdiv 4' },
-                { std: 'Side setback', req: 'Min 0.9 m (1.5 m above 8 m)', clause: 'Sch 3 Subdiv 4' },
-                { std: 'Separation from dwelling', req: 'Min 3 m', clause: 'Sch 3 Subdiv 4' },
-                { std: 'Max wall height', req: '5 m', clause: 'Sch 3 Subdiv 4' },
-                { std: 'Max roof height', req: '8.5 m', clause: 'Sch 3 Subdiv 4' },
-                { std: 'Private open space', req: 'Min 24 m\u00B2 (3 m dimension)', clause: 'Sch 3 Subdiv 4' },
-                { std: 'Car parking', req: 'Not required', clause: 'Sch 3 Subdiv 4' },
-              ].map((row, i) => (
+              {CDC_SCHEDULE_1.map((row, i) => (
                 <View key={i} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
                   <Text style={{ ...s.tableCell, flex: 2 }}>{row.std}</Text>
                   <Text style={{ ...s.tableCellBold, flex: 2 }}>{row.req}</Text>
-                  <Text style={{ ...s.tableCell, flex: 1.5, color: GRAY_500, fontSize: 7.5 }}>SEPP Housing 2021 {row.clause}</Text>
+                  <Text style={{ ...s.tableCell, flex: 1.5, color: GRAY_500, fontSize: 7.5 }}>{row.clause}</Text>
                 </View>
               ))}
               <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 6 }}>
+                Setbacks shown are for a 450-900 m{'²'} lot; larger lots and taller buildings need larger setbacks (SEPP (Housing) 2021 Schedule 1 s9, s10).
                 Your council DCP may impose different controls on the DA pathway.
               </Text>
             </>
