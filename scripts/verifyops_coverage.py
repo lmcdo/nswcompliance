@@ -46,6 +46,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -179,6 +180,39 @@ def measure(conn) -> list[str]:
     return sorted(out)
 
 
+#: v7 step 5: refuse --update when more active chapters than this went unchecked in the latest full
+#: run, so a half-broken run (rate limits) is never frozen as normal. Run 2: 81/547 = 14.8%.
+MAX_UNCHECKED = 0.10
+#: A baselined key still red after this many days alarms again (v6 resolution 4).
+MAX_BASELINED_DAYS = 30
+CHECKED = frozenset(x.strip("'") for x in _CHECKED.split(","))
+_LAST_RUN_ROWS = """
+    SELECT x.council, x.chapter_key, x.outcome FROM dcp_monitor_chapter_results x
+    WHERE x.run_id = (SELECT id FROM dcp_monitor_runs WHERE mode IN ('daily','force')
+                      AND finished_at IS NOT NULL ORDER BY finished_at DESC LIMIT 1)"""
+
+
+def unchecked_share(active: list[tuple[str, str]], rows: list[tuple[str, str, str]]) -> tuple[int, int]:
+    """(active chapters the run did not content-check, active chapters). No row counts as unchecked."""
+    done = {(c, k) for c, k, outcome in rows if outcome in CHECKED}
+    act = set(active)
+    return len(act - done), len(act)
+
+
+def baselined_ages(since: dict[str, str], now: list[str], today: date) -> list[tuple[str, int]]:
+    """(key, days) for every key both baselined and red today, oldest first.
+    A key with no recorded date counts as over the limit: it cannot prove it is recent."""
+    out = []
+    for k in now:
+        if k in since:
+            try:
+                days = (today - date.fromisoformat(since[k])).days
+            except (TypeError, ValueError):
+                days = MAX_BASELINED_DAYS + 1
+            out.append((k, days))
+    return sorted(out, key=lambda kd: (-kd[1], kd[0]))
+
+
 def compare(baseline: list[str], now: list[str]) -> tuple[list[str], list[str]]:
     """(new reds not in the baseline, baseline keys that cleared)."""
     b, n = set(baseline), set(now)
@@ -204,7 +238,7 @@ def coverage(now: list[str], active: list[tuple[str, str]]) -> str:
     return f"C = {green}/{len(active)} active chapters with no red key"
 
 
-def main(argv: list[str] | None = None, conn=None) -> int:
+def main(argv: list[str] | None = None, conn=None, today: date | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--update", action="store_true", help="write the baseline (shrink-only)")
     ap.add_argument("--allow-raise", metavar="REASON", help="with --update: accept new keys (state why)")
@@ -222,35 +256,57 @@ def main(argv: list[str] | None = None, conn=None) -> int:
         cur = conn.cursor()
         cur.execute(f"SELECT r.council, r.chapter_key FROM dcp_chapter_registry r WHERE {_ACTIVE}")
         active = [tuple(r) for r in cur.fetchall()]
+        cur.execute(_LAST_RUN_ROWS)
+        run_rows = [tuple(r) for r in cur.fetchall()]
         cur.close()
     except Exception as exc:  # noqa: BLE001 - a missing table means we could not look
         print(f"VERIFYOPS: could not measure ({type(exc).__name__}: {str(exc).splitlines()[0]})")
         print("  If 'dcp_monitor_' is named above, apply migrations/116_dcp_monitor_results.sql first.")
         return 2
 
+    today = today or date.today()
     doc = json.loads(BASELINE.read_text(encoding="utf-8")) if BASELINE.exists() else {}
     base_keys = doc.get("keys") or []
+    since, why = doc.get("since") or {}, doc.get("why") or {}
+    # A key with no recorded date is treated as baselined long ago (see baselined_ages).
+    since = {k: since.get(k, "") for k in base_keys}
     new, cleared = compare(base_keys, now)
+    ages = baselined_ages(since, now, today)
+    expired = [k for k, d in ages if d > MAX_BASELINED_DAYS]
     print(f"VERIFYOPS: {len(now)} red keys today; baseline {len(base_keys)}; "
-          f"{len(new)} new; {len(cleared)} cleared")
+          f"{len(new)} new; {len(cleared)} cleared; {len(expired)} baselined > {MAX_BASELINED_DAYS} days")
     print(f"  {coverage(now, active)}")
     for k in new[:60]:
         print(f"  NEW RED  {k}")
+    for k in expired[:60]:
+        print(f"  EXPIRED  {k}  (baselined > {MAX_BASELINED_DAYS} days and still red: alarming again)")
+    for k, d in ages[:60]:
+        if d <= MAX_BASELINED_DAYS:
+            print(f"  baselined but still red for {d} days  {k}")
     for k in cleared[:60]:
         print(f"  cleared  {k}  (run with --update to lock in)")
 
     if args.update:
+        bad, total = unchecked_share(active, run_rows)
+        if not total or bad / total > MAX_UNCHECKED:  # no finished run: every chapter unchecked
+            print(f"REFUSED: the latest full run left {bad}/{total} active chapters unchecked "
+                  f"(limit {MAX_UNCHECKED:.0%}). A half-broken run is not a baseline.")
+            return 1
         if new and not args.allow_raise:
             print("REFUSED: new red keys (shrink-only). Fix them, or --allow-raise 'reason'.")
             return 1
-        doc["keys"] = now if args.allow_raise else sorted(set(base_keys) - set(cleared))
+        keys = now if args.allow_raise else sorted(set(base_keys) - set(cleared))
+        stamp = today.isoformat()
+        # A key keeps its first date: re-raising never resets the 30-day clock.
+        doc["since"] = {k: since.get(k) or stamp for k in keys}
+        doc["why"] = {k: why.get(k) or args.allow_raise for k in keys}
+        doc["keys"] = keys
         if args.allow_raise:
             doc["raised"] = (doc.get("raised") or []) + [args.allow_raise]
         BASELINE.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf-8")
-        print(f"baseline written: {len(doc['keys'])} keys")
+        print(f"baseline written: {len(keys)} keys ({bad}/{total} active chapters unchecked in the latest run)")
         return 0
-    return 1 if new else 0
-
+    return 1 if new or expired else 0
 
 if __name__ == "__main__":
     sys.exit(main())

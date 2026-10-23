@@ -56,7 +56,7 @@ def message(rcs: dict[str, str | None], reports: list[str]) -> str | None:
     dropped = 0
     for text in reports:
         hits = [s for s in (line.strip() for line in text.splitlines())
-                if s.startswith(("VERIFYOPS:", "C =", "NEW RED", "RAILWAY-JOBS:", "FAIL", "PASS", "---"))
+                if s.startswith(("VERIFYOPS:", "C =", "NEW RED", "EXPIRED", "RAILWAY-JOBS:", "FAIL", "PASS", "---"))
                 or _JOB_LINE.match(s)]
         kept += hits[:share]
         dropped += max(0, len(hits) - share)

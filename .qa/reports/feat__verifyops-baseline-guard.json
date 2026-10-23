@@ -1,0 +1,81 @@
+{
+ "tier": "standard",
+ "justification": "Changes when the daily DCP alarm baseline may be written and when an old baselined key alarms again.",
+ "commit_hash": "605f62d4",
+ "files": [
+  "scripts/verifyops_coverage.py",
+  "scripts/verifyops_outside_ping.py",
+  "tests/test_verifyops_daily_check.py",
+  "tests/test_verifyops_outside_ping.py",
+  "tests/fixtures/verifyops/run2_results_2026-10-23.json"
+ ],
+ "pre_impl": {
+  "existing_data": "Force run 2 (dcp_monitor_chapter_results run_id=2): 563 rows, 547 active chapters, 539 overlap; 81 of 547 active not content-checked (8 with no row).",
+  "assumption_mismatch": "Run 2 was reported as 488/563 checked; measured on active chapters it is 466/547, so 14.8% unchecked, not 13.3%.",
+  "new_vs_existing": "Extends the existing shrink-only baseline file with since and why per key; no new table."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_verifyops_daily_check.py tests/test_verifyops_outside_ping.py",
+  "fails_when": "a run over 10% unchecked can be baselined, a key loses its first date or reason, or a key baselined over 30 days stays quiet",
+  "observed_red": "13 hand mutants: 12 killed; the 13th removed a redundant no-rows check, which was then deleted (no rows already means every chapter unchecked)."
+ },
+ "functions": [
+  {
+   "name": "unchecked_share",
+   "file_line": "scripts/verifyops_coverage.py:195",
+   "input": "active chapters and the latest full run's result rows",
+   "output": "count of active chapters not content-checked, and the active count",
+   "if_none": "no rows means every active chapter is unchecked"
+  },
+  {
+   "name": "baselined_ages",
+   "file_line": "scripts/verifyops_coverage.py:202",
+   "input": "first-baselined date per key, today's red keys, today",
+   "output": "key and days baselined for keys still red, oldest first",
+   "if_none": "a missing or bad date counts as over the 30-day limit"
+  },
+  {
+   "name": "main",
+   "file_line": "scripts/verifyops_coverage.py:241",
+   "input": "command-line flags, a database connection, today",
+   "output": "exit 0 clean, 1 new or expired red or refused update, 2 could not look",
+   "if_none": "no DATABASE_URL or missing table exits 2"
+  },
+  {
+   "name": "message",
+   "file_line": "scripts/verifyops_outside_ping.py:47",
+   "input": "exit codes and check outputs",
+   "output": "Telegram text now including EXPIRED lines",
+   "if_none": "None when every check is green"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Baseline written from a half-broken run like run 2 (rate limits)",
+   "what_happens": "silent: 81 unchecked chapters frozen as normal",
+   "mitigated": true,
+   "how": "--update refused above 10% unchecked active chapters",
+   "repro": "pytest tests/test_verifyops_daily_check.py -k run2"
+  },
+  {
+   "scenario": "A broken chapter is baselined and never fixed",
+   "what_happens": "silent for ever: the baseline hides it",
+   "mitigated": true,
+   "how": "after 30 days it prints EXPIRED, exits 1 and goes to Telegram",
+   "repro": "pytest tests/test_verifyops_daily_check.py -k over_30_days"
+  },
+  {
+   "scenario": "Someone re-raises the baseline to silence expired keys",
+   "what_happens": "the 30-day clock would restart",
+   "mitigated": true,
+   "how": "a key keeps its first date on every update",
+   "repro": "pytest tests/test_verifyops_daily_check.py -k re_raise"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None: read-only queries.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "After run 3: python scripts/verifyops_coverage.py --update --allow-raise 'force run 3 <date>' refuses if over 10% unchecked, else writes the baseline with since and why for every key."
+ }
+}
