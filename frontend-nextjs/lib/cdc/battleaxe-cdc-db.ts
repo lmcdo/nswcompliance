@@ -8,11 +8,11 @@
 import { query } from '@/lib/db';
 import type { BattleaxeLimits } from './battleaxe-cdc';
 
-/** The two stored limits, or null when either row is missing, stale or unreadable. */
+/** The two stored limits, or null when either row is missing, stale or unreadable, or its clause is not is_current. */
 export async function loadBattleaxeLimits(): Promise<BattleaxeLimits | null> {
   try {
     const result = await query(
-      `SELECT s.standard_type, s.numeric_value, s.ref_number, s.source_quote, p.pdf_page
+      `SELECT s.standard_type, s.numeric_value, s.ref_number, s.source_quote, p.pdf_page, p.is_current
          FROM cdc_eligibility_standards s
          LEFT JOIN regulatory_provisions p ON p.id = s.source_provision_ids[1]
         WHERE s.code_name = 'housing_sepp_sch1'
@@ -22,7 +22,7 @@ export async function loadBattleaxeLimits(): Promise<BattleaxeLimits | null> {
     );
     const rows = (result?.rows ?? []) as Array<{
       standard_type: string; numeric_value: string | number | null; ref_number: string | null;
-      source_quote: string | null; pdf_page: number | null;
+      source_quote: string | null; pdf_page: number | null; is_current: boolean | null;
     }>;
     const byType = new Map(rows.map((r) => [r.standard_type, r]));
     const access = byType.get('battleaxe_access_min_width');
@@ -30,6 +30,9 @@ export async function loadBattleaxeLimits(): Promise<BattleaxeLimits | null> {
     const a = access?.numeric_value == null ? NaN : Number(access.numeric_value);
     const d = dim?.numeric_value == null ? NaN : Number(dim.numeric_value);
     if (!access || !dim || !Number.isFinite(a) || !Number.isFinite(d) || a <= 0 || d <= 0) return null;
+    // The clause the limits were copied from must still be current (is_current = TRUE),
+    // otherwise the law may have changed under them: not checked, never a stale pass.
+    if (access.is_current !== true || dim.is_current !== true) return null;
     return {
       accessMinWidth: a,
       lotMinDimension: d,
