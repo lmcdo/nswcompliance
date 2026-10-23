@@ -142,7 +142,7 @@ function LockedPreviewCard({
     { label: 'Aerial structure analysis', preview: '1 structure detected' },
     { label: 'Your rental income estimate', preview: '$320/wk' },
     { label: 'Yield on build cost', preview: '8.7% p.a.' },
-    { label: `DCP setbacks — ${lga_name ?? 'your council'}`, preview: 'front 6m · side 0.9m · rear 3m' },
+    { label: `DCP setbacks — ${lga_name ?? 'your council'}`, preview: 'front, side and rear from your DCP' },
     { label: 'Break-even projection', preview: 'Year 7' },
   ];
   return (

@@ -29,7 +29,7 @@ interface ADGSeparationTable {
   section_name: string;
   rows: SeparationRow[];
   source_url: string;
-  source_page: number;
+  source_page: number | null;
   pdfUrl: string | null;
   requirement_text: string;
   note: string;
@@ -75,16 +75,8 @@ function parseADGSeparationText(text: string): SeparationRow[] {
     });
   }
 
-  // If parsing failed, return hardcoded values with a note
-  // These values are from the official ADG and are correct
-  if (rows.length === 0) {
-    return [
-      { height_category: 'up_to_12m', height_range: 'Up to 12m', habitable_rooms: 6, non_habitable_rooms: 3 },
-      { height_category: '12m_to_25m', height_range: '12-25m', habitable_rooms: 9, non_habitable_rooms: 4.5 },
-      { height_category: 'over_25m', height_range: 'Over 25m', habitable_rooms: 12, non_habitable_rooms: 6 },
-    ];
-  }
-
+  // If parsing failed, return no rows: the card says the table could not be read
+  // rather than showing typed values.
   return rows;
 }
 
@@ -152,7 +144,7 @@ export async function GET(request: NextRequest) {
         section_name: row.section_name || 'Building Separation',
         rows: separationRows,
         source_url: row.source_url || 'https://www.planning.nsw.gov.au/sites/default/files/2023-03/apartment-design-guide-part-3-siting-the-development.pdf',
-        source_page: row.source_page || 63,
+        source_page: row.source_page ?? null,
         pdfUrl: row.r2_pdf_url || null,
         requirement_text: row.requirement_text || '',
         note: 'Minimum separation between habitable rooms/balconies and non-habitable rooms to side/rear boundaries',

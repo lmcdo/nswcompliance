@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 const FAQS = [
   {
     q: 'What is the minimum lot size for a granny flat in NSW?',
-    a: 'Under SEPP Housing 2021 (the state-wide policy that overrides local council rules), the minimum lot size for a secondary dwelling approved as complying development is 450 m². If your lot is below this threshold, a DA through your local council is required and approval is not guaranteed.',
+    a: 'Under SEPP Housing 2021 (the state-wide policy for granny flats), a secondary dwelling built as complying development must meet a minimum lot size set in the policy itself. If your lot is below that threshold, a DA through your local council is the usual route and the outcome is up to council. The /granny-flat tool compares your lot area with the current threshold.',
   },
   {
     q: 'What zones allow granny flats in NSW?',
@@ -34,7 +34,7 @@ const FAQS = [
   },
   {
     q: 'How large can a granny flat be in NSW?',
-    a: 'Under SEPP Housing 2021, a secondary dwelling is limited to 60 m² internal floor area. On lots over 900 m², an attached secondary dwelling may have different sizing provisions. DCP setback and height controls from your local council also apply regardless of SEPP eligibility.',
+    a: 'Under SEPP Housing 2021, a secondary dwelling is limited to a maximum internal floor area set in the policy, and some lot sizes carry different sizing provisions. The /granny-flat tool shows the maximum floor area that applies to your property. DCP setback and height controls from your local council also apply regardless of SEPP eligibility.',
   },
   {
     q: 'Can a granny flat earn rental income?',
@@ -83,8 +83,8 @@ export default function GrannyFlatHubPage() {
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
-            { label: 'Min. lot area', value: '450 m²' },
-            { label: 'Max. floor area', value: '60 m²' },
+            { label: 'Min. lot area', value: 'Set in Housing SEPP' },
+            { label: 'Max. floor area', value: 'Set in Housing SEPP' },
             { label: 'Approval path', value: 'CDC (private certifier)' },
             { label: 'Zones permitted', value: 'R1, R2, R3, RU5' },
             { label: 'Heritage items', value: 'Excluded' },

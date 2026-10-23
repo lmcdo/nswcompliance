@@ -716,7 +716,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
             { factor: 'Timeframe', cdc: '10-20 business days', da: '40-60 days (up to 90+)' },
             { factor: 'Application fee', cdc: '~$1,000-$2,500', da: '~$500-$2,000 + certifier' },
             { factor: 'Design flexibility', cdc: 'Must comply with all SEPP standards', da: 'Council may exercise discretion' },
-            { factor: 'Max floor area', cdc: '60 m\u00B2', da: 'Subject to DCP' },
+            { factor: 'Max floor area', cdc: 'Cap set in Housing SEPP', da: 'Subject to DCP' },
             { factor: 'Heritage / flood lots', cdc: 'May be excluded (Housing SEPP s54(2); Codes SEPP cl 1.19)', da: 'Possible with specialist report' },
             { factor: 'Neighbour notification', cdc: 'Not required', da: 'Required - neighbours can object' },
           ].map((row, i) => (

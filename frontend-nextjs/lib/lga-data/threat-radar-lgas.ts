@@ -111,7 +111,7 @@ export const THREAT_RADAR_LGAS: ThreatRadarLgaData[] = [
       { q: 'What types of development should Northern Beaches homeowners watch?', a: 'Residential additions that affect solar access (particularly significant in coastal suburbs with north-facing rear yards). Dual-occupancy DAs in R2 zones. Secondary dwelling CDCs — common in Dee Why, Cromer, and Narrabeen where lot sizes typically qualify. Coastal management DAs near beachfront properties.' },
       { q: 'Can I object to a neighbour\'s DA on the Northern Beaches?', a: 'Yes. Northern Beaches Council publicly notifies DAs. You can submit a written objection within the notification period. Heritage-affected DAs often have extended notification periods. CDCs through private certifiers do not require public notification.' },
       { q: 'How far away do alerts cover?', a: 'Alerts cover applications within 200m. In lower-density Northern Beaches suburbs this typically covers 30–50 properties on larger lots.' },
-      { q: 'Are DAs for secondary dwellings common on the Northern Beaches?', a: 'CDCs for secondary dwellings are common in suburbs where lot sizes clear 450m² — particularly Dee Why, Cromer, Narrabeen, and Warriewood. In heritage-affected suburbs like Manly and Avalon, secondary dwellings typically require a DA rather than CDC due to heritage constraints.' },
+      { q: 'Are DAs for secondary dwellings common on the Northern Beaches?', a: 'CDCs for secondary dwellings are common in suburbs where lots are large enough to meet the CDC minimum lot size — particularly Dee Why, Cromer, Narrabeen, and Warriewood. In heritage-affected suburbs like Manly and Avalon, secondary dwellings typically require a DA rather than CDC due to heritage constraints.' },
     ],
   },
   {

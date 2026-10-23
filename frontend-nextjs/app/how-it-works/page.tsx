@@ -31,7 +31,7 @@ const TOOLS = [
     href: '/granny-flat',
     sources: [
       { name: 'NSW Planning Portal (lot API)', use: 'Zone, lot size, strata status, heritage, and LEP controls for the property' },
-      { name: 'SEPP Housing 2021 criteria', use: 'State-wide eligibility rules: minimum 450 m² lot, permitted zones, not strata' },
+      { name: 'SEPP Housing 2021 criteria', use: 'State-wide eligibility rules: minimum lot size, permitted zones, not strata' },
       { name: 'NSW SIX Maps aerial imagery', use: 'High-resolution aerial tiles of the lot, shown with its boundary so you can see what is already built on it' },
       { name: 'Council DCP setback controls', use: 'Secondary dwelling setback, landscaping, and parking standards by LGA' },
     ],

@@ -189,9 +189,6 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                  {propertyData.lotDimensions.battleaxe.accessWayWidth}m wide
                  <span className="font-normal text-gray-500"> × {propertyData.lotDimensions.battleaxe.accessWayLength}m</span>
                </p>
-               {propertyData.lotDimensions.battleaxe.accessWayWidth < 3 && (
-                 <p className="text-red-600 text-xs mt-1">Below 3m minimum</p>
-               )}
              </div>
              <div className="bg-white rounded p-2 border border-violet-100">
                <span className="text-gray-500">Main Lot</span>

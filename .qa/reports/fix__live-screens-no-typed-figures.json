@@ -1,0 +1,84 @@
+{
+  "tier": "standard",
+  "justification": "Live screens showed typed planning rules: ADG separation fallbacks and an invented page number, a share image declaring CDC available from a typed 450 m2, and typed setbacks, lot sizes, floor areas and council values in tool pages, FAQs, the AI formatter and the granny flat PDF.",
+  "commit_hash": "382cbc82",
+  "files": [
+    ".claude/regulatory_figure_ledger.json",
+    "frontend-nextjs/app/(tools)/granny-flat/page.tsx",
+    "frontend-nextjs/app/api/adg/separation-table/route.ts",
+    "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
+    "frontend-nextjs/app/api/og/granny-flat/route.tsx",
+    "frontend-nextjs/app/how-it-works/page.tsx",
+    "frontend-nextjs/app/reports/granny-flat/page.tsx",
+    "frontend-nextjs/components/compliance/ADGSummaryCard.tsx",
+    "frontend-nextjs/components/compliance/CDCPathway.tsx",
+    "frontend-nextjs/components/property-details-comprehensive.tsx",
+    "frontend-nextjs/components/tools/GrannyFlatTool.tsx",
+    "frontend-nextjs/lib/ai/formatter.ts",
+    "frontend-nextjs/lib/lga-data/threat-radar-lgas.ts",
+    "frontend-nextjs/lib/lga-data/verify-lgas.ts",
+    "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
+    "frontend-nextjs/components/assessment/core/compliance-status.tsx",
+    "frontend-nextjs/components/property/PropertyPanel.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "What existing data/state does this interact with? [table/column or 'none']",
+    "assumption_mismatch": "What if existing data doesn't match assumptions? [specific failure]",
+    "new_vs_existing": "Will this apply to existing rows or only new? [mechanism]",
+    "external_source_error": "(Critical only) What does external source return on error?",
+    "frontend_type": "(Critical only) Does frontend type need updating?",
+    "user_failure_mode": "(Critical only) What does user see if this fails?"
+  },
+  "functions": [
+    {
+      "name": "parseADGSeparationText",
+      "file_line": "frontend-nextjs/app/api/adg/separation-table/route.ts:39",
+      "input": "ADG 3F-1 requirement text read from sepp_adg_requirements",
+      "output": "parsed rows, or an empty list when the text cannot be parsed",
+      "if_none": "empty rows; the card says the table could not be read"
+    },
+    {
+      "name": "assess (OG image)",
+      "file_line": "frontend-nextjs/app/api/og/granny-flat/route.tsx:35",
+      "input": "property record, lot area, frontage, depth from the lookup",
+      "output": "facts plus a blocker only for zone or heritage; never a pass verdict",
+      "if_none": "neutral label: Check what applies to this lot"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "ADG text in the DB stops matching the parser",
+      "what_happens": "card used to show typed distances as if read from the guide",
+      "repro": "set requirement_text to an unparseable string",
+      "mitigated": true,
+      "how": "route returns no rows and the card shows a could-not-read message"
+    },
+    {
+      "scenario": "a 300 m2 lot is shared on social media",
+      "what_happens": "image could say CDC Pathway Available from a typed rule",
+      "repro": "GET /api/og/granny-flat?address=<small lot>",
+      "mitigated": true,
+      "how": "pass verdict removed; label is neutral unless zone or heritage blocks"
+    },
+    {
+      "scenario": "a rewrite leaves an unescaped apostrophe",
+      "what_happens": "TypeScript build fails and the page 404s",
+      "repro": "npx tsc --noEmit",
+      "mitigated": true,
+      "how": "7 apostrophes escaped in verify-lgas.ts; tsc shows no syntax errors in touched files"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none",
+    "secrets": "none",
+    "other_repo": "none",
+    "manual_verify": "open /assessment ADG card and /granny-flat; fetch /api/og/granny-flat for one address"
+  },
+  "falsifiable_check": {
+    "command": "python scripts/lint_hardcoded_regulatory_numbers.py",
+    "fails_when": "a reachable user-facing string carries a typed rule value that is not listed",
+    "observed_red": "origin/main before: 283 open with style values unlisted; after: 169"
+  }
+}

@@ -371,7 +371,7 @@ function formatFactualResponse(data: any): string {
         response += `\n• ${p.text}`;
       }
     } else {
-      response += '\n\n**Parking** — *Check DCP for parking requirements. Typically 1-2 spaces required for dwelling houses.*';
+      response += '\n\n**Parking** — *Check DCP for parking requirements.*';
     }
   }
 
@@ -383,7 +383,7 @@ function formatFactualResponse(data: any): string {
         response += `\n• ${l.text}`;
       }
     } else {
-      response += '\n\n**Landscaping** — *Check DCP for landscaping requirements. Typically 30-50% of site required as landscaped area.*';
+      response += '\n\n**Landscaping** — *Check DCP for landscaping requirements.*';
     }
   }
 
