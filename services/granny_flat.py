@@ -1997,9 +1997,9 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             warnings.append(
                 f"Insufficient space for a complying development granny flat. "
                 f"After the principal dwelling footprint (~{req.main_dwelling_area_m2:.0f} m²), "
-                f"approximately {residual_area_m2:.0f} m² remains — less than our estimate of "
-                f"the ground a {max_floor_area_m2:.0f} m² secondary dwelling plus its "
-                f"SEPP (Housing) 2021 Schedule 1 setbacks needs. "
+                f"approximately {residual_area_m2:.0f} m² remains — less than our rough "
+                f"estimate of the ground a granny flat plus its SEPP (Housing) 2021 "
+                f"Schedule 1 setbacks needs (an estimate, not a planning rule). "
                 f"A DA pathway may allow a smaller or differently positioned structure — "
                 f"consult a town planner."
             )
