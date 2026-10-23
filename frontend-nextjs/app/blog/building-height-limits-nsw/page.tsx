@@ -32,38 +32,38 @@ function HeightLimitsExamples() {
   const examples = [
     {
       zone: 'R2 Low Density Residential',
-      typicalHeight: '8.5–9 m',
-      typicalStoreys: '2 storeys',
-      notes: 'Most common residential zone. Height limits vary by council — some set 8.5 m, others 9 m.',
+      typicalHeight: 'The lowest residential limits, set for detached houses',
+      typicalStoreys: 'Low-rise houses',
+      notes: 'Most common residential zone. Height limits vary by council, and even by street within one council.',
     },
     {
       zone: 'R3 Medium Density Residential',
-      typicalHeight: '9–12 m',
-      typicalStoreys: '2–3 storeys',
+      typicalHeight: 'Higher than R2, allowing taller buildings',
+      typicalStoreys: 'Townhouses and small apartment buildings',
       notes: 'Allows attached dwellings, multi dwelling housing, and some residential flat buildings.',
     },
     {
       zone: 'R4 High Density Residential',
-      typicalHeight: '15–45+ m',
-      typicalStoreys: '4–15+ storeys',
+      typicalHeight: 'Widely variable, from mid-rise up to towers near stations and centres',
+      typicalStoreys: 'Mid-rise to high-rise',
       notes: 'Highly variable. Height limits in R4 zones depend heavily on the specific area and council strategy.',
     },
     {
       zone: 'B1/B2 Commercial',
-      typicalHeight: '10–25 m',
-      typicalStoreys: '2–6 storeys',
+      typicalHeight: 'Varies by centre, from local shop strips to town centre cores',
+      typicalStoreys: 'Low to mid-rise',
       notes: 'Town centres and local centres. Often have bonus height provisions for active ground floor uses.',
     },
     {
       zone: 'E1/E2 (formerly RU)',
-      typicalHeight: '8–10 m',
-      typicalStoreys: '2 storeys',
+      typicalHeight: 'Generally low, close to residential low-density limits',
+      typicalStoreys: 'Low-rise',
       notes: 'Environmental and rural zones. Low height limits to protect landscape character.',
     },
     {
       zone: 'IN1/IN2 Industrial',
-      typicalHeight: '12–15 m',
-      typicalStoreys: 'N/A (measured in metres)',
+      typicalHeight: 'Set by the height map, often taller than low-density residential to fit warehouse volumes',
+      typicalStoreys: 'Not usually described in storeys',
       notes: 'Industrial buildings are typically measured by overall height, not storeys.',
     },
   ];
@@ -74,8 +74,8 @@ function HeightLimitsExamples() {
         <thead>
           <tr className="bg-slate-50 text-left">
             <th className="px-4 py-3 font-semibold text-slate-900">Zone</th>
-            <th className="px-4 py-3 font-semibold text-slate-900">Typical height</th>
-            <th className="px-4 py-3 font-semibold text-slate-900 hidden sm:table-cell">Typical storeys</th>
+            <th className="px-4 py-3 font-semibold text-slate-900">How the limit usually looks</th>
+            <th className="px-4 py-3 font-semibold text-slate-900 hidden sm:table-cell">Typical building type</th>
             <th className="px-4 py-3 font-semibold text-slate-900 hidden md:table-cell">Notes</th>
           </tr>
         </thead>
@@ -91,7 +91,7 @@ function HeightLimitsExamples() {
         </tbody>
       </table>
       <p className="text-xs text-slate-400 mt-2">
-        These are indicative ranges across NSW councils. The actual height limit for a specific
+        These describe general patterns across NSW councils, not limits. The actual height limit for a specific
         lot is shown on the LEP Height of Buildings Map for that council area.
       </p>
     </div>
@@ -118,7 +118,7 @@ export default function BuildingHeightLimitsPage() {
 
       <p className="text-lg text-slate-600 mb-6 leading-relaxed">
         Building height limits in NSW are set by the Local Environmental Plan (LEP) as a mapped
-        numeric control — Clause 4.3 &ldquo;Height of buildings&rdquo; in the Standard
+        numeric control — the &ldquo;Height of buildings&rdquo; standard in the Standard
         Instrument LEP. The height limit for a property is shown on the LEP Height of Buildings
         Map, measured in metres from existing ground level to the highest point of the building.
       </p>
@@ -143,7 +143,7 @@ export default function BuildingHeightLimitsPage() {
             ['height-and-fsr', 'How height interacts with FSR'],
             ['height-and-setbacks', 'How height affects setbacks'],
             ['height-planes', 'Building height planes in DCPs'],
-            ['clause-46', 'Cl 4.6 variations — exceeding the height limit'],
+            ['clause-46', 'Variations — exceeding the height limit'],
             ['sepp-heights', 'SEPP height provisions'],
             ['how-to-check', 'How to check the height limit for your property'],
           ].map(([id, label]) => (
@@ -186,8 +186,9 @@ export default function BuildingHeightLimitsPage() {
         <p className="text-slate-600 mb-3 leading-relaxed">
           Every LEP in NSW has a Height of Buildings Map (HOB Map) that assigns a maximum
           building height in metres to each parcel of land. The map uses letter codes
-          (e.g., &ldquo;I&rdquo; = 9 m, &ldquo;J&rdquo; = 10 m) which correspond to heights
-          in the map legend.
+          (for example &ldquo;I&rdquo; or &ldquo;J&rdquo;) which correspond to heights
+          in the map legend. Two neighbouring letters can mean a difference of a metre or so,
+          which is often the difference between a flat roof and a pitched one.
         </p>
         <p className="text-slate-600 mb-3 leading-relaxed">
           The height map is available on the{' '}
@@ -195,7 +196,7 @@ export default function BuildingHeightLimitsPage() {
             NSW Planning Portal
           </Link>{' '}
           as a spatial layer. You can also access it through the council&apos;s own mapping
-          system or through the formal s10.7 planning certificate process.
+          system or through the formal planning certificate process.
         </p>
         <p className="text-slate-600 leading-relaxed">
           Be aware that some lots sit across multiple height bands on the map — this is common
@@ -209,9 +210,12 @@ export default function BuildingHeightLimitsPage() {
       <section id="common-limits" className="mb-10">
         <h2 className="text-xl font-bold text-slate-900 mb-3">Common height limits by zone</h2>
         <p className="text-slate-600 mb-3 leading-relaxed">
-          Height limits vary by council and zone. The table below shows typical ranges seen
+          Height limits vary by council and zone. The table below describes general patterns seen
           across NSW councils. The actual height for your property may differ — always check the
-          LEP map.
+          LEP map, or{' '}
+          <Link href="/check" className="text-teal-600 underline underline-offset-2 hover:text-teal-500">
+            check the height limit for your lot
+          </Link>.
         </p>
         <HeightLimitsExamples />
       </section>
@@ -226,11 +230,12 @@ export default function BuildingHeightLimitsPage() {
           storey limits mentioned in DCPs, the Apartment Design Guide (ADG), and SEPP provisions.
         </p>
         <p className="text-slate-600 mb-3 leading-relaxed">
-          A rough conversion: residential floor-to-floor height is approximately 3 m, so an 8.5 m
-          height limit accommodates 2 storeys plus a pitched roof. A 12 m limit accommodates
-          3 storeys. But these are approximations — roof form, floor-to-ceiling height, and
-          structural depth all affect whether a given number of storeys fits within the
-          height limit.
+          There is no fixed conversion. Each storey needs floor-to-ceiling height plus the
+          depth of the floor structure, and a pitched roof adds more on top. A low-density limit
+          tends to fit two storeys with a pitched roof; a medium-density limit tends to fit a
+          third. Roof form, ceiling height, and structural depth all change the answer, so a
+          metre limit never translates neatly into a storey count and flat-roof designs often
+          gain a storey over pitched ones.
         </p>
         <p className="text-slate-600 leading-relaxed">
           Where both a metre height limit (LEP) and a storey limit (DCP or SEPP) apply, both
@@ -269,7 +274,7 @@ export default function BuildingHeightLimitsPage() {
         <p className="text-slate-600 leading-relaxed">
           In some areas — particularly where councils have recently upzoned — the height and FSR
           controls may not align perfectly. For example, a zone might have a height limit that
-          would permit 6 storeys but an FSR that can only be achieved in 4 storeys. The more
+          would permit several more storeys than the FSR can actually deliver on a small lot. The more
           restrictive control governs.
         </p>
       </section>
@@ -286,10 +291,11 @@ export default function BuildingHeightLimitsPage() {
         </p>
         <p className="text-slate-600 mb-3 leading-relaxed">
           The Apartment Design Guide (ADG) takes this further with building separation distances
-          that scale with height: 12 m for buildings up to 4 storeys, 18 m for 5&ndash;8
-          storeys, 24 m for 9+ storeys. These are measured between facing habitable rooms and
-          translate into side setback requirements of half the separation distance from each
-          boundary.
+          that grow as buildings get taller: a low apartment building needs less separation
+          than a mid-rise one, and a tower needs the most. These are measured between facing
+          habitable rooms and translate into side setback requirements of a share of the
+          separation distance from each boundary, so every extra storey can push the building
+          further in from the side boundaries.
         </p>
         <p className="text-slate-600 leading-relaxed">
           Some DCPs also use &ldquo;building height planes&rdquo; — angled planes from
@@ -309,10 +315,11 @@ export default function BuildingHeightLimitsPage() {
           point on the boundary and slope inward at a specified angle.
         </p>
         <p className="text-slate-600 mb-3 leading-relaxed">
-          For example, a DCP might specify a height plane that starts at 3.5 m on the side
-          boundary and rises at 45 degrees. This means the building can be 3.5 m at the
-          boundary, 5 m at 1.5 m from the boundary, 6.5 m at 3 m from the boundary, and so on —
-          up to the LEP height limit.
+          For example, a DCP might specify a height plane that starts at a set height on the side
+          boundary and rises at a set angle. This means the building can only be that low at the
+          boundary, and gets progressively taller the further it sits from the boundary, up to the
+          LEP height limit. A wider lot can fit a taller roofline under the plane than a narrow
+          one. The starting height and angle come from your council&apos;s DCP.
         </p>
         <p className="text-slate-600 leading-relaxed">
           Height planes are a DCP control, not an LEP control. They sit below the LEP height
@@ -324,27 +331,27 @@ export default function BuildingHeightLimitsPage() {
         </p>
       </section>
 
-      {/* ---- Cl 4.6 ---- */}
+      {/* ---- Variations ---- */}
       <section id="clause-46" className="mb-10">
         <h2 className="text-xl font-bold text-slate-900 mb-3">
-          Cl 4.6 variations — exceeding the height limit
+          Variations — exceeding the height limit
         </h2>
         <p className="text-slate-600 mb-3 leading-relaxed">
-          Clause 4.6 of the Standard Instrument LEP provides a mechanism to vary development
+          The Standard Instrument LEP includes a clause that provides a mechanism to vary development
           standards (including height). An applicant must demonstrate that compliance with the
           standard is &ldquo;unreasonable or unnecessary in the circumstances&rdquo; and that
           there are environmental planning grounds that justify the variation.
         </p>
         <p className="text-slate-600 mb-3 leading-relaxed">
-          The test was clarified by the Court of Appeal in <em>Wehbe v Pittwater Council</em>
-          {' '}[2007] NSWLEC 827, which established five ways to demonstrate that compliance is
+          The test was clarified by the Land and Environment Court in <em>Wehbe v Pittwater Council</em>,
+          which established several ways to demonstrate that compliance is
           unreasonable or unnecessary. In practice, the most commonly relied upon test is that
           the objectives of the development standard are achieved despite the non-compliance.
         </p>
         <p className="text-slate-600 leading-relaxed">
           Height variations above certain thresholds require concurrence from the Department of
-          Planning. Variations above 10% of a mapped LEP height limit are scrutinised more
-          closely. Variations of 40% or more are very rarely granted.
+          Planning. The larger the variation from the mapped LEP height limit, the more closely
+          it is scrutinised, and very large variations are rarely granted.
         </p>
       </section>
 
@@ -392,7 +399,7 @@ export default function BuildingHeightLimitsPage() {
             layer
           </li>
           <li>
-            A s10.7 planning certificate — ordered from the council (the height limit is a
+            A planning certificate — ordered from the council (the height limit is a
             standard inclusion)
           </li>
           <li>
@@ -400,8 +407,8 @@ export default function BuildingHeightLimitsPage() {
           </li>
         </ol>
         <p className="text-slate-600 leading-relaxed">
-          PlotDetect pulls the LEP height limit directly from the Planning Portal for all 128
-          NSW councils. Enter your address in{' '}
+          PlotDetect pulls the LEP height limit directly from the Planning Portal for NSW
+          councils. Enter your address in{' '}
           <Link href="/assessment" className="text-teal-600 underline underline-offset-2 hover:text-teal-500">
             Verify
           </Link>{' '}

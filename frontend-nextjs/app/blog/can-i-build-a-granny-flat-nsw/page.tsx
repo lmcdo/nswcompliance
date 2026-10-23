@@ -35,16 +35,16 @@ function EligibilityDecisionTree() {
       note: 'Check your zoning at planning.nsw.gov.au or via PlotDetect',
     },
     {
-      question: 'Is your lot at least 450 m\u00B2?',
+      question: 'Does your lot meet the minimum lot size for the CDC pathway?',
       yes: 'Continue',
-      no: 'Not eligible — minimum lot size for CDC pathway',
-      note: 'Some councils accept smaller lots via DA, but CDC requires 450 m\u00B2',
+      no: 'Not eligible for CDC — the SEPP sets a minimum lot size',
+      note: 'Some councils accept smaller lots via DA, but CDC requires the SEPP minimum. Your lot size is on the property check.',
     },
     {
       question: 'Is the property free of heritage listing or heritage conservation area?',
       yes: 'Continue',
       no: 'Not eligible for CDC — may still be possible via DA with heritage assessment',
-      note: 'Both individual heritage items and HCAs are excluded under Cl 37(1)(d)',
+      note: 'Both individual heritage items and HCAs are excluded from the CDC pathway',
     },
     {
       question: 'Is the property outside a flood planning area?',
@@ -97,12 +97,12 @@ function EligibilityDecisionTree() {
 function PathwayComparison() {
   const rows = [
     { label: 'Approval body', cdc: 'Private certifier', da: 'Council' },
-    { label: 'Typical timeframe', cdc: '10\u201320 business days', da: '45\u201390+ days' },
+    { label: 'Typical timeframe', cdc: 'Usually much quicker', da: 'Usually several times longer' },
     { label: 'Neighbour notification', cdc: 'Not required', da: 'Required' },
-    { label: 'Typical cost (approval fees)', cdc: '$3,000\u2013$6,000', da: '$5,000\u2013$15,000+' },
+    { label: 'Approval fees', cdc: 'Generally lower', da: 'Generally higher, set by council' },
     { label: 'Heritage properties', cdc: 'Not available', da: 'Available with heritage assessment' },
     { label: 'Flood-affected land', cdc: 'Not available', da: 'May be available with flood study' },
-    { label: 'Floor area cap', cdc: '60 m\u00B2', da: '60 m\u00B2 (same cap applies)' },
+    { label: 'Floor area cap', cdc: 'SEPP maximum applies', da: 'Same SEPP maximum is the benchmark' },
     { label: 'Design flexibility', cdc: 'Must meet all SEPP standards', da: 'Council can vary standards' },
   ];
 
@@ -198,17 +198,17 @@ export default function CanIBuildGrannyFlatPage() {
             <span className="font-medium">
               State Environmental Planning Policy (Housing) 2021
             </span>
-            , a secondary dwelling (granny flat) can be approved as complying
+            , a secondary dwelling (granny flat) can be given complying
             development if the property meets these minimum standards:
           </p>
           <div className="grid sm:grid-cols-2 gap-4 mt-2">
             {[
-              { label: 'Minimum lot size', value: '450 m\u00B2' },
-              { label: 'Maximum floor area', value: '60 m\u00B2' },
-              { label: 'Maximum height', value: '8.5 m (2 storeys)' },
+              { label: 'Minimum lot size', value: 'Set by the SEPP' },
+              { label: 'Maximum floor area', value: 'Set by the SEPP' },
+              { label: 'Maximum height', value: 'A maximum building height set by the Housing SEPP' },
               { label: 'Permitted zones', value: 'R1, R2, R3, RU5' },
-              { label: 'Rear setback (SEPP minimum)', value: '3 m' },
-              { label: 'Side setback (SEPP minimum)', value: '0.9 m' },
+              { label: 'Rear setback', value: 'SEPP minimum, grows with lot size' },
+              { label: 'Side setback', value: 'Grows with lot size and building height' },
             ].map((item) => (
               <div
                 key={item.label}
@@ -222,10 +222,18 @@ export default function CanIBuildGrannyFlatPage() {
             ))}
           </div>
           <p className="text-slate-700 leading-relaxed">
-            The 60 m&sup2; floor area cap is a hard limit under the SEPP. It
-            applies regardless of lot size &mdash; a 2,000 m&sup2; lot still
-            gets a maximum 60 m&sup2; granny flat under complying development.
-            Councils cannot increase this cap.
+            The floor area cap is a hard limit under the SEPP. It
+            applies regardless of lot size &mdash; a very large lot still
+            gets the same maximum granny flat floor area under complying
+            development. Councils cannot increase this cap. The actual
+            figures for your lot are on the{' '}
+            <Link
+              href="/check"
+              className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
+            >
+              property check
+            </Link>
+            .
           </p>
         </section>
 
@@ -268,7 +276,7 @@ export default function CanIBuildGrannyFlatPage() {
               <p className="text-slate-700 leading-relaxed">
                 If the property is individually heritage-listed or within a
                 heritage conservation area (HCA), complying development is not
-                available under Cl 37(1)(d). Many inner-Sydney suburbs have
+                available under the SEPP. Many inner-Sydney suburbs have
                 extensive HCA coverage. A property does not need to be a
                 heritage building itself &mdash; being within the HCA boundary
                 is enough to exclude CDC. DA with a heritage impact assessment
@@ -288,7 +296,7 @@ export default function CanIBuildGrannyFlatPage() {
                   href="/blog/section-10-7-flood-risk-nsw"
                   className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
                 >
-                  legislative changes in 2021 and 2023
+                  legislative changes to planning certificates
                 </Link>
                 , some certificates show less flood information than they
                 previously did. Check with your council or use a tool that
@@ -305,8 +313,8 @@ export default function CanIBuildGrannyFlatPage() {
                 but additional construction standards apply under the{' '}
                 <span className="font-medium">Planning for Bush Fire Protection</span>{' '}
                 guidelines. Asset protection zones and BAL ratings affect siting
-                and construction cost. Properties rated BAL-40 or BAL-FZ face
-                significantly higher build costs.
+                and construction cost. The highest bushfire attack levels
+                face significantly higher build costs.
               </p>
             </div>
 
@@ -328,11 +336,11 @@ export default function CanIBuildGrannyFlatPage() {
                 Lot too small or too narrow
               </h3>
               <p className="text-slate-700 leading-relaxed">
-                The 450 m&sup2; minimum is the SEPP threshold. Below this, CDC
-                is not available. Some older inner-city lots are under 450 m&sup2;
-                &mdash; these may still be eligible via DA if council supports
+                The SEPP sets a minimum lot size for CDC. Below it, CDC
+                is not available. Some older inner-city lots fall below that
+                threshold &mdash; these may still be eligible via DA if council supports
                 secondary dwellings at merit assessment, but there is no
-                guarantee of approval.
+                certainty of approval.
               </p>
             </div>
           </div>
@@ -345,41 +353,49 @@ export default function CanIBuildGrannyFlatPage() {
           </h2>
           <p className="text-slate-700 leading-relaxed">
             The SEPP Housing 2021 (formerly the Affordable Rental Housing SEPP)
-            sets out the CDC standards for secondary dwellings in Division 2,
-            Subdivision 6. Key provisions:
+            sets out the CDC standards for secondary dwellings. The main
+            controls are:
           </p>
           <ul className="space-y-2 text-slate-700 leading-relaxed list-disc list-inside">
             <li>
-              <span className="font-medium">Floor area:</span> maximum 60 m&sup2;
-              (Cl 39(1))
+              <span className="font-medium">Floor area:</span> a maximum floor
+              area for the secondary dwelling, whatever the lot size
             </li>
             <li>
-              <span className="font-medium">Height:</span> maximum 8.5 m
-              (Cl 39(2)(a))
+              <span className="font-medium">Height:</span> a maximum building
+              height, measured from existing ground level
             </li>
             <li>
-              <span className="font-medium">Rear setback:</span> minimum 3 m
-              (Cl 39(2)(b))
+              <span className="font-medium">Rear setback:</span> a minimum
+              distance from the rear boundary, which grows with lot size
             </li>
             <li>
-              <span className="font-medium">Side setback:</span> minimum 0.9 m
-              (single storey) or 1.5 m (two storey)
+              <span className="font-medium">Side setback:</span> a minimum
+              distance from each side boundary, larger for a two-storey
+              granny flat than a single-storey one
             </li>
             <li>
               <span className="font-medium">Landscaped area:</span> minimum
               percentage of the lot must remain landscaped (varies by lot size)
             </li>
             <li>
-              <span className="font-medium">Private open space:</span> minimum
-              24 m&sup2; accessible from the secondary dwelling
+              <span className="font-medium">Private open space:</span> a minimum
+              area accessible from the secondary dwelling
             </li>
             <li>
-              <span className="font-medium">Car parking:</span> one additional
-              space required (may be tandem or stacked with existing)
+              <span className="font-medium">Car parking:</span> an additional
+              space is generally required (which may be tandem or stacked with existing)
             </li>
           </ul>
           <p className="text-slate-700 leading-relaxed">
-            These are the SEPP minimums. Your council&apos;s Development Control
+            The actual values for your lot are on the{' '}
+            <Link
+              href="/granny-flat"
+              className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
+            >
+              granny flat eligibility check
+            </Link>
+            . These are the SEPP minimums. Your council&apos;s Development Control
             Plan (DCP) may impose additional or stricter requirements on top of
             these. See our guide on{' '}
             <Link
@@ -403,7 +419,7 @@ export default function CanIBuildGrannyFlatPage() {
             include:
           </p>
           <ul className="space-y-2 text-slate-700 leading-relaxed list-disc list-inside">
-            <li>Larger rear setbacks than the SEPP 3 m minimum</li>
+            <li>Larger rear setbacks than the SEPP minimum</li>
             <li>Separation distances between the main dwelling and the granny flat</li>
             <li>Additional landscaping or deep soil planting requirements</li>
             <li>Materials and finishes to match the streetscape character</li>
@@ -435,11 +451,11 @@ export default function CanIBuildGrannyFlatPage() {
           <div className="space-y-6">
             <div>
               <h3 className="text-base font-semibold text-slate-900 mb-1">
-                Can I build a granny flat bigger than 60 m&sup2;?
+                Can I build a granny flat bigger than the SEPP floor area cap?
               </h3>
               <p className="text-slate-700 leading-relaxed">
                 Not under the SEPP Housing 2021 complying development pathway.
-                The 60 m&sup2; cap applies regardless of lot size. Some councils
+                The cap applies regardless of lot size. Some councils
                 may consider larger secondary dwellings via DA in specific
                 circumstances, but this is council-dependent and not guaranteed.
               </p>
@@ -450,8 +466,8 @@ export default function CanIBuildGrannyFlatPage() {
                 Can I rent out a granny flat?
               </h3>
               <p className="text-slate-700 leading-relaxed">
-                Yes. Secondary dwellings approved under the SEPP can be rented
-                out. The previous 10-year moratorium on separate sale of
+                Yes. Secondary dwellings built under the SEPP can be rented
+                out. An earlier restriction on separate sale of
                 secondary dwellings has been lifted for some lot configurations,
                 but most granny flats remain tied to the primary lot title.
               </p>

@@ -43,7 +43,7 @@ function SubdivisionDecisionTree() {
     {
       question: 'Does your lot meet the minimum for two lots?',
       detail:
-        'Both resulting lots must meet or exceed the minimum lot size. A 700sqm lot with a 300sqm minimum can create two 350sqm lots.',
+        'Both resulting lots must meet or exceed the minimum lot size. For example, a lot at least double the minimum can potentially be split in two, while one just under double cannot.',
       outcomes: [
         { label: 'Yes', result: 'Subdivision may be possible', ok: true },
         {

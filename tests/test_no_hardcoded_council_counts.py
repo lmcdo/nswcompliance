@@ -41,9 +41,6 @@ PUBLIC_FACTS = {"128"}
 #: An entry whose file no longer contains a count is a failure too, so this
 #: cannot rot into agreeing with whatever happens to be true.
 ALLOWED: dict[str, str] = {
-    "blog/merged-lga-different-setback-rules/page.tsx":
-        "Historical: '43 councils merged into 20 new entities' in 2016. A past event, "
-        "not a coverage figure, and it must NOT move when our coverage does.",
     "open-data/page.tsx":
         "'Inner West has ~4,600 provisions; other councils have fewer' — a per-council "
         "depth illustration, explicitly uneven and deliberately approximate.",

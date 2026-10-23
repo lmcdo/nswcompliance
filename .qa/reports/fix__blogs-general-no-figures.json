@@ -1,0 +1,79 @@
+{
+  "tier": "standard",
+  "justification": "General blog articles stated rule numbers and clause citations a reader could act on for their own lot; now plain explanations with links to the property check. Shadow figures marked not served (tool off since #1449).",
+  "commit_hash": "bb2f7e14",
+  "files": [
+    ".claude/regulatory_figure_ledger.json",
+    "frontend-nextjs/app/blog/building-height-limits-nsw/page.tsx",
+    "frontend-nextjs/app/blog/can-i-build-a-granny-flat-nsw/page.tsx",
+    "frontend-nextjs/app/blog/cdc-vs-da-which-approval-pathway/page.tsx",
+    "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
+    "frontend-nextjs/app/blog/development-control-plans-explained/page.tsx",
+    "frontend-nextjs/app/blog/granny-flat/[council-slug]/page.tsx",
+    "frontend-nextjs/app/blog/heritage-conservation-area-granny-flat-nsw/page.tsx",
+    "frontend-nextjs/app/blog/is-my-house-in-a-flood-zone-nsw/page.tsx",
+    "frontend-nextjs/app/blog/merged-lga-different-setback-rules/page.tsx",
+    "frontend-nextjs/app/blog/modular-prefab-homes-nsw-building-bill-2026/page.tsx",
+    "frontend-nextjs/app/blog/nsw-building-bill-2026-certifier-penalties/page.tsx",
+    "frontend-nextjs/app/blog/regional-property-conveyancing-nsw/page.tsx",
+    "frontend-nextjs/app/blog/setback-requirements-nsw/page.tsx",
+    "frontend-nextjs/app/blog/subdivide-property-nsw-minimum-lot-sizes/page.tsx",
+    "frontend-nextjs/app/blog/tiny-houses-nsw-planning-rules/page.tsx",
+    "frontend-nextjs/app/blog/uninsurable-households-australia-2050/page.tsx",
+    "frontend-nextjs/app/blog/what-can-i-build-rural-land-nsw/page.tsx",
+    "frontend-nextjs/lib/blog-articles.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "What existing data/state does this interact with? [table/column or 'none']",
+    "assumption_mismatch": "What if existing data doesn't match assumptions? [specific failure]",
+    "new_vs_existing": "Will this apply to existing rows or only new? [mechanism]",
+    "external_source_error": "(Critical only) What does external source return on error?",
+    "frontend_type": "(Critical only) Does frontend type need updating?",
+    "user_failure_mode": "(Critical only) What does user see if this fails?"
+  },
+  "functions": [
+    {
+      "name": "blog article copy",
+      "file_line": "frontend-nextjs/app/blog/can-i-build-a-granny-flat-nsw/page.tsx:205",
+      "input": "static article text and tables in the blog pages",
+      "output": "explanations without rule values, linking to /check or the topic tool",
+      "if_none": "static content; nothing can be missing at runtime"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "reader applies an article setback to their own lot",
+      "what_happens": "they plan with a value that does not apply to them",
+      "repro": "read setback-requirements-nsw typical table on origin/main",
+      "mitigated": true,
+      "how": "values replaced with what the control depends on, plus a /check link"
+    },
+    {
+      "scenario": "rewrite leaves an unescaped apostrophe in a string",
+      "what_happens": "the page fails to build and the blog 404s",
+      "repro": "npx tsc --noEmit on the blog files",
+      "mitigated": true,
+      "how": "two found and escaped; tsc clean on app/blog"
+    },
+    {
+      "scenario": "link points at the switched-off shadow tool",
+      "what_happens": "reader lands on a 404 page",
+      "repro": "grep -rn \"/shadow\" frontend-nextjs/app/blog",
+      "mitigated": true,
+      "how": "agents told not to link it; grep shows no new shadow links"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none",
+    "secrets": "none",
+    "other_repo": "none",
+    "manual_verify": "open /blog/can-i-build-a-granny-flat-nsw and /blog/setback-requirements-nsw and read the tables"
+  },
+  "falsifiable_check": {
+    "command": "python scripts/lint_hardcoded_regulatory_numbers.py",
+    "fails_when": "any app/blog file or lib/blog-articles.ts has an open or unlisted typed figure",
+    "observed_red": "origin/main: 56 open figures across 18 blog files; after: 0, total 364 -> 307"
+  }
+}

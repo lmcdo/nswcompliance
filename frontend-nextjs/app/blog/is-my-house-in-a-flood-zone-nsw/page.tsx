@@ -81,7 +81,7 @@ export default function FloodZoneCheckPage() {
           <p className="text-slate-700 leading-relaxed">
             A property can be &ldquo;flood prone&rdquo; without being in the Flood Planning Area, and
             vice versa. The FPA is the one that matters most for planning approvals and is typically
-            based on the 1% AEP (1-in-100 year) flood plus a freeboard allowance (usually 0.5m).
+            based on a design flood (the large, rare flood the council plans for) plus a freeboard allowance that council sets. <Link href="/flood-risk" className="text-teal-600 underline underline-offset-2 hover:text-teal-500">See the flood information for your property</Link>.
           </p>
         </section>
 
@@ -233,7 +233,7 @@ export default function FloodZoneCheckPage() {
             the flood-related clauses in the LEP and DCP. Typically, this means:
           </p>
           <ul className="space-y-2 text-slate-700 leading-relaxed list-disc list-inside">
-            <li>Minimum floor levels — habitable floors must be above the 1% AEP flood level plus freeboard</li>
+            <li>Minimum floor levels — habitable floors must be above your council's flood planning level (a design flood plus a freeboard allowance)</li>
             <li>Building materials — below the flood planning level, materials must be flood-compatible (no plasterboard, carpet, etc.)</li>
             <li>Structural design — buildings must withstand flood forces (hydrostatic and hydrodynamic loads)</li>
             <li>Evacuation — the site must have a viable evacuation route that doesn&apos;t require crossing floodwater</li>
@@ -256,7 +256,7 @@ export default function FloodZoneCheckPage() {
           </p>
           <p className="text-slate-700 leading-relaxed">
             Equally, a property just outside the flood planning area boundary isn&apos;t necessarily safe.
-            The boundary is drawn at a specific flood level (usually 1% AEP + freeboard), and it
+            The boundary is drawn at a specific flood level (the design flood plus freeboard), and it
             represents a modelling output with inherent uncertainty. Climate change is also shifting
             these boundaries — the current flood planning level was calculated using historical rainfall
             data that may not reflect future conditions.

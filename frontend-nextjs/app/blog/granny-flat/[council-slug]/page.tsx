@@ -226,7 +226,7 @@ function FaqSection({ stats }: { stats: CouncilStats }) {
     },
     {
       q: `Can I build a granny flat in ${stats.shortName}?`,
-      a: `Under SEPP Housing 2021, secondary dwellings are permitted in R1, R2, R3, and RU5 zones on lots of at least 450 m\u00B2. The property must not be a heritage item, in a heritage conservation area, or affected by certain environmental overlays. ${hasToolPage ? 'Use the free eligibility checker linked below to check your specific address.' : 'Check your property at planning.nsw.gov.au.'}`,
+      a: `Under SEPP Housing 2021, secondary dwellings are permitted in the residential zones and RU5 village zone the SEPP lists, on lots that meet its minimum lot size. The property must not be a heritage item, in a heritage conservation area, or affected by certain environmental overlays. ${hasToolPage ? 'Use the free eligibility checker linked below to check your specific address.' : 'Check your property at planning.nsw.gov.au.'}`,
     },
   ]
 
@@ -301,8 +301,8 @@ export default function CouncilGrannyFlatStatsPage({
           {stats.cdcMedianCost != null && (
             <> Median self-reported CDC build cost is {formatCost(stats.cdcMedianCost)}.</>
           )}
-          {' '}Under SEPP Housing 2021, secondary dwellings are permitted on lots
-          of at least 450 m{'\u00B2'} in R1, R2, R3, and RU5 zones.
+          {' '}Under SEPP Housing 2021, secondary dwellings are permitted
+          in the residential zones and RU5 village zone the SEPP lists, on lots that meet its minimum lot size. <Link href="/check" className="text-teal-600 underline underline-offset-2 hover:text-teal-500">Check the minimum lot size for your property</Link>.
           {' '}Source: NSW Planning Portal open data as of {DATA_AS_OF}.
         </p>
       </section>
@@ -477,12 +477,12 @@ export default function CouncilGrannyFlatStatsPage({
           </p>
           <div className="grid sm:grid-cols-2 gap-4 mt-2">
             {[
-              { label: 'Minimum lot size', value: '450 m\u00B2' },
-              { label: 'Maximum floor area', value: '60 m\u00B2' },
+              { label: 'Minimum lot size', value: 'Set in the Housing SEPP; check your lot' },
+              { label: 'Maximum floor area', value: 'Capped by the Housing SEPP' },
               { label: 'Permitted zones', value: 'R1, R2, R3, RU5' },
-              { label: 'Rear setback', value: '3 m (SEPP minimum)' },
-              { label: 'Side setback', value: '0.9 m (SEPP minimum)' },
-              { label: 'Maximum height', value: '8.5 m (2 storeys)' },
+              { label: 'Rear setback', value: 'SEPP minimum, or your DCP if stricter' },
+              { label: 'Side setback', value: 'SEPP minimum, or your DCP if stricter' },
+              { label: 'Maximum height', value: 'Set by the SEPP and your LEP height map' },
             ].map(item => (
               <div
                 key={item.label}

@@ -7,9 +7,9 @@ import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
-    'The NSW Building Bill 2026: $1.1M Certifier Penalties and What It Means for the Industry — PlotDetect',
+    'The NSW Building Bill 2026: Certifier Penalties and What It Means for the Industry — PlotDetect',
   description:
-    'The NSW Building Bill 2026 introduces $1.1M penalties for certifiers, a Building Commission with investigative powers, and mandatory professional standards. What builders, certifiers, and developers need to prepare for.',
+    'The NSW Building Bill 2026 introduces much higher penalties for certifiers, a Building Commission with investigative powers, and mandatory professional standards. What builders, certifiers, and developers need to prepare for.',
   keywords: [
     'NSW Building Bill 2026',
     'building certifier penalties NSW',
@@ -184,7 +184,7 @@ function CommissionPowers() {
       title: 'Discipline',
       items: [
         'Suspend or cancel registration',
-        'Impose fines up to $1.1M (individuals)',
+        'Impose fines on individuals (maximums set by the Act)',
         'Publish disciplinary findings',
       ],
     },
@@ -227,8 +227,8 @@ export default function BuildingBillCertifierPenaltiesPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
       <BlogPostingJsonLd
-        title={`The NSW Building Bill 2026: \$1.1M certifier penalties and what it means`}
-        description={`Maximum penalties up to \$1.1M, a Building Commission with investigative powers, and mandatory professional standards. What builders and certifiers need to know.`}
+        title={`The NSW Building Bill 2026: certifier penalties and what it means`}
+        description={`Much higher maximum penalties, a Building Commission with investigative powers, and mandatory professional standards. What builders and certifiers need to know.`}
         slug="nsw-building-bill-2026-certifier-penalties"
         date="2026-05-20"
       />
@@ -241,7 +241,7 @@ export default function BuildingBillCertifierPenaltiesPage() {
           <span className="text-xs text-slate-400">May 2026</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight leading-tight mb-4">
-          The NSW Building Bill 2026: $1.1M certifier penalties and what it means
+          The NSW Building Bill 2026: certifier penalties and what it means
           for the industry
         </h1>
         <p className="text-lg text-slate-500 leading-relaxed">

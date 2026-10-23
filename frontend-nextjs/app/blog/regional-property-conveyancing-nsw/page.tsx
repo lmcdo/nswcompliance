@@ -46,7 +46,7 @@ function FiveItemsChecklist() {
       number: 3,
       title: 'Minimum lot sizes for subdivision',
       summary:
-        'Rural zone minimums range from 2ha to 100ha+ \u2014 not the 450m\u00B2 city conveyancers expect',
+        'Rural zone minimums are set on the LEP map and are hectares, not the suburban block sizes city conveyancers expect',
       icon: '!',
       color: 'bg-amber-500',
     },
@@ -118,8 +118,8 @@ function MetroVsRegionalComparison() {
     },
     {
       aspect: 'Subdivision minimum',
-      metro: '150\u2013600m\u00B2 typical',
-      regional: '2ha\u2013100ha+ depending on zone',
+      metro: 'Suburban block sizes, set on the LEP map',
+      regional: 'Hectares, varying by zone and LEP map',
     },
     {
       aspect: 'Road access',
@@ -346,16 +346,16 @@ export default function RegionalPropertyConveyancingPage() {
           </h2>
           <p className="text-slate-700 leading-relaxed">
             In metro zones (R1, R2, R3), minimum lot sizes for subdivision
-            typically range from 150m&sup2; to 600m&sup2;. City conveyancers
+            are suburban block sizes set on the LEP lot size map. City conveyancers
             who work exclusively with metro properties develop an intuition
             that a &ldquo;large block&rdquo; means subdivision potential.
           </p>
           <p className="text-slate-700 leading-relaxed">
             In rural zones (RU1, RU2, RU4, RU5), minimum lot sizes in the LEP
-            can range from 2 hectares to 100 hectares or more. A 10-acre
-            (4ha) property that looks enormous to a city buyer may be well
+            are measured in hectares. A 10-acre
+            property that looks enormous to a city buyer may be well
             below the minimum for subdivision in an RU1 Primary Production
-            zone.
+            zone. <Link href="/check" className="text-teal-600 underline underline-offset-2 hover:text-teal-500">Check the minimum lot size for your property</Link>.
           </p>
           <p className="text-slate-700 leading-relaxed">
             Dual occupancy permissibility also varies. SEPP (Housing) 2021

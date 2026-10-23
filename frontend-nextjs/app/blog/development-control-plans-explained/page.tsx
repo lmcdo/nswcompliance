@@ -103,7 +103,7 @@ function DCPContentsGrid() {
     },
     {
       title: 'Solar access',
-      detail: 'Hours of sunlight that neighbouring properties must retain (typically 2–3 hours mid-winter).',
+      detail: 'Hours of sunlight that neighbouring properties must retain (the required hours of mid-winter sun are set in your council\'s DCP).',
     },
     {
       title: 'Privacy',
@@ -395,7 +395,7 @@ export default function DCPExplainedPage() {
             },
             {
               mistake: 'Missing precinct-specific overrides',
-              detail: 'The general residential controls may say "6 m front setback" but the precinct section may say "4.5 m". The precinct control takes precedence.',
+              detail: 'The general residential controls may set one front setback for the whole LGA but the precinct section may set a shorter one for your street. The precinct control takes precedence.',
             },
             {
               mistake: 'Applying DCP controls to a CDC application',
