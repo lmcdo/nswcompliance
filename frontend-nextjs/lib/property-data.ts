@@ -19,6 +19,8 @@ import { determineFormerCouncilArea as determineFormerCouncilAreaUtil } from './
 import { detectLGAFromName, tryGetLGAConfig } from './lga-configs';
 import { getSiteSpecificClauses, getSiteSpecificProvisionDetails } from './site-specific-part6-mapping';
 import { calculateLotDimensions, type LotDimensions } from './geometry/lot-dimensions';
+import { applyBattleaxeLimits } from '@/lib/cdc/battleaxe-cdc';
+import { loadBattleaxeLimits } from '@/lib/cdc/battleaxe-cdc-db';
 import { deriveAnefBuildingAcceptability } from './see/propertyUtils';
 import { detectCornerLot, type CornerLotResult } from './geometry/corner-lot-detection';
 import type { HazardKey } from './hazard-unchecked';
@@ -143,6 +145,9 @@ export class PropertyDataService {
 
  if (lotGeometry?.geometry) {
  lotDimensions = calculateLotDimensions(lotGeometry.geometry);
+ if (lotDimensions?.battleaxe?.isBattleaxe) {
+   lotDimensions.battleaxe = applyBattleaxeLimits(lotDimensions.battleaxe, await loadBattleaxeLimits());
+ }
  cornerLotPromise = detectCornerLot(lotGeometry.geometry);
  }
 

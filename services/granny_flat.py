@@ -66,6 +66,11 @@ from pydantic import BaseModel, StrictFloat, StrictInt, model_validator
 from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 from services.lga_lookup import lookup_lga
 
+# Rough ground area below which a CDC granny flat may not fit after its setbacks.
+# Our estimate (60 m2 dwelling + ~60 m2 setback/circulation buffer), not a planning rule;
+# it only raises a caution.
+RESIDUAL_CAUTION_M2 = 120.0
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
@@ -1992,17 +1997,16 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             residual_area_m2 = 0.0
         else:
             residual_area_m2 = lot_area_m2 - req.main_dwelling_area_m2
-        if residual_area_m2 < 120:
-            granny_flat_buildable = False
-            warnings.append(
-                f"Insufficient space for a complying development granny flat. "
-                f"After the principal dwelling footprint (~{req.main_dwelling_area_m2:.0f} m²), "
-                f"approximately {residual_area_m2:.0f} m² remains — less than our rough "
-                f"estimate of the ground a granny flat plus its SEPP (Housing) 2021 "
-                f"Schedule 1 setbacks needs (an estimate, not a planning rule). "
-                f"A DA pathway may allow a smaller or differently positioned structure — "
-                f"consult a town planner."
-            )
+            # A caution, never a verdict: RESIDUAL_CAUTION_M2 is our rough estimate, not a
+            # planning rule, so it does not change granny_flat_buildable.
+            if residual_area_m2 < RESIDUAL_CAUTION_M2:
+                warnings.append(
+                    f"After the house (about {req.main_dwelling_area_m2:.0f} m²), about "
+                    f"{residual_area_m2:.0f} m² of the lot is left. That may be tight for a "
+                    f"complying development (CDC) granny flat once its SEPP (Housing) 2021 "
+                    f"Schedule 1 setbacks are applied. A DA uses the council's DCP setbacks "
+                    f"instead. A designer or certifier can confirm whether one fits."
+                )
 
     # Heritage: use user-provided value if set, otherwise auto-detect from spatial_overlays
     if req.is_heritage is not None:

@@ -14,7 +14,7 @@ interface BattleaxeInfo {
   accessWayLength: number;
   mainLotWidth: number;
   mainLotArea: number;
-  meetsMinimumRequirements: boolean;
+  meetsMinimumRequirements: boolean | null;
   complianceIssues: string[];
 }
 
@@ -176,7 +176,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
              <Badge className="text-xs bg-violet-100 text-violet-800 border-violet-300">
                Flag Lot
              </Badge>
-             {!propertyData.lotDimensions.battleaxe.meetsMinimumRequirements && (
+             {propertyData.lotDimensions.battleaxe.meetsMinimumRequirements === false && (
                <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300">
                  Below CDC Min
                </Badge>
@@ -198,12 +198,12 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                <p className="text-gray-500">{propertyData.lotDimensions.battleaxe.mainLotArea}m² area</p>
              </div>
            </div>
-           {!propertyData.lotDimensions.battleaxe.meetsMinimumRequirements && (
+           {propertyData.lotDimensions.battleaxe.complianceIssues.length > 0 && (
              <div className="mt-2 pt-2 border-t border-red-200">
                <div className="flex items-start gap-1">
                  <AlertTriangle className="h-3 w-3 text-red-600 mt-0.5 flex-shrink-0" />
                  <div className="text-xs text-red-700">
-                   <p className="font-medium">SEPP Housing 2021 Issues:</p>
+                   <p className="font-medium">Complying development (CDC) check:</p>
                    <ul className="mt-1 space-y-0.5">
                      {propertyData.lotDimensions.battleaxe.complianceIssues.map((issue, i) => (
                        <li key={i}>• {issue}</li>

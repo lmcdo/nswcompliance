@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { PropertyIntelligenceResponse, PropertyData, LotGeometry, CornerLotInfo } from '@/types/property';
 import { calculateLotDimensions, type LotDimensions } from '@/lib/geometry/lot-dimensions';
+import { applyBattleaxeLimits } from '@/lib/cdc/battleaxe-cdc';
+import { loadBattleaxeLimits } from '@/lib/cdc/battleaxe-cdc-db';
 import { detectCornerLot } from '@/lib/geometry/corner-lot-detection';
 import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
@@ -206,6 +208,9 @@ export async function GET(
  let lotDimensions: LotDimensions | null = null;
  if (lotGeometry) {
    lotDimensions = calculateLotDimensions(lotGeometry);
+   if (lotDimensions?.battleaxe?.isBattleaxe) {
+     lotDimensions.battleaxe = applyBattleaxeLimits(lotDimensions.battleaxe, await loadBattleaxeLimits());
+   }
    if (lotDimensions) {
      console.log(`[API] Calculated lot dimensions: frontage=${lotDimensions.frontage}m, depth=${lotDimensions.depth}m, area=${lotDimensions.area}m²`);
    }

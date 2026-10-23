@@ -26,10 +26,8 @@ import type { LotGeometry } from '@/types/property';
 // NSW average latitude for Web Mercator scale correction
 // Mercator correction now comes from the ring's own latitude — see ./mercator.
 
-// SEPP Housing 2021 requirements
-const MIN_ACCESS_WAY_WIDTH = 3.0; // meters
-const MIN_MAIN_LOT_DIMENSION = 12.0; // meters
-const MIN_MAIN_LOT_AREA = 144.0; // 12m × 12m in sqm
+// The CDC battle-axe limits are NOT here: they are read from cdc_eligibility_standards and
+// applied by lib/cdc/battleaxe-cdc.ts. This module only measures the lot.
 
 // Detection thresholds
 // Proportion-based: handle must be < 40% of head width (per legislative definition
@@ -53,9 +51,13 @@ export interface BattleaxeDetectionResult {
   mainLotWidth: number;
   /** Estimated main lot area in sqm (excluding handle) */
   mainLotArea: number;
-  /** Whether lot meets SEPP Housing 2021 minimum requirements */
-  meetsMinimumRequirements: boolean;
-  /** Specific compliance issues */
+  /**
+   * Whether the lot meets the stored CDC battle-axe limits. null until
+   * applyBattleaxeLimits() runs, and when the limits could not be read or a
+   * measurement is close to a limit.
+   */
+  meetsMinimumRequirements: boolean | null;
+  /** Route-labelled messages from applyBattleaxeLimits(); empty from detection alone */
   complianceIssues: string[];
   /** Width measurements at each cross-section (for debugging) */
   widthProfile?: number[];
@@ -114,7 +116,7 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
     accessWayLength: 0,
     mainLotWidth: 0,
     mainLotArea: 0,
-    meetsMinimumRequirements: false,
+    meetsMinimumRequirements: null,
     complianceIssues: [],
   };
 
@@ -193,29 +195,6 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
   // Calculate confidence
   const confidence = calculateConfidence(widths, minWidth, maxWidth, narrowPercentage);
 
-  // Check SEPP compliance
-  const complianceIssues: string[] = [];
-  if (minWidth < MIN_ACCESS_WAY_WIDTH) {
-    complianceIssues.push(
-      `Access way width ${minWidth.toFixed(1)}m is below minimum ${MIN_ACCESS_WAY_WIDTH}m`
-    );
-  }
-  if (maxWidth < MIN_MAIN_LOT_DIMENSION) {
-    complianceIssues.push(
-      `Main lot width ${maxWidth.toFixed(1)}m is below minimum ${MIN_MAIN_LOT_DIMENSION}m`
-    );
-  }
-  if (mainLotArea < MIN_MAIN_LOT_AREA) {
-    complianceIssues.push(
-      `Main lot area ${mainLotArea.toFixed(0)}m² is below minimum ${MIN_MAIN_LOT_AREA}m²`
-    );
-  }
-
-  const meetsMinimumRequirements =
-    minWidth >= MIN_ACCESS_WAY_WIDTH &&
-    maxWidth >= MIN_MAIN_LOT_DIMENSION &&
-    mainLotArea >= MIN_MAIN_LOT_AREA;
-
   return {
     isBattleaxe: true,
     confidence,
@@ -223,8 +202,8 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
     accessWayLength: Math.round(handleLength * 100) / 100,
     mainLotWidth: Math.round(maxWidth * 100) / 100,
     mainLotArea: Math.round(mainLotArea),
-    meetsMinimumRequirements,
-    complianceIssues,
+    meetsMinimumRequirements: null,
+    complianceIssues: [],
     widthProfile: widths,
   };
 }
