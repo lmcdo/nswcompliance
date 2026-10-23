@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "User-facing FAQ text only (no logic, queries or schema): removes hand-typed planning figures and unsourced comparisons from the granny-flat council FAQ data, and prunes the matching figure-ledger entries. Standard, not Minor, because the text is live, indexed planning information; not Critical because no computed verdict changes.",
-  "commit_hash": "ff32c5ab",
+  "commit_hash": "ae85ce3f",
   "files": [
     "frontend-nextjs/lib/lga-data/granny-flat-lgas.ts",
     ".claude/regulatory_figure_ledger.json"
