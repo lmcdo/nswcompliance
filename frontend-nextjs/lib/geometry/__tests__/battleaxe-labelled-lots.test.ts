@@ -38,6 +38,16 @@ describe('battle-axe detection on labelled real lots', () => {
     }
   });
 
+  it('a 3 m strip opening into a 10 m lot is found, and widths come back in true metres', () => {
+    const shape = [[0, 0], [3, 0], [3, 10], [10, 10], [10, 30], [0, 30], [0, 0]];
+    // At this northing 1 projected unit = 1/1.205 m, so scale the shape by 1.205 to mean metres.
+    const pts = shape.map(([x, y]) => [16800000 + 1.205 * x, -4010000 + 1.205 * y]);
+    const r = detectBattleaxeLot({ rings: [pts] } as never);
+    expect(r.isBattleaxe).toBe(true);
+    expect(r.accessWayWidth).toBeGreaterThan(2.9);
+    expect(r.accessWayWidth).toBeLessThan(3.1);
+  });
+
   it('a tilted real battle-axe shape is still found', () => {
     // 4 m wide, 25 m long strip opening into a 20 m x 25 m lot (projected units ~ metres x 1.2 at -33.9)
     const shape = [[0, 0], [4, 0], [4, 25], [20, 25], [20, 50], [0, 50], [0, 0]];

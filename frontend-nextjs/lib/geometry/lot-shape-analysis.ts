@@ -10,7 +10,7 @@
  *    sits at an angle to the map grid does not look pointed at both ends.
  * 2. Measure the width across the lot at even steps along that axis.
  * 3. A battle-axe lot has, at one end, an even-width strip (widths within EVEN_RATIO of
- *    each other, between MIN_STRIP_M and MAX_STRIP_M wide, at least MIN_RUN_M long) that
+ *    each other, at least MIN_STRIP_M wide and MIN_RUN_M long; no absolute cap) that
  *    opens suddenly (within JUMP_WITHIN_M) into a part at least JUMP_RATIO times wider.
  * Triangles, wedges and tilted rectangles narrow gradually, so they do not match.
  *
@@ -22,12 +22,11 @@ import { scaleFactorForRing } from './mercator';
 import type { LotGeometry } from '@/types/property';
 
 const SLICES = 60;
-const MIN_STRIP_M = 2.0;
-const MAX_STRIP_M = 12.0;
+const MIN_STRIP_M = 1.5;
 const EVEN_RATIO = 1.3;
-const MIN_RUN_M = 8;
+const MIN_RUN_M = 5;
 const JUMP_RATIO = 3.0;
-const JUMP_WITHIN_M = 6;
+const JUMP_WITHIN_M = 4;
 /** Slices under this share of the strip's median at the street end are a cut corner, not strip. */
 const END_TRIM_RATIO = 0.75;
 
@@ -121,7 +120,7 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
   const ring = geometry?.rings?.[0];
   if (!ring || ring.length < 4) return none;
 
-  const k = scaleFactorForRing(ring); // metres per projected unit
+  const k = 1 / scaleFactorForRing(ring); // metres per projected unit (EPSG:3857 is stretched by 1/cos(lat))
   const poly = straighten(ring);
   if (poly[0][0] !== poly[poly.length - 1][0] || poly[0][1] !== poly[poly.length - 1][1]) poly.push(poly[0]);
   let x0 = Infinity;
@@ -134,35 +133,45 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
   for (let i = 0; i < SLICES; i++) widths.push(widthAt(poly, x0 + (i + 0.5) * step) * k);
 
   for (const seq of [widths, widths.slice().reverse()]) {
+    // Skip a sliver where the lot meets the street, then trim a cut corner: slices well
+    // under the next few slices' median are not yet strip.
     let i = 0;
     while (i < seq.length && seq[i] < MIN_STRIP_M * 0.5) i++;
+    const probe = seq.slice(i, i + 5);
+    if (!probe.length) continue;
+    const probeMed = median(probe);
+    while (i < seq.length && seq[i] < probeMed * END_TRIM_RATIO) i++;
+    // Grow the strip while widths stay even (within EVEN_RATIO of the narrowest so far).
     const start = i;
-    while (i < seq.length && seq[i] >= MIN_STRIP_M * 0.5 && seq[i] <= MAX_STRIP_M) i++;
-    let run = seq.slice(start, i);
-    if (run.length) {
-      const med0 = median(run);
-      while (run.length && run[0] < med0 * END_TRIM_RATIO) run = run.slice(1);
+    let lo = Infinity;
+    let hi = -Infinity;
+    while (i < seq.length) {
+      const nlo = Math.min(lo, seq[i]);
+      const nhi = Math.max(hi, seq[i]);
+      if (nhi > nlo * EVEN_RATIO) break;
+      lo = nlo;
+      hi = nhi;
+      i++;
     }
-    if (run.length * stepM < MIN_RUN_M) continue;
-    const mn = Math.min(...run);
-    const mx = Math.max(...run);
-    if (mn < MIN_STRIP_M || mx > mn * EVEN_RATIO) continue;
+    const run = seq.slice(start, i);
+    if (run.length * stepM < MIN_RUN_M || lo < MIN_STRIP_M) continue;
     const strip = median(run);
     const within = Math.max(1, Math.round(JUMP_WITHIN_M / stepM));
-    if (!seq.slice(i, i + within).some((v) => v >= strip * JUMP_RATIO)) continue;
+    const jumpAt = seq.slice(i, i + within).findIndex((v) => v >= strip * JUMP_RATIO);
+    if (jumpAt < 0) continue;
 
-    const head = seq.slice(i).filter((v) => v >= strip * JUMP_RATIO);
-    const headLength = head.length * stepM;
+    // Main lot = everything after the strip, minus a sliver at the far boundary.
+    const head = seq.slice(i).filter((v) => v >= MIN_STRIP_M * 0.5);
     const headArea = head.reduce((a, v) => a + v * stepM, 0);
     return {
       isBattleaxe: true,
       confidence: 0.8,
       accessWayWidth: round2(strip),
       accessWayLength: round2(run.length * stepM),
-      mainLotWidth: round2(head.length ? Math.max(...head) : 0),
+      mainLotWidth: round2(Math.max(...head)),
       mainLotArea: Math.round(headArea),
-      mainLotLength: round2(headLength),
-      mainLotMinWidth: round2(head.length ? Math.min(...head) : 0),
+      mainLotLength: round2(head.length * stepM),
+      mainLotMinWidth: round2(Math.min(...head)),
       meetsMinimumRequirements: null,
       complianceIssues: [],
       widthProfile: widths.map(round2),

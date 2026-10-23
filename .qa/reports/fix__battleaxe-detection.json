@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "justification": "Battle-axe detection flagged ~51 of 1,200 real lots, ~8 real (precision ~16-18%): it measured width along map axes, so tilted lots, triangles and wedges looked like handles (e.g. 42-44 Albert St Belmore). New rule straightens the lot and needs an even-width strip that opens suddenly; 91% precision and recall on 62 labelled real lots.",
+  "justification": "Battle-axe detection flagged ~51 of 1,200 real lots, ~8 real (precision ~16-18%): it measured width along map axes, so tilted lots, triangles and wedges looked like handles (e.g. 42-44 Albert St Belmore). New rule straightens the lot and needs an even-width strip that opens suddenly; 92% precision and recall on 63 labelled real lots; widths in true metres (projected distance / Mercator scale).",
   "commit_hash": "a36c8435",
   "files": [
     "frontend-nextjs/lib/geometry/lot-shape-analysis.ts",
@@ -61,6 +61,13 @@
       "repro": "fixture lot both#4 Bowral",
       "mitigated": false,
       "how": "accepted: 1 of 11 real lots missed; next step would use the road-frontage layer"
+    },
+    {
+      "scenario": "projected distances are multiplied by the Mercator scale factor instead of divided",
+      "what_happens": "every width is ~1.46x too large and real 3 m strips read as 4.4 m",
+      "repro": "detectBattleaxeLot on a 3 m strip scaled by 1.205",
+      "mitigated": true,
+      "how": "k = 1 / scaleFactorForRing; jest asserts the 3 m strip measures 2.9-3.1 m"
     }
   ],
   "post_merge": {
