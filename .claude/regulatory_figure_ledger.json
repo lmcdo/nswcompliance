@@ -2022,12 +2022,6 @@
   },
   {
    "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
-   "text": "'Can be shared with the main dwelling; must be more than 4 m wide (Housing SEPP 2021 Schedule 1 s17)'",
-   "fate": "cited",
-   "reason": "figures match (table wording paraphrased) SEPP (Housing) 2021 Schedule 1 s17 private open space, regulatory_provisions 41184-41185 and 17628"
-  },
-  {
-   "file": "frontend-nextjs/app/blog/dcp-setbacks-granny-flat-nsw/page.tsx",
    "text": "'More than 24 m² (Housing SEPP 2021 Schedule 1 s17)'",
    "fate": "cited",
    "reason": "figures match (table wording paraphrased) SEPP (Housing) 2021 Schedule 1 s17 private open space, regulatory_provisions 41184-41185 and 17628"

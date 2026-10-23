@@ -128,7 +128,7 @@ function SEPPvsDCPTable() {
     {
       control: 'Private open space',
       sepp: 'More than 24 m² (Housing SEPP 2021 Schedule 1 s17)',
-      note: 'Can be shared with the main dwelling; must be more than 4 m wide (Housing SEPP 2021 Schedule 1 s17)',
+      note: 'Can be shared with the main dwelling; s17 also sets its minimum width and access',
     },
     {
       control: 'Car parking',
@@ -506,8 +506,9 @@ export default function DCPSetbacksGrannyFlatPage() {
                 For complying development it depends on lot size and height.
                 On a 450 to 900 m&sup2; lot it is 3 metres, plus 3 times any
                 building height above 3.8 metres (Housing SEPP 2021 Schedule 1).
-                Larger lots have larger setbacks. For a DA, the council&apos;s
-                DCP sets the rear setback, so check its own controls.
+                Larger lots have larger setbacks. For a DA, the council
+                assesses the setback against its own controls, usually in its
+                DCP, so check those.
               </p>
             </div>
 
