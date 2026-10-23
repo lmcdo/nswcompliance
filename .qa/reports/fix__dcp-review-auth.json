@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Access control on the two internal review queues. Measured 2026-10-07 against production: canibuildit.com.au/api/dcp-review and /api/internal/setback-review both returned HTTP 200 with no key and no session, and /internal/dcp-review rendered the review page. The write routes beside them accept a verdict from the same anonymous caller; dcp-review/[id] saves an edited_text as new_text and marks it fidelity_status='grounded', which dcp_commit_approved.py later publishes verbatim, and setback-review/[id] action=fix INSERTs a served dcp_setback_controls row. Every existing gate was a no-op unless NEXT_PUBLIC_AUTH_ENABLED was 'true', which it is not in production.",
-  "commit_hash": "c5e5f534",
+  "commit_hash": "a7a3d002",
   "files": [
     "frontend-nextjs/lib/internal-reviewer.ts",
     "frontend-nextjs/app/api/dcp-review/route.ts",
