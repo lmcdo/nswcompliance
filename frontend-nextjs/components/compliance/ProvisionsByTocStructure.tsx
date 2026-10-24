@@ -1529,6 +1529,13 @@ export function ProvisionsByTocStructure({
               Try again in a minute, or find the council on the{' '}
               <a href="https://www.planningportal.nsw.gov.au/spatialviewer" target="_blank" rel="noopener noreferrer" className="underline">NSW Planning Portal spatial viewer</a>.
             </p>
+            {conditionsNotChecked(propertyData?.constraints).length > 0 && (
+              <ul className="mt-2 space-y-0.5">
+                {conditionsNotChecked(propertyData?.constraints).map((m) => (
+                  <li key={m.what}><span className="font-medium">{m.what}</span> — {m.why}.</li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       );
