@@ -1,28 +1,7 @@
 {
  "_about": "(.claude/regulatory_figure_ledger.json) names every hit by file + the hit's own text:\n  \"open\"  -- known, still to fix (read it from the database, or delete it and point to the address lookup);\n  \"cited\" -- a verbatim quote that names its instrument AND clause on the same line (the reason says which);\n  \"not_regulatory\" -- not a planning figure (a map bound, an image size, a price); the reason (4+ words) says what.\nCI fails when: a hit is not in the ledger (a new typed figure); a ledger entry is no longer found (fixed -- remove it,\nso the list stays exact); a \"cited\" entry's reason names no instrument + clause; the open count rises; a\n`noqa: regulatory-number` carries no real reason (4+ words after \"--\").",
- "max_open": 100,
+ "max_open": 83,
  "entries": [
-  {
-   "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
-   "text": "'Up to 12m (4 storeys)'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
-   "text": "'12-25m (5-8 storeys)'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
-   "text": "'Over 25m (9+ storeys)'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (api) hard-coded ADG 3F separation fallback (6/9/12 m habitable, 3/4.5/6 non-habitable) and height bands; DB parse exists above - fallback should fail closed",
-   "count": 1
-  },
   {
    "file": "frontend-nextjs/app/api/canibuildit/lead/route.ts",
    "text": "height: 1.6",
@@ -157,13 +136,6 @@
   },
   {
    "file": "frontend-nextjs/app/user-guide/page.tsx",
-   "text": "Maximum building height for the zone (e.g., 8.5m for single dwelling)",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: remove_or_point_to_lookup (tool_page) 'e.g. 8.5m for single dwelling' presented as typical height limit",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/user-guide/page.tsx",
    "text": "Maximum floor space ratio (e.g., 0.5:1 means 500m² floor space on 1000m² lot)",
    "fate": "not_regulatory",
    "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
@@ -188,13 +160,6 @@
    "text": "\"width:100%;height:760px;border:0;\"",
    "fate": "not_regulatory",
    "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/cdc/types.ts",
-   "text": "'Self-contained dwelling up to 60m\\u00B2'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)",
    "count": 1
   },
   {
@@ -258,20 +223,6 @@
    "text": "'calc(100% - 200px)'",
    "fate": "not_regulatory",
    "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/feedback/FeedbackDemo.tsx",
-   "text": "\"Front setback is 6m from boundary\"",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)",
-   "count": 2
-  },
-  {
-   "file": "frontend-nextjs/components/feedback/FeedbackDemo.tsx",
-   "text": "\"Development must maintain a minimum setback of 6m from the front boundary.\"",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)",
    "count": 1
   },
   {
@@ -421,13 +372,6 @@
    "count": 1
   },
   {
-   "file": "frontend-nextjs/components/reports/landing/data/bushfire.ts",
-   "text": "\"Whether the property qualifies for 10/50 entitlement — allowing removal of trees within 10m and understorey within 50m of a dwelling without council approval.\"",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page)",
-   "count": 1
-  },
-  {
    "file": "frontend-nextjs/components/reports/landing/data/flood.ts",
    "text": "\"100%\"",
    "fate": "not_regulatory",
@@ -439,13 +383,6 @@
    "text": "\"Every DA lodged within 500m of your property in the last 6 months — including the development description, estimated cost, and how many new dwellings are proposed.\"",
    "fate": "open",
    "reason": "inventory guessed not_regulatory (unreviewed): marketing coverage stat / product radius, not a planning control",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/components/sepp/SeppOverrideAlert.tsx",
-   "text": "'Bonus FSR +20%'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (tool_page) typed SEPP override summaries",
    "count": 1
   },
   {
@@ -544,13 +481,6 @@
    "count": 1
   },
   {
-   "file": "frontend-nextjs/lib/database/mock-client.ts",
-   "text": "'3.0m front setback'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): mock-client fixture (verify not imported by shipped paths)",
-   "count": 1
-  },
-  {
    "file": "frontend-nextjs/lib/db.ts",
    "text": "ZONE_COVERAGE_CACHE_MS = 5",
    "fate": "not_regulatory",
@@ -577,20 +507,6 @@
    "fate": "not_regulatory",
    "count": 1,
    "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
-  },
-  {
-   "file": "frontend-nextjs/lib/lga-data/flood-lgas.ts",
-   "text": "'Campbelltown has ARI-quantified flood data covering 0.2% AEP (1-in-500-year) through PMF (Probable Maximum Flood). The 1% AEP (1-in-100-year) zone is the primary planning standard under the Campbelltown LEP. Properties in the 1% AEP zone are in the Flood Planning Area and face development controls.'",
-   "fate": "open",
-   "reason": "inventory guessed not_regulatory (unreviewed): hydrology terminology, not a planning control",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/lga-data/flood-lgas.ts",
-   "text": "'Yes. Under SEPP Housing 2021, a property on a flood control lot is ineligible for complying development (CDC). If your Campbelltown address is in the 1% AEP flood zone, a granny flat requires a DA with a flood risk management report.'",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (faq_seo) FAQ states SEPP Housing flood-control CDC exclusion as fact; no clause",
-   "count": 1
   },
   {
    "file": "frontend-nextjs/lib/lga-data/flood-lgas.ts",
@@ -716,12 +632,6 @@
    "text": "'Alerts cover applications within 200m. In Ku-ring-gai\\'",
    "fate": "not_regulatory",
    "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/lga-data/threat-radar-lgas.ts",
-   "text": "'Yes. The Hurstville and Kogarah station precincts are designated for medium-to-high density under the Georges River LEP. Residents within 500m of these stations may see multi-dwelling and mixed-use DAs that affect street character and parking.'",
-   "fate": "open",
    "count": 1
   },
   {
@@ -1058,20 +968,6 @@
    "count": 1
   },
   {
-   "file": "frontend-nextjs/lib/regulatory-constants.ts",
-   "text": "MIN_LOT_WIDTH_DUAL_OCC_M: 12",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (engine) hand-typed SEPP/ADG/BASIX/EP&A figure in shared constants module (TOD walkable distances = Housing SEPP Sch 11 accessible area; ADG apartment sizes/ceilings; BASIX; DA timeframes). Needs stored provis",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/lib/regulatory-constants.ts",
-   "text": "EXEMPT_MAX_HEIGHT_M: 3",
-   "fate": "open",
-   "reason": "inventory 2026-10-22: from_db (engine) hand-typed SEPP/ADG/BASIX/EP&A figure in shared constants module (TOD walkable distances = Housing SEPP Sch 11 accessible area; ADG apartment sizes/ceilings; BASIX; DA timeframes). Needs stored provis",
-   "count": 1
-  },
-  {
    "file": "frontend-nextjs/lib/security/README.md",
    "text": "answer: 'Tree canopy coverage: 25%',",
    "fate": "not_regulatory",
@@ -1317,13 +1213,6 @@
   {
    "file": "frontend-nextjs/app/developers/page.tsx",
    "text": "min_lot_size_sqm\": 450",
-   "fate": "open",
-   "count": 1,
-   "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
-  },
-  {
-   "file": "frontend-nextjs/lib/regulatory-constants.ts",
-   "text": "MIN_LOT_AREA_MULTI_DWELLING_M2: 450",
    "fate": "open",
    "count": 1,
    "reason": "already in the code; found once the constant pattern caught quoted keys and floor-area names (2026-10-22)"
@@ -1640,6 +1529,24 @@
    "text": "\"({min_lot_size_m2:.0f}m\\u00b2) — within our 10% survey margin, not a planning rule, so a registered survey matters here.\"",
    "fate": "not_regulatory",
    "reason": "our own survey-margin flag, stated in the text as not a planning rule; the minimum itself is read from the DB"
+  },
+  {
+   "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
+   "text": "'12-25m'",
+   "fate": "cited",
+   "reason": "ADG Part 3F-1 height band label, parsed from the stored sepp_adg_requirements 3F-1 requirement text (Apartment Design Guide section 3F)"
+  },
+  {
+   "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
+   "text": "'Over 25m'",
+   "fate": "cited",
+   "reason": "ADG Part 3F-1 height band label, parsed from the stored sepp_adg_requirements 3F-1 requirement text (Apartment Design Guide section 3F)"
+  },
+  {
+   "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
+   "text": "'Up to 12m'",
+   "fate": "cited",
+   "reason": "ADG Part 3F-1 height band label, parsed from the stored sepp_adg_requirements 3F-1 requirement text (Apartment Design Guide section 3F)"
   }
  ]
 }

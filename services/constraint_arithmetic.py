@@ -316,6 +316,7 @@ def _matching_controls(
 # A building height limit below one storey (~3m) is a mis-extraction (e.g. a fence
 # or landscaping height, or a mistyped value like Canada Bay's 0.9m), never a real
 # maximum building height — reject it rather than compute a nonsense envelope.
+# NOTE: this is a data-sanity guard on extracted values, not a planning rule.
 _MIN_PLAUSIBLE_BUILDING_HEIGHT_M = 3.0
 
 

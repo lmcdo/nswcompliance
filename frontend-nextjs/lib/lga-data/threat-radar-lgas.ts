@@ -156,7 +156,7 @@ export const THREAT_RADAR_LGAS: ThreatRadarLgaData[] = [
       { q: 'What types of development should Georges River homeowners watch?', a: 'Multi-dwelling housing DAs near Hurstville and Kogarah town centres can affect traffic and amenity over a wider area. Secondary dwelling CDCs are common in established R2 suburbs. Dual-occupancy DAs near railway station precincts.' },
       { q: 'Can I object to a neighbour\'s DA in Georges River?', a: 'Yes. Georges River Council publicly notifies DAs. Submit a written submission within the notification period (typically 14 days). CDCs through private certifiers are not publicly notified — the weekly check is the only proactive monitoring available.' },
       { q: 'How far away do alerts cover?', a: 'Alerts cover applications within 200m. In Georges River\'s suburban grid this typically covers 40–70 properties.' },
-      { q: 'Are medium-density DAs common near train stations in Georges River?', a: 'Yes. The Hurstville and Kogarah station precincts are designated for medium-to-high density under the Georges River LEP. Residents within 500m of these stations may see multi-dwelling and mixed-use DAs that affect street character and parking.' },
+      { q: 'Are medium-density DAs common near train stations in Georges River?', a: 'Yes. The Hurstville and Kogarah station precincts are designated for medium-to-high density under the Georges River LEP. Residents living near these stations may see multi-dwelling and mixed-use DAs that affect street character and parking.' },
     ],
   },
   {

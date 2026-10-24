@@ -1,0 +1,74 @@
+{
+  "tier": "standard",
+  "justification": "Removes 12 live typed rule figures (ADG storey counts, user-guide 8.5 m, CDC 60 m2 label, bushfire 10/50 distances, flood 1% AEP, a 500 m station line), labels the developers sample as illustrative, deletes 3 unused files and 3 unread constants, and notes the 3 m height guard is a data check.",
+  "commit_hash": "ceae4c9f",
+  "files": [
+    ".claude/regulatory_figure_ledger.json",
+    "frontend-nextjs/__tests__/components/compliance/no-invented-lot-width.test.tsx",
+    "frontend-nextjs/app/api/adg/separation-table/route.ts",
+    "frontend-nextjs/app/developers/page.tsx",
+    "frontend-nextjs/app/user-guide/page.tsx",
+    "frontend-nextjs/components/cdc/types.ts",
+    "frontend-nextjs/components/feedback/FeedbackDemo.tsx",
+    "frontend-nextjs/components/reports/landing/data/bushfire.ts",
+    "frontend-nextjs/components/sepp/SeppOverrideAlert.tsx",
+    "frontend-nextjs/lib/database/mock-client.ts",
+    "frontend-nextjs/lib/lga-data/flood-lgas.ts",
+    "frontend-nextjs/lib/lga-data/threat-radar-lgas.ts",
+    "frontend-nextjs/lib/regulatory-constants.ts",
+    "services/constraint_arithmetic.py"
+  ],
+  "pre_impl": {
+    "existing_data": "What existing data/state does this interact with? [table/column or 'none']",
+    "assumption_mismatch": "What if existing data doesn't match assumptions? [specific failure]",
+    "new_vs_existing": "Will this apply to existing rows or only new? [mechanism]",
+    "external_source_error": "(Critical only) What does external source return on error?",
+    "frontend_type": "(Critical only) Does frontend type need updating?",
+    "user_failure_mode": "(Critical only) What does user see if this fails?"
+  },
+  "functions": [
+    {
+      "name": "parseADGSeparationText",
+      "file_line": "frontend-nextjs/app/api/adg/separation-table/route.ts:39",
+      "input": "ADG 3F-1 requirement text read from sepp_adg_requirements",
+      "output": "height band rows labelled by height only, no typed storey counts",
+      "if_none": "unparsed text gives no rows; the card says it could not be read"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a reader takes the ADG storey count as a rule for their building",
+      "what_happens": "storeys are not the ADG test, height is",
+      "repro": "ADG card on /assessment",
+      "mitigated": true,
+      "how": "labels show the height band only"
+    },
+    {
+      "scenario": "a deleted component is still imported somewhere in the app",
+      "what_happens": "the build fails and pages 404",
+      "repro": "git grep the component name",
+      "mitigated": true,
+      "how": "grep showed no importer outside backups; ComplianceDashboard kept because a type is imported"
+    },
+    {
+      "scenario": "a test still asserts a removed constant exists",
+      "what_happens": "jest fails in CI and blocks merging",
+      "repro": "no-invented-lot-width.test.tsx",
+      "mitigated": true,
+      "how": "that single assertion removed with the constants"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none",
+    "secrets": "none",
+    "other_repo": "none",
+    "manual_verify": "open /user-guide, a flood council page and the bushfire report landing page"
+  },
+  "falsifiable_check": {
+    "command": "python scripts/lint_hardcoded_regulatory_numbers.py",
+    "fails_when": "a live typed figure is unlisted or the open count rises",
+    "observed_red": "origin/main 100 open; after 83"
+  }
+}

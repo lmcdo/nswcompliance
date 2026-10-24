@@ -44,7 +44,7 @@ export const bushfireConfig: ProductLandingConfig = {
     {
       icon: TreePine,
       title: "10/50 Vegetation Clearing",
-      description: "Whether the property qualifies for 10/50 entitlement — allowing removal of trees within 10m and understorey within 50m of a dwelling without council approval.",
+      description: "Whether the 10/50 vegetation clearing entitlement applies — where it does, it allows tree removal and understorey clearing near a dwelling without council approval. Whether it applies is shown for each property.",
     },
     {
       icon: AlertTriangle,
