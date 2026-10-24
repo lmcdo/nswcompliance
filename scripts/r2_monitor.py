@@ -1078,7 +1078,13 @@ def run_monitor(
                 # If reseed mode: update council_url for all matched chapters
                 if reseed and not dry_run:
                     discovered_map = {d["chapter_key"]: d["url"] for d in discovered if d["chapter_key"]}
-                    for key, _stored, _urls in diff.ambiguous:  # never reseed a key with two links
+                    # Never reseed a key matched by two links. Counted here, not taken from diff,
+                    # because diff_urls returns early (no ambiguity list) when the count gate trips (Sol).
+                    seen: dict[str, set] = {}
+                    for d in discovered:
+                        if d["chapter_key"]:
+                            seen.setdefault(d["chapter_key"], set()).add(d["url"])
+                    for key in [k for k, v in seen.items() if len(v) > 1]:
                         discovered_map.pop(key, None)
                     cur2 = conn.cursor()
                     updated = 0
