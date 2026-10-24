@@ -1521,7 +1521,7 @@ export function ProvisionsByTocStructure({
           <CardContent className="p-6 text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded" data-testid="council-not-checked">
             <p className="font-medium">Council rules not checked</p>
             <p className="mt-1">
-              The council for this address could not be confirmed because the planning lookup did not answer.
+              The council for this address is not known because the planning lookup did not answer.
               Try again in a minute, or find the council on the{' '}
               <a href="https://www.planningportal.nsw.gov.au/spatialviewer" target="_blank" rel="noopener noreferrer" className="underline">NSW Planning Portal spatial viewer</a>.
             </p>
