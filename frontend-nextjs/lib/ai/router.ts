@@ -565,7 +565,7 @@ async function handleDcpProvisionLookup(
         category: 'factual_lookup',
         data: null,
         sources: [],
-        error: `${topic} rules were not checked: the council rules lookup did not answer. This is not a finding that none apply.`,
+        error: `${topic} rules were not checked: the council rules lookup failed or did not answer. This is not a finding that none apply.`,
       };
     }
 
@@ -581,7 +581,7 @@ async function handleDcpProvisionLookup(
         category: 'factual_lookup',
         data: null,
         sources: [],
-        error: notFoundMessage(topic, context.constraints),
+        error: notFoundMessage(topic, context.constraints, data.meta?.hca_not_checked ?? null),
       };
     }
 
@@ -908,8 +908,9 @@ Here's what I CAN tell you about this property:`,
  * "Nothing found" is only as good as the checks behind it: name what was not checked, and say that
  * site-condition rules (flood, bush fire, ...) are not part of this lookup.
  */
-function notFoundMessage(topic: string, constraints: unknown): string {
+function notFoundMessage(topic: string, constraints: unknown, hcaNotChecked: string | null): string {
   const missing = conditionsNotChecked(constraints as Parameters<typeof conditionsNotChecked>[0]).map((m) => m.what);
+  if (hcaNotChecked) missing.push(`heritage conservation area ${hcaNotChecked} rules`);
   const base = `No ${topic} rules were found in the council plan for this address. Rules that apply only to flood, bush fire or other mapped land are not part of this answer.`;
   return missing.length ? `${base} Not checked: ${missing.join(', ')}.` : base;
 }
