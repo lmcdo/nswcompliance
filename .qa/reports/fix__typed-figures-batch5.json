@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Removes 12 live typed rule figures (ADG storey counts, user-guide 8.5 m, CDC 60 m2 label, bushfire 10/50 distances, flood 1% AEP, a 500 m station line), labels the developers sample as illustrative, deletes 3 unused files and 3 unread constants, and notes the 3 m height guard is a data check.",
-  "commit_hash": "ad03e628",
+  "commit_hash": "bf2a8529",
   "files": [
     ".claude/regulatory_figure_ledger.json",
     "frontend-nextjs/__tests__/components/compliance/no-invented-lot-width.test.tsx",
