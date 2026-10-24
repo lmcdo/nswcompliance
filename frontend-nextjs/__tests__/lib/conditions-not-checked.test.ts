@@ -64,3 +64,18 @@ describe('the rules page uses it', () => {
     expect(pd).toMatch(/'precinct'\]/)
   })
 })
+
+describe('cases 4 and 5', () => {
+  const route = readFileSync(join(__dirname, '../../app/api/provisions/for-property/route.ts'), 'utf8')
+  const router = readFileSync(join(__dirname, '../../lib/ai/router.ts'), 'utf8')
+  const page = readFileSync(join(__dirname, '../../components/compliance/ProvisionsByTocStructure.tsx'), 'utf8')
+  it('an unmatched heritage area code is reported, not silently dropped', () => {
+    expect(route).toMatch(/hcaNotChecked = filters\.hca;/)
+    expect(route).toMatch(/hca_not_checked: hcaNotChecked/)
+    expect(page).toMatch(/data\?\.meta\?\.hca_not_checked/)
+  })
+  it('the AI answer never says a flat "No requirements found"', () => {
+    expect(router).not.toMatch(/No \$\{topic\} requirements found for this property/)
+    expect(router).toMatch(/This is not a finding that none apply/)
+  })
+})

@@ -425,6 +425,8 @@ export function ProvisionsByTocStructure({
     meta?: {
       chapter_pdf_urls?: Record<string, string> | null;
       precinct_warning?: boolean;
+      /** Heritage conservation area code the rules lookup could not match: its HCA rules are not shown. */
+      hca_not_checked?: string | null;
       land_application?: LandApplicationDecision;
       not_covered?: NotCovered | null;
       may_apply?: MayApplyArea[] | null;
@@ -2203,6 +2205,14 @@ export function ProvisionsByTocStructure({
         // A condition whose check did not answer shows no rules, which reads like "none apply".
         // Say which ones, why, and where to check (lib/conditions-not-checked.ts).
         const missing = conditionsNotChecked(propertyData?.constraints);
+        if (data?.meta?.hca_not_checked) {
+          missing.push({
+            what: `Heritage conservation area ${data.meta.hca_not_checked}`,
+            why: 'its area-specific heritage rules could not be matched in the council plan',
+            whereLabel: 'council DCP heritage chapter',
+            whereUrl: 'https://www.planningportal.nsw.gov.au/spatialviewer',
+          });
+        }
         if (!missing.length) return null;
         return (
           <div className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="conditions-not-checked">

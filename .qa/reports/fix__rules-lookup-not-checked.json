@@ -1,6 +1,6 @@
 {
   "tier": "critical",
-  "justification": "When a lookup check failed, the rules page showed no condition, precinct or council rules, which reads as \"none apply\". It now lists each unchecked item with what failed, why (no reply, busy, error) and where to check it; a failed precinct lookup is recorded instead of returning \"no precinct\"; a failed council lookup no longer shows \"council not covered\".",
+  "justification": "When a lookup check failed, the rules page showed no condition, precinct or council rules, which reads as \"none apply\". It now lists each unchecked item with what failed, why (no reply, busy, error) and where to check it; a failed precinct lookup is recorded instead of returning \"no precinct\"; a failed council lookup no longer shows \"council not covered\". Also: an unmatched heritage conservation area code is reported (hca_not_checked) instead of silently dropping its rules; the AI answer says \"not checked\" on a failed lookup and never a flat \"no requirements found\". The full-assessment API was checked and needs no change (no user-visible consumer; failure already explicit).",
   "commit_hash": "b0c24e07",
   "files": [
     ".github/workflows/gates.yml",
@@ -10,7 +10,9 @@
     "frontend-nextjs/lib/lookup-not-checked.ts",
     "frontend-nextjs/lib/nsw-planning-portal.ts",
     "frontend-nextjs/lib/precinct-service.ts",
-    "frontend-nextjs/lib/property-data.ts"
+    "frontend-nextjs/lib/property-data.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/lib/ai/router.ts"
   ],
   "pre_impl": {
     "existing_data": "What existing data/state does this interact with? [table/column or 'none']",
@@ -73,6 +75,20 @@
       "repro": "call getPrecinctForAddress with four arguments",
       "mitigated": true,
       "how": "throwOnError defaults to false; only the property path opts in"
+    },
+    {
+      "scenario": "a heritage conservation area code from the portal has no mapping in our plan data",
+      "what_happens": "its area-specific heritage rules silently disappear from the list",
+      "repro": "for-property with hca=C999",
+      "mitigated": true,
+      "how": "meta.hca_not_checked set; the page lists it with why and where"
+    },
+    {
+      "scenario": "the AI asks for parking rules and the rules lookup times out",
+      "what_happens": "the old code threw or said no requirements found",
+      "repro": "AI factual lookup with the route returning 500",
+      "mitigated": true,
+      "how": "20 s timeout, not-checked message that says this is not a finding none apply"
     }
   ],
   "post_merge": {

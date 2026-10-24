@@ -5,6 +5,7 @@
  * No content generation - only fetches precomputed data.
  */
 
+import { conditionsNotChecked } from '@/lib/conditions-not-checked';
 import { ClassificationResult, PropertyContext, QuestionCategory } from './classifier';
 import { encodeLandApplication } from '@/lib/dcp-land-application';
 import { encodeLandFacts } from '@/lib/lep-land-condition';
@@ -550,16 +551,21 @@ async function handleDcpProvisionLookup(
     const landFactsParam = encodeLandFacts(context.landFacts);
     if (landFactsParam) params.set('land_facts', landFactsParam);
 
-    const response = await fetch(`${API_BASE}/api/provisions/for-property?${params.toString()}`);
-    const data = await response.json();
+    let data: any = null;
+    try {
+      const response = await fetch(`${API_BASE}/api/provisions/for-property?${params.toString()}`, { signal: AbortSignal.timeout(20_000) });
+      data = response.ok ? await response.json() : null;
+    } catch {
+      data = null;
+    }
 
-    if (!data.success || !data.data?.by_layer) {
+    if (!data?.success || !data.data?.by_layer) {
       return {
         success: false,
         category: 'factual_lookup',
         data: null,
         sources: [],
-        error: `Unable to find ${topic} requirements.`,
+        error: `${topic} rules were not checked: the council rules lookup did not answer. This is not a finding that none apply.`,
       };
     }
 
@@ -575,7 +581,7 @@ async function handleDcpProvisionLookup(
         category: 'factual_lookup',
         data: null,
         sources: [],
-        error: `No ${topic} requirements found for this property.`,
+        error: notFoundMessage(topic, context.constraints),
       };
     }
 
@@ -896,4 +902,14 @@ async function handleInterpretationRefusal(
 
 Here's what I CAN tell you about this property:`,
   };
+}
+
+/**
+ * "Nothing found" is only as good as the checks behind it: name what was not checked, and say that
+ * site-condition rules (flood, bush fire, ...) are not part of this lookup.
+ */
+function notFoundMessage(topic: string, constraints: unknown): string {
+  const missing = conditionsNotChecked(constraints as Parameters<typeof conditionsNotChecked>[0]).map((m) => m.what);
+  const base = `No ${topic} rules were found in the council plan for this address. Rules that apply only to flood, bush fire or other mapped land are not part of this answer.`;
+  return missing.length ? `${base} Not checked: ${missing.join(', ')}.` : base;
 }
