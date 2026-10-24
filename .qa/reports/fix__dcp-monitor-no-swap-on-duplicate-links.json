@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes when the DCP monitor re-points a chapter's stored source link; chapter checks unchanged.",
- "commit_hash": "587619ce",
+ "commit_hash": "36a0051d",
  "files": [
   "scripts/r2_monitor.py",
   "tests/test_r2_monitor_duplicate_links.py",
