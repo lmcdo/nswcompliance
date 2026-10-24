@@ -8,7 +8,6 @@
  * prior-art-checked: lib/fact-answer.ts answers single facts and lib/hazard-unchecked.ts prints
  * hazard tiles; neither says which DCP rule groups are missing because a check failed.
  */
-import { wasNotChecked } from './fact-answer';
 import type { LookupCheck } from './lookup-not-checked';
 
 export interface ConditionNotChecked {
@@ -47,25 +46,43 @@ function why(c: Constraints, source: string, check: LookupCheck): string {
   return `${source} ${w ? WHY_WORDS[w] : 'did not answer'}`;
 }
 
+/** Every lookup check, in words. A Record so a new LookupCheck cannot be left out (TypeScript fails). */
+const CHECK_WORDS: Record<LookupCheck, { what: string; source: string; where: typeof PORTAL }> = {
+  planning_layers: { what: 'Zoning, height, floor space and heritage', source: 'the NSW planning layers', where: PORTAL },
+  lot_shape: { what: 'Lot size and shape', source: 'the NSW lot boundary map', where: PORTAL },
+  tod: { what: 'Transport Oriented Development area', source: 'the TOD map', where: PORTAL },
+  roads: { what: 'Nearby road types', source: 'the road map', where: PORTAL },
+  spatial_overlays: { what: 'Riparian land, foreshore and other overlays', source: 'our map database', where: PORTAL },
+  dual_occupancy: { what: 'Dual occupancy prohibition area', source: 'the dual occupancy map', where: PORTAL },
+  sepp_exclusions: { what: 'Complying and exempt development exclusions', source: 'the state policy exclusion maps', where: PORTAL },
+  flood: { what: 'Flood', source: 'the flood planning map', where: PORTAL },
+  corner_lot: { what: 'Corner lot and street frontage', source: 'the road and lot maps', where: PORTAL },
+  classified_road: { what: 'State or classified road', source: 'the classified road map', where: PORTAL },
+  acid_sulfate: { what: 'Acid sulfate soils', source: 'the acid sulfate soils map', where: PORTAL },
+  precinct: { what: 'Precinct (area-specific council rules)', source: 'our precinct map', where: PORTAL },
+};
+
 /**
- * Conditions whose rules may be missing from the list because their check did not answer.
- * An empty list means every condition check answered (Yes or No).
+ * Checks that did not answer, so rules or facts that depend on them may be missing.
+ * An empty list means every lookup check answered (Yes or No).
  */
 export function conditionsNotChecked(c: Constraints | null | undefined): ConditionNotChecked[] {
   if (!c) return [];
   const out: ConditionNotChecked[] = [];
-  if (wasNotChecked(c, 'flood')) out.push({ what: 'Flood', why: why(c, 'the flood planning map', 'flood'), ...PORTAL });
-  if (c.bushfireProne == null) out.push({ what: 'Bush fire', why: 'the bush fire prone land map did not answer', ...RFS });
-  if (wasNotChecked(c, 'spatial_overlays')) {
-    out.push({ what: 'Riparian land and waterways', why: why(c, 'our map database', 'spatial_overlays'), ...PORTAL });
-  }
-  if (wasNotChecked(c, 'precinct')) {
-    out.push({ what: 'Precinct (area-specific council rules)', why: why(c, 'our precinct map', 'precinct'), whereLabel: 'council DCP precinct maps', whereUrl: 'https://www.planningportal.nsw.gov.au/spatialviewer' });
-  }
   const plain = (note: string) => note.replace(/\.\s*$/, '');
+  const failed = new Set(Array.isArray(c.notChecked) ? c.notChecked : (Object.keys(CHECK_WORDS) as LookupCheck[]));
+  for (const [check, w] of Object.entries(CHECK_WORDS) as Array<[LookupCheck, (typeof CHECK_WORDS)[LookupCheck]]>) {
+    if (!failed.has(check)) continue;
+    // A check with its own plain-words note says it that way.
+    const own = check === 'classified_road' ? c.classifiedRoadUnchecked : undefined;
+    out.push({ what: w.what, why: own ? plain(own) : why(c, w.source, check), ...w.where });
+  }
+  if (c.bushfireProne == null) out.push({ what: 'Bush fire', why: 'the bush fire prone land map did not answer', ...RFS });
   if (c.greenwebUnchecked) out.push({ what: 'Greenweb (Ku-ring-gai)', why: plain(c.greenwebUnchecked), ...PORTAL });
   if (c.railOrBusyRoadUnchecked) out.push({ what: 'Rail or busy road', why: plain(c.railOrBusyRoadUnchecked), ...PORTAL });
-  if (c.classifiedRoadUnchecked) out.push({ what: 'State or classified road', why: plain(c.classifiedRoadUnchecked), ...PORTAL });
+  if (c.classifiedRoadUnchecked && !failed.has('classified_road')) {
+    out.push({ what: 'State or classified road', why: plain(c.classifiedRoadUnchecked), ...PORTAL });
+  }
   return out;
 }
 

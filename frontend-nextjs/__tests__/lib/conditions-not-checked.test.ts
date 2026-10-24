@@ -36,6 +36,12 @@ describe('conditionsNotChecked: a failed check is named, never silent', () => {
   })
 })
 
+describe('every lookup check is covered', () => {
+  it('a failed acid sulfate check is listed (any LookupCheck that fails is named)', () => {
+    expect(conditionsNotChecked({ ...ALL_ANSWERED, notChecked: ['acid_sulfate'] }).map((m) => m.what)).toContain('Acid sulfate soils')
+  })
+})
+
 describe('whyFromError', () => {
   it('reads 429 as busy, abort/timeout as no reply, anything else as error', () => {
     expect(whyFromError(new Error('HTTP 429 Rate limit is exceeded'))).toBe('busy')
