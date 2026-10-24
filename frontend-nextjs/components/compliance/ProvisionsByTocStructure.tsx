@@ -1515,13 +1515,17 @@ export function ProvisionsByTocStructure({
   if (!formerCouncil) {
     // No council because the lookup failed is not "we don't cover this council".
     // prior-art-checked: reuse not viable because the matches are blog pages; this is the rules panel's own empty state.
-    if (!lga || wasNotChecked(propertyData?.constraints, 'planning_layers', 'precinct')) {
+    const councilUnknown = !lga || wasNotChecked(propertyData?.constraints, 'planning_layers');
+    const areaUnknown = !councilUnknown && wasNotChecked(propertyData?.constraints, 'precinct');
+    if (councilUnknown || areaUnknown) {
       return (
         <Card>
           <CardContent className="p-6 text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded" data-testid="council-not-checked">
             <p className="font-medium">Council rules not checked</p>
             <p className="mt-1">
-              The council for this address is not known because the planning lookup did not answer.
+              {councilUnknown
+                ? 'The council for this address is not known because the planning lookup did not answer.'
+                : `The council is ${lga}, but the precinct map that tells us which part of its plan applies here did not answer.`}
               Try again in a minute, or find the council on the{' '}
               <a href="https://www.planningportal.nsw.gov.au/spatialviewer" target="_blank" rel="noopener noreferrer" className="underline">NSW Planning Portal spatial viewer</a>.
             </p>
