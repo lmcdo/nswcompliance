@@ -40,6 +40,8 @@
   "nsw_statewide|*|unwatched": "2026-10-23",
   "parramatta|*|list_not_read_2d": "2026-10-24",
   "parramatta|part-6-traffic-and-transport|no_url": "2026-10-23",
+  "randwick|b7-transport-traffic-parking-access|last_run_unchecked": "2026-10-24",
+  "randwick|randwick-dcp-c1-low-density|last_run_unchecked": "2026-10-24",
   "ryde|*|list_not_read_2d": "2026-10-23",
   "ryde|part-3-3-dwelling-houses|no_url": "2026-10-23",
   "ryde|part-9.3-parking|no_url": "2026-10-23",
@@ -125,6 +127,8 @@
   "nsw_statewide|*|unwatched": "council serves rules but has no active monitored chapter",
   "parramatta|*|list_not_read_2d": "council blocks Railway (HTTP 403 on the DCP list page; run 5, 2026-10-23)",
   "parramatta|part-6-traffic-and-transport|no_url": "no link of its own in our data (hub-only chapter)",
+  "randwick|b7-transport-traffic-parking-access|last_run_unchecked": "council blocks Railway (HTTP 403 on the chapter file; first seen run 5, 2026-10-23)",
+  "randwick|randwick-dcp-c1-low-density|last_run_unchecked": "council blocks Railway (HTTP 403 on the chapter file; first seen run 5, 2026-10-23)",
   "ryde|*|list_not_read_2d": "council blocks Railway (HTTP 403 on the DCP list page)",
   "ryde|part-3-3-dwelling-houses|no_url": "no link of its own in our data (hub-only chapter)",
   "ryde|part-9.3-parking|no_url": "no link of its own in our data (hub-only chapter)",
@@ -210,6 +214,8 @@
   "nsw_statewide|*|unwatched",
   "parramatta|*|list_not_read_2d",
   "parramatta|part-6-traffic-and-transport|no_url",
+  "randwick|b7-transport-traffic-parking-access|last_run_unchecked",
+  "randwick|randwick-dcp-c1-low-density|last_run_unchecked",
   "ryde|*|list_not_read_2d",
   "ryde|part-3-3-dwelling-houses|no_url",
   "ryde|part-9.3-parking|no_url",
@@ -256,6 +262,7 @@
  ],
  "raised": [
   "first daily run 2026-10-23 (run 4)",
-  "list pages stored 2026-10-24 (step 6)"
+  "list pages stored 2026-10-24 (step 6)",
+  "randwick blocks Railway from run 5"
  ]
 }
