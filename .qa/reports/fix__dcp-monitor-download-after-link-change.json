@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Two registry writes that change a chapter's link now also clear its tag and last-download date.",
- "commit_hash": "1940495b",
+ "commit_hash": "345a6377",
  "files": [
   "scripts/r2_monitor.py",
   "tests/test_r2_monitor_link_change_downloads.py"
