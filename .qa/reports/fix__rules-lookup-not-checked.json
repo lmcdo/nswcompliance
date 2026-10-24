@@ -1,0 +1,105 @@
+{
+  "tier": "critical",
+  "justification": "When a lookup check failed, the rules page showed no condition, precinct or council rules, which reads as \"none apply\". It now lists each unchecked item with what failed, why (no reply, busy, error) and where to check it; a failed precinct lookup is recorded instead of returning \"no precinct\"; a failed council lookup no longer shows \"council not covered\". Also: an unmatched heritage conservation area code is reported (hca_not_checked) instead of silently dropping its rules; the AI answer says \"not checked\" on a failed lookup and never a flat \"no requirements found\". The full-assessment API was checked and needs no change (no user-visible consumer; failure already explicit).",
+  "commit_hash": "fa41afe2",
+  "files": [
+    ".github/workflows/gates.yml",
+    "frontend-nextjs/__tests__/lib/conditions-not-checked.test.ts",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/lib/conditions-not-checked.ts",
+    "frontend-nextjs/lib/lookup-not-checked.ts",
+    "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "frontend-nextjs/lib/precinct-service.ts",
+    "frontend-nextjs/lib/property-data.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/lib/ai/router.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "What existing data/state does this interact with? [table/column or 'none']",
+    "assumption_mismatch": "What if existing data doesn't match assumptions? [specific failure]",
+    "new_vs_existing": "Will this apply to existing rows or only new? [mechanism]",
+    "external_source_error": "(Critical only) What does external source return on error?",
+    "frontend_type": "server lookup library plus the rules panel client component on the assessment page",
+    "user_failure_mode": "(Critical only) What does user see if this fails?"
+  },
+  "functions": [
+    {
+      "name": "conditionsNotChecked",
+      "file_line": "frontend-nextjs/lib/conditions-not-checked.ts:54",
+      "input": "property constraints with the not-checked list, reasons and condition facts",
+      "output": "list of what, why and where for each condition whose check did not answer",
+      "if_none": "null constraints give an empty list; missing reasons say did not answer"
+    },
+    {
+      "name": "getPrecinctForAddress",
+      "file_line": "frontend-nextjs/lib/precinct-service.ts:65",
+      "input": "address, LGA, coordinates, heritage name and an option to throw on error",
+      "output": "the matched precinct, null for no match, or a thrown error when asked",
+      "if_none": "other callers keep the old null on error; the property path now throws and records not checked"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "the NSW flood map times out during a busy period for a flood lot",
+      "what_happens": "no flood rules show and the user reads no flood rules apply",
+      "repro": "mock the flood fetch to abort",
+      "mitigated": true,
+      "how": "notice lists Flood with did not reply in time and a link"
+    },
+    {
+      "scenario": "the precinct database errors for a property inside a precinct area",
+      "what_happens": "precinct rules vanish and the page implies no precinct",
+      "repro": "make getPrecinctUsingPostGIS throw",
+      "mitigated": true,
+      "how": "property path throws, records precinct not checked, notice lists it"
+    },
+    {
+      "scenario": "the planning lookup fails so no council is known for the address",
+      "what_happens": "page showed the not-covered interest form for a covered council",
+      "repro": "constraints with planning_layers in notChecked and no former council",
+      "mitigated": true,
+      "how": "page shows Council rules not checked with a link"
+    },
+    {
+      "scenario": "the NSW server rate-limits with a 429 during a rush of lookups",
+      "what_happens": "busy could be shown as a generic failure or not at all",
+      "repro": "whyFromError on HTTP 429",
+      "mitigated": true,
+      "how": "reason recorded as busy and shown in words"
+    },
+    {
+      "scenario": "other routes still call the precinct lookup without the new option",
+      "what_happens": "they would start throwing and break if the default changed",
+      "repro": "call getPrecinctForAddress with four arguments",
+      "mitigated": true,
+      "how": "throwOnError defaults to false; only the property path opts in"
+    },
+    {
+      "scenario": "a heritage conservation area code from the portal has no mapping in our plan data",
+      "what_happens": "its area-specific heritage rules silently disappear from the list",
+      "repro": "for-property with hca=C999",
+      "mitigated": true,
+      "how": "meta.hca_not_checked set; the page lists it with why and where"
+    },
+    {
+      "scenario": "the AI asks for parking rules and the rules lookup times out",
+      "what_happens": "the old code threw or said no requirements found",
+      "repro": "AI factual lookup with the route returning 500",
+      "mitigated": true,
+      "how": "20 s timeout, not-checked message that says this is not a finding none apply"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none",
+    "secrets": "none",
+    "other_repo": "none",
+    "manual_verify": "open /assessment for an address while forcing a lookup failure in the preview and read the notice"
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/conditions-not-checked.test.ts",
+    "fails_when": "a failed check produces no notice, a busy server reads as a fact, the precinct lookup swallows a DB error, or the page drops the notice",
+    "observed_red": "origin/main: getPrecinctForAddress catches every DB error and returns null; the page shows the council-interest form when the lookup failed"
+  }
+}

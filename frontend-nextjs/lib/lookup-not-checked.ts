@@ -21,11 +21,12 @@ export type LookupCheck =
   | 'flood' // flood planning map
   | 'corner_lot' // corner lot and street frontage
   | 'classified_road' // State / classified road the lot fronts
-  | 'acid_sulfate'; // no class from the planning layers AND the PostGIS fallback did not answer
+  | 'acid_sulfate' // no class from the planning layers AND the PostGIS fallback did not answer
+  | 'precinct'; // DCP precinct lookup (precinct boundaries) failed
 
 export const LOOKUP_CHECKS: readonly LookupCheck[] = [
   'planning_layers', 'lot_shape', 'tod', 'roads', 'spatial_overlays',
-  'dual_occupancy', 'sepp_exclusions', 'flood', 'corner_lot', 'classified_road', 'acid_sulfate',
+  'dual_occupancy', 'sepp_exclusions', 'flood', 'corner_lot', 'classified_road', 'acid_sulfate', 'precinct',
 ];
 
 /** One time limit for the whole lookup, under the 30 s function limit in vercel.json. */

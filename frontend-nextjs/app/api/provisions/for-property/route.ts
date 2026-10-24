@@ -385,6 +385,7 @@ export async function GET(request: NextRequest) {
 
     const pool = getPool();
     const client = await pool.connect();
+    let hcaNotChecked: string | null = null;
 
     try {
       // Resolve HCA code (e.g., "C98") to db_slug (e.g., "summer_hill")
@@ -393,7 +394,9 @@ export async function GET(request: NextRequest) {
         if (resolvedHca) {
           filters.hca = resolvedHca;
         } else {
-          // No mapping found - clear the filter to avoid false matches
+          // No mapping found - clear the filter to avoid false matches, and say so: the
+          // heritage-area-specific rules are then not shown (hca_not_checked in meta).
+          hcaNotChecked = filters.hca;
           filters.hca = undefined;
         }
       }
@@ -707,6 +710,7 @@ export async function GET(request: NextRequest) {
           }
         },
         meta: {
+          hca_not_checked: hcaNotChecked,
           filters_applied: filters,
           dev_type_hierarchy: devTypeInfo,
           dev_type_approach: filters.dev_type

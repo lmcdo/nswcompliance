@@ -3,6 +3,7 @@
  * Real-time property data, zoning, and environmental overlays
  */
 
+import { whyFromError } from './conditions-not-checked';
 import { getRoadClassifications, type RoadClassification } from './road-classification-service';
 import { getClauseNumbersForMapType } from './lep-local-provisions-mapping';
 import { getKeySitesProvision } from './key-sites-map-provisions';
@@ -84,6 +85,8 @@ export interface PlanningConstraints {
  uncheckedHazards?: HazardKey[];
  /** Other checks that failed or timed out (lib/lookup-not-checked.ts). Their facts are null, never a default. */
  notChecked?: LookupCheck[];
+ /** Why each of those checks failed, when known: no reply in time, server busy (429), or an error. */
+ notCheckedWhy?: Partial<Record<LookupCheck, 'no_reply' | 'busy' | 'error'>>;
  acidSulfateSoils?: string;
  mineSubsidence?: {
    inDistrict: boolean;
@@ -1153,10 +1156,12 @@ export class NSWPlanningPortalService {
 
  // Checks that did not answer. Their facts stay null and the page says "Not checked".
  const notChecked: LookupCheck[] = [];
+ const notCheckedWhy: Partial<Record<LookupCheck, 'no_reply' | 'busy' | 'error'>> = {};
  const settle = <T,>(p: Promise<T>, check: LookupCheck): Promise<T | undefined> =>
    p.catch((error) => {
      console.warn(`[NSW Planning Portal] ${check} not checked:`, error instanceof Error ? error.message : error);
      notChecked.push(check);
+     notCheckedWhy[check] = whyFromError(error);
      return undefined;
    });
 
@@ -1407,6 +1412,7 @@ export class NSWPlanningPortalService {
  }
  if (!flood || flood.mapDidNotAnswer) notChecked.push('flood');
  constraints.notChecked = notChecked;
+ constraints.notCheckedWhy = notCheckedWhy;
 
  // Step 4: Clean up the address from search result
  // Hunter Street Lewisham has incorrect "8-12" in addresses - remove it

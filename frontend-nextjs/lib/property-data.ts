@@ -3,6 +3,7 @@
  * Integrates with NSW Planning Portal APIs for real property data
  */
 
+import { whyFromError } from './conditions-not-checked';
 import {
  NSWPlanningPortalService,
  NSWPropertyData,
@@ -258,7 +259,9 @@ export class PropertyDataService {
      const precinctData = await withinLookupBudget(precinctModule.getPrecinctForAddress(
        propertyData.address,
        constraints.lga || '',
-       { lat, lon }
+       { lat, lon },
+       undefined,
+       { throwOnError: true }
      ));
 
      if (precinctData) {
@@ -269,7 +272,10 @@ export class PropertyDataService {
        }
      }
    } catch (error) {
+     // A failed lookup is "precinct not checked", never "no precinct".
      console.error('[PropertyDataService] Precinct matching failed:', error);
+     constraints.notChecked = [...(constraints.notChecked ?? []), 'precinct'];
+     constraints.notCheckedWhy = { ...(constraints.notCheckedWhy ?? {}), precinct: whyFromError(error) };
    }
  }
 

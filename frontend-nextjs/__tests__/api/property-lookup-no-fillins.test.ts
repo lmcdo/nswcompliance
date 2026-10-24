@@ -57,7 +57,8 @@ const ANSWERED = /^(propId|address|landValue|valuationDate|propertyArea|zoneDesc
 /** Words that say a fact is not known. */
 const NOT_KNOWN = /not checked|could not|couldn't|can't tell|did not answer|unavailable|unknown|not known|not found|failed/i;
 /** The lists that NAME the checks that did not answer. */
-const NAMING_LISTS = /^(constraints|environmental)\.(uncheckedHazards|notChecked)\.\d+$/;
+// notCheckedWhy holds the reason a named check failed (no_reply / busy / error), not a property fact.
+const NAMING_LISTS = /^(constraints|environmental)\.((uncheckedHazards|notChecked)\.\d+|notCheckedWhy\.[a-z_]+)$/;
 
 /** Every leaf that states something definite although its source did not answer. */
 function fillIns(value: unknown, path = ''): string[] {

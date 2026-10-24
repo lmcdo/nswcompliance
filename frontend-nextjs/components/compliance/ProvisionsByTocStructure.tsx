@@ -54,7 +54,8 @@ import { NumericChecker, type NumericCheckValues } from './NumericChecker';
 import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
 
 
-import { acidSulfateAnswer } from '@/lib/fact-answer';
+import { acidSulfateAnswer, wasNotChecked } from '@/lib/fact-answer';
+import { conditionsNotChecked } from '@/lib/conditions-not-checked';
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)
 const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
   ashfield: {
@@ -424,6 +425,8 @@ export function ProvisionsByTocStructure({
     meta?: {
       chapter_pdf_urls?: Record<string, string> | null;
       precinct_warning?: boolean;
+      /** Heritage conservation area code the rules lookup could not match: its HCA rules are not shown. */
+      hca_not_checked?: string | null;
       land_application?: LandApplicationDecision;
       not_covered?: NotCovered | null;
       may_apply?: MayApplyArea[] | null;
@@ -1512,6 +1515,33 @@ export function ProvisionsByTocStructure({
 
   // No formerCouncil means council DCP not yet processed — show interest form immediately
   if (!formerCouncil) {
+    // No council because the lookup failed is not "we don't cover this council".
+    // prior-art-checked: reuse not viable because the matches are blog pages; this is the rules panel's own empty state.
+    const councilUnknown = !lga || wasNotChecked(propertyData?.constraints, 'planning_layers');
+    const areaUnknown = !councilUnknown && wasNotChecked(propertyData?.constraints, 'precinct');
+    if (councilUnknown || areaUnknown) {
+      return (
+        <Card>
+          <CardContent className="p-6 text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded" data-testid="council-not-checked">
+            <p className="font-medium">Council rules not checked</p>
+            <p className="mt-1">
+              {councilUnknown
+                ? 'The council for this address is not known because the planning lookup did not answer.'
+                : `The council is ${lga}, but the precinct map that tells us which part of its plan applies here did not answer.`}
+              Try again in a minute, or find the council on the{' '}
+              <a href="https://www.planningportal.nsw.gov.au/spatialviewer" target="_blank" rel="noopener noreferrer" className="underline">NSW Planning Portal spatial viewer</a>.
+            </p>
+            {conditionsNotChecked(propertyData?.constraints).length > 0 && (
+              <ul className="mt-2 space-y-0.5">
+                {conditionsNotChecked(propertyData?.constraints).map((m) => (
+                  <li key={m.what}><span className="font-medium">{m.what}</span> — {m.why}.</li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
     return (
       <DCPInterestForm
         councilName={lga || 'your council'}
@@ -2171,24 +2201,33 @@ export function ProvisionsByTocStructure({
         </p>
       )}
 
-      {propertyData?.constraints?.greenwebUnchecked && (
-        // Without the Greenweb flag the Part 18 biodiversity rules are not shown, so say why (Sol, 2026-10-20).
-        <p className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          {propertyData.constraints.greenwebUnchecked}
-        </p>
-      )}
-      {propertyData?.constraints?.railOrBusyRoadUnchecked && (
-        // Without the flag the Part 20 rail and busy-road rules are not shown, so say why.
-        <p className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          {propertyData.constraints.railOrBusyRoadUnchecked}
-        </p>
-      )}
-      {propertyData?.constraints?.classifiedRoadUnchecked && (
-        // Without the flag the rules for lots on State or classified roads are not shown, so say why.
-        <p className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          {propertyData.constraints.classifiedRoadUnchecked}
-        </p>
-      )}
+      {(() => {
+        // A condition whose check did not answer shows no rules, which reads like "none apply".
+        // Say which ones, why, and where to check (lib/conditions-not-checked.ts).
+        const missing = conditionsNotChecked(propertyData?.constraints);
+        if (data?.meta?.hca_not_checked) {
+          missing.push({
+            what: `Heritage conservation area ${data.meta.hca_not_checked}`,
+            why: 'its area-specific heritage rules could not be matched in the council plan',
+            whereLabel: 'council DCP heritage chapter',
+            whereUrl: 'https://www.planningportal.nsw.gov.au/spatialviewer',
+          });
+        }
+        if (!missing.length) return null;
+        return (
+          <div className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="conditions-not-checked">
+            <p className="font-medium">Some site conditions were not checked, so their rules may be missing below:</p>
+            <ul className="mt-1 space-y-0.5">
+              {missing.map((m) => (
+                <li key={m.what}>
+                  <span className="font-medium">{m.what}</span> — {m.why}. Check it on the{' '}
+                  <a href={m.whereUrl} target="_blank" rel="noopener noreferrer" className="underline">{m.whereLabel}</a>.
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
       <DcpNotCoveredNotice notCovered={data?.meta?.not_covered} chapterPdfUrls={data?.meta?.chapter_pdf_urls} />
       <DcpMayApplyBlock mayApply={data?.meta?.may_apply} address={address} chapterPdfUrls={data?.meta?.chapter_pdf_urls} />
       <DcpFrontageFigureNotice items={data?.meta?.frontage_setback_figures} failed={data?.meta?.frontage_setback_figures_failed} />
