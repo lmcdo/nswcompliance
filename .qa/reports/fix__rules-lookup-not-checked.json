@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "When a lookup check failed, the rules page showed no condition, precinct or council rules, which reads as \"none apply\". It now lists each unchecked item with what failed, why (no reply, busy, error) and where to check it; a failed precinct lookup is recorded instead of returning \"no precinct\"; a failed council lookup no longer shows \"council not covered\".",
-  "commit_hash": "3d066258",
+  "commit_hash": "2136abfc",
   "files": [
     ".github/workflows/gates.yml",
     "frontend-nextjs/__tests__/lib/conditions-not-checked.test.ts",
