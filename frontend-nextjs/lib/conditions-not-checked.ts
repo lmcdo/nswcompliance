@@ -55,7 +55,7 @@ export function conditionsNotChecked(c: Constraints | null | undefined): Conditi
   if (!c) return [];
   const out: ConditionNotChecked[] = [];
   if (wasNotChecked(c, 'flood')) out.push({ what: 'Flood', why: why(c, 'the flood planning map', 'flood'), ...PORTAL });
-  if (c.bushfireProne === null) out.push({ what: 'Bush fire', why: 'the bush fire prone land map did not answer', ...RFS });
+  if (c.bushfireProne == null) out.push({ what: 'Bush fire', why: 'the bush fire prone land map did not answer', ...RFS });
   if (wasNotChecked(c, 'spatial_overlays')) {
     out.push({ what: 'Riparian land and waterways', why: why(c, 'our map database', 'spatial_overlays'), ...PORTAL });
   }
