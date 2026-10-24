@@ -23,7 +23,8 @@ from .generic import (
     scrape_hornsby, scrape_parramatta, scrape_northern_beaches,
     scrape_randwick, scrape_sutherland, scrape_bayside, scrape_georges_river,
     scrape_burwood, scrape_camden, scrape_canada_bay, scrape_fairfield,
-    scrape_ryde, scrape_strathfield, scrape_the_hills,
+    scrape_ryde, scrape_strathfield, scrape_the_hills, scrape_wingecarribee,
+    scrape_ku_ring_gai, scrape_wollongong,
 )
 
 # council slug (matches dcp_chapter_registry.council) → scraper function
@@ -62,6 +63,11 @@ HUB_SCRAPERS: dict = {
     "fairfield":             scrape_fairfield,
     "ryde":                  scrape_ryde,
     "strathfield":           scrape_strathfield,
+    # Wingecarribee (list page stored 2026-10-24; 22 PDF links on the council page)
+    "wingecarribee":         scrape_wingecarribee,
+    # Ku-ring-gai and Wollongong: list pages stored, no reader until 2026-10-24 (baseline "no reader")
+    "ku_ring_gai":           scrape_ku_ring_gai,
+    "wollongong":            scrape_wollongong,
     "the_hills":             scrape_the_hills,
     "the_hills_shire":       scrape_the_hills,
     # ⚠ The REGISTRY slug is `sutherland_shire`; this module was written as
