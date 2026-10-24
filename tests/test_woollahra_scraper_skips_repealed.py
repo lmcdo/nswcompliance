@@ -92,13 +92,16 @@ def test_the_monitor_sees_no_migration_when_the_registry_already_holds_the_curre
 
 
 def test_without_the_filter_the_same_page_migrates_into_the_archive(monkeypatch):
-    """Proves the test above can fail: with both links offered, diff_urls keeps the last
-    one, and records the in-force URL as having moved to the repealed file."""
+    """Proves the test above can fail: with both links offered, the key matches two links.
+    Before 2026-10-24 diff_urls kept the last one and moved the in-force URL to the repealed
+    file; now two matching links are never re-pointed, only reported (second line of defence)."""
     diff_urls = _import_diff_urls()
     monkeypatch.setattr(w, "is_repealed_link", lambda url, label: False)
     discovered = _scrape(monkeypatch)
     diff = diff_urls(discovered, [{"chapter_key": KEY, "council_url": BASE + CURRENT}], None)
-    assert diff.url_migrated == [(KEY, BASE + CURRENT, BASE + REPEALED)]
+    assert diff.url_migrated == []
+    assert [(k, s) for k, s, _ in diff.ambiguous] == [(KEY, BASE + CURRENT)]
+    assert set(diff.ambiguous[0][2]) == {BASE + CURRENT, BASE + REPEALED}
 
 
 def test_a_registry_already_pointing_at_the_archive_is_moved_back(monkeypatch):

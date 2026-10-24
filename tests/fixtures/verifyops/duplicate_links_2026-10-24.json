@@ -1,0 +1,95 @@
+{
+"woollahra": {
+"discovered": [
+{
+"chapter_key": "chapter-f1-child-care-centres",
+"url": "https://www.woollahra.nsw.gov.au/files/assets/public/v/1/plans-policies-publications/development-control-plans/chapter_f1_child_care_centres.pdf",
+"label": "chapter f1 - child care centres"
+},
+{
+"chapter_key": "chapter-f1-child-care-centres",
+"url": "https://www.woollahra.nsw.gov.au/files/assets/public/v/1/plans-policies-publications/development-control-plans/child_care_centres_dcp.pdf",
+"label": "child care centres dcp"
+},
+{
+"chapter_key": "chapter-c3-watsons-bay-hca",
+"url": "https://www.woollahra.nsw.gov.au/files/assets/public/v/1/plans-policies-publications/development-control-plans/watsons_bay_dcp_version_of_29_aug_2012.pdf",
+"label": "watsons bay heritage conservation area dcp"
+},
+{
+"chapter_key": "chapter-c2-woollahra-hca",
+"url": "https://www.woollahra.nsw.gov.au/files/assets/public/v/1/plans-policies-publications/development-control-plans/woollahra_hca_dcp_amendment_2.pdf",
+"label": "woollahra heritage conservation area dcp"
+},
+{
+"chapter_key": "chapter-c2-woollahra-hca",
+"url": "https://www.woollahra.nsw.gov.au/files/assets/public/v/3/plans-policies-publications/development-control-plans/chapter-c2-woollahra-hca.pdf",
+"label": "chapter c2 - woollahra heritage conservation area"
+},
+{
+"chapter_key": "chapter-c3-watsons-bay-hca",
+"url": "https://www.woollahra.nsw.gov.au/files/assets/public/v/3/plans-policies-publications/development-control-plans/chapter-c3-watsons-bay-hca.pdf",
+"label": "chapter c3 - watsons bay heritage conservation area"
+}
+],
+"stored": [
+{
+"chapter_key": "chapter-c2-woollahra-hca",
+"council_url": "https://www.woollahra.nsw.gov.au/files/assets/public/v/1/plans-policies-publications/development-control-plans/woollahra_hca_dcp_amendment_2.pdf",
+"check_failures": 0
+},
+{
+"chapter_key": "chapter-c3-watsons-bay-hca",
+"council_url": "https://www.woollahra.nsw.gov.au/files/assets/public/v/1/plans-policies-publications/development-control-plans/watsons_bay_dcp_version_of_29_aug_2012.pdf",
+"check_failures": 0
+},
+{
+"chapter_key": "chapter-f1-child-care-centres",
+"council_url": "https://www.woollahra.nsw.gov.au/files/assets/public/v/1/plans-policies-publications/development-control-plans/child_care_centres_dcp.pdf",
+"check_failures": 0
+}
+]
+},
+"randwick": {
+"discovered": [
+{
+"chapter_key": "randwick-dcp-c1-low-density",
+"url": "https://www.randwick.nsw.gov.au/__data/assets/pdf_file/0005/426722/C1-Low-Density-Residential-Stage-2-DCP-2025_incorporating-resolution-18Nov2025.pdf",
+"label": "c1 low density residential"
+},
+{
+"chapter_key": "randwick-dcp-c1-low-density",
+"url": "https://www.randwick.nsw.gov.au/__data/assets/pdf_file/0006/382497/Part-C1-Low-Density-Residential-DCP-2023.pdf",
+"label": "part c1 low density residential pdf, 1497.65 kb"
+},
+{
+"chapter_key": "b7-transport-traffic-parking-access",
+"url": "https://www.randwick.nsw.gov.au/__data/assets/pdf_file/0006/426714/B7-Traffic,-transport-and-parking-Draft-Randwick-DCP-2025.pdf",
+"label": "b7 traffic, transport and parking"
+},
+{
+"chapter_key": "randwick-dcp-c1-low-density",
+"url": "https://www.randwick.nsw.gov.au/__data/assets/pdf_file/0018/442251/C1-Low-Density-Residential-Randwick-DCP-Stage-2_Final.pdf",
+"label": "c1 low density residential"
+},
+{
+"chapter_key": "b7-transport-traffic-parking-access",
+"url": "https://www.randwick.nsw.gov.au/__data/assets/pdf_file/0020/442244/B7-Transport,-traffic-and-parking-Randwick-DCP-Stage-2_Final.pdf",
+"label": "b7 traffic, transport and parking"
+}
+],
+"stored": [
+{
+"chapter_key": "randwick-dcp-c1-low-density",
+"council_url": "https://www.randwick.nsw.gov.au/__data/assets/pdf_file/0005/426722/C1-Low-Density-Residential-Stage-2-DCP-2025_incorporating-resolution-18Nov2025.pdf",
+"check_failures": 0
+},
+{
+"chapter_key": "b7-transport-traffic-parking-access",
+"council_url": "https://www.randwick.nsw.gov.au/__data/assets/pdf_file/0006/426714/B7-Traffic,-transport-and-parking-Draft-Randwick-DCP-2025.pdf",
+"check_failures": 0
+}
+]
+},
+"source": "dcp_monitor_council_results latest ok list + active dcp_chapter_registry rows, read 2026-10-24 (trimmed to the chapters these tests use)"
+}
