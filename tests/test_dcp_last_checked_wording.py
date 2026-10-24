@@ -30,7 +30,8 @@ def test_old_wrong_text_is_gone():
 
 def test_no_promise_words_in_the_currency_block():
     # Liability language (.claude/rules/pre-pr-review.md): the block may state facts, not guarantees.
-    words = r"\b(verified|current|accurate|confirmed|ensure|guaranteed|comprehensive|reliable|definitive)\b"
+    words = (r"\b(safe|feasible|compliant|should|recommend|suitable|adequate|sufficient|approved|guaranteed|"
+             r"certified|confirmed|verified|ensure|assure|accurate|definitive|comprehensive|reliable|current)\b")
     text = re.sub(r"\{[^}]*\}|className=\"[^\"]*\"|//[^\n]*", " ", BLOCK)
     assert re.findall(words, text, flags=re.I) == []
 
