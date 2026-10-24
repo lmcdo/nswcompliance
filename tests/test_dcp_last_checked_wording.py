@@ -33,3 +33,7 @@ def test_no_promise_words_in_the_currency_block():
     words = r"\b(verified|current|accurate|confirmed|ensure|guaranteed|comprehensive|reliable|definitive)\b"
     text = re.sub(r"\{[^}]*\}|className=\"[^\"]*\"|//[^\n]*", " ", BLOCK)
     assert re.findall(words, text, flags=re.I) == []
+
+
+def test_a_malformed_date_counts_as_no_date():
+    assert "!Number.isNaN(new Date(v).getTime())" in SRC

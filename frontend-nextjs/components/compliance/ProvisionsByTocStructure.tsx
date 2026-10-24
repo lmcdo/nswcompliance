@@ -522,7 +522,11 @@ export function ProvisionsByTocStructure({
 
   // Currency data from API (instrument_currency table, updated by weekly PDF hash monitor)
   const dcpCurrency = data?.meta?.dcp_currency ?? null;
-  const verifiedAtRaw = dcpCurrency?.verified_at ?? null;
+  // A malformed date counts as no date: it must show the warning, never "Invalid Date" (Sol, 2026-10-24).
+  const verifiedAtRaw = (() => {
+    const v = dcpCurrency?.verified_at ?? null;
+    return v && !Number.isNaN(new Date(v).getTime()) ? v : null;
+  })();
   const amendmentPending = dcpCurrency?.amendment_pending ?? false;
   // DQ-123: the plan names come from the registry rows behind the rules actually served here.
   const servedDcpNames = (dcpCurrency?.dcp_names ?? []).map((d) => d.name).filter(Boolean);
