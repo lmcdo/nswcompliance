@@ -1,0 +1,38 @@
+{
+ "tier": "minor",
+ "justification": "Registers three councils with the existing generic list reader; no reader logic changes.",
+ "commit_hash": "5f9c56f2",
+ "files": [
+  "scripts/hub_scrapers/__init__.py",
+  "scripts/hub_scrapers/generic.py",
+  "tests/test_every_list_page_has_a_reader.py"
+ ],
+ "pre_impl": {
+  "existing_data": "28 councils hold an active council_page_url (2026-10-24); run 5 recorded no_scraper for wingecarribee, and ku_ring_gai had no_scraper in run 4.",
+  "assumption_mismatch": "A stored list page was assumed to be read; three had no registered reader.",
+  "new_vs_existing": "Reuses scrape_generic; adds thin wrappers like the other councils."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_every_list_page_has_a_reader.py",
+  "fails_when": "a council with a stored list page has no reader",
+  "observed_red": "Removing each of the three registry entries in turn fails the test (3 of 3)."
+ },
+ "break_it": [
+  {
+   "scenario": "A list page is stored for a new council but no reader is registered",
+   "what_happens": "silent: no_scraper every day, new documents never found",
+   "mitigated": true,
+   "how": "test lists every council with a page and requires a reader",
+   "repro": "pytest tests/test_every_list_page_has_a_reader.py"
+  }
+ ],
+ "real_layer_exempt": {
+  "scripts/hub_scrapers/generic.py": "Thin wrappers over scrape_generic; the councils block this machine, so the live read is measured from Railway in the next run's dcp_monitor_council_results."
+ },
+ "post_merge": {
+  "db_reset": "None.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Next run: dcp_monitor_council_results shows ok, blocked or anomaly for wingecarribee, ku_ring_gai, wollongong, not no_scraper."
+ }
+}

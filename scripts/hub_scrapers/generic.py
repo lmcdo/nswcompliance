@@ -193,5 +193,17 @@ def scrape_ryde(hub_url, expected_keys, timeout=30, expected_labels=None):
 def scrape_strathfield(hub_url, expected_keys, timeout=30, expected_labels=None):
     return scrape_generic(hub_url, expected_keys, timeout, expected_labels, "strathfield")
 
+def scrape_ku_ring_gai(hub_url, expected_keys, timeout=30, expected_labels=None):
+    return scrape_generic(hub_url, expected_keys, timeout, expected_labels, "kdcp")
+
+
+def scrape_wollongong(hub_url, expected_keys, timeout=30, expected_labels=None):
+    return scrape_generic(hub_url, expected_keys, timeout, expected_labels, "wollongong")
+
+
+def scrape_wingecarribee(hub_url, expected_keys, timeout=30, expected_labels=None):
+    return scrape_generic(hub_url, expected_keys, timeout, expected_labels, "wingecarribee")
+
+
 def scrape_the_hills(hub_url, expected_keys, timeout=30, expected_labels=None):
     return scrape_generic(hub_url, expected_keys, timeout, expected_labels, "the-hills")
