@@ -63,5 +63,5 @@ def test_ambiguous_is_alerted_and_reseed_skips_it():
     assert "for key, stored_url, urls in diff.ambiguous:" in src
     assert 'results["hub_alerts"].append(f"ambiguous: {council}/{key}")' in src
     src = src.replace("\r\n", "\n")
-    assert ("for key, _stored, _urls in diff.ambiguous:  # never reseed a key with two links\n"
+    assert ("for key in [k for k, v in seen.items() if len(v) > 1]:\n"
             "                        discovered_map.pop(key, None)") in src
