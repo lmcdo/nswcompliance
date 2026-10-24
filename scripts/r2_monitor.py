@@ -137,6 +137,10 @@ class DiffResult:
     removed:      list[str] = field(default_factory=list)   # not on hub AND own URL failing
     unlisted:     list[str] = field(default_factory=list)   # not on hub, own URL still fetches
     added:        list[dict] = field(default_factory=list)  # {url, label} on hub, no key match
+    # (key, stored_url, [candidate urls]): more than one hub link matched the key. Never
+    # re-pointed: Woollahra lists each DCP 2015 chapter AND its repealed pre-2015 plan, and
+    # "last link wins" flipped the stored link between them run after run (2026-10-24).
+    ambiguous:    list[tuple] = field(default_factory=list)
     count_ok:     bool = True
 
 load_dotenv(Path(__file__).parent.parent / ".env")
@@ -519,6 +523,10 @@ def diff_urls(
         return result
 
     discovered_by_key = {d["chapter_key"]: d for d in discovered if d["chapter_key"]}
+    urls_by_key: dict[str, list[str]] = {}
+    for d in discovered:
+        if d["chapter_key"] and d["url"] not in urls_by_key.setdefault(d["chapter_key"], []):
+            urls_by_key[d["chapter_key"]].append(d["url"])
     unmatched = [d for d in discovered if d["chapter_key"] is None]
     stored_by_key = {s["chapter_key"]: s for s in stored}
 
@@ -557,6 +565,8 @@ def diff_urls(
                 result.removed.append(key)
             else:
                 result.unlisted.append(key)
+        elif len(urls_by_key[key]) > 1:
+            result.ambiguous.append((key, stored_ch["council_url"], urls_by_key[key]))
         elif discovered_by_key[key]["url"] != stored_ch["council_url"]:
             result.url_migrated.append((key, stored_ch["council_url"], discovered_by_key[key]["url"]))
         else:
@@ -994,6 +1004,16 @@ def run_monitor(
                     council_hub_alerts.append(f"URL migrated: {key}")
                     results["hub_alerts"].append(f"URL migration: {council}/{key}")
 
+                # More than one link on the list matches the chapter: the stored link is kept
+                # and a person decides which document is in force. Alerted every run until then.
+                for key, stored_url, urls in diff.ambiguous:
+                    print(f"  [AMBIGUOUS] {key}: {len(urls)} links match; stored link kept\n    stored {stored_url}"
+                          + "".join(f"\n    link   {u}" for u in urls))
+                    council_hub_alerts.append(
+                        f"Two or more links match {key}; stored link kept, which is in force? "
+                        f"stored: {stored_url} | candidates: {' ; '.join(urls)}")
+                    results["hub_alerts"].append(f"ambiguous: {council}/{key}")
+
                 # Not listed on the hub, but the document itself still fetches.
                 # Logged so the run is readable, never alerted: this is routinely
                 # the normal state for a council whose hub page is a landing page
@@ -1058,6 +1078,14 @@ def run_monitor(
                 # If reseed mode: update council_url for all matched chapters
                 if reseed and not dry_run:
                     discovered_map = {d["chapter_key"]: d["url"] for d in discovered if d["chapter_key"]}
+                    # Never reseed a key matched by two links. Counted here, not taken from diff,
+                    # because diff_urls returns early (no ambiguity list) when the count gate trips (Sol).
+                    seen: dict[str, set] = {}
+                    for d in discovered:
+                        if d["chapter_key"]:
+                            seen.setdefault(d["chapter_key"], set()).add(d["url"])
+                    for key in [k for k, v in seen.items() if len(v) > 1]:
+                        discovered_map.pop(key, None)
                     cur2 = conn.cursor()
                     updated = 0
                     for key, url in discovered_map.items():

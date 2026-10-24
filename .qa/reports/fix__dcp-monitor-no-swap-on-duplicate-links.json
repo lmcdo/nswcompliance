@@ -1,0 +1,62 @@
+{
+ "tier": "standard",
+ "justification": "Changes when the DCP monitor re-points a chapter's stored source link; chapter checks unchanged.",
+ "commit_hash": "7108a29d",
+ "files": [
+  "scripts/r2_monitor.py",
+  "tests/test_r2_monitor_duplicate_links.py",
+  "tests/test_woollahra_scraper_skips_repealed.py",
+  "tests/fixtures/verifyops/duplicate_links_2026-10-24.json"
+ ],
+ "pre_impl": {
+  "existing_data": "7 active chapters match more than one link on their council list (2026-10-24): woollahra c2/c3/f1 (DCP 2015 + repealed pre-2015 plan), randwick b7/c1 (Stage 2 final + draft), leichhardt part-c-s2, marrickville cover.",
+  "assumption_mismatch": "diff_urls assumed one link per chapter; it kept the last link and re-pointed the registry, flipping Woollahra between in-force and repealed plans and leaving Randwick on a draft.",
+  "new_vs_existing": "Adds DiffResult.ambiguous next to url_migrated; alerts through the existing per-council digest."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_r2_monitor_duplicate_links.py tests/test_woollahra_scraper_skips_repealed.py",
+  "fails_when": "a chapter matched by two links is re-pointed, or not reported",
+  "observed_red": "4 hand mutants killed after tightening the reseed test; the old Woollahra test that expected migration into the archive failed and was rewritten to expect no migration."
+ },
+ "functions": [
+  {
+   "name": "diff_urls",
+   "file_line": "scripts/r2_monitor.py:502",
+   "input": "hub-discovered links, stored registry rows, expected count",
+   "output": "DiffResult with url_migrated only for single-link keys and ambiguous for keys with two or more links",
+   "if_none": "a key absent from the hub is unlisted or removed as before"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Woollahra lists a DCP 2015 chapter and its repealed plan",
+   "what_happens": "silent: stored link flipped to the repealed plan",
+   "mitigated": true,
+   "how": "two links never re-point; alert names both",
+   "repro": "pytest tests/test_r2_monitor_duplicate_links.py -k woollahra"
+  },
+  {
+   "scenario": "Randwick lists the in-force Stage 2 file and a draft",
+   "what_happens": "silent: stored link stayed on the draft",
+   "mitigated": true,
+   "how": "reported every run until a person picks the in-force link",
+   "repro": "pytest tests/test_r2_monitor_duplicate_links.py -k randwick"
+  },
+  {
+   "scenario": "Someone runs a manual reseed of the registry",
+   "what_happens": "would re-point ambiguous keys too",
+   "mitigated": true,
+   "how": "reseed skips ambiguous keys",
+   "repro": "pytest tests/test_r2_monitor_duplicate_links.py -k reseed"
+  }
+ ],
+ "real_layer_exempt": {
+  "scripts/r2_monitor.py": "diff_urls is pure; tested on the real saved council lists; councils block this machine, so the live run is measured on Railway (next run's hub alerts)."
+ },
+ "post_merge": {
+  "db_reset": "None.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Next run log shows [AMBIGUOUS] for the 7 chapters and no [URL MIGRATED] for them."
+ }
+}
