@@ -66,7 +66,12 @@ export async function getPrecinctForAddress(
   address: string,
   lga: string,
   coordinates?: { lat: number; lon: number },
-  heritageItemName?: string
+  heritageItemName?: string,
+  /**
+   * true: a database error throws instead of returning null, so the caller can say the precinct
+   * was not checked rather than "no precinct". Default false keeps older callers unchanged.
+   */
+  opts: { throwOnError?: boolean } = {}
 ): Promise<PrecinctMapping | null> {
   try {
     console.log('[Precinct Service] Looking up precinct for:', { address, lga, hasCoordinates: !!coordinates, heritageItemName });
@@ -84,7 +89,7 @@ export async function getPrecinctForAddress(
     }
 
     // Strategy 2: PostGIS Geometric Matching (PRIMARY METHOD - uses dcp_precinct_boundaries)
-    const geometricMatch = await getPrecinctUsingPostGIS(address, lga, coordinates);
+    const geometricMatch = await getPrecinctUsingPostGIS(address, lga, coordinates, opts.throwOnError === true);
     if (geometricMatch) {
       console.log('[Precinct Service] Matched using PostGIS:', geometricMatch.precinctNumber);
       return geometricMatch;
@@ -96,6 +101,7 @@ export async function getPrecinctForAddress(
 
   } catch (error) {
     console.error('[Precinct Service] Error:', error);
+    if (opts.throwOnError) throw error;
     return null;
   }
 }
@@ -190,7 +196,8 @@ async function getPrecinctFromHeritageMapping(
 async function getPrecinctUsingPostGIS(
   address: string,
   lga: string,
-  providedCoordinates?: { lat: number; lon: number }
+  providedCoordinates?: { lat: number; lon: number },
+  throwOnError = false
 ): Promise<PrecinctMapping | null> {
   try {
     // Step 1: Get property coordinates (use provided if available, otherwise geocode)
@@ -275,6 +282,7 @@ async function getPrecinctUsingPostGIS(
       }
     }
     console.error('[Precinct Service] PostGIS query error:', error);
+    if (throwOnError) throw error;
     return null;
   }
 }
