@@ -1,0 +1,34 @@
+{
+ "tier": "minor",
+ "justification": "User-facing wording on the council rules page and the stale threshold (35 to 30 days); no data path changes.",
+ "commit_hash": "f6e80de6",
+ "files": [
+  "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+  "tests/test_dcp_last_checked_wording.py"
+ ],
+ "pre_impl": {
+  "existing_data": "instrument_currency.verified_at per council 2026-10-24: 20 councils 2026-10-23, waverley 2026-06-29, 7 null; r2_monitor sets it only when every chapter of the council was checked.",
+  "assumption_mismatch": "The page said 'the twice-monthly check' although the check runs daily since #1457.",
+  "new_vs_existing": "Rewords the existing currency block; no new component."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_dcp_last_checked_wording.py",
+  "fails_when": "the approved wording is missing, the stale point is not 30 days, or a promise word appears in the block",
+  "observed_red": "All 4 tests fail against the old component text on origin/main."
+ },
+ "break_it": [
+  {
+   "scenario": "A council blocks Railway after a clean run",
+   "what_happens": "the page would keep showing the old date as if recent",
+   "mitigated": true,
+   "how": "verified_at only advances on a fully checked run; after 30 days 'Not recently checked' shows",
+   "repro": "pytest tests/test_dcp_last_checked_wording.py -k 30_days"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Preview: an address in Waverley (verified 2026-06-29) shows 'Not recently checked'; one in Penrith shows 'Last checked against the council's published PDF: 23 Oct 2026'."
+ }
+}
