@@ -34,6 +34,6 @@ def test_cleared_fields_force_a_download():
 def test_both_link_writes_clear_tag_and_last_download():
     assert SRC.count("url_etag = NULL, \"\n                            \"url_last_downloaded = NULL WHERE council = %s AND chapter_key = %s\"") == 1
     assert SRC.count("SET council_url = %s, url_etag = NULL, url_last_downloaded = NULL \"\n"
-                     "                            \"WHERE council = %s AND chapter_key = %s AND council_url != %s\"") == 1
+                     "                            \"WHERE council = %s AND chapter_key = %s AND council_url IS DISTINCT FROM %s\"") == 1
     assert "ch[\"url_last_downloaded\"] = None" in SRC and "ch[\"url_etag\"] = None" in SRC
     assert "SET council_url = %s WHERE" not in SRC

@@ -1096,7 +1096,7 @@ def run_monitor(
                     for key, url in discovered_map.items():
                         cur2.execute(
                             "UPDATE dcp_chapter_registry SET council_url = %s, url_etag = NULL, url_last_downloaded = NULL "
-                            "WHERE council = %s AND chapter_key = %s AND council_url != %s",
+                            "WHERE council = %s AND chapter_key = %s AND council_url IS DISTINCT FROM %s",
                             (url, council, key, url),
                         )
                         updated += cur2.rowcount
