@@ -1529,24 +1529,6 @@
    "text": "\"({min_lot_size_m2:.0f}m\\u00b2) — within our 10% survey margin, not a planning rule, so a registered survey matters here.\"",
    "fate": "not_regulatory",
    "reason": "our own survey-margin flag, stated in the text as not a planning rule; the minimum itself is read from the DB"
-  },
-  {
-   "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
-   "text": "'12-25m'",
-   "fate": "cited",
-   "reason": "ADG Part 3F-1 height band label, parsed from the stored sepp_adg_requirements 3F-1 requirement text (Apartment Design Guide section 3F)"
-  },
-  {
-   "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
-   "text": "'Over 25m'",
-   "fate": "cited",
-   "reason": "ADG Part 3F-1 height band label, parsed from the stored sepp_adg_requirements 3F-1 requirement text (Apartment Design Guide section 3F)"
-  },
-  {
-   "file": "frontend-nextjs/app/api/adg/separation-table/route.ts",
-   "text": "'Up to 12m'",
-   "fate": "cited",
-   "reason": "ADG Part 3F-1 height band label, parsed from the stored sepp_adg_requirements 3F-1 requirement text (Apartment Design Guide section 3F)"
   }
  ]
 }

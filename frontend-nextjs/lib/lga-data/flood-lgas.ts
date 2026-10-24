@@ -391,7 +391,7 @@ export const FLOOD_LGAS: FloodLgaData[] = [
       },
       {
         q: 'Does flood risk affect granny flat eligibility in Campbelltown?',
-        a: 'Yes. Under SEPP Housing 2021, a property on a flood control lot is ineligible for complying development (CDC). Complying development is not available on some flood-affected lots, and the check shows this per lot (/flood-risk). Where it is not available, a granny flat goes through a DA, usually with a flood risk management report.',
+        a: 'It can. Complying development (CDC) is not available on some flood-affected lots, depending on the flood category of the lot, and the check shows this per lot (/flood-risk). Where it is not available, a granny flat goes through a DA, usually with a flood risk management report.',
       },
       {
         q: 'What is a Flood Planning Area in NSW?',
