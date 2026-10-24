@@ -1,0 +1,35 @@
+{
+ "tier": "minor",
+ "justification": "Ledger and baseline data only: DQ-118 stops failing PR gates; the daily alarm keeps it.",
+ "commit_hash": "d843a5e3",
+ "files": [
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md",
+  ".claude/verifyops_red_baseline.json"
+ ],
+ "pre_impl": {
+  "existing_data": "Run 5: randwick list page and 2 chapter files HTTP 403; verifyops_coverage.py showed 2 new keys and DQ-118 failed PR #1485 and #1483.",
+  "assumption_mismatch": "DQ-118 was treated as a code gate, but it reads live council websites that change without any commit.",
+  "new_vs_existing": "Uses the existing guarded state (DQ-42); no code change."
+ },
+ "falsifiable_check": {
+  "command": "python scripts/dq_check.py --id DQ-118",
+  "fails_when": "never in gates now; the daily freshness alarm exits 1 and sends Telegram on a new red key",
+  "observed_red": "Before: DQ-118 RED in gates for #1485. After: PASSED."
+ },
+ "break_it": [
+  {
+   "scenario": "A real new coverage problem appears",
+   "what_happens": "would be silent if the daily alarm also stopped checking",
+   "mitigated": true,
+   "how": "freshness-alarm.yml runs verifyops_coverage.py directly, not via dq_check, and sends red to Telegram",
+   "repro": "grep verifyops_coverage .github/workflows/freshness-alarm.yml"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Re-run gates on #1485 and #1483: the ledger step passes."
+ }
+}
