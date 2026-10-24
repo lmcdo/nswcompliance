@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "When a lookup check failed, the rules page showed no condition, precinct or council rules, which reads as \"none apply\". It now lists each unchecked item with what failed, why (no reply, busy, error) and where to check it; a failed precinct lookup is recorded instead of returning \"no precinct\"; a failed council lookup no longer shows \"council not covered\". Also: an unmatched heritage conservation area code is reported (hca_not_checked) instead of silently dropping its rules; the AI answer says \"not checked\" on a failed lookup and never a flat \"no requirements found\". The full-assessment API was checked and needs no change (no user-visible consumer; failure already explicit).",
-  "commit_hash": "cfe0a5c0",
+  "commit_hash": "fa41afe2",
   "files": [
     ".github/workflows/gates.yml",
     "frontend-nextjs/__tests__/lib/conditions-not-checked.test.ts",
