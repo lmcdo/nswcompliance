@@ -992,7 +992,10 @@ def run_monitor(
                     if not dry_run:
                         cur2 = conn.cursor()
                         cur2.execute(
-                            "UPDATE dcp_chapter_registry SET council_url = %s WHERE council = %s AND chapter_key = %s",
+                            # A new link must be downloaded before it counts as checked: without a tag,
+                            # a recent url_last_downloaded made run 7 skip the download (2026-10-24).
+                            "UPDATE dcp_chapter_registry SET council_url = %s, url_etag = NULL, "
+                            "url_last_downloaded = NULL WHERE council = %s AND chapter_key = %s",
                             (new_url, council, key),
                         )
                         conn.commit()
@@ -1001,6 +1004,8 @@ def run_monitor(
                     for ch in council_chapters:
                         if ch["chapter_key"] == key:
                             ch["council_url"] = new_url
+                            ch["url_etag"] = None
+                            ch["url_last_downloaded"] = None
                     council_hub_alerts.append(f"URL migrated: {key}")
                     results["hub_alerts"].append(f"URL migration: {council}/{key}")
 
@@ -1090,7 +1095,8 @@ def run_monitor(
                     updated = 0
                     for key, url in discovered_map.items():
                         cur2.execute(
-                            "UPDATE dcp_chapter_registry SET council_url = %s WHERE council = %s AND chapter_key = %s AND council_url != %s",
+                            "UPDATE dcp_chapter_registry SET council_url = %s, url_etag = NULL, url_last_downloaded = NULL "
+                            "WHERE council = %s AND chapter_key = %s AND council_url != %s",
                             (url, council, key, url),
                         )
                         updated += cur2.rowcount

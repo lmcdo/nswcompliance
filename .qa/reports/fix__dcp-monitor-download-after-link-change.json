@@ -1,0 +1,37 @@
+{
+ "tier": "minor",
+ "justification": "Two registry writes that change a chapter's link now also clear its tag and last-download date.",
+ "commit_hash": "9215d91d",
+ "files": [
+  "scripts/r2_monitor.py",
+  "tests/test_r2_monitor_link_change_downloads.py"
+ ],
+ "pre_impl": {
+  "existing_data": "Run 7 (2026-10-24): rows 233, 234, 410 re-pointed, recorded unchanged_head untagged_recent with no download.",
+  "assumption_mismatch": "A link change was assumed to trigger a download; with no tag and a recent download date it did not.",
+  "new_vs_existing": "Same UPDATE statements with two more columns; decide_fetch unchanged."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_r2_monitor_link_change_downloads.py",
+  "fails_when": "a link-change write leaves url_etag or url_last_downloaded set",
+  "observed_red": "The known-wrong case reproduces untagged_recent; the source test fails on origin/main."
+ },
+ "break_it": [
+  {
+   "scenario": "A council link is re-pointed on a server that sends no file tag",
+   "what_happens": "silent: recorded unchanged without comparing the new file",
+   "mitigated": true,
+   "how": "the write clears url_last_downloaded so decide_fetch downloads",
+   "repro": "pytest tests/test_r2_monitor_link_change_downloads.py"
+  }
+ ],
+ "real_layer_exempt": {
+  "scripts/r2_monitor.py": "Two SQL column additions; measured on Railway by the next run downloading rows 233, 234, 410."
+ },
+ "post_merge": {
+  "db_reset": "None.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Next run: rows 233, 234, 410 record reexport or changed, not unchanged_head."
+ }
+}
