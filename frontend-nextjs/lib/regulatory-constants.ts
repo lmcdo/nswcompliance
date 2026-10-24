@@ -138,12 +138,6 @@ export const TOD_THRESHOLDS = {
 export const HOUSING_SEPP_LMR = {
   /** Zones eligible for Stage 2 LMR (full housing types near nominated centres) */
   ELIGIBLE_ZONES: ['R1', 'R2', 'R3', 'R4'] as const,
-
-  /** Minimum lot width for dual occupancy development (meters) */
-  MIN_LOT_WIDTH_DUAL_OCC_M: 12,
-
-  /** Minimum lot area for multi-dwelling housing (square meters) */
-  MIN_LOT_AREA_MULTI_DWELLING_M2: 450,
 } as const;
 
 /**
@@ -248,9 +242,6 @@ export const PATTERN_BOOK_CDC = {
 export const EXEMPT_COMPLYING_STANDARDS = {
   /** Standard CDC approval timeframe (days) */
   CDC_APPROVAL_TIMEFRAME_DAYS: 20,
-
-  /** Maximum building height for exempt development (meters) */
-  EXEMPT_MAX_HEIGHT_M: 3,
 
   /** Common work types with specific standards */
   WORK_TYPES: ['deck', 'fence', 'carport', 'garage', 'pool', 'shed'] as const,

@@ -387,11 +387,11 @@ export const FLOOD_LGAS: FloodLgaData[] = [
     faqs: [
       {
         q: 'What flood zones exist in Campbelltown?',
-        a: 'Campbelltown has ARI-quantified flood data covering 0.2% AEP (1-in-500-year) through PMF (Probable Maximum Flood). The 1% AEP (1-in-100-year) zone is the primary planning standard under the Campbelltown LEP. Properties in the 1% AEP zone are in the Flood Planning Area and face development controls.',
+        a: 'Campbelltown has ARI-quantified flood data covering a range of flood scenarios up to the Probable Maximum Flood (PMF). The Flood Planning Area under the Campbelltown LEP is the main planning trigger, and properties inside it face development controls. The flood risk tool shows where a given address sits (/flood-risk).',
       },
       {
         q: 'Does flood risk affect granny flat eligibility in Campbelltown?',
-        a: 'Yes. Under SEPP Housing 2021, a property on a flood control lot is ineligible for complying development (CDC). If your Campbelltown address is in the 1% AEP flood zone, a granny flat requires a DA with a flood risk management report.',
+        a: 'It can. Complying development (CDC) is not available on some flood-affected lots, depending on the flood category of the lot, and the check shows this per lot (/flood-risk). Where it is not available, a granny flat goes through a DA, usually with a flood risk management report.',
       },
       {
         q: 'What is a Flood Planning Area in NSW?',

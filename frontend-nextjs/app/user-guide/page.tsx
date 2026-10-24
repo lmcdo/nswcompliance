@@ -255,7 +255,7 @@ export default function UserGuidePage() {
                   <p className="text-xs md:text-sm text-amber-700 mb-2"><strong>What you'll find in PlotDetect:</strong></p>
                   <ul className="text-xs md:text-sm text-amber-700 list-disc ml-5 space-y-1">
                     <li><strong>Zone:</strong> Land use classification (R2 Low Density Residential, B4 Mixed Use, etc.)</li>
-                    <li><strong>Height limits:</strong> Maximum building height for the zone (e.g., 8.5m for single dwelling)</li>
+                    <li><strong>Height limits:</strong> Maximum building height for the zone &mdash; set by the LEP height map for the property</li>
                     <li><strong>FSR limits:</strong> Maximum floor space ratio (e.g., 0.5:1 means 500m² floor space on 1000m² lot)</li>
                     <li><strong>Land use table:</strong> What uses are permitted, prohibited, or require consent in this zone</li>
                     <li><strong>Heritage Conservation Areas:</strong> HCA boundaries and objectives for heritage properties</li>

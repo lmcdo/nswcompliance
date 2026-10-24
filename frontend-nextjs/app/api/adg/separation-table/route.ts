@@ -47,7 +47,7 @@ function parseADGSeparationText(text: string): SeparationRow[] {
   if (upTo12Match) {
     rows.push({
       height_category: 'up_to_12m',
-      height_range: 'Up to 12m (4 storeys)',
+      height_range: `Up to ${upTo12Match[1]}m`, // band height read from the ADG text
       habitable_rooms: parseFloat(upTo12Match[2]),
       non_habitable_rooms: parseFloat(upTo12Match[3]),
     });
@@ -58,7 +58,7 @@ function parseADGSeparationText(text: string): SeparationRow[] {
   if (to25Match) {
     rows.push({
       height_category: '12m_to_25m',
-      height_range: '12-25m (5-8 storeys)',
+      height_range: upTo12Match ? `${upTo12Match[1]}-${to25Match[1]}m` : `Up to ${to25Match[1]}m`,
       habitable_rooms: parseFloat(to25Match[2]),
       non_habitable_rooms: parseFloat(to25Match[3]),
     });
@@ -69,7 +69,7 @@ function parseADGSeparationText(text: string): SeparationRow[] {
   if (over25Match) {
     rows.push({
       height_category: 'over_25m',
-      height_range: 'Over 25m (9+ storeys)',
+      height_range: `Over ${over25Match[1]}m`,
       habitable_rooms: parseFloat(over25Match[2]),
       non_habitable_rooms: parseFloat(over25Match[3]),
     });

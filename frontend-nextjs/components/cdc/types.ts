@@ -111,6 +111,6 @@ export const DEVELOPMENT_TYPE_OPTIONS: {
   {
     value: 'secondary_dwelling',
     label: 'Secondary dwelling (granny flat)',
-    description: 'Self-contained dwelling up to 60m\u00B2',
+    description: 'Self-contained dwelling within the Housing SEPP floor area cap',
   },
 ];

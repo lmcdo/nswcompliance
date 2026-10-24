@@ -139,7 +139,7 @@ export default function DevelopersPage() {
 
       {/* Example response */}
       <section className="max-w-3xl mx-auto px-6 pb-12">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Example response</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Example response (illustrative values, not real property data)</h2>
         <div className="bg-slate-950 rounded-xl p-6 overflow-x-auto">
           <pre className="text-sm text-slate-300 leading-relaxed">
 {`GET /api/v1/property?address=10+Smith+St+Marrickville+NSW
