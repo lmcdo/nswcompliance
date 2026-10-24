@@ -1,0 +1,91 @@
+{
+  "tier": "standard",
+  "justification": "Battle-axe detection flagged ~51 of 1,200 real lots, ~8 real (precision ~16-18%): it measured width along map axes, so tilted lots, triangles and wedges looked like handles (e.g. 42-44 Albert St Belmore). New rule straightens the lot and needs an even-width strip that opens suddenly; precision 1.00 and recall 0.92 on 64 labelled real lots; widths in true metres (projected distance / Mercator scale).",
+  "commit_hash": "849b7a6e",
+  "files": [
+    "frontend-nextjs/lib/geometry/lot-shape-analysis.ts",
+    "frontend-nextjs/lib/geometry/__tests__/battleaxe-labelled-lots.test.ts",
+    "frontend-nextjs/lib/geometry/__tests__/fixtures/battleaxe-labelled-lots.json"
+  ],
+  "pre_impl": {
+    "existing_data": "What existing data/state does this interact with? [table/column or 'none']",
+    "assumption_mismatch": "What if existing data doesn't match assumptions? [specific failure]",
+    "new_vs_existing": "Will this apply to existing rows or only new? [mechanism]",
+    "external_source_error": "(Critical only) What does external source return on error?",
+    "frontend_type": "(Critical only) Does frontend type need updating?",
+    "user_failure_mode": "(Critical only) What does user see if this fails?"
+  },
+  "functions": [
+    {
+      "name": "detectBattleaxeLot",
+      "file_line": "frontend-nextjs/lib/geometry/lot-shape-analysis.ts:95",
+      "input": "a lot ring in Web Mercator from the cadastre lookup",
+      "output": "isBattleaxe plus strip width and length, main lot width, length and area",
+      "if_none": "missing or short ring returns not a battle-axe with zero measurements"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a wide normal lot sits at 45 degrees to the map grid",
+      "what_happens": "old code saw pointed ends and flagged a handle",
+      "repro": "detectBattleaxeLot on a 40 x 15 m rectangle rotated 45 degrees",
+      "mitigated": true,
+      "how": "lot is straightened to its minimum-area rectangle first; test covers 0-63 degrees"
+    },
+    {
+      "scenario": "a triangular or wedge lot narrows to a point at one end",
+      "what_happens": "the narrow end looked like a handle",
+      "repro": "labelled fixture triangles from St Ives",
+      "mitigated": true,
+      "how": "strip must be even width within 1.3x and open suddenly to 3x wider"
+    },
+    {
+      "scenario": "a rural battle-axe has a 9 m wide access strip",
+      "what_happens": "an 8 m cap would miss it",
+      "repro": "Bowral fixture lots with 8.8-9.2 m strips",
+      "mitigated": true,
+      "how": "strip cap is 12 m; recall 0.91 on labels"
+    },
+    {
+      "scenario": "a cut corner at the street end makes the strip look uneven",
+      "what_happens": "a real strip is rejected as uneven",
+      "repro": "fixture lot with a 5 m corner slice then 9 m strip",
+      "mitigated": true,
+      "how": "end slices under 0.75 of the strip median are trimmed"
+    },
+    {
+      "scenario": "a winding long private road serves the lot",
+      "what_happens": "uneven width so the rule misses it (known miss)",
+      "repro": "fixture lot both#4 Bowral",
+      "mitigated": false,
+      "how": "accepted: 1 of 11 real lots missed; next step would use the road-frontage layer"
+    },
+    {
+      "scenario": "projected distances are multiplied by the Mercator scale factor instead of divided",
+      "what_happens": "every width is ~1.46x too large and real 3 m strips read as 4.4 m",
+      "repro": "detectBattleaxeLot on a 3 m strip scaled by 1.205",
+      "mitigated": true,
+      "how": "k = 1 / scaleFactorForRing; jest asserts the 3 m strip measures 2.9-3.1 m"
+    },
+    {
+      "scenario": "a flag lot widens in two steps from a wide 18 m stem (38 Park Rd Bowral)",
+      "what_happens": "a single 3x jump test misses it",
+      "repro": "detectBattleaxeLot on the Bowral ring in the fixture",
+      "mitigated": true,
+      "how": "first step needs 2x, main lot must reach 3x; min strip length 8 m stops tapered corners"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none",
+    "secrets": "none",
+    "other_repo": "none",
+    "manual_verify": "GET /api/property for 42-44 Albert St Belmore (no battle-axe) and 38 Park Rd Bowral (battle-axe)"
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest lib/geometry/__tests__/battleaxe-labelled-lots.test.ts",
+    "fails_when": "precision or recall on the labelled real lots drops below 0.9, or a tilted rectangle is flagged",
+    "observed_red": "old detector on the same fixture: precision 0.18 (fails the 0.9 floor)"
+  }
+}

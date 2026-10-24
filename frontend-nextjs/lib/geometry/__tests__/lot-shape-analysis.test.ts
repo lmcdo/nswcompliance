@@ -421,11 +421,13 @@ describe('Width profile measurements', () => {
     console.log('Width profile:', result.widthProfile);
 
     expect(result.widthProfile).toBeDefined();
-    expect(result.widthProfile!.length).toBe(20);
+    expect(result.widthProfile!.length).toBe(60);
 
-    // Early slices should be narrow (handle)
-    const handleWidths = result.widthProfile!.slice(0, 8);
-    const headWidths = result.widthProfile!.slice(12);
+    // The lot is measured along its own long axis; the handle may sit at either end.
+    const p = result.widthProfile!;
+    const ends = [p.slice(0, 20), p.slice(-20)];
+    const avg = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length;
+    const [handleWidths, headWidths] = avg(ends[0]) < avg(ends[1]) ? ends : [ends[1], ends[0]];
 
     const avgHandleWidth = handleWidths.reduce((a, b) => a + b, 0) / handleWidths.length;
     const avgHeadWidth = headWidths.reduce((a, b) => a + b, 0) / headWidths.length;

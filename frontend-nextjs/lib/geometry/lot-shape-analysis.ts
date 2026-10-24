@@ -1,42 +1,38 @@
 /**
  * Lot Shape Analysis
  *
- * Detects battleaxe lots (flag lots/panhandle lots) from cadastre geometry.
+ * Detects battle-axe lots from cadastre geometry. A battle-axe lot reaches the road through
+ * an access strip ("handle") that is narrower than the rest of the lot.
  *
- * Battleaxe signature (NSW Standard Instrument LEP definition):
- * - A lot that relies on a strip of land ("the handle") narrower than
- *   the remainder of the lot to provide access to a road.
- * - Detection is proportion-based: handle must be < 40% of head width.
- *   This covers small suburban battleaxes (3-5m handle) and large rural
- *   ones (e.g. 18-20m handle on a 60m+ lot) equally.
+ * Signature used (measured 2026-10-24 on 1,200 real lots in Belmore, Bowral and St Ives:
+ * 10 of 11 flags real, against ~8 of 51 for the previous width-profile rule):
+ * 1. Turn the lot to its own long axis (minimum-area bounding rectangle), so a lot that
+ *    sits at an angle to the map grid does not look pointed at both ends.
+ * 2. Measure the width across the lot at even steps along that axis.
+ * 3. A battle-axe lot has, at one end, an even-width strip (widths within EVEN_RATIO of
+ *    each other, at least MIN_STRIP_M wide and MIN_RUN_M long; no absolute cap) that
+ *    opens suddenly (within JUMP_WITHIN_M, by at least STEP_RATIO) into a main lot that
+ *    reaches at least JUMP_RATIO times the strip width (a flag lot may widen in steps).
+ * Triangles, wedges and tilted rectangles narrow gradually, so they do not match.
  *
- * NSW SEPP Housing 2021 Requirements:
- * - Minimum access way width: 3m
- * - Minimum main lot dimensions: 12m × 12m (excluding laneway)
- *
- * Algorithm: Width profile analysis
- * 1. Find lot's principal axis (longest dimension)
- * 2. Take perpendicular cross-sections
- * 3. Detect narrow→wide pattern using proportion-based threshold
+ * These are shape-recognition thresholds, not planning rules. The CDC battle-axe limits
+ * are read from cdc_eligibility_standards and applied by lib/cdc/battleaxe-cdc.ts.
  */
 
 import { scaleFactorForRing } from './mercator';
 import type { LotGeometry } from '@/types/property';
 
-// NSW average latitude for Web Mercator scale correction
-// Mercator correction now comes from the ring's own latitude — see ./mercator.
-
-// The CDC battle-axe limits are NOT here: they are read from cdc_eligibility_standards and
-// applied by lib/cdc/battleaxe-cdc.ts. This module only measures the lot.
-
-// Detection thresholds
-// Proportion-based: handle must be < 40% of head width (per legislative definition
-// of battleaxe as a lot with a handle "narrower than the remainder"). This works
-// for both small suburban handles (3-5m on 12-15m lots) and large rural ones.
-const HANDLE_TO_HEAD_MAX_RATIO = 0.40;
-const MIN_HEAD_WIDTH = 9.0; // Head must be wider than this
-const MAX_NARROW_PERCENTAGE = 0.65; // Handle must be <65% of lot length (typically 30-50%, allow up to 60%)
-const MIN_WIDTH_RATIO = 0.65; // Handle/head width ratio must be below this
+const SLICES = 60;
+const MIN_STRIP_M = 1.5;
+const EVEN_RATIO = 1.3;
+const MIN_RUN_M = 8;
+/** The first step out of the strip must be at least this many times wider... */
+const STEP_RATIO = 2.0;
+/** ...and the main lot must reach at least this many times the strip width. */
+const JUMP_RATIO = 3.0;
+const JUMP_WITHIN_M = 4;
+/** Slices under this share of the strip's median at the street end are a cut corner, not strip. */
+const END_TRIM_RATIO = 0.75;
 
 export interface BattleaxeDetectionResult {
   /** Whether lot appears to be battleaxe shape */
@@ -80,11 +76,6 @@ export interface LotShapeAnalysis {
   battleaxe?: BattleaxeDetectionResult;
 }
 
-interface Point {
-  x: number;
-  y: number;
-}
-
 /**
  * Analyze lot shape and detect battleaxe configuration
  */
@@ -116,10 +107,11 @@ export function analyzeLotShape(geometry: LotGeometry): LotShapeAnalysis {
 }
 
 /**
- * Detect if lot is a battleaxe shape using width profile analysis
+ * Detect a battle-axe lot: straighten the lot, then look for an even-width strip at one end
+ * that opens suddenly into a much wider part.
  */
 export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionResult {
-  const defaultResult: BattleaxeDetectionResult = {
+  const none: BattleaxeDetectionResult = {
     isBattleaxe: false,
     confidence: 0,
     accessWayWidth: 0,
@@ -129,311 +121,122 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
     meetsMinimumRequirements: null,
     complianceIssues: [],
   };
+  const ring = geometry?.rings?.[0];
+  if (!ring || ring.length < 4) return none;
 
-  if (!geometry?.rings?.length || !geometry.rings[0]?.length) {
-    return defaultResult;
-  }
-
-  const coordinates = geometry.rings[0];
-
-  // Convert to real-world meters
-  const scaleFactor = scaleFactorForRing(coordinates);
-  const points: Point[] = coordinates.map((coord) => ({
-    x: coord[0] / scaleFactor,
-    y: coord[1] / scaleFactor,
-  }));
-
-  // Remove closing point if duplicate
-  const polygon = removeClosingPoint(points);
-
-  if (polygon.length < 6) {
-    // Battleaxe typically has 6+ vertices (L-shape minimum)
-    return defaultResult;
-  }
-
-  // Find bounding box and principal axis
-  const bbox = getBoundingBox(polygon);
-  const isVerticallyOriented = bbox.height > bbox.width;
-
-  // Take cross-sections perpendicular to the longest axis
-  const numSlices = 20;
-  const widths = measureWidthProfile(polygon, bbox, isVerticallyOriented, numSlices);
-
-  if (widths.length < numSlices) {
-    return defaultResult;
-  }
-
-  // Analyze width pattern
-  const minWidth = Math.min(...widths);
-  const maxWidth = Math.max(...widths);
-  const widthRatio = minWidth / maxWidth;
-
-  // Proportion-based narrow threshold: handle must be < 40% of head width.
-  // Using maxWidth as a proxy for head width at this stage.
-  const narrowThreshold = maxWidth * HANDLE_TO_HEAD_MAX_RATIO;
-
-  // Count narrow vs wide sections
-  const narrowSlices = widths.filter((w) => w < narrowThreshold).length;
-  const narrowPercentage = narrowSlices / widths.length;
-
-  // Battleaxe detection criteria
-  const hasNarrowHandle = minWidth < narrowThreshold && minWidth > 0;
-  const hasWideHead = maxWidth >= MIN_HEAD_WIDTH;
-  const hasSignificantContrast = widthRatio < MIN_WIDTH_RATIO;
-  const handleIsMinority = narrowPercentage < MAX_NARROW_PERCENTAGE;
-  const hasConsecutiveNarrow = hasConsecutiveNarrowSection(widths, 3, narrowThreshold);
-
-  const isBattleaxe =
-    hasNarrowHandle &&
-    hasWideHead &&
-    hasSignificantContrast &&
-    handleIsMinority &&
-    hasConsecutiveNarrow;
-
-  if (!isBattleaxe) {
-    return { ...defaultResult, widthProfile: widths };
-  }
-
-  // Calculate dimensions
-  const { handleLength, headLength } = estimateHandleHeadLengths(
-    widths,
-    isVerticallyOriented ? bbox.height : bbox.width,
-    narrowThreshold
-  );
-  const mainLotArea = estimateMainLotArea(widths, narrowThreshold, headLength);
-  const headSliceWidths = widths.filter((w) => w >= narrowThreshold);
-  const mainLotMinWidth = headSliceWidths.length > 0 ? Math.min(...headSliceWidths) : 0;
-
-  // Calculate confidence
-  const confidence = calculateConfidence(widths, minWidth, maxWidth, narrowPercentage);
-
-  return {
-    isBattleaxe: true,
-    confidence,
-    accessWayWidth: Math.round(minWidth * 100) / 100,
-    accessWayLength: Math.round(handleLength * 100) / 100,
-    mainLotWidth: Math.round(maxWidth * 100) / 100,
-    mainLotArea: Math.round(mainLotArea),
-    mainLotLength: Math.round(headLength * 100) / 100,
-    mainLotMinWidth: Math.round(mainLotMinWidth * 100) / 100,
-    meetsMinimumRequirements: null,
-    complianceIssues: [],
-    widthProfile: widths,
-  };
-}
-
-/**
- * Remove duplicate closing point from polygon
- */
-function removeClosingPoint(points: Point[]): Point[] {
-  if (points.length < 2) return points;
-  const first = points[0];
-  const last = points[points.length - 1];
-  if (Math.abs(first.x - last.x) < 0.01 && Math.abs(first.y - last.y) < 0.01) {
-    return points.slice(0, -1);
-  }
-  return points;
-}
-
-/**
- * Get bounding box of polygon
- */
-function getBoundingBox(points: Point[]): {
-  minX: number;
-  maxX: number;
-  minY: number;
-  maxY: number;
-  width: number;
-  height: number;
-} {
-  const xs = points.map((p) => p.x);
-  const ys = points.map((p) => p.y);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  return {
-    minX,
-    maxX,
-    minY,
-    maxY,
-    width: maxX - minX,
-    height: maxY - minY,
-  };
-}
-
-/**
- * Measure width of polygon at regular intervals along principal axis
- */
-function measureWidthProfile(
-  polygon: Point[],
-  bbox: { minX: number; maxX: number; minY: number; maxY: number; width: number; height: number },
-  isVertical: boolean,
-  numSlices: number
-): number[] {
+  const k = 1 / scaleFactorForRing(ring); // metres per projected unit (EPSG:3857 is stretched by 1/cos(lat))
+  const poly = straighten(ring);
+  if (poly[0][0] !== poly[poly.length - 1][0] || poly[0][1] !== poly[poly.length - 1][1]) poly.push(poly[0]);
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  for (const [x] of poly) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
+  if (!(x1 > x0)) return none;
+  const step = (x1 - x0) / SLICES;
+  const stepM = step * k;
   const widths: number[] = [];
+  for (let i = 0; i < SLICES; i++) widths.push(widthAt(poly, x0 + (i + 0.5) * step) * k);
 
-  for (let i = 0; i < numSlices; i++) {
-    const t = (i + 0.5) / numSlices; // Center of each slice
-
-    let width: number;
-    if (isVertical) {
-      // Slice horizontally, measure width
-      const y = bbox.minY + t * bbox.height;
-      width = measureWidthAtY(polygon, y);
-    } else {
-      // Slice vertically, measure height
-      const x = bbox.minX + t * bbox.width;
-      width = measureWidthAtX(polygon, x);
+  for (const seq of [widths, widths.slice().reverse()]) {
+    // Skip a sliver where the lot meets the street, then trim a cut corner: slices well
+    // under the next few slices' median are not yet strip.
+    let i = 0;
+    while (i < seq.length && seq[i] < MIN_STRIP_M * 0.5) i++;
+    const probe = seq.slice(i, i + 5);
+    if (!probe.length) continue;
+    const probeMed = median(probe);
+    while (i < seq.length && seq[i] < probeMed * END_TRIM_RATIO) i++;
+    // Grow the strip while widths stay even (within EVEN_RATIO of the narrowest so far).
+    const start = i;
+    let lo = Infinity;
+    let hi = -Infinity;
+    while (i < seq.length) {
+      const nlo = Math.min(lo, seq[i]);
+      const nhi = Math.max(hi, seq[i]);
+      if (nhi > nlo * EVEN_RATIO) break;
+      lo = nlo;
+      hi = nhi;
+      i++;
     }
+    const run = seq.slice(start, i);
+    if (run.length * stepM < MIN_RUN_M || lo < MIN_STRIP_M) continue;
+    const strip = median(run);
+    const within = Math.max(1, Math.round(JUMP_WITHIN_M / stepM));
+    if (!seq.slice(i, i + within).some((v) => v >= strip * STEP_RATIO)) continue;
 
-    if (width > 0) {
-      widths.push(width);
+    // Main lot = everything after the strip, minus a sliver at the far boundary.
+    const head = seq.slice(i).filter((v) => v >= MIN_STRIP_M * 0.5);
+    if (!head.length || Math.max(...head) < strip * JUMP_RATIO) continue;
+    const headArea = head.reduce((a, v) => a + v * stepM, 0);
+    return {
+      isBattleaxe: true,
+      confidence: 0.8,
+      accessWayWidth: round2(strip),
+      accessWayLength: round2(run.length * stepM),
+      mainLotWidth: round2(Math.max(...head)),
+      mainLotArea: Math.round(headArea),
+      mainLotLength: round2(head.length * stepM),
+      mainLotMinWidth: round2(Math.min(...head)),
+      meetsMinimumRequirements: null,
+      complianceIssues: [],
+      widthProfile: widths.map(round2),
+    };
+  }
+  return { ...none, widthProfile: widths.map(round2) };
+}
+
+function round2(v: number): number {
+  return Math.round(v * 100) / 100;
+}
+
+function median(v: number[]): number {
+  const s = v.slice().sort((a, b) => a - b);
+  return s[Math.floor(s.length / 2)];
+}
+
+function convexHull(pts: number[][]): number[][] {
+  const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: number[], a: number[], b: number[]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo: number[][] = [];
+  const up: number[][] = [];
+  for (const q of p) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (const q of p.reverse()) { while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+
+/** Rotate the ring so the long side of its minimum-area bounding rectangle lies along x. */
+function straighten(ring: number[][]): number[][] {
+  const h = convexHull(ring);
+  let best = { area: Infinity, ang: 0 };
+  for (let i = 0; i < h.length; i++) {
+    const a = h[i];
+    const b = h[(i + 1) % h.length];
+    const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+    const c = Math.cos(-ang);
+    const s = Math.sin(-ang);
+    let mnx = Infinity; let mxx = -Infinity; let mny = Infinity; let mxy = -Infinity;
+    for (const [x, y] of h) {
+      const rx = x * c - y * s;
+      const ry = x * s + y * c;
+      mnx = Math.min(mnx, rx); mxx = Math.max(mxx, rx); mny = Math.min(mny, ry); mxy = Math.max(mxy, ry);
     }
+    const area = (mxx - mnx) * (mxy - mny);
+    if (area < best.area) best = { area, ang: ang + ((mxx - mnx) >= (mxy - mny) ? 0 : Math.PI / 2) };
   }
-
-  return widths;
+  const c = Math.cos(-best.ang);
+  const s = Math.sin(-best.ang);
+  return ring.map(([x, y]) => [x * c - y * s, x * s + y * c]);
 }
 
-/**
- * Measure polygon width at a specific Y coordinate
- */
-function measureWidthAtY(polygon: Point[], y: number): number {
-  const intersections: number[] = [];
-
-  for (let i = 0; i < polygon.length; i++) {
-    const p1 = polygon[i];
-    const p2 = polygon[(i + 1) % polygon.length];
-
-    // Check if edge crosses this Y level
-    if ((p1.y <= y && p2.y > y) || (p2.y <= y && p1.y > y)) {
-      // Calculate X at intersection
-      const t = (y - p1.y) / (p2.y - p1.y);
-      const x = p1.x + t * (p2.x - p1.x);
-      intersections.push(x);
-    }
+/** Total length of the line x = X that lies inside the polygon. */
+function widthAt(poly: number[][], X: number): number {
+  const ys: number[] = [];
+  for (let i = 0; i < poly.length - 1; i++) {
+    const [x1, y1] = poly[i];
+    const [x2, y2] = poly[i + 1];
+    if ((x1 <= X && x2 > X) || (x2 <= X && x1 > X)) ys.push(y1 + ((X - x1) * (y2 - y1)) / (x2 - x1));
   }
-
-  if (intersections.length < 2) return 0;
-
-  intersections.sort((a, b) => a - b);
-  return intersections[intersections.length - 1] - intersections[0];
-}
-
-/**
- * Measure polygon height at a specific X coordinate
- */
-function measureWidthAtX(polygon: Point[], x: number): number {
-  const intersections: number[] = [];
-
-  for (let i = 0; i < polygon.length; i++) {
-    const p1 = polygon[i];
-    const p2 = polygon[(i + 1) % polygon.length];
-
-    // Check if edge crosses this X level
-    if ((p1.x <= x && p2.x > x) || (p2.x <= x && p1.x > x)) {
-      // Calculate Y at intersection
-      const t = (x - p1.x) / (p2.x - p1.x);
-      const y = p1.y + t * (p2.y - p1.y);
-      intersections.push(y);
-    }
-  }
-
-  if (intersections.length < 2) return 0;
-
-  intersections.sort((a, b) => a - b);
-  return intersections[intersections.length - 1] - intersections[0];
-}
-
-/**
- * Check if there are consecutive narrow sections (handle pattern)
- */
-function hasConsecutiveNarrowSection(widths: number[], minConsecutive: number, threshold: number): boolean {
-  let consecutive = 0;
-  for (const w of widths) {
-    if (w < threshold) {
-      consecutive++;
-      if (consecutive >= minConsecutive) return true;
-    } else {
-      consecutive = 0;
-    }
-  }
-  return false;
-}
-
-/**
- * Estimate handle and head lengths from width profile
- */
-function estimateHandleHeadLengths(
-  widths: number[],
-  totalLength: number,
-  narrowThreshold: number
-): { handleLength: number; headLength: number } {
-  // The handle is the run of "narrow" slices (width < narrowThreshold) at one end
-  // of the principal axis. Use the SAME proportional threshold that battleaxe
-  // detection uses — not a fixed width — so wide rural handles (e.g. 16m on a 70m
-  // head) are still recognised as the handle rather than collapsing to length 0.
-  const isNarrow = (w: number) => w < narrowThreshold;
-
-  let leadingNarrow = 0;
-  for (let i = 0; i < widths.length && isNarrow(widths[i]); i++) {
-    leadingNarrow++;
-  }
-
-  let trailingNarrow = 0;
-  for (let i = widths.length - 1; i >= 0 && isNarrow(widths[i]); i--) {
-    trailingNarrow++;
-  }
-
-  // Handle sits at whichever end the narrow run is longer.
-  const handleSlices = Math.max(leadingNarrow, trailingNarrow);
-  const handleRatio = handleSlices / widths.length;
-  const handleLength = handleRatio * totalLength;
-  const headLength = totalLength - handleLength;
-
-  return { handleLength, headLength };
-}
-
-/**
- * Estimate main lot area (excluding handle)
- */
-function estimateMainLotArea(widths: number[], narrowThreshold: number, headLength: number): number {
-  // Average width of the head (non-handle) slices × head length. Filter on the
-  // proportional narrowThreshold so handle slices are excluded — otherwise a wide
-  // handle inflates both the average width and (via headLength) the area, which
-  // previously produced a "main lot" larger than the whole lot.
-  const headWidths = widths.filter((w) => w >= narrowThreshold);
-  if (headWidths.length === 0) return 0;
-
-  const avgWidth = headWidths.reduce((sum, w) => sum + w, 0) / headWidths.length;
-  return avgWidth * headLength;
-}
-
-/**
- * Calculate confidence score based on pattern clarity
- */
-function calculateConfidence(
-  widths: number[],
-  minWidth: number,
-  maxWidth: number,
-  narrowPercentage: number
-): number {
-  let confidence = 0.5; // Base confidence
-
-  // Stronger contrast = higher confidence
-  const widthRatio = minWidth / maxWidth;
-  if (widthRatio < 0.3) confidence += 0.2;
-  else if (widthRatio < 0.5) confidence += 0.1;
-
-  // Clear narrow section = higher confidence
-  if (narrowPercentage < 0.3) confidence += 0.15;
-  else if (narrowPercentage < 0.4) confidence += 0.1;
-
-  // Typical battleaxe handle width (3-5m) = higher confidence
-  if (minWidth >= 3 && minWidth <= 5) confidence += 0.1;
-
-  // Typical battleaxe head width (10-20m) = higher confidence
-  if (maxWidth >= 10 && maxWidth <= 20) confidence += 0.05;
-
-  return Math.min(0.95, confidence);
+  ys.sort((a, b) => a - b);
+  let w = 0;
+  for (let i = 0; i + 1 < ys.length; i += 2) w += ys[i + 1] - ys[i];
+  return w;
 }
