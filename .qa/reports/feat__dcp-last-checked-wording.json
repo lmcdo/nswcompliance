@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "User-facing wording on the council rules page and the stale threshold (35 to 30 days); no data path changes.",
- "commit_hash": "f6e80de6",
+ "commit_hash": "7bc2698f",
  "files": [
   "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
   "tests/test_dcp_last_checked_wording.py"
