@@ -13,4 +13,4 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install --quiet requests curl_cffi playwright && python -m playwright install --with-deps chromium
-      - run: python probe/probe_blocked.py
+      - run: python probe/probe_pdfs.py
