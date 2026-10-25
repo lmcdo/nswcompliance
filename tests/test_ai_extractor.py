@@ -1234,3 +1234,21 @@ def test_a_skipped_page_is_read_again_with_the_note_that_it_holds_rules():
     import ai_extractor as ax
     assert "hold rule text" in ax.REREAD_NOTE
     assert "REREAD_NOTE" in inspect.getsource(ax._reread_skipped_pages)
+
+
+def test_every_reader_call_prints_a_line(monkeypatch, capsys):
+    """A silent reader cannot be told apart from a hung one (dcp-extract 2026-10-25, 50 min no output)."""
+    calls = []
+
+    def flaky(pdf_bytes, prompt):
+        calls.append(1)
+        if len(calls) == 1:
+            raise TimeoutError("read timed out")
+        return "x" * 42
+
+    monkeypatch.setitem(_PROVIDERS, "flaky", flaky)
+    monkeypatch.setattr(_ai_extractor_mod, "_BACKOFF_BASE", 0)
+    assert _call_with_retry("flaky", b"%PDF-", "p") == "x" * 42
+    out = capsys.readouterr().out
+    assert "[reader] flaky call 1 failed after" in out and "TimeoutError" in out and "retrying" in out
+    assert "[reader] flaky call 2:" in out and "42 chars back" in out

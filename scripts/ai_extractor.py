@@ -735,12 +735,21 @@ def _call_with_retry(model: str, pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     if fn is None:
         raise ValueError(f"Unknown AI_MODEL={model!r}. Known: {', '.join(_PROVIDERS)}")
     last: Exception | None = None
+    # One line per call: a silent reader cannot be told apart from a hung one (Railway
+    # dcp-extract 2026-10-25 logged nothing for 50 min on one 28-page chapter).
     for attempt in range(_MAX_RETRIES):
+        t0 = time.monotonic()
         try:
-            return fn(pdf_bytes, prompt)
+            out = fn(pdf_bytes, prompt)
+            print(f"    [reader] {model} call {attempt + 1}: {time.monotonic() - t0:.0f}s, "
+                  f"{len(out or '')} chars back", flush=True)
+            return out
         except Exception as exc:  # noqa: BLE001 — provider SDKs raise varied types
             last = exc
-            if not _is_retryable(exc) or attempt == _MAX_RETRIES - 1:
+            retry = _is_retryable(exc) and attempt < _MAX_RETRIES - 1
+            print(f"    [reader] {model} call {attempt + 1} failed after {time.monotonic() - t0:.0f}s "
+                  f"({type(exc).__name__}){' - retrying' if retry else ''}", flush=True)
+            if not retry:
                 raise
             time.sleep(_BACKOFF_BASE * (2 ** attempt))
     raise last  # pragma: no cover

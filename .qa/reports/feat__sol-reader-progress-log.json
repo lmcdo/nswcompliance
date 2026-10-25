@@ -1,0 +1,61 @@
+{
+ "tier": "standard",
+ "justification": "Adds progress print lines to the AI reader's retry loop used by the production dcp-extract job; the return value, retry decisions and exceptions are unchanged.",
+ "commit_hash": "ab4d5875",
+ "files": [
+  "scripts/ai_extractor.py",
+  "tests/test_ai_extractor.py"
+ ],
+ "pre_impl": {
+  "existing_data": "Measured 2026-10-25: Railway dcp-extract run started 20:58 UTC logged '[extractor] LLM document reader (sol)' and then nothing for 50 minutes on one 28-page chapter (3 chunks of 12 pages, 900 s read timeout, 5 retries each).",
+  "assumption_mismatch": "The Sol path printed nothing per call or per retry, so slow, retrying and hung looked the same.",
+  "new_vs_existing": "Each call now prints its duration and response size; each failure prints its exception type and whether it will retry.",
+  "external_source_error": "A provider exception is printed and then handled exactly as before (retry or raise).",
+  "frontend_type": "No frontend change.",
+  "user_failure_mode": "None for users; operators can now see where an extraction run is spending its time."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q -o addopts= tests/test_ai_extractor.py",
+  "fails_when": "a reader call or a retried failure prints no line, or the returned text changes",
+  "observed_red": "YES: with the original _call_with_retry the new test fails (1 failed)."
+ },
+ "functions": [
+  {
+   "name": "_call_with_retry",
+   "file_line": "scripts/ai_extractor.py:733",
+   "input": "the model name, the chunk PDF bytes and the reader prompt text",
+   "output": "the provider's raw text, unchanged; one printed line per attempt",
+   "if_none": "an empty response prints '0 chars back' and is returned as before"
+  }
+ ],
+ "values": [],
+ "break_it": [
+  {
+   "scenario": "Provider raises a non-retryable error",
+   "what_happens": "one 'failed' line without 'retrying', then the error is raised as before",
+   "mitigated": true,
+   "how": "retry flag computed before printing",
+   "repro": "_call_with_retry with a provider raising ValueError"
+  },
+  {
+   "scenario": "Provider times out then succeeds",
+   "what_happens": "a 'failed ... retrying' line then a 'call 2' line",
+   "mitigated": true,
+   "how": "print in both branches",
+   "repro": "test_every_reader_call_prints_a_line"
+  },
+  {
+   "scenario": "A provider returns None instead of text",
+   "what_happens": "the line prints '0 chars back' and None is returned as before",
+   "mitigated": true,
+   "how": "len(out or '')",
+   "repro": "_call_with_retry with a provider returning None"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None: no schema or data change.",
+  "secrets": "None: no new environment variable.",
+  "other_repo": "None. Railway: dcp-extract must be redeployed from main for the lines to appear; do not deploy while an extract run is in progress (a deploy kills it).",
+  "manual_verify": "Next dcp-extract run: railway logs show a '[reader] sol call N: ...s' line per chunk."
+ }
+}
