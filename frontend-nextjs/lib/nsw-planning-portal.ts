@@ -12,7 +12,7 @@ import { strataPlanFromLots } from './property/strata-plan';
 import { floodMapStatus, type FloodMapStatus } from './flood/flood-map';
 import { arcgisFeatures, fetchWithTimeout, lookupSleep } from './fetch-timeout';
 import type { HazardKey } from './hazard-unchecked';
-import type { LookupCheck } from './lookup-not-checked';
+import { forcedLookupFailure, type LookupCheck } from './lookup-not-checked';
 import { landFactsFromLayers, type LandFacts } from './lep-land-condition';
 
 export const ADDRESS_SEARCH_UNAVAILABLE = 'Address search unavailable';
@@ -1158,7 +1158,7 @@ export class NSWPlanningPortalService {
  const notChecked: LookupCheck[] = [];
  const notCheckedWhy: Partial<Record<LookupCheck, 'no_reply' | 'busy' | 'error'>> = {};
  const settle = <T,>(p: Promise<T>, check: LookupCheck): Promise<T | undefined> =>
-   p.catch((error) => {
+   p.then((v) => { const forced = forcedLookupFailure(check); if (forced) throw forced; return v; }).catch((error) => {
      console.warn(`[NSW Planning Portal] ${check} not checked:`, error instanceof Error ? error.message : error);
      notChecked.push(check);
      notCheckedWhy[check] = whyFromError(error);
