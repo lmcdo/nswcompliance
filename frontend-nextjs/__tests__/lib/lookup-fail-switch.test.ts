@@ -23,6 +23,13 @@ describe('LOOKUP_FAIL_CHECKS preview switch', () => {
     expect(forcedLookupFailure('precinct')).toBeNull();
   });
 
+  it('is ignored on a production build with no VERCEL_ENV (self-hosted)', () => {
+    delete process.env.VERCEL_ENV;
+    (process.env as Record<string, string>).NODE_ENV = 'production';
+    process.env.LOOKUP_FAIL_CHECKS = 'precinct';
+    expect(forcedLookupFailure('precinct')).toBeNull();
+  });
+
   it('is ignored on production even when set', () => {
     process.env.VERCEL_ENV = 'production';
     process.env.LOOKUP_FAIL_CHECKS = 'precinct';

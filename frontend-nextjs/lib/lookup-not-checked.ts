@@ -35,10 +35,11 @@ export const LOOKUP_BUDGET_MS = 25_000;
 /**
  * Preview-only switch to see the "Not checked" notice on a real page: LOOKUP_FAIL_CHECKS=precinct,roads
  * makes those checks fail through their own failure path. Ignored on production (VERCEL_ENV), so a stray
- * setting can never serve "Not checked" to real users. Wired for: planning_layers, lot_shape, tod, roads, precinct.
+ * setting can never serve "Not checked" to real users. Runs only when VERCEL_ENV=preview or NODE_ENV=development. Wired for: planning_layers, lot_shape, tod, roads, precinct.
  */
 export function forcedLookupFailure(check: LookupCheck): Error | null {
-  if (process.env.VERCEL_ENV === 'production') return null;
+  // Only on a Vercel preview or a local dev server: an unset VERCEL_ENV in a production build is not a preview.
+  if (process.env.VERCEL_ENV !== 'preview' && process.env.NODE_ENV !== 'development') return null;
   const named = (process.env.LOOKUP_FAIL_CHECKS ?? '').split(',').map((s) => s.trim());
   return named.includes(check) ? new Error(`forced by LOOKUP_FAIL_CHECKS (${check})`) : null;
 }
