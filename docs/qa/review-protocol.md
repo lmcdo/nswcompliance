@@ -34,3 +34,17 @@ an indication only.
 Codex lists ALL P1 candidates, then top 15 others. Phase 1: every P1 and P2 verified. Every rejection cites
 file:line; rejected P1/P2 go back to Codex once; overrule rate reported. Bug fix = test red on frozen sha,
 green after. Trade-offs list `known-tradeoffs.md` is frozen at this commit; later additions marked post-hoc.
+
+## Step 2 cases (selected by rule 2026-10-25, before any Codex run)
+Rule applied mechanically: merged `fix/` PRs that are ancestors of `a6d2e378`, change a test file, and touch
+served rules (`services/`, `app/api/provisions/for-property/`) or the DCP monitor (`r2_monitor.py`,
+`hub_scrapers/`, `verifyops_record.py`); newest 5. Not hand-picked; two are "typed figure" policy fixes, kept.
+Pre-fix code = the PR's merge commit parent (`<sha>^`).
+
+| PR | Area | Category | Answer key ("found" = right file AND this mechanism) |
+|---|---|---|---|
+| #1492 | monitor | bug | When a chapter's link is re-pointed, the stored file tag / last-download date are kept, so a header-only check calls the NEW file "unchanged" without downloading it |
+| #1491 | monitor | bug | Several list links match one chapter; the loop keeps the last match ("last link wins"), so the stored link flips between an in-force and a repealed/draft file |
+| #1490 | served | error handling | A failed lookup (timeout/busy/error) returns empty and is shown as "no rules apply / no precinct / council not covered" instead of "not checked" |
+| #1489 | served | consistency | Planning-rule numbers typed into live screens (not read from DB/source), against the house rule |
+| #1481 | served | consistency + bug | Battle-axe CDC limits (3 m access, 12x12 m) are typed constants, not read from `cdc_eligibility_standards`; a missing/stale row could still pass |
