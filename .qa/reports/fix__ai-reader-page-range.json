@@ -1,0 +1,111 @@
+{
+ "tier": "critical",
+ "justification": "Changes which pages the production AI reader extracts provisions from. For a chapter sharing a PDF, rules were read from the whole file and credited to the chapter; after this, only its own page range is read. Wrong pages here means wrong rules served.",
+ "commit_hash": "cf9e09ec",
+ "files": [
+  "scripts/ai_extractor.py",
+  "scripts/dcp_extract_changed.py",
+  "tests/test_ai_chunk_loss.py",
+  "tests/test_ai_extractor_sentence_coverage.py",
+  "tests/test_dcp_extract_ai_page_range.py"
+ ],
+ "pre_impl": {
+  "existing_data": "Measured 2026-10-25: Railway dcp-extract (AI_MODEL=sol) logged 'shares its PDF; extracting pages 52-79 only' for Bayside s3-5 (34.9 MB, 236-page Part 3 PDF), then the new per-call [reader] line never appeared in 69+ min. DCPExtractor.page_range is honoured by _owned_pages (regex reader) but dcp_extract_changed.py:1907 called ai_extract_chapter without it.",
+  "assumption_mismatch": "The preflight message promised a page slice that the LLM reader never received: it chunked all 236 pages from page 1, and both re-read passes judged every page of the shared file as this chapter's.",
+  "new_vs_existing": "ai_extract_chapter takes page_range (1-based inclusive), clamped exactly like _owned_pages; chunks, page-coverage re-read and sentence re-read stay inside it; page numbers keep meaning the page in the file. No range = whole file, as before.",
+  "external_source_error": "No new external call. Fewer pages are sent to the provider.",
+  "frontend_type": "No frontend change; provisions keep the same page numbering.",
+  "user_failure_mode": "Before: a shared-PDF chapter extracted by the LLM reader could carry other chapters' rules (wrong rules shown for an address) or never finish. After: only its own pages; a stale range end is clamped, not refused, as the regex reader does."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q -o addopts= tests/test_ai_extractor.py tests/test_ai_chunk_loss.py tests/test_ai_extractor_sentence_coverage.py tests/test_shared_pdf_page_slicing.py tests/test_dcp_extract_ai_page_range.py",
+  "fails_when": "the reader chunks pages outside the range, either re-read offers another chapter's pages, the range is not clamped, or the extractor stops passing page_range",
+  "observed_red": "YES: 5 hand-made mutants (chunk whole file, drop page-coverage filter, drop sentence filter, no clamp, caller drops page_range), each killed."
+ },
+ "functions": [
+  {
+   "name": "ai_extract_chapter",
+   "file_line": "scripts/ai_extractor.py:1197",
+   "input": "pdf path, council, model and the optional chapter page range from the registry row",
+   "output": "section dicts from the owned pages only, page numbers as in the file",
+   "if_none": "page_range None reads the whole file exactly as before this change"
+  },
+  {
+   "name": "owned_span",
+   "file_line": "scripts/ai_extractor.py:1190",
+   "input": "the optional page range and the file's total page count",
+   "output": "the first and last owned page numbers, clamped to the file's 1..total pages",
+   "if_none": "a None page range gives the whole file, pages 1 to total"
+  },
+  {
+   "name": "_reread_skipped_pages",
+   "file_line": "scripts/ai_extractor.py:888",
+   "input": "pdf path, reader, model, provisions so far and the owned page span",
+   "output": "re-reads only owned pages the first pass left out",
+   "if_none": "owned None keeps every page of the file, exactly as before"
+  },
+  {
+   "name": "_reread_missing_sentences",
+   "file_line": "scripts/ai_extractor.py:1042",
+   "input": "pdf path, reader, model, provisions so far and the owned page span",
+   "output": "checks and re-reads sentences on owned pages only",
+   "if_none": "owned None keeps every page of the file, exactly as before"
+  }
+ ],
+ "values": [
+  {
+   "value": "page_range",
+   "read_at": "scripts/dcp_extract_changed.py:1909",
+   "nullable": "yes",
+   "guard_at": "owned_span",
+   "if_missing": "whole file, unchanged behaviour"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Bayside s3-5: pages 52-79 of a 236-page shared PDF",
+   "what_happens": "three chunks are read, pages 52-63, 64-75 and 76-79, and nothing outside them",
+   "mitigated": true,
+   "how": "ranges offset from lo",
+   "repro": "test_a_shared_pdf_is_read_only_on_the_chapters_own_pages"
+  },
+  {
+   "scenario": "Registry says 8-25 but the file has 20 pages",
+   "what_happens": "pages 8 to 20 are read, the same clamp the regex reader applies",
+   "mitigated": true,
+   "how": "owned_span clamp",
+   "repro": "test_a_stale_range_end_is_clamped_like_the_regex_reader"
+  },
+  {
+   "scenario": "Page-coverage re-read sees other chapters' pages as 'left out'",
+   "what_happens": "only pages 52 to 79 are offered for a second reading, never other chapters",
+   "mitigated": true,
+   "how": "lines filtered to owned before skipped_pages",
+   "repro": "test_the_page_coverage_reread_never_reads_another_chapters_pages"
+  },
+  {
+   "scenario": "Running header detection from a 28-page slice is weaker",
+   "what_happens": "running lines still computed from every page of the file before filtering",
+   "mitigated": true,
+   "how": "pc.running_lines(lines) runs before the owned filter",
+   "repro": "code order in _reread_skipped_pages and _reread_missing_sentences"
+  },
+  {
+   "scenario": "A chapter that owns the whole file (no page_range on its registry row)",
+   "what_happens": "reads every page from page 1, identical to before",
+   "mitigated": true,
+   "how": "owned_span(None, total) == (1, total)",
+   "repro": "test_a_shared_pdf_is_read_only_on_the_chapters_own_pages (second call)"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None: no schema or data change.",
+  "secrets": "None.",
+  "other_repo": "None. Railway dcp-extract redeploys from main; it kills a running extract, which is acceptable here because the current run is stuck on this bug.",
+  "manual_verify": "Restart dcp-extract: Bayside s3-5 must log 3 '[reader] sol call' lines (pages 52-79), not 20, then reach a SUMMARY."
+ },
+ "verification_after_merge": [
+  "1. Railway dcp-extract redeploys from main; then start one run (rw.py start dcp-extract).",
+  "2. Its log shows 3 '[reader] sol call' lines for bayside s3-5 (pages 52-79) and a SUMMARY block for all 6 chapters."
+ ]
+}

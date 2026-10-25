@@ -71,8 +71,8 @@ def test_only_reread_provisions_that_bring_a_missing_sentence_back_are_kept():
 def test_the_chapter_reader_runs_the_sentence_check_after_page_coverage():
     from pathlib import Path
     src = (Path(__file__).resolve().parents[1] / "scripts" / "ai_extractor.py").read_text(encoding="utf-8")
-    pages_at = src.index("        _reread_skipped_pages(pdf_path, reader, model, collected)\n")
-    assert src.index("        _reread_missing_sentences(pdf_path, reader, model, collected)\n") > pages_at
+    pages_at = src.index("        _reread_skipped_pages(pdf_path, reader, model, collected, owned=(lo, hi))\n")
+    assert src.index("        _reread_missing_sentences(pdf_path, reader, model, collected, owned=(lo, hi))\n") > pages_at
 
 
 def test_the_top_of_a_page_continuing_a_clause_is_its_own_sentence():
