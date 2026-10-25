@@ -1,13 +1,14 @@
 {
  "tier": "standard",
  "justification": "Changes which live-data checks run in PR and main gates; the checks themselves and the nightly job are unchanged. Probe timeout handling is left to PR #1495, which changes the same files.",
- "commit_hash": "9c396b11",
+ "commit_hash": "d697fe93",
  "files": [
   "scripts/gate_touched_checks.py",
   "scripts/verifyops_outside_ping.py",
   "tests/test_gate_touched_checks.py",
   ".github/workflows/gates.yml",
-  ".github/workflows/freshness-alarm.yml"
+  ".github/workflows/freshness-alarm.yml",
+  "scripts/check_data_watch_freshness.py"
  ],
  "pre_impl": {
   "existing_data": "Traced 2026-10-25: 12 gates.yml steps read live systems; 9 report live data state. PRs that week were blocked by DQ-79, DQ-118 x2, DQ-103/104/105 (timeouts: with a longer limit DQ-104 = 0, DQ-105 = 0) and data-watch freshness; none of those PRs changed that data.",

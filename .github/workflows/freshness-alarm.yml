@@ -124,7 +124,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
-          python scripts/check_data_watch_freshness.py 2>&1 | tee datawatch.txt
+          python scripts/check_data_watch_freshness.py --strict 2>&1 | tee datawatch.txt
           echo "rc=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       # v7 step 4: the outside watchdog hears whether we LOOKED, and red goes to Telegram.

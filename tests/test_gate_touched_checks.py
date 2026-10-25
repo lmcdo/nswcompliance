@@ -54,7 +54,7 @@ def test_every_key_maps_to_a_gate_step():
 
 def test_the_nightly_job_is_still_watched_from_outside():
     fa = (ROOT / ".github" / "workflows" / "freshness-alarm.yml").read_text(encoding="utf-8")
-    assert "python scripts/check_data_watch_freshness.py" in fa
+    assert "python scripts/check_data_watch_freshness.py --strict" in fa
     assert '--rc "datawatch=${{ steps.datawatch.outputs.rc }}"' in fa
 
 
@@ -76,3 +76,13 @@ def test_changing_the_nightly_or_daily_alarm_runs_everything():
 def test_renames_report_both_paths():
     src = (ROOT / "scripts" / "gate_touched_checks.py").read_text(encoding="utf-8")
     assert '"--no-renames"' in src
+
+
+def test_strict_freshness_cannot_pass_when_it_could_not_look(monkeypatch):
+    import check_data_watch_freshness as f
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.setattr(sys, "argv", ["x", "--repo", "o/r", "--strict"])
+    assert f.main() == 2
+    monkeypatch.setattr(sys, "argv", ["x", "--repo", "o/r"])
+    assert f.main() == 0      # without --strict it still never fails a stranger's PR

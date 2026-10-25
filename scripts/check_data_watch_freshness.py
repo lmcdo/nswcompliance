@@ -93,13 +93,16 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--max-age-hours", type=float, default=DEFAULT_MAX_AGE_HOURS)
     ap.add_argument("--repo", default=os.getenv("GITHUB_REPOSITORY", ""))
+    ap.add_argument("--strict", action="store_true",
+                    help="the outside alarm: could-not-look exits 2 instead of passing (Sol, 2026-10-25)")
     args = ap.parse_args()
+    skipped = 2 if args.strict else 0  # in a PR a dead cron must not fail a stranger; outside, it must alarm
 
     token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN") or ""
     if not token or not args.repo:
         print("data-watch freshness: SKIPPED — no GITHUB_TOKEN/repo in this "
               "environment (a fork PR cannot see one). Not a pass.")
-        return 0
+        return skipped
 
     url = (f"https://api.github.com/repos/{args.repo}/actions/workflows/"
            f"{WORKFLOW}/runs?status=success&per_page=1")
@@ -110,26 +113,26 @@ def main() -> int:
         print("  Expected on the pull request that ADDS it, and only then. If "
               "you see this after it has merged, the file was renamed or "
               "deleted and nothing is watching the data.")
-        return 0
+        return skipped
     if data is None:
         print(f"data-watch freshness: SKIPPED — could not ask. {reason}")
         print("  Not a pass. This check cannot fire until the call succeeds, "
               "so treat a persistent message here as the guard being off.")
-        return 0
+        return skipped
 
     runs = data.get("workflow_runs") or []
     if not runs:
         print(f"data-watch freshness: SKIPPED — {WORKFLOW} has no successful "
               f"run yet. Expected right after it is added; if this persists, "
               f"the schedule is not firing.")
-        return 0
+        return skipped
 
     stamp = runs[0].get("updated_at") or runs[0].get("created_at")
     try:
         when = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
     except ValueError:
         print(f"data-watch freshness: SKIPPED — unparseable timestamp {stamp!r}.")
-        return 0
+        return skipped
 
     hours = (datetime.now(timezone.utc) - when).total_seconds() / 3600
     print(f"data-watch last succeeded {hours:.1f}h ago "
