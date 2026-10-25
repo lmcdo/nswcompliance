@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Throwaway measurement on a branch that is never merged; no production code changes.",
- "commit_hash": "72edfac1",
+ "commit_hash": "e96abb88",
  "files": [
   "probe/probe_blocked.py",
   "probe/targets.json",
