@@ -54,6 +54,12 @@ describe('StateLevelControls Housing SEPP requirements', () => {
     expect(await screen.findByText(/SEPP requirements not checked/i)).toBeInTheDocument();
   });
 
+  it('says Not checked when a 200 answer has the wrong shape', async () => {
+    mockFetch(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, data: {} }) }));
+    render(<StateLevelControls propertyData={propertyData} developmentType="dual_occupancy" />);
+    expect(await screen.findByText(/SEPP requirements not checked/i)).toBeInTheDocument();
+  });
+
   it('keeps the notice when one SEPP fails and another returns rows', async () => {
     let n = 0;
     mockFetch(() => (n++ === 0

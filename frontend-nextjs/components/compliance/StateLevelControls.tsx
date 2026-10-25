@@ -307,7 +307,8 @@ export function StateLevelControls({
 
         if (response.ok) {
           const data = await response.json();
-          if (data?.success !== true || !data.data) {
+          if (data?.success !== true || typeof data.data?.hasStructuredRequirements !== 'boolean'
+            || (data.data.hasStructuredRequirements && !Array.isArray(data.data.requirements))) {
             setSeppNotChecked(true);
           } else if (data.data.hasStructuredRequirements) {
             // Separate transport infrastructure for dedicated section
