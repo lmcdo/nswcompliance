@@ -33,7 +33,6 @@ import { widthRange } from '@/lib/geometry/street-frontage';
 import { useLmrGates } from '@/hooks/useLmrGates';
 
 import { answer, heritageAnswer } from '@/lib/fact-answer';
-import { fetchLepTable, zoneProhibitsAllDwellings } from '@/lib/lep-permissibility';
 interface StrataInfo {
   isStrata: boolean;
   source: string | null;
@@ -255,10 +254,6 @@ export function StateLevelControls({
     // Define zones that permit residential development
     const industrialZones = NSW_PLANNING_CONSTANTS.ZONES.INDUSTRIAL;
 
-    // Housing SEPP is dropped only when the council's LEP land use table prohibits every dwelling
-    // type in this zone. Not checked = kept: the old typed RESIDENTIAL list dropped it for MU1/E1.
-    const lepTable = await fetchLepTable(zoneCode, propertyData?.constraints?.lga);
-    const permitsResidential = !zoneProhibitsAllDwellings(lepTable);
     const isIndustrialZone = industrialZones.includes(zoneCode);
     
     // Map portal SEPP IDs to database IDs
@@ -266,14 +261,9 @@ export function StateLevelControls({
       .map((portalId: string) => SEPP_MAPPING[portalId])
       .filter(Boolean);
     
-    // Filter out residential-only SEPPs if zone doesn't permit residential
-    if (!permitsResidential) {
-      const beforeFilter = dbSeppIds.length;
-      dbSeppIds = dbSeppIds.filter((seppId: any) => seppId !== 'housing_2021');
-      if (beforeFilter > dbSeppIds.length) {
-        console.log(`[StateLevelControls] LEP land use table prohibits dwellings in ${zoneCode} - excluding Housing SEPP (ADG, Secondary Dwellings)`);
-      }
-    }
+    // No zone filter on the Housing SEPP: the Planning Portal reported it for this address, and a
+    // state policy can apply whatever the LEP zone says. The old typed RESIDENTIAL list dropped it
+    // for MU1/E1 (code-quality review, served rules finding 3).
 
     // Force-fetch contamination requirements for industrial zones
     // Planning Portal only detects EPA investigation areas, not zone-based risk

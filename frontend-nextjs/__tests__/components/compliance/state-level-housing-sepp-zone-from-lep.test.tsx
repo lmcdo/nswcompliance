@@ -1,5 +1,5 @@
 /**
- * The Housing SEPP is dropped only when the LEP land use table prohibits every dwelling type.
+ * The Housing SEPP reported by the Planning Portal is never dropped on a zone list.
  * Before 2026-10-26 a typed RESIDENTIAL list (R1-R5, RU5) dropped it for MU1 and E1, zones that allow housing.
  */
 import React from 'react';
@@ -33,12 +33,9 @@ it('keeps the Housing SEPP for MU1 when the LEP table is not checked', async () 
   await waitFor(() => expect(bodies.some((b) => b.includes('housing_2021'))).toBe(true));
 });
 
-it('drops it when the LEP table prohibits every dwelling type', async () => {
+it('keeps it even when the LEP table prohibits every dwelling type (the Portal reported it)', async () => {
   const bodies = run('R2 Low Density Residential', { covered: true, entries: [
     { development_type: 'dwelling_houses', permissibility: 'prohibited' },
-    { development_type: 'residential_flat_buildings', permissibility: 'prohibited' },
   ] });
-  await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/lep/permissibility')));
-  await new Promise((r) => setTimeout(r, 50));
-  expect(bodies.some((b) => b.includes('housing_2021'))).toBe(false);
+  await waitFor(() => expect(bodies.some((b) => b.includes('housing_2021'))).toBe(true));
 });

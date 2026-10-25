@@ -4,7 +4,7 @@
  * or it is "not checked" — never a guess from the zone code.
  *
  * prior-art-checked: LandUseZoningCard.tsx and ProvisionsByTocStructure.tsx call the same endpoint
- * inline; this is the first shared reader, for ADGSummaryCard and StateLevelControls.
+ * inline; this is the first shared reader, for ADGSummaryCard.
  */
 
 export interface PermissibilityEntry {
@@ -22,7 +22,10 @@ export async function fetchLepTable(zone: string | null | undefined, lga: string
     if (!r.ok) return null;
     const data = await r.json();
     if (data?.covered !== true || !Array.isArray(data.entries) || data.entries.length === 0) return null;
-    return data.entries as PermissibilityEntry[];
+    const rows = (data.entries as unknown[]).filter(
+      (e): e is PermissibilityEntry => typeof (e as PermissibilityEntry)?.development_type === 'string'
+        && typeof (e as PermissibilityEntry)?.permissibility === 'string');
+    return rows.length > 0 ? rows : null;
   } catch {
     return null;
   }
@@ -32,24 +35,4 @@ export async function fetchLepTable(zone: string | null | undefined, lga: string
 export function permissibilityOf(table: LepTable, developmentType: string): string | null {
   if (!table) return null;
   return table.find((e) => e.development_type === developmentType)?.permissibility ?? null;
-}
-
-/**
- * The table's own housing slugs (distinct development_type in lep_land_use_table, 2026-10-26).
- * A vocabulary of row names, not planning values: any one permitted means the zone allows housing.
- */
-const DWELLING_TYPES = [
-  'residential_accommodation', 'dwelling_houses', 'secondary_dwellings', 'dual_occupancies',
-  'dual_occupancies_attached', 'semi_detached_dwellings', 'attached_dwellings', 'multi_dwelling_housing',
-  'residential_flat_buildings', 'shop_top_housing', 'seniors_housing', 'boarding_houses', 'hostels',
-  'rural_workers_dwellings',
-];
-
-/**
- * True only when the table lists dwellings for this zone and every listed one is prohibited.
- * Not checked, or no dwelling row, = false: housing rules are shown rather than hidden on a guess.
- */
-export function zoneProhibitsAllDwellings(table: LepTable): boolean {
-  const rows = (table ?? []).filter((e) => DWELLING_TYPES.includes(e.development_type));
-  return rows.length > 0 && rows.every((e) => e.permissibility === 'prohibited');
 }
