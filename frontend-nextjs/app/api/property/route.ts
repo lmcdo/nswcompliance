@@ -6,6 +6,7 @@ import { greenwebConstraints } from '@/lib/greenweb-overlay';
 import { railOrBusyRoadConstraints } from '@/lib/rail-busy-road';
 import { classifiedRoadConstraints } from '@/lib/classified-road';
 import { withLookupBudget, withinLookupBudget, LOOKUP_OUT_OF_TIME } from '@/lib/fetch-timeout';
+import { SPATIAL_OVERLAYS_SQL } from '@/lib/spatial-overlays-sql';
 import { LOOKUP_BUDGET_MS, type LookupCheck } from '@/lib/lookup-not-checked';
 import { ADDRESS_SEARCH_UNAVAILABLE, VALUATION_UNAVAILABLE, LOCATION_NOT_FOUND } from '@/lib/nsw-planning-portal';
 
@@ -77,15 +78,7 @@ export async function GET(req: NextRequest) {
  const classifiedRoadCheck = classifiedRoadConstraints(query, fetch, spatialLon, spatialLat);
  try {
    const spatialResult = await query(
-     `SELECT layer_type, value
-      FROM spatial_overlays
-      WHERE ST_Contains(geom, ST_SetSRID(ST_Point($1, $2), 4326))
-      AND layer_type IN (
-        'additional_permitted_uses', 'foreshore_building_line', 'land_reservation',
-        'riparian', 'wetlands', 'key_sites', 'active_street_frontages', 'flood',
-        'sep', 'tod_precinct', 'tod_accelerated', 'tod_deferred',
-        'biodiversity', 'landslide', 'fsr', 'acid_sulfate', 'lot_size'
-      )`,
+     SPATIAL_OVERLAYS_SQL,
      [spatialLon, spatialLat]
    );
    const rows = spatialResult.rows;
