@@ -31,5 +31,6 @@ describe('canSubdivide uses the LEP minimum lot size', () => {
 
   it('parses a text area', () => {
     expect(canSubdivide('228.1 square metres', 300)).toBe(false);
+    expect(canSubdivide('1,200 square metres', 600)).toBe(true);
   });
 });

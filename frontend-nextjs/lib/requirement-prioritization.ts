@@ -152,7 +152,7 @@ export function canSubdivide(propertyArea?: string | number, lepMinLotSize?: num
 
   if (typeof propertyArea === 'string') {
     // Parse "228.1 square metres" → 228.1
-    const match = propertyArea.match(/[\d.]+/);
+    const match = propertyArea.replace(/,/g, '').match(/[\d.]+/); // "1,200 m²" is 1200, not 1
     if (!match) return true;
     areaSqm = parseFloat(match[0]);
   } else {
