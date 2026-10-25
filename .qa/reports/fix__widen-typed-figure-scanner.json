@@ -1,0 +1,68 @@
+{
+  "tier": "standard",
+  "commit_hash": "ab4d5875",
+  "justification": "The gate said 0 unlisted while missing typed figures that decide what users see. Standard: lint script and ledger; no shipped code.",
+  "files": [
+    "scripts/lint_hardcoded_regulatory_numbers.py",
+    "tests/test_lint_hardcoded_regulatory_numbers.py",
+    ".claude/regulatory_figure_ledger.json"
+  ],
+  "pre_impl": {
+    "existing_data": ".claude/regulatory_figure_ledger.json, 223 entries, max_open 83",
+    "assumption_mismatch": "Tailwind max-w classes matched the new max word; excluded by the (?![-[]) lookahead",
+    "new_vs_existing": "Every CI run from merge; 39 new ledger entries, 8 relabelled"
+  },
+  "functions": [
+    {
+      "name": "hits_in_text",
+      "file_line": "scripts/lint_hardcoded_regulatory_numbers.py:70",
+      "input": "one source file's text and its suffix",
+      "output": "list of typed planning figure hits",
+      "if_none": "empty text gives no hits"
+    }
+  ],
+  "values": [
+    {
+      "value": "ledger max_open",
+      "read_at": "scripts/lint_hardcoded_regulatory_numbers.py judge",
+      "nullable": "no",
+      "guard_at": "LEDGER HAS NO max_open problem",
+      "if_missing": "check fails"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A new `return lotWidth >= 12;` is typed into a component",
+      "what_happens": "Before: scan passed. Now: NOT IN LEDGER fails CI",
+      "mitigated": true,
+      "how": "COMPARE pattern",
+      "repro": "pytest tests/test_lint_hardcoded_regulatory_numbers.py"
+    },
+    {
+      "scenario": "A ledger row is marked cited with a paraphrase reason",
+      "what_happens": "Before: passed as verbatim. Now: CITED BUT PARAPHRASED fails",
+      "mitigated": true,
+      "how": "judge checks the reason",
+      "repro": "same test file"
+    },
+    {
+      "scenario": "Tailwind classes such as max-w-4xl contain the word max",
+      "what_happens": "Would flood the ledger with CSS false hits",
+      "mitigated": true,
+      "how": "lookahead excludes max- and max[",
+      "repro": "python scripts/lint_hardcoded_regulatory_numbers.py --list"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lint_hardcoded_regulatory_numbers.py",
+    "fails_when": "Old scanner: 4 failed / 16 passed (docs/qa/session-b/7-scanner-red.md)",
+    "observed_red": "Ran the new tests against the unwidened scanner: 4 failed, 16 passed."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

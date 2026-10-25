@@ -136,3 +136,33 @@ def test_quoted_keys_and_floor_area_constants_are_caught():
     """Cross-review 2026-10-22: a quoted JSON key and a floor-area name slipped past."""
     assert lint.hits_in_text('  {"minimumLotSizeM2": 450, "zone": "R2"}', ".json")
     assert lint.hits_in_text("  maxFloorAreaM2: 60,", ".ts")
+
+
+# ── Widened 2026-10-26: four holes the code-quality review found (served-rules-verdicts.md) ──
+
+def test_min_and_max_count_as_planning_words():
+    """PatternBookEligibilityCard said "(300m² min)" in JSX and the scan missed it: no planning word."""
+    assert lint.hits_in_text("<li>studio apartments (300m² min) to manor houses</li>", ".tsx")
+
+
+def test_a_bare_number_compared_with_a_lot_measure_is_caught():
+    """`return areaSqm >= 450;` decided which rules were hidden; no unit, so FIGURE never matched."""
+    assert lint.hits_in_text("  return areaSqm >= 450;", ".ts")
+    assert lint.hits_in_text("if (lotWidth < 12) {", ".tsx")
+    assert not lint.hits_in_text("if (items.length > 3) {", ".ts")
+    assert not lint.hits_in_text("if (area > 0) {", ".ts")
+
+
+def test_a_typed_zone_list_is_caught():
+    """APARTMENT_RESTRICTED_ZONES = ['R2', 'RU1', ...] decided a warning; zone lists are not numbers."""  # noqa: zone-codes -- test fixture: the zone list the scanner must catch
+    assert lint.hits_in_text("const Z = ['R2', 'RU1', 'C1'];", ".ts")  # noqa: zone-codes -- test fixture: the zone list the scanner must catch
+    assert lint.hits_in_text("  RESIDENTIAL: ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'],", ".ts")  # noqa: zone-codes -- test fixture: the zone list the scanner must catch
+    assert not lint.hits_in_text("const sizes = ['sm', 'md'];", ".ts")
+
+
+def test_a_paraphrased_quote_cannot_be_cited():
+    """`cited` means verbatim; granny-flat rows said "(wording paraphrased)" and passed."""
+    ledger = {"max_open": 0, "entries": [{"file": "a.ts", "text": "'3 m rear'", "fate": "cited",
+              "reason": "figures match SEPP (Housing) 2021 Schedule 1 s10 (wording paraphrased)"}]}
+    problems = lint.judge({"a.ts": ["'3 m rear'"]}, ledger)
+    assert any("PARAPHRASED" in p for p in problems)
