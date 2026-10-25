@@ -64,7 +64,9 @@ def _rows(cur):
     # text began hitting the 30s statement timeout, and the crash was reported
     # as "declared FIXED but the check FAILS" on DQ-103. A page of 2,000 takes
     # under 2s.
-    rows, last_id = [], 0
+    # Starts below any integer id. The caller pins one snapshot (REPEATABLE READ)
+    # so a row changing mid-run cannot fall between pages.
+    rows, last_id = [], -(2 ** 31) - 1
     while True:
         cur.execute(
             """SELECT id, source_council, document_id, provision_text,
@@ -278,6 +280,10 @@ def main() -> int:
                   f"checked, which is not a pass.", file=sys.stderr)
             return 2
         try:
+            # Keep connect()'s session timeout (commit, not rollback, which would undo
+            # it), then read every page from one snapshot.
+            conn.commit()
+            conn.set_session(isolation_level="REPEATABLE READ", readonly=True)
             cur = conn.cursor()
             tagger = ApplicabilityTagger()
             count, by_doc = fn(_rows(cur), tagger)

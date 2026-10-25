@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The DQ-103 probe read every served rule's full text in one query, which began hitting the 30 s statement timeout. The crash was reported as 'declared FIXED but the check FAILS', turning nightly data-watch and every PR's gates red. It now reads in pages of 2,000 by id, and a query the database cuts off exits 2 (UNKNOWN) instead of failing. Run for real: count 0, declared fixed and agrees.",
-  "commit_hash": "792bd39f",
+  "commit_hash": "e1430e55",
   "files": [
     "scripts/dq_probe_applicability_config.py"
   ],
