@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a preview-only switch, LOOKUP_FAIL_CHECKS, that makes named lookup checks (planning_layers, lot_shape, tod, roads, precinct) fail through their own failure path, so a person can read the Not checked notice on a real preview page. It is ignored when VERCEL_ENV is production.",
-  "commit_hash": "be8a76a5",
+  "commit_hash": "f8a9437a",
   "files": [
     "frontend-nextjs/lib/lookup-not-checked.ts",
     "frontend-nextjs/lib/nsw-planning-portal.ts",
