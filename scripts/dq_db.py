@@ -139,3 +139,45 @@ def _assert_not_blind(cur) -> None:
                 f"(110 tables here have RLS on). Every probe over it would report "
                 f"CLEAN. Refusing to answer: UNKNOWN is not the same as clean."
             )
+
+
+_PAGE = 2000
+
+
+def pin_snapshot(conn) -> None:
+    """Read every later query from one snapshot (REPEATABLE READ), keeping connect()'s timeout.
+
+    commit, not rollback: the SET statement_timeout in connect() ran inside the open
+    transaction, and a rollback would undo it.
+    """
+    conn.commit()
+    conn.set_session(isolation_level="REPEATABLE READ", readonly=True)
+
+
+def paged_rows(cur, columns: str, where: str) -> list[tuple]:
+    """``SELECT id, <columns> FROM regulatory_provisions WHERE <where>``, in pages by id.
+
+    One query for every served row's full text began hitting the 30s statement
+    timeout (2026-10-25), and the crash read as "declared FIXED but the check FAILS"
+    on DQ-103/104/105. A page of 2,000 takes under 2s. Call pin_snapshot() first so
+    a row changing mid-run cannot fall between pages. ``where`` is a constant from the
+    caller, never user input. Rows come back WITHOUT the id.
+    """
+    rows: list[tuple] = []
+    last_id = -(2 ** 31) - 1  # below any integer id
+    while True:
+        cur.execute(
+            f"SELECT id, {columns} FROM regulatory_provisions "
+            f"WHERE ({where}) AND id > %s ORDER BY id LIMIT %s",
+            (last_id, _PAGE),
+        )
+        page = cur.fetchall()
+        if not page:
+            return rows
+        last_id = page[-1][0]
+        rows.extend(r[1:] for r in page)
+
+
+def is_timeout(exc: BaseException) -> bool:
+    """A query the database cut off (psycopg2 QueryCanceled, matched by name: imported lazily)."""
+    return type(exc).__name__ == "QueryCanceled"

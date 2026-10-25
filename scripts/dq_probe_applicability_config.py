@@ -51,37 +51,13 @@ _CONFIG_DRIVEN = sorted({
 })
 
 
-_PAGE = 2000
-
-
 def _rows(cur):
-    # The currency filter is spelled out here rather than only in SERVED: both
-    # is_current and v2_is_actionable have to sit beside the table name or the
-    # DB guard cannot see them, and a probe that silently counted superseded
-    # rows would report a defect nobody is being served.
-    #
-    # Read in pages by id (2026-10-25): one query for every served row's full
-    # text began hitting the 30s statement timeout, and the crash was reported
-    # as "declared FIXED but the check FAILS" on DQ-103. A page of 2,000 takes
-    # under 2s.
-    # Starts below any integer id. The caller pins one snapshot (REPEATABLE READ)
-    # so a row changing mid-run cannot fall between pages.
-    rows, last_id = [], -(2 ** 31) - 1
-    while True:
-        cur.execute(
-            """SELECT id, source_council, document_id, provision_text,
-                      v2_dev_type_source
-               FROM regulatory_provisions
-               WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
-                 AND id > %s
-               ORDER BY id LIMIT %s""",
-            (last_id, _PAGE),
-        )
-        page = cur.fetchall()
-        if not page:
-            return rows
-        last_id = page[-1][0]
-        rows.extend(r[1:] for r in page)
+    # The currency filter is spelled out here rather than only in SERVED, so a
+    # probe can never silently count superseded rows nobody is being served.
+    # Paged (dq_db.paged_rows): one query for all served text hit the 30s timeout.
+    return dq_db.paged_rows(
+        cur, "source_council, document_id, provision_text, v2_dev_type_source",
+        "is_current AND v2_is_actionable AND source_council IS NOT NULL")
 
 
 def _council_key(document_id: str) -> str | None:
@@ -280,17 +256,13 @@ def main() -> int:
                   f"checked, which is not a pass.", file=sys.stderr)
             return 2
         try:
-            # Keep connect()'s session timeout (commit, not rollback, which would undo
-            # it), then read every page from one snapshot.
-            conn.commit()
-            conn.set_session(isolation_level="REPEATABLE READ", readonly=True)
+            dq_db.pin_snapshot(conn)
             cur = conn.cursor()
             tagger = ApplicabilityTagger()
             count, by_doc = fn(_rows(cur), tagger)
         except Exception as exc:  # noqa: BLE001
             # A query the database cut off measured nothing: UNKNOWN (exit 2), never a fail.
-            # Matched by name: psycopg2 is imported lazily by dq_db, as here.
-            if type(exc).__name__ != "QueryCanceled":
+            if not dq_db.is_timeout(exc):
                 raise
             print(f"{args.id}: UNKNOWN -- a query hit the statement timeout ({exc}). "
                   f"Nothing was checked, which is not a pass.", file=sys.stderr)

@@ -361,13 +361,13 @@ def probe_104(cur):
     sys.path.insert(0, str(ROOT / "scripts"))
     from dcp_extract_changed import reversed_text_tokens
 
-    cur.execute(
-        """SELECT id, source_council, provision_text
-             FROM regulatory_provisions
-            WHERE is_current AND v2_is_actionable"""
-    )
+    import dq_db
+
+    # id selected twice: paged_rows keys pages on its own id and returns rows without it.
+    rows = dq_db.paged_rows(cur, "id, source_council, provision_text",
+                            "is_current AND v2_is_actionable")
     hits = {}
-    for pid, council, text in cur.fetchall():
+    for pid, council, text in rows:
         toks = {t.lower() for t in reversed_text_tokens(text)}
         if len(toks) >= 2:
             hits[(council or "STATEWIDE", "id=%d %s" % (pid, sorted(toks)[:4]))] = 1
@@ -442,13 +442,13 @@ def probe_105(cur):
     from enrichment.extractors.applicability_tagger import ApplicabilityTagger
 
     tagger = ApplicabilityTagger()
-    cur.execute(
-        """SELECT source_council, document_id, provision_text, v2_dev_type_source
-             FROM regulatory_provisions
-            WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL"""
-    )
+    import dq_db
+
+    rows = dq_db.paged_rows(
+        cur, "source_council, document_id, provision_text, v2_dev_type_source",
+        "is_current AND v2_is_actionable AND source_council IS NOT NULL")
     by_council = {}
-    for council, doc, text, source in cur.fetchall():
+    for council, doc, text, source in rows:
         served, fallthrough, any_resolved = by_council.get(council, (0, 0, False))
         served += 1
         if source == "no_config":
@@ -881,8 +881,17 @@ def main() -> int:
                 print("%s: UNKNOWN -- database unreachable (%s). Nothing was checked, "
                       "which is not a pass." % (args.id, exc), file=sys.stderr)
                 return 2
+            dq_db.pin_snapshot(conn)
             cur = conn.cursor()
-            count, detail = fn(cur, args.live) if args.id == "DQ-58" else fn(cur)
+            try:
+                count, detail = fn(cur, args.live) if args.id == "DQ-58" else fn(cur)
+            except Exception as exc:  # noqa: BLE001
+                if not dq_db.is_timeout(exc):
+                    raise
+                # A query the database cut off measured nothing: UNKNOWN, never a fail.
+                print("%s: UNKNOWN -- a query hit the statement timeout (%s). Nothing was "
+                      "checked, which is not a pass." % (args.id, exc), file=sys.stderr)
+                return 2
         else:
             count, detail = fn()
     finally:
