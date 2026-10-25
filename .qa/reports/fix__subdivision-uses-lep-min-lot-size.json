@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "f1963aea",
+  "commit_hash": "86758476",
   "justification": "A typed 450 m2 decided which rules a user sees, for every council. Standard: one pure function, one new optional prop on three sections.",
   "files": [
     "frontend-nextjs/lib/requirement-prioritization.ts",
