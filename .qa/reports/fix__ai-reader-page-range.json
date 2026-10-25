@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Changes which pages the production AI reader extracts provisions from. For a chapter sharing a PDF, rules were read from the whole file and credited to the chapter; after this, only its own page range is read. Wrong pages here means wrong rules served.",
- "commit_hash": "afc1a548",
+ "commit_hash": "0c01d076",
  "files": [
   "scripts/ai_extractor.py",
   "scripts/dcp_extract_changed.py",
@@ -20,7 +20,7 @@
  "falsifiable_check": {
   "command": "python -m pytest -q -o addopts= tests/test_ai_extractor.py tests/test_ai_chunk_loss.py tests/test_ai_extractor_sentence_coverage.py tests/test_shared_pdf_page_slicing.py tests/test_dcp_extract_ai_page_range.py",
   "fails_when": "the reader chunks pages outside the range, either re-read offers another chapter's pages, the range is not clamped, or the extractor stops passing page_range",
-  "observed_red": "YES: 5 hand-made mutants (chunk whole file, drop page-coverage filter, drop sentence filter, no clamp, caller drops page_range), each killed."
+  "observed_red": "YES: 6 hand-made mutants (chunk whole file, drop page-coverage filter, drop sentence filter, no clamp, no fail-closed on an empty range, caller drops page_range), each killed. Sol cross-review found the empty-range silent success; fixed."
  },
  "functions": [
   {
@@ -96,6 +96,13 @@
    "mitigated": true,
    "how": "owned_span(None, total) == (1, total)",
    "repro": "test_a_shared_pdf_is_read_only_on_the_chapters_own_pages (second call)"
+  },
+  {
+   "scenario": "Sol: a range that misses the file (250-260 of 236 pages, or 79-52 reversed)",
+   "what_happens": "ValueError 'holds no page of this PDF' is raised, so the chapter fails visibly instead of returning no rules",
+   "mitigated": true,
+   "how": "owned_span raises when a given range clamps to lo > hi",
+   "repro": "test_a_range_that_misses_the_file_fails_loudly"
   }
  ],
  "post_merge": {

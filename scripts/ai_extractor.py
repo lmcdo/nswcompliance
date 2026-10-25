@@ -1191,7 +1191,12 @@ def owned_span(page_range: tuple[int, int] | None, total: int) -> tuple[int, int
     """(first, last) 1-based inclusive pages this chapter owns, clamped to the file the same
     way DCPExtractor._owned_pages clamps (a stale end is clamped, not refused)."""
     lo, hi = page_range or (1, total)
-    return max(1, lo), min(hi, total)
+    lo, hi = max(1, lo), min(hi, total)
+    if page_range and lo > hi:
+        # FAIL CLOSED: a range that misses the file would read nothing and return no
+        # rules as if the chapter were empty (Sol cross-review 2026-10-26).
+        raise ValueError(f"page range {page_range} holds no page of this {total}-page PDF")
+    return lo, hi
 
 
 def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None = None,

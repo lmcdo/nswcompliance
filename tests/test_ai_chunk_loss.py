@@ -330,3 +330,11 @@ def test_a_stale_range_end_is_clamped_like_the_regex_reader():
     assert ai.owned_span((8, 25), 20) == (8, 20)
     assert ai.owned_span(None, 20) == (1, 20)
     assert ai.owned_span((0, 5), 20) == (1, 5)
+
+
+def test_a_range_that_misses_the_file_fails_loudly():
+    import pytest
+    import ai_extractor as ai
+    for bad in ((250, 260), (79, 52)):
+        with pytest.raises(ValueError, match="holds no page"):
+            ai.owned_span(bad, 236)
