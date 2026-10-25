@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds progress print lines to the AI reader's retry loop used by the production dcp-extract job; the return value, retry decisions and exceptions are unchanged.",
- "commit_hash": "7c712608",
+ "commit_hash": "5fda5987",
  "files": [
   "scripts/ai_extractor.py",
   "tests/test_ai_extractor.py"
