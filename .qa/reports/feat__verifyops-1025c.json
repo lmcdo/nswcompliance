@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes only the wording of the DCP monitor's alert: a new link may now be named as the likely replacement of a held chapter when it carries a new chapter code and exactly the same title. No database write, no served row and no verdict changes.",
- "commit_hash": "7d487580",
+ "commit_hash": "71e5a080",
  "files": [
   "scripts/verifyops_links.py",
   "tests/test_verifyops_daily_check.py"
