@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "5d42c978",
+  "commit_hash": "4d3b292b",
   "justification": "One user-facing message: a failed request read as 'no requirements'. Standard: one component, a boolean state.",
   "files": [
     "frontend-nextjs/components/compliance/StateLevelControls.tsx",
@@ -8,7 +8,7 @@
   ],
   "pre_impl": {
     "existing_data": "POST /api/sepp/structured-requirements, one call per detected SEPP",
-    "assumption_mismatch": "If one SEPP call fails and another returns rows, rows show and the failure note does not",
+    "assumption_mismatch": "A 200 with success false is also treated as not checked",
     "new_vs_existing": "Render-time only, applies to every page view"
   },
   "functions": [
@@ -47,9 +47,9 @@
     },
     {
       "scenario": "One SEPP call fails while another SEPP call returns rows",
-      "what_happens": "Rows from the answered SEPP show; no note about the failed one",
-      "mitigated": false,
-      "how": "Out of scope: the reviewed bug was the empty-list case only",
+      "what_happens": "Rows from the answered SEPP show, plus the not-checked notice above them",
+      "mitigated": true,
+      "how": "Notice renders whenever seppNotChecked, rows or not",
       "repro": "two applicableSepps, one 500"
     }
   ],
