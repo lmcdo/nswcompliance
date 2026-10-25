@@ -51,6 +51,8 @@ Pre-fix code = the PR's merge commit parent (`<sha>^`).
 
 ## Codex settings (pinned before any Codex output, used for Steps 2 and 4)
 `codex-cli 0.156.0`, model `gpt-5.6-terra` (the user's configured model), `model_reasoning_effort=high`,
-`--sandbox read-only --ephemeral --ignore-user-config --skip-git-repo-check`. Brief = `codex-bench/stance.txt` +
+`--sandbox read-only --ephemeral --ignore-user-config --skip-git-repo-check -c windows.sandbox=unelevated`, stdin closed. Brief = `codex-bench/stance.txt` +
 one area file. A first launch was stopped before any output: `--ignore-user-config` had dropped reasoning to "none",
-which would have under-scored Codex.
+which would have under-scored Codex. A second launch could not read any file (`--ignore-user-config` also dropped the
+user's `windows.sandbox=unelevated`, so every command was "blocked by policy"); its only output was an error, no findings.
+Codex memories feature: off (`codex features list`), `~/.codex/memories` empty — no recall of this repo.
