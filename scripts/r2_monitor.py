@@ -45,11 +45,9 @@ from dotenv import load_dotenv
 # Hub scrapers — keyed by council slug
 # Councils not listed fall back to per-chapter council_url checking
 sys.path.insert(0, str(Path(__file__).parent))
-try:
-    from hub_scrapers import HUB_SCRAPERS, HubScrapeError
-except ImportError:
-    HUB_SCRAPERS = {}
-    HubScrapeError = Exception
+# No fallback: a broken import used to become "no scraper" for every council, so new
+# documents went unfound on a run that looked clean. The image ships hub_scrapers/.
+from hub_scrapers import HUB_SCRAPERS, HubScrapeError
 
 # Every run's outcome per council list and per chapter (migration 116), and the daily-cadence
 # decisions. NOT optional: a monitor that silently stops recording is what the alarm reads as
@@ -1564,6 +1562,28 @@ def sanity_check(results: dict, total_chapters: int) -> list[str]:
     return warnings
 
 
+def chapters_checked(results: dict) -> int:
+    """Chapters actually checked. Every `unchanged += 1` is paired with `checked += 1`,
+    so adding `unchanged` counted each unchanged chapter twice."""
+    return results["checked"]
+
+
+def not_checked_note(results: dict) -> str:
+    """Every chapter this run did NOT check, by reason. Empty only when all were checked:
+    a run that skipped chapters must never read as "all current"."""
+    n_transient = len(results["transient"])
+    n_waf = len(results["waf_blocked"])
+    n_rate = len(results["rate_limited"])
+    n_no_url = results.get("skipped_no_url", 0)
+    note = ""
+    if n_transient or n_waf or n_rate:
+        note += (f"\n  {n_transient} transient + {n_waf} WAF-blocked + {n_rate} rate-limited, not checked"
+                 f" (infra — retried next run).")
+    if n_no_url:
+        note += f"\n  {n_no_url} with no document link, not checked (hub page only)."
+    return note
+
+
 def reseed_hashes(conn, council_filter: str | None, dry_run: bool, delay: float = 5.0) -> None:
     """
     Re-download all active chapters and update stored content_hash, url_etag,
@@ -1740,7 +1760,7 @@ def main():
         print("  Chapters with check_failures >= 3 should be investigated.")
 
     # ── Sanity check ─────────────────────────────────────────────────────────
-    warnings = sanity_check(results, results["checked"] + results["unchanged"])
+    warnings = sanity_check(results, chapters_checked(results))
     for w in warnings:
         print(f"\n  {w}")
 
@@ -1768,20 +1788,13 @@ def main():
     # Always notify so we have proof the pipeline ran. Only REAL failures (content/
     # parse/DB errors) page; transient + WAF infra failures are noted but never fail
     # the run, and only confirmed content changes trigger extraction.
-    total_checked = results["checked"] + results["unchanged"]
-    n_transient = len(results["transient"])
-    n_waf = len(results["waf_blocked"])
+    total_checked = chapters_checked(results)
     # transient + WAF are bucketed separately, not here; a new document we failed to add is real.
     check_failed = results["failed"]
     register_failed = results.get("register_failed", [])
     real_failed = check_failed + len(register_failed)
     exit_code = run_exit_code(n_changed, real_failed)
-    n_rate = len(results["rate_limited"])
-    infra_note = (
-        f"\n  {n_transient} transient + {n_waf} WAF-blocked + {n_rate} rate-limited, not checked"
-        f" (infra — retried next run)."
-        if (n_transient or n_waf or n_rate) else ""
-    )
+    infra_note = not_checked_note(results)
 
     if exit_code == 1:
         msg = (
@@ -1821,7 +1834,9 @@ def main():
         send_telegram(
             f"DCP Monitor: no changes ({results['checked']} chapters checked){infra_note}"
         )
-        print("\n  No changes detected. All chapters are current.")
+        print("\n  No changes detected." + (
+            " Some chapters were NOT checked:" + infra_note if infra_note
+            else " All chapters are current."))
         sys.exit(0)
 
 
