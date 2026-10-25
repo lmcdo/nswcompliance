@@ -1,0 +1,63 @@
+{
+ "tier": "standard",
+ "justification": "Adds Chrome and curl_cffi to the monitor image and a switch that runs a read-only measurement instead of the monitor; the monitor itself is unchanged.",
+ "commit_hash": "29af7328",
+ "files": [
+  "scripts/run_monitors.py",
+  "scripts/probe_blocked_councils.py",
+  "scripts/requirements-monitor.txt",
+  "Dockerfile.monitors",
+  "tests/test_verifyops_deploy_check.py"
+ ],
+ "pre_impl": {
+  "existing_data": "17 councils answer 403 to Railway (latest finished run). From GitHub's machines (2026-10-25): list pages 11/16 got through with curl_cffi or Chrome; PDFs 5/5 once Chrome visited the council page first.",
+  "assumption_mismatch": "GitHub's addresses may be treated differently from Railway's; the fallback is only worth building if it works from Railway.",
+  "new_vs_existing": "New switch beside DCP_MONITOR_FORCE; new one-off script."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_verifyops_deploy_check.py",
+  "fails_when": "the switch runs the probe for any value other than exactly 1, or for another job, or a challenge page counts as a list",
+  "observed_red": "Sol found 3 issues on the first push (switch left on is silent, challenge page counted, inline PDF counted blocked); all fixed with tests."
+ },
+ "functions": [
+  {
+   "name": "monitor_cmd",
+   "file_line": "scripts/run_monitors.py:284",
+   "input": "job name, its command and the environment",
+   "output": "the probe command when DCP_PROBE_BLOCKED is exactly 1 for dcp-monitor, else as before",
+   "if_none": "unset switch leaves the command unchanged"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The switch is left on after the measurement",
+   "what_happens": "the daily check would stop running",
+   "mitigated": true,
+   "how": "the probe always exits 1 so run_monitors alerts on Telegram; no_run_2d also goes red",
+   "repro": "pytest tests/test_verifyops_deploy_check.py -k probe"
+  },
+  {
+   "scenario": "A firewall answers 200 with a challenge page",
+   "what_happens": "would count as getting through",
+   "mitigated": true,
+   "how": "a list page needs at least 3 PDF links",
+   "repro": "pytest tests/test_verifyops_deploy_check.py -k challenge"
+  },
+  {
+   "scenario": "Chrome makes the image too big or the build fails on Railway",
+   "what_happens": "monitor deploy fails, runs older image",
+   "mitigated": true,
+   "how": "check_railway_jobs_ran goes red on a failed deploy; revert the PR",
+   "repro": "railway status after merge"
+  }
+ ],
+ "real_layer_exempt": {
+  "scripts/probe_blocked_councils.py": "It IS the real-layer measurement; it runs on Railway once."
+ },
+ "post_merge": {
+  "db_reset": "None.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "railway variables --set DCP_PROBE_BLOCKED=1 -s dcp-monitor --skip-deploys; railway restart; read PROBE lines; then railway variable delete DCP_PROBE_BLOCKED."
+ }
+}

@@ -32,7 +32,6 @@ COPY scripts/dcp_watchdog.py ./scripts/dcp_watchdog.py
 COPY scripts/hub_scrapers/ ./scripts/hub_scrapers/
 COPY scripts/run_monitors.py ./scripts/run_monitors.py
 COPY scripts/probe_blocked_councils.py ./scripts/probe_blocked_councils.py
-COPY scripts/probe_blocked_targets.json ./scripts/probe_blocked_targets.json
 
 # Extract-to-review + commit-on-approve workers (MONITOR_NAME=dcp-extract / dcp-commit).
 # These need pdfplumber (in requirements-monitor.txt) and the enrichment package,

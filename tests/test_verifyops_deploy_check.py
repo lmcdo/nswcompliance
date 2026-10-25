@@ -142,5 +142,17 @@ def test_probe_switch_never_touches_other_jobs():
 
 def test_the_image_carries_the_probe_and_chrome():
     src = (ROOT / "Dockerfile.monitors").read_text(encoding="utf-8")
-    assert "COPY scripts/probe_blocked_councils.py" in src and "COPY scripts/probe_blocked_targets.json" in src
+    assert "COPY scripts/probe_blocked_councils.py" in src
     assert "playwright install --with-deps chromium" in src
+
+
+def test_probe_page_check_rejects_a_challenge_page():
+    sys_path = str(ROOT / "scripts")
+    import importlib, sys as _s
+    _s.path.insert(0, sys_path)
+    pb = importlib.import_module("probe_blocked_councils")
+    challenge = b"<html>Checking your browser... https://council.nsw.gov.au/x.pdf</html>"
+    real = b"".join(b'<a href="/files/part-%d.pdf">Part</a>' % i for i in range(5))
+    assert pb.page_ok(200, challenge) is False
+    assert pb.page_ok(200, real) is True
+    assert pb.page_ok(403, real) is False
