@@ -66,3 +66,13 @@ def test_serving_code_changes_run_the_checks_that_call_it():
 def test_a_new_branch_push_with_no_before_commit_runs_everything():
     assert g.changed_files("0000000000000000000000000000000000000000") is None
 
+
+
+def test_changing_the_nightly_or_daily_alarm_runs_everything():
+    assert all(g.decide([".github/workflows/data-watch.yml"]).values())
+    assert all(g.decide([".github/workflows/freshness-alarm.yml"]).values())
+
+
+def test_renames_report_both_paths():
+    src = (ROOT / "scripts" / "gate_touched_checks.py").read_text(encoding="utf-8")
+    assert '"--no-renames"' in src

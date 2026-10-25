@@ -41,7 +41,8 @@ CHECKS: dict[str, tuple[str, ...]] = {
 }
 
 #: A change to the wiring itself runs everything, so this file cannot switch a check off unseen.
-RUN_ALL: tuple[str, ...] = (".github/workflows/gates.yml", "scripts/gate_touched_checks.py")
+RUN_ALL: tuple[str, ...] = (".github/workflows/gates.yml", ".github/workflows/data-watch.yml",
+                             ".github/workflows/freshness-alarm.yml", "scripts/gate_touched_checks.py")
 
 
 def decide(changed: list[str] | None) -> dict[str, bool]:
@@ -58,7 +59,7 @@ def changed_files(base: str | None = None) -> list[str] | None:
     if base and set(base) == {"0"}:  # a new branch: no "before" commit
         return None
     try:
-        out = subprocess.run(["git", "diff", "--name-only", base or "HEAD~1", "HEAD"], capture_output=True,
+        out = subprocess.run(["git", "diff", "--name-only", "--no-renames", base or "HEAD~1", "HEAD"], capture_output=True,
                              text=True, check=True, timeout=60).stdout
     except (subprocess.SubprocessError, OSError):
         return None
