@@ -1,0 +1,69 @@
+{
+ "tier": "standard",
+ "justification": "Changes which live-data checks run in PR and main gates; the checks themselves and the nightly job are unchanged.",
+ "commit_hash": "a6d2e378",
+ "files": [
+  "scripts/gate_touched_checks.py",
+  "scripts/dq_probe_unchecked_rows.py",
+  "scripts/dq_probe_applicability_config.py",
+  "scripts/verifyops_outside_ping.py",
+  "tests/test_gate_touched_checks.py",
+  ".github/workflows/gates.yml",
+  ".github/workflows/freshness-alarm.yml"
+ ],
+ "pre_impl": {
+  "existing_data": "Traced 2026-10-25: 12 gates.yml steps read live systems; 9 report live data state. PRs that week were blocked by DQ-79, DQ-118 x2, DQ-103/104/105 (timeouts: with a longer limit DQ-104 = 0, DQ-105 = 0) and data-watch freshness; none of those PRs changed that data.",
+  "assumption_mismatch": "Live-data steps in a PR read data the PR has not changed yet, so they cannot see the PR's effect; a timeout was reported as a regression.",
+  "new_vs_existing": "One helper sets RUN_<KEY> per step; data-watch freshness moves from the PR gate to the daily outside alarm."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_gate_touched_checks.py",
+  "fails_when": "a PR touching no live-data file runs a live check, a PR editing the ledger skips it, wiring changes skip anything, or a DB timeout reads as red",
+  "observed_red": "Tests on the real file lists of PRs #1494 and #1472; first timeout test failed under the psycopg2 stub, fixed by matching class names."
+ },
+ "functions": [
+  {
+   "name": "decide",
+   "file_line": "scripts/gate_touched_checks.py:43",
+   "input": "the list of changed file paths, or None when unreadable",
+   "output": "for each live-data gate step whether it must run",
+   "if_none": "an unreadable diff runs every live check"
+  },
+  {
+   "name": "_db_gave_up",
+   "file_line": "scripts/dq_probe_unchecked_rows.py:865",
+   "input": "an exception raised while a probe queried the database",
+   "output": "True for a timeout or dropped connection, so the probe exits 2 UNKNOWN",
+   "if_none": "any other exception is re-raised as a real error"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A PR marks a DQ row fixed while its check still fails",
+   "what_happens": "would merge a false claim if the ledger did not run",
+   "mitigated": true,
+   "how": "editing dq_checks.json or the tracker runs the ledger in that PR",
+   "repro": "pytest tests/test_gate_touched_checks.py -k fixed"
+  },
+  {
+   "scenario": "Someone edits gates.yml or the helper to switch a check off",
+   "what_happens": "a live-data check silently stops running in gates",
+   "mitigated": true,
+   "how": "a change to either file runs every live check",
+   "repro": "pytest tests/test_gate_touched_checks.py -k wiring"
+  },
+  {
+   "scenario": "The nightly data-watch job stops running",
+   "what_happens": "live data unwatched and no PR asks any more",
+   "mitigated": true,
+   "how": "freshness-alarm.yml checks it daily, sends red to Telegram and pings healthchecks.io",
+   "repro": "pytest tests/test_gate_touched_checks.py -k outside"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Next PR touching no ledger file shows the live-data steps skipped; freshness-alarm run shows a datawatch rc."
+ }
+}
