@@ -96,15 +96,44 @@ def chapter_number(text: str | None) -> str | None:
 
 
 def held_match(text: str | None, held: dict[str, str]) -> str | None:
-    """The held chapter a new link most likely replaces: EXACT chapter-number match only.
+    """The held chapter a new link most likely replaces: EXACT chapter-number match, else a
+    renumbered chapter with the EXACT same title (renumbered_match).
 
     `held` maps chapter_key -> chapter_label. Returns a key only when exactly one held chapter carries
     the same number; a fuzzy label match would pair "City East" with "City West" (#1430).
     """
     num = chapter_number(text)
-    if not num:
+    if num:
+        hits = [k for k, label in held.items() if chapter_number(label) == num]
+        if len(hits) == 1:
+            return hits[0]
+    return renumbered_match(text, held)
+
+
+_CODE = re.compile(r"\b(?:(?:part|chapter|section|schedule|appendix)\s*)?[a-z]?\d+(?:\.\d+)*[a-z]?\b", re.I)
+_PLAN_PREFIX = re.compile(r"^.*?\bdcp\s*\d{4}\b", re.I)
+
+
+def chapter_title(text: str | None) -> str:
+    """The title words without the plan name, chapter code or punctuation:
+    'Penrith DCP 2014 Part D2 - Residential Development' -> 'residential development'."""
+    t = (text or "").lower().replace("development control plan", "dcp")
+    t = _PLAN_PREFIX.sub(" ", t)
+    t = _CODE.sub(" ", t)
+    return " ".join(re.sub(r"[^a-z]+", " ", t).split())
+
+
+def renumbered_match(text: str | None, held: dict[str, str]) -> str | None:
+    """A held chapter given a NEW number: the link carries a chapter code and its title, code
+    removed, is EXACTLY one held chapter's title. Measured 2026-10-25: Penrith renumbered its DCP
+    from 1 Oct 2026 (D2 Residential Development -> C2, C10 -> B7) and the number match alone never
+    fired. A bare title with no code still never matches (#1430), nor does a one-word title."""
+    if not _CODE.search(text or ""):
         return None
-    hits = [k for k, label in held.items() if chapter_number(label) == num]
+    title = chapter_title(text)
+    if len(title.split()) < 2:
+        return None
+    hits = [k for k, label in held.items() if chapter_title(label) == title]
     return hits[0] if len(hits) == 1 else None
 
 

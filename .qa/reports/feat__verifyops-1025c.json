@@ -1,0 +1,75 @@
+{
+ "tier": "standard",
+ "justification": "Changes only the wording of the DCP monitor's alert: a new link may now be named as the likely replacement of a held chapter when it carries a new chapter code and exactly the same title. No database write, no served row and no verdict changes.",
+ "commit_hash": "ab4d5875",
+ "files": [
+  "scripts/verifyops_links.py",
+  "tests/test_verifyops_daily_check.py"
+ ],
+ "pre_impl": {
+  "existing_data": "Measured 2026-10-25 read-only on production: 138 dcp_chapter_registry rows auto_detected. Penrith row #970 (council comparison table) states the DCP was renumbered from 1 October 2026: D2 Residential Development -> C2, C10 Transport, Access and Parking -> B7. Served row #311 (old D2) still downloads with its stored hash, so the hash check reports unchanged.",
+  "assumption_mismatch": "held_match matched on chapter number only (#1430), so a renumbered chapter never matched, and on a page with many new links the alert collapsed to one 'page redesigned' line.",
+  "new_vs_existing": "Run over all 138 waiting links against every held chapter: 1 match (Penrith 'C2 Residential Development' -> #311), no false pairs.",
+  "external_source_error": "Not applicable: pure text matching on labels already stored.",
+  "frontend_type": "No frontend change.",
+  "user_failure_mode": "A wrong match only adds 'may replace X' to an alert a person reads; a missed match is the old behaviour. A bare title with no code, a one-word title, or an ambiguous title never matches."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q -o addopts= tests/test_verifyops_daily_check.py",
+  "fails_when": "the renumbered Penrith chapters do not match their held chapter, a bare title matches (#1430), a partial or one-word title matches, an ambiguous title picks one, or the plan-name prefix is not stripped",
+  "observed_red": "YES: 5 hand-made mutants (code guard removed, one-word guard removed, ambiguity taken as first hit, plan prefix kept, fallback removed), each killed. The one-word mutant first survived; the test used a label with no digit and was fixed."
+ },
+ "functions": [
+  {
+   "name": "renumbered_match",
+   "file_line": "scripts/verifyops_links.py:126",
+   "input": "a new link's text and the council's held chapters {key: label}",
+   "output": "the one held key whose title, code removed, equals the link's title; else None",
+   "if_none": "None text or empty held gives None"
+  },
+  {
+   "name": "chapter_title",
+   "file_line": "scripts/verifyops_links.py:117",
+   "input": "a chapter label as stored in the registry or read from a council page",
+   "output": "lowercase title words with plan name, chapter code and punctuation removed",
+   "if_none": "None gives an empty string"
+  }
+ ],
+ "values": [],
+ "break_it": [
+  {
+   "scenario": "Two held chapters with different numbers share one title (Part 3 and Part 9 Residential Development)",
+   "what_happens": "no match; the link is listed without a guess",
+   "mitigated": true,
+   "how": "renumbered_match requires exactly one hit",
+   "repro": "test_a_renumbered_chapter_matches_on_its_exact_title (two)"
+  },
+  {
+   "scenario": "A bare title 'City West' with no code, beside held 'Chapter 7.3 City West'",
+   "what_happens": "no match, as #1430 requires",
+   "mitigated": true,
+   "how": "the link must carry a chapter code",
+   "repro": "test_held_match_is_exact_number_and_unique"
+  },
+  {
+   "scenario": "A one-word title like 'E1 Appendices' beside a held 'Part F1 Appendices'",
+   "what_happens": "no match; one word is too weak",
+   "mitigated": true,
+   "how": "titles under two words never match",
+   "repro": "test_a_renumbered_chapter_matches_on_its_exact_title"
+  },
+  {
+   "scenario": "A renumbered chapter that was also retitled (D3 Commercial -> C3 Employment uses)",
+   "what_happens": "no match; the link is listed as a plain new document, as before",
+   "mitigated": false,
+   "how": "exact title only, by design; the person still sees the link",
+   "repro": "held_match('C3 Employment and non-residential uses', held) is None"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None: no schema or data change.",
+  "secrets": "None: no new environment variable.",
+  "other_repo": "None: no other repository depends on this.",
+  "manual_verify": "None on the next run: Penrith's C2 link was first seen 2026-10-23, so it is no longer new and will not be alerted again. The Penrith re-onboarding (C2 replacing #311) is handled separately. The fix applies to the next renumbered chapter on any council page."
+ }
+}
