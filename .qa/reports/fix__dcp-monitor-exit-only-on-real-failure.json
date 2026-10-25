@@ -1,0 +1,60 @@
+{
+ "tier": "standard",
+ "justification": "Changes which outcomes make dcp-monitor exit 1; what is checked and recorded per chapter is unchanged.",
+ "commit_hash": "21b51639",
+ "files": [
+  "scripts/r2_monitor.py",
+  "tests/test_r2_monitor_exit_only_on_real_failure.py"
+ ],
+ "pre_impl": {
+  "existing_data": "Railway: dcp-monitor CRASHED on every run 2026-09-01..10-25. Runs 5, 7, 8, 9: one failed chapter each (northern_beaches warringah-dcp-2011-full, HEAD 503) and 16 WAF-blocked chapters.",
+  "assumption_mismatch": "The WAF path's comment says not counted as failure but the next line counted it; a council 5xx and an unreadable list page were real failures.",
+  "new_vs_existing": "Reuses the waf_blocked and transient buckets; adds a hub_errors list."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_r2_monitor_exit_only_on_real_failure.py",
+  "fails_when": "a blocked chapter, a council 5xx or an unreadable list page is counted as a real failure",
+  "observed_red": "4 of the 5 tests fail against origin/main's r2_monitor.py; all pass after the change."
+ },
+ "break_it": [
+  {
+   "scenario": "A council server stays down for weeks",
+   "what_happens": "a 5xx treated as transient could hide it for ever",
+   "mitigated": true,
+   "how": "TransientFetchError bumps check_failures; 3 in a row surfaces in the digest, and the daily coverage alarm reds the chapter",
+   "repro": "pytest tests/test_r2_monitor_exit_only_on_real_failure.py -k server"
+  },
+  {
+   "scenario": "A council list page breaks permanently",
+   "what_happens": "no longer an exit 1, could go unseen",
+   "mitigated": true,
+   "how": "verifyops_coverage reds list_not_read_2d for that council daily and sends Telegram",
+   "repro": "pytest tests/test_r2_monitor_exit_only_on_real_failure.py -k list_page"
+  },
+  {
+   "scenario": "A real content or database error in a chapter",
+   "what_happens": "it must still make the run exit 1 and page someone",
+   "mitigated": true,
+   "how": "the one remaining results failed increment still makes exit 1",
+   "repro": "pytest tests/test_r2_monitor_exit_only_on_real_failure.py -k exactly_one"
+  }
+ ],
+ "real_layer_exempt": {
+  "scripts/r2_monitor.py": "Counting changes only; measured on Railway by the next run's exit status (dcp-monitor not CRASHED unless a real error)."
+ },
+ "post_merge": {
+  "db_reset": "None.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Next dcp-monitor run on Railway ends EXITED, not CRASHED, while blocked chapters remain."
+ },
+ "functions": [
+  {
+   "name": "run_monitor",
+   "file_line": "scripts/r2_monitor.py:845",
+   "input": "database connection, R2 client and run options for one full sweep",
+   "output": "results dict whose failed count now holds only real content, parse or database errors",
+   "if_none": "a blocked chapter, a council 5xx or an unreadable list page is bucketed, never counted as failed"
+  }
+ ]
+}

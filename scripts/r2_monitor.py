@@ -915,6 +915,7 @@ def run_monitor(
         "hub_alerts": [],
         "waf_blocked": [],
         "transient": [],
+        "hub_errors": [],
         "rate_limited": [],
     }
 
@@ -1142,7 +1143,10 @@ def run_monitor(
                     # error and then the loop below never ran to say otherwise. The
                     # loop DOES run now and reports each chapter's real outcome, so
                     # counting them here as well would double-count every one.
-                    results["failed"] += 1
+                    # Not a chapter failure either (2026-10-25): a list page that cannot be read is
+                    # recorded per council and alarmed by verifyops_coverage (list_not_read_2d), so it
+                    # no longer turns every run into an exit 1 (Camden's DCP is HTML, no PDF links).
+                    results["hub_errors"].append({"council": council, "url": hub_url, "error": str(exc)[:200]})
         elif hub_url:
             # Recorded so the alarm can name a council whose list is never read.
             rec.council_list(council, hub_url, "no_scraper", detail="hub URL stored, no scraper registered")
@@ -1193,7 +1197,11 @@ def run_monitor(
                     # Log and skip, but don't increment the failure counter.
                     print(f"    [WAF] HTTP 403 — access denied, skipping (not counted as failure)")
                     _backoff(url)
-                    results["failed"] += 1
+                    # Bucketed as WAF, as the comment above always said. It used to add to
+                    # results["failed"], so with 16 blocked chapters every run exited 1 and
+                    # Railway showed dcp-monitor CRASHED daily (2026-10-25).
+                    results["waf_blocked"].append({"council": ch_council, "chapter_key": key,
+                                                   "label": label, "url": url})
                     council_failed += 1
                     rec.chapter(chapter_id, ch_council, key, "waf_blocked", detail="HEAD 403")
                     adaptive_delay(url)
@@ -1210,6 +1218,12 @@ def run_monitor(
                         results["rate_limited"].append({"council": ch_council, "chapter_key": key})
                         adaptive_delay(url)
                         continue
+                if isinstance(head_status, int) and head_status >= 500:
+                    # The council's server erred: an outage, retried next run (TransientFetchError
+                    # bumps check_failures, so a server that stays down still surfaces after 3 runs
+                    # and in the daily alarm). Northern Beaches' ePlanning report answered 503 on
+                    # every run and was the only "real" failure behind daily exit 1s (2026-10-25).
+                    raise TransientFetchError(f"HEAD returned HTTP {head_status} (server error): {url}")
                 if head_status not in (200, 206):
                     raise RuntimeError(f"HEAD returned HTTP {head_status}: {url}")
 
