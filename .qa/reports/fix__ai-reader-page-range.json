@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Changes which pages the production AI reader extracts provisions from. For a chapter sharing a PDF, rules were read from the whole file and credited to the chapter; after this, only its own page range is read. Wrong pages here means wrong rules served.",
- "commit_hash": "cf9e09ec",
+ "commit_hash": "afc1a548",
  "files": [
   "scripts/ai_extractor.py",
   "scripts/dcp_extract_changed.py",
