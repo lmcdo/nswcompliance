@@ -35,12 +35,12 @@ def test_failing_lists_only_failures():
     assert t.failing(_outcomes(a="defect ledger", b="served-answer quality")) == ["defect ledger",
                                                                                   "served-answer quality"]
     assert t.failing(_outcomes()) == []
-    assert t.failing(",".join(["skipped"] * len(t.NAMES))) == []
+    assert t.failing(",".join(["skipped"] * len(t.NAMES))) == [f"{n} (did not run)" for n in t.NAMES]
 
 
 def test_a_step_that_never_ran_counts_as_failing():
-    assert t.failing("") == t.NAMES
-    assert t.failing("success") == t.NAMES[1:]
+    assert t.failing("") == [f"{n} (did not run)" for n in t.NAMES]
+    assert t.failing("success") == [f"{n} (did not run)" for n in t.NAMES[1:]]
 
 
 def test_red_without_telegram_fails_the_run(monkeypatch):

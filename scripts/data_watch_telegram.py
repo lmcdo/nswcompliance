@@ -24,10 +24,11 @@ NAMES = ["defect ledger", "DCP as-at coverage", "satellite manifests", "publishe
 
 
 def failing(outcomes: str) -> list[str]:
-    """Names whose step outcome is 'failure'. A missing outcome (step never ran) counts as failing."""
+    """Checks that did not pass: 'failure' by name, and anything else but 'success' as "(did not run)" --
+    a skipped, cancelled or missing step is not a check that passed (Sol, 2026-10-25)."""
     parts = [o.strip() for o in (outcomes or "").split(",")]
     parts += [""] * (len(NAMES) - len(parts))
-    return [n for n, o in zip(NAMES, parts) if o in ("failure", "")]
+    return [n if o == "failure" else f"{n} (did not run)" for n, o in zip(NAMES, parts) if o != "success"]
 
 
 def message(failed: list[str], run_url: str) -> str:
