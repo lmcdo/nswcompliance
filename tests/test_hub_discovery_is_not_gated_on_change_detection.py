@@ -245,11 +245,14 @@ class TestAHubFailureNoLongerCostsTheCouncilItsChangeDetection:
             "now that the per-chapter loop runs"
         )
 
-    def test_a_non_403_hub_error_is_still_a_real_failure(self):
-        """The fall-through must not make every hub error free. A parse error on a
-        hub page is a genuine problem and has to reach the exit code."""
+    def test_a_non_403_hub_error_is_recorded_and_alerted_not_free(self):
+        """The fall-through must not make every hub error free. Until 2026-10-25 it reached the exit code;
+        that made dcp-monitor exit 1 on every run (Camden's DCP is HTML, no PDF links), so Railway showed it
+        CRASHED daily and real crashes were hidden in the noise. It is now recorded in hub_errors, alerted on
+        Telegram here (test_the_alert_still_fires) and red in the daily coverage alarm (list_not_read_2d)."""
         block = _hub_except_block()
-        assert 'results["failed"] += 1' in block
+        assert 'results["hub_errors"].append' in block
+        assert 'results["failed"] += 1' not in block
 
     def test_the_alert_still_fires(self):
         block = _hub_except_block()
