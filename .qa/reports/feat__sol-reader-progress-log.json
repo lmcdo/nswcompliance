@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds progress print lines to the AI reader's retry loop used by the production dcp-extract job; the return value, retry decisions and exceptions are unchanged.",
- "commit_hash": "5d7c4337",
+ "commit_hash": "7c712608",
  "files": [
   "scripts/ai_extractor.py",
   "tests/test_ai_extractor.py"
@@ -50,6 +50,13 @@
    "mitigated": true,
    "how": "len(out or '')",
    "repro": "_call_with_retry with a provider returning None"
+  },
+  {
+   "scenario": "Sol: stdout closed or BrokenPipe while printing",
+   "what_happens": "the valid text is returned once; the provider is not called again",
+   "mitigated": true,
+   "how": "success line printed outside the try, all lines via _progress which swallows OSError/ValueError",
+   "repro": "test_a_broken_stdout_never_turns_good_text_into_a_failure"
   }
  ],
  "post_merge": {

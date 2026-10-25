@@ -741,18 +741,27 @@ def _call_with_retry(model: str, pdf_bytes: bytes, prompt: str = PROMPT) -> str:
         t0 = time.monotonic()
         try:
             out = fn(pdf_bytes, prompt)
-            print(f"    [reader] {model} call {attempt + 1}: {time.monotonic() - t0:.0f}s, "
-                  f"{len(out or '')} chars back", flush=True)
-            return out
         except Exception as exc:  # noqa: BLE001 — provider SDKs raise varied types
             last = exc
             retry = _is_retryable(exc) and attempt < _MAX_RETRIES - 1
-            print(f"    [reader] {model} call {attempt + 1} failed after {time.monotonic() - t0:.0f}s "
-                  f"({type(exc).__name__}){' - retrying' if retry else ''}", flush=True)
+            _progress(f"{model} call {attempt + 1} failed after {time.monotonic() - t0:.0f}s "
+                      f"({type(exc).__name__}){' - retrying' if retry else ''}")
             if not retry:
                 raise
             time.sleep(_BACKOFF_BASE * (2 ** attempt))
+            continue
+        # Outside the try: a log line that cannot be written is never a failed call.
+        _progress(f"{model} call {attempt + 1}: {time.monotonic() - t0:.0f}s, {len(out or '')} chars back")
+        return out
     raise last  # pragma: no cover
+
+
+def _progress(line: str) -> None:
+    """Print a progress line; a closed or broken stdout never changes the result."""
+    try:
+        print(f"    [reader] {line}", flush=True)
+    except (OSError, ValueError):
+        pass
 
 
 _EMPTY_PARSE_RAW_LEN_FLOOR = 200  # a genuine empty-chunk response is short; longer

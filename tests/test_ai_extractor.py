@@ -1252,3 +1252,20 @@ def test_every_reader_call_prints_a_line(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "[reader] flaky call 1 failed after" in out and "TimeoutError" in out and "retrying" in out
     assert "[reader] flaky call 2:" in out and "42 chars back" in out
+
+
+def test_a_broken_stdout_never_turns_good_text_into_a_failure(monkeypatch):
+    """Sol cross-review 2026-10-26: a print inside the try was caught as a provider failure."""
+    calls = []
+
+    def good(pdf_bytes, prompt):
+        calls.append(1)
+        return "ok"
+
+    def broken_print(*a, **k):
+        raise BrokenPipeError
+
+    monkeypatch.setitem(_PROVIDERS, "good", good)
+    monkeypatch.setattr("builtins.print", broken_print)
+    assert _call_with_retry("good", b"%PDF-", "p") == "ok"
+    assert len(calls) == 1
