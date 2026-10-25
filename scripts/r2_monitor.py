@@ -1574,7 +1574,7 @@ def not_checked_note(results: dict) -> str:
     n_transient = len(results["transient"])
     n_waf = len(results["waf_blocked"])
     n_rate = len(results["rate_limited"])
-    n_no_url = results.get("skipped_no_url", 0)
+    n_no_url = results.get("skipped_no_url") or 0
     note = ""
     if n_transient or n_waf or n_rate:
         note += (f"\n  {n_transient} transient + {n_waf} WAF-blocked + {n_rate} rate-limited, not checked"
