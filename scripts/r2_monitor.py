@@ -1772,7 +1772,9 @@ def main():
     n_transient = len(results["transient"])
     n_waf = len(results["waf_blocked"])
     # transient + WAF are bucketed separately, not here; a new document we failed to add is real.
-    real_failed = results["failed"] + len(results.get("register_failed", []))
+    check_failed = results["failed"]
+    register_failed = results.get("register_failed", [])
+    real_failed = check_failed + len(register_failed)
     exit_code = run_exit_code(n_changed, real_failed)
     n_rate = len(results["rate_limited"])
     infra_note = (
@@ -1784,11 +1786,13 @@ def main():
     if exit_code == 1:
         msg = (
             f"DCP Monitor ERROR\n"
-            f"{real_failed}/{total_checked} chapters failed to check (real errors).{infra_note}\n"
+            f"{check_failed}/{total_checked} chapters failed to check (real errors).{infra_note}\n"
             f"Investigate — this is a data/extraction problem, not infra."
         )
-        for line in results.get("register_failed", []):
-            msg += f"\nNOT ADDED: {line}"
+        if register_failed:
+            msg += f"\n{len(register_failed)} new document(s) found on a council page but NOT added:"
+            for line in register_failed:
+                msg += f"\n  {line}"
         print(f"\n  ERROR: {real_failed} real failures (excludes transient/WAF infra).")
         send_telegram(msg)
         sys.exit(1)

@@ -92,7 +92,7 @@ def test_a_failed_registration_fails_the_run(monkeypatch):
     assert len(results.get("register_failed", [])) == 1
     assert "Part Z (new)" in results["register_failed"][0]
     src = open(r2_monitor.__file__, encoding="utf-8").read()
-    assert 'real_failed = results["failed"] + len(results.get("register_failed", []))' in src
+    assert "real_failed = check_failed + len(register_failed)" in src
 
 
 def test_a_failed_registration_keeps_the_old_document_count(monkeypatch):
