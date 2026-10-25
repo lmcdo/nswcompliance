@@ -154,8 +154,9 @@ def pin_snapshot(conn) -> None:
     conn.set_session(isolation_level="REPEATABLE READ", readonly=True)
 
 
-def paged_rows(cur, columns: str, where: str) -> list[tuple]:
-    """``SELECT id, <columns> FROM regulatory_provisions WHERE <where>``, in pages by id.
+def paged_rows(cur, columns: str, where: str = "TRUE") -> list[tuple]:
+    """Served rows only: ``SELECT id, <columns> FROM regulatory_provisions WHERE is_current
+    AND v2_is_actionable AND (<where>)``, in pages by id.
 
     One query for every served row's full text began hitting the 30s statement
     timeout (2026-10-25), and the crash read as "declared FIXED but the check FAILS"
@@ -168,7 +169,8 @@ def paged_rows(cur, columns: str, where: str) -> list[tuple]:
     while True:
         cur.execute(
             f"SELECT id, {columns} FROM regulatory_provisions "
-            f"WHERE ({where}) AND id > %s ORDER BY id LIMIT %s",
+            f"WHERE is_current AND v2_is_actionable AND ({where}) "
+            f"AND id > %s ORDER BY id LIMIT %s",
             (last_id, _PAGE),
         )
         page = cur.fetchall()

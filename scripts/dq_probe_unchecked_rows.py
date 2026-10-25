@@ -365,7 +365,7 @@ def probe_104(cur):
 
     # id selected twice: paged_rows keys pages on its own id and returns rows without it.
     rows = dq_db.paged_rows(cur, "id, source_council, provision_text",
-                            "is_current AND v2_is_actionable")
+                            "TRUE")  # paged_rows adds is_current AND v2_is_actionable
     hits = {}
     for pid, council, text in rows:
         toks = {t.lower() for t in reversed_text_tokens(text)}
@@ -446,7 +446,7 @@ def probe_105(cur):
 
     rows = dq_db.paged_rows(
         cur, "source_council, document_id, provision_text, v2_dev_type_source",
-        "is_current AND v2_is_actionable AND source_council IS NOT NULL")
+        "source_council IS NOT NULL")  # paged_rows adds is_current AND v2_is_actionable
     by_council = {}
     for council, doc, text, source in rows:
         served, fallthrough, any_resolved = by_council.get(council, (0, 0, False))

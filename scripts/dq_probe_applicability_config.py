@@ -57,7 +57,7 @@ def _rows(cur):
     # Paged (dq_db.paged_rows): one query for all served text hit the 30s timeout.
     return dq_db.paged_rows(
         cur, "source_council, document_id, provision_text, v2_dev_type_source",
-        "is_current AND v2_is_actionable AND source_council IS NOT NULL")
+        "source_council IS NOT NULL")  # paged_rows adds is_current AND v2_is_actionable
 
 
 def _council_key(document_id: str) -> str | None:
