@@ -41,4 +41,4 @@ SELECT layer_type, value FROM (
   -- Always exactly one row: did a cadastre lot hold the point? (aggregate over 0 rows still returns one)
   SELECT '__lot_found', (lot.g IS NOT NULL)::text, 2 FROM lot
 ) hits
-ORDER BY by_lot`;
+ORDER BY by_lot, layer_type, value`;
