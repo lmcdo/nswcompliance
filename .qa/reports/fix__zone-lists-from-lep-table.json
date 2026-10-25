@@ -1,0 +1,71 @@
+{
+  "tier": "standard",
+  "commit_hash": "032f6378",
+  "justification": "Typed zone lists decided a warning and whether Housing SEPP rules load. Standard: two components, one new reader of an existing endpoint.",
+  "files": [
+    "frontend-nextjs/lib/lep-permissibility.ts",
+    "frontend-nextjs/components/compliance/ADGSummaryCard.tsx",
+    "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+    "frontend-nextjs/__tests__/lib/lep-permissibility.test.ts",
+    "frontend-nextjs/__tests__/components/compliance/adg-zone-warning-from-lep.test.tsx",
+    "frontend-nextjs/__tests__/components/compliance/state-level-housing-sepp-zone-from-lep.test.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "lep_land_use_table via GET /api/lep/permissibility, gated by lep_zone_coverage (489 complete rows, 28 councils)",
+    "assumption_mismatch": "Uncovered council or zone gives null: ADG card says not checked, Housing SEPP is kept",
+    "new_vs_existing": "Render-time only, every page view from deploy"
+  },
+  "functions": [
+    {
+      "name": "zoneProhibitsAllDwellings",
+      "file_line": "frontend-nextjs/lib/lep-permissibility.ts:45",
+      "input": "LEP land use rows for the zone, or null",
+      "output": "true only when every dwelling row is prohibited",
+      "if_none": "returns false so housing rules stay"
+    }
+  ],
+  "values": [
+    {
+      "value": "rfbPermissibility",
+      "read_at": "ADGSummaryCard.tsx warning block",
+      "nullable": "yes",
+      "guard_at": "three-state: undefined loading, null not checked",
+      "if_missing": "neutral not-checked note"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "MU1 zone where the council table is not loaded",
+      "what_happens": "Before: Housing SEPP dropped by the typed list. Now: kept",
+      "mitigated": true,
+      "how": "zoneProhibitsAllDwellings(null) is false",
+      "repro": "npx jest __tests__/components/compliance/state-level-housing-sepp-zone-from-lep.test.tsx"
+    },
+    {
+      "scenario": "R2 zone where the LEP permits residential flat buildings",
+      "what_happens": "Before: amber may-prohibit warning. Now: no warning",
+      "mitigated": true,
+      "how": "warning only on prohibited",
+      "repro": "npx jest __tests__/components/compliance/adg-zone-warning-from-lep.test.tsx"
+    },
+    {
+      "scenario": "The permissibility endpoint fails or times out",
+      "what_happens": "ADG card shows the not-checked note; Housing SEPP kept",
+      "mitigated": true,
+      "how": "fetchLepTable returns null on any failure",
+      "repro": "same tests with covered false"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "npx jest __tests__/components/compliance/adg-zone-warning-from-lep.test.tsx __tests__/components/compliance/state-level-housing-sepp-zone-from-lep.test.tsx",
+    "fails_when": "Typed lists restored: 4 failed / 1 passed (docs/qa/session-b/5b-zone-lists-red.md)",
+    "observed_red": "Ran the new component tests against the unfixed components: 4 failed, 1 passed."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
