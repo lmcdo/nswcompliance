@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes only the wording of the DCP monitor's alert: a new link may now be named as the likely replacement of a held chapter when it carries a new chapter code and exactly the same title. No database write, no served row and no verdict changes.",
- "commit_hash": "bbd63e98",
+ "commit_hash": "7d487580",
  "files": [
   "scripts/verifyops_links.py",
   "tests/test_verifyops_daily_check.py"
@@ -64,6 +64,20 @@
    "mitigated": false,
    "how": "exact title only, by design; the person still sees the link",
    "repro": "held_match('C3 Employment and non-residential uses', held) is None"
+  },
+  {
+   "scenario": "Sol: any non-year number counts as a chapter code, so a numbered non-chapter title could pass the code guard",
+   "what_happens": "it still needs an exact title match after one code is removed; '12 Smith Street' vs held 'Part E3 12 Smith Street' gives no match, and a wrong match only adds 'may replace X' to an alert a person reads",
+   "mitigated": true,
+   "how": "verdict: accepted, low impact, advisory text only",
+   "repro": "held_match('D3 - 12 Smith Street', {'e3': 'Part E3 - 14 Smith Street'}) is None"
+  },
+  {
+   "scenario": "Sol: a chapter number held twice falls through to title matching",
+   "what_happens": "intended: 'Part 4 Dual occupancy' picks the held Part 4 with that exact title; bare 'Part 4' still returns None",
+   "mitigated": true,
+   "how": "verdict: intended behaviour",
+   "repro": "test_held_match_is_exact_number_and_unique"
   }
  ],
  "post_merge": {
