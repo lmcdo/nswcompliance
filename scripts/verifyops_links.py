@@ -121,7 +121,7 @@ def chapter_title(text: str | None) -> str:
     'Penrith DCP 2014 Part D2 - Residential Development' -> 'residential development'."""
     t = (text or "").lower().replace("development control plan", "dcp")
     t = _PLAN_PREFIX.sub(" ", t)
-    t = _CODE.sub(" ", t)
+    t = _CODE.sub(" ", t, count=1)  # the chapter code only: "12 Smith St" keeps its 12
     return " ".join(re.sub(r"[^a-z0-9]+", " ", t).split())
 
 

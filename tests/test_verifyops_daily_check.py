@@ -203,6 +203,10 @@ def test_a_renumbered_chapter_matches_on_its_exact_title():
     dated = {"d2": "Part D2 – Residential Development 2020"}
     assert held_match("Residential Development 2024", dated) is None
     assert held_match("C2 Residential Development 2024", dated) is None
+    assert held_match("Residential Development 2024", {"x": "Residential Development 2020"}) is None
+    # Only the chapter code is removed; a street number stays (Sol cross-review 2026-10-26).
+    assert held_match("D3 - 12 Smith Street", {"e3": "Part E3 - 14 Smith Street"}) is None
+    assert held_match("D3 - 12 Smith Street", {"e3": "Part E3 - 12 Smith Street"}) == "e3"
 
 
 # ── daily cadence (resolutions 4 and 9) ─────────────────────────────────────────────────────
