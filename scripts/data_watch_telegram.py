@@ -50,13 +50,13 @@ def send(text: str, token: str, chat: str) -> bool:
 
 
 def main() -> int:
-    failed = failing(os.environ.get("FAILED", ""))
+    failed = failing(os.environ.get("FAILED") or "")
     if not failed:
         print("data-watch: every check passed; nothing sent")
         return 0
-    text = message(failed, os.environ.get("RUN_URL", ""))
+    text = message(failed, os.environ.get("RUN_URL") or "")
     print(text)
-    token, chat = os.environ.get("TELEGRAM_BOT_TOKEN", ""), os.environ.get("TELEGRAM_CHAT_ID", "")
+    token, chat = os.environ.get("TELEGRAM_BOT_TOKEN") or "", os.environ.get("TELEGRAM_CHAT_ID") or ""
     if not (token and chat and send(text, token, chat)):
         print("::error::data-watch found failing checks and could not tell Telegram")
         return 1
