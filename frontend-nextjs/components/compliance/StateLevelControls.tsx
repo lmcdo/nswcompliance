@@ -33,6 +33,7 @@ import { widthRange } from '@/lib/geometry/street-frontage';
 import { useLmrGates } from '@/hooks/useLmrGates';
 
 import { answer, heritageAnswer } from '@/lib/fact-answer';
+import { fetchLepTable, zoneProhibitsAllDwellings } from '@/lib/lep-permissibility';
 interface StrataInfo {
   isStrata: boolean;
   source: string | null;
@@ -252,10 +253,12 @@ export function StateLevelControls({
     const zoneCode = zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
     
     // Define zones that permit residential development
-    const residentialZones = NSW_PLANNING_CONSTANTS.ZONES.RESIDENTIAL;
     const industrialZones = NSW_PLANNING_CONSTANTS.ZONES.INDUSTRIAL;
-    
-    const permitsResidential = residentialZones.includes(zoneCode);
+
+    // Housing SEPP is dropped only when the council's LEP land use table prohibits every dwelling
+    // type in this zone. Not checked = kept: the old typed RESIDENTIAL list dropped it for MU1/E1.
+    const lepTable = await fetchLepTable(zoneCode, propertyData?.constraints?.lga);
+    const permitsResidential = !zoneProhibitsAllDwellings(lepTable);
     const isIndustrialZone = industrialZones.includes(zoneCode);
     
     // Map portal SEPP IDs to database IDs
@@ -268,7 +271,7 @@ export function StateLevelControls({
       const beforeFilter = dbSeppIds.length;
       dbSeppIds = dbSeppIds.filter((seppId: any) => seppId !== 'housing_2021');
       if (beforeFilter > dbSeppIds.length) {
-        console.log(`[StateLevelControls] ${zoneCode} zone does not permit residential - excluding Housing SEPP (ADG, Secondary Dwellings)`);
+        console.log(`[StateLevelControls] LEP land use table prohibits dwellings in ${zoneCode} - excluding Housing SEPP (ADG, Secondary Dwellings)`);
       }
     }
 
@@ -1155,7 +1158,7 @@ export function StateLevelControls({
                 </div>
               ) : (
                 <>
-                  <ADGSummaryCard developmentType={developmentType} zoneCode={zone} />
+                  <ADGSummaryCard developmentType={developmentType} zoneCode={zone} lga={propertyData?.constraints?.lga ?? null} />
 
                   {/* ADG Building Separation Table hidden — setback_rules table not populated.
                      Re-enable once ADG 3F-1 data is ingested into setback_rules. */}
