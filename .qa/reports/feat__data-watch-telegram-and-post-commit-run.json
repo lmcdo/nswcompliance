@@ -1,0 +1,65 @@
+{
+ "tier": "standard",
+ "justification": "data-watch sends failing checks to Telegram and also runs 30 minutes after rules go live; the checks are unchanged.",
+ "commit_hash": "20f6af6a",
+ "files": [
+  "scripts/data_watch_telegram.py",
+  "tests/test_data_watch_telegram.py",
+  ".github/workflows/data-watch.yml"
+ ],
+ "pre_impl": {
+  "existing_data": "data-watch failed 2026-10-22, 23 and 24 and only opened a GitHub issue; dcp-commit takes approved rules live at 09:00 UTC (railway.dcp-commit.toml).",
+  "assumption_mismatch": "The issue was assumed to be read; the user's channel is Telegram. Nightly-only checks would leave a bad commit unseen for about 11 hours.",
+  "new_vs_existing": "Reuses the issue step's outcome list and names; one new step and one new schedule."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q tests/test_data_watch_telegram.py",
+  "fails_when": "a check the workflow marks as failure is missing from the Telegram text, or Telegram's own reply is not ok while the run stays green",
+  "observed_red": "Not self-referential: the tests read the real data-watch.yml (an independent file) for the name list and outcome string, and Telegram's own reply decides delivered. Telegram's real API answered ok on 2026-10-23 with these secrets."
+ },
+ "functions": [
+  {
+   "name": "failing",
+   "file_line": "scripts/data_watch_telegram.py:26",
+   "input": "comma-separated step outcomes in the issue step's order",
+   "output": "names of the checks that failed",
+   "if_none": "a missing outcome counts as failing"
+  },
+  {
+   "name": "main",
+   "file_line": "scripts/data_watch_telegram.py:52",
+   "input": "FAILED, RUN_URL and Telegram secrets from the environment",
+   "output": "exit 0 when clean or delivered, 1 when red and not delivered",
+   "if_none": "missing Telegram secrets with a red check exit 1"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Telegram token is stale, as GitHub's was on 2026-10-23",
+   "what_happens": "failing checks would go unreported again",
+   "mitigated": true,
+   "how": "red not delivered exits 1, so the run itself goes red",
+   "repro": "pytest tests/test_data_watch_telegram.py -k without"
+  },
+  {
+   "scenario": "Someone adds a check to the issue step but not to this script",
+   "what_happens": "its failure would be sent under the wrong name",
+   "mitigated": true,
+   "how": "a test requires both name lists and outcome strings to be equal",
+   "repro": "pytest tests/test_data_watch_telegram.py -k names"
+  },
+  {
+   "scenario": "An approved commit at 09:00 UTC serves wrong rules",
+   "what_happens": "unseen until the 20:00 UTC run",
+   "mitigated": true,
+   "how": "a second run at 09:30 UTC",
+   "repro": "pytest tests/test_data_watch_telegram.py -k post_commit"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None.",
+  "secrets": "TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID already exist as GitHub secrets (refreshed 2026-10-23).",
+  "other_repo": "None.",
+  "manual_verify": "Run data-watch by hand; with a failing check a Telegram message arrives."
+ }
+}

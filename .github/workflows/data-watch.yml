@@ -39,6 +39,9 @@ on:
     # 20:00 UTC daily — one hour before main-red-alarm, so if both fire the
     # data verdict is already settled when the main sweep runs.
     - cron: "0 20 * * *"
+    # 09:30 UTC daily — half an hour after dcp-commit (09:00 UTC) takes approved rules live, so a bad commit
+    # is reported within minutes, not the next night (Sol review of the gates split, 2026-10-25).
+    - cron: "30 9 * * *"
   workflow_dispatch:
 
 permissions:
@@ -213,6 +216,18 @@ jobs:
         id: rules_per_address
         if: always()
         run: python scripts/address_audit/rules_per_address.py
+
+      # Red goes to Telegram too: the GitHub issue alone is not read (2026-10-25). One message per run that
+      # has any failing check; a check still failing tomorrow is sent again tomorrow.
+      - name: Send failing checks to Telegram
+        if: always()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          FAILED: >-
+            ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.lga_flags.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }},${{ steps.answer_quality.outcome }},${{ steps.page_maps.outcome }},${{ steps.controls_vs_pdf.outcome }},${{ steps.citations.outcome }},${{ steps.audit_chain.outcome }},${{ steps.rules_per_address.outcome }}
+        run: python scripts/data_watch_telegram.py
 
       - name: Raise or clear the alarm
         if: always()
