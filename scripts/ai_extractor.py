@@ -735,15 +735,33 @@ def _call_with_retry(model: str, pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     if fn is None:
         raise ValueError(f"Unknown AI_MODEL={model!r}. Known: {', '.join(_PROVIDERS)}")
     last: Exception | None = None
+    # One line per call: a silent reader cannot be told apart from a hung one (Railway
+    # dcp-extract 2026-10-25 logged nothing for 50 min on one 28-page chapter).
     for attempt in range(_MAX_RETRIES):
+        t0 = time.monotonic()
         try:
-            return fn(pdf_bytes, prompt)
+            out = fn(pdf_bytes, prompt)
         except Exception as exc:  # noqa: BLE001 — provider SDKs raise varied types
             last = exc
-            if not _is_retryable(exc) or attempt == _MAX_RETRIES - 1:
+            retry = _is_retryable(exc) and attempt < _MAX_RETRIES - 1
+            _progress(f"{model} call {attempt + 1} failed after {time.monotonic() - t0:.0f}s "
+                      f"({type(exc).__name__}){' - retrying' if retry else ''}")
+            if not retry:
                 raise
             time.sleep(_BACKOFF_BASE * (2 ** attempt))
+            continue
+        # Outside the try: a log line that cannot be written is never a failed call.
+        _progress(f"{model} call {attempt + 1}: {time.monotonic() - t0:.0f}s, {len(out or '')} chars back")
+        return out
     raise last  # pragma: no cover
+
+
+def _progress(line: str) -> None:
+    """Print a progress line; a closed or broken stdout never changes the result."""
+    try:
+        print(f"    [reader] {line}", flush=True)
+    except (OSError, ValueError):
+        pass
 
 
 _EMPTY_PARSE_RAW_LEN_FLOOR = 200  # a genuine empty-chunk response is short; longer
