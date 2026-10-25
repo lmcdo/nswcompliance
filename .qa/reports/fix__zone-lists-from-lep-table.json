@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "86000d17",
+  "commit_hash": "40c649f4",
   "justification": "Typed zone lists decided a warning and whether Housing SEPP rules load. Standard: two components, one new reader of an existing endpoint.",
   "files": [
     "frontend-nextjs/lib/lep-permissibility.ts",
@@ -12,16 +12,16 @@
   ],
   "pre_impl": {
     "existing_data": "lep_land_use_table via GET /api/lep/permissibility, gated by lep_zone_coverage (489 complete rows, 28 councils)",
-    "assumption_mismatch": "Uncovered council or zone gives null: ADG card says not checked, Housing SEPP is kept",
+    "assumption_mismatch": "Uncovered council or zone gives null: ADG card says not checked. Housing SEPP is no longer filtered by zone at all",
     "new_vs_existing": "Render-time only, every page view from deploy"
   },
   "functions": [
     {
-      "name": "zoneProhibitsAllDwellings",
-      "file_line": "frontend-nextjs/lib/lep-permissibility.ts:45",
-      "input": "LEP land use rows for the zone, or null",
-      "output": "true only when every dwelling row is prohibited",
-      "if_none": "returns false so housing rules stay"
+      "name": "fetchLepTable",
+      "file_line": "frontend-nextjs/lib/lep-permissibility.ts:18",
+      "input": "zone code and council name from the property lookup",
+      "output": "validated LEP land use rows, or null when not checked",
+      "if_none": "returns null so the card says not checked"
     }
   ],
   "values": [
@@ -37,9 +37,9 @@
   "break_it": [
     {
       "scenario": "MU1 zone where the council table is not loaded",
-      "what_happens": "Before: Housing SEPP dropped by the typed list. Now: kept",
+      "what_happens": "Before: Housing SEPP dropped by the typed list. Now: always kept when the Portal reports it",
       "mitigated": true,
-      "how": "zoneProhibitsAllDwellings(null) is false",
+      "how": "zone filter removed from StateLevelControls",
       "repro": "npx jest __tests__/components/compliance/state-level-housing-sepp-zone-from-lep.test.tsx"
     },
     {
@@ -51,7 +51,7 @@
     },
     {
       "scenario": "The permissibility endpoint fails or times out",
-      "what_happens": "ADG card shows the not-checked note; Housing SEPP kept",
+      "what_happens": "ADG card shows the not-checked note; nothing else depends on it",
       "mitigated": true,
       "how": "fetchLepTable returns null on any failure",
       "repro": "same tests with covered false"
