@@ -1,0 +1,75 @@
+{
+  "tier": "standard",
+  "commit_hash": "9d371571",
+  "justification": "Monitor silently lost new council documents. Standard: one except block and the exit decision; no new query.",
+  "files": [
+    "scripts/r2_monitor.py",
+    "tests/test_r2_monitor_auto_register_failure_is_loud.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry.hub_last_pdf_count, already written by this loop",
+    "assumption_mismatch": "If several new documents and only one fails, the count still stays put so all reappear next run; registered ones match by URL then",
+    "new_vs_existing": "Applies from the next monitor run onward; no stored rows change"
+  },
+  "functions": [
+    {
+      "name": "run_monitor",
+      "file_line": "scripts/r2_monitor.py:845",
+      "input": "registry rows and hub scrape results per council",
+      "output": "results dict with the new register_failed list",
+      "if_none": "no new documents means the list stays empty and nothing changes"
+    }
+  ],
+  "values": [
+    {
+      "value": "results['register_failed']",
+      "read_at": "scripts/r2_monitor.py:1775",
+      "nullable": "no",
+      "guard_at": "results.get default []",
+      "if_missing": "treated as zero failures"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "move the stored hub document count",
+      "file_line": "scripts/r2_monitor.py:1076",
+      "where_clause": "council = %s AND council_page_url IS NOT NULL AND is_active = TRUE",
+      "if_zero": "nothing moves, same as before",
+      "if_wrong": "unchanged query; now skipped after a failed registration"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "_auto_register_chapter raises on a database insert for a new hub document",
+      "what_happens": "Before: printed, run green, document lost. Now: exit 1 with NOT ADDED line",
+      "mitigated": true,
+      "how": "register_failed bucket added to real_failed",
+      "repro": "pytest tests/test_r2_monitor_auto_register_failure_is_loud.py"
+    },
+    {
+      "scenario": "The count update runs anyway after a failed registration",
+      "what_happens": "Next run would no longer see the new document",
+      "mitigated": true,
+      "how": "UPDATE guarded by not registration_failed",
+      "repro": "same test, second case"
+    },
+    {
+      "scenario": "A failing registration repeats every night for the same document",
+      "what_happens": "The monitor pages every night until someone fixes it",
+      "mitigated": true,
+      "how": "Intended: loud and repeated beats silent",
+      "repro": "N/A"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_r2_monitor_auto_register_failure_is_loud.py",
+    "fails_when": "Fix reverted: 2 failed / 1 passed (docs/qa/session-b/3-monitor-autoreg-red.md)",
+    "observed_red": "Ran the new test against unfixed r2_monitor.py: 2 failed, 1 passed (the good-registration case)."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
