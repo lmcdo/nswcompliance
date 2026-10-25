@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "data-watch sends failing checks to Telegram and also runs 30 minutes after rules go live; the checks are unchanged.",
- "commit_hash": "f3229198",
+ "commit_hash": "663126d6",
  "files": [
   "scripts/data_watch_telegram.py",
   "tests/test_data_watch_telegram.py",
