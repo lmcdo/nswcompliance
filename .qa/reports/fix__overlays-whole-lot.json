@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "32a4fdd1",
+  "commit_hash": "b95461c4",
   "justification": "A lot partly in a flood area read No. Standard not critical: one SQL text, measured on prod read-only, value layers untouched.",
   "files": [
     "frontend-nextjs/lib/spatial-overlays-sql.ts",
