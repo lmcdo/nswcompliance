@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "3a93cb89",
+  "commit_hash": "5d42c978",
   "justification": "One user-facing message: a failed request read as 'no requirements'. Standard: one component, a boolean state.",
   "files": [
     "frontend-nextjs/components/compliance/StateLevelControls.tsx",
