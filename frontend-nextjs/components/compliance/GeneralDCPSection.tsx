@@ -110,6 +110,8 @@ interface GeneralDCPSectionProps {
   filteringLevel?: 'zone+devtype' | 'devtype' | 'universal';
   formerCouncil?: string;
   lotArea?: number;  // For subdivision filtering (cadastre area in m²)
+  /** LEP minimum lot size (constraints.minLotSize); null = unknown, nothing hidden. */
+  minLotSize?: number | null;
   heritage?: any;  // For heritage filtering
   daRequirementsCount?: number;  // For DA requirements display
   displayModeSetterRef?: React.MutableRefObject<((mode: 'separated' | 'combined') => void) | null>;
@@ -564,6 +566,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
   filteringLevel = 'universal',
   formerCouncil,
   lotArea,
+  minLotSize,
   heritage,
   daRequirementsCount = 0,
   displayModeSetterRef
@@ -579,7 +582,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
 
   // Subdivision filter state
   const [showSubdivisionOverride, setShowSubdivisionOverride] = useState(false);
-  const propertyCanSubdivide = canSubdivide(lotArea);
+  const propertyCanSubdivide = canSubdivide(lotArea, minLotSize);
 
   // Heritage filter state
   const [showHeritageOverride, setShowHeritageOverride] = useState(false);
@@ -709,7 +712,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
                 <li>• <strong>Qualitative requirements</strong> ({prioritized.qualitative.length}): Design principles, character, context - important but less prescriptive</li>
                 {subdivisionFiltered && (
                   <li className="flex items-center justify-between">
-                    <span>• <strong>Subdivision requirements hidden</strong> ({subdivisionCount}): Property is {lotArea ? `${Math.round(lotArea)}m²` : 'unknown size'} - too small to subdivide (450m² minimum)</span>
+                    <span>• <strong>Subdivision requirements hidden</strong> ({subdivisionCount}): Property is {lotArea ? `${Math.round(lotArea)}m²` : 'unknown size'} - below the LEP minimum lot size of {minLotSize}m²</span>
                     <button
                       onClick={() => setShowSubdivisionOverride(true)}
                       className="ml-2 text-xs text-blue-700 hover:text-blue-900 underline whitespace-nowrap"
@@ -750,7 +753,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
               </div>
               {subdivisionFiltered && (
                 <div>
-                  <strong>Subdivision filtering:</strong> Properties under 450m² cannot legally be subdivided under Inner West LEP. Since your property is {lotArea ? `${Math.round(lotArea)}m²` : 'unknown size'}, {subdivisionCount} subdivision {subdivisionCount === 1 ? 'control' : 'controls'} {subdivisionCount === 1 ? 'has' : 'have'} been automatically hidden. Click "Show anyway" above to view if needed.
+                  <strong>Subdivision filtering:</strong> The LEP minimum lot size here is {minLotSize}m². Since your property is {lotArea ? `${Math.round(lotArea)}m²` : 'unknown size'}, {subdivisionCount} subdivision {subdivisionCount === 1 ? 'control' : 'controls'} {subdivisionCount === 1 ? 'has' : 'have'} been automatically hidden. Click "Show anyway" above to view if needed.
                 </div>
               )}
               {heritageFiltered && (

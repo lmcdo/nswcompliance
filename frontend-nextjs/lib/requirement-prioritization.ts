@@ -139,11 +139,14 @@ export function detectDevTypeFromZone(zone?: string): string {
 }
 
 /**
- * Auto-filter subdivision requirements based on lot size
- * Subdivisions require minimum 450m² (typically 2x225m²) in Inner West
+ * Auto-filter subdivision requirements based on lot size.
+ * Hides them only when the lot is smaller than the LEP minimum lot size the lookup returned
+ * (`constraints.minLotSize`, Planning Portal "Lot Size" layer). Either value unknown = show.
+ * Never a typed figure: the old 450 m² was one council's number applied to every council.
  */
-export function canSubdivide(propertyArea?: string | number): boolean {
+export function canSubdivide(propertyArea?: string | number, lepMinLotSize?: number | null): boolean {
   if (!propertyArea) return true; // If unknown, show subdivision requirements
+  if (lepMinLotSize == null || !Number.isFinite(lepMinLotSize) || lepMinLotSize <= 0) return true;
 
   let areaSqm: number;
 
@@ -156,8 +159,8 @@ export function canSubdivide(propertyArea?: string | number): boolean {
     areaSqm = propertyArea;
   }
 
-  // Conservative: 450m² minimum for subdivision
-  return areaSqm >= 450;
+  if (!Number.isFinite(areaSqm)) return true;
+  return areaSqm >= lepMinLotSize;
 }
 
 /**

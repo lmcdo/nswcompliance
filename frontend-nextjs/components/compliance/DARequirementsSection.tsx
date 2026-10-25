@@ -33,6 +33,8 @@ interface DARequirementsSectionProps {
   developmentType?: string;
   formerCouncil?: string;
   lotArea?: number;  // For subdivision filtering (cadastre area in m²)
+  /** LEP minimum lot size (constraints.minLotSize); null = unknown, nothing hidden. */
+  minLotSize?: number | null;
   heritage?: any;  // For heritage filtering
   showSubdivisionOverride?: boolean;  // Override state from parent
   showHeritageOverride?: boolean;  // Override state from parent
@@ -456,6 +458,7 @@ const DARequirementsSection: React.FC<DARequirementsSectionProps> = ({
   developmentType = 'dwelling_house',
   formerCouncil = '',
   lotArea,
+  minLotSize,
   heritage,
   showSubdivisionOverride = false,
   showHeritageOverride = false
@@ -463,7 +466,7 @@ const DARequirementsSection: React.FC<DARequirementsSectionProps> = ({
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showExcluded, setShowExcluded] = useState(false);
 
-  const propertyCanSubdivide = canSubdivide(lotArea);
+  const propertyCanSubdivide = canSubdivide(lotArea, minLotSize);
   const propertyHasHeritage = hasHeritage(heritage);
 
   // Apply smart filters to requirements (using parent's override state)
