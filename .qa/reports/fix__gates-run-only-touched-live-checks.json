@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes which live-data checks run in PR and main gates; the checks themselves and the nightly job are unchanged. Probe timeout handling is left to PR #1495, which changes the same files.",
- "commit_hash": "c5bdd9af",
+ "commit_hash": "d0ed0475",
  "files": [
   "scripts/gate_touched_checks.py",
   "scripts/verifyops_outside_ping.py",
