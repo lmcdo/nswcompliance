@@ -67,6 +67,8 @@ export function StateLevelControls({
   const [adgStructuredRequirements, setAdgStructuredRequirements] = useState<any[]>([]);
   const [transportRequirements, setTransportRequirements] = useState<any[]>([]);
   const [loadingSepp, setLoadingSepp] = useState(false);
+  // A failed requirements request is "not checked", never "no requirements".
+  const [seppNotChecked, setSeppNotChecked] = useState(false);
   const [loadingAdg, setLoadingAdg] = useState(false);
   const [nearbyTransport, setNearbyTransport] = useState<any[]>([]);
   const nearbyTransportRef = useRef<any[]>([]);
@@ -286,6 +288,7 @@ export function StateLevelControls({
     }
 
     setLoadingSepp(true);
+    setSeppNotChecked(false);
     try {
       // Fetch requirements for each detected SEPP
       const results: any[] = [];
@@ -312,6 +315,8 @@ export function StateLevelControls({
               results.push(...data.data.requirements);
             }
           }
+        } else {
+          setSeppNotChecked(true);
         }
       }
 
@@ -322,6 +327,7 @@ export function StateLevelControls({
       console.error('[StateLevelControls] Failed to fetch SEPP requirements:', error);
       setStructuredRequirements([]);
       setTransportRequirements([]);
+      setSeppNotChecked(true);
     } finally {
       setLoadingSepp(false);
     }
@@ -856,6 +862,10 @@ export function StateLevelControls({
                 requirements={structuredRequirements}
                 compact
               />
+            ) : seppNotChecked ? (
+              <p className="text-sm text-gray-500 italic">
+                Housing SEPP requirements not checked — the requirements lookup did not answer
+              </p>
             ) : (
               <p className="text-sm text-gray-500 italic">
                 No Housing SEPP structured requirements for this development type
