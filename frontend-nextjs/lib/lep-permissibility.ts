@@ -34,8 +34,16 @@ export function permissibilityOf(table: LepTable, developmentType: string): stri
   return table.find((e) => e.development_type === developmentType)?.permissibility ?? null;
 }
 
-/** Slugs that are dwellings for the "does this zone allow housing at all" question. */
-const DWELLING_TYPES = ['dwelling_houses', 'residential_flat_buildings'];
+/**
+ * The table's own housing slugs (distinct development_type in lep_land_use_table, 2026-10-26).
+ * A vocabulary of row names, not planning values: any one permitted means the zone allows housing.
+ */
+const DWELLING_TYPES = [
+  'residential_accommodation', 'dwelling_houses', 'secondary_dwellings', 'dual_occupancies',
+  'dual_occupancies_attached', 'semi_detached_dwellings', 'attached_dwellings', 'multi_dwelling_housing',
+  'residential_flat_buildings', 'shop_top_housing', 'seniors_housing', 'boarding_houses', 'hostels',
+  'rural_workers_dwellings',
+];
 
 /**
  * True only when the table lists dwellings for this zone and every listed one is prohibited.

@@ -13,6 +13,10 @@ describe('zoneProhibitsAllDwellings', () => {
     expect(zoneProhibitsAllDwellings(t([['dwelling_houses', 'prohibited'], ['residential_flat_buildings', 'prohibited']]))).toBe(true);
     expect(zoneProhibitsAllDwellings(t([['dwelling_houses', 'prohibited'], ['residential_flat_buildings', 'permitted']]))).toBe(false);
   });
+  it('is false when any other housing type is permitted', () => {
+    expect(zoneProhibitsAllDwellings(t([['dwelling_houses', 'prohibited'], ['residential_flat_buildings', 'prohibited'], ['dual_occupancies', 'permitted']]))).toBe(false);
+    expect(zoneProhibitsAllDwellings(t([['dwelling_houses', 'prohibited'], ['shop_top_housing', 'permitted']]))).toBe(false);
+  });
   it('is false when not checked or no dwelling row', () => {
     expect(zoneProhibitsAllDwellings(null)).toBe(false);
     expect(zoneProhibitsAllDwellings(t([['shops', 'permitted']]))).toBe(false);

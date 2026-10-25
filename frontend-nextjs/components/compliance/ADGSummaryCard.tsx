@@ -105,6 +105,7 @@ export function ADGSummaryCard({ developmentType, zoneCode, lga, onViewAllCriter
   const [rfbPermissibility, setRfbPermissibility] = useState<string | null | undefined>(undefined);
   useEffect(() => {
     let live = true;
+    setRfbPermissibility(undefined); // a new zone/LGA must not show the previous one's answer
     fetchLepTable(zonePrefix, lga).then((table) => {
       if (live) setRfbPermissibility(permissibilityOf(table, 'residential_flat_buildings'));
     });
