@@ -120,3 +120,27 @@ def test_the_dockerfile_itself_is_compared(monkeypatch):
     monkeypatch.setattr(v, "deployed_not_main", lambda sha, paths: seen.setdefault("p", paths) and False)
     v.deploy_keys(_Conn(("a" * 40,)))
     assert seen["p"][0] == "Dockerfile.monitors" and "scripts/r2_monitor.py" in seen["p"]
+
+
+@pytest.mark.parametrize("env,expect", [
+    ({"DCP_PROBE_BLOCKED": "1"}, ["python", "scripts/probe_blocked_councils.py"]),
+    ({"DCP_PROBE_BLOCKED": " 1 ", "DCP_MONITOR_FORCE": "1"}, ["python", "scripts/probe_blocked_councils.py"]),
+    ({"DCP_PROBE_BLOCKED": "0"}, ["python", "scripts/r2_monitor.py"]),
+    ({"DCP_PROBE_BLOCKED": "true"}, ["python", "scripts/r2_monitor.py"]),
+    ({}, ["python", "scripts/r2_monitor.py"]),
+])
+def test_probe_switch_runs_the_probe_only_when_exactly_1(env, expect):
+    import run_monitors
+    assert run_monitors.monitor_cmd("dcp-monitor", ["python", "scripts/r2_monitor.py"], env) == expect
+
+
+def test_probe_switch_never_touches_other_jobs():
+    import run_monitors
+    base = ["python", "scripts/dcp_extract_changed.py", "--review"]
+    assert run_monitors.monitor_cmd("dcp-extract", base, {"DCP_PROBE_BLOCKED": "1"}) == base
+
+
+def test_the_image_carries_the_probe_and_chrome():
+    src = (ROOT / "Dockerfile.monitors").read_text(encoding="utf-8")
+    assert "COPY scripts/probe_blocked_councils.py" in src and "COPY scripts/probe_blocked_targets.json" in src
+    assert "playwright install --with-deps chromium" in src
