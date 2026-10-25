@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "9b0fbc4e",
+  "commit_hash": "3e924ca2",
   "justification": "A lot partly in a flood area read No. Standard not critical: one SQL text, measured on prod read-only, value layers untouched.",
   "files": [
     "frontend-nextjs/lib/spatial-overlays-sql.ts",
@@ -9,7 +9,7 @@
   ],
   "pre_impl": {
     "existing_data": "spatial_overlays (all MULTIPOLYGON, GIST on geom) and nsw_cadastre_lots (GIST on geom)",
-    "assumption_mismatch": "No lot covers the point: the lot branch returns nothing and the answer is point-only, as before",
+    "assumption_mismatch": "No lot covers the point: marker row reads false and the route marks spatial_overlays not checked",
     "new_vs_existing": "Every lookup from deploy onward; no stored rows change"
   },
   "functions": [
