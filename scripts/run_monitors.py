@@ -284,6 +284,10 @@ def ping_healthcheck(url: str, failed: bool = False) -> bool:
 def monitor_cmd(monitor_name: str, cmd: list[str], env) -> list[str]:
     """The command to run. DCP_MONITOR_FORCE=1 adds --force to dcp-monitor only (a one-off full
     re-download, recorded as mode 'force'); any other value, or any other monitor, is unchanged."""
+    # DCP_PROBE_BLOCKED=1 runs the one-off blocked-council measurement INSTEAD of the monitor
+    # (scripts/probe_blocked_councils.py, read-only). Checked first: a probe run never sweeps.
+    if monitor_name == "dcp-monitor" and (env.get("DCP_PROBE_BLOCKED") or "").strip() == "1":
+        return ["python", "scripts/probe_blocked_councils.py"]
     if monitor_name == "dcp-monitor" and (env.get("DCP_MONITOR_FORCE") or "").strip() == "1":
         return [*cmd, "--force"]
     return list(cmd)

@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY scripts/requirements-monitor.txt ./requirements-monitor.txt
 RUN pip install --no-cache-dir -r requirements-monitor.txt
+# Chrome for blocked councils (scripts/probe_blocked_councils.py); --with-deps adds its system libraries.
+RUN python -m playwright install --with-deps chromium && rm -rf /var/lib/apt/lists/*
 
 # Copy monitor scripts + hub scrapers
 COPY scripts/satellite_freshness_monitor.py ./scripts/satellite_freshness_monitor.py
@@ -29,6 +31,7 @@ COPY scripts/pdf_text_hash.py ./scripts/pdf_text_hash.py
 COPY scripts/dcp_watchdog.py ./scripts/dcp_watchdog.py
 COPY scripts/hub_scrapers/ ./scripts/hub_scrapers/
 COPY scripts/run_monitors.py ./scripts/run_monitors.py
+COPY scripts/probe_blocked_councils.py ./scripts/probe_blocked_councils.py
 
 # Extract-to-review + commit-on-approve workers (MONITOR_NAME=dcp-extract / dcp-commit).
 # These need pdfplumber (in requirements-monitor.txt) and the enrichment package,

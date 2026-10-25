@@ -20,3 +20,7 @@ pymupdf>=1.24
 # The citation proof reads control labels printed as pictures (Ashfield "PC4.",
 # "DS5.1") with this local OCR engine; without it those labels stay unread.
 rapidocr-onnxruntime>=1.3
+# Blocked councils (2026-10-25): curl_cffi looks like Chrome at the network level; playwright drives a
+# real Chrome. Used by scripts/probe_blocked_councils.py (DCP_PROBE_BLOCKED=1) to measure from Railway.
+curl_cffi>=0.7
+playwright>=1.45
