@@ -36,10 +36,11 @@ def test_a_list_page_error_is_recorded_not_failed():
     assert '"hub_errors": [],' in SRC
 
 
-def test_exit_code_contract_unchanged():
-    import os, sys
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+def test_exit_code_contract_unchanged(monkeypatch):
+    import os
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[1] / "scripts"))
     for k in ("R2_ACCOUNT_ID", "R2_BUCKET_NAME", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "DATABASE_URL"):
-        os.environ.setdefault(k, "unused-in-this-test")
+        if not os.environ.get(k):
+            monkeypatch.setenv(k, "unused-in-this-test")  # restored after the test (Sol)
     import r2_monitor as m
     assert m.run_exit_code(0, 0) == 0 and m.run_exit_code(3, 0) == 2 and m.run_exit_code(0, 1) == 1
