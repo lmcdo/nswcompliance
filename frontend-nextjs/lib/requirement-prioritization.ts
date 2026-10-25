@@ -159,7 +159,7 @@ export function canSubdivide(propertyArea?: string | number, lepMinLotSize?: num
     areaSqm = propertyArea;
   }
 
-  if (!Number.isFinite(areaSqm)) return true;
+  if (!Number.isFinite(areaSqm) || areaSqm <= 0) return true;
   return areaSqm >= lepMinLotSize;
 }
 

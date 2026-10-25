@@ -24,6 +24,11 @@ describe('canSubdivide uses the LEP minimum lot size', () => {
     expect(canSubdivide('no number here', 600)).toBe(true);
   });
 
+  it('treats a zero or negative area as unknown', () => {
+    expect(canSubdivide('0 square metres', 600)).toBe(true);
+    expect(canSubdivide(-5, 600)).toBe(true);
+  });
+
   it('parses a text area', () => {
     expect(canSubdivide('228.1 square metres', 300)).toBe(false);
   });
