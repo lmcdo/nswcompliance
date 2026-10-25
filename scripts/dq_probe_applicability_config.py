@@ -51,18 +51,35 @@ _CONFIG_DRIVEN = sorted({
 })
 
 
+_PAGE = 2000
+
+
 def _rows(cur):
     # The currency filter is spelled out here rather than only in SERVED: both
     # is_current and v2_is_actionable have to sit beside the table name or the
     # DB guard cannot see them, and a probe that silently counted superseded
     # rows would report a defect nobody is being served.
-    cur.execute(
-        """SELECT source_council, document_id, provision_text,
-                  v2_dev_type_source
-           FROM regulatory_provisions
-           WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL"""
-    )
-    return cur.fetchall()
+    #
+    # Read in pages by id (2026-10-25): one query for every served row's full
+    # text began hitting the 30s statement timeout, and the crash was reported
+    # as "declared FIXED but the check FAILS" on DQ-103. A page of 2,000 takes
+    # under 2s.
+    rows, last_id = [], 0
+    while True:
+        cur.execute(
+            """SELECT id, source_council, document_id, provision_text,
+                      v2_dev_type_source
+               FROM regulatory_provisions
+               WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
+                 AND id > %s
+               ORDER BY id LIMIT %s""",
+            (last_id, _PAGE),
+        )
+        page = cur.fetchall()
+        if not page:
+            return rows
+        last_id = page[-1][0]
+        rows.extend(r[1:] for r in page)
 
 
 def _council_key(document_id: str) -> str | None:
@@ -264,6 +281,14 @@ def main() -> int:
             cur = conn.cursor()
             tagger = ApplicabilityTagger()
             count, by_doc = fn(_rows(cur), tagger)
+        except Exception as exc:  # noqa: BLE001
+            # A query the database cut off measured nothing: UNKNOWN (exit 2), never a fail.
+            # Matched by name: psycopg2 is imported lazily by dq_db, as here.
+            if type(exc).__name__ != "QueryCanceled":
+                raise
+            print(f"{args.id}: UNKNOWN -- a query hit the statement timeout ({exc}). "
+                  f"Nothing was checked, which is not a pass.", file=sys.stderr)
+            return 2
         finally:
             conn.close()
     else:
