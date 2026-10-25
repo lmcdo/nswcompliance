@@ -859,19 +859,24 @@ export function StateLevelControls({
                 <div className={`h-4 ${AuthorityColors.SEPP.bg.replace('50', '200')} rounded w-3/4`}></div>
                 <div className={`h-4 ${AuthorityColors.SEPP.bg.replace('50', '200')} rounded w-1/2`}></div>
               </div>
-            ) : structuredRequirements.length > 0 ? (
-              <StructuredSeppRequirements
-                requirements={structuredRequirements}
-                compact
-              />
-            ) : seppNotChecked ? (
-              <p className="text-sm text-gray-500 italic">
-                Housing SEPP requirements not checked — the requirements lookup did not answer
-              </p>
             ) : (
-              <p className="text-sm text-gray-500 italic">
-                No Housing SEPP structured requirements for this development type
-              </p>
+              <>
+                {seppNotChecked && (
+                  <p className="text-sm text-gray-500 italic">
+                    SEPP requirements not checked for every policy — a requirements lookup did not answer
+                  </p>
+                )}
+                {structuredRequirements.length > 0 ? (
+                  <StructuredSeppRequirements
+                    requirements={structuredRequirements}
+                    compact
+                  />
+                ) : !seppNotChecked && (
+                  <p className="text-sm text-gray-500 italic">
+                    No Housing SEPP structured requirements for this development type
+                  </p>
+                )}
+              </>
             )}
 
 

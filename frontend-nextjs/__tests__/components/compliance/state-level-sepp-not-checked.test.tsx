@@ -38,20 +38,30 @@ describe('StateLevelControls Housing SEPP requirements', () => {
   it('says Not checked when the request returns an error status', async () => {
     mockFetch(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }));
     render(<StateLevelControls propertyData={propertyData} developmentType="dual_occupancy" />);
-    expect(await screen.findByText(/Housing SEPP requirements not checked/i)).toBeInTheDocument();
+    expect(await screen.findByText(/SEPP requirements not checked/i)).toBeInTheDocument();
     expect(screen.queryByText(/No Housing SEPP structured requirements/i)).toBeNull();
   });
 
   it('says Not checked when the request throws', async () => {
     mockFetch(() => Promise.reject(new Error('network down')));
     render(<StateLevelControls propertyData={propertyData} developmentType="dual_occupancy" />);
-    expect(await screen.findByText(/Housing SEPP requirements not checked/i)).toBeInTheDocument();
+    expect(await screen.findByText(/SEPP requirements not checked/i)).toBeInTheDocument();
   });
 
   it('says Not checked when the request answers 200 with success false', async () => {
     mockFetch(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ success: false, error: 'db down' }) }));
     render(<StateLevelControls propertyData={propertyData} developmentType="dual_occupancy" />);
-    expect(await screen.findByText(/Housing SEPP requirements not checked/i)).toBeInTheDocument();
+    expect(await screen.findByText(/SEPP requirements not checked/i)).toBeInTheDocument();
+  });
+
+  it('keeps the notice when one SEPP fails and another returns rows', async () => {
+    let n = 0;
+    mockFetch(() => (n++ === 0
+      ? Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })
+      : Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, data: { hasStructuredRequirements: true, requirements: [{ id: 'r1' }] } }) })));
+    const pd = { constraints: { ...propertyData.constraints, applicableSepps: ['SEPP_HOUSING_2021', 'SEPP_SUSTAINABLE_BUILDINGS'] } };
+    render(<StateLevelControls propertyData={pd} developmentType="dual_occupancy" />);
+    expect(await screen.findByText(/SEPP requirements not checked/i)).toBeInTheDocument();
   });
 
   it('still says none when the request answered with no requirements', async () => {
