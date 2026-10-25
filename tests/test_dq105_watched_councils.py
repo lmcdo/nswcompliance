@@ -35,16 +35,20 @@ from dq_probe_unchecked_rows import probe_105  # noqa: E402
 
 
 class FakeCursor:
-    """Yields the four columns probe_105 selects, in order."""
+    """Serves the four columns probe_105 selects, behind an id, as one page then none.
+
+    paged_rows asks again until a page comes back empty, so a cursor that returned
+    the same rows forever looped until the runner ran out of memory (exit 137).
+    """
 
     def __init__(self, rows):
-        self._rows = rows
+        self._pages = [[(i, *r) for i, r in enumerate(rows, 1)], []]
 
     def execute(self, *_a, **_k):
         return None
 
     def fetchall(self):
-        return self._rows
+        return self._pages.pop(0) if self._pages else []
 
 
 def _row(council, source, doc="Unconfigured_Council_Plan__nothing_matches_this"):

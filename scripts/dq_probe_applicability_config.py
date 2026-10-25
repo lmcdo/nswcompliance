@@ -52,17 +52,12 @@ _CONFIG_DRIVEN = sorted({
 
 
 def _rows(cur):
-    # The currency filter is spelled out here rather than only in SERVED: both
-    # is_current and v2_is_actionable have to sit beside the table name or the
-    # DB guard cannot see them, and a probe that silently counted superseded
-    # rows would report a defect nobody is being served.
-    cur.execute(
-        """SELECT source_council, document_id, provision_text,
-                  v2_dev_type_source
-           FROM regulatory_provisions
-           WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL"""
-    )
-    return cur.fetchall()
+    # The currency filter is spelled out here rather than only in SERVED, so a
+    # probe can never silently count superseded rows nobody is being served.
+    # Paged (dq_db.paged_rows): one query for all served text hit the 30s timeout.
+    return dq_db.paged_rows(
+        cur, "source_council, document_id, provision_text, v2_dev_type_source",
+        "source_council IS NOT NULL")  # paged_rows adds is_current AND v2_is_actionable
 
 
 def _council_key(document_id: str) -> str | None:
@@ -261,9 +256,17 @@ def main() -> int:
                   f"checked, which is not a pass.", file=sys.stderr)
             return 2
         try:
+            dq_db.pin_snapshot(conn)
             cur = conn.cursor()
             tagger = ApplicabilityTagger()
             count, by_doc = fn(_rows(cur), tagger)
+        except Exception as exc:  # noqa: BLE001
+            # A query the database cut off measured nothing: UNKNOWN (exit 2), never a fail.
+            if not dq_db.is_timeout(exc):
+                raise
+            print(f"{args.id}: UNKNOWN -- a query hit the statement timeout ({exc}). "
+                  f"Nothing was checked, which is not a pass.", file=sys.stderr)
+            return 2
         finally:
             conn.close()
     else:
