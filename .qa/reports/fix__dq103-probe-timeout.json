@@ -1,0 +1,82 @@
+{
+  "tier": "standard",
+  "justification": "The DQ-103 probe read every served rule's full text in one query, which began hitting the 30 s statement timeout. The crash was reported as 'declared FIXED but the check FAILS', turning nightly data-watch and every PR's gates red. It now reads in pages of 2,000 by id, and a query the database cuts off exits 2 (UNKNOWN) instead of failing. Run for real: count 0, declared fixed and agrees. Same fix for DQ-104 and DQ-105 (dq_probe_unchecked_rows.py), via shared dq_db.paged_rows / pin_snapshot / is_timeout. Measured after: DQ-103, DQ-104, DQ-105 all count 0.",
+  "commit_hash": "76de24b2",
+  "files": [
+    "scripts/dq_db.py",
+    "scripts/dq_probe_applicability_config.py",
+    "scripts/dq_probe_unchecked_rows.py",
+    "tests/test_dq_db_paged_real_db.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions served rows, read only",
+    "assumption_mismatch": "id is integer and unique so keyset paging visits each row once",
+    "new_vs_existing": "read-only probe; no rows change",
+    "frontend_type": "none, a command-line data check"
+  },
+  "functions": [
+    {
+      "name": "_rows",
+      "file_line": "scripts/dq_probe_applicability_config.py:54",
+      "input": "a read-only cursor on the production database",
+      "output": "every served row as council, document, text and dev type source",
+      "if_none": "an empty first page returns an empty list"
+    },
+    {
+      "name": "main",
+      "file_line": "scripts/dq_probe_applicability_config.py:243",
+      "input": "the DQ id to probe from the command line",
+      "output": "exit 0 clean, 1 defect found, 2 could not measure",
+      "if_none": "a statement timeout exits 2 with an UNKNOWN line"
+    },
+    {
+      "name": "paged_rows",
+      "file_line": "scripts/dq_db.py:157",
+      "input": "a cursor, the columns to select and a constant WHERE clause",
+      "output": "every matching regulatory_provisions row, read 2,000 at a time by id",
+      "if_none": "an empty first page returns an empty list"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "read every served rule in pages of 2,000 for the DQ-103 probe",
+      "file_line": "scripts/dq_db.py:157",
+      "where_clause": "is_current AND v2_is_actionable AND source_council IS NOT NULL AND id > last page id"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "the database is slow and a page still hits the 30 s limit",
+      "what_happens": "old code reported a fixed defect as back",
+      "repro": "SET statement_timeout to 1ms",
+      "mitigated": true,
+      "how": "QueryCanceled exits 2, which dq_check shows as UNKNOWN, not RED"
+    },
+    {
+      "scenario": "a different database error such as a dropped column",
+      "what_happens": "it could be hidden as UNKNOWN",
+      "repro": "rename a selected column",
+      "mitigated": true,
+      "how": "only QueryCanceled is caught; anything else still raises and fails"
+    },
+    {
+      "scenario": "rows are added while the probe pages through",
+      "what_happens": "a row could be skipped or read twice",
+      "repro": "insert during a run",
+      "mitigated": true,
+      "how": "keyset on increasing id never reads a row twice; a row added mid-run is picked up by the next run"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none",
+    "secrets": "none",
+    "other_repo": "none",
+    "manual_verify": "next nightly data-watch run passes the Defect ledger step"
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_applicability_config.py --id DQ-103",
+    "fails_when": "the probe crashes on a statement timeout instead of finishing or exiting 2",
+    "observed_red": "origin/main a6d2e378: psycopg2 QueryCanceled traceback, exit 1, reported RED by dq_check"
+  }
+}
